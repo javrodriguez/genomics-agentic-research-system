@@ -103,6 +103,10 @@ class StreamError(ValueError):
     """A stream or exit the reader cannot use as it stands (a typed refusal, never a guess)."""
 
 
+class ExecutedStreamRefused(aa.ExecutedTurnRefused, StreamError):
+    """Live harness 3a: a StreamError raised after the turn's exec ran, carrying what was kept of the exec."""
+
+
 def read_stream(text: str, *, model: str) -> dict:
     """One call's `-o stream-json` stdout, read for its harness-side records and the agent's words, kept apart.
 
@@ -229,6 +233,62 @@ def end_reason(exit_code, timed_out: bool, read: dict) -> str:
     return aa.END_ERROR
 
 
+def turn_identity(read: dict, *, version: str, mode: dict) -> dict:
+    """Live harness 3b: where each pin field of this turn came from (agent_adapter.IDENTITY_SOURCES), never fabricated
+    into init. model: the init event's (stream-init), else the result's single stats.models key (stream-stats; the
+    reader already refused any other key), else unobserved. version: `gemini --version` in the take container
+    (version-exec). permission_mode: no Gemini record names it; `mode` is submitted_mode's reading of the turn's
+    actual-submission journal (submitted-argv), or unobserved when there is none: never the pin echoed back."""
+    if read["init_model"] is not None:
+        model = {"value": read["init_model"], "source": "stream-init"}
+    elif len(read["served_models"]) == 1:
+        model = {"value": read["served_models"][0], "source": "stream-stats"}
+    else:
+        model = {"value": None, "source": aa.UNOBSERVED}
+    return {"model": model, "permission_mode": dict(mode),
+            "version": {"value": version, "source": "version-exec"}}
+
+
+# Live harness 3b review fold (finding 1): the mode a turn's actual-submission journal shows. Values that are never a
+# pinned mode name an observation that differs, so routing reads a mismatch.
+MODE_ABSENT, MODE_CONTRADICTED, LAUNCH_DISAGREES = ("no-mode-flags-submitted", "contradictory-mode-flags",
+                                                    "launch-differs-from-registered-invocation")
+OTHER_MODE_FLAGS = ("--yolo", "-y", "--approval-mode")
+
+
+def submitted_mode(journal_path: str, want: dict) -> dict:
+    """The turn's permission_mode identity entry, read from the box's journal at <stream>.launch.json (written before
+    the exec: schema 1, harness, container_id, argv, cwd, stream, started_at), never from the pin.
+    No journal, a link, or bytes that are not one JSON object: unobserved. Otherwise the journal is checked against
+    the registered invocation (vendor_provenance.launch_facts with `want`) and its argv read on its own: the mode is the
+    pinned mode only when its exact flags occur once and no other approval flag occurs; else a value that is no mode."""
+    try:
+        fd = os.open(journal_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError:
+        return {"value": None, "source": aa.UNOBSERVED}
+    try:
+        with os.fdopen(fd, "rb") as fh:
+            launch = json.loads(fh.read().decode("utf-8"))
+    except (ValueError, OSError):
+        return {"value": None, "source": aa.UNOBSERVED}
+    if not isinstance(launch, dict) or not isinstance(launch.get("argv"), list):
+        return {"value": None, "source": aa.UNOBSERVED}
+    argv = launch["argv"]
+    flags = MODE_FLAGS.get(want.get("mode"), ())
+    windows = [i for i in range(len(argv) - len(flags) + 1) if flags and tuple(argv[i:i + len(flags)]) == flags]
+    approvals = [a for a in argv if a in OTHER_MODE_FLAGS]
+    if not windows and not approvals:
+        return {"value": MODE_ABSENT, "source": "submitted-argv"}
+    if len(windows) != 1 or len(approvals) != 1:
+        return {"value": MODE_CONTRADICTED, "source": "submitted-argv"}
+    import vendor_provenance as vp       # imported here: vendor_provenance imports this module
+    try:
+        vp.launch_facts(launch, want)
+    except vp.ProvenanceRefused:
+        return {"value": LAUNCH_DISAGREES, "source": "submitted-argv"}
+    return {"value": want["mode"], "source": "submitted-argv"}
+
+
 class GeminiAdapter(aa.AgentAdapter):
     """One take's Gemini CLI turns in the box.
 
@@ -268,6 +328,7 @@ class GeminiAdapter(aa.AgentAdapter):
         self._version = None
         self.session_id = None
         self.turn_records: list = []
+        self.executed_turns: list = []     # live harness 3a: each exec as kept before its stream was read
 
     def version(self) -> str:
         """`gemini --version` in the take container, as the agent (a plain exec: no login), parsed; cached."""
@@ -290,18 +351,27 @@ class GeminiAdapter(aa.AgentAdapter):
     def _turn(self, line: str, *, first: bool, budget_s: float) -> aa.TurnResult:
         n = self._turns + 1
         inner = argv(line, model=self.model, mode=self.mode, session_id=self.session_id, first=first)
+        version = self.version()     # live harness 3b: observed before the exec (cached; a failure here is pre-exec)
         before = self.counters_for()
         got = rt.run_turn(self.runtime, self.take_id, inner, harness=NAME, run_tree=self.run_tree,
                           login_file=self.login_file, stream_path=self.stream_path_for(n), budget_s=budget_s,
                           clock=self.clock, caller_env=self.caller_env)
         after = self.counters_for()
-        meaning = exit_meaning(got["exit_code"], got["timed_out"])
-        with open(got["stream_path"], encoding="utf-8", errors="surrogateescape") as fh:
-            read = read_stream(fh.read(), model=self.model)
-        if first:
-            self.session_id = read["session_id"]
-        elif read["session_id"] is not None and read["session_id"] != self.session_id:
-            raise StreamError(f"turn {n} resumed another session than turn 1's")
+        counters = rt.counter_delta(before, after)
+        # Live harness 3a: the exec ran, so what the runtime returned is kept before anything of the turn is read; a
+        # refusal from here on is an executed turn's (ExecutedStreamRefused), never a turn that did not happen.
+        executed = {"n": n, "exit_code": got["exit_code"], "timed_out": got["timed_out"],
+                    "started_at": got["started_at"], "ended_at": got["ended_at"], "stream_path": got["stream_path"],
+                    "counters": counters, "refused": None}
+        self.executed_turns.append(executed)
+        try:
+            meaning, read = self._read_turn(got, n, first)
+        except (StreamError, OSError) as e:
+            executed["refused"] = f"{type(e).__name__}: {e}"
+            raise ExecutedStreamRefused(str(e), executed=executed) from e
+        except Exception as e:  # noqa: BLE001 - review nit: any other failure after the exec is still the exec's
+            executed["refused"] = f"{type(e).__name__}: {e}"           # a defect: typed, never a StreamError
+            raise aa.ExecutedTurnRefused(executed["refused"], executed=executed) from e
         self.turn_records.append({
             "n": n, "first": first, "exit_code": got["exit_code"], "exit_meaning": meaning,
             "timed_out": got["timed_out"], "init_model": read["init_model"], "session_id": read["session_id"],
@@ -310,10 +380,40 @@ class GeminiAdapter(aa.AgentAdapter):
             "shapes_source": SHAPES_SOURCE})
         return aa.TurnResult(exit_code=got["exit_code"], text=read["agent_text"], stream_path=got["stream_path"],
                              end_reason=end_reason(got["exit_code"], got["timed_out"], read), init=None,
-                             api_errors=read["api_errors"], counters=rt.counter_delta(before, after),
+                             api_errors=read["api_errors"], counters=counters,
                              started_at=got["started_at"], ended_at=got["ended_at"],
-                             agent_output=read["agent_output"])
+                             agent_output=read["agent_output"],
+                             identity=turn_identity(read, version=version, mode=submitted_mode(
+                                 got["stream_path"] + ".launch.json",
+                                 {"harness": NAME, "container_id": self.take_id, "model": self.model,
+                                  "mode": self.mode, "run_tree": self.run_tree, "stream": got["stream_path"],
+                                  "sent": line, "vendor_session_id": "first-turn" if first else self.session_id,
+                                  "ordinal": n})))
+
+    def _read_turn(self, got: dict, n: int, first: bool) -> tuple:
+        """The exec's exit meaning and its stream read, and the resumed session checked (G-2); raised from here, a
+        refusal is an executed turn's (live harness 3a: _turn keeps the exec first)."""
+        meaning = exit_meaning(got["exit_code"], got["timed_out"])
+        with open(got["stream_path"], encoding="utf-8", errors="surrogateescape") as fh:
+            read = read_stream(fh.read(), model=self.model)
+        if first:
+            self.session_id = read["session_id"]
+        elif read["session_id"] is not None and read["session_id"] != self.session_id:
+            raise StreamError(f"turn {n} resumed another session than turn 1's")
+        return meaning, read
 
     def _end(self) -> None:
         """Nothing of the adapter's own to tear down: the driver removes the container by its recorded id."""
         return None
+
+    def native_session_path(self, home: str) -> str:
+        """Live harness 3c: the native session file this take resumes, under GEMINI_CLI_HOME `home`, located by the
+        session id turn 1's init named (native_snapshot.gemini_session_file; directory names only)."""
+        import native_snapshot
+        return native_snapshot.gemini_session_file(home, self.session_id)
+
+    def native_session_rel(self, lister) -> str:
+        """The same session file, relative to the config folder, found through the box's one-level listing
+        (drive-wiring review MAJOR 1: the driver never opens the agent's config folder during the take)."""
+        import native_snapshot
+        return native_snapshot.gemini_session_rel(lister, self.session_id)

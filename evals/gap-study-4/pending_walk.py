@@ -1,0 +1,94 @@
+"""Live harness: the acceptance-walk road's records for a vendor walk whose native cross-check is pending.
+
+Registration review finding 2 (glitch-06, 14 Oct 2026): while no native-session reader is registered, every Gemini
+(and later Codex) drive stops with drive.NativeCrossCheckPending (departure D-INT-1), and the walk runner used to hold
+any walk whose drive raised, so no vendor walk could ever be committed, and registration (which needs one) could never
+be reached by real evidence. Now such a walk is committed through WalkRepo with every record it made, and with:
+
+  check.json   check_doc(): {"walk", "status": "pending-native-reader", "why": the driver ledger's own pending why}
+               in place of the checker's reading (the checker never ran: the driver stops before it);
+  grade.json   status(): {"graded": false, "status": "pending-native-reader", "why": "not graded, because ..."}, which
+               run.grade_walk returns for a ledger whose cross_check_status is pending, so run.walk_problems regrades it
+               to the same bytes.
+
+A pending walk is never graded, never counted as rehearsal coverage (walk_plan's and fixture_walk's coverage count a
+walk only when it is graded true or superseded by a verified graded-true regrade: coverage_status), and never re-run (its id is registered; a retry is a new walk id). After a reader is registered,
+walk_regrade.py re-derives its cross-check and grade from the committed bytes into rehearsals/<walk>/regrade.json, a
+new superseding record; the walk's own commit and records are never touched.
+
+Both documents are derived from the driver ledger alone, so the registration road re-derives them byte for byte.
+"""
+from __future__ import annotations
+
+PENDING = "pending-native-reader"
+PENDING_STATUS_KEYS = ("status", "why")
+
+
+def _pending(ledger):
+    s = ledger.get("cross_check_status") if isinstance(ledger, dict) else None
+    if isinstance(s, dict) and set(s) == set(PENDING_STATUS_KEYS) and s["status"] == "pending" \
+            and isinstance(s["why"], str) and s["why"]:
+        return s
+    return None
+
+
+def status(ledger):
+    """grade.json's document for a walk whose driver ledger records a pending native cross-check, else None."""
+    s = _pending(ledger)
+    if s is None:
+        return None
+    return {"graded": False, "status": PENDING, "why": f"not graded, because its native cross-check is pending: "
+                                                       f"{s['why']}"}
+
+
+def check_doc(walk: str, ledger) -> dict:
+    """check.json's document for a pending walk; ValueError when the ledger records no pending cross-check."""
+    s = _pending(ledger)
+    if s is None:
+        raise ValueError("the driver ledger records no pending native cross-check: not a pending walk")
+    return {"walk": walk, "status": PENDING, "why": s["why"]}
+
+
+def _regrade_state(base, walk: str):
+    """A regrade's standing for coverage: "graded" when its bytes re-derive (walk_regrade.regrade_doc from the walk's
+    committed bytes) and it grades the walk; "refused" when they re-derive and it does not (its native cross-check
+    refused); None when there is none or it does not re-derive (an error included): it then supersedes nothing."""
+    import walk_regrade
+    from pathlib import Path
+    path = Path(base) / walk / walk_regrade.REGRADE_FILE
+    if not path.is_file():
+        return None
+    try:
+        doc = walk_regrade.regrade_doc(walk, Path(base).parent)
+        if walk_regrade.regrade_bytes(doc) != path.read_bytes():
+            return None
+    except Exception:  # noqa: BLE001 - an unverifiable regrade supersedes nothing, fail closed
+        return None
+    return "graded" if doc.get("graded") is True else "refused"
+
+
+def coverage_status(base, walk: str):
+    """Batch-8 fix ruling (glitch-06, 14 Oct 2026; CP6: "Every walk is graded but never counted"): None when the walk
+    counts as coverage, else why not. A walk covers its spec only when its grade.json is graded true, or when it is a
+    pending walk that a verified graded-true regrade supersedes. Fail closed: a missing or unreadable grade.json, an
+    ungraded walk, a pending walk, and a pending walk whose verified regrade refused are each reported, never counted."""
+    import json
+    from pathlib import Path
+    try:
+        grade = json.loads((Path(base) / walk / "grade.json").read_bytes())
+    except (OSError, ValueError):
+        return "grade unreadable"
+    if not isinstance(grade, dict):
+        return "grade unreadable"
+    if grade.get("graded") is True:
+        return None
+    if grade.get("status") == PENDING:
+        state = _regrade_state(base, walk)
+        return None if state == "graded" else "regrade refused" if state == "refused" else "pending"
+    return "not graded"
+
+
+def uncounted_walks(base, walks) -> dict:
+    """{walk id: why it is not counted} for the walk ids of `walks` under the rehearsals folder `base`; walk_plan's and
+    fixture_walk's coverage never count them."""
+    return {w: why for w in walks if isinstance(w, str) for why in (coverage_status(base, w),) if why is not None}

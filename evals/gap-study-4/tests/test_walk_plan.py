@@ -202,6 +202,13 @@ def mutants():
                                      "if isinstance(e.get(\"walk\"), str)\n"),
         "stand-in-walks-unchecked": ("P17.wrong-type", "    if not isinstance(walks, list):\n        return []\n",
                                      ""),
+        # batch-8 review finding 1 (glitch-06, 14 Oct 2026): a pending walk is never coverage
+        "pending-counted": ("P18.pending", "        if entry[\"walk\"] in uncounted:            # batch-8 rulings",
+                            "        if False:            # batch-8 rulings"),
+        "pending-unread": ("P18.pending",
+                           "    got = coverage(entries, specs, design, pending_walk.uncounted_walks(base, [e[\"walk\"] for e in entries]))",
+                           "    got = coverage(entries, specs, design)"),
+        "pending-unreported": ("P18.pending", "    for label, why in got[\"uncounted\"]:\n", "    for label, why in []:\n"),
     }
 
 
@@ -300,6 +307,9 @@ def harness_of(draft) -> dict:
     return out
 
 
+GRADED = '{"graded": true, "row": {}, "grade": {"label": "stand-in"}}\n'
+
+
 def entry(spec: dict, walk: str, **changes) -> dict:
     e = {k: spec[k] for k in FIELDS}
     e.update(walk=walk, reason="synthetic register entry for a test", counted=False)
@@ -391,8 +401,18 @@ class Base(unittest.TestCase):
         edit(doc)
         path.write_text(json.dumps(doc))
 
-    def rehearsals(self, entries) -> Path:
-        return self.raw_register(json.dumps({"schema": 1, "walks": entries}))
+    def rehearsals(self, entries, graded=True) -> Path:
+        """A register of `entries`; with `graded`, each entry whose walk is a walk id gets a graded-true grade.json
+        (the batch-8 fix ruling: only a graded walk covers its spec, and a missing grade fails closed)."""
+        base = self.raw_register(json.dumps({"schema": 1, "walks": entries}))
+        if graded:
+            import walk_register as wr
+            for e in entries:
+                walk = e.get("walk") if isinstance(e, dict) else None
+                if isinstance(walk, str) and wr.WALK_ID.fullmatch(walk) and not (base / walk).exists():
+                    (base / walk).mkdir()
+                    (base / walk / "grade.json").write_text(GRADED)
+        return base
 
     def raw_register(self, text: str) -> Path:
         base = self.tmpdir() / "rehearsals"
@@ -610,8 +630,7 @@ class P7RegisterOnly(Base):
     def test_coverage_reads_the_register_and_never_a_walk_folder(self):
         _, specs = self.plan("P7.register-only")
         base = self.rehearsals([entry(specs[0], "walk-a")])
-        (base / "walk-a").mkdir()
-        (base / "walk-a" / "grade.json").write_text("{}")
+        (base / "walk-a" / "grade.json").write_text(GRADED)       # graded true (the batch-8 fix ruling)
         touched: list = []
         real = {"open": builtins.open, "listdir": os.listdir, "scandir": os.scandir, "stat": os.stat,
                 "lstat": os.lstat}
@@ -633,9 +652,10 @@ class P7RegisterOnly(Base):
         under = [(kind, p) for kind, p in touched if p not in (".", "")
                  and Path(p).resolve().is_relative_to(base.resolve())]
         self.assertTrue(under, "P7.register-only: the recorder saw the register (the instrument is armed)")
-        self.assertEqual({Path(p).resolve() for _, p in under}, {register},
-                         f"P7.register-only: only the register is opened or looked up under rehearsals/, and "
-                         f"nothing is listed: {sorted(set(under))}")
+        grade = (base / "walk-a" / "grade.json").resolve()      # batch-8 ruling: each registered walk's grade
+        self.assertEqual({Path(p).resolve() for _, p in under}, {register, grade},
+                         f"P7.register-only: only the register and each registered walk's grade.json are opened or "
+                         f"looked up under rehearsals/, and nothing is listed: {sorted(set(under))}")
         self.assertNotIn("list", {kind for kind, _ in under}, "P7.register-only")
         self.assertRegex(out, r"(?m)^covered  .* by walk-a$", "P7.register-only")
 
@@ -1042,6 +1062,53 @@ class P17WrongType(Base):
                          "P17.wrong-type: labelled by position")
 
 
+class P18Pending(Base):
+    """Batch-8 review finding 1 and the batch-8 fix ruling (glitch-06, 14 Oct 2026; CP6: "Every walk is graded but
+    never counted"): a walk covers its spec only when graded true, or a pending walk that a verified graded-true
+    regrade supersedes; every other registered walk is reported with why and never counted, and a missing or
+    unreadable grade.json fails closed. The reviewer's witness is the arm-G entry that used to cover its spec."""
+    CLAUSE = "P18.pending"
+
+    PENDING = {"graded": False, "status": "pending-native-reader",
+               "why": "not graded, because its native cross-check is pending: a stand-in"}
+
+    def test_a_pending_walk_covers_nothing(self):
+        design, specs = self.plan("P18.pending")
+        spec = next(s for s in specs if s["arm"] == "G")
+        got = self.cover("P18.pending", [entry(spec, "g-pending-1")], specs, design)
+        self.assertEqual(list(got["covered"]), [self.key(spec, design)], "P18.pending: the control covers its spec")
+        self.assertEqual(got["uncounted"], [], "P18.pending")
+        wp = self.wp("P18.pending")
+        got = wp.coverage([entry(spec, "g-pending-1")], specs, design, {"g-pending-1": "pending"})
+        self.assertEqual(got["covered"], {}, "P18.pending: an uncounted walk covers nothing")
+        self.assertEqual(got["uncounted"], [("g-pending-1", "pending")], "P18.pending: and is reported with why")
+        self.assertIn(spec, got["missing"], "P18.pending: its spec stays missing")
+        walks = {"g-pending-1": json.dumps(self.PENDING), "g-ungraded-2": json.dumps({"graded": False, "why": "x"}),
+                 "g-garbled-3": "{not json", "g-missing-4": None, "g-list-5": "[]"}
+        base = self.rehearsals([entry(spec, w) for w in walks], graded=False)
+        for walk, text in walks.items():
+            (base / walk).mkdir()
+            if text is not None:
+                (base / walk / "grade.json").write_text(text)
+        code, out = self.cli("P18.pending", ["--coverage", "--require-complete", "--base", str(base)])
+        self.assertEqual(code, 1, f"P18.pending: no graded walk, the spec is missing: {out[-300:]}")
+        self.assertRegex(out, rf"(?m)^missing  {re.escape(self.sline(spec))}$", "P18.pending")
+        for walk, why in (("g-pending-1", "pending"), ("g-ungraded-2", "not graded"),
+                          ("g-garbled-3", "grade unreadable"), ("g-missing-4", "grade unreadable"),
+                          ("g-list-5", "grade unreadable")):
+            self.assertRegex(out, rf"(?m)^{why}, not counted: walk '{walk}': only a graded walk covers its spec$",
+                             f"P18.pending: {walk} is reported, fail closed")
+        (base / "g-pending-1" / "regrade.json").write_text('{"graded": true}\n')
+        code, out = self.cli("P18.pending", ["--coverage", "--base", str(base)])
+        self.assertIn("pending, not counted: walk 'g-pending-1'", out,
+                      "P18.pending: a regrade that does not re-derive supersedes nothing")
+        (base / "g-ungraded-2" / "grade.json").write_text(GRADED)
+        code, out = self.cli("P18.pending", ["--coverage", "--base", str(base)])
+        self.assertEqual(code, 0, f"P18.pending: {out[-300:]}")
+        self.assertRegex(out, rf"(?m)^covered  {re.escape(self.sline(spec))} by g-ungraded-2$",
+                         "P18.pending: the graded walk covers the spec alone")
+
+
 BOUND = {"P2.dropped": "P2Dropped.test_a_dropped_task_or_wording_changes_the_figures",
          "P3.halves": "P3Halves.test_every_task_and_half_on_every_planned_model",
          "P4.off-design": "P4OffDesign.test_an_entry_outside_the_plan_is_reported_never_counted",
@@ -1056,7 +1123,8 @@ BOUND = {"P2.dropped": "P2Dropped.test_a_dropped_task_or_wording_changes_the_fig
          "P13.per-model": "P13PerModel.test_each_model_figure_counts_its_own_gaps",
          "P14.cli": "P14Cli.test_the_command_line_exits",
          "P16.scratch-only": "P16ScratchOnly.test_a_path_shaped_walk_id_writes_nothing_outside_the_scratch",
-         "P17.wrong-type": "P17WrongType.test_a_field_of_the_wrong_type_is_skipped_never_a_crash"}
+         "P17.wrong-type": "P17WrongType.test_a_field_of_the_wrong_type_is_skipped_never_a_crash",
+         "P18.pending": "P18Pending.test_a_pending_walk_covers_nothing"}
 WITNESSES = {name: (BOUND[clause], clause) for name, (clause, _, _) in mutants().items()}
 
 

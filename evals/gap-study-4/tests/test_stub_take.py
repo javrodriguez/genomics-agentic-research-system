@@ -36,8 +36,10 @@ LOCK_IDS = {role: json.loads((STUDY / "box" / rel).read_text())["image_id"]
             for role, rel in (("take", "image.lock"), ("sidecar", "sidecar/image.lock"),
                               ("egress", "egress/image.lock"), ("codex", "codex/image.lock"),
                               ("gemini", "gemini/image.lock"))}
-# drive.adapter_class_problems as it stood when this road was built (ruling 1: it stays unchanged).
-ADAPTER_CHECK_SHA256 = "6fb87b70ba09a1c19dce5bdace0ac03a969803a5d4810e95086c19d4ebe89d6a"
+# drive.adapter_class_problems as it stands on the merged head (ruling 1: the stub road never changes it). The box
+# branch pinned 6fb87b70...9d6a; the reviewed harness commit c35fc915 rewrote the function for three harnesses, and
+# glitch-06 (14 Oct 2026) ruled the repin on the merged head to that version, byte for byte (the integration lane).
+ADAPTER_CHECK_SHA256 = "47cdad3847800a32b04755f40ec11ba1f78678a6b45ba52bf0ab330559b62717"
 
 
 def _ns(**over):

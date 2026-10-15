@@ -88,9 +88,49 @@ LOGIN = "CLAUDE_CODE_OAUTH_TOKEN"
 TARGETS = ("walk_builders", "walk_runner")
 # The production values still missing, in walk_builders.NAMES' order: the real box's (item 4), the owner's login
 # (item 7) and the walks' (pins, constants, budgets, exclusions). A value filled later turns this list red on purpose.
-EXPECTED_MISSING = ["runtime", "config_parent", "take_spec", "sidecar_for", "proxy", "lock_path", "hosts", "uid_map",
-                    "cgroup_dir_for", "rules_scanner", "login_path", "agent_version", "pin_for", "design_for",
+# Queue item 2 (glitch-06, 14 Oct 2026): uid_map and cgroup_dir_for are run-time readers now (B11), never missing.
+EXPECTED_MISSING = ["runtime", "config_parent", "take_spec", "sidecar_for", "proxy", "lock_path", "hosts",
+                    "rules_scanner", "login_path", "agent_version", "design_for",
                     "budgets", "run_tree_exclude"]
+# take_spec (harness ce2bdef4) is built once take-a's image lock holds no PENDING value: missing, by name, on a tree
+# whose take-a lock is PENDING, and present where the box lane's reviewed locks are in (6221c297; on the merged head,
+# the integration lane). B7.production checks it is then callable. Read from the lock file itself.
+def _take_a_lock_ready() -> bool:
+    import json
+    lock = json.loads((Path(__file__).resolve().parents[1] / "box" / "image.lock").read_text())
+    def held(v):
+        return v == "PENDING" or (isinstance(v, dict) and any(held(x) for x in v.values()))
+    return not lock.get("pending") and not any(held(v) for k, v in lock.items() if k != "pending")
+
+
+TAKE_A_LOCK_READY = _take_a_lock_ready()
+if TAKE_A_LOCK_READY:
+    EXPECTED_MISSING.remove("take_spec")
+# The walk token's login file is the box's record, run_take.WALK_LOGIN_FILES["claude1"] (box lane 1eb02a9e): missing, by
+# name, on a tree whose run_take has no such record, and that exact path where it does (B7.login checks both ways).
+WALK_LOGIN_ON_TREE = isinstance(getattr(rt, "WALK_LOGIN_FILES", None), dict) and "claude1" in rt.WALK_LOGIN_FILES
+if WALK_LOGIN_ON_TREE:
+    EXPECTED_MISSING.remove("login_path")
+# The rules scanner is missing, by name, while box/scan_record.py's RULES_SCANNER is PENDING, and built from
+# box/rules_scanner.real_rules_scanner() where the box lane has pinned it (the merged head, 2d6983e9: the integration
+# lane's red 1-4). B7.production checks it is then the pinned class's instance.
+def _rules_scanner_on_tree() -> bool:
+    from box import scan_record
+    return "rules_scanner" not in scan_record.pending()
+
+
+RULES_SCANNER_ON_TREE = _rules_scanner_on_tree()
+if RULES_SCANNER_ON_TREE:
+    EXPECTED_MISSING.remove("rules_scanner")
+# CP5 (Javier, "CP5: all as recommended", 14 Oct 2026) registered arm A's pin profiles, so pin_for is no longer missing
+# in production (B8's rule, on the real table); it is checked present in B7.production.
+# The ownership road is the box lane's box/ownership.py (81ede46d): missing, by name, on a tree without that module, and
+# present on the merged head (B7.production checks it is then drive's own `_ownership`).
+OWNERSHIP_ON_TREE = (Path(__file__).resolve().parents[1] / "box" / "ownership.py").is_file()
+EXPECTED_MISSING += [] if OWNERSHIP_ON_TREE else ["ownership"]
+SETTINGS_GUARD_ON_TREE = (Path(__file__).resolve().parents[1] / "box" / "settings_guard.py").is_file()
+EXPECTED_MISSING += [] if SETTINGS_GUARD_ON_TREE else ["settings_guard"]
+EXPECTED_MISSING += ["machine_gate"]       # P-2: until the operator's runner names its paths (machine_gate's env)
 
 
 def road() -> dict:
@@ -125,6 +165,25 @@ def mutants() -> dict:
                                       "os.path.normpath(source) != source:", "    if False:"),
         "identity-any-walk": ("B1.identity", "walk_builders", "        if walk not in prepared:",
                               "        if False:"),
+        "lease-login-before-place": ("B13.secrets", "walk_builders",
+                                     "        if self.placed is None:\n            raise BuilderRefused(\"no lease placed: a "
+                                     "Codex take's login file", "        if False:\n            raise BuilderRefused(\"no "
+                                     "lease placed: a Codex take's login file"),
+        "lease-gate-unchecked": ("B13.secrets", "walk_builders",
+                                 "        if gate:\n            raise BuilderRefused(f\"the Codex lease is not placed",
+                                 "        if False:\n            raise BuilderRefused(f\"the Codex lease is not placed"),
+        "scanner-real-unchecked": ("B12.scanner", "walk_builders",
+                                   "        if type(scanner) is not pinned:", "        if False:"),     # 0f1aa5ea's line
+        "scanner-raw-to-driver": ("B12.scanner", "walk_builders",
+                                  'identity_for=identity_for({row["walk"]: ident}), secrets=secrets, rules_scanner=rules,',
+                                  'identity_for=identity_for({row["walk"]: ident}), secrets=secrets, '
+                                  'rules_scanner=builders["rules_scanner"],'),
+        "scanner-class-by-name": ("B12.scanner", "walk_builders",
+                                  "        if type(scanner) is not pinned:",       # 0f1aa5ea's line (athena, 14 Oct)
+                                  "        if type(scanner).__name__ != getattr(pinned, '__name__', None):"),
+        "report-dir-shared": ("B12.scanner", "walk_builders",
+                              '    report_dir = tempfile.mkdtemp(prefix="walk-scan-", dir=report_parent)',
+                              '    report_dir = report_parent'),
         "login-reads-on": ("B2.login", "walk_builders", "        head = os.read(fd, len(want))",
                            "        head = os.read(fd, 4096)[:len(want)]"),
         "login-mode-unchecked": ("B2.login", "walk_builders", "    if stat.S_IMODE(st.st_mode) != 0o600:",
@@ -153,9 +212,9 @@ def mutants() -> dict:
         "kept-tree-unnamed": ("B9.cli", "walk_builders",
                               '        print(f"kept run tree: {tree} (run_walks raised; left for a human)", '
                               'file=sys.stderr)', "        pass"),
-        "secrets-read-early": ("B2.login", "walk_builders", "    name = login_name(harness)\n\n    def secrets():",
-                               "    name = login_name(harness)\n    scan_record.read_login(login_file, name, "
-                               "allowed=tuple(rt.LOGIN_VARIABLE.values()))\n\n    def secrets():"),
+        "secrets-read-early": ("B2.login", "walk_builders", '        _no_login_file("login_secrets")\n\n    def secrets():',
+                               '        _no_login_file("login_secrets")\n    scan_record.read_login(login_file, name, '
+                               'allowed=tuple(rt.LOGIN_VARIABLE.values()))\n\n    def secrets():'),
         "counters-folder-unchecked": ("B3.counters", "walk_builders",
                                       "        if not isinstance(folder, str) or not os.path.isabs(folder) or not "
                                       "os.path.isdir(folder):", "        if False:"),
@@ -240,6 +299,12 @@ METHOD = {
     "held-tree-removed": "B9Cli.test_a_held_walk_keeps_its_run_tree",
     "held-exits-zero": "B9Cli.test_a_held_walk_keeps_its_run_tree",
     "refused-tree-left": "B9Cli.test_a_refused_fixture_removes_its_run_tree",
+    "scanner-real-unchecked": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
+    "scanner-raw-to-driver": "B12Scanner.test_a_pinned_scanner_is_built_once_for_a_walk",
+    "report-dir-shared": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
+    "scanner-class-by-name": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
+    "lease-login-before-place": "B13Lease.test_the_driver_and_walkrepo_get_the_lease_secrets",
+    "lease-gate-unchecked": "B13Lease.test_the_driver_and_walkrepo_get_the_lease_secrets",
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 
@@ -310,6 +375,20 @@ class Case(unittest.TestCase):
         except Exception as e:  # noqa: BLE001
             self.fail(f"{clause}: raised {type(e).__name__}, not BuilderRefused: {str(e)[:300]}")
         self.fail(f"{clause}: not refused ({words!r})")
+
+
+def problems_by_assertion(prefix):
+    """A check that raises reports it as its own line, so a mutant that makes the code raise fails the test by
+    assertion (a kill), never by an error the generated sweep does not count."""
+    def wrap(fn):
+        def check(mod, *args):
+            try:
+                return fn(mod, *args)
+            except Exception as e:  # noqa: BLE001
+                return [f"{prefix}: raised {type(e).__name__}: {str(e)[:300]}"]
+        check.__name__ = fn.__name__
+        return check
+    return wrap
 
 
 def wb():
@@ -473,9 +552,10 @@ class B2Login(Case):
                 said = self.refuses("B2.login", f"does not start with {LOGIN}=", wb().login_file_by_name, str(path),
                                     "claude-code")
                 self.assertNotIn(tbi.TOKEN, said, "B2.login: a refusal carries the value")
-        codex = login_file(f"CODEX_API_KEY={tbi.TOKEN}\n")
-        self.assertEqual(self.must("B2.login", wb().login_file_by_name, str(codex), "codex"), str(codex),
-                         "B2.login: the harness's own variable")
+        codex = login_file(f"CODEX_API_KEY={tbi.TOKEN}\n")       # the lease road: a Codex row has no login file
+        with mock.patch.object(os, "open", side_effect=AssertionError("B2.login: the Codex login file was opened")):
+            said = self.refuses("B2.login", "its login is the lease", wb().login_file_by_name, str(codex), "codex")
+        self.assertNotIn(tbi.TOKEN, said, "B2.login: a refusal carries the value")
 
     def test_the_secrets_read_the_value_only_when_asked(self):
         from box import scan_record
@@ -753,18 +833,44 @@ class B7Production(Case):
         self.assertEqual([n for n, _ in gaps], EXPECTED_MISSING, "B7.production: not exactly the missing values")
         self.assertTrue(all(isinstance(why, str) and len(why) > 20 for _, why in gaps), "B7.production")
         why = dict(gaps)
-        for name, words in (("runtime", "DockerRuntime"), ("proxy", "next-slices plan item 4"), ("uid_map", rt.CALLER_PENDING["uid_map"]),
-                            ("cgroup_dir_for", rt.CALLER_PENDING["cgroup_dir"]), ("login_path", "walk token"),
-                            ("pin_for", "pin_profiles"), ("design_for", "PENDING"), ("run_tree_exclude", "run_location"),
+        for name, words in (("runtime", "DockerRuntime"), ("proxy", "next-slices plan item 4"),
+                            ("login_path", "WALK_LOGIN_FILES['claude1']"),
+                            ("design_for", "PENDING"), ("run_tree_exclude", "run_location"),
                             ("agent_version", "version_pins"), ("rules_scanner", "gitleaks")):
-            self.assertIn(words, why[name], f"B7.production: {name} does not say why")
+            if name in why:
+                self.assertIn(words, why[name], f"B7.production: {name} does not say why")
+        if WALK_LOGIN_ON_TREE:
+            self.assertEqual(got["login_path"], rt.WALK_LOGIN_FILES["claude1"], "B7.login: not the box's record")
+        if RULES_SCANNER_ON_TREE:
+            from box import rules_scanner
+            self.assertIs(type(got["rules_scanner"]), rules_scanner.RealRulesScanner,
+                          "B7.production: the pinned rules scanner is not handed to the walks")
+        if TAKE_A_LOCK_READY:
+            self.assertTrue(callable(got["take_spec"]), "B7.production: take-a's ready lock gives no take spec")
         import time
         import drive
         import routing
         self.assertEqual((got["clock"], got["sleep"]), (time.time, time.sleep), "B7.production")
         self.assertEqual(got["run_tree_origin"], (drive.REPO, variants.PINNED_TREE), "B7.production")
         self.assertEqual(got["table"], routing.load_table(), "B7.production")
-        self.assertEqual(sorted(got), sorted(wb().NAMES), "B7.production: the set is not NAMES")
+        self.assertTrue(callable(got["pin_for"]), "B7.production: CP5's registered pins are not handed to the walks")
+        if TAKE_A_LOCK_READY:
+            self.assertTrue(callable(got["take_spec"]), "B7.production: take-a's ready lock gives no take spec")
+        if OWNERSHIP_ON_TREE:
+            self.assertIs(got["ownership"], drive._ownership, "B7.production: the ownership road is not the box's")
+        else:
+            self.assertIn("box/ownership.py", why["ownership"], "B7.production: ownership does not say why")
+        if SETTINGS_GUARD_ON_TREE:
+            self.assertIs(got["settings_guard"], drive._settings_guard, "B7.production: the guard is not the box's")
+        else:
+            self.assertIn("box/settings_guard.py", why["settings_guard"], "B7.production: the guard does not say why")
+        self.assertEqual(sorted(got), sorted(wb().NAMES + wb().ROW_NAMES), "B7.production: the set is not NAMES")
+        self.assertIsInstance(got["lease_path"], wb().Missing, "B7.production: a Codex lease source is filled")
+        self.assertIn("CODEX_SUBSCRIPTION_READY", got["lease_path"].why, "B7.production: lease_path does not say why")
+        if WALK_GEMINI_ON_TREE:
+            self.assertEqual(got["gemini_login_path"], rt.WALK_LOGIN_FILES["r4-g"], "B7.production: not the r4-g record")
+        else:
+            self.assertIsInstance(got["gemini_login_path"], wb().Missing, "B7.production: a Gemini key path is filled")
 
     def test_main_refuses_by_name_before_anything(self):
         for argv in ([], ARGV, ["--no-such-flag"]):
@@ -810,6 +916,70 @@ class B7Production(Case):
         self.assertEqual(repr(wb().Missing("x y")), "Missing('x y')", "B7.production")
 
 
+    def test_the_walk_login_is_the_box_record(self):
+        self.assertEqual(b7_login_problems(wb()), [])
+
+
+@contextlib.contextmanager
+def walk_login_files(value):
+    """run_take.WALK_LOGIN_FILES set to `value` for the block, or absent when value is ABSENT; put back after."""
+    had = hasattr(rt, "WALK_LOGIN_FILES")
+    old = getattr(rt, "WALK_LOGIN_FILES", None)
+    if value is ABSENT:
+        if had:
+            delattr(rt, "WALK_LOGIN_FILES")
+    else:
+        rt.WALK_LOGIN_FILES = value
+    try:
+        yield
+    finally:
+        if had:
+            rt.WALK_LOGIN_FILES = old
+        elif hasattr(rt, "WALK_LOGIN_FILES"):
+            delattr(rt, "WALK_LOGIN_FILES")
+
+
+ABSENT = object()
+SYNTHETIC_LOGIN = "/synthetic/gap4-secrets/claude1/claude-walk-token"
+
+
+@problems_by_assertion("B7.login")
+def b7_login_problems(mod) -> list:
+    """B7.login: login_path is run_take.WALK_LOGIN_FILES["claude1"] as the box records it (only the path; prepare
+    checks the file by name), Missing by name while the record is absent or lacks claude1, refused when not absolute."""
+    out = []
+    if getattr(mod, "WALK_ACCOUNT", None) != "claude1":
+        out.append(f"B7.login: the walk account is {getattr(mod, 'WALK_ACCOUNT', None)!r}, not claude1")
+    with walk_login_files({"claude2": "/synthetic/other", "claude1": SYNTHETIC_LOGIN}):
+        got = mod.walk_login_path()
+        if got != SYNTHETIC_LOGIN:
+            out.append(f"B7.login: login_path is {got!r}, not the record's claude1 file")
+        got = mod.production_builders()["login_path"]
+        if got != SYNTHETIC_LOGIN:
+            out.append(f"B7.login: the production builders' login_path is {got!r}")
+    for label, value in (("absent", ABSENT), ("without claude1", {"claude2": "/synthetic/other"}),
+                         ("not a mapping", ["claude1"]), ("None", None)):
+        with walk_login_files(value):
+            got = mod.walk_login_path()
+            if not isinstance(got, mod.Missing):
+                out.append(f"B7.login: a record {label} gave {got!r}, not Missing")
+            elif "WALK_LOGIN_FILES['claude1']" not in got.why or "walk token" not in got.why:
+                out.append(f"B7.login: a record {label} is Missing without saying why: {got.why!r}")
+            if label == "absent":
+                prod = mod.production_builders()["login_path"]
+                if not isinstance(prod, mod.Missing):
+                    out.append(f"B7.login: the production builders hold {prod!r} with no record")
+    for bad in ("relative/claude-walk-token", "", None, 3):
+        with walk_login_files({"claude1": bad}):
+            try:
+                got = mod.walk_login_path()
+                out.append(f"B7.login: a record of {bad!r} was taken: {got!r}")
+            except mod.BuilderRefused as e:
+                if "WALK_LOGIN_FILES['claude1']" not in str(e):
+                    out.append(f"B7.login: the refusal of {bad!r} does not name the record: {e}")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------- B8
 class B8Present(Drafted):
     def test_a_measured_pin_is_present(self):
@@ -838,20 +1008,39 @@ class B8Present(Drafted):
                                                       "run_tree": "/synthetic/tree"}), "B8.present")
 
     def test_a_real_rules_scanner_is_present(self):
+        """Box 8ad2978a: once scan_record's record is not PENDING, the production scanner is
+        rules_scanner.real_rules_scanner()'s (on this branch, the stand-in module of pinned_class)."""
         from box import scan_record
         scanner = object()
-        with mock.patch.object(scan_record, "pending", lambda: {}), \
-                mock.patch.object(scan_record, "real_rules_scanner", lambda: scanner):
-            got = self.must("B8.present", wb().production_builders)
-        self.assertIs(got["rules_scanner"], scanner, "B8.present")
+        with pinned_class(), mock.patch.object(scan_record, "pending", lambda: {}):
+            from box import rules_scanner
+            with mock.patch.object(rules_scanner, "real_rules_scanner", lambda: scanner, create=True):
+                got = self.must("B8.present", wb().production_builders)
+        self.assertIs(got.get("rules_scanner"), scanner, "B8.present")   # an absent key fails by assertion
+
+    def test_a_pending_rules_scanner_is_missing(self):
+        """R2 (glitch-6b, 14 Oct 2026): the fail-closed branch, driven through the pending() seam on every tree. While
+        scan_record.pending() names rules_scanner, the production scanner is Missing with that reason and the real one
+        is never built (the merged tree's pending() no longer names it, so only this test reaches the branch there)."""
+        from box import scan_record
+        why = "synthetic: the rules scanner record is PENDING for this test"
+        with pinned_class(), mock.patch.object(scan_record, "pending", lambda: {"rules_scanner": why}):
+            from box import rules_scanner
+            with mock.patch.object(rules_scanner, "real_rules_scanner", create=True,
+                                   side_effect=AssertionError("B8.pending: the real scanner was built while PENDING")):
+                got = self.must("B8.pending", wb().production_builders)
+        self.assertIsInstance(got.get("rules_scanner"), wb().Missing, "B8.pending: a PENDING scanner is not Missing")
+        self.assertIn(why, got["rules_scanner"].why, "B8.pending: the Missing scanner does not carry pending()'s reason")
 
 
 # ------------------------------------------------------------------------------------------------- B9
 def sidecar_for(row, ev, tree):
     """test_walk_wiring's fake sidecar launch, over the walk's own run tree."""
     from box import sidecar as sc
-    expect = {"user": sc.WATCHER_USER, "network_mode": "none", "cap_drop": ["ALL"],
-              "cap_add": ["CAP_DAC_READ_SEARCH"], "security_opt": ["no-new-privileges"], "privileged": False,
+    # The sidecar's accepted launch (0b6f60f9; its fake inspect is test_box_integration's, fixed in 5f1b33ee).
+    expect = {"user": sc.BOOT_USER, "network_mode": "none", "cap_drop": ["ALL"],
+              "cap_add": list(sc.BOOT_INSPECT_CAPABILITIES), "security_opt": ["no-new-privileges"],
+              "privileged": False, "image": tbi.SIDECAR_IMAGE, "cmd": tbi.sidecar_cmd(tree), "entrypoint": [],
               "pid_mode": "", "mounts": [{"source": tree, "destination": tree, "rw": False},
                                          {"source": ev, "destination": sc.EVIDENCE_MOUNT, "rw": True}]}
     return rt.SidecarLaunch(
@@ -896,6 +1085,8 @@ class FakeWorld:
             "table": self.table, "pin_for": self.pin_for, "design_for": self.design_for,
             "budgets": (600, tbi.CAP_S, tbi.POLL_S), "run_tree_origin": (origin_repo, sha),
             "run_tree_exclude": ["evals"], "clock": self.clock, "sleep": self.clock.sleep,
+            "ownership": tbi.FakeOwnership(self.box), "settings_guard": tbi.FakeSettingsGuard(),
+            "machine_gate": lambda: [],
         }
 
     def pin_for(self, row):
@@ -915,7 +1106,8 @@ class FakeWorld:
                                            project=project)["planted"]
             path = Path(self.box.containers[sid]["ev"]) / "watched.json"
             if not path.exists():
-                path.write_text(json.dumps({"paths": sorted(set(planted))}))
+                with tbi.FakeBox.as_watcher(str(path.parent)):     # the sidecar writes as the watcher (P4 road)
+                    path.write_text(json.dumps({"paths": sorted(set(planted))}))
             return evidence(sid, label)
         return ev
 
@@ -1031,7 +1223,7 @@ class B9Cli(Case):
             for argv, words in ((w.argv(walk="a/b"), "not one path segment"),
                                 (w.argv(walk="../w-0001"), "not one path segment"),
                                 (w.argv(wording="w99"), "not a row of the design"),
-                                (w.argv(arm="O", model="gpt-6.1-sol"), "admits only Claude Code")):
+                                (w.argv(arm="O", model="gpt-6.1-sol"), "Codex lease gate")):    # closed or absent
                 code, out, err = self.must("B9.cli", w.main, argv)
                 self.assertEqual(code, 2, f"B9.cli: {err[-300:]}")
                 self.assertIn(words, err, "B9.cli")
@@ -1111,6 +1303,13 @@ class B9Cli(Case):
 
 # ------------------------------------------------------------------------------------------------- G1
 class G1Generated(Case):
+    def test_every_test_class_runs_under_a_generated_mutant(self):
+        """The sweep runs only GENERATED_ORDER's classes: a test class left out of it binds nothing in the sweep
+        (B10, B11 and B12 were, and every mutant of the functions they bind survived)."""
+        classes = {n for n, v in globals().items() if isinstance(v, type) and issubclass(v, unittest.TestCase)
+                   and any(a.startswith("test") for a in vars(v))}
+        self.assertEqual(sorted(classes - set(GENERATED_ORDER)), [], "G1.order: classes the sweep never runs")
+
     def test_the_equivalent_list_matches_the_generated_mutants(self):
         ids = set(self.must("G1.generated", by_id))
         self.assertGreater(len(ids), 0, "G1.generated: the generator produced nothing")
@@ -1135,8 +1334,9 @@ class TestSysPath(unittest.TestCase):
 
 
 # Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can.
-GENERATED_ORDER = ("B1Identity", "B6Row", "B2Login", "B3Counters", "B7Production", "B8Present", "B5Fixture",
-                   "B4RunTree", "G1Generated", "B9Cli", "TestSysPath")
+GENERATED_ORDER = ("B1Identity", "B6Row", "B2Login", "B3Counters", "B11Derived", "B10Resources", "B7Production",
+                   "B8Present", "B13Lease", "B14Gemini", "B5Fixture", "B4RunTree", "G1Generated", "B12Scanner", "B9Cli",
+                   "TestSysPath")
 
 
 def run_witnesses(names) -> int:
@@ -1221,6 +1421,895 @@ def run_generated(shard=None, sample=None, timeout=600, only=None) -> int:
         for x in ids:
             print(f"  {name}: {x}", flush=True)
     return 0 if not survived and not listed_killed and not inconclusive else 1
+
+
+# ------------------------------------------------------------------------------------------------- B10
+# glitch-06's queue item 1 (14 Oct 2026): TakeSpec.resources are the box lane's capacity POLICY (live-box report,
+# "TakeSpec.resources: values only, for walk_builders' take_spec": memory_reservation 2147483648, memory 6442450944,
+# cpus "8", pids_limit 4096), typed here once from that line.
+BOX_RESOURCES = {"memory_reservation": 2147483648, "memory": 6442450944, "cpus": "8", "pids_limit": 4096}
+
+
+def pending_lock(real: dict) -> dict:
+    """take-a's lock as the unfilled schema-1 lock (image_id PENDING with its reason), made from the tree's own lock of
+    either schema: a schema-2 lock (the merged head) may hold no PENDING value at all, so its schema-2 keys go
+    (integration lane's red 5, 2d6983e9). image_lock is never loosened: the fixture must pass its problems()."""
+    from box import image_lock
+    held = {k: v for k, v in real.items() if k not in getattr(image_lock, "SCHEMA_2_KEYS", ())}
+    held.update(schema=image_lock.SCHEMA, image_id=image_lock.PENDING,
+                pending=dict(real.get("pending") or {}, image_id="synthetic: only a built image has an id"))
+    return held
+
+
+@problems_by_assertion("B10.resources")
+def b10_problems(mod) -> list:
+    """B10.resources: the policy values, run_take's own spec check passing them, and the take spec built by the row's
+    arm's lock (a pending lock refuses at call time; a ready one gives its image id and the policy values)."""
+    from box import image_lock
+    out = []
+    if getattr(mod, "TAKE_RESOURCES", None) != BOX_RESOURCES:
+        return [f"B10.resources: TAKE_RESOURCES is {getattr(mod, 'TAKE_RESOURCES', None)!r}, not the box's policy"]
+    spec = rt.TakeSpec(image=tbi.IMAGE, run_tree="/synthetic/tree", config_dir="/synthetic/cfg",
+                       network=mod.NETWORK_PLACEHOLDER, **mod.TAKE_RESOURCES)
+    try:
+        rt.check_spec(spec)
+    except Exception as e:  # noqa: BLE001
+        out.append(f"B10.resources: run_take refuses the policy spec: {type(e).__name__}: {e}")
+    build = mod.take_spec_builder()
+    row = {"arm": "A"}
+    real = image_lock.load(str(HERE / mod.TAKE_LOCKS["A"]))
+    ready = dict(real, image_id="sha256:" + "a" * 64)
+    with mock.patch.object(image_lock, "load", lambda path: ready), \
+            mock.patch.object(image_lock, "require_ready", lambda lock: lock):
+        got = build(row, "/synthetic/cfg", "/synthetic/tree")
+    want = {"image": "sha256:" + "a" * 64, "run_tree": "/synthetic/tree", "config_dir": "/synthetic/cfg",
+            **BOX_RESOURCES}
+    if {k: getattr(got, k) for k in want} != want:
+        out.append(f"B10.resources: a ready lock's take spec is {got}")
+    held = pending_lock(real)
+    if image_lock.problems(held):
+        return [f"B10.resources: the pending-lock fixture is not a valid lock: {image_lock.problems(held)}"]
+    with mock.patch.object(image_lock, "load", lambda path: held):
+        try:
+            build(row, "/synthetic/cfg", "/synthetic/tree")
+            out.append("B10.resources: a pending lock's take spec was built")
+        except image_lock.NotReady:               # review nit 7: the lock reader's own refusal, nothing else
+            pass
+        except Exception as e:  # noqa: BLE001
+            out.append(f"B10.resources: a pending lock raised {type(e).__name__}, not image_lock.NotReady")
+    if set(mod.TAKE_LOCKS) != {"A", "O", "G"} or not all((HERE / v).is_file() for v in mod.TAKE_LOCKS.values()):
+        out.append(f"B10.resources: TAKE_LOCKS is not one existing lock per arm: {mod.TAKE_LOCKS}")
+    return out
+
+
+@problems_by_assertion("B10.take-a")
+def b10_take_a_problems(mod) -> list:
+    """B10.take-a: take_a_spec reads take-a's own lock (TAKE_LOCKS["A"] beside walk_builders); a lock holding PENDING
+    values gives Missing naming the lock and each held field; a ready one gives the take spec builder, which builds
+    the arm's spec from its lock's image id (the ready-lock branch, as on the merged head: 6e965d12)."""
+    from box import image_lock
+    out = []
+    real = image_lock.load(str(HERE / mod.TAKE_LOCKS["A"]))
+    seen = []
+
+    def load(path):
+        seen.append(path)
+        return lock_now[0]
+    lock_now = [dict(real, image_id="sha256:" + "b" * 64)]
+    with mock.patch.object(image_lock, "load", load), \
+            mock.patch.object(image_lock, "pending", lambda lock: ("base", "image_id") if lock is held else ()), \
+            mock.patch.object(image_lock, "require_ready", lambda lock: lock):
+        held = dict(real)
+        lock_now[0] = held
+        got = mod.take_a_spec()
+        if not isinstance(got, mod.Missing):
+            out.append(f"B10.take-a: a pending lock gave {got!r}, not Missing")
+        else:
+            for words in (mod.TAKE_LOCKS["A"], "PENDING (base, image_id)", "TAKE_RESOURCES"):
+                if words not in got.why:
+                    out.append(f"B10.take-a: the pending lock's Missing does not say {words!r}: {got.why!r}")
+        if seen != [str(HERE / mod.TAKE_LOCKS["A"])]:
+            out.append(f"B10.take-a: read {seen}, not take-a's own lock")
+        lock_now[0] = dict(real, image_id="sha256:" + "b" * 64)
+        got = mod.take_a_spec()
+        if isinstance(got, mod.Missing) or not callable(got):
+            out.append(f"B10.take-a: a ready lock gave {got!r}, not a take spec builder")
+        else:
+            spec = got({"arm": "A"}, "/synthetic/cfg", "/synthetic/tree")
+            want = {"image": "sha256:" + "b" * 64, "run_tree": "/synthetic/tree", "config_dir": "/synthetic/cfg",
+                    "network": mod.NETWORK_PLACEHOLDER, **BOX_RESOURCES}
+            if {k: getattr(spec, k, None) for k in want} != want:
+                out.append(f"B10.take-a: a ready lock's take spec is {spec}")
+    on_tree = mod.take_a_spec()                    # the lock as it is on this tree, unpatched
+    if TAKE_A_LOCK_READY != (not isinstance(on_tree, mod.Missing)):
+        out.append(f"B10.take-a: this tree's lock (ready {TAKE_A_LOCK_READY}) gave {on_tree!r}")
+    elif not TAKE_A_LOCK_READY:
+        fields = image_lock.pending(real)
+        if f"PENDING ({', '.join(fields)})" not in on_tree.why:
+            out.append(f"B10.take-a: this tree's pending lock names another list: {on_tree.why!r}")
+    return out
+
+
+class B10Resources(Case):
+    def test_the_take_spec_carries_the_box_policy(self):
+        self.assertEqual(b10_problems(wb()), [])
+
+    def test_take_a_spec_on_a_pending_and_a_ready_lock(self):
+        self.assertEqual(b10_take_a_problems(wb()), [])
+
+    def test_a_resource_drift_is_red(self):
+        mod = wb()
+        for k, v in (("memory", 4 * 1024 ** 3), ("cpus", "4"), ("pids_limit", 1024)):
+            with mock.patch.object(mod, "TAKE_RESOURCES", dict(mod.TAKE_RESOURCES, **{k: v})):
+                self.assertTrue(b10_problems(mod), k)
+
+
+# ------------------------------------------------------------------------------------------------- B11
+# glitch-06's queue item 2: the take container's cgroup folder and the runtime's uid map are derived at run time from the
+# container id and /proc (the box lane measured, on athena: /sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/
+# user.slice/docker-<id>.scope and ((0,1000,1),(1,100000,65536))), never typed in; anything else refuses.
+CID = "c" * 64
+SCOPE = f"/user.slice/user-1000.slice/user@1000.service/user.slice/docker-{CID}.scope"
+
+
+class InspectBox:
+    def __init__(self, out="4242\n", code=0):
+        self.out, self.code, self.calls = out, code, []
+
+    def run(self, argv, env=None, timeout=None):
+        self.calls.append(list(argv))
+        return rt.Completed(self.code, self.out, "")
+
+
+def fake_proc(tmp: Path, *, uid_map="         0       1000          1\n         1     100000      65536\n",
+              cgroup=None, make_dir=True, extra=(), link=False) -> tuple:
+    """A fake /proc/4242 and cgroup root; `extra` folders made under the root too; `link`: the scope folder is a link
+    to an existing folder."""
+    proc, root = tmp / "proc", tmp / "cgroup"
+    rel = SCOPE
+    (proc / "4242").mkdir(parents=True)
+    (proc / "4242" / "uid_map").write_text(uid_map)
+    (proc / "4242" / "cgroup").write_text(cgroup if cgroup is not None else f"0::{rel}\n")
+    if link:
+        (root / rel.lstrip("/")).parent.mkdir(parents=True)
+        (tmp / "elsewhere").mkdir()
+        (root / rel.lstrip("/")).symlink_to(tmp / "elsewhere")
+    elif make_dir:
+        (root / rel.lstrip("/")).mkdir(parents=True)
+    for e in extra:
+        (root / e.lstrip("/")).mkdir(parents=True, exist_ok=True)
+    return proc, root, str(root / rel.lstrip("/"))
+
+
+@problems_by_assertion("B11.derived")
+def b11_problems(mod) -> list:
+    out = []
+    for name in ("container_pid", "uid_map_of_pid", "cgroup_dir_of_pid"):
+        if not callable(getattr(mod, name, None)):
+            return [f"B11.derived: walk_builders has no {name}"]
+    with tempfile.TemporaryDirectory() as t:
+        tmp = Path(t)
+        proc, root, want = fake_proc(tmp)
+        box = InspectBox()
+        if mod.container_pid(box, CID) != 4242 or box.calls[0][:2] != [rt.RUNTIME_CLIENT, "inspect"]:
+            out.append(f"B11.derived: the pid was not read by inspect: {box.calls}")
+        if mod.uid_map_of_pid(4242, proc=str(proc)) != ((0, 1000, 1), (1, 100000, 65536)):
+            out.append(f"B11.derived: the uid map reads as {mod.uid_map_of_pid(4242, proc=str(proc))}")
+        if mod.cgroup_dir_of_pid(4242, CID, proc=str(proc), root=str(root)) != want:
+            out.append("B11.derived: the cgroup folder is not the container's scope")
+    bad = {
+        "a take id that is not 64 hex": lambda tmp: mod.container_pid(InspectBox(), "c" * 63),
+        "a take id that is not a string": lambda tmp: mod.container_pid(InspectBox(), 7),
+        "inspect failed": lambda tmp: mod.container_pid(InspectBox(code=1), CID),
+        "not running (pid 0)": lambda tmp: mod.container_pid(InspectBox(out="0\n"), CID),
+        "pid not a number": lambda tmp: mod.container_pid(InspectBox(out="x\n"), CID),
+        "uid map empty": lambda tmp: mod.uid_map_of_pid(4242, proc=str(fake_proc(tmp, uid_map="")[0])),
+        "uid map malformed": lambda tmp: mod.uid_map_of_pid(4242, proc=str(fake_proc(tmp, uid_map="0 1000\n")[0])),
+        "cgroup v1": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup="1:memory:/docker/x\n"))[0]), root=str(f[1])),
+        "another container's scope": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup=f"0::/user.slice/docker-{'d' * 64}.scope\n"))[0]), root=str(f[1])),
+        "scope folder missing": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, make_dir=False))[0]), root=str(f[1])),
+        # each guard alone (the generated sweep, 14 Oct window 2): every case below passes the other guards
+        "inspect printed nothing (None)": lambda tmp: mod.container_pid(InspectBox(out=None), CID),
+        "uid map unreadable": lambda tmp: mod.uid_map_of_pid(4243, proc=str(fake_proc(tmp)[0])),
+        "cgroup unreadable": lambda tmp: mod.cgroup_dir_of_pid(4243, CID, proc=str((f := fake_proc(tmp))[0]),
+                                                               root=str(f[1])),
+        "two cgroup lines": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup=f"0::{SCOPE}\n0::{SCOPE}\n"))[0]), root=str(f[1])),
+        "a cgroup line not 0::": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup=f"1::{SCOPE}\n"))[0]), root=str(f[1])),
+        "another container's existing scope": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup=f"0::/user.slice/docker-{'d' * 64}.scope\n", extra=(f"/user.slice/docker-{'d' * 64}.scope",)
+            ))[0]), root=str(f[1])),
+        "a .. in an existing scope's path": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup=f"0::/zz/..{SCOPE}\n", extra=("/zz",)))[0]), root=str(f[1])),
+        "the scope folder a link": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, link=True))[0]), root=str(f[1])),
+    }
+    for why, fn in bad.items():
+        with tempfile.TemporaryDirectory() as t:
+            try:
+                fn(Path(t))
+                out.append(f"B11.derived: {why} was not refused")
+            except mod.BuilderRefused:
+                pass
+            except Exception as e:  # noqa: BLE001
+                out.append(f"B11.derived: {why} raised {type(e).__name__}, not BuilderRefused")
+    got = mod.production_builders()
+    for name in ("uid_map", "cgroup_dir_for"):
+        if not callable(got[name]):
+            out.append(f"B11.derived: production {name} is not a run-time reader: {got[name]!r}")
+    take = types.SimpleNamespace(launched=types.SimpleNamespace(take_id=CID))
+    for name in ("uid_map", "cgroup_dir_for"):
+        try:                               # with no runtime yet, a reader refuses by name, never a silent default
+            got[name](take)
+            out.append(f"B11.derived: the production {name} read with no runtime")
+        except mod.BuilderRefused:
+            pass
+    # the readers over a runtime given at call time: inspect for the take's own id, then its pid's map and scope
+    seen, box = [], [None]
+    with mock.patch.object(mod, "uid_map_of_pid", lambda pid: seen.append(("uid", pid)) or "the-map"), \
+            mock.patch.object(mod, "cgroup_dir_of_pid", lambda pid, cid: seen.append(("cg", pid, cid)) or "the-dir"):
+        uid_map, cgroup_dir_for = mod.run_time_readers(lambda: box[0])
+        box[0] = InspectBox()                      # the runtime exists only after the readers were made
+        got_map, got_dir = uid_map(take), cgroup_dir_for(take)
+        if (got_map, got_dir) != ("the-map", "the-dir") or seen != [("uid", 4242), ("cg", 4242, CID)]:
+            out.append(f"B11.derived: the readers gave {(got_map, got_dir)} over {seen}")
+        if [c[-1] for c in box[0].calls] != [CID, CID]:
+            out.append(f"B11.derived: inspect was not run for the take's own id: {box[0].calls}")
+        box[0] = object()                          # no run(): refused by name
+        try:
+            cgroup_dir_for(take)
+            out.append("B11.derived: a runtime with no run() was used")
+        except mod.BuilderRefused:
+            pass
+    return out
+
+
+class B11Derived(Case):
+    def test_cgroup_and_uid_map_are_derived_at_run_time(self):
+        self.assertEqual(b11_problems(wb()), [])
+
+
+# ------------------------------------------------------------------------------------------------- B12
+# glitch-06's queue item 3 and review NOTE S-2: the box's pinned scanner (scan_record.real_rules_scanner(), box 35e61dec)
+# is built once per walk with build(runtime, report_dir), each walk a fresh, empty report folder, and a real walk (the
+# production builders) scans only with that build's product: a test fake never reaches one.
+class FakePinned:
+    """Stands in for the box's RealRulesScanner: not callable; build(runtime, report_dir) -> scan(paths)."""
+
+    def __init__(self, product=None):
+        self.builds = []
+        self.product = product
+
+    def build(self, runtime, report_dir):
+        self.builds.append((runtime, report_dir, os.path.isdir(report_dir) and not os.listdir(report_dir)))
+        return self.product if self.product is not None else (lambda paths: [])
+
+
+@contextlib.contextmanager
+def pinned_class():
+    """box/rules_scanner.py's RealRulesScanner (box 8ad2978a) when the module is on this tree; on a branch without it,
+    a stand-in module of that exact name holding the class, so walk_builders binds by module and class identity
+    either way (never a create=True patch of another module)."""
+    import importlib.machinery
+    import importlib.util
+    if importlib.util.find_spec("box.rules_scanner") is not None:
+        from box import rules_scanner
+        yield rules_scanner.RealRulesScanner
+        return
+    fake = types.ModuleType("box.rules_scanner")
+    fake.__spec__ = importlib.machinery.ModuleSpec("box.rules_scanner", None)
+
+    class RealRulesScanner:
+        __slots__ = ("build", "version", "sha256", "binary")
+
+        def __init__(self, build, version, sha256, binary):
+            self.build, self.version, self.sha256, self.binary = build, version, sha256, binary
+    RealRulesScanner.__module__ = "box.rules_scanner"
+    fake.RealRulesScanner = RealRulesScanner
+    import box
+    with mock.patch.dict(sys.modules, {"box.rules_scanner": fake}), \
+            mock.patch.object(box, "rules_scanner", fake, create=True):
+        yield RealRulesScanner
+
+
+@problems_by_assertion("B12.scanner")
+def b12_problems(mod) -> list:
+    out = []
+    if not callable(getattr(mod, "walk_rules_scanner", None)) or not hasattr(mod, "BuiltRulesScan"):
+        return ["B12.scanner: walk_builders has no walk_rules_scanner or BuiltRulesScan"]
+    fake = lambda paths: []  # noqa: E731
+    if mod.walk_rules_scanner(fake, "rt", "/nonexistent", real=False) is not fake:
+        out.append("B12.scanner: an injected scan is not passed through on a test walk")
+    with tempfile.TemporaryDirectory() as parent:
+        pinned = FakePinned()
+        a = mod.walk_rules_scanner(pinned, "rt", parent, real=False)
+        b = mod.walk_rules_scanner(pinned, "rt", parent, real=False)
+        dirs = [d for _, d, _ in pinned.builds]
+        if not (isinstance(a, mod.BuiltRulesScan) and callable(a) and a(["x"]) == []):
+            out.append(f"B12.scanner: the build's product is not handed on as a BuiltRulesScan: {a!r}")
+        if len(set(dirs)) != 2 or not all(empty for _, _, empty in pinned.builds) or not all(
+                os.path.dirname(d) == os.path.realpath(parent) or os.path.dirname(d) == parent for d in dirs):
+            out.append(f"B12.scanner: each walk did not get a fresh, empty report folder under the parent: "
+                       f"{pinned.builds}")
+        if a is b:
+            out.append("B12.scanner: two walks share one built scan")
+        for why, bad in (("a build giving a non-callable", FakePinned(product="not callable")),
+                         ("neither a scan nor a build", object())):
+            try:
+                mod.walk_rules_scanner(bad, "rt", parent, real=False)
+                out.append(f"B12.scanner: {why} was accepted")
+            except mod.BuilderRefused:
+                pass
+        class RealRulesScanner(FakePinned):          # the right name, from another module: never the pinned class
+            pass
+        with pinned_class() as pinned:
+            for why, scanner in (("a plain callable", fake), ("another type with a build", FakePinned()),
+                                 ("a same-named class from another module", RealRulesScanner())):
+                try:
+                    mod.walk_rules_scanner(scanner, "rt", parent, real=True)
+                    out.append(f"B12.scanner: a real walk took {why}")
+                except mod.BuilderRefused:
+                    pass
+            builds = []
+            real = pinned(lambda runtime, report_dir: builds.append(report_dir) or (lambda paths: []),
+                          "8.30.1", "0" * 64, "/synthetic/gitleaks")
+            got = mod.walk_rules_scanner(real, "rt", parent, real=True)
+            if not isinstance(got, mod.BuiltRulesScan) or len(builds) != 1:
+                out.append(f"B12.scanner: a real walk did not take the pinned scanner's build: {got!r}")
+    import importlib.util
+    with pinned_class() as pinned:
+        if mod.pinned_scanner_class() is not pinned:
+            out.append("B12.scanner: the pinned class is not rules_scanner.RealRulesScanner")
+        with mock.patch.object(importlib.util, "find_spec", lambda name, *a: None):
+            if mod.pinned_scanner_class() is not None:       # absent by find_spec: None, never an import
+                out.append("B12.scanner: a tree without box/rules_scanner.py still gave a pinned class")
+    try:
+        mod.BuiltRulesScan(lambda paths: [], "/x", None, object())
+        out.append("B12.scanner: a BuiltRulesScan was made outside walk_rules_scanner")
+    except mod.BuilderRefused:
+        pass
+    return out
+
+
+class B12Scanner(Case):
+    def test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk(self):
+        self.assertEqual(b12_problems(wb()), [])
+
+    def test_a_pinned_scanner_is_built_once_for_a_walk(self):
+        """A builder set whose scanner is a pinned one (not callable): the walk's driver and repo get its build's
+        product, built once, over a fresh, empty report folder, and the walk commits."""
+        with fake_world() as w:
+            pinned = FakePinned()
+            builders = dict(w.builders, rules_scanner=pinned)
+            code, out, err = self.must("B12.scanner", w.main, w.argv(), builders)
+            self.assertEqual(code, 0, f"B12.scanner: the walk with a pinned scanner did not commit: {err[-600:]}")
+            self.assertEqual(len(pinned.builds), 1, f"B12.scanner: built {len(pinned.builds)} times, not once")
+            self.assertTrue(pinned.builds[0][2], "B12.scanner: the report folder was not fresh and empty")
+
+    def test_the_production_road_refuses_a_fake_scanner(self):
+        """The command line with no builder set handed in (a real walk): a fake scan in the production builders is
+        refused by name before the walk's driver is built."""
+        with fake_world() as w:
+            mod = sys.modules["walk_builders"]
+            fake_set = dict(w.builders)
+            drive = MODS["drive"]
+            with mock.patch.object(mod, "production_builders", lambda: fake_set), \
+                    tbi.spying(tbi.Spy()), mock.patch.object(drive._mode_binding, "HERE", w.root), \
+                    generator(sha=pin(w.row["task"], w.row["half"])):
+                code, out, err = run_main(w.argv(), None)
+            self.assertEqual(code, 2, f"B12.scanner: a real walk ran with a fake scan: {err[-600:]}")
+            self.assertIn("a real walk scans only with the pinned scanner", err,
+                          "B12.scanner: the refusal is not the real walk's pinned-scanner rule")
+
+
+# ------------------------------------------------------------------------------------------------- B13
+# The Codex lease road (glitch-06, 14 Oct 2026; the box contract of live-box-2026-10-13.md, "For the harness lane: the
+# run_take contract to call"). This tree may lack the box's run_take.NO_LOGIN, CODEX_SUBSCRIPTION_READY, place_lease and
+# walk_builders.lease_secrets (scan_record.read_lease_tokens): each is faked here at that boundary, by its contract, and
+# the integration merge must prove the real ones meet it (the lane report names what).
+# Synthetic lease values, at least 20 characters, low entropy on purpose (never real, never key-shaped), and with no
+# word preflight's CREDENTIAL_LIKE reads, so a folder named with one passes the name rule (NIT 5's point).
+ACCESS = "synthetic-lease-one-" + "a" * 12
+REFRESH = "synthetic-lease-two-" + "b" * 12
+REFRESHED = "synthetic-lease-three-" + "c" * 12
+
+
+def lease_file(tmp: Path, access=ACCESS, refresh=REFRESH) -> Path:
+    f = tmp / "lease-src" / "auth.json"
+    f.parent.mkdir(mode=0o700, exist_ok=True)
+    f.write_text(json.dumps({"tokens": {"access_token": access, "refresh_token": refresh}}))
+    os.chmod(f, 0o600)
+    return f
+
+
+def fake_place_lease(placed: list):
+    """run_take.place_lease's contract: the source copied into the config folder as auth.json (mode 600, never over an
+    existing one), its path returned; refused (NotReady) while the gate is closed."""
+    def place(src, config_dir):
+        if rt.__dict__.get("CODEX_SUBSCRIPTION_READY") is not True:
+            raise rt.NotReady("synthetic: CODEX_SUBSCRIPTION_NOT_READY")
+        dst = os.path.join(config_dir, "auth.json")
+        fd = os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(Path(src).read_bytes())
+        placed.append((src, config_dir, dst))
+        return dst
+    return place
+
+
+def fake_lease_secrets(reads: list):
+    """walk_builders.lease_secrets' contract (box b9f876b5): every access_token and refresh_token in auth.json read at
+    take start (a missing file raises: no take), read again at each call, every value read kept."""
+    def lease_secrets(auth_path):
+        def tokens():
+            doc = json.loads(Path(auth_path).read_text())
+            reads.append(auth_path)
+            return [doc["tokens"]["access_token"], doc["tokens"]["refresh_token"]]
+        seen = list(tokens())
+
+        def secrets():
+            for v in tokens():
+                if v not in seen:
+                    seen.append(v)
+            return [("token", v) for v in seen]
+        return secrets
+    return lease_secrets
+
+
+@contextlib.contextmanager
+def lease_boundary(mod, *, ready=True):
+    """The box's symbols at the boundary: the gate (open by default), place_lease, NO_LOGIN, and lease_secrets."""
+    placed, reads = [], []
+    with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", ready, create=True), \
+            mock.patch.object(rt, "NO_LOGIN", "-", create=True), \
+            mock.patch.object(rt, "place_lease", fake_place_lease(placed), create=True), \
+            mock.patch.object(mod, "lease_secrets", fake_lease_secrets(reads), create=True):
+        yield placed, reads
+
+
+def codex_cell() -> dict:
+    cell = {k: tww.the_row()[k] for k in ("task", "half", "wording")}
+    import prereg
+    row = next(r for r in prereg.load()["rows"] if r["arm"] == "O" and all(r[k] == cell[k] for k in cell))
+    return dict(cell, arm="O", model=row["model"])
+
+
+@problems_by_assertion("B13.login")
+def b13_login_problems(mod) -> list:
+    out = []
+    if mod.login_name(rt.CODEX) != "-" or getattr(mod, "NO_LOGIN", None) != "-":
+        out.append(f"B13.login: a Codex row's login name is {mod.login_name(rt.CODEX)!r}, not NO_LOGIN")
+    if hasattr(rt, "NO_LOGIN") and rt.NO_LOGIN != mod.NO_LOGIN:
+        out.append(f"B13.login: walk_builders.NO_LOGIN {mod.NO_LOGIN!r} is not run_take.NO_LOGIN {rt.NO_LOGIN!r}")
+    if mod.login_name(rt.CLAUDE_CODE) != rt.LOGIN_VARIABLE[rt.CLAUDE_CODE]:
+        out.append("B13.login: Claude Code's login name changed")
+    good = str(login_file(f"{LOGIN}={tbi.TOKEN}\n"))
+    with mock.patch.dict(rt.LOGIN_VARIABLE, {rt.GEMINI: "-"}):
+        try:
+            mod.login_name(rt.GEMINI)
+            out.append("B13.login: a non-Codex row took NO_LOGIN")
+        except mod.BuilderRefused:
+            pass
+    for label, fn in (("login_file_by_name of '-'", lambda: mod.login_file_by_name("-", rt.CLAUDE_CODE)),
+                      ("login_file_by_name for Codex", lambda: mod.login_file_by_name(good, rt.CODEX)),
+                      ("login_secrets for Codex", lambda: mod.login_secrets(good, rt.CODEX)),
+                      ("login_secrets of '-'", lambda: mod.login_secrets("-", rt.CLAUDE_CODE))):
+        with mock.patch.object(os, "open", side_effect=AssertionError("a login file was opened")):
+            try:
+                fn()
+                out.append(f"B13.login: {label} was admitted")
+            except mod.BuilderRefused as e:
+                if "the lease" not in str(e):
+                    out.append(f"B13.login: {label} refused for another reason: {e}")
+            except AssertionError:
+                out.append(f"B13.login: {label} opened a file before refusing")
+    with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True, create=True):
+        if mod.codex_gate_problem() is not None:
+            out.append("B13.login: an open gate is a problem")
+    with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", False, create=True):
+        if "closed" not in (mod.codex_gate_problem() or ""):
+            out.append(f"B13.login: a closed gate reads {mod.codex_gate_problem()!r}")
+    for value in (1, "True", None):
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", value, create=True):
+            if mod.codex_gate_problem() is None:
+                out.append(f"B13.login: a gate of {value!r} reads open")
+    if not hasattr(rt, "CODEX_SUBSCRIPTION_READY") and "not on this tree" not in (mod.codex_gate_problem() or ""):
+        out.append(f"B13.login: an absent gate reads {mod.codex_gate_problem()!r}")
+    return out
+
+
+@problems_by_assertion("B13.prepare")
+def b13_prepare_problems(mod, tmp: Path) -> list:
+    """prepare routes a Codex row past every login-file reader: refused while the gate is closed or the lease source
+    is missing, before the run tree; else its login is NO_LOGIN and the run tree is built."""
+    out = []
+    built = []
+    args = types.SimpleNamespace(walk="w-0001", **codex_cell())
+    src = str(lease_file(tmp))
+    base = {"agent_version": "0.162.1",
+            "login_path": "/synthetic/never-read", "run_tree_origin": ("/synthetic/repo", "0" * 40),
+            "run_tree_exclude": ["evals"]}
+    with mock.patch.object(mod, "build_run_tree", lambda *a, **k: built.append(a) or tmp / "tree"), \
+            mock.patch.object(mod, "login_file_by_name", side_effect=AssertionError("login_file_by_name")):
+        for label, ready, lease, words in (("a closed gate", False, src, "gate is closed"),
+                                           ("no gate", None, src, "not on this tree"),
+                                           ("a missing lease", True, mod.Missing("synthetic: not registered"),
+                                            "synthetic: not registered"),
+                                           ("a relative lease", True, "lease/auth.json", "not an absolute path"),
+                                           ("no lease", True, None, "not an absolute path")):
+            with lease_boundary(mod, ready=ready):
+                try:
+                    mod.prepare(dict(base, lease_path=lease), args)
+                    out.append(f"B13.prepare: {label} was admitted")
+                except mod.BuilderRefused as e:
+                    if words not in str(e):
+                        out.append(f"B13.prepare: {label} refused for another reason: {e}")
+                except AssertionError as e:
+                    out.append(f"B13.prepare: {label} reached {e}")
+        if built:
+            out.append(f"B13.prepare: a refused Codex row built its run tree: {built}")
+        with lease_boundary(mod):
+            try:
+                row, login, tree = mod.prepare(dict(base, lease_path=src), args)
+                if (login, row["agent"]["harness"], row["arm"], len(built)) != ("-", rt.CODEX, "O", 1):
+                    out.append(f"B13.prepare: an admitted Codex row gave {login!r}, {row['agent']}, {len(built)}")
+            except Exception as e:  # noqa: BLE001
+                out.append(f"B13.prepare: an admitted Codex row raised {type(e).__name__}: {e}")
+    return out
+
+
+@problems_by_assertion("B13.secrets")
+def b13_secrets_problems(mod, tmp: Path) -> list:
+    """NIT 4 (box review): a Codex walk's driver and its WalkRepo get one and the same secrets(), the lease road's;
+    the lease is placed in the driver's spec_for (after make_config_dir), read at once, and before that nothing
+    scans."""
+    out = []
+    drive = MODS["drive"]
+    got = {}
+    src = str(lease_file(tmp))
+    cfg = tmp / "cfg"
+    cfg.mkdir(mode=0o700)
+    specs = []
+    builders = {"lease_path": src, "rules_scanner": lambda paths: [], "runtime": "rt", "config_parent": str(tmp),
+                "budgets": (600, 5, 1), "take_spec": lambda r, c, t: specs.append((r["arm"], c, t)) or "spec",
+                "sidecar_for": None, "proxy": None, "lock_path": None, "hosts": None, "cgroup_dir_for": lambda t: "",
+                "pin_for": None, "design_for": None, "uid_map": None, "clock": None, "sleep": None,
+                "ownership": None, "settings_guard": None, "machine_gate": None}
+    row = {"walk": "w-0001", "arm": "O", "agent": {"harness": rt.CODEX, "version": "0.162.1"}}
+    with lease_boundary(mod) as (placed, reads), \
+            mock.patch.object(drive, "walk_driver", lambda **kw: got.setdefault("driver", kw) and "driver"), \
+            mock.patch.object(drive, "WalkRepo", lambda **kw: got.setdefault("repo", kw) and "repo"), \
+            mock.patch.object(drive, "records_repo", lambda root: "/synthetic/repo"), \
+            mock.patch.object(mod, "build_walk_fixture", lambda r, t, p: ({"sha256": "0" * 64}, "/synthetic/src")), \
+            mock.patch.object(mod, "walk_identity", lambda *a, **k: {"walk": "w-0001"}), \
+            mock.patch.object(mod, "login_secrets", side_effect=AssertionError("login_secrets")):
+        try:
+            mod.walk_driver_for(builders, row, "-", tmp / "tree")
+        except Exception as e:  # noqa: BLE001
+            return [f"B13.secrets: walk_driver_for raised {type(e).__name__}: {e}"]
+        s_driver, s_repo = got["driver"]["secrets"], got["repo"]["secrets"]
+        road = getattr(s_driver, "__self__", None)
+        if s_driver is not s_repo or not isinstance(road, mod.CodexLeaseRoad):
+            out.append(f"B13.secrets: the driver got {s_driver!r} and WalkRepo {s_repo!r}, not one lease road's")
+        login_for = got["driver"]["login_file"]       # review MINOR 1: the take's placed lease, never "-"
+        if not callable(login_for) or getattr(login_for, "__self__", None) is not road:
+            out.append(f"B13.secrets: the driver's login_file is {login_for!r}, not the lease road's per-take path")
+        for what, fn in (("the secrets", s_driver), ("the login file", lambda: login_for(None))):
+            try:
+                fn()
+                out.append(f"B13.secrets: {what} read before any lease was placed")
+            except mod.BuilderRefused:
+                pass
+        spec = got["driver"]["spec_for"](row, str(cfg))
+        if callable(login_for) and login_for(None) != str(cfg / "auth.json"):
+            out.append(f"B13.secrets: the driver's login file after placement is {login_for(None)!r}")
+        if spec != "spec" or specs != [("O", str(cfg), str(tmp / "tree"))]:
+            out.append(f"B13.secrets: spec_for gave {spec!r} over {specs}")
+        if placed != [(src, str(cfg), str(cfg / "auth.json"))] or reads != [str(cfg / "auth.json")]:
+            out.append(f"B13.secrets: the lease was not placed then read at take start: {placed} {reads}")
+        if s_repo() != [("token", ACCESS), ("token", REFRESH)]:
+            out.append(f"B13.secrets: WalkRepo's secrets are {s_repo()}")
+        try:
+            got["driver"]["spec_for"](row, str(cfg))
+            out.append("B13.secrets: a second lease was placed for one walk")
+        except mod.BuilderRefused:
+            pass
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", False):     # review NIT 4: the gate first
+            again = mod.CodexLeaseRoad(src)
+            try:
+                again.place(str(tmp))
+                out.append("B13.secrets: a closed gate placed a lease")
+            except mod.BuilderRefused as e:
+                if "gate is closed" not in str(e) or len(placed) != 1 or again.placed is not None:
+                    out.append(f"B13.secrets: a closed gate reached place_lease or refused for another reason: {e}")
+        os.chmod(cfg / "auth.json", 0o600)          # the refresh rule: the host rewrites auth.json between turns
+        (cfg / "auth.json").write_text(json.dumps({"tokens": {"access_token": REFRESHED, "refresh_token": REFRESH}}))
+        if road.refreshed() != [("token", ACCESS), ("token", REFRESH), ("token", REFRESHED)]:
+            out.append(f"B13.secrets: after a refresh the secrets are {road.secrets()}")
+    claude = {"walk": "w-0001", "arm": "A", "agent": {"harness": rt.CLAUDE_CODE, "version": "2.1.296"}}
+    got.clear()
+    marker = lambda: [("token", "x")]  # noqa: E731
+    with lease_boundary(mod) as (placed, reads), \
+            mock.patch.object(drive, "walk_driver", lambda **kw: got.setdefault("driver", kw) and "driver"), \
+            mock.patch.object(drive, "WalkRepo", lambda **kw: got.setdefault("repo", kw) and "repo"), \
+            mock.patch.object(drive, "records_repo", lambda root: "/synthetic/repo"), \
+            mock.patch.object(mod, "build_walk_fixture", lambda r, t, p: ({"sha256": "0" * 64}, "/synthetic/src")), \
+            mock.patch.object(mod, "walk_identity", lambda *a, **k: {"walk": "w-0001"}), \
+            mock.patch.object(mod, "login_secrets", lambda login, harness: marker):
+        mod.walk_driver_for(builders, claude, "/synthetic/login", tmp / "tree")
+        got["driver"]["spec_for"](claude, str(tmp / "cfg2"))
+        if got["driver"]["secrets"] is not marker or got["repo"]["secrets"] is not marker or placed:
+            out.append("B13.secrets: a Claude walk's secrets are not its login file's, or it placed a lease")
+    return out
+
+
+@problems_by_assertion("B13.adapter")
+def b13_adapter_problems(mod) -> list:
+    """drive.harness_adapter_for resolves a callable login_file per take (review MINOR 1: the box's Codex exec reads
+    the take's placed cfg/auth.json), and still passes a plain path as given."""
+    out = []
+    drive = MODS["drive"]
+    take = types.SimpleNamespace(launched=types.SimpleNamespace(take_id="c" * 64, spec=types.SimpleNamespace(
+        run_tree="/synthetic/tree")), config_dir="/synthetic/cfg",
+        identity={"session_id": "00000000-0000-4000-8000-000000000001"})
+    seen = []
+    for harness, mode, login in ((rt.CODEX, "bypass", lambda t: seen.append(t) or t.config_dir + "/auth.json"),
+                                 (rt.CLAUDE_CODE, "bypassPermissions", "/synthetic/login")):
+        make = drive.harness_adapter_for(runtime=None, login_file=login, counters_for=lambda t: {},
+                                         pin_for=lambda r, m=mode: {"permission_mode": m, "version": "1.2.3"},
+                                         clock=lambda: 0, config_view=lambda t: (None, None))
+        try:
+            a = make({"agent": {"harness": harness}, "model": "synthetic-model"}, take)
+        except Exception as e:  # noqa: BLE001
+            out.append(f"B13.adapter: {harness} adapter not built: {type(e).__name__}: {e}")
+            continue
+        want = "/synthetic/cfg/auth.json" if callable(login) else login
+        if a.login_file != want:
+            out.append(f"B13.adapter: the {harness} adapter's login file is {a.login_file!r}, not {want!r}")
+    if seen != [take]:
+        out.append(f"B13.adapter: the login file was not resolved once for the take: {seen}")
+    return out
+
+
+@problems_by_assertion("B13.environment")
+def b13_environment_problems(mod) -> list:
+    """drive's environment record: a Codex row sets no login variable (its login is the lease); Claude's is set."""
+    out = []
+    drive = MODS["drive"]
+    for harness, want in ((rt.CODEX, None), (rt.CLAUDE_CODE, rt.LOGIN_VARIABLE[rt.CLAUDE_CODE])):
+        seen = {}
+        take = types.SimpleNamespace(launched=types.SimpleNamespace(spec=types.SimpleNamespace(run_tree="/s/tree")),
+                                     identity={"session_id": "s", "row": None, "row_commit": None}, folder="/s/f")
+        row = {"agent": {"harness": harness}, "task": "t", "half": "h", "model": "m"}
+        with mock.patch.object(drive, "environment_record", lambda child, parent, **k: seen.setdefault("c", child)), \
+                mock.patch.object(rt, "VENDOR_BILLING_ROUTE_VARIABLES",       # box 9d4bfd40 names Codex's; PENDING here
+                                  dict(rt.VENDOR_BILLING_ROUTE_VARIABLES, **{rt.CODEX: ()})), \
+                mock.patch.object(drive, "write_record_atomically", lambda *a: None), \
+                mock.patch.object(drive, "money_line_names", lambda rec: []):
+            adapter = types.SimpleNamespace(version=lambda: "v")
+            drive.TakeDriver._environment(types.SimpleNamespace(), take, row, adapter)
+        child = seen.get("c", {})
+        set_names = sorted(k for k, v in child.items() if v == "set")
+        if harness == rt.CODEX and (set_names or "-" in child or "CODEX_API_KEY" in child):
+            out.append(f"B13.environment: a Codex row's child sets {set_names}")
+        if harness != rt.CODEX and set_names != [want]:
+            out.append(f"B13.environment: Claude Code's child sets {set_names}, not [{want}]")
+    return out
+
+
+# R1 (glitch-6b, 14 Oct 2026): B13 swaps walk_builders.lease_secrets for fake_lease_secrets at the boundary, so on a
+# tree that carries the box's real one (b9f876b5, over scan_record.read_lease_tokens) no test drove it and the merged
+# battery's sweep left 12 of its mutants alive. This contract is the one the integration lane proved with the real box
+# symbols: auth.json's access and refresh tokens read at take start and kept, a refreshed value added at each later
+# read, a missing lease file refused at take start. It runs both ways on every tree: over the real function where the
+# tree carries it, and over B13's fake always, so the stand-in B13 uses is held to the same contract.
+def _lease_reader_on_tree() -> bool:
+    from box import scan_record
+    return callable(getattr(scan_record, "read_lease_tokens", None))
+
+
+LEASE_READER_ON_TREE = _lease_reader_on_tree()
+REFRESHED_TWO = "synthetic-lease-four-" + "d" * 12
+REFRESHED_THREE = "synthetic-lease-five-" + "e" * 12
+
+
+@problems_by_assertion("B13.lease_secrets")
+def lease_secrets_contract_problems(fn, tmp: Path, refusal) -> list:
+    """fn is a lease_secrets: fn(auth_path) reads now (a missing file raises `refusal`) and returns secrets(), which
+    re-reads auth.json and gives every value read so far, each once, in the order first read."""
+    out = []
+    try:
+        fn(str(tmp / "no-lease" / "auth.json"))
+        out.append("B13.lease_secrets: a missing lease file was admitted at take start")
+    except refusal:
+        pass
+    src = lease_file(tmp)
+    secrets = fn(str(src))
+    lease_file(tmp, REFRESHED, REFRESHED_TWO)         # both rewritten before the first scan: take start's values stay
+    want = [("token", v) for v in (ACCESS, REFRESH, REFRESHED, REFRESHED_TWO)]
+    if not callable(secrets) or secrets() != want:
+        return out + [f"B13.lease_secrets: the first scan's secrets are not {want}"]
+    if secrets() != want:
+        out.append("B13.lease_secrets: a second scan of the same file changed the secrets")
+    lease_file(tmp, REFRESHED, REFRESHED_THREE)       # the host's refresh between turns: one value added
+    if secrets() != want + [("token", REFRESHED_THREE)]:
+        out.append("B13.lease_secrets: a refreshed value was not added after every value read before")
+    return out
+
+
+class B13Lease(Drafted):
+    def test_a_codex_row_has_no_login_file(self):
+        self.assertEqual(b13_login_problems(wb()), [])
+
+    def test_prepare_routes_a_codex_row_to_the_lease(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(b13_prepare_problems(wb(), Path(t)), [])
+
+    def test_the_driver_and_walkrepo_get_the_lease_secrets(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(b13_secrets_problems(wb(), Path(t)), [])
+
+    def test_the_adapter_gets_the_takes_own_login_file(self):
+        self.assertEqual(b13_adapter_problems(wb()), [])
+
+    def test_the_environment_record_sets_no_codex_login(self):
+        self.assertEqual(b13_environment_problems(wb()), [])
+
+    def test_lease_secrets_meets_the_lease_contract_both_ways(self):
+        """R1: the real lease_secrets where the tree carries it (synthetic lease files, mode 600, read by the real
+        scan_record.read_lease_tokens), and B13's fake on every tree."""
+        mod = wb()
+        from box import scan_record
+        self.assertEqual(callable(getattr(mod, "lease_secrets", None)), LEASE_READER_ON_TREE,
+                         "B13.lease_secrets: walk_builders.lease_secrets and scan_record.read_lease_tokens disagree")
+        if LEASE_READER_ON_TREE:
+            with tempfile.TemporaryDirectory() as t:
+                self.assertEqual(lease_secrets_contract_problems(mod.lease_secrets, Path(t), scan_record.LoginError),
+                                 [])
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(lease_secrets_contract_problems(fake_lease_secrets([]), Path(t), OSError), [])
+
+
+# ------------------------------------------------------------------------------------------------- B14
+# The Gemini walk wiring (glitch-06, 14 Oct 2026): a Gemini row is admitted by the r4-g key file the box records
+# (run_take.WALK_LOGIN_FILES["r4-g"], box 1d32399b), Missing by name where the record is absent, checked by NAME like
+# Claude's token (login_name GEMINI_API_KEY), and its login_secrets, the exact-value mask's values, go to the walk's
+# driver and its WalkRepo alike. Synthetic, low-entropy key values only.
+GEMINI_KEY = "synthetic-gemini-key-" + "a" * 12
+WALK_GEMINI_ON_TREE = isinstance(getattr(rt, "WALK_LOGIN_FILES", None), dict) and "r4-g" in rt.WALK_LOGIN_FILES
+
+
+def gemini_cell() -> dict:
+    import prereg
+    row = next(r for r in prereg.load()["rows"] if r["arm"] == "G")
+    return {k: row[k] for k in ("task", "half", "wording", "arm", "model")}
+
+
+@problems_by_assertion("B14.login")
+def b14_login_problems(mod) -> list:
+    out = []
+    if mod.login_name(rt.GEMINI) != "GEMINI_API_KEY" or rt.LOGIN_VARIABLE[rt.GEMINI] != "GEMINI_API_KEY":
+        out.append(f"B14.login: a Gemini row's login name is {mod.login_name(rt.GEMINI)!r}")
+    if getattr(mod, "GEMINI_WALK_ACCOUNT", None) != "r4-g":
+        out.append(f"B14.login: the Gemini walk account is {getattr(mod, 'GEMINI_WALK_ACCOUNT', None)!r}")
+    path = "/synthetic/r4-g/gemini-walk-login"
+    with walk_login_files({"claude1": SYNTHETIC_LOGIN, "r4-g": path}):
+        if mod.walk_login_path("r4-g") != path or mod.production_builders()["gemini_login_path"] != path:
+            out.append("B14.login: the Gemini login path is not the r4-g record")
+        if mod.walk_login_path() != SYNTHETIC_LOGIN:
+            out.append("B14.login: Claude's login path moved off claude1")
+    with walk_login_files({"claude1": SYNTHETIC_LOGIN}):
+        got = mod.production_builders()["gemini_login_path"]
+        if not isinstance(got, mod.Missing) or "WALK_LOGIN_FILES['r4-g']" not in got.why:
+            out.append(f"B14.login: no r4-g record gives {got!r}")
+    with walk_login_files({"r4-g": "relative/gemini-walk-login"}):
+        try:
+            mod.walk_login_path("r4-g")
+            out.append("B14.login: a relative r4-g record was taken")
+        except mod.BuilderRefused as e:
+            if "WALK_LOGIN_FILES['r4-g']" not in str(e):
+                out.append(f"B14.login: the relative record's refusal names another record: {e}")
+    return out
+
+
+@problems_by_assertion("B14.prepare")
+def b14_prepare_problems(mod, tmp: Path) -> list:
+    """prepare admits a Gemini row by its key file, checked by name only; refuses it, before the run tree, while the
+    key's file is Missing or not a GEMINI_API_KEY file."""
+    out, built = [], []
+    args = types.SimpleNamespace(walk="w-0001", **gemini_cell())
+    good = str(login_file(f"GEMINI_API_KEY={GEMINI_KEY}\n"))
+    claude = str(login_file(f"{LOGIN}={GEMINI_KEY}\n"))
+    base = {"agent_version": "0.64.0", "login_path": "/synthetic/never-read",
+            "run_tree_origin": ("/synthetic/repo", "0" * 40), "run_tree_exclude": ["evals"]}
+    with mock.patch.object(mod, "build_run_tree", lambda *a, **k: built.append(a) or tmp / "tree"):
+        for label, path, words in (("a missing key file", mod.Missing("synthetic: no r4-g record"),
+                                    "synthetic: no r4-g record"),
+                                   ("Claude's token file", claude, "does not start with GEMINI_API_KEY="),
+                                   ("a relative path", "r4-g/gemini-walk-login", "absolute path")):
+            try:
+                mod.prepare(dict(base, gemini_login_path=path), args)
+                out.append(f"B14.prepare: {label} was admitted")
+            except mod.BuilderRefused as e:
+                if words not in str(e):
+                    out.append(f"B14.prepare: {label} refused for another reason: {e}")
+                if GEMINI_KEY in str(e):
+                    out.append(f"B14.prepare: {label}'s refusal carries the key")
+        if built:
+            out.append(f"B14.prepare: a refused Gemini row built its run tree: {built}")
+        with mock.patch.object(os, "read", wraps=os.read) as reads:
+            row, login, tree = mod.prepare(dict(base, gemini_login_path=good), args)
+        if (row["agent"]["harness"], row["arm"], login, len(built)) != (rt.GEMINI, "G", good, 1):
+            out.append(f"B14.prepare: an admitted Gemini row gave {row['agent']}, {login!r}, {len(built)}")
+        if any(c.args[1] > len("GEMINI_API_KEY=") for c in reads.call_args_list):
+            out.append("B14.prepare: more than the key's name was read")
+        real_row = mod.walk_row                 # a harness the walk driver does not admit, refused before anything
+        def other(*a, **k):
+            return dict(real_row(*a, **k), agent={"harness": "synthetic-other", "version": "1.0.0"})
+        with mock.patch.object(mod, "walk_row", other):
+            try:
+                mod.prepare(dict(base, gemini_login_path=good), args)
+                out.append("B14.prepare: a row of an unknown harness was admitted")
+            except mod.BuilderRefused as e:
+                if "admits Claude Code, Gemini and" not in str(e):
+                    out.append(f"B14.prepare: an unknown harness refused for another reason: {e}")
+        if len(built) != 1:
+            out.append(f"B14.prepare: an unknown harness built its run tree: {built}")
+    return out
+
+
+@problems_by_assertion("B14.secrets")
+def b14_secrets_problems(mod, tmp: Path) -> list:
+    """A Gemini walk's driver and its WalkRepo get one and the same secrets(): login_secrets over the key file, read
+    only when the scan asks, giving the key's value as the exact-value mask's token."""
+    out = []
+    drive = MODS["drive"]
+    got = {}
+    good = str(login_file(f"GEMINI_API_KEY={GEMINI_KEY}\n"))
+    builders = {"rules_scanner": lambda paths: [], "runtime": "rt", "config_parent": str(tmp), "budgets": (600, 5, 1),
+                "take_spec": lambda r, c, t: "spec", "sidecar_for": None, "proxy": None, "lock_path": None,
+                "hosts": None, "cgroup_dir_for": lambda t: "", "pin_for": None, "design_for": None, "uid_map": None,
+                "clock": None, "sleep": None, "ownership": None, "settings_guard": None, "machine_gate": None}
+    row = {"walk": "w-0001", "arm": "G", "agent": {"harness": rt.GEMINI, "version": "0.64.0"}}
+    from box import scan_record
+    reads = []
+    real = scan_record.read_login
+    with mock.patch.object(drive, "walk_driver", lambda **kw: got.setdefault("driver", kw) and "driver"), \
+            mock.patch.object(drive, "WalkRepo", lambda **kw: got.setdefault("repo", kw) and "repo"), \
+            mock.patch.object(drive, "records_repo", lambda root: "/synthetic/repo"), \
+            mock.patch.object(mod, "build_walk_fixture", lambda r, t, p: ({"sha256": "0" * 64}, "/synthetic/src")), \
+            mock.patch.object(mod, "walk_identity", lambda *a, **k: {"walk": "w-0001"}), \
+            mock.patch.object(scan_record, "read_login", lambda *a, **k: reads.append(a) or real(*a, **k)):
+        try:
+            mod.walk_driver_for(builders, row, good, tmp / "tree")
+        except Exception as e:  # noqa: BLE001
+            return [f"B14.secrets: walk_driver_for raised {type(e).__name__}: {e}"]
+        if reads:
+            out.append("B14.secrets: the key was read before a scan asked")
+        s_driver, s_repo = got["driver"]["secrets"], got["repo"]["secrets"]
+        if s_driver is not s_repo or got["driver"]["login_file"] != good:
+            out.append(f"B14.secrets: the driver got {s_driver!r} and WalkRepo {s_repo!r} over "
+                       f"{got['driver']['login_file']!r}")
+        if s_repo() != [("token", GEMINI_KEY)] or [a[:2] for a in reads] != [(good, "GEMINI_API_KEY")]:
+            out.append(f"B14.secrets: the scan's secrets read {[a[:2] for a in reads]}")
+    return out
+
+
+class B14Gemini(Drafted):
+    def test_a_gemini_row_logs_in_by_its_r4g_key_file(self):
+        self.assertEqual(b14_login_problems(wb()), [])
+
+    def test_prepare_admits_a_gemini_row_by_name(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(b14_prepare_problems(wb(), Path(t)), [])
+
+    def test_the_driver_and_walkrepo_get_the_key_secrets(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(b14_secrets_problems(wb(), Path(t)), [])
 
 
 if __name__ == "__main__":

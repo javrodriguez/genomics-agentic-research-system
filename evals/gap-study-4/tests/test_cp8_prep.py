@@ -98,12 +98,15 @@ def mutants():
                                     '"log", "--no-merges", "--format=%H%x1f%s"'),
         "register-disk-unchecked": ("H1.walk-history", "walk_register",
                                     "    if reg_dirty:", "    if False:"),
+        # Re-anchored after c35fc915 (one table, PRODUCTION_ADAPTERS, for the three harnesses): the equivalent sites
+        # are the class and module comparisons of adapter_class_problems against the class captured at import.
         "adapter-class-at-call-time": ("A1.adapter-class", "drive",
-                                       "    if type(adapter) is not PRODUCTION_ADAPTER or",
-                                       "    if type(adapter) is not _cc.ClaudeCodeAdapter or"),
+                                       "type(adapter) is not expected[0] or",
+                                       "type(adapter) is not getattr(sys.modules[expected[1]], "
+                                       "expected[0].__name__) or"),
         "adapter-module-unchecked": ("A1.adapter-class", "drive",
-                                     "            type(adapter).__module__ != PRODUCTION_ADAPTER_MODULE:",
-                                     "            False:"),
+                                     " or type(adapter).__module__ != expected[1]:",
+                                     ":"),
         "adapter-class-unchecked": ("A1.adapter-class", "drive",
                                     "            adapter_class_problems(adapter)          # W7B-R1-4\n", ""),
         "take-k-unbound": ("K1.take-k", "drive",
@@ -388,7 +391,8 @@ def build_walk_driver(drive, factory, root):
             lock_path="/synthetic.lock", hosts={}, login_file="/synthetic-login", counters_for=lambda t: {},
             pin_for=lambda r: {}, design_for=lambda r, t: None, project_for=lambda r: "run-0000abcd",
             identity_for=lambda r: {}, secrets=lambda: [], rules_scanner=lambda p: [], uid_map=[], budget_s=1,
-            finalize_wait_s=1, poll_s=1, clock=lambda: 0.0, sleep=lambda s: None)
+            finalize_wait_s=1, poll_s=1, clock=lambda: 0.0, sleep=lambda s: None,
+            ownership=tbi.FakeOwnership(), settings_guard=tbi.FakeSettingsGuard(), machine_gate=lambda: [])
 
 
 class A1AdapterClass(Case):

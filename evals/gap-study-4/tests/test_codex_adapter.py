@@ -30,11 +30,19 @@ transcript_codex.py compiled in memory (the registry pattern of lane w6j):
   A3-usage     a usage key that is missing is refused, never 0; a failed turn has no usage (None).
                Witness: usage-zero.
   A4-argv      `-m <model>` on every exec; `resume <thread id>` after turn 1 only, the id read from turn 1's stream;
-               a PENDING or unknown mode refuses the adapter; a line starting with "-" is refused; the login rides
-               by name only. Witnesses: resume-first, model-first-only.
-  A5-model     the init's model is the rollout's turn_context model (a served-other id reads as that id), and a
-               rollout with no turn_context for the turn gives init None, never the requested model.
-               Witness: model-defaulted.
+               a PENDING or unknown mode refuses the adapter; a line starting with "-" is refused; no turn's argv
+               carries the planted login value. Witnesses: resume-first, model-first-only.
+               Retired 14 Oct 2026 (glitch-06's Codex ruling, option a): the clause "the login rides by name only"
+               described the API-key route, which the reviewed subscription transition removed (run_take refuses a
+               Codex turn NotReady before any login read; that refusal is bound by its own test outside this module).
+               These checks cover the adapter's stream and record road, which does not depend on the login route, so
+               every turn here runs through stub_run_turn: an exec that never reads a login and carries no
+               credential. Nothing here enables an API-key route.
+  A5-model     Codex slice 2 (14 Oct 2026): init is always None, since the rollout's turn_context names the REQUESTED
+               model (kept as the turn record's requested_context); identity's model is a reroute item's `to` model,
+               else unobserved; version is version-exec. Witnesses: model-defaulted, reroute-unread,
+               requested-model-as-served.
+  A8-journal   the mode from the turn's own launch journal through launch_facts (exact argv); unobserved without one.
   A6-turn      end reasons (end_turn, error on exit 1, error on exit 0 with turn.failed, timed-out), the counters'
                rise, and a later turn naming another thread refused. Witnesses: failed-as-end-turn,
                other-thread-resumed.
@@ -103,6 +111,7 @@ TID = "synthetic-thread-0001"
 TAKE = "cd" * 32
 MODEL = "gpt-6.1-sol"
 MODE = "bypass"
+MODE_FLAG_TEXT = "--dangerously-bypass-approvals-and-sandbox"   # spelled here (D8:110), never read from the module
 VERSION = "0.160.1"
 LOGIN = "CODEX_API_KEY"
 LOGIN_VALUE = "synthetic-login-value-" + "fedcba9876543210"     # a planted fake, never a real key
@@ -135,6 +144,35 @@ def setUpModule():
             _STACK.enter_context(mock.patch.object(os, name, _trip(f"os.{name}")))
     # Codex's own billing-route names are PENDING until named from its documentation: none, for the fake only.
     _STACK.enter_context(mock.patch.object(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {rt.CODEX: (), rt.GEMINI: rt.PENDING}))
+    # glitch-06's Codex ruling (a), 14 Oct 2026: the turn exec is stubbed, never the login route enabled.
+    _STACK.enter_context(mock.patch.object(rt, "run_turn", stub_run_turn))
+
+
+def stub_run_turn(runtime, take_id, inner, *, harness, run_tree, login_file, stream_path, budget_s, clock,
+                  caller_env=None):
+    """run_take.run_turn's contract for the adapter, minus every login: the turn is a plain agent exec (no variable,
+    no login file opened, `login_file` never read), its stdout written once to the host-side stream path, the times
+    from the injected clock. A timeout is a timed-out exec, as in run_take."""
+    if harness != rt.CODEX:
+        raise GuardTripped(f"the Codex stub runs Codex turns only, not {harness!r}")
+    if not os.path.isabs(stream_path) or os.path.lexists(stream_path):
+        raise rt.Refused("the stream path is absolute and new: a stream is never overwritten")
+    if not (isinstance(budget_s, (int, float)) and budget_s > 0):
+        raise rt.Refused("budget_s > 0")
+    argv = rt.agent_exec_argv(take_id, list(inner), workdir=run_tree)
+    started = clock()
+    timed_out, code, out, err = False, None, "", ""
+    try:
+        c = runtime.run(argv, env=rt.runtime_env(caller_env), timeout=budget_s)
+        code, out, err = c.returncode, c.stdout, c.stderr
+    except TimeoutError as e:
+        timed_out, out = True, getattr(e, "stdout", "") or ""
+    ended = clock()
+    fd = os.open(stream_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8", errors="surrogateescape") as fh:
+        fh.write(out)
+    return {"exit_code": code, "timed_out": timed_out, "started_at": started, "ended_at": ended,
+            "stream_path": stream_path, "stderr": err}
 
 
 def tearDownModule():
@@ -350,8 +388,8 @@ def p1_view(mod, p):
                 "item.completed:file_change", "item.completed:file_change", "item.completed:agent_message",
                 "turn.completed"]:
         out.append(f"{p}: the parser's raw types read {raws}")
-    if "codex" in tv.PARSERS:
-        out.append(f"{p}: the parser was registered in transcript_view.PARSERS")
+    if not isinstance(tv.PARSERS.get("codex"), tv.VendorBoundParser):
+        out.append(f"{p}: the published parser does not require bound native records")
     return out
 
 
@@ -361,7 +399,8 @@ def a1_stream(mod, p):
     out = []
     r = mod.read_stream(fixture("turn1-tools.jsonl"))
     want = {"thread_ids": [TID], "agent_text": "Synthetic reply one.", "agent_output": True, "api_errors": [],
-            "usage": USAGE, "completed": 1, "failed": 0, "tool_ids": ["item_1", "item_2"], "undecoded": 0}
+            "usage": USAGE, "completed": 1, "failed": 0, "tool_ids": ["item_1", "item_2"], "undecoded": 0,
+            "served_model": None}
     if r != want:
         out.append(f"{p}: turn1-tools reads as {r}")
     if mod.read_stream(fixture("reasoning-only.jsonl"))["agent_output"] is not False:
@@ -403,6 +442,36 @@ def a3_usage(mod, p):
     return out
 
 
+# The pinned `codex exec --help` Commands list (box evidence codex-exec-help.json, sha256 a90c28e8...; the box's
+# run_take.CODEX_HELP_COMMANDS, box 14670435): a first turn's line that is exactly one of them would run as that
+# subcommand (`codex exec [OPTIONS] <COMMAND> [ARGS]`). A later turn's line follows `resume <thread id>` and stays a
+# prompt.
+EXEC_COMMANDS = ("resume", "fork", "review", "help")
+
+
+def help_binding_problems(adapter_commands, run_take_mod) -> list:
+    """The adapter's subcommand list against run_take.CODEX_HELP_COMMANDS where that module carries one (else nothing
+    to bind): any difference, in names or order, is a problem."""
+    theirs = getattr(run_take_mod, "CODEX_HELP_COMMANDS", None)
+    if theirs is None or tuple(theirs) == tuple(adapter_commands):
+        return []
+    return [f"A4-help: the adapter's {tuple(adapter_commands)} is not run_take's {tuple(theirs)}"]
+
+
+def a4_word(mod, word) -> list:
+    p, out = "A4-argv", []
+    got = refusal(lambda: mod.argv(word, model=MODEL, mode=MODE, session_id=TID, first=True), mod.StreamError)
+    if got:
+        out.append(f"{p}: a first turn's line {word!r}, a codex exec subcommand name, was {got}")
+    try:
+        later = mod.argv(word, model=MODEL, mode=MODE, session_id=TID, first=False)
+        if later[-3:] != ["resume", TID, word]:
+            out.append(f"{p}: a later turn's line {word!r} is not the prompt after resume: {later[-3:]}")
+    except Exception as e:  # noqa: BLE001
+        out.append(f"{p}: a later turn's line {word!r} was refused ({type(e).__name__})")
+    return out
+
+
 @guarded("A4-argv", CA_API)
 def a4_argv(mod, p):
     out = []
@@ -417,6 +486,8 @@ def a4_argv(mod, p):
             out.append(f"{p}: the {name} turn's argv opens {a[:5]}")
     if refusal(lambda: mod.argv("-x", model=MODEL, mode=MODE, session_id=TID, first=True), mod.StreamError):
         out.append(f"{p}: a line starting with '-' was not refused")
+    for word in EXEC_COMMANDS:          # the box Codex-exec review's MAJOR, on this side: a subcommand-name prompt
+        out += a4_word(mod, word)
     for bad in ("PENDING", "default", "", None, ["bypass"]):
         got = refusal(lambda: adapter(mod, FakeRuntime([]), mode=bad), rt.NotReady)
         if got:
@@ -441,33 +512,143 @@ def a4_argv(mod, p):
             out.append(f"{p}: turn {n} lacks the pinned mode's flag")
     if len(turns) != 3:
         out.append(f"{p}: {len(turns)} turn exec(s), not 3")
-    for c in box.calls:
-        if any(LOGIN_VALUE in x for x in c) or ("--json" in c and LOGIN not in c):
-            out.append(f"{p}: a turn's login does not ride by name only")
+    for c in box.calls:              # the "rides by name" clause is retired (see A4 above); the value never rides
+        if any(LOGIN_VALUE in x for x in c):
+            out.append(f"{p}: a turn's argv carries the login value")
     return out
 
 
-@guarded("A5-model", CA_API)
+@guarded("A5-model", CA_API + ("turn_identity", "submitted_mode", "reroute_of"))
 def a5_model(mod, p):
+    """Codex slice 2: init is always None (the rollout's turn_context names the requested model, never the served one;
+    it is kept as the turn record's requested_context); identity's model is a reroute item's `to` model, else
+    unobserved; version is version-exec; the mode is the turn's journal read through launch_facts."""
     out = []
     box = FakeRuntime([fixture("turn1-tools.jsonl"), fixture("turn2-resume.jsonl")])
     a = adapter(mod, box, rollouts=[fixture("rollout-served-other.jsonl"), fixture("rollout-served-other.jsonl")])
     a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
     t1 = a.turn("one", first=True, budget_s=60)
-    t2 = a.turn("two", first=False, budget_s=60)
-    if t1.init != {"model": "gpt-5.6-luna", "permission_mode": "never", "version": VERSION}:
-        out.append(f"{p}: turn 1's init is {t1.init}, not the rollout's turn_context")
-    if t2.init is not None or not a.turn_records[1]["why_no_init"]:
-        out.append(f"{p}: a turn whose rollout gained no turn_context has init {t2.init}")
-    box = FakeRuntime([fixture("turn1-tools.jsonl")])
-    a = adapter(mod, box, rollouts=[fixture("rollout-no-context.jsonl")])
-    a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
-    t = a.turn("one", first=True, budget_s=60)
-    if t.init is not None:
-        out.append(f"{p}: a rollout with no turn_context gives init {t.init}, never the requested model")
+    if t1.init is not None:
+        out.append(f"{p}: turn 1's init is {t1.init}, the requested model read as proof")
+    if a.turn_records[0]["requested_context"] != {"model": "gpt-5.6-luna", "permission_mode": "never",
+                                                  "version": VERSION}:
+        out.append(f"{p}: the requested context is not kept: {a.turn_records[0]['requested_context']}")
+    unobserved = {"value": None, "source": "unobserved"}
+    if t1.identity != {"model": unobserved, "permission_mode": unobserved,
+                       "version": {"value": VERSION, "source": "version-exec"}}:
+        out.append(f"{p}: turn 1's identity is {t1.identity}")
+    # Codex road review F1, F2: one parser (codex_native.reroute_of), the reason pinned to HighRiskCyberActivity and
+    # `from` the turn's own -m model; spelled here from the source, never read from the module.
+    good = f"model rerouted: {MODEL} -> gpt-6-sol (HighRiskCyberActivity)"
+    rerouted = "\n".join(lines("turn1-tools.jsonl")[:1] + [json.dumps({"type": "item.completed", "item": {
+        "id": "item_9", "type": "error", "message": good}})] + lines("turn1-tools.jsonl")[1:]) + "\n"
+    try:
+        r = mod.read_stream(rerouted, model=MODEL)
+    except mod.StreamError as e:
+        return out + [f"{p}: a reroute item is refused as off the tables: {e}"]
+    if r["served_model"] != "gpt-6-sol" or r["agent_output"] is not True or r["api_errors"]:
+        out.append(f"{p}: a reroute item reads as {r['served_model']!r} (output {r['agent_output']}, errors "
+                   f"{r['api_errors']})")
+    if mod.turn_identity(r, version="9.9.9", mode=unobserved)["model"] != {"value": "gpt-6-sol",
+                                                                            "source": "stream-reroute"}:
+        out.append(f"{p}: the reroute is not the identity's model")
+    if refusal(lambda: mod.read_stream(rerouted), mod.StreamError):
+        out.append(f"{p}: with no requested model named, a reroute-shaped item was not refused as off the tables")
+    for msg in (f"model rerouted: {MODEL} -> b", f"Model rerouted: {MODEL} -> b (HighRiskCyberActivity)",
+                f"model rerouted: {MODEL} -> b (HighRiskCyberActivity) extra",
+                f"model rerouted: {MODEL} -> b (HighRiskCyber)", f"model rerouted: {MODEL} -> b (Other)",
+                "model rerouted: gpt-other -> b (HighRiskCyberActivity)", "a warning that is not a reroute"):
+        rec = {"type": "item.completed", "item": {"id": "i", "type": "error", "message": msg}}
+        if mod.reroute_of(rec, MODEL) is not None:
+            out.append(f"{p}: {msg!r} read as a reroute")
+    shaped = f"model rerouted: {MODEL} -> b (HighRiskCyberActivity)"
+    if mod.reroute_of({"type": "item.completed", "item": {"id": "i", "type": "error", "message": shaped}}, MODEL) != "b":
+        out.append(f"{p}: the control reroute is not read")
+    for rec in ({"type": "item.started", "item": {"id": "i", "type": "error", "message": shaped}},
+                {"type": "item.completed", "item": {"id": "i", "type": "error", "message": shaped, "extra": 1}},
+                {"type": "item.completed", "item": {"id": 7, "type": "error", "message": shaped}},
+                {"type": "item.completed", "item": {"id": "i", "type": "warning", "message": shaped}},
+                {"type": "item.completed", "item": {"id": "i", "type": "error", "message": 7}},
+                {"type": "item.completed", "item": ["id", "type", "message"]},
+                ["type", "item"]):
+        try:
+            got = mod.reroute_of(rec, MODEL)
+        except Exception as e:  # noqa: BLE001 - a crash on a malformed record is a finding, never a kill by error
+            got = f"a crash: {type(e).__name__}"
+        if got is not None:
+            out.append(f"{p}: {rec} read as a reroute ({got})")
+    two = rerouted + json.dumps({"type": "item.completed", "item": {
+        "id": "item_10", "type": "error", "message": f"model rerouted: {MODEL} -> gpt-6-luna (HighRiskCyberActivity)"}}) + "\n"
+    got = refusal(lambda: mod.read_stream(two, model=MODEL), mod.StreamError)
+    if got:
+        out.append(f"{p}: two reroutes to different models {got}")
+    other = "\n".join(lines("turn1-tools.jsonl") + [json.dumps({"type": "item.completed", "item": {
+        "id": "item_9", "type": "error", "message": "a warning that is not a reroute"}})]) + "\n"
+    got = refusal(lambda: mod.read_stream(other), mod.StreamError)
+    if got:
+        out.append(f"{p}: any other error item {got}")
     r = mod.read_rollout(fixture("rollout-two-turns.jsonl"), seen=1)
     if r["init"] != {"model": MODEL, "permission_mode": "never", "version": VERSION} or r["turn_contexts"] != 2:
         out.append(f"{p}: the second turn's context reads {r}")
+    return out
+
+
+@guarded("A8-journal", CA_API + ("submitted_mode",))
+def a8_journal(mod, p):
+    """Codex slice 2: the mode from the turn's own journal, checked by launch_facts against the registered invocation
+    (the argv exactly); no journal, a link, bad bytes or no argv list are unobserved; anything off the invocation is
+    "launch-differs-from-registered-invocation". Spelled here, never read from the module."""
+    out = []
+    folder = Path(tempfile.mkdtemp(dir=SCRATCH))
+    stream, tree = str(folder / "turn-1.jsonl"), str(SCRATCH / "tree")
+    want = {"harness": "codex", "container_id": TAKE, "model": MODEL, "mode": MODE, "run_tree": tree,
+            "stream": stream, "sent": "hello", "vendor_session_id": "first-turn", "ordinal": 1}
+    registered = list(mod.argv("hello", model=MODEL, mode=MODE, session_id=None, first=True))
+
+    def journal(argv=None, raw=None, **over):
+        path = folder / f"j-{len(list(folder.iterdir()))}.launch.json"
+        doc = dict({"schema": 1, "harness": "codex", "container_id": TAKE,
+                    "argv": registered if argv is None else argv, "cwd": tree, "stream": stream,
+                    "started_at": 1.0}, **over)
+        path.write_bytes(raw if raw is not None else json.dumps(doc).encode())
+        return str(path)
+    unobserved = {"value": None, "source": "unobserved"}
+    link = folder / "link.launch.json"
+    os.symlink(journal(), link)
+    for why, path, expect in (
+            ("no journal", str(folder / "absent.launch.json"), unobserved),
+            ("a link", str(link), unobserved),
+            ("bytes that are not JSON", journal(raw=b"{not json"), unobserved),
+            ("bytes that are not UTF-8", journal(raw=b"\xff\xfe"), unobserved),
+            ("a JSON list", journal(raw=b"[]"), unobserved),
+            ("an argv that is not a list", journal(argv="codex exec"), unobserved),
+            ("the registered launch", journal(), {"value": MODE, "source": "submitted-argv"}),
+            ("an extra flag", journal(argv=registered[:-1] + ["--full-auto", registered[-1]]),
+             {"value": "launch-differs-from-registered-invocation", "source": "submitted-argv"}),
+            ("the mode's flag dropped", journal(argv=[a for a in registered if a != MODE_FLAG_TEXT]),
+             {"value": "launch-differs-from-registered-invocation", "source": "submitted-argv"}),
+            ("another folder", journal(cwd=str(SCRATCH / "elsewhere")),
+             {"value": "launch-differs-from-registered-invocation", "source": "submitted-argv"})):
+        got = mod.submitted_mode(path, dict(want))
+        if got != expect:
+            out.append(f"{p}: {why}: {got}, not {expect}")
+    box = FakeRuntime([fixture("turn1-tools.jsonl"), fixture("turn2-resume.jsonl")])
+    two = fixture("rollout-two-turns.jsonl")
+    a = mod.CodexAdapter(runtime=box, take_id=TAKE, run_tree=tree, login_file=login_file(), model=MODEL,
+                         pin={"permission_mode": MODE, "version": VERSION},
+                         stream_path_for=lambda n: str(folder / f"t-{n}.jsonl"), rollout_for=lambda n: two,
+                         counters_for=Counters(), clock=Clock())
+    a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+    for n, (line, session) in enumerate((("one", None), ("two", TID)), 1):
+        s = str(folder / f"t-{n}.jsonl")
+        Path(s + ".launch.json").write_text(json.dumps({
+            "schema": 1, "harness": "codex", "container_id": TAKE,
+            "argv": list(mod.argv(line, model=MODEL, mode=MODE, session_id=session, first=n == 1)),
+            "cwd": tree, "stream": s, "started_at": 1.0}))
+    for n, line in enumerate(("one", "two"), 1):
+        r = a.turn(line, first=n == 1, budget_s=60)
+        if r.identity["permission_mode"] != {"value": MODE, "source": "submitted-argv"}:
+            out.append(f"{p}: turn {n}'s mode from its journal is {r.identity['permission_mode']}")
     return out
 
 
@@ -907,10 +1088,13 @@ def b9_record(mod, p):
     t2 = a.turn("two", first=False, budget_s=60)
     want = [{"n": 1, "first": True, "exit_code": 0, "timed_out": False, "thread_ids": [TID], "usage": USAGE,
              "tool_ids": ["item_1", "item_2"], "completed": 1, "failed": 0, "undecoded": 0, "why_no_init": None,
-             "shapes_source": mod.SHAPES_SOURCE},
+             "shapes_source": mod.SHAPES_SOURCE,
+             "requested_context": {"model": MODEL, "permission_mode": "never", "version": VERSION},
+             "served_model": None},
             {"n": 2, "first": False, "exit_code": 1, "timed_out": False, "thread_ids": [TID], "usage": None,
              "tool_ids": [], "completed": 0, "failed": 1, "undecoded": 0,
-             "why_no_init": a.turn_records[1]["why_no_init"], "shapes_source": mod.SHAPES_SOURCE}]
+             "why_no_init": a.turn_records[1]["why_no_init"], "shapes_source": mod.SHAPES_SOURCE,
+             "requested_context": None, "served_model": None}]
     if a.turn_records != want or not a.turn_records[1]["why_no_init"]:
         out.append(f"{p}: the turn records read {a.turn_records}")
     if (t1.text, t1.exit_code, t1.started_at, t1.ended_at) != ("Synthetic reply one.", 0, 101.0, 102.0):
@@ -952,6 +1136,84 @@ def b11_version(mod, p):
     return out
 
 
+@guarded("B12-executed", CA_API + ("ExecutedStreamRefused",))
+def b12_executed(mod, p):
+    """Live harness slice 6 (integration sweep survivors): an exec that ran is kept before its stream is read; a clean
+    turn's record says refused None; a reader refusal is ExecutedStreamRefused and a defect a plain
+    ExecutedTurnRefused, each carrying the kept record with its refusal "<type>: <words>"."""
+    out = []
+    keys = {"n", "exit_code", "timed_out", "started_at", "ended_at", "stream_path", "counters", "refused"}
+    a, _ = take_with(mod, [fixture("turn1-tools.jsonl")])
+    a.turn("first line", first=True, budget_s=60)
+    if len(a.executed_turns) != 1 or set(a.executed_turns[0]) != keys or a.executed_turns[0]["refused"] is not None:
+        out.append(f"{p}: a clean turn's kept exec record is {a.executed_turns}")
+    a, _ = take_with(mod, [fixture("unknown-event.jsonl")])
+    try:
+        a.turn("first line", first=True, budget_s=60)
+        out.append(f"{p}: a stream off the tables was not refused")
+    except mod.ExecutedStreamRefused as e:
+        cause = e.__cause__
+        rec = a.executed_turns[-1] if a.executed_turns else {}
+        if len(a.executed_turns) != 1 or e.executed != rec or set(rec) != keys or \
+                rec.get("refused") != f"{type(cause).__name__}: {cause}":
+            out.append(f"{p}: the reader refusal is kept as {a.executed_turns}")
+    a, _ = take_with(mod, [fixture("turn1-tools.jsonl")])
+
+    def defect(got, n, first):
+        raise RuntimeError("a stand-in defect")
+    a._read_turn = defect
+    try:
+        a.turn("first line", first=True, budget_s=60)
+        out.append(f"{p}: a defect after the exec was not refused")
+    except mod.StreamError:
+        out.append(f"{p}: a defect after the exec was read as a stream refusal")
+    except mod.aa.ExecutedTurnRefused as e:
+        rec = a.executed_turns[-1] if a.executed_turns else {}
+        if e.executed != rec or rec.get("refused") != "RuntimeError: a stand-in defect" or set(rec) != keys:
+            out.append(f"{p}: the defect is kept as {rec}")
+    return out
+
+
+def box_view(home: Path):
+    """A faithful stand-in for TakeDriver.config_view over a scratch config folder: operator_list one level as
+    (name, kind), a link listed as one (never followed), None for a folder that is absent; operator_read bytes or None."""
+    def lister(rel):
+        d = home / rel
+        if not d.is_dir():
+            return None
+        return [(e.name, "link" if e.is_symlink() else "dir" if e.is_dir() else "file") for e in d.iterdir()]
+
+    def reader(rel):
+        f = home / rel
+        return f.read_bytes() if f.is_file() and not f.is_symlink() else None
+    return lister, reader
+
+
+@guarded("B13-native", CA_API + ("ExecutedStreamRefused",))
+def b13_native(mod, p):
+    """Codex slice 3: the rollout this take resumes is the one under CODEX_HOME named by turn 1's thread id."""
+    out = []
+    a, _ = take_with(mod, [fixture("turn1-tools.jsonl")])
+    a.turn("first line", first=True, budget_s=60)
+    home = Path(tempfile.mkdtemp(dir=SCRATCH))
+    folder = home / "sessions" / "2026" / "10" / "14"
+    folder.mkdir(parents=True)
+    want = folder / f"rollout-2026-10-14T05-00-00-{TID}.jsonl"
+    want.write_text('{"this": "take"}\n')
+    (folder / "rollout-2026-10-14T05-00-00-another-thread.jsonl").write_text("{}\n")
+    if a.native_session_path(str(home)) != str(want):
+        out.append(f"{p}: the rollout located is not {want.name}")
+    # Drive-wiring review MAJOR 1's road (athena sweep, 14 Oct: native_session_rel's import and return deleted
+    # survived): the same rollout through the box's listing, as the path relative to CODEX_HOME, and that path read
+    # through the box gives this take's rollout.
+    lister, reader = box_view(home)
+    rel = a.native_session_rel(lister)
+    if rel != f"sessions/2026/10/14/{want.name}":
+        out.append(f"{p}: the rollout located through the box's listing is {rel!r}")
+    elif reader(rel) != want.read_bytes():
+        out.append(f"{p}: the located rollout does not read as this take's")
+    return out
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestTheShapes(unittest.TestCase):
     def test_s1_an_unknown_event_is_refused(self):
@@ -977,6 +1239,16 @@ class TestTheShapes(unittest.TestCase):
 
 
 class TestTheAdapter(unittest.TestCase):
+    def test_every_turn_here_runs_through_the_login_free_stub(self):
+        """glitch-06's Codex ruling (a): the stub is in place, and a turn through it never opens the login file."""
+        self.assertIs(rt.run_turn, stub_run_turn)
+        box = FakeRuntime([fixture("turn1-tools.jsonl")])
+        a = adapter(ca, box, rollouts=[fixture("rollout-two-turns.jsonl")])
+        a.login_file = str(SCRATCH / "no-such-login-file")      # a read would raise; the stub never reads it
+        a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+        a.turn("first line", first=True, budget_s=60)
+        self.assertFalse(any(LOGIN in x or LOGIN_VALUE in x for c in box.calls for x in c))
+
     def test_a1_the_stream_read(self):
         self.assertEqual(a1_stream(ca), [])
 
@@ -989,8 +1261,35 @@ class TestTheAdapter(unittest.TestCase):
     def test_a4_the_turn_argv(self):
         self.assertEqual(a4_argv(ca), [])
 
-    def test_a5_the_model_is_the_rollouts(self):
+    def test_a4_a_first_line_resume_is_refused(self):
+        self.assertEqual(a4_word(ca, "resume"), [])
+
+    def test_a4_a_first_line_fork_is_refused(self):
+        self.assertEqual(a4_word(ca, "fork"), [])
+
+    def test_a4_a_first_line_review_is_refused(self):
+        self.assertEqual(a4_word(ca, "review"), [])
+
+    def test_a4_a_first_line_help_is_refused(self):
+        self.assertEqual(a4_word(ca, "help"), [])
+
+    def test_a4_the_commands_are_the_pinned_helps(self):
+        """The adapter's list is the pinned help's, and run_take's wherever the box has landed it: they cannot drift.
+        Both ways on every tree (review of 83b83ea1, NIT 1): the binding reads run_take's list whenever one is there, so
+        a run_take holding another list is caught here even on a tree without the box's (box 14670435)."""
+        self.assertEqual(getattr(ca, "CODEX_EXEC_COMMANDS", None), EXEC_COMMANDS)
+        self.assertEqual(help_binding_problems(ca.CODEX_EXEC_COMMANDS, rt), [])
+        with mock.patch.object(rt, "CODEX_HELP_COMMANDS", ("resume", "fork", "review"), create=True):
+            self.assertTrue(help_binding_problems(ca.CODEX_EXEC_COMMANDS, rt),
+                            "A4-help: a run_take list that drifted from the adapter's was not caught")
+        if hasattr(rt, "CODEX_HELP_COMMANDS"):         # the box's own list, compared directly where it is on the tree
+            self.assertEqual(tuple(rt.CODEX_HELP_COMMANDS), ca.CODEX_EXEC_COMMANDS)
+
+    def test_a5_the_served_model_is_only_a_reroutes(self):
         self.assertEqual(a5_model(ca), [])
+
+    def test_a8_the_mode_is_read_from_the_turns_journal(self):
+        self.assertEqual(a8_journal(ca), [])
 
     def test_a6_a_turn_on_the_fake_runtime(self):
         self.assertEqual(a6_turn(ca), [])
@@ -1024,6 +1323,12 @@ class TestTheAdapter(unittest.TestCase):
 
     def test_b11_the_version_exec(self):
         self.assertEqual(b11_version(ca), [])
+
+    def test_b12_an_executed_turn_is_kept_before_its_refusal(self):
+        self.assertEqual(b12_executed(ca), [])
+
+    def test_b13_the_rollout_is_located_by_turn_ones_thread(self):
+        self.assertEqual(b13_native(ca), [])
 
     def test_b10_a_cut_line_only_last(self):
         self.assertEqual(b10_cut(ca), [])
@@ -1098,12 +1403,20 @@ WITNESSES = {
                            "vals = {k: rec[\"usage\"].get(k, 0) for k in tc.USAGE_KEYS}"),), a3_usage, "A3-usage"),
     "resume-first": ("ca", (("    if not first:\n        if not isinstance(session_id",
                              "    if True:\n        if not isinstance(session_id"),), a4_argv, "A4-argv"),
+    "subcommand-word-admitted": ("ca", (("    if first and line in CODEX_EXEC_COMMANDS:", "    if False:"),),
+                                 a4_argv, "A4-argv"),
     "model-first-only": ("ca", (("    out = [CLIENT, SUBCOMMAND, JSON_FLAG, MODEL_FLAG, model, *MODE_FLAGS[mode]]",
                                  "    out = [CLIENT, SUBCOMMAND, JSON_FLAG, *MODE_FLAGS[mode]] + "
                                  "([MODEL_FLAG, model] if first else [])"),), a4_argv, "A4-argv"),
-    "model-defaulted": ("ca", (("        init = ro[\"init\"]\n",
-                                "        init = ro[\"init\"] or {\"model\": self.model, \"permission_mode\": "
-                                "self.mode, \"version\": \"0.160.1\"}\n"),), a5_model, "A5-model"),
+    # Codex slice 2: the requested model standing as init (the rollout's turn_context read as proof)
+    "model-defaulted": ("ca", (("end_reason(got[\"exit_code\"], got[\"timed_out\"], read), init=None,",
+                                "end_reason(got[\"exit_code\"], got[\"timed_out\"], read), init=init,"),),
+                        a5_model, "A5-model"),
+    "reroute-unread": ("ca", (("        if to_model is not None:", "        if False:"),), a5_model, "A5-model"),
+    "requested-model-as-served": ("ca", (("    model = ({\"value\": read[\"served_model\"], \"source\": \"stream-reroute\"}"
+                                          " if read[\"served_model\"] is not None",
+                                          "    model = ({\"value\": read[\"served_model\"] or \"gpt-6-luna\", "
+                                          "\"source\": \"stream-reroute\"} if True"),), a5_model, "A5-model"),
     "failed-as-end-turn": ("ca", (("    if exit_code == 0 and read[\"completed\"] == 1 and read[\"failed\"] == 0:",
                                    "    if exit_code == 0:"),), a6_turn, "A6-turn"),
     "other-thread-resumed": ("ca", (("        elif read[\"thread_ids\"] and read[\"thread_ids\"] != [self.thread_id]:",
@@ -1158,8 +1471,17 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_model_first_only(self):
         self.kill("model-first-only")
 
+    def test_witness_subcommand_word_admitted(self):
+        self.kill("subcommand-word-admitted")
+
     def test_witness_model_defaulted(self):
         self.kill("model-defaulted")
+
+    def test_witness_reroute_unread(self):
+        self.kill("reroute-unread")
+
+    def test_witness_requested_model_as_served(self):
+        self.kill("requested-model-as-served")
 
     def test_witness_failed_as_end_turn(self):
         self.kill("failed-as-end-turn")
@@ -1171,7 +1493,7 @@ class TestWitnesses(unittest.TestCase):
         self.kill("shapes-recorded")
 
     def test_the_witnesses_are_named_and_each_anchor_occurs_once(self):
-        self.assertEqual(len(WITNESSES), 13)
+        self.assertEqual(len(WITNESSES), 16)            # + subcommand-word-admitted (the box Codex-exec review's MAJOR)
         for name, (target, edits, _, _) in WITNESSES.items():
             path = Path(TARGETS[target]().__file__)
             self.assertTrue(path.is_file(), f"{name}: {path.name} does not exist")
@@ -1198,8 +1520,8 @@ class TestWitnesses(unittest.TestCase):
 NEGATE = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.In: ast.NotIn, ast.NotIn: ast.In, ast.Is: ast.IsNot,
           ast.IsNot: ast.Is, ast.Lt: ast.GtE, ast.GtE: ast.Lt, ast.Gt: ast.LtE, ast.LtE: ast.Gt}
 TC_CHECKS = (s1_event, s2_item, s3_key, p1_view, b3_required, b8_types)
-CA_CHECKS = (a1_stream, a2_error, a3_usage, a4_argv, a5_model, a6_turn, a7_source, b1_end, b2_thread, b3_stream,
-             b4_rollout, b5_usage, b6_empty, b7_blank, b9_record, b10_cut, b11_version)
+CA_CHECKS = (a1_stream, a2_error, a3_usage, a4_argv, a5_model, a8_journal, a6_turn, a7_source, b1_end, b2_thread, b3_stream,
+             b4_rollout, b5_usage, b6_empty, b7_blank, b9_record, b10_cut, b11_version, b12_executed, b13_native)
 
 _PREAMBLE = "the import preamble: this test puts the module folder on sys.path before it imports either module"
 _LABEL = "a what-label passed to _keys or _types, which use it only in their refusal's words"

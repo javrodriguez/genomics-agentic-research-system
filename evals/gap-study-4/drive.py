@@ -1519,6 +1519,17 @@ def main() -> int:
 from box import preflight as _preflight  # noqa: E402
 from box import run_take as _run_take  # noqa: E402
 from box import scan_record as _scan_record  # noqa: E402
+import importlib.util as _importlib_util  # noqa: E402
+# The box lane's ownership road (box/ownership.py, 81ede46d): imported like the box modules above wherever the file is
+# (the merged head); absent from this tree, it stays None and TakeDriver.launch refuses (ownership_problems). A module
+# that is present but fails to import raises here, never read as absent.
+_ownership = None
+if _importlib_util.find_spec("box.ownership") is not None:
+    from box import ownership as _ownership  # noqa: E402
+# The box lane's run-tree settings guard (box/settings_guard.py, d3fd5305; ownership review finding 1), the same way.
+_settings_guard = None
+if _importlib_util.find_spec("box.settings_guard") is not None:
+    from box import settings_guard as _settings_guard  # noqa: E402
 
 OUTCOMES_FILE = takes_mod.HISTORY_FILES[0]
 OUTCOME_KIND = "ledger"
@@ -1588,7 +1599,7 @@ class TakeRepo:
         and every id of leaked_containers (ruling S6-gap4-2: a take's surviving sidecar or proxy too)."""
         ids = []
         for entry in self.history():
-            if takes_mod.batch.is_ruling(entry):
+            if not takes_mod.batch.is_outcome(entry):     # a take's or a night ruling
                 continue
             missing = [k for k in ("leaked_container", "leaked_containers") if k not in entry]
             if missing:          # W6H-R2-1 (S6b): a typed refusal, never a bare KeyError
@@ -1805,6 +1816,10 @@ class TakeRepo:
 # =====================================================================================================================
 
 import threading  # noqa: E402
+import types  # noqa: E402  (live harness 3a: the executed-refused turn's end for _quiesce)
+import native_snapshot as _native_snapshot  # noqa: E402  (live harness 3c)
+import vendor_provenance as _vendor_provenance  # noqa: E402  (live harness integration: the native history record)
+import native_reader_registration as _registration  # noqa: E402  (the production native-reader registry)
 
 import agent_adapter as _adapter  # noqa: E402
 import harness_bookkeeping as _hb  # noqa: E402
@@ -1819,12 +1834,105 @@ TAKE_FILE_KINDS = {"launch.json": "launch", "teardown.json": "launch", "proxy.lo
                    "preflight.json": "preflight", "refusal.json": "preflight", "transcript.jsonl": "transcript",
                    "postflight.json": "preflight",    # S6b (e)
                    "operator-check.json": "launch",   # S6b C11
-                   "driver-ledger.json": "ledger", "environment.json": "launch", "scrub.json": "launch"}   # S6c C6-C8
+                   "driver-ledger.json": "ledger", "environment.json": "launch", "scrub.json": "launch",   # S6c C6-C8
+                   "public-config.json": "launch",   # live harness 13 Oct: box take_config.public_record's bytes
+                   "ownership-grant.json": "launch", "ownership-restore.json": "launch",   # the ownership road
+                   "settings-guard.json": "launch",   # the run tree's Claude settings: baseline and per-turn checks
+                   "evidence-ledger.jsonl": "evidence", "evidence-ledger-copy.json": "launch"}   # review MAJOR 1
 STREAM_NAME = re.compile(r"turn-[1-9][0-9]*\.jsonl")
+# Live harness 13 Oct: the box's per-turn actual-submission journal (run_take: stream path + ".launch.json"), an exact
+# top-level sibling of a turn stream, scanned as an unmaskable launch record. Nearby or nested spellings still refuse.
+LAUNCH_JOURNAL_NAME = re.compile(r"turn-[1-9][0-9]*\.jsonl\.launch\.json")
 EVIDENCE_DIR, SESSION_DIR = "evidence", "session"
 EVIDENCE_KINDS = {_sidecar.SNAPSHOTS: "snapshot", _sidecar.BLOBS: "blob"}
 PREFLIGHT_RECORD, REFUSAL_RECORD, TEARDOWN_RECORD = "preflight.json", "refusal.json", "teardown.json"
 POSTFLIGHT_RECORD, OPERATOR_CHECK_RECORD = "postflight.json", "operator-check.json"
+# THE OWNERSHIP ROAD (stub-take review finding 9; the box lane's call contract, live-box-2026-10-13.md at 81ede46d,
+# routed by glitch-06 on 14 Oct 2026). Under rootless Docker the run tree and config folder are granted to the agent,
+# and the evidence folder to the watcher, before run_take.launch; all three are restored to the host user after
+# teardown, before postflight, the scan and the config folder's removal. The road is box/ownership.py (`_ownership`
+# above) unless a TakeDriver is handed another that has this exact interface (a fake, in the tests on a branch that
+# lacks the box module):
+#   grant(runtime, *, image, run_tree, config_dir, evidence_dir, caller_env)  -> record; raises OwnershipError
+#   restore(runtime, *, image, run_tree, config_dir, evidence_dir, ids, caller_env) -> record; raises OwnershipError
+#   OwnershipError   an exception class whose instances carry `record`
+#   operator_write(runtime, *, image, run_tree, rel_path, data, caller_env) -> {ok, path, sha256, bytes}
+#   operator_read(runtime, *, image, root_kind, root, rel_path, caller_env) -> bytes | None
+#   operator_list(runtime, *, image, root_kind, root, rel_dir, caller_env) -> [(name, kind)], kind in file, dir, link,
+#                    other (root_kind "run_tree" or "config"; drive-wiring review MAJOR 1: the vendor arms' native
+#                    sessions are read in the agent-owned config folder through these, never host-side)
+#                    (ownership review MAJOR 2, the box contract at 4c3d8e53: a mid-take operator step reads and writes
+#                    the agent-owned run tree inside the box, never host-side; required at launch for a task with one)
+OWNERSHIP_GRANT_PARAMS = ("runtime", "image", "run_tree", "config_dir", "evidence_dir", "caller_env")
+OWNERSHIP_RESTORE_PARAMS = ("runtime", "image", "run_tree", "config_dir", "evidence_dir", "ids", "caller_env")
+OWNERSHIP_OPERATOR_WRITE_PARAMS = ("runtime", "image", "run_tree", "rel_path", "data", "caller_env")
+OWNERSHIP_OPERATOR_READ_PARAMS = ("runtime", "image", "root_kind", "root", "rel_path", "caller_env")
+OWNERSHIP_OPERATOR_LIST_PARAMS = ("runtime", "image", "root_kind", "root", "rel_dir", "caller_env")
+OPERATOR_ROOTS = ("run_tree", "config")      # the box's operator_read and operator_list roots (box d73c43ed)
+OWNERSHIP_GRANT_RECORD, OWNERSHIP_RESTORE_RECORD = "ownership-grant.json", "ownership-restore.json"
+OWNERSHIP_STEPS = ("ownership-grant", "ownership-restore")      # the driver ledger's operator steps, in order
+_IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}")                    # the lock's image id; a tag never runs a step
+
+
+# THE SETTINGS GUARD (ownership review finding 1; the box contract at d3fd5305): the run tree's Claude settings files are
+# baselined host-side before the grant, and every turn k is sent only when the sidecar's own pre-k snapshot shows them
+# unchanged, and every turn's post-k snapshot (the last turn's too) must show them unchanged as well (box 22b15f56,
+# review round 2: Claude Code reloads a changed settings file, so a change is caught at that turn's post-k). The guard
+# is box/settings_guard.py (`_settings_guard`) unless a TakeDriver is handed another with this interface:
+# baseline(run_tree, *, model) -> {path: sha256}, raising SettingsRefused; snapshot_problems(snapshot, base) -> [problem].
+SETTINGS_RECORD = "settings-guard.json"
+# Drive-wiring review MAJOR 1: the driver's evidence-ledger lines during the take, and the record of their copy.
+EVIDENCE_LEDGER_HOST, EVIDENCE_LEDGER_COPY = "evidence-ledger.jsonl", "evidence-ledger-copy.json"
+SETTINGS_GUARD_PARAMS = {"baseline": ("run_tree", "model"), "snapshot_problems": ("snapshot", "base")}
+
+
+def settings_guard_problems(guard) -> list:
+    """Why `guard` is not a settings guard this driver can call (empty when it is); None is a problem, never a skip."""
+    import inspect
+    if guard is None:
+        return ["no settings guard: box/settings_guard.py is not on this tree (the box lane's d3fd5305), so no take "
+                "launches"]
+    p = []
+    err = getattr(guard, "SettingsRefused", None)
+    if not (isinstance(err, type) and issubclass(err, Exception)):
+        p.append("the settings guard's SettingsRefused is not an exception class")
+    for name, params in SETTINGS_GUARD_PARAMS.items():
+        fn = getattr(guard, name, None)
+        if not callable(fn) or [q.name for q in inspect.signature(fn).parameters.values()] != list(params):
+            p.append(f"the settings guard has no {name}({', '.join(params)})")
+    return p
+
+
+def ownership_problems(road, *, operator_write: bool = False, native: bool = False) -> list:
+    """Why `road` is not an ownership road this driver can call (empty when it is): the interface above, by name,
+    kind and order of each parameter. None (box/ownership.py absent from this tree) is a problem, never a skip.
+    operator_write: the take has a mid-take operator step, so the road must also offer operator_write and
+    operator_read. native: a vendor take, whose native session is read through operator_list and operator_read."""
+    import inspect
+    if road is None:
+        return ["no ownership road: box/ownership.py is not on this tree (the box lane's 81ede46d), so no take "
+                "launches"]
+    p = []
+    err = getattr(road, "OwnershipError", None)
+    if not (isinstance(err, type) and issubclass(err, Exception)):
+        p.append("the ownership road's OwnershipError is not an exception class")
+    steps = [("grant", OWNERSHIP_GRANT_PARAMS), ("restore", OWNERSHIP_RESTORE_PARAMS)]
+    if operator_write:
+        steps += [("operator_write", OWNERSHIP_OPERATOR_WRITE_PARAMS)]
+    if operator_write or native:
+        steps += [("operator_read", OWNERSHIP_OPERATOR_READ_PARAMS)]
+    if native:
+        steps += [("operator_list", OWNERSHIP_OPERATOR_LIST_PARAMS)]
+    for name, params in steps:
+        fn = getattr(road, name, None)
+        if not callable(fn):
+            p.append(f"the ownership road has no callable {name}")
+            continue
+        got = list(inspect.signature(fn).parameters.values())
+        kinds = [inspect.Parameter.POSITIONAL_OR_KEYWORD] + [inspect.Parameter.KEYWORD_ONLY] * (len(params) - 1)
+        if [q.name for q in got] != list(params) or [q.kind for q in got] != kinds:
+            p.append(f"the ownership road's {name} is not {name}({params[0]}, *, {', '.join(params[1:])})")
+    return p
 # What the checker callable returns: a closed record (the drive step's operator-side reading of the take).
 # S6b (C11, C12): the operator-diff count and the finalize abort are the driver's own readings now, so the checker
 # hands only its reasons and its per-id events.
@@ -1839,7 +1947,11 @@ def pre_turn_refusal(e: BaseException) -> bool:
     launch record's Refused, the sidecar's ReplyError, malformed JSON), a NotReady of a box module (run_take's,
     sidecar's, the lock reader's: each box module defines its own NotReady(RuntimeError); drive.py never names the lock
     module, so the class is told by its name and its box module), or a TimeoutError of the begin exec. Anything else
-    (a TypeError, a NotImplementedError, a RecursionError) is a defect and is raised, never routed as a rehearsal."""
+    (a TypeError, a NotImplementedError, a RecursionError) is a defect and is raised, never routed as a rehearsal.
+    Live harness 3a: an executed turn's refusal (agent_adapter.ExecutedTurnRefused, even one that is also a ValueError)
+    is never a pre-turn refusal: the turn ran."""
+    if isinstance(e, _adapter.ExecutedTurnRefused):
+        return False
     if isinstance(e, (ValueError, TimeoutError)):
         return True
     return (isinstance(e, RuntimeError) and type(e).__name__ == "NotReady"
@@ -1848,6 +1960,24 @@ def pre_turn_refusal(e: BaseException) -> bool:
 
 class DriveRefused(RuntimeError):
     """The drive step cannot hand the take to routing: the loop records it `failed` and stops for a human."""
+
+
+class LaunchNeedsRuling(DriveRefused):
+    """Review NOTE 6 (glitch-06's ruling, 14 Oct 2026): a refusal before launch that a restart would only meet again
+    (a refused settings baseline, a failed grant): nothing launched, and batch records it BLOCKED for a ruling, never
+    re-driven on its own. Departure, named: the box contract said "a rehearsal" for both."""
+    needs_ruling = True
+
+
+class OperatorStepRefused(DriveRefused):
+    """A mid-take operator step's read or write through the ownership road failed (ownership review MAJOR 2): the
+    take stopped after its drive started, for a human ruling, never a re-run."""
+
+
+class NativeCrossCheckPending(DriveRefused):
+    """Live harness integration: a vendor take whose native cross-check cannot run yet (no reviewed native reader).
+    D8 grades a vendor's host-captured stream "cross-checked with" its native record, so the take is not gradable:
+    stopped after cleanup, ledger and scan for a human ruling, never graded, never readers-disagree, never a re-run."""
 
 
 def stream_path(take, n: int) -> str:
@@ -1894,6 +2024,18 @@ class _Take:
         self.identity = None           # S6c C7: identity_for(row), checked closed
         self.environment = None        # S6c C8: environment.json as written before the first turn
         self.cross_check = None        # S6c C6: the streams against the session file (problems; [] when they agree)
+        self.executed_refusal = None   # live harness 3a: the executed turn whose own record the harness refused
+        self.adapter_ref = None        # live harness 3c: the adapter the executed-refusal road retains through
+        self.cross_check_status = None  # live harness integration: a vendor take's native cross-check status
+        self.native_hook = False       # live harness 3c: the adapter names a native session to retain per turn
+        self.native_snapshots: list = []        # 3c: {file, sha256} per retained turn, under session/
+        self.native_snapshot_refusal = None     # 3c: why a turn's snapshot was not retained (the take stops)
+        self.spec = None               # the ownership road: the TakeSpec the grant and the restore name
+        self.grant = None              # {ok, why, record}: the grant's record (ownership-grant.json)
+        self.restore = None            # {ok, why, ids, record}: the restore's record (ownership-restore.json)
+        self.ownership_hold = None     # why the take's folders are kept for a human: no postflight, scan or commit
+        self.settings = None           # {baseline, refused, checks}: the settings guard's record (settings-guard.json)
+        self.settings_stop = None      # the problems that stopped the take before turn k > 1 (a ruling)
 
 
 class TakeDriver:
@@ -1924,15 +2066,22 @@ class TakeDriver:
                      script_from_design, hands steps with their markers); False keeps S6's synthetic line scripts
     secrets          () -> [(kind, value)] for the scan, read at scan time and never held
     rules_scanner, holdout_matcher   box/scan_record.py's
-    uid_map          the runtime's uid map lines (container start, host start, length)
+    uid_map          the runtime's uid map lines (container start, host start, length), or (take) -> those lines,
+                     read at run time from the take container (walk_builders.run_time_readers)
     budget_s, finalize_wait_s, poll_s   the turn budget, the quiescence cap and the poll interval (pre-registered)
     clock, sleep     the injected host clock and sleep (no real wait in a test)
+    ownership        the ownership road (OWNERSHIP_GRANT_PARAMS, OWNERSHIP_RESTORE_PARAMS): box/ownership.py when
+                     None; launch refuses while ownership_problems names anything
+    settings_guard   the run tree's settings guard (SETTINGS_GUARD_PARAMS): box/settings_guard.py when None; launch
+                     refuses while settings_guard_problems names anything
+    machine_gate     P-2 (glitch-06, 14 Oct 2026): () -> [problem], machine_gate.gate's check (an athena suite in
+                     progress, a booked machine); launch refuses while it names anything, and when it is None
     """
 
     def __init__(self, *, runtime, take_folder, config_parent, spec_for, sidecar_for, proxy, lock_path, hosts,
                  adapter_for, script_for, pin_for, checker, secrets, rules_scanner, uid_map, budget_s,
                  finalize_wait_s, poll_s, clock, sleep, project_for, identity_for, holdout_matcher=None,
-                 caller_env=None, strict_script=False):
+                 caller_env=None, strict_script=False, ownership=None, settings_guard=None, machine_gate=None):
         if not callable(getattr(runtime, "run", None)):
             raise TypeError("runtime must offer run(argv, env=, timeout=)")
         for name, fn in (("take_folder", take_folder), ("spec_for", spec_for), ("sidecar_for", sidecar_for),
@@ -1952,6 +2101,9 @@ class TakeDriver:
         self.project_for = project_for
         self.identity_for = identity_for                  # S6c C7
         self.strict_script = strict_script is True        # W6J-R1-3: True in the CP6 production wiring
+        self.ownership = _ownership if ownership is None else ownership   # the box module unless one is handed in
+        self.settings_guard = _settings_guard if settings_guard is None else settings_guard   # the same
+        self.machine_gate = machine_gate                  # P-2: () -> [problem]; None refuses every launch
         self._lock = threading.Lock()
         self._by_id: dict = {}        # take container id -> _Take
         self._by_slot: dict = {}      # slot -> the slot's latest _Take not yet published
@@ -1966,6 +2118,16 @@ class TakeDriver:
         partial teardown did not remove it (batch records it and removes it again), else None."""
         if self.publish_problems:                             # S6b Q6 (D5): a config folder never reused silently
             raise DriveRefused(f"a published take's cleanup failed: {self.publish_problems[0]}")
+        road = ownership_problems(self.ownership,               # before any folder or container
+                                  operator_write=any(task == row.get("task") for task, _ in OPERATOR_STEPS),
+                                  native=(row.get("agent") or {}).get("harness") in VENDOR_HARNESSES)
+        road += settings_guard_problems(self.settings_guard)
+        if road:
+            raise DriveRefused("; ".join(road))
+        busy = (["no machine gate (P-2): a take never starts unchecked"] if not callable(self.machine_gate)
+                else list(self.machine_gate()))
+        if busy:                                              # P-2: before any folder or container
+            raise DriveRefused("P-2, the take does not start: " + "; ".join(busy))
         folder = self.take_folder(row) if _folder is None else _folder
         if not isinstance(folder, str) or not os.path.isabs(folder) or os.path.normpath(folder) != folder:
             raise DriveRefused(f"the take folder is not a normalised absolute path: {folder!r}")
@@ -1976,7 +2138,10 @@ class TakeDriver:
             self._by_slot[row["slot"]] = take
         os.mkdir(take.evidence_dir)
         take.sidecar = self.sidecar_for(row, take.evidence_dir)
-        spec = self.spec_for(row, cfg)
+        spec = self.spec_for(row, cfg)       # every host-side write into the run tree and config folder is done here
+        take.spec = spec
+        self._settings_baseline(take)        # the settings guard: host-side, before the grant (no watcher yet)
+        self._grant_ownership(take)          # the ownership road: after them and the evidence folder, pre-launch
         try:
             take.launched = _run_take.launch(self.runtime, spec, sidecar=take.sidecar, proxy=self.proxy,
                                              record_dir=folder, caller_env=self.caller_env)
@@ -1987,10 +2152,91 @@ class TakeDriver:
             if e.container_id:
                 with self._lock:
                     self._by_id[e.container_id] = take
+            self._restore_ownership(take)    # after the launch's partial teardown; a failure holds the take
+            raise
+        except Exception:                    # review MINOR 4: refused before any container, after the grant
+            if take.launched is None:
+                self._restore_ownership(take, ids=[])
             raise
         with self._lock:
             self._by_id[take.launched.take_id] = take
         return take.launched.take_id
+
+    # ------------------------------------------------------------------------------------------- the settings guard
+    def _settings_baseline(self, take) -> None:
+        """The run tree's Claude settings files, baselined before the grant. A refusal (a forbidden key, an odd
+        shape) means no launch: recorded in settings-guard.json and raised as DriveRefused (nothing ran)."""
+        try:
+            base = self.settings_guard.baseline(take.spec.run_tree, model=take.row["model"])   # the pinned model
+        except Exception as e:  # noqa: BLE001 - SettingsRefused or any other failure: no launch
+            take.settings = {"baseline": None, "refused": f"{type(e).__name__}: {str(e)[:500]}", "checks": []}
+            self._write(take, SETTINGS_RECORD, take.settings)
+            raise LaunchNeedsRuling(f"the run tree's Claude settings refused before launch: {e}") from e
+        take.settings = {"baseline": base, "refused": None, "checks": []}   # written once, by the cleanup
+
+    def _settings_problems(self, take, label: str) -> list:
+        """The guard over the sidecar's own snapshot `label` (pre-n before turn n, post-n after it), read from the
+        evidence folder, never the run tree. A snapshot that is missing or does not read is a problem, never a pass.
+        Recorded either way."""
+        path = os.path.join(take.evidence_dir, _sidecar.SNAPSHOTS, f"{label}.json")
+        try:
+            with open(path, encoding="utf-8") as fh:
+                doc = json.load(fh)
+            problems = list(self.settings_guard.snapshot_problems(doc, take.settings["baseline"]))
+        except Exception as e:  # noqa: BLE001 - an unreadable snapshot or a failing guard is a problem
+            problems = [f"{label}: the settings check could not run ({type(e).__name__}: {str(e)[:200]})"]
+        take.settings["checks"].append({"snapshot": label, "problems": problems})
+        return problems
+
+    # ------------------------------------------------------------------------------------------- the ownership road
+    def _grant_ownership(self, take) -> None:
+        """Grant the run tree and config folder to the agent and the evidence folder to the watcher, by the take
+        image's id. On OwnershipError the take never launches: a restore with no ids undoes any partial grant, the
+        grant record is written, and DriveRefused is raised (nothing ran)."""
+        spec, road = take.spec, self.ownership
+        image = getattr(spec, "image", None)
+        if not isinstance(image, str) or not _IMAGE_ID.fullmatch(image):
+            raise DriveRefused(f"the ownership road runs the take image by its lock's id, never {image!r}")
+        try:
+            record = road.grant(self.runtime, image=spec.image, run_tree=spec.run_tree, config_dir=take.config_dir,
+                                evidence_dir=take.evidence_dir, caller_env=self.caller_env)
+        except Exception as e:  # noqa: BLE001 - OwnershipError, or a refusal before any step: undone and refused
+            take.grant = {"ok": False, "why": f"{type(e).__name__}: {str(e)[:500]}",
+                          "record": getattr(e, "record", None)}
+            self._restore_ownership(take, ids=[])
+            self._write(take, OWNERSHIP_GRANT_RECORD, take.grant)
+            raise LaunchNeedsRuling(f"ownership grant failed, the take is not launched: {e}") from e
+        take.grant = {"ok": True, "why": None, "record": record}
+        self._write(take, OWNERSHIP_GRANT_RECORD, take.grant)
+
+    def _restore_ownership(self, take, ids=None) -> None:
+        """Restore the three folders to the host user (ids: every container the take recorded). Never raises: any
+        failure sets take.ownership_hold, so no postflight, scan, commit or removal follows, and the take's folders
+        are kept for a human ruling. The restore record is written either way."""
+        spec, road = take.spec, self.ownership
+        try:
+            ids = list(take.launched.ids()) if ids is None else list(ids)
+            record = road.restore(self.runtime, image=spec.image, run_tree=spec.run_tree, config_dir=take.config_dir,
+                                  evidence_dir=take.evidence_dir, ids=ids, caller_env=self.caller_env)
+            take.restore = {"ok": True, "why": None, "ids": ids, "record": record}
+        except Exception as e:  # noqa: BLE001 - OwnershipError or anything else: the folders are held, fail closed
+            take.restore = {"ok": False, "why": f"{type(e).__name__}: {str(e)[:500]}",
+                            "ids": ids if isinstance(ids, list) else None, "record": getattr(e, "record", None)}
+            take.ownership_hold = f"ownership restore failed ({type(e).__name__}: {str(e)[:300]})"
+        try:
+            self._write(take, OWNERSHIP_RESTORE_RECORD, take.restore)
+        except Exception as e:  # noqa: BLE001
+            take.ownership_hold = take.ownership_hold or f"the restore record could not be written ({e})"
+
+    @staticmethod
+    def _unrestored(take) -> str | None:
+        """Why the take's records must not be read, scanned or committed: a held restore, or a grant never
+        restored."""
+        if take.ownership_hold:
+            return take.ownership_hold
+        if take.grant is not None and take.restore is None:
+            return "the take's folders were granted and never restored"
+        return None
 
     # ------------------------------------------------------------------------------------------- drive (R4-9..11)
     def _env(self) -> dict:
@@ -2001,8 +2247,9 @@ class TakeDriver:
         return _sidecar.parse_completed(self.runtime.run(argv, env=self._env(), timeout=_run_take.STEP_TIMEOUT_S))
 
     def _gone(self, take) -> list:
+        uid_map = self.uid_map(take) if callable(self.uid_map) else self.uid_map   # read at run time, or given
         return _run_take.wait_gone(self.runtime, take.launched.take_id, agent_uid=_run_take._uid_of(
-            _run_take.AGENT_USER), uid_map=self.uid_map, cap_s=self.finalize_wait_s, interval_s=self.poll_s,
+            _run_take.AGENT_USER), uid_map=uid_map, cap_s=self.finalize_wait_s, interval_s=self.poll_s,
             clock=self.clock, sleep=self.sleep, caller_env=self.caller_env)
 
     def _kill(self, take) -> int:
@@ -2047,14 +2294,46 @@ class TakeDriver:
 
     # ------------------------------------------------------------------------------------------- S6b C9-C11
     def _evidence_line(self, take, rec: dict) -> None:
-        """C10: one record of the driver's evidence ledger (endstate's ledger.jsonl), appended in order."""
-        with open(os.path.join(take.evidence_dir, _endstate.LEDGER), "a", encoding="utf-8") as fh:
+        """C10: one record of the driver's evidence ledger (endstate's ledger.jsonl), appended in order. Drive-wiring
+        review MAJOR 1 (glitch-06's ruling, 14 Oct 2026): during the take the evidence folder is the watcher's, so the
+        lines go to a host-owned file in the take folder (outside every granted folder, never mounted into a
+        container), copied byte-exact into the evidence folder after the restore (_copy_evidence_ledger)."""
+        with open(os.path.join(take.folder, EVIDENCE_LEDGER_HOST), "a", encoding="utf-8") as fh:
             fh.write(json.dumps(rec, sort_keys=True) + "\n")
 
+    def _copy_evidence_ledger(self, take) -> None:
+        """After a restore that succeeded: the host ledger copied byte-exact into <evidence>/ledger.jsonl (a new file,
+        links never followed), both sha256 recorded in evidence-ledger-copy.json, then the host copy removed. Any
+        failure holds the take (no postflight, scan or commit) and keeps the host copy with the folders."""
+        host = os.path.join(take.folder, EVIDENCE_LEDGER_HOST)
+        if not os.path.lexists(host):
+            return                                            # nothing of the drive was logged (a launch road)
+        try:
+            with open(host, "rb") as fh:
+                data = fh.read()
+            fd = os.open(os.path.join(take.evidence_dir, _endstate.LEDGER),
+                         os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(data)
+            with open(os.path.join(take.evidence_dir, _endstate.LEDGER), "rb") as fh:
+                back = fh.read()
+            record = {"host_sha256": hashlib.sha256(data).hexdigest(),
+                      "evidence_sha256": hashlib.sha256(back).hexdigest(), "bytes": len(data)}
+            self._write(take, EVIDENCE_LEDGER_COPY, record)
+            if record["host_sha256"] != record["evidence_sha256"]:
+                raise OSError("the evidence copy's bytes are not the host ledger's")
+            os.remove(host)
+        except Exception as e:  # noqa: BLE001 - the take is held, its host ledger kept with the folders
+            why = f"the evidence ledger could not be copied ({type(e).__name__}: {e})"
+            take.ownership_hold = take.ownership_hold or why
+
     def _operator_step(self, take, row, step) -> bool:
-        """C9 (ruling D8): the closed table's operator step after turn n, done host-side in the run tree and logged
-        as one operator event (its writes with the state each leaves). False when the step's wait ran out (C12:
-        round 3's finalize abort); the event is then not logged, because nothing was written."""
+        """C9 (ruling D8): the closed table's operator step after turn n, logged as one operator event (its writes
+        with the state each leaves). Ownership review MAJOR 2 (the box contract's operator addition): the run tree is
+        the agent's after the grant, so every read and write of it here is the box's (operator_read, operator_write,
+        inside the box, links never followed), never a host-side open; the event's sha256 is the write's reply.
+        False when the step's wait ran out (C12: round 3's finalize abort); the event is then not logged, because
+        nothing was written. A failed read or write stops the take (OperatorStepRefused)."""
         op_id, action = step
         tree = take.launched.spec.run_tree
         project = self.project_for(row)
@@ -2062,38 +2341,64 @@ class TakeDriver:
         target = os.path.join(proj, "00_data", "rnaseq_bulk", "samples.csv")
         if action == OPERATOR_SAVE:
             from fixtures import gen_explain_not_act as _gen          # the generator's own save (SAVE_PATH)
-            written = str(_gen.operator_save(Path(proj)))
+            written, data = str(_gen.samples_csv(Path(proj))), _gen.CORRECTED.encode()   # operator_save's bytes
         elif action == OPERATOR_FINALIZE:
             deadline = self.clock() + self.finalize_wait_s
-            while not (os.path.isfile(target) and "sample_id" in open(target, encoding="utf-8",
-                                                                           errors="replace").read()):
+            while True:                                     # each poll is one box read; the injected poll_s paces it
+                got = self._operator_read(take, op_id, self._rel(target, tree))
+                if got is not None and b"sample_id" in got:
+                    break
                 if self.clock() >= deadline:
                     return False
                 self.sleep(self.poll_s)
-            design = os.path.join(tree, *DESIGN_TABLE.format(project=project).split("/"))
-            if not os.path.isfile(design):                  # W6I-R1-4: a stop, never a bare FileNotFoundError
+            table = self._operator_read(take, op_id, DESIGN_TABLE.format(project=project))
+            if table is None:                               # W6I-R1-4: a stop, never a bare FileNotFoundError
                 raise DriveRefused(f"operator step {op_id!r}: the fixture's design table {DESIGN_TABLE} is missing")
             want = (((_variants.load_task(row["task"])["halves"][row["half"]].get("fixture") or {})
                      .get("design_table") or {}).get("md5"))
-            with open(design, "rb") as fh:
-                table = fh.read()                           # S6c (W6I-R2-2): read once; these bytes are written
-            got = hashlib.md5(table).hexdigest()
+            got = hashlib.md5(table).hexdigest()            # S6c (W6I-R2-2): read once; these bytes are written
             if not want or got != want:                     # the table copied in is the fixture's pinned one
                 raise DriveRefused(f"operator step {op_id!r}: the design table's md5 {got} is not the fixture's "
                                    f"pinned {want!r}")
-            with open(target, "wb") as fh:                  # the hashed bytes, never a second read of the file
-                fh.write(table)
-            written = target
+            written, data = target, table                   # the hashed bytes, never a second read of the file
         else:
             raise DriveRefused(f"operator step {op_id!r} has no action this driver knows ({action!r})")
-        rel = os.path.relpath(written, tree).replace(os.sep, "/")
+        rel = self._rel(written, tree)
         if self._excluded(rel, row["agent"]["harness"]):          # CP2-requirements open question 4
             raise DriveRefused(f"operator step {op_id!r} writes {rel}, an excluded path; it is never logged")
-        with open(written, "rb") as fh:
-            after = {"type": "file", "sha256": hashlib.sha256(fh.read()).hexdigest()}
+        try:
+            reply = self.ownership.operator_write(self.runtime, image=take.spec.image, run_tree=tree, rel_path=rel,
+                                                  data=data, caller_env=self.caller_env)
+        except Exception as e:  # noqa: BLE001 - OwnershipError, Refused or anything else: the take's stop
+            raise OperatorStepRefused(f"operator step {op_id!r}: the box's write of {rel} failed "
+                                      f"({type(e).__name__}: {str(e)[:300]}); the take is kept for a human ruling, "
+                                      f"never a re-run") from e
+        ok = isinstance(reply, dict) and reply.get("ok") is True
+        sha = reply.get("sha256") if isinstance(reply, dict) else None
+        if not ok or sha != hashlib.sha256(data).hexdigest():
+            raise OperatorStepRefused(f"operator step {op_id!r}: the box's write of {rel} replied {reply!r}, not ok "
+                                      f"with the data's sha256; the take is kept for a human ruling")
         self._evidence_line(take, {"kind": "operator", "id": op_id, "at": self.clock(),
-                                   "writes": [{"path": rel, "after": after}]})
+                                   "writes": [{"path": rel, "after": {"type": "file", "sha256": sha}}]})
         return True
+
+    @staticmethod
+    def _rel(path: str, tree: str) -> str:
+        return os.path.relpath(path, tree).replace(os.sep, "/")
+
+    def _operator_read(self, take, op_id, rel: str):
+        """The box's read of one run-tree file (bytes, or None when it does not exist); any failure stops the take."""
+        try:
+            got = self.ownership.operator_read(self.runtime, image=take.spec.image, root_kind="run_tree",
+                                               root=take.launched.spec.run_tree, rel_path=rel,
+                                               caller_env=self.caller_env)
+        except Exception as e:  # noqa: BLE001 - OwnershipError, Refused or anything else: the take's stop
+            raise OperatorStepRefused(f"operator step {op_id!r}: the box's read of {rel} failed "
+                                      f"({type(e).__name__}: {str(e)[:300]}); the take is kept for a human ruling, "
+                                      f"never a re-run") from e
+        if got is not None and not isinstance(got, bytes):
+            raise OperatorStepRefused(f"operator step {op_id!r}: the box's read of {rel} gave {type(got).__name__}")
+        return got
 
     @staticmethod
     def _excluded(rel: str, harness: str) -> bool:
@@ -2139,13 +2444,86 @@ class TakeDriver:
         per-turn credential source. Written again with every turn's source once the take is done."""
         harness = row["agent"]["harness"]
         child = dict(_run_take.exec_values(harness, take.launched.spec.run_tree))
-        child[_run_take.LOGIN_VARIABLE[harness]] = "set"          # read and checked by run_take at exec time
+        if harness == _run_take.CODEX:
+            # The Codex lease road (glitch-06, 14 Oct 2026): a Codex row has no environment login (run_take.NO_LOGIN);
+            # its login is the lease file run_take.place_lease put in the config folder, never a child variable.
+            pass
+        else:
+            child[_run_take.LOGIN_VARIABLE[harness]] = "set"      # read and checked by run_take at exec time
         ident = take.identity
         take.environment = environment_record(child, os.environ, session_id=ident["session_id"], row=ident["row"],
                                               row_commit=ident["row_commit"], task=row["task"], half=row["half"],
                                               model=row["model"], claude_version=adapter.version())
         write_record_atomically(Path(take.folder) / ENVIRONMENT_RECORD_FILE, take.environment)   # rewritten at the end
         return money_line_names(take.environment)   # round 3's money line: the caller stops the take on any
+
+    def _executed_refused(self, take, n: int, line: str, e) -> list:
+        """Live harness 3a: turn n's exec ran and the adapter then refused its own record of it. The turn is accounted
+        for as launched: its evidence line from the kept times, quiescence (killed at once when it timed out), its
+        post-n snapshot and its ledger row (end unknown: None; the refusal named). Nothing further is sent. Returns
+        the snapshot's unreadable-consequential list. The drive then cleans up, writes its ledger, scans, and refuses
+        the take for a human (DriveRefused after the scan): never a pre-turn refusal, a rehearsal or a re-run."""
+        x = e.executed
+        stream = os.path.basename(x["stream_path"]) if isinstance(x.get("stream_path"), str) else None
+        take.executed_refusal = {"n": n, "exit_code": x["exit_code"], "timed_out": x["timed_out"],
+                                 "started_at": x["started_at"], "ended_at": x["ended_at"], "stream": stream,
+                                 "refused": str(x["refused"] or e)}
+        take.ledger_rows.append({"n": n, "sent": line, "expects": None,
+                                 "exit": TIMED_OUT_EXIT if x["timed_out"] else x["exit_code"], "end": None,
+                                 "then": None, "refused": take.executed_refusal["refused"]})
+        self._evidence_line(take, {"kind": "turn", "n": n, "started_at": x["started_at"], "ended_at": x["ended_at"]})
+        ended = types.SimpleNamespace(end_reason=_adapter.END_TIMED_OUT if x["timed_out"] else _adapter.END_ERROR)
+        left, killed = self._quiesce(take, ended)
+        take.executed_refusal["quiescence_kill"] = bool(killed)     # review r2 nit 4: carried, never dropped
+        if left:
+            take.survivors.append({"turn": n, "pids": list(left)})
+            stopped = self.clock()
+            for pid in left:
+                self._evidence_line(take, {"kind": "background", "pid": pid, "stopped_at": stopped})
+        unreadable = self._ctl(take, "snapshot", f"post-{n}")["unreadable_consequential"]
+        self._retain_native(take, take.adapter_ref, n)    # 3c: kept as evidence when the source allows; never raised
+        return unreadable
+
+    def _retain_native(self, take, adapter, n: int) -> bool:
+        """Live harness 3c: for an adapter that names a native session (native_session_path(home), home the take's
+        config folder), copy it into session/native-turn-<n>.jsonl after turn n's post-n snapshot and before any next
+        resume (native_snapshot.retain). False, with the reason kept, when it cannot be located or retained: nothing
+        further is sent and the take stops for a human after cleanup and scan. An adapter without one: True."""
+        locate = getattr(adapter, "native_session_rel", None)
+        if not callable(locate):
+            if callable(getattr(adapter, "native_session_path", None)):   # a host path only: never opened mid-take
+                take.native_hook = True
+                take.native_snapshot_refusal = (f"turn {n}: the adapter names no box road to its native session "
+                                                f"(native_session_rel)")
+                return False
+            return True
+        take.native_hook = True
+        try:
+            lister, reader = self.config_view(take)
+            rel = locate(lister)
+            take.native_snapshots.append(_native_snapshot.retain_bytes(take.folder, n, reader(rel)))
+            return True
+        except (_native_snapshot.SnapshotRefused, OSError) as e:
+            if take.native_snapshot_refusal is None:
+                take.native_snapshot_refusal = f"turn {n}: native session snapshot not retained: {e}"
+            return False
+
+    def config_view(self, take) -> tuple:
+        """(lister(rel_dir), reader(rel_path)) over the take's config folder through the box's operator_list and
+        operator_read (drive-wiring review MAJOR 1: the folder is the agent's during the take). A failure of either is
+        a SnapshotRefused naming the box step: an operator step's failure, never an agent event. A reader's None (the
+        file is absent) is passed on."""
+        road = self.ownership
+
+        def call(what, **kw):
+            try:
+                return getattr(road, what)(self.runtime, image=take.spec.image, root_kind="config",
+                                           root=take.config_dir, caller_env=self.caller_env, **kw)
+            except Exception as e:  # noqa: BLE001 - OwnershipError, Refused or anything else
+                raise _native_snapshot.SnapshotRefused(f"the box's {what} of the config folder failed "
+                                                       f"({type(e).__name__}: {str(e)[:200]})") from None
+        return (lambda rel_dir: call("operator_list", rel_dir=rel_dir),
+                lambda rel_path: call("operator_read", rel_path=rel_path))
 
     def _take_records(self, take, row, adapter, turns) -> None:
         """S6c C6, C7, C8, C14, once the agent's processes are gone and before the scan: the session file copied out
@@ -2155,9 +2533,21 @@ class TakeDriver:
         ident, rows = take.identity, take.ledger_rows
         cc = isinstance(adapter, _cc.ClaudeCodeAdapter)
         recs = list(adapter.turn_records) if cc else []
-        src = take_session_file(take.config_dir, ident["session_id"])
+        harness = row["agent"]["harness"]
+        vendor = harness in VENDOR_HARNESSES          # live harness integration: its own native evidence, never Claude's
+        src = None if vendor else take_session_file(take.config_dir, ident["session_id"])
         published, text, recorded = None, None, "unrecorded"
-        if src is not None:
+        history = (native_history_record(harness, Path(take.folder) / _native_snapshot.SESSION_DIR,
+                                         take.native_snapshots) if take.native_hook else None)
+        joined = history is not None and history["status"] == "joined"
+        cross = (gemini_cross_check(take.folder, take.native_snapshots, len(turns)) if harness == "gemini" and joined
+                 else codex_cross_check(take.folder, take.native_snapshots, [t.exit_code for t in turns])
+                 if harness == "codex" and joined else None)
+        status = vendor_cross_check_status(harness, history, cross) if vendor else None
+        if vendor:
+            take.cross_check = ([status["why"]] if status["status"] == "refused"
+                                else [] if status["status"] == "agreed" else None)
+        elif src is not None:
             try:
                 published = publish_transcript(Path(src), Path(take.folder))
             except SystemExit as e:              # scrub.py refuses by SystemExit: a stop here, never an exit
@@ -2180,7 +2570,7 @@ class TakeDriver:
                 cost = _cc.cost_record(recs, text, model=row["model"], version=version)
             except _cc.StreamError as e:
                 take.cross_check = list(take.cross_check) + [f"the cost reader refused the session file: {e}"]
-        outcome = take.outcome if src is not None else (
+        outcome = take.outcome if (src is not None or vendor) else (
             f"{take.outcome} \u2014 no session file for {ident['session_id']}")
         pin = self.pin_for(row)
         ledger = {"kind": "take", "task": row["task"], "half": row["half"], "wording": row.get("wording"),
@@ -2193,12 +2583,30 @@ class TakeDriver:
                   "permission_mode_recorded": recorded, "budget_s": self.budget_s,
                   "gars_tree_sha": ident["gars_tree_sha"], "fixture": ident["fixture"], "claude_version": version,
                   "turns": [dict(r) for r in rows], "outcome": outcome,
-                  "first_agent_turn": any(t.agent_output for t in turns),
+                  # live harness 3a: an executed turn whose record was refused leaves agent output unknown
+                  "first_agent_turn": (None if take.executed_refusal is not None
+                                       else any(t.agent_output for t in turns)),
                   "environment": {"file": ENVIRONMENT_RECORD_FILE, "sha256": env_sha},
                   "transcript": "transcript.jsonl" if src is not None else None, "published": published,
-                  "cross_check": list(take.cross_check),
+                  "cross_check": None if take.cross_check is None else list(take.cross_check),
                   "cost": cost,
                   "streams": [os.path.basename(t.stream_path) for t in turns if t.stream_path]}
+        ledger["operator_steps"] = [            # the ownership road: operator steps, never agent events
+            {"step": OWNERSHIP_STEPS[0], "ok": (take.grant or {}).get("ok"), "record": OWNERSHIP_GRANT_RECORD},
+            {"step": OWNERSHIP_STEPS[1], "ok": (take.restore or {}).get("ok"), "record": OWNERSHIP_RESTORE_RECORD}]
+        if take.native_hook:                      # live harness 3c: only for an adapter that names a native session
+            ledger["native_snapshots"] = [dict(r) for r in take.native_snapshots]
+            ledger["native_snapshot_refusal"] = take.native_snapshot_refusal
+            ledger["native_history"] = history
+        if harness == "codex":                    # D-INT-2: each turn's served-model evidence, recorded per take
+            ledger["served_model"] = [None if t.identity is None else dict(t.identity["model"]) for t in turns]
+        if vendor:                                # live harness integration: pending is recorded as pending
+            ledger["cross_check_status"] = status
+            take.cross_check_status = dict(status)
+        if take.executed_refusal is not None:     # live harness 3a: only when a turn's record was refused
+            ledger["executed_refusal"] = dict(take.executed_refusal)
+            if take.executed_refusal["stream"] is not None:
+                ledger["streams"].append(take.executed_refusal["stream"])
         self._write(take, LEDGER_FILE, ledger)
 
     @staticmethod
@@ -2250,6 +2658,14 @@ class TakeDriver:
                                                 "quiescence_survivors": list(take.survivors)})
         except Exception as e:  # noqa: BLE001
             take.cleanup.append(f"{TEARDOWN_RECORD}: {type(e).__name__}: {e}")
+        if take.settings is not None:     # the settings guard's record: its baseline and every per-turn check
+            try:
+                self._write(take, SETTINGS_RECORD, take.settings)
+            except Exception as e:  # noqa: BLE001
+                take.cleanup.append(f"{SETTINGS_RECORD}: {type(e).__name__}: {e}")
+        self._restore_ownership(take)    # the ownership road: after teardown (returned or raised), pre-postflight
+        if not take.ownership_hold:      # review MAJOR 1: the driver's ledger joins the evidence once it is the host's
+            self._copy_evidence_ledger(take)
 
     def drive(self, row: dict, container_id: str) -> dict:
         """One take, from preflight to its routable records (R4-9, R4-10), cleaning up on every road (R4-11)."""
@@ -2269,6 +2685,11 @@ class TakeDriver:
                                                  "version": self.pin_for(row)["version"]},
                                        "run_tree": "", "home": None})
             ok = self._preflight(take, row["agent"]["harness"])      # W6H-R1-8a: read inside the try
+            if ok:                # the settings guard at turn 1, at preflight's moment: a problem is a pre-turn refusal
+                first = self._settings_problems(take, "pre-1")
+                if first:
+                    self._refused(take, DriveRefused(f"pre-1: the run tree's Claude settings: {'; '.join(first)}"))
+                    ok = False
             if ok:
                 try:              # W6H-R1-7: the adapter's making or start before turn 1 is a pre-turn refusal
                     adapter = self.adapter_for(row, take)
@@ -2289,7 +2710,19 @@ class TakeDriver:
                 for n, line in enumerate(script, 1):
                     if n > 1:
                         unreadable += self._ctl(take, "snapshot", f"pre-{n}")["unreadable_consequential"]
-                    turn = adapter.turn(line, first=(n == 1), budget_s=self.budget_s)
+                        later = self._settings_problems(take, f"pre-{n}")   # the settings guard: turn n not sent
+                        if later:
+                            take.settings_stop = f"pre-{n}: the run tree's Claude settings: {'; '.join(later)}"
+                            break
+                    take.adapter_ref = adapter
+                    try:
+                        turn = adapter.turn(line, first=(n == 1), budget_s=self.budget_s)
+                    except _adapter.ExecutedTurnRefused as e:     # live harness 3a: the turn ran; account for it
+                        unreadable += self._executed_refused(take, n, line, e)
+                        after = self._settings_problems(take, f"post-{n}")   # review MINOR 2: this road too
+                        if after:
+                            take.settings_stop = f"post-{n}: the run tree's Claude settings: {'; '.join(after)}"
+                        break
                     turns.append(turn)
                     self._evidence_line(take, {"kind": "turn", "n": n, "started_at": turn.started_at,
                                                "ended_at": turn.ended_at})              # S6b C10
@@ -2302,7 +2735,12 @@ class TakeDriver:
                             self._evidence_line(take, {"kind": "background", "pid": pid, "stopped_at": stopped})
                     killed = killed or (k and bool(left))
                     unreadable += self._ctl(take, "snapshot", f"post-{n}")["unreadable_consequential"]
-                    if not script.read(turn):                         # S6c C13: an unheld marker, or a cut turn
+                    retained = self._retain_native(take, adapter, n)  # live harness 3c: before any next resume
+                    after = self._settings_problems(take, f"post-{n}")   # the settings guard, the last turn's too
+                    if after:
+                        take.settings_stop = f"post-{n}: the run tree's Claude settings: {'; '.join(after)}"
+                        break
+                    if not script.read(turn) or not retained:         # S6c C13: an unheld marker, or a cut turn
                         break
                     step = OPERATOR_STEPS.get((row["task"], script.done)) if script.done is not None else None
                     if step is not None and script.pending is not None:   # S6b C9: between post-n and pre-(n+1)
@@ -2313,14 +2751,22 @@ class TakeDriver:
                         script.then(step[0], failed=False)
                 take.outcome = script.outcome(turns, finalize_abort=finalize_abort, wait_s=self.finalize_wait_s,
                                               rate_limited=self._rate_limited(row, turns))
+                if take.executed_refusal is not None:
+                    r = take.executed_refusal
+                    take.outcome = (f"incomplete \u2014 turn {r['n']} executed and its record was refused: "
+                                    f"{r['refused']}")
             state = _run_take.container_state(self.runtime, take.launched.take_id, caller_env=self.caller_env)
         finally:
+            # _cleanup ends with the ownership restore; a held restore runs no postflight (nor scan, nor commit)
             self._cleanup(take, adapter)
-            post = self._postflight(take, row)                # S6b (e): every road, after cleanup, before the scan
+            post = self._postflight(take, row) if not take.ownership_hold else None   # S6b (e): pre-scan
+        if take.ownership_hold:                               # the ownership road: no postflight, scan or commit
+            raise DriveRefused(f"{take.ownership_hold}: the take's folders are kept for a human ruling, never a "
+                               f"re-run")
         if post is None or post.get("ok") is not True:        # a credential file left behind is a stop for a human
             why = "the postflight check did not run" if post is None else post["checks"][0]["detail"]
             raise DriveRefused(f"postflight: {why}; the config folder is kept for a human")
-        if ok and turns:                                       # S6c C6, C7, C8, C14: before the scan reads them
+        if ok and (turns or take.executed_refusal is not None):   # S6c C6-C8, C14; 3a: a launched turn needs it
             self._take_records(take, row, adapter, turns)
         # R4-10: scan -> mask, then the checker; routing and the commit follow in batch.py.
         scan = _scan_record.scan(self.take_files(take), list(self.secrets()), rules_scanner=self.rules_scanner,
@@ -2328,6 +2774,20 @@ class TakeDriver:
         if not _scan_record.passed(scan):
             why = "; ".join(f"{r['path']}:{r['line']} ({r['kind']}): {r['why']}" for r in scan["refused"])
             raise DriveRefused(f"the drive scan refused the take: {why}")
+        if take.settings_stop is not None:        # the settings guard after turn 1: cleaned, recorded and scanned
+            raise DriveRefused(f"{take.settings_stop}: no further turn is sent; the take is kept for a human ruling "
+                               f"(no registered harness-error row reads it), never a re-run")
+        if take.executed_refusal is not None:     # live harness 3a: cleaned, recorded and scanned; a human rules
+            r = take.executed_refusal
+            raise DriveRefused(f"turn {r['n']} executed and its record was refused ({r['refused']}): the take is "
+                               f"kept for a human ruling, never a rehearsal or a re-run")
+        if take.native_snapshot_refusal is not None:     # live harness 3c: cleaned, recorded and scanned
+            raise DriveRefused(f"{take.native_snapshot_refusal}: the take is kept for a human ruling, never a "
+                               f"rehearsal or a re-run")
+        pending = take.cross_check_status
+        if ok and turns and pending is not None and pending["status"] == "pending":   # D8: graded only cross-checked
+            raise NativeCrossCheckPending(f"native cross-check pending ({pending['why']}): the take is kept for a "
+                                          f"human ruling, never graded, never readers-disagree, never a re-run")
         ids = tuple(_routing.load_table()["checker_reasons_become_events"]["ids"])
         if ok and turns:
             checked = self.checker(row, take, list(turns))
@@ -2380,6 +2840,8 @@ class TakeDriver:
             leak = _run_take.LeakedContainer(f"still listed after their removal: {', '.join(still)}")
             leak.leaked_ids = list(still)          # S6-gap4-2: batch commits them as leaked_containers
             raise leak
+        if take is not None and take.grant is not None and take.grant["ok"] and take.restore is None:
+            self._restore_ownership(take)   # the ownership road: a drive refused before its cleanup; containers gone
         steps = (take.teardown or {}).get("steps", []) if take is not None else []
         bad = [s for s in steps if s.get("step") == "network-rm" and s.get("returncode") != 0]
         if bad and launched is not None and launched.network_id:
@@ -2404,6 +2866,8 @@ class TakeDriver:
         """TakeRepo's record_files: the slot's latest unpublished take's files ([] when none was launched)."""
         with self._lock:
             take = self._by_slot.get(row["slot"])
+        if take is not None and self._unrestored(take):     # the ownership road: never read, scanned or committed
+            raise DriveRefused(f"{self._unrestored(take)}: the take's folders are kept for a human ruling")
         return [] if take is None else self.take_files(take)
 
     def published(self, row: dict, attempt: int) -> None:
@@ -2413,6 +2877,9 @@ class TakeDriver:
             take = self._by_slot.pop(row["slot"], None)
         if take is None:
             return
+        if self._unrestored(take):                          # the ownership road: the folders are never removed
+            self.publish_problems.append(f"slot {row.get('slot')!r} attempt {attempt}: {self._unrestored(take)}")
+            raise DriveRefused(f"{self._unrestored(take)}: the config folder is kept for a human")
         self.published_takes.append(take)
         launched = take.launched if take.launched is not None else _run_take.Launched(config_dir=take.config_dir)
         try:
@@ -2514,6 +2981,88 @@ import claude_code_adapter as _cc  # noqa: E402
 TIMED_OUT_EXIT = 124      # round 3's exit for a turn cut at the budget (check_take.completion_problems reads it)
 LEDGER_FILE = "driver-ledger.json"
 IDENTITY_KEYS = ("session_id", "row", "row_commit", "source", "fixture", "gars_tree_sha")
+
+
+VENDOR_HARNESSES = ("codex", "gemini")
+NATIVE_HISTORY_BASIS = "unmasked retained originals, before the drive scan"   # batch-5 review nit 4
+
+
+def gemini_cross_check(take_folder, refs, n_turns: int, *, readers=None) -> dict:
+    """The Gemini cross-check D8 names, through the ONE join the acceptance check also runs
+    (native_reader_registration.join_session; registration review finding 2): each turn's host-captured stream joined
+    to that interaction of the take's last retained native snapshot, read by the registered reader. `pending` without a
+    registered reader (production_readers: no committed acceptance record); `refused` on any disagreement, an extra or
+    a missing interaction, or an incomplete interaction; `agreed` only when every turn joins complete."""
+    readers = _registration.production_readers() if readers is None else readers
+    reader = readers.get("gemini")
+    if reader is None:
+        return {"status": "pending", "why": "no registered Gemini native reader (no committed acceptance record)"}
+    folder = Path(take_folder)
+    try:
+        raw = _vendor_provenance.referenced_bytes(folder / _native_snapshot.SESSION_DIR, refs[-1])
+        streams = [(folder / f"turn-{n}.jsonl").read_text(encoding="utf-8") for n in range(1, n_turns + 1)]
+    except (IndexError, OSError, UnicodeError, _vendor_provenance.ProvenanceRefused) as e:
+        return {"status": "refused", "why": f"{type(e).__name__}: {e}"}
+    got = _registration.join_session(raw, streams, reader)
+    if got["status"] != "PASS":
+        return {"status": "refused", "why": got["why"]}
+    return {"status": "agreed", "why": None}
+
+
+def codex_cross_check(take_folder, refs, exit_codes, *, readers=None) -> dict:
+    """Codex slice 3: D8's cross-check for a Codex take, through the ONE join the acceptance check also runs
+    (native_reader_registration.codex_join_session): each turn's exec stream joined to that turn of the take's last
+    retained rollout. `pending` without a registered Codex reader; `refused` on any disagreement, an extra or missing
+    turn, or an incomplete turn; `agreed` only when every turn joins complete."""
+    readers = _registration.production_readers() if readers is None else readers
+    if readers.get("codex") is None:
+        return {"status": "pending", "why": "no registered Codex native reader (no committed acceptance record)"}
+    folder = Path(take_folder)
+    try:
+        raw = _vendor_provenance.referenced_bytes(folder / _native_snapshot.SESSION_DIR, refs[-1])
+        streams = [(folder / f"turn-{n}.jsonl").read_text(encoding="utf-8") for n in range(1, len(exit_codes) + 1)]
+    except (IndexError, OSError, UnicodeError, _vendor_provenance.ProvenanceRefused) as e:
+        return {"status": "refused", "why": f"{type(e).__name__}: {e}"}
+    got = _registration.codex_join_session(raw, streams, list(exit_codes))
+    if got["status"] != "PASS":
+        return {"status": "refused", "why": got["why"]}
+    return {"status": "agreed", "why": None}
+
+
+def vendor_cross_check_status(harness: str, history, cross=None) -> dict:
+    """Live harness integration: a non-Claude take's cross-check, from its own native evidence only. Gemini: its
+    retained snapshots' history record (pending while no reviewed reader is registered; refused when the snapshots are
+    missing, unreadable or inconsistent; a joined history still leaves the stream join pending, since the projection
+    and the stream join are unregistered). Codex the same way, from its retained rollouts (Codex slice 3). Never a pass."""
+    if harness in ("gemini", "codex"):        # Codex slice 3: Codex reads its own retained rollouts the same way
+        if history is None:
+            return {"status": "refused", "why": f"the {harness} adapter retained no native snapshot record"}
+        if history["status"] == "refused":
+            return {"status": "refused", "why": f"native snapshots: {history['why']}"}
+        if history["status"] == "pending":
+            return {"status": "pending", "why": history["why"]}
+        if cross is None:
+            return {"status": "pending", "why": "native snapshots join; the stream join to them is not registered yet"}
+        return dict(cross)
+    raise DriveRefused(f"no vendor cross-check road for harness {harness!r}")
+
+
+def native_history_record(harness: str, session_dir, refs, *, readers=None) -> dict:
+    """Live harness integration: what the take's retained native snapshots prove, for the driver ledger. Step 1's
+    vendor_provenance.session_history_facts over them, through the PRODUCTION reader registry unless `readers` is
+    given (tests): `pending` while no reviewed reader is registered (its reason kept), `refused` when the snapshots
+    cannot be read or a later one rewrites an earlier interaction, `joined` (with the interaction count) when every
+    later snapshot reproduces every earlier interaction. `joined` is a stability join, never admission of the take.
+    Each record names its basis: it is computed on the unmasked retained originals, before the drive scan, which may
+    mask session/ bytes afterwards (the open masking-provenance design; a re-join over published bytes refuses)."""
+    readers = _registration.production_readers() if readers is None else readers
+    try:
+        facts = _vendor_provenance.session_history_facts(harness, Path(session_dir), list(refs), readers=readers)
+    except _vendor_provenance.ProvenancePending as e:
+        return {"status": "pending", "why": str(e), "interactions": None, "basis": NATIVE_HISTORY_BASIS}
+    except _vendor_provenance.ProvenanceRefused as e:
+        return {"status": "refused", "why": str(e), "interactions": None, "basis": NATIVE_HISTORY_BASIS}
+    return {"status": "joined", "why": None, "interactions": len(facts), "basis": NATIVE_HISTORY_BASIS}
 
 
 def take_session_file(config_dir: str, session_id: str) -> str | None:
@@ -2645,6 +3194,12 @@ def script_from_design(design, project: str, source: str) -> list:
     return out
 
 
+def login_file_of(login_file, take) -> str:
+    """The take's login file: login_file(take) when it is per take (the Codex lease road: the take's placed
+    cfg/auth.json, review MINOR 1 of 1f032586..27ade10a), else the one path given."""
+    return login_file(take) if callable(login_file) else login_file
+
+
 def claude_code_adapter_for(*, runtime, login_file: str, counters_for, pin_for, clock, caller_env=None):
     """TakeDriver's adapter_for in production: (row, take) -> claude_code_adapter.ClaudeCodeAdapter on the take's
     container and run tree, with the take's imposed session id, the row's model, its routing pin, the driver's stream
@@ -2652,11 +3207,58 @@ def claude_code_adapter_for(*, runtime, login_file: str, counters_for, pin_for, 
     measures it)."""
     def make(row, take):
         return _cc.ClaudeCodeAdapter(runtime=runtime, take_id=take.launched.take_id,
-                                     run_tree=take.launched.spec.run_tree, login_file=login_file,
+                                     run_tree=take.launched.spec.run_tree, login_file=login_file_of(login_file, take),
                                      session_id=take.identity["session_id"], model=row["model"], pin=pin_for(row),
                                      stream_path_for=lambda n, take=take: stream_path(take, n),
                                      counters_for=lambda take=take: counters_for(take), clock=clock,
                                      caller_env=caller_env)
+    return make
+
+
+def harness_adapter_for(*, runtime, login_file: str, counters_for, pin_for, clock,
+                        rollout_for=None, caller_env=None, config_view=None):
+    """The three production adapters, with no default harness or invented evidence.
+
+    Codex rollout_for(take, interaction_n) must retain and return the native
+    rollout bytes through the box's measured retrieval road. Its absence refuses
+    before a turn. This factory alone grants neither checker nor walk admission.
+    """
+    claude = claude_code_adapter_for(runtime=runtime, login_file=login_file,
+                                     counters_for=counters_for, pin_for=pin_for,
+                                     clock=clock, caller_env=caller_env)
+
+    def make(row, take):
+        harness = (row.get("agent") or {}).get("harness")
+        if harness == "claude-code":
+            return claude(row, take)
+        if harness not in ("codex", "gemini"):
+            raise AdapterIdentityRefused(f"no production adapter for harness {harness!r}")
+        common = dict(runtime=runtime, take_id=take.launched.take_id,
+                      run_tree=take.launched.spec.run_tree, login_file=login_file_of(login_file, take),
+                      model=row["model"], pin=pin_for(row),
+                      stream_path_for=lambda n: stream_path(take, n),
+                      counters_for=lambda: counters_for(take), clock=clock, caller_env=caller_env)
+        if harness == "codex":
+            if callable(rollout_for):
+                return _codex.CodexAdapter(**common, rollout_for=lambda n: rollout_for(take, n))
+            # Codex slice 3: by default the rollout is read where Codex writes it, in the take's config folder
+            # (CODEX_HOME, box run_take TAKE_ENV[CODEX]), located by the adapter's own thread id; a read that cannot
+            # locate exactly one rollout refuses the turn (an executed refusal), never a guess.
+            made = {}
+
+            def live_rollout(n):
+                # Drive-wiring review MAJOR 1: read through the box (operator_list, operator_read) over the config
+                # folder, never host-side; config_view is the driver's (walk_driver binds it).
+                if not callable(config_view):
+                    raise _native_snapshot.SnapshotRefused("no box road to read the rollout (config_view)")
+                lister, reader = config_view(take)
+                raw = reader(made["adapter"].native_session_rel(lister))
+                if raw is None:
+                    raise _native_snapshot.SnapshotRefused("the located rollout is absent")
+                return raw.decode("utf-8")
+            made["adapter"] = _codex.CodexAdapter(**common, rollout_for=live_rollout)
+            return made["adapter"]
+        return _gemini.GeminiAdapter(**common)
     return make
 
 
@@ -2671,6 +3273,8 @@ def take_checker(*, design_for, records="takes"):
     first agent turn and harness-error after it."""
     def checker(row, take, turns):
         import check_take as _ct
+        if take.cross_check is None:              # review nit: None is a pending native cross-check, never agreement
+            raise NativeCrossCheckPending("the checker was handed a take whose native cross-check is pending")
         ids = tuple(_routing.load_table()["checker_reasons_become_events"]["ids"])
         path = Path(take.folder) / "transcript.jsonl"
         if not path.is_file():
@@ -2747,17 +3351,23 @@ def take_folder_in(root):
 # or reloaded while ClaudeCodeAdapter was patched.
 PRODUCTION_ADAPTER = _cc.ClaudeCodeAdapter
 PRODUCTION_ADAPTER_MODULE = "claude_code_adapter"
+import codex_adapter as _codex  # noqa: E402
+import gemini_adapter as _gemini  # noqa: E402
+
+PRODUCTION_ADAPTERS = {
+    "claude-code": (PRODUCTION_ADAPTER, PRODUCTION_ADAPTER_MODULE),
+    "codex": (_codex.CodexAdapter, "codex_adapter"),
+    "gemini": (_gemini.GeminiAdapter, "gemini_adapter"),
+}
 
 
 def adapter_class_problems(adapter) -> None:
-    """W7B-R1-4 (lane w8d, ruling W8D-gap4-1): the walk driver's adapter is exactly the production class,
-    claude_code_adapter.ClaudeCodeAdapter, never another object that declares its name (a stub, a fake, a subclass)."""
-    if type(adapter) is not PRODUCTION_ADAPTER or \
-            type(adapter).__module__ != PRODUCTION_ADAPTER_MODULE:
+    """The adapter is its harness's captured production class, never a stub or subclass."""
+    expected = PRODUCTION_ADAPTERS.get(getattr(adapter, "name", None))
+    if expected is None or type(adapter) is not expected[0] or type(adapter).__module__ != expected[1]:
         raise AdapterIdentityRefused(f"the walk driver built an adapter of class {type(adapter).__module__}."
-                                     f"{type(adapter).__qualname__}, not {PRODUCTION_ADAPTER_MODULE}."
-                                     f"ClaudeCodeAdapter; a walk or take of claude-code runs on the production adapter "
-                                     f"only, whatever name an object declares")
+                                     f"{type(adapter).__qualname__}; the declared harness requires its exact "
+                                     f"production adapter class, whatever name an object declares")
 
 
 def take_k_problems(records_root, row: dict, attempt, take) -> None:
@@ -2829,8 +3439,12 @@ class WalkDriver(TakeDriver):
 def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, lock_path, hosts, login_file,
                 counters_for, pin_for, design_for, project_for, identity_for, secrets, rules_scanner, uid_map,
                 budget_s, finalize_wait_s, poll_s, clock, sleep, holdout_matcher=None, caller_env=None,
-                records="takes") -> WalkDriver:
-    """The CP6 production wiring (cp6-readiness row 3): batch's driver for a walk or a take of claude-code.
+                records="takes", rollout_for=None, ownership=None, settings_guard=None,
+                machine_gate=None) -> WalkDriver:
+    """The CP6 production wiring (cp6-readiness row 3): batch's driver for a walk or a take of any of the three
+    harnesses (registration review finding 2, glitch-06, 14 Oct 2026: harness_adapter_for, so a Gemini walk, and a
+    Codex walk once its rollout_for road exists, runs on the same road; WalkDriver still admits only each harness's
+    exact production class).
 
     design_for  (row, run_tree) -> check_take.design_view(row, pin=pin_for(row), run_tree=run_tree, constants=...):
                 the script is read with run_tree None (its lines carry {project} and {source}, rendered here from the
@@ -2838,7 +3452,8 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
     root        the study folder the take records are committed under (take_folder_in)
     records     W8A: "takes" (the default: takes/<slot>/<k>, take_folder_in) or "walks" (rehearsals/<walk>/,
                 walk_folder_in, the row's `walk` id); any other value refuses (record_folder_in)
-    Everything else is TakeDriver's (its docstring) or claude_code_adapter_for's. The constants only a walk can
+    rollout_for Codex's native rollout retrieval (harness_adapter_for): None refuses a Codex walk before a turn
+    Everything else is TakeDriver's (its docstring) or harness_adapter_for's. The constants only a walk can
     measure stay the caller's: design_for hands them to design_view, and check4 refuses while any is PENDING."""
     if not callable(design_for):
         raise TypeError("design_for must be callable")
@@ -2850,17 +3465,22 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
         ident = identity_for(row)
         return script_from_design(design_for(row, None), project_for(row), ident["source"])
 
-    return WalkDriver(
+    bound: dict = {}                    # review MAJOR 1: the Codex rollout is read through the driver's config view
+    driver = WalkDriver(
         records_root=root, records=records, runtime=runtime, take_folder=record_folder_in(root, records), config_parent=config_parent, spec_for=spec_for,
         sidecar_for=sidecar_for, proxy=proxy, lock_path=lock_path, hosts=hosts,
-        adapter_for=claude_code_adapter_for(runtime=runtime, login_file=login_file, counters_for=counters_for,
-                                            pin_for=pin_for, clock=clock, caller_env=caller_env),
+        adapter_for=harness_adapter_for(runtime=runtime, login_file=login_file, counters_for=counters_for,
+                                        pin_for=pin_for, clock=clock, rollout_for=rollout_for, caller_env=caller_env,
+                                        config_view=lambda take: bound["driver"].config_view(take)),
         script_for=script_for, pin_for=pin_for,
         checker=take_checker(design_for=lambda row, take: design_for(row, take.launched.spec.run_tree),
                              records=records),
         secrets=secrets, rules_scanner=rules_scanner, holdout_matcher=holdout_matcher, uid_map=uid_map,
         budget_s=budget_s, finalize_wait_s=finalize_wait_s, poll_s=poll_s, clock=clock, sleep=sleep,
-        project_for=project_for, identity_for=identity_for, caller_env=caller_env)
+        project_for=project_for, identity_for=identity_for, caller_env=caller_env, ownership=ownership,
+        settings_guard=settings_guard, machine_gate=machine_gate)
+    bound["driver"] = driver
+    return driver
 
 
 # =====================================================================================================================
@@ -2885,7 +3505,8 @@ WALK_GRADE = _mode_binding.WALK_GRADE
 # grade.json's scan kind: a machine record the driver side writes, scanned as the ledgers are (w4c's KINDS; whether
 # it deserves a kind of its own is w4c's call, named in lane-reports/w8a-walk-layout.md).
 WALK_CHECK = "check.json"     # W10 (D1): the walk's checker reading and its route, beside grade.json
-WALK_FILE_KINDS = {WALK_GRADE: "ledger", WALK_CHECK: "ledger"}
+WALK_REGRADE = "regrade.json"  # live harness (finding 2): a pending walk's superseding regrade, a later commit's only file
+WALK_FILE_KINDS = {WALK_GRADE: "ledger", WALK_CHECK: "ledger", WALK_REGRADE: "ledger"}
 WALK_REQUIRED = (WALK_GRADE, WALK_CHECK)
 WALK_PRE_TURN = (PREFLIGHT_RECORD, REFUSAL_RECORD)
 WALK_TRANSCRIPT = "transcript.jsonl"          # W10-R2-3: with a turn record, the sign that a turn ran    # W10 (D3): what says why a walk died before its driver ledger
@@ -2896,13 +3517,15 @@ FROZEN_NAME = prereg.FROZEN.name               # prereg.json: once it exists, no
 
 def record_kind(rel: list, extra: dict | None = None) -> str:
     """The scan kind of a record file at `rel` (its path parts inside the record folder), by the closed map: a take
-    folder's files (TAKE_FILE_KINDS, turn-N.jsonl), evidence/** and session/**, plus `extra` top-level names (a walk
+    folder's files (TAKE_FILE_KINDS, turn-N.jsonl, turn-N.jsonl.launch.json), evidence/** and session/**, plus `extra` top-level names (a walk
     folder's grade.json). Anything else refuses: nothing rides a commit unscanned under a guessed kind."""
     name = rel[-1]
     if len(rel) == 1 and extra and name in extra:
         return extra[name]
     if len(rel) == 1 and (name in TAKE_FILE_KINDS or STREAM_NAME.fullmatch(name)):
         return TAKE_FILE_KINDS.get(name, "stream")
+    if len(rel) == 1 and LAUNCH_JOURNAL_NAME.fullmatch(name):
+        return "launch"
     if rel[0] == EVIDENCE_DIR and len(rel) >= 2:
         return EVIDENCE_KINDS.get(rel[1], "evidence") if len(rel) > 2 else "evidence"
     if rel[0] == SESSION_DIR and len(rel) >= 2:
@@ -2929,7 +3552,8 @@ def walk_files(folder) -> list:
     missing = [n for n in WALK_REQUIRED if n not in tops]
     if LEDGER_FILE not in tops and not (tops & set(WALK_PRE_TURN)):
         missing.insert(0, f"{LEDGER_FILE} (nor, for a walk that died before turn 1, {' or '.join(WALK_PRE_TURN)})")
-    ran = sorted(n for n in tops if n == WALK_TRANSCRIPT or STREAM_NAME.fullmatch(n))
+    ran = sorted(n for n in tops if n == WALK_TRANSCRIPT or STREAM_NAME.fullmatch(n)
+                 or LAUNCH_JOURNAL_NAME.fullmatch(n))     # live harness 3a (glitch-06): a launch journal is a turn launched
     if LEDGER_FILE not in tops and ran:                  # W10-R2-3: a turn ran, so the driver wrote its ledger
         raise DriveRefused(f"the walk folder holds {', '.join(ran)} and no {LEDGER_FILE}: a walk whose agent turn ran "
                            f"is committed with its driver ledger; only a walk with no transcript and no turn record "
@@ -3197,7 +3821,7 @@ def open_registration(root: Path, repo: Path, slot) -> dict:
     except (ValueError, KeyError, OSError) as e:
         raise LaunchRefused(f"the committed registrations cannot be read ({type(e).__name__}: {e}); nothing was "
                             f"launched") from None
-    done = {(o.get("slot"), o.get("attempt")) for o in history if not takes_mod.batch.is_ruling(o)}
+    done = {(o.get("slot"), o.get("attempt")) for o in history if takes_mod.batch.is_outcome(o)}
     mine = [r for r in rows if r.get("slot") == slot]
     open_ = [r for r in mine if (slot, r.get("attempt")) not in done]
     if len(open_) != 1:

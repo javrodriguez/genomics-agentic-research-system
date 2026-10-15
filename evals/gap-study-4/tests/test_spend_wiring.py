@@ -20,9 +20,10 @@ batch.py called them; and routing.py accepted an empty spend-cap list for any ha
   G6-clock    the hold reads batch's OWN clock (UTC, at check time), never the ledger's `now` (glitch-1b, Q-w7c-1): a
               ledger saying "before the hold" while the clock is inside it is refused, and the converse runs
   P3-ruled    (lane w8c, ruling W8C-gap4-1; was P3-pending) spend_cap_markers_status reads RULED by Javier ("spend
-              markers: 1A 2A 3A", 12 Oct 2026) and pin_profiles_status stays PENDING, so batch.py still refuses to
-              start: two lines now (the pin profiles), exit 1, and the Batch loop refuses with them; the spend-status
-              gate stays armed (the same table with the base's PENDING status gives the base's three lines)
+              markers: 1A 2A 3A", 12 Oct 2026); since CP5 (Javier, "CP5: all as recommended", 14 Oct 2026)
+              pin_profiles_status reads RULED too, with arm A's profiles alone, so batch.py --check is ready (exit 0)
+              and the Batch loop starts; the spend-status gate stays armed (a PENDING spend status gives its one line,
+              and the base's table, pins and statuses PENDING, still gives the base's three lines)
 
 R1-nonempty also holds after the ruling (lane w8c): on routing.json as it now stands, status RULED, an OpenAI (codex)
 or Google (gemini) entry with an empty spend-cap list is still refused, and the same entry with one marker is sound.
@@ -84,8 +85,11 @@ BASE_START_PROBLEMS = [
     "spend_cap_markers_status is not ruled in routing.json (RULED or FILLED, with no PENDING): a spend cap stops for "
     "a human ruling",
 ]
-# Lane w8c: after Javier's "spend markers: 1A 2A 3A", the two lines left (CP5's pin profiles).
-RULED_START_PROBLEMS = BASE_START_PROBLEMS[:2]
+# Lane w8c: after Javier's "spend markers: 1A 2A 3A", the two pin-profile lines were left; CP5 (Javier, 14 Oct 2026)
+# cleared them, so a PENDING spend status alone gives the last line.
+SPEND_ONLY_PROBLEMS = BASE_START_PROBLEMS[2:]
+CP5_STATUS = ("RULED 14 Oct by Javier (\"CP5: all as recommended\"): arm A profiles registered; O and G follow when "
+              "their rate-limit and spend-cap rules are set")
 BASE_SPEND_STATUS = ("PENDING (glitch-f3): claude-code's spend-cap types. Its list is empty (see "
                      "spend_cap_markers.claude-code.source) until glitch-f3 rules it.")
 
@@ -525,25 +529,31 @@ def _p3(mod) -> list[str]:
     if not (spend.startswith("RULED 2026-10-12 by Javier") and '"spend markers: 1A 2A 3A"' in spend
             and not batch.is_pending(spend)):
         p.append(f"P3-ruled: spend_cap_markers_status is not Javier's RULED line: {spend[:80]!r}")
-    if not table["pin_profiles_status"].startswith("PENDING (CP5)"):
-        p.append(f"P3-ruled: pin_profiles_status no longer starts 'PENDING (CP5)': {table['pin_profiles_status'][:80]!r}")
-    if table["pin_profiles"] != {} or set(table["spend_cap_markers"]) != {CLAUDE}:
-        p.append("P3-ruled: routing.json's pin profiles or spend-cap harnesses moved")
-    if mod.start_problems(table) != RULED_START_PROBLEMS:
-        p.append(f"P3-ruled: start_problems is not the two pin-profile lines: {mod.start_problems(table)}")
+    if table["pin_profiles_status"] != CP5_STATUS or batch.is_pending(table["pin_profiles_status"]):
+        p.append(f"P3-ruled: pin_profiles_status is not the CP5 ruling: {table['pin_profiles_status'][:80]!r}")
+    if set(table["pin_profiles"]) != {CLAUDE} or set(table["spend_cap_markers"]) != {CLAUDE}:
+        p.append("P3-ruled: routing.json's pin-profile or spend-cap harnesses are not arm A's alone")
+    if mod.start_problems(table) != []:
+        p.append(f"P3-ruled: start_problems is not empty: {mod.start_problems(table)}")
     out = io.StringIO()
     with redirect_stdout(out):
         rc = mod.main(["--check"])
-    if rc != 1 or out.getvalue().splitlines() != [f"batch: not ready: {x}" for x in RULED_START_PROBLEMS]:
-        p.append(f"P3-ruled: batch.py --check is not exit 1 on the two pin-profile lines: {rc}, {out.getvalue()!r}")
+    if rc != 0 or out.getvalue().splitlines() != ["batch: routing.json ready"]:
+        p.append(f"P3-ruled: batch.py --check is not exit 0 and ready: {rc}, {out.getvalue()!r}")
     why = _refusal(mod, table)
-    if why is None:
-        p.append("P3-ruled: the loop starts on routing.json while pin_profiles_status is PENDING")
-    elif why != "routing.json is not ready: " + "; ".join(RULED_START_PROBLEMS):
-        p.append(f"P3-ruled: the loop refuses with other words than the two pin-profile lines: {why}")
+    if why is not None:
+        p.append(f"P3-ruled: the loop refuses the ruled routing.json: {why}")
+    # the spend-status gate stays armed: a PENDING spend status alone refuses with its own line
+    spend_pending = copy.deepcopy(table)
+    spend_pending["spend_cap_markers_status"] = BASE_SPEND_STATUS
+    if mod.start_problems(spend_pending) != SPEND_ONLY_PROBLEMS:
+        p.append(f"P3-ruled: a PENDING spend status does not give its one line: {mod.start_problems(spend_pending)}")
+    if _refusal(mod, spend_pending) != "routing.json is not ready: " + "; ".join(SPEND_ONLY_PROBLEMS):
+        p.append(f"P3-ruled: the loop does not refuse a PENDING spend status with its line: "
+                 f"{_refusal(mod, spend_pending)}")
     # the spend-status gate stays armed: the same table with the base's PENDING status refuses as the base did
-    pending = copy.deepcopy(table)
-    pending["spend_cap_markers_status"] = BASE_SPEND_STATUS
+    pending = copy.deepcopy(table)   # the base's table: pins empty and both statuses PENDING
+    pending.update(pin_profiles={}, pin_profiles_status="PENDING (CP5)", spend_cap_markers_status=BASE_SPEND_STATUS)
     if mod.start_problems(pending) != BASE_START_PROBLEMS:
         p.append(f"P3-ruled: a PENDING spend status no longer gives the base's three lines: {mod.start_problems(pending)}")
     if _refusal(mod, pending) != "routing.json is not ready: " + "; ".join(BASE_START_PROBLEMS):
@@ -589,7 +599,7 @@ class TestTheSpendLists(unittest.TestCase):
 
 
 class TestSpendStatusRuled(unittest.TestCase):
-    def test_p3_the_spend_status_is_ruled_and_the_loop_still_refuses_on_two_lines(self):
+    def test_p3_the_spend_and_pin_statuses_are_ruled_and_the_spend_gate_stays_armed(self):
         self.assertEqual(CHECKS["P3-ruled"](batch), [])
 
 

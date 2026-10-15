@@ -216,11 +216,13 @@ def build_driver(drive, root: Path, records: str, cfg: Path, runtime=None):
     """A WalkDriver on fakes only, its record folder by `records` (drive.record_folder_in, as walk_driver builds it)."""
     return drive.WalkDriver(
         records_root=root, records=records, runtime=runtime or types.SimpleNamespace(run=lambda *a, **k: None),
-        take_folder=drive.record_folder_in(root, records), config_parent=str(cfg), spec_for=lambda r, c: None,
+        take_folder=drive.record_folder_in(root, records), config_parent=str(cfg),
+        spec_for=lambda r, c: types.SimpleNamespace(image=tbi.IMAGE, run_tree=str(cfg)),   # read by the fake road
         sidecar_for=lambda r, e: None, proxy=None, lock_path="/synthetic.lock", hosts={},
         adapter_for=lambda r, t: None, script_for=lambda r: [], pin_for=lambda r: {}, checker=lambda r, t, n: {},
         secrets=lambda: [], rules_scanner=lambda p: [], uid_map=[], budget_s=1, finalize_wait_s=1, poll_s=1,
-        clock=lambda: 0.0, sleep=lambda s: None, project_for=lambda r: tbi.PROJECT, identity_for=lambda r: {})
+        clock=lambda: 0.0, sleep=lambda s: None, project_for=lambda r: tbi.PROJECT, identity_for=lambda r: {},
+        ownership=tbi.FakeOwnership(), settings_guard=tbi.FakeSettingsGuard(), machine_gate=lambda: [])
 
 
 def register(root: Path, row: dict, attempt: int, rows=None):

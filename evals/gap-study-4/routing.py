@@ -150,6 +150,35 @@ RECORD_SCHEMA = {
     "quiescence_cap_survivors": None,    # CP2 ruling C3 (W2A2-6)
 }
 
+# Live harness 3b (14 Oct 2026): a record key that may be present, beside the closed schema. `identity` is a list, one
+# entry per turn: None, or typed identity evidence (agent_adapter.identity_problems' shape). Records without it route
+# exactly as before.
+OPTIONAL_RECORDS = ("identity",)
+IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec", "submitted-argv", "stream-reroute", "unobserved")
+# Which source routing accepts as evidence for which pin field, keyed by the pin's harness (D8's per-harness table).
+# Gemini: requested model from init.model and every result.stats.models key, version from `gemini --version` in the
+# take container, mode from the turn's actual-submission journal argv (gemini_adapter.submitted_mode; unobserved when
+# no journal exists). Any other source, an unobserved field or a value off the pin is a mismatch, exactly as a
+# missing init event is. A harness with no entry (claude-code, whose mode must come from its init event) carries no
+# identity at all: shape_problems refuses it.
+# Codex slice 2 (glitch-06, 14 Oct 2026): codex's served model is observed only by an exec reroute item
+# (stream-reroute, codex_adapter.read_stream); the rollout's turn_context names the REQUESTED model and is never proof,
+# so without a reroute the model is unobserved, and the init-mismatch row then reads a Codex turn as a mismatch (a
+# consequence named for a ruling in lane-reports/codex-identity-table-2026-10-14.md). version: `codex --version` in the
+# take container; mode: the turn's launch journal checked by vendor_provenance.launch_facts.
+ACCEPTED_IDENTITY_SOURCES = {"gemini": {"model": ("stream-init", "stream-stats"), "version": ("version-exec",),
+                                        "permission_mode": ("submitted-argv",)},
+                             "codex": {"model": ("stream-reroute",), "version": ("version-exec",),
+                                       "permission_mode": ("submitted-argv",)}}
+OBSERVED_IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec", "stream-reroute")
+# Departure D-INT-2 (ruled by glitch-06 under the standing delegation, 14 Oct 2026; flagged first for Javier's review
+# before the freeze): for arm O (codex) only, a served model that is unobserved (no reroute) is accepted by the
+# init-mismatch row, so the requested model is assumed; an observed reroute to another model is still a mismatch, two
+# reroutes still refuse (codex_adapter), and every other harness and field is unchanged. The study's limit, verbatim:
+UNOBSERVED_ACCEPTED = {"codex": ("model",)}
+SERVED_MODEL_LIMIT = ("for the OpenAI arm, the served model is verified only when the CLI reports a reroute; otherwise "
+                      "the requested model is assumed")
+
 # The fields of one API-error record (all three required; status int or None, type str or None, text
 # str or None: the harness-side error text, never the agent's reply). glitch-f3's ruling added text.
 API_ERROR_KEYS = ("status", "type", "text")
@@ -568,12 +597,45 @@ def _pin_problems(value, fields, what: str) -> list[str]:
     return []
 
 
+def _identity_problems(entry) -> list[str]:
+    if entry is None:
+        return []
+    if not isinstance(entry, dict) or set(entry) != set(PLAN_PIN_FIELDS):
+        return [f"must be None or exactly {list(PLAN_PIN_FIELDS)}"]
+    out = []
+    for f in PLAN_PIN_FIELDS:
+        e = entry[f]
+        if not isinstance(e, dict) or set(e) != {"value", "source"} or e["source"] not in IDENTITY_SOURCES:
+            out.append(f"{f} must be {{value, source}} with a source in {list(IDENTITY_SOURCES)}")
+        elif (e["value"] is not None) == (e["source"] == "unobserved") or not (e["value"] is None or _is_str(e["value"])):
+            out.append(f"{f}: an unobserved field carries no value, an observed one a string")
+    return out
+
+
+def _identity_differs(entry, pin, fields, *, present_only: bool) -> bool:
+    """3b: a typed identity entry against the pin. present_only (the pin refusal): only an observed value that differs.
+    Otherwise (the init-mismatch row): any field unobserved, from a source not accepted for it, or off the pin."""
+    accepted = ACCEPTED_IDENTITY_SOURCES.get(pin.get("harness"))
+    if accepted is None:                       # never routed: shape_problems refuses it first
+        raise RoutingRefused(f"identity on a {pin.get('harness')!r} record")
+    for f in fields:
+        e = entry[f]
+        if present_only:
+            if e["source"] in OBSERVED_IDENTITY_SOURCES and e["value"] != pin[f]:
+                return True
+        elif e["source"] == "unobserved" and f in UNOBSERVED_ACCEPTED.get(pin.get("harness"), ()):
+            continue                           # D-INT-2: arm O's served model, unobserved without a reroute
+        elif e["source"] not in accepted.get(f, ()) or e["value"] != pin[f]:
+            return True
+    return False
+
+
 def shape_problems(records: dict, table: dict) -> list[str]:
     """The records' closed schema, every leaf's type, and their consistency (empty when sound)."""
     p = []
     if not isinstance(records, dict):
         return ["records must be a dict"]
-    extra = set(records) - set(RECORD_SCHEMA)
+    extra = set(records) - set(RECORD_SCHEMA) - set(OPTIONAL_RECORDS)
     if extra:
         p.append(f"keys outside the harness-side schema: {sorted(extra)}")
     for key, subs in RECORD_SCHEMA.items():
@@ -601,6 +663,16 @@ def shape_problems(records: dict, table: dict) -> list[str]:
             if entry is not None:
                 p += _pin_problems(entry, table["pin_fields"], f"init[{i}]")
     p += _pin_problems(records["pin"], PIN_KEYS, "pin")
+    if "identity" in records:                  # live harness 3b: typed, one entry per turn when present
+        ids = records["identity"]
+        harness = records["pin"].get("harness") if isinstance(records["pin"], dict) else None
+        if harness not in ACCEPTED_IDENTITY_SOURCES:
+            p.append(f"identity is accepted only for harnesses with a registered source table, not {harness!r}")
+        elif not isinstance(ids, list) or not isinstance(records["init"], list) or len(ids) != len(records["init"]):
+            p.append("identity must be a list with one entry per turn")
+        else:
+            for i, entry in enumerate(ids):
+                p += [f"identity[{i}]: {x}" for x in _identity_problems(entry)]
     if not isinstance(records["api_errors"], list):
         p.append("api_errors must be a list")
     else:
@@ -730,11 +802,22 @@ def holds(cond: dict, records: dict, table: dict) -> bool:
             return any(x is not None and rate_limit_text_marker(x, markers) is not None for x in v)
         return any(x is not None and x in markers for x in v)
     if op == "differs_from_pin":            # a missing init event counts as a mismatch (lane w1b decision 5)
-        pin = records["pin"]
-        return any(i is None or any(i.get(f) != pin[f] for f in table["pin_fields"]) for i in v)
+        pin, fields = records["pin"], table["pin_fields"]
+        ids = records.get("identity") or [None] * len(v)     # 3b: typed evidence stands in for a missing init only
+        if path != "init" or len(ids) != len(v):
+            raise RoutingRefused("differs_from_pin reads init with one identity entry per turn")
+        return any((i is None and e is None)
+                   or (i is not None and any(i.get(f) != pin[f] for f in fields))
+                   or (e is not None and _identity_differs(e, pin, fields, present_only=False))
+                   for i, e in zip(v, ids))
     if op == "present_differs_from_pin":    # only an init event that is there and differs (glitch-f3's ruling)
-        pin = records["pin"]
-        return any(i is not None and any(i.get(f) != pin[f] for f in table["pin_fields"]) for i in v)
+        pin, fields = records["pin"], table["pin_fields"]
+        ids = records.get("identity") or [None] * len(v)
+        if path != "init" or len(ids) != len(v):
+            raise RoutingRefused("present_differs_from_pin reads init with one identity entry per turn")
+        return any((i is not None and any(i.get(f) != pin[f] for f in fields))
+                   or (e is not None and _identity_differs(e, pin, fields, present_only=True))
+                   for i, e in zip(v, ids))
     if op == "nonzero_outside_timeout":
         ends = records["ledger"]["turn_ends"]
         return any(code != 0 for code, end in zip(v, ends) if end != labels4.TIMED_OUT)

@@ -69,6 +69,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -95,6 +96,12 @@ PINNED_UNCHANGED = ("evals/gap-study", "evals/gap-study-2", "evals/gap-study-3",
 
 STATUSES = ("identical", "edited", "new")
 ENTRY_KEYS = {"path", "status", "source", "reason"}
+# Live harness (glitch-06's ruling, 14 Oct 2026): native-readers/ holds acceptance records and their reviews, written only
+# by Javier's acceptance commit, so it is claimed once, in advance, by one pattern entry of its own status; it claims
+# only <harness>-acceptance.json and <harness>-review.md for a vendor harness, and nothing else under that folder.
+READER_RECORDS = "native-readers/**"
+READER_RECORDS_STATUS = "acceptance-records"
+READER_RECORD = re.compile(r"native-readers/(?:gemini|codex)-(?:acceptance\.json|review\.md)")
 
 # The copied fixture builders: uneditable. Each must be claimed, as `identical`, from its round 3 path.
 UNEDITABLE = ("fixtures/check_fixture.py", "fixtures/copy_project.py", "fixtures/gen_project.py",
@@ -333,6 +340,16 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
     claimed: dict[str, str] = {}
     for lane, e in entries:
         path, status, src, why = e["path"], e["status"], e.get("source"), e.get("reason")
+        if status == READER_RECORDS_STATUS or path.startswith("native-readers/"):     # live harness, 14 Oct 2026
+            if path != READER_RECORDS or status != READER_RECORDS_STATUS or src is not None or not (
+                    isinstance(why, str) and why.strip()):
+                out.append(f"{path} ({lane}): native-readers/ is claimed only by one {READER_RECORDS!r} entry of "
+                           f"status {READER_RECORDS_STATUS!r} with a reason")
+            elif READER_RECORDS in claimed:
+                out.append(f"{READER_RECORDS} is claimed by {claimed[READER_RECORDS]} and again by {lane}")
+            else:
+                claimed[READER_RECORDS] = lane
+            continue
         if record_root_of(path) is not None:            # W8A: a record is claimed by its ledger, never a fragment
             out.append(f"{path} ({lane}) is inside a record folder; a record is claimed by its register or outcomes "
                        f"ledger, never by a fragment")
@@ -402,7 +419,8 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
         if path in UNEDITABLE and src != f"{SOURCE_DIR}/{path}":
             out.append(f"{path} ({lane}) is a copied fixture builder whose source is {src}, not {SOURCE_DIR}/{path}")
     by_record = record_claims(present, committed_records() if records is None else records)
-    for name in sorted(present - set(claimed) - by_record):
+    by_reader = {n for n in present if READER_RECORD.fullmatch(n)} if READER_RECORDS in claimed else set()
+    for name in sorted(present - set(claimed) - by_record - by_reader):
         out.append(f"{name} is under {study.STUDY_REL}/ and no fragment in {folder.name}/ claims it")
     for name in sorted(n for n in present if is_cache(n)):
         if name not in claimed:
@@ -446,7 +464,10 @@ def main() -> int:
         entries, _ = load_fragments()
         count = {s: sum(e["status"] == s for _, e in entries) for s in STATUSES}
         lanes = sorted({lane for lane, _ in entries})
-        print(f"ok: {len(entries)} files from {len(lanes)} fragment(s) ({', '.join(lanes)}): "
+        files = sum(e["status"] in STATUSES for _, e in entries)
+        readers = sorted(n for n in files_here() if READER_RECORD.fullmatch(n))
+        print(f"ok: {files} files from {len(lanes)} fragment(s) ({', '.join(lanes)}) and the {READER_RECORDS} "
+              f"pattern claiming {len(readers)} acceptance record(s) or review(s): "
               f"{count['identical']} identical and {count['edited']} edited (round 3 at {SOURCE_COMMIT[:8]}, "
               f"shared files at {SHARED_COMMIT[:8]}), "
               f"{count['new']} new; {len(UNEDITABLE)} fixture builders byte-identical; "

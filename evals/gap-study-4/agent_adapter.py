@@ -89,6 +89,30 @@ END_ERROR = labels4.END_ERROR
 END_REASONS = labels4.TURN_ENDS
 
 INIT_FIELDS = ("model", "permission_mode", "version")
+# Live harness 3b (14 Oct 2026): typed identity evidence, for a harness whose stream has no init event carrying all
+# three pin fields (Gemini: init names a model and a session id only, D8). Per INIT_FIELDS field: {"value", "source"},
+# the source one of IDENTITY_SOURCES; "unobserved" carries value None, every other source a nonempty string. Routing
+# decides which source it accepts for which field (routing.ACCEPTED_IDENTITY_SOURCES); nothing here enters `init`.
+IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec", "submitted-argv", "stream-reroute", "unobserved")
+UNOBSERVED = "unobserved"
+
+
+def identity_problems(identity) -> list:
+    """Why a turn's typed identity evidence is malformed ([] when sound; None is no evidence and is sound)."""
+    if identity is None:
+        return []
+    if not isinstance(identity, dict) or set(identity) != set(INIT_FIELDS):
+        return [f"identity must be None or a dict of exactly {INIT_FIELDS}"]
+    out = []
+    for f in INIT_FIELDS:
+        e = identity[f]
+        if not isinstance(e, dict) or set(e) != {"value", "source"} or e["source"] not in IDENTITY_SOURCES:
+            out.append(f"identity.{f} must be {{value, source}} with a source in {IDENTITY_SOURCES}")
+        elif e["source"] == UNOBSERVED and e["value"] is not None:
+            out.append(f"identity.{f} is unobserved and must carry no value")
+        elif e["source"] != UNOBSERVED and not (isinstance(e["value"], str) and e["value"]):
+            out.append(f"identity.{f} from {e['source']} must carry a nonempty string")
+    return out
 COUNTER_FIELDS = ("oom_kill_delta", "pids_max_delta")
 API_ERROR_FIELDS = ("status", "type", "text")
 
@@ -111,6 +135,24 @@ class AdapterStateError(RuntimeError):
 
 class BoxRecordError(ValueError):
     """The box's records given to `harness_records` miss a required key or carry an unknown one."""
+
+
+# Live harness step 3a (14 Oct 2026): what an adapter kept of a turn's exec before it read anything of the turn.
+EXECUTED_FIELDS = ("n", "exit_code", "timed_out", "started_at", "ended_at", "stream_path", "counters", "refused")
+
+
+class ExecutedTurnRefused(Exception):
+    """The turn's exec ran (the runtime returned or timed out), and then the harness refused its own record of it (an
+    unreadable stream, an exit code off the table, a resumed session that is not the take's). Raised only after the
+    exec, carrying `executed`: exactly EXECUTED_FIELDS, as kept before the read (refused: why). The driver accounts
+    for the turn as launched and refuses the take for a human; it is never a pre-turn refusal, a rehearsal or a
+    re-run. A harness adapter may mix this into its own error type so its existing callers still catch that."""
+
+    def __init__(self, message, *, executed):
+        if not isinstance(executed, dict) or set(executed) != set(EXECUTED_FIELDS):
+            raise TypeError(f"executed must carry exactly {EXECUTED_FIELDS}")
+        super().__init__(message)
+        self.executed = dict(executed)
 
 
 def _count(v) -> bool:
@@ -148,6 +190,7 @@ class TurnResult:
     started_at: float = REQUIRED          # required keyword (W1B3-6)
     ended_at: float = REQUIRED            # required keyword (W1B3-6)
     agent_output: bool | None = None   # required: see THE RECORD; None is refused
+    identity: dict | None = None       # live harness 3b: typed identity evidence beside init (None: none stated)
 
     def __post_init__(self):
         for name in REQUIRED_KEYWORDS:
@@ -164,6 +207,8 @@ class TurnResult:
         if not isinstance(self.api_errors, list) or not all(
                 isinstance(e, dict) and set(API_ERROR_FIELDS) <= set(e) for e in self.api_errors):
             raise ValueError(f"api_errors must be a list ([] for none) of dicts carrying {API_ERROR_FIELDS}")
+        if identity_problems(self.identity):
+            raise ValueError("; ".join(identity_problems(self.identity)))
         if not isinstance(self.agent_output, bool):
             raise ValueError("agent_output must be a bool: did the turn's stream hold a completed agent message?")
         if not (_clock(self.started_at) and _clock(self.ended_at)):
@@ -327,6 +372,9 @@ def harness_records(turns: list[TurnResult], *, pin: dict, box: dict) -> dict:
         },
         "cgroup": {k: sum(t.counters[k] for t in turns) for k in COUNTER_FIELDS},
         "init": [None if t.init is None else {f: t.init[f] for f in INIT_FIELDS} for t in turns],
+        # live harness 3b: only when some turn states typed identity evidence; otherwise the records are unchanged
+        **({"identity": [None if t.identity is None else {f: dict(t.identity[f]) for f in INIT_FIELDS}
+                         for t in turns]} if any(t.identity is not None for t in turns) else {}),
         "pin": dict(pin) if isinstance(pin, dict) else pin,
         "api_errors": [{f: e[f] for f in API_ERROR_FIELDS} for t in turns for e in t.api_errors],
         "sidecar": dict(sidecar) if isinstance(sidecar, dict) else sidecar,

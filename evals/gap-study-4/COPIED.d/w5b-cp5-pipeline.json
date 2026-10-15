@@ -15,13 +15,13 @@
       "path": "takes.py",
       "status": "edited",
       "source": "evals/gap-study-3/takes.py",
-      "reason": "R2, R5, R21-R25, R28, R33: committed registration guard and human ruling door"
+      "reason": "R2, R5, R21-R25, R28, R33: committed registration guard and human ruling door Night-ruling fold (live harness, under glitch-06's ruling, 14 Oct 2026): commit_night_ruling, the one door for THE NIGHTLY STOP's run-level ruling, with commit_ruling's discipline; the done map and registration_outcomes read outcomes through batch.is_outcome and skip night rulings."
     },
     {
       "path": "check_results.py",
       "status": "edited",
       "source": "evals/gap-study-3/check_results.py",
-      "reason": "R3, R14, R24, R26-R28, R31: re-verify recorded routes, rulings, windows and records Edit without transfer by lane w9-cp6 (glitch-2f's wave 9 ruling (the Lane-orchestrator, under Javier's standing delegation, Mon 12 Oct 2026; slice w9, CP6 wiring); departure w9-1, because tests/test_pipeline.py's PipelineOwnership binds check_results.py to this lane): W8B-R2-2, synthetic_digest_problems, called by check_frozen_content, re-applies freeze.synthetic_tasks to the committed prereg.json as its freeze commit wrote it and as it stands; the rehearsal's synthetic holdout digests are refused naming W8B-gap4-1, and under --rehearsal-plan printed NOT CHECKED. Bound by tests/test_cp6_wiring.py S1."
+      "reason": "R3, R14, R24, R26-R28, R31: re-verify recorded routes, rulings, windows and records Edit without transfer by lane w9-cp6 (glitch-2f's wave 9 ruling (the Lane-orchestrator, under Javier's standing delegation, Mon 12 Oct 2026; slice w9, CP6 wiring); departure w9-1, because tests/test_pipeline.py's PipelineOwnership binds check_results.py to this lane): W8B-R2-2, synthetic_digest_problems, called by check_frozen_content, re-applies freeze.synthetic_tasks to the committed prereg.json as its freeze commit wrote it and as it stands; the rehearsal's synthetic holdout digests are refused naming W8B-gap4-1, and under --rehearsal-plan printed NOT CHECKED. Bound by tests/test_cp6_wiring.py S1. Night-ruling fold: outcome readers use batch.is_outcome; the publication walk skips night rulings."
     },
     {
       "path": "result.py",

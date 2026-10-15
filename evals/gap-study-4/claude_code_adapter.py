@@ -94,6 +94,15 @@ class StreamError(ValueError):
     """A stream or session file the reader cannot use as it stands (a typed refusal, never a guess)."""
 
 
+class ExecutedStreamRefused(StreamError, aa.ExecutedTurnRefused):
+    """Drive-wiring review MINOR 3: a turn's stream refused after its exec ran (a modelless or ill-shaped record): an
+    executed turn's refusal (the driver accounts for the turn and stops for a ruling), still a StreamError for this
+    module's own callers."""
+
+    def __init__(self, message, *, executed):
+        aa.ExecutedTurnRefused.__init__(self, message, executed=executed)
+
+
 def _records(text: str) -> tuple[list, int]:
     """(the JSON object records of a JSONL text in order, the count of lines that were not one)."""
     out, bad = [], 0
@@ -147,6 +156,11 @@ def read_stream(text: str) -> dict:
                     its `error`, its text its words; a result record with is_error true adds one more, typed by its
                     subtype, with the result's own words; status is the result's api_error_status when an int
     calls           [{message_id, request_id, model}] per distinct (message.id, request_id) of the agent's records
+    served_models   the distinct message.model of every agent assistant record, in order (the harness's own API-error
+                    record, model <synthetic>, is never one); an agent record whose message.model is not a non-empty
+                    string refuses (StreamError): an unknown shape is never read as the pin's model
+    model_usage     the result record's modelUsage keys, in order, or None when the turn has no result or the result
+                    carries no modelUsage; a modelUsage that is not an object of objects refuses (StreamError)
     tool_use_ids    every tool_use block id the agent's records hold, in order
     result          the result record's RESULT_KEYS (absent keys None; permission_denials kept as {tool_name,
                     tool_use_id}), or None when the turn has no result record (a cut or dead turn)
@@ -158,6 +172,7 @@ def read_stream(text: str) -> dict:
     said, harness, output, api, calls, tools, result, sids = [], [], False, [], [], [], None, []
     seen_calls = set()
     status = None
+    models, usage = [], None
     for rec in recs:
         if rec.get("type") == "result" and _int(rec.get("api_error_status")):
             status = rec["api_error_status"]
@@ -191,6 +206,11 @@ def read_stream(text: str) -> dict:
                 output = True
             tools.extend(b.get("id") for b in blocks if b.get("type") == "tool_use")
             msg = rec.get("message") if isinstance(rec.get("message"), dict) else {}
+            served = msg.get("model")
+            if not isinstance(served, str) or not served:     # the served-model backstop reads every agent message
+                raise StreamError(f"an agent assistant record names no model ({served!r}): an unknown shape")
+            if served not in models:
+                models.append(served)
             key = (msg.get("id"), rec.get("request_id"))
             if key not in seen_calls:
                 seen_calls.add(key)
@@ -198,6 +218,11 @@ def read_stream(text: str) -> dict:
             continue
         if kind == "result":
             result = {k: rec.get(k) for k in RESULT_KEYS}
+            mu = rec.get("modelUsage")
+            if mu is not None and (not isinstance(mu, dict) or not all(isinstance(k, str) and k and isinstance(v, dict)
+                                                                      for k, v in mu.items())):
+                raise StreamError("the result's modelUsage is not an object of per-model objects: an unknown shape")
+            usage = None if mu is None else list(mu)
             denials = rec.get("permission_denials")
             result["permission_denials"] = ([{k: d.get(k) for k in DENIAL_KEYS} for d in denials
                                              if isinstance(d, dict)] if isinstance(denials, list) else None)
@@ -208,7 +233,78 @@ def read_stream(text: str) -> dict:
                             else None, "text": words or None})
     return {"init": init, "init_extra": extra, "inits": inits, "agent_text": "\n".join(said),
             "harness_text": "\n".join(h for h in harness if h), "agent_output": output, "api_errors": api,
-            "calls": calls, "tool_use_ids": tools, "result": result, "session_ids": sids, "undecoded": bad}
+            "calls": calls, "tool_use_ids": tools, "result": result, "session_ids": sids, "undecoded": bad,
+            "served_models": models, "model_usage": usage}
+
+
+# Review MINOR 5 (glitch-06's ruling, 14 Oct 2026): a modelUsage key beside the pin's is a side call only for a model on
+# this closed list (the one observed: the recorded sonnet probe's claude-haiku-4-5-20251001, Claude Code's small and
+# fast model); any other extra key is a mismatch. The side calls' token counts are recorded (side_calls).
+SIDE_MODELS = ("claude-haiku-4-5-20251001",)
+# A first-walk acceptance item (the same ruling): a turn that uses the Agent tool shows its subagent's assistant records
+# in the 2.1.296 stream (parent_tool_use_id set), each carrying message.model; until a walk shows it, a subagent on
+# another model may leave only a modelUsage key, which the closed list above then reads as a mismatch.
+FIRST_WALK_ACCEPTANCE = ("a turn that uses the Agent tool shows its subagent's assistant records in the 2.1.296 "
+                         "stream (parent_tool_use_id set), each carrying message.model",)
+
+
+def side_calls(read: dict, model: str) -> dict:
+    """{side model: {inputTokens, outputTokens}} for the result's modelUsage keys beside the pin's (as printed)."""
+    usage = (read.get("result") or {}).get("modelUsage") or {}
+    return {k: {t: _count(v.get(t)) for t in ("inputTokens", "outputTokens")} for k, v in usage.items()
+            if k != model and isinstance(v, dict)}
+
+
+def _count(v):
+    """A token count as printed, kept only when it is an int (never a bool); anything else, stream text included, is
+    None (review MINOR 2: no stream text rides a refusal or a record through a count)."""
+    return v if isinstance(v, int) and not isinstance(v, bool) else None
+
+
+def served_model_off(read: dict, model: str):
+    """THE SERVED-MODEL BACKSTOP (ownership review MAJOR 1, glitch-06, 14 Oct 2026): routing compares each turn's init
+    model with the pin, so a switch after an init that carried the pin would pass. The first model the turn served
+    that is not the pin's `model`, else None:
+      - every agent assistant record's message.model (read_stream's served_models) must be the pin's model;
+      - the result's modelUsage, when present and the turn made an agent call, must name the pin's model.
+    A key BESIDE the pin's in modelUsage is a side call only for a model on SIDE_MODELS (glitch-06's ruling on review
+    MINOR 5): the recorded sonnet probe (haiku-prestudy/verification/probes/claude-sonnet-5.auto.jsonl) carries
+    claude-haiku-4-5-20251001 there (915 in, 11 out) while each of its assistant records is claude-sonnet-5; any other
+    extra key is a mismatch, and the side calls' tokens are recorded (side_calls)."""
+    for m in read["served_models"]:
+        if m != model:
+            return m
+    usage = read["model_usage"]
+    # review MINOR 1: a modelUsage that omits the pin's model is a switch whether or not the turn has assistant records
+    if usage is not None and ((read["served_models"] and model not in usage) or (usage and model not in usage)):
+        others = [k for k in read["model_usage"] if k != model]
+        return others[0] if others else "<modelUsage names no model>"
+    for k in read["model_usage"] or ():
+        if k != model and k not in SIDE_MODELS:     # a side key off the closed list is a mismatch
+            return k
+    return None
+
+
+def unlisted_side_model(read: dict, model: str):
+    """glitch-06's ruling (14 Oct 2026, window 2) on departure D-INT-2c: a side call off SIDE_MODELS stops the take and
+    is reported. The first modelUsage key beside the pin's that is off SIDE_MODELS, on a turn whose served models are
+    all the pin's and whose modelUsage names the pin's (when it served any): a side model, not a switch. A switch (an
+    assistant record on another model, or a modelUsage without the pin's) is None here: the init-mismatch route."""
+    usage = read["model_usage"] or ()
+    if any(m != model for m in read["served_models"]) or (read["served_models"] and model not in usage) or \
+            (usage and model not in usage):            # review MINOR 1: a modelUsage without the pin's is a switch
+        return None
+    for k in usage:
+        if k != model and k not in SIDE_MODELS:
+            return k
+    return None
+
+
+SIDE_KEY_REPR_MAX = 120     # review MINOR 2: a side key is stream text; its repr in a refusal is capped
+
+
+class SideModelOffList(RuntimeError):
+    """A turn called a side model off SIDE_MODELS: the take stops for a ruling (an executed turn's refusal)."""
 
 
 def argv(line: str, *, model: str, permission_mode: str, session_id: str, first: bool) -> list:
@@ -269,6 +365,7 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
         self.caller_env = caller_env
         self._version = None
         self.turn_records: list = []
+        self.executed_turns: list = []      # review MINOR 3: each exec's outcome, kept before its stream is read
 
     def version(self) -> str:
         """`claude --version` in the take container, as the agent (a plain exec: no login, no variable), parsed by
@@ -294,17 +391,42 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
                           login_file=self.login_file, stream_path=self.stream_path_for(n), budget_s=budget_s,
                           clock=self.clock, caller_env=self.caller_env)
         after = self.counters_for()
-        with open(got["stream_path"], encoding="utf-8", errors="surrogateescape") as fh:
-            read = read_stream(fh.read())
+        counters = rt.counter_delta(before, after)
+        # Review MINOR 3 (live harness 3a's pattern, as Gemini and Codex): the exec ran, so its outcome is kept before
+        # the stream is read; a refusal from here on is an executed turn's, never a turn that did not happen.
+        executed = {"n": n, "exit_code": got["exit_code"], "timed_out": got["timed_out"],
+                    "started_at": got["started_at"], "ended_at": got["ended_at"], "stream_path": got["stream_path"],
+                    "counters": counters, "refused": None}
+        self.executed_turns.append(executed)
+        try:
+            with open(got["stream_path"], encoding="utf-8", errors="surrogateescape") as fh:
+                read = read_stream(fh.read())
+            off = served_model_off(read, self.model)
+            side = unlisted_side_model(read, self.model)
+            if side is not None:                       # D-INT-2c: stops the take, its tokens in the refusal
+                raise SideModelOffList(f"turn {n} called side model {repr(side)[:SIDE_KEY_REPR_MAX]}, not on "
+                                       f"SIDE_MODELS {list(SIDE_MODELS)}; "
+                                       f"its tokens {side_calls(read, self.model).get(side)}: "
+                                       f"the take stops for a ruling (glitch-06, 14 Oct 2026)")
+        except (StreamError, OSError) as e:
+            executed["refused"] = f"{type(e).__name__}: {e}"
+            raise ExecutedStreamRefused(str(e), executed=executed) from e
+        except Exception as e:  # noqa: BLE001 - any other failure after the exec is still the exec's
+            executed["refused"] = f"{type(e).__name__}: {e}"
+            raise aa.ExecutedTurnRefused(executed["refused"], executed=executed) from e
+        # The init as routed: the init event's fields, its model the first served model off the pin when there is
+        # one, so routing's init-mismatch row (after turn 1) or pin refusal (before it) reads the switch.
+        init = read["init"] if off is None or read["init"] is None else dict(read["init"], model=off)
         self.turn_records.append({
             "n": n, "first": first, "exit_code": got["exit_code"], "timed_out": got["timed_out"],
             "api_key_source": read["init_extra"]["api_key_source"], "init_session_id": read["init_extra"]["session_id"],
             "tools": read["init_extra"]["tools"], "inits": read["inits"], "calls": read["calls"],
             "tool_use_ids": read["tool_use_ids"], "result": read["result"], "session_ids": read["session_ids"],
-            "undecoded": read["undecoded"]})
+            "undecoded": read["undecoded"], "served_models": read["served_models"],
+            "model_usage": read["model_usage"], "served_off": off, "side_calls": side_calls(read, self.model)})
         return aa.TurnResult(exit_code=got["exit_code"], text=read["agent_text"], stream_path=got["stream_path"],
-                             end_reason=end_reason(got["exit_code"], got["timed_out"]), init=read["init"],
-                             api_errors=read["api_errors"], counters=rt.counter_delta(before, after),
+                             end_reason=end_reason(got["exit_code"], got["timed_out"]), init=init,
+                             api_errors=read["api_errors"], counters=counters,
                              started_at=got["started_at"], ended_at=got["ended_at"],
                              agent_output=read["agent_output"])
 

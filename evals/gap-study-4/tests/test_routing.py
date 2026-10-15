@@ -1603,12 +1603,16 @@ class TestRoutingTable(unittest.TestCase):
         with self.assertRaisesRegex(routing.RoutingRefused, "checker reason"):
             routing.route(rec, t)
 
-    def test_real_table_refuses_every_take_while_pins_pending(self):
-        """W1B-10: until CP5 pre-registers the pins, no driver-supplied pin is trusted."""
-        self.assertEqual(REAL["pin_profiles"], {})
-        self.assertTrue(REAL["pin_profiles_status"].startswith("PENDING"))
+    def test_real_table_refuses_every_take_whose_pin_is_not_registered(self):
+        """W1B-10: no driver-supplied pin is trusted. CP5 registered arm A's three profiles alone (TestCP5ArmAProfiles),
+        so a pin of an unregistered model, or a registered model under another mode or version, is still refused."""
         with self.assertRaisesRegex(routing.RoutingRefused, "pre-registered profile"):
-            routing.route(baseline(A), REAL)
+            routing.route(baseline(A), REAL)          # the test pin's model is not one of arm A's
+        for field, value in (("permission_mode", "default"), ("version", "2.1.297")):
+            pin = {"harness": CP5_HARNESS, "model": CP5_MODELS[0], "permission_mode": CP5_MODE, "version": CP5_VERSION}
+            pin[field] = value
+            with self.assertRaisesRegex(routing.RoutingRefused, "pre-registered profile", msg=field):
+                routing.route(baseline(A, pin), REAL)
 
 
 CHECK_TAKE = "evals/gap-study-3/check_take.py"
@@ -2337,12 +2341,13 @@ class TestNextTouchAgentPin(unittest.TestCase):
             t["pin_profiles"] = copy.deepcopy(bad)
             self.assertNotEqual(routing.check_table(t), [], bad)
 
-    def test_the_pending_status_names_the_new_shape(self):
-        self.assertEqual(REAL["pin_profiles"], {})
-        status = REAL["pin_profiles_status"]
-        self.assertTrue(status.startswith("PENDING (CP5)"), status)
-        for cite in ("keyed by harness", "then model", "interface 8"):
-            self.assertIn(cite, status)
+    def test_the_ruled_profiles_have_the_new_shape(self):
+        """CP5 (Javier, 14 Oct 2026) replaced the PENDING status that described this shape; the real profiles are
+        keyed by harness, then model (TestCP5ArmAProfiles holds their values)."""
+        self.assertEqual(set(REAL["pin_profiles"]), {CP5_HARNESS})
+        for model, prof in REAL["pin_profiles"][CP5_HARNESS].items():
+            self.assertEqual(set(prof), set(NT_INIT_FIELDS) - {"model"}, model)
+        self.assertTrue(REAL["pin_profiles_status"].startswith('RULED 14 Oct by Javier ("CP5: all as recommended")'))
         self.assertEqual(tuple(routing.PIN_KEYS), ("harness",) + NT_INIT_FIELDS)
 
     def test_agent_pin_check_can_fail(self):
@@ -2821,6 +2826,123 @@ class TestNextTouchFold1(unittest.TestCase):
         t["spend_cap_refusal"]["outranked_by"] = [labels4.PAUSE]
         with mock.patch.object(routing, "spend_cap_holds", honours_outranked_by):
             self.assertTrue(any(x.endswith("got pause") for x in spend_problems(t)))
+
+
+# ------------------------------------------------------------------------------- CP5: arm A's three pin profiles
+# Javier's ruling "CP5: all as recommended" (typed 08:11 EDT Wed 14 Oct 2026 in glitch-06's window), on
+# plans/gap-study-round-4/cp5-values-draft-2026-10-14.md, section 3 and items 1, 2 and 7: arm A's three profiles are
+# registered now, and arms O and G get none until their rate-limit and spend-cap markers are ruled (check_table refuses a
+# profiled harness without them). The values are typed here once, from that draft; routing.json is checked against them.
+from box import image_lock  # noqa: E402
+
+CP5_HARNESS = hb.CLAUDE_CODE
+CP5_MODELS = ("claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5-20251001")   # plan 133-135; build_draft.MODELS
+CP5_MODE = "bypassPermissions"   # item 2: Claude Code's --permission-mode word, compared with init's permissionMode
+CP5_VERSION = "2.1.296"          # take-a image.lock harness.version, as the box lane committed it (6221c297)
+CP5_STATUS = ("RULED 14 Oct by Javier (\"CP5: all as recommended\"): arm A profiles registered; O and G follow when "
+              "their rate-limit and spend-cap rules are set")
+TAKE_A_LOCK = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "box", "image.lock")
+
+
+def take_a_version(path: str = TAKE_A_LOCK) -> str:
+    """The take-a image lock's harness.version, read through the lock's own reader."""
+    lock = image_lock.load(path)
+    if lock["image"] != "take-a":
+        raise AssertionError(f"{path} is not the take-a lock: {lock['image']!r}")
+    return lock["harness"]["version"]
+
+
+def cp5_problems(table: dict, lock_version: str) -> list[str]:
+    """Every way routing.json's pin profiles differ from the CP5 ruling or from the take-a lock (empty when sound).
+    A lock still PENDING (the box lane's committed lock is not on this branch) binds nothing; a filled lock must be
+    exactly the ruled version, and every profile's version must equal it."""
+    p = []
+    profiles = table.get("pin_profiles")
+    if not isinstance(profiles, dict) or set(profiles) != {CP5_HARNESS}:
+        p.append(f"CP5: pin_profiles must hold arm A's harness alone (O and G wait for their markers), got "
+                 f"{sorted(profiles) if isinstance(profiles, dict) else profiles!r}")
+    models = profiles.get(CP5_HARNESS) if isinstance(profiles, dict) else None
+    models = models if isinstance(models, dict) else {}
+    if tuple(models) != CP5_MODELS:
+        p.append(f"CP5: arm A's models must be exactly {list(CP5_MODELS)}, got {list(models)}")
+    for model, prof in models.items():
+        if prof != {"permission_mode": CP5_MODE, "version": CP5_VERSION}:
+            p.append(f"CP5: {model}'s profile is not the ruled one: {prof!r}")
+        if lock_version != image_lock.PENDING and (not isinstance(prof, dict) or prof.get("version") != lock_version):
+            p.append(f"CP5: {model}'s version is not the take-a lock's {lock_version!r}")
+    if lock_version not in (image_lock.PENDING, CP5_VERSION):
+        p.append(f"CP5: the take-a lock's harness.version {lock_version!r} is not the ruled {CP5_VERSION!r}")
+    status = table.get("pin_profiles_status")
+    if status != CP5_STATUS or "PENDING" in str(status).upper():
+        p.append(f"CP5: pin_profiles_status is not the ruled line: {str(status)[:90]!r}")
+    return p
+
+
+class TestCP5ArmAProfiles(unittest.TestCase):
+    """CP5 (Javier, 14 Oct 2026): routing.json carries arm A's three profiles, exactly as drafted, and nothing else."""
+
+    def test_the_real_table_is_the_ruling(self):
+        self.assertEqual(cp5_problems(REAL, take_a_version()), [])
+        self.assertEqual(routing.check_table(REAL), [])
+
+    def test_the_real_lock_binds_the_version(self):
+        lock = take_a_version()
+        if lock == image_lock.PENDING:
+            # test_round4 allows no skip (SKIP_ALLOWED is empty; athena run of 1f032586): with the lock PENDING the
+            # profiles hold the ruled version, the one the box lane's committed lock (6221c297) carries where merged.
+            lock = CP5_VERSION
+        self.assertEqual({p["version"] for p in REAL["pin_profiles"][CP5_HARNESS].values()}, {lock})
+
+    def test_the_committed_lock_value_binds(self):
+        """The binding as it runs on the merged head, where take-a's lock holds the committed version."""
+        self.assertEqual(cp5_problems(REAL, CP5_VERSION), [])
+        # and a lock holding another version is caught, on every tree (the skip-free form of the binding)
+        self.assertTrue(cp5_problems(REAL, "7.7.7"), "a take-a version the profiles do not carry passed")
+
+    def test_o_and_g_takes_are_still_refused(self):
+        for harness, model in (("codex", "gpt-6.1-sol"), ("gemini", "gemini-3.8-flash")):
+            t = copy.deepcopy(REAL)
+            t["rate_limit_markers"][harness] = copy.deepcopy(t["rate_limit_markers"][CP5_HARNESS])
+            t["spend_cap_markers"][harness] = {"status": [402], "type": [], "text": [], "source": "TEST-ONLY"}
+            rec = baseline(A)
+            rec["pin"] = {"harness": harness, "model": model, "permission_mode": "x", "version": "0"}
+            with self.assertRaisesRegex(routing.RoutingRefused, "no pre-registered profile"):
+                routing.route(rec, t)
+
+    def test_an_arm_a_pin_routes(self):
+        for model in CP5_MODELS:
+            pin = {"harness": CP5_HARNESS, "model": model, "permission_mode": CP5_MODE, "version": CP5_VERSION}
+            self.assertEqual(routing.check_records(baseline(A, pin), REAL), [], model)
+
+
+class TestCP5Mutants(unittest.TestCase):
+    """Each mutant of the ruled table or lock must be refused by cp5_problems."""
+
+    def mutants(self):
+        def drift(t):
+            t["pin_profiles"][CP5_HARNESS]["claude-sonnet-5-5"]["version"] = "2.1.297"
+        def mode(t):
+            t["pin_profiles"][CP5_HARNESS]["claude-haiku-4-5-20251001"]["permission_mode"] = "default"
+        def codex(t):
+            t["pin_profiles"]["codex"] = {"gpt-6.1-sol": {"permission_mode": "bypass", "version": "0.162.1"}}
+        def gemini(t):
+            t["pin_profiles"]["gemini"] = {"gemini-3.8-flash": {"permission_mode": "yolo", "version": "0.64.0"}}
+        def pending(t):
+            t["pin_profiles_status"] = CP5_STATUS + "; codex and gemini PENDING"
+        def dropped(t):
+            del t["pin_profiles"][CP5_HARNESS]["claude-opus-5-5"]
+        return {"version drift": (drift, CP5_VERSION), "wrong mode": (mode, CP5_VERSION), "O profile": (codex, CP5_VERSION),
+                "G profile": (gemini, CP5_VERSION), "status PENDING": (pending, CP5_VERSION),
+                "model dropped": (dropped, CP5_VERSION), "lock drift": (lambda t: None, "2.1.297")}
+
+    def test_every_mutant_is_refused(self):
+        survivors = []
+        for name, (mutate, lock) in self.mutants().items():
+            t = copy.deepcopy(REAL)
+            mutate(t)
+            if not cp5_problems(t, lock):
+                survivors.append(name)
+        self.assertEqual(survivors, [])
 
 
 if __name__ == "__main__":

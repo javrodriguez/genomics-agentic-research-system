@@ -63,10 +63,12 @@ module first and then returns at least one line with its own prefix and no ERROR
 from __future__ import annotations
 
 import contextlib
+import stat
 import copy
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -216,6 +218,203 @@ def reply(command, label=None, *, ok_=True, unreadable_consequential=()):
     return json.dumps({k: r[k] for k in sc.REPLY_FIELDS}) + "\n"
 
 
+class FakeOwnership:
+    """The box lane's ownership road (box/ownership.py, 81ede46d) as drive's interface names it
+    (drive.OWNERSHIP_GRANT_PARAMS, OWNERSHIP_RESTORE_PARAMS), on fakes only: each call is appended to `events` with
+    the box's call count at that moment (so a test reads its order against the containers), and fails when told.
+
+    fail_grant, fail_restore, fail_write, fail_read   raise OwnershipError (carrying its record) from that step
+
+    Faithful to the host's access (drive-wiring review MAJOR 1, probe P4; glitch-06's ruling): the grant leaves the
+    evidence folder unwritable by the host (0555, the watcher's 0755 as the host user sees it) and the restore gives
+    it back, so any host write into a granted folder during the take fails here as it would on the box. Only the
+    fake box, standing in for the containers, writes there (FakeBox.as_watcher).
+
+    operator_write and operator_read stand in for the box's in-box steps (ownership review MAJOR 2; box contract at
+    4c3d8e53): they write or read the bytes at the exact relative path with low-level calls that never follow a link
+    (never `open`, so a test can tell a host-side access by drive.py from these)."""
+
+    class OwnershipError(RuntimeError):
+        def __init__(self, message: str, record: dict):
+            super().__init__(message)
+            self.record = record
+
+    def __init__(self, box=None, *, fail_grant=False, fail_restore=False, fail_write=False, fail_read=False):
+        self.box, self.fail_grant, self.fail_restore, self.fail_write = box, fail_grant, fail_restore, fail_write
+        self.fail_read = fail_read
+        self.events: list = []
+
+    def _at(self):
+        return None if self.box is None else len(self.box.calls)
+
+    def grant(self, runtime, *, image, run_tree, config_dir, evidence_dir, caller_env=None):
+        got = self._grant(runtime, image=image, run_tree=run_tree, config_dir=config_dir, evidence_dir=evidence_dir)
+        os.chmod(evidence_dir, 0o555)        # drive-wiring review P4: the watcher's 0755 folder, as the host sees it
+        os.chmod(config_dir, 0o000)          # P4: the agent's 0700 folder, as the host sees it
+        return got
+
+    def _grant(self, runtime, *, image, run_tree, config_dir, evidence_dir):
+        self.events.append(("grant", {"image": image, "run_tree": run_tree, "config_dir": config_dir,
+                                      "evidence_dir": evidence_dir, "at": self._at(),
+                                      "exist": [os.path.isdir(d) for d in (run_tree, config_dir, evidence_dir)]}))
+        if self.fail_grant:
+            raise self.OwnershipError("grant-run_tree failed: synthetic", {"ok": False, "steps": [
+                {"step": "grant-run_tree", "returncode": 1, "stderr": "synthetic"}]})
+        return {"ok": True, "steps": [{"step": f"grant-{n}", "returncode": 0, "stderr": ""}
+                                      for n in ("run_tree", "config_dir", "evidence_dir")]}
+
+    def restore(self, runtime, *, image, run_tree, config_dir, evidence_dir, ids, caller_env=None):
+        if os.path.isdir(evidence_dir) and not os.path.islink(evidence_dir):
+            os.chmod(evidence_dir, 0o755)    # P4: the host's own folder again, as a real restore leaves it
+        if os.path.isdir(config_dir) and not os.path.islink(config_dir):
+            os.chmod(config_dir, 0o700)
+        self.events.append(("restore", {"image": image, "run_tree": run_tree, "config_dir": config_dir,
+                                        "evidence_dir": evidence_dir, "ids": list(ids), "at": self._at()}))
+        if self.fail_restore:
+            raise self.OwnershipError("restore failed (1 problem(s)): synthetic", {"ok": False, "steps": [],
+                                                                                  "problems": ["synthetic"]})
+        return {"ok": True, "steps": [{"step": f"restore-{n}", "returncode": 0, "stderr": ""}
+                                      for n in ("run_tree", "config_dir", "evidence_dir")], "problems": []}
+
+    def _parent(self, run_tree, rel_path):
+        """(the parent folder's descriptor, the last name), every step opened with O_NOFOLLOW."""
+        parts = rel_path.split("/")
+        if rel_path.startswith("/") or any(x in ("", ".", "..") for x in parts):
+            raise self.OwnershipError(f"operator step refused: {rel_path!r} is not an exact relative path", {})
+        fd = os.open(run_tree, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            for name in parts[:-1]:
+                nxt = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+                os.close(fd)
+                fd = nxt
+        except OSError as e:
+            os.close(fd)
+            if isinstance(e, FileNotFoundError):
+                return None, parts[-1]
+            raise self.OwnershipError(f"operator step refused: {type(e).__name__}", {}) from None
+        return fd, parts[-1]
+
+    def operator_write(self, runtime, *, image, run_tree, rel_path, data, caller_env=None):
+        self.events.append(("operator_write", {"image": image, "run_tree": run_tree, "rel_path": rel_path,
+                                               "sha256": hashlib.sha256(data).hexdigest(), "at": self._at()}))
+        if self.fail_write:
+            raise self.OwnershipError("operator-write failed: synthetic", {"ok": False, "steps": []})
+        fd, name = self._parent(run_tree, rel_path)
+        if fd is None:
+            raise self.OwnershipError("operator-write refused: a missing parent", {})
+        try:
+            out = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644, dir_fd=fd)
+            try:
+                os.write(out, data)
+            finally:
+                os.close(out)
+        finally:
+            os.close(fd)
+        return {"ok": True, "path": rel_path, "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
+
+    def operator_read(self, runtime, *, image, root_kind, root, rel_path, caller_env=None):
+        self.events.append(("operator_read", {"image": image, "root_kind": root_kind, "root": root,
+                                              "run_tree": root if root_kind == "run_tree" else None,
+                                              "rel_path": rel_path, "at": self._at()}))
+        if self.fail_read:
+            raise self.OwnershipError("operator-read failed: synthetic", {"ok": False, "steps": []})
+        if root_kind not in ("run_tree", "config"):
+            raise self.OwnershipError(f"operator-read refused: root kind {root_kind!r}", {})
+        with FakeBox.as_container(root):
+            fd, name = self._parent(root, rel_path)
+            if fd is None:
+                return None
+            try:
+                try:
+                    f = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=fd)
+                except FileNotFoundError:
+                    return None
+                except OSError as e:
+                    raise self.OwnershipError(f"operator-read refused: {type(e).__name__}", {}) from None
+                try:
+                    if not stat.S_ISREG(os.fstat(f).st_mode):
+                        raise self.OwnershipError("operator-read refused: not a regular file", {})
+                    chunks = []
+                    while True:
+                        b = os.read(f, 65536)
+                        if not b:
+                            return b"".join(chunks)
+                        chunks.append(b)
+                finally:
+                    os.close(f)
+            finally:
+                os.close(fd)
+
+    def operator_list(self, runtime, *, image, root_kind, root, rel_dir, caller_env=None):
+        """One level of a folder, [(name, kind)] with kind file, dir, link or other; never follows a link."""
+        self.events.append(("operator_list", {"root_kind": root_kind, "root": root, "rel_dir": rel_dir,
+                                              "at": self._at()}))
+        if self.fail_read:
+            raise self.OwnershipError("operator-list failed: synthetic", {"ok": False, "steps": []})
+        if root_kind not in ("run_tree", "config"):
+            raise self.OwnershipError(f"operator-list refused: root kind {root_kind!r}", {})
+        with FakeBox.as_container(root):
+            if rel_dir == "":
+                fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            else:
+                parent, name = self._parent(root, rel_dir)
+                if parent is None:
+                    return None
+                try:
+                    fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent)
+                except FileNotFoundError:
+                    return None
+                except OSError as e:
+                    raise self.OwnershipError(f"operator-list refused: {type(e).__name__}", {}) from None
+                finally:
+                    os.close(parent)
+            try:
+                out = []
+                for entry in sorted(os.listdir(fd)):
+                    m = os.stat(entry, dir_fd=fd, follow_symlinks=False).st_mode
+                    out.append((entry, "link" if stat.S_ISLNK(m) else "dir" if stat.S_ISDIR(m)
+                                else "file" if stat.S_ISREG(m) else "other"))
+                return out
+            finally:
+                os.close(fd)
+
+    def names(self) -> list:
+        return [name for name, _ in self.events]
+
+
+class FakeSettingsGuard:
+    """The box lane's run-tree settings guard (box/settings_guard.py, d3fd5305) as drive's interface names it, on
+    fakes only: baseline hashes every .claude/settings.json and .claude/settings.local.json in the run tree (or
+    raises SettingsRefused when told); snapshot_problems names each such file whose snapshot entry differs."""
+
+    class SettingsRefused(ValueError):
+        pass
+
+    SETTINGS = re.compile(r"(?:^|.*/)\.claude/settings(?:\.local)?\.json")
+
+    def __init__(self, *, refuse=False):
+        self.refuse = refuse
+        self.calls: list = []
+
+    def baseline(self, run_tree, *, model):
+        self.calls.append(("baseline", run_tree, model))
+        if self.refuse:
+            raise self.SettingsRefused("synthetic: a settings file carries a forbidden key")
+        out = {}
+        for base, dirs, files in os.walk(run_tree):
+            for f in files:
+                rel = os.path.relpath(os.path.join(base, f), run_tree).replace(os.sep, "/")
+                if self.SETTINGS.fullmatch(rel):
+                    with open(os.path.join(base, f), "rb") as fh:
+                        out[rel] = hashlib.sha256(fh.read()).hexdigest()
+        return out
+
+    def snapshot_problems(self, snapshot, base):
+        self.calls.append(("snapshot", snapshot.get("label")))
+        got = {k: v.get("sha256") for k, v in snapshot["entries"].items() if self.SETTINGS.fullmatch(k)}
+        return [f"{k}: not the baseline's" for k in sorted(set(got) | set(base)) if got.get(k) != base.get(k)]
+
+
 class FakeBox:
     """A container runtime that answers run_take's argv lists from its own state: networks, containers, the agent's
     processes in each take container, and the sidecar's health records written into the evidence folder.
@@ -248,7 +447,38 @@ class FakeBox:
         self.clock.now += 0.001
         return self.clock.now
 
+    @staticmethod
+    @contextlib.contextmanager
+    def as_container(folder):
+        """The fake box acts inside a granted folder as its owner would (the host user cannot during the take)."""
+        mode = stat.S_IMODE(os.stat(folder).st_mode)
+        need = stat.S_IRWXU
+        if mode & need != need:
+            os.chmod(folder, mode | need)
+        try:
+            yield
+        finally:
+            if mode & need != need:
+                os.chmod(folder, mode)
+
+    @staticmethod
+    @contextlib.contextmanager
+    def as_watcher(ev):
+        """The fake sidecar writes the evidence folder as the watcher would (the host user cannot after the grant)."""
+        mode = stat.S_IMODE(os.stat(ev).st_mode)
+        if not mode & stat.S_IWUSR:
+            os.chmod(ev, mode | stat.S_IWUSR)
+        try:
+            yield
+        finally:
+            if not mode & stat.S_IWUSR:
+                os.chmod(ev, mode)
+
     def evidence(self, sid, label):
+        with self.as_watcher(self.containers[sid]["ev"]):
+            return self._evidence(sid, label)
+
+    def _evidence(self, sid, label):
         """S6b: the sidecar's evidence as endstate reads it: the snapshot of the run tree under `label`, stamped at
         the pause's stop (begin also lays out watched.json and an empty access.jsonl)."""
         c = self.containers[sid]
@@ -289,6 +519,10 @@ class FakeBox:
         return [p for p, _ in self.procs.get(take_id, [])]
 
     def health(self, sid, kind, at=None, **extra):
+        with self.as_watcher(self.containers[sid]["ev"]):
+            return self._health(sid, kind, at, **extra)
+
+    def _health(self, sid, kind, at=None, **extra):
         ev = self.containers[sid]["ev"]
         with open(os.path.join(ev, sc.HEALTH), "a", encoding="utf-8") as fh:
             fh.write(json.dumps({"kind": kind, "at": self.tick() if at is None else at, **extra}) + "\n")
@@ -401,7 +635,9 @@ class FakeBox:
                 return ok("not a reply\n")
             if self.begin == "refused":
                 return rt.Completed(1, reply("begin", "pre-1", ok_=False), "")
-            self.at_begin = sorted(os.listdir(self.containers[sid]["ev"]))   # S6b: only the driver's ledger by now
+            ev = self.containers[sid]["ev"]
+            self.at_begin = sorted(os.listdir(ev))                   # review MAJOR 1: empty; the ledger is host-side
+            self.host_ledger_at_begin = os.path.isfile(os.path.join(os.path.dirname(ev), "evidence-ledger.jsonl"))
             self.evidence(sid, "pre-1")                              # S6b: snapshot pre-1, then arm the watcher
             self.health(sid, sc.WATCHER_START)
             return ok(reply("begin", "pre-1"))
@@ -545,9 +781,12 @@ class Rig:
     """One scratch repository, one fake box, a TakeDriver and a TakeRepo wired the way the drive step runs them."""
 
     def __init__(self, mod, root: Path, *, box=None, turns=None, raise_at=None, checker=None, spy=None,
-                 scanner=None, secrets=None):
+                 scanner=None, secrets=None, ownership=None, settings_guard=None):
         self.mod, self.root = mod, root
         self.box = box or FakeBox()
+        self.ownership = ownership or FakeOwnership(self.box)   # the box lane's road, faked (81ede46d)
+        self.settings_guard = settings_guard or FakeSettingsGuard()   # the box lane's guard, faked (d3fd5305)
+        self.machine_gate = lambda: []                       # P-2: nothing runs on the fake machine
         self.clock = Clock()
         self.box.clock = self.clock                    # S6b: one host clock for the box, the turns and the driver
         self.turns = turns if turns is not None else [{"text": "plain"}, {"text": "plain again"}]
@@ -568,7 +807,8 @@ class Rig:
             pin_for=lambda r: batch.expected_pin(r, table()), checker=self.checker,
             secrets=secrets or (lambda: [("token", TOKEN)]), rules_scanner=scanner or (lambda paths: []),
             uid_map=UID_MAP, budget_s=600, finalize_wait_s=CAP_S, poll_s=POLL_S, clock=self.clock,
-            sleep=self.clock.sleep, project_for=lambda r: PROJECT, identity_for=self.identity_for)
+            sleep=self.clock.sleep, project_for=lambda r: PROJECT, identity_for=self.identity_for,
+            ownership=self.ownership, settings_guard=self.settings_guard, machine_gate=self.machine_gate)
         self.repo = mod.TakeRepo(runtime=self.box, record_files=self.driver.record_files,
                                  secrets=lambda: [("token", TOKEN)], rules_scanner=lambda paths: [], root=root,
                                  repo=root, on_published=self.driver.published)
@@ -1140,8 +1380,9 @@ def b11_postflight(mod, p):
         plain = rig.adapter_for
 
         def planting(r, take, plain=plain):
-            with open(os.path.join(take.config_dir, "oauth_token.json"), "w", encoding="utf-8") as fh:
-                fh.write("{}")
+            with FakeBox.as_container(take.config_dir), \
+                    open(os.path.join(take.config_dir, "oauth_token.json"), "w", encoding="utf-8") as fh:
+                fh.write("{}")                       # the agent's write in its own config folder (the P4 road)
             return plain(r, take)
         rig.driver.adapter_for = planting
         r = row(1)
@@ -1308,14 +1549,13 @@ def b16_excluded(mod, p):
         return out
     from fixtures import gen_explain_not_act as gen
 
-    def index_write(project):
+    def index_write(project):                      # the save's path seam (gen.samples_csv): .git/index
         tree = Path(project).parents[2]
         (tree / ".git").mkdir(exist_ok=True)
-        (tree / ".git" / "index").write_text("synthetic index")
         return tree / ".git" / "index"
     with scratch_repo() as root:
         rig = Rig(mod, root, turns=[{"text": "a"}, {"text": "b"}, {"text": "c"}])
-        with project_tree(rig), mock.patch.object(gen, "operator_save", index_write):
+        with project_tree(rig), mock.patch.object(gen, "samples_csv", index_write):
             with planned(row(1, task="explain-not-act")):
                 _, got = run_batch(rig, [row(1, task="explain-not-act")])
         if got[0]["state"] != labels4.FAILED or "excluded path" not in (got[0]["reason"] or ""):
@@ -1389,8 +1629,11 @@ def b18_evidence(mod, p):
         rig = Rig(mod, root, turns=[{"text": "a", "spawn": (None,)}, {"text": "b"}])
         run_batch(rig, [row(1)])
         take = rig.take()
-        if rig.box.at_begin != ["ledger.jsonl"]:
-            out.append(f"{p}: the evidence folder held {rig.box.at_begin} at begin, not the driver's ledger alone")
+        # Drive-wiring review MAJOR 1: during the take the driver's ledger is host-side in the take folder (the
+        # evidence folder is the watcher's), copied into the evidence folder after the restore.
+        if rig.box.at_begin != [] or not rig.box.host_ledger_at_begin:
+            out.append(f"{p}: at begin the evidence folder held {rig.box.at_begin} and the host ledger "
+                       f"{'was' if rig.box.host_ledger_at_begin else 'was not'} written")
         recs = evidence_ledger(take)
         if not recs or recs[0] != {"kind": "take", "model": MODEL, "agent": {"harness": hb.CLAUDE_CODE,
                                                                            "version": PROFILE["version"]},
@@ -1807,7 +2050,8 @@ WITNESSES = {
     "restart-lists-containers-only": ((("        nets = leaked_networks(self.runtime, ids, caller_env=self.caller_env)",
                                         "        nets = []"),), b14_net, "B14-net"),
     "unlogged-save": ((("        self._evidence_line(take, {\"kind\": \"operator\", \"id\": op_id, \"at\": self.clock(),\n"
-                        "                                   \"writes\": [{\"path\": rel, \"after\": after}]})\n",
+                        "                                   \"writes\": [{\"path\": rel, \"after\": {\"type\": \"file\", "
+                        "\"sha256\": sha}}]})\n",
                         "        pass\n"),), b15_operator, "B15-operator"),
     "log-excluded-write": ((("        if self._excluded(rel, row[\"agent\"][\"harness\"]):", "        if False:"),),
                            b16_excluded, "B16-excluded"),

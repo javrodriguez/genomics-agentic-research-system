@@ -358,8 +358,18 @@ class ClaudeCodeSessionParser:
         return [RawItem("attachment:" + at, HARNESS, text=_joined({k: v for k, v in a.items() if k != "type"}))]
 
 
-# The parser table, keyed by AgentAdapter.name. Its only real entry is Claude Code's.
-PARSERS = {"claude-code": ClaudeCodeSessionParser()}
+class VendorBoundParser:
+    """The published vendor road requires a ledger-bound file, not loose lines."""
+    def __init__(self, harness):
+        self.harness = harness
+
+    def bound_items(self, path):
+        from vendor_record_binding import bound_items
+        return bound_items(self.harness, path)
+
+
+PARSERS = {"claude-code": ClaudeCodeSessionParser(),
+           "codex": VendorBoundParser("codex"), "gemini": VendorBoundParser("gemini")}
 
 # Round 3's takes carry no harness name; this is the one place it is written.
 ROUND3_HARNESS = "claude-code"
@@ -391,6 +401,8 @@ def _lines(path_or_lines) -> list[str]:
 
 def _items(harness, path_or_lines) -> list[RawItem]:
     parser = _parser(harness)
+    if isinstance(parser, VendorBoundParser):
+        return parser.bound_items(path_or_lines)
     out = []
     for i, ln in enumerate(_lines(path_or_lines), 1):
         try:

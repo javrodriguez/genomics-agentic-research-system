@@ -83,7 +83,7 @@ def verify_route(outcome: dict, table: dict) -> None:
 
 def window_problems(history: list) -> list[str]:
     """A window event occupies at most one block's span, with no slot twice."""
-    outcomes = [o for o in history if not batch.is_ruling(o)]
+    outcomes = [o for o in history if batch.is_outcome(o)]
     positions = collections.defaultdict(list)
     for i, o in enumerate(outcomes):
         if o["state"] == labels4.PAUSE:
@@ -110,7 +110,7 @@ def pause_event(history: list, taken: dict) -> dict:
     ruled take has its own event, regardless of another cell's window identity.
     If candidate counts differ, use batch's strict own-event count and name it.
     """
-    outcomes = [o for o in history if not batch.is_ruling(o)]
+    outcomes = [o for o in history if batch.is_outcome(o)]
     key = (taken["slot"], taken["attempt"])
     indices = [i for i, o in enumerate(outcomes) if (o["slot"], o["attempt"]) == key]
     if len(indices) != 1:
@@ -188,6 +188,8 @@ def publication(history: list, table: dict | None = None) -> dict:
     events = collections.defaultdict(set)
     spent_cell, spent_slot = collections.Counter(), collections.Counter()
     for entry in history:
+        if batch.is_night_ruling(entry):      # a run-level ruling: no take's fate (THE NIGHTLY STOP)
+            continue
         if not batch.is_ruling(entry):
             o = copy.deepcopy(entry)
             if o["slot"] in final_slots:

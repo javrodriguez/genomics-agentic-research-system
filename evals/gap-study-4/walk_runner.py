@@ -22,6 +22,14 @@ one at a time:
      record present and ok, its teardown record present with no problem: clean_drive); every other state keeps it
      for a human, as the driver's own postflight stop says (S6b (e)), and fails closed (W10-R2-2).
 
+A VENDOR WALK WHOSE NATIVE CROSS-CHECK IS PENDING (registration review finding 2, glitch-06, 14 Oct 2026). While no
+native-session reader is registered, a Gemini drive stops with drive.NativeCrossCheckPending after its cleanup, ledger
+and scan. That walk, and only that one (its containers removed, its ledger recording the pending cross-check), is
+committed through WalkRepo with every record it made: check.json is pending_walk.check_doc (the checker never ran) and
+grade.json is run.grade_walk's pending document (never graded). Its state is "pending-native-reader": never counted,
+never re-run (its id is registered), and the runner moves on. After a reader is registered, walk_regrade.py re-derives
+its cross-check and grade from the committed bytes into a superseding regrade.json; its own commit stays.
+
 WHAT STOPS IT. A walk refused before launch (LaunchRefused, or a slot that is not its walk id) made nothing; it is
 reported and the runner moves on (D3). A walk whose launch failed after making things, whose drive raised (a drive
 scan or postflight refusal among them), whose containers could not all be removed, or whose commit was refused is
@@ -33,9 +41,9 @@ A walk is graded but never counted: nothing here writes under takes/, registers 
 THE CLI refuses until the production builders exist (Q-w7b-3). Lane w12b-walk-builders (departure w12b-1, recorded in
 lane w10's entry) built the half fakes can prove in walk_builders.py: the D2 identity, the login file read by name,
 the counters reader, the run-tree and fixture builders and the plumbing; main hands its argv to walk_builders.cli,
-which refuses by name while the DockerRuntime or any other real-box or walk-measured value is missing. Claude walks
-only: walk_driver admits only the production ClaudeCodeAdapter, so walks of arms O and G wait for their adapters and
-w7c's spend gate.
+which refuses by name while the DockerRuntime or any other real-box or walk-measured value is missing. walk_driver
+builds each harness's production adapter (harness_adapter_for; WalkDriver admits only the exact production classes);
+the CLI's builders and w7c's spend gate still decide whether a vendor walk can launch.
 """
 from __future__ import annotations
 
@@ -47,11 +55,13 @@ HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 import mode_binding  # noqa: E402
+import pending_walk  # noqa: E402
 import routing  # noqa: E402
 import run as run_mod  # noqa: E402
 import walk_register  # noqa: E402
 
 COMMITTED, LAUNCH_REFUSED, HELD = "committed", "launch-refused", "held"
+PENDING = pending_walk.PENDING            # a vendor walk committed ungraded while its native cross-check is pending
 CHECK_FILE = "check.json"                 # drive.WALK_CHECK (asserted against the driver's module at run time)
 POSTFLIGHT_FILE, TEARDOWN_FILE, LEDGER_FILE = "postflight.json", "teardown.json", "driver-ledger.json"
 ENTRY_FROM_ROW = ("walk", "task", "half", "wording", "arm", "model")
@@ -178,6 +188,8 @@ def _run_one(driver, repo, row, reason, walk, folder, reached, *, table, route_f
     except Exception as e:  # noqa: BLE001
         drive_error = e
     removal_error = _remove(driver, cid)
+    if removal_error is None and isinstance(drive_error, ns["NativeCrossCheckPending"]):
+        return _commit_pending(repo, entry, folder, drive_error)
     if drive_error is not None or removal_error is not None:
         why = [f"drive raised {type(drive_error).__name__}: {drive_error}"] if drive_error is not None else []
         why += [f"container {cid} could not be removed: {removal_error}"] if removal_error is not None else []
@@ -197,9 +209,26 @@ def _run_one(driver, repo, row, reason, walk, folder, reached, *, table, route_f
             "route": check["route"], "checker_reasons": check["checker_reasons"]}
 
 
+def _commit_pending(repo, entry: dict, folder: Path, pending) -> dict:
+    """Registration review finding 2: commit a vendor walk whose drive stopped on a pending native cross-check, with
+    the pending check and grade documents, both derived from its driver ledger. A ledger that does not record the
+    pending cross-check, a grade or a commit refused: held, never half-committed."""
+    try:
+        ledger = json.loads((folder / LEDGER_FILE).read_text(encoding="utf-8"))
+        write_check(folder, pending_walk.check_doc(entry["walk"], ledger))
+        run_mod.write_walk_grade(entry, folder)
+        got = repo.commit_walk(entry)
+    except Exception as e:  # noqa: BLE001 - a pending walk the records or the commit refuse is held
+        return {"state": HELD, "why": f"drive raised {type(pending).__name__}: {pending}; the pending walk was not "
+                                      f"committed: {type(e).__name__}: {e}"}
+    return {"state": PENDING, "commit": got["commit"], "graded": False, "route": None, "checker_reasons": [],
+            "why": str(pending)}
+
+
 def run_walks(driver, repo, walks, *, table=None, route_fn=None, grade=None) -> list[dict]:
     """Each walk ({"row": the walk's row, with its `walk` id and slot equal to it; "reason": why it is run}), one at a
-    time; the list of what happened to each (state committed, launch-refused or held), stopping after a held one."""
+    time; the list of what happened to each (state committed, pending-native-reader, launch-refused or held),
+    stopping after a held one."""
     if getattr(driver, "records", None) != "walks":
         raise TypeError("the walk runner drives a walk driver: drive.walk_driver(records='walks')")
     if not callable(getattr(repo, "commit_walk", None)) or Path(repo.root).resolve() != Path(driver.records_root):

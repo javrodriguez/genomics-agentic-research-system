@@ -1225,6 +1225,10 @@ def build(root=None):
     d["instruction_files"] = {CODEX: dict(take_config.CODEX_TOP)["project_doc_fallback_filenames"],
                                GEMINI: dict(take_config.GEMINI_SETTINGS)["context.fileName"]}
     d["served_model_rule"] = {h: PENDING for h in HARNESSES.values()}
+    # Departure D-INT-2 (glitch-06 under the standing delegation, 14 Oct 2026; for Javier's review before the freeze;
+    # this field only, the harness lane's narrow extension): arm O's rule is routing's own sentence, read from routing.
+    import routing as _routing
+    d["served_model_rule"][CODEX] = _routing.SERVED_MODEL_LIMIT
     d["furniture"] = {h: PENDING for h in HARNESSES.values()}
     d["price_table"] = PENDING
     table = json.loads((root / "routing.json").read_text())

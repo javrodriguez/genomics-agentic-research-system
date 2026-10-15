@@ -22,7 +22,8 @@ and the end-to-end take S6c covered only in halves (D7 the records, D8 the check
   W5-one-road W7B-R1-1: by AST, no non-test module under evals/gap-study-4 calls TakeDriver( or derives from it
              except WalkDriver. Witnesses: added-construction, added-subclass (one module's source extended).
   W6-pending W7B-R1-6: every walk-measured checker constant is PENDING (the two known values aside) and routing.json's
-             pin_profiles are empty. Witnesses: constant-filled, pin-filled.
+             pin_profiles are exactly CP5's registration (arm A's three, Javier 14 Oct 2026). Witnesses:
+             constant-filled, pin-filled.
   E1-take    the end-to-end take: batch.Batch drives the walk driver (TakeDriver through walk_driver, the REAL Claude
              Code adapter on a fake box that answers in the recorded stream shape and writes a session file, the
              REAL check4 on round 4's REAL design through take_checker), routing labels it, TakeRepo commits it into
@@ -180,9 +181,10 @@ class SessionBox(tdl.ClaudeBox):
             "id": msg, "model": model, "role": "assistant", "content": content, "usage": dict(tdl.USAGE),
             "stop_reason": "end_turn"}})
         folder = Path(self.cfg_of(cid)) / "projects" / "-work-run"
-        folder.mkdir(parents=True, exist_ok=True)
-        with open(folder / f"{sid}.jsonl", "a", encoding="utf-8") as fh:
-            fh.write("".join(json.dumps(r) + "\n" for r in recs))
+        with tbi.FakeBox.as_container(self.cfg_of(cid)):     # Claude Code writes its own config folder (the P4 road)
+            folder.mkdir(parents=True, exist_ok=True)
+            with open(folder / f"{sid}.jsonl", "a", encoding="utf-8") as fh:
+                fh.write("".join(json.dumps(r) + "\n" for r in recs))
         return tbi.ok("".join(json.dumps(r) + "\n" for r in stream))
 
 
@@ -260,7 +262,9 @@ class Wired:
             counters_for=lambda take: {"oom_kill": 0, "pids_max": 0}, pin_for=self.pin_for,
             design_for=self.design_for, project_for=lambda row: self.project, identity_for=self.identity_for,
             secrets=lambda: [("token", tbi.TOKEN)], rules_scanner=lambda paths: [], uid_map=tbi.UID_MAP,
-            budget_s=600, finalize_wait_s=tbi.CAP_S, poll_s=tbi.POLL_S, clock=self.clock, sleep=self.clock.sleep)
+            budget_s=600, finalize_wait_s=tbi.CAP_S, poll_s=tbi.POLL_S, clock=self.clock, sleep=self.clock.sleep,
+            ownership=tbi.FakeOwnership(self.box), settings_guard=tbi.FakeSettingsGuard(),
+            machine_gate=lambda: [])
 
     def pin_for(self, row):
         return batch.expected_pin(row, self.table)
@@ -278,8 +282,10 @@ class Wired:
 
     def sidecar_for(self, row, ev):
         tree = str(self.tree)
-        expect = {"user": sc.WATCHER_USER, "network_mode": "none", "cap_drop": ["ALL"],
-                  "cap_add": ["CAP_DAC_READ_SEARCH"], "security_opt": ["no-new-privileges"], "privileged": False,
+        # The sidecar's accepted launch (0b6f60f9; its fake inspect is test_box_integration's, fixed in 5f1b33ee).
+        expect = {"user": sc.BOOT_USER, "network_mode": "none", "cap_drop": ["ALL"],
+                  "cap_add": list(sc.BOOT_INSPECT_CAPABILITIES), "security_opt": ["no-new-privileges"],
+                  "privileged": False, "image": tbi.SIDECAR_IMAGE, "cmd": tbi.sidecar_cmd(tree), "entrypoint": [],
                   "pid_mode": "", "mounts": [{"source": tree, "destination": tree, "rw": False},
                                              {"source": ev, "destination": sc.EVIDENCE_MOUNT, "rw": True}]}
         return rt.SidecarLaunch(
@@ -570,10 +576,17 @@ PENDING_PATHS = ["budgets.turn_timeout_s", "driver_constants.run_tree_tmpdir", "
 KNOWN_VALUES = ("driver_outcome_shapes", "system_under_test")       # check_take names these two as known values
 
 
+# CP5's registration, typed once from plans/gap-study-round-4/cp5-values-draft-2026-10-14.md (Javier: "CP5: all as
+# recommended", 14 Oct 2026); test_routing's TestCP5ArmAProfiles binds the same values to the take-a lock.
+CP5_PROFILES = {"claude-code": {m: {"permission_mode": "bypassPermissions", "version": "2.1.296"}
+                                for m in ("claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5-20251001")}}
+
+
 @guarded("W6-pending")
 def w6_pending(world_, p):
     """W7B-R1-6: every checker constant a walk measures is PENDING in production (the two known values aside), and
-    routing.json's pin_profiles are empty: the end-to-end take's values are test data only."""
+    routing.json's pin_profiles are exactly CP5's registration (Javier, 14 Oct 2026: arm A's three profiles, nothing
+    else): the end-to-end take's values are test data only."""
     ct, table = world_
     out = []
     got = sorted(x for k, v in ct.CHECKER_CONSTANTS.items() for x in ct._pending_paths(v, k))
@@ -582,8 +595,8 @@ def w6_pending(world_, p):
     others = sorted(set(ct.CHECKER_CONSTANTS) - set(KNOWN_VALUES) - {x.split('.')[0] for x in got})
     if others:
         out.append(f"{p}: checker constants {others} hold values a walk has not measured")
-    if table.get("pin_profiles") != {}:
-        out.append(f"{p}: routing.json's pin_profiles are {table.get('pin_profiles')!r}, not empty")
+    if table.get("pin_profiles") != CP5_PROFILES:
+        out.append(f"{p}: routing.json's pin_profiles are {table.get('pin_profiles')!r}, not CP5's registration")
     return out
 
 

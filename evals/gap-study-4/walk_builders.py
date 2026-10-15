@@ -38,8 +38,12 @@ DockerRuntime and every other value only the real box can tell (next-slices plan
 checker's PENDING constants, the turn budgets, the run tree's exclusions in run_location). Nothing here fills any of
 them: a value is either measured and recorded where it lives, or the command line refuses.
 
-Claude walks only: walk_driver admits only the production ClaudeCodeAdapter (drive A1), so a row of another harness
-is refused before anything is built. No model, no network and no spend here; the walk itself is walk_runner's.
+Claude Code, Gemini (its r4-g key file, login_name GEMINI_API_KEY, the same login_secrets for the walk's driver and
+its WalkRepo) and, on the lease road, Codex: a Codex row has no login file (login_name gives run_take.NO_LOGIN); prepare
+refuses it while run_take.CODEX_SUBSCRIPTION_READY is closed or its lease source is missing, and its walk places the
+lease (run_take.place_lease) and reads it (lease_secrets) through CodexLeaseRoad, whose secrets() the walk's driver
+and its WalkRepo both get. Any other harness is refused before anything is built. No model, no network and no
+spend here; the walk itself is walk_runner's.
 """
 from __future__ import annotations
 
@@ -59,8 +63,18 @@ if str(HERE) not in sys.path:
 # Every value the command line needs, in the order it reports them. A builder set holds exactly these names.
 NAMES = ("runtime", "config_parent", "take_spec", "sidecar_for", "proxy", "lock_path", "hosts", "uid_map",
          "cgroup_dir_for", "rules_scanner", "login_path", "agent_version", "table", "pin_for", "design_for",
-         "budgets", "run_tree_origin", "run_tree_exclude", "clock", "sleep")
+         "budgets", "run_tree_origin", "run_tree_exclude", "clock", "sleep", "ownership", "settings_guard",
+         "machine_gate")
+# Values only a row of one harness needs (the Codex lease road, glitch-06, 14 Oct 2026): known to the command line, so a
+# set may hold them, but never a reason to refuse every walk; prepare refuses a Codex row while its value is missing.
+ROW_NAMES = ("lease_path", "gemini_login_path")
 CELL = ("task", "half", "wording", "arm", "model")
+# TakeSpec.resources: the take container's capacity POLICY, never a measurement (box lane report live-box-2026-10-13.md,
+# "TakeSpec.resources: values only, for walk_builders' take_spec", rule R-RES from athena's capacity and three
+# concurrent takes; run_take.check_spec requires memory = 3 x memory_reservation). glitch-06's queue item 1, 14 Oct 2026.
+TAKE_RESOURCES = {"memory_reservation": 2 * 1024 ** 3, "memory": 6 * 1024 ** 3, "cpus": "8", "pids_limit": 4096}
+NETWORK_PLACEHOLDER = "0" * 64       # a 64-hex placeholder: run_take.launch replaces it with the network it creates
+TAKE_LOCKS = {"A": "box/image.lock", "O": "box/codex/image.lock", "G": "box/gemini/image.lock"}   # each arm's take image
 COMMITTED = "committed"
 HEX40 = re.compile(r"[0-9a-f]{40}")
 
@@ -109,13 +123,27 @@ def identity_for(prepared: dict):
 
 
 # ------------------------------------------------------------------------------------------------ the login file
+# run_take.NO_LOGIN (box 41428177, 9d4bfd40): a Codex row has no environment login; its login is the lease, placed in
+# the take's config folder by run_take.place_lease and read for the scans by lease_secrets (the Codex lease road).
+NO_LOGIN = "-"
+
+
 def login_name(harness) -> str:
+    """The harness's login variable; NO_LOGIN for a Codex row (the lease road), which no login-file reader takes."""
     from box import run_take as rt
     if harness == rt.CODEX:
-        raise BuilderRefused(rt.CODEX_SUBSCRIPTION_NOT_READY)
+        return NO_LOGIN
     if harness not in rt.LOGIN_VARIABLE:
         raise BuilderRefused(f"harness {harness!r} has no login variable in run_take.LOGIN_VARIABLE")
-    return rt.LOGIN_VARIABLE[harness]
+    name = rt.LOGIN_VARIABLE[harness]
+    if name == NO_LOGIN:
+        raise BuilderRefused(f"harness {harness!r}: only a Codex row has no environment login")
+    return name
+
+
+def _no_login_file(what: str):
+    raise BuilderRefused(f"a Codex row has no login file ({what}): its login is the lease (run_take.place_lease, "
+                         f"walk_builders.lease_secrets)")
 
 
 def login_file_by_name(path, harness) -> str:
@@ -125,6 +153,8 @@ def login_file_by_name(path, harness) -> str:
     descriptor's device, inode and mode must be the checked path's (W12B-R1-1)."""
     from box import run_take as rt
     name = login_name(harness)
+    if name == NO_LOGIN or path == NO_LOGIN:
+        _no_login_file("login_file_by_name")
     if not isinstance(path, str) or not os.path.isabs(path):
         raise BuilderRefused("the login file is named by an absolute path")
     try:
@@ -156,11 +186,37 @@ def login_file_by_name(path, harness) -> str:
     return path
 
 
+# glitch-06's queue item 2 of 14 Oct 2026 (window 2): the walk token's file is the box's own record of it,
+# run_take.WALK_LOGIN_FILES (box lane 1eb02a9e: one file per account, prepared and verified on athena), never typed here.
+# The CP6 walks run on the Claude1 account's token. A tree without that record leaves login_path Missing, by name.
+WALK_ACCOUNT = "claude1"
+# The Gemini walks' key (glitch-06, 14 Oct 2026, the Gemini walk wiring): the box's r4-g record (box 1d32399b), one line
+# `GEMINI_API_KEY=<the study key>`, read only by name here and by value only at exec and scan time, like Claude's.
+GEMINI_WALK_ACCOUNT = "r4-g"
+
+
+def walk_login_path(account: str = WALK_ACCOUNT):
+    """A walk's login file as the box records it (run_take.WALK_LOGIN_FILES[account]), or Missing while this tree's
+    run_take has no such record. Only the path: prepare's login_file_by_name checks the file by NAME."""
+    from box import run_take as rt
+    files = getattr(rt, "WALK_LOGIN_FILES", None)
+    if not isinstance(files, dict) or account not in files:
+        return Missing(f"the walk token's login file: box/run_take.py records no WALK_LOGIN_FILES[{account!r}] on "
+                       f"this tree (the box lane's 1eb02a9e and 1d32399b; the hands card's Part 3, next-slices plan "
+                       f"item 7)")
+    path = files[account]
+    if not isinstance(path, str) or not os.path.isabs(path):
+        raise BuilderRefused(f"run_take.WALK_LOGIN_FILES[{account!r}] is not an absolute path: {path!r}")
+    return path
+
+
 def login_secrets(login_file: str, harness):
     """The scan's secrets(): the login value read at scan time by scan_record.read_login (never held here)."""
     from box import run_take as rt
     from box import scan_record
     name = login_name(harness)
+    if name == NO_LOGIN or login_file == NO_LOGIN:
+        _no_login_file("login_secrets")
 
     def secrets():
         return [("token", scan_record.read_login(login_file, name, allowed=tuple(rt.LOGIN_VARIABLE.values())))]
@@ -185,7 +241,196 @@ def lease_secrets(auth_path: str):
         return [("token", v) for v in seen]
     return secrets
 
+# ------------------------------------------------------------------------------------------------ the Codex lease
+# glitch-06's queue (14 Oct 2026, window 2), the box contract of live-box-2026-10-13.md ("For the harness lane: the
+# run_take contract to call"): after make_config_dir and before launch, dst = run_take.place_lease(lease, cfg), then
+# secrets = lease_secrets(dst), the take-start read (no lease file, no take); that one secrets() goes to both the
+# walk's driver and its WalkRepo. While run_take.CODEX_SUBSCRIPTION_READY is False a Codex row stops before anything
+# is written. The refresh rule (ruled): the token-refresh endpoint is never in a take's egress; a refresh happens on the
+# host, between turns, and is followed by a secrets() call (CodexLeaseRoad.refreshed) that adds the refreshed values.
+def codex_gate_problem():
+    """None while run_take's Codex lease gate is open; else why a Codex row stops (closed, or absent from this tree)."""
+    from box import run_take as rt
+    ready = getattr(rt, "CODEX_SUBSCRIPTION_READY", None)
+    if ready is True:
+        return None
+    if ready is None:
+        return "the box's Codex lease gate (run_take.CODEX_SUBSCRIPTION_READY) is not on this tree"
+    return f"the Codex lease gate is closed: {getattr(rt, 'CODEX_SUBSCRIPTION_NOT_READY', 'not ready')}"
+
+
+class CodexLeaseRoad:
+    """One Codex take's lease: placed into the take's config folder by run_take.place_lease (place, the driver's
+    spec_for hook, after make_config_dir and before the settings baseline, the grant and the launch), then read at
+    once by lease_secrets. secrets() is that read's secrets(), handed to the driver and to WalkRepo alike; before a
+    lease is placed it refuses, so no scan ever runs without the lease's values."""
+
+    def __init__(self, lease_src):
+        if not isinstance(lease_src, str) or not os.path.isabs(lease_src):
+            raise BuilderRefused(f"the Codex lease source is not an absolute path: {lease_src!r}")
+        self.lease_src, self.placed, self._secrets = lease_src, None, None
+
+    def place(self, config_dir: str) -> str:
+        from box import run_take as rt
+        gate = codex_gate_problem()                     # review NIT 4: the gate first, before place_lease
+        if gate:
+            raise BuilderRefused(f"the Codex lease is not placed: {gate}")
+        place = getattr(rt, "place_lease", None)
+        read = globals().get("lease_secrets")          # the box lane's take-start reader (b9f876b5), this module's
+        if not callable(place) or not callable(read):
+            raise BuilderRefused("the box's lease road (run_take.place_lease, walk_builders.lease_secrets) is not on "
+                                 "this tree")
+        if self.placed is not None:
+            raise BuilderRefused(f"a lease is already placed for this walk: {self.placed}")
+        dst = place(self.lease_src, config_dir)
+        self._secrets = read(dst)                       # the take-start read: no lease file, no take
+        self.placed = dst
+        return dst
+
+    def login_file_for(self, take) -> str:
+        """The take's login file for the Codex exec (box 1e10e320's exec branch reads the placed cfg/auth.json): the
+        lease placed for this walk, refused before placement (review MINOR 1 of 1f032586..27ade10a)."""
+        if self.placed is None:
+            raise BuilderRefused("no lease placed: a Codex take's login file exists only after run_take.place_lease")
+        return self.placed
+
+    def secrets(self) -> list:
+        if self._secrets is None:
+            raise BuilderRefused("no lease placed: a Codex take's secrets exist only after run_take.place_lease")
+        return self._secrets()
+
+    def refreshed(self) -> list:
+        """After a host-side refresh, between turns (the refresh rule): the take's secrets, the refreshed values
+        added (lease_secrets re-reads auth.json and keeps every value it has read)."""
+        return self.secrets()
+
+
 # ------------------------------------------------------------------------------------------------ the counters
+# glitch-06's queue item 2 (14 Oct 2026): the take container's cgroup folder and the runtime's uid map are read at run
+# time from the container's id and /proc, never typed in (measured on athena by the box lane:
+# /sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/docker-<id>.scope and
+# ((0,1000,1),(1,100000,65536))). Every reader refuses (BuilderRefused) anything it cannot read exactly.
+_UID_MAP_LINE = re.compile(r"\s*([0-9]+)\s+([0-9]+)\s+([1-9][0-9]*)\s*")
+_CID = re.compile(r"[0-9a-f]{64}")
+
+
+def container_pid(runtime, take_id: str, caller_env=None) -> int:
+    """The take container's init process id on the host, by `docker inspect`; a stopped container (pid 0) refuses."""
+    from box import run_take as rt
+    if not isinstance(take_id, str) or not _CID.fullmatch(take_id):
+        raise BuilderRefused("the take container's id is not a full 64-hex id")
+    c = runtime.run([rt.RUNTIME_CLIENT, "inspect", "--format", "{{.State.Pid}}", take_id],
+                    env=rt.runtime_env(caller_env), timeout=rt.STEP_TIMEOUT_S)
+    text = (c.stdout or "").strip()
+    if c.returncode != 0 or not text.isdigit() or int(text) <= 0:
+        raise BuilderRefused(f"the take container's pid cannot be read (exit {c.returncode}): the run-time readers "
+                             f"refuse")
+    return int(text)
+
+
+def uid_map_of_pid(pid: int, *, proc: str = "/proc") -> tuple:
+    """The process's user-namespace map, ((container start, host start, length), ...), from /proc/<pid>/uid_map."""
+    try:
+        with open(os.path.join(proc, str(int(pid)), "uid_map"), encoding="ascii") as fh:
+            lines = [ln for ln in fh.read().splitlines() if ln.strip()]
+    except (OSError, ValueError, UnicodeError) as e:
+        raise BuilderRefused(f"the uid map of pid {pid} cannot be read ({type(e).__name__})") from None
+    rows = [_UID_MAP_LINE.fullmatch(ln) for ln in lines]
+    if not rows or not all(rows):
+        raise BuilderRefused(f"the uid map of pid {pid} is empty or not (start, host start, length) lines")
+    return tuple(tuple(int(x) for x in m.groups()) for m in rows)
+
+
+def cgroup_dir_of_pid(pid: int, take_id: str, *, proc: str = "/proc", root: str = "/sys/fs/cgroup") -> str:
+    """The process's cgroup v2 folder, from /proc/<pid>/cgroup's one `0::` line; it must be the take container's own
+    scope (docker-<id>.scope) and an existing folder under `root`."""
+    try:
+        with open(os.path.join(proc, str(int(pid)), "cgroup"), encoding="ascii") as fh:
+            lines = [ln for ln in fh.read().splitlines() if ln.strip()]
+    except (OSError, ValueError, UnicodeError) as e:
+        raise BuilderRefused(f"the cgroup of pid {pid} cannot be read ({type(e).__name__})") from None
+    if len(lines) != 1 or not lines[0].startswith("0::/"):
+        raise BuilderRefused(f"pid {pid} is not in exactly one cgroup v2 hierarchy")
+    rel = lines[0][len("0::"):]
+    if os.path.basename(rel) != f"docker-{take_id}.scope" or ".." in rel.split("/"):
+        raise BuilderRefused(f"pid {pid}'s cgroup is not the take container's own scope")
+    folder = os.path.join(root, rel.lstrip("/"))
+    if os.path.islink(folder) or not os.path.isdir(folder):
+        raise BuilderRefused(f"the take container's cgroup folder {folder} is not an existing folder")
+    return folder
+
+
+def run_time_readers(runtime_of, caller_env=None) -> tuple:
+    """(uid_map(take), cgroup_dir_for(take)) over the runtime `runtime_of()` gives at call time; a runtime that does not
+    exist yet (a Missing) refuses by name."""
+    def runtime():
+        r = runtime_of()
+        if not callable(getattr(r, "run", None)):
+            raise BuilderRefused(f"no container runtime to read the take container with: {r!r}")
+        return r
+
+    def uid_map(take):
+        return uid_map_of_pid(container_pid(runtime(), take.launched.take_id, caller_env))
+
+    def cgroup_dir_for(take):
+        cid = take.launched.take_id
+        return cgroup_dir_of_pid(container_pid(runtime(), cid, caller_env), cid)
+    return uid_map, cgroup_dir_for
+
+
+# glitch-06's queue item 3 and review NOTE S-2 (14 Oct 2026): the box's pinned rules scanner
+# (rules_scanner.real_rules_scanner(), box 8ad2978a) is NOT callable; each walk builds its scan once with
+# build(runtime, report_dir) over a fresh, empty report folder, and a real walk (the production builders) scans only with
+# that build's product, held in a BuiltRulesScan that only walk_rules_scanner makes.
+_BUILD_KEY = object()
+
+
+class BuiltRulesScan:
+    """The per-walk scan(paths) the pinned scanner's build(runtime, report_dir) returned (review NOTE S-2)."""
+
+    __slots__ = ("scan", "report_dir", "source")
+
+    def __init__(self, scan, report_dir, source, key):
+        if key is not _BUILD_KEY:
+            raise BuilderRefused("a BuiltRulesScan is made only by walk_rules_scanner, from a pinned scanner's build")
+        self.scan, self.report_dir, self.source = scan, report_dir, source
+
+    def __call__(self, paths):
+        return self.scan(paths)
+
+
+def pinned_scanner_class():
+    """The box's pinned scanner class, rules_scanner.RealRulesScanner (box 8ad2978a moved it there from scan_record),
+    or None while box/rules_scanner.py is not on this tree (a real walk is then refused)."""
+    import importlib.util
+    if importlib.util.find_spec("box.rules_scanner") is None:
+        return None
+    from box import rules_scanner
+    return getattr(rules_scanner, "RealRulesScanner", None)
+
+
+def walk_rules_scanner(scanner, runtime, report_parent, *, real: bool):
+    """The walk's rules scan. real (the production builders): `scanner` must be exactly rules_scanner.RealRulesScanner
+    (by class identity, never by name), built here; otherwise an injected scan(paths) is used as given, and anything with a build() is built the same way.
+    Each build gets its own fresh, empty folder under report_parent (outside every repository)."""
+    import tempfile
+    if real:
+        pinned = pinned_scanner_class()
+        if type(scanner) is not pinned:              # type() is never None: no pinned class refuses every scanner
+            raise BuilderRefused(f"a real walk scans only with the pinned scanner (rules_scanner.RealRulesScanner), "
+                                 f"never {type(scanner).__module__}.{type(scanner).__name__}")
+    elif callable(scanner):
+        return scanner
+    build = getattr(scanner, "build", None)
+    if not callable(build):
+        raise BuilderRefused("the rules scanner is neither a scan(paths) nor a pinned scanner to build")
+    report_dir = tempfile.mkdtemp(prefix="walk-scan-", dir=report_parent)
+    scan = build(runtime, report_dir)
+    if not callable(scan):
+        raise BuilderRefused("the pinned scanner's build did not give a scan(paths)")
+    return BuiltRulesScan(scan, report_dir, scanner, _BUILD_KEY)
+
+
 def counters_reader(cgroup_dir_for):
     """The adapter's counters_for(take): run_take.counters over the absolute folder cgroup_dir_for(take) names."""
     if not callable(cgroup_dir_for):
@@ -270,6 +515,33 @@ def walk_row(walk: str, cell: dict, agent_version: str, rows: list) -> dict:
 
 
 # ------------------------------------------------------------------------------------------------ the builder set
+def take_spec_builder(root=None):
+    """(row, config_dir, run_tree) -> run_take.TakeSpec: the row's arm's take image by its lock's image id (a lock that
+    is not ready refuses at call time, image_lock.NotReady) and TAKE_RESOURCES; the network a placeholder."""
+    from box import image_lock
+    from box import run_take as rt
+    base = Path(root) if root is not None else Path(__file__).resolve().parent
+
+    def take_spec(row, config_dir, run_tree):
+        lock = image_lock.load(str(base / TAKE_LOCKS[row["arm"]]))
+        image_lock.require_ready(lock)
+        return rt.TakeSpec(image=lock["image_id"], run_tree=run_tree, config_dir=config_dir,
+                           network=NETWORK_PLACEHOLDER, **TAKE_RESOURCES)
+    return take_spec
+
+
+def take_a_spec():
+    """The production take spec: built once take-a's lock is ready (an arm A walk's image), else Missing naming what
+    the lock still holds PENDING. TakeSpec.resources are wired (TAKE_RESOURCES)."""
+    from box import image_lock
+    lock = image_lock.load(str(Path(__file__).resolve().parent / TAKE_LOCKS["A"]))
+    held = image_lock.pending(lock)
+    if held:
+        return Missing(f"the take spec: take-a's image lock ({TAKE_LOCKS['A']}) is PENDING ({', '.join(held)}); "
+                       f"TakeSpec.resources are wired (walk_builders.TAKE_RESOURCES)")
+    return take_spec_builder()
+
+
 def production_builders() -> dict:
     """The builders and values as they stand in production: built ones, and a Missing (with its reason) for each
     value only the real box, the owner or a walk can give. Nothing here fills a PENDING value."""
@@ -279,22 +551,21 @@ def production_builders() -> dict:
     import routing
     import time
     import variants
-    from box import run_take as rt
     from box import scan_record
     box = "next-slices plan item 4, the real-box bring-up (Q-w7b-3)"
     out = {
         "runtime": Missing(f"the DockerRuntime, built at {box}"),
         "config_parent": Missing(f"the folder per-walk config folders are made in, outside every repository: {box}"),
-        "take_spec": Missing(f"the take spec: box/image.lock's pinned image and run_take's TakeSpec.resources "
-                             f"({rt.PENDING_WHY['TakeSpec.resources']}): {box}"),
+        "take_spec": take_a_spec(),
         "sidecar_for": Missing(f"the sidecar launch, its image pinned and sidecar.expect bound to launched.sidecar_id "
                                f"(cp6-readiness:62): {box}"),
         "proxy": Missing(f"the egress proxy launch (box/egress, squid -k parse): {box}"),
         "lock_path": Missing(f"the take lock (box/image.lock, pinned at the bring-up): {box}"),
         "hosts": Missing(f"preflight's hosts mapping: {box}"),
-        "uid_map": Missing(f"the runtime's uid map: {rt.CALLER_PENDING['uid_map']}"),
-        "cgroup_dir_for": Missing(f"the take container's cgroup folder: {rt.CALLER_PENDING['cgroup_dir']}"),
-        "login_path": Missing("the walk token's login file (the hands card's Part 3, next-slices plan item 7)"),
+        "login_path": walk_login_path(),
+        "gemini_login_path": walk_login_path(GEMINI_WALK_ACCOUNT),
+        "lease_path": Missing("the Codex lease source: Javier's Codex2 login, registered by the box lane; until then "
+                              "run_take.CODEX_SUBSCRIPTION_READY stays closed (a Codex row only)"),
         "agent_version": Missing("the Claude Code version the walk runs: prereg-draft.json's version_pins are "
                                  "PENDING until a walk measures them"),
         "budgets": Missing("the turn budget (check_take.CHECKER_CONSTANTS budgets.turn_timeout_s), the quiescence cap "
@@ -308,21 +579,19 @@ def production_builders() -> dict:
     pending = scan_record.pending()
     if "rules_scanner" in pending:
         out["rules_scanner"] = Missing(f"the rules scanner: {pending['rules_scanner']}")
-    else:
-        # Box row 8 (14 Oct 2026): the pinned scanner is filled and checked against its adapter here (a drifted pin
-        # refuses now); its per-walk scan is built from the DockerRuntime and the walk's report folder, so it waits on
-        # the runtime (the harness lane's wiring: real.build(runtime, report_dir)).
-        rec = scan_record.real_rules_scanner()
-        if isinstance(rec, dict):
-            from box import rules_scanner
-            real = rules_scanner.real_rules_scanner()
-            out["rules_scanner"] = Missing(f"the per-walk build of the pinned gitleaks {real.version} "
-                                           f"(rules_scanner.real_rules_scanner().build(runtime, report_dir)), once "
-                                           f"the DockerRuntime exists: {box}")
-        else:
-            out["rules_scanner"] = rec
+    else:                         # box 8ad2978a: the binding is rules_scanner.real_rules_scanner(), built per walk
+        from box import rules_scanner
+        out["rules_scanner"] = rules_scanner.real_rules_scanner()
     table = routing.load_table()
     out["table"] = table
+    import machine_gate
+    check, why = machine_gate.gate_from_env()                       # P-2: the operator's machine names its paths
+    out["machine_gate"] = check if check is not None else Missing(f"the P-2 machine gate: {why}")
+    out["uid_map"], out["cgroup_dir_for"] = run_time_readers(lambda: out["runtime"])   # queue item 2: never typed in
+    out["ownership"] = (Missing("the ownership road: box/ownership.py (the box lane's 81ede46d) is not on this tree")
+                        if drive._ownership is None else drive._ownership)
+    out["settings_guard"] = (Missing("the settings guard: box/settings_guard.py (the box lane's d3fd5305) is not on "
+                                     "this tree") if drive._settings_guard is None else drive._settings_guard)
     out["pin_for"] = (Missing("the routing pin: routing.json's pin_profiles are empty until the walks measure them")
                       if not table.get("pin_profiles") else (lambda row: batch.expected_pin(row, table)))
     held = [p for k, v in check_take.CHECKER_CONSTANTS.items() for p in check_take._pending_paths(v, k)]
@@ -339,7 +608,7 @@ def missing(builders: dict) -> list[tuple[str, str]]:
     out = [(n, "absent from the builder set") for n in NAMES if n not in builders]
     out += [(n, builders[n].why) for n in NAMES if isinstance(builders.get(n), Missing)]
     out += [(n, "present but None") for n in NAMES if n in builders and builders[n] is None]   # W12B-R1-2
-    out += [(n, "not a builder the command line knows") for n in sorted(set(builders) - set(NAMES))]
+    out += [(n, "not a builder the command line knows") for n in sorted(set(builders) - set(NAMES) - set(ROW_NAMES))]
     order = {n: i for i, n in enumerate(NAMES)}
     return sorted(out, key=lambda nw: order.get(nw[0], len(NAMES)))
 
@@ -365,36 +634,66 @@ def prepare(builders: dict, args) -> tuple[dict, str, Path]:
     cell = {k: getattr(args, k) for k in CELL}
     row = walk_row(args.walk, cell, builders["agent_version"], prereg.load()["rows"])
     harness = row["agent"]["harness"]
-    if harness != rt.CLAUDE_CODE:
-        raise BuilderRefused(f"harness {harness!r}: the walk driver admits only Claude Code (drive A1); arms O and "
-                             f"G wait for their adapters' admission")
-    login = login_file_by_name(builders["login_path"], harness)
+    if harness == rt.CODEX:                     # the lease road: never a login file, never login_file_by_name
+        gate = codex_gate_problem()
+        if gate:
+            raise BuilderRefused(f"harness {harness!r}: {gate}")
+        lease = builders.get("lease_path")
+        if not isinstance(lease, str) or not os.path.isabs(lease):          # a Missing is not a str either
+            why = lease.why if isinstance(lease, Missing) else f"not an absolute path: {lease!r}"
+            raise BuilderRefused(f"harness {harness!r}: the Codex lease source is missing: {why}")
+        login = NO_LOGIN
+    elif harness == rt.GEMINI:                  # the r4-g key (box 1d32399b), checked by name like Claude's token
+        path = builders.get("gemini_login_path")
+        if isinstance(path, Missing):
+            raise BuilderRefused(f"harness {harness!r}: the Gemini walk key's login file is missing: {path.why}")
+        login = login_file_by_name(path, harness)
+    elif harness != rt.CLAUDE_CODE:
+        raise BuilderRefused(f"harness {harness!r}: the walk driver admits Claude Code, Gemini and, on the lease "
+                             f"road, Codex")
+    else:
+        login = login_file_by_name(builders["login_path"], harness)
     repo, commit = builders["run_tree_origin"]
     return row, login, build_run_tree(args.walk, repo=repo, commit=commit, exclude=builders["run_tree_exclude"])
 
 
-def walk_driver_for(builders: dict, row: dict, login: str, tree: Path):
+def walk_driver_for(builders: dict, row: dict, login: str, tree: Path, *, real: bool = False):
     """(the identity, drive.walk_driver(records='walks') over the study folder mode_binding reads, its WalkRepo):
-    the fixture built in the walk's checkout, the identity from it, every other collaborator from the builder set."""
+    the fixture built in the walk's checkout, the identity from it, every other collaborator from the builder set.
+    real (the production builders): the rules scan is the pinned scanner's per-walk build, nothing else (S-2)."""
     import check_take
     import drive
+    rules = walk_rules_scanner(builders["rules_scanner"], builders["runtime"], builders["config_parent"], real=real)
     project = drive.neutral_name(check_take.walk_session_id(row["walk"]))
     record, source = build_walk_fixture(row, tree, project)
     ident = walk_identity(row["walk"], source=source, fixture=record, gars_tree_sha=check_take.GARS_TREE_SHA)
     root = Path(drive._mode_binding.HERE)
-    secrets = login_secrets(login, row["agent"]["harness"])
+    from box import run_take as rt
+    if row["agent"]["harness"] == rt.CODEX:         # the lease road: placed after make_config_dir, before launch
+        lease = CodexLeaseRoad(builders["lease_path"])
+        secrets, login = lease.secrets, lease.login_file_for       # the take's placed cfg/auth.json, never "-"
+
+        def spec_for(r, cfg):
+            lease.place(cfg)
+            return builders["take_spec"](r, cfg, str(tree))
+    else:
+        secrets = login_secrets(login, row["agent"]["harness"])
+
+        def spec_for(r, cfg):
+            return builders["take_spec"](r, cfg, str(tree))
     budget_s, finalize_wait_s, poll_s = builders["budgets"]
     driver = drive.walk_driver(
         runtime=builders["runtime"], root=str(root), config_parent=builders["config_parent"],
-        spec_for=lambda r, cfg: builders["take_spec"](r, cfg, str(tree)),
+        spec_for=spec_for,
         sidecar_for=lambda r, ev: builders["sidecar_for"](r, ev, str(tree)), proxy=builders["proxy"],
         lock_path=builders["lock_path"], hosts=builders["hosts"], login_file=login,
         counters_for=counters_reader(builders["cgroup_dir_for"]), pin_for=builders["pin_for"],
         design_for=builders["design_for"], project_for=lambda r: project,
-        identity_for=identity_for({row["walk"]: ident}), secrets=secrets, rules_scanner=builders["rules_scanner"],
+        identity_for=identity_for({row["walk"]: ident}), secrets=secrets, rules_scanner=rules,
         uid_map=builders["uid_map"], budget_s=budget_s, finalize_wait_s=finalize_wait_s, poll_s=poll_s,
-        clock=builders["clock"], sleep=builders["sleep"], records="walks")
-    repo = drive.WalkRepo(runtime=builders["runtime"], secrets=secrets, rules_scanner=builders["rules_scanner"],
+        clock=builders["clock"], sleep=builders["sleep"], records="walks", ownership=builders["ownership"],
+        settings_guard=builders["settings_guard"], machine_gate=builders["machine_gate"])
+    repo = drive.WalkRepo(runtime=builders["runtime"], secrets=secrets, rules_scanner=rules,
                           root=root, repo=drive.records_repo(root))
     return ident, driver, repo
 
@@ -406,6 +705,7 @@ def cli(argv, builders=None, *, refusal: str) -> int:
     walk, end to end, through walk_runner.run_walks, exit 0 only when it was committed (1 when refused at launch or
     held). A held walk keeps its run tree for a human, as it keeps its folder; so does a walk whose run_walks raised,
     and its path is printed on its own `kept run tree:` line before the exception goes on (W12B-R1-3)."""
+    real = builders is None                                    # S-2: a real walk takes the pinned scanner's build
     try:                                                       # W12B-R1-3: an unreadable value is a refusal too
         builders = production_builders() if builders is None else builders
     except Exception as e:  # noqa: BLE001
@@ -425,7 +725,7 @@ def cli(argv, builders=None, *, refusal: str) -> int:
         print(f"refused: {e}", file=sys.stderr)
         return 2
     try:
-        _, driver, repo = walk_driver_for(builders, row, login, tree)
+        _, driver, repo = walk_driver_for(builders, row, login, tree, real=real)
     except BaseException as e:
         left = remove_run_tree(tree)
         if not isinstance(e, BuilderRefused):

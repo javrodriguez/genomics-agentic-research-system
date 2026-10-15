@@ -96,7 +96,16 @@ def core_problems(d):
     need({item["path"] for item in locks} == {str(p.relative_to(HERE)) for p in (HERE / "box").rglob("image.lock")}
          and all(item["sha256"] == digest(HERE / item["path"]) and
                  item["lock"] == image_lock.load(str(HERE / item["path"])) for item in locks), "R6.locks")
-    need(all(r["agent"]["version"] is None for r in rows), "R6.unpinned")
+    # R6.unpinned, converted for CP5 (Javier, 14 Oct 2026, the integration lane's rule mirrored here): an arm A row
+    # carries its pin's version, which is take-a's harness.version; O and G rows stay null. While take-a's lock is
+    # PENDING (this branch), the pins' agent_version and the arm A rows stay null too (TakeALock names that skip).
+    take_a = next(item["lock"] for item in locks if item["lock"]["image"] == "take-a")["harness"]["version"]
+    a_version = None if take_a == image_lock.PENDING else take_a
+    a_pins = d["version_pins"].get(CLAUDE) or {}
+    need(all(r["agent"]["version"] == (a_version if r["arm"] == "A" else None) for r in rows)
+         and set(a_pins) == set(MODELS["A"])
+         and all(p.get("agent_version") == a_version and (a_version is None or p.get("version") == a_version)
+                 for p in a_pins.values()), "R6.unpinned")
     need(set(d["version_pins"]) == set(HARNESSES.values()) and all(set(d["version_pins"][h]) == set(MODELS[a])
          for a, h in HARNESSES.items()), "R14.pins")
     return bad
@@ -550,6 +559,66 @@ def setUpModule():
         CORE_SETUP()
 
 
+class TakeALock(unittest.TestCase):
+    """R6.unpinned on the live draft: arm A's rows carry take-a's harness.version once its lock is filled."""
+
+    def test_arm_a_rows_carry_take_a_version(self):
+        d = b.build()
+        take_a = next(i["lock"] for i in d["image_locks"] if i["lock"]["image"] == "take-a")["harness"]["version"]
+        if take_a == image_lock.PENDING:
+            # test_round4 allows no skip (SKIP_ALLOWED is empty; athena run of 1f032586): with the lock PENDING no row
+            # carries a version yet. The box lane's committed lock (6221c297, 2.1.296) binds arm A where it is merged.
+            self.assertEqual({r["agent"]["version"] for r in d["rows"]}, {None},
+                             "a row carries a version while take-a's lock is PENDING")
+            return
+        self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] == "A"}, {take_a})
+        self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] != "A"}, {None})
+
+
+    def test_arm_a_follows_take_a_lock_both_ways(self):
+        """The binding on every tree, whatever its lock holds: take-a's lock read through image_lock.load with only its
+        harness.version changed (the version routing.json's arm A profiles carry, then PENDING); arm A's rows carry
+        exactly that version, every other row None, and with PENDING no row carries one. A version the profiles do not
+        carry is refused by build itself."""
+        import routing
+        real = image_lock.load
+        carried = {p["version"] for p in routing.load_table()["pin_profiles"]["claude-code"].values()}
+        self.assertEqual(len(carried), 1, f"arm A's profiles carry {carried}")
+
+        def take_a_with(lock, version):
+            """take-a's lock with harness.version set, still a lock image_lock accepts (review MINOR 2 of
+            1f032586..27ade10a): a PENDING version carries its pending reason and, where the lock is the filled
+            schema 2 (which holds no PENDING value), becomes the unfilled schema-1 lock (image_id PENDING with its
+            reason, the schema-2 keys gone); a filled version drops the reason."""
+            lock = json.loads(json.dumps(lock))
+            pending = dict(lock.get("pending") or {})
+            if version == image_lock.PENDING:
+                if lock["schema"] != image_lock.SCHEMA:
+                    lock = {k: v for k, v in lock.items() if k not in getattr(image_lock, "SCHEMA_2_KEYS", ())}
+                    lock.update(schema=image_lock.SCHEMA, image_id=image_lock.PENDING)
+                    pending["image_id"] = "synthetic: only a built image has an id"
+                pending["harness.version"] = "synthetic: walked before it is pinned"
+            else:
+                pending.pop("harness.version", None)
+            lock.update(harness=dict(lock["harness"], version=version), pending=pending)
+            return image_lock.validate(lock)
+
+        def with_version(version):
+            def load(path):
+                lock = real(path)
+                return lock if lock["image"] != "take-a" else take_a_with(lock, version)
+            return load
+        with mock.patch.object(image_lock, "load", with_version("7.7.7")), \
+                self.assertRaisesRegex(ValueError, "routing and image versions disagree"):
+            b.build()
+        for version in (*carried, image_lock.PENDING):
+            with self.subTest(version=version), mock.patch.object(image_lock, "load", with_version(version)):
+                d = b.build()
+                want = None if version == image_lock.PENDING else version
+                self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] == "A"}, {want})
+                self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] != "A"}, {None})
+
+
 class Description(unittest.TestCase):
     def get(self):
         self.assertTrue(hasattr(b, "describe"), "the registered commitments are required")
@@ -687,7 +756,9 @@ def ready_problems(d):
          ns["uuid"] != "9607c78d-18c9-5965-9202-5f09043bdf0c", "R33.namespace")
     need(d["instruction_files"] == {CODEX: dict(take_config.CODEX_TOP)["project_doc_fallback_filenames"],
                                    GEMINI: dict(take_config.GEMINI_SETTINGS)["context.fileName"]}, "R15.instructions")
-    need(d["price_table"] == "PENDING" and all(v == "PENDING" for v in d["served_model_rule"].values()) and
+    import routing as _routing                   # D-INT-2: arm O's served-model rule is routing's own sentence
+    need(d["price_table"] == "PENDING" and d["served_model_rule"][CODEX] == _routing.SERVED_MODEL_LIMIT and
+         all(v == "PENDING" for h, v in d["served_model_rule"].items() if h != CODEX) and
          all(v == "PENDING" for v in d["furniture"].values()), "R15.values")
     # claude-code's per-take config is ready since the bypass acceptance was RULED not required in -p (glitch-06,
     # 14 Oct 2026; box lane): its templates are the rendered ones; codex's and gemini's stay PENDING.

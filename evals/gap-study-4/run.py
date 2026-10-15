@@ -46,6 +46,7 @@ import variants
 from graders import labels4
 import mode_binding
 import walk_register
+import pending_walk  # live harness (registration review finding 2): a pending vendor walk's grade
 
 RECORDS = HERE / "records"
 
@@ -157,7 +158,7 @@ def produce(rows: list, history: list, grade, *, table=None) -> dict:
     table = routing.load_table() if table is None else table
     registered = check_results.validate_ledger(rows)
     for o in history:
-        if not batch.is_ruling(o):
+        if batch.is_outcome(o):
             require_registered_outcome(o, registered)
             verify_route(o, table)
     published = check_results.publication(history, table)
@@ -282,6 +283,9 @@ def grade_walk(entry: dict, folder, cell: dict | None = None, grade=None) -> dic
     if ledger.get("first_agent_turn") is not True:
         return {"graded": False, "why": f"no first agent turn, so a rehearsal before the agent's first turn "
                                         f"(the routing table's first row): {ledger.get('outcome')}"}
+    pending = pending_walk.status(ledger)          # a vendor walk whose native cross-check is pending: never graded
+    if pending is not None:
+        return pending
     row = walk_row(entry, ledger, cell)
     return {"graded": True, "row": row, "grade": (grade_walk_folder if grade is None else grade)(row, folder)}
 

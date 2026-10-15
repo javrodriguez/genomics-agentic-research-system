@@ -29,9 +29,9 @@ the runner's), and its cell (arm, model, task, half, wording) must be a row of t
 whole plan. On models other than the every-wording one the spec names the task's first wording as the one to run,
 and any wording of the task covers it ("with at least one wording").
 
-COVERAGE READS THE REGISTER ONLY, THROUGH THE REGISTER'S OWN CHECK. --coverage opens rehearsals/register.json and
-nothing else under rehearsals/: no walk folder is listed, read or looked up, since binding the register to its folders
-is walk_register.py --check's job, and a walk's records are not this report's to judge. The register is read by one
+COVERAGE READS THE REGISTER, THROUGH THE REGISTER'S OWN CHECK, AND EACH REGISTERED WALK'S GRADE. --coverage opens
+rehearsals/register.json and, for each walk it names, that walk's grade.json (and a pending walk's regrade.json): no walk
+folder is listed, and binding the register to its folders stays walk_register.py --check's job. The register is read by one
 code path, the register's own (review W11C-R1-1): its bytes are copied into a temporary folder beside a stand-in
 folder for each walk id it names, walk_register.check runs there against the design in force, and only a register
 that check accepts is read, by walk_register.registered. So everything the check refuses at the register level (a
@@ -42,6 +42,12 @@ rules are left to walk_register.py --check, which the gates run. A register entr
 does not require (an arm C walk, a bring-up walk off the list), or whose cell is not a row of the design, is reported
 by its walk id and never counted toward coverage. A missing or linked register exits 2: a missing register is not an
 empty one. The temporary folder is the only thing this file writes, and it is removed before the report prints.
+
+ONLY A GRADED WALK IS COVERAGE (batch-8 review finding 1 and the batch-8 fix ruling, glitch-06, 14 Oct 2026; CP6:
+"Every walk is graded but never counted"). A walk covers its spec only when its grade.json is graded true, or when it is
+a pending vendor walk (pending_walk.py) that a verified graded-true regrade supersedes. Every other registered walk is
+reported with why and never counted: "pending", "regrade refused", "not graded" (a walk refused or failed before its
+first agent turn) and "grade unreadable" (missing or not JSON: fail closed). pending_walk.uncounted_walks decides.
 
 WHAT THIS DOES NOT DO. It is not wired into freeze_rehearsal.py or walk_register.py (lanes w8b and w8d own them; a
 later slice adopts --require-complete), it never runs a walk, and it says nothing about what a walk showed. Every
@@ -162,8 +168,10 @@ def cover_key(entry: dict, design: dict) -> tuple:
     return (entry["arm"], entry["model"], entry["task"], entry["half"], entry["wording"] if exact else ANY_WORDING)
 
 
-def coverage(entries: list, specs: list[dict], design: dict) -> dict:
-    """covered: {spec key: [walk ids, in register order]}; missing: [spec]; outside: [(walk label, why)]."""
+def coverage(entries: list, specs: list[dict], design: dict, uncounted=None) -> dict:
+    """covered: {spec key: [walk ids, in register order]}; missing: [spec]; outside: [(walk label, why)]; uncounted:
+    [(walk label, why)] for the walks `uncounted` names ({walk id: why}), never counted."""
+    uncounted = {} if uncounted is None else uncounted
     by_key = {}
     for spec in specs:
         key = cover_key(spec, design)
@@ -171,7 +179,7 @@ def coverage(entries: list, specs: list[dict], design: dict) -> dict:
             raise PlanRefused(f"two specs share the key {key!r}")
         by_key[key] = spec
     covered: dict = {}
-    outside = []
+    outside, held = [], []
     for i, entry in enumerate(entries):
         label = entry.get("walk") if isinstance(entry, dict) and isinstance(entry.get("walk"), str) \
             else f"entry {i}"
@@ -188,9 +196,12 @@ def coverage(entries: list, specs: list[dict], design: dict) -> dict:
         if cell not in design["cells"]:
             outside.append((label, f"{cell!r} is not a row of the design, so it covers no required walk"))
             continue
+        if entry["walk"] in uncounted:            # batch-8 rulings: only a graded walk covers its spec
+            held.append((label, uncounted[entry["walk"]]))
+            continue
         covered.setdefault(key, []).append(label)
     missing = [spec for spec in specs if cover_key(spec, design) not in covered]
-    return {"covered": covered, "missing": missing, "outside": outside}
+    return {"covered": covered, "missing": missing, "outside": outside, "uncounted": held}
 
 
 def stand_in_ids(raw: bytes) -> list[str]:
@@ -271,6 +282,8 @@ def coverage_lines(got: dict, specs: list[dict], design: dict, n_entries: int) -
             lines.append(f"missing  {spec_line(spec)}")
     for label, why in got["outside"]:
         lines.append(f"outside the plan, not counted: walk {label!r}: {why}")
+    for label, why in got["uncounted"]:
+        lines.append(f"{why}, not counted: walk {label!r}: only a graded walk covers its spec")
     for arm, per in counts(specs).items():
         for model, n in per.items():
             gap = sum(1 for s in got["missing"] if (s["arm"], s["model"]) == (arm, model))
@@ -305,7 +318,8 @@ def main(argv=None) -> int:
     except RegisterUnreadable as exc:
         print(f"FAIL {exc}")
         return 2
-    got = coverage(entries, specs, design)
+    import pending_walk
+    got = coverage(entries, specs, design, pending_walk.uncounted_walks(base, [e["walk"] for e in entries]))
     print("\n".join(coverage_lines(got, specs, design, len(entries))))
     missing = got["missing"]
     if args.require_complete and missing:

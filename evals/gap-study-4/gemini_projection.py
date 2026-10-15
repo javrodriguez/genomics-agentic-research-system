@@ -1,0 +1,328 @@
+"""Provisional Gemini 0.64.0 native-session projection, never production admission.
+
+Source-derived from the installed bundle's chatRecordingService (newMessage,
+recordMessage, recordToolCalls) and GeminiChat.recordCompletedToolCalls, as
+retained in the box lane's gemini-native-session-source.json and
+gemini-tool-result-source.json (see lane-reports/gemini-0.64.0-source-retained-
+2026-10-14.md); not validated against a recorded live session. No production
+registry imports this module (vendor_provenance's NATIVE_SESSION_READERS stays
+empty).
+
+project(raw) replays one retained snapshot through gemini_session_replay and
+returns one fact dict per user-delimited interaction, in the native-session
+fact schema (vendor_provenance.SESSION_KEYS). Native version, cwd and mode are
+None. requested_model is the `model` the native gemini messages of that
+interaction report, None when none reports one; a contradiction refuses.
+
+`output` is a comparison summary, NOT an event sequence and NOT displayed text:
+
+  {"kind": "recorded-text", "message": <native id>, "text": ...}
+      one segment per gemini message with non-empty recorded text, in replay
+      order, never joined. The recorder does not store what the stream showed:
+      chunk-J7SXW2FI.js (sha256 e2aca152...f206e), the GeminiChat code before its
+      recordMessage({model, type: "gemini", content: responseText}) call,
+      removes [U+200B-U+200D U+FEFF U+200E U+200F], removes <!-- ... -->
+      repeatedly until none is left, then trims (RECORDER_NORMALIZATION,
+      recorder_normalize below). The stream side must group its assistant
+      deltas per model message and apply recorder_normalize to each before any
+      comparison; a recorded segment is never "the displayed text".
+  {"kind": "tool", id, name, args, emitted_status, output_present, output}
+      ordered tool facts; output is the string resultDisplay only. Model-facing
+      response parts (toolCalls[].result) are validated as native evidence and
+      never become output; an object display result is absent output, never an
+      empty string. Emitted "success" is the recorded status only, never proof
+      of execution.
+
+A string gemini content must already be in recorder normal form (else it
+contradicts the recorder and refuses). A part-array content (the recorder's
+synthetic road) yields recorder_normalize of its non-thought text parts.
+
+Refused (ProjectionRefused, each with its own reason), rather than guessed:
+unknown keys/parts, statuses other than success/error, a sub-agent call,
+nonfinite numbers, missing or mismatched response parts, reused call ids,
+content function calls that disagree with the recorded tool calls by id, name
+or args, ANSI escape bytes, info/error/warning messages, interactions without a
+user message, an assistant message or recorded text, and an interaction whose
+last gemini message carries tool calls (the follow-up model reply was never
+recorded: killed or timed out after the tool).
+The native record alone never establishes that an interaction completed: a kill
+while a tool is still running leaves an ordinary-looking text message with no
+toolCalls (recordToolCalls runs only once tools complete). An interaction counts
+as complete only when joined to the stream's terminal result for that turn
+(the stream-side slice owes that join); this projection makes no such claim.
+From the pinned bundle read on athena (lane-reports/gemini-0.64.0-source-
+retained-addendum-2026-10-14.md): a "user" message holding only functionResponse
+parts is GeminiChat's record of a tool round trip, so it continues its
+interaction; it must follow the gemini message whose calls it answers and answer
+exactly those calls, each once, and a tool-calling message must be followed by
+one before the next gemini message; a call's result may hold the whole round trip's responses
+(updateMessagesFromHistory, run by GeminiChat.initialize on every chat start), so
+its parts may answer sibling calls of the same message by id and name and must
+answer this call exactly once; displayContent is recorded only when it differs
+from the sent text, so a present one is admitted only when equal and in practice
+refuses. Still a named false-refusal risk: multi-part user content (an @-include
+prompt), and the binary-injection road's synthetic thought and info messages.
+A refusal is a reader result only: it never erases an executed record or
+authorizes a replacement take.
+"""
+from __future__ import annotations
+
+import math
+import re
+
+import gemini_session_replay as replay_mod
+
+
+class ProjectionRefused(ValueError):
+    """The retained native session is outside the reviewed projection subset."""
+
+
+USER_KEYS = {"id", "timestamp", "type", "content", "displayContent"}
+GEMINI_KEYS = {"id", "timestamp", "type", "content", "thoughts", "tokens", "model", "toolCalls"}
+TOOL_KEYS = {"id", "name", "args", "result", "status", "timestamp", "resultDisplay", "description",
+             "displayName", "renderOutputAsMarkdown"}
+CALL_KEYS = {"id", "name", "args"}
+RESPONSE_KEYS = {"id", "name", "response"}
+STATUSES = ("success", "error")
+ESCAPE = "\x1b"
+# chunk-J7SXW2FI.js, before GeminiChat's recordMessage({model, type: "gemini", content: responseText}):
+#   rawResponseText.replace(/[​-‍﻿‎‏]/g, "")
+#   do { previous = responseText; responseText = responseText.replace(/<!--[\s\S]*?-->/g, ""); }
+#   while (responseText !== previous);
+#   responseText = responseText.trim();
+RECORDER_NORMALIZATION = "zero-width removal, repeated <!-- --> removal, trim (chunk-J7SXW2FI.js recordMessage site)"
+_ZERO_WIDTH = re.compile("[​-‍﻿‎‏]")
+_COMMENT = re.compile(r"<!--[\s\S]*?-->")
+# JavaScript's String.prototype.trim strips WhiteSpace and LineTerminator code points; Python's str.strip()
+# differs (it strips U+001C-U+001F and U+0085, and JS strips U+FEFF, already removed above). Spelled out exactly.
+_JS_TRIM = ("\t\n\x0b\x0c\r \xa0            "
+            "    　﻿")
+
+
+def recorder_normalize(text: str) -> str:
+    """The recorder's normalization of one model message's text, as the pinned 0.64.0 bundle applies it."""
+    text = _ZERO_WIDTH.sub("", text)
+    previous = None
+    while text != previous:
+        previous, text = text, _COMMENT.sub("", text)
+    return text.strip(_JS_TRIM)
+
+
+def _string(value):
+    return isinstance(value, str) and bool(value)
+
+
+def _finite(value):
+    """Every number anywhere in the record must be finite (json accepts NaN/Infinity)."""
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ProjectionRefused("nonfinite number in native session")
+    if isinstance(value, dict):
+        for item in value.values():
+            _finite(item)
+    elif isinstance(value, list):
+        for item in value:
+            _finite(item)
+
+
+def _no_escape(text):
+    if ESCAPE in text:
+        raise ProjectionRefused("ANSI escape in native text; the displayed transformation is unproven")
+
+
+def _text_of(value, what):
+    """A user content or displayContent as one string: a string, or a list of exactly one text part."""
+    if isinstance(value, list):
+        if len(value) != 1 or not isinstance(value[0], dict) or set(value[0]) != {"text"}:
+            raise ProjectionRefused(f"native user {what} must be one text part")
+        value = value[0]["text"]
+    if not _string(value):
+        raise ProjectionRefused(f"native user {what} is absent or not text")
+    return value
+
+
+def _sent(message):
+    if not set(message) <= USER_KEYS:
+        raise ProjectionRefused("unsupported native user message keys")
+    content = _text_of(message["content"], "content")
+    if "displayContent" in message:
+        # Ruling 5 (source retained: GeminiChat records displayContent only when its string differs from the sent
+        # parts'), so on sessions this version writes a present displayContent always refuses.
+        if _text_of(message["displayContent"], "displayContent") != content:
+            raise ProjectionRefused("native user displayContent differs from the sent text")
+    return content
+
+
+def _tool_response_turn(message):
+    """A "user" message whose content is only functionResponse parts: GeminiChat's record of a tool round trip
+    (recordSyntheticMessage("user", userContent.parts) when isOriginalFunctionResponse; source retained). Its
+    [(id, name)], or None when the message is not one."""
+    content = message.get("content")
+    if not (isinstance(content, list) and content and set(message) <= USER_KEYS - {"displayContent"}
+            and all(isinstance(p, dict) and set(p) == {"functionResponse"} for p in content)):
+        return None
+    out = []
+    for part in content:
+        r = part["functionResponse"]
+        if (not isinstance(r, dict) or set(r) != RESPONSE_KEYS or not _string(r["id"]) or not _string(r["name"])
+                or not isinstance(r["response"], dict)):
+            raise ProjectionRefused("unknown native tool response part in a tool-response turn")
+        out.append((r["id"], r["name"]))
+    return out
+
+
+def _content(content):
+    """(recorded text, ordered content function calls) of one gemini message."""
+    if isinstance(content, str):
+        _no_escape(content)
+        if recorder_normalize(content) != content:
+            raise ProjectionRefused("native gemini text is not in the recorder's normal form")
+        return content, []
+    if not isinstance(content, list):
+        raise ProjectionRefused("native gemini content must be text or a part array")
+    text, calls = [], []
+    for part in content:
+        if not isinstance(part, dict):
+            raise ProjectionRefused("native content part is not an object")
+        if set(part) == {"text"} and isinstance(part["text"], str):
+            _no_escape(part["text"])
+            text.append(part["text"])
+        elif set(part) == {"text", "thought"} and isinstance(part["text"], str) and part["thought"] is True:
+            continue                                   # thoughts stay separate from recorded text
+        elif set(part) in ({"functionCall"}, {"functionCall", "thoughtSignature"}):
+            if "thoughtSignature" in part and not _string(part["thoughtSignature"]):
+                raise ProjectionRefused("native thoughtSignature is not a nonempty string")
+            call = part["functionCall"]                # thoughtSignature: a known key, never output
+            if (not isinstance(call, dict) or set(call) != CALL_KEYS or not _string(call["id"])
+                    or not _string(call["name"]) or not isinstance(call["args"], dict)):
+                raise ProjectionRefused("native content function call is incomplete")
+            calls.append(call)
+        else:
+            raise ProjectionRefused("unknown or mixed native content part")
+    return recorder_normalize("".join(text)), calls
+
+
+def _tool(tool, siblings):
+    if not isinstance(tool, dict) or not set(tool) <= TOOL_KEYS:
+        raise ProjectionRefused("unsupported native tool-call keys")
+    if (not _string(tool.get("id")) or not _string(tool.get("name"))
+            or not isinstance(tool.get("args"), dict)):
+        raise ProjectionRefused("native tool call lacks id, name or structured args")
+    if tool.get("status") not in STATUSES:
+        raise ProjectionRefused("unsupported native tool status")
+    result = tool.get("result")
+    if not isinstance(result, list) or not result:
+        raise ProjectionRefused("native tool call lacks model-facing response parts")
+    own = 0
+    for part in result:
+        response = part.get("functionResponse") if isinstance(part, dict) and set(part) == {"functionResponse"} else None
+        if not isinstance(response, dict) or set(response) != RESPONSE_KEYS or not isinstance(response["response"], dict):
+            raise ProjectionRefused("unknown native tool response part")
+        # Ruling 6 (source retained: updateMessagesFromHistory, called by GeminiChat.initialize on every chat start,
+        # sets a call's result to the whole user turn's parts): a part may answer a sibling call of the same message,
+        # by its id and name; it never names any other call.
+        if siblings.get(response["id"]) != response["name"]:
+            raise ProjectionRefused("native tool response part names another call")
+        own += response["id"] == tool["id"]
+    if own != 1:
+        raise ProjectionRefused("native tool response parts must name this call exactly once")
+    display = tool.get("resultDisplay")
+    present = isinstance(display, str)
+    if present:
+        _no_escape(display)
+    elif display is not None and not isinstance(display, dict):
+        raise ProjectionRefused("unknown native tool display result")
+    return {"kind": "tool", "id": tool["id"], "name": tool["name"], "args": tool["args"],
+            "emitted_status": tool["status"], "output_present": present, "output": display if present else None}
+
+
+def _agree(calls, facts):
+    """Content function calls, when present, must be the recorded tool calls, compared by id, name and args."""
+    if not calls:
+        return
+    if len(calls) != len(facts):
+        raise ProjectionRefused("content function calls and recorded tool calls differ in number")
+    for call, fact in zip(calls, facts):
+        for key in ("id", "name", "args"):
+            if call[key] != fact[key]:
+                raise ProjectionRefused(f"content function call {key} disagrees with the recorded tool call")
+
+
+def _interaction(session_id, user, replies, seen_ids):
+    sent = _sent(user)
+    segments, tools, models = [], [], set()
+    for message in replies:
+        if not set(message) <= GEMINI_KEYS:
+            raise ProjectionRefused("unsupported native gemini message keys")
+        if "model" in message:
+            if not _string(message["model"]):
+                raise ProjectionRefused("native gemini model is not a nonempty string")
+            models.add(message["model"])
+        if "thoughts" in message and not isinstance(message["thoughts"], list):
+            raise ProjectionRefused("native thoughts must be an array")
+        recorded, calls = _content(message["content"])
+        if recorded:
+            segments.append({"kind": "recorded-text", "message": message["id"], "text": recorded})
+        recorded_tools = message.get("toolCalls", [])
+        if not isinstance(recorded_tools, list):
+            raise ProjectionRefused("native toolCalls must be an array")
+        siblings = {t.get("id"): t.get("name") for t in recorded_tools if isinstance(t, dict)}
+        facts = [_tool(tool, siblings) for tool in recorded_tools]
+        _agree(calls, facts)
+        for fact in facts:
+            if fact["id"] in seen_ids:
+                raise ProjectionRefused("native tool call id reused")
+            seen_ids.add(fact["id"])
+        tools.extend(facts)
+    if replies[-1].get("toolCalls"):
+        raise ProjectionRefused("native interaction is incomplete: its last model message ends on tool calls")
+    if len(models) > 1:
+        raise ProjectionRefused("contradictory native models within one interaction")
+    if not segments:
+        raise ProjectionRefused("native interaction has no recorded answer text")
+    return {"session_id": session_id, "requested_model": models.pop() if models else None,
+            "version": None, "cwd": None, "permission_mode": None, "sent": sent,
+            "output": segments + tools}
+
+
+def project(raw):
+    """Every user-delimited interaction of one retained native snapshot, or ProjectionRefused."""
+    try:
+        replayed = replay_mod.replay(raw)
+    except replay_mod.ReplayRefused as exc:
+        raise ProjectionRefused(f"native replay refused: {exc}") from None
+    _finite(replayed)
+    session_id = replayed["metadata"]["sessionId"]
+    groups, previous = [], None
+    for message in replayed["messages"]:
+        answered = _tool_response_turn(message) if message["type"] == "user" else None
+        if answered is not None:
+            # Batch-5 review finding 1: GeminiChat records one round trip per tool-calling model message, holding the
+            # responses to exactly that message's calls; so the turn must follow that message and answer each of its
+            # calls once, and nothing else.
+            calls = ([(t.get("id"), t.get("name")) for t in previous.get("toolCalls") or [] if isinstance(t, dict)]
+                     if previous is not None and previous["type"] == "gemini" and groups else [])
+            if not calls or sorted(answered) != sorted(calls) or len(set(answered)) != len(answered):
+                raise ProjectionRefused("a tool-response turn must answer exactly the calls of the gemini message "
+                                        "just before it, each once")
+            previous = message
+            continue                                   # a tool round trip, never a new interaction
+        if (message["type"] == "gemini" and previous is not None and previous["type"] == "gemini"
+                and previous.get("toolCalls")):
+            raise ProjectionRefused("a tool-calling gemini message has no tool-response turn before the next one")
+        previous = message
+        if message["type"] == "user":
+            groups.append((message, []))
+        elif message["type"] == "gemini":
+            if not groups:
+                raise ProjectionRefused("native gemini message precedes any user message")
+            groups[-1][1].append(message)
+        else:
+            raise ProjectionRefused(f"native {message['type']} messages are unsupported in this subset")
+    if not groups:
+        raise ProjectionRefused("native session has no interactions")
+    seen_ids, out = set(), []
+    for user, replies in groups:
+        if not replies:
+            raise ProjectionRefused("native interaction lacks an assistant message")
+        out.append(_interaction(session_id, user, replies, seen_ids))
+    return out

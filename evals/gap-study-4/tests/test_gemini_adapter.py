@@ -549,8 +549,8 @@ def p1_view(mod, p):
     got = [e.kind for e in view_events(mod, "error-result.jsonl")]
     if got != [h, tv.OPERATOR, h, h]:
         out.append(f"{p}: error-result reads as {got}")
-    if "gemini" in tv.PARSERS:
-        out.append(f"{p}: the parser was registered in transcript_view.PARSERS")
+    if not isinstance(tv.PARSERS.get("gemini"), tv.VendorBoundParser):
+        out.append(f"{p}: the published parser does not require bound native records")
     if mod.GeminiParser.event_types != mod.EVENT_TYPES or mod.GeminiParser.tools is not mod.GEMINI_TOOLS:
         out.append(f"{p}: the parser does not name its own tables")
     return out
@@ -972,6 +972,223 @@ def a9_source(mod, p):
     return out
 
 
+@guarded("A10-mode", GA_API + ("submitted_mode",))
+def a10_mode(mod, p):
+    """Live harness 3b review fold (integration red A4): submitted_mode, branch by branch, bound here so this module's
+    own generated mutants see it. The mode is read from the box's launch journal, never the pin: no journal, a link,
+    or bytes that are not one JSON object with an argv list are unobserved; the pinned flags once and no other approval
+    flag give the mode; none gives "no-mode-flags-submitted"; a doubled or extra approval flag gives
+    "contradictory-mode-flags"; a journal off the registered invocation gives "launch-differs-from-registered-
+    invocation". The words are spelled here, never read from the module under test."""
+    out = []
+    folder = Path(tempfile.mkdtemp(dir=SCRATCH))
+    stream, tree = str(folder / "turn-1.jsonl"), str(SCRATCH / "tree")
+    want = {"harness": "gemini", "container_id": TAKE, "model": MODEL, "mode": MODE, "run_tree": tree,
+            "stream": stream, "sent": "hello", "vendor_session_id": "first-turn", "ordinal": 1}
+    registered = list(mod.argv("hello", model=MODEL, mode=MODE, session_id=None, first=True))
+
+    def journal(argv=None, raw=None, **over):
+        path = folder / f"j-{len(list(folder.iterdir()))}.launch.json"
+        doc = dict({"schema": 1, "harness": "gemini", "container_id": TAKE,
+                    "argv": registered if argv is None else argv, "cwd": tree, "stream": stream,
+                    "started_at": 1.0}, **over)
+        path.write_bytes(raw if raw is not None else json.dumps(doc).encode())
+        return str(path)
+
+    unobserved = {"value": None, "source": "unobserved"}
+
+    def mode(value):
+        return {"value": value, "source": "submitted-argv"}
+
+    link = folder / "link.launch.json"
+    os.symlink(journal(), link)
+    flags_at = [i for i in range(len(registered) - 1) if registered[i:i + 2] == ["--approval-mode", "yolo"]]
+    if len(flags_at) != 1:
+        out.append(f"{p}: the registered argv does not carry the pinned flags once: {registered}")
+        return out
+    k = flags_at[0]
+    if k + 2 != len(registered):          # the window's last position is a case of its own (the boundary mutant)
+        out.append(f"{p}: the registered argv no longer ends with the mode flags: {registered}")
+    cases = [
+        ("no journal", str(folder / "absent.launch.json"), unobserved),
+        ("a link", str(link), unobserved),
+        ("bytes that are not JSON", journal(raw=b"{not json"), unobserved),
+        ("bytes that are not UTF-8", journal(raw=b"\xff\xfe"), unobserved),
+        ("a JSON list", journal(raw=b"[]"), unobserved),
+        ("an argv that is not a list", journal(argv="gemini -p hello"), unobserved),
+        ("the registered launch", journal(), mode("yolo")),
+        ("no mode flags", journal(argv=registered[:k] + registered[k + 2:]), mode("no-mode-flags-submitted")),
+        ("the flags twice", journal(argv=registered + ["--approval-mode", "yolo"]), mode("contradictory-mode-flags")),
+        ("an extra --yolo", journal(argv=registered + ["--yolo"]), mode("contradictory-mode-flags")),
+        ("an extra -y", journal(argv=registered + ["-y"]), mode("contradictory-mode-flags")),
+        ("another approval mode", journal(argv=registered[:k] + ["--approval-mode", "default"] + registered[k + 2:]),
+         mode("contradictory-mode-flags")),
+        ("the flags last, another prompt (off the registered argv)",
+         journal(argv=[("goodbye" if a == "hello" else a) for a in registered]),
+         mode("launch-differs-from-registered-invocation")),
+        ("another working folder", journal(cwd=str(SCRATCH / "elsewhere")),
+         mode("launch-differs-from-registered-invocation")),
+    ]
+    for why, path, expect in cases:
+        got = mod.submitted_mode(path, dict(want))
+        if got != expect:
+            out.append(f"{p}: {why}: {got}, not {expect}")
+    got = mod.submitted_mode(journal(), dict(want, mode="PENDING"))
+    if got["source"] != "submitted-argv" or got["value"] == "PENDING":
+        out.append(f"{p}: an unpinned mode read back as {got}")
+    got = mod.submitted_mode(journal(argv=registered[:k] + registered[k + 2:]), dict(want, mode="PENDING"))
+    if got != mode("no-mode-flags-submitted"):          # an unpinned mode has no window: nothing is "found" anywhere
+        out.append(f"{p}: an unpinned mode with no flags submitted read as {got}")
+    # A mode whose flags are no approval flag (none is pinned today): its window alone, with no approval flag beside
+    # it, is still not one clean submission; so the two conditions are read apart, whatever the table holds later.
+    saved = mod.MODE_FLAGS
+    try:
+        mod.MODE_FLAGS = dict(saved, other=("--other-mode",))
+        got = mod.submitted_mode(journal(argv=registered[:k] + ["--other-mode"]), dict(want, mode="other"))
+    finally:
+        mod.MODE_FLAGS = saved
+    if got != mode("contradictory-mode-flags"):
+        out.append(f"{p}: a pinned window with no approval flag read as {got}")
+    return out
+
+
+def _adapter_in(mod, runtime, folder):
+    return mod.GeminiAdapter(runtime=runtime, take_id=TAKE, run_tree=str(SCRATCH / "tree"), login_file=login_file(),
+                             model=MODEL, pin={"permission_mode": MODE, "version": VERSION},
+                             stream_path_for=lambda n: str(folder / f"turn-{n}.jsonl"), counters_for=Counters(),
+                             clock=Clock())
+
+
+@guarded("A11-identity", GA_API + ("turn_identity",))
+def a11_identity(mod, p):
+    """Live harness 3b (integration A4 sweep survivors): where each pin field came from, spelled here. The model: the
+    init's (stream-init), else the result's one stats model (stream-stats), else unobserved; the version: version-exec;
+    the mode: submitted_mode's entry, passed through as given."""
+    out = []
+    mode = {"value": None, "source": "unobserved"}
+    for read, want in (({"init_model": "m-init", "served_models": ["m-stats"]}, {"value": "m-init", "source": "stream-init"}),
+                       ({"init_model": None, "served_models": ["m-stats"]}, {"value": "m-stats", "source": "stream-stats"}),
+                       ({"init_model": None, "served_models": []}, {"value": None, "source": "unobserved"}),
+                       ({"init_model": None, "served_models": ["a", "b"]}, {"value": None, "source": "unobserved"})):
+        got = mod.turn_identity(read, version="9.9.9", mode=mode)
+        if got != {"model": want, "permission_mode": mode, "version": {"value": "9.9.9", "source": "version-exec"}}:
+            out.append(f"{p}: {read} gave {got}")
+    a, _ = take(mod, [fixture("turn1-tools.jsonl")])
+    r = a.turn("one", first=True, budget_s=60)
+    # The box's run_turn writes the turn's journal (0b6f60f9; the integration lane), so a real turn's mode is the
+    # submitted argv's; the pass-through of any given entry is bound by the turn_identity loop above.
+    if r.identity != {"model": {"value": MODEL, "source": "stream-init"},
+                      "permission_mode": {"value": MODE, "source": "submitted-argv"},
+                      "version": {"value": VERSION, "source": "version-exec"}}:
+        out.append(f"{p}: turn 1's identity is {r.identity}")
+    return out
+
+
+@guarded("A12-executed", GA_API + ("ExecutedStreamRefused",))
+def a12_executed(mod, p):
+    """Live harness 3a: an exec that ran is kept before its stream is read; a reader refusal is ExecutedStreamRefused
+    and a defect is a plain ExecutedTurnRefused, each carrying the kept record with its refusal "<type>: <words>"."""
+    out = []
+    keys = {"n", "exit_code", "timed_out", "started_at", "ended_at", "stream_path", "counters", "refused"}
+    a, _ = take(mod, [fixture("unknown-event.jsonl")])
+    try:
+        a.turn("one", first=True, budget_s=60)
+        out.append(f"{p}: a stream off the tables was not refused")
+    except mod.ExecutedStreamRefused as e:
+        cause = e.__cause__
+        rec = a.executed_turns[-1] if a.executed_turns else None
+        if len(a.executed_turns) != 1 or e.executed != rec or set(rec) != keys or rec["n"] != 1:
+            out.append(f"{p}: the kept exec record is {a.executed_turns}")
+        elif rec["refused"] != f"{type(cause).__name__}: {cause}" or not rec["refused"].startswith(
+                type(cause).__name__ + ": "):
+            out.append(f"{p}: the reader refusal is recorded as {rec['refused']!r}")
+    a, _ = take(mod, [fixture("turn1-tools.jsonl")])
+    a.turn("one", first=True, budget_s=60)
+    if len(a.executed_turns) != 1 or set(a.executed_turns[0]) != keys or a.executed_turns[0]["refused"] is not None:
+        out.append(f"{p}: a clean turn's kept exec record is {a.executed_turns}")
+    a, _ = take(mod, [fixture("turn1-tools.jsonl")])
+
+    def defect(got, n, first):
+        raise RuntimeError("a stand-in defect")
+    a._read_turn = defect
+    try:
+        a.turn("one", first=True, budget_s=60)
+        out.append(f"{p}: a defect after the exec was not refused")
+    except mod.StreamError:
+        out.append(f"{p}: a defect after the exec was read as a stream refusal")
+    except mod.aa.ExecutedTurnRefused as e:
+        rec = a.executed_turns[-1] if a.executed_turns else {}
+        if e.executed != rec or rec.get("refused") != "RuntimeError: a stand-in defect" or set(rec) != keys:
+            out.append(f"{p}: the defect is recorded as {rec}")
+    return out
+
+
+def box_view(home: Path):
+    """A faithful stand-in for TakeDriver.config_view over a scratch config folder: operator_list one level as
+    (name, kind), a link listed as one (never followed), None for a folder that is absent; operator_read bytes or None."""
+    def lister(rel):
+        d = home / rel
+        if not d.is_dir():
+            return None
+        return [(e.name, "link" if e.is_symlink() else "dir" if e.is_dir() else "file") for e in d.iterdir()]
+
+    def reader(rel):
+        f = home / rel
+        return f.read_bytes() if f.is_file() and not f.is_symlink() else None
+    return lister, reader
+
+
+@guarded("A13-native", GA_API)
+def a13_native(mod, p):
+    """Live harness 3c: the native session file is the one under GEMINI_CLI_HOME named by turn 1's session id."""
+    out = []
+    a, _ = take(mod, [fixture("turn1-tools.jsonl")])
+    a.turn("one", first=True, budget_s=60)
+    home = Path(tempfile.mkdtemp(dir=SCRATCH))
+    chats = home / ".gemini" / "tmp" / "project-1" / "chats"
+    chats.mkdir(parents=True)
+    sid = json.loads(fixture("turn1-tools.jsonl").splitlines()[0])["session_id"]
+    want = chats / f"session-2026-10-14T05-00-{sid[:8]}.jsonl"
+    want.write_text('{"this": "take"}\n')
+    if a.native_session_path(str(home)) != str(want):
+        out.append(f"{p}: the native session located is not {want.name}")
+    # Drive-wiring review MAJOR 1's road (athena sweep, 14 Oct: native_session_rel's return deleted or None survived):
+    # the same file through the box's listing, as the path relative to GEMINI_CLI_HOME, read back as this take's.
+    lister, reader = box_view(home)
+    rel = a.native_session_rel(lister)
+    if rel != f".gemini/tmp/project-1/chats/{want.name}":
+        out.append(f"{p}: the native session located through the box's listing is {rel!r}")
+    elif reader(rel) != want.read_bytes():
+        out.append(f"{p}: the located native session does not read as this take's")
+    return out
+
+
+@guarded("A14-journal", GA_API)
+def a14_journal(mod, p):
+    """The turn reads its mode from the journal beside its stream (<stream>.launch.json), against the registered
+    invocation: model, mode, run tree, stream, line, the resumed session (turn 1's "first-turn") and the ordinal."""
+    out = []
+    folder = Path(tempfile.mkdtemp(dir=SCRATCH))
+    box = FakeRuntime([fixture("turn1-tools.jsonl"), fixture("turn2-resume.jsonl")])
+    a = _adapter_in(mod, box, folder)
+    a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+    # The journal beside each stream is the box's own: run_take.run_turn writes it before the exec and refuses one
+    # already there (0b6f60f9; the integration lane), so the check no longer plants it.
+    for n, line in enumerate(("one", "two"), 1):
+        r = a.turn(line, first=n == 1, budget_s=60)
+        if r.identity["permission_mode"] != {"value": MODE, "source": "submitted-argv"}:
+            out.append(f"{p}: turn {n}'s mode from its journal is {r.identity['permission_mode']}")
+    # Batch-8 review finding 5: a first turn whose stream has no init leaves session_id unset, so the expectation's
+    # "first-turn" fallback is what launch_facts reads; the journal still gives the pinned mode.
+    folder = Path(tempfile.mkdtemp(dir=SCRATCH))
+    a = _adapter_in(mod, FakeRuntime([fixture("no-init.jsonl")]), folder)
+    a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+    r = a.turn("one", first=True, budget_s=60)
+    if a.session_id is not None or r.identity["permission_mode"] != {"value": MODE, "source": "submitted-argv"}:
+        out.append(f"{p}: a no-init first turn's mode from its journal is {r.identity['permission_mode']}")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestTheShapes(unittest.TestCase):
     def test_s1_an_unknown_event_is_refused(self):
@@ -1023,6 +1240,21 @@ class TestTheAdapter(unittest.TestCase):
 
     def test_a9_the_shapes_source_is_documented(self):
         self.assertEqual(a9_source(ga), [])
+
+    def test_a10_the_mode_is_read_from_the_launch_journal(self):
+        self.assertEqual(a10_mode(ga), [])
+
+    def test_a11_the_identity_sources(self):
+        self.assertEqual(a11_identity(ga), [])
+
+    def test_a12_an_executed_turn_is_kept_before_its_refusal(self):
+        self.assertEqual(a12_executed(ga), [])
+
+    def test_a13_the_native_session_is_located_by_turn_ones_id(self):
+        self.assertEqual(a13_native(ga), [])
+
+    def test_a14_the_turn_reads_its_mode_from_its_own_journal(self):
+        self.assertEqual(a14_journal(ga), [])
 
     def test_a_recorded_label_needs_its_walk_and_version(self):
         for rest in ("", " at walk w-1.", " at walk w-1, gemini-cli 0.63.", " at walk w-1, codex-cli 0.63.0.",
@@ -1410,15 +1642,22 @@ EQUIVALENT_CATEGORIES = {
                         "`return None` deleted (it falls off and returns None)",
     "message-label": "a label string passed only into a refusal's message text, never read by a condition (the "
                      "MESSAGE_TEXT_RULE's words, one step removed from the raise)",
+    "platform-default": "getattr's default for os.O_NOFOLLOW, read only on a platform without that flag; the box and "
+                        "the study's hosts are POSIX, where the flag itself is used",
+    "slice-past-end": "one more window start past the end yields a slice shorter than the flags, which never equals "
+                      "them, so no window is found that the line's own range would miss",
 }
 # What each category's line must hold (checked against the named line of the file, so a reason cannot drift from it).
 EQUIVALENT_TOKENS = {"import-plumbing": ("_HERE", "__future__"), "falsy-alike": ("joining = False",),
                      "identical-mutant": ("None",), "message-label": None, "typed-bool": ("is True",),
-                     "message-order": ("sorted(",), "sequence-alike": ("list(VERSION_ARGV)",)}
+                     "message-order": ("sorted(",), "sequence-alike": ("list(VERSION_ARGV)",),
+                     "platform-default": ("O_NOFOLLOW",), "slice-past-end": ("len(argv) - len(flags) + 1",)}
 CMP_NEGATE = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.In: ast.NotIn, ast.NotIn: ast.In, ast.Lt: ast.GtE,
               ast.GtE: ast.Lt, ast.Gt: ast.LtE, ast.LtE: ast.Gt, ast.Is: ast.IsNot, ast.IsNot: ast.Is}
 # {mutant key: (category, why, a token its source line holds)}; the key is printed by the sweep for each survivor.
 EQUIVALENT = {
+    'gemini_adapter: int-change L266 5feceb66 0': ('platform-default', "submitted_mode's journal open: O_NOFOLLOW exists on the box's POSIX hosts", 'O_NOFOLLOW'),
+    'gemini_adapter: int-change L278 6b86b273 1': ('slice-past-end', "submitted_mode's window range: an extra start past the end finds nothing", 'len(argv) - len(flags) + 1'),
     'gemini_adapter: stmt-delete L65 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's __future__ import", '__future__'),
     'gemini_adapter: assign-empty L72 e8a221d3 _HERE = os.path.dirname(os.path.abspath(__file__))': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
     'gemini_adapter: cmp-negate#0 L73 7c3b80fa _HERE not in sys.path': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
@@ -1427,20 +1666,20 @@ EQUIVALENT = {
     'gemini_adapter: stmt-delete L73 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
     'gemini_adapter: int-change L74 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
     'gemini_adapter: stmt-delete L74 7baa5234 sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
-    'gemini_adapter: assign-empty L134 f8f68722 joining = False': ('falsy-alike', 'joining is read only as `and joining`; None and False read alike', 'joining = False'),
-    'gemini_adapter: assign-empty L151 f8f68722 joining = False': ('falsy-alike', 'joining is read only as `and joining`; None and False read alike', 'joining = False'),
+    'gemini_adapter: assign-empty L138 f8f68722 joining = False': ('falsy-alike', 'joining is read only as `and joining`; None and False read alike', 'joining = False'),
+    'gemini_adapter: assign-empty L155 f8f68722 joining = False': ('falsy-alike', 'joining is read only as `and joining`; None and False read alike', 'joining = False'),
+    "gemini_adapter: is-true-truthy L172 9d1f7fda rec.get('delta') is True": ('typed-bool', 'delta is a bool by VALUE_TYPES', 'is True'),
     "gemini_adapter: is-true-truthy L168 9d1f7fda rec.get('delta') is True": ('typed-bool', 'delta is a bool by VALUE_TYPES', 'is True'),
-    "gemini_adapter: is-true-truthy L164 9d1f7fda rec.get('delta') is True": ('typed-bool', 'delta is a bool by VALUE_TYPES', 'is True'),
-    'gemini_adapter: return-none L216 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
-    'gemini_adapter: unwrap L218 790ab58d sorted(EXIT_MEANINGS)': ('message-order', "the sorted names go only into a refusal's message", 'sorted('),
-    "gemini_adapter: str-change L259 3a445bda 'stream_path_for'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'stream_path_for'),
-    "gemini_adapter: str-change L259 5a98356f 'counters_for'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'counters_for'),
-    "gemini_adapter: str-change L259 8c8bd4c2 'clock'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'clock'),
-    'gemini_adapter: assign-empty L268 65756fc1 self._version = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
-    'gemini_adapter: assign-empty L269 7f1bf958 self.session_id = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
-    'gemini_adapter: unwrap L275 95ba8661 list(VERSION_ARGV)': ('sequence-alike', 'agent_exec_argv takes the tuple as it takes the list', 'list(VERSION_ARGV)'),
-    'gemini_adapter: return-none L319 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
-    'gemini_adapter: stmt-delete L319 9f730a1a return None': ('identical-mutant', "a method's last `return None` deleted still returns None", 'None'),
+    'gemini_adapter: return-none L220 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: unwrap L222 790ab58d sorted(EXIT_MEANINGS)': ('message-order', "the sorted names go only into a refusal's message", 'sorted('),
+    "gemini_adapter: str-change L319 3a445bda 'stream_path_for'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'stream_path_for'),
+    "gemini_adapter: str-change L319 5a98356f 'counters_for'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'counters_for'),
+    "gemini_adapter: str-change L319 8c8bd4c2 'clock'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'clock'),
+    'gemini_adapter: assign-empty L328 65756fc1 self._version = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: assign-empty L329 7f1bf958 self.session_id = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: unwrap L336 95ba8661 list(VERSION_ARGV)': ('sequence-alike', 'agent_exec_argv takes the tuple as it takes the list', 'list(VERSION_ARGV)'),
+    'gemini_adapter: return-none L407 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: stmt-delete L407 9f730a1a return None': ('identical-mutant', "a method's last `return None` deleted still returns None", 'None'),
     'transcript_gemini: stmt-delete L45 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's __future__ import", '__future__'),
     'transcript_gemini: assign-empty L51 e8a221d3 _HERE = os.path.dirname(os.path.abspath(__file__))': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
     'transcript_gemini: cmp-negate#0 L52 7c3b80fa _HERE not in sys.path': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
@@ -1639,7 +1878,8 @@ def _build(tree, name: str, path: Path, inject=None) -> types.ModuleType:
 
 
 TG_CHECKS = (s1_event, s2_key, s3_words, s4_stats, s5_tools, s6_error_text, p1_view)
-GA_CHECKS = (a1_stream, a2_error, a3_output, a4_stats, a5_model, a6_argv, a7_session, a8_turn, a9_source)
+GA_CHECKS = (a1_stream, a2_error, a3_output, a4_stats, a5_model, a6_argv, a7_session, a8_turn, a9_source, a10_mode,
+             a11_identity, a12_executed, a13_native, a14_journal)
 
 
 def all_checks(tgm, gam) -> list:
