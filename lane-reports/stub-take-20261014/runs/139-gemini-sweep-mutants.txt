@@ -1,0 +1,7 @@
+control 0 of 2
+RED   1/2 the Gemini entry back to PENDING
+RED   1/2 a Gemini sweep name dropped
+RED   1/2 GEMINI_API_KEY refused for the Gemini arm
+RED   2/2 a row name refused (GEMINI_CLI_HOME)
+RED   2/2 a row name refused (HTTPS_PROXY)
+ALIVE: none

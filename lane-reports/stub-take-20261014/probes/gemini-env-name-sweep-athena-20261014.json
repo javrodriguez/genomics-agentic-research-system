@@ -1,0 +1,5271 @@
+{
+ "extraction": [
+  {
+   "argv": [
+    "docker",
+    "create",
+    "--pull=never",
+    "--network",
+    "none",
+    "sha256:d10aa00b5958b00d1c719be1f0572967c04f30bfe381a427107c9e9a3f16b013",
+    "true"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "0bd17f714ddea09b59d7a2238aa8b790d3058753c545652cf139cc3c94c5ad19"
+  },
+  {
+   "argv": [
+    "docker",
+    "cp",
+    "0bd17f714ddea09b59d7a2238aa8b790d3058753c545652cf139cc3c94c5ad19:/usr/local/lib/node_modules/@google/gemini-cli",
+    "/home/javier/gap4-tools/tmp-gap4box/pkg"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": ""
+  },
+  {
+   "argv": [
+    "docker",
+    "rm",
+    "0bd17f714ddea09b59d7a2238aa8b790d3058753c545652cf139cc3c94c5ad19"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "0bd17f714ddea09b59d7a2238aa8b790d3058753c545652cf139cc3c94c5ad19"
+  }
+ ],
+ "image": "sha256:d10aa00b5958b00d1c719be1f0572967c04f30bfe381a427107c9e9a3f16b013",
+ "names": {
+  "ANTIGRAVITY_CLI_ALIAS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "APPDATA": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 15,
+    "process.env.X": 9
+   }
+  },
+  "AWS_ACCESS_KEY_ID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 18,
+    "vendor-regex": 18
+   }
+  },
+  "AWS_ACCOUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "AWS_ALGORITHM": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 27
+   }
+  },
+  "AWS_DEFAULT_REGION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 9,
+    "vendor-regex": 12
+   }
+  },
+  "AWS_EC2_INSTANCE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 9
+   }
+  },
+  "AWS_EC2_METADATA_IPV4_ADDRESS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 9
+   }
+  },
+  "AWS_EC2_METADATA_IPV6_ADDRESS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 9
+   }
+  },
+  "AWS_REGION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 9,
+    "vendor-regex": 9
+   }
+  },
+  "AWS_REQUEST_TYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 18
+   }
+  },
+  "AWS_SECRET_ACCESS_KEY": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 18,
+    "vendor-regex": 18
+   }
+  },
+  "AWS_SESSION_TOKEN": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 9,
+    "vendor-regex": 9
+   }
+  },
+  "AZURE_CLIENT_ID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 3
+   }
+  },
+  "AZURE_TENANT_ID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 3
+   }
+  },
+  "AppData": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "BAZEL_TEST": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "BROWSER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "BUF_BIGINT_DISABLE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "BUILD_SANDBOX": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "CHOKIDAR_INTERVAL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "CHOKIDAR_USEPOLLING": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "CHROME_CONFIG_HOME": {
+   "files": [
+    "bundle/bundled/chrome-devtools-mcp.mjs",
+    "bundle/bundled/third_party/index.js"
+   ],
+   "kinds": {
+    "env[X]": 2
+   }
+  },
+  "CHROME_DEVTOOLS_MCP_CRASH_ON_UNCAUGHT": {
+   "files": [
+    "bundle/bundled/chrome-devtools-mcp.mjs"
+   ],
+   "kinds": {
+    "env[X]": 1
+   }
+  },
+  "CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS": {
+   "files": [
+    "bundle/bundled/chrome-devtools-mcp.mjs"
+   ],
+   "kinds": {
+    "env[X]": 2
+   }
+  },
+  "CI": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 11,
+    "process.env.X": 9
+   }
+  },
+  "CLI_TITLE": {
+   "files": [
+    "bundle/interactiveCli-2T27ZS4G.js",
+    "bundle/interactiveCli-66E5CZDR.js",
+    "bundle/interactiveCli-IX4FVS6G.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "CLOUDSDK_CONFIG": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 6,
+    "vendor-regex": 6
+   }
+  },
+  "CLOUDSDK_CONFIG_DIRECTORY": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 18
+   }
+  },
+  "CLOUD_RUN_JOB": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 15
+   }
+  },
+  "CLOUD_SHELL": {
+   "files": [
+    "bundle/chunk-FLKY6NH5.js",
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "env[X]": 18
+   }
+  },
+  "CLOUD_SHELL_VERSION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "CODESPACES": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "CODE_ASSIST_API_VERSION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "CODE_ASSIST_ENDPOINT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "COLORTERM": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 21
+   }
+  },
+  "COLUMNS": {
+   "files": [
+    "node_modules/@lydell/node-pty/unixTerminal.js"
+   ],
+   "kinds": {
+    "env[X]": 1
+   }
+  },
+  "COMSPEC": {
+   "files": [
+    "bundle/interactiveCli-2T27ZS4G.js",
+    "bundle/interactiveCli-66E5CZDR.js",
+    "bundle/interactiveCli-IX4FVS6G.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "CONTAINER_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "CRUX_API_KEY": {
+   "files": [
+    "bundle/bundled/chrome-devtools-mcp.mjs",
+    "bundle/bundled/third_party/index.js"
+   ],
+   "kinds": {
+    "process.env.X": 2
+   }
+  },
+  "CURSOR_TRACE_ID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "ComSpec": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "DEBIAN_FRONTEND": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "DEBUG": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-L6PII3GR.js",
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "env[X]": 26,
+    "process.env.X": 16
+   }
+  },
+  "DEBUG_AUTH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 9
+   }
+  },
+  "DEBUG_MODE": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "DEBUG_PORT": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "DESTDIR": {
+   "files": [
+    "bundle/interactiveCli-2T27ZS4G.js",
+    "bundle/interactiveCli-66E5CZDR.js",
+    "bundle/interactiveCli-IX4FVS6G.js"
+   ],
+   "kinds": {
+    "process.env.X": 6
+   }
+  },
+  "DETECT_GCP_RETRIES": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 18
+   }
+  },
+  "DEV": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "DISPLAY": {
+   "files": [
+    "bundle/bundled/chrome-devtools-mcp.mjs"
+   ],
+   "kinds": {
+    "env[X]": 2
+   }
+  },
+  "DOTENV_KEY": {
+   "files": [
+    "bundle/chunk-FLKY6NH5.js",
+    "bundle/chunk-PS4UL4AP.js",
+    "bundle/chunk-QCHFD56F.js"
+   ],
+   "kinds": {
+    "process.env.X": 9
+   }
+  },
+  "EDITOR": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "process.env.X": 3
+   }
+  },
+  "EDITOR_IN_CLOUD_SHELL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "EDITOR_URL": {
+   "files": [
+    "bundle/devtools-TYCPOPV3.js"
+   ],
+   "kinds": {
+    "process.env.X": 2
+   }
+  },
+  "FORCE_COLOR": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 6
+   }
+  },
+  "FORCE_GENERIC_KEYBINDING_HINTS": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "FORMAT_START": {
+   "files": [
+    "node_modules/node-addon-api/tools/clang-format.js"
+   ],
+   "kinds": {
+    "process.env.X": 1
+   }
+  },
+  "FUNCTION_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 27
+   }
+  },
+  "FUNCTION_REGION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 6
+   }
+  },
+  "FUNCTION_TARGET": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 9
+   }
+  },
+  "GAE_MODULE_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 15
+   }
+  },
+  "GAE_MODULE_VERSION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "GAE_SERVICE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 15
+   }
+  },
+  "GAE_VERSION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 6
+   }
+  },
+  "GCE_METADATA_HOST": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 18
+   }
+  },
+  "GCE_METADATA_IP": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 18
+   }
+  },
+  "GCLOUD_PROJECT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 9,
+    "vendor-regex": 30
+   }
+  },
+  "GCLOUD_SANDBOX_ENV": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 15
+   }
+  },
+  "GCP_GEN_AI": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "GCP_VERTEX_AI": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_3_1_PRO_LAUNCHED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_3_5_FLASH_GA_LAUNCHED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 3
+   }
+  },
+  "GEMINI_3_SET": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_API_KEY": {
+   "files": [
+    "README.md",
+    "bundle/chunk-FLKY6NH5.js",
+    "bundle/chunk-J7SXW2FI.js"
+   ],
+   "kinds": {
+    "env[X]": 27,
+    "vendor-regex": 69
+   }
+  },
+  "GEMINI_API_KEY_AUTH_MECHANISM": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 3
+   }
+  },
+  "GEMINI_CLI": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 11
+   }
+  },
+  "GEMINI_CLI_": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 4
+   }
+  },
+  "GEMINI_CLI_ACTIVE_APPROVAL_MODE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 11
+   }
+  },
+  "GEMINI_CLI_ACTIVITY_LOG_TARGET": {
+   "files": [
+    "bundle/devtoolsService-4MGN7S5K.js",
+    "bundle/devtoolsService-7CS2YIL6.js",
+    "bundle/devtoolsService-LKOU7QN7.js"
+   ],
+   "kinds": {
+    "env[X]": 9,
+    "vendor-regex": 9
+   }
+  },
+  "GEMINI_CLI_AGENT_DURATION_MS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_AGENT_ID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 11
+   }
+  },
+  "GEMINI_CLI_AGENT_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 11
+   }
+  },
+  "GEMINI_CLI_AGENT_RECOVERY_DURATION_MS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_AGENT_RECOVERY_REASON": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_AGENT_RECOVERY_SUCCESS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_AGENT_TERMINATE_REASON": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_AGENT_TURN_COUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 8
+   }
+  },
+  "GEMINI_CLI_AI_ADDED_CHARS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_AI_ADDED_LINES": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_AI_REMOVED_CHARS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_AI_REMOVED_LINES": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_ERROR_DURATION_MS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_ERROR_MODEL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_ERROR_STATUS_CODE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_ERROR_TYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_REQUEST_MODEL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 14
+   }
+  },
+  "GEMINI_CLI_API_RESPONSE_CACHED_TOKEN_COUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_RESPONSE_CONTEXT_BREAKDOWN_HISTORY": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_RESPONSE_CONTEXT_BREAKDOWN_MCP_SERVERS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_RESPONSE_CONTEXT_BREAKDOWN_SYSTEM_INSTRUCTIONS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_RESPONSE_CONTEXT_BREAKDOWN_TOOL_CALLS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_RESPONSE_CONTEXT_BREAKDOWN_TOOL_DEFINITIONS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_RESPONSE_DURATION_MS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_RESPONSE_INPUT_TOKEN_COUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_RESPONSE_MODEL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_RESPONSE_OUTPUT_TOKEN_COUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_RESPONSE_STATUS_CODE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_RESPONSE_THINKING_TOKEN_COUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_API_RESPONSE_TOOL_TOKEN_COUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_APPROVAL_MODE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 8
+   }
+  },
+  "GEMINI_CLI_APPROVAL_MODE_DURATION_MS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_APPROVAL_MODE_TO": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_ASK_USER_ANSWER_COUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_ASK_USER_DISMISSED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_ASK_USER_EMPTY_SUBMISSION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_ASK_USER_QUESTION_TYPES": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_AUTH_OVERRIDE": {
+   "files": [
+    "bundle/chunk-FLKY6NH5.js",
+    "bundle/chunk-PS4UL4AP.js",
+    "bundle/chunk-QCHFD56F.js"
+   ],
+   "kinds": {
+    "env[X]": 8,
+    "vendor-regex": 10
+   }
+  },
+  "GEMINI_CLI_AUTH_TYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_BILLING_CREDITS_CONSUMED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_BILLING_CREDITS_REMAINING": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_BILLING_CREDIT_BALANCE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_BILLING_MODEL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 14
+   }
+  },
+  "GEMINI_CLI_BILLING_PURCHASE_SOURCE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_BILLING_SELECTED_OPTION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_BROWSER_AGENT_DURATION_MS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 11
+   }
+  },
+  "GEMINI_CLI_BROWSER_AGENT_ERROR_TYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_BROWSER_AGENT_HEADLESS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 8
+   }
+  },
+  "GEMINI_CLI_BROWSER_AGENT_SESSION_MODE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 11
+   }
+  },
+  "GEMINI_CLI_BROWSER_AGENT_SUCCESS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 11
+   }
+  },
+  "GEMINI_CLI_BROWSER_AGENT_TOOL_COUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_BROWSER_AGENT_VISION_DISABLED_REASON": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_BROWSER_AGENT_VISION_ENABLED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 8
+   }
+  },
+  "GEMINI_CLI_COMPANION_EXTENSION_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "vendor-regex": 33
+   }
+  },
+  "GEMINI_CLI_COMPRESSION_TOKENS_AFTER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_COMPRESSION_TOKENS_BEFORE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_CONTENT_RETRY_ATTEMPT_NUMBER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_CONTENT_RETRY_DELAY_MS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_CONTENT_RETRY_ERROR_TYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_CONTENT_RETRY_FAILURE_FINAL_ERROR_TYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_CONTENT_RETRY_FAILURE_TOTAL_ATTEMPTS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_CONTENT_RETRY_FAILURE_TOTAL_DURATION_MS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_CONVERSATION_TURN_COUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_CPU_CORES": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_CPU_INFO": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_CUSTOM_HEADERS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 3
+   }
+  },
+  "GEMINI_CLI_EDIT_CORRECTION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_EDIT_STRATEGY": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_END_SESSION_ID": {
+   "files": [
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "vendor-regex": 2
+   }
+  },
+  "GEMINI_CLI_EXPERIMENT_IDS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 8
+   }
+  },
+  "GEMINI_CLI_EXP_AGENT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 6,
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_CLI_EXTENSION_DISABLE_SETTING_SCOPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_EXTENSION_ENABLE_SETTING_SCOPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_EXTENSION_ID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 23
+   }
+  },
+  "GEMINI_CLI_EXTENSION_INSTALL_STATUS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_EXTENSION_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 17
+   }
+  },
+  "GEMINI_CLI_EXTENSION_PREVIOUS_VERSION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_EXTENSION_REGISTRY_URI": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 3
+   }
+  },
+  "GEMINI_CLI_EXTENSION_SOURCE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 8
+   }
+  },
+  "GEMINI_CLI_EXTENSION_UNINSTALL_STATUS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_EXTENSION_UPDATE_STATUS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_EXTENSION_VERSION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 8
+   }
+  },
+  "GEMINI_CLI_FILE_OPERATION_EXTENSION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_FILE_OPERATION_LINES": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_FILE_OPERATION_MIMETYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_FILE_OPERATION_TYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_GH_CUSTOM_TRACKING_ID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_GH_EVENT_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_GH_ISSUE_NUMBER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_GH_PR_NUMBER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_GH_REPOSITORY_NAME_HASH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_GH_WORKFLOW_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_GIT_COMMIT_HASH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_GOOGLE_ACCOUNTS_COUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_GPU_INFO": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_HOME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 4,
+    "vendor-regex": 10
+   }
+  },
+  "GEMINI_CLI_HOOK_DURATION_MS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_HOOK_EVENT_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_HOOK_EXIT_CODE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_HOOK_SUCCESS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_IDENTIFICATION_ENV_VAR": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 18
+   }
+  },
+  "GEMINI_CLI_IDENTIFICATION_ENV_VAR_VALUE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 18
+   }
+  },
+  "GEMINI_CLI_IDE_AUTH_TOKEN": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 3
+   }
+  },
+  "GEMINI_CLI_IDE_CONNECTION_TYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_IDE_PID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 6,
+    "vendor-regex": 10
+   }
+  },
+  "GEMINI_CLI_IDE_SERVER_PORT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 9,
+    "vendor-regex": 18
+   }
+  },
+  "GEMINI_CLI_IDE_SERVER_STDIO_ARGS": {
+   "files": [
+    "bundle/chunk-FLKY6NH5.js",
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 12
+   }
+  },
+  "GEMINI_CLI_IDE_SERVER_STDIO_COMMAND": {
+   "files": [
+    "bundle/chunk-FLKY6NH5.js",
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_CLI_IDE_WORKSPACE_PATH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 12,
+    "vendor-regex": 19
+   }
+  },
+  "GEMINI_CLI_INTEGRATION_TEST": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 12,
+    "vendor-regex": 12
+   }
+  },
+  "GEMINI_CLI_INTERACTIVE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_INVALID_CHUNK_ERROR_MESSAGE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_KEYCHAIN_AVAILABLE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_KEY_UNKNOWN": {
+   "files": [
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "vendor-regex": 2
+   }
+  },
+  "GEMINI_CLI_KITTY_SEQUENCE_LENGTH": {
+   "files": [
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "vendor-regex": 2
+   }
+  },
+  "GEMINI_CLI_LLM_LOOP_CHECK_FLASH_CONFIDENCE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_LLM_LOOP_CHECK_MAIN_MODEL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_LLM_LOOP_CHECK_MAIN_MODEL_CONFIDENCE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_LOOP_DETECTED_CONFIRMED_BY_MODEL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_LOOP_DETECTED_TYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_MALFORMED_JSON_RESPONSE_MODEL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_MODEL_SLASH_COMMAND": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_NETWORK_RETRY_ATTEMPT_NUMBER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_NETWORK_RETRY_DELAY_MS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_NETWORK_RETRY_ERROR_TYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_NEXT_SPEAKER_CHECK_RESULT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_NODE_VERSION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_NO_RELAUNCH": {
+   "files": [
+    "bundle/chunk-5XKZL6EB.js",
+    "bundle/chunk-DPNFVVVC.js",
+    "bundle/chunk-P7ZJXXPR.js"
+   ],
+   "kinds": {
+    "env[X]": 4,
+    "vendor-regex": 7
+   }
+  },
+  "GEMINI_CLI_ONBOARDING_DURATION_MS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_ONBOARDING_START": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_ONBOARDING_USER_TIER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_OS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_PROGRAMMING_LANGUAGE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_PROMPT_ID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 8
+   }
+  },
+  "GEMINI_CLI_RAM_TOTAL_GB": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_RESEARCH_CONTACT_EMAIL": {
+   "files": [
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "vendor-regex": 2
+   }
+  },
+  "GEMINI_CLI_RESEARCH_FEEDBACK_CONTENT": {
+   "files": [
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "vendor-regex": 2
+   }
+  },
+  "GEMINI_CLI_RESEARCH_FEEDBACK_TYPE": {
+   "files": [
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "vendor-regex": 2
+   }
+  },
+  "GEMINI_CLI_RESEARCH_OPT_IN_STATUS": {
+   "files": [
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "vendor-regex": 2
+   }
+  },
+  "GEMINI_CLI_RESEARCH_SURVEY_RESPONSES": {
+   "files": [
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "vendor-regex": 2
+   }
+  },
+  "GEMINI_CLI_RESEARCH_USER_ID": {
+   "files": [
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "vendor-regex": 2
+   }
+  },
+  "GEMINI_CLI_RESPONSE_FINISH_REASON": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_REWIND_OUTCOME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_ROUTING_CLASSIFIER_THRESHOLD": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_ROUTING_DECISION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_ROUTING_DECISION_SOURCE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_ROUTING_FAILURE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_ROUTING_FAILURE_REASON": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_ROUTING_LATENCY_MS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_ROUTING_NUMERICAL_ENABLED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_ROUTING_REASONING": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_SESSION_ID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 8
+   }
+  },
+  "GEMINI_CLI_SLASH_COMMAND_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_SLASH_COMMAND_STATUS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_SLASH_COMMAND_SUBCOMMAND": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_STARTUP_IS_DOCKER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_STARTUP_OS_PLATFORM": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_STARTUP_OS_RELEASE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_STARTUP_PHASES": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_API_KEY_ENABLED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_APPROVAL_MODE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_CORE_TOOLS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_DEBUG_MODE_ENABLED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_EMBEDDING_MODEL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_EXTENSIONS_COUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_EXTENSION_IDS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_MCP_SERVERS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_MCP_SERVERS_COUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_MCP_TOOLS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_MCP_TOOLS_COUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_MODEL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_OUTPUT_FORMAT": {
+   "files": [
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "vendor-regex": 2
+   }
+  },
+  "GEMINI_CLI_START_SESSION_RESPECT_GITIGNORE": {
+   "files": [
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "vendor-regex": 2
+   }
+  },
+  "GEMINI_CLI_START_SESSION_SANDBOX": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_TELEMETRY_ENABLED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_TELEMETRY_LOG_USER_PROMPTS_ENABLED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_START_SESSION_VERTEX_API_ENABLED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 11
+   }
+  },
+  "GEMINI_CLI_START_SESSION_WORKTREE_ACTIVE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_SURFACE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 15
+   }
+  },
+  "GEMINI_CLI_SYSTEM_DEFAULTS_PATH": {
+   "files": [
+    "bundle/chunk-FLKY6NH5.js",
+    "bundle/chunk-PS4UL4AP.js",
+    "bundle/chunk-QCHFD56F.js"
+   ],
+   "kinds": {
+    "env[X]": 6,
+    "vendor-regex": 7
+   }
+  },
+  "GEMINI_CLI_SYSTEM_SETTINGS_PATH": {
+   "files": [
+    "bundle/chunk-FLKY6NH5.js",
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "env[X]": 12,
+    "vendor-regex": 18
+   }
+  },
+  "GEMINI_CLI_TEST_VAR": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 6,
+    "vendor-regex": 9
+   }
+  },
+  "GEMINI_CLI_TOKEN_STORAGE_FORCED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TOKEN_STORAGE_TYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TOOL_CALL_CONTENT_LENGTH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TOOL_CALL_DECISION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TOOL_CALL_DURATION_MS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TOOL_CALL_ERROR_TYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TOOL_CALL_MCP_SERVER_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TOOL_CALL_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 14
+   }
+  },
+  "GEMINI_CLI_TOOL_CALL_SUCCESS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TOOL_OUTPUT_MASKING_MASKED_COUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TOOL_OUTPUT_MASKING_TOKENS_AFTER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TOOL_OUTPUT_MASKING_TOKENS_BEFORE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TOOL_OUTPUT_MASKING_TOTAL_PRUNABLE_TOKENS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TOOL_OUTPUT_TRUNCATED_LINES": {
+   "files": [
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "vendor-regex": 2
+   }
+  },
+  "GEMINI_CLI_TOOL_OUTPUT_TRUNCATED_ORIGINAL_LENGTH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TOOL_OUTPUT_TRUNCATED_THRESHOLD": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TOOL_OUTPUT_TRUNCATED_TRUNCATED_LENGTH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TOOL_TYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_TRUSTED_FOLDERS_PATH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 6,
+    "vendor-regex": 8
+   }
+  },
+  "GEMINI_CLI_TRUST_WORKSPACE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 9,
+    "vendor-regex": 14
+   }
+  },
+  "GEMINI_CLI_USER_ADDED_CHARS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_USER_ADDED_LINES": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_USER_PROMPT_LENGTH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_USER_REMOVED_CHARS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_USER_REMOVED_LINES": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_USER_SETTINGS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_USE_COMPUTE_ADC": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 9,
+    "vendor-regex": 9
+   }
+  },
+  "GEMINI_CLI_VERSION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_WARNING": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_CLI_WEB_FETCH_FALLBACK_REASON": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_CLI_WORKTREE_HANDLED": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 6,
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_CONTEXT_CALIBRATE_TOKEN_CALCULATIONS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 3
+   }
+  },
+  "GEMINI_CONTEXT_TRACE_DIR": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 6,
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_CWD": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 7
+   }
+  },
+  "GEMINI_DEBUG_LOG_FILE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 6,
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_DEFAULT_AUTH_TYPE": {
+   "files": [
+    "bundle/interactiveCli-2T27ZS4G.js",
+    "bundle/interactiveCli-66E5CZDR.js",
+    "bundle/interactiveCli-IX4FVS6G.js"
+   ],
+   "kinds": {
+    "env[X]": 6,
+    "vendor-regex": 9
+   }
+  },
+  "GEMINI_DIR": {
+   "files": [
+    "bundle/chunk-FLKY6NH5.js",
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js"
+   ],
+   "kinds": {
+    "vendor-regex": 117
+   }
+  },
+  "GEMINI_EVENT_LOOP_MONITOR_ENABLED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 3
+   }
+  },
+  "GEMINI_EXP": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 6,
+    "vendor-regex": 9
+   }
+  },
+  "GEMINI_FORCE_ENCRYPTED_FILE_STORAGE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 3
+   }
+  },
+  "GEMINI_FORCE_FILE_STORAGE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 3
+   }
+  },
+  "GEMINI_IGNORE_FILE_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 15
+   }
+  },
+  "GEMINI_MEMORY_MONITOR_INTERVAL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_MODEL": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 12,
+    "vendor-regex": 24
+   }
+  },
+  "GEMINI_MODEL_ALIAS_AUTO": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 60
+   }
+  },
+  "GEMINI_MODEL_ALIAS_FLASH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 33
+   }
+  },
+  "GEMINI_MODEL_ALIAS_FLASH_LITE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 24
+   }
+  },
+  "GEMINI_MODEL_ALIAS_PRO": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 21
+   }
+  },
+  "GEMINI_PLANS_DIR": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 9
+   }
+  },
+  "GEMINI_PROJECT_DIR": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 1,
+    "vendor-regex": 17
+   }
+  },
+  "GEMINI_PROMPT_": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 3
+   }
+  },
+  "GEMINI_PTY_INFO": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 3
+   }
+  },
+  "GEMINI_RESTRICTED_MODE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 3
+   }
+  },
+  "GEMINI_SANDBOX": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 6,
+    "vendor-regex": 32
+   }
+  },
+  "GEMINI_SANDBOX_IMAGE": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_SANDBOX_PROXY_COMMAND": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 6,
+    "vendor-regex": 9
+   }
+  },
+  "GEMINI_SESSION_ID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 7
+   }
+  },
+  "GEMINI_SFN_REGEX": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_STRICT_TELEMETRY_LIMITS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 12,
+    "vendor-regex": 12
+   }
+  },
+  "GEMINI_SYSTEM_MD": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 6,
+    "vendor-regex": 21
+   }
+  },
+  "GEMINI_TELEMETRY_ENABLED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_TELEMETRY_LOG_PROMPTS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_TELEMETRY_OTLP_ENDPOINT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_TELEMETRY_OTLP_PROTOCOL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_TELEMETRY_OUTFILE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_TELEMETRY_TARGET": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_TELEMETRY_TRACES_ENABLED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "GEMINI_TELEMETRY_USE_CLI_AUTH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 4
+   }
+  },
+  "GEMINI_TELEMETRY_USE_COLLECTOR": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 5
+   }
+  },
+  "GEMINI_WRITE_SYSTEM_MD": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 6
+   }
+  },
+  "GH_CUSTOM_TRACKING_ID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "GH_ISSUE_NUMBER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "GH_PR_NUMBER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "GH_WORKFLOW_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "GITHUB_ACTIONS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "GITHUB_EVENT_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "GITHUB_REPOSITORY": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "GITHUB_SHA": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "GITHUB_TOKEN": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "GOOGLE_ACCOUNTS_FILENAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 15
+   }
+  },
+  "GOOGLE_AI_API_DEFAULT_VERSION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "GOOGLE_API_CERTIFICATE_CONFIG": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 12
+   }
+  },
+  "GOOGLE_API_CLIENT_HEADER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 12
+   }
+  },
+  "GOOGLE_API_KEY": {
+   "files": [
+    "README.md",
+    "bundle/chunk-FLKY6NH5.js",
+    "bundle/chunk-J7SXW2FI.js"
+   ],
+   "kinds": {
+    "env[X]": 12,
+    "vendor-regex": 41
+   }
+  },
+  "GOOGLE_API_KEY_HEADER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 9
+   }
+  },
+  "GOOGLE_API_USE_CLIENT_CERTIFICATE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 3
+   }
+  },
+  "GOOGLE_API_USE_MTLS_ENDPOINT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "GOOGLE_APPLICATION_CREDENTIALS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 18,
+    "vendor-regex": 63
+   }
+  },
+  "GOOGLE_CLOUD_ACCESS_TOKEN": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 6,
+    "vendor-regex": 6
+   }
+  },
+  "GOOGLE_CLOUD_ACCOUNT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 3
+   }
+  },
+  "GOOGLE_CLOUD_LOCATION": {
+   "files": [
+    "bundle/chunk-FLKY6NH5.js",
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js"
+   ],
+   "kinds": {
+    "env[X]": 21,
+    "vendor-regex": 42
+   }
+  },
+  "GOOGLE_CLOUD_PROJECT": {
+   "files": [
+    "README.md",
+    "bundle/chunk-FLKY6NH5.js",
+    "bundle/chunk-J7SXW2FI.js"
+   ],
+   "kinds": {
+    "env[X]": 51,
+    "vendor-regex": 120
+   }
+  },
+  "GOOGLE_CLOUD_PROJECT_ID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 9,
+    "vendor-regex": 20
+   }
+  },
+  "GOOGLE_CLOUD_QUOTA_PROJECT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 12,
+    "vendor-regex": 12
+   }
+  },
+  "GOOGLE_CLOUD_REGION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 6,
+    "vendor-regex": 6
+   }
+  },
+  "GOOGLE_CLOUD_UNIVERSE_DOMAIN": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 12,
+    "vendor-regex": 12
+   }
+  },
+  "GOOGLE_CLOUD_WORKSTATIONS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 3
+   }
+  },
+  "GOOGLE_CREDENTIALS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 12
+   }
+  },
+  "GOOGLE_EXTERNAL_ACCOUNT_ALLOW_EXECUTABLES": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 45
+   }
+  },
+  "GOOGLE_EXTERNAL_ACCOUNT_AUDIENCE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 9
+   }
+  },
+  "GOOGLE_EXTERNAL_ACCOUNT_IMPERSONATED_EMAIL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 9
+   }
+  },
+  "GOOGLE_EXTERNAL_ACCOUNT_INTERACTIVE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 9
+   }
+  },
+  "GOOGLE_EXTERNAL_ACCOUNT_OUTPUT_FILE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 9
+   }
+  },
+  "GOOGLE_EXTERNAL_ACCOUNT_TOKEN_TYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 9
+   }
+  },
+  "GOOGLE_GEMINI_BASE_URL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 21,
+    "vendor-regex": 33
+   }
+  },
+  "GOOGLE_GENAI_API_VERSION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "vendor-regex": 6
+   }
+  },
+  "GOOGLE_GENAI_USE_GCA": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 15,
+    "vendor-regex": 24
+   }
+  },
+  "GOOGLE_GENAI_USE_VERTEXAI": {
+   "files": [
+    "README.md",
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js"
+   ],
+   "kinds": {
+    "env[X]": 12,
+    "vendor-regex": 31
+   }
+  },
+  "GOOGLE_GRANT_TYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "GOOGLE_ONE_AI": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 3
+   }
+  },
+  "GOOGLE_REVOKE_TOKEN_URL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 18
+   }
+  },
+  "GOOGLE_SDK_NODE_LOGGING": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 9
+   }
+  },
+  "GOOGLE_SERVICE_ACCOUNT_AUTH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "GOOGLE_TOKEN_INFO_URL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 9
+   }
+  },
+  "GOOGLE_TOKEN_URL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 30
+   }
+  },
+  "GOOGLE_VERTEX_BASE_URL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 12,
+    "vendor-regex": 24
+   }
+  },
+  "GRACEFUL_FS_PLATFORM": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 6
+   }
+  },
+  "GRPC_DEFAULT_SSL_ROOTS_FILE_PATH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "GRPC_EXPERIMENTAL_ENABLE_OUTLIER_DETECTION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "GRPC_NODE_TRACE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "GRPC_NODE_USE_ALTERNATIVE_RESOLVER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "GRPC_NODE_VERBOSITY": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "GRPC_SSL_CIPHER_SUITES": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "GRPC_TRACE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "GRPC_VERBOSITY": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "HOME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 12,
+    "process.env.X": 21
+   }
+  },
+  "HOSTNAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 6
+   }
+  },
+  "HTTPS_PROXY": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 9,
+    "process.env.X": 9
+   }
+  },
+  "HTTP_PROXY": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 9,
+    "process.env.X": 9
+   }
+  },
+  "IGNORE_TEST_WIN32": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "INK_SCREEN_READER": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "INK_WORKER": {
+   "files": [
+    "bundle/worker/worker-entry.js"
+   ],
+   "kinds": {
+    "env[X]": 1
+   }
+  },
+  "IS_BINARY": {
+   "files": [
+    "bundle/chunk-5XKZL6EB.js",
+    "bundle/chunk-DPNFVVVC.js",
+    "bundle/chunk-P7ZJXXPR.js"
+   ],
+   "kinds": {
+    "env[X]": 9
+   }
+  },
+  "JEST_WORKER_ID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "process.env.X": 6
+   }
+  },
+  "K_CONFIGURATION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 12
+   }
+  },
+  "K_REVISION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "K_SERVICE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 18
+   }
+  },
+  "LANG": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "LC_ALL": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "LINES": {
+   "files": [
+    "node_modules/@lydell/node-pty/unixTerminal.js"
+   ],
+   "kinds": {
+    "env[X]": 1
+   }
+  },
+  "LOCALAPPDATA": {
+   "files": [
+    "bundle/bundled/chrome-devtools-mcp.mjs",
+    "bundle/bundled/third_party/index.js"
+   ],
+   "kinds": {
+    "env[X]": 2
+   }
+  },
+  "LOG_STREAM": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "LOG_TOKENS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "LocalAppData": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "METADATA_SERVER_DETECTION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 18
+   }
+  },
+  "MONOSPACE_ENV": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "NODE_DEBUG": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 18,
+    "process.env.X": 22
+   }
+  },
+  "NODE_ENV": {
+   "files": [
+    "bundle/chunk-5XKZL6EB.js",
+    "bundle/chunk-DPNFVVVC.js",
+    "bundle/chunk-KJWA3D3G.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "NODE_OPTIONS": {
+   "files": [
+    "bundle/chunk-5XKZL6EB.js",
+    "bundle/chunk-DPNFVVVC.js",
+    "bundle/chunk-P7ZJXXPR.js"
+   ],
+   "kinds": {
+    "env[X]": 9
+   }
+  },
+  "NODE_V8_COVERAGE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "process.env.X": 12
+   }
+  },
+  "NO_BROWSER": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "NO_COLOR": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 10,
+    "process.env.X": 3
+   }
+  },
+  "NO_PROXY": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 18,
+    "process.env.X": 18
+   }
+  },
+  "OAUTH_CALLBACK_HOST": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "OAUTH_CALLBACK_PORT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "OSTYPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 10
+   }
+  },
+  "OTEL_EXPORTER_OTLP_HEADERS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "OTEL_EXPORTER_PROMETHEUS_HOST": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "OTEL_EXPORTER_PROMETHEUS_PORT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "OTEL_SEMCONV_STABILITY_OPT_IN": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "OTLP_GOOGLE_CLOUD_PROJECT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "PATH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 24,
+    "process.env.X": 5
+   }
+  },
+  "PATHEXT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "process.env.X": 10
+   }
+  },
+  "POSITRON": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "PREFIX": {
+   "files": [
+    "bundle/interactiveCli-2T27ZS4G.js",
+    "bundle/interactiveCli-66E5CZDR.js",
+    "bundle/interactiveCli-IX4FVS6G.js"
+   ],
+   "kinds": {
+    "process.env.X": 6
+   }
+  },
+  "PSModulePath": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "PUPPETEER_TEST_EXPERIMENTAL_CHROME_FEATURES": {
+   "files": [
+    "bundle/bundled/chrome-devtools-mcp.mjs",
+    "bundle/bundled/third_party/index.js"
+   ],
+   "kinds": {
+    "env[X]": 2
+   }
+  },
+  "PUPPETEER_WEBDRIVER_BIDI_ONLY": {
+   "files": [
+    "bundle/bundled/chrome-devtools-mcp.mjs",
+    "bundle/bundled/third_party/index.js"
+   ],
+   "kinds": {
+    "env[X]": 2
+   }
+  },
+  "PYTHONPATH": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "ProgramFiles": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 12
+   }
+  },
+  "QTS_DEBUG": {
+   "files": [
+    "bundle/bundled/chrome-devtools-mcp.mjs",
+    "bundle/bundled/third_party/index.js"
+   ],
+   "kinds": {
+    "process.env.X": 2
+   }
+  },
+  "RATE_LIMIT_ERROR_MESSAGE_VERTEX": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "READABLE_STREAM": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "REMOTE_CONTAINERS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "REPLIT_USER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "REQUIRED_VERTEX_AI_SCOPE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 18
+   }
+  },
+  "RUNFILES_DIR": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "SANDBOX": {
+   "files": [
+    "bundle/chunk-EV5MQULH.js",
+    "bundle/chunk-HHALNKOO.js",
+    "bundle/chunk-J7SXW2FI.js"
+   ],
+   "kinds": {
+    "env[X]": 85
+   }
+  },
+  "SANDBOX_ENV": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 12
+   }
+  },
+  "SANDBOX_FLAGS": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "SANDBOX_MOUNTS": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "SANDBOX_PORTS": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "SANDBOX_SET_UID_GID": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "SEATBELT_PROFILE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 15
+   }
+  },
+  "SHELL": {
+   "files": [
+    "bundle/interactiveCli-2T27ZS4G.js",
+    "bundle/interactiveCli-66E5CZDR.js",
+    "bundle/interactiveCli-IX4FVS6G.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "SHPOOL_SESSION_NAME": {
+   "files": [
+    "bundle/interactiveCli-2T27ZS4G.js",
+    "bundle/interactiveCli-66E5CZDR.js",
+    "bundle/interactiveCli-IX4FVS6G.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "SSH_CLIENT": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "SSH_CONNECTION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 12
+   }
+  },
+  "SSH_TTY": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "STY": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 7
+   }
+  },
+  "SUDO_GID": {
+   "files": [
+    "bundle/interactiveCli-2T27ZS4G.js",
+    "bundle/interactiveCli-66E5CZDR.js",
+    "bundle/interactiveCli-IX4FVS6G.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "SUDO_UID": {
+   "files": [
+    "bundle/interactiveCli-2T27ZS4G.js",
+    "bundle/interactiveCli-66E5CZDR.js",
+    "bundle/interactiveCli-IX4FVS6G.js"
+   ],
+   "kinds": {
+    "process.env.X": 6
+   }
+  },
+  "SURFACE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 9
+   }
+  },
+  "SystemRoot": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 15
+   }
+  },
+  "TEENY_REQUEST_WARN_CONCURRENT_REQUESTS": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "TERM": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 30,
+    "process.env.X": 1
+   }
+  },
+  "TERMCAP": {
+   "files": [
+    "node_modules/@lydell/node-pty/unixTerminal.js"
+   ],
+   "kinds": {
+    "env[X]": 1
+   }
+  },
+  "TERMINAL_EMULATOR": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "TERM_PRODUCT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "TERM_PROGRAM": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 54,
+    "process.env.X": 1
+   }
+  },
+  "TERM_PROGRAM_VERSION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "TESTING_TAR_FAKE_PLATFORM": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "process.env.X": 9
+   }
+  },
+  "TEST_GRACEFUL_FS_GLOBAL_PATCH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 6
+   }
+  },
+  "TEST_SRCDIR": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "TEST_WORKSPACE": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "TMUX": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 7
+   }
+  },
+  "TMUX_PANE": {
+   "files": [
+    "node_modules/@lydell/node-pty/unixTerminal.js"
+   ],
+   "kinds": {
+    "env[X]": 1
+   }
+  },
+  "TRAVIS": {
+   "files": [
+    "bundle/interactiveCli-2T27ZS4G.js",
+    "bundle/interactiveCli-66E5CZDR.js",
+    "bundle/interactiveCli-IX4FVS6G.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "TURBOPACK": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "UNDICI_NO_FG": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "process.env.X": 6
+   }
+  },
+  "USER": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "USERPROFILE": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "process.env.X": 3
+   }
+  },
+  "USE_VERTEX_AI": {
+   "files": [
+    "bundle/chunk-FLKY6NH5.js",
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js"
+   ],
+   "kinds": {
+    "vendor-regex": 75
+   }
+  },
+  "VBOX_INSTALL_PATH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "VBOX_MSI_INSTALL_PATH": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "VERTEX_AI_API_DEFAULT_VERSION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "VERTEX_AI_EU_REP_ENDPOINT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "VERTEX_AI_REQUEST_TYPE_HEADER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "VERTEX_AI_SHARED_REQUEST_TYPE_HEADER": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "VERTEX_AI_US_REP_ENDPOINT": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "vendor-regex": 6
+   }
+  },
+  "VIRTUAL_ENV": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "env[X]": 9
+   }
+  },
+  "VISUAL": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "process.env.X": 3
+   }
+  },
+  "VITEST": {
+   "files": [
+    "bundle/chunk-5XKZL6EB.js",
+    "bundle/chunk-DPNFVVVC.js",
+    "bundle/chunk-J7SXW2FI.js"
+   ],
+   "kinds": {
+    "env[X]": 12
+   }
+  },
+  "VSCODE_GIT_ASKPASS_MAIN": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 9
+   }
+  },
+  "VSCODE_GIT_IPC_HANDLE": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "VSCODE_PID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "VSCODE_REMOTE_CONTAINERS_SESSION": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "WEB_HOST": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 9
+   }
+  },
+  "WINDIR": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3,
+    "process.env.X": 3
+   }
+  },
+  "WINDOW": {
+   "files": [
+    "node_modules/@lydell/node-pty/unixTerminal.js"
+   ],
+   "kinds": {
+    "env[X]": 1
+   }
+  },
+  "WINDOWID": {
+   "files": [
+    "node_modules/@lydell/node-pty/unixTerminal.js"
+   ],
+   "kinds": {
+    "env[X]": 1
+   }
+  },
+  "WSLENV": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "WSL_DISTRO_NAME": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "WSL_INTEROP": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "WS_NO_BUFFER_UTIL": {
+   "files": [
+    "bundle/chunk-664ZODQF.js",
+    "bundle/devtoolsService-4MGN7S5K.js",
+    "bundle/devtoolsService-7CS2YIL6.js"
+   ],
+   "kinds": {
+    "process.env.X": 7
+   }
+  },
+  "WS_NO_UTF_8_VALIDATE": {
+   "files": [
+    "bundle/chunk-664ZODQF.js",
+    "bundle/devtoolsService-4MGN7S5K.js",
+    "bundle/devtoolsService-7CS2YIL6.js"
+   ],
+   "kinds": {
+    "process.env.X": 7
+   }
+  },
+  "WT_SESSION": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "XCODE_VERSION_ACTUAL": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "XDG_CONFIG_HOME": {
+   "files": [
+    "bundle/bundled/chrome-devtools-mcp.mjs",
+    "bundle/bundled/third_party/index.js"
+   ],
+   "kinds": {
+    "env[X]": 2
+   }
+  },
+  "XDG_SESSION_TYPE": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "YARGS_MIN_NODE_VERSION": {
+   "files": [
+    "bundle/gemini-6ESINPDZ.js",
+    "bundle/gemini-IPXWMEB5.js",
+    "bundle/gemini-Q2GRYIAK.js"
+   ],
+   "kinds": {
+    "process.env.X": 10
+   }
+  },
+  "ZED_SESSION_ID": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 6
+   }
+  },
+  "__COG_BASHRC_SOURCED": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "__FAKE_FS_O_FILENAME__": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "__FAKE_PLATFORM__": {
+   "files": [
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js",
+    "bundle/chunk-V7G7CIBW.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "__MINIMATCH_TESTING_PLATFORM__": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "comspec": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 5
+   }
+  },
+  "gcloud_project": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 9
+   }
+  },
+  "google_application_credentials": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 9
+   }
+  },
+  "google_cloud_project": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 9
+   }
+  },
+  "grpc_proxy": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 6
+   }
+  },
+  "http_proxy": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 9,
+    "process.env.X": 15
+   }
+  },
+  "https_proxy": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 9,
+    "process.env.X": 15
+   }
+  },
+  "no_grpc_proxy": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "process.env.X": 3
+   }
+  },
+  "no_proxy": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-KJWA3D3G.js",
+    "bundle/chunk-MA35JFUP.js"
+   ],
+   "kinds": {
+    "env[X]": 15,
+    "process.env.X": 21
+   }
+  },
+  "systemroot": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  },
+  "windir": {
+   "files": [
+    "bundle/chunk-J7SXW2FI.js",
+    "bundle/chunk-NR7L3FXV.js",
+    "bundle/chunk-PZ4GDG24.js"
+   ],
+   "kinds": {
+    "env[X]": 3
+   }
+  }
+ },
+ "names_found": 519,
+ "package_path": "/usr/local/lib/node_modules/@google/gemini-cli",
+ "package_text_digest": "6d80381523622ff736654905bf1bc76debcd89ae7cbb8ab87979d09562ea87a4",
+ "package_version": "0.64.0",
+ "patterns": {
+  "env[X]": "\\benv\\s*\\[\\s*[\\\"']([A-Za-z_][A-Za-z0-9_]*)[\\\"']\\s*\\]",
+  "process.env.X": "process\\.env\\.([A-Za-z_][A-Za-z0-9_]*)",
+  "vendor-regex": "(?<![A-Za-z0-9_])((?:GEMINI|GOOGLE|CLOUDSDK|VERTEX|GCP|GCLOUD|CLOUD_ML|CODEX|OPENAI|AWS|AZURE|ANTHROPIC)_[A-Z0-9_]+|[A-Z0-9_]*VERTEX[A-Z0-9_]*)(?![A-Za-z0-9_])"
+ },
+ "probe": "gemini-env-name-sweep",
+ "text_files_read": 447
+}

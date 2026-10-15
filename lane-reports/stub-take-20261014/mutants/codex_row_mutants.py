@@ -17,14 +17,19 @@ MUTANTS = [
  ("rt", "read_login reads a Codex row", '    if name == NO_LOGIN:\n        raise LoginRefused("a Codex row', '    if False:\n        raise LoginRefused("a Codex row'),
  ("rt", "a route name dropped", '            "OPENAI_ORGANIZATION",                     # matches[40]: beside the OpenAI-Organization header\n', ''),
  ("rt", "route names never refused", "        if not _is_pending(extra):\n            names |= set(extra)", "        if not _is_pending(extra):\n            pass"),
- ("rt", "OPENAI_API_KEY admitted for codex", 'VENDOR_KEY_VARIABLES = ("CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY")', 'VENDOR_KEY_VARIABLES = ("CODEX_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY")'),
+ # OPENAI_API_KEY is refused twice since the binary sweep (VENDOR_KEY_VARIABLES and the sweep tuple): both removed
+ ("rt", "OPENAI_API_KEY admitted for codex", ('VENDOR_KEY_VARIABLES = ("CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY")', '"NODE_USE_ENV_PROXY", "OPENAI_API_KEY", "OPENAI_BASE_URL",'), ('VENDOR_KEY_VARIABLES = ("CODEX_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY")', '"NODE_USE_ENV_PROXY", "OPENAI_BASE_URL",')),
  ("rt", "a docs-read name dropped", '"CODEX_OSS_BASE_URL", "CODEX_OSS_PORT", "AWS_BEARER_TOKEN_BEDROCK", "AWS_ACCESS_KEY_ID",', '"CODEX_OSS_BASE_URL", "AWS_BEARER_TOKEN_BEDROCK", "AWS_ACCESS_KEY_ID",'),
  ("rt", "the docs-read names dropped", '            "OPENAI_PROJECT", "OPENAI_BASE_URL", "CODEX_ACCESS_TOKEN", "OPENAI_WORKLOAD_IDENTITY_CONTEXT",\n', ''),
+ ("rt", "a sweep name dropped", '"CODEX_GITHUB_PERSONAL_ACCESS_TOKEN", "CODEX_GUARDIAN_DECISIONS_API_KEY",', '"CODEX_GITHUB_PERSONAL_ACCESS_TOKEN",'),
+ ("rt", "the sweep not merged into the Codex entry", "VENDOR_BILLING_ROUTE_VARIABLES[CODEX] = VENDOR_BILLING_ROUTE_VARIABLES[CODEX] + tuple(\n    n for n in CODEX_BINARY_SWEEP_REFUSED if n not in VENDOR_BILLING_ROUTE_VARIABLES[CODEX])", "pass"),
+ ("rt", "CODEX_HOME refused with the sweep", "CODEX_BINARY_SWEEP_REFUSED = (\n", 'CODEX_BINARY_SWEEP_REFUSED = ("CODEX_HOME",\n'),
  ("sr", "scan_record reads a Codex row by its own rule", '    if name == "-":            # run_take.NO_LOGIN', '    if False:            # run_take.NO_LOGIN'),
 ]
 def suite():
     s = unittest.TestSuite()
     s.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(trt.TestCodexRow))
+    s.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(trt.TestCodexBinarySweep))
     s.addTest(tsr.TestLeaseTokens("test_a_codex_row_has_no_environment_login"))
     return s
 def run(rt=RT, sr=SR):
@@ -34,11 +39,15 @@ c = run(); print("control", len(c.failures) + len(c.errors), "of", c.testsRun)
 assert not (c.failures or c.errors), "the control is not clean"
 alive = []
 for key, name, old, new in MUTANTS:
-    assert SRC[key].count(old) == 1, name
+    olds, news = (old, new) if isinstance(old, tuple) else ((old,), (new,))
+    msrc = SRC[key]
+    for o_, n_ in zip(olds, news):
+        assert msrc.count(o_) == 1, name
+        msrc = msrc.replace(o_, n_)
     base = RT if key == "rt" else SR
     mod = types.ModuleType(base.__name__); mod.__file__ = base.__file__
     try:
-        exec(compile(SRC[key].replace(old, new), base.__file__, "exec"), mod.__dict__)
+        exec(compile(msrc, base.__file__, "exec"), mod.__dict__)
     except Exception as e:  # noqa: BLE001
         print("RED  ", "load", name, f"({type(e).__name__}: {str(e)[:60]})"); continue
     r = run(rt=mod) if key == "rt" else run(sr=mod)

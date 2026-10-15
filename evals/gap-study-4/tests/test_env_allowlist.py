@@ -644,9 +644,10 @@ class E5Units(Case):
             with mock.patch.object(m, "FALLBACK_ENV", m.PENDING):   # FILLED 14 Oct 2026; the clause stays red-tested
                 self.not_ready("E5.pending", "FALLBACK_ENV is PENDING", m.take_environment, "claude-code", "/r/t")
         with mock.patch.object(m, "FALLBACK_ENV", {"FAKE_FALLBACK_A": "1"}):
-            for h in ("gemini",):              # codex's was FILLED 14 Oct 2026 (glitch-06's ruling 3)
-                self.not_ready("E5.pending", f"VENDOR_BILLING_ROUTE_VARIABLES[{h!r}] is PENDING",
-                               m.take_environment, h, "/r/t")
+            # both FILLED 14 Oct 2026 (Codex's binary and Gemini's package sweeps); the clause stays red-tested
+            with mock.patch.dict(m.VENDOR_BILLING_ROUTE_VARIABLES, {m.GEMINI: m.PENDING}):
+                self.not_ready("E5.pending", "VENDOR_BILLING_ROUTE_VARIABLES['gemini'] is PENDING",
+                               m.take_environment, "gemini", "/r/t")
 
     def test_the_fallback_values_are_arm_a_s_alone(self):
         m = rt()
@@ -671,6 +672,30 @@ class E5Units(Case):
         for value in (5, None, b"x"):
             self.refuses("E5.value", "NUL", m.launcher_argv, "GEMINI_API_KEY", {"A": value}, ["gemini"],
                          harness=m.GEMINI)
+
+    def test_the_no_login_launcher_reads_its_values(self):
+        """The merged battery's generated sweep (gap4-merge-66bacad): the no-login launcher's own branches, bound here
+        (glitch-06, 14 Oct 2026). The lease gate refuses first; then only a Codex row; then no other harness's config
+        home, by name; then exactly the Codex row's names; and a named login's harness must be a known one."""
+        m = rt()
+        vals = m.exec_values(m.CODEX, "/srv/w/t1/tree")
+        inner = ["codex", "exec"]
+        self.not_ready("E5.nologin", "Codex subscription binding not ready", m.launcher_argv, m.NO_LOGIN, vals, inner,
+                       harness=m.CODEX)
+        with mock.patch.object(m, "CODEX_SUBSCRIPTION_READY", True):
+            got = self.must("E5.nologin", m.launcher_argv, m.NO_LOGIN, vals, inner, harness=m.CODEX)
+            self.assertEqual(got[:len(m.LAUNCHER) + 1], [*m.LAUNCHER, "-"], "E5.nologin: the launcher is off")
+            for h in (m.CLAUDE_CODE, m.GEMINI, "bogus"):
+                self.refuses("E5.nologin", "only for a Codex row", m.launcher_argv, m.NO_LOGIN, vals, inner, harness=h)
+            for home in ("GEMINI_CLI_HOME", "CLAUDE_CONFIG_DIR"):
+                self.refuses("E5.nologin", ["config home", home], m.launcher_argv, m.NO_LOGIN,
+                             dict(vals, **{home: m.CONFIG_MOUNT}), inner, harness=m.CODEX)
+            self.refuses("E5.nologin", "exactly the Codex row's names", m.launcher_argv, m.NO_LOGIN,
+                         dict(vals, EXTRA_NAME="1"), inner, harness=m.CODEX)
+            self.refuses("E5.nologin", "exactly the Codex row's names", m.launcher_argv, m.NO_LOGIN,
+                         {k: v for k, v in vals.items() if k != "CODEX_HOME"}, inner, harness=m.CODEX)
+        self.refuses("E5.harness", "unknown harness", m.launcher_argv, "GEMINI_API_KEY", {"A": "1"}, ["gemini"],
+                     harness="bogus")
 
     def test_check_model_edges(self):
         m = rt()

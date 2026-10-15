@@ -1,0 +1,15 @@
+== test_walk_login_scripts -k GeminiKey against 3a0d7f5a's scripts
+ERROR: test_verify_refuses_each_wrong_shape (test_walk_login_scripts.GeminiKey.test_verify_refuses_each_wrong_shape)
+FAIL: test_prepare_then_paste_then_verify (test_walk_login_scripts.GeminiKey.test_prepare_then_paste_then_verify)
+AssertionError: 1 != 0 : {"ok": false, "refused": "usage: prepare_walk_token.py <account>, e.g. claude1"}
+Ran 2 tests in 0.111s
+FAILED (failures=1, errors=1)
+== test_run_take -k TestGeminiKeyGate / TestWalkLoginPlace against 3a0d7f5a's run_take.py
+FAIL: test_the_gemini_key_gate (test_run_take.TestGeminiKeyGate.test_the_gemini_key_gate)
+AssertionError: Lists differ: ["raised AttributeError: module 'box.run_t[37 chars]DY'"] != []
+Ran 1 test in 0.002s
+FAILED (failures=1)
+FAIL: test_the_walk_login_place (test_run_take.TestWalkLoginPlace.test_the_walk_login_place)
+AssertionError: Lists differ: ["WALK_LOGIN_FILES = {'claude1': '/home/ja[42 chars]n'}"] != []
+Ran 1 test in 0.023s
+FAILED (failures=1)

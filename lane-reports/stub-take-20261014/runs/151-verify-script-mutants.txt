@@ -1,0 +1,11 @@
+control 0 of 5
+RED   2/5 '=' unchecked
+RED   2/5 double paste unchecked
+RED   2/5 name prefix unchecked
+RED   2/5 quotes unchecked
+RED   1/5 stray non-ASCII unchecked
+RED   1/5 stray named by the character, not its name
+RED   8/5 the Gemini account unknown
+RED   8/5 paste checks ignored in the result
+EQUIVALENT (named, no mutant): the stray non-ASCII line's own result gate, since a non-ASCII byte also fails 'format ok' (bytes 0x21-0x7e only), so dropping that gate alone changes no result
+ALIVE: none

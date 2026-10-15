@@ -123,7 +123,8 @@ TAKE_ENV = {
 BASE_NAMES = ("PATH", "HOME", "LANG")
 # Codex has no environment login (glitch-06's ruling 1, 14 Oct 2026): its login is the lease file in CODEX_HOME
 # (place_lease), and LOGIN_VARIABLE[CODEX] is the launcher's reserved NO_LOGIN, set below where it is defined. Every
-# road that expects an environment login refuses it explicitly (read_login; exec_argv refuses Codex outright).
+# road that expects an environment login refuses it explicitly (read_login; exec_argv hands Codex to
+# _codex_exec_argv behind codex_lease_gate).
 LOGIN_VARIABLE = {h: next(k for k, v in row.items() if v == CREDENTIAL) for h, row in TAKE_ENV.items()
                   if CREDENTIAL in row.values()}
 # Owner amendment, 13 Oct 2026: Codex must use an isolated ChatGPT subscription.
@@ -223,7 +224,11 @@ CLAUDE_SETTINGS_FLAG = "--settings"
 # setup-token>`, the variable Claude Code reads in a -p run (code.claude.com/docs/en/authentication, "Generate a
 # long-lived token" and "Authentication precedence" item 5; env-vars.md). Prepared and verified by
 # lane-reports/walk-login/prepare_walk_login.py and verify_walk_login.py; the value is never read by any session.
-WALK_LOGIN_FILES = {"claude1": "/home/javier/gap4-secrets/claude1/claude-walk-token"}
+# The Gemini key road (glitch-06, 14 Oct 2026), the same road: account alias r4-g (Javier's Google project label from the
+# plan), one line `GEMINI_API_KEY=<the study key>`, the variable the Gemini arm's row names; prepared and verified by
+# the same two scripts.
+WALK_LOGIN_FILES = {"claude1": "/home/javier/gap4-secrets/claude1/claude-walk-token",
+                    "r4-g": "/home/javier/gap4-secrets/r4-g/gemini-walk-login"}
 
 # The bypass acceptance: RULED not required in -p (glitch-06, 14 Oct 2026, on the docs read in Addendum E of
 # gap4-codex-rollout-audit-20261014/codex-0.162.1-rollout-audit.md). The study sends NO bypass acceptance key.
@@ -266,6 +271,119 @@ CLAUDE_BARE_FLAG = "--bare"
 # f7cfa2621e22c1a6f2b150ac00f14bef3e227fcc46d62e8e1fd2958f8cea3323; sources[0].matches[N].context; the strings
 # run together, so each name ends at the next CODEX_/OPENAI_ prefix or a lower-case byte). Refused if present, like
 # every other vendor's names. What the evidence cannot settle is listed in the lane report, never guessed.
+# The pinned Codex binary's environment-name sweep (glitch-06, 14 Oct 2026): every credential, route (billing, endpoint,
+# proxy, trust-store or sandbox switch) and ambiguous name its strings carry, the non-prefixed names glued to them
+# included (the review of 06775d56, MINOR 3), refused if present for every arm.
+# Source: lane-reports/stub-take-20261014/probes/codex-env-name-classification-20261014.json (sha256 c0cbb46d...), the
+# deterministic classification of codex-env-name-sweep-athena-20261014.json (sha256 ddb31eec...), the sweep of the
+# binary sha256 628e35487d888a28... copied out of the pinned take-o image; test_run_take binds this tuple to that file.
+CODEX_BINARY_SWEEP_REFUSED = (
+    "AWS_ACCESS_KEY_ID", "AWS_ACCOUNT_ID", "AWS_ACCOUNT_IDE", "AWS_ACCOUNT_ID_ENDPOINT_MODE",
+    "AWS_AUTH_SCHEME_PREFERENCE", "AWS_BEARER_TOKEN_BEDROCK", "AWS_CONFIG_FILE", "AWS_CONTAINER_AUTHORIZATION_TOKEN",
+    "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE", "AWS_CONTAINER_CREDENTIALS_FULL_URI",
+    "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", "AWS_DEFAULT_REGION", "AWS_DEFAULT_REGIONA", "AWS_DEFAULT_REGIONU",
+    "AWS_EC2_METADATA_DISABLED", "AWS_EC2_METADATA_SERVICE_ENDPOINT", "AWS_EC2_METADATA_SERVICE_ENDPOINT_MODE",
+    "AWS_ENDPOINT_URL", "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS", "AWS_LOGIN_CACHE_DIRECTORY", "AWS_PROFILE",
+    "AWS_REGION", "AWS_REGIONG", "AWS_ROLE_ARN", "AWS_ROLE_SESSION_NAME", "AWS_SECRET_ACCESS_KEY",
+    "AWS_SECRET_ACCESS_KEYN", "AWS_SERVICE", "AWS_SESSION_TOKEN", "AWS_SHARED_CREDENTIALS_FILE", "AWS_SIGV4",
+    "AWS_SIGV4S", "AWS_USE_DUALSTACK_ENDPOINT", "AWS_USE_FIPS_ENDPOINT", "AWS_WEB_IDENTITY_TOKEN_FILE",
+    "AZURE_CLIENT_SECRET", "AZURE_FEDERATED_TOKEN_FILE", "BUNDLE_SSL_CA_CERT", "CARGO_HTTP_CAINFO",
+    "CODEX_ACCESS_TOKEN", "CODEX_AGENT_IDENTITY_AUTHAPI_BASE_URL", "CODEX_AGENT_IDENTITY_JWKS_BASE_URL",
+    "CODEX_API_KEY", "CODEX_APP_SERVER_CHATGPT_BASE_URL", "CODEX_APP_SERVER_LOGIN_CLIENT_ID",
+    "CODEX_APP_SERVER_LOGIN_ISSUER", "CODEX_APP_SERVER_LOGIN_ISSUERA", "CODEX_AUTH", "CODEX_AUTHAPI_BASE_URL",
+    "CODEX_CA_CERTIFICATE", "CODEX_CLOUD_TASKS_BASE_URL", "CODEX_CLOUD_TASKS_FORCE_INTERNAL",
+    "CODEX_CONNECTORS_TOKEN", "CODEX_DAEMON_TELEMETRY_HANDOFF", "CODEX_ESCALATE_SOCKET",
+    "CODEX_EXEC_SERVER_NOISE_AUTH_TOKEN", "CODEX_EXEC_SERVER_NOISE_CHATGPT_ACCOUNT_ID",
+    "CODEX_EXEC_SERVER_NOISE_CHATGPT_ACCOUNT_IDN", "CODEX_EXEC_SERVER_NOISE_ENVIRONMENT_ID",
+    "CODEX_EXEC_SERVER_NOISE_REGISTRY_URL", "CODEX_EXEC_SERVER_PROXY_PRIVATE_IPS_VIA_UPSTREAM",
+    "CODEX_EXEC_SERVER_URL", "CODEX_GITHUB_PERSONAL_ACCESS_TOKEN", "CODEX_GUARDIAN_DECISIONS_API_KEY",
+    "CODEX_INTERNAL_APP_SERVER_REMOTE_CONTROL_DISABLED", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE",
+    "CODEX_NETWORK_ALLOW_LOCAL_BINDING", "CODEX_NETWORK_POLICY_VIOLATION", "CODEX_NETWORK_PROXY_ACTIVE",
+    "CODEX_NETWORK_PROXY_ATTRIBUTION", "CODEX_NETWORK_PROXY_BROKERED_CREDENTIALS",
+    "CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVE", "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_",
+    "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_", "CODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_BASH_ENV",
+    "CODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_POSIX_ENV", "CODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_ZDOTDIR__",
+    "CODEX_OSS_BASE_URL", "CODEX_OSS_PORT", "CODEX_PERMISSION", "CODEX_PERMISSION_PROFILE",
+    "CODEX_REFRESH_TOKEN_URL_OVERRIDE", "CODEX_REVOKE_TOKEN_URL_OVERRIDE", "CODEX_SANDBOX",
+    "CODEX_SANDBOX_NETWORK_DISABLED", "CODEX_SNAPSHOT_BROKER_XTRACE", "CODEX_SNAPSHOT_OVERRIDE",
+    "CODEX_SNAPSHOT_PROXY_ENV_SET", "CODEX_SNAPSHOT_PROXY_OVERRIDE", "CURL_CA_BUNDLE", "ELECTRON_GET_USE_PROXY",
+    "EXEC_WRAPPER", "GIT_SSL_CAINFO", "GOOGLE_APPLICATION_CREDENTIALS", "HTTP_PROXY", "NODE_EXTRA_CA_CERTS",
+    "NODE_REPL_AUTH_TOKEN", "NODE_USE_ENV_PROXY", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_CLUSTER",
+    "OPENAI_FEDERATION_RULE_ID", "OPENAI_IDENTITY_TOKEN_FILE", "OPENAI_ORGANIZATION",
+    "OPENAI_WORKLOAD_IDENTITY_CONTEXT", "REQUESTS_CA_BUNDLE", "REQUEST_DISPATCH_MODE", "SSL_CERT_DIR",
+    "SSL_CERT_FILE",)
+# The pinned Gemini CLI's environment-name sweep (glitch-06, 14 Oct 2026): every credential, route (billing, endpoint,
+# proxy, trust-store, sandbox, model, settings or telemetry-egress switch) and ambiguous name the package (0.64.0, its
+# dependencies included) reads or names, refused if present for every arm; GEMINI_API_KEY stays the Gemini arm's own
+# login and every row's own names stay out. Source: lane-reports/stub-take-20261014/probes/
+# gemini-env-name-classification-20261014.json (sha256 0a364720...), the deterministic classification of
+# gemini-env-name-sweep-athena-20261014.json (sha256 fc80791d...); test_run_take binds this tuple to that file.
+GEMINI_PACKAGE_SWEEP_REFUSED = (
+    "ANTIGRAVITY_CLI_ALIAS", "AWS_ACCESS_KEY_ID", "AWS_ACCOUNT", "AWS_DEFAULT_REGION",
+    "AWS_EC2_METADATA_IPV4_ADDRESS", "AWS_EC2_METADATA_IPV6_ADDRESS", "AWS_REGION", "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN", "AZURE_CLIENT_ID", "AZURE_TENANT_ID", "BUILD_SANDBOX", "CLOUDSDK_CONFIG",
+    "CLOUDSDK_CONFIG_DIRECTORY", "CLOUD_RUN_JOB", "CLOUD_SHELL", "CLOUD_SHELL_VERSION", "CODE_ASSIST_API_VERSION",
+    "CODE_ASSIST_ENDPOINT", "CRUX_API_KEY", "DEBUG_AUTH", "DETECT_GCP_RETRIES", "DOTENV_KEY",
+    "EDITOR_IN_CLOUD_SHELL", "EDITOR_URL", "FUNCTION_NAME", "FUNCTION_REGION", "FUNCTION_TARGET", "GAE_MODULE_NAME",
+    "GAE_MODULE_VERSION", "GAE_SERVICE", "GAE_VERSION", "GCE_METADATA_HOST", "GCE_METADATA_IP", "GCLOUD_PROJECT",
+    "GCLOUD_SANDBOX_ENV", "GCP_VERTEX_AI", "GEMINI_API_KEY_AUTH_MECHANISM", "GEMINI_CLI_ACTIVITY_LOG_TARGET",
+    "GEMINI_CLI_API_ERROR_MODEL", "GEMINI_CLI_API_REQUEST_MODEL", "GEMINI_CLI_API_RESPONSE_CACHED_TOKEN_COUNT",
+    "GEMINI_CLI_API_RESPONSE_INPUT_TOKEN_COUNT", "GEMINI_CLI_API_RESPONSE_MODEL",
+    "GEMINI_CLI_API_RESPONSE_OUTPUT_TOKEN_COUNT", "GEMINI_CLI_API_RESPONSE_THINKING_TOKEN_COUNT",
+    "GEMINI_CLI_API_RESPONSE_TOOL_TOKEN_COUNT", "GEMINI_CLI_AUTH_OVERRIDE", "GEMINI_CLI_AUTH_TYPE",
+    "GEMINI_CLI_BILLING_CREDITS_CONSUMED", "GEMINI_CLI_BILLING_CREDITS_REMAINING",
+    "GEMINI_CLI_BILLING_CREDIT_BALANCE", "GEMINI_CLI_BILLING_MODEL", "GEMINI_CLI_BILLING_PURCHASE_SOURCE",
+    "GEMINI_CLI_BILLING_SELECTED_OPTION", "GEMINI_CLI_COMPRESSION_TOKENS_AFTER",
+    "GEMINI_CLI_COMPRESSION_TOKENS_BEFORE", "GEMINI_CLI_CUSTOM_HEADERS", "GEMINI_CLI_EXPERIMENT_IDS",
+    "GEMINI_CLI_EXP_AGENT", "GEMINI_CLI_EXTENSION_DISABLE_SETTING_SCOPE",
+    "GEMINI_CLI_EXTENSION_ENABLE_SETTING_SCOPE", "GEMINI_CLI_EXTENSION_REGISTRY_URI",
+    "GEMINI_CLI_FILE_OPERATION_EXTENSION", "GEMINI_CLI_FILE_OPERATION_LINES", "GEMINI_CLI_FILE_OPERATION_MIMETYPE",
+    "GEMINI_CLI_FILE_OPERATION_TYPE", "GEMINI_CLI_GOOGLE_ACCOUNTS_COUNT", "GEMINI_CLI_IDE_AUTH_TOKEN",
+    "GEMINI_CLI_IDE_PID", "GEMINI_CLI_IDE_SERVER_PORT", "GEMINI_CLI_IDE_SERVER_STDIO_ARGS",
+    "GEMINI_CLI_IDE_SERVER_STDIO_COMMAND", "GEMINI_CLI_IDE_WORKSPACE_PATH", "GEMINI_CLI_INTEGRATION_TEST",
+    "GEMINI_CLI_KEYCHAIN_AVAILABLE", "GEMINI_CLI_KEY_UNKNOWN", "GEMINI_CLI_LLM_LOOP_CHECK_MAIN_MODEL",
+    "GEMINI_CLI_LLM_LOOP_CHECK_MAIN_MODEL_CONFIDENCE", "GEMINI_CLI_LOOP_DETECTED_CONFIRMED_BY_MODEL",
+    "GEMINI_CLI_MALFORMED_JSON_RESPONSE_MODEL", "GEMINI_CLI_MODEL_SLASH_COMMAND",
+    "GEMINI_CLI_RESEARCH_CONTACT_EMAIL", "GEMINI_CLI_ROUTING_CLASSIFIER_THRESHOLD", "GEMINI_CLI_ROUTING_DECISION",
+    "GEMINI_CLI_ROUTING_DECISION_SOURCE", "GEMINI_CLI_ROUTING_FAILURE", "GEMINI_CLI_ROUTING_FAILURE_REASON",
+    "GEMINI_CLI_ROUTING_LATENCY_MS", "GEMINI_CLI_ROUTING_NUMERICAL_ENABLED", "GEMINI_CLI_ROUTING_REASONING",
+    "GEMINI_CLI_START_SESSION_API_KEY_ENABLED", "GEMINI_CLI_START_SESSION_EMBEDDING_MODEL",
+    "GEMINI_CLI_START_SESSION_MODEL", "GEMINI_CLI_START_SESSION_SANDBOX",
+    "GEMINI_CLI_START_SESSION_TELEMETRY_ENABLED", "GEMINI_CLI_START_SESSION_TELEMETRY_LOG_USER_PROMPTS_ENABLED",
+    "GEMINI_CLI_START_SESSION_VERTEX_API_ENABLED", "GEMINI_CLI_SURFACE", "GEMINI_CLI_SYSTEM_DEFAULTS_PATH",
+    "GEMINI_CLI_SYSTEM_SETTINGS_PATH", "GEMINI_CLI_TEST_VAR", "GEMINI_CLI_TOKEN_STORAGE_FORCED",
+    "GEMINI_CLI_TOKEN_STORAGE_TYPE", "GEMINI_CLI_TOOL_OUTPUT_MASKING_TOKENS_AFTER",
+    "GEMINI_CLI_TOOL_OUTPUT_MASKING_TOKENS_BEFORE", "GEMINI_CLI_TOOL_OUTPUT_MASKING_TOTAL_PRUNABLE_TOKENS",
+    "GEMINI_CLI_TRUSTED_FOLDERS_PATH", "GEMINI_CLI_TRUST_WORKSPACE", "GEMINI_CLI_USER_SETTINGS",
+    "GEMINI_CLI_USE_COMPUTE_ADC", "GEMINI_CONTEXT_TRACE_DIR", "GEMINI_DEBUG_LOG_FILE", "GEMINI_DEFAULT_AUTH_TYPE",
+    "GEMINI_DIR", "GEMINI_EXP", "GEMINI_FORCE_ENCRYPTED_FILE_STORAGE", "GEMINI_FORCE_FILE_STORAGE",
+    "GEMINI_IGNORE_FILE_NAME", "GEMINI_MODEL", "GEMINI_MODEL_ALIAS_AUTO", "GEMINI_MODEL_ALIAS_FLASH",
+    "GEMINI_MODEL_ALIAS_FLASH_LITE", "GEMINI_MODEL_ALIAS_PRO", "GEMINI_PLANS_DIR", "GEMINI_PROJECT_DIR",
+    "GEMINI_RESTRICTED_MODE", "GEMINI_SANDBOX", "GEMINI_SANDBOX_IMAGE", "GEMINI_SANDBOX_PROXY_COMMAND",
+    "GEMINI_SYSTEM_MD", "GEMINI_TELEMETRY_ENABLED", "GEMINI_TELEMETRY_LOG_PROMPTS", "GEMINI_TELEMETRY_OTLP_ENDPOINT",
+    "GEMINI_TELEMETRY_OTLP_PROTOCOL", "GEMINI_TELEMETRY_OUTFILE", "GEMINI_TELEMETRY_TARGET",
+    "GEMINI_TELEMETRY_TRACES_ENABLED", "GEMINI_TELEMETRY_USE_CLI_AUTH", "GEMINI_TELEMETRY_USE_COLLECTOR",
+    "GEMINI_WRITE_SYSTEM_MD", "GITHUB_TOKEN", "GOOGLE_ACCOUNTS_FILENAME", "GOOGLE_AI_API_DEFAULT_VERSION",
+    "GOOGLE_API_CERTIFICATE_CONFIG", "GOOGLE_API_CLIENT_HEADER", "GOOGLE_API_KEY", "GOOGLE_API_KEY_HEADER",
+    "GOOGLE_API_USE_CLIENT_CERTIFICATE", "GOOGLE_API_USE_MTLS_ENDPOINT", "GOOGLE_APPLICATION_CREDENTIALS",
+    "GOOGLE_CLOUD_ACCESS_TOKEN", "GOOGLE_CLOUD_ACCOUNT", "GOOGLE_CLOUD_LOCATION", "GOOGLE_CLOUD_PROJECT",
+    "GOOGLE_CLOUD_PROJECT_ID", "GOOGLE_CLOUD_QUOTA_PROJECT", "GOOGLE_CLOUD_REGION", "GOOGLE_CLOUD_UNIVERSE_DOMAIN",
+    "GOOGLE_CLOUD_WORKSTATIONS", "GOOGLE_CREDENTIALS", "GOOGLE_EXTERNAL_ACCOUNT_ALLOW_EXECUTABLES",
+    "GOOGLE_EXTERNAL_ACCOUNT_AUDIENCE", "GOOGLE_EXTERNAL_ACCOUNT_IMPERSONATED_EMAIL",
+    "GOOGLE_EXTERNAL_ACCOUNT_INTERACTIVE", "GOOGLE_EXTERNAL_ACCOUNT_OUTPUT_FILE",
+    "GOOGLE_EXTERNAL_ACCOUNT_TOKEN_TYPE", "GOOGLE_GEMINI_BASE_URL", "GOOGLE_GENAI_API_VERSION",
+    "GOOGLE_GENAI_USE_GCA", "GOOGLE_GENAI_USE_VERTEXAI", "GOOGLE_GRANT_TYPE", "GOOGLE_REVOKE_TOKEN_URL",
+    "GOOGLE_SERVICE_ACCOUNT_AUTH", "GOOGLE_TOKEN_INFO_URL", "GOOGLE_TOKEN_URL", "GOOGLE_VERTEX_BASE_URL",
+    "GRPC_DEFAULT_SSL_ROOTS_FILE_PATH", "GRPC_NODE_USE_ALTERNATIVE_RESOLVER", "GRPC_SSL_CIPHER_SUITES", "HTTP_PROXY",
+    "K_CONFIGURATION", "K_REVISION", "K_SERVICE", "LOG_TOKENS", "METADATA_SERVER_DETECTION", "NODE_OPTIONS",
+    "NO_PROXY", "OAUTH_CALLBACK_HOST", "OAUTH_CALLBACK_PORT", "OTEL_EXPORTER_OTLP_HEADERS",
+    "OTEL_EXPORTER_PROMETHEUS_HOST", "OTEL_EXPORTER_PROMETHEUS_PORT", "OTLP_GOOGLE_CLOUD_PROJECT",
+    "RATE_LIMIT_ERROR_MESSAGE_VERTEX", "REQUIRED_VERTEX_AI_SCOPE", "SANDBOX", "SANDBOX_ENV", "SANDBOX_FLAGS",
+    "SANDBOX_MOUNTS", "SANDBOX_PORTS", "SANDBOX_SET_UID_GID", "SEATBELT_PROFILE", "SURFACE", "USE_VERTEX_AI",
+    "VERTEX_AI_API_DEFAULT_VERSION", "VERTEX_AI_EU_REP_ENDPOINT", "VERTEX_AI_REQUEST_TYPE_HEADER",
+    "VERTEX_AI_SHARED_REQUEST_TYPE_HEADER", "VERTEX_AI_US_REP_ENDPOINT", "WEB_HOST", "gcloud_project",
+    "google_application_credentials", "google_cloud_project", "grpc_proxy", "http_proxy", "https_proxy",
+    "no_grpc_proxy", "no_proxy",)
 VENDOR_BILLING_ROUTE_VARIABLES = {
     CODEX: ("CODEX_AUTHAPI_BASE_URL",                  # matches[46], [50]: before https://auth.openai.com/api/accounts
             "CODEX_AGENT_IDENTITY_AUTHAPI_BASE_URL",   # matches[68]
@@ -285,7 +403,10 @@ VENDOR_BILLING_ROUTE_VARIABLES = {
             # the review's NIT 7: matches[2] reads CODEX_APP_SERVER_LOGIN_ISSUERAmazon Bed..., an ambiguous end; both
             # spellings are refused (refusing more fails closed)
             "CODEX_APP_SERVER_LOGIN_ISSUER", "CODEX_APP_SERVER_LOGIN_ISSUERA"),
-    GEMINI: PENDING}
+    GEMINI: GEMINI_PACKAGE_SWEEP_REFUSED}    # FILLED 14 Oct 2026 (glitch-06): the Gemini package sweep
+# The sweep's names not named above join the Codex entry, in the sweep's order (glitch-06, 14 Oct 2026).
+VENDOR_BILLING_ROUTE_VARIABLES[CODEX] = VENDOR_BILLING_ROUTE_VARIABLES[CODEX] + tuple(
+    n for n in CODEX_BINARY_SWEEP_REFUSED if n not in VENDOR_BILLING_ROUTE_VARIABLES[CODEX])
 
 # What the runtime client itself needs from the caller's environment, and nothing else.
 RUNTIME_ENV_NAMES = ("PATH", "HOME", "DOCKER_HOST", "XDG_RUNTIME_DIR")
@@ -788,15 +909,25 @@ def _own_environment():
     return os.environ
 
 
+# glitch-06's ruling on the Codex sweep's residual (14 Oct 2026): two of the binary's names are prefixes the CLI extends
+# per variable, so every name starting with either is refused for every arm (refusing more fails closed).
+REFUSED_NAME_PREFIXES = ("CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_", "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_")
+
+
+def _refused_name(name, refused) -> bool:
+    return name in refused or (isinstance(name, str) and name.startswith(REFUSED_NAME_PREFIXES))
+
+
 def check_environment(harness: str, caller_env=None, requested=()) -> None:
-    """Refuse the take when any refused name is set in this process's own environment, in the caller_env given (the
-    client env's seam, never a switch for this refusal) or requested for the exec. Names only; values never read."""
+    """Refuse the take when any refused name, or a name with a REFUSED_NAME_PREFIXES prefix, is set in this process's
+    own environment, in the caller_env given (the client env's seam, never a switch for this refusal) or requested for
+    the exec. Names only; values never read."""
     refused = refused_variables(harness)
     names = set(_own_environment()) | (set(caller_env) if caller_env is not None else set())
-    in_caller = sorted(n for n in names if n in refused)
+    in_caller = sorted(n for n in names if _refused_name(n, refused))
     if in_caller:
         raise Refused(f"refused variable(s) set in the caller's environment for a {harness} take: {', '.join(in_caller)}")
-    asked = sorted(n for n in requested if n in refused)
+    asked = sorted(n for n in requested if _refused_name(n, refused))
     if asked:
         raise Refused(f"refused variable(s) requested for a {harness} exec: {', '.join(asked)}")
 
@@ -812,7 +943,8 @@ def exec_argv(container_id: str, inner, *, user: str, workdir: str, harness: str
     TAKE_ENV row and the credential; the client environment is the runtime's needs and the credential alone."""
     harness = _known_harness(harness)
     if harness == CODEX:
-        raise NotReady(CODEX_SUBSCRIPTION_NOT_READY)
+        return _codex_exec_argv(container_id, inner, user=user, workdir=workdir, run_tree=run_tree,
+                                login_file=login_file, caller_env=caller_env)
     src = os.environ if caller_env is None else caller_env
     login = LOGIN_VARIABLE[harness]
     # Refused names first, from the table alone (so a cross-arm refusal never waits on a PENDING value).
@@ -838,6 +970,133 @@ def exec_argv(container_id: str, inner, *, user: str, workdir: str, harness: str
     env = runtime_env(src)
     env[login] = value
     return argv, env
+
+
+# ------------------------------------------------------------------------------- the Codex turn (glitch-06, 14 Oct 2026)
+# Behind the closed lease gate. The arm's pinned models: prereg-draft.json "models"["O"] (test_run_take binds them).
+CODEX_MODELS = ("gpt-6.1-sol", "gpt-6-luna")
+# The turn shapes are only what the pinned 0.162.1 help shows and the study uses
+# (lane-reports/live-box-evidence-2026-10-13/codex-exec-help.json, sha256 a90c28e8..., and codex-resume-help.json,
+# sha256 f145e5b7..., both `docker run ... <the take-o image> codex exec [resume] --help`):
+#   `codex exec [OPTIONS] [PROMPT]` and `codex exec [OPTIONS] <COMMAND> [ARGS]` with COMMAND `resume`, whose own usage
+#   is `codex exec resume [OPTIONS] [SESSION_ID] [PROMPT]`; the options are exec's, given before `resume`.
+#   --json                                      "Print events to stdout as JSONL"
+#   -m, --model <MODEL>                         "Model the agent should use"
+#   --dangerously-bypass-approvals-and-sandbox  "Skip all confirmation prompts and execute commands without sandboxing.
+#                                               ... Intended solely for running in environments that are externally
+#                                               sandboxed" (the box is that sandbox; codex_adapter.MODE_FLAGS["bypass"])
+#   [PROMPT]  "If not provided as an argument (or if `-` is used), instructions are read from stdin": refused, so a
+#             prompt never starts with "-". [SESSION_ID] "Conversation/session id (UUID) or thread name".
+# Every other option the help lists (-c, --enable, --disable, --strict-config, -i, --oss, --local-provider, -p, -s,
+# --approve-for-me, --dangerously-bypass-hook-trust, -C, --worktree, --add-dir, --thread-source,
+# --cyber-access-program, --skip-git-repo-check, --ephemeral, --ignore-user-config, --ignore-rules, --output-schema,
+# --color, -o, --last, --all) and every other subcommand (fork, review, help) is refused.
+CODEX_CLIENT = "codex"
+CODEX_SUBCOMMAND = "exec"
+# The pinned help's "Commands:" list for `codex exec` (codex-exec-help.json): a one-word prompt equal to one of them
+# would be run as that subcommand (`codex exec [OPTIONS] <COMMAND> [ARGS]`), so it is refused as a prompt (the review
+# of 1e10e320, MAJOR). Hidden aliases and subcommands the help does not list are a named residual.
+CODEX_HELP_COMMANDS = ("resume", "fork", "review", "help")
+CODEX_RESUME = "resume"
+CODEX_JSON_FLAG = "--json"
+CODEX_MODEL_FLAGS = ("-m", "--model")
+CODEX_BYPASS_FLAG = "--dangerously-bypass-approvals-and-sandbox"
+_CODEX_SESSION = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,127}")
+
+
+def check_codex_turn(inner) -> str:
+    """The Codex turn's argv held to the shapes above; its model, or Refused naming the rule."""
+    inner = list(inner)
+    if not inner or inner[0] != CODEX_CLIENT:
+        raise Refused(f"a Codex turn runs `{CODEX_CLIENT}`, the pinned image's client, by name")
+    if len(inner) < 2 or inner[1] != CODEX_SUBCOMMAND:
+        raise Refused(f"a Codex turn is `{CODEX_CLIENT} {CODEX_SUBCOMMAND}`")
+    counts, model, i = {"json": 0, "model": 0, "bypass": 0}, None, 2
+    while i < len(inner) and inner[i].startswith("-"):
+        tok = inner[i]
+        if tok == CODEX_JSON_FLAG:
+            counts["json"] += 1
+            i += 1
+        elif tok == CODEX_BYPASS_FLAG:
+            counts["bypass"] += 1
+            i += 1
+        elif tok in CODEX_MODEL_FLAGS:
+            value = inner[i + 1] if i + 1 < len(inner) else None
+            if value is None or value.startswith("-"):
+                raise Refused(f"{tok} takes the model as its next argument")
+            counts["model"] += 1
+            model = value
+            i += 2
+        else:
+            raise Refused(f"unsupported Codex turn argument {tok!r}: a turn uses --json, -m/--model and "
+                          f"{CODEX_BYPASS_FLAG}, nothing else")
+    if counts["json"] != 1:
+        raise Refused(f"a Codex turn passes {CODEX_JSON_FLAG} exactly once")
+    if counts["model"] != 1:
+        raise Refused("a Codex turn names its model exactly once by -m, never the default")
+    if counts["bypass"] != 1:
+        raise Refused(f"a Codex turn passes {CODEX_BYPASS_FLAG} exactly once (the box is the sandbox)")
+    if model not in CODEX_MODELS:
+        raise Refused(f"model {model!r} is not one of the arm's pinned ids: {', '.join(CODEX_MODELS)}")
+    rest = inner[i:]
+    if rest[:1] == [CODEX_RESUME]:
+        if len(rest) != 3:
+            raise Refused("`resume` takes exactly a session id and a prompt")
+        if not _CODEX_SESSION.fullmatch(rest[1]):
+            raise Refused("the resumed session id is not a session id's form")
+        prompt = rest[2]
+    else:
+        if len(rest) != 1:
+            raise Refused("a Codex turn ends with exactly one prompt (or `resume <session id> <prompt>`)")
+        prompt = rest[0]
+        if prompt in CODEX_HELP_COMMANDS:
+            raise Refused(f"a one-word prompt {prompt!r} is a `codex exec` subcommand name: it would run as that "
+                          f"subcommand, not as the prompt")
+    if not prompt or prompt.startswith("-"):
+        raise Refused("a Codex turn's prompt never starts with '-' (it would read as a flag, or `-` as stdin)")
+    return model
+
+
+def check_codex_lease_place(path: str, run_tree: str) -> None:
+    """A Codex turn's login file is the lease place_lease put in the per-take config folder: named LEASE_FILE, a
+    regular file (never a link) with one link, mode 600, owned by the reading user, in that user's own mode-700 folder
+    (never a link), outside the run tree and every repository. Checked in place; its bytes are never read here."""
+    if not isinstance(path, str) or not os.path.isabs(path):
+        raise LoginRefused("the lease file is named by an absolute path")
+    if os.path.basename(path) != LEASE_FILE:
+        raise LoginRefused(f"{path}: a Codex turn's login is the placed lease, {LEASE_FILE}")
+    check_login_place(path, run_tree)
+    st = os.lstat(path)
+    if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
+        raise LoginRefused(f"{path}: the lease must be a regular file, never a link")
+    if stat.S_IMODE(st.st_mode) != 0o600:
+        raise LoginRefused(f"{path}: the lease's mode must be 600")
+    if st.st_uid != os.getuid():
+        raise LoginRefused(f"{path}: the lease must be owned by the reading user")
+    if not outside_every_repository(path):
+        raise LoginRefused(f"{path}: the lease must sit outside every repository")
+
+
+def _codex_exec_argv(container_id: str, inner, *, user: str, workdir: str, run_tree: str, login_file: str,
+                     caller_env=None) -> tuple:
+    """exec_argv for a Codex row (glitch-06, 14 Oct 2026). The closed lease gate first (NotReady before anything is
+    checked or read); then the user, the ids, the turn's shape and model, the refused names over the row's values and
+    this process's and the caller's environments, and the placed lease. The turn runs under the no-login launcher over exactly the Codex row (CODEX_HOME the config mount,
+    which holds the placed auth.json); no credential rides in argv or in the client environment."""
+    codex_lease_gate()
+    src = os.environ if caller_env is None else caller_env
+    if user != AGENT_USER:
+        raise Refused(f"every exec into the take container runs as the agent, {AGENT_USER}")
+    _check_id(container_id, "container id")
+    inner = _check_argv(inner)
+    workdir = _abs_path(workdir, "workdir") if workdir != "/" else "/"
+    check_codex_turn(inner)
+    values = exec_values(CODEX, run_tree)
+    check_environment(CODEX, src, set(values))
+    check_codex_lease_place(login_file, run_tree)
+    argv = [RUNTIME_CLIENT, "exec", "--user", AGENT_USER, "--workdir", workdir, container_id,
+            *launcher_argv(NO_LOGIN, values, inner, harness=CODEX)]
+    return argv, runtime_env(src)
 
 
 def config_home_names() -> frozenset:

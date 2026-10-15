@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Prepare one account's walk-token file on athena, ready for Javier to paste into (box lane, 14 Oct 2026).
+"""Prepare one account's walk-login file on athena, ready for Javier to paste into (box lane, 14 Oct 2026).
 
-    python3 -I prepare_walk_token.py claude1
+    python3 -I prepare_walk_login.py claude1      (Claude Code's walk token)
+    python3 -I prepare_walk_login.py r4-g         (the Gemini arm's study key, glitch-06, 14 Oct 2026)
 
-Creates /home/<you>/gap4-secrets (mode 700) and /home/<you>/gap4-secrets/<account> (mode 700), and in it the file
-claude-walk-token (mode 600) holding only the variable's name and the equals sign, `CLAUDE_CODE_OAUTH_TOKEN=`, with no
-value and no newline: Javier pastes the token right after the `=` and saves (the editor ends the line). This matches
+Creates /home/<you>/gap4-secrets (mode 700) and /home/<you>/gap4-secrets/<account> (mode 700), and in it the account's
+file (mode 600) holding only the variable's name and the equals sign, with no value and no newline (ACCOUNTS: claude1
+is claude-walk-token with `CLAUDE_CODE_OAUTH_TOKEN=`, r4-g is gemini-walk-login with `GEMINI_API_KEY=`): Javier pastes the token right after the `=` and saves (the editor ends the line). This matches
 box/run_take.read_login's format and WALK_LOGIN_FILES. It refuses to run as root, through a link, inside a git
 repository, or over a file that already holds more than the name (it never reads or prints a file's content; it reads
 only its size). Prints the paths, modes, owner and size as JSON.
@@ -16,8 +17,9 @@ import re
 import stat
 import sys
 
-PREFIX = b"CLAUDE_CODE_OAUTH_TOKEN="
-NAME = "claude-walk-token"
+# box/run_take.WALK_LOGIN_FILES: each account, its file's name and the one variable it holds
+ACCOUNTS = {"claude1": ("claude-walk-token", b"CLAUDE_CODE_OAUTH_TOKEN="),
+            "r4-g": ("gemini-walk-login", b"GEMINI_API_KEY=")}
 
 
 def fail(msg):
@@ -33,8 +35,9 @@ def entry(path):
 
 
 def main(argv):
-    if len(argv) != 2 or not re.fullmatch(r"[a-z][a-z0-9]{0,15}", argv[1]):
-        fail("usage: prepare_walk_token.py <account>, e.g. claude1")
+    if len(argv) != 2 or not re.fullmatch(r"[a-z][a-z0-9-]{0,15}", argv[1]) or argv[1] not in ACCOUNTS:
+        fail(f"usage: prepare_walk_login.py <account>, one of {sorted(ACCOUNTS)}")
+    NAME, PREFIX = ACCOUNTS[argv[1]]
     if os.getuid() == 0:
         fail("never as root")
     home = os.path.expanduser("~")

@@ -1,0 +1,5 @@
+== test_run_take -k TestCodexExec against e282290c's run_take.py
+FAIL: test_codex_exec (test_run_take.TestCodexExec.test_codex_exec)
+AssertionError: Lists differ: ["raised AttributeError: module 'box.run_take' has no attribute 'CODEX_MODELS'"] != []
+Ran 1 test in 0.004s
+FAILED (failures=1)

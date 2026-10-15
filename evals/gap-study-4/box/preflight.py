@@ -755,8 +755,9 @@ def _check_socket(raw, spec, *_):
     names = {str(e).split("=", 1)[0] for e in env}
     _need(not names.intersection(run_take.GEMINI_MODE_ROUTE_VARIABLES),
           "Gemini mode-route variable is in the take's create-time environment")
-    leaked = sorted(names & (set(run_take.LOGIN_VARIABLE.values()) | set(run_take.refused_variables(
-        run_take.CLAUDE_CODE))))
+    refused = set(run_take.LOGIN_VARIABLE.values()) | set(run_take.refused_variables(run_take.CLAUDE_CODE))
+    # glitch-06 (14 Oct 2026): the names the Codex CLI extends per variable are refused by prefix at create time too
+    leaked = sorted(n for n in names if n in refused or n.startswith(run_take.REFUSED_NAME_PREFIXES))
     _need(not leaked, f"credential names in the take's create-time environment: {leaked}")
     return "no runtime socket, no DOCKER_HOST, no credential name at create"
 
