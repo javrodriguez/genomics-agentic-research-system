@@ -2264,6 +2264,17 @@ class TestRefusedPrefixes(MutantCase):
 
 CLAUDE_SWEEP_DIR = os.path.join(_CLONE, "lane-reports", "stub-take-20261015")
 CLAUDE_BINARY_SHA256 = "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de"
+# The ruled names, pinned as a literal (the review of ad71ca07, MINOR 4: a reclassified CLAUDE_CODE_GATEWAY_TOKEN must
+# turn this red, not pass): glitch-6b's 4(i) and the review's three.
+CLAUDE_RULED_REFUSED = (
+    "CLAUDE_CODE_USE_ANTHROPIC_AWS", "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD", "CLAUDE_CODE_USE_MANTLE",
+    "CLAUDE_CODE_USE_GATEWAY", "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST", "CLAUDE_CODE_HOST_CREDS_FILE",
+    "ANTHROPIC_BEDROCK_BASE_URL", "ANTHROPIC_VERTEX_BASE_URL", "ANTHROPIC_FOUNDRY_BASE_URL", "ANTHROPIC_FOUNDRY_RESOURCE",
+    "ANTHROPIC_AWS_BASE_URL", "ANTHROPIC_GOOGLE_CLOUD_BASE_URL", "ANTHROPIC_BEDROCK_MANTLE_BASE_URL",
+    "ANTHROPIC_UNIX_SOCKET", "ANTHROPIC_FOUNDRY_AUTH_TOKEN", "ANTHROPIC_IDENTITY_TOKEN", "ANTHROPIC_IDENTITY_TOKEN_FILE",
+    "ANTHROPIC_ENVIRONMENT_KEY", "ANTHROPIC_WORK_SECRET", "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR",
+    "CLAUDE_CODE_GATEWAY_TOKEN", "CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR", "CLAUDE_CODE_CUSTOM_OAUTH_URL",
+    "AWS_ENDPOINT_URL_BEDROCK_RUNTIME")
 CLAUDE_SIX_SWITCHES = ("CLAUDE_CODE_USE_ANTHROPIC_AWS", "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD", "CLAUDE_CODE_USE_MANTLE",
                        "CLAUDE_CODE_USE_GATEWAY", "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST", "CLAUDE_CODE_HOST_CREDS_FILE")
 
@@ -2272,8 +2283,8 @@ def _claude_files():
     d = CLAUDE_SWEEP_DIR
     return (os.path.join(d, "claude-2.1.296-binary-sweep-20261015.json"),
             os.path.join(d, "claude-2.1.296-route-names-20261015.json"),
-            os.path.join(d, "claude-2.1.296-env-refusal-20261015.json"),
-            os.path.join(d, "probes", "classify_claude_env_names.py"))
+            os.path.join(d, "claude-2.1.296-env-refusal-20261015b.json"),
+            os.path.join(d, "probes", "classify_claude_env_names_v2.py"))
 
 
 def _claude_refused() -> tuple:
@@ -2330,6 +2341,21 @@ class TestClaudeBinarySweep(MutantCase):
         for n in CLAUDE_SIX_SWITCHES:
             if n not in refuse:
                 out.append(f"{n}, a billing switch outside every pattern, is not refused")
+        claude_refused = rt.refused_variables(rt.CLAUDE_CODE)
+        for n in CLAUDE_RULED_REFUSED:
+            if n not in claude_refused:
+                out.append(f"{n}, a ruled name, is not refused for a Claude take")
+        # Completeness (MINOR 4): every name the sweep's patterns or the route read carried is refused, in a take
+        # row, or exempt with a reason.
+        with open(sweep_path, encoding="utf-8") as fh:
+            swept = set(json.load(fh)["names"])
+        with open(route_path, encoding="utf-8") as fh:
+            swept |= set(json.load(fh)["names"])
+        rows = set().union(*(set(v) for v in rt.TAKE_ENV.values()))
+        exempt = {n for n, why in cls.get("exempt", {}).items() if isinstance(why, str) and why.strip()}
+        loose = sorted(n for n in swept if n not in claude_refused and n not in rows and n not in exempt)
+        if loose:
+            out.append(f"{len(loose)} swept name(s) neither refused, in a take row nor exempt with a reason: {loose[:6]}")
         if rt.LOGIN_VARIABLE[rt.CLAUDE_CODE] in refuse:
             out.append("the Claude row's own login is refused")
         for arm in (rt.CODEX, rt.CLAUDE_CODE, rt.GEMINI):
@@ -2358,6 +2384,15 @@ class TestClaudeBinarySweep(MutantCase):
                 rt.VENDOR_BILLING_ROUTE_VARIABLES, {rt.CLAUDE_CODE: ()})),
             ("another binary", lambda: mock.patch.dict(rt.CLAUDE_BINARY, {"sha256": "0" * 64})),
             ("another image", lambda: mock.patch.dict(rt.CLAUDE_BINARY, {"image_id": "sha256:" + "0" * 64})),
+            ("the gateway token reclassified", lambda: _patches(
+                (rt, "CLAUDE_BINARY_SWEEP_REFUSED", tuple(n for n in refuse if n != "CLAUDE_CODE_GATEWAY_TOKEN")),
+                (rt, "VENDOR_BILLING_ROUTE_VARIABLES", dict(
+                    rt.VENDOR_BILLING_ROUTE_VARIABLES,
+                    **{rt.CLAUDE_CODE: tuple(n for n in refuse if n != "CLAUDE_CODE_GATEWAY_TOKEN")})))),
+            ("a pattern-matched name dropped", lambda: _patches(
+                (rt, "VENDOR_BILLING_ROUTE_VARIABLES", dict(
+                    rt.VENDOR_BILLING_ROUTE_VARIABLES,
+                    **{rt.CLAUDE_CODE: tuple(n for n in refuse if n != "ANTHROPIC_SMALL_FAST_MODEL")})))),
         ))
 
 
