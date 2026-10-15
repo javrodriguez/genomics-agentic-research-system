@@ -120,3 +120,26 @@ The review of 83b83ea1..d78c8791 passed (0 MAJOR, 0 MINOR). Its NIT 1 is folded 
 - Red: on the merged scratch with both readers hidden, the old test passes and the new one fails.
 - Green: test_walk_builders runs 62 OK on the merged scratch and 62 OK on this branch.
 bdb77d7a goes into the next battery, before production admission; it is not in the battery running now. Queue empty.
+
+## RESUME HERE (15 Oct 01:24 EDT): G1, G2 and B3 for the first Claude walk
+
+HEAD: the commit that adds this block (parent da73335f).
+- da73335f builds runtime, hosts, lock_path, config_parent (GAP4_CONFIG_PARENT), the proxy (ProxyRoad), agent_version, budgets and run_tree_exclude. Red: 16 run, 15 failures. Green: test_walk_builders 73 OK on both trees.
+- sidecar_for stays Missing: there is no registered per-task watch list. It needs a ruling.
+- Merged scratch: /Users/javrodher/aegis-builds/gap4-harness-scratch-383e5c2f (383e5c2f, with bdb77d7a and da73335f applied as patches, uncommitted; its walk_builders lacks only da73335f's docstring edit).
+- Running: the single-function generated mutants of the eight new or changed functions (223 ids) on that scratch. Log: the session's scratchpad batch6.log. walk_driver_for and production_builders go to the next athena battery.
+Next: read the mutant result and bind any survivor. Then report to glitch-6b.
+
+### Addendum, 15 Oct 03:13 EDT
+
+Commits since 2e84ca1f:
+- 32c6085a: evidence folder 0755.
+- 96d1a60a: COPIED.d machine-gate reason text.
+- 5bae9e01: the 8 reds of battery gap4-harness-g123-merged-109b4ee-20261015T061404Z (FAIL 264/272, all harness), and B3 reads the bootstrap's [{"path": p}] shape.
+
+Mac (light-ok): test_walk_builders 73 OK on both trees; --witnesses 41/41 on both trees; test_drive_ownership 44 OK; test_stub_take 19 OK on the merged scratch.
+Single-function mutants on the Mac: config_parent_from_env 33/33, take_lock_paths 25/25, for_row 1/1, proxy_road 22/22 killed. agent_versions was 51/55 there; its 4 survivors are now killed.
+Stopped on glitch-6b's word: the athena battery's sweep covers every function.
+
+Next: launch the next battery on scratch f05ad45f (/Users/javrodher/aegis-builds/gap4-harness-scratch-0cd9b1be; gars-gap4, jobs 24, --solo) once athena is free after the bootstrap battery (glitch-6b's word). Then report.
+sidecar_for stays Missing and needs a ruling: there is no registered watch list.
