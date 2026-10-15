@@ -1954,6 +1954,8 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
     if not is_walk:
         problems += recorded_mode_problems(path, design.pre, arm)
     problems += design_tree_problems(path, design)               # W7B (Q-w6i-5)
+    if design.harness == CLAUDE_CODE:
+        problems += steer_condition_problems(path)               # the bash-first steer OFF (glitch-6b, 15 Oct)
     # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm, so the ledger's arm must be the take's.
     led = _ledger_beside(path)
     if led is not None and led.get("arm") != arm:
@@ -2394,6 +2396,8 @@ def check4_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wordi
         _PRE_IN_FORCE.reset(token)
     problems += recorded_mode_problems(path, design.pre, arm)          # D1: as for a take
     problems += design_tree_problems(path, design)                     # D1: as for a take
+    if design.harness == CLAUDE_CODE:
+        problems += steer_condition_problems(path)                     # the bash-first steer OFF (glitch-6b, 15 Oct)
     beside = _ledger_beside(path)
     if isinstance(beside, dict) and beside.get("arm") != arm:
         problems.append(f"[constant-binding] the walk's driver ledger records arm {beside.get('arm')!r}, and the walk is "
@@ -2503,6 +2507,85 @@ class _Wakeups:
 def _wakeups(pre: dict) -> _Wakeups:
     meta = set((pre.get("harness_delivered_user_records") or {}).get("meta_kinds") or [])
     return _Wakeups(transcript_view.CC_SCHEDULED_WAKEUP in meta)
+
+
+# THE BASH-FIRST STEER OFF (glitch-6b's study-condition ruling, 15 Oct 2026, approved by Javier's "Your call sounds
+# good"; the box lane's proposal, box 0e0bbe20). Every claude-code take runs with CLAUDE_CODE_THRIFTY_SONIC=false
+# (box/run_take.BASH_FIRST_STEER_ENV), in the exec's pairs and in the inline --settings env each turn's launch journal
+# records. The pinned 2.1.296 binary's parser reads "0", "false", "no" and "off" (lowercased, trimmed) as false
+# (lane-reports/stub-take-20261015/claude-2.1.296-tribool-helpers-20261015.json, vs), and its gate HXt() then never
+# emits the auto_mode attachment (the Bash-first steer). transcript_view admits auto_mode as harness furniture so a
+# take that is not under this condition can be audited (harness 2c3784e6); this rule makes a take that IS under it and
+# still carries one refuse, so a silent environment failure never passes. A take whose journals do not set the switch
+# (the product default: a model-keyed cohort) is not this rule's.
+STEER_SWITCH = "CLAUDE_CODE_THRIFTY_SONIC"
+STEER_OFF_VALUES = ("0", "false", "no", "off")
+AUTO_MODE_ATTACHMENT = "auto_mode"
+HARNESS_CONDITION_VIOLATED = "harness-condition-violated"
+_LAUNCH_JOURNAL = re.compile(r"turn-([1-9][0-9]*)\.jsonl\.launch\.json")
+
+
+def _journal_switch(journal: Path):
+    """The switch's value in one launch journal's inline --settings env (None when not set); refuses rather than
+    guess on a journal it cannot read."""
+    try:
+        doc = json.loads(journal.read_text())
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
+        raise CheckRefused(f"{journal.name}: the launch journal cannot be read ({type(e).__name__})") from None
+    argv = doc.get("argv") if isinstance(doc, dict) else None
+    if not isinstance(argv, list) or not all(isinstance(a, str) for a in argv):
+        raise CheckRefused(f"{journal.name}: the launch journal's argv is not a list of strings")
+    values = [argv[i + 1] for i, a in enumerate(argv[:-1]) if a == "--settings"]
+    values += [a.split("=", 1)[1] for a in argv if a.startswith("--settings=")]
+    found = []
+    for v in values:
+        try:
+            st = json.loads(v)
+        except json.JSONDecodeError:
+            raise CheckRefused(f"{journal.name}: an inline --settings value is not JSON") from None
+        if not isinstance(st, dict) or not isinstance(st.get("env", {}), dict):
+            raise CheckRefused(f"{journal.name}: an inline --settings value is not a JSON object with an env object")
+        if STEER_SWITCH in st.get("env", {}):
+            found.append(st["env"][STEER_SWITCH])
+    if len(set(map(str, found))) > 1:
+        raise CheckRefused(f"{journal.name}: the inline settings name {STEER_SWITCH} twice, differently")
+    return found[0] if found else None
+
+
+def _auto_mode_records(path: Path) -> int:
+    """The transcript's auto_mode attachment records, read from the raw lines (no view: this count must hold even
+    where a view refuses or admits the record)."""
+    n = 0
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if (isinstance(rec, dict) and rec.get("type") == "attachment" and isinstance(rec.get("attachment"), dict)
+                and rec["attachment"].get("type") == AUTO_MODE_ATTACHMENT):
+            n += 1
+    return n
+
+
+def steer_condition_problems(path: Path) -> list[str]:
+    """The study condition held: under the switch off (any turn's journal), no auto_mode record and no turn without
+    it. [harness-condition-violated] otherwise."""
+    journals = sorted((int(m.group(1)), p) for p in path.parent.iterdir()
+                      if (m := _LAUNCH_JOURNAL.fullmatch(p.name)))
+    values = [(n, _journal_switch(p)) for n, p in journals]
+    off = [n for n, v in values if isinstance(v, str) and v.strip().lower() in STEER_OFF_VALUES]
+    if not off:
+        return []
+    problems = []
+    if len(off) != len(values):
+        others = [n for n, _ in values if n not in off]
+        problems.append(f"[{HARNESS_CONDITION_VIOLATED}] {STEER_SWITCH} is off in turn(s) {off} and not in turn(s) "
+                        f"{others}: the bash-first steer condition did not hold for the whole take")
+    count = _auto_mode_records(path)
+    if count:
+        problems.append(f"[{HARNESS_CONDITION_VIOLATED}] the take ran with {STEER_SWITCH} off, and its transcript "
+                        f"carries {count} auto_mode attachment(s): the bash-first steer reached the agent")
+    return problems
 
 
 if __name__ == "__main__":

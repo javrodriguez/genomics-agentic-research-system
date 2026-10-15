@@ -359,6 +359,29 @@ def check_table(table: dict) -> list[str]:
         if not _is_str(table[key]) or not table[key]:
             p.append(f"{key} must say where the data stands")
     listed = set(table["operator_reasons"]) if isinstance(table["operator_reasons"], list) else set()
+    # glitch-6b (15 Oct 2026): every operator reason is round 3's, with its round-3 source, or a named round-4
+    # addition with its own ruling (operator_reasons_round4); never both, never neither.
+    r3 = table.get("operator_reason_sources")
+    r4 = table.get("operator_reasons_round4")
+    if not isinstance(r3, dict):
+        p.append("operator_reason_sources must map each of round 3's operator reasons to its source")
+        r3 = {}
+    if (not isinstance(r4, dict) or not isinstance(r4.get("ids"), list) or not all(_is_str(r) and r for r in r4["ids"])
+            or not isinstance(r4.get("sources"), dict) or set(r4["sources"]) != set(r4["ids"])
+            or not all(isinstance(s, dict) and _is_str(s.get("ruling")) and s["ruling"] and _is_str(s.get("meaning"))
+                       and s["meaning"] and _is_str(s.get("emitted_at")) and s["emitted_at"]
+                       for s in r4["sources"].values())):
+        p.append("operator_reasons_round4 must give its ids and, for each, a source naming its ruling, meaning and "
+                 "emitted_at")
+        r4 = {"ids": []}
+    added = set(r4["ids"])
+    if added & set(r3):
+        p.append(f"operator reasons {sorted(added & set(r3))} carry both a round-3 source and a round-4 ruling")
+    if not added <= listed:
+        p.append(f"operator_reasons_round4 ids {sorted(added - listed)} are not in operator_reasons")
+    if listed - added - set(r3):
+        p.append(f"operator reasons {sorted(listed - added - set(r3))} have neither a round-3 source nor a round-4 "
+                 f"ruling")
     for key, why in (("driver_decided_reasons", "each routes by the generic operator-reason rows"),
                      ("reasons_only_before_first_turn", "each is refused after the first turn, routed before it")):
         sub = table[key]

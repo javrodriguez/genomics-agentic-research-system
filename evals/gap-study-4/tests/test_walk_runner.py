@@ -908,7 +908,7 @@ def top_names(source: str) -> set:
 # BOOTSTRAP (glitch-6b's first-walk bootstrap ruling, 15 Oct 2026; lane bootstrap-constants; review MAJOR 1 fold): the
 # ruling fills check_take.CHECKER_CONSTANTS IN PLACE (B1), corrects the comments, the refusal and the docstring that
 # said a walk measures them, and binds the ledger's cap and poll in check4 (B4). R5's prefix rule is superseded for
-# exactly these six regions, each the text strictly between two anchors found once in the base and once now, and each
+# exactly the regions BOOTSTRAP_SPANS lists, each the text strictly between two anchors found once in the base and once now, and each
 # bound to its ruled content: the current region's sha256 is pinned here, so any edit inside one needs a test edit;
 # the constants region must parse to exactly one statement, the CHECKER_CONSTANTS assignment (comments aside). The base's
 # region is replaced by the pinned one before the prefix comparison; every other byte of the base is still a prefix.
@@ -937,6 +937,12 @@ BOOTSTRAP_SPANS = (
     ("scheduled-wakeup-lines", "    the harness's; any other origin refuses, because who sent it cannot be established.\n"
                                '    """\n', '        msg = rec.get("message") if isinstance(rec.get("message"), dict) else rec\n',
      "8756130eca1fa642bdefd52906d25981f162dcab6e22a66a1fd0c47bd5c6e563"),
+    # glitch-6b's steer-off ruling (15 Oct 2026; the box lane's check_take patch, reviewed and applied by the harness
+    # lane): check4 adds the study-condition problems for a claude-code take, inserted between two base lines; the
+    # functions it calls are appended.
+    ("check4-study-conditions", "    problems += design_tree_problems(path, design)               # W7B (Q-w6i-5)\n",
+     "    # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm",
+     "fabe94a2faf810ebc5493d651800e7092e9e5a4de0c2fc4c3b0f627bba16f92d"),
 )
 
 
@@ -999,7 +1005,7 @@ class R5Round3(Case):
         self.assertIsNotNone(BASE_CHECK_TAKE, f"R5.round3: git cannot show {BASE}'s check_take.py")
         now = SOURCES.get("check_take") or (HERE / "check_take.py").read_text()
         cut = BASE_CHECK_TAKE.rindex("\nif __name__")
-        ruled = bootstrap_base(BASE_CHECK_TAKE[:cut], now)          # BOOTSTRAP: the five ruled spans, nothing else
+        ruled = bootstrap_base(BASE_CHECK_TAKE[:cut], now)          # BOOTSTRAP: the ruled spans, nothing else
         self.assertTrue(now.startswith(ruled), "R5.round3: the base's bytes are not a prefix")
         cut = len(ruled)
         BASE_CHECK_TAKE_RULED = ruled + BASE_CHECK_TAKE[BASE_CHECK_TAKE.rindex("\nif __name__"):]

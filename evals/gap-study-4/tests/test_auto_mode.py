@@ -151,8 +151,13 @@ class TheAutoModeAttachment(unittest.TestCase):
         (dep,) = draft["harness_furniture_ruling"]["departures"]
         self.assertEqual(dep["of"], tv.CC_AUTO_MODE)
         for word in ("round 3", "bypass", "Bash", "RULED 15 Oct (glitch-6b)", "CLAUDE_CODE_THRIFTY_SONIC",
-                     "admitted for audit only", "harness-condition-violated"):
+                     "admitted for audit only", "harness-condition-violated",
+                     # glitch-6b's ruling (15 Oct 2026): the value, its parser proof and records, and the departure
+                     'set to "false"', 'triBool reads "0", "false", "no" and "off" as false',
+                     "lane-reports/stub-take-20261015/claude-2.1.296-", "out of the box, the steer depends on the model",
+                     "the study turns it off for every claude-code take"):
             self.assertIn(word, dep["text"])
+        self.assertNotIn("(box lane parser proof)", dep["text"], "the proof is named by its records, not deferred")
 
     def test_h_witnesses(self):
         for name, old, new in MUTANTS:

@@ -1672,6 +1672,70 @@ class TestCapKeyNames(unittest.TestCase):
             self.assertTrue(any("has no events_per_half_cell" in g for g in got), (r, got))
 
 
+# Round 4's named operator-reason additions, typed once (TestRound4Additions binds each to its ruling and to the
+# round-4 checker line that emits it; TestRound3Sources keeps round 3's ids re-derived beside them).
+ROUND4_ADDED_REASONS = ("harness-condition-violated",)
+CHECK_TAKE4 = "evals/gap-study-4/check_take.py"
+
+
+class TestRound4Additions(unittest.TestCase):
+    """glitch-6b's ruling (15 Oct 2026; Javier approved the steer-off): `harness-condition-violated` is an operator
+    reason with a round-4 source. A harness condition failed (the bash-first steer reached the agent with the switch
+    off), which is not the agent's behaviour, so it routes by the generic operator-reason rows: harness-error after
+    the agent's first turn (and a rehearsal before it, as every operator reason does)."""
+
+    HCV = "harness-condition-violated"
+
+    def test_the_addition_is_listed_with_its_ruling(self):
+        add = REAL["operator_reasons_round4"]
+        self.assertEqual(add["ids"], [self.HCV])
+        self.assertIn(self.HCV, REAL["operator_reasons"])
+        self.assertNotIn(self.HCV, REAL["operator_reason_sources"])
+        src = add["sources"][self.HCV]
+        for cite in ("glitch-6b", "15 Oct 2026", "steer"):
+            self.assertIn(cite, src["ruling"])
+        self.assertTrue(src["meaning"])
+        self.assertEqual(src["emitted_at"], CHECK_TAKE4)
+
+    def test_round_4s_checker_emits_it(self):
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        with open(os.path.join(root, CHECK_TAKE4), encoding="utf-8") as f:
+            text = f.read()
+        self.assertIn(f'HARNESS_CONDITION_VIOLATED = "{self.HCV}"', text)
+        self.assertIn('f"[{HARNESS_CONDITION_VIOLATED}] ', text)
+
+    def test_it_routes_harness_error_after_the_first_turn(self):
+        t = test_table()
+        for phase, want, row in ((A, labels4.HARNESS_ERROR, "operator-reason-after-first-turn"),
+                                 (B, labels4.REHEARSAL, "operator-reason-before-first-turn")):
+            rec = baseline(phase)
+            rec["checker_reasons"] = [self.HCV]
+            got = routing.route(rec, t)
+            self.assertEqual((got["route"], got["rows"]), (want, [row]), phase)
+
+    def test_witness_unlisted_it_is_refused(self):
+        t = test_table()
+        t["operator_reasons"].remove(self.HCV)                                   # the mutant
+        rec = baseline(A)
+        rec["checker_reasons"] = [self.HCV]
+        self.assertIsInstance(try_route(rec, t), routing.RoutingRefused)
+
+    def test_the_table_check_binds_both_lists(self):
+        self.assertEqual(routing.check_table(REAL), [])
+        cases = {
+            "an addition outside operator_reasons": lambda t: t["operator_reasons"].remove(self.HCV),
+            "an operator reason with no source": lambda t: t["operator_reasons_round4"]["ids"].clear(),
+            "an addition that also has a round-3 source": lambda t: t["operator_reason_sources"].__setitem__(
+                self.HCV, dict(next(iter(t["operator_reason_sources"].values())))),
+            "an addition with no ruling": lambda t: t["operator_reasons_round4"]["sources"][self.HCV].pop("ruling"),
+            "an addition with no source entry": lambda t: t["operator_reasons_round4"]["sources"].clear(),
+        }
+        for name, edit in cases.items():
+            t = copy.deepcopy(REAL)
+            edit(t)
+            self.assertNotEqual(routing.check_table(t), [], name)
+
+
 class TestRound3Sources(unittest.TestCase):
     """Javier's ruling "gap4 routing: A" (6 Oct 2026, 17:52:33 EDT): round 3's operator-side reasons and its
     pause cap are copied into routing.json from round 3's committed files, each with its source. These tests
@@ -1692,14 +1756,19 @@ class TestRound3Sources(unittest.TestCase):
         self.assertEqual(emitted, listed)
         events = set(REAL["checker_reasons_become_events"]["ids"])
         self.assertEqual(events, {"study-materials-reached", "account-email", "read-outside-the-checkout"})
-        self.assertEqual(set(REAL["operator_reasons"]), listed - events)
-        self.assertEqual(len(REAL["operator_reasons"]), len(listed - events))
+        # round 4's named additions (operator_reasons_round4) are listed apart; every other id is round 3's
+        added = ROUND4_ADDED_REASONS
+        self.assertEqual(REAL["operator_reasons_round4"]["ids"], list(added))
+        self.assertFalse(set(added) & listed, "a round-4 addition is never one of round 3's ids")
+        self.assertEqual(set(REAL["operator_reasons"]) - set(added), listed - events)
+        self.assertEqual(len(REAL["operator_reasons"]), len(listed - events) + len(added))
+        self.assertEqual(len(listed), 24, "round 3's 24 rehearsal_reasons")
         self.assertTrue(REAL["operator_reasons_status"].startswith("FILLED"))
 
     def test_every_operator_reason_cites_its_source(self):
         listed = json.loads(self.show("evals/gap-study-3/prereg.json"))["rehearsal_reasons"]
         sources = REAL["operator_reason_sources"]
-        self.assertEqual(set(sources), set(REAL["operator_reasons"]))
+        self.assertEqual(set(sources), set(REAL["operator_reasons"]) - set(ROUND4_ADDED_REASONS))
         for rid, src in sources.items():
             self.assertEqual(src["file"], "evals/gap-study-3/prereg.json")
             self.assertEqual(src["commit"], self.COMMIT)
