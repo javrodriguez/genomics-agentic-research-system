@@ -569,8 +569,8 @@ class PerHarness:
 def config_parent_from_env(environ=None):
     """The folder per-walk config folders (and each walk's proxy configuration) are made in: named by the operator's
     runner on its own machine (GAP4_CONFIG_PARENT, as machine_gate's GAP4_* paths are), never in this tree. It must be
-    a normalised absolute path to a folder (never a link) owned by the caller and outside every repository, the rule
-    stub_take applies to its scratch parent. Missing when unset; BuilderRefused when set and off the rule."""
+    a normalised absolute path to a folder (never a link) owned by the caller, writable by no group or other, and
+    outside every repository, the rule stub_take applies to its scratch parent. Missing when unset; BuilderRefused when set and off the rule."""
     from box import run_take as rt
     env = os.environ if environ is None else environ
     path = env.get(CONFIG_PARENT_ENV)
@@ -583,8 +583,12 @@ def config_parent_from_env(environ=None):
         raise BuilderRefused(str(e)) from None
     if os.path.islink(path) or not os.path.isdir(path):
         raise BuilderRefused(f"{CONFIG_PARENT_ENV} is not a folder (a link is refused)")
-    if os.stat(path).st_uid != os.getuid():
+    st = os.stat(path)
+    if st.st_uid != os.getuid():
         raise BuilderRefused(f"{CONFIG_PARENT_ENV} is not owned by the caller")
+    if st.st_mode & 0o022:
+        raise BuilderRefused(f"{CONFIG_PARENT_ENV} is writable by its group or by others "
+                             f"(mode {oct(stat.S_IMODE(st.st_mode))})")
     outside = rt.outside_every_repository(path)
     if not outside:
         raise BuilderRefused(f"{CONFIG_PARENT_ENV} sits inside a repository")
@@ -618,28 +622,51 @@ def take_lock_paths(box_dir=None) -> PerHarness:
 
 class ProxyRoad:
     """The egress proxy of one walk (run_take.ProxyLaunch), as the stub take builds it: proxy_conf.render(harness)
-    written, checked, to a fresh file under the config parent (mode 644, never over another), the egress lock's image
+    written, checked, as proxy.conf (mode 644) in a fresh 0700 folder under the config parent, the egress lock's image
     id, proxy_conf's CONF_PATH, COMMAND and USER (squid's package user, measured from the egress image, 14 Oct 2026),
     run_take.PROXY_ALIAS. for_harness writes the walk's configuration and gives its ProxyLaunch."""
 
     def __init__(self, config_parent: str, image: str):
         self.config_parent, self.image = config_parent, image
 
-    def for_harness(self, harness: str):
-        import secrets as _secrets
-        from box import run_take as rt
+    def text_for(self, harness: str) -> str:
+        """The harness's rendered configuration (render refuses a text its own check does not pass), never written."""
         from box.egress import proxy_conf
         try:
-            text = proxy_conf.render(harness)                  # render refuses a text its own check does not pass
+            return proxy_conf.render(harness)
         except proxy_conf.ProxyConfError as e:
             raise BuilderRefused(f"the proxy configuration for {harness!r}: {e}") from None
-        path = os.path.join(self.config_parent, f"proxy-{harness}-{_secrets.token_hex(8)}.conf")
+
+    def for_harness(self, harness: str):
+        import tempfile
+        from box import run_take as rt
+        from box.egress import proxy_conf
+        text = self.text_for(harness)
+        folder = tempfile.mkdtemp(prefix=f"proxy-{harness}-", dir=self.config_parent)   # 0700, as the stub take's
+        path = os.path.join(folder, "proxy.conf")
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(text)
         os.chmod(path, 0o644)
         return rt.ProxyLaunch(image=self.image, conf_source=path, conf_target=proxy_conf.CONF_PATH,
                               command=tuple(proxy_conf.COMMAND), user=proxy_conf.USER, alias=rt.PROXY_ALIAS)
+
+    def discard(self, launch) -> None:
+        """Remove a launch's configuration folder (a walk refused before its driver existed)."""
+        folder = os.path.dirname(launch.conf_source)
+        if os.path.dirname(folder) == self.config_parent and os.path.basename(folder).startswith("proxy-"):
+            shutil.rmtree(folder, ignore_errors=True)
+
+
+def check_row_values(builders: dict, harness: str) -> None:
+    """Refuse (BuilderRefused) when the row's harness has no lock_path or its proxy cannot render, without writing
+    anything: prepare calls it before the run tree is built."""
+    lock = builders.get("lock_path")
+    if isinstance(lock, PerHarness):
+        lock.for_harness(harness)
+    proxy = builders.get("proxy")
+    if isinstance(proxy, ProxyRoad):
+        proxy.text_for(harness)
 
 
 def for_row(value, harness: str):
@@ -670,30 +697,55 @@ def proxy_road(config_parent, locks: PerHarness):
     return ProxyRoad(config_parent, egress["image_id"])
 
 
-def agent_versions() -> PerHarness:
+def agent_versions(locks=None) -> PerHarness:
     """agent_version per harness, read from the pin through its readers: prereg's version_pins (prereg.load(), the
-    draft in force) and routing.json's pin_profiles (routing.load_table()). A harness's version is given only when
-    every model's pin in both names one and the same version; absent, PENDING or differing is Missing, by name."""
+    draft in force) and routing.json's pin_profiles (routing.load_table()), bound to the take image. A harness's version
+    is given only when every model's draft pin holds one version in version, image_version and agent_version alike,
+    routing's pin_profiles name the same models at that version, and the harness's take lock (preflight.load_take_lock
+    over `locks`, take_lock_paths() by default) holds it as harness.version. Anything else is Missing, by name."""
     import prereg
     import routing
+    from box import preflight
     from box import run_take as rt
+    locks = take_lock_paths() if locks is None else locks
     pins = prereg.load().get("version_pins") or {}
     profiles = routing.load_table().get("pin_profiles") or {}
     out = {}
     for harness in (rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI):
-        draft = {m: (p or {}).get("version") for m, p in (pins.get(harness) or {}).items()}
+        draft_pins = pins.get(harness) or {}
+        draft = {m: (p or {}).get("version") for m, p in draft_pins.items()}
         table = {m: (p or {}).get("version") for m, p in (profiles.get(harness) or {}).items()}
+        fields = {m: [(p or {}).get(k) for k in ("version", "image_version", "agent_version")]
+                  for m, p in draft_pins.items()}
         versions = set(draft.values()) | set(table.values())
         if not draft or not table:
             out[harness] = Missing(f"the {harness} version: prereg version_pins names {sorted(draft)} and routing "
                                    f"pin_profiles names {sorted(table)} (both must pin it)")
-        elif draft != table:
+            continue
+        if draft != table:
             out[harness] = Missing(f"the {harness} version: prereg version_pins {draft} and routing pin_profiles "
                                    f"{table} differ")
-        elif len(versions) != 1 or not all(isinstance(v, str) and v and v != "PENDING" for v in versions):
+            continue
+        if len(versions) != 1 or not all(isinstance(v, str) and v and v != "PENDING" for v in versions):
             out[harness] = Missing(f"the {harness} version is not one measured version: {sorted(map(str, versions))}")
-        else:
-            out[harness] = versions.pop()
+            continue
+        version = next(iter(versions))
+        off = {m: f for m, f in fields.items() if f != [version] * 3}
+        if off:
+            out[harness] = Missing(f"the {harness} version: the draft's version, image_version and agent_version are "
+                                   f"not all {version}: {off}")
+            continue
+        lock = locks.values.get(harness)
+        try:
+            held = preflight.load_take_lock(lock, harness=harness)["harness.version"] if isinstance(lock, str) \
+                else None
+        except Exception as e:  # noqa: BLE001 - the loader's refusal is the reason
+            held, lock = None, Missing(f"{type(e).__name__}: {str(e)[:200]}")
+        if held != version:
+            why = lock.why if isinstance(lock, Missing) else f"its take lock holds harness.version {held!r}"
+            out[harness] = Missing(f"the {harness} version {version} is not the take image's: {why}")
+            continue
+        out[harness] = version
     return PerHarness("the agent version", out)
 
 
@@ -758,7 +810,7 @@ def production_builders() -> dict:
     from box.egress import proxy_conf
     config_parent = config_parent_from_env()
     locks = take_lock_paths()
-    versions = agent_versions()
+    versions = agent_versions(locks)
     out = {
         "runtime": rt.DockerRuntime(),
         "config_parent": config_parent,
@@ -862,6 +914,7 @@ def prepare(builders: dict, args) -> tuple[dict, str, Path]:
                              f"road, Codex")
     else:
         login = login_file_by_name(builders["login_path"], harness)
+    check_row_values(builders, harness)            # a per-harness value missing for this row: before any checkout
     repo, commit = builders["run_tree_origin"]
     return row, login, build_run_tree(args.walk, repo=repo, commit=commit, exclude=builders["run_tree_exclude"])
 
@@ -894,17 +947,22 @@ def walk_driver_for(builders: dict, row: dict, login: str, tree: Path, *, real: 
             return builders["take_spec"](r, cfg, str(tree))
     budget_s, finalize_wait_s, poll_s = builders["budgets"]
     proxy = for_row(builders["proxy"], harness)              # ProxyRoad: the walk's configuration written now
-    driver = drive.walk_driver(
-        runtime=builders["runtime"], root=str(root), config_parent=builders["config_parent"],
-        spec_for=spec_for,
-        sidecar_for=lambda r, ev: builders["sidecar_for"](r, ev, str(tree)), proxy=proxy,
-        lock_path=lock_path, hosts=builders["hosts"], login_file=login,
-        counters_for=counters_reader(builders["cgroup_dir_for"]), pin_for=builders["pin_for"],
-        design_for=builders["design_for"], project_for=lambda r: project,
-        identity_for=identity_for({row["walk"]: ident}), secrets=secrets, rules_scanner=rules,
-        uid_map=builders["uid_map"], budget_s=budget_s, finalize_wait_s=finalize_wait_s, poll_s=poll_s,
-        clock=builders["clock"], sleep=builders["sleep"], records="walks", ownership=builders["ownership"],
-        settings_guard=builders["settings_guard"], machine_gate=builders["machine_gate"])
+    try:
+        driver = drive.walk_driver(
+            runtime=builders["runtime"], root=str(root), config_parent=builders["config_parent"],
+            spec_for=spec_for,
+            sidecar_for=lambda r, ev: builders["sidecar_for"](r, ev, str(tree)), proxy=proxy,
+            lock_path=lock_path, hosts=builders["hosts"], login_file=login,
+            counters_for=counters_reader(builders["cgroup_dir_for"]), pin_for=builders["pin_for"],
+            design_for=builders["design_for"], project_for=lambda r: project,
+            identity_for=identity_for({row["walk"]: ident}), secrets=secrets, rules_scanner=rules,
+            uid_map=builders["uid_map"], budget_s=budget_s, finalize_wait_s=finalize_wait_s, poll_s=poll_s,
+            clock=builders["clock"], sleep=builders["sleep"], records="walks", ownership=builders["ownership"],
+            settings_guard=builders["settings_guard"], machine_gate=builders["machine_gate"])
+    except BaseException:
+        if isinstance(builders["proxy"], ProxyRoad):     # the walk's proxy folder goes with a refused driver
+            builders["proxy"].discard(proxy)
+        raise
     repo = drive.WalkRepo(runtime=builders["runtime"], secrets=secrets, rules_scanner=rules,
                           root=root, repo=drive.records_repo(root))
     return ident, driver, repo

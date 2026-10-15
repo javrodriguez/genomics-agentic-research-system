@@ -161,15 +161,23 @@ def _locks_on_tree() -> dict:
 
 def _versions_on_tree() -> dict:
     import routing
+    from box import preflight
     pins = tww.REAL_LOAD().get("version_pins") or {}
     profiles = routing.load_table().get("pin_profiles") or {}
+    locks = _locks_on_tree()
     out = {}
     for h in (rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI):
         draft = {m: p.get("version") for m, p in (pins.get(h) or {}).items()}
         table = {m: p.get("version") for m, p in (profiles.get(h) or {}).items()}
         got = set(draft.values())
-        if draft and draft == table and len(got) == 1 and next(iter(got)) not in (None, "", "PENDING"):
-            out[h] = next(iter(got))
+        if not (draft and draft == table and len(got) == 1 and next(iter(got)) not in (None, "", "PENDING")):
+            continue
+        v = next(iter(got))
+        if any([p.get(k) for k in ("version", "image_version", "agent_version")] != [v] * 3
+               for p in pins[h].values()):
+            continue
+        if h in locks and preflight.load_take_lock(locks[h], harness=h)["harness.version"] == v:
+            out[h] = v
     return out
 
 
@@ -2492,6 +2500,15 @@ class B15Bringup(Drafted):
                          "B15.config_parent")
         with mock.patch.dict(os.environ, {"GAP4_CONFIG_PARENT": str(good)}):
             self.assertEqual(mod.config_parent_from_env(), str(good), "B15.config_parent: the process environment")
+        loose = owned_folder()
+        for mode in (0o777, 0o720, 0o702):
+            os.chmod(loose, mode)
+            with self.subTest(mode=oct(mode)):
+                self.refuses("B15.config_parent", "writable by its group or by others", mod.config_parent_from_env,
+                             {"GAP4_CONFIG_PARENT": str(loose)})
+        os.chmod(loose, 0o755)
+        self.assertEqual(mod.config_parent_from_env({"GAP4_CONFIG_PARENT": str(loose)}), str(loose),
+                         "B15.config_parent: a 0755 parent")
         afile = good / "a-file"
         afile.write_text("x")
         link = good / "a-link"
@@ -2560,24 +2577,36 @@ class B15Bringup(Drafted):
                          (image, proxy_conf.CONF_PATH, tuple(proxy_conf.COMMAND), proxy_conf.USER, rt.PROXY_ALIAS),
                          "B15.proxy: not the stub take's ProxyLaunch")
         for launch, harness in ((a, rt.CLAUDE_CODE), (b, rt.GEMINI)):
-            path = Path(launch.conf_source)
-            self.assertEqual(path.parent, parent, "B15.proxy: the configuration is not under the config parent")
+            path = Path(launch.conf_source)     # review MINOR 2: proxy.conf in a fresh 0700 folder, as the stub take's
+            self.assertEqual(path.parent.parent, parent, "B15.proxy: the configuration's folder is not the parent's")
+            self.assertEqual(path.name, "proxy.conf", "B15.proxy: the file's name")
+            self.assertTrue(path.parent.name.startswith(f"proxy-{harness}-"), "B15.proxy: the folder's name")
+            self.assertEqual(stat.S_IMODE(os.lstat(path.parent).st_mode), 0o700, "B15.proxy: the folder's mode")
             self.assertEqual(path.read_text(), proxy_conf.render(harness), "B15.proxy: not the harness's rendering")
             self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), 0o644, "B15.proxy: mode")
-            self.assertTrue(path.name.startswith(f"proxy-{harness}-"), "B15.proxy: the file's name")
-        self.assertNotEqual(a.conf_source, b.conf_source, "B15.proxy")
+            self.assertEqual(os.listdir(path.parent), ["proxy.conf"], "B15.proxy: other files in its folder")
+        self.assertNotEqual(Path(a.conf_source).parent, Path(b.conf_source).parent, "B15.proxy: one folder twice")
         self.assertEqual(sorted(p.name for p in parent.iterdir()),
-                         sorted([Path(a.conf_source).name, Path(b.conf_source).name]), "B15.proxy: other files")
+                         sorted([Path(a.conf_source).parent.name, Path(b.conf_source).parent.name]),
+                         "B15.proxy: other files")
         if not rt._is_pending(proxy_conf.USER):
             self.must("B15.proxy", rt._check_proxy, a)      # run_take's own check admits it where USER is measured
+        self.assertEqual(road.text_for(rt.CODEX), proxy_conf.render(rt.CODEX), "B15.proxy: text_for")
         with mock.patch.object(proxy_conf, "check", lambda text, harness: ["synthetic: two hosts"]):
             self.refuses("B15.proxy", "synthetic: two hosts", road.for_harness, rt.CLAUDE_CODE)
+            self.refuses("B15.proxy", "synthetic: two hosts", road.text_for, rt.CLAUDE_CODE)
         self.assertEqual(len(list(parent.iterdir())), 2, "B15.proxy: a refused configuration was written")
-        import secrets as stdlib_secrets
-        with mock.patch.object(stdlib_secrets, "token_hex", lambda n: "0" * 16):
-            road.for_harness(rt.CODEX)
-            with self.assertRaises(FileExistsError, msg="B15.proxy: a configuration was written over"):
-                road.for_harness(rt.CODEX)
+        road.discard(a)                                  # review NIT 2: a refused walk's folder goes
+        self.assertEqual([p.name for p in parent.iterdir()], [Path(b.conf_source).parent.name], "B15.proxy: discard")
+        stranger = owned_folder()
+        (stranger / "proxy.conf").write_text("x")
+        road.discard(types.SimpleNamespace(conf_source=str(stranger / "proxy.conf")))   # never outside its parent
+        self.assertTrue((stranger / "proxy.conf").exists(), "B15.proxy: discard removed a folder not its own")
+        other = parent / "not-a-proxy-folder"
+        other.mkdir()
+        (other / "proxy.conf").write_text("x")
+        road.discard(types.SimpleNamespace(conf_source=str(other / "proxy.conf")))      # nor one not named proxy-*
+        self.assertTrue((other / "proxy.conf").exists(), "B15.proxy: discard removed another folder of the parent")
 
     def test_the_proxy_road_needs_its_folder_its_user_and_its_lock(self):
         mod = wb()
@@ -2642,15 +2671,37 @@ class B15Bringup(Drafted):
         mod = wb()
         import prereg
         import routing
+        from box import preflight
         real = mod.agent_versions()
         self.assertEqual({h: v for h, v in real.values.items() if not isinstance(v, mod.Missing)}, VERSIONS_ON_TREE,
                          "B15.version: the tree's pins")
+        lock_seen = []
+
+        def lock_at(version):
+            def load(path, *, harness):
+                lock_seen.append((path, harness))
+                return {"harness.version": version}
+            return mock.patch.object(preflight, "load_take_lock", load)
+        locks = mod.PerHarness("the take lock", {rt.CLAUDE_CODE: "/synthetic/box/image.lock",
+                                                 rt.CODEX: mod.Missing("synthetic: no codex lock"),
+                                                 rt.GEMINI: mod.Missing("synthetic: no gemini lock")})
 
         def pins(draft, table):
             return (mock.patch.object(prereg, "load", lambda: {"version_pins": draft}),
                     mock.patch.object(routing, "load_table", lambda: {"pin_profiles": table}))
+
+        def pin(v, image=None, agent=None):
+            return {"version": v, "image_version": v if image is None else image,
+                    "agent_version": v if agent is None else agent}
+        same_draft = {"m1": pin("1.2.3"), "m2": pin("1.2.3")}
         same = {"m1": {"version": "1.2.3"}, "m2": {"version": "1.2.3"}}
-        cases = (("one version in both", {rt.CLAUDE_CODE: same}, {rt.CLAUDE_CODE: same}, "1.2.3"),
+        cases = (("one version in both", {rt.CLAUDE_CODE: same_draft}, {rt.CLAUDE_CODE: same}, "1.2.3"),
+                 ("the draft's image_version differs",
+                  {rt.CLAUDE_CODE: dict(same_draft, m2=pin("1.2.3", image="1.2.4"))}, {rt.CLAUDE_CODE: same},
+                  "image_version"),
+                 ("the draft's agent_version is None",
+                  {rt.CLAUDE_CODE: dict(same_draft, m1=dict(pin("1.2.3"), agent_version=None))},
+                  {rt.CLAUDE_CODE: same}, "agent_version"),
                  ("routing differs", {rt.CLAUDE_CODE: same},
                   {rt.CLAUDE_CODE: {"m1": {"version": "1.2.3"}, "m2": {"version": "1.2.4"}}}, "differ"),
                  ("a model only in the draft", {rt.CLAUDE_CODE: same},
@@ -2675,20 +2726,41 @@ class B15Bringup(Drafted):
                  ("absent from the draft", {}, {rt.CLAUDE_CODE: same}, "both must pin it"))
         for label, draft, table, want in cases:
             a, b = pins(draft, table)
-            with self.subTest(label=label), a, b:
-                got = self.must("B15.version", mod.agent_versions).values[rt.CLAUDE_CODE]
+            with self.subTest(label=label), a, b, lock_at("1.2.3"):
+                got = self.must("B15.version", mod.agent_versions, locks).values[rt.CLAUDE_CODE]
                 if want == "1.2.3":
                     self.assertEqual(got, "1.2.3", "B15.version")
                 else:
                     self.assertIsInstance(got, mod.Missing, f"B15.version: {label} gave {got!r}")
                     self.assertIn(want, got.why, f"B15.version: {label}")
+        self.assertIn(("/synthetic/box/image.lock", rt.CLAUDE_CODE), lock_seen, "B15.version: the lock was not read")
+        # review MINOR 1: a draft and routing pin of 2.1.297 against a take lock at 2.1.296 is Missing
+        a, b = pins({rt.CLAUDE_CODE: {"m1": pin("2.1.297")}}, {rt.CLAUDE_CODE: {"m1": {"version": "2.1.297"}}})
+        with a, b, lock_at("2.1.296"):
+            got = self.must("B15.version", mod.agent_versions, locks)
+        self.assertIsInstance(got.values[rt.CLAUDE_CODE], mod.Missing, "B15.version: a pin off the take lock")
+        self.assertIn("'2.1.296'", got.values[rt.CLAUDE_CODE].why, "B15.version: the lock's version is not named")
+        for harness in (rt.CODEX, rt.GEMINI):          # pinned alike, but their take locks are missing
+            a, b = pins({harness: {"m1": pin("1.2.3")}}, {harness: {"m1": {"version": "1.2.3"}}})
+            with a, b, lock_at("1.2.3"):
+                got = self.must("B15.version", mod.agent_versions, locks).values[harness]
+            self.assertIsInstance(got, mod.Missing, f"B15.version: {harness} with no take lock")
+            self.assertIn("synthetic: no", got.why, f"B15.version: {harness}'s lock reason")
+
+        def refusing(path, *, harness):
+            raise rt.NotReady("synthetic: the lock is PENDING")
+        a, b = pins({rt.CLAUDE_CODE: same_draft}, {rt.CLAUDE_CODE: same})
+        with a, b, mock.patch.object(preflight, "load_take_lock", refusing):
+            got = self.must("B15.version", mod.agent_versions, locks).values[rt.CLAUDE_CODE]
+        self.assertIsInstance(got, mod.Missing, "B15.version: a refused lock")
+        self.assertIn("synthetic: the lock is PENDING", got.why, "B15.version: the loader's reason")
         a, b = pins({}, {})
         with a, b:
-            got = mod.agent_versions()
+            got = mod.agent_versions(locks)
         self.assertEqual(set(got.values), {rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI}, "B15.version: the harnesses")
         # neither file carrying its block at all (no version_pins key, no pin_profiles key): Missing, never a crash
         with mock.patch.object(prereg, "load", lambda: {}), mock.patch.object(routing, "load_table", lambda: {}):
-            got = mod.agent_versions()
+            got = mod.agent_versions(locks)
         self.assertTrue(all(isinstance(v, mod.Missing) and "both must pin it" in v.why for v in got.values.values()),
                         f"B15.version: no blocks gave {got!r}")
 
@@ -2767,6 +2839,47 @@ class B15Bringup(Drafted):
         got = mod.checker_run_tree_exclude()
         self.assertEqual(not isinstance(got, mod.Missing), EXCLUDE_ON_TREE, f"B3.exclude: this tree gives {got!r}")
 
+    def test_production_wraps_an_all_missing_per_harness_value(self):
+        """review MINOR 3: a lock or a version no harness has is one top-level Missing (cli refuses by name)."""
+        mod = wb()
+        none = {h: mod.Missing(f"synthetic: no {h}") for h in (rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI)}
+        with mock.patch.object(mod, "take_lock_paths", lambda *a: mod.PerHarness("the take lock", none)), \
+                mock.patch.object(mod, "agent_versions", lambda *a: mod.PerHarness("the agent version", none)):
+            got = self.must("B15.production", mod.production_builders)
+        for name in ("lock_path", "agent_version"):
+            self.assertIsInstance(got[name], mod.Missing, f"B15.production: an all-Missing {name} is {got[name]!r}")
+            self.assertIn("synthetic: no gemini", got[name].why, f"B15.production: {name} does not say why")
+        one = dict(none, **{rt.CLAUDE_CODE: "/synthetic/box/image.lock"})
+        with mock.patch.object(mod, "take_lock_paths", lambda *a: mod.PerHarness("the take lock", one)), \
+                mock.patch.object(mod, "agent_versions", lambda *a: mod.PerHarness("the agent version", one)):
+            got = self.must("B15.production", mod.production_builders)
+        for name in ("lock_path", "agent_version"):
+            self.assertIsInstance(got[name], mod.PerHarness, f"B15.production: one harness's {name} is {got[name]!r}")
+
+    def test_prepare_refuses_a_missing_per_harness_value_before_the_checkout(self):
+        """review NIT 1: the row's lock_path and proxy are checked in prepare, before build_run_tree."""
+        mod = wb()
+        built = []
+        args = types.SimpleNamespace(walk="w-0001", **{k: tww.the_row()[k] for k in ("task", "half", "wording",
+                                                                                         "arm", "model")})
+        good = str(login_file(f"{LOGIN}={tbi.TOKEN}\n"))
+        base = {"agent_version": "2.1.296", "login_path": good, "run_tree_origin": ("/synthetic/repo", "0" * 40),
+                "run_tree_exclude": ["evals"]}
+        harness = mod.walk_row("w-0001", vars(args), "2.1.296", tww.REAL_LOAD()["rows"])["agent"]["harness"]
+        lockless = mod.PerHarness("the take lock", {harness: mod.Missing("synthetic: this row's lock is PENDING")})
+        road = mod.ProxyRoad(str(owned_folder()), "sha256:" + "1" * 64)
+        with mock.patch.object(mod, "build_run_tree", lambda *a, **k: built.append(a) or "/synthetic/tree"):
+            self.refuses("B15.prepare", "synthetic: this row's lock is PENDING", mod.prepare,
+                         dict(base, lock_path=lockless), args)
+            with mock.patch.object(mod.ProxyRoad, "text_for", side_effect=mod.BuilderRefused("synthetic: no render")):
+                self.refuses("B15.prepare", "synthetic: no render", mod.prepare, dict(base, proxy=road), args)
+            self.assertEqual(built, [], "B15.prepare: a checkout was built for a refused row")
+            self.assertEqual(os.listdir(road.config_parent), [], "B15.prepare: prepare wrote a configuration")
+            ok = mod.PerHarness("the take lock", {harness: "/synthetic/box/image.lock"})
+            self.must("B15.prepare", mod.prepare, dict(base, lock_path=ok, proxy=road), args)
+            self.assertEqual(len(built), 1, "B15.prepare: an admitted row built no checkout")
+            self.assertEqual(os.listdir(road.config_parent), [], "B15.prepare: prepare wrote a configuration")
+
     def test_walk_driver_for_resolves_the_row_s_lock_and_proxy(self):
         with tempfile.TemporaryDirectory() as t:
             self.assertEqual(b15_driver_problems(wb(), Path(t)), [])
@@ -2816,6 +2929,28 @@ def b15_driver_problems(mod, tmp: Path) -> list:
                 out.append(f"B15.driver: refused for another reason: {e}")
         if built != ["w-0001"] or made != [rt.CLAUDE_CODE] or got:
             out.append(f"B15.driver: a refused row built {built} or made a proxy {made}")
+    # review NIT 2: when drive.walk_driver refuses, the walk's proxy folder is removed with it
+    parent = tmp / "cfg-parent"
+    parent.mkdir(mode=0o700)
+    real_road = mod.ProxyRoad(str(parent), "sha256:" + "1" * 64)
+
+    def refusing(**kw):
+        got["proxy"] = kw["proxy"]
+        raise RuntimeError("synthetic: the driver refused")
+    with mock.patch.object(drive, "walk_driver", refusing), \
+            mock.patch.object(drive, "records_repo", lambda root: "/synthetic/repo"), \
+            mock.patch.object(mod, "build_walk_fixture", lambda r, t, p: ({"sha256": "0" * 64}, "/synthetic/src")), \
+            mock.patch.object(mod, "walk_identity", lambda *a, **k: {"walk": "w-0003"}), \
+            mock.patch.object(mod, "login_secrets", lambda login, harness: (lambda: [])):
+        claude = {"walk": "w-0003", "arm": "A", "agent": {"harness": rt.CLAUDE_CODE, "version": "2.1.296"}}
+        try:
+            mod.walk_driver_for(dict(builders, proxy=real_road), claude, "/synthetic/login", tmp / "tree")
+            out.append("B15.driver: a refusing driver was not raised through")
+        except RuntimeError as e:
+            if "synthetic: the driver refused" not in str(e):
+                out.append(f"B15.driver: another error: {e}")
+    if "proxy" not in got or os.listdir(parent):
+        out.append(f"B15.driver: the refused walk's proxy folder stayed: {os.listdir(parent)}")
     return out
 
 
