@@ -1,0 +1,74 @@
+{
+  "buildx.build.provenance": {
+    "builder": {
+      "id": ""
+    },
+    "buildType": "https://mobyproject.org/buildkit@v1",
+    "materials": [
+      {
+        "uri": "pkg:docker/debian?digest=sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91\u0026platform=linux%2Famd64",
+        "digest": {
+          "sha256": "a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91"
+        }
+      }
+    ],
+    "invocation": {
+      "configSource": {
+        "entryPoint": "Dockerfile"
+      },
+      "parameters": {
+        "frontend": "dockerfile.v0",
+        "args": {
+          "build-arg:BASE": "docker.io/library/debian@sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91",
+          "build-arg:BASE_DIGEST": "sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91",
+          "build-arg:BASE_NAME": "docker.io/library/debian",
+          "build-arg:SQUID_VERSION": "5.7-2+deb12u6",
+          "label:app.squid.version": "5.7-2+deb12u6",
+          "label:org.opencontainers.image.base.digest": "sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91",
+          "label:org.opencontainers.image.base.name": "docker.io/library/debian"
+        },
+        "locals": [
+          {
+            "name": "context"
+          },
+          {
+            "name": "dockerfile"
+          }
+        ],
+        "root": {
+          "configSource": {
+            "path": "Dockerfile"
+          },
+          "request": {
+            "args": {
+              "build-arg:BASE": "docker.io/library/debian@sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91",
+              "build-arg:BASE_DIGEST": "sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91",
+              "build-arg:BASE_NAME": "docker.io/library/debian",
+              "build-arg:SQUID_VERSION": "5.7-2+deb12u6",
+              "label:app.squid.version": "5.7-2+deb12u6",
+              "label:org.opencontainers.image.base.digest": "sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91",
+              "label:org.opencontainers.image.base.name": "docker.io/library/debian",
+              "vcs:localdir:context": "evals/gap-study-4/box",
+              "vcs:localdir:dockerfile": "evals/gap-study-4/box/egress",
+              "vcs:revision": "ad766f016693b60e94a2819368a206fa580176d2",
+              "vcs:source": "/nonexistent-promisor-never-fetched"
+            }
+          }
+        },
+        "compatibilityVersion": 30
+      },
+      "environment": {
+        "dockerfileVersion": "1.27.0",
+        "platform": "linux/amd64"
+      }
+    }
+  },
+  "buildx.build.ref": "default/default/7wh8ta45jya0yf6yliwfdfuha",
+  "containerimage.descriptor": {
+    "mediaType": "application/vnd.oci.image.index.v1+json",
+    "digest": "sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674",
+    "size": 855
+  },
+  "containerimage.digest": "sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674",
+  "image.name": "moby-dangling@sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674"
+}

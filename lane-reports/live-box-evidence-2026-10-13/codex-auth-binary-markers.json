@@ -1,0 +1,539 @@
+{
+  "argv": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull=never",
+    "--network",
+    "none",
+    "--user",
+    "10001:10001",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--cpus",
+    "1",
+    "--memory",
+    "536870912",
+    "--pids-limit",
+    "64",
+    "sha256:ac201dbe3b3a7dfa3620f0a842b8f15df7a361fe9086961b9cfed8ae885fa1d1",
+    "python3",
+    "-I",
+    "-S",
+    "-c",
+    "import pathlib,json,hashlib,re\nroot=pathlib.Path(\"/usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64\")\nrows=[]\nfor p in root.rglob(\"codex\"):\n if not p.is_file():continue\n b=p.read_bytes(); found=[]\n for needle in (b\"https://chatgpt.com/backend-api\",b\"https://auth.openai.com\",b\"/oauth/token\",b\"forced_login_method\",b\"refresh_token_reused\"):\n  start=0\n  while True:\n   at=b.find(needle,start)\n   if at<0:break\n   found.append({\"needle\":needle.decode(),\"offset\":at,\"context\":b[max(0,at-100):at+250].decode(\"utf-8\",\"replace\")}); start=at+len(needle)\n rows.append({\"path\":str(p),\"bytes\":len(b),\"sha256\":hashlib.sha256(b).hexdigest(),\"matches\":found})\nprint(json.dumps(rows))"
+  ],
+  "exit": 0,
+  "sources": [
+    {
+      "path": "/usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex",
+      "bytes": 294415048,
+      "sha256": "628e35487d888a28f0427fc37501da529dd3d81fcbad7a2c3421c1e8670d92e1",
+      "matches": [
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 239038024,
+          "context": "TIONAWS_RESPONSE_CHECKSUM_VALIDATIONconfig persistence task panickedexperimental compact prompt filehttps://chatgpt.com/backend-api/BrowserUseOriginPolicyConfigToml\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0010\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000turn_metadata_includes_tool_infoNetworkProxyDomainPermissionTomltranscript max_tool_entry_tokensexpectedTurnId must not be emptyenterprise sign-in was can"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 239628730,
+          "context": "rminal_max_timeout = 300000\nfile_opener = \"vscode\"\nhide_agent_reasoning = false\nchatgpt_base_url = \"https://chatgpt.com/backend-api/\"\nproject_root_markers = [\".git\"]\n\n[history]\npersistence = \"save-all\"\nprofile\u000b--profile `\ufffd\u0017` cannot be used while \ufffd\u001d contains legacy `profile = \"\ufffd\u0000\u0000\u0011\"` or `[profiles.\ufffd\u0000\u0000$]` config; move those settings into \ufffd\u0002\u0000\ufffd\ufffd\u0000 and r"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 239647323,
+          "context": " consume timed outinternal error: entered unreachable code: routing discovery validates the overridehttps://chatgpt.com/backend-api/codexFailed to remove enterprise authorization; continuing account logoutAPI key login is disabled. Use ChatGPT login instead.ChatGPT login is disabled. Use API key login instead.CODEX_APP_SERVER_LOGIN_ISSUERAmazon Bed"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 239659286,
+          "context": "odex-apiNot signed in. Please run 'codex login' to sign in with ChatGPT, then re-run 'codex cloud'.\nhttps://chatgpt.com/backend-apicodex_cloud_tasks_diffcodex_cloud_tasks_execcodex_cloud_tasks_listcursorcodex_cloud_tasks_applycodex_cloud_tasks_statusno cloud environments are available for this workspacecodex_cloud_tasks_tuicodex-cliLaunching Cloud "
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 239908407,
+          "context": "rminal_max_timeout = 300000\nfile_opener = \"vscode\"\nhide_agent_reasoning = false\nchatgpt_base_url = \"https://chatgpt.com/backend-api/\"\nproject_root_markers = [\".git\"]\n\n[history]\npersistence = \"save-all\"\nprofile\u000b--profile `\ufffd\u0017` cannot be used while \ufffd\u001d contains legacy `profile = \"\ufffd\u0000\u0000\u0011\"` or `[profiles.\ufffd\u0000\u0000$]` config; move those settings into \ufffd\u0002\u0000\ufffd\ufffd\u0000 and r"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 239935011,
+          "context": "struct ModelProviderAuthInfo with 5 elementsstruct StandardTokenResponsestruct Proxy with 2 elementshttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 240253882,
+          "context": "rminal_max_timeout = 300000\nfile_opener = \"vscode\"\nhide_agent_reasoning = false\nchatgpt_base_url = \"https://chatgpt.com/backend-api/\"\nproject_root_markers = [\".git\"]\n\n[history]\npersistence = \"save-all\"\nprofile\u000b--profile `\ufffd\u0017` cannot be used while \ufffd\u001d contains legacy `profile = \"\ufffd\u0000\u0000\u0011\"` or `[profiles.\ufffd\u0000\u0000$]` config; move those settings into \ufffd\u0002\u0000\ufffd\ufffd\u0000 and r"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 240279257,
+          "context": "ntsstruct RolloutLineTyperefresh_interval_msstruct ModelProviderAuthInfo with 5 elementsstruct Proxyhttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 240319521,
+          "context": "\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffdstruct RegisterTaskResponsestruct RegisterAgentResponsestruct AgentIdentityJwtClaimslinuxhttps://chatgpt.com/backend-api/codexhttps://chat.openai.comhttps://chat.openai.com/backend-apihttps://chat.openai.com/codexhttps://chat.openai.com/backend-api/codexhttps://chatgpt-staging.comhttps://chatgpt-staging.com/backend-apihttps://chatgpt-sta"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 240453074,
+          "context": "e disabled and there is no else branch\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0002\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000a sequencehttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 240572977,
+          "context": "elementsstruct AwsCredentialExportConfig with 3 elementsstruct ModelProviderAuthInfo with 5 elementshttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsesignaturefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent ide"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 240600285,
+          "context": "rminal_max_timeout = 300000\nfile_opener = \"vscode\"\nhide_agent_reasoning = false\nchatgpt_base_url = \"https://chatgpt.com/backend-api/\"\nproject_root_markers = [\".git\"]\n\n[history]\npersistence = \"save-all\"\nprofile\u000b--profile `\ufffd\u0017` cannot be used while \ufffd\u001d contains legacy `profile = \"\ufffd\u0000\u0000\u0011\"` or `[profiles.\ufffd\u0000\u0000$]` config; move those settings into \ufffd\u0002\u0000\ufffd\ufffd\u0000 and r"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 240740210,
+          "context": "rminal_max_timeout = 300000\nfile_opener = \"vscode\"\nhide_agent_reasoning = false\nchatgpt_base_url = \"https://chatgpt.com/backend-api/\"\nproject_root_markers = [\".git\"]\n\n[history]\npersistence = \"save-all\"\n\u000b--profile `\ufffd\u0017` cannot be used while \ufffd\u001d contains legacy `profile = \"\ufffd\u0000\u0000\u0011\"` or `[profiles.\ufffd\u0000\u0000$]` config; move those settings into \ufffd\u0002\u0000\ufffd\ufffd\u0000 and remove t"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 240744382,
+          "context": "stopped user configuration reload after rejected refreshfailed to reload thread configurationarchivehttps://chatgpt.com/backend-api/codexsleep_toolcontent_item_kindscode_modecode_mode_hostmulti_agent_v2apps_mcp_path_overridenon_prefixed_mcp_tool_namesguardianv2token_budgetcontext_managementrollout_budgetcurrent_time_reminderevent app-server/src/req"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 240754550,
+          "context": "redentialExportConfig with 3 elementsrefresh_interval_msstruct ModelProviderAuthInfo with 5 elementshttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 241445063,
+          "context": "uencetask_idtaskIdencrypted_task_idencryptedTaskIdaccess_tokenstruct RefreshResponse with 3 elementshttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 241476916,
+          "context": " with 4 elementsresultstruct JSONRPCResponse with 2 elementsstruct JSONRPCErrorError with 3 elementshttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 241544325,
+          "context": "onfig/src/service.rs:326Local time out of range for `NaiveDateTime`struct CloudConfigBundleCacheFilehttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsetimestampfailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent ide"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 241558846,
+          "context": " bundle cacherequest_retry_exhaustedFailed to load cloud config bundle (workspace-managed policies).https://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 241633747,
+          "context": "rminal_max_timeout = 300000\nfile_opener = \"vscode\"\nhide_agent_reasoning = false\nchatgpt_base_url = \"https://chatgpt.com/backend-api/\"\nproject_root_markers = [\".git\"]\n\n[history]\npersistence = \"save-all\"\n\u000b--profile `\ufffd\u0017` cannot be used while \ufffd\u001d contains legacy `profile = \"\ufffd\u0000\u0000\u0011\"` or `[profiles.\ufffd\u0000\u0000$]` config; move those settings into \ufffd\u0002\u0000\ufffd\ufffd\u0000 and remove t"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 241637007,
+          "context": "imeout_msrequires_openai_authsupports_websocketssupports_standalone_web_searchstruct CodeEnvironmenthttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsetimestampsignaturefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode "
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 242121023,
+          "context": "OCKS5 proxy listenervariant index 0 <= i < 2client_nameredirect_urisaccess_tokentoken_typeexpires_inhttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 242269697,
+          "context": "led_skill_namesinterfacestruct RemotePluginSkillResponse with 3 elementsstruct StandardTokenResponsehttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 242455450,
+          "context": "Response with 9 elementsstruct RemotePluginSkillResponse with 3 elementsstruct Proxy with 2 elementshttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsetimestampsignaturefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode "
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 242506640,
+          "context": "rated plugins repogit ls-remote returned empty sha for curated plugins repogithttps://api.github.comhttps://chatgpt.com/backend-api/plugins/export/curated.tmp/pluginsopenaipluginsgit fetch curated plugins repoget curated plugins repositoryget curated plugins HEAD refreset--hardrefs/codex/curated-syncgit reset curated plugins repocleangit clean cura"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 242533096,
+          "context": "t_show_installation_interstitialauthentication_policystatusdisabled_reasoneligible_plan_typesreleasehttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 242724555,
+          "context": "se branchinternal error: entered unreachable code: typed extension data stored an incompatible valuehttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsetimestampsignaturefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode "
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 242736819,
+          "context": "client_idContent-Typeapplication/x-www-form-urlencodedurl::form_urlencoded::Serializer double finishhttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 242832313,
+          "context": "an app id.codex-plugin/plugin.jsonstruct EllipticCurveKeyParameters with 4 elementsshort-descriptionhttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsetimestampsignaturefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode "
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 242858320,
+          "context": "loaded_cache.load.duration_mscodex.plugins.loaded_cache.wait.duration_msplugin load semaphore closedhttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 242923717,
+          "context": "eaderserroritem_idcall_iddeltasummary_indexcontent_indexstruct ResponsesStreamEvent with 13 elementshttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 243030672,
+          "context": " login policy that permits ChatGPT authenticationOPENAI_FEDERATION_RULE_IDOPENAI_IDENTITY_TOKEN_FILEhttps://chatgpt.com/backend-apihttps://chatgpt.com/backend-api/codexhttps://chat.openai.com/backend-apihttps://chat.openai.com/backend-api/codexhttps://chatgpt-staging.comhttps://chatgpt-staging.com/backend-apihttps://chatgpt-staging.com/codexhttps:/"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 243030703,
+          "context": "GPT authenticationOPENAI_FEDERATION_RULE_IDOPENAI_IDENTITY_TOKEN_FILEhttps://chatgpt.com/backend-apihttps://chatgpt.com/backend-api/codexhttps://chat.openai.com/backend-apihttps://chat.openai.com/backend-api/codexhttps://chatgpt-staging.comhttps://chatgpt-staging.com/backend-apihttps://chatgpt-staging.com/codexhttps://chatgpt-staging.com/backend-ap"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 243122926,
+          "context": ".rs:744codexX-OpenAI-Product-Skuevent codex-mcp/src/mcp/mod.rs:695event codex-mcp/src/mcp/mod.rs:700https://chatgpt.com/backend-api/codex/backend-apievent codex-mcp/src/mcp/mod.rs:777event codex-mcp/src/mcp/mod.rs:784/api/codexCODEX_CONNECTORS_TOKENevent codex-mcp/src/server.rs:367codex_mcp::servercodex-mcp/src/server.rsfailed to read stored MCP OA"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 243310781,
+          "context": "mpataddresses checked abovevariant index 0 <= i < 1variant index 0 <= i < 15variant index 0 <= i < 4https://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 243375412,
+          "context": "eaderserroritem_idcall_iddeltasummary_indexcontent_indexstruct ResponsesStreamEvent with 13 elementshttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsetimestampsignaturefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode "
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 243390972,
+          "context": "ledauto_review_model_overridemodel_specialtytool_modemulti_agent_versionmulti_agent_reasoning_efforthttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 243391708,
+          "context": " 64 KiBus-gov-east-1us-gov-west-1chatgptapi_keyauth_modecodex.remote_models.fetch_update.duration_mshttps://chatgpt.com/backend-api/codexmodel catalog must contain unique, non-empty model slugs\u0000\u0000\u0000\u0000\u0000\u0000\u0000\n\u0000\u0000\u0000\u0000\u0000\u0000\ufffd\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 243416756,
+          "context": "dential-exportcodex-managed-bedrock-access-keysall branches are disabled and there is no else branchhttps://chatgpt.com/backend-apifailed to register agent taskfailed to decode agent task registration responsetimestampsignatureagent_versioncapabilitiesttlfailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to de"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 243430159,
+          "context": "nevariant index 0 <= i < 1variant index 0 <= i < 15variant index 0 <= i < 4daybreak_bluedaybreak_redhttps://chatgpt.com/backend-apifailed to register agent taskfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWKSgateway OAuth conflict"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 243438936,
+          "context": "struct ModelProviderInfostruct AwsAuthRefreshConfigstruct ModelProviderAwsAuthInfovariant identifierhttps://chatgpt.com/backend-api/codexhttps://api.openai.com/v1ussize overflows MAX_SIZEOpenAI-OrganizationOPENAI_ORGANIZATIONonly supports changing `base_url`, `auth`, `http_headers`, `aws.profile`, `aws.region`, `aws.credential_export`, and `aws.aut"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 245087657,
+          "context": "_thresholddefault_app_accessmacosstatuscountrycontext_sizeallowed_domainsstruct GeneratedThreadTitlehttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 245308393,
+          "context": "rminal_max_timeout = 300000\nfile_opener = \"vscode\"\nhide_agent_reasoning = false\nchatgpt_base_url = \"https://chatgpt.com/backend-api/\"\nproject_root_markers = [\".git\"]\n\n[history]\npersistence = \"save-all\"\n\u000b--profile `\ufffd\u0017` cannot be used while \ufffd\u001d contains legacy `profile = \"\ufffd\u0000\u0000\u0011\"` or `[profiles.\ufffd\u0000\u0000$]` config; move those settings into \ufffd\u0002\u0000\ufffd\ufffd\u0000 and remove t"
+        },
+        {
+          "needle": "https://chatgpt.com/backend-api",
+          "offset": 245404773,
+          "context": "rItemtargetslimitedstruct BackendBannerCtafield index 0 <= i < 2struct NodeReplExecOutputdismissiblehttps://chatgpt.com/backend-apifailed to register agent taskagent task registrationfailed to decode agent task registration responsefailed to request agent identity JWKSagent identity JWKS endpoint returned an errorfailed to decode agent identity JWK"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 239611799,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsaccess_tokenSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your acc"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 239902255,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 240242609,
+          "context": "n attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLchatgpt_account_idCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 240450802,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 240543930,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 240735157,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsaccess_tokenYour access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token could not be refreshed. Please log out and sign in agai"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 241442150,
+          "context": "ilchatgpt_user_idchatgpt_account_idchatgpt_plan_typechatgpt_account_is_fedrampCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 241474258,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 241541400,
+          "context": "tion attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLchatgpt_user_idCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 241556436,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 241626780,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 242089460,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 242244300,
+          "context": "ilchatgpt_user_idchatgpt_account_idchatgpt_plan_typechatgpt_account_is_fedrampCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 242417382,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 242523253,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 242723023,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 242735352,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 242828185,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsexternal auth is not configuredYour access token could not be refreshed. Please log out and sign in again.Skipping auth reload because no account id is available.Token data is not available.Reloading authNo more re"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 242853032,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 242905470,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsexternal auth is not configuredYour access token could not be refreshed. Please log out and sign in again.Skipping auth reload because no account id is available.Token data is not available.Reloading authNo more re"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 243031039,
+          "context": "com/backend-api/codexworkload identity auth supports only trusted production and staging app routinghttps://auth.openai.com/oauth/tokenhttps://auth.api.openai.org/oauth/tokenworkload identity token endpoint is invalid/v1/user-auth-credential/whoamiFailed to send request to channelall branches are disabled and there is no else branchstruct PersonalA"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 243036505,
+          "context": "_vscodeCodex api_keyregionaccess_key_idsecret_access_keysession_tokenCODEX_REVOKE_TOKEN_URL_OVERRIDEhttps://auth.openai.com/oauth/revoke/oauth/revokeauthentication requirements do not permit any usable login methodevent login/src/auth/manager.rs:2868codex_login::auth::managerlogin/src/auth/manager.rsevent login/src/auth/manager.rs:2643event login/s"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 243037495,
+          "context": "/auth/manager.rs:1007event login/src/auth/manager.rs:1012not_refreshable_authrecovery_exhaustedreadyhttps://auth.openai.com/oauth/tokenChatGPT login is requiredAPI key login is required, CODEX_API_KEYOPENAI_API_KEYauth data is not availablefailed to lock auth stateevent login/src/auth/manager.rs:1657statusdetailevent login/src/auth/manager.rs:1694b"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 243045580,
+          "context": "server.rs\u0000\ufffd\u0005default login callback port is unavailable; falling back to the registered fallback porthttps://auth.openai.comurn:ietf:params:oauth:grant-type:token-exchangeopenai-api-keyurn:ietf:params:oauth:token-type:id_tokenevent login/src/server.rs:396error_codehas_error_descriptionevent login/src/server.rs:499event login/src/server.rs:381has_sta"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 243079497,
+          "context": "itymessageattemptmax_attemptsCODEX_AGENT_IDENTITY_AUTHAPI_BASE_URLCODEX_AGENT_IDENTITY_JWKS_BASE_URLhttps://auth.openai.com/api/accountshttps://auth.api.openai.org/api/accountsAgent Identity only supports production and staging ChatGPT environmentsaccess_tokenapi_keyclient_secretkeyrefresh_tokenrequested_tokenstatesubject_tokentokenerror_descriptio"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 243305234,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 243364566,
+          "context": "ilchatgpt_user_idchatgpt_account_idchatgpt_plan_typechatgpt_account_is_fedrampCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 243388119,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 243415009,
+          "context": "AGENT_IDENTITY_JWKS_BASE_URLagent task registrationagent identity registrationCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 243427897,
+          "context": "AGENT_IDENTITY_JWKS_BASE_URLagent task registrationagent identity registrationCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 245081262,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "https://auth.openai.com",
+          "offset": 245396964,
+          "context": "entity registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkipping token refresh because auth changed after guarded reload.Your access token could not be refreshed because you have since logged out or signed in to another account. Please sign in again.Your access token co"
+        },
+        {
+          "needle": "/oauth/token",
+          "offset": 238062305,
+          "context": "/src/oauth/client.rs\u0000login/src/server.rs\u0000\u001elogin server thread panicked: \ufffd\u0000\u0015persist task failed: \ufffd\u0000\ufffd\f/oauth/token\u0000state/src/migrations.rs\u0000state/src/audit.rs\u0000state/src/paths.rs\u0000state/src/log_db.rs\u0000state/src/sqlite/validation.rs\u0000state/src/sqlite.rs\u0000state/src/runtime/reclamation.rs\u0000state/src/runtime.rs\u0000\u001bfailed to open state db at \ufffd\u0002: \ufffd\u0000\u001afailed to open "
+        },
+        {
+          "needle": "/oauth/token",
+          "offset": 243031062,
+          "context": "rkload identity auth supports only trusted production and staging app routinghttps://auth.openai.com/oauth/tokenhttps://auth.api.openai.org/oauth/tokenworkload identity token endpoint is invalid/v1/user-auth-credential/whoamiFailed to send request to channelall branches are disabled and there is no else branchstruct PersonalAccessTokenMetadatainter"
+        },
+        {
+          "needle": "/oauth/token",
+          "offset": 243031101,
+          "context": "ted production and staging app routinghttps://auth.openai.com/oauth/tokenhttps://auth.api.openai.org/oauth/tokenworkload identity token endpoint is invalid/v1/user-auth-credential/whoamiFailed to send request to channelall branches are disabled and there is no else branchstruct PersonalAccessTokenMetadatainternal error: entered unreachable codea Di"
+        },
+        {
+          "needle": "/oauth/token",
+          "offset": 243037518,
+          "context": "ent login/src/auth/manager.rs:1012not_refreshable_authrecovery_exhaustedreadyhttps://auth.openai.com/oauth/tokenChatGPT login is requiredAPI key login is required, CODEX_API_KEYOPENAI_API_KEYauth data is not availablefailed to lock auth stateevent login/src/auth/manager.rs:1657statusdetailevent login/src/auth/manager.rs:1694backend_detailEncountere"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 239680199,
+          "context": "itmodel_auto_compact_token_limit_scopesandbox_modesandbox_workspace_writeforced_chatgpt_workspace_idforced_login_methodweb_searchcompact_promptmodel_reasoning_summarymodel_verbosityanalyticsdesktopstruct RemoteWorkspacePluginCreateResponse with 3 elementsdirectorynextCursorbackwardsCursorestimated_usage_credits_microsestimated_usage_usd_microsnativ"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 239925196,
+          "context": "tructionsinclude_environment_contextmodel_instructions_filecompact_promptforced_chatgpt_workspace_idforced_login_methodcli_auth_credentials_storemcp_enterprise_managed_authmcp_oauth_credentials_storemcp_oauth_callback_portmcp_oauth_callback_urlmcp_optional_startup_grace_msmodel_providersproject_doc_max_bytesproject_doc_fallback_filenamestool_output"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 240043965,
+          "context": "tructionsinclude_environment_contextmodel_instructions_filecompact_promptforced_chatgpt_workspace_idforced_login_methodcli_auth_credentials_storemcp_serversmcp_enterprise_managed_authmcp_oauth_credentials_storemcp_oauth_callback_portmcp_oauth_callback_urlmcp_optional_startup_grace_msmodel_providersproject_doc_max_bytesproject_doc_fallback_filenames"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 240273271,
+          "context": "default_permissionsnotifyinstructionsdeveloper_instructionscompact_promptforced_chatgpt_workspace_idforced_login_methodcli_auth_credentials_storemcp_enterprise_managed_authmcp_oauth_credentials_storemcp_oauth_callback_portmcp_oauth_callback_urlmcp_optional_startup_grace_msmodel_providersproject_doc_max_bytesproject_doc_fallback_filenamestool_output"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 240399484,
+          "context": "missionspermissionsnotifyinstructionsdeveloper_instructionscompact_promptforced_chatgpt_workspace_idforced_login_methodcli_auth_credentials_storemcp_serversmcp_enterprise_managed_authmcp_oauth_credentials_storemcp_oauth_callback_portmcp_oauth_callback_urlmcp_optional_startup_grace_msmodel_providersproject_doc_max_bytesproject_doc_fallback_filenames"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 240413086,
+          "context": "tructionsinclude_environment_contextmodel_instructions_filecompact_promptforced_chatgpt_workspace_idforced_login_methodcli_auth_credentials_storemcp_enterprise_managed_authmcp_oauth_credentials_storemcp_oauth_callback_portmcp_oauth_callback_urlmcp_optional_startup_grace_msmodel_providersproject_doc_max_bytesproject_doc_fallback_filenamestool_output"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 240416770,
+          "context": "viderapproval_policyapprovals_reviewersandbox_modesandbox_workspace_writeforced_chatgpt_workspace_idforced_login_methodweb_searchtoolsinstructionsdeveloper_instructionscompact_promptmodel_reasoning_effortmodel_reasoning_summarymodel_verbosityservice_tieranalyticsbrowser_usecomputer_usedesktopenabledomit_tools_fromdestructive_enabledopen_world_enabl"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 240567857,
+          "context": "tructionsinclude_environment_contextmodel_instructions_filecompact_promptforced_chatgpt_workspace_idforced_login_methodcli_auth_credentials_storemcp_enterprise_managed_authmcp_oauth_credentials_storemcp_oauth_callback_portmcp_oauth_callback_urlmcp_optional_startup_grace_msmodel_providersproject_doc_max_bytesproject_doc_fallback_filenamestool_output"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 240737986,
+          "context": "tructionsinclude_environment_contextmodel_instructions_filecompact_promptforced_chatgpt_workspace_idforced_login_methodcli_auth_credentials_storemcp_serversmcp_enterprise_managed_authmcp_oauth_credentials_storemcp_oauth_callback_portmcp_oauth_callback_urlmcp_optional_startup_grace_msmodel_providersproject_doc_max_bytesproject_doc_fallback_filenames"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 241410404,
+          "context": "viderapproval_policyapprovals_reviewersandbox_modesandbox_workspace_writeforced_chatgpt_workspace_idforced_login_methodweb_searchinstructionscompact_promptmodel_reasoning_effortmodel_reasoning_summarymodel_verbosityservice_tieranalyticsbrowser_usecomputer_usedesktopomit_tools_fromdestructive_enabledopen_world_enableddefault_tools_approval_modedefau"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 241610286,
+          "context": "missionspermissionsnotifyinstructionsdeveloper_instructionscompact_promptforced_chatgpt_workspace_idforced_login_methodcli_auth_credentials_storemcp_enterprise_managed_authmcp_oauth_credentials_storemcp_oauth_callback_portmcp_oauth_callback_urlmcp_optional_startup_grace_msmodel_providersproject_doc_max_bytesproject_doc_fallback_filenamestool_output"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 241631442,
+          "context": "tructionsinclude_environment_contextmodel_instructions_filecompact_promptforced_chatgpt_workspace_idforced_login_methodcli_auth_credentials_storemcp_serversmcp_enterprise_managed_authmcp_oauth_credentials_storemcp_oauth_callback_portmcp_oauth_callback_urlmcp_optional_startup_grace_msmodel_providersproject_doc_max_bytesproject_doc_fallback_filenames"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 241667194,
+          "context": "tructionsinclude_environment_contextmodel_instructions_filecompact_promptforced_chatgpt_workspace_idforced_login_methodcli_auth_credentials_storemcp_enterprise_managed_authmcp_oauth_credentials_storemcp_oauth_callback_portmcp_oauth_callback_urlmcp_optional_startup_grace_msmodel_providersproject_doc_max_bytesproject_doc_fallback_filenamestool_output"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 241758203,
+          "context": "tructionsinclude_environment_contextmodel_instructions_filecompact_promptforced_chatgpt_workspace_idforced_login_methodcli_auth_credentials_storemcp_enterprise_managed_authmcp_oauth_credentials_storemcp_oauth_callback_portmcp_oauth_callback_urlmcp_optional_startup_grace_msproject_doc_max_bytesproject_doc_fallback_filenamestool_output_token_limitbac"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 241825096,
+          "context": "tructionsinclude_environment_contextmodel_instructions_filecompact_promptforced_chatgpt_workspace_idforced_login_methodcli_auth_credentials_storemcp_enterprise_managed_authmcp_oauth_credentials_storemcp_oauth_callback_portmcp_oauth_callback_urlmcp_optional_startup_grace_msproject_doc_max_bytesproject_doc_fallback_filenamestool_output_token_limitbac"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 241845515,
+          "context": "tructionsinclude_environment_contextmodel_instructions_filecompact_promptforced_chatgpt_workspace_idforced_login_methodcli_auth_credentials_storemcp_serversmcp_enterprise_managed_authmcp_oauth_credentials_storemcp_oauth_callback_portmcp_oauth_callback_urlmcp_optional_startup_grace_msmodel_providersproject_doc_max_bytesproject_doc_fallback_filenames"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 241972548,
+          "context": "tructionsinclude_environment_contextmodel_instructions_filecompact_promptforced_chatgpt_workspace_idforced_login_methodcli_auth_credentials_storemcp_enterprise_managed_authmcp_oauth_credentials_storemcp_oauth_callback_portmcp_oauth_callback_urlmcp_optional_startup_grace_msmodel_providersproject_doc_max_bytesproject_doc_fallback_filenamestool_output"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 243040371,
+          "context": "ureAuthManagercodex_homeinnerenable_codex_api_key_envauth_credentials_store_modekeyring_backend_kindforced_login_methodforced_chatgpt_workspace_idmanaged_auth_policyauth_route_confighas_external_authworkload_identity_selectedDefaultKeyringStoreInvalidFormatBase64RwLockDirectSecretsAutoAuthStoragekeyring_storagefile_storageFileAuthStorageinvalid ID "
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 245084771,
+          "context": "_writedefault_permissionsinstructionsdeveloper_instructionscompact_promptforced_chatgpt_workspace_idforced_login_methodmodel_reasoning_summarymodel_verbositypluginsmarketplacessuppress_unstable_features_warningproject_root_markersanalyticsdesktopstarfieldshimmerwelcomeefforttoggle_voicetoggle_voice_muteinterrupt_turndecrease_reasoning_effortincreas"
+        },
+        {
+          "needle": "forced_login_method",
+          "offset": 245306275,
+          "context": "tructionsinclude_environment_contextmodel_instructions_filecompact_promptforced_chatgpt_workspace_idforced_login_methodcli_auth_credentials_storemcp_serversmcp_enterprise_managed_authmcp_oauth_credentials_storemcp_oauth_callback_portmcp_oauth_callback_urlmcp_optional_startup_grace_msmodel_providersproject_doc_max_bytesproject_doc_fallback_filenames"
+        }
+      ]
+    }
+  ],
+  "stderr": ""
+}

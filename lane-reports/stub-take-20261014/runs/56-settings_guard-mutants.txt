@@ -1,0 +1,24 @@
+control 0 of 15
+RED   1/15 env allowed
+RED   6/15 local file ignored
+RED   10/15 forbidden keys not checked
+RED   1/15 link file followed
+RED   6/15 claude link admitted
+RED   8/15 new file admitted
+RED   2/15 hash not compared
+RED   2/15 removal admitted
+RED   4/15 dir type unchecked
+RED   16/15 agent model unchecked
+RED   16/15 agent any model admitted
+RED   41/15 agents skipped
+RED   10/15 agent link followed
+RED   6/15 new agent in snapshot admitted
+RED   1/15 pattern too loose
+RED   15/15 skills dropped
+RED   14/15 commands dropped
+RED   5/15 snapshot path agents only
+RED   2/15 snapshot dir agents only
+RED   6/15 model-dir sub-folder link admitted
+RED   3/15 model-dir not-a-folder admitted
+RED   1/15 snapshot sub-folder skipped by any type
+ALIVE: none

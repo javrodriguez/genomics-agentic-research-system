@@ -1,0 +1,1684 @@
+{
+ "baseline": "round 3's REGISTERED vocabulary (gap-study-3/prereg.json environment_record, 'read from the 2.1.267 binary'): its patterns and its three lists. The 2.1.267 binary itself is not on athena (no other claude image there), so this is not a binary-to-binary diff: every name below is placed against what round 3 registered.",
+ "binary": {
+  "bytes": 257068216,
+  "path": "/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+  "same_in_all_four_reads": true,
+  "sha256": "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de"
+ },
+ "counts": {
+  "generic": 174,
+  "harness": 161,
+  "names": 387,
+  "outside": 52,
+  "round3_listed_present": 14
+ },
+ "flags": {
+  "billing_route_in_patterns_not_listed": {
+   "names": [
+    "ANTHROPIC_BEDROCK_BASE_URL",
+    "ANTHROPIC_VERTEX_BASE_URL",
+    "ANTHROPIC_FOUNDRY_BASE_URL",
+    "ANTHROPIC_FOUNDRY_RESOURCE",
+    "ANTHROPIC_AWS_BASE_URL",
+    "ANTHROPIC_GOOGLE_CLOUD_BASE_URL",
+    "ANTHROPIC_BEDROCK_MANTLE_BASE_URL",
+    "ANTHROPIC_UNIX_SOCKET"
+   ],
+   "present": {
+    "ANTHROPIC_AWS_BASE_URL": true,
+    "ANTHROPIC_BEDROCK_BASE_URL": true,
+    "ANTHROPIC_BEDROCK_MANTLE_BASE_URL": true,
+    "ANTHROPIC_FOUNDRY_BASE_URL": true,
+    "ANTHROPIC_FOUNDRY_RESOURCE": true,
+    "ANTHROPIC_GOOGLE_CLOUD_BASE_URL": true,
+    "ANTHROPIC_UNIX_SOCKET": true,
+    "ANTHROPIC_VERTEX_BASE_URL": true
+   },
+   "why": "Provider endpoints (and ANTHROPIC_UNIX_SOCKET, which the base-URL check reads beside ANTHROPIC_BASE_URL: `a.ANTHROPIC_UNIX_SOCKET!==void 0`). Recorded by ^ANTHROPIC_ but on no stop list; the provider endpoints act only with a provider switch set, ANTHROPIC_UNIX_SOCKET redirects first-party traffic."
+  },
+  "billing_route_outside_every_pattern": {
+   "names": [
+    "CLAUDE_CODE_USE_ANTHROPIC_AWS",
+    "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD",
+    "CLAUDE_CODE_USE_MANTLE",
+    "CLAUDE_CODE_USE_GATEWAY",
+    "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST"
+   ],
+   "present": {
+    "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST": true,
+    "CLAUDE_CODE_USE_ANTHROPIC_AWS": true,
+    "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD": true,
+    "CLAUDE_CODE_USE_GATEWAY": true,
+    "CLAUDE_CODE_USE_MANTLE": true
+   },
+   "why": "The binary's provider selector maps anthropicAws/anthropicGoogleCloud/mantle to these CLAUDE_CODE_USE_* names beside bedrock/vertex/foundry (route-names contexts: `anthropicAws:\"CLAUDE_CODE_USE_ANTHROPIC_AWS\",anthropicGoogleCloud:...,mantle:\"CLAUDE_CODE_USE_MANTLE\",vertex:...`; `Ne(process.env.CLAUDE_CODE_USE_ANTHROPIC_AWS)||...`). CLAUDE_CODE_USE_GATEWAY routes a session through a gateway with ANTHROPIC_BASE_URL and ANTHROPIC_AUTH_TOKEN (\"This session is set up for a ... because CLAUDE_CODE_USE_GATEWAY is set with ANTHROPIC_BASE_URL and ANTHROPIC_AUTH_TOKEN\"); CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST gates it with CLAUDE_CODE_HOST_CREDS_FILE. None matches drive.py's harness patterns (^CLAUDE_CODE_USE_(BEDROCK|VERTEX|FOUNDRY)$) or the generic pattern, so environment_record would not even list them, and none is on the billing-route list, so the money line would not stop on them."
+  },
+  "credential_in_patterns_not_listed": {
+   "names": [
+    "ANTHROPIC_FOUNDRY_AUTH_TOKEN",
+    "ANTHROPIC_IDENTITY_TOKEN",
+    "ANTHROPIC_IDENTITY_TOKEN_FILE",
+    "ANTHROPIC_ENVIRONMENT_KEY",
+    "ANTHROPIC_WORK_SECRET",
+    "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR",
+    "CLAUDE_CODE_GATEWAY_TOKEN"
+   ],
+   "present": {
+    "ANTHROPIC_ENVIRONMENT_KEY": true,
+    "ANTHROPIC_FOUNDRY_AUTH_TOKEN": true,
+    "ANTHROPIC_IDENTITY_TOKEN": true,
+    "ANTHROPIC_IDENTITY_TOKEN_FILE": true,
+    "ANTHROPIC_WORK_SECRET": true,
+    "CLAUDE_CODE_GATEWAY_TOKEN": true,
+    "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR": true
+   },
+   "why": "Inference credentials recorded by ^ANTHROPIC_ or the generic pattern but on no list: a Foundry token (\"refresh your Foundry credential (ANTHROPIC_FOUNDRY_AUTH_TOKEN, ANTHROPIC_FOUNDRY_API_KEY, ...)\") bills per token like ANTHROPIC_FOUNDRY_API_KEY; the OIDC-federation identity token and its file (with ANTHROPIC_FEDERATION_RULE_ID, ANTHROPIC_SERVICE_ACCOUNT_ID, ANTHROPIC_WORKSPACE_ID, ANTHROPIC_SCOPE: \"oidc_federation config requires an identity tok...\"); a remote-work environment key and secret; the subscription OAuth token by file descriptor (a subscription-token road beside CLAUDE_CODE_OAUTH_TOKEN, not on the subscription list); a gateway token."
+  },
+  "credential_outside_every_pattern": {
+   "names": [
+    "CLAUDE_CODE_HOST_CREDS_FILE"
+   ],
+   "present": {
+    "CLAUDE_CODE_HOST_CREDS_FILE": true
+   },
+   "why": "Read as a.CLAUDE_CODE_HOST_CREDS_FILE beside CLAUDE_CODE_HOST_GATEWAY_LINEAGE in the host-managed gateway check (provider-tables env_access_contexts); a credentials-file path, matched by no pattern."
+  },
+  "service_tokens_not_inference": {
+   "names": [
+    "CLAUDE_BRIDGE_OAUTH_TOKEN",
+    "CCR_OAUTH_TOKEN_FILE",
+    "CLAUDE_TRUSTED_DEVICE_TOKEN",
+    "CLAUDE_CODE_MESSAGING_TOKEN",
+    "CLAUDE_CODE_MEMORY_API_TOKEN",
+    "CLAUDE_CODE_ARTIFACTS_API_TOKEN",
+    "CLAUDE_CODE_HFI_BEARER_TOKEN",
+    "CLAUDE_CODE_SLACK_TAG_TOKEN",
+    "CLAUDE_CODE_MCP_SERVE_AUTH_TOKEN"
+   ],
+   "present": {
+    "CCR_OAUTH_TOKEN_FILE": true,
+    "CLAUDE_BRIDGE_OAUTH_TOKEN": true,
+    "CLAUDE_CODE_ARTIFACTS_API_TOKEN": true,
+    "CLAUDE_CODE_HFI_BEARER_TOKEN": true,
+    "CLAUDE_CODE_MCP_SERVE_AUTH_TOKEN": true,
+    "CLAUDE_CODE_MEMORY_API_TOKEN": true,
+    "CLAUDE_CODE_MESSAGING_TOKEN": true,
+    "CLAUDE_CODE_SLACK_TAG_TOKEN": true,
+    "CLAUDE_TRUSTED_DEVICE_TOKEN": true
+   },
+   "why": "Product-feature tokens (bridge/remote sessions, trusted device, messaging, memory, artifacts, Slack, MCP serve). Recorded by the generic pattern; none is an inference billing route on the static read, but a set one is a credential in the take's environment."
+  }
+ },
+ "image_lock": "evals/gap-study-4/box/image.lock image_id sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49 (unchanged 1cde8066..383e5c2f)",
+ "partition": {
+  "ACCESS_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ACCESS_TOKEN_WITH_AUTH_SCHEME": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ACTIONS_ID_TOKEN_REQUEST_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ACTIONS_RUNTIME_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "AGENT_PROXY_AUTH_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "AMPERSAND_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ANACONDA_API_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ANSIBLE_VAULT_PASSWORD_FILE": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ANTHROPIC_API_HOST": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_API_KEY": {
+   "matched_by": "harness",
+   "round3_list": "api_key_variables"
+  },
+  "ANTHROPIC_ASSETS_HOST": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_AUTH_TOKEN": {
+   "matched_by": "harness",
+   "round3_list": "api_key_variables"
+  },
+  "ANTHROPIC_AWS_API_KEY": {
+   "matched_by": "harness",
+   "round3_list": "api_key_variables"
+  },
+  "ANTHROPIC_AWS_BASE_URL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_AWS_WORKSPACE_ID": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_BASE_URL": {
+   "matched_by": "harness",
+   "round3_list": "billing_route_variables"
+  },
+  "ANTHROPIC_BEDROCK_BASE_URL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_BEDROCK_MANTLE_BASE_URL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_BEDROCK_REGION_PREFIX": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_BEDROCK_SERVICE_TIER": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_BETAS": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_CONFIG_DIR": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_CUSTOM_HEADERS": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_CUSTOM_MODEL_OPTION": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_CUSTOM_MODEL_OPTION_NAME": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_CUSTOM_MODEL_OPTION_SUPPORTED_CAPABILITIES": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_FABLE_MODEL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_FABLE_MODEL_DESCRIPTION": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_FABLE_MODEL_NAME": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_FABLE_MODEL_SUPPORTED_CAPABILITIES": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_FABLE_MODEL_SUPPORTED_CAPABILITIES3": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL_DESCRIPTION": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES4": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_MODEL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_OPUS_MODEL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_OPUS_MODEL_DESCRIPTION": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_OPUS_MODEL_NAME": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_OPUS_MODEL_SUPPORTED_CAPABILITIES": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_SONNET_MODEL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_SONNET_MODEL_DESCRIPTION": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_ENVIRONMENT_ID": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_ENVIRONMENT_KEY": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_FEDERATION_RULE_ID": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_FOUNDRY_API_KEY": {
+   "matched_by": "harness",
+   "round3_list": "api_key_variables"
+  },
+  "ANTHROPIC_FOUNDRY_AUTH_TOKEN": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_FOUNDRY_BASE_URL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_FOUNDRY_RESOURCE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_GOOGLE_CLOUD_BASE_URL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_GOOGLE_CLOUD_LOCATION": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_GOOGLE_CLOUD_PROJECT": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_ID": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_IDENTITY_TOKEN": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_IDENTITY_TOKEN_FILE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_LOG": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_MODEL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_ORGANIZATION_ID": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_PROFILE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_SCOPE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_SERVICE_ACCOUNT_ID": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_SESSION_ID": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_SMALL_FAST_MODEL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_TELEMETRY_GROUP": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_TIER_NAMES": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_UNIX_SOCKET": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_VERTEX_BASE_URL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_VERTEX_PROJECT_ID": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_WEBHOOK_SIGNING_KEY": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_WORKSPACE_ID": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_WORK_ID": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "ANTHROPIC_WORK_SECRET": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "API_KEY": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "API_KEY_URL": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "API_KEY_WITH_CREDENTIALS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "APP_SERVICE_SECRET_HEADER_NAME": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ARTIFACTS_CREDENTIALPROVIDER_ACCESSTOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ARTIFACTS_CREDENTIALPROVIDER_EXTERNAL_FEED_ENDPOINTS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ATTR_CLOUD_PROVIDER": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "AUTO_REPLIES_ARMED_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "AWS_ACCESS_KEY_ID": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_ACCOUNT_ID": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_AUTH_SCHEME_PREFERENCE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_BEARER_TOKEN_BEDROCK": {
+   "matched_by": "harness",
+   "round3_list": "api_key_variables"
+  },
+  "AWS_CA_BUNDLE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_CHAIN_RESOLVE_REQUEST_TIMEOUT_MS": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_CONFIG_FILE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_CONTAINER_AUTHORIZATION_TOKEN": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_CONTAINER_CREDENTIALS_FULL_URI": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_CREDENTIAL_EXPIRATION": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_CREDENTIAL_SCOPE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_DEFAULTS_MODE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_DEFAULT_REGION": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_EC2_METADATA_DISABLED": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_EC2_METADATA_IPV4_ADDRESS": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_EC2_METADATA_IPV6_ADDRESS": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_EC2_METADATA_SERVICE_ENDPOINT": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_EC2_METADATA_SERVICE_ENDPOINT_MODE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_EC2_METADATA_V1_DISABLED": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_ECS_EC2": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_ECS_FARGATE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_ENDPOINT_URL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_ENDPOINT_URL_BEDROCK": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_ENDPOINT_URL_BEDROCK_RUNTIME": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_ENDPOINT_URL_SSO": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_ENDPOINT_URL_SSO_OIDC": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_ENDPOINT_URL_STS": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_EXECUTION_ENV": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_IAM_ROLE_ARN_RE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_LAMBDA_BENCHMARK_MODE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_LAMBDA_FUNCTION_NAME": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_LAMBDA_MAX_CONCURRENCY": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_LAMBDA_NODEJS_NO_GLOBAL_AWSLAMBDA": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_LOGIN_CACHE_DIRECTORY": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_MAX_ATTEMPTS": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_PAGER": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_PROFILE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_REGION": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_REGION_RE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_RETRY_MODE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_ROLE_ARN": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_ROLE_SESSION_NAME": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_SDK_UA_APP_ID": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_SECRET_ACCESS_KEY": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_SESSION_TOKEN": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_SHARED_CREDENTIALS_FILE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_SIGV4A_SIGNING_REGION_SET": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_USE_DUALSTACK_ENDPOINT": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_USE_FIPS_ENDPOINT": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AWS_WEB_IDENTITY_TOKEN_FILE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_ADDITIONALLY_ALLOWED_TENANTS": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_ARC": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_AUTHORITY_HOST": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_AUTH_LOCATION": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_CLIENT_CERTIFICATE_PASSWORD": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_CLIENT_CERTIFICATE_PATH": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_CLIENT_ID": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_CLIENT_SECRET": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_CLIENT_SEND_CERTIFICATE_CHAIN": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_CLOUDS": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_CLOUD_HOSTS": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_CONFIG_DIR": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_FEDERATED_TOKEN_FILE": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_FUNCTIONS_ENVIRONMENT": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_IDENTITY_DISABLE_MULTITENANTAUTH": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_LOG_LEVEL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_PASSWORD": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_POD_IDENTITY_AUTHORITY_HOST": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_REGIONAL_AUTHORITY_NAME": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_REGION_AUTO_DISCOVER_FLAG": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_TENANT_ID": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_TOKEN_CREDENTIALS": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "AZURE_USERNAME": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "BAD_PASSWORD_READ": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "BINSTAR_API_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CACHED_ACCESS_TOKEN_EXPIRED": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CARGO_REGISTRY_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CCR_OAUTH_TOKEN_FILE": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CHOICE_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLAUDE_API_KEY": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLAUDE_BRIDGE_BASE_URL": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_BRIDGE_OAUTH_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_API_BASE_URL": {
+   "matched_by": "harness",
+   "round3_list": "billing_route_variables"
+  },
+  "CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR": {
+   "matched_by": "harness",
+   "round3_list": "api_key_variables"
+  },
+  "CLAUDE_CODE_API_KEY_HELPER_TTL_MS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_ARTIFACTS_API_BASE_URL": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_ARTIFACTS_API_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_ARTIFACT_ASSET_BASE_URL": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_ARTIFACT_LIVE_BASE_URL": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_ARTIFACT_SYNC_BASE_URL": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_ARTIFACT_VIEWER_BASE_URL": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_CUSTOM_OAUTH_URL": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_GATEWAY_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_GB_BASE_URL": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_HFI_BEARER_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_MCP_SERVE_AUTH_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_MEMORY_API_BASE_URL": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_MEMORY_API_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_MESSAGING_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_OAUTH_REFRESH_TOKEN": {
+   "matched_by": "harness",
+   "round3_list": "subscription_token_variables"
+  },
+  "CLAUDE_CODE_OAUTH_TOKEN": {
+   "matched_by": "harness",
+   "round3_list": "subscription_token_variables"
+  },
+  "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SESSION_ACCESS_TOKEN": {
+   "matched_by": "harness",
+   "round3_list": "subscription_token_variables"
+  },
+  "CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SKIP_ANTHROPIC_GOOGLE_CLOUD_AUTH": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SKIP_AWS_CRED_CACHE": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SKIP_BEDROCK_AUTH": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SKIP_FAST_MODE_NETWORK_ERRORS": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SKIP_FOUNDRY_AUTH": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SKIP_HFI_VERSION_CHECK": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SKIP_MANTLE_AUTH": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SKIP_MODEL_ACCESS_MEMORY": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS_EXCEPT": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SKIP_PROJECT_BACKFILL": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SKIP_PROMPT_HISTORY": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SKIP_REPO_UPLOAD": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SKIP_VERTEX_AUTH": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_SLACK_TAG_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_USE_ANTHROPIC_AWS": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_USE_BEDROCK": {
+   "matched_by": "harness",
+   "round3_list": "billing_route_variables"
+  },
+  "CLAUDE_CODE_USE_CCR_V2": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_USE_COWORK_PLUGINS": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_USE_FOUNDRY": {
+   "matched_by": "harness",
+   "round3_list": "billing_route_variables"
+  },
+  "CLAUDE_CODE_USE_GATEWAY": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_USE_MANTLE": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_USE_NATIVE_FILE_SEARCH": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_USE_POWERSHELL_TOOL": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_CODE_USE_VERTEX": {
+   "matched_by": "harness",
+   "round3_list": "billing_route_variables"
+  },
+  "CLAUDE_RUNNER_API_BASE_URL": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLAUDE_TRUSTED_DEVICE_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLIENT_CREDENTIALS_GRANT": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLIENT_EARLY_TRAFFIC_SECRET": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLIENT_HANDSHAKE_TRAFFIC_SECRET": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLIENT_TRAFFIC_SECRET_0": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLOUDPROVIDERVALUES_ALIBABA_CLOUD": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLOUDPROVIDERVALUES_AWS": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLOUDPROVIDERVALUES_AZURE": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLOUDPROVIDERVALUES_GCP": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "CLOUDSDK_AUTH_ACCESS_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLOUDSDK_AUTH_ACCESS_TOKEN_FILE": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CLOUDSDK_PROXY_PASSWORD": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CODEARTIFACT_AUTH_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CONAN_PASSWORD": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CONSUL_HTTP_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "COURSIER_CREDENTIALS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALED_URL_MESSAGE": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_CODE": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_DIRECTORY": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_ENV_VARS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_ENV_VARS0": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_ENV_VARS_STS_WEB_ID_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_HTTP": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_LOGIN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_PROCESS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_PROFILE": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_PROFILE_LOGIN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_PROFILE_NAMED_PROVIDER": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_PROFILE_PROCESS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_PROFILE_SOURCE_PROFILE": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_PROFILE_SSO": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_PROFILE_SSO_LEGACY": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_PROFILE_STS_WEB_ID_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_SSO": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_SSO_LEGACY": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_STS_ASSUME_ROLE": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIALS_STS_ASSUME_ROLE_WEB_ID": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIAL_HELPER_SETTINGS_KEYS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIAL_KINDS_FOR_PROVIDER": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIAL_QUERY_PARAM": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "CREDENTIAL_SPEC": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "DATADOG_API_KEY": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "DATADOG_CLIENT_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "DEFAULT_INFERENCE_PROVIDER": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "DEFAULT_WORKFLOW_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "DOLLAR_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ENVIRONMENT_SECRET": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ENV_SECRET": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ERR_INVALID_HTTP_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ERR_MYSQL_FAILED_TO_ENCRYPT_PASSWORD": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ERR_MYSQL_PASSWORD_REQUIRED": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ERR_REDIS_INVALID_PASSWORD": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ERR_S3_INVALID_SESSION_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ERR_S3_MISSING_CREDENTIALS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ERR_SECRETS_ACCESS_DENIED": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ERR_SECRETS_AUTH_FAILED": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ERR_SECRETS_INTERACTION_NOT_ALLOWED": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ERR_SECRETS_INTERACTION_REQUIRED": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ERR_SECRETS_INTERACTION_REQUIREDBUG": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ERR_SECRETS_NOT_FOUND": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ERR_SECRETS_PLATFORM_ERROR": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ERR_SECRETS_USER_CANCELED": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ERR_UNKNOWN_CREDENTIAL": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "EXPORTER_SECRET": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "FAASINVOKEDPROVIDERVALUES_ALIBABA_CLOUD": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "FAASINVOKEDPROVIDERVALUES_AWS": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "FAASINVOKEDPROVIDERVALUES_AZURE": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "FAASINVOKEDPROVIDERVALUES_GCP": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "FLIT_PASSWORD": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "FOO_API_KEY": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "GEM_HOST_API_KEY": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "GH_ENTERPRISE_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "GH_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "GITHUB_ACCESS_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "GITHUB_ENTERPRISE_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "GITHUB_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "GITLAB_ACCESS_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "GITLAB_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "GOOGLE_APPLICATION_CREDENTIALS": {
+   "matched_by": "harness",
+   "round3_list": null
+  },
+  "GOOGLE_OAUTH_ACCESS_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "HF_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "HPE_INVALID_HEADER_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "HTTP2_HEADER_ACCESS_CONTROL_ALLOW_CREDENTIALS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "HTTP_PARSER_ERROR_INVALID_HEADER_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "HUGGINGFACEHUB_API_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "HUGGING_FACE_HUB_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "HYBRID_SERVABLE_CREDENTIAL_KINDS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "HYBRID_SERVABLE_PROVIDERS": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "IDTOKEN_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ID_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "INCORRECT_PASSWORD": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "INFERENCE_CREDENTIAL_KINDS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "INVALID_DELEGATED_CREDENTIAL": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "INVALID_PASSWORD": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "INVALID_SECRET_LENGTH": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "INVALID_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "LISTENER_NEW_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "LONG_LIVED_OAUTH_TOKEN_TTL_SECONDS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "LSQUIC_LOG_SECRETS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "MARIADB_PASSWORD": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "MARKETPLACE_CREDENTIAL_KINDS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "MATURIN_PASSWORD": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "MATURIN_PYPI_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "MCP_CLIENT_SECRET": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "MCP_XAA_IDP_CLIENT_SECRET": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "MISSING_CREDENTIALS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "ML_AND_SF_SECRET_HEADER_NAME": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "MSI_SECRET": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "MYSQL_PASSWORD": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "MY_API_KEY": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "NEW_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "NODE_AUTH_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "NOMAD_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "NOOP_METER_PROVIDER": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "NO_CACHED_ACCESS_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "NO_CREDENTIALS_FOUND": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "NPM_CONFIG_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "NPM_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "NUGET_AUTH_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "OAUTH_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "OAUTH_TOKEN_SAVE_FAILED_WARNING": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "OVERRIDE_GITHUB_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "PG_PASSWORD": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "PLACEHOLDER_CREDENTIAL_KEYS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "PROVIDER_ARMS": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "PROVIDER_CLI_FLAG": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "PROVIDER_DETECTED": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "PROVIDER_DISPLAY": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "PROVIDER_SELECTOR_ENV_FLAGS": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "PYPI_API_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "PYPI_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "QUIC_FRAME_NEW_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "REFRESH_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "RESOURCE_OWNER_PASSWORD_GRANT": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "RUNNER_ENVIRONMENT_SECRET": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "RUNNER_POOL_SECRET": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "SBT_CREDENTIALS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "SECRET_ACCESS_KEY": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "SELF_HOSTED_RUNNER_ENVIRONMENT_SECRET": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "SELF_HOSTED_RUNNER_POOL_SECRET": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "SEMATTRS_FAAS_INVOKED_PROVIDER": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "SEMRESATTRS_CLOUD_PROVIDER": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "SERVER_HANDSHAKE_TRAFFIC_SECRET": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "SERVER_TRAFFIC_SECRET_0": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "SESSION_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "SHR_GIT_PROXY_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "SIGN_IN_CREDENTIAL_KINDS": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "SONAR_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "THIRD_PARTY_PROVIDER_ENV_VARS": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "THIRD_PARTY_PROVIDER_LABELS": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "TRUST_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "TWINE_PASSWORD": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "UNSUPPORTED_CREDENTIAL_LIST": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "USER_CREDENTIALS_CHANGED": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "UV_PUBLISH_PASSWORD": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "UV_PUBLISH_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "U_UNEXPECTED_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "VAULT_AUTH_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "VAULT_SECRET_ID": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "VAULT_TOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "VERTEX_OAUTH_CREDENTIAL_KIND": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "VOICE_STREAM_BASE_URL": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "VSS_NUGET_ACCESSTOKEN": {
+   "matched_by": "generic",
+   "round3_list": null
+  },
+  "WEB_SEARCH_PROVIDERS": {
+   "matched_by": "outside",
+   "round3_list": null
+  },
+  "WEB_SEARCH_PROVIDER_HOSTS": {
+   "matched_by": "outside",
+   "round3_list": null
+  }
+ },
+ "record": "Claude Code 2.1.296 environment-vocabulary classification (box lane, 15 Oct 2026; glitch-6b's item for the checker-constants ruling)",
+ "round3_listed_absent_from_2_1_296": [],
+ "sources": {
+  "origin_kinds": {
+   "file": "claude-2.1.296-origin-kinds-20261015.json",
+   "sha256": "18be87ac22135d1ac0b20cb4605d8233c730881424c6c20bc8e2b6acb33c013c"
+  },
+  "provider_tables": {
+   "file": "claude-2.1.296-provider-tables-20261015.json",
+   "sha256": "112bf738901f1187b7a7396d665da65cb5d753f060a09eb0d0b354f2b5438b67"
+  },
+  "route_names": {
+   "file": "claude-2.1.296-route-names-20261015.json",
+   "sha256": "f7b7c0240611ea4caeee38d9490fafae3cc320e1903c6ce30750069c43a4ca7a"
+  },
+  "sweep": {
+   "file": "claude-2.1.296-binary-sweep-20261015.json",
+   "sha256": "ea41aeb1c5ea1063d829d1377bce53b1de983674d4d223b325a8a79443eb0fa6"
+  }
+ }
+}

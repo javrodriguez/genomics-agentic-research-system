@@ -5,13 +5,15 @@ The folder is mounted at `run_take.CONFIG_MOUNT` in the take container and is th
 (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `GEMINI_CLI_HOME`, set by run_take's environment per harness). Split from
 run_take.py (this lane's decision) so each file stays one owner and small.
 
-  - claude-code: `settings.json` holding ONLY the bypass acceptance ("setting sources that include the per-take user
-    settings, which carry only the bypass acceptance; the host's user settings never exist in the box"). Its key is
-    PENDING: the guards plan names `skipDangerousModePermissionPrompt` (its line 77), confirmed at the pinned version.
-  - codex: `config.toml` with D8's values verbatim, `model` from the caller, `model_reasoning_effort` PENDING (the
+  - claude-code: an EMPTY `settings.json` (`{}`). The plan said the per-take user settings "carry only the bypass
+    acceptance"; that is departed from: the acceptance is RULED not required in -p runs (glitch-06, 14 Oct 2026;
+    CLAUDE_BYPASS_RULING in run_take), so the study sends no bypass key anywhere. The host's user settings never exist
+    in the box, and every turn runs --setting-sources project,local, so this user scope never loads anyway.
+  - codex: `config.toml` with D8's values and the owner's subscription amendment, `model` from the caller, `model_reasoning_effort` PENDING (the
     harness's default for that model at the pinned version).
   - gemini: `settings.json` with D8's values verbatim, `model.name` from the caller; the thinking level, the API-key
-    auth-type setting (name and value) and the file's location under GEMINI_CLI_HOME are PENDING.
+    auth-type setting (name and value) are PENDING. The installed0.64.0 source establishes the file location
+    under GEMINI_CLI_HOME and the explicitly frozen legacy noninteractive path.
 
 `write()` refuses (NotReady) while any value its harness needs is PENDING. No public function takes a PENDING value
 as a parameter; tests fill them only by patching this module in memory. No key ever enters a config file: no
@@ -33,33 +35,39 @@ Refused = run_take.Refused
 
 CLAUDE_CODE, CODEX, GEMINI = run_take.CLAUDE_CODE, run_take.CODEX, run_take.GEMINI
 
-# claude-code: the user-settings key that pre-accepts the bypass-mode warning.
-CLAUDE_BYPASS_KEY = PENDING
+# claude-code: the bypass acceptance, RULED not required in -p (CLAUDE_BYPASS_RULING in run_take): no key is written. This
+# mirrors run_take.CLAUDE_BYPASS_KEY as its own literal (the process audit's attribute list is not widened; tests bind
+# take_config.CLAUDE_BYPASS_KEY to run_take.CLAUDE_BYPASS_KEY).
+CLAUDE_BYPASS_NOT_REQUIRED = "RULED: not required in -p"
+CLAUDE_BYPASS_KEY = CLAUDE_BYPASS_NOT_REQUIRED
 CLAUDE_SETTINGS = "settings.json"
 
-# codex: D8 section 3, verbatim.
+# Codex: D8 section 3 plus owner's 13 Oct subscription-only amendment.
 CODEX_CONFIG = "config.toml"
 CODEX_REASONING_EFFORT = PENDING
 CODEX_TOP = (("web_search", "disabled"), ("project_doc_fallback_filenames", ["CLAUDE.md"]),
-             ("check_for_update_on_startup", False), ("forced_login_method", "api"),
-             ("cli_auth_credentials_store", "ephemeral"))
+             ("check_for_update_on_startup", False), ("forced_login_method", "chatgpt"),
+             ("cli_auth_credentials_store", "file"))
 CODEX_FEATURES = (("hooks", False),)
 
 # gemini: D8 section 3, verbatim, as dotted paths into settings.json.
 GEMINI_SETTINGS = (("tools.exclude", ["google_web_search", "web_fetch"]), ("context.fileName", ["CLAUDE.md"]),
                    ("hooksConfig.enabled", False), ("general.enableAutoUpdate", False),
                    ("general.enableAutoUpdateNotification", False), ("privacy.usageStatisticsEnabled", False),
-                   ("telemetry.enabled", False))
+                   ("telemetry.enabled", False),
+                   ("experimental.adk.agentSessionNoninteractiveEnabled", False))
 GEMINI_MODEL_PATH = "model.name"
 # Each, once measured: {"path": "<dotted path>", "value": <JSON value>}.
 GEMINI_THINKING = PENDING
 GEMINI_AUTH_SETTING = PENDING
 # The settings file's path relative to GEMINI_CLI_HOME (for example ".gemini/settings.json"), once measured.
-GEMINI_SETTINGS_PATH = PENDING
+# Installed0.64.0 Storage.getGlobalSettingsPath: GEMINI_CLI_HOME/.gemini/settings.json.
+# Exact installed path/hash/offset retained in gemini-storage-source.json.
+GEMINI_SETTINGS_PATH = ".gemini/settings.json"
 
 PENDING_WHY = {
-    "CLAUDE_BYPASS_KEY": "the bypass acceptance's user-settings key: the guards plan names "
-                         "skipDangerousModePermissionPrompt (line 77); confirmed at the pinned version.",
+    "CLAUDE_BYPASS_KEY": "the bypass acceptance: RULED not required in -p runs (CLAUDE_BYPASS_RULING in run_take); "
+                         "listed here only if it is ever set back to PENDING.",
     "CODEX_REASONING_EFFORT": "Codex's model_reasoning_effort: the harness's default for that model at the pinned "
                               "version.",
     "GEMINI_THINKING": "Gemini CLI's thinking level (setting path and value) at the pinned version.",
@@ -129,10 +137,10 @@ def _model(model) -> str:
 
 def _claude(model) -> dict:
     if model is not None:
-        raise Refused("Claude Code's per-take settings carry only the bypass acceptance; the model rides as a flag")
-    if not isinstance(CLAUDE_BYPASS_KEY, str) or not _KEY.fullmatch(CLAUDE_BYPASS_KEY):
-        raise Refused("the bypass key is off its shape")
-    return {CLAUDE_SETTINGS: _json_bytes({CLAUDE_BYPASS_KEY: True})}
+        raise Refused("Claude Code's per-take settings are empty; the model rides as a flag")
+    if CLAUDE_BYPASS_KEY != CLAUDE_BYPASS_NOT_REQUIRED:
+        raise Refused("the study writes no bypass acceptance key: RULED not required in -p runs")
+    return {CLAUDE_SETTINGS: _json_bytes({})}
 
 
 def _codex(model) -> dict:
@@ -168,6 +176,19 @@ def files_for(harness: str, *, model) -> dict:
         raise Refused(f"no config writer for {harness!r}")
     _ready(harness)
     return WRITERS[harness](model)
+
+
+def public_record(harness: str, *, model) -> dict:
+    """Submitted public settings only, rendered through every existing readiness check.
+
+    No config-home file or credential is read. This is not proof of loaded settings;
+    actual launch/preflight/native-session evidence must bind these generated bytes.
+    Codex's subscription execution remains independently refused by run_take.
+    """
+    files = files_for(harness, model=model)
+    return {"schema": 1, "harness": harness,
+            "files": [{"path": path, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(),
+                       "text": data.decode("ascii")} for path, data in sorted(files.items())]}
 
 
 def write(config_dir: str, harness: str, *, model) -> dict:

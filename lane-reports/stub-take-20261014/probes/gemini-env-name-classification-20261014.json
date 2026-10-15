@@ -1,0 +1,4410 @@
+{
+ "counts": {
+  "ambiguous": 146,
+  "credential": 13,
+  "harmless": 294,
+  "own-login": 1,
+  "route": 60,
+  "row": 5
+ },
+ "names": 519,
+ "package_text_digest": "6d80381523622ff736654905bf1bc76debcd89ae7cbb8ab87979d09562ea87a4",
+ "package_version": "0.64.0",
+ "refuse_if_present": [
+  "ANTIGRAVITY_CLI_ALIAS",
+  "AWS_ACCESS_KEY_ID",
+  "AWS_ACCOUNT",
+  "AWS_DEFAULT_REGION",
+  "AWS_EC2_METADATA_IPV4_ADDRESS",
+  "AWS_EC2_METADATA_IPV6_ADDRESS",
+  "AWS_REGION",
+  "AWS_SECRET_ACCESS_KEY",
+  "AWS_SESSION_TOKEN",
+  "AZURE_CLIENT_ID",
+  "AZURE_TENANT_ID",
+  "BUILD_SANDBOX",
+  "CLOUDSDK_CONFIG",
+  "CLOUDSDK_CONFIG_DIRECTORY",
+  "CLOUD_RUN_JOB",
+  "CLOUD_SHELL",
+  "CLOUD_SHELL_VERSION",
+  "CODE_ASSIST_API_VERSION",
+  "CODE_ASSIST_ENDPOINT",
+  "CRUX_API_KEY",
+  "DEBUG_AUTH",
+  "DETECT_GCP_RETRIES",
+  "DOTENV_KEY",
+  "EDITOR_IN_CLOUD_SHELL",
+  "EDITOR_URL",
+  "FUNCTION_NAME",
+  "FUNCTION_REGION",
+  "FUNCTION_TARGET",
+  "GAE_MODULE_NAME",
+  "GAE_MODULE_VERSION",
+  "GAE_SERVICE",
+  "GAE_VERSION",
+  "GCE_METADATA_HOST",
+  "GCE_METADATA_IP",
+  "GCLOUD_PROJECT",
+  "GCLOUD_SANDBOX_ENV",
+  "GCP_VERTEX_AI",
+  "GEMINI_API_KEY_AUTH_MECHANISM",
+  "GEMINI_CLI_ACTIVITY_LOG_TARGET",
+  "GEMINI_CLI_API_ERROR_MODEL",
+  "GEMINI_CLI_API_REQUEST_MODEL",
+  "GEMINI_CLI_API_RESPONSE_CACHED_TOKEN_COUNT",
+  "GEMINI_CLI_API_RESPONSE_INPUT_TOKEN_COUNT",
+  "GEMINI_CLI_API_RESPONSE_MODEL",
+  "GEMINI_CLI_API_RESPONSE_OUTPUT_TOKEN_COUNT",
+  "GEMINI_CLI_API_RESPONSE_THINKING_TOKEN_COUNT",
+  "GEMINI_CLI_API_RESPONSE_TOOL_TOKEN_COUNT",
+  "GEMINI_CLI_AUTH_OVERRIDE",
+  "GEMINI_CLI_AUTH_TYPE",
+  "GEMINI_CLI_BILLING_CREDITS_CONSUMED",
+  "GEMINI_CLI_BILLING_CREDITS_REMAINING",
+  "GEMINI_CLI_BILLING_CREDIT_BALANCE",
+  "GEMINI_CLI_BILLING_MODEL",
+  "GEMINI_CLI_BILLING_PURCHASE_SOURCE",
+  "GEMINI_CLI_BILLING_SELECTED_OPTION",
+  "GEMINI_CLI_COMPRESSION_TOKENS_AFTER",
+  "GEMINI_CLI_COMPRESSION_TOKENS_BEFORE",
+  "GEMINI_CLI_CUSTOM_HEADERS",
+  "GEMINI_CLI_EXPERIMENT_IDS",
+  "GEMINI_CLI_EXP_AGENT",
+  "GEMINI_CLI_EXTENSION_DISABLE_SETTING_SCOPE",
+  "GEMINI_CLI_EXTENSION_ENABLE_SETTING_SCOPE",
+  "GEMINI_CLI_EXTENSION_REGISTRY_URI",
+  "GEMINI_CLI_FILE_OPERATION_EXTENSION",
+  "GEMINI_CLI_FILE_OPERATION_LINES",
+  "GEMINI_CLI_FILE_OPERATION_MIMETYPE",
+  "GEMINI_CLI_FILE_OPERATION_TYPE",
+  "GEMINI_CLI_GOOGLE_ACCOUNTS_COUNT",
+  "GEMINI_CLI_IDE_AUTH_TOKEN",
+  "GEMINI_CLI_IDE_PID",
+  "GEMINI_CLI_IDE_SERVER_PORT",
+  "GEMINI_CLI_IDE_SERVER_STDIO_ARGS",
+  "GEMINI_CLI_IDE_SERVER_STDIO_COMMAND",
+  "GEMINI_CLI_IDE_WORKSPACE_PATH",
+  "GEMINI_CLI_INTEGRATION_TEST",
+  "GEMINI_CLI_KEYCHAIN_AVAILABLE",
+  "GEMINI_CLI_KEY_UNKNOWN",
+  "GEMINI_CLI_LLM_LOOP_CHECK_MAIN_MODEL",
+  "GEMINI_CLI_LLM_LOOP_CHECK_MAIN_MODEL_CONFIDENCE",
+  "GEMINI_CLI_LOOP_DETECTED_CONFIRMED_BY_MODEL",
+  "GEMINI_CLI_MALFORMED_JSON_RESPONSE_MODEL",
+  "GEMINI_CLI_MODEL_SLASH_COMMAND",
+  "GEMINI_CLI_RESEARCH_CONTACT_EMAIL",
+  "GEMINI_CLI_ROUTING_CLASSIFIER_THRESHOLD",
+  "GEMINI_CLI_ROUTING_DECISION",
+  "GEMINI_CLI_ROUTING_DECISION_SOURCE",
+  "GEMINI_CLI_ROUTING_FAILURE",
+  "GEMINI_CLI_ROUTING_FAILURE_REASON",
+  "GEMINI_CLI_ROUTING_LATENCY_MS",
+  "GEMINI_CLI_ROUTING_NUMERICAL_ENABLED",
+  "GEMINI_CLI_ROUTING_REASONING",
+  "GEMINI_CLI_START_SESSION_API_KEY_ENABLED",
+  "GEMINI_CLI_START_SESSION_EMBEDDING_MODEL",
+  "GEMINI_CLI_START_SESSION_MODEL",
+  "GEMINI_CLI_START_SESSION_SANDBOX",
+  "GEMINI_CLI_START_SESSION_TELEMETRY_ENABLED",
+  "GEMINI_CLI_START_SESSION_TELEMETRY_LOG_USER_PROMPTS_ENABLED",
+  "GEMINI_CLI_START_SESSION_VERTEX_API_ENABLED",
+  "GEMINI_CLI_SURFACE",
+  "GEMINI_CLI_SYSTEM_DEFAULTS_PATH",
+  "GEMINI_CLI_SYSTEM_SETTINGS_PATH",
+  "GEMINI_CLI_TEST_VAR",
+  "GEMINI_CLI_TOKEN_STORAGE_FORCED",
+  "GEMINI_CLI_TOKEN_STORAGE_TYPE",
+  "GEMINI_CLI_TOOL_OUTPUT_MASKING_TOKENS_AFTER",
+  "GEMINI_CLI_TOOL_OUTPUT_MASKING_TOKENS_BEFORE",
+  "GEMINI_CLI_TOOL_OUTPUT_MASKING_TOTAL_PRUNABLE_TOKENS",
+  "GEMINI_CLI_TRUSTED_FOLDERS_PATH",
+  "GEMINI_CLI_TRUST_WORKSPACE",
+  "GEMINI_CLI_USER_SETTINGS",
+  "GEMINI_CLI_USE_COMPUTE_ADC",
+  "GEMINI_CONTEXT_TRACE_DIR",
+  "GEMINI_DEBUG_LOG_FILE",
+  "GEMINI_DEFAULT_AUTH_TYPE",
+  "GEMINI_DIR",
+  "GEMINI_EXP",
+  "GEMINI_FORCE_ENCRYPTED_FILE_STORAGE",
+  "GEMINI_FORCE_FILE_STORAGE",
+  "GEMINI_IGNORE_FILE_NAME",
+  "GEMINI_MODEL",
+  "GEMINI_MODEL_ALIAS_AUTO",
+  "GEMINI_MODEL_ALIAS_FLASH",
+  "GEMINI_MODEL_ALIAS_FLASH_LITE",
+  "GEMINI_MODEL_ALIAS_PRO",
+  "GEMINI_PLANS_DIR",
+  "GEMINI_PROJECT_DIR",
+  "GEMINI_RESTRICTED_MODE",
+  "GEMINI_SANDBOX",
+  "GEMINI_SANDBOX_IMAGE",
+  "GEMINI_SANDBOX_PROXY_COMMAND",
+  "GEMINI_SYSTEM_MD",
+  "GEMINI_TELEMETRY_ENABLED",
+  "GEMINI_TELEMETRY_LOG_PROMPTS",
+  "GEMINI_TELEMETRY_OTLP_ENDPOINT",
+  "GEMINI_TELEMETRY_OTLP_PROTOCOL",
+  "GEMINI_TELEMETRY_OUTFILE",
+  "GEMINI_TELEMETRY_TARGET",
+  "GEMINI_TELEMETRY_TRACES_ENABLED",
+  "GEMINI_TELEMETRY_USE_CLI_AUTH",
+  "GEMINI_TELEMETRY_USE_COLLECTOR",
+  "GEMINI_WRITE_SYSTEM_MD",
+  "GITHUB_TOKEN",
+  "GOOGLE_ACCOUNTS_FILENAME",
+  "GOOGLE_AI_API_DEFAULT_VERSION",
+  "GOOGLE_API_CERTIFICATE_CONFIG",
+  "GOOGLE_API_CLIENT_HEADER",
+  "GOOGLE_API_KEY",
+  "GOOGLE_API_KEY_HEADER",
+  "GOOGLE_API_USE_CLIENT_CERTIFICATE",
+  "GOOGLE_API_USE_MTLS_ENDPOINT",
+  "GOOGLE_APPLICATION_CREDENTIALS",
+  "GOOGLE_CLOUD_ACCESS_TOKEN",
+  "GOOGLE_CLOUD_ACCOUNT",
+  "GOOGLE_CLOUD_LOCATION",
+  "GOOGLE_CLOUD_PROJECT",
+  "GOOGLE_CLOUD_PROJECT_ID",
+  "GOOGLE_CLOUD_QUOTA_PROJECT",
+  "GOOGLE_CLOUD_REGION",
+  "GOOGLE_CLOUD_UNIVERSE_DOMAIN",
+  "GOOGLE_CLOUD_WORKSTATIONS",
+  "GOOGLE_CREDENTIALS",
+  "GOOGLE_EXTERNAL_ACCOUNT_ALLOW_EXECUTABLES",
+  "GOOGLE_EXTERNAL_ACCOUNT_AUDIENCE",
+  "GOOGLE_EXTERNAL_ACCOUNT_IMPERSONATED_EMAIL",
+  "GOOGLE_EXTERNAL_ACCOUNT_INTERACTIVE",
+  "GOOGLE_EXTERNAL_ACCOUNT_OUTPUT_FILE",
+  "GOOGLE_EXTERNAL_ACCOUNT_TOKEN_TYPE",
+  "GOOGLE_GEMINI_BASE_URL",
+  "GOOGLE_GENAI_API_VERSION",
+  "GOOGLE_GENAI_USE_GCA",
+  "GOOGLE_GENAI_USE_VERTEXAI",
+  "GOOGLE_GRANT_TYPE",
+  "GOOGLE_REVOKE_TOKEN_URL",
+  "GOOGLE_SERVICE_ACCOUNT_AUTH",
+  "GOOGLE_TOKEN_INFO_URL",
+  "GOOGLE_TOKEN_URL",
+  "GOOGLE_VERTEX_BASE_URL",
+  "GRPC_DEFAULT_SSL_ROOTS_FILE_PATH",
+  "GRPC_NODE_USE_ALTERNATIVE_RESOLVER",
+  "GRPC_SSL_CIPHER_SUITES",
+  "HTTP_PROXY",
+  "K_CONFIGURATION",
+  "K_REVISION",
+  "K_SERVICE",
+  "LOG_TOKENS",
+  "METADATA_SERVER_DETECTION",
+  "NODE_OPTIONS",
+  "NO_PROXY",
+  "OAUTH_CALLBACK_HOST",
+  "OAUTH_CALLBACK_PORT",
+  "OTEL_EXPORTER_OTLP_HEADERS",
+  "OTEL_EXPORTER_PROMETHEUS_HOST",
+  "OTEL_EXPORTER_PROMETHEUS_PORT",
+  "OTLP_GOOGLE_CLOUD_PROJECT",
+  "RATE_LIMIT_ERROR_MESSAGE_VERTEX",
+  "REQUIRED_VERTEX_AI_SCOPE",
+  "SANDBOX",
+  "SANDBOX_ENV",
+  "SANDBOX_FLAGS",
+  "SANDBOX_MOUNTS",
+  "SANDBOX_PORTS",
+  "SANDBOX_SET_UID_GID",
+  "SEATBELT_PROFILE",
+  "SURFACE",
+  "USE_VERTEX_AI",
+  "VERTEX_AI_API_DEFAULT_VERSION",
+  "VERTEX_AI_EU_REP_ENDPOINT",
+  "VERTEX_AI_REQUEST_TYPE_HEADER",
+  "VERTEX_AI_SHARED_REQUEST_TYPE_HEADER",
+  "VERTEX_AI_US_REP_ENDPOINT",
+  "WEB_HOST",
+  "gcloud_project",
+  "google_application_credentials",
+  "google_cloud_project",
+  "grpc_proxy",
+  "http_proxy",
+  "https_proxy",
+  "no_grpc_proxy",
+  "no_proxy"
+ ],
+ "rows": [
+  {
+   "class": "ambiguous",
+   "name": "ANTIGRAVITY_CLI_ALIAS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "APPDATA",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "credential",
+   "name": "AWS_ACCESS_KEY_ID",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "AWS_ACCOUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "AWS_ALGORITHM",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "route",
+   "name": "AWS_DEFAULT_REGION",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "AWS_EC2_INSTANCE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "AWS_EC2_METADATA_IPV4_ADDRESS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "AWS_EC2_METADATA_IPV6_ADDRESS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "route",
+   "name": "AWS_REGION",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "AWS_REQUEST_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "credential",
+   "name": "AWS_SECRET_ACCESS_KEY",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "credential",
+   "name": "AWS_SESSION_TOKEN",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "AZURE_CLIENT_ID",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "AZURE_TENANT_ID",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "AppData",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "BAZEL_TEST",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "BROWSER",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "BUF_BIGINT_DISABLE",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "BUILD_SANDBOX",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "CHOKIDAR_INTERVAL",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "CHOKIDAR_USEPOLLING",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "CHROME_CONFIG_HOME",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "CHROME_DEVTOOLS_MCP_CRASH_ON_UNCAUGHT",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "CI",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "CLI_TITLE",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "CLOUDSDK_CONFIG",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "CLOUDSDK_CONFIG_DIRECTORY",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "CLOUD_RUN_JOB",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "CLOUD_SHELL",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "CLOUD_SHELL_VERSION",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "CODESPACES",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "CODE_ASSIST_API_VERSION",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "CODE_ASSIST_ENDPOINT",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "COLORTERM",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "COLUMNS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "COMSPEC",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "CONTAINER_NAME",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "credential",
+   "name": "CRUX_API_KEY",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "CURSOR_TRACE_ID",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "ComSpec",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "DEBIAN_FRONTEND",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "DEBUG",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "DEBUG_AUTH",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "DEBUG_MODE",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "DEBUG_PORT",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "DESTDIR",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "DETECT_GCP_RETRIES",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "DEV",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "DISPLAY",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "credential",
+   "name": "DOTENV_KEY",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "EDITOR",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "EDITOR_IN_CLOUD_SHELL",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "EDITOR_URL",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "FORCE_COLOR",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "FORCE_GENERIC_KEYBINDING_HINTS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "FORMAT_START",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "FUNCTION_NAME",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "FUNCTION_REGION",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "FUNCTION_TARGET",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GAE_MODULE_NAME",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GAE_MODULE_VERSION",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GAE_SERVICE",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GAE_VERSION",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GCE_METADATA_HOST",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GCE_METADATA_IP",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GCLOUD_PROJECT",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GCLOUD_SANDBOX_ENV",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GCP_GEN_AI",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GCP_VERTEX_AI",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_3_1_PRO_LAUNCHED",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_3_5_FLASH_GA_LAUNCHED",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_3_SET",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "own-login",
+   "name": "GEMINI_API_KEY",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_API_KEY_AUTH_MECHANISM",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_ACTIVE_APPROVAL_MODE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_CLI_ACTIVITY_LOG_TARGET",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_AGENT_DURATION_MS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_AGENT_ID",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_AGENT_NAME",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_AGENT_RECOVERY_DURATION_MS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_AGENT_RECOVERY_REASON",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_AGENT_RECOVERY_SUCCESS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_AGENT_TERMINATE_REASON",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_AGENT_TURN_COUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_AI_ADDED_CHARS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_AI_ADDED_LINES",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_AI_REMOVED_CHARS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_AI_REMOVED_LINES",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_API_ERROR_DURATION_MS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_API_ERROR_MODEL",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_API_ERROR_STATUS_CODE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_API_ERROR_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_API_REQUEST_MODEL",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_API_RESPONSE_CACHED_TOKEN_COUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_API_RESPONSE_CONTEXT_BREAKDOWN_HISTORY",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_API_RESPONSE_CONTEXT_BREAKDOWN_MCP_SERVERS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_API_RESPONSE_CONTEXT_BREAKDOWN_SYSTEM_INSTRUCTIONS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_API_RESPONSE_CONTEXT_BREAKDOWN_TOOL_CALLS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_API_RESPONSE_CONTEXT_BREAKDOWN_TOOL_DEFINITIONS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_API_RESPONSE_DURATION_MS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_API_RESPONSE_INPUT_TOKEN_COUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_API_RESPONSE_MODEL",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_API_RESPONSE_OUTPUT_TOKEN_COUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_API_RESPONSE_STATUS_CODE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_API_RESPONSE_THINKING_TOKEN_COUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_API_RESPONSE_TOOL_TOKEN_COUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_APPROVAL_MODE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_APPROVAL_MODE_DURATION_MS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_APPROVAL_MODE_TO",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_ASK_USER_ANSWER_COUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_ASK_USER_DISMISSED",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_ASK_USER_EMPTY_SUBMISSION",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_ASK_USER_QUESTION_TYPES",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_CLI_AUTH_OVERRIDE",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_AUTH_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_BILLING_CREDITS_CONSUMED",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_BILLING_CREDITS_REMAINING",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_BILLING_CREDIT_BALANCE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_BILLING_MODEL",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_BILLING_PURCHASE_SOURCE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_BILLING_SELECTED_OPTION",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_BROWSER_AGENT_DURATION_MS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_BROWSER_AGENT_ERROR_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_BROWSER_AGENT_HEADLESS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_BROWSER_AGENT_SESSION_MODE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_BROWSER_AGENT_SUCCESS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_BROWSER_AGENT_TOOL_COUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_BROWSER_AGENT_VISION_DISABLED_REASON",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_BROWSER_AGENT_VISION_ENABLED",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_COMPANION_EXTENSION_NAME",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_COMPRESSION_TOKENS_AFTER",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_COMPRESSION_TOKENS_BEFORE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_CONTENT_RETRY_ATTEMPT_NUMBER",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_CONTENT_RETRY_DELAY_MS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_CONTENT_RETRY_ERROR_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_CONTENT_RETRY_FAILURE_FINAL_ERROR_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_CONTENT_RETRY_FAILURE_TOTAL_ATTEMPTS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_CONTENT_RETRY_FAILURE_TOTAL_DURATION_MS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_CONVERSATION_TURN_COUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_CPU_CORES",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_CPU_INFO",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "credential",
+   "name": "GEMINI_CLI_CUSTOM_HEADERS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_EDIT_CORRECTION",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_EDIT_STRATEGY",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_END_SESSION_ID",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_EXPERIMENT_IDS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_CLI_EXP_AGENT",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_EXTENSION_DISABLE_SETTING_SCOPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_EXTENSION_ENABLE_SETTING_SCOPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_EXTENSION_ID",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_EXTENSION_INSTALL_STATUS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_EXTENSION_NAME",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_EXTENSION_PREVIOUS_VERSION",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_CLI_EXTENSION_REGISTRY_URI",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_EXTENSION_SOURCE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_EXTENSION_UNINSTALL_STATUS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_EXTENSION_UPDATE_STATUS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_EXTENSION_VERSION",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_FILE_OPERATION_EXTENSION",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_FILE_OPERATION_LINES",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_FILE_OPERATION_MIMETYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_FILE_OPERATION_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_GH_CUSTOM_TRACKING_ID",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_GH_EVENT_NAME",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_GH_ISSUE_NUMBER",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_GH_PR_NUMBER",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_GH_REPOSITORY_NAME_HASH",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_GH_WORKFLOW_NAME",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_GIT_COMMIT_HASH",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_GOOGLE_ACCOUNTS_COUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_GPU_INFO",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "row",
+   "name": "GEMINI_CLI_HOME",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_HOOK_DURATION_MS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_HOOK_EVENT_NAME",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_HOOK_EXIT_CODE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_HOOK_SUCCESS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_IDENTIFICATION_ENV_VAR",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_IDENTIFICATION_ENV_VAR_VALUE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "credential",
+   "name": "GEMINI_CLI_IDE_AUTH_TOKEN",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_IDE_CONNECTION_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_IDE_PID",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_CLI_IDE_SERVER_PORT",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_CLI_IDE_SERVER_STDIO_ARGS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_CLI_IDE_SERVER_STDIO_COMMAND",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_IDE_WORKSPACE_PATH",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_INTEGRATION_TEST",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_INTERACTIVE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_INVALID_CHUNK_ERROR_MESSAGE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_KEYCHAIN_AVAILABLE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_KEY_UNKNOWN",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_KITTY_SEQUENCE_LENGTH",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_LLM_LOOP_CHECK_FLASH_CONFIDENCE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_LLM_LOOP_CHECK_MAIN_MODEL",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_LLM_LOOP_CHECK_MAIN_MODEL_CONFIDENCE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_LOOP_DETECTED_CONFIRMED_BY_MODEL",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_LOOP_DETECTED_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_MALFORMED_JSON_RESPONSE_MODEL",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_MODEL_SLASH_COMMAND",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_NETWORK_RETRY_ATTEMPT_NUMBER",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_NETWORK_RETRY_DELAY_MS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_NETWORK_RETRY_ERROR_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_NEXT_SPEAKER_CHECK_RESULT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_NODE_VERSION",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_NO_RELAUNCH",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_ONBOARDING_DURATION_MS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_ONBOARDING_START",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_ONBOARDING_USER_TIER",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_OS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_PROGRAMMING_LANGUAGE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_PROMPT_ID",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_RAM_TOTAL_GB",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_RESEARCH_CONTACT_EMAIL",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_RESEARCH_FEEDBACK_CONTENT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_RESEARCH_FEEDBACK_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_RESEARCH_OPT_IN_STATUS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_RESEARCH_SURVEY_RESPONSES",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_RESEARCH_USER_ID",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_RESPONSE_FINISH_REASON",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_REWIND_OUTCOME",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_ROUTING_CLASSIFIER_THRESHOLD",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_ROUTING_DECISION",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_ROUTING_DECISION_SOURCE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_ROUTING_FAILURE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_ROUTING_FAILURE_REASON",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_ROUTING_LATENCY_MS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_ROUTING_NUMERICAL_ENABLED",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_ROUTING_REASONING",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_SESSION_ID",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_SLASH_COMMAND_NAME",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_SLASH_COMMAND_STATUS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_SLASH_COMMAND_SUBCOMMAND",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_STARTUP_IS_DOCKER",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_STARTUP_OS_PLATFORM",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_STARTUP_OS_RELEASE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_STARTUP_PHASES",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_START_SESSION_API_KEY_ENABLED",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_START_SESSION_APPROVAL_MODE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_START_SESSION_CORE_TOOLS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_START_SESSION_DEBUG_MODE_ENABLED",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_START_SESSION_EMBEDDING_MODEL",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_START_SESSION_EXTENSIONS_COUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_START_SESSION_EXTENSION_IDS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_START_SESSION_MCP_SERVERS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_START_SESSION_MCP_SERVERS_COUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_START_SESSION_MCP_TOOLS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_START_SESSION_MCP_TOOLS_COUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_START_SESSION_MODEL",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_START_SESSION_OUTPUT_FORMAT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_START_SESSION_RESPECT_GITIGNORE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_START_SESSION_SANDBOX",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_START_SESSION_TELEMETRY_ENABLED",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_START_SESSION_TELEMETRY_LOG_USER_PROMPTS_ENABLED",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_START_SESSION_VERTEX_API_ENABLED",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_START_SESSION_WORKTREE_ACTIVE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_SURFACE",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_CLI_SYSTEM_DEFAULTS_PATH",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_CLI_SYSTEM_SETTINGS_PATH",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_TEST_VAR",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_TOKEN_STORAGE_FORCED",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_TOKEN_STORAGE_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_TOOL_CALL_CONTENT_LENGTH",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_TOOL_CALL_DECISION",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_TOOL_CALL_DURATION_MS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_TOOL_CALL_ERROR_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_TOOL_CALL_MCP_SERVER_NAME",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_TOOL_CALL_NAME",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_TOOL_CALL_SUCCESS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_TOOL_OUTPUT_MASKING_MASKED_COUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_TOOL_OUTPUT_MASKING_TOKENS_AFTER",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_TOOL_OUTPUT_MASKING_TOKENS_BEFORE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_TOOL_OUTPUT_MASKING_TOTAL_PRUNABLE_TOKENS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_TOOL_OUTPUT_TRUNCATED_LINES",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_TOOL_OUTPUT_TRUNCATED_ORIGINAL_LENGTH",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_TOOL_OUTPUT_TRUNCATED_THRESHOLD",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_TOOL_OUTPUT_TRUNCATED_TRUNCATED_LENGTH",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_TOOL_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_TRUSTED_FOLDERS_PATH",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_TRUST_WORKSPACE",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_USER_ADDED_CHARS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_USER_ADDED_LINES",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_USER_PROMPT_LENGTH",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_USER_REMOVED_CHARS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_USER_REMOVED_LINES",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CLI_USER_SETTINGS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_CLI_USE_COMPUTE_ADC",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_VERSION",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_WARNING",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_WEB_FETCH_FALLBACK_REASON",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CLI_WORKTREE_HANDLED",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CONTEXT_CALIBRATE_TOKEN_CALCULATIONS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_CONTEXT_TRACE_DIR",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_CWD",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_DEBUG_LOG_FILE",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_DEFAULT_AUTH_TYPE",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_DIR",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_EVENT_LOOP_MONITOR_ENABLED",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_EXP",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_FORCE_ENCRYPTED_FILE_STORAGE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_FORCE_FILE_STORAGE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_IGNORE_FILE_NAME",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_MEMORY_MONITOR_INTERVAL",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_MODEL",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_MODEL_ALIAS_AUTO",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_MODEL_ALIAS_FLASH",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_MODEL_ALIAS_FLASH_LITE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_MODEL_ALIAS_PRO",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_PLANS_DIR",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_PROJECT_DIR",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_PROMPT_",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_PTY_INFO",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_RESTRICTED_MODE",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_SANDBOX",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_SANDBOX_IMAGE",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_SANDBOX_PROXY_COMMAND",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_SESSION_ID",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_SFN_REGEX",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GEMINI_STRICT_TELEMETRY_LIMITS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_SYSTEM_MD",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_TELEMETRY_ENABLED",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_TELEMETRY_LOG_PROMPTS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_TELEMETRY_OTLP_ENDPOINT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_TELEMETRY_OTLP_PROTOCOL",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_TELEMETRY_OUTFILE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_TELEMETRY_TARGET",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_TELEMETRY_TRACES_ENABLED",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_TELEMETRY_USE_CLI_AUTH",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GEMINI_TELEMETRY_USE_COLLECTOR",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "route",
+   "name": "GEMINI_WRITE_SYSTEM_MD",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GH_CUSTOM_TRACKING_ID",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GH_ISSUE_NUMBER",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GH_PR_NUMBER",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GH_WORKFLOW_NAME",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GITHUB_ACTIONS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GITHUB_EVENT_NAME",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GITHUB_REPOSITORY",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GITHUB_SHA",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "credential",
+   "name": "GITHUB_TOKEN",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_ACCOUNTS_FILENAME",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_AI_API_DEFAULT_VERSION",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_API_CERTIFICATE_CONFIG",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_API_CLIENT_HEADER",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "credential",
+   "name": "GOOGLE_API_KEY",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_API_KEY_HEADER",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_API_USE_CLIENT_CERTIFICATE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_API_USE_MTLS_ENDPOINT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "credential",
+   "name": "GOOGLE_APPLICATION_CREDENTIALS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "credential",
+   "name": "GOOGLE_CLOUD_ACCESS_TOKEN",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_CLOUD_ACCOUNT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "route",
+   "name": "GOOGLE_CLOUD_LOCATION",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GOOGLE_CLOUD_PROJECT",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GOOGLE_CLOUD_PROJECT_ID",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GOOGLE_CLOUD_QUOTA_PROJECT",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GOOGLE_CLOUD_REGION",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GOOGLE_CLOUD_UNIVERSE_DOMAIN",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_CLOUD_WORKSTATIONS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_CREDENTIALS",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_EXTERNAL_ACCOUNT_ALLOW_EXECUTABLES",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_EXTERNAL_ACCOUNT_AUDIENCE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_EXTERNAL_ACCOUNT_IMPERSONATED_EMAIL",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_EXTERNAL_ACCOUNT_INTERACTIVE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_EXTERNAL_ACCOUNT_OUTPUT_FILE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_EXTERNAL_ACCOUNT_TOKEN_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "route",
+   "name": "GOOGLE_GEMINI_BASE_URL",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_GENAI_API_VERSION",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GOOGLE_GENAI_USE_GCA",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GOOGLE_GENAI_USE_VERTEXAI",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_GRANT_TYPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GOOGLE_ONE_AI",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_REVOKE_TOKEN_URL",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "GOOGLE_SDK_NODE_LOGGING",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a constant with no risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_SERVICE_ACCOUNT_AUTH",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_TOKEN_INFO_URL",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GOOGLE_TOKEN_URL",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "route",
+   "name": "GOOGLE_VERTEX_BASE_URL",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GRACEFUL_FS_PLATFORM",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "GRPC_DEFAULT_SSL_ROOTS_FILE_PATH",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GRPC_EXPERIMENTAL_ENABLE_OUTLIER_DETECTION",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GRPC_NODE_TRACE",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GRPC_NODE_USE_ALTERNATIVE_RESOLVER",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GRPC_NODE_VERBOSITY",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "GRPC_SSL_CIPHER_SUITES",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GRPC_TRACE",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "GRPC_VERBOSITY",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "row",
+   "name": "HOME",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "HOSTNAME",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "row",
+   "name": "HTTPS_PROXY",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "HTTP_PROXY",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "IGNORE_TEST_WIN32",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "INK_SCREEN_READER",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "INK_WORKER",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "IS_BINARY",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "JEST_WORKER_ID",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "K_CONFIGURATION",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "K_REVISION",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "K_SERVICE",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "row",
+   "name": "LANG",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "LC_ALL",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "LINES",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "LOCALAPPDATA",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "LOG_STREAM",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "LOG_TOKENS",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "LocalAppData",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "METADATA_SERVER_DETECTION",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "MONOSPACE_ENV",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "NODE_DEBUG",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "NODE_ENV",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "NODE_OPTIONS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "NODE_V8_COVERAGE",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "NO_BROWSER",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "NO_COLOR",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "NO_PROXY",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "OAUTH_CALLBACK_HOST",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "OAUTH_CALLBACK_PORT",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "OSTYPE",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "credential",
+   "name": "OTEL_EXPORTER_OTLP_HEADERS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "OTEL_EXPORTER_PROMETHEUS_HOST",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "OTEL_EXPORTER_PROMETHEUS_PORT",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "OTEL_SEMCONV_STABILITY_OPT_IN",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "OTLP_GOOGLE_CLOUD_PROJECT",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "row",
+   "name": "PATH",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "PATHEXT",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "POSITRON",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "PREFIX",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "PSModulePath",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "PUPPETEER_TEST_EXPERIMENTAL_CHROME_FEATURES",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "PUPPETEER_WEBDRIVER_BIDI_ONLY",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "PYTHONPATH",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "ProgramFiles",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "QTS_DEBUG",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "RATE_LIMIT_ERROR_MESSAGE_VERTEX",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "READABLE_STREAM",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "REMOTE_CONTAINERS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "REPLIT_USER",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "REQUIRED_VERTEX_AI_SCOPE",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "RUNFILES_DIR",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "SANDBOX",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "SANDBOX_ENV",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "SANDBOX_FLAGS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "SANDBOX_MOUNTS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "SANDBOX_PORTS",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "SANDBOX_SET_UID_GID",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "SEATBELT_PROFILE",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "SHELL",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "SHPOOL_SESSION_NAME",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "SSH_CLIENT",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "SSH_CONNECTION",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "SSH_TTY",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "STY",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "SUDO_GID",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "SUDO_UID",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "SURFACE",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "SystemRoot",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "TEENY_REQUEST_WARN_CONCURRENT_REQUESTS",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "TERM",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "TERMCAP",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "TERMINAL_EMULATOR",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "TERM_PRODUCT",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "TERM_PROGRAM",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "TERM_PROGRAM_VERSION",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "TESTING_TAR_FAKE_PLATFORM",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "TEST_GRACEFUL_FS_GLOBAL_PATCH",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "TEST_SRCDIR",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "TEST_WORKSPACE",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "TMUX",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "TMUX_PANE",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "TRAVIS",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "TURBOPACK",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "UNDICI_NO_FG",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "USER",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "USERPROFILE",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "USE_VERTEX_AI",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "VBOX_INSTALL_PATH",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "VBOX_MSI_INSTALL_PATH",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "VERTEX_AI_API_DEFAULT_VERSION",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "VERTEX_AI_EU_REP_ENDPOINT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "VERTEX_AI_REQUEST_TYPE_HEADER",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "VERTEX_AI_SHARED_REQUEST_TYPE_HEADER",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "ambiguous",
+   "name": "VERTEX_AI_US_REP_ENDPOINT",
+   "read_as": [
+    "vendor-regex only"
+   ],
+   "why": "regex-only rule: a risky word"
+  },
+  {
+   "class": "harmless",
+   "name": "VIRTUAL_ENV",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "VISUAL",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "VITEST",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "VSCODE_GIT_ASKPASS_MAIN",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "VSCODE_GIT_IPC_HANDLE",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "VSCODE_PID",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "VSCODE_REMOTE_CONTAINERS_SESSION",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "ambiguous",
+   "name": "WEB_HOST",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "WINDIR",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "WINDOW",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "WINDOWID",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "WSLENV",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "WSL_DISTRO_NAME",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "WSL_INTEROP",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "WS_NO_BUFFER_UTIL",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "WS_NO_UTF_8_VALIDATE",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "WT_SESSION",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "XCODE_VERSION_ACTUAL",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "XDG_CONFIG_HOME",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "XDG_SESSION_TYPE",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "YARGS_MIN_NODE_VERSION",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "ZED_SESSION_ID",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "__COG_BASHRC_SOURCED",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "__FAKE_FS_O_FILENAME__",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "__FAKE_PLATFORM__",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "__MINIMATCH_TESTING_PLATFORM__",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "comspec",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "gcloud_project",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "credential",
+   "name": "google_application_credentials",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "google_cloud_project",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "grpc_proxy",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "http_proxy",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "https_proxy",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "no_grpc_proxy",
+   "read_as": [
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "route",
+   "name": "no_proxy",
+   "read_as": [
+    "env[X]",
+    "process.env.X"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "systemroot",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  },
+  {
+   "class": "harmless",
+   "name": "windir",
+   "read_as": [
+    "env[X]"
+   ],
+   "why": "table"
+  }
+ ],
+ "sweep": "gemini-env-name-sweep-athena-20261014.json",
+ "sweep_sha256": "fc80791de007ce9bd4d85419369e659e16a8bc674964a9b24c5d62e8672e9f96"
+}

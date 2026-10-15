@@ -121,7 +121,7 @@ def parts(initial: dict, turns: list, harness: str = CC) -> dict:
             for p, st in tn["operator"].items():
                 tree[f"{RUN}/{p}"] = st
     health = [{"kind": "watcher-start", "at": 50.0},
-              {"kind": "watcher-stop", "at": 100.0 * len(turns) + 8, "exit_code": 0}]
+              {"kind": "watcher-stop", "at": 100.0 * len(turns) + 8, "exit_code": 0, "ignored_newline_paths": 0}]
     return {"ledger": ledger, "snapshots": snaps, "access": access, "health": health}
 
 
@@ -1836,7 +1836,7 @@ def p4_build_take(pr, h: P4Half, lines: list, mv: dict) -> tuple:
                            "writes": [{"path": p, "after": p4_state(v)} for p, v in op.items()]})
             tree.update(op)
     health = [{"kind": "watcher-start", "at": 50.0},
-              {"kind": "watcher-stop", "at": 100.0 * len(lines) + 8, "exit_code": 0}]
+              {"kind": "watcher-stop", "at": 100.0 * len(lines) + 8, "exit_code": 0, "ignored_newline_paths": 0}]
     evidence = es.Evidence.from_parts(ledger=ledger, snapshots=snaps, access=access, health=health, blobs=blobs)
     return [json.dumps(r, sort_keys=True) for r in records], evidence
 

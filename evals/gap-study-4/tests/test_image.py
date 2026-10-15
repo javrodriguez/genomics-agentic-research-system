@@ -2,8 +2,14 @@
 """test_image.py: the box images' locks (box/image_lock.py) and their Dockerfiles, driven with no runtime at all.
 
 Nothing here builds an image or runs a container: `build_argv` is only constructed, and a module-level guard
-(interface 10) makes every process start and every signal raise for the whole module, armed right after the one
-read of round 3's leak words (interface 16).
+(interface 10) makes every process start and every signal raise for the whole module, armed by setUpModule. Before
+it, at import, the module starts git only: the one read of round 3's leak words (interface 16), and the lock writer's
+re-derivation of every committed lock from the committed build record (glitch-06's post-write ruling, 14 Oct 2026).
+
+The committed locks are the reviewed pins (schema 2): each must be byte-equal to what ops/write_image_lock.py's
+plan() re-derives from lane-reports/build-20261014c/athena-out-20261014/build-record.json at HEAD (PIN_MUTANTS: a
+hand-edited digest, another row's pin, an unfilled lock, each red). Every PENDING behaviour is driven on a synthetic
+schema-1 lock made from a committed lock with its filled fields re-PENDINGed (`unfilled`).
 
 Every guard is also shown red: each lock clause by a mutated lock (MUTANT_LOCKS), each label rule by a mutated
 inspect (MUTANT_INSPECTS). Run alone, the module first prints every mutant with its red run, then runs the tests.
@@ -76,7 +82,9 @@ from box.egress import proxy_conf as pc  # noqa: E402
 
 LOCK_PATHS = {image: os.path.join(il.BOX_DIR, os.path.dirname(df), "image.lock")
               for image, df in il.DOCKERFILES.items()}
-COMMITTED_PENDING = {
+# The fields an unfilled (schema-1) lock holds PENDING, as the locks did before the reviewed write; `unfilled`
+# re-PENDINGs exactly these on a committed lock.
+UNFILLED_PENDING = {
     "take-a": ("base", "harness.version", "python", "image_id"),
     "take-o": ("base", "harness.version", "python", "image_id"),
     "take-g": ("base", "harness.version", "python", "image_id"),
@@ -98,9 +106,107 @@ def committed(image: str) -> dict:
     return il.load(LOCK_PATHS[image])
 
 
+def unfilled(image: str) -> dict:
+    """A synthetic unfilled (schema-1) lock: the committed lock with its schema-2 fields removed and each field of
+    UNFILLED_PENDING PENDING again, each with a reason. Never written to a lock path."""
+    lock = {k: v for k, v in copy.deepcopy(committed(image)).items() if k not in il.SCHEMA_2_KEYS}
+    lock["schema"] = il.SCHEMA
+    for field in UNFILLED_PENDING[image]:
+        head, _, tail = field.partition(".")
+        if tail:
+            lock[head][tail] = il.PENDING
+        else:
+            lock[head] = il.PENDING
+    lock["pending"] = {f: "synthetic: re-PENDINGed from the committed lock" for f in UNFILLED_PENDING[image]}
+    return il.validate(lock)
+
+
+# The reviewed pins (glitch-06's post-write ruling, 14 Oct 2026): the lock writer re-derives each committed lock from
+# the committed build record, here at import (git, before the guard), never from a hand-copied value.
+import hashlib  # noqa: E402
+import importlib.util  # noqa: E402
+
+RECORD = os.path.join(REPO, "lane-reports", "build-20261014c", "athena-out-20261014", "build-record.json")
+RECORD_SHA256 = "c55c75cc7bffea5c202a19bc25e1a9f8490e4c22975e6248486008b96bd65914"
+_WSPEC = importlib.util.spec_from_file_location("write_image_lock_for_test_image",
+                                                os.path.join(REPO, "ops", "write_image_lock.py"))
+WRITER = importlib.util.module_from_spec(_WSPEC)
+_WSPEC.loader.exec_module(WRITER)
+
+
+def _rederived() -> dict:
+    out = {}
+    for image in il.IMAGES:
+        try:
+            out[image] = WRITER.rederive(il, REPO, RECORD, LOCK_PATHS[image], image)
+        except (WRITER.Refused, il.LockError, ValueError, OSError, subprocess.TimeoutExpired) as e:   # closure C-2
+            out[image] = f"refused: {type(e).__name__}: {e}"
+    return out
+
+
+REDERIVED = _rederived()
+
+
+def pin_problems(texts: dict) -> list:
+    """Every way the lock files' bytes (`texts`: image -> bytes) are not the reviewed pins ([] when they are)."""
+    out = []
+    for image in il.IMAGES:
+        want, got = REDERIVED.get(image), texts.get(image)
+        if not isinstance(want, bytes):
+            out.append(f"{image}: the lock writer does not re-derive it ({want})")
+            continue
+        try:
+            schema = json.loads(got).get("schema")
+        except (TypeError, ValueError, AttributeError):
+            schema = None
+        if schema != il.SCHEMA_2:
+            out.append(f"{image}: the committed lock is not schema {il.SCHEMA_2}")
+        if got != want:
+            out.append(f"{image}: the committed lock is not the lock writer's re-derivation from the record")
+    return out
+
+
+def committed_texts() -> dict:
+    out = {}
+    for image in il.IMAGES:
+        with open(LOCK_PATHS[image], "rb") as fh:
+            out[image] = fh.read()
+    return out
+
+
+def _another_rows_pin(texts: dict) -> dict:
+    """take-a's lock carrying take-o's record row's digests: a pin from another row."""
+    with open(RECORD, encoding="utf-8") as fh:
+        row = [r for r in json.load(fh)["images"] if r["image"] == "take-o"][0]
+    lock = json.loads(texts["take-a"])
+    lock.update({k: row[k] for k in ("image_id", "manifest_digest", "config_digest")})
+    return dict(texts, **{"take-a": WRITER.lock_text(lock).encode()})
+
+
+def _one_digest_edited(texts: dict) -> dict:
+    lock = json.loads(texts["take-a"])
+    d = lock["manifest_digest"]
+    lock["manifest_digest"] = d[:-1] + ("0" if d[-1] != "0" else "1")
+    return dict(texts, **{"take-a": WRITER.lock_text(lock).encode()})
+
+
+PIN_MUTANTS = {
+    "a lock hand-edited by one digest": _one_digest_edited,
+    "a lock from a different record row": _another_rows_pin,
+    "a schema-1 PENDING lock where a filled one is required":
+        lambda texts: dict(texts, **{"sidecar": WRITER.lock_text(unfilled("sidecar")).encode()}),
+}
+
+
+MANIFEST_DIGEST, CONFIG_DIGEST, SOURCE_COMMIT = "sha256:" + "c" * 64, "sha256:" + "d" * 64, "e" * 40
+
+
 def filled(image: str = "take-a") -> dict:
-    """The committed lock with every PENDING value replaced by an obviously fake pinned value."""
+    """The committed lock with every PENDING value replaced by an obviously fake pinned value: a schema-2 lock, as
+    the lock writer fills it (glitch-06's rulings, 14 Oct 2026)."""
     lock = copy.deepcopy(committed(image))
+    lock.update(schema=il.SCHEMA_2, manifest_digest=MANIFEST_DIGEST, config_digest=CONFIG_DIGEST,
+                source_commit=SOURCE_COMMIT)
     lock["base"] = BASE
     lock["image_id"] = IMAGE_ID
     if lock["harness"] is not None:
@@ -110,6 +216,17 @@ def filled(image: str = "take-a") -> dict:
     if "squid" in lock:
         lock["squid"] = "6.99-1+fake1"
     lock["pending"] = {}
+    return lock
+
+
+def build_input(image: str = "take-a") -> dict:
+    """A build's input: the unfilled schema-1 lock with every build input pinned and image_id still PENDING."""
+    lock = filled(image)
+    for k in il.SCHEMA_2_KEYS:
+        del lock[k]
+    lock["schema"] = il.SCHEMA
+    lock["image_id"] = il.PENDING
+    lock["pending"] = {"image_id": "the build makes it"}
     return lock
 
 
@@ -141,7 +258,17 @@ MUTANT_LOCKS = {
     "a missing key (base)": _drop(("base",)),
     "a missing key (pending)": _drop(("pending",)),
     "a missing key (users)": _drop(("users",)),
-    "schema 2": _set(("schema",), 2),
+    "schema 3": _set(("schema",), 3),
+    "a filled schema-1 lock": _set(("schema",), 1),
+    "schema 2 without its manifest digest": _drop(("manifest_digest",)),
+    "schema 2 without its config digest": _drop(("config_digest",)),
+    "schema 2 without its source commit": _drop(("source_commit",)),
+    "a pending manifest digest": _set(("manifest_digest",), il.PENDING),
+    "a manifest digest without its algorithm": _set(("manifest_digest",), "c" * 64),
+    "a short config digest": _set(("config_digest",), "sha256:" + "d" * 63),
+    "a source commit by branch name": _set(("source_commit",), "main"),
+    "a short source commit": _set(("source_commit",), "e" * 7),
+    "a schema-2 lock with a pending field": _set(("python",), il.PENDING),
     "schema as a bool": _set(("schema",), True),
     "an unknown image": _set(("image",), "take-z"),
     "the wrong dockerfile": _set(("dockerfile",), "codex/Dockerfile"),
@@ -252,17 +379,34 @@ class GuardTest(unittest.TestCase):
 
 
 class LockSchemaTest(unittest.TestCase):
-    def test_the_committed_locks_load_with_their_exact_pending_sets(self):
-        for image, want in COMMITTED_PENDING.items():
+    def test_the_committed_locks_are_the_reviewed_pins(self):
+        """Every committed lock is schema 2 and byte-equal to the lock writer's re-derivation from the committed
+        build record, whose sha256 is the reviewed record's."""
+        with open(RECORD, "rb") as fh:
+            self.assertEqual(hashlib.sha256(fh.read()).hexdigest(), RECORD_SHA256)
+        self.assertEqual(pin_problems(committed_texts()), [])
+        for image in il.IMAGES:
             with self.subTest(image):
-                lock = committed(image)
+                self.assertTrue(il.ready(committed(image)))
+
+    def test_every_pin_mutant_goes_red(self):
+        for name, mutate in PIN_MUTANTS.items():
+            with self.subTest(name):
+                texts = mutate(committed_texts())
+                self.assertNotEqual(texts, committed_texts(), f"{name}: the mutant changed nothing")
+                self.assertTrue(pin_problems(texts), name)
+
+    def test_the_unfilled_locks_load_with_their_exact_pending_sets(self):
+        for image, want in UNFILLED_PENDING.items():
+            with self.subTest(image):
+                lock = unfilled(image)
                 self.assertEqual(lock["image"], image)
                 self.assertEqual(il.pending(lock), want)
                 self.assertEqual(tuple(lock["pending"]), want)
                 self.assertFalse(il.ready(lock))
 
     def test_the_committed_users_and_their_names(self):
-        for image in COMMITTED_PENDING:
+        for image in UNFILLED_PENDING:
             users = committed(image)["users"]
             if users is None:
                 continue
@@ -288,12 +432,11 @@ class LockSchemaTest(unittest.TestCase):
     def test_a_duplicate_key_in_a_lock_file_is_refused(self):
         with self.assertRaises(il.LockError):
             il._no_duplicates([("base", 1), ("base", 2)])
-        # Through load (fold 3, W4A1-4 b): the committed take-a lock with its `base` line written twice, at a path
+        # Through load (fold 3, W4A1-4 b): the unfilled take-a lock with its `base` line written twice, at a path
         # where it sits beside its Dockerfile (BOX_DIR patched), so only the duplicate can refuse it.
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "image.lock")
-            with open(LOCK_PATHS["take-a"], encoding="utf-8") as fh:
-                text = fh.read()
+            text = WRITER.lock_text(unfilled("take-a"))
             text = text.replace('"base": "PENDING",', '"base": "PENDING",\n  "base": "PENDING",', 1)
             self.assertEqual(text.count('"base": "PENDING"'), 2)
             with open(path, "w", encoding="utf-8") as fh:
@@ -319,12 +462,12 @@ class LockSchemaTest(unittest.TestCase):
 
     def test_require_ready_names_every_pending_field(self):
         with self.assertRaises(il.NotReady) as cm:
-            il.require_ready(committed("take-a"))
-        for field in COMMITTED_PENDING["take-a"]:
+            il.require_ready(unfilled("take-a"))
+        for field in UNFILLED_PENDING["take-a"]:
             self.assertIn(field, str(cm.exception))
 
     def test_a_dropped_refusal_goes_red(self):
-        lock = committed("take-a")
+        lock = unfilled("take-a")
         with mock.patch.object(il, "_pending_fields", lambda lock: []), \
                 mock.patch.object(il, "problems", lambda lock: []):
             self.assertTrue(il.ready(lock))   # the mutant waves the unfilled lock through
@@ -348,11 +491,11 @@ class LabelsTest(unittest.TestCase):
         self.assertEqual(il.expected_labels(lock)[il.BASE_DIGEST_LABEL], "sha256:" + "a" * 64)
         self.assertEqual(il.expected_labels(lock)[il.BASE_NAME_LABEL], "registry.example/fake-base")
 
-    def test_the_committed_lock_is_refused_whatever_the_labels_say(self):
-        lock = committed("take-a")
+    def test_the_unfilled_lock_is_refused_whatever_the_labels_say(self):
+        lock = unfilled("take-a")
         ins = matching_inspect(filled("take-a"))
         found = il.check_labels(lock, ins)
-        self.assertEqual(len(found), len(COMMITTED_PENDING["take-a"]))
+        self.assertEqual(len(found), len(UNFILLED_PENDING["take-a"]))
         self.assertTrue(all(p.startswith("lock refused") for p in found))
         # Even an inspect that carries the literal PENDING values is refused.
         ins = {"Id": il.PENDING, "Config": {"Labels": {k: il.PENDING for k in il.LABELS}}}
@@ -717,7 +860,7 @@ class LockSetTest(unittest.TestCase):
 
     def test_egress_python_may_be_null_or_pending(self):
         for v in (None, il.PENDING):
-            lock = filled("egress")
+            lock = filled("egress") if v is None else build_input("egress")
             lock["python"] = v
             if v == il.PENDING:
                 lock["pending"]["python"] = "measured at the build"
@@ -744,29 +887,32 @@ def pull_ok(argv) -> bool:
 
 
 class BuildArgvTest(unittest.TestCase):
-    def test_the_committed_locks_build_nothing(self):
+    def test_the_unfilled_locks_build_nothing(self):
         for image in il.IMAGES:
             with self.subTest(image), self.assertRaises(il.NotReady):
-                il.build_argv(committed(image), context="/srv/ctx")
+                il.build_argv(unfilled(image), context="/srv/ctx")
 
     def test_each_pending_build_input_alone_refuses(self):
         for image in il.IMAGES:
-            for field in COMMITTED_PENDING[image]:
+            for field in UNFILLED_PENDING[image]:
                 if field == "image_id":
                     continue
                 with self.subTest(image=image, field=field):
-                    lock = filled(image)
+                    lock = build_input(image)
                     if "." in field:
                         lock["harness"]["version"] = il.PENDING
                     else:
                         lock[field] = il.PENDING
-                    lock["pending"] = {field: "measured at the build"}
+                    lock["pending"][field] = "measured at the build"
                     with self.assertRaises(il.NotReady) as cm:
                         il.build_argv(lock, context=il.BOX_DIR)
                     self.assertIn(field, str(cm.exception))
 
     def test_a_pending_image_id_alone_does_not_block_the_build(self):
         lock = filled("take-a")
+        for k in il.SCHEMA_2_KEYS:            # a build input is the unfilled schema-1 lock
+            del lock[k]
+        lock["schema"] = il.SCHEMA
         lock["image_id"] = il.PENDING
         lock["pending"] = {"image_id": "the build makes it"}
         self.assertEqual(il.build_argv(lock, context="/srv/ctx")[:3], ["docker", "build", "--pull=false"])
@@ -865,6 +1011,9 @@ def print_mutants() -> None:
         image, text = dockerfile_mutated(name)
         found = il.check_dockerfile(text, committed(image))
         print(f"mutant dockerfile {name!r} ({image}): {'red' if found else 'GREEN'} ({found[0] if found else '-'})")
+    for name, mutate in PIN_MUTANTS.items():
+        found = pin_problems(mutate(committed_texts()))
+        print(f"mutant pin {name!r}: {'red' if found else 'GREEN'} ({found[0] if found else '-'})")
 
 
 def _patched_now() -> list:

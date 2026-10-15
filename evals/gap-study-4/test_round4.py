@@ -11,8 +11,8 @@ Home fold of review round 1 (W1A-2): the count is per module, not per battery. E
 on its own and must hold at least one test, and a test_*.py anywhere deeper under tests/ (which discovery would
 not load) fails the battery, so no module rides on another's tests.
 
-Review round 2: a skipped test fails the battery unless its reason is named in SKIP_ALLOWED (empty: no skip is
-allowed yet), whatever the form (a skip decorator, skipUnless, a module-level SkipTest, a SkipTest in
+Review round 2: a skipped test fails the battery unless its reason is named in SKIP_ALLOWED (one reason, the
+box lane's real-scanner return-scan proof; ruled 15 Oct 2026), whatever the form (a skip decorator, skipUnless, a module-level SkipTest, a SkipTest in
 setUpClass); a .py file in tests/ that discovery would never run fails it too; and the battery always ends with
 one line, `test_round4: <n> run, <m> skipped, <x> expected failures`, which run_checks requires and prints.
 Review round 3 (W1A3-2): an @expectedFailure test turns a red guard green, so every expected failure fails the
@@ -33,8 +33,17 @@ PATTERN = "test_*.py"
 sys.path.insert(0, str(HERE))
 
 # Skip reasons a test may give and still pass the battery. Each entry needs a review that it measures nothing the
-# round relies on. Empty: no skip is allowed.
-SKIP_ALLOWED: tuple[str, ...] = ()
+# round relies on.
+#   The real-scanner return-scan proof (tests/test_walk_launch.py TestRealReturnScan, REAL_SCAN_SKIP, the same text):
+#   ruled by glitch-6b on the box lane's closure review (15 Oct 2026, MINOR A). It fires only where athena_suite.py
+#   (GAP4_ATHENA_SUITE_PY, else the operator's checkout) or gitleaks is absent, as on the athena battery's clone. The
+#   real-scanner proof is a Mac run recorded in the box lane report; the faked back-scan witnesses run everywhere; the
+#   first real walk's fetch is itself live proof. Every other skip stays banned (TestSkipRule shows one).
+SKIP_ALLOWED: tuple[str, ...] = (
+    "REAL RETURN SCAN NOT RUN: athena_suite.py (GAP4_ATHENA_SUITE_PY) or gitleaks is absent on this machine; the "
+    "real-scanner proof is the Mac run in the box lane report, the faked back-scan witnesses run everywhere, and the "
+    "first real walk's fetch is live proof",
+)
 # Python files in tests/ that are helpers, not test modules. Each entry names the test module that runs it.
 #   walk_mutation.py: the generator of tests/test_walk_runner.py's generated mutants (lane w10-walk-runner, ruling
 #   w10-R3-fold); it holds no test and is imported and run by test_walk_runner (G1, --generated-mutants).

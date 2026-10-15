@@ -1,0 +1,30 @@
+...............EEE....................
+======================================================================
+ERROR: test_the_caps (__main__.MemoryCaps.test_the_caps)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_live_box.py", line 567, in test_the_caps
+    self.assertEqual(sidecar.MEMORY_BYTES, self.CAP)
+                     ^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'box.sidecar' has no attribute 'MEMORY_BYTES'
+
+======================================================================
+ERROR: test_the_proxy_is_created_under_its_cap (__main__.MemoryCaps.test_the_proxy_is_created_under_its_cap)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_live_box.py", line 583, in test_the_proxy_is_created_under_its_cap
+    i = argv.index("--memory")
+ValueError: '--memory' is not in list
+
+======================================================================
+ERROR: test_the_sidecar_is_created_under_its_cap (__main__.MemoryCaps.test_the_sidecar_is_created_under_its_cap)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_live_box.py", line 573, in test_the_sidecar_is_created_under_its_cap
+    i = argv.index("--memory")
+ValueError: '--memory' is not in list
+
+----------------------------------------------------------------------
+Ran 38 tests in 0.146s
+
+FAILED (errors=3)

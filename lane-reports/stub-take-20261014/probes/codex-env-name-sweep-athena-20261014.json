@@ -1,0 +1,1715 @@
+{
+ "binary_bytes": 294415048,
+ "binary_path": "/usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex",
+ "binary_sha256": "628e35487d888a28f0427fc37501da529dd3d81fcbad7a2c3421c1e8670d92e1",
+ "extraction": [
+  {
+   "argv": [
+    "docker",
+    "create",
+    "--pull=never",
+    "--network",
+    "none",
+    "sha256:21b214159e4eb02d5e73f78ccdf5ee047da2fc6944808f9a454a6b0f427dd381",
+    "true"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "1e1b1e9c598cc901fcb2d4e76c865c1a5bd7c93fc09a597d0f82684c733a14f1"
+  },
+  {
+   "argv": [
+    "docker",
+    "cp",
+    "1e1b1e9c598cc901fcb2d4e76c865c1a5bd7c93fc09a597d0f82684c733a14f1:/usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex",
+    "/home/javier/gap4-tools/tmp-gap4box/codex.bin"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": ""
+  },
+  {
+   "argv": [
+    "docker",
+    "rm",
+    "1e1b1e9c598cc901fcb2d4e76c865c1a5bd7c93fc09a597d0f82684c733a14f1"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "1e1b1e9c598cc901fcb2d4e76c865c1a5bd7c93fc09a597d0f82684c733a14f1"
+  }
+ ],
+ "image": "sha256:21b214159e4eb02d5e73f78ccdf5ee047da2fc6944808f9a454a6b0f427dd381",
+ "names": {
+  "AWS_ACCESS_KEY_IDAWS_SECRET_ACCESS_KEYAWS_SESSION_TOKENAWS_ACCOUNT_IDE": {
+   "contexts": [
+    "umeRoleInputenvironment variable not setAWS_ACCESS_KEY_IDAWS_SECRET_ACCESS_KEYAWS_SESSION_TOKENAWS_ACCOUNT_IDEnvironmentVariableSECRET_ACCESS_KEYevent"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "n": 1
+   }
+  },
+  "AWS_ACCOUNT_ID_ENDPOINT_MODE": {
+   "contexts": [
+    "invalid value for `AuthSchemePreference`AWS_ACCOUNT_ID_ENDPOINT_MODEaccount_id_endpoint_modeinvalid value fo",
+    "invalid value for `AuthSchemePreference`AWS_ACCOUNT_ID_ENDPOINT_MODEaccount_id_endpoint_modeinvalid value fo"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "a": 2
+   }
+  },
+  "AWS_AUTH_SCHEME_PREFERENCE": {
+   "contexts": [
+    "ointinvalid value for dual-stack settingAWS_AUTH_SCHEME_PREFERENCEauth_scheme_preferenceinvalid value for ",
+    "ointinvalid value for dual-stack settingAWS_AUTH_SCHEME_PREFERENCEauth_scheme_preferenceinvalid value for "
+   ],
+   "count": 2,
+   "next_bytes": {
+    "a": 2
+   }
+  },
+  "AWS_BEARER_TOKEN_BEDROCK": {
+   "contexts": [
+    "s keys are no longer availableselected `AWS_BEARER_TOKEN_BEDROCK` credential is no longer availableselec",
+    "s keys are no longer availableselected `AWS_BEARER_TOKEN_BEDROCK` credential is no longer availableselec"
+   ],
+   "count": 3,
+   "next_bytes": {
+    "`": 3
+   }
+  },
+  "AWS_BEARER_TOKEN_BEDROCKAWS_ACCESS_KEY_IDAWS_SECRET_ACCESS_KEYAWS_REGIONAWS_DEFAULT_REGIONA": {
+   "contexts": [
+    "WKSOpenAIglobal.Globalus.US cross-regionAWS_BEARER_TOKEN_BEDROCKAWS_ACCESS_KEY_IDAWS_SECRET_ACCESS_KEYAWS_REGIONAWS_DEFAULT_REGIONAmazon Bedrock bearer token auth requires"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "m": 1
+   }
+  },
+  "AWS_BEARER_TOKEN_BEDROCKAWS_ACCESS_KEY_IDAWS_SECRET_ACCESS_KEYN": {
+   "contexts": [
+    "gain.AWS profile name must not be empty.AWS_BEARER_TOKEN_BEDROCKAWS_ACCESS_KEY_IDAWS_SECRET_ACCESS_KEYNo AWS credentials found. Please Configur"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "o": 1
+   }
+  },
+  "AWS_CONFH1": {
+   "contexts": [
+    "AWS_CONFH1"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "AWS_CONFIG_FILEAWS_SHARED_CREDENTIALS_FILE": {
+   "contexts": [
+    "ata-token~/.aws/config~/.aws/credentialsAWS_CONFIG_FILEAWS_SHARED_CREDENTIALS_FILEhome directory expansion was requested (",
+    "ake done.~/.aws/config~/.aws/credentialsAWS_CONFIG_FILEAWS_SHARED_CREDENTIALS_FILEhome directory expandedconfig file overr"
+   ],
+   "count": 3,
+   "next_bytes": {
+    "h": 3
+   }
+  },
+  "AWS_CONFIG_FILEAWS_SHARED_CREDENTIALS_FILEAWS_WEB_IDENTITY_TOKEN_FILEAWS_CONTAINER_AUTHORIZATION_TOKEN_FILESSL_CERT_DIR": {
+   "contexts": [
+    "A_CERTnpm_config_cafileNPM_CONFIG_CAFILEAWS_CONFIG_FILEAWS_SHARED_CREDENTIALS_FILEAWS_WEB_IDENTITY_TOKEN_FILEAWS_CONTAINER_AUTHORIZATION_TOKEN_FILESSL_CERT_DIR~RemoteControlConnectionStatusconnecting"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "~": 1
+   }
+  },
+  "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILEAWS_CONTAINER_AUTHORIZATION_TOKENECS": {
+   "contexts": [
+    "dress does not resolve to an allowed IP.AWS_CONTAINER_AUTHORIZATION_TOKEN_FILEAWS_CONTAINER_AUTHORIZATION_TOKENECS provider not configuredevent /home/runn"
+   ],
+   "count": 1,
+   "next_bytes": {
+    " ": 1
+   }
+  },
+  "AWS_CONTAINER_CREDENTIALS_RELATIVE_URIAWS_CONTAINER_CREDENTIALS_FULL_URI": {
+   "contexts": [
+    "cceedinvalid URI loaded from environmentAWS_CONTAINER_CREDENTIALS_RELATIVE_URIAWS_CONTAINER_CREDENTIALS_FULL_URI/parts will be validEcsContainerSSOno ac"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "/": 1
+   }
+  },
+  "AWS_DEFAULT_REGION": {
+   "contexts": [
+    "-bedrock.aws.region`, `AWS_REGION`, or `AWS_DEFAULT_REGION`AWS_DEFAULT_REGIONAmazon Bedrock comman",
+    "-bedrock.aws.region`, `AWS_REGION`, or `AWS_DEFAULT_REGION`Amazon Bedrock command authentication m"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "`": 2
+   }
+  },
+  "AWS_DEFAULT_REGIONA": {
+   "contexts": [
+    "`, `AWS_REGION`, or `AWS_DEFAULT_REGION`AWS_DEFAULT_REGIONAmazon Bedrock command authentication mus"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "m": 1
+   }
+  },
+  "AWS_DISABLE_REQUEST_COMPRESSION": {
+   "contexts": [
+    "nvalid value for `AccountIdEndpointMode`AWS_DISABLE_REQUEST_COMPRESSIONdisable_request_compressioninvalid value",
+    "nvalid value for `AccountIdEndpointMode`AWS_DISABLE_REQUEST_COMPRESSIONdisable_request_compressioninvalid value"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "d": 2
+   }
+  },
+  "AWS_EC2_METADATA_DISABLED": {
+   "contexts": [
+    " 6 components delimited by `:`post epochAWS_EC2_METADATA_DISABLEDevent /home/runner/work/codex/codex/.car"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "e": 1
+   }
+  },
+  "AWS_EC2_METADATA_SERVICE_ENDPOINTAWS_EC2_METADATA_SERVICE_ENDPOINT_MODE": {
+   "contexts": [
+    "oint. The mode override will be ignored.AWS_EC2_METADATA_SERVICE_ENDPOINTAWS_EC2_METADATA_SERVICE_ENDPOINT_MODEec2_metadata_service_endpointec2_metadat"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "e": 1
+   }
+  },
+  "AWS_ENDPOINT_URL": {
+   "contexts": [
+    "xceptionAccessDeniedExce[[[[[[[[[[[[[[[[AWS_ENDPOINT_URLx-amzn-errortypetransient_errorsx"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "x": 1
+   }
+  },
+  "AWS_EXECUTION_ENV": {
+   "contexts": [
+    "ontain utf-8 encoded data1.95.01.3.112.1AWS_EXECUTION_ENV"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS": {
+   "contexts": [
+    "or `disable request compression` settingAWS_IGNORE_CONFIGURED_ENDPOINT_URLSignore_configured_endpoint_urlsinvalid v",
+    "or `disable request compression` settingAWS_IGNORE_CONFIGURED_ENDPOINT_URLSignore_configured_endpoint_urlsinvalid v"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "i": 2
+   }
+  },
+  "AWS_LAMBDA_FUNCTION_NAME": {
+   "contexts": [
+    "ired (service clock skew)x-amzn-trace-idAWS_LAMBDA_FUNCTION_NAMEtype-checkedOPTIONSGETPUTDELETETRACECONN"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "t": 1
+   }
+  },
+  "AWS_LOGIN_CACHE_DIRECTORY": {
+   "contexts": [
+    "e reauthenticate with your new password.AWS_LOGIN_CACHE_DIRECTORYaccessKeyIdsecretAccessKeysessionTokense"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "a": 1
+   }
+  },
+  "AWS_MAX_ATTEMPTS": {
+   "contexts": [
+    "output_bytes_capAWS_MAX_ATTEMPTSpair_programmingenvironment_date"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "p": 1
+   }
+  },
+  "AWS_PROFILE": {
+   "contexts": [
+    "eruntime_pluginsx-aws-ec2-metadata-tokenAWS_PROFILEdefaultassertion failed: m <= usize::MAX",
+    "rategyretry_permitInvalidClientExceptionAWS_PROFILEcorrect output typecorrect error typeGet"
+   ],
+   "count": 5,
+   "next_bytes": {
+    "c": 1,
+    "d": 3,
+    "p": 1
+   }
+  },
+  "AWS_PROFILEAWS": {
+   "contexts": [
+    "ndshake requests with AWS SigV4aws-sigv4AWS_PROFILEAWS profile used for SigV4 authenticationaw"
+   ],
+   "count": 1,
+   "next_bytes": {
+    " ": 1
+   }
+  },
+  "AWS_REGION": {
+   "contexts": [
+    "_providers.amazon-bedrock.aws.region`, `AWS_REGION`, or `AWS_DEFAULT_REGION`AWS_DEFAULT_RE",
+    "_providers.amazon-bedrock.aws.region`, `AWS_REGION`, or `AWS_DEFAULT_REGION`Amazon Bedrock"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "`": 2
+   }
+  },
+  "AWS_REGIONAWS": {
+   "contexts": [
+    "r SigV4 authenticationaws-profilePROFILEAWS_REGIONAWS signing region. Uses the SDK region cha"
+   ],
+   "count": 1,
+   "next_bytes": {
+    " ": 1
+   }
+  },
+  "AWS_REGIONAWS_DEFAULT_REGIONU": {
+   "contexts": [
+    "sageKmsInvalidStateKmsKeyNotFoundUnknownAWS_REGIONAWS_DEFAULT_REGIONUserAgentInterceptorinterceptor_stateenco"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "s": 1
+   }
+  },
+  "AWS_REGIONG": {
+   "contexts": [
+    "or complete AWS sign-in, then try again.AWS_REGIONGateway sign-in is already in progressThe"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "a": 1
+   }
+  },
+  "AWS_REQUEST_CHECKSUM_CALCULATIONAWS_RESPONSE_CHECKSUM_VALIDATION": {
+   "contexts": [
+    "of rangeoverflow adding duration to dateAWS_REQUEST_CHECKSUM_CALCULATIONAWS_RESPONSE_CHECKSUM_VALIDATIONconfig persistence task panickedexperime"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "c": 1
+   }
+  },
+  "AWS_REQUEST_MIN_COMPRESSION_SIZE_BYTES": {
+   "contexts": [
+    "ignore configured endpoint URLs' settingAWS_REQUEST_MIN_COMPRESSION_SIZE_BYTESrequest_min_compression_size_bytesinvali",
+    "ignore configured endpoint URLs' settingAWS_REQUEST_MIN_COMPRESSION_SIZE_BYTESrequest_min_compression_size_bytesinvali"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "r": 2
+   }
+  },
+  "AWS_RETRY_MODE": {
+   "contexts": [
+    "lue for endpoint URL settingmax_attemptsAWS_RETRY_MODEretry_modeAWS_USE_DUALSTACK_ENDPOINTuse_",
+    "lue for endpoint URL settingmax_attemptsAWS_RETRY_MODEretry_modeAWS_USE_DUALSTACK_ENDPOINTuse_"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "r": 2
+   }
+  },
+  "AWS_ROLE_ARN": {
+   "contexts": [
+    "NAWS_ROLE_SESSION_NAMEweb-identity-tokenAWS_ROLE_ARN environment variable must be setevent /"
+   ],
+   "count": 1,
+   "next_bytes": {
+    " ": 1
+   }
+  },
+  "AWS_SDK_UA_APP_ID": {
+   "contexts": [
+    "ression size bytes` settingsdk-ua-app-idAWS_SDK_UA_APP_IDsdk_ua_app_idinvalid value for App Name ",
+    "ression size bytes` settingsdk-ua-app-idAWS_SDK_UA_APP_IDsdk_ua_app_idinvalid value for App Name "
+   ],
+   "count": 2,
+   "next_bytes": {
+    "s": 2
+   }
+  },
+  "AWS_SERVICEAWS": {
+   "contexts": [
+    "egion chain when omittedaws-regionREGIONAWS_SERVICEAWS signing serviceaws-serviceSERVICEexecut"
+   ],
+   "count": 1,
+   "next_bytes": {
+    " ": 1
+   }
+  },
+  "AWS_SHARED_CREDEE": {
+   "contexts": [
+    "CREDENTIALS_FILEAWS_SHARED_CREDEE"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "AWS_SIGV4S": {
+   "contexts": [
+    "mote registrationuse-agent-identity-authAWS_SIGV4Sign Direct registration and WebSocket ha"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "i": 1
+   }
+  },
+  "AWS_USE_DUALSTACK_ENDPOINT": {
+   "contexts": [
+    "tingmax_attemptsAWS_RETRY_MODEretry_modeAWS_USE_DUALSTACK_ENDPOINTuse_dualstack_endpointinvalid value for ",
+    "tingmax_attemptsAWS_RETRY_MODEretry_modeAWS_USE_DUALSTACK_ENDPOINTuse_dualstack_endpointinvalid value for "
+   ],
+   "count": 2,
+   "next_bytes": {
+    "u": 2
+   }
+  },
+  "AWS_USE_FIPS_ENDPOINT": {
+   "contexts": [
+    "app_idinvalid value for App Name settingAWS_USE_FIPS_ENDPOINTuse_fips_endpointinvalid value for FIPS ",
+    "app_idinvalid value for App Name settingAWS_USE_FIPS_ENDPOINTuse_fips_endpointinvalid value for FIPS "
+   ],
+   "count": 2,
+   "next_bytes": {
+    "u": 2
+   }
+  },
+  "AWS_WEB_IDENTITY_TOKEN_FILEAWS_ROLE_ARNAWS_ROLE_SESSION_NAME": {
+   "contexts": [
+    "roleWebIdentityToken was not valid UTF-8AWS_WEB_IDENTITY_TOKEN_FILEAWS_ROLE_ARNAWS_ROLE_SESSION_NAMEweb-identity-tokenAWS_ROLE_ARN environme"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "w": 1
+   }
+  },
+  "CODEX_ACCESS_TOKEN": {
+   "contexts": [
+    " auth requires --use-agent-identity-authCODEX_ACCESS_TOKEN is required when --use-agent-identity-a",
+    "access token from stdin (e.g. `printenv CODEX_ACCESS_TOKEN | codex login --with-access-token`)API_"
+   ],
+   "count": 5,
+   "next_bytes": {
+    " ": 4,
+    "c": 1
+   }
+  },
+  "CODEX_ACCESS_TOKENOPENAI_FEDERATION_RULE_IDOPENAI_IDENTITY_TOKEN_FILE": {
+   "contexts": [
+    "rktreesTUI task-tools MCP server stoppedCODEX_ACCESS_TOKENOPENAI_FEDERATION_RULE_IDOPENAI_IDENTITY_TOKEN_FILEauth.jsonenvironments.tomlaccount/read f"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "a": 1
+   }
+  },
+  "CODEX_AGENT_IDENTITY_AUTHAPI_BASE_URLCODEX_AGENT_IDENTITY_JWKS_BASE_URL": {
+   "contexts": [
+    "agent_identitymessageattemptmax_attemptsCODEX_AGENT_IDENTITY_AUTHAPI_BASE_URLCODEX_AGENT_IDENTITY_JWKS_BASE_URLhttps://auth.openai.com/api/accountshttp"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "h": 1
+   }
+  },
+  "CODEX_AGENT_IDENTITY_JWKS_BASE_URL": {
+   "contexts": [
+    "ty registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLchatgpt_account_idCODEX_AUTHAPI_BASE_URL",
+    "ty registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLemailchatgpt_user_idchatgpt_account_idch"
+   ],
+   "count": 7,
+   "next_bytes": {
+    "a": 2,
+    "c": 2,
+    "e": 3
+   }
+  },
+  "CODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URL": {
+   "contexts": [
+    "ty registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsacce",
+    "ty registration attempt failed; retryingCODEX_AGENT_IDENTITY_JWKS_BASE_URLCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkip"
+   ],
+   "count": 20,
+   "next_bytes": {
+    "h": 20
+   }
+  },
+  "CODEX_APH": {
+   "contexts": [
+    "CODEX_APH"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_API_KEYCODEX_ACCESS_TOKEN": {
+   "contexts": [
+    "uthentication; run `codex login` or set CODEX_API_KEYCODEX_ACCESS_TOKEN did not provide permitted Agent Identit"
+   ],
+   "count": 1,
+   "next_bytes": {
+    " ": 1
+   }
+  },
+  "CODEX_API_KEYOPENAI_API_KEY": {
+   "contexts": [
+    "n is requiredAPI key login is required, CODEX_API_KEYOPENAI_API_KEYauth data is not availablefailed to lock"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "a": 1
+   }
+  },
+  "CODEX_APPLY_GIT_CFG": {
+   "contexts": [
+    "fe.bareRepository=explicit/dev/nulladd--CODEX_APPLY_GIT_CFGpatch.diff^(?:error: )?repository lacks "
+   ],
+   "count": 1,
+   "next_bytes": {
+    "p": 1
+   }
+  },
+  "CODEX_APP_SERVER_CHATGPT_BASE_URL": {
+   "contexts": [
+    "nt_idchatgpt_user_idis_workspace_accountCODEX_APP_SERVER_CHATGPT_BASE_URL/backend-apihttps://chatgpt.comAppInfoid"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "/": 1
+   }
+  },
+  "CODEX_APP_SERVER_LOGIN_ISSUERA": {
+   "contexts": [
+    " is disabled. Use API key login instead.CODEX_APP_SERVER_LOGIN_ISSUERAmazon Bedrock API key must not be empty."
+   ],
+   "count": 1,
+   "next_bytes": {
+    "m": 1
+   }
+  },
+  "CODEX_AUTH": {
+   "contexts": [
+    "ternal error: entered unreachable code: CODEX_AUTH should be a valid secret name: ",
+    "eysfailed to lock ephemeral auth storageCODEX_AUTHevent login/src/auth/storage.rs:302faile"
+   ],
+   "count": 2,
+   "next_bytes": {
+    " ": 1,
+    "e": 1
+   }
+  },
+  "CODEX_AUTHAPI_BASE_URL": {
+   "contexts": [
+    "IDENTITY_JWKS_BASE_URLchatgpt_account_idCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkip",
+    "tgpt_plan_typechatgpt_account_is_fedrampCODEX_AUTHAPI_BASE_URLhttps://auth.openai.com/api/accountsSkip"
+   ],
+   "count": 7,
+   "next_bytes": {
+    "h": 7
+   }
+  },
+  "CODEX_BWRAP_SHA256": {
+   "contexts": [
+    "\"invalid CODEX_BWRAP_SHA256 value: "
+   ],
+   "count": 1,
+   "next_bytes": {
+    " ": 1
+   }
+  },
+  "CODEX_CA_CERTIFICARGO_HTTP_CAINFO": {
+   "contexts": [
+    "CODEX_CA_CERTIFICARGO_HTTP_CAINFO"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_CA_CERTIFICATE": {
+   "contexts": [
+    "ootsRegisterRustlsCertificateIf you set CODEX_CA_CERTIFICATE or SSL_CERT_FILE, ensure it points to a"
+   ],
+   "count": 1,
+   "next_bytes": {
+    " ": 1
+   }
+  },
+  "CODEX_CA_CERTIFICATESSL_CERT_FILE": {
+   "contexts": [
+    "twork-related environment looks readableCODEX_CA_CERTIFICATESSL_CERT_FILEcustom CA env var points at an unreadabl",
+    "ent while using system root certificatesCODEX_CA_CERTIFICATESSL_CERT_FILEfailed to write whole bufferinternal err"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "c": 1,
+    "f": 1
+   }
+  },
+  "CODEX_CA_CERTIFICATESSL_CERT_FILEREQUESTS_CA_BUNDLECURL_CA_BUNDLENODE_EXTRA_CA_CERTSGIT_SSL_CAINFOCARGO_HTTP_CAINFOBUNDLE_SSL_CA_CERT": {
+   "contexts": [
+    "ROXYALL_PROXYall_proxyFTP_PROXYftp_proxyCODEX_CA_CERTIFICATESSL_CERT_FILEREQUESTS_CA_BUNDLECURL_CA_BUNDLENODE_EXTRA_CA_CERTSGIT_SSL_CAINFOCARGO_HTTP_CAINFOBUNDLE_SSL_CA_CERTnpm_config_cafileNPM_CONFIG_CAFILE__CODE",
+    "sandbox runtime paths are not configuredCODEX_CA_CERTIFICATESSL_CERT_FILEREQUESTS_CA_BUNDLECURL_CA_BUNDLENODE_EXTRA_CA_CERTSGIT_SSL_CAINFOCARGO_HTTP_CAINFOBUNDLE_SSL_CA_CERTnpm_config_cafileNPM_CONFIG_CAFILECodex "
+   ],
+   "count": 5,
+   "next_bytes": {
+    "n": 5
+   }
+  },
+  "CODEX_CI": {
+   "contexts": [
+    "reviewer:minimal</tools>run_turnAudioPcmCODEX_CI"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_CLH1": {
+   "contexts": [
+    "CODEX_CLH1"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_CLOUD_TASKS_BASE_URL": {
+   "contexts": [
+    "nts/backend-apino environments availableCODEX_CLOUD_TASKS_BASE_URLcodex-apiNot signed in. Please run 'code",
+    "at.openai.com:443chatgpt-staging.com:443CODEX_CLOUD_TASKS_BASE_URL must use a trusted HTTPS origin on port"
+   ],
+   "count": 2,
+   "next_bytes": {
+    " ": 1,
+    "c": 1
+   }
+  },
+  "CODEX_CLOUD_TASKS_FORCE_INTERNAL": {
+   "contexts": [
+    "elementsenvironment id must not be emptyCODEX_CLOUD_TASKS_FORCE_INTERNAL"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_CONNECTORS_TOKEN": {
+   "contexts": [
+    "t codex-mcp/src/mcp/mod.rs:784/api/codexCODEX_CONNECTORS_TOKENevent codex-mcp/src/server.rs:367codex_m"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "e": 1
+   }
+  },
+  "CODEX_DAEMON_TELEMETRY_HANDOFF": {
+   "contexts": [
+    "updater ownership changed before handoffCODEX_DAEMON_TELEMETRY_HANDOFFdaemon pid path has no Codex homefailed "
+   ],
+   "count": 1,
+   "next_bytes": {
+    "d": 1
+   }
+  },
+  "CODEX_DAEMON_TELEMETRY_HANDOFF1R": {
+   "contexts": [
+    "app-serverdaemon--from-cli--yesCODEX_DAEMON_TELEMETRY_HANDOFF1Relaunch Codex to reconnect."
+   ],
+   "count": 1,
+   "next_bytes": {
+    "e": 1
+   }
+  },
+  "CODEX_DESKTOP_APP": {
+   "contexts": [
+    "CODEX_DESKTOP_APP"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_ESCALATE_S": {
+   "contexts": [
+    "_ESCALATE_SOCKETCODEX_ESCALATE_Sas-process-setup--codex-run-as-pex-linux"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "a": 1
+   }
+  },
+  "CODEX_ESCALATE_SOCKET": {
+   "contexts": [
+    " entered unreachable codea sequencea mapCODEX_ESCALATE_SOCKETworkdirenvstruct EscalateRequest with 4 ",
+    "calation/src/unix/escalate_server.rs:259CODEX_ESCALATE_SOCKETevent shell-escalation/src/unix/escalate"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "e": 1,
+    "w": 1
+   }
+  },
+  "CODEX_ESCALATE_SOCKETEXEC_WRAPPER": {
+   "contexts": [
+    "rgv[0]prepared command must not be emptyCODEX_ESCALATE_SOCKETEXEC_WRAPPERevent core/src/tools/runtimes/zsh_fork/u"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "e": 1
+   }
+  },
+  "CODEX_EXEC_SERVER_EXIT_ON_STDIN_CLOSECODEX_NETWORK_PROXY_ACTIVEPWDOLDPWD": {
+   "contexts": [
+    "mptynetwork/policyDecisionprocess/closedCODEX_EXEC_SERVER_EXIT_ON_STDIN_CLOSECODEX_NETWORK_PROXY_ACTIVEPWDOLDPWDstate_too_largeenvironment_too_largeinva"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "s": 1
+   }
+  },
+  "CODEX_EXEC_SERVER_EXIT_ON_STDIN_CLOSER": {
+   "contexts": [
+    "ard-input pipe closesexit-on-stdin-closeCODEX_EXEC_SERVER_EXIT_ON_STDIN_CLOSERemoveMarketplaceArgsConfigured marketpla"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "e": 1
+   }
+  },
+  "CODEX_EXEC_SERVER_NOISE_AUTH_TOKENNODE_REPL_AUTH_TOKENOPENAI_FEDERATION_RULE_IDOPENAI_IDENTITY_TOKEN_FILE": {
+   "contexts": [
+    "dels.rsSHELLTMPLC_ALLLOGNAME*KEY**TOKEN*CODEX_EXEC_SERVER_NOISE_AUTH_TOKENNODE_REPL_AUTH_TOKENOPENAI_FEDERATION_RULE_IDOPENAI_IDENTITY_TOKEN_FILEnon-metadata optional permissions:tmpdir"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "n": 1
+   }
+  },
+  "CODEX_EXEC_SERVER_NOISE_REGISTRY_URLCODEX_EXEC_SERVER_NOISE_ENVIRONMENT_IDCODEX_EXEC_SERVER_NOISE_AUTH_TOKENCODEX_EXEC_SERVER_NOISE_CHATGPT_ACCOUNT_IDN": {
+   "contexts": [
+    "onment requires configured runtime pathsCODEX_EXEC_SERVER_NOISE_REGISTRY_URLCODEX_EXEC_SERVER_NOISE_ENVIRONMENT_IDCODEX_EXEC_SERVER_NOISE_AUTH_TOKENCODEX_EXEC_SERVER_NOISE_CHATGPT_ACCOUNT_IDNoise relay pending ciphertext buffer is "
+   ],
+   "count": 1,
+   "next_bytes": {
+    "o": 1
+   }
+  },
+  "CODEX_EXEC_SERVER_PROXY_PRIVATE_IPS_VIA_UPSTREAMREQUEST_DISPATCH_MODEM": {
+   "contexts": [
+    "am routingproxy-private-ips-via-upstreamCODEX_EXEC_SERVER_PROXY_PRIVATE_IPS_VIA_UPSTREAMREQUEST_DISPATCH_MODEMaximum number of requests to process con"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "a": 1
+   }
+  },
+  "CODEX_EXEC_SERVER_URL": {
+   "contexts": [
+    "ataone or more rollout migrations failedCODEX_EXEC_SERVER_URLremote-controlremote-control startremote",
+    "in/plugin.json.cursor-plugin/plugin.jsonCODEX_EXEC_SERVER_URLfile read cancelledmissing capture PIDRP"
+   ],
+   "count": 3,
+   "next_bytes": {
+    ")": 1,
+    "f": 1,
+    "r": 1
+   }
+  },
+  "CODEX_GIH1": {
+   "contexts": [
+    "CODEX_GIH1"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_GITHUB_PERSONAL_ACCESS_TOKEN": {
+   "contexts": [
+    "bearer_token_env_var = CODEX_GITHUB_PERSONAL_ACCESS_TOKEN"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_HOH": {
+   "contexts": [
+    "CODEX_HOH"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_HOME": {
+   "contexts": [
+    "CODEX_HOME: ",
+    "failed to resolve CODEX_HOME: "
+   ],
+   "count": 65,
+   "next_bytes": {
+    " ": 13,
+    "\"": 2,
+    "/": 17,
+    ":": 6,
+    ";": 2,
+    "=": 1,
+    "`": 19,
+    "a": 1,
+    "d": 1,
+    "f": 2,
+    "o": 1
+   }
+  },
+  "CODEX_HOMEA": {
+   "contexts": [
+    "boration_modes.rswswssfailed to resolve CODEX_HOMEAsyncQuestionReplyquestionItemId"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "s": 1
+   }
+  },
+  "CODEX_HOMEC": {
+   "contexts": [
+    "CODEX_HOMECould not find home directory"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "o": 1
+   }
+  },
+  "CODEX_HOMECODEX_CA_CERTIFICATESSL_CERT_FILEREQUESTS_CA_BUNDLECURL_CA_BUNDLENODE_EXTRA_CA_CERTSGIT_SSL_CAINFOCARGO_HTTP_CAINFOBUNDLE_SSL_CA_CERT": {
+   "contexts": [
+    "ingsfailed to clear daemon recovery fileCODEX_HOMECODEX_CA_CERTIFICATESSL_CERT_FILEREQUESTS_CA_BUNDLECURL_CA_BUNDLENODE_EXTRA_CA_CERTSGIT_SSL_CAINFOCARGO_HTTP_CAINFOBUNDLE_SSL_CA_CERTnpm_config_cafileNPM_CONFIG_CAFILEAWS_CO"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "n": 1
+   }
+  },
+  "CODEX_HOMECODEX_INSTALL_DEFER_SELECTIONCODEX_RELEASE": {
+   "contexts": [
+    "d/bin/sh-spackage root has no Codex homeCODEX_HOMECODEX_INSTALL_DEFER_SELECTIONCODEX_RELEASElatestCODEX_NON_INTERACTIVECODEX_UPDATE_"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "l": 1
+   }
+  },
+  "CODEX_INSTALL_DA": {
+   "contexts": [
+    "from_envurl_prefix_from_TALL_DAEMON_ONLYCODEX_INSTALL_DAessage_to_threadsend_message_to_"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "e": 1
+   }
+  },
+  "CODEX_INSTALL_DAEMON_ONLYT": {
+   "contexts": [
+    " daemon changed during the update; retryCODEX_INSTALL_DAEMON_ONLYThis command requires a daemon package se"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "h": 1
+   }
+  },
+  "CODEX_INSTALL_DE": {
+   "contexts": [
+    "gEffortssupportedReasoni_DEFER_SELECTIONCODEX_INSTALL_DE<"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<": 1
+   }
+  },
+  "CODEX_INSTALL_IF_CURRENT": {
+   "contexts": [
+    "rpcdaemon package root has no Codex homeCODEX_INSTALL_IF_CURRENTdaemon selection changed; retry the upda"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "d": 1
+   }
+  },
+  "CODEX_INSTALL_IF_LATEST": {
+   "contexts": [
+    "emon selection changed; retry the updateCODEX_INSTALL_IF_LATESTinstaller_fetchapp-server-daemoninstalle"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "i": 1
+   }
+  },
+  "CODEX_INTERNAL_APP_SERVER_REMOTE_CONTROL_DISABLED": {
+   "contexts": [
+    "CODEX_INTERNAL_APP_SERVER_REMOTE_CONTROL_DISABLEDshutdown_forcedps-p-ostat=lstart=failed ",
+    "control enrollment lock should stay openCODEX_INTERNAL_APP_SERVER_REMOTE_CONTROL_DISABLEDremote control pairing status requires p"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "r": 1,
+    "s": 1
+   }
+  },
+  "CODEX_INTERNAL_ORIGINATOR_OVERRIDE": {
+   "contexts": [
+    "rk attachmentsopenai/standard-form-inputCODEX_INTERNAL_ORIGINATOR_OVERRIDE",
+    "rk attachmentsopenai/standard-form-inputCODEX_INTERNAL_ORIGINATOR_OVERRIDE"
+   ],
+   "count": 4,
+   "next_bytes": {
+    "<end>": 4
+   }
+  },
+  "CODEX_INTERNAL_ORIGINATOR_OVERRIDECODEX_SANDBOX": {
+   "contexts": [
+    "typeplatform_urlcodex_streamlined_login&CODEX_INTERNAL_ORIGINATOR_OVERRIDECODEX_SANDBOXoriginatorsize overflows MAX_SIZEusx-ope"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "o": 1
+   }
+  },
+  "CODEX_MANAGED_BY_BUNCODEX_MANAGED_BY_VITE_PLUSCODEX_MANAGED_BY_PNPM": {
+   "contexts": [
+    "anager launch env for cargo-built binaryCODEX_MANAGED_BY_BUNCODEX_MANAGED_BY_VITE_PLUSCODEX_MANAGED_BY_PNPMmanaged package rootCODEX_MANAGED_PACKAG"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "m": 1
+   }
+  },
+  "CODEX_MANAGED_BY_NPM": {
+   "contexts": [
+    "mnsresize the window to at least 24 rowsCODEX_MANAGED_BY_NPM&TERMINFO_DIRS: presentarchived_sessions"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "&": 1
+   }
+  },
+  "CODEX_MANAGED_BY_VITE_PLUSCODEX_MANAGED_BY_PNPMCODEX_MANAGED_BY_NPMCODEX_MANAGED_BY_BUNE": {
+   "contexts": [
+    "ex-path/opt/homebrew/usr/localstandaloneCODEX_MANAGED_BY_VITE_PLUSCODEX_MANAGED_BY_PNPMCODEX_MANAGED_BY_NPMCODEX_MANAGED_BY_BUNErrora Display implementation returned an"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "r": 1
+   }
+  },
+  "CODEX_MANAGED_PACKAGE_ROOT": {
+   "contexts": [
+    "ODEX_MANAGED_BY_PNPMmanaged package rootCODEX_MANAGED_PACKAGE_ROOTinstallation looks consistentnpm update ",
+    "or update Codex so the JS shim provides CODEX_MANAGED_PACKAGE_ROOT.installutf-8external ChatGPT auth is mi"
+   ],
+   "count": 2,
+   "next_bytes": {
+    ".": 1,
+    "i": 1
+   }
+  },
+  "CODEX_MCP_PROTOC": {
+   "contexts": [
+    "tartTimeskill_md_contentPROTOCOL_VERSIONCODEX_MCP_PROTOCked as untrusted is marked as un_thread_"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "k": 1
+   }
+  },
+  "CODEX_MCP_PROTOCOL_VERSION": {
+   "contexts": [
+    "(unsupported CODEX_MCP_PROTOCOL_VERSION `",
+    "he contextcodex.apps.refresh.duration_msCODEX_MCP_PROTOCOL_VERSION)Failed to list resources for MCP server"
+   ],
+   "count": 6,
+   "next_bytes": {
+    " ": 1,
+    ")": 1,
+    "f": 2,
+    "i": 2
+   }
+  },
+  "CODEX_MCP_PROTOCOL_VERSION2025": {
+   "contexts": [
+    "he contextcodex.apps.refresh.duration_msCODEX_MCP_PROTOCOL_VERSION2025-06-18openai/entitlementContextMCP runti"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "-": 1
+   }
+  },
+  "CODEX_MCP_PROTOCOL_VERSIONBUG": {
+   "contexts": [
+    " optional MCP server2026-07-282025-06-18CODEX_MCP_PROTOCOL_VERSIONBUG: connection queue overflow in release()"
+   ],
+   "count": 1,
+   "next_bytes": {
+    ":": 1
+   }
+  },
+  "CODEX_NETWORK_POLICY_VIOLATION": {
+   "contexts": [
+    "47event network-proxy/src/runtime.rs:160CODEX_NETWORK_POLICY_VIOLATIONblocked-by-policyblocked-by-mitm-require"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "b": 1
+   }
+  },
+  "CODEX_NETWORK_PR": {
+   "contexts": [
+    "me_deleg0000000000000000ORK_PROXY_ACTIVECODEX_NETWORK_PR"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_NETWORK_PROXY_ACTIVE": {
+   "contexts": [
+    "hostshell is unavailable in this sessionCODEX_NETWORK_PROXY_ACTIVEcommand aborted by useraborting running ",
+    "hostshell is unavailable in this sessionCODEX_NETWORK_PROXY_ACTIVEcommand aborted by usercore.turns.active"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "c": 2
+   }
+  },
+  "CODEX_NETWORK_PROXY_ACTIVECODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVECODEX_NETWORK_PROXY_BROKERED_CREDENTIALSCODEX_NETWORK_ALLOW_LOCAL_BINDINGELECTRON_GET_USE_PROXYNODE_USE_ENV_PROXY": {
+   "contexts": [
+    "PROXYDOCKER_HTTP_PROXYDOCKER_HTTPS_PROXYCODEX_NETWORK_PROXY_ACTIVECODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVECODEX_NETWORK_PROXY_BROKERED_CREDENTIALSCODEX_NETWORK_ALLOW_LOCAL_BINDINGELECTRON_GET_USE_PROXYNODE_USE_ENV_PROXYhttp_proxyhttps_proxynpm_config_http_pro"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "h": 1
+   }
+  },
+  "CODEX_NETWORK_PROXY_ATTRIBUTION": {
+   "contexts": [
+    "hread panickedroutesenv_keycontrol_fd://CODEX_NETWORK_PROXY_ATTRIBUTIONmanaged proxy mode requires proxy enviro",
+    "_)missing MITM statemissing proxy targetCODEX_NETWORK_PROXY_ATTRIBUTIONevent network-proxy/src/proxy.rs:997code"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "e": 1,
+    "m": 1
+   }
+  },
+  "CODEX_NETWORK_PROXY_BROKERED_CREDENTIALS": {
+   "contexts": [
+    "uccessfailure_reasoncodex.shell_snapshotCODEX_NETWORK_PROXY_BROKERED_CREDENTIALSshell snapshot contains a brokered crede"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "s": 1
+   }
+  },
+  "CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVE": {
+   "contexts": [
+    "l_snapshot.rs:281shell_snapshotthread_idCODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVEevent core/src/shell_snapshot.rs:1188eve"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "e": 1
+   }
+  },
+  "CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVECODEX_NETWORK_PROXY_BROKERED_CREDENTIALS": {
+   "contexts": [
+    "al pattern must not match an empty valueCODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVECODEX_NETWORK_PROXY_BROKERED_CREDENTIALS@alias:://event network-proxy/src/creden"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "@": 1
+   }
+  },
+  "CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVECODEX_NETWORK_PROXY_BROKERED_CREDENTIALSOPENAI_BASE_URL": {
+   "contexts": [
+    "user information, a query, or a fragmentCODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVECODEX_NETWORK_PROXY_BROKERED_CREDENTIALSOPENAI_BASE_URLsk-svcacct-sk-admin-sk-sk-ant-sk-or-OPEN"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "s": 1
+   }
+  },
+  "CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVECODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_POSIX_ENV": {
+   "contexts": [
+    "rt executor-local network proxy launchesCODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVECODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_POSIX_ENVcredential brokerage could not create a "
+   ],
+   "count": 1,
+   "next_bytes": {
+    "c": 1
+   }
+  },
+  "CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVECODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_POSIX_ENVCODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_": {
+   "contexts": [
+    "rt executor-local network proxy launchesCODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVECODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_POSIX_ENVCODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_credential brokerage could not create a "
+   ],
+   "count": 1,
+   "next_bytes": {
+    "c": 1
+   }
+  },
+  "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_": {
+   "contexts": [
+    "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_-fcCODEX_THREAD_IDCODEX_VERSIONCODEX_PER"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "-": 1
+   }
+  },
+  "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_": {
+   "contexts": [
+    "d to publish unified exec launch failureCODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_automatic approval review was cancelleda"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "a": 1
+   }
+  },
+  "CODEX_NON_INTERACTIVE": {
+   "contexts": [
+    " https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 shshBypass$env:CODEX_NON_INTERACTIVE=",
+    " CODEX_NON_INTERACTIVE=1 shshBypass$env:CODEX_NON_INTERACTIVE=1; irm https://chatgpt.com/codex/instal"
+   ],
+   "count": 4,
+   "next_bytes": {
+    "=": 4
+   }
+  },
+  "CODEX_NON_INTERACTIVECODEX_UPDATE_FROM_RELEASE": {
+   "contexts": [
+    "STALL_DEFER_SELECTIONCODEX_RELEASElatestCODEX_NON_INTERACTIVECODEX_UPDATE_FROM_RELEASEfailed to invoke standalone Codex update"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "f": 1
+   }
+  },
+  "CODEX_OSS_PORTCODEX_OSS_BASE_URL": {
+   "contexts": [
+    "not be combined with supports_websocketsCODEX_OSS_PORTCODEX_OSS_BASE_URLresponsesopenaiamazon-bedrockamazon-bedr"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "r": 1
+   }
+  },
+  "CODEX_PERMISSION": {
+   "contexts": [
+    "CODEX_PERMISSIONhandoff steeringcodex_core::utilcore/src"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "h": 1
+   }
+  },
+  "CODEX_PERMISSION_PROFILECODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGSCODEX_PLUGIN_METRICS_OUTPUTN": {
+   "contexts": [
+    "1C.UTF-8LC_ALLCOLORTERMPAGERcatGIT_PAGERCODEX_PERMISSION_PROFILECODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGSCODEX_PLUGIN_METRICS_OUTPUTNetwork access was denied by the Codex sa",
+    " and there is no else branchexec_commandCODEX_PERMISSION_PROFILECODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGSCODEX_PLUGIN_METRICS_OUTPUTNetwork access was denied by the Codex sa"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "e": 2
+   }
+  },
+  "CODEX_PLUGIN_METRICS_OUTPUT": {
+   "contexts": [
+    "ated marketplace metadatavaluedimensionsCODEX_PLUGIN_METRICS_OUTPUTversionmeasurementsevent core-plugins/sr"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "v": 1
+   }
+  },
+  "CODEX_REFRESH_TOKEN_URL_OVERRIDECODEX_APP_SERVER_LOGIN_CLIENT_ID": {
+   "contexts": [
+    "login/src/auth/default_client.rsCODEX_REFRESH_TOKEN_URL_OVERRIDECODEX_APP_SERVER_LOGIN_CLIENT_IDlogin/src/auth/agent_identity.rsstruct T"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "l": 1
+   }
+  },
+  "CODEX_REVOKE_TOKEN_URL_OVERRIDE": {
+   "contexts": [
+    "ess_key_idsecret_access_keysession_tokenCODEX_REVOKE_TOKEN_URL_OVERRIDEhttps://auth.openai.com/oauth/revoke/oau"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "h": 1
+   }
+  },
+  "CODEX_ROLLOUT_TRACE_ROOT": {
+   "contexts": [
+    "trace::threadrollout-trace/src/thread.rsCODEX_ROLLOUT_TRACE_ROOT+failed to initialize rollout trace bund"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "+": 1
+   }
+  },
+  "CODEX_SAH": {
+   "contexts": [
+    "CODEX_SAH"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_SANDBOX_NETWORK_DISABLED": {
+   "contexts": [
+    "cy.rs:197stop_residentzshpowershellshcmdCODEX_SANDBOX_NETWORK_DISABLEDevent core/src/tasks/user_shell.rs:321co",
+    "ectors_for_tool_suggest_with_authmessageCODEX_SANDBOX_NETWORK_DISABLEDevent core/src/exec_policy.rs:708codex_c"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "e": 2
+   }
+  },
+  "CODEX_SANDBOX_NETWORK_DISABLED1": {
+   "contexts": [
+    "CODEX_SANDBOX_NETWORK_DISABLED1linuxconfig.tomlmcp_servers`--dangerousl",
+    "edly not availablecommand args are emptyCODEX_SANDBOX_NETWORK_DISABLED1config.tomlPersistentModeSnapshotinstruc"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "c": 1,
+    "l": 1
+   }
+  },
+  "CODEX_SESSION_ID": {
+   "contexts": [
+    "PS_PROXYnpm_config_proxyNPM_CONFIG_PROXYCODEX_SESSION_IDk"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "k": 1
+   }
+  },
+  "CODEX_SHELL_SNAPSHOT_STATE_": {
+   "contexts": [
+    "__CODEX_SHELL_SNAPSHOT_STATE_"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_SNAPSHOT_ALTERNATE_PROTECTED_ENV": {
+   "contexts": [
+    "    \"$__CODEX_SNAPSHOT_ALTERNATE_PROTECTED_ENV\" \\",
+    "  __CODEX_SNAPSHOT_PROTECTED_ENV __CODEX_SNAPSHOT_ALTERNATE_PROTECTED_ENV \\"
+   ],
+   "count": 3,
+   "next_bytes": {
+    " ": 1,
+    "\"": 1,
+    "=": 1
+   }
+  },
+  "CODEX_SNAPSHOT_BROKER_XTRACE": {
+   "contexts": [
+    "  *x*) __CODEX_SNAPSHOT_BROKER_XTRACE=1; set +x ;;",
+    "  *) __CODEX_SNAPSHOT_BROKER_XTRACE= ;;"
+   ],
+   "count": 5,
+   "next_bytes": {
+    "\"": 1,
+    "<end>": 2,
+    "=": 2
+   }
+  },
+  "CODEX_SNAPSHOT_CURRENT_ENV": {
+   "contexts": [
+    "__CODEX_SNAPSHOT_CURRENT_ENV=$(",
+    "f __codex_snapshot_env_is_protected \"$__CODEX_SNAPSHOT_CURRENT_ENV\"; then"
+   ],
+   "count": 3,
+   "next_bytes": {
+    " ": 1,
+    "\"": 1,
+    "=": 1
+   }
+  },
+  "CODEX_SNAPSHOT_ORIGINAL_ENV": {
+   "contexts": [
+    "ex_snapshot_expand_env_with_zdotdir \"$__CODEX_SNAPSHOT_ORIGINAL_ENV\"",
+    "    builtin export ENV=\"$__CODEX_SNAPSHOT_ORIGINAL_ENV\" 2>/dev/null ||"
+   ],
+   "count": 6,
+   "next_bytes": {
+    " ": 1,
+    "\"": 4,
+    "=": 1
+   }
+  },
+  "CODEX_SNAPSHOT_ORIGINAL_ENV_SET": {
+   "contexts": [
+    "  if [ -n \"$__CODEX_SNAPSHOT_ORIGINAL_ENV_SET\" ] &&",
+    "unset __CODEX_SNAPSHOT_ORIGINAL_ENV_SET __CODEX_SNAPSHOT_ORIGINAL_ENV \\"
+   ],
+   "count": 3,
+   "next_bytes": {
+    " ": 1,
+    "\"": 1,
+    "=": 1
+   }
+  },
+  "CODEX_SNAPSHOT_ORIGINAL_EXPANDED_ENV": {
+   "contexts": [
+    "__CODEX_SNAPSHOT_ORIGINAL_EXPANDED_ENV=$(",
+    "! __codex_snapshot_env_is_protected \"$__CODEX_SNAPSHOT_ORIGINAL_EXPANDED_ENV\"; then"
+   ],
+   "count": 3,
+   "next_bytes": {
+    " ": 1,
+    "\"": 1,
+    "=": 1
+   }
+  },
+  "CODEX_SNAPSHOT_OVERRIDECODEX_NETWORK_PROXY_ACTIVECODEX_NETWORK_PROXY_BROKERED_CREDENTIALSCODEX_NETWORK_ALLOW_LOCAL_BINDINGCODEX_NETWORK_PROXY_ATTRIBUTIONELECTRON_GET_USE_PROXYNODE_USE_ENV_PROXYHTTP_PROXYHTTPS_PROXY": {
+   "contexts": [
+    "executablecommand args are empty:'\"'\"'__CODEX_SNAPSHOT_OVERRIDECODEX_NETWORK_PROXY_ACTIVECODEX_NETWORK_PROXY_BROKERED_CREDENTIALSCODEX_NETWORK_ALLOW_LOCAL_BINDINGCODEX_NETWORK_PROXY_ATTRIBUTIONELECTRON_GET_USE_PROXYNODE_USE_ENV_PROXYHTTP_PROXYHTTPS_PROXYhttp_proxyhttps_proxyYARN_HTTP_PROXYnpm_"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "h": 1
+   }
+  },
+  "CODEX_SNAPSHOT_POSIX_STARTUP": {
+   "contexts": [
+    "}printf '\\0CODEX_SNAPSHOT_POSIX_STARTUP\\0%s\\0' \"$__codex_env_file\""
+   ],
+   "count": 1,
+   "next_bytes": {
+    "\\": 1
+   }
+  },
+  "CODEX_SNAPSHOT_PROTECTED_ENV": {
+   "contexts": [
+    "    \"$__CODEX_SNAPSHOT_PROTECTED_ENV\" \\",
+    "  __CODEX_SNAPSHOT_PROTECTED_ENV __CODEX_SNAPSHOT_ALTERNATE_PROTECTED_EN"
+   ],
+   "count": 3,
+   "next_bytes": {
+    " ": 1,
+    "\"": 1,
+    "=": 1
+   }
+  },
+  "CODEX_SNAPSHOT_PROXY_ENV_SET": {
+   "contexts": [
+    "__CODEX_SNAPSHOT_PROXY_ENV_SET=\"${",
+    "7if [ -n \"$__CODEX_SNAPSHOT_PROXY_ENV_SET\" ] || [ -n \"${"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "\"": 1,
+    "=": 1
+   }
+  },
+  "CODEX_SNAPSHOT_PROXY_OVERRIDE": {
+   "contexts": [
+    "CERTnpm_config_cafileNPM_CONFIG_CAFILE__CODEX_SNAPSHOT_PROXY_OVERRIDE"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_SNAPSHOT_REPLAYED_BASH_ENV": {
+   "contexts": [
+    "ex_snapshot_expand_env_with_zdotdir \"$__CODEX_SNAPSHOT_REPLAYED_BASH_ENV\"",
+    "  __CODEX_SNAPSHOT_REPLAYED_BASH_ENV __CODEX_SNAPSHOT_REPLAYED_PROTECTED_ENV"
+   ],
+   "count": 3,
+   "next_bytes": {
+    " ": 1,
+    "\"": 1,
+    "=": 1
+   }
+  },
+  "CODEX_SNAPSHOT_REPLAYED_PROTECTED_ENV": {
+   "contexts": [
+    "__CODEX_SNAPSHOT_REPLAYED_PROTECTED_ENV=$(",
+    "    \"$__CODEX_SNAPSHOT_REPLAYED_PROTECTED_ENV\"; do"
+   ],
+   "count": 3,
+   "next_bytes": {
+    " ": 1,
+    "\"": 1,
+    "=": 1
+   }
+  },
+  "CODEX_SNAPSHOT_SNAPSHOT_EXPORTS": {
+   "contexts": [
+    "CODEX_SNAPSHOT_SNAPSHOT_EXPORTS"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_SNAPSHOT_SOURCE": {
+   "contexts": [
+    "cess.idexec-server/src/shell_snapshot.rsCODEX_SNAPSHOT_SOURCE/if case '' in '') ;; esac 2>/dev/null <"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "/": 1
+   }
+  },
+  "CODEX_SQH": {
+   "contexts": [
+    "CODEX_SQH"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_SQLITE_HOME": {
+   "contexts": [
+    "]Environment value for `$CODEX_SQLITE_HOME` is overridden by the required `sqlite_",
+    "ent core/src/config/requirements.rs:150`CODEX_SQLITE_HOME` is overridden by an exact requirement "
+   ],
+   "count": 3,
+   "next_bytes": {
+    "`": 2,
+    "r": 1
+   }
+  },
+  "CODEX_STARTING_DIFF": {
+   "contexts": [
+    "n incompatible format.current<all><none>CODEX_STARTING_DIFFenvironment_idrun_environment_in_qa_mode"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "e": 1
+   }
+  },
+  "CODEX_THH": {
+   "contexts": [
+    "CODEX_THH",
+    "CODEX_THH"
+   ],
+   "count": 5,
+   "next_bytes": {
+    "<end>": 5
+   }
+  },
+  "CODEX_THI": {
+   "contexts": [
+    "CODEX_THI",
+    "CODEX_THI"
+   ],
+   "count": 3,
+   "next_bytes": {
+    "<end>": 3
+   }
+  },
+  "CODEX_THREAD_IDCODEX_VERSIONCODEX_PERMISSION_PROFILECODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGSCODEX_PLUGIN_METRICS_OUTPUTCODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_BASH_ENVCODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_POSIX_ENVCODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_ZDOTDIR__": {
+   "contexts": [
+    "ETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_-fcCODEX_THREAD_IDCODEX_VERSIONCODEX_PERMISSION_PROFILECODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGSCODEX_PLUGIN_METRICS_OUTPUTCODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_BASH_ENVCODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_POSIX_ENVCODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_ZDOTDIR__codex_snapshot_expand_env() ("
+   ],
+   "count": 1,
+   "next_bytes": {
+    "c": 1
+   }
+  },
+  "CODEX_TUI_DISABLE_KEYBOARD_ENHANCEMENT": {
+   "contexts": [
+    "ered terminal inputTERM_PROGRAMTMUX_PANECODEX_TUI_DISABLE_KEYBOARD_ENHANCEMENTwindows-term-programdisplay-message-p-ts"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "w": 1
+   }
+  },
+  "CODEX_TUI_RECORD_SESSIONCODEX_TUI_SESSION_LOG_PATH": {
+   "contexts": [
+    "x_tui::session_logtui/src/session_log.rsCODEX_TUI_RECORD_SESSIONCODEX_TUI_SESSION_LOG_PATH%Y%m%dT%H%M%SZmodel_provider_idmodel_pro"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "%": 1
+   }
+  },
+  "CODEX_TUI_ROUNDED": {
+   "contexts": [
+    "sitivesigencstruct JwkSet with 1 elementCODEX_TUI_ROUNDEDlimit must be between 1 and 20limit must"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "l": 1
+   }
+  },
+  "CODEX_URL": {
+   "contexts": [
+    "        const CODEX_URL = \"codex://threads/new\";",
+    "          window.location.href = CODEX_URL;"
+   ],
+   "count": 2,
+   "next_bytes": {
+    " ": 1,
+    ";": 1
+   }
+  },
+  "CODEX_VEH1": {
+   "contexts": [
+    "CODEX_VEH1"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_VEI": {
+   "contexts": [
+    "CODEX_VEI",
+    "CODEX_VEI"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "<end>": 2
+   }
+  },
+  "CODEX_WEH1": {
+   "contexts": [
+    "CODEX_WEH1"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_WOH1": {
+   "contexts": [
+    "CODEX_WOH1"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_WORK_DESKTOP": {
+   "contexts": [
+    "assifierguardian_classifautomated_reviewCODEX_WORK_DESKTOP"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "CODEX_WORK_MOBILCODEX_IDE_VSCODEU": {
+   "contexts": [
+    "CODEX_WORK_MOBILCODEX_IDE_VSCODEUpdate available<a href=\"mailto:removal_d"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "p": 1
+   }
+  },
+  "OPENAI_AH1": {
+   "contexts": [
+    "OPENAI_AH1",
+    "OPENAI_AH1"
+   ],
+   "count": 8,
+   "next_bytes": {
+    "<end>": 8
+   }
+  },
+  "OPENAI_AH3": {
+   "contexts": [
+    "OPENAI_AH3",
+    "OPENAI_AH3"
+   ],
+   "count": 2,
+   "next_bytes": {
+    "<end>": 2
+   }
+  },
+  "OPENAI_AL1": {
+   "contexts": [
+    "OPENAI_AL1",
+    "OPENAI_AL1"
+   ],
+   "count": 3,
+   "next_bytes": {
+    "<end>": 3
+   }
+  },
+  "OPENAI_AM1": {
+   "contexts": [
+    "OPENAI_AM1"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "OPENAI_API_KEY": {
+   "contexts": [
+    "d. Pipe the key instead, e.g. `printenv OPENAI_API_KEY | codex login --with-api-key`.",
+    " the API key from stdin (e.g. `printenv OPENAI_API_KEY | codex login --with-api-key`)WITH_ACCE"
+   ],
+   "count": 19,
+   "next_bytes": {
+    " ": 8,
+    "\"": 1,
+    "`": 8,
+    "e": 1,
+    "r": 1
+   }
+  },
+  "OPENAI_API_KEYCODEX_API_KEY": {
+   "contexts": [
+    "code_verifierOPENAI_API_KEYCODEX_API_KEYinternal error: entered unreachable code"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "i": 1
+   }
+  },
+  "OPENAI_API_KEYCODEX_API_KEYCODEX_ACCESS_TOKEN": {
+   "contexts": [
+    "bec3e3a14bdc7e7a2810ab628ab759dauth.jsonOPENAI_API_KEYCODEX_API_KEYCODEX_ACCESS_TOKEN, no Codex credentials were foundRun cod"
+   ],
+   "count": 1,
+   "next_bytes": {
+    ",": 1
+   }
+  },
+  "OPENAI_BH": {
+   "contexts": [
+    "OPENAI_BH",
+    "OPENAI_BH"
+   ],
+   "count": 3,
+   "next_bytes": {
+    "<end>": 3
+   }
+  },
+  "OPENAI_BI1": {
+   "contexts": [
+    "OPENAI_BI1"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "OPENAI_BL1": {
+   "contexts": [
+    "OPENAI_BL1"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "OPENAI_BM1": {
+   "contexts": [
+    "OPENAI_BM1",
+    "OPENAI_BM1"
+   ],
+   "count": 10,
+   "next_bytes": {
+    "<end>": 10
+   }
+  },
+  "OPENAI_CLUSTER": {
+   "contexts": [
+    "y` polled after completionx-cluster-nameOPENAI_CLUSTERx-openai-internal-callerDD_SERVICEsize o"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "x": 1
+   }
+  },
+  "OPENAI_FEDERATION_RULE_IDOPENAI_IDENTITY_TOKEN_FILE": {
+   "contexts": [
+    "licy that permits ChatGPT authenticationOPENAI_FEDERATION_RULE_IDOPENAI_IDENTITY_TOKEN_FILEhttps://chatgpt.com/backend-apihttps://c"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "h": 1
+   }
+  },
+  "OPENAI_FEDERATION_RULE_IDOPENAI_IDENTITY_TOKEN_FILEOPENAI_API_KEYCODEX_API_KEYCODEX_ACCESS_TOKENCODEX_CONNECTORS_TOKENAWS_ACCESS_KEY_IDAWS_SECRET_ACCESS_KEYAWS_SESSION_TOKENAZURE_CLIENT_SECRETAZURE_FEDERATED_TOKEN_FILEGOOGLE_APPLICATION_CREDENTIALS": {
+   "contexts": [
+    "iledOPTIONSGETPUTDELETETRACECONNECTPATCHOPENAI_FEDERATION_RULE_IDOPENAI_IDENTITY_TOKEN_FILEOPENAI_API_KEYCODEX_API_KEYCODEX_ACCESS_TOKENCODEX_CONNECTORS_TOKENAWS_ACCESS_KEY_IDAWS_SECRET_ACCESS_KEYAWS_SESSION_TOKENAZURE_CLIENT_SECRETAZURE_FEDERATED_TOKEN_FILEGOOGLE_APPLICATION_CREDENTIALScodex.exec_server.http_requesthttp.reque"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "c": 1
+   }
+  },
+  "OPENAI_ORGANIZATION": {
+   "contexts": [
+    "ze overflows MAX_SIZEOpenAI-OrganizationOPENAI_ORGANIZATIONonly supports changing `base_url`, `auth"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "o": 1
+   }
+  },
+  "OPENAI_PH": {
+   "contexts": [
+    "OPENAI_PH"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "<end>": 1
+   }
+  },
+  "OPENAI_WORKLOAD_IDENTITY_CONTEXTCODEX_GUARDIAN_DECISIONS_API_KEY": {
+   "contexts": [
+    "elementsstruct WalkError with 2 elementsOPENAI_WORKLOAD_IDENTITY_CONTEXTCODEX_GUARDIAN_DECISIONS_API_KEYcodex.exec_server.remote.connectexec-ser"
+   ],
+   "count": 1,
+   "next_bytes": {
+    "c": 1
+   }
+  }
+ },
+ "printable_runs_rule": "strings -a -n 4 (in Python: no strings on athena)",
+ "probe": "codex-env-name-sweep",
+ "raw_matches": 173,
+ "regex": "(CODEX|OPENAI|AWS|AZURE|ANTHROPIC|GOOGLE)_[A-Z0-9_]+"
+}

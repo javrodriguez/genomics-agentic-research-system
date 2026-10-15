@@ -1,0 +1,16 @@
+== new tests against 60093f55
+-- test_ownership
+FAIL: test_a_torn_read_refuses (test_ownership.OperatorSteps.test_a_torn_read_refuses)
+Ran 38 tests in 5.536s
+FAILED (failures=1)
+-- test_scan_record
+Ran 74 tests in 0.613s
+OK
+-- test_walk_login_scripts
+FAIL: test_prepare_then_paste_then_verify (test_walk_login_scripts.WalkToken.test_prepare_then_paste_then_verify)
+FAIL: test_verify_refuses_each_wrong_shape (test_walk_login_scripts.WalkToken.test_verify_refuses_each_wrong_shape) [value pasted twice: YES]
+FAIL: test_verify_refuses_each_wrong_shape (test_walk_login_scripts.WalkToken.test_verify_refuses_each_wrong_shape) [value contains '=': YES]
+FAIL: test_verify_refuses_each_wrong_shape (test_walk_login_scripts.WalkToken.test_verify_refuses_each_wrong_shape) [value starts with the variable name: YES]
+FAIL: test_verify_refuses_each_wrong_shape (test_walk_login_scripts.WalkToken.test_verify_refuses_each_wrong_shape) [value contains '=': YES]
+Ran 3 tests in 1.718s
+FAILED (failures=5)

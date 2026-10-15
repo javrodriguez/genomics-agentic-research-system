@@ -63,6 +63,7 @@ for p in (HERE, HERE / "tests"):
         sys.path.insert(0, str(p))
 
 from box import run_take as REAL_RT  # noqa: E402
+import claude_code_adapter as CCA  # noqa: E402  (the box's real Claude Code turn builder, C15)
 
 SELECTED = None          # --mutant NAME
 GENERATED = None         # --gen-mutant ID
@@ -74,13 +75,18 @@ ROAD_FUNCTIONS = ("take_environment", "exec_values", "launcher_argv", "check_mod
                   "refuse_env_files")
 
 ID = "d" * 64
+CLAUDE_MODEL = "claude-opus-5-5"
+CLAUDE_SID = "00000000-0000-4000-8000-000000000001"
 FAKE_VALUE = "FAKEVALUE-w12a-0123456789abcdef-PLANTED"
 CANARY = "W12A_CANARY_PARENT_ONLY"
 CANARY_VALUE = "canary-value-w12a"
 CALLER = {"PATH": "/usr/bin:/bin", "HOME": "/home/op", "DOCKER_HOST": "unix:///run/user/1000/docker.sock",
           "XDG_RUNTIME_DIR": "/run/user/1000"}
 ARMS = ("claude-code", "codex", "gemini")
-LOGINS = {"claude-code": "CLAUDE_CODE_OAUTH_TOKEN", "codex": "CODEX_API_KEY", "gemini": "GEMINI_API_KEY"}
+# Codex has no environment login (glitch-06's ruling 1, 14 Oct 2026: subscriptions only, the lease road): its row has
+# no credential and its LOGIN_VARIABLE is the launcher's reserved "-" (run_take.NO_LOGIN).
+LOGINS = {"claude-code": "CLAUDE_CODE_OAUTH_TOKEN", "codex": "-", "gemini": "GEMINI_API_KEY"}
+ENV_CREDENTIAL = {"claude-code": ["CLAUDE_CODE_OAUTH_TOKEN"], "codex": [], "gemini": ["GEMINI_API_KEY"]}
 # The docs read of 13 Oct (section d): every billing and route variable both lists name, docs and source.
 DOCS_READ_VARIABLES = (
     # Codex, read by the source at rust-v0.162.1 beyond its docs
@@ -276,7 +282,7 @@ class E1Table(Case):
         for h in ARMS:
             row = table[h]
             creds = [k for k, v in row.items() if v == m.CREDENTIAL]
-            self.assertEqual(creds, [LOGINS[h]], f"E1.table: {h}'s credential is not its one login, by name")
+            self.assertEqual(creds, ENV_CREDENTIAL[h], f"E1.table: {h}'s credential is not its one login, by name")
             filled = {k: (v.replace(m.RUN_TREE_TMP, "/r/t/.tmp") if v == m.RUN_TREE_TMP else v)
                       for k, v in row.items() if v != m.CREDENTIAL}
             self.assertEqual(filled, expected_row(h, "/r/t"), f"E1.table: {h}'s row is off the ruling's set")
@@ -318,7 +324,7 @@ class E2Allowlist(Case):
         with filled(), mock.patch.dict(os.environ, PARENT):
             for h in ARMS:
                 got = self.must("E2.built", m.take_environment, h, "/srv/w/t1/tree")
-                want = dict(expected_row(h, "/srv/w/t1/tree"), **{LOGINS[h]: m.CREDENTIAL})
+                want = dict(expected_row(h, "/srv/w/t1/tree"), **{n: m.CREDENTIAL for n in ENV_CREDENTIAL[h]})
                 self.assertEqual(got, want, f"E2.built: {h}'s environment is not exactly its row")
                 leaked = sorted(set(got) & set(PARENT))
                 self.assertEqual(leaked, [], f"E2.built: {h}: parent variables reached the child: {leaked}")
@@ -328,14 +334,43 @@ class E2Allowlist(Case):
                 self.assertEqual(vals, expected_row(h, "/srv/w/t1/tree"),
                                  f"E2.built: exec_values({h}) is not the row less its credential")
 
+    def inner_for(self, h):
+        """Each arm's harness argv. Claude Code's is the box's real launch form (box lane, 14 Oct 2026: since d3fd5305
+        exec_argv refuses a Claude turn without its --model and the study's inline --settings), built by the real
+        builder, claude_code_adapter.argv, over the module under test (so a witness's run_take builds it too)."""
+        if h == "claude-code":
+            with filled(), mock.patch.object(CCA, "rt", rt()):
+                return CCA.argv("x", model=CLAUDE_MODEL, permission_mode="bypassPermissions", session_id=CLAUDE_SID,
+                                first=True)
+        return {"codex": ["codex", "exec", "--json", "x"],
+                "gemini": ["gemini", "-p", "x", "-m", "gemini-3.5-flash-lite"]}[h]
+
     def turn(self, h, inner=None, caller=None, environ=None):
         m = rt()
-        inner = inner or {"claude-code": ["claude", "-p", "x"], "codex": ["codex", "exec", "--json", "x"],
-                          "gemini": ["gemini", "-p", "x", "-m", "gemini-3.5-flash-lite"]}[h]
+        inner = inner or self.inner_for(h)
         with filled(), mock.patch.dict(os.environ, environ or {}):
             return m.exec_argv(ID, inner, user=m.AGENT_USER, workdir="/srv/w/t1/tree", harness=h,
                                run_tree="/srv/w/t1/tree", login_file=self.login(h),
                                caller_env=dict(CALLER, **(caller or {})))
+
+    def launch_for(self, h):
+        """The launcher argv a turn runs in the container (everything after the container id). Codex's exec is
+        refused until its subscription binding is built (run_take.CODEX_SUBSCRIPTION_NOT_READY, test_codex_turn_*), so
+        its launcher is built by the same launcher_argv over the same exec_values that exec_argv would use."""
+        m = rt()
+        if h == m.CODEX:          # the no-login launcher (glitch-06, 14 Oct 2026), behind the lease gate held open
+            with filled(), mock.patch.object(m, "CODEX_SUBSCRIPTION_READY", True):
+                return m.launcher_argv(m.NO_LOGIN, m.exec_values(h, "/srv/w/t1/tree"), self.inner_for(h),
+                                       harness=m.CODEX)
+        argv, _ = self.turn(h)
+        return argv[argv.index(ID) + 1:]
+
+    def test_codex_turn_is_refused_until_its_subscription_binding(self):
+        m = rt()
+        with mock.patch.object(m, "read_login", side_effect=AssertionError("E2.codex: the login was read")):
+            with self.assertRaises(m.NotReady, msg="E2.codex: a Codex turn was built") as cm:
+                self.turn(m.CODEX)
+        self.assertIn("subscription", str(cm.exception), "E2.codex: refused for another reason")
 
     def test_the_turn_hands_the_harness_the_row_alone(self):
         m = rt()
@@ -344,6 +379,17 @@ class E2Allowlist(Case):
         passable = {k: v for k, v in PARENT.items() if k not in on_old_list}
         self.assertIn("OPENAI_PROJECT", passable, "E2.turn: the test's own parent set is off")
         for h in ARMS:
+            if h == m.CODEX:
+                # No Codex turn exists until its subscription binding (test_codex_turn_*); its launcher, built from
+                # the same exec_values, is held to (c) below exactly as the other arms' are.
+                launch = self.must("E2.launcher", self.launch_for, h)
+                # no environment login: an API key in the exec's environment is never copied (subscriptions only)
+                start = dict(IMAGE_ENV, **PARENT, CODEX_API_KEY=FAKE_VALUE, OPENAI_API_KEY=FAKE_VALUE)
+                got = self.must("E2.launcher", run_launcher, launch, start)
+                self.assertEqual(got.get("argv"), self.inner_for(h), f"E2.launcher: {h}: the harness argv is off")
+                self.assertEqual(got.get("env"), expected_row(h, "/srv/w/t1/tree"),
+                                 f"E2.launcher: {h}: the harness does not start with exactly its row, no credential")
+                continue
             argv, env = self.must("E2.turn", self.turn, h, caller=passable, environ=passable)
             at = argv.index(ID) + 1
             self.assertEqual(tuple(argv[at:at + len(m.LAUNCHER)]), tuple(m.LAUNCHER),
@@ -368,15 +414,21 @@ class E2Allowlist(Case):
                              f"E2.launcher: {h}: the harness does not start with exactly the row and its credential")
 
     def test_an_old_list_name_is_still_refused(self):
+        m = rt()
         for h in ARMS:
             for name in ("AWS_BEARER_TOKEN_BEDROCK", "OPENAI_API_KEY", "ANTHROPIC_BASE_URL"):
-                self.refuses("E2.refused", name, self.turn, h, caller={name: FAKE_VALUE})
+                if h == m.CODEX:
+                    # exec_argv's first environment step for every arm, the refused-name table alone; Codex's exec
+                    # stops earlier, at its subscription refusal (test_codex_turn_*).
+                    self.refuses("E2.refused", name, m.check_environment, h, dict(CALLER, **{name: FAKE_VALUE}),
+                                 set(m.TAKE_ENV[h]))
+                else:
+                    self.refuses("E2.refused", name, self.turn, h, caller={name: FAKE_VALUE})
 
     def test_launcher_refuses_container_ancestors_and_current_home(self):
         # These are virtual names only: no protected path is created or inspected.
         for h in ARMS:
-            argv, _ = self.turn(h)
-            launch = argv[argv.index(ID) + 1:]
+            launch = self.launch_for(h)
             home = rt().CONFIG_MOUNT
             for folder in ("/srv/w/t1/tree", "/srv/w/t1", "/srv/w", "/srv", "/", home):
                 for name in (".env", ".gemini/.env"):
@@ -388,15 +440,25 @@ class E2Allowlist(Case):
 
     def test_the_launcher_needs_the_credential(self):
         m = rt()
-        argv, _ = self.turn("codex")
-        with self.assertRaises(KeyError, msg="E2.launcher: a launcher without its credential ran"):
-            run_launcher(argv[argv.index(ID) + 1:], dict(IMAGE_ENV))
-        self.refuses("E2.pairs", "NAME", m.launcher_argv, "CODEX_API_KEY", {"bad name": "x"}, ["codex"])
-        self.refuses("E2.pairs", "credential", m.launcher_argv, "CODEX_API_KEY", {"CODEX_API_KEY": "x"}, ["codex"])
-        self.refuses("E2.pairs", "NUL", m.launcher_argv, "CODEX_API_KEY", {"A": "x\0y"}, ["codex"])
-        self.refuses("E2.pairs", "harness", m.launcher_argv, "CODEX_API_KEY", {"A": "x"}, [])
-        got = self.must("E2.pairs", m.launcher_argv, "CODEX_API_KEY", {"B": "2", "A": "1=1"}, ["codex", "x"])
-        self.assertEqual(got, [*m.LAUNCHER, "CODEX_API_KEY", "2", "A=1=1", "B=2", "codex", "x"],
+        for h in ARMS:
+            if h == m.CODEX:      # the no-login launcher needs none, and copies none
+                got = run_launcher(self.launch_for(h), dict(IMAGE_ENV))
+                self.assertEqual(got.get("env"), expected_row(h, "/srv/w/t1/tree"), "E2.launcher: codex: no-login off")
+                continue
+            with self.assertRaises(KeyError, msg=f"E2.launcher: {h}: a launcher without its credential ran"):
+                run_launcher(self.launch_for(h), dict(IMAGE_ENV))
+        # harness= is required and the login must be that arm's own (the review of 41428177, MINOR 1); Codex has no
+        # named login, so the pairs are held to the rule on Gemini's
+        g = {"harness": m.GEMINI}
+        self.refuses("E2.pairs", "NAME", m.launcher_argv, "GEMINI_API_KEY", {"bad name": "x"}, ["gemini"], **g)
+        self.refuses("E2.pairs", "credential", m.launcher_argv, "GEMINI_API_KEY", {"GEMINI_API_KEY": "x"}, ["gemini"],
+                     **g)
+        self.refuses("E2.pairs", "NUL", m.launcher_argv, "GEMINI_API_KEY", {"A": "x\0y"}, ["gemini"], **g)
+        self.refuses("E2.pairs", "harness", m.launcher_argv, "GEMINI_API_KEY", {"A": "x"}, [], **g)
+        self.refuses("E2.pairs", "not the login of", m.launcher_argv, "CODEX_API_KEY", {"A": "x"}, ["codex"],
+                     harness=m.CODEX)
+        got = self.must("E2.pairs", m.launcher_argv, "GEMINI_API_KEY", {"B": "2", "A": "1=1"}, ["gemini", "x"], **g)
+        self.assertEqual(got, [*m.LAUNCHER, "GEMINI_API_KEY", "2", "A=1=1", "B=2", "gemini", "x"],
                          "E2.pairs: the launcher's argv is off")
 
 
@@ -579,11 +641,13 @@ class E5Units(Case):
             with mock.patch.object(m, "RUN_TREE_TMPDIR_VARIABLES", ("TMPDIR", "TMP")):
                 self.refuses("E5.tmp", "temporary-folder names", m.take_environment, "codex", "/r/t")
         with mock.patch.object(m, "VENDOR_BILLING_ROUTE_VARIABLES", {m.CODEX: (), m.GEMINI: ()}):
-            self.not_ready("E5.pending", "FALLBACK_ENV is PENDING", m.take_environment, "claude-code", "/r/t")
+            with mock.patch.object(m, "FALLBACK_ENV", m.PENDING):   # FILLED 14 Oct 2026; the clause stays red-tested
+                self.not_ready("E5.pending", "FALLBACK_ENV is PENDING", m.take_environment, "claude-code", "/r/t")
         with mock.patch.object(m, "FALLBACK_ENV", {"FAKE_FALLBACK_A": "1"}):
-            for h in ("codex", "gemini"):
-                self.not_ready("E5.pending", f"VENDOR_BILLING_ROUTE_VARIABLES[{h!r}] is PENDING",
-                               m.take_environment, h, "/r/t")
+            # both FILLED 14 Oct 2026 (Codex's binary and Gemini's package sweeps); the clause stays red-tested
+            with mock.patch.dict(m.VENDOR_BILLING_ROUTE_VARIABLES, {m.GEMINI: m.PENDING}):
+                self.not_ready("E5.pending", "VENDOR_BILLING_ROUTE_VARIABLES['gemini'] is PENDING",
+                               m.take_environment, "gemini", "/r/t")
 
     def test_the_fallback_values_are_arm_a_s_alone(self):
         m = rt()
@@ -603,9 +667,35 @@ class E5Units(Case):
     def test_launcher_argv_refusals(self):
         m = rt()
         for login in (None, 5, "bad name", "lower"):
-            self.refuses("E5.login", "credential is named", m.launcher_argv, login, {"A": "1"}, ["codex"])
+            self.refuses("E5.login", "credential is named", m.launcher_argv, login, {"A": "1"}, ["gemini"],
+                         harness=m.GEMINI)
         for value in (5, None, b"x"):
-            self.refuses("E5.value", "NUL", m.launcher_argv, "CODEX_API_KEY", {"A": value}, ["codex"])
+            self.refuses("E5.value", "NUL", m.launcher_argv, "GEMINI_API_KEY", {"A": value}, ["gemini"],
+                         harness=m.GEMINI)
+
+    def test_the_no_login_launcher_reads_its_values(self):
+        """The merged battery's generated sweep (gap4-merge-66bacad): the no-login launcher's own branches, bound here
+        (glitch-06, 14 Oct 2026). The lease gate refuses first; then only a Codex row; then no other harness's config
+        home, by name; then exactly the Codex row's names; and a named login's harness must be a known one."""
+        m = rt()
+        vals = m.exec_values(m.CODEX, "/srv/w/t1/tree")
+        inner = ["codex", "exec"]
+        self.not_ready("E5.nologin", "Codex subscription binding not ready", m.launcher_argv, m.NO_LOGIN, vals, inner,
+                       harness=m.CODEX)
+        with mock.patch.object(m, "CODEX_SUBSCRIPTION_READY", True):
+            got = self.must("E5.nologin", m.launcher_argv, m.NO_LOGIN, vals, inner, harness=m.CODEX)
+            self.assertEqual(got[:len(m.LAUNCHER) + 1], [*m.LAUNCHER, "-"], "E5.nologin: the launcher is off")
+            for h in (m.CLAUDE_CODE, m.GEMINI, "bogus"):
+                self.refuses("E5.nologin", "only for a Codex row", m.launcher_argv, m.NO_LOGIN, vals, inner, harness=h)
+            for home in ("GEMINI_CLI_HOME", "CLAUDE_CONFIG_DIR"):
+                self.refuses("E5.nologin", ["config home", home], m.launcher_argv, m.NO_LOGIN,
+                             dict(vals, **{home: m.CONFIG_MOUNT}), inner, harness=m.CODEX)
+            self.refuses("E5.nologin", "exactly the Codex row's names", m.launcher_argv, m.NO_LOGIN,
+                         dict(vals, EXTRA_NAME="1"), inner, harness=m.CODEX)
+            self.refuses("E5.nologin", "exactly the Codex row's names", m.launcher_argv, m.NO_LOGIN,
+                         {k: v for k, v in vals.items() if k != "CODEX_HOME"}, inner, harness=m.CODEX)
+        self.refuses("E5.harness", "unknown harness", m.launcher_argv, "GEMINI_API_KEY", {"A": "1"}, ["gemini"],
+                     harness="bogus")
 
     def test_check_model_edges(self):
         m = rt()
@@ -639,7 +729,7 @@ def mutants() -> dict:
                            '    GEMINI: {"PATH": TAKE_PATH, "HOME": "/home/dana",'),
         "values-in-client-env": ("E2.turn", "    env[login] = value\n", "    env[login] = value\n"
                                  "    env.update(values)\n"),
-        "no-launcher": ("E2.turn", "            container_id, *launcher_argv(login, values, inner)]",
+        "no-launcher": ("E2.turn", "            container_id, *launcher_argv(login, values, inner, harness=harness)]",
                         "            container_id, *inner]"),
         "launcher-keeps-env": ("E2.launcher", "                   \"e=dict(x.split('=',1) for x in a[2:2+n])\\n\"",
                                "                   \"e=dict(os.environ,**dict(x.split('=',1) for x in a[2:2+n]))\\n\""),

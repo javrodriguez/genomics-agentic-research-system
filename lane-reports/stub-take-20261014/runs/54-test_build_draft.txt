@@ -1,0 +1,45 @@
+.....................F.....F...E..............
+======================================================================
+ERROR: test_profiles_and_templates (test_build_draft.Readiness.test_profiles_and_templates)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_build_draft.py", line 921, in test_profiles_and_templates
+    templates=b.config_templates()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/build_draft.py", line 939, in config_templates
+    files = take_config.files_for(harness, model=None if harness == CLAUDE else model)
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/box/take_config.py", line 178, in files_for
+    return WRITERS[harness](model)
+           ~~~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/box/take_config.py", line 142, in _claude
+    raise Refused("the study writes no bypass acceptance key: RULED not required in -p runs")
+box.run_take.Refused: the study writes no bypass acceptance key: RULED not required in -p runs
+
+======================================================================
+FAIL: test_committed_writer (test_build_draft.Readiness.test_committed_writer)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_build_draft.py", line 937, in test_committed_writer
+    self.assertEqual(path.read_bytes(),b.json_bytes(d))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: b'{\n[605298 chars]6": "0970bf678e251cd9b67c73f6b659fe170261e2c16[162055 chars]n}\n' != b'{\n[605298 chars]6": "b668a1263536730385cc0894b696473c51d1c2aa3[157871 chars]n}\n'
+
+======================================================================
+FAIL: test_inputs (test_build_draft.Readiness.test_inputs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_build_draft.py", line 750, in test_inputs
+    self.assertEqual(ready_problems(self.get()), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['R15.config'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'R15.config'
+
+- ['R15.config']
++ []
+
+----------------------------------------------------------------------
+Ran 46 tests in 37.908s
+
+FAILED (failures=2, errors=1)

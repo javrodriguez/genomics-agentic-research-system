@@ -1,0 +1,1265 @@
+{
+ "label": "measured-on-sanitized-full-tree transfer 2026-10-14",
+ "schema": 1,
+ "side_files": [
+  {
+   "bytes": 1752,
+   "mode": 384,
+   "path": "admission.json",
+   "sha256": "73f389ff000e3714bbca5bb44566c544892ec8f3334b81fe8f3d3acbe73840a5"
+  },
+  {
+   "bytes": 17418,
+   "mode": 420,
+   "path": "box-source/agent_adapter.py",
+   "sha256": "0faeb5f8b61408f0d1a4cf41ed78bdf69b7fc8483b9ab60229d631a6814fc535"
+  },
+  {
+   "bytes": 9696,
+   "mode": 420,
+   "path": "box-source/box/egress/proxy_conf.py",
+   "sha256": "a08babfbed231eb374a444d85c002dbdad8ea87a6e9673ac8fe5d6b14e882cc2"
+  },
+  {
+   "bytes": 32357,
+   "mode": 420,
+   "path": "box-source/box/image_lock.py",
+   "sha256": "397b8b0246b0445488a3383883bb656174fffb9b5cc69bd9733bf5359ce51544"
+  },
+  {
+   "bytes": 11015,
+   "mode": 420,
+   "path": "box-source/box/measure_live.py",
+   "sha256": "4cc42dced9c8f4b2091732cb9ab2c93f39d8a12378722a3aec4f3fcfa072431d"
+  },
+  {
+   "bytes": 45642,
+   "mode": 420,
+   "path": "box-source/box/preflight.py",
+   "sha256": "e703e7090678e32458033fde325c34e6cd39ec78abe8045d619f86ef21bc666e"
+  },
+  {
+   "bytes": 66394,
+   "mode": 420,
+   "path": "box-source/box/run_take.py",
+   "sha256": "0b4e0d024b2e32fcd87743c759391db5fc7a255127fdbe4a08ed4163e6d8f2b8"
+  },
+  {
+   "bytes": 57188,
+   "mode": 420,
+   "path": "box-source/box/sidecar.py",
+   "sha256": "9fb2ce7f9c13aae135e497a517f4df0775baebd0e6c06b213cf84281d38901ff"
+  },
+  {
+   "bytes": 8168,
+   "mode": 420,
+   "path": "box-source/graders/labels4.py",
+   "sha256": "c1ca63b082516e574c71a716716966dcc0541ff7db16f6fd0757d9c3dc2716dd"
+  },
+  {
+   "bytes": 10640,
+   "mode": 420,
+   "path": "box-source/harness_bookkeeping.py",
+   "sha256": "9632dfc8215b2eee5be839af0f097297d74c77af4170c5cdebf5d4a0b9c768cf"
+  },
+  {
+   "bytes": 7159,
+   "mode": 420,
+   "path": "measure_gap_box_tree.py",
+   "sha256": "b255519b6a9fa7db41218484040ec05578a86e99723ac6086a35290f0962dc73"
+  },
+  {
+   "bytes": 95181,
+   "mode": 420,
+   "path": "sanitized-tree-manifest-20261014.json",
+   "sha256": "1e2de9235276ab6c18835517e405600a957e6e014c894c647c45e6bb0b1e5a21"
+  }
+ ],
+ "tree_inventory": {
+  "directories": [
+   {
+    "mode": 493,
+    "path": ".tmp"
+   },
+   {
+    "mode": 493,
+    "path": "docs"
+   },
+   {
+    "mode": 493,
+    "path": "docs/decisions"
+   },
+   {
+    "mode": 493,
+    "path": "docs/upstream"
+   },
+   {
+    "mode": 493,
+    "path": "examples"
+   },
+   {
+    "mode": 493,
+    "path": "examples/demo-project"
+   },
+   {
+    "mode": 493,
+    "path": "examples/demo-project/00_data"
+   },
+   {
+    "mode": 493,
+    "path": "examples/demo-project/00_data/rnaseq_bulk"
+   },
+   {
+    "mode": 493,
+    "path": "examples/demo-project/00_data/rnaseq_bulk/raw"
+   },
+   {
+    "mode": 493,
+    "path": "examples/demo-project/01_samplesheets"
+   },
+   {
+    "mode": 493,
+    "path": "examples/demo-project/02_bioinformatics"
+   },
+   {
+    "mode": 493,
+    "path": "examples/demo-project/02_bioinformatics/rnaseq_bulk"
+   },
+   {
+    "mode": 493,
+    "path": "examples/demo-project/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper"
+   },
+   {
+    "mode": 493,
+    "path": "examples/demo-project/02_bioinformatics/rnaseq_bulk/02_rnaseq-de"
+   },
+   {
+    "mode": 493,
+    "path": "examples/demo-project/_config"
+   },
+   {
+    "mode": 493,
+    "path": "gars"
+   },
+   {
+    "mode": 493,
+    "path": "gars/.claude"
+   },
+   {
+    "mode": 493,
+    "path": "gars/00_initialize_project"
+   },
+   {
+    "mode": 493,
+    "path": "gars/01_prepare_samplesheets"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/atacseq_bulk"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/chipseq_bulk"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/cutandrun"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/methylseq"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/rnaseq_bulk"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/scrnaseq"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/spatialvi"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper"
+   },
+   {
+    "mode": 493,
+    "path": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count"
+   },
+   {
+    "mode": 493,
+    "path": "gars/03_custom_analysis"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_references"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_references/patches"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_system"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_system/authoring"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_system/wrappers"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_system/wrappers/nfcore-atacseq-wrapper"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_system/wrappers/nfcore-chipseq-wrapper"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_system/wrappers/nfcore-cutandrun-wrapper"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_system/wrappers/nfcore-methylseq-wrapper"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_system/wrappers/nfcore-rnaseq-wrapper"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_system/wrappers/nfcore-scrnaseq-wrapper"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_system/wrappers/nfcore-spatialvi-wrapper"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_system/wrappers/rnaseq-de"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_system/wrappers/scrna-qc-cluster"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_system/wrappers/spatial-cluster-count"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_templates"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_templates/config"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_templates/project"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_templates/project/00_data"
+   },
+   {
+    "mode": 493,
+    "path": "gars/_templates/project/_config"
+   },
+   {
+    "mode": 493,
+    "path": "gars/projects"
+   },
+   {
+    "mode": 493,
+    "path": "tests"
+   },
+   {
+    "mode": 493,
+    "path": "tests/fixtures"
+   }
+  ],
+  "files": [
+   {
+    "bytes": 2350,
+    "mode": 420,
+    "path": ".gitignore",
+    "sha256": "605062307847e98149837fafa0b11b32387099cb9810c67c42b1b3226e725a8f"
+   },
+   {
+    "bytes": 7659,
+    "mode": 420,
+    "path": "CLAUDE.md",
+    "sha256": "72d1d65a41c5c76eb83801b35dde22412654532429304ed5d55fbc6ed0014f63"
+   },
+   {
+    "bytes": 46454,
+    "mode": 420,
+    "path": "DEVELOPMENT.md",
+    "sha256": "4f21cc58555f245eff0782b31089886c7762138ec51c4f24fd5c726750fbd070"
+   },
+   {
+    "bytes": 1081,
+    "mode": 420,
+    "path": "LICENSE",
+    "sha256": "4ffcf2af101fb17509976c29177e5709133bdd03d59f6d5f3a2256c032c78f37"
+   },
+   {
+    "bytes": 21276,
+    "mode": 420,
+    "path": "README.md",
+    "sha256": "2790e00b384a1a7cd05de401cb4e0c7573f6d72fea019515c97464c9f3f31096"
+   },
+   {
+    "bytes": 6977,
+    "mode": 420,
+    "path": "docs/RESULTS.md",
+    "sha256": "81d517aeb4a9d9f3d91db60c57db7e4f0793da42b42a55b888e152b854ba77ae"
+   },
+   {
+    "bytes": 12460,
+    "mode": 420,
+    "path": "docs/architecture.md",
+    "sha256": "2af1cafc2f8ffc8f8cb9ac216b0025ab4e322a7c4fe7eda3d57621422aeb366c"
+   },
+   {
+    "bytes": 40782,
+    "mode": 420,
+    "path": "docs/assay-expansion.md",
+    "sha256": "b0881ff49c549acb400eba473fab172953b5a0ad415596a4217bd7395cfcb6bd"
+   },
+   {
+    "bytes": 1019,
+    "mode": 420,
+    "path": "docs/decisions/0001-layered-context-and-stage-ownership.md",
+    "sha256": "084b6520a89b42ad15d70a20e4a2a8ee76661586addbfcce6a1dad71b226b75d"
+   },
+   {
+    "bytes": 1615,
+    "mode": 420,
+    "path": "docs/decisions/0002-agent-control-negative-scope-and-templates.md",
+    "sha256": "340bb3fea0a0ace128c1ae61d93a35d2bb9f71700babe73b59040388c9fd3c9b"
+   },
+   {
+    "bytes": 2201,
+    "mode": 420,
+    "path": "docs/decisions/0003-data-model-files-and-samples-split.md",
+    "sha256": "5f99c67b4efc694e0f0cafa2c223632cafeaaf0de71bd0d0d4c5cb61ca7c17ef"
+   },
+   {
+    "bytes": 1543,
+    "mode": 420,
+    "path": "docs/decisions/0004-environment-installed-not-vendored.md",
+    "sha256": "5b11a284ed9256e50c6f1bdf6ade0e822f4c1c5ccca3f6d659ebfc50a01e8dc1"
+   },
+   {
+    "bytes": 2442,
+    "mode": 420,
+    "path": "docs/decisions/0005-execution-failures-and-fixes.md",
+    "sha256": "2ea43336ac0c1e0bde3cbee380c6ed33e32044df4c753de8a7809ee63d9a858d"
+   },
+   {
+    "bytes": 2045,
+    "mode": 420,
+    "path": "docs/decisions/0006-storage-and-reference-reuse.md",
+    "sha256": "41a83104313bc35265035b6931633d4fdc9a11bd232322513c87bf6538ce05d7"
+   },
+   {
+    "bytes": 4186,
+    "mode": 420,
+    "path": "docs/decisions/0007-artifact-registry-outputs-tsv.md",
+    "sha256": "fd5721572183a20939986026f137a844064d72a934d81a150b9ee57681f616f0"
+   },
+   {
+    "bytes": 3100,
+    "mode": 420,
+    "path": "docs/decisions/0008-assay-expansion-wrap-nfcore.md",
+    "sha256": "ec77324ec500f85a67eb4e95aac2be393cfefcf8d1fc862d31fc459522a5e0f6"
+   },
+   {
+    "bytes": 1678,
+    "mode": 420,
+    "path": "docs/decisions/0009-derived-reference-cache-verified.md",
+    "sha256": "bee49aad738318e4c9d7bc4293fc0ba1881ac2f9eb99a75f044958fc1f5240a4"
+   },
+   {
+    "bytes": 2219,
+    "mode": 420,
+    "path": "docs/decisions/0010-skill-chaining-defects-and-adaptation.md",
+    "sha256": "81ac9f98f4d26234b2865f645377c9331eaab80cd4f6304f55989b7f93499636"
+   },
+   {
+    "bytes": 6212,
+    "mode": 420,
+    "path": "docs/decisions/0011-deterministic-artifacts-in-stages-00-01.md",
+    "sha256": "4d8fbf739fdb5bae6c69a4be6a2a85c43a74cb212382e835104b2fdf9f3ad36c"
+   },
+   {
+    "bytes": 3748,
+    "mode": 420,
+    "path": "docs/decisions/0012-gars-authored-wrappers-live-in-system.md",
+    "sha256": "b1e88ce3b3516bc4b22f7385eee9c715289fff0f13918e5133d18c50ea732ecb"
+   },
+   {
+    "bytes": 3876,
+    "mode": 420,
+    "path": "docs/decisions/0013-integrity-verification-moves-to-stage-01.md",
+    "sha256": "a9711f0df46cc50eed04cdd3872fc0d85c23e410797211d26b1efce94d9d04d3"
+   },
+   {
+    "bytes": 4707,
+    "mode": 420,
+    "path": "docs/decisions/0014-workspace-upgrade-path.md",
+    "sha256": "ab96cfa6152b999ed7aa02aab91ab333b6109d6edf9cd6d24989e683aaaa0fdd"
+   },
+   {
+    "bytes": 3404,
+    "mode": 420,
+    "path": "docs/decisions/0015-workspace-staleness-detection.md",
+    "sha256": "19387f9920959f24922108f1de4c2749f80150484cc72fe6d59c22a65517b03d"
+   },
+   {
+    "bytes": 3395,
+    "mode": 420,
+    "path": "docs/decisions/0016-workspaces-are-checkouts.md",
+    "sha256": "998ec189a5b6e4317fa40c1cc9c1dfc9cf48e034d3461de623fbb7701959eabd"
+   },
+   {
+    "bytes": 4832,
+    "mode": 420,
+    "path": "docs/decisions/0017-machine-owned-files-are-verified-not-trusted.md",
+    "sha256": "11a303de685ab0eeb1a56bf575b83989e499019e52e9d25717517a16df4791af"
+   },
+   {
+    "bytes": 3617,
+    "mode": 420,
+    "path": "docs/decisions/0018-machine-ownership-is-enforced-not-advised.md",
+    "sha256": "5fb6511220851df7a4f313aad3de57dfeb35a7e275d5dd9bf417f2c0c35c8cb6"
+   },
+   {
+    "bytes": 3046,
+    "mode": 420,
+    "path": "docs/decisions/0019-config-is-seeded-not-authored.md",
+    "sha256": "ab39d5b21c71e408082465781eb730e99b9352c07628d1277b1ade84d0fef466"
+   },
+   {
+    "bytes": 3881,
+    "mode": 420,
+    "path": "docs/decisions/0020-config-decisions-come-from-menus.md",
+    "sha256": "7ba6d3922f90a7f1950f9d3dc0301ceea98d0430b2e296984e6cd4e00e8e76c7"
+   },
+   {
+    "bytes": 3613,
+    "mode": 420,
+    "path": "docs/decisions/0021-the-adaptation-rename-belongs-in-code.md",
+    "sha256": "46b0c509961363d84cfecdf40dafd95516a323fc9108a17ab446424e6974cf20"
+   },
+   {
+    "bytes": 3401,
+    "mode": 420,
+    "path": "docs/decisions/0022-scope-boundaries-are-enforced-by-the-harness.md",
+    "sha256": "c38784e4cce70ac866116bbff068f1f897fc1b727a43e1351caa0611c7646178"
+   },
+   {
+    "bytes": 2986,
+    "mode": 420,
+    "path": "docs/decisions/0023-the-deterministic-core-has-tests.md",
+    "sha256": "ed102e27c13c8fb4d8f5a831c2ec6932be5ed2f443fe421f688c916cc4e23bb7"
+   },
+   {
+    "bytes": 2223,
+    "mode": 420,
+    "path": "docs/decisions/0024-the-model-is-part-of-provenance.md",
+    "sha256": "dcdd206c1c72eebecca6904b4f6be4ce9585ed388ee197f016c8b64a195fe16b"
+   },
+   {
+    "bytes": 2600,
+    "mode": 420,
+    "path": "docs/decisions/0025-the-bounded-voice.md",
+    "sha256": "c8d48899db63e1617951dfdebdb20cf16d9cbd523a52163c10a663e99cec3862"
+   },
+   {
+    "bytes": 3485,
+    "mode": 420,
+    "path": "docs/decisions/0026-stage-03-is-plan-gated.md",
+    "sha256": "03ec4ff3ba498a8e14d32063fb51dfb6f300a059188cf5c5f1a459babca21f38"
+   },
+   {
+    "bytes": 2708,
+    "mode": 420,
+    "path": "docs/decisions/0027-stage-03-runs-under-sbatch-by-default.md",
+    "sha256": "740a7eebbe2ce6af1a07c782d71606bb07fcf58b3cb62bf63dacfd54c3284c82"
+   },
+   {
+    "bytes": 3931,
+    "mode": 420,
+    "path": "docs/decisions/0028-wrappers-are-thin-system-helpers.md",
+    "sha256": "a2f17de5f333010ca209363384192f25e2c63cc24ea4c8829a07e45ea044fa9f"
+   },
+   {
+    "bytes": 5644,
+    "mode": 420,
+    "path": "docs/decisions/0029-the-clawbio-path-is-deprecated.md",
+    "sha256": "92d0bc7b3ecab82325e8805956f699d84320c9e9f85de1992bf02bfb279f5fde"
+   },
+   {
+    "bytes": 3148,
+    "mode": 420,
+    "path": "docs/decisions/0030-the-design-table-is-assay-aware.md",
+    "sha256": "ffcdeb7a1bba3fd985d6b964f5e89a03bd790e37c309311dfaf1d6db14912c22"
+   },
+   {
+    "bytes": 4075,
+    "mode": 420,
+    "path": "docs/decisions/0031-all-five-assays-are-wired.md",
+    "sha256": "c9b3350c4d4d5ed62631159aec5afeea1d3b53437fbfc1cac3bf830b0659069e"
+   },
+   {
+    "bytes": 2386,
+    "mode": 420,
+    "path": "docs/decisions/0032-lessons-land-where-they-fire.md",
+    "sha256": "86d19b3951b53b93d98e6236ff8f153fe3b411c07eff268f274ebb0c1c37e86b"
+   },
+   {
+    "bytes": 2608,
+    "mode": 420,
+    "path": "docs/decisions/0033-a-session-boots-knowing-the-state.md",
+    "sha256": "1d8d26306770b56088b42e6b4954505603e95b7625a7841c4832575c217d5f37"
+   },
+   {
+    "bytes": 2296,
+    "mode": 420,
+    "path": "docs/decisions/0034-nextflow-parser-pairing-is-part-of-the-pin.md",
+    "sha256": "58adac0091a33c0ea7bc1cab4b92d0c90ba072e6692ae3879aa20f04bf342e9d"
+   },
+   {
+    "bytes": 2854,
+    "mode": 420,
+    "path": "docs/decisions/0035-the-samplesheet-sample-column-is-the-pipelines.md",
+    "sha256": "3ae75f032659d071e7b55309b8adbe3e23fc0f1b15bf86ddcf12efc152bdba75"
+   },
+   {
+    "bytes": 2199,
+    "mode": 420,
+    "path": "docs/decisions/0036-hidden-genome-map-lookups-are-parameter-surface.md",
+    "sha256": "dc2ad40925d2021c36263b296ad51b2876de8f8f9eb0cf8cbfc4502d1362ff11"
+   },
+   {
+    "bytes": 2521,
+    "mode": 420,
+    "path": "docs/decisions/0037-a-pin-may-carry-one-recorded-patch.md",
+    "sha256": "ca0cd61979c517df9a4671860267909d479583d0049689b988ac2d8276482506"
+   },
+   {
+    "bytes": 2405,
+    "mode": 420,
+    "path": "docs/decisions/0038-unfittable-qc-is-a-decision-not-a-casualty.md",
+    "sha256": "ae18d4039a6f3e68a6282eb026a7ea600ee06c4220645ccc2d3ee9672ab69927"
+   },
+   {
+    "bytes": 5636,
+    "mode": 420,
+    "path": "docs/decisions/0039-the-executor-is-a-workspace-setting.md",
+    "sha256": "5cd8bc1f54f80a2ff93f2e24beaa9c332cf1850bc05a35ce96250f2ea66dfac6"
+   },
+   {
+    "bytes": 4523,
+    "mode": 420,
+    "path": "docs/decisions/0040-the-wrapper-method-is-a-skill.md",
+    "sha256": "32303ef28d2f2b9382a814f6aaeaf85abdb3b2523f7598bab5b55ea9a62bdad7"
+   },
+   {
+    "bytes": 11358,
+    "mode": 420,
+    "path": "docs/decisions/0042-a-call-the-guard-cannot-judge-is-refused.md",
+    "sha256": "739f7b0f957f385334467391c5dd70b9cff415faec83379b2c57461c22a02d25"
+   },
+   {
+    "bytes": 18237,
+    "mode": 420,
+    "path": "docs/decisions/CONTEXT.md",
+    "sha256": "cb7de3db47dedb98c393df3ff3ffd05f3b17f0e0f983d602b42cc10da82ad64a"
+   },
+   {
+    "bytes": 2678,
+    "mode": 493,
+    "path": "docs/decisions/build_index.sh",
+    "sha256": "10b8edef0ec2cf8953c088e5b2fbcba1d9c6283b6b7b3a34113a65d8788db6cd"
+   },
+   {
+    "bytes": 15508,
+    "mode": 420,
+    "path": "docs/execution-model.md",
+    "sha256": "69251e01ca6cd449c7258085b3177d8af888ab397a58aaa8b07ab03d504f2325"
+   },
+   {
+    "bytes": 5887,
+    "mode": 420,
+    "path": "docs/reproduction-campaign.md",
+    "sha256": "e1b8cd07a8d1189dec7835560ee6e3d3d6d0c03e02ebc0dd2f4bb4b55556fa42"
+   },
+   {
+    "bytes": 6084,
+    "mode": 420,
+    "path": "docs/upstream/clawbio-rnaseq-de-defects.md",
+    "sha256": "da789e9fe2b324d552386ff41d3f21652903c3027db4bd1e106db8e7601b0727"
+   },
+   {
+    "bytes": 8068,
+    "mode": 420,
+    "path": "docs/upstream/clawbio-scrna-spatial-assessment.md",
+    "sha256": "cbef96316aec9ed1bd4da8faa62700983449d6986a51f5137531e268e3311ad4"
+   },
+   {
+    "bytes": 1582,
+    "mode": 420,
+    "path": "examples/demo-project/00_data/rnaseq_bulk/files.csv",
+    "sha256": "d57022406db0a6fb6703a4a5eb2c7a14c1e2f9a19d59eca112eeab6168544016"
+   },
+   {
+    "bytes": 46,
+    "mode": 420,
+    "path": "examples/demo-project/00_data/rnaseq_bulk/raw/.gitkeep",
+    "sha256": "d216d417b4082d0eabcb19bc1a9e0eda7840428da4ad1521542c0c21a10cd54e"
+   },
+   {
+    "bytes": 199,
+    "mode": 420,
+    "path": "examples/demo-project/00_data/rnaseq_bulk/samples.csv",
+    "sha256": "d44f3e1e8708873ecda978c9d64156e8ed01dd05d1f00b9f4dd0ab4c0849c70c"
+   },
+   {
+    "bytes": 199,
+    "mode": 420,
+    "path": "examples/demo-project/01_samplesheets/rnaseq_bulk_design.csv",
+    "sha256": "d44f3e1e8708873ecda978c9d64156e8ed01dd05d1f00b9f4dd0ab4c0849c70c"
+   },
+   {
+    "bytes": 2413,
+    "mode": 420,
+    "path": "examples/demo-project/01_samplesheets/rnaseq_bulk_samplesheet.csv",
+    "sha256": "75a68fec6afae7ae37f79b7eb60d9d6e7ab55c4cf87ecebd4f58e662b49ffc28"
+   },
+   {
+    "bytes": 473,
+    "mode": 420,
+    "path": "examples/demo-project/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/OUTPUTS.tsv",
+    "sha256": "2ba2fef23945d7bcfa966ec3b37fe95d1d30985581be1d4a117f1572d3a4682c"
+   },
+   {
+    "bytes": 191,
+    "mode": 420,
+    "path": "examples/demo-project/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/OUTPUTS.tsv",
+    "sha256": "2fbe7029f8356c86c156f69be62952d86a2b87e50a050183fff175e1d90d52f9"
+   },
+   {
+    "bytes": 1321,
+    "mode": 420,
+    "path": "examples/demo-project/CONTEXT.md",
+    "sha256": "15877b9e7edfb5c15d4a51dc346cf39271331b626f97fe047c69b611a36ca630"
+   },
+   {
+    "bytes": 1340,
+    "mode": 420,
+    "path": "examples/demo-project/HISTORY.md",
+    "sha256": "17079d20981e9489f02675e7cae2936b92a5b477fce5cd579d02f87e836072e7"
+   },
+   {
+    "bytes": 4356,
+    "mode": 420,
+    "path": "examples/demo-project/README.md",
+    "sha256": "59ddec93162cfd349b4eff23f154d72f40a79332b13cc5c570fcc702c3b69466"
+   },
+   {
+    "bytes": 877,
+    "mode": 420,
+    "path": "examples/demo-project/_config/nextflow.slurm.config",
+    "sha256": "60fa885730876c077aa8724346719220f0fb135f3b9e4778d8d349893ee1592b"
+   },
+   {
+    "bytes": 741,
+    "mode": 420,
+    "path": "examples/demo-project/_config/rnaseq_bulk.yaml",
+    "sha256": "5ad22a8be4c6331355736806a04f82038c3bef8301f467bbd137bd3f364f1b71"
+   },
+   {
+    "bytes": 801,
+    "mode": 420,
+    "path": "gars/.claude/settings.json",
+    "sha256": "a6e4de3a2e760a6008e9edfce01afed8d7094f1da1b9eb7b15c25c3bb41891c2"
+   },
+   {
+    "bytes": 21179,
+    "mode": 420,
+    "path": "gars/00_initialize_project/CONTEXT.md",
+    "sha256": "a33311e584e26071670735407b0c20b168074306a7d7a67cde9832b0bc997ab8"
+   },
+   {
+    "bytes": 19467,
+    "mode": 420,
+    "path": "gars/01_prepare_samplesheets/CONTEXT.md",
+    "sha256": "4a05aa83e9fdfd3467af6bbfc07f548b183bdaea8b22ee2e54bcc1e6072ff76e"
+   },
+   {
+    "bytes": 14531,
+    "mode": 420,
+    "path": "gars/02_bioinformatics/CONTEXT.md",
+    "sha256": "4b2d06d60d41c03cb082a351387965728f5e80e35213e05f7fa3e65579e1ac98"
+   },
+   {
+    "bytes": 10558,
+    "mode": 420,
+    "path": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md",
+    "sha256": "e32ea7c7baa9ebcdf612c8052da705ff6ffaf2a11fd276743e605e75666c2a26"
+   },
+   {
+    "bytes": 9696,
+    "mode": 420,
+    "path": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md",
+    "sha256": "53dd4bc7fccd11c6fd815da2ea754e67ffb74ac14e84ebebc46855f3f06755ae"
+   },
+   {
+    "bytes": 11257,
+    "mode": 420,
+    "path": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md",
+    "sha256": "e812ce903a0d5ed54435ae40abe9fe233f64a627da66988e3a0a67733ee68a76"
+   },
+   {
+    "bytes": 9134,
+    "mode": 420,
+    "path": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md",
+    "sha256": "67388373cd4cb37b08beeb5d7fa34b89ffc35c8a118b76d3ea1a83623d81d617"
+   },
+   {
+    "bytes": 10241,
+    "mode": 420,
+    "path": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md",
+    "sha256": "0aa735407c9f54ef09f9ebabb20f493d7a633613dc5c716ed560b0bc5510ee37"
+   },
+   {
+    "bytes": 10167,
+    "mode": 420,
+    "path": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md",
+    "sha256": "c156936259d96f82ebe8ed169204f9921d33516abd3fdea20f0a2c4f565efa5e"
+   },
+   {
+    "bytes": 11997,
+    "mode": 420,
+    "path": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md",
+    "sha256": "b1eb1807d815a050031b151c15147d17079bcb83e8ad0b1bfdd2d2504aee2cac"
+   },
+   {
+    "bytes": 9701,
+    "mode": 420,
+    "path": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md",
+    "sha256": "e5ef70ee0dd9ec0c375a7d245de797120c0903e57dedc84e5bc9c2f1dd38630a"
+   },
+   {
+    "bytes": 10637,
+    "mode": 420,
+    "path": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md",
+    "sha256": "a8f3edc46a09730484406a135aebddb09f7c7a75c082c72824b776d7ecc2c2df"
+   },
+   {
+    "bytes": 14009,
+    "mode": 420,
+    "path": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md",
+    "sha256": "334beb3a0a2c65f7c5624addf1f4b948aeb2d1e0429e963dafd32c8b81e52486"
+   },
+   {
+    "bytes": 11222,
+    "mode": 420,
+    "path": "gars/03_custom_analysis/CONTEXT.md",
+    "sha256": "a4f530ae93f94a4f9668cd75b8813ac048fa601d1040ea8ef3a725c203814916"
+   },
+   {
+    "bytes": 4918,
+    "mode": 420,
+    "path": "gars/CLAUDE.md",
+    "sha256": "24e581f0d9f45000c1bd7b43c0d903ac1ffb7a0adcfd523e8f831a5b96047c22"
+   },
+   {
+    "bytes": 5972,
+    "mode": 420,
+    "path": "gars/CONTEXT.md",
+    "sha256": "60144960abe1c65af58f7888ebfcd1a3e604daf891d2dd99e70090804a9da029"
+   },
+   {
+    "bytes": 8,
+    "mode": 420,
+    "path": "gars/_references/VERSION",
+    "sha256": "57394e83d68850661c8045e30fcbb180480026871302a588d2aff7c1b0b64531"
+   },
+   {
+    "bytes": 5294,
+    "mode": 420,
+    "path": "gars/_references/artifact_types.md",
+    "sha256": "37364dad9b02b7bf12547305510d960de070ed8589f9e6bb767990c3bd528500"
+   },
+   {
+    "bytes": 6189,
+    "mode": 420,
+    "path": "gars/_references/assay_stage_skill_map.md",
+    "sha256": "07bcb0e369f56d6f383a47f8d6ca99db55721a986b43df80afc68e7aab01c73c"
+   },
+   {
+    "bytes": 5958,
+    "mode": 420,
+    "path": "gars/_references/config_schema.md",
+    "sha256": "6ee0b7f1e1a64185a26a4897a2220071bd1cc06ad1bb3bc589b06d6eebe190bf"
+   },
+   {
+    "bytes": 6113,
+    "mode": 420,
+    "path": "gars/_references/contract_standard.md",
+    "sha256": "5db5044120192b368c76058f97c3d7889b347510932284aa0fd69bb5e163f328"
+   },
+   {
+    "bytes": 10731,
+    "mode": 420,
+    "path": "gars/_references/environment.md",
+    "sha256": "574bed96b184c4e9ca50acd11fc48a892f6f1748d70ca9c2d603cbe5ba89d079"
+   },
+   {
+    "bytes": 3700,
+    "mode": 420,
+    "path": "gars/_references/gars-bio.conda.txt",
+    "sha256": "77d844c5b07374334c521add0061f523739e651514fc87c1da3710d302f02ded"
+   },
+   {
+    "bytes": 3676,
+    "mode": 420,
+    "path": "gars/_references/gars-bio.lock.txt",
+    "sha256": "b185a82a05f3a0caad9b651eb6ac6c8feddc52f62180e857789426b1e723ec8a"
+   },
+   {
+    "bytes": 2367,
+    "mode": 420,
+    "path": "gars/_references/gars-nxf.conda.txt",
+    "sha256": "8d0e2f98f3504b313bd8e9803c79583e22ea35cad699faf48ef96a0aa970070f"
+   },
+   {
+    "bytes": 3836,
+    "mode": 420,
+    "path": "gars/_references/genomes.md",
+    "sha256": "2ed7f0f544c78c6742f1cb79b169cfdf7971c8af9c11b927bdf269c3d6771b35"
+   },
+   {
+    "bytes": 1154,
+    "mode": 420,
+    "path": "gars/_references/patches/cutandrun-3.2.2-trimgalore-dsl.patch",
+    "sha256": "4cb8cd06772735f79ed5b44afbc2a8fca0fc2c58f150a43ab7189ee4809d61d7"
+   },
+   {
+    "bytes": 6191,
+    "mode": 493,
+    "path": "gars/_system/adapt_counts.py",
+    "sha256": "cb667f6fc4e7687a0792448a47d9f501fc5097cd0b81500317179b2ffb50f697"
+   },
+   {
+    "bytes": 13027,
+    "mode": 420,
+    "path": "gars/_system/authoring/SKILL.md",
+    "sha256": "a018a9be63bbdae9b0f251ef10ba121036a70e14e6147dea5766d4f486f72c2f"
+   },
+   {
+    "bytes": 33623,
+    "mode": 420,
+    "path": "gars/_system/authoring/create_bioinformatics_skill.py",
+    "sha256": "ff736be48b3fa2e26123e994d6472e1e88f3c0cc44c032daa13aafbea2269af1"
+   },
+   {
+    "bytes": 1004,
+    "mode": 420,
+    "path": "gars/_system/authoring/example_spec.json",
+    "sha256": "6412b70f8c4d61292c5d51b642a2d736c5e49f5ea510d7edca2cfc1375c7648c"
+   },
+   {
+    "bytes": 736,
+    "mode": 420,
+    "path": "gars/_system/authoring/specs-scrnaseq.json",
+    "sha256": "3578be002762f13df878c1a21eb5a79898030322f646e1574725346dfb5c8698"
+   },
+   {
+    "bytes": 570,
+    "mode": 420,
+    "path": "gars/_system/authoring/specs-spatial-cluster-count.json",
+    "sha256": "c2e5e7344b9a356f2c6c2eef766e5347a1d89727ba086c1b79692f674f8a1210"
+   },
+   {
+    "bytes": 903,
+    "mode": 420,
+    "path": "gars/_system/authoring/specs-spatialvi.json",
+    "sha256": "577537398cbee5bc05c181bdf5aeb60bdadac252ffda1c7524086fae3dfa9a5d"
+   },
+   {
+    "bytes": 3221,
+    "mode": 493,
+    "path": "gars/_system/build_projects_index.sh",
+    "sha256": "0038e4b39a3849af160238722fb8140451704b48c662fcf27cb644a1359a4b07"
+   },
+   {
+    "bytes": 24377,
+    "mode": 493,
+    "path": "gars/_system/configure.py",
+    "sha256": "f2002085ae05d54ddfb5c3b923b560fbbbf083d9019a7a641a01b43c407c793a"
+   },
+   {
+    "bytes": 22375,
+    "mode": 493,
+    "path": "gars/_system/executorlib.py",
+    "sha256": "997ff424431a975be63922197eee2264cd4d010fe97b63bfaae3dd6c8113e30e"
+   },
+   {
+    "bytes": 5926,
+    "mode": 493,
+    "path": "gars/_system/gars-env.sh",
+    "sha256": "df934e2bc7f7f52e58cb5d9fcac04b33620f015cc98a55704724ff480a31b505"
+   },
+   {
+    "bytes": 17698,
+    "mode": 420,
+    "path": "gars/_system/guard_hook.py",
+    "sha256": "97d64c6d1a8d3ffc6ac1f4b65ed0704a3e3368bfd1f59bb426a86fa6a7722bea"
+   },
+   {
+    "bytes": 4249,
+    "mode": 420,
+    "path": "gars/_system/integrity.py",
+    "sha256": "e86b90f03466ea308d56dc392af5d69baa77e72cca4ad92430cf06e574d112ac"
+   },
+   {
+    "bytes": 7807,
+    "mode": 493,
+    "path": "gars/_system/project_state.py",
+    "sha256": "c2b741a30d4ee334de9cbc9a31d1cc8e84d2fedc089de73091cd199feaa03a4e"
+   },
+   {
+    "bytes": 7061,
+    "mode": 493,
+    "path": "gars/_system/resolve_artifact.py",
+    "sha256": "14e6a4acc2762b1d0477fc171666110443a484a8b48a3fc327f0f3b6357778d4"
+   },
+   {
+    "bytes": 480,
+    "mode": 493,
+    "path": "gars/_system/session_state.sh",
+    "sha256": "3beccac7801f115941df156b1c872d170e0e655cdbeb6138b3aa28a669a173aa"
+   },
+   {
+    "bytes": 34045,
+    "mode": 493,
+    "path": "gars/_system/stage00_register.py",
+    "sha256": "b368c4378d8260583b3bbbdf102c42f8d2ea0bd7dc7c3d8c4e13b79d50cb49df"
+   },
+   {
+    "bytes": 43381,
+    "mode": 493,
+    "path": "gars/_system/stage01_samplesheet.py",
+    "sha256": "dad56ab698d960447d18c44cf45f6f5cca2aef660efffdccc9942c8ab81f2a5d"
+   },
+   {
+    "bytes": 19191,
+    "mode": 420,
+    "path": "gars/_system/stage03_analysis.py",
+    "sha256": "3f6a4dde91288f5415b19f3bb07c0d26454881c0e4d8f8ac3a8246e0b6bcc367"
+   },
+   {
+    "bytes": 5975,
+    "mode": 420,
+    "path": "gars/_system/workspace.py",
+    "sha256": "d19544314912937f48880634052292ea0a8dd469e6213c3096b6eec0349ab2a2"
+   },
+   {
+    "bytes": 21112,
+    "mode": 420,
+    "path": "gars/_system/wrapperlib.py",
+    "sha256": "edd19b76c526e348193b968809ee803ceef744cf2fa714c5efa2509519636a17"
+   },
+   {
+    "bytes": 2499,
+    "mode": 420,
+    "path": "gars/_system/wrappers/nfcore-atacseq-wrapper/SKILL.md",
+    "sha256": "eb8ad9c5f3377571c10b006bb1cdca7b04bfe049b2fe9464d084d7f3e54e4872"
+   },
+   {
+    "bytes": 16518,
+    "mode": 420,
+    "path": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py",
+    "sha256": "beab610a01a430fa5eddf221322f140e9436b243d33af2ad1c102946c0e3ee06"
+   },
+   {
+    "bytes": 1111,
+    "mode": 420,
+    "path": "gars/_system/wrappers/nfcore-chipseq-wrapper/SKILL.md",
+    "sha256": "cb21a9b65dc63c6aa27b91b69a2dc75cfed72be858d1ec7ed32086d3a8de1459"
+   },
+   {
+    "bytes": 16487,
+    "mode": 420,
+    "path": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py",
+    "sha256": "8d3e45fd7760c270ce8d6f7a029d4887a33c09d4944ffb7f6914da464ca18a93"
+   },
+   {
+    "bytes": 1118,
+    "mode": 420,
+    "path": "gars/_system/wrappers/nfcore-cutandrun-wrapper/SKILL.md",
+    "sha256": "182d7ef583bc36d61bc0ca323ce8599bd8f1ba5206896759c91f85bff7d9e69d"
+   },
+   {
+    "bytes": 16586,
+    "mode": 420,
+    "path": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py",
+    "sha256": "5d2a587d62192f5dc6b9e3054087a0f63682a6d44ff0ad60fb16b6c9d8f5221b"
+   },
+   {
+    "bytes": 1132,
+    "mode": 420,
+    "path": "gars/_system/wrappers/nfcore-methylseq-wrapper/SKILL.md",
+    "sha256": "200ecdcd3f88f0ebc06f59d1b959de5ed459f04a1eb42003708c38fd326cec37"
+   },
+   {
+    "bytes": 10765,
+    "mode": 420,
+    "path": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py",
+    "sha256": "1e8d86b9229f45cea2412dc2c20a330ac53d225d67cf09827f1a90fd9c1ac666"
+   },
+   {
+    "bytes": 1140,
+    "mode": 420,
+    "path": "gars/_system/wrappers/nfcore-rnaseq-wrapper/SKILL.md",
+    "sha256": "df2c0f2104d5e44de05dcc5aa5c0f62cc0cc0f1b81f75d8c11e5df14887f76c8"
+   },
+   {
+    "bytes": 13890,
+    "mode": 420,
+    "path": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py",
+    "sha256": "cd86380f31a6c1ed70513d576582dab0a2ba9099cf41ca97b42e348f6a4ffc60"
+   },
+   {
+    "bytes": 4578,
+    "mode": 420,
+    "path": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/SKILL.md",
+    "sha256": "b9f6703299edc4357cfc1d542c1c247d1d9b2dcd3fb60f5ad47588e0fdf09f8e"
+   },
+   {
+    "bytes": 21157,
+    "mode": 420,
+    "path": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py",
+    "sha256": "d1d1610ea4f415f68304fe695f329c8a0c74c6fc33855240a6741ac4071a8216"
+   },
+   {
+    "bytes": 5549,
+    "mode": 420,
+    "path": "gars/_system/wrappers/nfcore-spatialvi-wrapper/SKILL.md",
+    "sha256": "138197154d67f2852fc22bc59a74c82a8050c263e0c87802154f0a3f5ae24429"
+   },
+   {
+    "bytes": 18060,
+    "mode": 420,
+    "path": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py",
+    "sha256": "58ff11fd02890ccebe33db58a631e75225f5d318da70586f64a54c4a680bdcb3"
+   },
+   {
+    "bytes": 1121,
+    "mode": 420,
+    "path": "gars/_system/wrappers/rnaseq-de/SKILL.md",
+    "sha256": "ce9fb4b7a6e810ffa73aea20511efc961e27cd04d101232f3ded7ba20ca13c1e"
+   },
+   {
+    "bytes": 20557,
+    "mode": 420,
+    "path": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py",
+    "sha256": "bcea141937b812c047363e19fb64ccf72236941947749e0e55c78e7bf639d892"
+   },
+   {
+    "bytes": 6964,
+    "mode": 420,
+    "path": "gars/_system/wrappers/scrna-qc-cluster/SKILL.md",
+    "sha256": "83f16d4a4fe1a76be7751099e3a4db75bc53064888da4f2e51b9f90fd4c4315e"
+   },
+   {
+    "bytes": 25823,
+    "mode": 420,
+    "path": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py",
+    "sha256": "b2e71ef98e177197e7e41005ad8fce377b9ac69fb3a027659fbc7c82a03508a6"
+   },
+   {
+    "bytes": 6862,
+    "mode": 420,
+    "path": "gars/_system/wrappers/spatial-cluster-count/SKILL.md",
+    "sha256": "334c623d2c8550d6b786594bd813eff7217527ff3f7c3f0c2342e45f3b0d3779"
+   },
+   {
+    "bytes": 30873,
+    "mode": 420,
+    "path": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py",
+    "sha256": "bdf05a43f6c3f0cc37a7578723124cb6a2a6f04617e16cce65dbb4848ca58b7a"
+   },
+   {
+    "bytes": 1682,
+    "mode": 420,
+    "path": "gars/_templates/CONTEXT.md",
+    "sha256": "2fee4e5176b546266c768f98b63478b40c18e2a47f02e06d0cd32bde944523b4"
+   },
+   {
+    "bytes": 3436,
+    "mode": 420,
+    "path": "gars/_templates/config/atacseq_bulk.yaml",
+    "sha256": "fa959b968d11453f50e3584c0b55ba3a9a958ee0349210845492dadf5f0ff7ea"
+   },
+   {
+    "bytes": 2835,
+    "mode": 420,
+    "path": "gars/_templates/config/chipseq_bulk.yaml",
+    "sha256": "588acbce90efeedf7625c712aee84a3f79c3ff0b744180140c4fde8b0fda4ae6"
+   },
+   {
+    "bytes": 3276,
+    "mode": 420,
+    "path": "gars/_templates/config/cutandrun.yaml",
+    "sha256": "360ea68fbcf67069afcef5a1c138193e7f290a804c957742237c35b591e78b72"
+   },
+   {
+    "bytes": 3671,
+    "mode": 420,
+    "path": "gars/_templates/config/executor.yaml",
+    "sha256": "1046fda663389051c1955aa461b461edabb072bcad68c44e0ee201c23d90cc54"
+   },
+   {
+    "bytes": 1101,
+    "mode": 420,
+    "path": "gars/_templates/config/methylseq.yaml",
+    "sha256": "e0979283e7f9675eb122e7a05a3d6ae6cad76953887315a527255017310e1128"
+   },
+   {
+    "bytes": 1511,
+    "mode": 420,
+    "path": "gars/_templates/config/nextflow.slurm.config",
+    "sha256": "1148a1c2fd71e7c1a29fb607ff026dd4e5463f6c6103c4047eea21dfe6942938"
+   },
+   {
+    "bytes": 3724,
+    "mode": 420,
+    "path": "gars/_templates/config/rnaseq_bulk.yaml",
+    "sha256": "3d2b612935d3544e814dfe251880854d1c4f94eb8fc4c4ae5112c0d1b5f68472"
+   },
+   {
+    "bytes": 5290,
+    "mode": 420,
+    "path": "gars/_templates/config/scrnaseq.yaml",
+    "sha256": "24cdb806b4642a1f7cfda77135bf721cf1f7ee31da163dcabbb339c7690d8451"
+   },
+   {
+    "bytes": 3545,
+    "mode": 420,
+    "path": "gars/_templates/config/spatialvi.yaml",
+    "sha256": "0b0e8d7c1f7107fbab55ecbb7d50e221822afe4a9d804d4483511401ff2dc84c"
+   },
+   {
+    "bytes": 0,
+    "mode": 420,
+    "path": "gars/_templates/project/00_data/.gitkeep",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   },
+   {
+    "bytes": 1289,
+    "mode": 420,
+    "path": "gars/_templates/project/CONTEXT.md",
+    "sha256": "7972b46d08e0ed6297e3a57fabca98c08f417e8a7ebdd67f0e7c9d1e058fffbd"
+   },
+   {
+    "bytes": 490,
+    "mode": 420,
+    "path": "gars/_templates/project/HISTORY.md",
+    "sha256": "4177d9d2cfabeca14db730026177aca31fe33af8a45e8a45479a1e9b8e2e2ce8"
+   },
+   {
+    "bytes": 0,
+    "mode": 420,
+    "path": "gars/_templates/project/_config/.gitkeep",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   },
+   {
+    "bytes": 66,
+    "mode": 420,
+    "path": "gars/projects/.gitkeep",
+    "sha256": "e9bf0874ec340f0c1a27b3f7793d7f74b4d68ec33aef2f3ae4f641a16f0caef0"
+   },
+   {
+    "bytes": 5726,
+    "mode": 420,
+    "path": "tests/check_contracts.py",
+    "sha256": "f8f9b9e3c2b1534331dae8db8b680c7c9e393d4f788781bcba803973a38d3851"
+   },
+   {
+    "bytes": 8712,
+    "mode": 420,
+    "path": "tests/check_counts.py",
+    "sha256": "8d297eb4bb0d72dc45c58d8443ef93500b5b7a59366df28dc21cf29ed5f0a889"
+   },
+   {
+    "bytes": 1064,
+    "mode": 420,
+    "path": "tests/fixtures/submit_sh_atacseq_bulk.golden",
+    "sha256": "960c17b4c79bddd56d21d345c49b4ed11b44c89b399e26a3a3c48046cabe1c04"
+   },
+   {
+    "bytes": 877,
+    "mode": 420,
+    "path": "tests/fixtures/submit_sh_rnaseq_bulk.golden",
+    "sha256": "b9ab60b4414d6357f5dff375eec998340828754e96b7dd409ab3c3b14ca0ec16"
+   },
+   {
+    "bytes": 177704,
+    "mode": 420,
+    "path": "tests/run_tests.py",
+    "sha256": "ec63234bac7f60801ff940f1ad4e080545c7b785b259845b277f63a7b33f0f6a"
+   }
+  ]
+ },
+ "tree_inventory_sha256": "c0d09755cc5d25d6d63d89dc60c9d1cb7c8ca16891d644f35674ca788b797577"
+}

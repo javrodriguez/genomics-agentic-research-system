@@ -11,7 +11,8 @@ INPUTS.
   secrets          (kind, value) pairs, kind from SECRET_KINDS (closed; there is no holdout kind). Values are read
                    at run time by the caller (`read_login` for a login file; the account email handed in) and are
                    never written down, printed, logged or put in an exception message by this module.
-  rules_scanner    a callable (paths) -> [{"path", "line", "rule"}]: gitleaks' rules on athena later, over the
+  rules_scanner    a callable (paths) -> [{"path", "line", "rule"}]: the real one is rules_scanner.real_rules_scanner().build(runtime,
+                   report_dir), the pinned gitleaks adapter in box/rules_scanner.py, over the
                    take's record folder only; a fake in tests. Required: a scan without one refuses (NotReady).
   holdout_matcher  a callable (text) -> [(start, end)], injected at run time from aegis on the Mac (ruling C4). No
                    wording, digest or count of one is ever handed to or held by this module. Without a matcher
@@ -45,6 +46,15 @@ commit step's binding, deferred there: the lane lead's call, fold 1 Q3).
 Result: {"masked": [{"path", "line", "kind", "offset"}], "events": int, "refused": [{"path", "line", "kind",
 "why"}], "files": [{"path", "sha256_before", "sha256_after"}], "holdout": "checked" | "not-checked"}.
 
+THE WITNESS. scan_with_witness(...) -> (the same result, {path: witness}) through the same core. Per file:
+{"schema": 1, "original_sha256", "published_sha256", "original_bytes", "published_bytes", "replacements":
+[{"start", "end", "kind", "replacement_id"}]}: absolute byte offsets in the original, end exclusive, nonempty,
+disjoint and increasing; replacement_id fixed per kind by REPLACEMENT_IDS over the pinned MARKERS; derived only from
+the masked entries (an unchanged or refused file carries an empty list); checked to rebuild the masked bytes before
+the file is written. A witness never carries a secret's value, nor a digest of a value alone (its whole-file
+original_sha256, like files[].sha256_before, can with the spans test a guess at a low-entropy value offline). Hashes
+alone do not prove the transformation: a verifier needs the private original bytes.
+
 No model, no network, stdlib only (plus the round's own scrub.py, for its marker).
 """
 
@@ -72,6 +82,12 @@ HOLDOUT_KIND, RULE_KIND = "holdout", "rule"
 CHECKED, NOT_CHECKED = "checked", "not-checked"
 MIN_LENGTH = {"token": 20, "key": 20, "email": 6}
 RESULT_FIELDS = ("masked", "events", "refused", "files", "holdout")
+# The transformation witness (scan_with_witness): one fixed replacement identity per secret kind, bound to the pinned
+# marker map above; a verifier maps an id back to its marker's bytes through replacement_marker, never to caller bytes.
+WITNESS_SCHEMA = 1
+WITNESS_FIELDS = ("schema", "original_sha256", "published_sha256", "original_bytes", "published_bytes",
+                  "replacements")
+REPLACEMENT_IDS = {"token": "mask-token-v1", "key": "mask-key-v1", "email": "mask-email-v1"}
 
 # The login-file rule (interface 11; the card's Part 3 step 7): one newline-terminated line NAME=<value>, the value
 # at least 20 characters with no whitespace and no double quote; mode 600, owned by the reader, outside every git
@@ -87,7 +103,15 @@ LOGIN_MAX_BYTES = 4096
 
 # ------------------------------------------------------------------------------------------------- PENDING values
 PENDING = "PENDING"
-RULES_SCANNER = PENDING
+# FILLED 14 Oct 2026 (glitch-06, row 8 of the box lane's open table): the reviewed adapter box/rules_scanner.py
+# (stub-take review ACCEPT; production module since glitch-06's 09:02 ruling), named here as DATA only: this module
+# runs no process and imports nothing for it: box/rules_scanner.real_rules_scanner reads this record and checks its own
+# pin and factory against it (moved there 14 Oct 2026: a lazy import here broke test_sidecar's default-deny audit). The pin is gitleaks 8.30.1, the official linux x64 release, at its athena path; the
+# stub takes on athena measured the binary's sha256 and version line (lane-reports/stub-take-20261014,
+# stub-take-run1..4.json; test_rules_scanner binds the pin to them, test_scan_record binds this record to the module).
+RULES_SCANNER = {"adapter": "box.rules_scanner", "factory": "gitleaks_scanner", "version": "8.30.1",
+                 "sha256": "88f91962aa2f93ac6ab281d553b9e125f5197bbbce38f9f2437f7299c32e5509",
+                 "binary": "/home/javier/gap4-tools/gitleaks-8.30.1/gitleaks"}
 FURNITURE = PENDING
 _PENDING_WHY = {
     "rules_scanner": "the real rules scanner: gitleaks' rules on athena, over the take's record folder only (never "
@@ -115,11 +139,18 @@ def pending() -> dict:
     return {f: why for f, why in _PENDING_WHY.items() if values[f] == PENDING}
 
 
-def real_rules_scanner():
-    """The real rules scanner's adapter: refused while it is PENDING."""
+def real_rules_scanner() -> dict:
+    """The real rules scanner's RECORD (a copy): refused while it is PENDING or off its closed shape. This module runs no
+    process and imports nothing to check it (test_sidecar's default-deny audit); the binding to the adapter, its pin and
+    its factory is box/rules_scanner.real_rules_scanner(), which reads this record. Build the scan once per walk with
+    `rules_scanner.real_rules_scanner().build(runtime, report_dir)`."""
     if RULES_SCANNER == PENDING:
         raise NotReady("the real rules scanner is PENDING (gitleaks on athena)")
-    return RULES_SCANNER
+    rec = RULES_SCANNER
+    if not isinstance(rec, dict) or set(rec) != {"adapter", "factory", "version", "sha256", "binary"} \
+            or rec["adapter"] != "box.rules_scanner" or rec["factory"] != "gitleaks_scanner":
+        raise NotReady("the rules scanner record does not name the reviewed adapter, box/rules_scanner.py")
+    return dict(rec)
 
 
 def furniture_positions(harness: str):
@@ -166,6 +197,8 @@ def read_login(path: str, name: str, *, allowed) -> str:
     """The value of a login file `NAME=<value>`, read at run time and never written down. Refused (LoginError, whose
     message names the rule broken and never the content) unless the file keeps the rule. `allowed` is the caller's
     closed set of login names (binding 5: run_take.LOGIN_VARIABLE's values)."""
+    if name == "-":            # run_take.NO_LOGIN (this module never imports run_take): glitch-06's ruling 1
+        raise LoginError("a Codex row has no environment login: its login is the lease (read_lease_tokens)")
     if not isinstance(name, str) or not _NAME.fullmatch(name):
         raise LoginError("the variable name is upper-case letters, digits and underscores")
     if not _name_allowed(name, allowed):
@@ -201,6 +234,79 @@ def read_login(path: str, name: str, *, allowed) -> str:
     except UnicodeDecodeError:
         raise LoginError("the login file's value is not ASCII") from None
 
+
+# The Codex lease's registered auth.json (glitch-06, 14 Oct 2026, ruling on the lease postflight review's MINOR 3):
+# every login value is in the exact-value scan, so a Codex take's secrets carry the lease's access and refresh tokens.
+# The two names are read under any JSON object of the file (their nesting is the CLI's, not ours); each must be found.
+LEASE_TOKEN_KEYS = ("access_token", "refresh_token")
+LEASE_MAX_BYTES = 1024 * 1024
+
+
+def _lease_values(node, key, out):
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k == key:
+                out.append(v)
+            _lease_values(v, key, out)
+    elif isinstance(node, list):
+        for v in node:
+            _lease_values(v, key, out)
+
+
+def read_lease_tokens(path: str) -> list:
+    """The access and refresh token values of a Codex lease's registered auth.json, read at run time and never written
+    down. Refused (LoginError, naming the rule broken and never the content) unless the file is an absolute, plain
+    (never a link or special) file, mode 600, owned by its reader, at most LEASE_MAX_BYTES of JSON, and each of
+    LEASE_TOKEN_KEYS holds single-line strings of at least MIN_LENGTH["token"]. Opened as read_login opens a login
+    file (no link followed, never blocking); like read_login, it does not bind the read to the check by inode
+    (test_sidecar's closed vocabulary for this module holds no fstat)."""
+    if not isinstance(path, str) or not os.path.isabs(path):
+        raise LoginError("the lease file is named by an absolute path")
+    try:
+        st = os.lstat(path)
+    except OSError:
+        raise LoginError("the lease file cannot be found") from None
+    if not stat.S_ISREG(st.st_mode):
+        raise LoginError("the lease file is not a plain file (a link or a special file is refused)")
+    if stat.S_IMODE(st.st_mode) != 0o600:
+        raise LoginError("the lease file's mode is not 600")
+    if not _owned(st):
+        raise LoginError("the lease file is not owned by its reader")
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError:
+        raise LoginError("the lease file cannot be opened") from None
+    try:
+        data = os.read(fd, LEASE_MAX_BYTES + 1)
+    except OSError:
+        raise LoginError("the lease file cannot be read") from None
+    finally:
+        os.close(fd)
+    if len(data) > LEASE_MAX_BYTES:
+        raise LoginError(f"the lease file is at most {LEASE_MAX_BYTES} bytes")
+    # a nesting past the recursion limit refuses by rule (review of b9f876b5, MINOR 2): RecursionError is caught as
+    # its base RuntimeError, already in test_sidecar's closed name set for this module (that set is not widened)
+    try:
+        doc = json.loads(data.decode("utf-8"))
+        found_by_key = {}
+        for key in LEASE_TOKEN_KEYS:
+            found_by_key[key] = []
+            _lease_values(doc, key, found_by_key[key])
+    except (UnicodeDecodeError, ValueError, RuntimeError):
+        raise LoginError("the lease file is not JSON within the nesting the reader walks") from None
+    values = []
+    for key in LEASE_TOKEN_KEYS:
+        found = found_by_key[key]
+        if not found:
+            raise LoginError(f"the lease file holds no {key}")
+        for v in found:
+            if not isinstance(v, str) or len(v) < MIN_LENGTH["token"]:
+                raise LoginError(f"a {key} is a string of at least {MIN_LENGTH['token']} characters")
+            if "\n" in v or "\r" in v:
+                raise LoginError(f"a {key} is a single-line string")
+            if v not in values:
+                values.append(v)
+    return values
 
 # ------------------------------------------------------------------------------------------------- the scan
 def _sha(b: bytes) -> str:
@@ -315,7 +421,8 @@ def _survived(after: bytes, needles) -> bool:
 
 def _require_scanner(scanner):
     if scanner is None or not callable(scanner):
-        raise NotReady("a real scan needs a callable rules scanner (gitleaks on athena: PENDING)")
+        raise NotReady("a real scan needs a callable rules scanner: build it per walk with "
+                       "rules_scanner.real_rules_scanner().build(runtime, report_dir)")
 
 
 def _require_files(files):
@@ -360,15 +467,71 @@ def _write(path: str, data: bytes):
         os.fsync(fh.fileno())
 
 
-def scan(files, secrets, *, rules_scanner, holdout_matcher=None) -> dict:
-    """Scan every file of a take's commit (see the module docstring)."""
-    _require_scanner(rules_scanner)   # the injected callable (interface 14); never RULES_SCANNER
+def replacement_marker(replacement_id: str) -> bytes:
+    """The fixed marker bytes a witness replacement id stands for (the pinned MARKERS map); an unknown id refuses."""
+    for kind, rid in REPLACEMENT_IDS.items():
+        if rid == replacement_id:
+            return MARKERS[kind].encode("utf-8")
+    raise ScanError("an unknown replacement id (the witness names only the pinned markers)")
+
+
+def _line_offsets(data: bytes) -> list:
+    """The absolute byte offset where each of _lines(data) starts."""
+    out, at = [], 0
+    for line in _lines(data):
+        out.append(at)
+        at += len(line)
+    return out
+
+
+def _replacements(before: bytes, masked, needles) -> list:
+    """The witness spans of one file, derived only from its masked entries (the successful masking branch): each
+    entry's line and in-line start, its end from the same longest-first selection, as absolute original offsets."""
+    if not masked:
+        return []
+    offsets, lines = _line_offsets(before), _lines(before)
+    out = []
+    for m in masked:
+        line = lines[m["line"] - 1]
+        body = line[:-1] if line.endswith(b"\n") else line
+        ends = [e for s, e, k in _spans(body, needles) if s == m["offset"] and k == m["kind"]]
+        if len(ends) != 1:
+            raise ScanError(f"{m['path']}: a masked entry has no single span; nothing written")
+        base = offsets[m["line"] - 1]
+        out.append({"start": base + m["offset"], "end": base + ends[0], "kind": m["kind"],
+                    "replacement_id": REPLACEMENT_IDS[m["kind"]]})
+    return sorted(out, key=lambda r: r["start"])
+
+
+def _rebuild(before: bytes, replacements) -> bytes:
+    out, at = [], 0
+    for r in replacements:
+        if not (at <= r["start"] < r["end"] <= len(before)):
+            raise ScanError("witness spans are nonempty, disjoint, increasing and inside the original")
+        out += [before[at:r["start"]], replacement_marker(r["replacement_id"])]
+        at = r["end"]
+    out.append(before[at:])
+    return b"".join(out)
+
+
+def _witness(path: str, before: bytes, after: bytes, replacements) -> dict:
+    """One file's witness; fails closed (ScanError, before anything is written) unless the spans rebuild `after`."""
+    if _rebuild(before, replacements) != after:
+        raise ScanError(f"{path}: the witness spans do not rebuild the masked bytes; nothing written")
+    return {"schema": WITNESS_SCHEMA, "original_sha256": _sha(before), "published_sha256": _sha(after),
+            "original_bytes": len(before), "published_bytes": len(after), "replacements": replacements}
+
+
+def _scan_core(files, secrets, scanner, holdout_matcher):
+    """The shared scan: (the scan result, {path: witness}). Each file's witness is built and checked before that
+    file is written, so a refused witness never writes its file."""
+    _require_scanner(scanner)   # the injected callable (interface 14); never RULES_SCANNER
     files, secrets = list(files), list(secrets)
     _require_files(files)
     _require_search(secrets)
     _check_inputs(files, secrets)
     needles = _needles(secrets)
-    masked, refused, records = [], [], []
+    masked, refused, records, witnesses = [], [], [], {}
     for path, kind in files:
         with open(path, "rb") as fh:
             before = fh.read()
@@ -380,15 +543,31 @@ def scan(files, secrets, *, rules_scanner, holdout_matcher=None) -> dict:
             if [ln for ln in _lines(before) if not _spans(ln, needles)] != \
                     [ln for ln, old in zip(_lines(after), _lines(before)) if not _spans(old, needles)]:
                 raise ScanError(f"{path}: masking changed a line it should not touch; nothing written")
+        witnesses[path] = _witness(path, before, after, _replacements(before, m if new is not None else [],
+                                                                      needles))
+        if new is not None:
             _write(path, after)
         masked += m
         refused += r
         if holdout_matcher is not None:
             refused += _holdout(holdout_matcher, path, after)
         records.append({"path": path, "sha256_before": _sha(before), "sha256_after": _sha(after)})
-    refused += _rules(rules_scanner, [p for p, _ in files])
-    return {"masked": masked, "events": len(masked), "refused": refused, "files": records,
-            "holdout": NOT_CHECKED if holdout_matcher is None else CHECKED}
+    refused += _rules(scanner, [p for p, _ in files])
+    result = {"masked": masked, "events": len(masked), "refused": refused, "files": records,
+              "holdout": NOT_CHECKED if holdout_matcher is None else CHECKED}
+    return result, witnesses
+
+
+def scan(files, secrets, *, rules_scanner, holdout_matcher=None) -> dict:
+    """Scan every file of a take's commit (see the module docstring)."""
+    return _scan_core(files, secrets, rules_scanner, holdout_matcher)[0]
+
+
+def scan_with_witness(files, secrets, *, rules_scanner, holdout_matcher=None) -> tuple:
+    """scan's result unchanged, plus {path: witness} for every scanned file (unchanged files carry an empty
+    replacement list). A witness carries offsets, lengths, kinds, fixed marker ids and whole-file sha256s only: never
+    a secret's value, nor a digest of a value alone."""
+    return _scan_core(files, secrets, rules_scanner, holdout_matcher)
 
 
 def passed(result: dict) -> bool:

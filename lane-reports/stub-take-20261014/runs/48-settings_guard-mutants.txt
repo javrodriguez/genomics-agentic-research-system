@@ -1,0 +1,17 @@
+control 0 of 11
+RED   1/11 env allowed
+RED   6/11 local file ignored
+RED   10/11 forbidden keys not checked
+RED   1/11 link file followed
+RED   2/11 claude link admitted
+RED   4/11 new file admitted
+RED   1/11 hash not compared
+RED   1/11 removal admitted
+RED   2/11 dir type unchecked
+RED   4/11 agent model unchecked
+RED   4/11 agent any model admitted
+RED   10/11 agents skipped
+RED   1/11 agent link followed
+RED   1/11 new agent in snapshot admitted
+RED   1/11 pattern too loose
+ALIVE: none

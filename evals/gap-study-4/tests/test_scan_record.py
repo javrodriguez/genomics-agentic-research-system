@@ -24,6 +24,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 sys.dont_write_bytecode = True
@@ -666,34 +667,39 @@ class TestLoginBinding5Round1(unittest.TestCase):
 
 # ------------------------------------------------------------------------------------------------- PENDING values
 class TestPending(unittest.TestCase):
+    # RULES_SCANNER FILLED 14 Oct 2026 (glitch-06, box row 8): the reviewed box/rules_scanner.py (TestRulesScannerFilled).
     def test_the_pending_set(self):
-        self.assertEqual(set(sr.pending()), {"rules_scanner", "furniture"})
-        self.assertEqual((sr.RULES_SCANNER, sr.FURNITURE), ("PENDING", "PENDING"))
+        self.assertEqual(set(sr.pending()), {"furniture"})
+        self.assertEqual(sr.FURNITURE, "PENDING")
+        self.assertNotEqual(sr.RULES_SCANNER, "PENDING")
 
     def test_each_refuses_a_real_use(self):
-        with self.assertRaises(sr.NotReady):
-            sr.real_rules_scanner()
+        with mock.patch.object(sr, "RULES_SCANNER", sr.PENDING):
+            with self.assertRaises(sr.NotReady):
+                sr.real_rules_scanner()
+            self.assertEqual(set(sr.pending()), {"rules_scanner", "furniture"})
         with self.assertRaises(sr.NotReady):
             sr.furniture_positions("a-harness")
         with mock.patch.object(sr, "FURNITURE", {"a-harness": [("session", "line 1")]}):
             self.assertEqual(sr.furniture_positions("a-harness"), [("session", "line 1")])
-            self.assertEqual(set(sr.pending()), {"rules_scanner"})
+            self.assertEqual(set(sr.pending()), set())
 
     def test_mutants_dropping_a_refusal_go_red(self):
-        with mock.patch.object(sr, "PENDING", "never-equal"):
-            self.assertEqual(sr.real_rules_scanner(), "PENDING")
+        with mock.patch.object(sr, "PENDING", "never-equal"), mock.patch.object(sr, "FURNITURE", "PENDING"):
             self.assertEqual(sr.pending(), {})
         red("the PENDING refusals dropped")
 
+
     def test_no_parameter_overrides_a_pending_value(self):
-        names = set(sr.pending())
+        names = set(sr._PENDING_WHY)       # every value that is or was PENDING (rules_scanner FILLED 14 Oct 2026)
         hits = []
         for n, obj in vars(sr).items():
             if inspect.isfunction(obj) and obj.__module__ == sr.__name__:
                 hits += [f"{n}({p})" for p in inspect.signature(obj).parameters if p.lower() in names]
-        # The one named exemption: interface 14 pins scan's injected rules_scanner callable; it overrides no
+        # The named exemptions: interface 14 pins scan's injected rules_scanner callable; it overrides no
         # constant (RULES_SCANNER is read only by real_rules_scanner), and a scan without one refuses.
-        self.assertEqual(hits, ["scan(rules_scanner)"])
+        # scan_with_witness is the same interface through the same core (gap4 box lane, 14 Oct: the witness).
+        self.assertEqual(hits, ["scan(rules_scanner)", "scan_with_witness(rules_scanner)"])
 
     def test_scan_never_reads_the_pending_constant(self):
         c = Commit()
@@ -701,6 +707,163 @@ class TestPending(unittest.TestCase):
         with mock.patch.object(sr, "RULES_SCANNER", lambda paths: [{"path": paths[0], "line": 1, "rule": "x"}]):
             with self.assertRaises(sr.NotReady):
                 sr.scan(c.files(), SECRETS, rules_scanner=None)
+
+
+from box import rules_scanner as _rs  # noqa: E402
+ORIG_GITLEAKS_SCANNER = _rs.gitleaks_scanner     # the reviewed factory, taken before any test patches the module
+
+
+class TestRulesScannerFilled(unittest.TestCase):
+    """Box row 8 (glitch-06, 14 Oct 2026): RULES_SCANNER names the reviewed adapter, box/rules_scanner.py, and its pin;
+    real_rules_scanner refuses a drifted pin or a swapped factory, and what it returns builds the pinned scanner."""
+
+    PIN = ("8.30.1", "88f91962aa2f93ac6ab281d553b9e125f5197bbbce38f9f2437f7299c32e5509",
+           "/home/javier/gap4-tools/gitleaks-8.30.1/gitleaks")
+
+    def check(self):
+        out = []
+        from box import rules_scanner as rs
+        rec = sr.RULES_SCANNER
+        if (rec.get("version"), rec.get("sha256"), rec.get("binary")) != self.PIN:
+            out.append(f"the record's pin is {rec!r}")
+        if (rs.GITLEAKS_VERSION, rs.GITLEAKS_SHA256, rs.GITLEAKS_PATH) != self.PIN:
+            out.append("the adapter module's pin is not the reviewed one")
+        try:
+            real = _rs.real_rules_scanner()
+        except sr.NotReady as e:
+            return out + [f"refused: {e}"]
+        if real.build is not ORIG_GITLEAKS_SCANNER:
+            out.append("the real rules scanner is not box/rules_scanner.gitleaks_scanner")
+        if (real.version, real.sha256, real.binary) != self.PIN:
+            out.append("the real rules scanner carries another pin")
+        if callable(real):
+            out.append("the real rules scanner itself is callable: it could be passed as scan's rules_scanner")
+        if "rules_scanner" in sr.pending():
+            out.append("rules_scanner is still pending")
+        if sr.real_rules_scanner() != rec or sr.real_rules_scanner() is rec:
+            out.append("scan_record.real_rules_scanner does not return a copy of the record")
+        return out
+
+    def test_the_constant_is_bound_to_the_module(self):
+        self.assertEqual(self.check(), [])
+        from box import rules_scanner as rs
+        mutants = {
+            "pin sha drifts in the adapter": lambda: mock.patch.object(rs, "GITLEAKS_SHA256", "0" * 64),
+            "pin sha drifts in the record": lambda: mock.patch.dict(sr.RULES_SCANNER, sha256="1" * 64),
+            "version drifts": lambda: mock.patch.object(rs, "GITLEAKS_VERSION", "8.30.2"),
+            "binary path drifts": lambda: mock.patch.object(rs, "GITLEAKS_PATH", "/tmp/gitleaks"),
+            "scanner silently swapped": lambda: mock.patch.object(rs, "gitleaks_scanner",
+                                                                  lambda runtime, report_dir, **kw: (lambda p: [])),
+            "factory renamed in the record": lambda: mock.patch.dict(sr.RULES_SCANNER, factory="other"),
+            "adapter renamed in the record": lambda: mock.patch.dict(sr.RULES_SCANNER, adapter="box.stub_take"),
+            "drift check dropped": lambda: mock.patch.object(_rs, "real_rules_scanner", lambda: _rs.RealRulesScanner(
+                lambda runtime, report_dir: (lambda p: []), "8.30.1", "0" * 64, "/tmp/gitleaks")),
+        }
+        for name, ctx in mutants.items():
+            with self.subTest(name), ctx():
+                self.assertNotEqual(self.check(), [], f"mutant {name} survived")
+            red(f"rules scanner: {name}")
+
+    # Review S-1: each of real_rules_scanner's three structural guards, bound alone (each mutant leaves the others).
+    def test_the_record_key_set_is_closed(self):
+        for name, ctx in {"extra key": lambda: mock.patch.dict(sr.RULES_SCANNER, note="x"),
+                          "missing key": lambda: mock.patch.object(sr, "RULES_SCANNER", {
+                              k: v for k, v in sr.RULES_SCANNER.items() if k != "binary"})}.items():
+            with self.subTest(name), ctx():
+                with self.assertRaises(sr.NotReady):
+                    _rs.real_rules_scanner()
+
+    def factory_named(self, module, name):
+        def fake(runtime, report_dir, **kw):
+            return lambda paths: []
+        fake.__module__, fake.__name__ = module, name
+        return fake
+
+    def test_a_drifted_pin_refuses_the_binding(self):
+        """The binding itself refuses each drift (the check above also reads the constants directly)."""
+        for attr, value in (("GITLEAKS_SHA256", "0" * 64), ("GITLEAKS_VERSION", "8.30.2"),
+                            ("GITLEAKS_PATH", "/tmp/gitleaks")):
+            with self.subTest(attr), mock.patch.object(_rs, attr, value), self.assertRaises(sr.NotReady):
+                _rs.real_rules_scanner()
+
+    def test_the_factory_module_is_the_adapter(self):
+        from box import rules_scanner as rs
+        with mock.patch.object(rs, "gitleaks_scanner", self.factory_named("box.stub_take", "gitleaks_scanner")):
+            with self.assertRaises(sr.NotReady):
+                _rs.real_rules_scanner()
+
+    def test_the_factory_name_is_its_own(self):
+        from box import rules_scanner as rs
+        with mock.patch.object(rs, "gitleaks_scanner", self.factory_named("box.rules_scanner", "fake_scanner")):
+            with self.assertRaises(sr.NotReady):
+                _rs.real_rules_scanner()
+
+    def test_passing_the_unbuilt_scanner_names_the_build(self):
+        c = Commit()
+        self.addCleanup(c.close)
+        with self.assertRaises(sr.NotReady) as cm:
+            sr.scan(c.files(), SECRETS, rules_scanner=_rs.real_rules_scanner())
+        self.assertIn("real_rules_scanner().build(runtime, report_dir)", str(cm.exception))
+        self.assertNotIn("PENDING", str(cm.exception))
+
+    def test_the_built_scanner_is_the_pinned_gate(self):
+        """What real_rules_scanner returns builds through the reviewed factory, which refuses a binary off the pin."""
+        d = tempfile.mkdtemp(prefix="rs-")
+        self.addCleanup(lambda: __import__("shutil").rmtree(d))
+        binary = os.path.join(d, "gitleaks")
+        with open(binary, "wb") as fh:
+            fh.write(b"not the pinned binary")
+        os.mkdir(os.path.join(d, "reports"))
+        from box import rules_scanner as rs
+        with self.assertRaises(rs.ScannerRefused):
+            _rs.real_rules_scanner().build(object(), os.path.join(d, "reports"), binary=binary)
+
+
+class TestWalkLoginMask(Case):
+    """Review-walk-token W-3 (glitch-06's ruling, 14 Oct 2026): the model under test can read its own sign-in token
+    inside the box, so the records' exact-value mask must catch it. The scan's secrets come through the walk's own
+    road, walk_builders.login_secrets over a walk login file. The value is SYNTHETIC: Claude Code's docs give no
+    format for a setup-token value, so it is read_login's accepted shape (ASCII, 20+ characters, no whitespace or
+    quote), with no vendor prefix; never a real token."""
+
+    SYNTH = "SYNTHETIC0walk0login0value0" + "Ab9_-" * 12 + "AA"
+
+    def login_file(self):
+        d = tempfile.mkdtemp(prefix="wl-")
+        self.addCleanup(lambda: __import__("shutil").rmtree(d))
+        sub = os.path.join(d, "claude1")
+        os.mkdir(sub, 0o700)
+        path = os.path.join(sub, "walk-login-file")
+        with open(path, "w") as fh:
+            fh.write(f"CLAUDE_CODE_OAUTH_TOKEN={self.SYNTH}\n")
+        os.chmod(path, 0o600)
+        return path
+
+    def test_the_walk_login_value_is_masked_in_records(self):
+        import walk_builders
+        secrets = walk_builders.login_secrets(self.login_file(), "claude-code")()
+        self.assertEqual(secrets, [("token", self.SYNTH)])
+        c = self.commit({"stream": self.SYNTH, "transcript": self.SYNTH, "session": self.SYNTH})
+        r = sr.scan(c.files(), secrets, rules_scanner=no_findings)
+        self.assertTrue(sr.passed(r), r.get("refused"))
+        for kind in ("stream", "transcript", "session"):
+            body = c.read(kind)
+            self.assertNotIn(self.SYNTH.encode(), body, kind)
+            self.assertIn(sr.MARKERS["token"].encode(), body, kind)
+        c2 = self.commit({"ledger": self.SYNTH})
+        r2 = sr.scan(c2.files(), secrets, rules_scanner=no_findings)
+        self.assertFalse(sr.passed(r2))                  # outside the maskable kinds: refused, never shipped
+        self.assertNotIn(self.SYNTH, json.dumps(r2))
+
+    def test_mutant_no_secrets_goes_red(self):
+        import walk_builders
+        with mock.patch.object(walk_builders, "login_secrets",
+                               lambda path, harness: (lambda: [("token", "OTHER-not-the-walk-value-0123456789")])):
+            secrets = walk_builders.login_secrets(self.login_file(), "claude-code")()
+        c = self.commit({"stream": self.SYNTH})
+        r = sr.scan(c.files(), secrets, rules_scanner=no_findings)
+        self.assertIn(self.SYNTH.encode(), c.read("stream"))  # without the walk value the value ships: the mask is the guard
+        red("walk login value not handed to the scan")
 
 
 # ------------------------------------------------------------------------------------------------- fold 2 (lane review 1)
@@ -783,8 +946,11 @@ class TestFold2(Case):
 
     def test_mutant_survival_unchecked_goes_red(self):
         c = self.commit({"stream": TOKEN})
+        # The witness's rebuild check (scan_with_witness's shared core) is a second guard on the same write; it is
+        # removed here too, so this mutant still shows the survival check alone (test_scan_witness has its own).
         with mock.patch.object(sr, "_mask", lambda line, spans: line + b" "), \
-                mock.patch.object(sr, "_survived", lambda after, needles: False):
+                mock.patch.object(sr, "_survived", lambda after, needles: False), \
+                mock.patch.object(sr, "_witness", lambda path, before, after, replacements: {}):
             sr.scan(c.files(), SECRETS, rules_scanner=no_findings)
         self.assertIn(TOKEN.encode(), c.read("stream"))   # the value was written back
         red("a value surviving its mask written")
@@ -820,6 +986,145 @@ class TestFold2(Case):
                 sr.scan(c.files(), SECRETS, rules_scanner=sr.RULES_SCANNER)
         red("a non-callable rules scanner reaching the scan")
 
+
+
+# ------------------------------------------------------------------------- the Codex lease's tokens (glitch-06, 14 Oct)
+# glitch-06's ruling on the lease postflight review's MINOR 3: every login value is in the exact-value scan, so a
+# Codex take's secrets() carries the lease's access and refresh tokens, read from the registered auth.json at take
+# start (and again at each scan, so a refresh in the take adds the new values and drops none); and postflight.json,
+# whose listing can carry a value used as a file name, goes through the same scan as every other record before commit.
+# Near-copies (base64, gzip, a split value, a trailing byte) are a named residual, not detected here.
+LEASE_ACCESS = "FAKEACCESS-0123456789abcdef-PLANTED"
+LEASE_REFRESH = "FAKEREFRESH-fedcba9876543210-PLANTED"
+LEASE_VALUES = (LEASE_ACCESS, LEASE_REFRESH)
+
+
+def _lease_body(access=LEASE_ACCESS, refresh=LEASE_REFRESH) -> dict:
+    return {"OPENAI_API_KEY": None, "tokens": {"id_token": "fake-id", "access_token": access,
+                                               "refresh_token": refresh, "account_id": "acct-fake"}}
+
+
+def lease_auth(folder: str, body=None, mode=0o600, raw: bytes | None = None) -> str:
+    p = os.path.join(folder, "auth.json")
+    if os.path.lexists(p):
+        os.unlink(p)
+    fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.write(fd, raw if raw is not None else json.dumps(_lease_body() if body is None else body).encode())
+    os.close(fd)
+    os.chmod(p, mode)
+    return p
+
+
+def _walk_builders():
+    import walk_builders
+    return walk_builders
+
+
+class TestLeaseTokens(unittest.TestCase):
+    def folder(self) -> str:
+        t = tempfile.TemporaryDirectory(prefix="lease-")
+        self.addCleanup(t.cleanup)
+        return t.name
+
+    def refused(self, path, rule_word):
+        with self.assertRaises(sr.LoginError) as cm:
+            sr.read_lease_tokens(path)
+        msg = str(cm.exception)
+        self.assertIn(rule_word, msg)
+        for v in LEASE_VALUES:
+            self.assertNotIn(v, msg)
+
+    def test_reads_the_access_and_refresh_tokens(self):
+        self.assertEqual(sorted(sr.read_lease_tokens(lease_auth(self.folder()))), sorted(LEASE_VALUES))
+
+    def test_refuses_a_lease_file_off_the_rule(self):
+        d = self.folder()
+        self.refused(lease_auth(d, body={"tokens": {"access_token": LEASE_ACCESS}}), "refresh_token")
+        self.refused(lease_auth(d, body={"tokens": {"refresh_token": LEASE_REFRESH}}), "access_token")
+        self.refused(lease_auth(d, body=_lease_body(access="short")), "at least 20")
+        self.refused(lease_auth(d, body=_lease_body(refresh=LEASE_REFRESH + "\n")), "single-line")
+        self.refused(lease_auth(d, raw=b"not json " + LEASE_ACCESS.encode()), "not JSON")
+        self.refused(lease_auth(d, raw=b" " * (sr.LEASE_MAX_BYTES + 1)), "at most")
+        self.refused(lease_auth(d, mode=0o644), "mode")
+        self.refused(os.path.join(d, "missing.json"), "cannot be found")
+        self.refused("auth.json", "absolute")
+        real = lease_auth(d)
+        link = os.path.join(d, "link.json")
+        os.symlink(real, link)
+        self.refused(link, "not a plain file")
+        fifo = os.path.join(d, "fifo")
+        os.mkfifo(fifo, 0o600)
+        self.refused(fifo, "not a plain file")
+        with mock.patch.object(sr, "_owned", lambda st: False):
+            self.refused(real, "owned")
+
+    def test_refuses_deep_nesting_and_a_folder_swapped_in_never_crashing(self):
+        """The review of b9f876b5, MINOR 2: a JSON nesting past the recursion limit, and a folder swapped in after the
+        lstat (open succeeds on a folder, the read fails), each refuse by rule, never crash."""
+        d = self.folder()
+        deep = b"[" * 100000 + b"]" * 100000
+        self.refused(lease_auth(d, raw=deep[:sr.LEASE_MAX_BYTES]), "not JSON")
+        with mock.patch.object(sr, "_lease_values", side_effect=RecursionError("planted")):   # the walk's own limit
+            self.refused(lease_auth(d), "not JSON")
+        real = lease_auth(d)
+        folder = os.path.join(d, "swapped-in")
+        os.mkdir(folder, 0o700)
+        checked = os.lstat(real)                      # the check saw the regular file; a folder is what gets opened
+        with mock.patch.object(sr.os, "lstat", lambda p, _st=checked: _st):
+            self.refused(folder, "cannot be read")
+
+    def test_a_codex_row_has_no_environment_login(self):
+        """glitch-06's ruling 1: run_take.LOGIN_VARIABLE[codex] is NO_LOGIN ("-"); read_login refuses it by name,
+        explicitly, whatever the allowed set holds, and never reads the file."""
+        d = self.folder()
+        p = os.path.join(d, "login")
+        fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.write(fd, b"-=" + LEASE_ACCESS.encode() + b"\n")
+        os.close(fd)
+        for allowed in (("-",), ("-", "CLAUDE_CODE_OAUTH_TOKEN")):
+            with self.assertRaises(sr.LoginError) as cm:
+                sr.read_login(p, "-", allowed=allowed)
+            self.assertIn("no environment login", str(cm.exception))
+            self.assertNotIn(LEASE_ACCESS, str(cm.exception))
+
+    def test_lease_secrets_reads_at_take_start_and_keeps_every_value(self):
+        d = self.folder()
+        path = lease_auth(d)
+        secrets = _walk_builders().lease_secrets(path)            # take start: read now
+        os.unlink(path)                                           # gone before the scan: the take-start values stay
+        with self.assertRaises(sr.LoginError):
+            secrets()
+        lease_auth(d, body=_lease_body(access="FAKEACCESS-NEW-0123456789-PLANTED",
+                                       refresh="FAKEREFRESH-NEW-0123456789-PLANTED"))
+        got = secrets()                                           # a refresh in the take: both pairs are searched
+        self.assertTrue(all(k == "token" for k, _ in got))
+        self.assertEqual(sorted(v for _, v in got), sorted(LEASE_VALUES + ("FAKEACCESS-NEW-0123456789-PLANTED",
+                                                                           "FAKEREFRESH-NEW-0123456789-PLANTED")))
+        with self.assertRaises(sr.LoginError):                    # no lease file at take start: the take never starts
+            _walk_builders().lease_secrets(os.path.join(d, "nope.json"))
+
+    def test_a_token_used_as_a_file_name_is_refused_by_the_commit_scan(self):
+        import drive
+        from box import preflight as pf
+        from box import run_take as rt
+        home, takef = self.folder(), self.folder()
+        lease_auth(home)
+        os.makedirs(os.path.join(home, "sessions", LEASE_ACCESS))   # the synthetic value as a name
+        post = pf.postflight(home, rt.CODEX)
+        self.assertTrue(post["ok"], post["checks"][0]["detail"])  # the name rule cannot see it: the scan must
+        self.assertIn(f"sessions/{LEASE_ACCESS}", post["recorded"]["listing"])
+        rec = os.path.join(takef, drive.POSTFLIGHT_RECORD)
+        with open(rec, "w", encoding="utf-8") as fh:
+            json.dump(post, fh, indent=2, sort_keys=True)
+        before = Path(rec).read_bytes()
+        kind = drive.record_kind([drive.POSTFLIGHT_RECORD])
+        self.assertNotIn(kind, sr.MASKABLE)
+        secrets = _walk_builders().lease_secrets(os.path.join(home, "auth.json"))
+        result = sr.scan([(rec, kind)], secrets(), rules_scanner=no_findings)
+        self.assertFalse(sr.passed(result))                       # the commit is refused
+        self.assertEqual([(r["path"], r["kind"]) for r in result["refused"]], [(rec, "token")])
+        self.assertNotIn(LEASE_ACCESS, json.dumps(result))
+        self.assertEqual(Path(rec).read_bytes(), before)          # refused, never masked in a non-agent record
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

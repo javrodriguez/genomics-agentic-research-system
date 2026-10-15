@@ -1,0 +1,2 @@
+RED   stale comment back
+RED   auth.json dropped from CREDENTIAL_FILES

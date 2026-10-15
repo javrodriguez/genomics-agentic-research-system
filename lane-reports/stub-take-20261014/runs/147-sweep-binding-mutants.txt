@@ -1,0 +1,7 @@
+control 0 of 2
+RED   1/2 the review's relabel: GOOGLE_CLOUD_PROJECT harmless, dropped everywhere
+RED   1/2 a glued trust-store name relabelled harmless and dropped
+RED   1/2 a Codex route relabelled harmless and dropped
+RED   2/2 the Codex sweep bound to another image
+RED   1/2 the binary sha256 differing after its first 16 characters
+ALIVE: none

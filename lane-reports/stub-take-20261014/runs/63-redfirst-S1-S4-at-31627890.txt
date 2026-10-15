@@ -1,0 +1,4 @@
+== test_scan_record (new tests, 31627890 modules)
+FAIL: test_passing_the_unbuilt_scanner_names_the_build (test_scan_record.TestRulesScannerFilled.test_passing_the_unbuilt_scanner_names_the_build)
+Ran 71 tests in 0.451s
+FAILED (failures=1)

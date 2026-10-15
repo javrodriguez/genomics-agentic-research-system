@@ -1,0 +1,12 @@
+== test_scan_record (new tests, 836239d9 modules)
+ERROR: test_the_built_scanner_is_the_pinned_gate (test_scan_record.TestRulesScannerFilled.test_the_built_scanner_is_the_pinned_gate)
+ERROR: test_the_constant_is_bound_to_the_module (test_scan_record.TestRulesScannerFilled.test_the_constant_is_bound_to_the_module)
+FAIL: test_each_refuses_a_real_use (test_scan_record.TestPending.test_each_refuses_a_real_use)
+FAIL: test_the_pending_set (test_scan_record.TestPending.test_the_pending_set)
+Ran 67 tests in 0.319s
+FAILED (failures=2, errors=2)
+== test_run_take (new tests, 836239d9 modules)
+FAIL: test_pending (test_run_take.TestPendingAndNames.test_pending)
+FAIL: test_xdg_runtime_dir_retired_on_evidence (test_run_take.TestPendingAndNames.test_xdg_runtime_dir_retired_on_evidence)
+Ran 48 tests in 17.092s
+FAILED (failures=2)

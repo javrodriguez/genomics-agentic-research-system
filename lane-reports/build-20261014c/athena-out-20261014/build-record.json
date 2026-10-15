@@ -1,0 +1,357 @@
+{
+ "box_dir": "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/clone/evals/gap-study-4/box",
+ "checkout": "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/clone",
+ "clean_after": true,
+ "images": [
+  {
+   "argv": [
+    "docker",
+    "build",
+    "--pull=false",
+    "--file",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/clone/evals/gap-study-4/box/Dockerfile",
+    "--build-arg",
+    "BASE=docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "--build-arg",
+    "BASE_NAME=docker.io/library/node",
+    "--build-arg",
+    "BASE_DIGEST=sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "--build-arg",
+    "HARNESS_VERSION=2.1.296",
+    "--build-arg",
+    "PYTHON_VERSION=3.11.2",
+    "--label",
+    "org.opencontainers.image.base.name=docker.io/library/node",
+    "--label",
+    "org.opencontainers.image.base.digest=sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "--label",
+    "app.cli.version=2.1.296",
+    "--label",
+    "app.python.version=3.11.2",
+    "--iidfile",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/out/take-a.iid",
+    "--metadata-file",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/out/take-a.metadata.json",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/clone/evals/gap-study-4/box"
+   ],
+   "build_log": "take-a.build.log",
+   "config_digest": "sha256:da2067d3ee9f1eeea61afc39cdeddadfed2bd9d339382f8b1ccd8cbd1b9d33a6",
+   "exit": 0,
+   "image": "take-a",
+   "image_id": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+   "inputs": {
+    "evals/gap-study-4/box/Dockerfile": "4f54394bd606ebee61b5a25e3ffddd2ba17591da9319b0eba9603ae95a739318"
+   },
+   "label_problems": [],
+   "lock": "box/image.lock",
+   "lock_inputs": {
+    "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "harness": {
+     "package": "@anthropic-ai/claude-code",
+     "version": "2.1.296"
+    },
+    "python": "3.11.2",
+    "users": {
+     "agent": {
+      "gid": 10001,
+      "name": "dana",
+      "uid": 10001
+     },
+     "keepalive": {
+      "gid": 10003,
+      "uid": 10003
+     },
+     "watcher": {
+      "gid": 10002,
+      "name": "eli",
+      "uid": 10002
+     }
+    }
+   },
+   "lock_inputs_sha256": "6b7758fe6089c8a72fda00d0f8a4e1f44391f0aea8f6b04c08047d14a9932e45",
+   "logged_manifests": [
+    "sha256:c8d50caa6de74e8c1761aaf572e2ef8f6d2d573a69bb851af02395f6106366e8"
+   ],
+   "manifest_digest": "sha256:c8d50caa6de74e8c1761aaf572e2ef8f6d2d573a69bb851af02395f6106366e8",
+   "metadata_file": "take-a.metadata.json"
+  },
+  {
+   "argv": [
+    "docker",
+    "build",
+    "--pull=false",
+    "--file",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/clone/evals/gap-study-4/box/codex/Dockerfile",
+    "--build-arg",
+    "BASE=docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "--build-arg",
+    "BASE_NAME=docker.io/library/node",
+    "--build-arg",
+    "BASE_DIGEST=sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "--build-arg",
+    "HARNESS_VERSION=0.162.1",
+    "--build-arg",
+    "PYTHON_VERSION=3.11.2",
+    "--label",
+    "org.opencontainers.image.base.name=docker.io/library/node",
+    "--label",
+    "org.opencontainers.image.base.digest=sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "--label",
+    "app.cli.version=0.162.1",
+    "--label",
+    "app.python.version=3.11.2",
+    "--iidfile",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/out/take-o.iid",
+    "--metadata-file",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/out/take-o.metadata.json",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/clone/evals/gap-study-4/box"
+   ],
+   "build_log": "take-o.build.log",
+   "config_digest": "sha256:4647fdaace69f1e9083d0c1424192f81ac3ad43c4382ce5f7d1ec8cfda52c175",
+   "exit": 0,
+   "image": "take-o",
+   "image_id": "sha256:21b214159e4eb02d5e73f78ccdf5ee047da2fc6944808f9a454a6b0f427dd381",
+   "inputs": {
+    "evals/gap-study-4/box/codex/Dockerfile": "c338ac5da0d9f6f6096c07970ecc7aae88b966307f87fea52842fa5ba33e5638"
+   },
+   "label_problems": [],
+   "lock": "box/codex/image.lock",
+   "lock_inputs": {
+    "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "harness": {
+     "package": "@openai/codex",
+     "version": "0.162.1"
+    },
+    "python": "3.11.2",
+    "users": {
+     "agent": {
+      "gid": 10001,
+      "name": "dana",
+      "uid": 10001
+     },
+     "keepalive": {
+      "gid": 10003,
+      "uid": 10003
+     },
+     "watcher": {
+      "gid": 10002,
+      "name": "eli",
+      "uid": 10002
+     }
+    }
+   },
+   "lock_inputs_sha256": "e2c924d3337f9da141eeed2e2a9ae76149241e13d1bb48b6def9e35dca09c9a6",
+   "logged_manifests": [
+    "sha256:46deefc20439372cbdfabbaa023fe71aed4d4dbee518c729d3b23b52c8d03aa3"
+   ],
+   "manifest_digest": "sha256:46deefc20439372cbdfabbaa023fe71aed4d4dbee518c729d3b23b52c8d03aa3",
+   "metadata_file": "take-o.metadata.json"
+  },
+  {
+   "argv": [
+    "docker",
+    "build",
+    "--pull=false",
+    "--file",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/clone/evals/gap-study-4/box/gemini/Dockerfile",
+    "--build-arg",
+    "BASE=docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "--build-arg",
+    "BASE_NAME=docker.io/library/node",
+    "--build-arg",
+    "BASE_DIGEST=sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "--build-arg",
+    "HARNESS_VERSION=0.64.0",
+    "--build-arg",
+    "PYTHON_VERSION=3.11.2",
+    "--label",
+    "org.opencontainers.image.base.name=docker.io/library/node",
+    "--label",
+    "org.opencontainers.image.base.digest=sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "--label",
+    "app.cli.version=0.64.0",
+    "--label",
+    "app.python.version=3.11.2",
+    "--iidfile",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/out/take-g.iid",
+    "--metadata-file",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/out/take-g.metadata.json",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/clone/evals/gap-study-4/box"
+   ],
+   "build_log": "take-g.build.log",
+   "config_digest": "sha256:6bba97e7c55af01c1831ab214fb8eb343772859ee152c7702e00f108ecd7c1f6",
+   "exit": 0,
+   "image": "take-g",
+   "image_id": "sha256:d10aa00b5958b00d1c719be1f0572967c04f30bfe381a427107c9e9a3f16b013",
+   "inputs": {
+    "evals/gap-study-4/box/gemini/Dockerfile": "aa532c9c5ac738a4ac90239883c70848a2cf6c2f2dfd5214a125c45f3dff1381"
+   },
+   "label_problems": [],
+   "lock": "box/gemini/image.lock",
+   "lock_inputs": {
+    "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "harness": {
+     "package": "@google/gemini-cli",
+     "version": "0.64.0"
+    },
+    "python": "3.11.2",
+    "users": {
+     "agent": {
+      "gid": 10001,
+      "name": "dana",
+      "uid": 10001
+     },
+     "keepalive": {
+      "gid": 10003,
+      "uid": 10003
+     },
+     "watcher": {
+      "gid": 10002,
+      "name": "eli",
+      "uid": 10002
+     }
+    }
+   },
+   "lock_inputs_sha256": "dc793e141c3e0d92b136f2049658ed4317790be8cca906d201633796eb1da710",
+   "logged_manifests": [
+    "sha256:7eb4c799f29fe5330d9cf76deae8988ea04f8183ee451a5dad4f12bcb00eee9f"
+   ],
+   "manifest_digest": "sha256:7eb4c799f29fe5330d9cf76deae8988ea04f8183ee451a5dad4f12bcb00eee9f",
+   "metadata_file": "take-g.metadata.json"
+  },
+  {
+   "argv": [
+    "docker",
+    "build",
+    "--pull=false",
+    "--file",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/clone/evals/gap-study-4/box/sidecar/Dockerfile",
+    "--build-arg",
+    "BASE=docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "--build-arg",
+    "BASE_NAME=docker.io/library/node",
+    "--build-arg",
+    "BASE_DIGEST=sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "--build-arg",
+    "PYTHON_VERSION=3.11.2",
+    "--label",
+    "org.opencontainers.image.base.name=docker.io/library/node",
+    "--label",
+    "org.opencontainers.image.base.digest=sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "--label",
+    "app.python.version=3.11.2",
+    "--iidfile",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/out/sidecar.iid",
+    "--metadata-file",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/out/sidecar.metadata.json",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/clone/evals/gap-study-4/box"
+   ],
+   "baked_sidecar_sha256": "b20b29de3a8de87677d0f7287e09074cf890ab1ba77a661970029f91bf7b23d0",
+   "build_log": "sidecar.build.log",
+   "config_digest": "sha256:80951705c2ce29d10782ca4b664c4ee14b680c6ed6fdc8197f45caabad828dfe",
+   "exit": 0,
+   "image": "sidecar",
+   "image_id": "sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d",
+   "inputs": {
+    "evals/gap-study-4/box/sidecar.py": "b20b29de3a8de87677d0f7287e09074cf890ab1ba77a661970029f91bf7b23d0",
+    "evals/gap-study-4/box/sidecar/Dockerfile": "290bacb4b17576ce7adceea3efae237ec1fd90e8706bfb0cf1bfe69f4fd9594e"
+   },
+   "label_problems": [],
+   "lock": "box/sidecar/image.lock",
+   "lock_inputs": {
+    "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "harness": null,
+    "python": "3.11.2",
+    "users": {
+     "agent": {
+      "gid": 10001,
+      "name": "dana",
+      "uid": 10001
+     },
+     "keepalive": {
+      "gid": 10003,
+      "uid": 10003
+     },
+     "watcher": {
+      "gid": 10002,
+      "name": "eli",
+      "uid": 10002
+     }
+    }
+   },
+   "lock_inputs_sha256": "9b38f7b7b90e354558fe0054485a05d17e647ba35e884b6524c0cf47a29d92a8",
+   "logged_manifests": [
+    "sha256:c1409b3323bc991d9c86ed99411455ffba3aabbe6159384d0786216aba092a82"
+   ],
+   "manifest_digest": "sha256:c1409b3323bc991d9c86ed99411455ffba3aabbe6159384d0786216aba092a82",
+   "metadata_file": "sidecar.metadata.json"
+  },
+  {
+   "argv": [
+    "docker",
+    "build",
+    "--pull=false",
+    "--file",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/clone/evals/gap-study-4/box/egress/Dockerfile",
+    "--build-arg",
+    "BASE=docker.io/library/debian@sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91",
+    "--build-arg",
+    "BASE_NAME=docker.io/library/debian",
+    "--build-arg",
+    "BASE_DIGEST=sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91",
+    "--build-arg",
+    "SQUID_VERSION=5.7-2+deb12u6",
+    "--label",
+    "org.opencontainers.image.base.name=docker.io/library/debian",
+    "--label",
+    "org.opencontainers.image.base.digest=sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91",
+    "--label",
+    "app.squid.version=5.7-2+deb12u6",
+    "--iidfile",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/out/egress.iid",
+    "--metadata-file",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/out/egress.metadata.json",
+    "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM/clone/evals/gap-study-4/box"
+   ],
+   "build_log": "egress.build.log",
+   "config_digest": "sha256:388fbbc4d0cc6ea5ad8a942a779643d7842e2da4eeb96f5fd2930a888ec8161f",
+   "exit": 0,
+   "image": "egress",
+   "image_id": "sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674",
+   "inputs": {
+    "evals/gap-study-4/box/egress/Dockerfile": "5c0f940a3f04db6d69fb4da50f110c27f4f1a31e308c0778ceddc93b5f84068a"
+   },
+   "label_problems": [],
+   "lock": "box/egress/image.lock",
+   "lock_inputs": {
+    "base": "docker.io/library/debian@sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91",
+    "harness": null,
+    "python": null,
+    "squid": "5.7-2+deb12u6",
+    "users": null
+   },
+   "lock_inputs_sha256": "8c8e3a433cda9921163327f1248c7443c46d0a5d9bc2c7d196956e0a47ab7861",
+   "logged_manifests": [
+    "sha256:24c9fbdf938114d2ff412a70f5b2f2d08f2c4f7735ab7c229c8ad254dc02a89d"
+   ],
+   "manifest_digest": "sha256:24c9fbdf938114d2ff412a70f5b2f2d08f2c4f7735ab7c229c8ad254dc02a89d",
+   "metadata_file": "egress.metadata.json"
+  }
+ ],
+ "lock_inputs_source": {
+  "path": "lane-reports/provisional-image-locks-20261014.json",
+  "sha256": "0f299fa2d7bfd981b58950f0c8fb5fb6f4a724a20e809d65f6ba7d0ff1d437f0"
+ },
+ "problems": [],
+ "schema": 3,
+ "source_commit": "ad766f016693b60e94a2819368a206fa580176d2",
+ "store": {
+  "driver": "overlayfs",
+  "driver_status": [
+   [
+    "driver-type",
+    "io.containerd.snapshotter.v1"
+   ]
+  ]
+ }
+}

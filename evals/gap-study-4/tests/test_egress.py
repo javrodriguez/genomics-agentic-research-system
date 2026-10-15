@@ -187,18 +187,36 @@ class ConstantsTest(unittest.TestCase):
                 self.assertTrue(pc.check(pc._template_text().replace(pc.SLOT, HOSTS[harness]), harness))
 
     def test_the_pending_user(self):
-        self.assertEqual(pc.USER, pc.PENDING)
-        self.assertEqual(set(pc.pending()), {"USER"})
-        self.assertTrue(pc.pending()["USER"].strip())
-        with self.assertRaises(pc.NotReady):
-            pc.launch_fields()
+        # FILLED 14 Oct 2026 (glitch-06's ruling): squid's package user measured in the locked egress image; the
+        # PENDING clause stays red-tested by putting PENDING back.
+        with mock.patch.object(pc, "USER", pc.PENDING):
+            self.assertEqual(set(pc.pending()), {"USER"})
+            self.assertTrue(pc.pending()["USER"].strip())
+            with self.assertRaises(pc.NotReady):
+                pc.launch_fields()
+        self.assertEqual(pc.USER, "13:13")
+        self.assertEqual(pc.pending(), {})
         with mock.patch.object(pc, "USER", "13:13"):
             self.assertEqual(pc.pending(), {})
             self.assertEqual(pc.launch_fields(), {"conf_target": "/etc/squid/squid.conf", "command": pc.COMMAND,
                                                   "user": "13:13", "alias": "proxy"})
         # The mutant that drops the refusal hands out the PENDING user.
-        with mock.patch.object(pc, "pending", lambda: {}):
+        with mock.patch.object(pc, "USER", pc.PENDING), mock.patch.object(pc, "pending", lambda: {}):
             self.assertEqual(pc.launch_fields()["user"], pc.PENDING)
+
+    def test_the_user_is_the_measured_one(self):
+        """The egress image's `getent passwd proxy`, read in each stub take on athena (lane-reports/stub-take-20261014,
+        stub-take-run1..4.json `squid_user`), is proxy:x:13:13; USER is its uid:gid, and never root."""
+        runs = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "lane-reports",
+                            "stub-take-20261014")
+        seen = set()
+        for i in (1, 2, 3, 4):
+            with open(os.path.join(runs, f"stub-take-run{i}.json"), encoding="utf-8") as fh:
+                seen.add(json.load(fh)["squid_user"]["getent"])
+        self.assertEqual(seen, {"proxy:x:13:13:proxy:/bin:/usr/sbin/nologin\n"})
+        f = next(iter(seen)).split(":")
+        self.assertEqual(pc.USER, f"{f[2]}:{f[3]}")
+        self.assertNotEqual(f[2], "0")
 
     def test_no_parameter_can_override_a_pending_value(self):
         self.assertEqual(list(pyinspect.signature(pc.launch_fields).parameters), [])
@@ -283,6 +301,54 @@ class ParseTest(unittest.TestCase):
             pc.parse(ok.replace("cache deny all", "cache deny all "))
 
 
+# The committed egress lock is the reviewed pin (glitch-06's post-write ruling, 14 Oct 2026): the lock writer
+# re-derives it from the committed build record, here at import (git, before setUpModule arms the guard).
+EGRESS_UNFILLED_PENDING = ("base", "image_id", "squid")
+EGRESS_LOCK_PATH = os.path.join(il.BOX_DIR, "egress", "image.lock")
+
+
+def _rederived_egress():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("write_image_lock_for_test_egress",
+                                                  os.path.join(REPO, "ops", "write_image_lock.py"))
+    w = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(w)
+    record = os.path.join(REPO, "lane-reports", "build-20261014c", "athena-out-20261014", "build-record.json")
+    try:
+        return w.rederive(il, REPO, record, EGRESS_LOCK_PATH, il.EGRESS_IMAGE)
+    except (w.Refused, il.LockError, ValueError, OSError, subprocess.TimeoutExpired) as e:
+        return f"refused: {type(e).__name__}: {e}"
+
+
+EGRESS_REDERIVED = _rederived_egress()
+
+
+def unfilled_egress() -> dict:
+    """A synthetic unfilled (schema-1) egress lock: the committed lock with its schema-2 fields removed and
+    EGRESS_UNFILLED_PENDING PENDING again (never written to a lock path)."""
+    lock = {k: v for k, v in il.load(EGRESS_LOCK_PATH).items() if k not in il.SCHEMA_2_KEYS}
+    lock["schema"] = il.SCHEMA
+    for field in EGRESS_UNFILLED_PENDING:
+        lock[field] = il.PENDING
+    lock["pending"] = {f: "synthetic: re-PENDINGed from the committed lock" for f in EGRESS_UNFILLED_PENDING}
+    return il.validate(lock)
+
+
+def egress_pin_problems(text: bytes) -> list:
+    """[] when `text` is the committed egress lock the lock writer re-derives from the reviewed record."""
+    if not isinstance(EGRESS_REDERIVED, bytes):
+        return [f"the lock writer does not re-derive the egress lock ({EGRESS_REDERIVED})"]
+    out = []
+    try:
+        if json.loads(text).get("schema") != il.SCHEMA_2:
+            out.append("the committed egress lock is not schema 2")
+    except (TypeError, ValueError, AttributeError):
+        out.append("the committed egress lock is not JSON")
+    if text != EGRESS_REDERIVED:
+        out.append("the committed egress lock is not the lock writer's re-derivation from the record")
+    return out
+
+
 class EgressImageTest(unittest.TestCase):
     def dockerfile(self) -> str:
         with open(os.path.join(il.BOX_DIR, il.DOCKERFILES[il.EGRESS_IMAGE]), encoding="utf-8") as fh:
@@ -297,14 +363,26 @@ class EgressImageTest(unittest.TestCase):
         ins = il.parse_dockerfile(text)
         self.assertEqual((ins[0].args, ins[1].keyword, ins[1].args), ("BASE", "FROM", "${BASE}"))
         self.assertFalse([i for i in ins if i.keyword in ("COPY", "ADD")])
-        self.assertEqual(il.pending(lock), ("base", "image_id", "squid"))
+        self.assertEqual(il.pending(unfilled_egress()), EGRESS_UNFILLED_PENDING)
+        self.assertEqual(il.pending(lock), ())                   # the committed lock is the filled, reviewed pin
         for old, new in (("FROM ${BASE}", "FROM debian:13"), ("ENTRYPOINT []", "COPY proxy.conf /etc/x\nENTRYPOINT []"),
                          ('"squid=${SQUID_VERSION}"', "squid")):
             with self.subTest(new):
                 self.assertTrue(il.check_dockerfile(text.replace(old, new), lock))
 
+    def test_the_committed_egress_lock_is_the_reviewed_pin(self):
+        with open(EGRESS_LOCK_PATH, "rb") as fh:
+            text = fh.read()
+        self.assertEqual(egress_pin_problems(text), [])
+        doc = json.loads(text)
+        edited = dict(doc, manifest_digest=doc["manifest_digest"][:-1] + ("0" if doc["manifest_digest"][-1] != "0" else "1"))
+        for name, bad in (("a pin hand-edited by one digest", (json.dumps(edited, indent=1, sort_keys=True) + "\n").encode()),
+                          ("an unfilled lock", (json.dumps(unfilled_egress(), indent=1, sort_keys=True) + "\n").encode())):
+            with self.subTest(name):
+                self.assertTrue(egress_pin_problems(bad), name)
+
     def test_the_egress_build_takes_squid_from_the_lock(self):
-        lock = self.lock()
+        lock = unfilled_egress()
         with self.assertRaises(il.NotReady):
             il.build_argv(lock, context="/srv/ctx")
         lock.update(base="registry.example/fake-base@sha256:" + "a" * 64, squid="6.99-1+fake1", pending={

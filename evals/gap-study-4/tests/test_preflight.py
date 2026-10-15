@@ -40,10 +40,15 @@ LANE_LEAD_WORDS = ("gap4", "round 4", "sidecar", "watcher", "evidence", "holdout
 
 
 def _round3_leak_words() -> tuple:
-    """Round 3's pre-registration key leak_words, that key alone, read once (interface 16). Never committed."""
+    """Round 3's pre-registration key leak_words, that key alone, read once (interface 16). Never committed.
+    The same one read also keeps run_location.excluded_from_the_run_tree's paths, in order, as ROUND3_EXCLUDED (the
+    CP5 ruling binds preflight.STUDY_PATHS to them; this stays the module's one process site)."""
+    global ROUND3_EXCLUDED
     shown = subprocess.run(["git", "-C", REPO, "show", f"{ROUND3}:evals/gap-study-3/prereg.json"],
                            capture_output=True, check=True)
-    return tuple(json.loads(shown.stdout)["leak_words"])
+    doc = json.loads(shown.stdout)
+    ROUND3_EXCLUDED = tuple(e["path"] for e in doc["run_location"]["excluded_from_the_run_tree"])
+    return tuple(doc["leak_words"])
 
 
 ROUND3_WORDS = _round3_leak_words()
@@ -110,19 +115,24 @@ from box import run_take as rt  # noqa: E402
 ORIG_PROBES = pf.probes
 ID = {k: (c * 64) for k, c in (("net", "a"), ("side", "c"), ("take", "d"))}
 IMAGE = "sha256:" + "f" * 64
+MANIFEST = "sha256:" + "c" * 64           # the take image's platform manifest (lock-writer ruling (a), 14 Oct)
+SIDE_MANIFEST = "sha256:" + "5" * 64      # the sidecar image's platform manifest (LW-7): never the take's
+EGRESS_IMAGE_ID = "sha256:" + "6" * 64    # the egress proxy's image (O-1): its own id, never the take's
+EGRESS_MANIFEST = "sha256:" + "7" * 64    # the egress image's platform manifest (O-1)
+PROXY_ID = "b" * 64
 ARMS = (rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI)
 HOSTS = {rt.CLAUDE_CODE: "api.anthropic.com", rt.CODEX: "api.openai.com", rt.GEMINI: "generativelanguage.googleapis.com"}
 VERSION_OUT = {rt.CLAUDE_CODE: ("2.9.1 (Claude Code)\n", r"([0-9.]+) \(Claude Code\)", "2.9.1"),
                rt.CODEX: ("codex-cli 0.160.1\n", r"codex-cli ([0-9.]+)", "0.160.1"),
                rt.GEMINI: ("0.63.0\n", r"([0-9.]+)", "0.63.0")}
-STUDY = ("notes-a", "notes-b/inner")
+STUDY = pf.STUDY_PATHS   # the ruled list (TestCP5Values binds it); the fixture answers every path absent
 REFUSED_NAMES = {
     rt.CLAUDE_CODE: ["github.com", "huggingface.co", "api.openai.com", "generativelanguage.googleapis.com"],
     rt.CODEX: ["github.com", "huggingface.co", "api.anthropic.com", "generativelanguage.googleapis.com"],
     rt.GEMINI: ["github.com", "huggingface.co", "api.anthropic.com", "api.openai.com"],
 }
 CONFIG_HOME = {rt.CLAUDE_CODE: "CLAUDE_CONFIG_DIR", rt.CODEX: "CODEX_HOME", rt.GEMINI: "GEMINI_CLI_HOME"}
-CAP_ADD = ["CAP_DAC_READ_SEARCH"]
+CAP_ADD = ["CAP_DAC_READ_SEARCH", "CAP_SETGID", "CAP_SETPCAP", "CAP_SETUID"]
 
 
 class FakeRuntime:
@@ -182,12 +192,19 @@ class World:
         self.spec = rt.TakeSpec(image=IMAGE, run_tree=self.tree, config_dir=self.cfg, network=ID["net"],
                                 memory_reservation=512 * 2 ** 20, memory=3 * 512 * 2 ** 20, cpus="2", pids_limit=256)
         self.lock = {"image_id": IMAGE, "harness.version": VERSION_OUT[harness][2], "users.agent.uid": 10001,
-                     "users.watcher.uid": 10002, "users.keepalive.uid": 10003}
+                     "users.watcher.uid": 10002, "users.keepalive.uid": 10003, "manifest_digest": MANIFEST}
+        self.sidecar_lock = {"image_id": IMAGE, "manifest_digest": SIDE_MANIFEST}
+        self.egress_lock = {"image_id": EGRESS_IMAGE_ID, "manifest_digest": EGRESS_MANIFEST}
+        self.proxy_image = EGRESS_IMAGE_ID
         self.sidecar_expect = {
-            "user": "10002:10002", "network_mode": "none", "cap_drop": ["ALL"], "cap_add": list(CAP_ADD),
+            "user": "0:0", "network_mode": "none", "cap_drop": ["ALL"], "cap_add": list(CAP_ADD),
             "security_opt": ["no-new-privileges"], "privileged": False, "pid_mode": "",
             "mounts": [{"source": self.tree, "destination": self.tree, "rw": False},
                        {"source": self.ev, "destination": "/srv/ev", "rw": True}]}
+        self.sidecar_expect.update(image=IMAGE, entrypoint=[],
+                                   cmd=[*pf.sidecar_contract.WATCHER_LAUNCHER, *pf.sidecar_contract.INTERPRETER,
+                                        pf.sidecar_contract.PROGRAM, "serve", "--run-tree", self.tree,
+                                        "--evidence", "/srv/ev", "--watch", "plan"])
         self.begin = {"ok": True, "command": "begin", "label": None, "taken_at": 1.0, "rearmed_at": None,
                       "unreadable": [], "unreadable_consequential": [], "problems": []}
         s = self.spec
@@ -206,17 +223,21 @@ class World:
                                "MemoryReservation": s.memory_reservation, "NanoCpus": 2_000_000_000},
                 "Mounts": [{"Type": "bind", "Source": s.run_tree, "Destination": s.run_tree, "RW": True},
                            {"Type": "bind", "Source": s.config_dir, "Destination": "/opt/cfg", "RW": True}]}],
+            "take-image-manifest": json.dumps(MANIFEST) + "\n",
             "harness-version": VERSION_OUT[harness][0],
             "cgroup": {"cpu.max": "200000 100000", "memory.max": str(s.memory),
                        "memory.low": str(s.memory_reservation), "pids.max": "256"},
             "listing": {"/srv/ev": "FileNotFoundError", self.ev: "FileNotFoundError"},
             "processes": [{"pid": 1, "uid": 10003, "name": "sleep", "cap_eff": 0}],
             "sidecar-inspect": [{
-                "Config": {"User": "10002:10002"},
+                "Image": IMAGE, "Config": {"User": "0:0", "Entrypoint": [], "Cmd": self.sidecar_expect["cmd"]},
                 "HostConfig": {"NetworkMode": "none", "CapDrop": ["ALL"], "CapAdd": list(CAP_ADD),
                                "SecurityOpt": ["no-new-privileges"], "Privileged": False, "PidMode": ""},
                 "Mounts": [{"Type": "bind", "Source": self.tree, "Destination": self.tree, "RW": False},
                            {"Type": "bind", "Source": self.ev, "Destination": "/srv/ev", "RW": True}]}],
+            "sidecar-image-manifest": json.dumps(SIDE_MANIFEST) + "\n",
+            "proxy-inspect": [{"Image": EGRESS_IMAGE_ID, "Config": {"Image": EGRESS_IMAGE_ID}}],
+            "egress-image-manifest": json.dumps(EGRESS_MANIFEST) + "\n",
             "watcher-caps": [{"pid": 1, "uid": 10002, "name": "python3", "cap_eff": 0},
                              {"pid": 9, "uid": 10002, "name": "inotifywait", "cap_eff": 4}],
             "sockets": {"present": [], "docker_host": False},
@@ -224,10 +245,14 @@ class World:
                        "direct": {"connected": False, "error": "gaierror"},
                        "resolves": {n: False for n in REFUSED_NAMES[harness]}},
         }
+        for row in self.answers["watcher-caps"]:
+            row.update(uids=[10002] * 4, gids=[10002] * 4, groups=[], no_new_privs=1,
+                       cap_eff=4, cap_prm=4, cap_inh=4, cap_bnd=4, cap_amb=4)
 
     def probes(self):
         return pf.probes(self.spec, take_id=ID["take"], sidecar_id=ID["side"], harness=self.harness, hosts=HOSTS,
-                         evidence_dir=self.ev)
+                         evidence_dir=self.ev, sidecar_image=self.sidecar_expect["image"], proxy_id=PROXY_ID,
+                         proxy_image=self.proxy_image)
 
     def script(self):
         out = []
@@ -247,7 +272,7 @@ class World:
 
     def evaluate(self, raw=None, **kw):
         args = dict(spec=self.spec, lock=self.lock, sidecar_expect=self.sidecar_expect, harness=self.harness,
-                    hosts=HOSTS, evidence_dir=self.ev)
+                    hosts=HOSTS, evidence_dir=self.ev, sidecar_lock=self.sidecar_lock, egress_lock=self.egress_lock)
         args.update(kw)
         return pf.evaluate(self.raw() if raw is None else raw, **args)
 
@@ -274,6 +299,12 @@ def edit_value(pid, fn):
     return apply
 
 
+def set_value(pid, value):
+    def apply(raw, w):
+        raw[pid]["value"] = value
+    return apply
+
+
 def edit_world(fn):
     def apply(raw, w):
         fn(w)
@@ -297,6 +328,31 @@ BREAKS = {
         ("other-image", edit_json("take-inspect", lambda d: d[0].update(Image="sha256:" + "0" * 64))),
         ("lock-other", edit_world(lambda w: w.lock.update(image_id="sha256:" + "1" * 64))),
         ("lock-pending", edit_world(lambda w: w.lock.update(image_id=pf.PENDING))),
+        # lock-writer ruling (a): the platform manifest is the content identity
+        ("manifest-other", lambda raw, w: raw["take-image-manifest"].update(stdout=json.dumps("sha256:" + "0" * 64))),
+        ("manifest-lock-other", edit_world(lambda w: w.lock.update(manifest_digest="sha256:" + "1" * 64))),
+        ("manifest-lock-pending", edit_world(lambda w: w.lock.update(manifest_digest=pf.PENDING))),
+        ("manifest-not-json", lambda raw, w: raw["take-image-manifest"].update(stdout="sha256:" + "c" * 64)),
+        ("manifest-failed", lambda raw, w: raw["take-image-manifest"].update(returncode=1)),
+        # LW-7: the sidecar's image, by its own lock's id and platform manifest
+        ("sidecar-manifest-other", lambda raw, w: raw["sidecar-image-manifest"].update(stdout=json.dumps(MANIFEST))),
+        ("sidecar-manifest-not-json", lambda raw, w: raw["sidecar-image-manifest"].update(stdout=SIDE_MANIFEST)),
+        ("sidecar-manifest-failed", lambda raw, w: raw["sidecar-image-manifest"].update(returncode=1)),
+        ("sidecar-lock-manifest-other", edit_world(lambda w: w.sidecar_lock.update(manifest_digest=MANIFEST))),
+        ("sidecar-lock-manifest-pending", edit_world(lambda w: w.sidecar_lock.update(manifest_digest=pf.PENDING))),
+        ("sidecar-lock-image-other", edit_world(lambda w: w.sidecar_lock.update(image_id="sha256:" + "1" * 64))),
+        ("sidecar-lock-image-pending", edit_world(lambda w: w.sidecar_lock.update(image_id=pf.PENDING))),
+        ("sidecar-running-image-other", edit_json("sidecar-inspect", lambda d: d[0].update(Image="sha256:" + "2" * 64))),
+        # O-1: the egress proxy's image, by its own lock's id (launch and running) and platform manifest
+        ("egress-manifest-other", lambda raw, w: raw["egress-image-manifest"].update(stdout=json.dumps(MANIFEST))),
+        ("egress-manifest-not-json", lambda raw, w: raw["egress-image-manifest"].update(stdout=EGRESS_MANIFEST)),
+        ("egress-manifest-failed", lambda raw, w: raw["egress-image-manifest"].update(returncode=1)),
+        ("egress-lock-manifest-other", edit_world(lambda w: w.egress_lock.update(manifest_digest=SIDE_MANIFEST))),
+        ("egress-lock-manifest-pending", edit_world(lambda w: w.egress_lock.update(manifest_digest=pf.PENDING))),
+        ("egress-lock-image-other", edit_world(lambda w: w.egress_lock.update(image_id="sha256:" + "3" * 64))),
+        ("egress-lock-image-pending", edit_world(lambda w: w.egress_lock.update(image_id=pf.PENDING))),
+        ("egress-launch-image-other", set_value("egress-launch", "sha256:" + "4" * 64)),
+        ("egress-running-image-other", edit_json("proxy-inspect", lambda d: d[0].update(Image="sha256:" + "4" * 64))),
     ],
     "harness-version-matches-lock": [
         ("other-version", lambda raw, w: raw["harness-version"].update(stdout="9.9.9 (Claude Code)\ncodex-cli 9.9.9\n")),
@@ -359,14 +415,17 @@ BREAKS = {
         ("tree-writable", edit_json("sidecar-inspect", lambda d: d[0]["Mounts"][0].update(RW=True))),
         ("two-caps", edit_json("sidecar-inspect", lambda d: d[0]["HostConfig"].update(CapAdd=CAP_ADD + ["KILL"]))),
         ("expect-pending", edit_world(lambda w: w.sidecar_expect.update(cap_add=pf.PENDING))),
+        # Review B-6 (14 Oct): the inspected command must equal the expected one in order and content.
+        ("inspect-cmd-reordered", edit_json("sidecar-inspect", lambda d: d[0]["Config"].update(
+            Cmd=d[0]["Config"]["Cmd"][:-2] + d[0]["Config"]["Cmd"][-2:][::-1]))),
         ("expect-network", edit_world(lambda w: w.sidecar_expect.update(network_mode="bridge"))),
-        ("expect-user", edit_world(lambda w: w.sidecar_expect.update(user="0:0"))),
+        ("expect-user", edit_world(lambda w: w.sidecar_expect.update(user="10001:10001"))),
         ("expect-tree-rw", edit_world(lambda w: w.sidecar_expect["mounts"][0].update(rw=True))),
         ("expect-key-missing", edit_world(lambda w: w.sidecar_expect.pop("security_opt"))),
         ("both-bridge", lambda raw, w: (w.sidecar_expect.update(network_mode="bridge"), edit_json(
             "sidecar-inspect", lambda d: d[0]["HostConfig"].update(NetworkMode="bridge"))(raw, w))),
-        ("both-root", lambda raw, w: (w.sidecar_expect.update(user="0:0"), edit_json(
-            "sidecar-inspect", lambda d: d[0]["Config"].update(User="0:0"))(raw, w))),
+        ("both-wrong-bootstrap-user", lambda raw, w: (w.sidecar_expect.update(user="10001:10001"), edit_json(
+            "sidecar-inspect", lambda d: d[0]["Config"].update(User="10001:10001"))(raw, w))),
         ("both-privileged", lambda raw, w: (w.sidecar_expect.update(privileged=True), edit_json(
             "sidecar-inspect", lambda d: d[0]["HostConfig"].update(Privileged=True))(raw, w))),
         ("both-host-pid", lambda raw, w: (w.sidecar_expect.update(pid_mode="host"), edit_json(
@@ -382,7 +441,7 @@ BREAKS = {
     ],
     "watcher-started": [
         ("no-health", edit_value("health", lambda v: v.clear())),
-        ("stopped", edit_value("health", lambda v: v.append({"kind": "watcher-stop", "at": 2.0, "exit_code": 0}))),
+        ("stopped", edit_value("health", lambda v: v.append({"kind": "watcher-stop", "at": 2.0, "exit_code": 0, "ignored_newline_paths": 0}))),
     ],
     "watcher-capability": [
         ("unreadable-row", edit_json("watcher-caps", lambda d: d.append({"pid": 12, "unreadable": "PermissionError"}))),
@@ -427,8 +486,8 @@ BREAKS = {
         ("name-untried", edit_json("egress", lambda d: d["resolves"].pop("huggingface.co"))),
     ],
     "study-folders-absent": [
-        ("present", edit_value("study-folders", lambda v: v.update({"notes-a": True}))),
-        ("unlooked", edit_value("study-folders", lambda v: v.pop("notes-b/inner"))),
+        ("present", edit_value("study-folders", lambda v: v.update({STUDY[0]: True}))),
+        ("unlooked", edit_value("study-folders", lambda v: v.pop(STUDY[-1]))),
     ],
     "run-tree-path-neutral": [],   # driven by its own test (the path is the spec's)
 }
@@ -483,7 +542,7 @@ class TestShape(MutantCase):
         if pf.WATCHER_UID != 10002 or pf.WATCHER_CAP_EFF != 4:
             out.append("WATCHER_UID or the capability bit drifted")
         if pf.LOCK_KEYS != ("image_id", "harness.version", "users.agent.uid", "users.watcher.uid",
-                            "users.keepalive.uid"):
+                            "users.keepalive.uid", "manifest_digest"):
             out.append("LOCK_KEYS drifted from w4a's schema paths")
         if pf.UNREADABLE_CONSEQUENTIAL_KEY != "unreadable_consequential" \
                 or pf.UNREADABLE_CONSEQUENTIAL_ROW != "unreadable-consequential-path":
@@ -612,7 +671,7 @@ class TestEvaluate(MutantCase):
                 w.spec = rt.TakeSpec(**dict(w.spec.__dict__, run_tree=tree))
                 with filled():
                     rec = pf.evaluate(w.raw(), spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
-                                      harness=w.harness, hosts=HOSTS, evidence_dir=w.ev)
+                                      harness=w.harness, hosts=HOSTS, evidence_dir=w.ev, sidecar_lock=w.sidecar_lock, egress_lock=w.egress_lock)
                 if "run-tree-path-neutral" not in failing(rec):
                     out.append(f"a run tree path carrying {word} passed")
             w = World()
@@ -626,12 +685,311 @@ class TestEvaluate(MutantCase):
         ])
 
 
+def _lock_user_names() -> tuple:
+    """The box users' names in every committed take lock (users.agent.name, users.watcher.name); all must agree."""
+    seen = set()
+    for rel in ("image.lock", "codex/image.lock", "gemini/image.lock"):
+        with open(os.path.join(HERE, "box", rel), encoding="utf-8") as fh:
+            users = json.load(fh)["users"]
+        seen.add((users["agent"]["name"], users["watcher"]["name"]))
+    if len(seen) != 1:
+        raise AssertionError(f"the take locks name different box users: {sorted(seen)}")
+    return seen.pop()
+
+
+class TestCodexCreateEnvironment(unittest.TestCase):
+    """glitch-06's ruling 1: preflight refuses a Codex take whose create-time environment carries CODEX_API_KEY or
+    OPENAI_API_KEY at all, naming the variable, never its value."""
+
+    def test_codex_api_key_names_refused_at_create(self):
+        for name in ("CODEX_API_KEY", "OPENAI_API_KEY"):
+            w = World(rt.CODEX)
+            raw = w.raw()
+            edit_json("take-inspect", lambda d, n=name: d[0]["Config"]["Env"].append(
+                f"{n}=FAKEVALUE-0123456789abcdef-PLANTED"))(raw, w)
+            rec = w.evaluate(raw)
+            check = [c for c in rec["checks"] if c["id"] == "no-container-socket"][0]
+            self.assertFalse(check["ok"], name)
+            self.assertIn(name, check["detail"])
+            self.assertNotIn("PLANTED", json.dumps(rec))
+
+
+class TestCreatePrefixRefusal(unittest.TestCase):
+    """glitch-06 (14 Oct 2026): preflight's create-time environment check refuses a name with either of
+    run_take.REFUSED_NAME_PREFIXES, for every arm, naming the variable, never its value."""
+
+    def test_prefixed_names_refused_at_create(self):
+        for harness in (rt.CLAUDE_CODE, rt.GEMINI):
+            for name in ("CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_HTTPS_PROXY",
+                         "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_X"):
+                w = World(harness)
+                raw = w.raw()
+                edit_json("take-inspect", lambda d, n=name: d[0]["Config"]["Env"].append(
+                    f"{n}=FAKEVALUE-0123456789abcdef-PLANTED"))(raw, w)
+                rec = w.evaluate(raw)
+                check = [c for c in rec["checks"] if c["id"] == "no-container-socket"][0]
+                self.assertFalse(check["ok"], f"{harness}: {name}")
+                self.assertIn(name, check["detail"])
+                self.assertNotIn("PLANTED", json.dumps(rec))
+
+
+class TestLeasePostflight(MutantCase):
+    """The Codex lease postflight (glitch-06, 14 Oct 2026): the lease home (the per-take config folder, CODEX_HOME)
+    admits exactly its one registered credential file, auth.json at its root, mode 600, owned by the host user, one
+    link; anything else credential-shaped refuses, and so does a home with no auth.json (glitch-06: exactly one), each
+    refusal naming the file and the rule, never the contents.
+    The planted value is a fake."""
+
+    FAKE_AUTH = b'{"tokens": {"access_token": "FAKE-lease-0123456789abcdef-PLANTED"}}\n'
+
+    def home(self, auth=True, mode=0o600):
+        d = tempfile.mkdtemp(prefix="w-")
+        os.makedirs(os.path.join(d, "sessions", "2026", "10", "14"))
+        with open(os.path.join(d, "config.toml"), "w") as fh:
+            fh.write('model = "m"\n')
+        with open(os.path.join(d, "sessions", "2026", "10", "14", "rollout-1.jsonl"), "w") as fh:
+            fh.write("{}\n")
+        if auth:
+            fd = os.open(os.path.join(d, "auth.json"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            os.write(fd, self.FAKE_AUTH)
+            os.close(fd)
+            os.chmod(os.path.join(d, "auth.json"), mode)
+        return d
+
+    def refused(self, out, label, d, path_word, rule_word, **patches):
+        ctx = mock.patch.object(pf.os, "getuid", patches["uid"]) if "uid" in patches else contextlib.nullcontext()
+        with ctx:
+            r = pf.postflight(d, rt.CODEX)
+        detail = r["checks"][0]["detail"]
+        if r["ok"]:
+            out.append(f"{label}: admitted")
+        elif path_word not in detail or rule_word not in detail:
+            out.append(f"{label}: refused without naming {path_word!r} and {rule_word!r}: {detail}")
+        if "PLANTED" in json.dumps(r):
+            out.append(f"{label}: the record carries the credential's contents")
+
+    def check(self):
+        out = []
+        d = self.home()
+        r = pf.postflight(d, rt.CODEX)
+        if r["ok"] is not True or r["recorded"]["admitted_credential"] != ["auth.json"]:
+            out.append(f"the clean lease home was refused: {r['checks'][0]['detail']}")
+        if "PLANTED" in json.dumps(r):
+            out.append("the clean record carries the credential's contents")
+        # glitch-06's ruling (14 Oct 2026): "exactly one registered credential file" means exactly one, so a lease
+        # home with no auth.json refuses, naming the file and the rule
+        self.refused(out, "a lease home with no credential", self.home(auth=False), "auth.json",
+                     "exactly one registered credential file")
+        if pf.postflight(self.home(auth=False), rt.CODEX)["recorded"]["admitted_credential"] != []:
+            out.append("a lease home with no credential records an admitted credential")
+        # a second auth file
+        d = self.home()
+        with open(os.path.join(d, "sessions", "auth.json"), "wb") as fh:
+            fh.write(b"{}")
+        self.refused(out, "a second auth file", d, "sessions/auth.json", "credential-shaped")
+        # a renamed copy, by a credential-shaped name and by an innocuous one
+        d = self.home()
+        with open(os.path.join(d, "auth.json.bak"), "wb") as fh:
+            fh.write(self.FAKE_AUTH)
+        self.refused(out, "a renamed copy (credential-shaped name)", d, "auth.json.bak", "credential-shaped")
+        d = self.home()
+        with open(os.path.join(d, "sessions", "notes.txt"), "wb") as fh:
+            fh.write(self.FAKE_AUTH)
+        self.refused(out, "a renamed copy (innocuous name)", d, "sessions/notes.txt", "copy of the registered")
+        # a symlink to it, and the registered path as a link
+        d = self.home()
+        os.symlink(os.path.join(d, "auth.json"), os.path.join(d, "sessions", "plain-link"))
+        self.refused(out, "a link to the registered credential", d, "sessions/plain-link", "a link to the registered")
+        d = self.home(auth=False)
+        with open(os.path.join(d, "elsewhere.json"), "wb") as fh:
+            fh.write(b"{}")
+        os.symlink(os.path.join(d, "elsewhere.json"), os.path.join(d, "auth.json"))
+        self.refused(out, "the registered path as a link", d, "auth.json", "never a link")
+        # wrong mode, wrong owner, a second hard link
+        self.refused(out, "mode 644", self.home(mode=0o644), "auth.json", "mode must be 600")
+        self.refused(out, "another owner", self.home(), "auth.json", "owned by the host user",
+                     uid=lambda me=os.getuid(): me + 1)
+        d = self.home()
+        os.link(os.path.join(d, "auth.json"), os.path.join(d, "sessions", "hardlink"))
+        self.refused(out, "a second hard link", d, "auth.json", "exactly one link")
+        # review of 2fd8215a (14 Oct): the size and non-regular branches, a credential-named link to an innocuous
+        # target, a link to a folder above auth.json, and an unreadable copy candidate (refused, never raised)
+        d = self.home(auth=False)
+        fd = os.open(os.path.join(d, "auth.json"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.write(fd, b"x" * (pf.LEASE_CREDENTIAL_MAX_BYTES + 1))
+        os.close(fd)
+        self.refused(out, "an oversize registered file", d, "auth.json", "larger than")
+        d = self.home(auth=False)
+        os.mkfifo(os.path.join(d, "auth.json"), 0o600)
+        self.refused(out, "a FIFO at the registered path", d, "auth.json", "must be a regular file")
+        d = self.home(auth=False)
+        os.mkdir(os.path.join(d, "auth.json"), 0o700)
+        self.refused(out, "a folder at the registered path", d, "auth.json", "must be a regular file")
+        d = self.home()
+        os.symlink(os.path.join(d, "config.toml"), os.path.join(d, "sessions", "token-link"))
+        self.refused(out, "a credential-named link to an innocuous file", d, "sessions/token-link", "a link")
+        d = self.home()
+        os.symlink(d, os.path.join(d, "sessions", "up"))
+        self.refused(out, "a link to the folder holding the credential", d, "sessions/up", "a link")
+        d = self.home()
+        cand = os.path.join(d, "sessions", "notes.txt")
+        with open(cand, "wb") as fh:
+            fh.write(b"y" * len(self.FAKE_AUTH))
+        os.chmod(cand, 0)
+        try:
+            try:
+                self.refused(out, "an unreadable same-size file", d, "sessions/notes.txt", "unreadable")
+            except OSError as e:
+                out.append(f"an unreadable same-size file raised {type(e).__name__} instead of refusing")
+        finally:
+            os.chmod(cand, 0o600)
+        # other harnesses keep the old rule: no credential file at all
+        d = self.home()
+        if pf.postflight(d, rt.CLAUDE_CODE)["ok"] or pf.postflight(d, rt.GEMINI)["ok"]:
+            out.append("another harness admitted auth.json")
+        return out
+
+    def check_read(self):
+        """glitch-06's NIT 5 ruling: the registered file read is the file checked. A swap between the lstat and the
+        open (a FIFO, or another regular file with the same bytes) refuses, never hangs; and an unreadable registered
+        file refuses, never raises."""
+        out = []
+        for label, swap in (("a same-bytes file with a second link", "relink"), ("a FIFO", "fifo"),
+                            ("a fresh same-bytes file (one link, same mode and owner: only the inode differs)",
+                             "fresh")):
+            d = self.home()
+            reg = os.path.join(d, "auth.json")
+            real_lstat, done, calls = os.lstat, [], []
+
+            def swapping(p, *a, _reg=reg, _swap=swap, _d=d, **k):
+                st = real_lstat(p, *a, **k)
+                if p == _reg:
+                    calls.append(1)
+                # the first lstat of auth.json is lexists; the second is the check, whose result the read must match
+                if p == _reg and len(calls) == 2 and not done:
+                    done.append(1)
+                    if _swap == "fresh":                 # made beside it, then renamed over: a new inode for sure
+                        tmp = os.path.join(_d, "fresh.tmp")
+                        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                        os.write(fd, self.FAKE_AUTH)
+                        os.close(fd)
+                        os.chmod(tmp, 0o600)
+                        os.replace(tmp, _reg)
+                        new = real_lstat(_reg)
+                        if (new.st_nlink, new.st_mode, new.st_uid) != (st.st_nlink, st.st_mode, st.st_uid) \
+                                or new.st_ino == st.st_ino:
+                            raise AssertionError("the fresh swap differs in more than the inode")
+                        return st
+                    os.unlink(_reg)
+                    if _swap == "fifo":
+                        os.mkfifo(_reg, 0o600)
+                    else:
+                        fd = os.open(_reg, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                        os.write(fd, self.FAKE_AUTH)
+                        os.close(fd)
+                        os.link(_reg, os.path.join(_d, "outside-link"))
+                return st
+            with mock.patch.object(pf.os, "lstat", swapping):
+                r = pf.postflight(d, rt.CODEX)
+            detail = r["checks"][0]["detail"]
+            if not done:
+                out.append(f"{label}: the swap never ran (the check did not lstat auth.json)")
+            elif r["ok"] or "changed between its check and its read" not in detail or "auth.json" not in detail:
+                out.append(f"{label} swapped in after the check was not refused by file and rule: {detail}")
+            if "PLANTED" in json.dumps(r):
+                out.append(f"{label}: the record carries the credential's contents")
+        d = self.home()
+        with mock.patch.object(pf, "_read_capped", side_effect=PermissionError("planted")):
+            try:
+                self.refused(out, "an unreadable registered file", d, "auth.json", "unreadable")
+            except OSError as e:
+                out.append(f"an unreadable registered file raised {type(e).__name__} instead of refusing")
+        return out
+
+    def test_the_registered_file_read_is_the_file_checked(self):
+        self.assertEqual(_problems(self.check_read), [])
+
+    def test_the_lease_admits_exactly_its_one_credential(self):
+        self.assert_green_then_red(self.check, [
+            ("no-lease", patched(pf, "LEASE_CREDENTIAL", {})),
+            ("lease-for-every-harness", patched(pf, "LEASE_CREDENTIAL", {h: "auth.json" for h in rt.LOGIN_VARIABLE})),
+        ])
+
+
+class TestCP5Values(MutantCase):
+    """Javier's ruling, "CP5: all as recommended" (08:11 EDT, 14 Oct 2026), on cp5-values-draft-2026-10-14.md:
+    STUDY_PATHS is round 3's seven excluded paths verbatim; LEAK_WORDS is prereg-draft.json's leak_words, the box
+    users' names from the committed locks, and gap4."""
+
+    def check(self):
+        out = []
+        if pf.STUDY_PATHS != ROUND3_EXCLUDED or len(pf.STUDY_PATHS) != 7:
+            out.append(f"STUDY_PATHS is not round 3's seven excluded paths: {pf.STUDY_PATHS!r}")
+        with open(os.path.join(HERE, "prereg-draft.json"), encoding="utf-8") as fh:
+            draft = tuple(json.load(fh)["leak_words"])
+        want = draft + _lock_user_names() + ("gap4",)
+        if len(draft) != 25 or tuple(draft[:23]) != ROUND3_WORDS:
+            out.append("the prereg draft's leak words are not round 3's 23 plus two")
+        if pf.LEAK_WORDS != want or len(pf.LEAK_WORDS) != 28 or len(set(pf.LEAK_WORDS)) != 28:
+            out.append(f"LEAK_WORDS is not the ruled 28: {pf.LEAK_WORDS!r}")
+        if not all(isinstance(w, str) and w for w in pf.LEAK_WORDS + pf.STUDY_PATHS):
+            out.append("an entry is not a non-empty string")
+        if pf.pending().keys() & {"STUDY_PATHS", "LEAK_WORDS"}:
+            out.append("a ruled value still reads as PENDING")
+        if pf.leak_hits("/srv/gars-gap4/run-1", pf.LEAK_WORDS) != ["gap4"] or \
+                pf.leak_hits("/tmp/run-0a1b2c3d", pf.LEAK_WORDS):
+            out.append("the path check does not read the ruled list as the draft's probe did")
+        return out
+
+    def test_the_ruled_values(self):
+        self.assert_green_then_red(self.check, [
+            ("study-entry-dropped", patched(pf, "STUDY_PATHS", pf.STUDY_PATHS[:-1])),
+            ("study-reordered", patched(pf, "STUDY_PATHS", tuple(reversed(pf.STUDY_PATHS)))),
+            ("leak-entry-dropped", patched(pf, "LEAK_WORDS", pf.LEAK_WORDS[1:])),
+            ("gap4-removed", patched(pf, "LEAK_WORDS", tuple(w for w in pf.LEAK_WORDS if w != "gap4"))),
+            ("box-user-dropped", patched(pf, "LEAK_WORDS", tuple(w for w in pf.LEAK_WORDS if w != "eli"))),
+            ("box-user-drifted", patched(pf, "LEAK_WORDS", tuple("dora" if w == "dana" else w for w in pf.LEAK_WORDS))),
+            ("lock-user-renamed", patched(sys.modules[__name__], "_lock_user_names", lambda: ("dora", "eli"))),
+        ])
+
+
+# `<harness> --version` as printed on athena (lane-reports/stub-take-20261014/stub-take-run2.json `versions`).
+ATHENA_VERSION_OUT = {rt.CLAUDE_CODE: "2.1.296 (Claude Code)\n", rt.CODEX: "codex-cli 0.162.1\n",
+                      rt.GEMINI: "0.64.0\n"}
+
+
+class TestVersionPatterns(MutantCase):
+    """The filled VERSION_PATTERNS read athena's measured outputs as each committed lock's version, exactly."""
+
+    def check(self):
+        out = []
+        for h, rel in ((rt.CLAUDE_CODE, "image.lock"), (rt.CODEX, "codex/image.lock"), (rt.GEMINI, "gemini/image.lock")):
+            with open(os.path.join(HERE, "box", rel), encoding="utf-8") as fh:
+                want = json.load(fh)["harness"]["version"]
+            m = re.fullmatch(pf.VERSION_PATTERNS[h], ATHENA_VERSION_OUT[h].strip())
+            if m is None or m.group(1) != want:
+                out.append(f"{h}: the pattern does not read {want} from athena's output")
+            if re.fullmatch(pf.VERSION_PATTERNS[h], ATHENA_VERSION_OUT[h].strip() + " extra"):
+                out.append(f"{h}: the pattern admits a trailing line")
+        return out
+
+    def test_patterns(self):
+        self.assert_green_then_red(self.check, [
+            ("claude-loose-tail", patched(pf, "VERSION_PATTERNS", dict(pf.VERSION_PATTERNS, **{
+                rt.CLAUDE_CODE: r"([0-9.]+).*"}))),
+            ("codex-no-prefix", patched(pf, "VERSION_PATTERNS", dict(pf.VERSION_PATTERNS, codex=r"([0-9.]+)"))),
+        ])
+
+
 class TestPending(MutantCase):
-    EXPECT = {"VERSION_PATTERNS", "STUDY_PATHS", "LEAK_WORDS"}
-    EXPECT_RT = {"FALLBACK_ENV", "VENDOR_BILLING_ROUTE_VARIABLES", "TOP_FORMAT", "INSPECT_STATUS",
-                 "TakeSpec.resources"}
+    # STUDY_PATHS and LEAK_WORDS are RULED (Javier, "CP5: all as recommended", 08:11 EDT 14 Oct 2026): TestCP5Values.
+    # VERSION_PATTERNS, and run_take's TOP_FORMAT and INSPECT_STATUS, FILLED 14 Oct 2026 (stub-take review PASS).
+    EXPECT = set()
+    # FALLBACK_ENV FILLED; bypass RULED; VENDOR_BILLING_ROUTE_VARIABLES FILLED 14 Oct 2026 (the Codex and Gemini sweeps)
+    EXPECT_RT = {"TakeSpec.resources"}
+    # With the two filled values put back to PENDING, exactly these checks fail (the gate stays non-vacuous).
     GATED = {"image-matches-lock", "harness-version-matches-lock", "take-inspect-matches-spec",
-             "sidecar-isolated", "study-folders-absent", "run-tree-path-neutral", "no-container-socket"}
+             "sidecar-isolated", "no-container-socket"}
 
     def check(self):
         out = []
@@ -640,7 +998,12 @@ class TestPending(MutantCase):
         if set(rt.pending()) != self.EXPECT_RT:
             out.append(f"run_take.pending() = {sorted(rt.pending())}")
         w = World()
-        rec = w.evaluate()   # nothing filled: every gated check fails, every other passes
+        rec = w.evaluate()   # the committed values, nothing patched: a passing take passes every check
+        if failing(rec) or not rec["ok"]:
+            out.append(f"the filled values fail {sorted(failing(rec))}")
+        with mock.patch.object(rt, "INSPECT_STATUS", rt.PENDING), \
+                mock.patch.object(pf, "VERSION_PATTERNS", {h: pf.PENDING for h in ARMS}):
+            rec = w.evaluate()   # the spellings and the version forms PENDING: every gated check fails
         if set(failing(rec)) != self.GATED:
             out.append(f"unfilled failing set {sorted(failing(rec))}")
         if rec["ok"]:
@@ -656,10 +1019,11 @@ class TestPending(MutantCase):
     def test_pending(self):
         self.assert_green_then_red(self.check, [
             ("never-pending", patched(rt, "_is_pending", lambda v: False)),
-            ("version-filled", patched(pf, "VERSION_PATTERNS", {h: r"(.*)" for h in ARMS})),
+            ("version-unfilled", patched(pf, "VERSION_PATTERNS", dict(pf.VERSION_PATTERNS, codex=pf.PENDING))),
+            ("version-loose", patched(pf, "VERSION_PATTERNS", dict(pf.VERSION_PATTERNS, **{rt.CLAUDE_CODE: r"(x)"}))),
             ("study-empty", patched(pf, "STUDY_PATHS", ())),
             ("leaks-empty", patched(pf, "LEAK_WORDS", ())),
-            ("inspect-confirmed", patched(rt, "INSPECT_STATUS", "confirmed")),
+            ("inspect-unfilled", patched(rt, "INSPECT_STATUS", rt.PENDING)),
         ])
 
     def test_no_parameter_overrides_a_pending_constant(self):
@@ -727,7 +1091,11 @@ class TestExpectedInspect(MutantCase):
         w = World()
         obj = json.loads(w.raw()["take-inspect"]["stdout"])[0]
         exp = pf.expected_take_inspect(w.spec)
-        self.assertTrue(pf.inspect_mismatches(obj, exp, kind="take"))         # spellings PENDING
+        with mock.patch.object(rt, "INSPECT_STATUS", rt.PENDING):
+            self.assertTrue(pf.inspect_mismatches(obj, exp, kind="take"))     # spellings PENDING
+        # the filled spellings (14 Oct 2026), unpatched: the passing inspect matches, a wrong fact or key does not
+        self.assertEqual(pf.inspect_mismatches(obj, exp, kind="take"), [])
+        self.assertTrue(pf.inspect_mismatches(obj, dict(exp, pids_limit=exp["pids_limit"] + 1), kind="take"))
         with filled():
             self.assertEqual(pf.inspect_mismatches(obj, exp, kind="take"), [])
             self.assertTrue(pf.inspect_mismatches(obj, dict(exp, memory=pf.PENDING), kind="take"))
@@ -764,7 +1132,10 @@ class TestPrograms(MutantCase):
             if any(w.spec.run_tree in a for a in p.argv):
                 out.append(f"probe {p.id} names the run tree")
             if p.id != "watcher-caps":
-                if list(p.argv[:4]) != ["docker", "exec", "--user", rt.AGENT_USER] and p.argv[1] != "container":
+                image_read = p.id in ("take-image-manifest", "sidecar-image-manifest", "egress-image-manifest") and list(p.argv[1:5]) == [
+                    "image", "inspect", "--platform", pf.IMAGE_PLATFORM]
+                if list(p.argv[:4]) != ["docker", "exec", "--user", rt.AGENT_USER] and p.argv[1] != "container" \
+                        and not image_read:
                     out.append(f"probe {p.id} does not run as the agent")
                 if "exec" in p.argv[:2] and list(p.argv[4:6]) != ["--workdir", "/"]:
                     out.append(f"probe {p.id} does not run with workdir /")
@@ -807,7 +1178,9 @@ class TestProcessesProgram(MutantCase):
         import io
         src = [q for q in World().probes() if q.id == "processes"][0].argv
         src = src[list(src).index("-c") + 1]
-        status = {"/proc/1/status": "Name:\tsleep\nUid:\t10003\t10003\t10003\t10003\nCapEff:\t0\n"}
+        status = {"/proc/1/status": ("Name:\tsleep\nUid:\t10003\t10003\t10003\t10003\n"
+                    "Gid:\t10003\t10003\t10003\t10003\nGroups:\t\nNoNewPrivs:\t1\n"
+                    "CapEff:\t0\nCapPrm:\t0\nCapInh:\t0\nCapBnd:\t0\nCapAmb:\t0\n")}
         real_open = builtins.open
 
         def fake_open(path, *a, **k):
@@ -918,6 +1291,10 @@ class TestRecordAndPostflight(MutantCase):
             d = tempfile.mkdtemp(prefix="w-")
             os.makedirs(os.path.join(d, "sessions"))
             open(os.path.join(d, "config.toml"), "w").close()
+            if h in pf.LEASE_CREDENTIAL:                 # a clean lease home holds its one registered credential
+                fd = os.open(os.path.join(d, pf.LEASE_CREDENTIAL[h]), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                os.write(fd, b"{}")
+                os.close(fd)
             if pf.postflight(d, h)["ok"] is not True:
                 out.append(f"{h}: a clean folder failed")
             open(os.path.join(d, "sessions", name), "w").close()
@@ -975,6 +1352,8 @@ def committed_lock(image: str) -> dict:
 def ready_lock(image: str, version: str = "9.8.7") -> dict:
     """The committed lock with every PENDING value replaced by an obviously fake pinned value (test_image's way)."""
     lock = copy.deepcopy(committed_lock(image))
+    lock.update(schema=il.SCHEMA_2, manifest_digest=MANIFEST, config_digest="sha256:" + "d" * 64,
+                source_commit="e" * 40)          # a filled lock is schema 2 (lock-writer ruling (b))
     lock["base"] = FAKE_BASE
     lock["image_id"] = IMAGE
     if lock["harness"] is not None:
@@ -987,18 +1366,36 @@ def ready_lock(image: str, version: str = "9.8.7") -> dict:
     return lock
 
 
+def ready_sidecar_lock() -> dict:
+    """The committed sidecar lock, filled (schema 2) with the World's sidecar image and its own platform manifest."""
+    lock = ready_lock("sidecar")
+    lock["manifest_digest"] = SIDE_MANIFEST
+    return lock
+
+
+def ready_egress_lock() -> dict:
+    """The committed egress lock, filled (schema 2) with the World's egress image and its own platform manifest."""
+    lock = ready_lock("egress")
+    lock.update(image_id=EGRESS_IMAGE_ID, manifest_digest=EGRESS_MANIFEST)
+    return lock
+
+
 def flat(lock: dict) -> dict:
     """The five values a ready nested lock projects to, by the schema paths typed here."""
     return {"image_id": lock["image_id"], "harness.version": lock["harness"]["version"],
             "users.agent.uid": lock["users"]["agent"]["uid"], "users.watcher.uid": lock["users"]["watcher"]["uid"],
-            "users.keepalive.uid": lock["users"]["keepalive"]["uid"]}
+            "users.keepalive.uid": lock["users"]["keepalive"]["uid"], "manifest_digest": lock["manifest_digest"]}
 
 
 class LockBox:
     """A temporary stand-in for box/: each lock at its own relative path; image_lock.BOX_DIR is patched while active."""
 
-    def __init__(self):
+    def __init__(self, sidecar=True, egress=True):
         self.root = tempfile.mkdtemp(prefix="w-")
+        if sidecar:
+            self.put("sidecar", ready_sidecar_lock())
+        if egress:
+            self.put("egress", ready_egress_lock())
 
     def path(self, image: str) -> str:
         return os.path.join(self.root, os.path.dirname(il.DOCKERFILES[image]), "image.lock")
@@ -1017,7 +1414,10 @@ class LockBox:
 def launched_for(w, *, spec="launched", **edits):
     """The launch record run_take.launch returns, on the World's spec (its network is the one launch made)."""
     rec = rt.Launched(config_dir=w.cfg, spec=w.spec if spec == "launched" else spec, network_id=ID["net"],
-                      proxy_id="b" * 64, sidecar_id=ID["side"], take_id=ID["take"], ok=True)
+                      proxy_id=PROXY_ID, sidecar_id=ID["side"], take_id=ID["take"], ok=True,
+                      steps=[{"step": "proxy-create", "returncode": 0,
+                              "argv": ["docker", "create", "--network", ID["net"], "--network-alias", "proxy",
+                                       w.proxy_image, "squid", "-N"]}])
     for k, v in edits.items():
         setattr(rec, k, v)
     return rec
@@ -1109,11 +1509,12 @@ class LockSeam:
                 path = box.put(HARNESS_IMAGE[h], lock)
                 with box.active():
                     (kind, got), spies, fake = compose(m, w, path)
-                if [p for p, _ in spies["load"]] != [path]:
+                if [p for p, _ in spies["load"]] != [path, box.path("sidecar"), box.path("egress")]:
                     calls = [p for p, _ in spies["load"]]
-                    out.append(f"C1-loader-spy {h}: image_lock.load calls {calls}, not [{path}]")
-                if len(spies["ready"]) != 1 or not spies["load"] or spies["ready"][0] is not spies["load"][0][1]:
-                    out.append(f"C1-ready-spy {h}: require_ready was not called once on load's own result")
+                    out.append(f"C1-loader-spy {h}: image_lock.load calls {calls}, not [{path}, the sidecar lock]")
+                if len(spies["ready"]) != 3 or len(spies["load"]) != 3 \
+                        or [r is l for r, (_, l) in zip(spies["ready"], spies["load"])] != [True, True, True]:
+                    out.append(f"C1-ready-spy {h}: require_ready was not called once on each load's own result")
                 if kind != "record":
                     out.append(f"C1-values {h}: refused ({type(got).__name__}: {str(got)[:80]})")
                     return
@@ -1171,7 +1572,7 @@ class LockSeam:
         call, through the composition."""
         out = []
         dup = json.dumps(ready_lock("take-a", VERSION_OUT[rt.CLAUDE_CODE][2]), indent=1).replace(
-            '"schema": 1,', '"schema": 1,\n "schema": 1,', 1)
+            '"schema": 2,', '"schema": 2,\n "schema": 2,', 1)
         cases = {
             "missing key": (lambda lk: lk.pop("python"), il.LockError, None),
             "unknown key": (lambda lk: lk.update(extra=1), il.LockError, None),
@@ -1207,19 +1608,160 @@ class LockSeam:
                 w = World()
                 box = LockBox()
                 lock = ready_lock("take-a", VERSION_OUT[rt.CLAUDE_CODE][2])
+                for k in il.SCHEMA_2_KEYS:            # a PENDING field lives only in the unfilled schema-1 lock
+                    del lock[k]
+                lock.update(schema=il.SCHEMA, image_id=il.PENDING)
                 head, _, tail = field.partition(".")
                 if tail:
                     lock[head][tail] = il.PENDING
                 else:
                     lock[head] = il.PENDING
-                lock["pending"] = {field: "a synthetic reason (lane w6a's test)"}
+                lock["pending"] = {"image_id": "a synthetic reason (the build makes it)",
+                                   field: "a synthetic reason (lane w6a's test)"}
                 path = box.put("take-a", lock)
                 with box.active():
                     (kind, got), spies, fake = compose(m, w, path, script=False)
                 if kind != "refused" or not isinstance(got, il.NotReady) or fake.calls or spies["evaluate"]:
                     out.append(f"C2-pending {field}: {kind} ({type(got).__name__}), not NotReady before the runtime "
                                f"({len(fake.calls)} runtime calls, {len(spies['evaluate'])} evaluations)")
+                    return
+                # LW-5: image_id is PENDING in every schema-1 case, so the refusal must name this case's own field.
+                named = str(got).partition("pending: ")[2].split(", ")
+                if field not in named:
+                    out.append(f"C2-pending {field}: the refusal names {named}, not {field}")
             run_case(out, "C2-pending", field, case)
+        return out
+
+    @staticmethod
+    def c7_sidecar(m) -> list:
+        """LW-7: the sidecar's lock is read through the loader (ready, its own image) before any runtime call, and its
+        platform manifest is the content the probe must read: a lock whose manifest differs fails the record."""
+        out = []
+        h = rt.CLAUDE_CODE
+        take = ready_lock("take-a", VERSION_OUT[h][2])
+
+        def refused(label, edit, err):
+            def case():
+                w = World(h)
+                box = LockBox(sidecar=False)
+                side = ready_sidecar_lock()
+                if edit == "absent":
+                    pass
+                elif isinstance(edit, str):
+                    box.put("sidecar", text=edit)
+                else:
+                    edit(side)
+                    box.put("sidecar", side)
+                path = box.put("take-a", take)
+                with box.active():
+                    (kind, got), spies, fake = compose(m, w, path, script=False)
+                if kind != "refused" or not isinstance(got, err) or fake.calls or spies["probes"] or spies["evaluate"]:
+                    out.append(f"C7-sidecar {label}: {kind} ({type(got).__name__}), {len(fake.calls)} runtime calls")
+            run_case(out, "C7-sidecar", label, case)
+
+        def pend(lk):
+            for k in il.SCHEMA_2_KEYS:
+                del lk[k]
+            lk.update(schema=il.SCHEMA, image_id=il.PENDING, pending={"image_id": "a synthetic reason"})
+        refused("pending sidecar lock", pend, il.NotReady)
+        refused("absent sidecar lock", "absent", OSError)
+        refused("malformed sidecar lock", '{"schema": 2,', ValueError)
+        refused("sidecar lock of another image", lambda lk: lk.update(image="take-a"), il.LockError)
+
+        def accepted_or_failed(label, edit, want_ok):
+            def case():
+                w = World(h)
+                box = LockBox(sidecar=False)
+                side = ready_sidecar_lock()
+                edit(side)
+                box.put("sidecar", side)
+                path = box.put("take-a", take)
+                with box.active():
+                    (kind, got), spies, fake = compose(m, w, path)
+                if kind != "record":
+                    out.append(f"C7-sidecar {label}: refused ({type(got).__name__}: {str(got)[:80]})")
+                    return
+                if [e.get("sidecar_lock") for e in spies["evaluate"]] != [
+                        {"image_id": side["image_id"], "manifest_digest": side["manifest_digest"]}]:
+                    out.append(f"C7-sidecar {label}: evaluate received {[e.get('sidecar_lock') for e in spies['evaluate']]}")
+                sides = [p.get("sidecar_image") for p in spies["probes"]]
+                if sides != [w.sidecar_expect["image"]]:
+                    out.append(f"C7-sidecar {label}: the manifest probe read {sides}, not the launch's sidecar image")
+                if got["ok"] != want_ok or (not want_ok and "image-matches-lock" not in failing(got)):
+                    out.append(f"C7-sidecar {label}: ok={got['ok']}, failing {failing(got)}")
+            run_case(out, "C7-sidecar", label, case)
+        accepted_or_failed("matching sidecar lock", lambda lk: None, True)
+        accepted_or_failed("sidecar lock of other content", lambda lk: lk.update(manifest_digest=MANIFEST), False)
+        accepted_or_failed("sidecar lock of another build", lambda lk: lk.update(image_id="sha256:" + "1" * 64), False)
+        return out
+
+    @staticmethod
+    def c8_egress(m) -> list:
+        """O-1: the egress lock is read through the loader (ready, its own image) before any runtime call; the
+        launch record's proxy image and the running proxy must be its id, and its manifest the probe's."""
+        out = []
+        h = rt.CLAUDE_CODE
+        take = ready_lock("take-a", VERSION_OUT[h][2])
+
+        def refused(label, edit, err, launched_edit=None):
+            def case():
+                w = World(h)
+                box = LockBox(egress=False)
+                eg = ready_egress_lock()
+                if edit == "absent":
+                    pass
+                elif isinstance(edit, str):
+                    box.put("egress", text=edit)
+                else:
+                    edit(eg)
+                    box.put("egress", eg)
+                path = box.put("take-a", take)
+                launched = launched_for(w, **(launched_edit or {}))
+                with box.active():
+                    (kind, got), spies, fake = compose(m, w, path, launched=launched, script=False)
+                if kind != "refused" or not isinstance(got, err) or fake.calls or spies["probes"] or spies["evaluate"]:
+                    out.append(f"C8-egress {label}: {kind} ({type(got).__name__}), {len(fake.calls)} runtime calls")
+            run_case(out, "C8-egress", label, case)
+
+        def pend(lk):
+            for k in il.SCHEMA_2_KEYS:
+                del lk[k]
+            lk.update(schema=il.SCHEMA, image_id=il.PENDING, pending={"image_id": "a synthetic reason"})
+        refused("pending egress lock", pend, il.NotReady)
+        refused("absent egress lock", "absent", OSError)
+        refused("egress lock of another image", lambda lk: lk.update(image="take-a"), il.LockError)
+        refused("no proxy-create step in the launch record", lambda lk: None, rt.Refused,
+                {"steps": []})
+        refused("a proxy-create step naming no image", lambda lk: None, rt.Refused,
+                {"steps": [{"step": "proxy-create", "returncode": 0, "argv": ["docker", "create", "squid"]}]})
+
+        def recorded(label, lock_edit, want_ok, launch_image=None):
+            def case():
+                w = World(h)
+                if launch_image:
+                    w.proxy_image = launch_image
+                box = LockBox(egress=False)
+                eg = ready_egress_lock()
+                lock_edit(eg)
+                box.put("egress", eg)
+                path = box.put("take-a", take)
+                with box.active():
+                    (kind, got), spies, fake = compose(m, w, path)
+                if kind != "record":
+                    out.append(f"C8-egress {label}: refused ({type(got).__name__}: {str(got)[:80]})")
+                    return
+                if [e.get("egress_lock") for e in spies["evaluate"]] != [
+                        {"image_id": eg["image_id"], "manifest_digest": eg["manifest_digest"]}]:
+                    out.append(f"C8-egress {label}: evaluate received {[e.get('egress_lock') for e in spies['evaluate']]}")
+                if [p.get("proxy_image") for p in spies["probes"]] != [w.proxy_image]:
+                    out.append(f"C8-egress {label}: the probes read {[p.get('proxy_image') for p in spies['probes']]}")
+                if got["ok"] != want_ok or (not want_ok and "image-matches-lock" not in failing(got)):
+                    out.append(f"C8-egress {label}: ok={got['ok']}, failing {failing(got)}")
+            run_case(out, "C8-egress", label, case)
+        recorded("matching egress lock", lambda lk: None, True)
+        recorded("egress lock of other content", lambda lk: lk.update(manifest_digest=MANIFEST), False)
+        recorded("egress lock of another build", lambda lk: lk.update(image_id="sha256:" + "3" * 64), False)
+        recorded("a launch image that is not the lock's", lambda lk: None, False, launch_image="sha256:" + "4" * 64)
         return out
 
     @staticmethod
@@ -1279,7 +1821,7 @@ class LockSeam:
             w = World()
             with filled(mod=m):
                 rec = m.evaluate(w.raw(), spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
-                                 harness=w.harness, hosts=HOSTS, evidence_dir=w.ev)
+                                 harness=w.harness, hosts=HOSTS, evidence_dir=w.ev, sidecar_lock=w.sidecar_lock, egress_lock=w.egress_lock)
             if failing(rec) or not rec["ok"]:
                 out.append(f"C4-mount baseline: a world at A fails {failing(rec)}")
         run_case(out, "C4-mount", "baseline", case_baseline)
@@ -1290,7 +1832,7 @@ class LockSeam:
                 at_b(w, raw, where)
                 with filled(mod=m):
                     rec = m.evaluate(raw, spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
-                                     harness=w.harness, hosts=HOSTS, evidence_dir=w.ev)
+                                     harness=w.harness, hosts=HOSTS, evidence_dir=w.ev, sidecar_lock=w.sidecar_lock, egress_lock=w.egress_lock)
                 if "sidecar-isolated" not in failing(rec) or rec["ok"]:
                     out.append(f"C4-mount {where} at B, probes at A: sidecar-isolated passed ({failing(rec)})")
             run_case(out, "C4-mount", where, case)
@@ -1301,7 +1843,7 @@ class LockSeam:
             b = at_b(w, raw, "both")
             with filled(mod=m):
                 rec = m.evaluate(raw, spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
-                                 harness=w.harness, hosts=HOSTS, evidence_dir=b)
+                                 harness=w.harness, hosts=HOSTS, evidence_dir=b, sidecar_lock=w.sidecar_lock, egress_lock=w.egress_lock)
             if "evidence-out-of-reach" not in failing(rec) or rec["ok"]:
                 out.append(f"C4-probes mount at B, probes at A, judged as B: passed ({failing(rec)})")
         run_case(out, "C4-probes", "judged-b", case_judged_b)
@@ -1313,7 +1855,8 @@ class LockSeam:
         out = []
         w = World()
         raw = w.raw()
-        base = dict(spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect, harness=w.harness, hosts=HOSTS)
+        base = dict(spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect, harness=w.harness, hosts=HOSTS,
+                    sidecar_lock=w.sidecar_lock, egress_lock=w.egress_lock)
         for label, value in (("None", None), ("empty", ""), ("relative", "rec/ev"), ("dotted", w.ev + "/../ev"),
                              ("root", "/")):
             def case(label=label, value=value):
@@ -1439,6 +1982,24 @@ class TestLockSeam(unittest.TestCase):
 
     def test_c2_pending_refused_before_the_runtime(self):
         self.assertEqual(LockSeam.c2_pending(pf), [])
+
+    def test_c7_sidecar_lock_and_manifest(self):
+        self.assertEqual(LockSeam.c7_sidecar(pf), [])
+
+    def test_c8_egress_lock_and_manifest(self):
+        self.assertEqual(LockSeam.c8_egress(pf), [])
+
+    def test_o1_spelled_names_are_image_locks(self):
+        """O-1: the egress names preflight spells are w4a's."""
+        self.assertEqual(pf.EGRESS_LOCK_IMAGE, il.EGRESS_IMAGE)
+        self.assertEqual(pf.EGRESS_LOCK_PATH, os.path.dirname(il.DOCKERFILES[il.EGRESS_IMAGE]) + "/image.lock")
+
+    def test_lw7_spelled_names_are_image_locks(self):
+        """LW-7: the names preflight spells (it reads image_lock only through load and require_ready) are w4a's."""
+        self.assertEqual(pf.SIDECAR_LOCK_IMAGE, il.SIDECAR_IMAGE)
+        self.assertEqual(pf.SIDECAR_LOCK_PATH, os.path.dirname(il.DOCKERFILES[il.SIDECAR_IMAGE]) + "/image.lock")
+        self.assertEqual(pf.TAKE_LOCK_DIRS, {i: os.path.dirname(il.DOCKERFILES[i]) for i in il.TAKE_IMAGES})
+        self.assertEqual(pf.IMAGE_ID_SHAPE.pattern, il.IMAGE_ID_RE.pattern)
 
     def test_c3_harness_image_binding(self):
         self.assertEqual(LockSeam.c3_cross(pf), [])
@@ -1570,7 +2131,28 @@ WITNESSES = {
     "pre-launch-spec": ((("    spec, take_id, sidecar_id = _launched_parts(launched)\n",
                           "    _, take_id, sidecar_id = _launched_parts(launched)\n    spec = PRE_LAUNCH_SPEC\n"),),
                         LockSeam.c6_launched, "C6-launched-spec", {"PRE_LAUNCH_SPEC": PRE_LAUNCH_SPEC}),
+    # LW-7 (lock-writer review, 14 Oct 2026): the sidecar's lock and platform manifest.
+    "lw7-sidecar-manifest-not-compared": ((("    _need(side == side_want, ", "    _need(True or side == side_want, "),),
+                                          LockSeam.c7_sidecar, "C7-sidecar", None),
+    "lw7-sidecar-readiness-omitted": ((("    image_lock.require_ready(side)\n", ""),),
+                                      LockSeam.c7_sidecar, "C7-sidecar", None),
+    "lw7-sidecar-lock-not-loaded": ((("    sidecar_lock = load_sidecar_lock(lock_path, harness=harness)\n",
+                                      "    sidecar_lock = {\"image_id\": sidecar.expect[\"image\"], "
+                                      "\"manifest_digest\": SIDE}\n"),),
+                                    LockSeam.c7_sidecar, "C7-sidecar", {"SIDE": SIDE_MANIFEST}),
 }
+LW7_WITNESSES = ("lw7-sidecar-manifest-not-compared", "lw7-sidecar-readiness-omitted", "lw7-sidecar-lock-not-loaded")
+# O-1 (glitch-06, 14 Oct 2026): the egress proxy's image, as LW-7 did the sidecar's.
+WITNESSES.update({
+    "o1-egress-manifest-not-compared": ((("    _need(egress == egress_want, ", "    _need(True or egress == egress_want, "),),
+                                        LockSeam.c8_egress, "C8-egress", None),
+    "o1-egress-launch-image-not-compared": ((("    _need(_value(raw, \"egress-launch\") == egress_id, ",
+                                              "    _need(True or _value(raw, \"egress-launch\") == egress_id, "),),
+                                            LockSeam.c8_egress, "C8-egress", None),
+    "o1-egress-readiness-omitted": ((("    image_lock.require_ready(egress_lock)\n", ""),),
+                                    LockSeam.c8_egress, "C8-egress", None),
+})
+O1_WITNESSES = ("o1-egress-manifest-not-compared", "o1-egress-launch-image-not-compared", "o1-egress-readiness-omitted")
 WITNESS_LOG: list = []
 
 
@@ -1615,14 +2197,35 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_pre_launch_spec(self):
         self.kill("pre-launch-spec")
 
+    def test_witness_lw7_sidecar_manifest_not_compared(self):
+        self.kill("lw7-sidecar-manifest-not-compared")
+
+    def test_witness_lw7_sidecar_readiness_omitted(self):
+        self.kill("lw7-sidecar-readiness-omitted")
+
+    def test_witness_lw7_sidecar_lock_not_loaded(self):
+        self.kill("lw7-sidecar-lock-not-loaded")
+
+    def test_witness_o1_egress_manifest_not_compared(self):
+        self.kill("o1-egress-manifest-not-compared")
+
+    def test_witness_o1_egress_launch_image_not_compared(self):
+        self.kill("o1-egress-launch-image-not-compared")
+
+    def test_witness_o1_egress_readiness_omitted(self):
+        self.kill("o1-egress-readiness-omitted")
+
     def test_the_witnesses_are_named(self):
-        """The readiness note's six, plus W6A-R1-1's absolute-path witness; each bound to its own check."""
+        """The readiness note's six, plus W6A-R1-1's absolute-path witness, each bound to its own check; plus the
+        three LW-7 witnesses, all bound to the sidecar-lock check c7_sidecar."""
         self.assertEqual(sorted(WITNESSES), sorted(["omit-load", "omit-readiness", "omit-harness-image-binding",
                                                     "drop-mount-source-comparison",
                                                     "probes-at-another-evidence-path", "pre-launch-spec",
-                                                    "omit-absolute-path-rule"]))
-        bound = {n: w[1].__name__ for n, w in WITNESSES.items()}
+                                                    "omit-absolute-path-rule", *LW7_WITNESSES, *O1_WITNESSES]))
+        bound = {n: w[1].__name__ for n, w in WITNESSES.items() if n not in LW7_WITNESSES + O1_WITNESSES}
         self.assertEqual(len(set(bound.values())), 7, bound)
+        self.assertEqual({WITNESSES[n][1].__name__ for n in LW7_WITNESSES}, {"c7_sidecar"})
+        self.assertEqual({WITNESSES[n][1].__name__ for n in O1_WITNESSES}, {"c8_egress"})
 
 
 # Taken last, after every import-time statement of this module: must be empty (setUpModule arms the guard).

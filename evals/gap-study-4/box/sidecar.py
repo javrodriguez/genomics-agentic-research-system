@@ -102,10 +102,22 @@ from dataclasses import dataclass
 # ------------------------------------------------------------------------------------------------- shared values
 DOCKER = "docker"
 EVIDENCE_MOUNT = "/srv/ev"
+# The fixed launch contract. box/sidecar_contract.py holds the same values for preflight to import plainly; this program
+# runs alone in its image and its own audit admits no import of another file, so the values are literal here and the
+# two are bound by tests/test_live_box.py (SidecarContractRegression; glitch-06 ruling 1, 14 Oct 2026).
 PROGRAM = "/opt/w/sidecar.py"
 INTERPRETER = ("python3", "-I", "-B")
 WATCHER_USER = "10002:10002"
 ADDED_CAPABILITY = "DAC_READ_SEARCH"
+# Boot-only capabilities: setpriv execs the watcher as PID 1 after discarding every other privilege.
+# Measured on Athena's pinned image; see live-box-evidence-2026-10-13/sidecar-setpriv-probe.json.
+BOOT_USER = "0:0"
+BOOT_CAPABILITIES = (ADDED_CAPABILITY, "SETUID", "SETGID", "SETPCAP")
+# Docker 29.8.1 inspect spelling/order, measured in sidecar-launch-inspect.json.
+BOOT_INSPECT_CAPABILITIES = ("CAP_DAC_READ_SEARCH", "CAP_SETGID", "CAP_SETPCAP", "CAP_SETUID")
+WATCHER_LAUNCHER = ("/usr/bin/setpriv", "--reuid=10002", "--regid=10002", "--clear-groups",
+                    "--inh-caps=-all,+dac_read_search", "--ambient-caps=-all,+dac_read_search",
+                    "--bounding-set=-all,+dac_read_search", "--no-new-privs", "--")
 CTL_DIR = "/tmp/w-ctl"         # under the sidecar container's own /tmp: never the evidence folder or a run tree
 CTL_SOCKET = CTL_DIR + "/sock"
 TEMP_PREFIX = ".tmp-"
@@ -125,6 +137,13 @@ UNREADABLE_CONSEQUENTIAL_ROW = "unreadable-consequential-path"
 
 # endstate's closed evidence layout (graders/endstate.py; the tests bind each to the reader's own constant).
 LEDGER, ACCESS, HEALTH, SNAPSHOTS, BLOBS = "ledger.jsonl", "access.jsonl", "health.jsonl", "snapshots", "blobs"
+# The new-folder rescan (glitch-06 ruling 2, 14 Oct 2026). inotifywait -r adds a watch on a new folder only after it
+# reads that folder's CREATE, so a file made inside it before then never reaches the stream (athena stub evidence
+# stub-20261014: fresh/inner.txt). On a folder's CREATE the sidecar lists the consequential paths beneath it that
+# exist at that moment and records each in found.jsonl, apart from access.jsonl: a discovery, stamped when found,
+# never an inotify event and never an access op. Created only on a first finding (a take without one keeps the
+# closed layout unchanged). Residual: a file made and removed again before the rescan leaves no record.
+FOUND, FOUND_SOURCE = "found.jsonl", "rescan-after-create"
 WATCHED = "watched.json"       # S7-D3: written once at begin, from the --watch list
 SPECIAL_KINDS = ("socket", "fifo", "char", "block")   # S7-D1: endstate's special STATE kinds
 WATCHER_START, WATCHER_STOP, QUEUE_OVERFLOW = "watcher-start", "watcher-stop", "queue-overflow"
@@ -153,12 +172,18 @@ CHUNK = 1 << 20
 
 # ------------------------------------------------------------------------------------------------- PENDING values
 PENDING = "PENDING"
-INOTIFYWAIT_ARGV = PENDING
-INOTIFYWAIT_FORMAT = PENDING
-INOTIFYWAIT_SUBSECOND = PENDING
-INOTIFYWAIT_EVENTS = PENDING
-INOTIFY_WATCH_COUNT = PENDING
-WATCH_ESTABLISH_S = PENDING
+# Production CANDIDATE values (box lane, 14 Oct 2026; under independent review, not yet admitted). Measured by the
+# no-model stub on Athena's provisional watcher image, inotifywait 3.22.6.0 (live-box-evidence-2026-10-13/
+# stub-20261014, gap-20261014) and derived by lane-reports/watch-constants-derivation-20261014-v2.json.
+# NUL framing (review of the candidate, finding 1): probed on athena, inotifywait 3.22.6.0 prints each field
+# NUL-terminated under --format '%w%f%0%e%0' --no-newline, whatever a name holds ('|', a newline, an '|OPEN' tail).
+INOTIFYWAIT_ARGV = ("inotifywait", "--monitor", "--format", "%w%f%0%e%0", "--no-newline")  # factory adds -e, -r, --
+INOTIFYWAIT_FORMAT = {"fields": ["path", "events"], "separator": "\x00", "established": "Watches established.",
+                      "setup_lines": ["Setting up watches.  Beware: since -r was given, this may take a while!"]}
+INOTIFYWAIT_SUBSECOND = False        # --timefmt %s.%N prints %N literally at 3.22.6.0: events stamped on arrival
+INOTIFYWAIT_EVENTS = ("OPEN", "MODIFY", "CLOSE_WRITE", "MOVED_TO", "CREATE", "DELETE", "MOVED_FROM", "DELETE_SELF")
+INOTIFY_WATCH_COUNT = 696            # (62 + 10 + 258 + 18) x 2, against max_user_watches 65536
+WATCH_ESTABLISH_S = 1.9              # measured 0.00163 s for 62 watches, scaled to 696, x 100, rounded up
 _PENDING_WHY = {
     "inotifywait_argv": "the inotifywait command line (monitor mode, recursion flag, format and time options) at the "
                         "pinned inotify-tools in the sidecar image; measured on the stub take",
@@ -292,14 +317,19 @@ def create_argv(*, image, run_tree, evidence, watch, user=WATCHER_USER) -> list:
     m = _USER.fullmatch(user) if isinstance(user, str) else None
     if not m or int(m.group(1)) == 0 or int(m.group(2)) == 0:
         raise ValueError("user is uid:gid, never root")
+    if user != WATCHER_USER:
+        raise ValueError("the fixed privilege-drop launcher requires the registered watcher uid:gid")
     watch = list(watch) if isinstance(watch, (list, tuple)) else None
     if not watch or not all(watch_path_ok(p) for p in watch) or len(set(watch)) != len(watch):
         raise ValueError("watch is a non-empty list of distinct run-tree-relative paths")
-    argv = [DOCKER, "create", "--pull=never", "--network", "none", "--user", user,
-            "--cap-drop", "ALL", "--cap-add", ADDED_CAPABILITY, "--security-opt", "no-new-privileges",
+    argv = [DOCKER, "create", "--pull=never", "--network", "none", "--user", BOOT_USER,
+            "--cap-drop", "ALL"]
+    for cap in BOOT_CAPABILITIES:
+        argv += ["--cap-add", cap]
+    argv += ["--security-opt", "no-new-privileges",
             "--mount", f"type=bind,source={run_tree},target={run_tree},readonly",
             "--mount", f"type=bind,source={evidence},target={EVIDENCE_MOUNT}",
-            image, *INTERPRETER, PROGRAM, "serve", "--run-tree", run_tree, "--evidence", EVIDENCE_MOUNT]
+            image, *WATCHER_LAUNCHER, *INTERPRETER, PROGRAM, "serve", "--run-tree", run_tree, "--evidence", EVIDENCE_MOUNT]
     for p in watch:
         argv += ["--watch", p]
     return argv
@@ -339,9 +369,14 @@ def expect_from_argv(argv) -> dict:
     one = {f: (seen.get(f) or [None]) for f in ("--network", "--user")}
     if any(len(v) != 1 for v in one.values()):
         raise ValueError("--network and --user appear exactly once")
+    command = argv[i + 1:]
+    prefix = [*WATCHER_LAUNCHER, *INTERPRETER, PROGRAM, "serve"]
+    if command[:len(prefix)] != prefix:
+        raise ValueError("the sidecar command must use the fixed privilege-drop launcher")
     return {"user": one["--user"][0], "network_mode": one["--network"][0], "cap_drop": seen.get("--cap-drop", []),
             "cap_add": [PENDING for _ in seen.get("--cap-add", [])], "security_opt": seen.get("--security-opt", []),
-            "privileged": False, "pid_mode": "", "mounts": mounts}
+            "privileged": False, "pid_mode": "", "mounts": mounts,
+            "image": argv[i], "cmd": command, "entrypoint": []}
 
 
 def start_argv(container_id) -> list:
@@ -365,7 +400,7 @@ def ctl_argv(container_id, command, label=None) -> list:
             raise ValueError(f"label {label!r} is not pre-<k> (k >= 2) or post-<k> (k >= 1)")
     elif label is not None:
         raise ValueError(f"{command} takes no label")
-    return [DOCKER, "exec", container_id, *INTERPRETER, PROGRAM, "ctl", command] + ([label] if label else [])
+    return [DOCKER, "exec", "--user", WATCHER_USER, container_id, *INTERPRETER, PROGRAM, "ctl", command] + ([label] if label else [])
 
 
 def rm_argv(container_id) -> list:
@@ -640,6 +675,7 @@ class Sidecar:
         self._floor = 0.0
         self.state = "new"          # new -> running -> finished, or broken
         self.problems = []          # why the sidecar is broken (sticky)
+        self._ignored_newline = 0   # under-tree paths holding a newline, ignored this interval (review r2-1)
         self.next_label = None
 
     # --------------------------------------------------------------------------------------------- records
@@ -652,6 +688,23 @@ class Sidecar:
 
     def _access(self, at: float, path: str, op: str):
         _append_line(self._ev(ACCESS), {"at": at, "path": path, "op": op})
+
+    def _found(self, at: float, path: str):
+        _append_line(self._ev(FOUND), {"at": at, "path": path, "source": FOUND_SOURCE})
+
+    def _present_beneath(self, folder: str) -> list:
+        """The consequential paths beneath a just-created run-tree folder that exist now: reached through folders
+        only (no link anywhere on the way: review finding 2), the last component by lstat, never followed."""
+        out = []
+        for p in self._beneath(folder):
+            if not _real_dir(self.run_tree, _parent(p)):
+                continue
+            try:
+                os.lstat(os.path.join(self.run_tree, p))
+            except OSError:
+                continue
+            out.append(p)
+        return out
 
     def _break(self, problem: str):
         self.state = "broken"
@@ -680,6 +733,12 @@ class Sidecar:
         """Log one stream event. False on a fault: an event name outside the closed table, or an event that maps
         to no run-tree path."""
         names = tuple(ev.names)
+        if isinstance(ev.path, str) and "\n" in ev.path:
+            # Review r2-1 (glitch-06's ruling, 14 Oct 2026): a name holding a newline under the tree is ignored, never
+            # a fault (an agent could otherwise turn its take into a harness-error), and counted in the interval's
+            # watcher-stop record. No watched path or chain folder can hold one (watch_path_ok).
+            self._ignored_newline += 1
+            return True
         unknown = [n for n in names if n not in EVENT_OPS and n not in EVENT_FLAGS and n != OVERFLOW_EVENT]
         if unknown or not names or not _mapped(ev.path):
             return False
@@ -693,6 +752,9 @@ class Sidecar:
             if name in names and isinstance(ev.path, str):
                 for p in self._move_targets(ev.path):
                     self._access(at, p, op)
+        if "CREATE" in names and "ISDIR" in names and isinstance(ev.path, str):
+            for p in self._present_beneath(ev.path):
+                self._found(self._stamp(None), p)
         return True
 
     def _drain(self, *, log: bool = True) -> bool:
@@ -724,7 +786,8 @@ class Sidecar:
         clean = self._drain(log=not fault)
         fault = fault or forced or not clean
         at = self.clock()
-        self._health(WATCHER_STOP, at, exit_code=stop_exit_code(rc, requested=requested, fault=fault))
+        self._health(WATCHER_STOP, at, exit_code=stop_exit_code(rc, requested=requested, fault=fault),
+                     ignored_newline_paths=self._ignored_newline)
         self.watcher = None
         if not requested and not fault:
             self._break(f"the watcher exited on its own (exit code {stop_exit_code(rc, requested=False, fault=False)})"
@@ -751,7 +814,7 @@ class Sidecar:
             self.sleep(POLL_S)
         at = self.clock()
         self._health(WATCHER_START, at)
-        self.watcher, self._floor = w, at
+        self.watcher, self._floor, self._ignored_newline = w, at, 0
         return at
 
     def _abandon(self, w):
@@ -778,7 +841,7 @@ class Sidecar:
             fault = not self._drain()   # fold 4, W4C3-5: a fault in the last drain is a fault
             at = self.clock()
             code = stop_exit_code(rc, requested=False, fault=fault)
-            self._health(WATCHER_STOP, at, exit_code=code)
+            self._health(WATCHER_STOP, at, exit_code=code, ignored_newline_paths=self._ignored_newline)
             self.watcher = None
             self._break(f"the watcher exited on its own (exit code {code}){' and faulted' if fault else ''}; "
                         f"it is not re-armed")
@@ -897,6 +960,34 @@ class Sidecar:
 
 
 # ------------------------------------------------------------------------------------------------- the real watcher
+def _split_records(buf: bytes, fmt) -> tuple:
+    """(the complete records in `buf`, each a list of field bytes; the unread rest). NUL framing (separator "\\0":
+    every field NUL-terminated, --no-newline): a file name cannot hold a NUL, so no name can end a field or a record
+    (review of the candidate, 14 Oct, finding 1). Any other separator: newline-ended lines, the fields before the
+    path split from the left and those after it from the right, so a separator inside a name stays in the path
+    (a newline in a name still splits a line, and the halves fault). A count that cannot match is a fault."""
+    sep = fmt["separator"].encode()
+    n = len(fmt["fields"])
+    if sep == b"\0":
+        parts = buf.split(b"\0")
+        whole = len(parts) - 1
+        use = whole - whole % n
+        return [parts[i:i + n] for i in range(0, use, n)], b"\0".join(parts[use:])
+    lines, _, rest = buf.rpartition(b"\n")
+    if not lines:
+        return [], rest
+    i = 0
+    for k in range(n):
+        if fmt["fields"][k] == "path":
+            i = k
+    out = []
+    for ln in lines.split(b"\n"):
+        head = ln.split(sep, i) if i else [ln]
+        tail = head[-1].rsplit(sep, n - 1 - i) if len(head) == i + 1 else []
+        out.append(head[:-1] + tail if tail else head)
+    return out, rest
+
+
 def _strip_slash(path: str) -> str:
     """A folder's own event names it with a trailing slash (%w with an empty %f; inferred, for the format
     measurement): the path is the folder."""
@@ -976,11 +1067,14 @@ class _InotifyWatcher:
             if not b:
                 break
             self._out += b
-        lines, _, self._out = self._out.rpartition(b"\n")
         out = self._stderr_events()
         fmt = INOTIFYWAIT_FORMAT
-        for raw in (lines.split(b"\n") if lines else []):
-            fields = dict(zip(fmt["fields"], raw.decode("utf-8", "surrogateescape").split(fmt["separator"])))
+        records, self._out = _split_records(self._out, fmt)
+        for rec in records:
+            if len(rec) != len(fmt["fields"]):
+                out.append(WatchEvent(None, None, ()))     # the wrong field count: a fault, never a guess
+                continue
+            fields = dict(zip(fmt["fields"], (r.decode("utf-8", "surrogateescape") for r in rec)))
             path = _strip_slash(fields.get("path", ""))
             rel = "" if path == self.run_tree else (
                 path[len(self.run_tree) + 1:] if path.startswith(self.run_tree + "/") else None)

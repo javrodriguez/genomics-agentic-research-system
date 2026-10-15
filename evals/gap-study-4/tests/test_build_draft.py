@@ -457,7 +457,7 @@ def description_problems(d):
         {"text": line, "round_4_reading": reading} for line,reading in zip(old["limitations_lines"],expected_readings())], "R8.carried")
     need(d["box_residuals"] == [
         {"text": "the token is visible to child processes if preflight says so", "conditional_on_preflight": True, "finding": "PENDING"},
-        {"text": "model weights behind an id are not pinnable"}, MODE_RESIDUAL], "R8.residuals")
+        {"text": "model weights behind an id are not pinnable"}, MODE_RESIDUAL, NEW_FOLDER_RESIDUAL], "R8.residuals")
     need(d.get("final_stop") == FINAL_STOP, "R8.final-stop")
     need(d["leak_words"] == old["leak_words"] + [study.STUDY, "round 4"] and len(old["leak_words"]) == 23 and
          d["leak_context_excusals"] == old["leak_context_excusals"] and len(d["leak_context_excusals"]) == 3 and
@@ -491,6 +491,16 @@ def description_problems(d):
 # closed check that no task's move is a change of mode alone. Description.test_mode_residual_is_bound ties both
 # halves of the sentence to the files that make them true.
 MODE_CHECK = ("tests/test_endstate.py", "ModeBits", "test_no_task_move_is_chmod_only")
+NEW_FOLDER_RESIDUAL = {"text": "the new-folder watch gap: inotifywait -r watches a new folder only after reading its CREATE (probed "
+            "on athena: a write in the same instant can be missed); the sidecar's rescan recovers that a "
+            "watched path EXISTED (found.jsonl), never an access, so three cases stay unseen: (1) after post-N, a write "
+            "inside a new folder made before -r watches that folder (the bound is that time, not the rescan) is not "
+            "counted by writes_after_the_end, whose definition is what the watcher logged; (2) a file made and removed again before the rescan leaves no "
+            "record; (3) reads or writes inside a new folder before its watch exists are never accesses",
+    "ruling": "glitch-06, Wed 14 Oct 2026 (review of the box candidate, finding 4)",
+    "closed_check": "tests/test_new_folder_closed_check.py (every path an access-reading grader "
+                        "consults sits in a folder present before the take, over all built task halves); "
+                        "tests/test_live_box.py NewFolderGap and RescanReach; tests/test_endstate.py Discoveries"}
 MODE_RESIDUAL = {
     "text": "mode bits are not graded: the end state records no file mode, so a change of mode alone is invisible",
     "ruling": "S7-D2 (C)",
@@ -638,9 +648,20 @@ class Description(unittest.TestCase):
         with mock.patch.object(b, "prior_metadata", return_value=prior):
             self.assertEqual(b.describe()["predictions"], d["predictions"])
 
+    def test_new_folder_residual_is_bound(self):
+        """Box lane, 14 Oct (glitch-06, review finding 4): the residual names its three cases and its checks exist."""
+        d = self.get()
+        self.assertEqual(d["box_residuals"][3], NEW_FOLDER_RESIDUAL, "R8.new-folder-residual")
+        live = (HERE / "tests/test_live_box.py").read_text()
+        es_tests = (HERE / "tests/test_endstate.py").read_text()
+        closed = (HERE / "tests/test_new_folder_closed_check.py").read_text()
+        for cls, text in (("NewFolderGap", live), ("RescanReach", live), ("Discoveries", es_tests),
+                          ("NewFolderClosedCheck", closed)):
+            self.assertIn(f"class {cls}(", text, "R8.new-folder-residual")
+
     def test_mode_residual_is_bound(self):
         d = self.get()
-        self.assertEqual(len(d["box_residuals"]), 3, "R8.mode-residual")
+        self.assertEqual(len(d["box_residuals"]), 4, "R8.mode-residual")   # 4th: the new-folder gap (14 Oct)
         self.assertEqual(d["box_residuals"][2], MODE_RESIDUAL, "R8.mode-residual")
         endstate_tests = (HERE / MODE_CHECK[0]).read_text()
         self.assertIn(f"class {MODE_CHECK[1]}(", endstate_tests, "R8.mode-residual")
@@ -739,7 +760,10 @@ def ready_problems(d):
     need(d["price_table"] == "PENDING" and d["served_model_rule"][CODEX] == _routing.SERVED_MODEL_LIMIT and
          all(v == "PENDING" for h, v in d["served_model_rule"].items() if h != CODEX) and
          all(v == "PENDING" for v in d["furniture"].values()), "R15.values")
-    need(all(v == "PENDING" for models in d["config_templates"].values() for v in models.values()) and
+    # claude-code's per-take config is ready since the bypass acceptance was RULED not required in -p (glitch-06,
+    # 14 Oct 2026; box lane): its templates are the rendered ones; codex's and gemini's stay PENDING.
+    need(all(v == "PENDING" for h, models in d["config_templates"].items() if h != CLAUDE for v in models.values()) and
+         d["config_templates"].get(CLAUDE) == b.config_templates()[CLAUDE] and
          all(v == "PENDING" for models in d["effort"].values() for v in models.values()), "R15.config")
     table = json.loads((HERE / "routing.json").read_text())
     need(d["routing_markers"] == {key: table[key] for key in ("rate_limit_markers", "rate_limit_markers_status", "spend_cap_markers", "spend_cap_markers_status")} and
@@ -964,7 +988,7 @@ class Readiness(unittest.TestCase):
         self.assertTrue(all(p['agent_version']=='0.0.0-fake' for ps in pins.values() for p in ps.values()), "R6.profile-mismatch")
         table['pin_profiles'][CODEX][MODELS['O'][0]]['version']='0.0.1-fake'
         with self.assertRaises(ValueError, msg="R6.profile-mismatch"): b.version_pins(locks,table)
-        fake_settings={'CLAUDE_BYPASS_KEY':'fakeBypass','CODEX_REASONING_EFFORT':'fake-effort',
+        fake_settings={'CODEX_REASONING_EFFORT':'fake-effort',
                        'GEMINI_THINKING':{'path':'fake.thinking','value':'fake-default'},
                        'GEMINI_AUTH_SETTING':{'path':'fake.auth','value':'fake-kind'},'GEMINI_SETTINGS_PATH':'fake/settings.json'}
         with mock.patch.multiple(take_config,**fake_settings):

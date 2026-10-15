@@ -103,8 +103,16 @@ MODEL = "synthetic-model"
 PROJECT = "run-0000abcd"                                   # S6b: the operator steps' project name (synthetic)
 SESSION_ID = "0000abcd-1b3d-5c7e-9a1f-2b4d6f8a0c11"          # S6c: the take's imposed session id (synthetic)
 PROFILE = {"permission_mode": "bypassPermissions", "version": "0.0.1"}
-TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID"}
+TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID",
+       "uid_namespace": "host"}
 UID_MAP = [(0, 1000, 1), (1, 100000, 65536)]
+SIDECAR_IMAGE = "sha256:" + "5" * 64                       # synthetic sidecar image id
+
+
+def sidecar_cmd(tree):
+    """The sidecar's launch command as create_argv builds it (setpriv launcher, interpreter, program, serve)."""
+    return [*sc.WATCHER_LAUNCHER, *sc.INTERPRETER, sc.PROGRAM, "serve", "--run-tree", tree,
+            "--evidence", sc.EVIDENCE_MOUNT]
 AGENT_HOST_UID = 100000 + 10001 - 1
 CAP_S, POLL_S = 30, 5
 REAL_BOX_STEP = ("CP2's real-box step: one stub take on athena's box with no model (plan, CREATE "
@@ -188,6 +196,7 @@ def setUpModule():
     _STACK.enter_context(mock.patch.object(rt, "TOP_FORMAT", TOP))
     # Lane w6j (S6c C8): Claude Code's fallback variables, PENDING until confirmed at the pinned version: none here.
     _STACK.enter_context(mock.patch.object(rt, "FALLBACK_ENV", {}))
+    # The bypass acceptance is RULED not required in -p (glitch-06, 14 Oct 2026): no stand-in key.
     import drive as imported
     drive = imported
 
@@ -552,7 +561,7 @@ class FakeBox:
         if a[:2] == ["docker", "exec"] and a[2] != "--user" and self.kind(a[2]) == "sidecar":
             return self.ctl(a[2], a[a.index("ctl") + 1], a[a.index("ctl") + 2] if len(a) > a.index("ctl") + 2
                             else None)
-        if a[:4] == ["docker", "exec", "--user", rt.AGENT_USER] and a[5:] == ["kill", "-s", "KILL", "--", "-1"]:
+        if a[:4] == ["docker", "exec", "--user", rt.AGENT_USER] and a[5:] == ["/usr/bin/python3", "-I", "-S", "-c", "import os,signal\ntry:\n os.kill(-1, signal.SIGKILL)\nexcept ProcessLookupError:\n pass"]:
             self.kills.append((a[4], a[3]))
             if not self.stubborn:
                 self.procs[a[4]] = []
@@ -589,8 +598,12 @@ class FakeBox:
             return rt.Completed(1, "", "no such container")
         if c["kind"] == "sidecar":
             tree = c["tree"]
-            doc = [{"Config": {"User": sc.WATCHER_USER},
-                    "HostConfig": {"NetworkMode": "none", "CapDrop": ["ALL"], "CapAdd": ["CAP_DAC_READ_SEARCH"],
+            # The sidecar's fixed privilege-drop launch (0b6f60f9's accepted delta): boot user, the four boot
+            # capabilities as Docker 29.8.1 spells them, no entrypoint, setpriv's launcher in Cmd.
+            doc = [{"Image": SIDECAR_IMAGE,
+                    "Config": {"User": sc.BOOT_USER, "Entrypoint": [], "Cmd": sidecar_cmd(tree)},
+                    "HostConfig": {"NetworkMode": "none", "CapDrop": ["ALL"],
+                                   "CapAdd": list(sc.BOOT_INSPECT_CAPABILITIES),
                                    "SecurityOpt": ["no-new-privileges"], "Privileged": False, "PidMode": ""},
                     "Mounts": [{"Type": "bind", "Source": tree, "Destination": tree, "RW": False},
                                {"Type": "bind", "Source": c["ev"], "Destination": sc.EVIDENCE_MOUNT, "RW": True}]}]
@@ -632,12 +645,12 @@ class FakeBox:
             takes = [c for c, v in self.containers.items() if v["kind"] == "take"]
             self.snapshots.append((label, sum(len(self.alive(t)) for t in takes)))
             at = self.evidence(sid, label)                           # S6b: the stop stamped at the snapshot's instant
-            self.health(sid, sc.WATCHER_STOP, at=at, exit_code=0)
+            self.health(sid, sc.WATCHER_STOP, at=at, exit_code=0, ignored_newline_paths=0)
             if not self.gap:
                 self.health(sid, sc.WATCHER_START)
             return ok(reply("snapshot", label, unreadable_consequential=self.unreadable))
         if command == "finish":
-            self.health(sid, sc.WATCHER_STOP, exit_code=0)
+            self.health(sid, sc.WATCHER_STOP, exit_code=0, ignored_newline_paths=0)
             return ok(reply("finish"))
         return ok(reply("status"))
 
@@ -817,8 +830,9 @@ class Rig:
 
     def sidecar_for(self, r, ev):
         tree = str(SCRATCH / f"tree-{self.root.name}-{self.count}")
-        expect = {"user": sc.WATCHER_USER, "network_mode": "none", "cap_drop": ["ALL"],
-                  "cap_add": ["CAP_DAC_READ_SEARCH"], "security_opt": ["no-new-privileges"], "privileged": False,
+        expect = {"user": sc.BOOT_USER, "network_mode": "none", "cap_drop": ["ALL"],
+                  "cap_add": list(sc.BOOT_INSPECT_CAPABILITIES), "security_opt": ["no-new-privileges"],
+                  "privileged": False, "image": SIDECAR_IMAGE, "cmd": sidecar_cmd(tree), "entrypoint": [],
                   "pid_mode": "", "mounts": [{"source": tree, "destination": tree, "rw": False},
                                              {"source": ev, "destination": sc.EVIDENCE_MOUNT, "rw": True}]}
         return rt.SidecarLaunch(
@@ -1116,7 +1130,7 @@ def b6_quiesce(mod, p):
         if recs["quiescence_kill"] is not True or recs["quiescence_cap_survivors"] != 1:
             out.append(f"{p}: the cap kill is not recorded: kill {recs['quiescence_kill']}, survivors "
                        f"{recs['quiescence_cap_survivors']}")
-        first_kill = next((i for i, a in enumerate(rig.box.calls) if a[-2:] == ["--", "-1"]), None)
+        first_kill = next((i for i, a in enumerate(rig.box.calls) if a[5:] == ["/usr/bin/python3", "-I", "-S", "-c", "import os,signal\ntry:\n os.kill(-1, signal.SIGKILL)\nexcept ProcessLookupError:\n pass"]), None)
         post = {a[-1]: i for i, a in enumerate(rig.box.calls) if "snapshot" in a}
         if first_kill is None or not (post.get("post-1", 10 ** 9) < first_kill < post.get("post-2", -1)):
             out.append(f"{p}: the cap kill did not come between post-1 and post-2 (turn 2's cap)")

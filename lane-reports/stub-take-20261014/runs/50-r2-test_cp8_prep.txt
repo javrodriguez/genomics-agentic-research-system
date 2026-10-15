@@ -1,0 +1,11 @@
+test_walk_driver_checks_the_adapter_class (__main__.A1AdapterClass.test_walk_driver_checks_the_adapter_class) ... ok
+test_denials_is_round3_only_and_unreachable (__main__.D1Denials.test_denials_is_round3_only_and_unreachable) ... ok
+test_a_walk_folder_is_its_walk_commit (__main__.H1WalkHistory.test_a_walk_folder_is_its_walk_commit) ... ok
+test_take_folder_k_is_batch_attempt (__main__.K1TakeK.test_take_folder_k_is_batch_attempt) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 27.551s
+
+OK
+test_cp8_prep: 4 run, 0 failures, 0 errors, 0 skipped
+test_cp8_prep outcomes: {"failures": [], "errors": [], "skipped": []}

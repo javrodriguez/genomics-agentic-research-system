@@ -286,8 +286,10 @@ class Wired:
 
     def sidecar_for(self, row, ev):
         tree = str(self.tree)
-        expect = {"user": sc.WATCHER_USER, "network_mode": "none", "cap_drop": ["ALL"],
-                  "cap_add": ["CAP_DAC_READ_SEARCH"], "security_opt": ["no-new-privileges"], "privileged": False,
+        # The sidecar's accepted launch (0b6f60f9; its fake inspect is test_box_integration's, fixed in 5f1b33ee).
+        expect = {"user": sc.BOOT_USER, "network_mode": "none", "cap_drop": ["ALL"],
+                  "cap_add": list(sc.BOOT_INSPECT_CAPABILITIES), "security_opt": ["no-new-privileges"],
+                  "privileged": False, "image": tbi.SIDECAR_IMAGE, "cmd": tbi.sidecar_cmd(tree), "entrypoint": [],
                   "pid_mode": "", "mounts": [{"source": tree, "destination": tree, "rw": False},
                                              {"source": ev, "destination": sc.EVIDENCE_MOUNT, "rw": True}]}
         return rt.SidecarLaunch(

@@ -1,0 +1,3 @@
+== test_settings_guard (new tests, HEAD modules)
+Ran 15 tests in 0.216s
+FAILED (failures=25, errors=5)

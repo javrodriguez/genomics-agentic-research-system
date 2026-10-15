@@ -1,0 +1,51 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.78kB done
+#1 WARN: InvalidDefaultArgInFrom: Default value for ARG ${BASE} results in empty or invalid base image name (line 6)
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/7] FROM docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562
+#4 resolve docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562 done
+#4 DONE 0.0s
+
+#5 [5/7] RUN git config --system --add safe.directory '*'
+#5 CACHED
+
+#6 [2/7] RUN apt-get update  && apt-get install -y --no-install-recommends python3 git inotify-tools procps ca-certificates  && rm -rf /var/lib/apt/lists/*
+#6 CACHED
+
+#7 [3/7] RUN test "$(python3 -c 'import platform; print(platform.python_version())')" = "3.11.2"
+#7 CACHED
+
+#8 [4/7] RUN groupadd --gid 10001 dana  && useradd --uid 10001 --gid 10001 --create-home --home-dir /home/dana --shell /bin/bash dana  && groupadd --gid 10002 eli  && useradd --uid 10002 --gid 10002 --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin eli
+#8 CACHED
+
+#9 [6/7] RUN npm install -g "@openai/codex@0.162.1"
+#9 CACHED
+
+#10 [7/7] RUN test "$(node -p 'require(process.argv[1]).version' "$(npm root -g)/@openai/codex/package.json")" = "0.162.1"
+#10 CACHED
+
+#11 exporting to image
+#11 exporting layers done
+#11 exporting manifest sha256:46deefc20439372cbdfabbaa023fe71aed4d4dbee518c729d3b23b52c8d03aa3 done
+#11 exporting config sha256:4647fdaace69f1e9083d0c1424192f81ac3ad43c4382ce5f7d1ec8cfda52c175 done
+#11 exporting attestation manifest sha256:daf0cd57866e0c982965225172c6ac7a04ed7bbdf69fa90da01c2a58e07c816c 0.0s done
+#11 exporting manifest list sha256:21b214159e4eb02d5e73f78ccdf5ee047da2fc6944808f9a454a6b0f427dd381 done
+#11 naming to moby-dangling@sha256:21b214159e4eb02d5e73f78ccdf5ee047da2fc6944808f9a454a6b0f427dd381 done
+#11 unpacking to moby-dangling@sha256:21b214159e4eb02d5e73f78ccdf5ee047da2fc6944808f9a454a6b0f427dd381 done
+#11 DONE 0.1s
+
+#12 resolving provenance for metadata file
+#12 DONE 0.0s
+
+ [33m1 warning found (use docker --debug to expand):
+[0m - InvalidDefaultArgInFrom: Default value for ARG ${BASE} results in empty or invalid base image name (line 6)

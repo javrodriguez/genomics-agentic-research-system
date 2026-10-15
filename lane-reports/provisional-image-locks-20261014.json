@@ -1,0 +1,154 @@
+{
+ "label": "provisional image-lock values from probe-only athena builds (13 Oct); evidence only, NOT production pins",
+ "locks": {
+  "box/codex/image.lock": {
+   "bytes": 637,
+   "content": {
+    "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "dockerfile": "codex/Dockerfile",
+    "harness": {
+     "package": "@openai/codex",
+     "version": "0.162.1"
+    },
+    "image": "take-o",
+    "image_id": "sha256:ac201dbe3b3a7dfa3620f0a842b8f15df7a361fe9086961b9cfed8ae885fa1d1",
+    "pending": {},
+    "python": "3.11.2",
+    "schema": 1,
+    "users": {
+     "agent": {
+      "gid": 10001,
+      "name": "dana",
+      "uid": 10001
+     },
+     "keepalive": {
+      "gid": 10003,
+      "uid": 10003
+     },
+     "watcher": {
+      "gid": 10002,
+      "name": "eli",
+      "uid": 10002
+     }
+    }
+   },
+   "sha256_at_0b6f60f9": "76e5e45c63335a962d3ed1c4515ab3ce139da79550cdcaebec95355d5e4cb803"
+  },
+  "box/egress/image.lock": {
+   "bytes": 374,
+   "content": {
+    "base": "docker.io/library/debian@sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91",
+    "dockerfile": "egress/Dockerfile",
+    "harness": null,
+    "image": "egress",
+    "image_id": "sha256:6af01a7bc74f31a802163ddd1576db590b73fbc2c54149c0c670788c501abcfa",
+    "pending": {},
+    "python": null,
+    "schema": 1,
+    "squid": "5.7-2+deb12u6",
+    "users": null
+   },
+   "sha256_at_0b6f60f9": "2d4aeb00554f6cce3013855a87cfe6c48079744342049465f7f36d95a7e0f853"
+  },
+  "box/gemini/image.lock": {
+   "bytes": 642,
+   "content": {
+    "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "dockerfile": "gemini/Dockerfile",
+    "harness": {
+     "package": "@google/gemini-cli",
+     "version": "0.64.0"
+    },
+    "image": "take-g",
+    "image_id": "sha256:4294b1ce3fc0f3c0a9ca7b789f73c613c2baa56e4e0381229a8db3301a707216",
+    "pending": {},
+    "python": "3.11.2",
+    "schema": 1,
+    "users": {
+     "agent": {
+      "gid": 10001,
+      "name": "dana",
+      "uid": 10001
+     },
+     "keepalive": {
+      "gid": 10003,
+      "uid": 10003
+     },
+     "watcher": {
+      "gid": 10002,
+      "name": "eli",
+      "uid": 10002
+     }
+    }
+   },
+   "sha256_at_0b6f60f9": "46c191cd67362cdd4ca0f61482d046c54bc6b79e388991606ee2529f3ea2311d"
+  },
+  "box/image.lock": {
+   "bytes": 643,
+   "content": {
+    "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "dockerfile": "Dockerfile",
+    "harness": {
+     "package": "@anthropic-ai/claude-code",
+     "version": "2.1.296"
+    },
+    "image": "take-a",
+    "image_id": "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+    "pending": {},
+    "python": "3.11.2",
+    "schema": 1,
+    "users": {
+     "agent": {
+      "gid": 10001,
+      "name": "dana",
+      "uid": 10001
+     },
+     "keepalive": {
+      "gid": 10003,
+      "uid": 10003
+     },
+     "watcher": {
+      "gid": 10002,
+      "name": "eli",
+      "uid": 10002
+     }
+    }
+   },
+   "sha256_at_0b6f60f9": "a5c6865524fa5e646776c6b6e5532a1efdcfb9dfa134da25c21b3ff10bf30720"
+  },
+  "box/sidecar/image.lock": {
+   "bytes": 582,
+   "content": {
+    "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "dockerfile": "sidecar/Dockerfile",
+    "harness": null,
+    "image": "sidecar",
+    "image_id": "sha256:f4cfbfa2fbfe004c9f5377b9de14438c0fa90e72076f583fb150a8b20f159de3",
+    "pending": {},
+    "python": "3.11.2",
+    "schema": 1,
+    "users": {
+     "agent": {
+      "gid": 10001,
+      "name": "dana",
+      "uid": 10001
+     },
+     "keepalive": {
+      "gid": 10003,
+      "uid": 10003
+     },
+     "watcher": {
+      "gid": 10002,
+      "name": "eli",
+      "uid": 10002
+     }
+    }
+   },
+   "sha256_at_0b6f60f9": "357b6b51dfbd7d844836ee836a6c465dfd69d62def0089be625de886248e3ee6"
+  }
+ },
+ "restored_locks_to": "a12569a (all PENDING)",
+ "schema": 1,
+ "source_commit": "0b6f60f9",
+ "why": "review-box-witness-locks.md B-1/B-2: provisional builds; the sidecar image baked the pre-delta sidecar.py; take-a not walked"
+}

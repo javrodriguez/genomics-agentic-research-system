@@ -1,0 +1,46 @@
+...../Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_take_config.py:348: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w-pc7rzmr3/config.toml'>
+  __import__("hashlib").sha256(open(os.path.join(r, n), "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_take_config.py:348: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w-foj9wodn/config.toml'>
+  __import__("hashlib").sha256(open(os.path.join(r, n), "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_take_config.py:348: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w-mhh8tynz/config.toml'>
+  __import__("hashlib").sha256(open(os.path.join(r, n), "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_take_config.py:348: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w-pc7rzmr3/sessions.log'>
+  __import__("hashlib").sha256(open(os.path.join(r, n), "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_take_config.py:348: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w-zq_8w8ki/config.toml'>
+  __import__("hashlib").sha256(open(os.path.join(r, n), "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_take_config.py:348: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w-zq_8w8ki/config2.toml'>
+  __import__("hashlib").sha256(open(os.path.join(r, n), "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_take_config.py:348: ResourceWarning: unclosed file <_io.BufferedReader name='/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w-foj9wodn/link'>
+  __import__("hashlib").sha256(open(os.path.join(r, n), "rb").read()).hexdigest()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+....
+----------------------------------------------------------------------
+Ran 9 tests in 0.134s
+
+OK
+  mutant web-search-on: red - codex config.toml reads {'model': 'gpt-6.1-sol', 'model_reasoning_effort': 'medium', 'web_search': '
+  mutant hooks-on: red - codex config.toml reads {'model': 'gpt-6.1-sol', 'model_reasoning_effort': 'medium', 'web_search': '
+  mutant codex-login-store: red - codex config.toml reads {'model': 'gpt-6.1-sol', 'model_reasoning_effort': 'medium', 'web_search': '
+  mutant codex-login-method: red - codex config.toml reads {'model': 'gpt-6.1-sol', 'model_reasoning_effort': 'medium', 'web_search': '
+  mutant gemini-web-fetch: red - gemini tools.exclude = ['google_web_search']
+  mutant gemini-telemetry: red - gemini experimental.adk.agentSessionNoninteractiveEnabled missing
+  mutant gemini-extra: red - gemini settings hold 12 values, not 11
+  mutant claude-extra: red - claude settings hold {'a': 1, 'skipDangerousModePermissionPrompt': True}, not nothing
+  mutant model-dropped: red - gemini model.name missing
+  mutant digests-only: red - the hash does not see a renamed file
+  mutant names-only: red - the hash does not see the model
+  mutant study-word: red - codex config.toml carries ['sidecar']
+  mutant key-in-file: red - codex config.toml carries a key
+  mutant writer-missing: red - raised Refused: no config writer for 'claude-code'
+  mutant override-parameter: red - write_with(bypass_key)
+  mutant no-ready-gate: red - raised Refused: the study writes no bypass acceptance key: RULED not required in -p runs
+  mutant needs-dropped: red - raised Refused: the study writes no bypass acceptance key: RULED not required in -p runs
+  mutant bypass-key-re-added: red - raised Refused: the study writes no bypass acceptance key: RULED not required in -p runs
+  mutant bypass-key-written: red - claude-code's per-take settings are not the empty document
+  mutant bypass-unmirrored: red - raised Refused: the study writes no bypass acceptance key: RULED not required in -p runs

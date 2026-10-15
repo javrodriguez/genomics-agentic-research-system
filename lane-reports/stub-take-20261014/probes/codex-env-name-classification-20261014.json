@@ -1,0 +1,1523 @@
+{
+ "binary_sha256": "628e35487d888a28f0427fc37501da529dd3d81fcbad7a2c3421c1e8670d92e1",
+ "counts": {
+  "ambiguous": 16,
+  "credential": 37,
+  "fragment": 29,
+  "harmless": 63,
+  "route": 50
+ },
+ "glued_counts": {
+  "ambiguous": 2,
+  "credential": 1,
+  "harmless": 2,
+  "route": 11,
+  "row": 1
+ },
+ "refuse_if_present": [
+  "AWS_ACCESS_KEY_ID",
+  "AWS_ACCOUNT_ID",
+  "AWS_ACCOUNT_IDE",
+  "AWS_ACCOUNT_ID_ENDPOINT_MODE",
+  "AWS_AUTH_SCHEME_PREFERENCE",
+  "AWS_BEARER_TOKEN_BEDROCK",
+  "AWS_CONFIG_FILE",
+  "AWS_CONTAINER_AUTHORIZATION_TOKEN",
+  "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE",
+  "AWS_CONTAINER_CREDENTIALS_FULL_URI",
+  "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI",
+  "AWS_DEFAULT_REGION",
+  "AWS_DEFAULT_REGIONA",
+  "AWS_DEFAULT_REGIONU",
+  "AWS_EC2_METADATA_DISABLED",
+  "AWS_EC2_METADATA_SERVICE_ENDPOINT",
+  "AWS_EC2_METADATA_SERVICE_ENDPOINT_MODE",
+  "AWS_ENDPOINT_URL",
+  "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS",
+  "AWS_LOGIN_CACHE_DIRECTORY",
+  "AWS_PROFILE",
+  "AWS_REGION",
+  "AWS_REGIONG",
+  "AWS_ROLE_ARN",
+  "AWS_ROLE_SESSION_NAME",
+  "AWS_SECRET_ACCESS_KEY",
+  "AWS_SECRET_ACCESS_KEYN",
+  "AWS_SERVICE",
+  "AWS_SESSION_TOKEN",
+  "AWS_SHARED_CREDENTIALS_FILE",
+  "AWS_SIGV4",
+  "AWS_SIGV4S",
+  "AWS_USE_DUALSTACK_ENDPOINT",
+  "AWS_USE_FIPS_ENDPOINT",
+  "AWS_WEB_IDENTITY_TOKEN_FILE",
+  "AZURE_CLIENT_SECRET",
+  "AZURE_FEDERATED_TOKEN_FILE",
+  "BUNDLE_SSL_CA_CERT",
+  "CARGO_HTTP_CAINFO",
+  "CODEX_ACCESS_TOKEN",
+  "CODEX_AGENT_IDENTITY_AUTHAPI_BASE_URL",
+  "CODEX_AGENT_IDENTITY_JWKS_BASE_URL",
+  "CODEX_API_KEY",
+  "CODEX_APP_SERVER_CHATGPT_BASE_URL",
+  "CODEX_APP_SERVER_LOGIN_CLIENT_ID",
+  "CODEX_APP_SERVER_LOGIN_ISSUER",
+  "CODEX_APP_SERVER_LOGIN_ISSUERA",
+  "CODEX_AUTH",
+  "CODEX_AUTHAPI_BASE_URL",
+  "CODEX_CA_CERTIFICATE",
+  "CODEX_CLOUD_TASKS_BASE_URL",
+  "CODEX_CLOUD_TASKS_FORCE_INTERNAL",
+  "CODEX_CONNECTORS_TOKEN",
+  "CODEX_DAEMON_TELEMETRY_HANDOFF",
+  "CODEX_ESCALATE_SOCKET",
+  "CODEX_EXEC_SERVER_NOISE_AUTH_TOKEN",
+  "CODEX_EXEC_SERVER_NOISE_CHATGPT_ACCOUNT_ID",
+  "CODEX_EXEC_SERVER_NOISE_CHATGPT_ACCOUNT_IDN",
+  "CODEX_EXEC_SERVER_NOISE_ENVIRONMENT_ID",
+  "CODEX_EXEC_SERVER_NOISE_REGISTRY_URL",
+  "CODEX_EXEC_SERVER_PROXY_PRIVATE_IPS_VIA_UPSTREAM",
+  "CODEX_EXEC_SERVER_URL",
+  "CODEX_GITHUB_PERSONAL_ACCESS_TOKEN",
+  "CODEX_GUARDIAN_DECISIONS_API_KEY",
+  "CODEX_INTERNAL_APP_SERVER_REMOTE_CONTROL_DISABLED",
+  "CODEX_INTERNAL_ORIGINATOR_OVERRIDE",
+  "CODEX_NETWORK_ALLOW_LOCAL_BINDING",
+  "CODEX_NETWORK_POLICY_VIOLATION",
+  "CODEX_NETWORK_PROXY_ACTIVE",
+  "CODEX_NETWORK_PROXY_ATTRIBUTION",
+  "CODEX_NETWORK_PROXY_BROKERED_CREDENTIALS",
+  "CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVE",
+  "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_",
+  "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_",
+  "CODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_BASH_ENV",
+  "CODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_POSIX_ENV",
+  "CODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_ZDOTDIR__",
+  "CODEX_OSS_BASE_URL",
+  "CODEX_OSS_PORT",
+  "CODEX_PERMISSION",
+  "CODEX_PERMISSION_PROFILE",
+  "CODEX_REFRESH_TOKEN_URL_OVERRIDE",
+  "CODEX_REVOKE_TOKEN_URL_OVERRIDE",
+  "CODEX_SANDBOX",
+  "CODEX_SANDBOX_NETWORK_DISABLED",
+  "CODEX_SNAPSHOT_BROKER_XTRACE",
+  "CODEX_SNAPSHOT_OVERRIDE",
+  "CODEX_SNAPSHOT_PROXY_ENV_SET",
+  "CODEX_SNAPSHOT_PROXY_OVERRIDE",
+  "CURL_CA_BUNDLE",
+  "ELECTRON_GET_USE_PROXY",
+  "EXEC_WRAPPER",
+  "GIT_SSL_CAINFO",
+  "GOOGLE_APPLICATION_CREDENTIALS",
+  "HTTP_PROXY",
+  "NODE_EXTRA_CA_CERTS",
+  "NODE_REPL_AUTH_TOKEN",
+  "NODE_USE_ENV_PROXY",
+  "OPENAI_API_KEY",
+  "OPENAI_BASE_URL",
+  "OPENAI_CLUSTER",
+  "OPENAI_FEDERATION_RULE_ID",
+  "OPENAI_IDENTITY_TOKEN_FILE",
+  "OPENAI_ORGANIZATION",
+  "OPENAI_WORKLOAD_IDENTITY_CONTEXT",
+  "REQUESTS_CA_BUNDLE",
+  "REQUEST_DISPATCH_MODE",
+  "SSL_CERT_DIR",
+  "SSL_CERT_FILE"
+ ],
+ "rows": [
+  {
+   "class": "credential",
+   "match": "AWS_ACCESS_KEY_ID",
+   "names": [
+    "AWS_ACCESS_KEY_ID"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_ACCOUNT_IDE",
+   "names": [
+    "AWS_ACCOUNT_ID",
+    "AWS_ACCOUNT_IDE"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_ACCOUNT_ID_ENDPOINT_MODE",
+   "names": [
+    "AWS_ACCOUNT_ID_ENDPOINT_MODE"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_AUTH_SCHEME_PREFERENCE",
+   "names": [
+    "AWS_AUTH_SCHEME_PREFERENCE"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AWS_BEARER_TOKEN_BEDROCK",
+   "names": [
+    "AWS_BEARER_TOKEN_BEDROCK"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "AWS_CONFH1"
+  },
+  {
+   "class": "credential",
+   "match": "AWS_CONFIG_FILE",
+   "names": [
+    "AWS_CONFIG_FILE"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AWS_CONTAINER_AUTHORIZATION_TOKENECS",
+   "names": [
+    "AWS_CONTAINER_AUTHORIZATION_TOKEN"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE",
+   "names": [
+    "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE"
+   ]
+  },
+  {
+   "class": "credential",
+   "glued": [
+    {
+     "class": "route",
+     "name": "SSL_CERT_DIR"
+    }
+   ],
+   "match": "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILESSL_CERT_DIR",
+   "names": [
+    "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AWS_CONTAINER_CREDENTIALS_FULL_URI",
+   "names": [
+    "AWS_CONTAINER_CREDENTIALS_FULL_URI"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI",
+   "names": [
+    "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_DEFAULT_REGION",
+   "names": [
+    "AWS_DEFAULT_REGION"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_DEFAULT_REGIONA",
+   "names": [
+    "AWS_DEFAULT_REGION",
+    "AWS_DEFAULT_REGIONA"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_DEFAULT_REGIONU",
+   "names": [
+    "AWS_DEFAULT_REGION",
+    "AWS_DEFAULT_REGIONU"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "AWS_DISABLE_REQUEST_COMPRESSION",
+   "names": [
+    "AWS_DISABLE_REQUEST_COMPRESSION"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_EC2_METADATA_DISABLED",
+   "names": [
+    "AWS_EC2_METADATA_DISABLED"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_EC2_METADATA_SERVICE_ENDPOINT",
+   "names": [
+    "AWS_EC2_METADATA_SERVICE_ENDPOINT"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_EC2_METADATA_SERVICE_ENDPOINT_MODE",
+   "names": [
+    "AWS_EC2_METADATA_SERVICE_ENDPOINT_MODE"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_ENDPOINT_URL",
+   "names": [
+    "AWS_ENDPOINT_URL"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "AWS_EXECUTION_ENV",
+   "names": [
+    "AWS_EXECUTION_ENV"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS",
+   "names": [
+    "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "AWS_LAMBDA_FUNCTION_NAME",
+   "names": [
+    "AWS_LAMBDA_FUNCTION_NAME"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AWS_LOGIN_CACHE_DIRECTORY",
+   "names": [
+    "AWS_LOGIN_CACHE_DIRECTORY"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "AWS_MAX_ATTEMPTS",
+   "names": [
+    "AWS_MAX_ATTEMPTS"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AWS_PROFILE",
+   "names": [
+    "AWS_PROFILE"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AWS_PROFILEAWS",
+   "names": [
+    "AWS_PROFILE"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_REGION",
+   "names": [
+    "AWS_REGION"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_REGIONAWS",
+   "names": [
+    "AWS_REGION"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_REGIONG",
+   "names": [
+    "AWS_REGION",
+    "AWS_REGIONG"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "AWS_REQUEST_CHECKSUM_CALCULATION",
+   "names": [
+    "AWS_REQUEST_CHECKSUM_CALCULATION"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "AWS_REQUEST_MIN_COMPRESSION_SIZE_BYTES",
+   "names": [
+    "AWS_REQUEST_MIN_COMPRESSION_SIZE_BYTES"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "AWS_RESPONSE_CHECKSUM_VALIDATION",
+   "names": [
+    "AWS_RESPONSE_CHECKSUM_VALIDATION"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "AWS_RETRY_MODE",
+   "names": [
+    "AWS_RETRY_MODE"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AWS_ROLE_ARN",
+   "names": [
+    "AWS_ROLE_ARN"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AWS_ROLE_SESSION_NAME",
+   "names": [
+    "AWS_ROLE_SESSION_NAME"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "AWS_SDK_UA_APP_ID",
+   "names": [
+    "AWS_SDK_UA_APP_ID"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AWS_SECRET_ACCESS_KEY",
+   "names": [
+    "AWS_SECRET_ACCESS_KEY"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AWS_SECRET_ACCESS_KEYN",
+   "names": [
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SECRET_ACCESS_KEYN"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_SERVICEAWS",
+   "names": [
+    "AWS_SERVICE"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AWS_SESSION_TOKEN",
+   "names": [
+    "AWS_SESSION_TOKEN"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "AWS_SHARED_CREDEE"
+  },
+  {
+   "class": "credential",
+   "match": "AWS_SHARED_CREDENTIALS_FILE",
+   "names": [
+    "AWS_SHARED_CREDENTIALS_FILE"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "AWS_SIGV4S",
+   "names": [
+    "AWS_SIGV4",
+    "AWS_SIGV4S"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_USE_DUALSTACK_ENDPOINT",
+   "names": [
+    "AWS_USE_DUALSTACK_ENDPOINT"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "AWS_USE_FIPS_ENDPOINT",
+   "names": [
+    "AWS_USE_FIPS_ENDPOINT"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AWS_WEB_IDENTITY_TOKEN_FILE",
+   "names": [
+    "AWS_WEB_IDENTITY_TOKEN_FILE"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AZURE_CLIENT_SECRET",
+   "names": [
+    "AZURE_CLIENT_SECRET"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "AZURE_FEDERATED_TOKEN_FILE",
+   "names": [
+    "AZURE_FEDERATED_TOKEN_FILE"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "CODEX_ACCESS_TOKEN",
+   "names": [
+    "CODEX_ACCESS_TOKEN"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_AGENT_IDENTITY_AUTHAPI_BASE_URL",
+   "names": [
+    "CODEX_AGENT_IDENTITY_AUTHAPI_BASE_URL"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_AGENT_IDENTITY_JWKS_BASE_URL",
+   "names": [
+    "CODEX_AGENT_IDENTITY_JWKS_BASE_URL"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_APH"
+  },
+  {
+   "class": "credential",
+   "match": "CODEX_API_KEY",
+   "names": [
+    "CODEX_API_KEY"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_APPLY_GIT_CFG",
+   "names": [
+    "CODEX_APPLY_GIT_CFG"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGS",
+   "names": [
+    "CODEX_APPLY_PATCH_PRESERVE_LINE_ENDINGS"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_APP_SERVER_CHATGPT_BASE_URL",
+   "names": [
+    "CODEX_APP_SERVER_CHATGPT_BASE_URL"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "CODEX_APP_SERVER_LOGIN_CLIENT_ID",
+   "names": [
+    "CODEX_APP_SERVER_LOGIN_CLIENT_ID"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "CODEX_APP_SERVER_LOGIN_ISSUERA",
+   "names": [
+    "CODEX_APP_SERVER_LOGIN_ISSUER",
+    "CODEX_APP_SERVER_LOGIN_ISSUERA"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "CODEX_AUTH",
+   "names": [
+    "CODEX_AUTH"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_AUTHAPI_BASE_URL",
+   "names": [
+    "CODEX_AUTHAPI_BASE_URL"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_BWRAP_SHA256",
+   "names": [
+    "CODEX_BWRAP_SHA256"
+   ]
+  },
+  {
+   "class": "fragment",
+   "glued": [
+    {
+     "class": "route",
+     "name": "CARGO_HTTP_CAINFO"
+    }
+   ],
+   "match": "CODEX_CA_CERTIFICARGO_HTTP_CAINFO"
+  },
+  {
+   "class": "route",
+   "match": "CODEX_CA_CERTIFICATE",
+   "names": [
+    "CODEX_CA_CERTIFICATE"
+   ]
+  },
+  {
+   "class": "route",
+   "glued": [
+    {
+     "class": "route",
+     "name": "SSL_CERT_FILE"
+    }
+   ],
+   "match": "CODEX_CA_CERTIFICATESSL_CERT_FILE",
+   "names": [
+    "CODEX_CA_CERTIFICATE"
+   ]
+  },
+  {
+   "class": "route",
+   "glued": [
+    {
+     "class": "route",
+     "name": "SSL_CERT_FILE"
+    },
+    {
+     "class": "route",
+     "name": "REQUESTS_CA_BUNDLE"
+    },
+    {
+     "class": "route",
+     "name": "CURL_CA_BUNDLE"
+    },
+    {
+     "class": "route",
+     "name": "NODE_EXTRA_CA_CERTS"
+    },
+    {
+     "class": "route",
+     "name": "GIT_SSL_CAINFO"
+    },
+    {
+     "class": "route",
+     "name": "CARGO_HTTP_CAINFO"
+    },
+    {
+     "class": "route",
+     "name": "BUNDLE_SSL_CA_CERT"
+    }
+   ],
+   "match": "CODEX_CA_CERTIFICATESSL_CERT_FILEREQUESTS_CA_BUNDLECURL_CA_BUNDLENODE_EXTRA_CA_CERTSGIT_SSL_CAINFOCARGO_HTTP_CAINFOBUNDLE_SSL_CA_CERT",
+   "names": [
+    "CODEX_CA_CERTIFICATE"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_CI",
+   "names": [
+    "CODEX_CI"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_CLH1"
+  },
+  {
+   "class": "route",
+   "match": "CODEX_CLOUD_TASKS_BASE_URL",
+   "names": [
+    "CODEX_CLOUD_TASKS_BASE_URL"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_CLOUD_TASKS_FORCE_INTERNAL",
+   "names": [
+    "CODEX_CLOUD_TASKS_FORCE_INTERNAL"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "CODEX_CONNECTORS_TOKEN",
+   "names": [
+    "CODEX_CONNECTORS_TOKEN"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "CODEX_DAEMON_TELEMETRY_HANDOFF",
+   "names": [
+    "CODEX_DAEMON_TELEMETRY_HANDOFF"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "CODEX_DAEMON_TELEMETRY_HANDOFF1R",
+   "names": [
+    "CODEX_DAEMON_TELEMETRY_HANDOFF"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_DESKTOP_APP",
+   "names": [
+    "CODEX_DESKTOP_APP"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_ESCALATE_S"
+  },
+  {
+   "class": "route",
+   "match": "CODEX_ESCALATE_SOCKET",
+   "names": [
+    "CODEX_ESCALATE_SOCKET"
+   ]
+  },
+  {
+   "class": "route",
+   "glued": [
+    {
+     "class": "ambiguous",
+     "name": "EXEC_WRAPPER"
+    }
+   ],
+   "match": "CODEX_ESCALATE_SOCKETEXEC_WRAPPER",
+   "names": [
+    "CODEX_ESCALATE_SOCKET"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_EXEC_SERVER_EXIT_ON_STDIN_CLOSE",
+   "names": [
+    "CODEX_EXEC_SERVER_EXIT_ON_STDIN_CLOSE"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_EXEC_SERVER_EXIT_ON_STDIN_CLOSER",
+   "names": [
+    "CODEX_EXEC_SERVER_EXIT_ON_STDIN_CLOSE"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "CODEX_EXEC_SERVER_NOISE_AUTH_TOKEN",
+   "names": [
+    "CODEX_EXEC_SERVER_NOISE_AUTH_TOKEN"
+   ]
+  },
+  {
+   "class": "credential",
+   "glued": [
+    {
+     "class": "credential",
+     "name": "NODE_REPL_AUTH_TOKEN"
+    }
+   ],
+   "match": "CODEX_EXEC_SERVER_NOISE_AUTH_TOKENNODE_REPL_AUTH_TOKEN",
+   "names": [
+    "CODEX_EXEC_SERVER_NOISE_AUTH_TOKEN"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "CODEX_EXEC_SERVER_NOISE_CHATGPT_ACCOUNT_IDN",
+   "names": [
+    "CODEX_EXEC_SERVER_NOISE_CHATGPT_ACCOUNT_ID",
+    "CODEX_EXEC_SERVER_NOISE_CHATGPT_ACCOUNT_IDN"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_EXEC_SERVER_NOISE_ENVIRONMENT_ID",
+   "names": [
+    "CODEX_EXEC_SERVER_NOISE_ENVIRONMENT_ID"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_EXEC_SERVER_NOISE_REGISTRY_URL",
+   "names": [
+    "CODEX_EXEC_SERVER_NOISE_REGISTRY_URL"
+   ]
+  },
+  {
+   "class": "route",
+   "glued": [
+    {
+     "class": "ambiguous",
+     "name": "REQUEST_DISPATCH_MODE"
+    }
+   ],
+   "match": "CODEX_EXEC_SERVER_PROXY_PRIVATE_IPS_VIA_UPSTREAMREQUEST_DISPATCH_MODEM",
+   "names": [
+    "CODEX_EXEC_SERVER_PROXY_PRIVATE_IPS_VIA_UPSTREAM"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_EXEC_SERVER_URL",
+   "names": [
+    "CODEX_EXEC_SERVER_URL"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_GIH1"
+  },
+  {
+   "class": "credential",
+   "match": "CODEX_GITHUB_PERSONAL_ACCESS_TOKEN",
+   "names": [
+    "CODEX_GITHUB_PERSONAL_ACCESS_TOKEN"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "CODEX_GUARDIAN_DECISIONS_API_KEY",
+   "names": [
+    "CODEX_GUARDIAN_DECISIONS_API_KEY"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_HOH"
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_HOME",
+   "names": [
+    "CODEX_HOME"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_HOMEA",
+   "names": [
+    "CODEX_HOME"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_HOMEC",
+   "names": [
+    "CODEX_HOME"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_IDE_VSCODEU",
+   "names": [
+    "CODEX_IDE_VSCODE"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_INSTALL_DA"
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_INSTALL_DAEMON_ONLYT",
+   "names": [
+    "CODEX_INSTALL_DAEMON_ONLY"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_INSTALL_DE"
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_INSTALL_DEFER_SELECTION",
+   "names": [
+    "CODEX_INSTALL_DEFER_SELECTION"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_INSTALL_IF_CURRENT",
+   "names": [
+    "CODEX_INSTALL_IF_CURRENT"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_INSTALL_IF_LATEST",
+   "names": [
+    "CODEX_INSTALL_IF_LATEST"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "CODEX_INTERNAL_APP_SERVER_REMOTE_CONTROL_DISABLED",
+   "names": [
+    "CODEX_INTERNAL_APP_SERVER_REMOTE_CONTROL_DISABLED"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_INTERNAL_ORIGINATOR_OVERRIDE",
+   "names": [
+    "CODEX_INTERNAL_ORIGINATOR_OVERRIDE"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_MANAGED_BY_BUN",
+   "names": [
+    "CODEX_MANAGED_BY_BUN"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_MANAGED_BY_BUNE",
+   "names": [
+    "CODEX_MANAGED_BY_BUN"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_MANAGED_BY_NPM",
+   "names": [
+    "CODEX_MANAGED_BY_NPM"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_MANAGED_BY_PNPM",
+   "names": [
+    "CODEX_MANAGED_BY_PNPM"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_MANAGED_BY_VITE_PLUS",
+   "names": [
+    "CODEX_MANAGED_BY_VITE_PLUS"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_MANAGED_PACKAGE_ROOT",
+   "names": [
+    "CODEX_MANAGED_PACKAGE_ROOT"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_MCP_PROTOC"
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_MCP_PROTOCOL_VERSION",
+   "names": [
+    "CODEX_MCP_PROTOCOL_VERSION"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_MCP_PROTOCOL_VERSION2025",
+   "names": [
+    "CODEX_MCP_PROTOCOL_VERSION"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_MCP_PROTOCOL_VERSIONBUG",
+   "names": [
+    "CODEX_MCP_PROTOCOL_VERSION"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_NETWORK_ALLOW_LOCAL_BINDING",
+   "names": [
+    "CODEX_NETWORK_ALLOW_LOCAL_BINDING"
+   ]
+  },
+  {
+   "class": "route",
+   "glued": [
+    {
+     "class": "route",
+     "name": "ELECTRON_GET_USE_PROXY"
+    },
+    {
+     "class": "route",
+     "name": "NODE_USE_ENV_PROXY"
+    }
+   ],
+   "match": "CODEX_NETWORK_ALLOW_LOCAL_BINDINGELECTRON_GET_USE_PROXYNODE_USE_ENV_PROXY",
+   "names": [
+    "CODEX_NETWORK_ALLOW_LOCAL_BINDING"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "CODEX_NETWORK_POLICY_VIOLATION",
+   "names": [
+    "CODEX_NETWORK_POLICY_VIOLATION"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_NETWORK_PR"
+  },
+  {
+   "class": "route",
+   "match": "CODEX_NETWORK_PROXY_ACTIVE",
+   "names": [
+    "CODEX_NETWORK_PROXY_ACTIVE"
+   ]
+  },
+  {
+   "class": "route",
+   "glued": [
+    {
+     "class": "harmless",
+     "name": "PWD"
+    },
+    {
+     "class": "harmless",
+     "name": "OLDPWD"
+    }
+   ],
+   "match": "CODEX_NETWORK_PROXY_ACTIVEPWDOLDPWD",
+   "names": [
+    "CODEX_NETWORK_PROXY_ACTIVE"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_NETWORK_PROXY_ATTRIBUTION",
+   "names": [
+    "CODEX_NETWORK_PROXY_ATTRIBUTION"
+   ]
+  },
+  {
+   "class": "route",
+   "glued": [
+    {
+     "class": "route",
+     "name": "ELECTRON_GET_USE_PROXY"
+    },
+    {
+     "class": "route",
+     "name": "NODE_USE_ENV_PROXY"
+    },
+    {
+     "class": "route",
+     "name": "HTTP_PROXY"
+    },
+    {
+     "class": "row",
+     "name": "HTTPS_PROXY"
+    }
+   ],
+   "match": "CODEX_NETWORK_PROXY_ATTRIBUTIONELECTRON_GET_USE_PROXYNODE_USE_ENV_PROXYHTTP_PROXYHTTPS_PROXY",
+   "names": [
+    "CODEX_NETWORK_PROXY_ATTRIBUTION"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "CODEX_NETWORK_PROXY_BROKERED_CREDENTIALS",
+   "names": [
+    "CODEX_NETWORK_PROXY_BROKERED_CREDENTIALS"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVE",
+   "names": [
+    "CODEX_NETWORK_PROXY_CREDENTIAL_BROKER_ACTIVE"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_",
+   "names": [
+    "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_",
+   "names": [
+    "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "CODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_BASH_ENV",
+   "names": [
+    "CODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_BASH_ENV"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "CODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_POSIX_ENV",
+   "names": [
+    "CODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_POSIX_ENV"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "CODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_ZDOTDIR__",
+   "names": [
+    "CODEX_NETWORK_PROXY_SNAPSHOT_ORIGINAL_ZDOTDIR__"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_NON_INTERACTIVE",
+   "names": [
+    "CODEX_NON_INTERACTIVE"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_OSS_BASE_URL",
+   "names": [
+    "CODEX_OSS_BASE_URL"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_OSS_PORT",
+   "names": [
+    "CODEX_OSS_PORT"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "CODEX_PERMISSION",
+   "names": [
+    "CODEX_PERMISSION"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_PERMISSION_PROFILE",
+   "names": [
+    "CODEX_PERMISSION_PROFILE"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_PLUGIN_METRICS_OUTPUT",
+   "names": [
+    "CODEX_PLUGIN_METRICS_OUTPUT"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_PLUGIN_METRICS_OUTPUTN",
+   "names": [
+    "CODEX_PLUGIN_METRICS_OUTPUT"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_REFRESH_TOKEN_URL_OVERRIDE",
+   "names": [
+    "CODEX_REFRESH_TOKEN_URL_OVERRIDE"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_RELEASE",
+   "names": [
+    "CODEX_RELEASE"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_REVOKE_TOKEN_URL_OVERRIDE",
+   "names": [
+    "CODEX_REVOKE_TOKEN_URL_OVERRIDE"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_ROLLOUT_TRACE_ROOT",
+   "names": [
+    "CODEX_ROLLOUT_TRACE_ROOT"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_SAH"
+  },
+  {
+   "class": "route",
+   "match": "CODEX_SANDBOX",
+   "names": [
+    "CODEX_SANDBOX"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_SANDBOX_NETWORK_DISABLED",
+   "names": [
+    "CODEX_SANDBOX_NETWORK_DISABLED"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "CODEX_SANDBOX_NETWORK_DISABLED1",
+   "names": [
+    "CODEX_SANDBOX_NETWORK_DISABLED"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_SESSION_ID",
+   "names": [
+    "CODEX_SESSION_ID"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_SHELL_SNAPSHOT_STATE_",
+   "names": [
+    "CODEX_SHELL_SNAPSHOT_STATE_"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_SNAPSHOT_ALTERNATE_PROTECTED_ENV",
+   "names": [
+    "CODEX_SNAPSHOT_ALTERNATE_PROTECTED_ENV"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "CODEX_SNAPSHOT_BROKER_XTRACE",
+   "names": [
+    "CODEX_SNAPSHOT_BROKER_XTRACE"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_SNAPSHOT_CURRENT_ENV",
+   "names": [
+    "CODEX_SNAPSHOT_CURRENT_ENV"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_SNAPSHOT_ORIGINAL_ENV",
+   "names": [
+    "CODEX_SNAPSHOT_ORIGINAL_ENV"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_SNAPSHOT_ORIGINAL_ENV_SET",
+   "names": [
+    "CODEX_SNAPSHOT_ORIGINAL_ENV_SET"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_SNAPSHOT_ORIGINAL_EXPANDED_ENV",
+   "names": [
+    "CODEX_SNAPSHOT_ORIGINAL_EXPANDED_ENV"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "CODEX_SNAPSHOT_OVERRIDE",
+   "names": [
+    "CODEX_SNAPSHOT_OVERRIDE"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_SNAPSHOT_POSIX_STARTUP",
+   "names": [
+    "CODEX_SNAPSHOT_POSIX_STARTUP"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_SNAPSHOT_PROTECTED_ENV",
+   "names": [
+    "CODEX_SNAPSHOT_PROTECTED_ENV"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "CODEX_SNAPSHOT_PROXY_ENV_SET",
+   "names": [
+    "CODEX_SNAPSHOT_PROXY_ENV_SET"
+   ]
+  },
+  {
+   "class": "ambiguous",
+   "match": "CODEX_SNAPSHOT_PROXY_OVERRIDE",
+   "names": [
+    "CODEX_SNAPSHOT_PROXY_OVERRIDE"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_SNAPSHOT_REPLAYED_BASH_ENV",
+   "names": [
+    "CODEX_SNAPSHOT_REPLAYED_BASH_ENV"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_SNAPSHOT_REPLAYED_PROTECTED_ENV",
+   "names": [
+    "CODEX_SNAPSHOT_REPLAYED_PROTECTED_ENV"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_SNAPSHOT_SNAPSHOT_EXPORTS",
+   "names": [
+    "CODEX_SNAPSHOT_SNAPSHOT_EXPORTS"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_SNAPSHOT_SOURCE",
+   "names": [
+    "CODEX_SNAPSHOT_SOURCE"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_SQH"
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_SQLITE_HOME",
+   "names": [
+    "CODEX_SQLITE_HOME"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_STARTING_DIFF",
+   "names": [
+    "CODEX_STARTING_DIFF"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_THH"
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_THI"
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_THREAD_ID",
+   "names": [
+    "CODEX_THREAD_ID"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_TUI_DISABLE_KEYBOARD_ENHANCEMENT",
+   "names": [
+    "CODEX_TUI_DISABLE_KEYBOARD_ENHANCEMENT"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_TUI_RECORD_SESSION",
+   "names": [
+    "CODEX_TUI_RECORD_SESSION"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_TUI_ROUNDED",
+   "names": [
+    "CODEX_TUI_ROUNDED"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_TUI_SESSION_LOG_PATH",
+   "names": [
+    "CODEX_TUI_SESSION_LOG_PATH"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_UPDATE_FROM_RELEASE",
+   "names": [
+    "CODEX_UPDATE_FROM_RELEASE"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_URL",
+   "names": [
+    "CODEX_URL"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_VEH1"
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_VEI"
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_VERSION",
+   "names": [
+    "CODEX_VERSION"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_WEH1"
+  },
+  {
+   "class": "fragment",
+   "match": "CODEX_WOH1"
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_WORK_DESKTOP",
+   "names": [
+    "CODEX_WORK_DESKTOP"
+   ]
+  },
+  {
+   "class": "harmless",
+   "match": "CODEX_WORK_MOBIL",
+   "names": [
+    "CODEX_WORK_MOBILE"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "GOOGLE_APPLICATION_CREDENTIALS",
+   "names": [
+    "GOOGLE_APPLICATION_CREDENTIALS"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "OPENAI_AH1"
+  },
+  {
+   "class": "fragment",
+   "match": "OPENAI_AH3"
+  },
+  {
+   "class": "fragment",
+   "match": "OPENAI_AL1"
+  },
+  {
+   "class": "fragment",
+   "match": "OPENAI_AM1"
+  },
+  {
+   "class": "credential",
+   "match": "OPENAI_API_KEY",
+   "names": [
+    "OPENAI_API_KEY"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "OPENAI_BASE_URL",
+   "names": [
+    "OPENAI_BASE_URL"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "OPENAI_BH"
+  },
+  {
+   "class": "fragment",
+   "match": "OPENAI_BI1"
+  },
+  {
+   "class": "fragment",
+   "match": "OPENAI_BL1"
+  },
+  {
+   "class": "fragment",
+   "match": "OPENAI_BM1"
+  },
+  {
+   "class": "route",
+   "match": "OPENAI_CLUSTER",
+   "names": [
+    "OPENAI_CLUSTER"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "OPENAI_FEDERATION_RULE_ID",
+   "names": [
+    "OPENAI_FEDERATION_RULE_ID"
+   ]
+  },
+  {
+   "class": "credential",
+   "match": "OPENAI_IDENTITY_TOKEN_FILE",
+   "names": [
+    "OPENAI_IDENTITY_TOKEN_FILE"
+   ]
+  },
+  {
+   "class": "route",
+   "match": "OPENAI_ORGANIZATION",
+   "names": [
+    "OPENAI_ORGANIZATION"
+   ]
+  },
+  {
+   "class": "fragment",
+   "match": "OPENAI_PH"
+  },
+  {
+   "class": "credential",
+   "match": "OPENAI_WORKLOAD_IDENTITY_CONTEXT",
+   "names": [
+    "OPENAI_WORKLOAD_IDENTITY_CONTEXT"
+   ]
+  }
+ ],
+ "split_names": 195,
+ "sweep": "codex-env-name-sweep-athena-20261014.json",
+ "sweep_sha256": "ddb31eec8b337c0614ef82895d5be04662e6a63a558cc42d3e6163a8e90484bd"
+}

@@ -1,0 +1,1168 @@
+..F......FFFFF..........F
+WITNESS agent-text-as-error: red by A2-error (2 own, 0 collateral, 0 errors) .FFFFFFF
+WITNESS blank-message-as-output: red by A3-output (1 own, 0 collateral, 0 errors) .FF
+WITNESS count-bool-clause-dropped: red by S4-stats (4 own, 0 collateral, 0 errors) .
+WITNESS count-int-clause-dropped: red by S4-stats (2 own, 0 collateral, 0 errors) .
+WITNESS count-negative-clause-dropped: red by S4-stats (4 own, 0 collateral, 0 errors) .
+WITNESS cut-line-uncounted: red by A1-stream (2 own, 0 collateral, 0 errors) .F
+WITNESS decode-unchecked: red by S1-event (6 own, 0 collateral, 0 errors) .
+WITNESS delta-clause-dropped: red by A1-stream (1 own, 0 collateral, 0 errors) .
+WITNESS delta-run-not-ended: red by A1-stream (1 own, 0 collateral, 0 errors) .
+WITNESS delta-type-loosened: red by S3-words (4 own, 0 collateral, 0 errors) .
+WITNESS edit-as-write: red by P1-view (1 own, 0 collateral, 0 errors) .
+WITNESS error-as-agent-output: red by A2-error (2 own, 0 collateral, 0 errors) .
+WITNESS error-event-words-dropped: red by S6-error-text (1 own, 0 collateral, 0 errors) .
+WITNESS error-object-keys-unchecked: red by S2-key (6 own, 0 collateral, 0 errors) .
+WITNESS error-object-presence-dropped: red by S2-key (51 own, 0 collateral, 0 errors) .
+WITNESS error-object-types-unchecked: red by S3-words (8 own, 0 collateral, 0 errors) .
+WITNESS error-object-unchecked: red by S2-key (6 own, 0 collateral, 0 errors) .
+WITNESS event-keys-unchecked: red by S2-key (30 own, 0 collateral, 0 errors) .FFF
+WITNESS failed-result-error-presence-dropped: red by S6-error-text (2 own, 0 collateral, 0 errors) .
+WITNESS failed-result-type-dropped: red by A2-error (2 own, 0 collateral, 0 errors) .
+WITNESS failed-result-words-dropped: red by S6-error-text (1 own, 0 collateral, 0 errors) .
+WITNESS harness-text-dropped: red by P1-view (1 own, 0 collateral, 0 errors) .FFF
+WITNESS joining-clause-dropped: red by A1-stream (2 own, 0 collateral, 0 errors) .
+WITNESS joining-forced: red by A1-stream (1 own, 0 collateral, 0 errors) .
+WITNESS lone-junk-accepted: red by A1-stream (3 own, 0 collateral, 0 errors) .
+WITNESS midstream-clause-dropped: red by A1-stream (1 own, 0 collateral, 0 errors) .
+WITNESS midstream-junk-accepted: red by A1-stream (4 own, 0 collateral, 0 errors) .
+WITNESS missing-key-accepted: red by S2-key (28 own, 0 collateral, 0 errors) .FFF
+WITNESS model-entry-counts-unchecked: red by S4-stats (4 own, 0 collateral, 0 errors) .
+WITNESS model-entry-keys-unchecked: red by S4-stats (4 own, 0 collateral, 0 errors) .
+WITNESS model-entry-type-unchecked: red by S4-stats (2 own, 0 collateral, 0 errors) .FF
+WITNESS models-type-unchecked: red by S4-stats (2 own, 0 collateral, 0 errors) .FFFF
+WITNESS non-object-accepted: red by S1-event (2 own, 0 collateral, 0 errors) .
+WITNESS not-json-untyped: red by S1-event (2 own, 0 collateral, 0 errors) .FFF
+WITNESS result-stats-presence-dropped: red by A4-stats (1 own, 0 collateral, 0 errors) .FF
+WITNESS role-unchecked: red by S3-words (2 own, 0 collateral, 0 errors) .FFFFFFFF
+WITNESS severity-presence-dropped: red by S3-words (2 own, 0 collateral, 0 errors) .
+WITNESS severity-unchecked: red by S3-words (2 own, 0 collateral, 0 errors) .
+WITNESS shape-refusal-dropped: red by A1-stream (21 own, 0 collateral, 0 errors) .F
+WITNESS split-on-every-line-break: red by A1-stream (2 own, 0 collateral, 0 errors) .
+WITNESS stats-counts-unchecked: red by S4-stats (10 own, 0 collateral, 0 errors) .
+WITNESS stats-dropped: red by A4-stats (1 own, 0 collateral, 0 errors) .
+WITNESS stats-keys-unchecked: red by S4-stats (4 own, 0 collateral, 0 errors) .FF
+WITNESS stats-presence-dropped: red by S4-stats (4 own, 0 collateral, 0 errors) .
+WITNESS stats-unchecked: red by S4-stats (26 own, 0 collateral, 0 errors) .
+WITNESS status-result-only: red by S3-words (2 own, 0 collateral, 0 errors) .
+WITNESS status-tool-result-only: red by S3-words (2 own, 0 collateral, 0 errors) .
+WITNESS status-unchecked: red by S3-words (4 own, 0 collateral, 0 errors) .
+WITNESS success-result-as-error: red by A2-error (2 own, 0 collateral, 0 errors) .
+WITNESS success-without-stats: red by S4-stats (2 own, 0 collateral, 0 errors) .
+WITNESS success-without-stats-status-dropped: red by S4-stats (2 own, 0 collateral, 0 errors) .FF
+WITNESS tool-id-empty-unchecked: red by S3-words (4 own, 0 collateral, 0 errors) .
+WITNESS tool-id-tool-use-only: red by S3-words (2 own, 0 collateral, 0 errors) .
+WITNESS tool-refusal-untyped: red by S5-tools (6 own, 0 collateral, 0 errors) .
+WITNESS tool-result-text-dropped: red by P1-view (1 own, 0 collateral, 0 errors) .
+WITNESS tool-table-unchecked: red by S5-tools (3 own, 0 collateral, 0 errors) .
+WITNESS tool-use-not-output: red by A3-output (1 own, 0 collateral, 0 errors) .F
+WITNESS two-inits-accepted: red by A1-stream (1 own, 0 collateral, 0 errors) .
+WITNESS two-results-accepted: red by A1-stream (1 own, 0 collateral, 0 errors) .
+WITNESS unknown-event-accepted: red by S1-event (4 own, 0 collateral, 0 errors) .F
+WITNESS unknown-key-accepted: red by S2-key (8 own, 0 collateral, 0 errors) .
+WITNESS user-as-agent-text: red by P1-view (2 own, 0 collateral, 0 errors) .
+WITNESS user-message-as-output: red by A3-output (2 own, 0 collateral, 0 errors) .
+WITNESS value-types-unchecked: red by S3-words (24 own, 0 collateral, 0 errors) .FFF
+WITNESS web-tool-admitted: red by S5-tools (3 own, 0 collateral, 0 errors) .
+======================================================================
+FAIL: test_generated_mutants_baseline (test_gemini_adapter.TestGeneratedMutants.test_generated_mutants_baseline)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1729, in test_generated_mutants_baseline
+    self.assertEqual(all_checks(tg, ga), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A5-model: NotReady: Gemini key bin[563 chars]alk'] != []
+
+First list contains 6 additional elements.
+First extra element 0:
+'ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
+Diff is 663 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_a5_the_model_checked_every_turn (test_gemini_adapter.TestTheAdapter.test_a5_the_model_checked_every_turn)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1013, in test_a5_the_model_checked_every_turn
+    self.assertEqual(a5_model(ga), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A5-model: NotReady: Gemini key bin[65 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk']
+
+======================================================================
+FAIL: test_a6_the_call_argv (test_gemini_adapter.TestTheAdapter.test_a6_the_call_argv)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1016, in test_a6_the_call_argv
+    self.assertEqual(a6_argv(ga), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3']
+
+======================================================================
+FAIL: test_a7_the_resumed_session (test_gemini_adapter.TestTheAdapter.test_a7_the_resumed_session)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1019, in test_a7_the_resumed_session
+    self.assertEqual(a7_session(ga), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A7-session: NotReady: Gemini key b[67 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A7-session: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A7-session: NotReady: Gemini key binding not ready: the study key '
+-  'waits for its paste and the first walk']
+
+======================================================================
+FAIL: test_a8_a_turn_on_the_fake_runtime (test_gemini_adapter.TestTheAdapter.test_a8_a_turn_on_the_fake_runtime)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1022, in test_a8_a_turn_on_the_fake_runtime
+    self.assertEqual(a8_turn(ga), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A8-turn: NotReady: Gemini key bind[64 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk']
+
+======================================================================
+FAIL: test_a9_the_shapes_source_is_documented (test_gemini_adapter.TestTheAdapter.test_a9_the_shapes_source_is_documented)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1025, in test_a9_the_shapes_source_is_documented
+    self.assertEqual(a9_source(ga), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A9-source: NotReady: Gemini key bi[66 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A9-source: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A9-source: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk']
+
+======================================================================
+FAIL: test_witness_adapter_model_unchecked (test_gemini_adapter.TestWitnesses.test_witness_adapter_model_unchecked)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : adapter-model-unchecked: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_argv_line_empty_dropped (test_gemini_adapter.TestWitnesses.test_witness_argv_line_empty_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : argv-line-empty-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_argv_line_type_dropped (test_gemini_adapter.TestWitnesses.test_witness_argv_line_type_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : argv-line-type-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_argv_mode_unchecked (test_gemini_adapter.TestWitnesses.test_witness_argv_mode_unchecked)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : argv-mode-unchecked: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_argv_model_shape_dropped (test_gemini_adapter.TestWitnesses.test_witness_argv_model_shape_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : argv-model-shape-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_argv_model_type_dropped (test_gemini_adapter.TestWitnesses.test_witness_argv_model_type_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : argv-model-type-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_argv_session_shape_dropped (test_gemini_adapter.TestWitnesses.test_witness_argv_session_shape_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : argv-session-shape-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_argv_session_type_dropped (test_gemini_adapter.TestWitnesses.test_witness_argv_session_type_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : argv-session-type-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_bool_exit_accepted (test_gemini_adapter.TestWitnesses.test_witness_bool_exit_accepted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A8-turn: NotReady: Gemini key bind[64 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : bool-exit-accepted: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_callables_unchecked (test_gemini_adapter.TestWitnesses.test_witness_callables_unchecked)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : callables-unchecked: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_dash_line_accepted (test_gemini_adapter.TestWitnesses.test_witness_dash_line_accepted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : dash-line-accepted: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_exit53_as_end_turn (test_gemini_adapter.TestWitnesses.test_witness_exit53_as_end_turn)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A8-turn: NotReady: Gemini key bind[64 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : exit53-as-end-turn: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_exit_meaning_skipped (test_gemini_adapter.TestWitnesses.test_witness_exit_meaning_skipped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A8-turn: NotReady: Gemini key bind[64 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : exit-meaning-skipped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_failed_result_as_end_turn (test_gemini_adapter.TestWitnesses.test_witness_failed_result_as_end_turn)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A8-turn: NotReady: Gemini key bind[64 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : failed-result-as-end-turn: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_init_from_argv (test_gemini_adapter.TestWitnesses.test_witness_init_from_argv)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A5-model: NotReady: Gemini key bin[65 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : init-from-argv: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_init_model_unchecked (test_gemini_adapter.TestWitnesses.test_witness_init_model_unchecked)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A5-model: NotReady: Gemini key bin[65 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : init-model-unchecked: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_init_session_shape_dropped (test_gemini_adapter.TestWitnesses.test_witness_init_session_shape_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A7-session: NotReady: Gemini key b[67 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A7-session: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A7-session: NotReady: Gemini key binding not ready: the study key '
+-  'waits for its paste and the first walk'] : init-session-shape-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_mode_first_only (test_gemini_adapter.TestWitnesses.test_witness_mode_first_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : mode-first-only: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_mode_table_clause_dropped (test_gemini_adapter.TestWitnesses.test_witness_mode_table_clause_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : mode-table-clause-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_mode_type_clause_dropped (test_gemini_adapter.TestWitnesses.test_witness_mode_type_clause_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : mode-type-clause-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_model_first_only (test_gemini_adapter.TestWitnesses.test_witness_model_first_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : model-first-only: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_model_id_loosened (test_gemini_adapter.TestWitnesses.test_witness_model_id_loosened)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : model-id-loosened: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_no_model_record_accepted (test_gemini_adapter.TestWitnesses.test_witness_no_model_record_accepted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A5-model: NotReady: Gemini key bin[65 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : no-model-record-accepted: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_no_model_record_init_clause_dropped (test_gemini_adapter.TestWitnesses.test_witness_no_model_record_init_clause_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A5-model: NotReady: Gemini key bin[65 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : no-model-record-init-clause-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_no_model_record_served_clause_dropped (test_gemini_adapter.TestWitnesses.test_witness_no_model_record_served_clause_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A5-model: NotReady: Gemini key bin[65 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : no-model-record-served-clause-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_no_model_record_stats_clause_dropped (test_gemini_adapter.TestWitnesses.test_witness_no_model_record_stats_clause_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A5-model: NotReady: Gemini key bin[65 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : no-model-record-stats-clause-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_other_session_resumed (test_gemini_adapter.TestWitnesses.test_witness_other_session_resumed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A7-session: NotReady: Gemini key b[67 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A7-session: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A7-session: NotReady: Gemini key binding not ready: the study key '
+-  'waits for its paste and the first walk'] : other-session-resumed: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_read_model_shape_dropped (test_gemini_adapter.TestWitnesses.test_witness_read_model_shape_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A5-model: NotReady: Gemini key bin[65 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : read-model-shape-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_read_model_type_dropped (test_gemini_adapter.TestWitnesses.test_witness_read_model_type_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A5-model: NotReady: Gemini key bin[65 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : read-model-type-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_resume_first (test_gemini_adapter.TestWitnesses.test_witness_resume_first)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : resume-first: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_resume_never (test_gemini_adapter.TestWitnesses.test_witness_resume_never)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A6-argv: the take's turns were refused: [113 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A6-argv: the take's turns were refused: Gemini key binding not ready: the study key waits for its paste and the first walk"
+
++ []
+- ["A6-argv: the take's turns were refused: Gemini key binding not ready: the "
+-  'study key waits for its paste and the first walk',
+-  'A6-argv: 0 turn exec(s), not 3'] : resume-never: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_served_models_dropped (test_gemini_adapter.TestWitnesses.test_witness_served_models_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A5-model: NotReady: Gemini key bin[65 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : served-models-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_session_differs_clause_dropped (test_gemini_adapter.TestWitnesses.test_witness_session_differs_clause_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A7-session: NotReady: Gemini key b[67 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A7-session: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A7-session: NotReady: Gemini key binding not ready: the study key '
+-  'waits for its paste and the first walk'] : session-differs-clause-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_session_index_admitted (test_gemini_adapter.TestWitnesses.test_witness_session_index_admitted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A7-session: NotReady: Gemini key b[67 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A7-session: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A7-session: NotReady: Gemini key binding not ready: the study key '
+-  'waits for its paste and the first walk'] : session-index-admitted: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_session_kept_from_a_later_turn (test_gemini_adapter.TestWitnesses.test_witness_session_kept_from_a_later_turn)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A7-session: NotReady: Gemini key b[67 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A7-session: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A7-session: NotReady: Gemini key binding not ready: the study key '
+-  'waits for its paste and the first walk'] : session-kept-from-a-later-turn: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_session_latest_admitted (test_gemini_adapter.TestWitnesses.test_witness_session_latest_admitted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A7-session: NotReady: Gemini key b[67 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A7-session: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A7-session: NotReady: Gemini key binding not ready: the study key '
+-  'waits for its paste and the first walk'] : session-latest-admitted: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_session_latest_case_sensitive (test_gemini_adapter.TestWitnesses.test_witness_session_latest_case_sensitive)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A7-session: NotReady: Gemini key b[67 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A7-session: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A7-session: NotReady: Gemini key binding not ready: the study key '
+-  'waits for its paste and the first walk'] : session-latest-case-sensitive: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_session_none_clause_dropped (test_gemini_adapter.TestWitnesses.test_witness_session_none_clause_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A7-session: NotReady: Gemini key b[67 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A7-session: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A7-session: NotReady: Gemini key binding not ready: the study key '
+-  'waits for its paste and the first walk'] : session-none-clause-dropped: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_session_selectors_admitted (test_gemini_adapter.TestWitnesses.test_witness_session_selectors_admitted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A7-session: NotReady: Gemini key b[67 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A7-session: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A7-session: NotReady: Gemini key binding not ready: the study key '
+-  'waits for its paste and the first walk'] : session-selectors-admitted: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_shapes_recorded (test_gemini_adapter.TestWitnesses.test_witness_shapes_recorded)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A9-source: NotReady: Gemini key bi[66 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A9-source: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A9-source: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : shapes-recorded: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_stats_models_first_key_only (test_gemini_adapter.TestWitnesses.test_witness_stats_models_first_key_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A5-model: NotReady: Gemini key bin[65 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : stats-models-first-key-only: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_stats_models_unchecked (test_gemini_adapter.TestWitnesses.test_witness_stats_models_unchecked)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A5-model: NotReady: Gemini key bin[65 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A5-model: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : stats-models-unchecked: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_timed_out_exit_refused (test_gemini_adapter.TestWitnesses.test_witness_timed_out_exit_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A8-turn: NotReady: Gemini key bind[64 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : timed-out-exit-refused: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_timeout_as_error (test_gemini_adapter.TestWitnesses.test_witness_timeout_as_error)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A8-turn: NotReady: Gemini key bind[64 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : timeout-as-error: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_turn_limit_mislabelled (test_gemini_adapter.TestWitnesses.test_witness_turn_limit_mislabelled)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A8-turn: NotReady: Gemini key bind[64 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : turn-limit-mislabelled: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_unknown_exit_accepted (test_gemini_adapter.TestWitnesses.test_witness_unknown_exit_accepted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A8-turn: NotReady: Gemini key bind[64 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : unknown-exit-accepted: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_version_exit_ignored (test_gemini_adapter.TestWitnesses.test_witness_version_exit_ignored)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A8-turn: NotReady: Gemini key bind[64 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : version-exit-ignored: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_version_matched (test_gemini_adapter.TestWitnesses.test_witness_version_matched)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A8-turn: NotReady: Gemini key bind[64 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : version-matched: the bound check is not green on gemini_adapter.py
+
+======================================================================
+FAIL: test_witness_version_searched (test_gemini_adapter.TestWitnesses.test_witness_version_searched)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1375, in test
+    self.kill(name)
+    ~~~~~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_gemini_adapter.py", line 1351, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A8-turn: NotReady: Gemini key bind[64 chars]alk'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits for its paste and the first walk'
+
++ []
+- ['ERROR A8-turn: NotReady: Gemini key binding not ready: the study key waits '
+-  'for its paste and the first walk'] : version-searched: the bound check is not green on gemini_adapter.py
+
+----------------------------------------------------------------------
+Ran 138 tests in 1.839s
+
+FAILED (failures=55)

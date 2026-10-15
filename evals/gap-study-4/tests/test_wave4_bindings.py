@@ -19,8 +19,10 @@ Carried items (the lane lead's brief):
   - binding 6 binds image_lock.SIDECAR_PROGRAM to sidecar.PROGRAM;
   - binding 8 binds preflight's lock keys to w4a's schema paths, and (lane w6a, CP2-preflight-2) the loader-to-
     evaluator connection: preflight reads a take's lock only through w4a's own image_lock.load and require_ready,
-    for the harness's own take image, and projects exactly LOCK_KEYS from it; the committed locks are refused as
-    not ready, and a filled synthetic copy reaches evaluate's lock contract;
+    for the harness's own take image, and projects exactly LOCK_KEYS from it; each committed take lock is the
+    reviewed pin (glitch-06's post-write ruling, 14 Oct 2026: schema 2 and byte-equal to what ops/write_image_lock.py
+    re-derives from the committed build record) and loads through it, and a filled synthetic copy reaches evaluate's
+    lock contract;
   - binding 4 also binds the sidecar's parsed evidence source (sidecar.create_argv's `evidence`) to the
     evidence_dir preflight judges (lane w6a, CP2-preflight-3).
 
@@ -108,6 +110,64 @@ class Binding(unittest.TestCase):
         print(f"\nMUTANT {name}: red", end=" ")
 
 
+def rederived(image: str):
+    """The lock writer's re-derivation of `image`'s committed lock from the committed build record (bytes), or the
+    refusal's text. Imported from ops/ by path; it runs git, read-only."""
+    import importlib.util
+    repo = os.path.dirname(os.path.dirname(STUDY))
+    spec = importlib.util.spec_from_file_location("write_image_lock_for_bindings",
+                                                  os.path.join(repo, "ops", "write_image_lock.py"))
+    w = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(w)
+    record = os.path.join(repo, "lane-reports", "build-20261014c", "athena-out-20261014", "build-record.json")
+    path = os.path.join(il.BOX_DIR, os.path.dirname(il.DOCKERFILES[image]), "image.lock")
+    try:
+        return w.rederive(il, repo, record, path, image)
+    except (w.Refused, il.LockError, ValueError, OSError, __import__("subprocess").TimeoutExpired) as e:
+        return f"refused: {type(e).__name__}: {e}"
+
+
+RECORD_SHA256 = "c55c75cc7bffea5c202a19bc25e1a9f8490e4c22975e6248486008b96bd65914"   # the reviewed build record
+
+
+def lock_bytes(image: str) -> bytes:
+    """The committed lock file's bytes (the binding 8 pin mutants replace this read)."""
+    with open(os.path.join(il.BOX_DIR, os.path.dirname(il.DOCKERFILES[image]), "image.lock"), "rb") as fh:
+        return fh.read()
+
+
+def _pin_text(lock: dict) -> bytes:
+    return (json.dumps(lock, indent=1, sort_keys=True) + "\n").encode()
+
+
+def _edited_digest(image: str) -> bytes:
+    lock = json.loads(_REAL_LOCK_BYTES(image))
+    d = lock["manifest_digest"]
+    lock["manifest_digest"] = d[:-1] + ("0" if d[-1] != "0" else "1")
+    return _pin_text(lock)
+
+
+def _another_row(image: str) -> bytes:
+    repo = os.path.dirname(os.path.dirname(STUDY))
+    with open(os.path.join(repo, "lane-reports", "build-20261014c", "athena-out-20261014", "build-record.json"),
+              encoding="utf-8") as fh:
+        rows = {r["image"]: r for r in json.load(fh)["images"]}
+    other = rows["take-o" if image != "take-o" else "take-a"]
+    lock = json.loads(_REAL_LOCK_BYTES(image))
+    lock.update({k: other[k] for k in ("image_id", "manifest_digest", "config_digest")})
+    return _pin_text(lock)
+
+
+def _unfilled(image: str) -> bytes:
+    lock = {k: v for k, v in json.loads(_REAL_LOCK_BYTES(image)).items() if k not in il.SCHEMA_2_KEYS}
+    lock.update(schema=il.SCHEMA, base=il.PENDING, image_id=il.PENDING,
+                pending={"base": "synthetic", "image_id": "synthetic"})
+    return _pin_text(lock)
+
+
+_REAL_LOCK_BYTES = lock_bytes
+
+
 def locks() -> dict:
     return {n: il.load(os.path.join(il.BOX_DIR, os.path.dirname(il.DOCKERFILES[n]), "image.lock")) for n in il.IMAGES}
 
@@ -192,13 +252,17 @@ class TestBinding3Proxy(Binding):
             ports = [args for _, d, args in pc.parse(fh.read()) if d == "http_port"]
         if ports != [[str(pc.PORT)]]:
             out.append(f"proxy.conf listens on {ports}, not {pc.PORT}")
-        # USER is PENDING on both sides until a built egress image tells it: both refuse.
-        with self.assertRaises(pc.NotReady):
-            pc.launch_fields()
-        pending_launch = rt.ProxyLaunch(image=IMAGE, conf_source="/srv/w/t1/proxy.conf", conf_target=pc.CONF_PATH,
-                                        command=pc.COMMAND, user=pc.USER, alias=pc.ALIAS)
-        with self.assertRaises(rt.NotReady):
-            rt.proxy_create_argv("b" * 64, pending_launch)
+        # USER is FILLED (13:13, 14 Oct 2026); while it is PENDING both sides refuse (kept red-tested by patching it back).
+        with mock.patch.object(pc, "USER", pc.PENDING):
+            with self.assertRaises(pc.NotReady):
+                pc.launch_fields()
+            pending_launch = rt.ProxyLaunch(image=IMAGE, conf_source="/srv/w/t1/proxy.conf",
+                                            conf_target=pc.CONF_PATH, command=pc.COMMAND, user=pc.USER,
+                                            alias=pc.ALIAS)
+            with self.assertRaises(rt.NotReady):
+                rt.proxy_create_argv("b" * 64, pending_launch)
+        if pc.launch_fields()["user"] != "13:13":
+            out.append("the committed USER is not squid's measured 13:13")
         # The drive step puts launch_fields() into ProxyLaunch: with USER filled in memory only, every field lands.
         with mock.patch.object(pc, "USER", "13:13"):
             fields = pc.launch_fields()
@@ -222,6 +286,10 @@ class TestBinding3Proxy(Binding):
 
 # ------------------------------------------------------------------------------------------------ binding 4
 class TestBinding4SidecarExpect(Binding):
+    # The registered boot set's inspect spellings (the statically accepted, measured setpriv delta; review
+    # review-box-witness-locks.md B-3, 14 Oct, glitch-06's narrow ownership extension): what fills cap_add in memory.
+    FILL = list(sc.BOOT_INSPECT_CAPABILITIES)
+
     def expect(self):
         return sc.expect_from_argv(sc.create_argv(image=IMAGE, run_tree=RUN_TREE, evidence=EVIDENCE,
                                                   watch=["out/result.txt", "notes.md"]))
@@ -239,8 +307,9 @@ class TestBinding4SidecarExpect(Binding):
                 out.append("a parsed mount carries `type` (W4B2-5)")
             if not set(m) <= set(pf._MOUNT_FIELDS):
                 out.append(f"a parsed mount names {sorted(m)}, outside preflight's mount fields")
-        if exp["cap_add"] != [rt.PENDING]:
-            out.append(f"cap_add is {exp['cap_add']}, not one PENDING (PENDING until the stub take)")
+        if exp["cap_add"] != [rt.PENDING] * len(sc.BOOT_CAPABILITIES):
+            out.append(f"cap_add is {exp['cap_add']}, not one PENDING per boot capability "
+                       f"(PENDING until the stub take)")
         spec = types.SimpleNamespace(run_tree=RUN_TREE)
         # As parsed: preflight's check refuses only on the PENDING cap_add.
         try:
@@ -251,7 +320,7 @@ class TestBinding4SidecarExpect(Binding):
                 out.append(f"as parsed, preflight refuses for another reason: {e}")
         # With cap_add filled in memory, every field rule passes: the check reaches the inspect probe.
         try:
-            pf._check_sidecar({}, spec, None, None, None, dict(exp, cap_add=["DAC_READ_SEARCH"]), EVIDENCE)
+            pf._check_sidecar({}, spec, None, None, None, dict(exp, cap_add=list(self.FILL)), EVIDENCE)
             out.append("preflight passed without the sidecar inspect")
         except pf._Fail as e:
             if str(e) != "probe sidecar-inspect is missing":
@@ -259,7 +328,7 @@ class TestBinding4SidecarExpect(Binding):
         # Lane w6a: the parsed evidence source is the folder preflight judges; any other folder fails before the
         # inspect is read.
         try:
-            pf._check_sidecar({}, spec, None, None, None, dict(exp, cap_add=["DAC_READ_SEARCH"]), "/srv/e/t2")
+            pf._check_sidecar({}, spec, None, None, None, dict(exp, cap_add=list(self.FILL)), "/srv/e/t2")
             out.append("preflight passed a sidecar whose evidence source is not the judged folder")
         except pf._Fail as e:
             if "evidence" not in str(e) or str(e) == "probe sidecar-inspect is missing":
@@ -269,6 +338,12 @@ class TestBinding4SidecarExpect(Binding):
     def test_binding_4(self):
         self.green_then_red("binding 4: sidecar.EVIDENCE_MOUNT moved off preflight's /srv/ev",
                             mock.patch.object(sc, "EVIDENCE_MOUNT", "/srv/ex"))
+
+    def test_binding_4_boot_set(self):
+        self.green_then_red("binding 4: the filled boot set gains a fifth capability",
+                            mock.patch.object(type(self), "FILL", self.FILL + ["CAP_SYS_ADMIN"]))
+        self.green_then_red("binding 4: the filled boot set drops SETPCAP",
+                            mock.patch.object(type(self), "FILL", [c for c in self.FILL if c != "CAP_SETPCAP"]))
 
 
 # ------------------------------------------------------------------------------------------------ binding 5
@@ -484,17 +559,31 @@ class TestBinding8LockKeys(Binding):
             if il.HARNESS_PACKAGES.get(image, "").split("/")[-1] not in (h, h + "-cli"):
                 out.append(f"{h}: {image}'s package {il.HARNESS_PACKAGES.get(image)} is not that harness")
         loaded = locks()
+        # Closure C-1: the record the pins re-derive from is the reviewed one, so this module holds on its own.
+        import hashlib
+        repo = os.path.dirname(os.path.dirname(STUDY))
+        record = os.path.join(repo, "lane-reports", "build-20261014c", "athena-out-20261014", "build-record.json")
+        with open(record, "rb") as fh:
+            if hashlib.sha256(fh.read()).hexdigest() != RECORD_SHA256:
+                out.append("the committed build record is not the reviewed one (sha256 c55c75cc...)")
         for h, image in sorted(pf.TAKE_IMAGE.items()):
             path = os.path.join(il.BOX_DIR, os.path.dirname(il.DOCKERFILES[image]), "image.lock")
+            # The committed lock is the reviewed pin: schema 2, byte-equal to the lock writer's re-derivation from
+            # the committed build record, and preflight's loader projects exactly its schema paths.
+            text = lock_bytes(image)
+            if json.loads(text).get("schema") != il.SCHEMA_2 or text != rederived(image):
+                out.append(f"{h}: the committed {image} lock is not the reviewed pin re-derived from the record")
             try:
-                pf.load_take_lock(path, harness=h)
-                out.append(f"{h}: the committed {image} lock (PENDING) was accepted")
-            except il.NotReady:
-                pass
-            except Exception as e:  # the committed lock must reach require_ready, nothing earlier
-                out.append(f"{h}: the committed {image} lock refused before readiness ({type(e).__name__}: {e})")
+                projected = pf.load_take_lock(path, harness=h)
+                if projected != {k: path_get(loaded[image], k) for k in pf.LOCK_KEYS}:
+                    out.append(f"{h}: the committed {image} lock projects {projected}")
+            except Exception as e:
+                out.append(f"{h}: the committed {image} lock refused ({type(e).__name__}: {e})")
+            # a filled lock is schema 2, as the lock writer writes it (lock-writer rulings, 14 Oct 2026)
             filled = dict(loaded[image], base="registry.example/fake-base@sha256:" + "a" * 64, image_id=IMAGE,
-                          python="3.12.99", harness=dict(loaded[image]["harness"], version="9.8.7"), pending={})
+                          python="3.12.99", harness=dict(loaded[image]["harness"], version="9.8.7"), pending={},
+                          schema=il.SCHEMA_2, manifest_digest="sha256:" + "c" * 64,
+                          config_digest="sha256:" + "d" * 64, source_commit="e" * 40)
             with tempfile.TemporaryDirectory(prefix="w-") as d:
                 p = os.path.join(d, os.path.dirname(il.DOCKERFILES[image]), "image.lock")
                 os.makedirs(os.path.dirname(p), exist_ok=True)
@@ -513,7 +602,9 @@ class TestBinding8LockKeys(Binding):
                                memory_reservation=512, memory=1536, cpus="1", pids_limit=64)
             try:
                 rec = pf.evaluate({}, spec=spec, lock=got, sidecar_expect={}, harness=h, hosts=pc.HOSTS,
-                                  evidence_dir=EVIDENCE)
+                                  evidence_dir=EVIDENCE,
+                                  sidecar_lock={"image_id": IMAGE, "manifest_digest": "sha256:" + "5" * 64},
+                                  egress_lock={"image_id": IMAGE, "manifest_digest": "sha256:" + "7" * 64})
                 if rec["ok"] or [c["id"] for c in rec["checks"]] != list(pf.PREFLIGHT_CHECKS):
                     out.append(f"{h}: evaluate over no probes is not a full failing record")
             except Exception as e:
@@ -525,7 +616,7 @@ class TestBinding8LockKeys(Binding):
         loaded = locks()
         for key in pf.LOCK_KEYS:
             top = key.split(".")[0]
-            if top not in il.KEYS:
+            if top not in il.KEYS and top not in il.SCHEMA_2_KEYS:
                 out.append(f"{key}: {top} is not a key of w4a's schema")
             for n in il.TAKE_IMAGES:
                 try:
@@ -552,6 +643,13 @@ class TestBinding8LockKeys(Binding):
                             mock.patch.object(pf, "TAKE_IMAGE", dict(pf.TAKE_IMAGE, **{rt.CLAUDE_CODE: "take-o"})))
         self.green_then_red("binding 8: preflight projects a key the lock does not carry",
                             mock.patch.object(pf, "LOCK_KEYS", pf.LOCK_KEYS + ("users.keepalive.name",)))
+        # The post-write ruling: a pin that is not the lock writer's re-derivation goes red.
+        for name, fake in (("a lock hand-edited by one digest", _edited_digest),
+                           ("a lock from a different record row", _another_row),
+                           ("a schema-1 PENDING lock where a filled one is required", _unfilled)):
+            self.green_then_red(f"binding 8: {name}", mock.patch(__name__ + ".lock_bytes", fake))
+        self.green_then_red("binding 8: a record other than the reviewed one",
+                            mock.patch(__name__ + ".RECORD_SHA256", "0" * 64))
 
 
 # Lane w6a, criterion 7: every test of this module at the base 89b54db4 (Ran 10, OK) still exists and runs.

@@ -13,6 +13,7 @@ from __future__ import annotations
 import ast
 import contextlib
 import json
+import hashlib
 import os
 import re
 import subprocess
@@ -117,7 +118,8 @@ FAKE_VALUE = "FAKEVALUE-0123456789abcdef-PLANTED"
 CALLER = {"PATH": "/usr/bin:/bin", "HOME": "/home/op", "DOCKER_HOST": "unix:///run/user/1000/docker.sock",
           "XDG_RUNTIME_DIR": "/run/user/1000", "UNRELATED": "x"}
 ARMS = (harness_bookkeeping.CLAUDE_CODE, "codex", "gemini")
-LOGINS = dict(zip(ARMS, ("CLAUDE_CODE_OAUTH_TOKEN", "CODEX_API_KEY", "GEMINI_API_KEY")))
+# Codex has no environment login (glitch-06's ruling 1, 14 Oct 2026): its LOGIN_VARIABLE is the reserved "-" (NO_LOGIN).
+LOGINS = dict(zip(ARMS, ("CLAUDE_CODE_OAUTH_TOKEN", "-", "GEMINI_API_KEY")))
 
 
 class FakeRuntime:
@@ -170,6 +172,14 @@ class MutantCase(unittest.TestCase):
             print(f"  mutant {name}: {'red' if got else 'GREEN (survived)'}"
                   f"{' - ' + got[0][:100] if got else ''}")
             self.assertNotEqual(got, [], f"mutant {name} survived")
+
+
+@contextlib.contextmanager
+def _patches(*triples):
+    with contextlib.ExitStack() as stack:
+        for obj, attr, value in triples:
+            stack.enter_context(mock.patch.object(obj, attr, value))
+        yield
 
 
 def patched(obj, attr, value):
@@ -328,7 +338,7 @@ class TestSharedValues(MutantCase):
         keys = set(rt.LOGIN_VARIABLE)
         if keys != {rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI} or set(rt.HARNESS_ENV) != keys:
             out.append("the per-harness tables do not hold exactly the three harnesses")
-        if rt.LOGIN_VARIABLE != {rt.CLAUDE_CODE: "CLAUDE_CODE_OAUTH_TOKEN", rt.CODEX: "CODEX_API_KEY",
+        if rt.LOGIN_VARIABLE != {rt.CLAUDE_CODE: "CLAUDE_CODE_OAUTH_TOKEN", rt.CODEX: "-",
                                  rt.GEMINI: "GEMINI_API_KEY"}:
             out.append("LOGIN_VARIABLE is not the card's three names")
         return out
@@ -474,11 +484,16 @@ def plant_login(folder, name, value=FAKE_VALUE, mode=0o600, text=None):
     return path
 
 
+# The documented bypass acceptance key: RULED not sent (not required in -p; glitch-06, 14 Oct 2026). Tests use it
+# only to show the study refuses it.
+BYPASS = "skipDangerousModePermissionPrompt"
+
+
 @contextlib.contextmanager
 def filled():
-    """Every PENDING value exec needs, filled in memory only (interface 15)."""
-    with mock.patch.object(rt, "FALLBACK_ENV", {"FAKE_FALLBACK_A": "1"}), \
-            mock.patch.object(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {rt.CODEX: (), rt.GEMINI: ()}):
+    """Every PENDING value exec needs, filled in memory only (interface 15). FALLBACK_ENV is FILLED (14 Oct 2026) and
+    the bypass acceptance RULED not required in -p (14 Oct 2026); both are the committed values here."""
+    with mock.patch.object(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {rt.CODEX: (), rt.GEMINI: ()}):
         yield
 
 
@@ -497,16 +512,22 @@ class TestArmVariables(MutantCase):
         """A take in each arm carrying each other arm's variable (or any refused name) is refused."""
         out = []
         for arm in ARMS:
-            others = [rt.LOGIN_VARIABLE[h] for h in ARMS if h != arm]
-            others += ["OPENAI_API_KEY", "GOOGLE_API_KEY", "ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_REFRESH_TOKEN",
-                       "CLAUDE_CODE_USE_VERTEX"]
+            others = [rt.LOGIN_VARIABLE[h] for h in ARMS if h != arm and rt.LOGIN_VARIABLE[h] != rt.NO_LOGIN]
+            others += ["CODEX_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY", "ANTHROPIC_API_KEY",
+                       "CLAUDE_CODE_OAUTH_REFRESH_TOKEN", "CLAUDE_CODE_USE_VERTEX"]
             for var in others:
                 for where in ("caller", "pending"):
                     try:
                         if where == "caller":
                             with filled():
+                                if arm == rt.CODEX:
+                                    # Subscription transition blocks launch independently; keep
+                                    # witnessing the underlying name refusal without a login read.
+                                    rt.check_environment(arm, dict(CALLER, **{var: FAKE_VALUE}))
                                 self.exec_for(arm, dict(CALLER, **{var: FAKE_VALUE}))
                         else:
+                            if arm == rt.CODEX:
+                                rt.check_environment(arm, dict(CALLER, **{var: FAKE_VALUE}))
                             self.exec_for(arm, dict(CALLER, **{var: FAKE_VALUE}))
                         out.append(f"{arm} take carrying {var} ({where}) accepted")
                     except rt.Refused as e:
@@ -534,7 +555,10 @@ class TestArmVariables(MutantCase):
             bad = dict(rt.TAKE_ENV, **{arm: dict(rt.TAKE_ENV[arm], **{other: "x"})})
             with mock.patch.object(rt, "TAKE_ENV", bad), filled():
                 try:
-                    self.exec_for(arm)
+                    if arm == rt.CODEX:
+                        rt.check_environment(arm, CALLER, rt.TAKE_ENV[arm])
+                    else:
+                        self.exec_for(arm)
                     out.append(f"{arm} exec requesting {other} accepted")
                 except rt.Refused:
                     pass
@@ -547,19 +571,35 @@ class TestArmVariables(MutantCase):
     def check_refused_sets(self):
         out = []
         closed = (set(rt.API_KEY_VARIABLES) | set(rt.BILLING_ROUTE_VARIABLES) | set(rt.SUBSCRIPTION_TOKEN_VARIABLES)
-                  | {"CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"})
+                  | {"CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"}
+                  | set(CODEX_ROUTE_NAMED) | set(CODEX_ROUTE_DOCS_READ)    # glitch-06's rulings: every arm
+                  | set(sweep_refused()) | set(_gemini_refused())
+                  | set(_claude_refused()))     # glitch-6b's ruling 4(i), 15 Oct 2026: the Claude binary sweep
         for arm in ARMS:
             got = rt.refused_variables(arm)
-            if got != closed - {LOGINS[arm]}:
-                out.append(f"{arm}: refused set {sorted(got ^ (closed - {LOGINS[arm]}))} off")
+            expected = closed - {LOGINS[arm]}
+            if arm == rt.GEMINI:
+                expected |= {"GEMINI_CLI_EXP_AGENT"}
+            if got != expected:
+                out.append(f"{arm}: refused set {sorted(got ^ expected)} off")
         if "CLAUDE_CODE_OAUTH_TOKEN" not in rt.refused_variables(rt.CODEX):
             out.append("arm O admits Anthropic's token")
+        if not {"CODEX_API_KEY", "OPENAI_API_KEY"} <= rt.refused_variables(rt.CODEX):
+            out.append("arm O admits an API key (subscriptions only)")
         return out
 
     def test_refused_sets(self):
         self.assert_green_then_red(self.check_refused_sets, [
-            ("own-login-refused", patched(rt, "LOGIN_VARIABLE", dict(rt.LOGIN_VARIABLE, codex="NOT_A_VAR"))),
-            ("vendor-list-short", patched(rt, "VENDOR_KEY_VARIABLES", ("CODEX_API_KEY", "GEMINI_API_KEY"))),
+            ("own-login-refused", patched(rt, "LOGIN_VARIABLE", dict(rt.LOGIN_VARIABLE,
+                                                                     **{rt.CLAUDE_CODE: "NOT_A_VAR"}))),
+            ("codex-key-admitted", patched(rt, "LOGIN_VARIABLE", dict(rt.LOGIN_VARIABLE, codex="CODEX_API_KEY"))),
+            # OPENAI_API_KEY and GOOGLE_API_KEY are also in the Codex and Gemini sweep lists since 14 Oct 2026, so the
+            # short vendor list is held with those two names taken out of the sweep lists too (nothing else moves)
+            ("vendor-list-short", lambda: _patches(
+                (rt, "VENDOR_KEY_VARIABLES", ("CODEX_API_KEY", "GEMINI_API_KEY")),
+                (rt, "VENDOR_BILLING_ROUTE_VARIABLES",
+                 {h: tuple(n for n in v if n not in ("OPENAI_API_KEY", "GOOGLE_API_KEY"))
+                  for h, v in rt.VENDOR_BILLING_ROUTE_VARIABLES.items()}))),
         ])
 
     def check_own_environ(self):
@@ -602,7 +642,7 @@ class TestExecArgv(MutantCase):
     def check(self):
         out = []
         with filled():
-            argv, env = rt.exec_argv(ID["take"], ["agent-cli", "-p", "x"], user=rt.AGENT_USER,
+            argv, env = rt.exec_argv(ID["take"], CLAUDE_INNER, user=rt.AGENT_USER,
                                      workdir="/srv/w/t1/tree", harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
                                      login_file=self.login, caller_env=CALLER)
         t = "/srv/w/t1/tree/.tmp"
@@ -611,9 +651,10 @@ class TestExecArgv(MutantCase):
         want = ["docker", "exec", "--user", "10001:10001", "--workdir", "/srv/w/t1/tree",
                 "-e", "CLAUDE_CODE_OAUTH_TOKEN", ID["take"], *rt.LAUNCHER, "CLAUDE_CODE_OAUTH_TOKEN", "13",
                 "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
+                "CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK=1",
                 "CLAUDE_CONFIG_DIR=/opt/cfg", "DISABLE_AUTOUPDATER=1", "ENABLE_CLAUDEAI_MCP_SERVERS=false",
-                "FAKE_FALLBACK_A=1", "HOME=/opt/cfg", "HTTPS_PROXY=http://proxy:3128", "LANG=C.UTF-8",
-                f"PATH={rt.TAKE_PATH}", f"TEMP={t}", f"TMP={t}", f"TMPDIR={t}", "agent-cli", "-p", "x"]
+                "HOME=/opt/cfg", "HTTPS_PROXY=http://proxy:3128", "LANG=C.UTF-8",
+                f"PATH={rt.TAKE_PATH}", f"TEMP={t}", f"TMP={t}", f"TMPDIR={t}", *CLAUDE_INNER]
         if argv != want:
             out.append(f"exec argv differs: {argv}")
         if any(FAKE_VALUE in a for a in argv):
@@ -621,7 +662,7 @@ class TestExecArgv(MutantCase):
         if env.get("CLAUDE_CODE_OAUTH_TOKEN") != FAKE_VALUE:
             out.append("the login value is not in the client env")
         extra = set(env) - set(rt.RUNTIME_ENV_NAMES) - set(rt.HARNESS_ENV[rt.CLAUDE_CODE]) - {
-            "TMPDIR", "TMP", "TEMP", "FAKE_FALLBACK_A", "CLAUDE_CODE_OAUTH_TOKEN"}
+            "TMPDIR", "TMP", "TEMP", "CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK", "CLAUDE_CODE_OAUTH_TOKEN"}
         if extra:
             out.append(f"the client env carries {sorted(extra)}")
         if env.get("DOCKER_HOST") != CALLER["DOCKER_HOST"]:
@@ -635,20 +676,49 @@ class TestExecArgv(MutantCase):
             except rt.Refused:
                 pass
         try:
-            rt.exec_argv(ID["take"], ["x"], user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
-                         run_tree="/srv/w/t1/tree", login_file=self.login, caller_env=CALLER)
+            with mock.patch.object(rt, "FALLBACK_ENV", rt.PENDING):   # FILLED 14 Oct 2026; the clause stays tested
+                rt.exec_argv(ID["take"], CLAUDE_INNER, user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
+                             run_tree="/srv/w/t1/tree", login_file=self.login, caller_env=CALLER)
             out.append("an exec was built while FALLBACK_ENV is PENDING")
         except rt.NotReady:
             pass
+        # glitch-06's ruling from the docs (14 Oct 2026): exactly the documented refusal-fallback switch, set to 1.
+        if rt.FALLBACK_ENV != {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1"}:
+            out.append(f"FALLBACK_ENV is not the ruled value: {rt.FALLBACK_ENV!r}")
+        # No availability-fallback chain: --fallback-model in any spelling is refused before any login read.
+        # Each is otherwise a well-formed turn (its model and the study's settings), so only the flag can refuse it.
+        for inner in (CLAUDE_INNER + ["--fallback-model", "claude-sonnet-5-5"],
+                      CLAUDE_INNER[:1] + ["--fallback-model=claude-sonnet-5-5"] + CLAUDE_INNER[1:]):
+            try:
+                with filled(), mock.patch.object(rt, "read_login", side_effect=AssertionError("login read")):
+                    rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
+                                 run_tree="/srv/w/t1/tree", login_file=self.login, caller_env=CALLER)
+                out.append(f"an exec with a fallback model was built: {inner}")
+            except rt.Refused:
+                pass
+            except AssertionError:
+                out.append("the login was read before the fallback-model refusal")
         for h in ("codex", "gemini"):
             inner = ["gemini", "-m", "gemini-3.8-flash"] if h == rt.GEMINI else ["x"]
             lf = plant_login(self.tmp, rt.LOGIN_VARIABLE[h])
             try:
-                rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=h,
-                             run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
+                # Gemini's list was FILLED 14 Oct 2026 (its package sweep); the PENDING clause stays red-tested with
+                # the entry put back. Codex is refused by its subscription gate whatever its list holds.
+                with mock.patch.dict(rt.VENDOR_BILLING_ROUTE_VARIABLES, {rt.GEMINI: rt.PENDING}):
+                    rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=h,
+                                 run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
                 out.append(f"a {h} exec was built while its billing-route list is PENDING")
             except rt.NotReady:
                 pass
+            if h == rt.CODEX:
+                try:
+                    with filled():
+                        rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=h,
+                                     run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
+                    out.append("Codex legacy API exec was admitted during subscription transition")
+                except rt.NotReady:
+                    pass
+                continue
             with filled():
                 a, e = rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=h,
                                     run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
@@ -671,6 +741,9 @@ class TestExecArgv(MutantCase):
             ("environ-copied", patched(rt, "runtime_env", lambda c=None: dict(c or os.environ))),
             ("no-user-check", patched(rt, "AGENT_USER", "0:0")),
             ("fallback-ignored", patched(rt, "exec_values", lambda h, r: dict(rt.HARNESS_ENV[h]))),
+            ("fallback-env-dropped", patched(rt, "FALLBACK_ENV", {})),
+            ("fallback-env-zero", patched(rt, "FALLBACK_ENV", {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "0"})),
+            ("fallback-flag-admitted", patched(rt, "FALLBACK_MODEL_FLAG", "--no-such-flag")),
             ("tmp-variables-dropped", patched(rt, "RUN_TREE_TMPDIR_VARIABLES", ())),
         ])
 
@@ -726,6 +799,102 @@ LOGIN_REFUSALS = {
     "19-characters": dict(text="CLAUDE_CODE_OAUTH_TOKEN=FAKEVALUE-PLANTED-1\n"),
 }
 LOGIN_ACCEPTED = {"20-characters": "FAKEVALUE-PLANTED-12", "planted": FAKE_VALUE}
+
+
+ORIG_EXEC_ARGV = rt.exec_argv
+
+
+class TestWalkLoginPlace(MutantCase):
+    """The walk-token road (box lane, 14 Oct 2026): the account's token file sits alone in a mode-700 folder owned by
+    the reading user, never a link, with one link, outside the run tree; exec_argv checks the place before read_login,
+    and read_login refuses an empty, multi-line, wrong-mode or linked file. No refusal carries the value."""
+
+    def place(self, folder_mode=0o700, text=None):
+        d = tempfile.mkdtemp(prefix="w-")
+        sub = os.path.join(d, "claude1")
+        os.mkdir(sub)
+        os.chmod(sub, folder_mode)
+        path = os.path.join(sub, "claude-walk-token")
+        with open(path, "w") as fh:
+            fh.write(f"CLAUDE_CODE_OAUTH_TOKEN={FAKE_VALUE}\n" if text is None else text)
+        os.chmod(path, 0o600)
+        return d, sub, path
+
+    def exec_with(self, path, inner=None, run_tree="/srv/w/t1/tree"):
+        return rt.exec_argv(ID["take"], inner or CLAUDE_INNER, user=rt.AGENT_USER, workdir="/",
+                            harness=rt.CLAUDE_CODE, run_tree=run_tree, login_file=path, caller_env=CALLER)
+
+    def refused(self, out, label, fn, *a, **k):
+        try:
+            fn(*a, **k)
+            out.append(f"{label}: admitted")
+        except rt.Refused as e:
+            if FAKE_VALUE in str(e):
+                out.append(f"{label}: the refusal carries the value")
+        except AssertionError:
+            out.append(f"{label}: the login was read before the refusal")
+
+    def check(self):
+        out = []
+        w = rt.WALK_LOGIN_FILES
+        if w != {"claude1": "/home/javier/gap4-secrets/claude1/claude-walk-token",
+                 "r4-g": "/home/javier/gap4-secrets/r4-g/gemini-walk-login"}:      # the Gemini key road, 14 Oct
+            out.append(f"WALK_LOGIN_FILES = {w}")
+        _d, _sub, good = self.place()
+        try:
+            rt.check_login_place(good, "/srv/w/t1/tree")
+            argv, env = self.exec_with(good)
+            if env.get("CLAUDE_CODE_OAUTH_TOKEN") != FAKE_VALUE or FAKE_VALUE in " ".join(argv):
+                out.append("the good place did not hand the token to the client environment alone")
+        except rt.Refused as e:
+            out.append(f"the good place was refused: {e}")
+        # the place, refused before any read
+        with mock.patch.object(rt, "read_login", side_effect=AssertionError("login read")):
+            _d, sub, p = self.place(folder_mode=0o755)
+            self.refused(out, "a 755 folder", self.exec_with, p)
+            _d, sub, p = self.place(folder_mode=0o750)
+            self.refused(out, "a 750 folder", self.exec_with, p)
+            d, sub, p = self.place()
+            os.link(p, os.path.join(d, "second-link"))
+            self.refused(out, "a second hard link", self.exec_with, p)
+            d, sub, p = self.place()
+            linked = os.path.join(d, "via-link")
+            os.symlink(sub, linked)
+            if hasattr(os, "lchmod"):           # macOS: a 700 link, so only the link rule can refuse it
+                os.lchmod(linked, 0o700)
+            self.refused(out, "a folder reached through a link", self.exec_with, os.path.join(linked, "claude-walk-token"))
+            d, sub, p = self.place()
+            self.refused(out, "inside the run tree", self.exec_with, p, run_tree=d)
+            self.refused(out, "a relative path", rt.check_login_place, "claude1/claude-walk-token", "/srv/w/t1/tree")
+            self.refused(out, "--bare", self.exec_with, good, inner=CLAUDE_INNER + ["--bare"])
+        # read_login's own rules, on the walk file's shape
+        for label, text in (("an empty file", ""), ("two lines", f"CLAUDE_CODE_OAUTH_TOKEN={FAKE_VALUE}\nX=1\n"),
+                            ("no newline", f"CLAUDE_CODE_OAUTH_TOKEN={FAKE_VALUE}"),
+                            ("the bare token", f"{FAKE_VALUE}\n"), ("the prefix alone", "CLAUDE_CODE_OAUTH_TOKEN=\n")):
+            _d, _sub, p = self.place(text=text)
+            self.refused(out, label, rt.read_login, p, "CLAUDE_CODE_OAUTH_TOKEN")
+        _d, _sub, p = self.place()
+        os.chmod(p, 0o640)
+        self.refused(out, "a 640 file", rt.read_login, p, "CLAUDE_CODE_OAUTH_TOKEN")
+        d, _sub, p = self.place()
+        link = os.path.join(_sub, "link-token")
+        os.symlink(p, link)
+        self.refused(out, "a linked file", rt.read_login, link, "CLAUDE_CODE_OAUTH_TOKEN")
+        return out
+
+    def test_the_walk_login_place(self):
+        def no_place_check(path, run_tree):
+            return None
+
+        def exec_without_place(*a, **k):
+            with mock.patch.object(rt, "check_login_place", no_place_check):
+                return ORIG_EXEC_ARGV(*a, **k)
+        self.assert_green_then_red(self.check, [
+            ("place-unchecked", patched(rt, "exec_argv", exec_without_place)),
+            ("folder-mode-unchecked", patched(rt, "check_login_place", lambda path, run_tree: None)),
+            ("bare-admitted", patched(rt, "CLAUDE_BARE_FLAG", "--never-a-flag")),
+            ("walk-file-moved", patched(rt, "WALK_LOGIN_FILES", {"claude1": "/tmp/claude-walk-token"})),
+        ])
 
 
 class TestReadLogin(MutantCase):
@@ -805,10 +974,14 @@ def pyinspect_params(fn):
 
 # ------------------------------------------------------------------------------------------ launch and teardown
 def sidecar_launch(expect=None, tree="/srv/w/t1/tree", ev="/srv/w/t1/rec/ev"):
-    exp = expect or {"user": "10002:10002", "network_mode": "none", "cap_drop": ["ALL"],
-                     "cap_add": ["CAP_DAC_READ_SEARCH"], "security_opt": ["no-new-privileges"], "privileged": False,
+    # The sidecar's fixed privilege-drop launch (0b6f60f9's accepted delta): boot user 0:0, the four boot
+    # capabilities in Docker's inspect spelling, no entrypoint, the setpriv launcher in the command.
+    exp = expect or {"user": "0:0", "network_mode": "none", "cap_drop": ["ALL"],
+                     "cap_add": ["CAP_DAC_READ_SEARCH", "CAP_SETGID", "CAP_SETPCAP", "CAP_SETUID"],
+                     "security_opt": ["no-new-privileges"], "privileged": False,
                      "pid_mode": "", "mounts": [{"source": tree, "destination": tree, "rw": False},
-                                                {"source": ev, "destination": "/srv/ev", "rw": True}]}
+                                                {"source": ev, "destination": "/srv/ev", "rw": True}],
+                     "image": SIDE_IMAGE, "cmd": side_cmd(tree), "entrypoint": []}
     return rt.SidecarLaunch(
         create_argv=("docker", "create", "--network", "none", "side-image"),
         start_argv_for=lambda i: ["docker", "start", i],
@@ -824,9 +997,20 @@ def proxy_launch(user="13:13"):
                           user=user, alias="proxy")
 
 
+SIDE_IMAGE = "sha256:" + "5" * 64
+
+
+def side_cmd(tree):
+    return ["/usr/bin/setpriv", "--reuid=10002", "--regid=10002", "--clear-groups",
+            "--inh-caps=-all,+dac_read_search", "--ambient-caps=-all,+dac_read_search",
+            "--bounding-set=-all,+dac_read_search", "--no-new-privs", "--", "python3", "-I", "-B", "/opt/w/sidecar.py",
+            "serve", "--run-tree", tree, "--evidence", "/srv/ev"]
+
+
 def side_inspect(tree, ev):
-    return [{"Config": {"User": "10002:10002"},
-             "HostConfig": {"NetworkMode": "none", "CapDrop": ["ALL"], "CapAdd": ["CAP_DAC_READ_SEARCH"],
+    return [{"Image": SIDE_IMAGE, "Config": {"User": "0:0", "Entrypoint": [], "Cmd": side_cmd(tree)},
+             "HostConfig": {"NetworkMode": "none", "CapDrop": ["ALL"],
+                            "CapAdd": ["CAP_DAC_READ_SEARCH", "CAP_SETGID", "CAP_SETPCAP", "CAP_SETUID"],
                             "SecurityOpt": ["no-new-privileges"], "Privileged": False, "PidMode": ""},
              "Mounts": [{"Type": "bind", "Source": tree, "Destination": tree, "RW": False},
                         {"Type": "bind", "Source": ev, "Destination": "/srv/ev", "RW": True}]}]
@@ -865,7 +1049,7 @@ class Launch:
             (["docker", "create", "--pull=never", "--network", ID["net"], "--network-alias", "proxy"], ok(ID["proxy"])),
             (["docker", "network", "connect", "bridge", ID["proxy"]], ok()),
             (["docker", "start", ID["proxy"]], ok()),
-            (["docker", "create", "--network", "none"], ok(ID["side"])),
+            (["docker", "create", "--memory", str(rt.SIDECAR_MEMORY_BYTES), "--network", "none"], ok(ID["side"])),
             (["docker", "container", "inspect", ID["side"]], ok(json.dumps(side_inspect(self.tree, self.ev)))),
             (["docker", "start", ID["side"]], ok()),
             (["docker", "create", "--pull=never", "--network", ID["net"], "--user", "10003:10003"], ok(ID["take"])),
@@ -1041,10 +1225,14 @@ class TestLaunch(MutantCase):
         """W4B1-2: a PENDING inspect spelling, or a PENDING value in the sidecar's expectation, is NotReady before
         any runtime call."""
         out = []
+        # INSPECT_STATUS is filled (14 Oct 2026); its clause stays red-tested with the value put back to PENDING.
+        if rt._is_pending(rt.INSPECT_STATUS):
+            out.append("INSPECT_STATUS is PENDING: the filled value was not committed")
         L = Launch()
         fake = FakeRuntime()
         try:
-            L.launch(fake)
+            with mock.patch.object(rt, "INSPECT_STATUS", rt.PENDING):
+                L.launch(fake)
             out.append("launched with the inspect spellings PENDING")
         except rt.NotReady:
             pass
@@ -1057,8 +1245,7 @@ class TestLaunch(MutantCase):
                                      L.sidecar.rm_argv_for, dict(L.sidecar.expect, cap_add=rt.PENDING))
         fake = FakeRuntime()
         try:
-            with inspect_ok():
-                L.launch(fake)
+            L.launch(fake)   # the real, filled INSPECT_STATUS: only the sidecar clause can refuse
             out.append("launched with a PENDING sidecar expectation")
         except rt.NotReady:
             pass
@@ -1071,6 +1258,7 @@ class TestLaunch(MutantCase):
     def test_pending_refused_before_any_call(self):
         self.assert_green_then_red(self.check_pending_refused_first, [
             ("no-ready-gate", patched(rt, "_check_launch_ready", lambda sidecar: None)),
+            ("no-sidecar-clause", patched(rt, "_check_launch_ready", _inspect_clause_only)),
         ])
 
     def check_network_is_launchs(self):
@@ -1122,6 +1310,172 @@ class TestLaunch(MutantCase):
         self.assert_green_then_red(self.check_proxy_uid, [
             ("uid-string-compare", patched(rt, "_proxy_uid", lambda u: 1)),
         ])
+
+
+# A claude-code turn as the adapter builds it: its model once and the study's inline settings (review finding 1).
+CLAUDE_MODEL = "claude-opus-5-5"
+CLAUDE_INNER = ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", rt.claude_study_settings(CLAUDE_MODEL)]
+
+
+ORIG_CHECK_CLAUDE_SETTINGS = rt.check_claude_settings
+
+
+def _print_check_dropped(inner):
+    """A mutant of check_claude_settings with its -p/--print clause removed (the rest of the gate kept)."""
+    if inner and (len(inner) < 2 or inner[1] not in ("-p", "--print")):
+        inner = [inner[0], "-p", "", *inner[1:]]
+    ORIG_CHECK_CLAUDE_SETTINGS(inner)
+
+
+def _program_check_dropped(inner):
+    """A mutant of check_claude_settings with its program clause removed (the rest of the gate kept)."""
+    if inner and inner[0] != "claude":
+        inner = ["claude", *inner[1:]]
+    ORIG_CHECK_CLAUDE_SETTINGS(inner)
+
+
+class TestClaudeSettings(MutantCase):
+    """glitch-06's ruling on review finding 1 (14 Oct 2026): the study's Claude settings ride inline by --settings
+    (command-line level, above the agent-owned project and local files); exec_argv refuses a turn without exactly them."""
+
+    def check(self):
+        out = []
+        # The bypass acceptance is RULED not required in -p (glitch-06, 14 Oct 2026): the settings build without it.
+        if rt.CLAUDE_BYPASS_KEY != rt.CLAUDE_BYPASS_NOT_REQUIRED or "CLAUDE_BYPASS_KEY" in rt.pending():
+            out.append(f"CLAUDE_BYPASS_KEY is not the ruled value: {rt.CLAUDE_BYPASS_KEY!r}")
+        ruling = rt.CLAUDE_BYPASS_RULING
+        urls = {src[0] for src in ruling["sources"]}
+        if ruling["value"] != rt.CLAUDE_BYPASS_NOT_REQUIRED or ruling["ruled_by"] != "glitch-06" \
+                or "https://code.claude.com/docs/en/permission-modes.md" not in urls \
+                or not any(src[2] == "In non-interactive mode no dialog is shown." for src in ruling["sources"]):
+            out.append(f"the bypass ruling is not recorded with its doc and quote: {ruling!r}")
+        import box.take_config as tc
+        if tc.CLAUDE_BYPASS_KEY != rt.CLAUDE_BYPASS_KEY:
+            out.append("take_config's and run_take's bypass keys differ")
+        with mock.patch.object(rt, "CLAUDE_BYPASS_KEY", rt.PENDING):
+            try:
+                rt.claude_study_settings(CLAUDE_MODEL)
+                out.append("the study's settings were built while the bypass ruling is PENDING")
+            except rt.NotReady:
+                pass
+        with filled():
+            out += self.check_filled()
+        return out
+
+    def check_filled(self):
+        out = []
+        want = rt.claude_study_settings(CLAUDE_MODEL)
+        doc = json.loads(want)
+        if doc != {"availableModels": [CLAUDE_MODEL],
+                   "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1"}, "fallbackModel": [],
+                   "switchModelsOnFlag": False}:
+            out.append(f"the study's settings are {doc}")
+        if BYPASS in want:
+            out.append("the study's settings carry the bypass acceptance key")
+        for bad in (BYPASS, "switchModelsOnFlag", "env", "bad key"):
+            with mock.patch.object(rt, "CLAUDE_BYPASS_KEY", bad):
+                try:
+                    rt.claude_study_settings(CLAUDE_MODEL)
+                    out.append(f"bypass key {bad!r} accepted")
+                except rt.Refused:
+                    pass
+        good = [CLAUDE_INNER, ["claude", "-p", "--settings is just prompt text", "--model", CLAUDE_MODEL,
+                               "--settings=" + want],
+                ["claude", "--print", "--bg is just prompt text", "--model", CLAUDE_MODEL, "--settings", want],
+                ["claude", "-p", "--background is just prompt text", "--model", CLAUDE_MODEL, "--settings", want],
+                ["/usr/local/bin/claude"] + CLAUDE_INNER[1:]]
+        for inner in good:
+            try:
+                rt.check_claude_settings(inner)
+            except rt.Refused as e:
+                out.append(f"a well-formed turn was refused: {e}")
+        other = rt.claude_study_settings("claude-sonnet-5-5")
+        bad = {"no-settings": ["claude", "-p", "x", "--model", CLAUDE_MODEL],
+               "two-settings": CLAUDE_INNER + ["--settings", want],
+               "another-model's": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", other],
+               "switch-true": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings",
+                               want.replace('"switchModelsOnFlag":false', '"switchModelsOnFlag":true')],
+               "no-model": ["claude", "-p", "x", "--settings", want],
+               "two-models": CLAUDE_INNER + ["--model", "claude-sonnet-5-5"],
+               "settings-file": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", "/opt/cfg/s.json"],
+               # the bypass ruling depends on a -p run: a turn without -p/--print first, or with --bg, is refused
+               "no-print": ["claude", "x", "--model", CLAUDE_MODEL, "--settings", want],
+               "print-not-first": ["claude", "--model", CLAUDE_MODEL, "-p", "x", "--settings", want],
+               "background": CLAUDE_INNER + ["--bg"],
+               "background-eq": CLAUDE_INNER + ["--bg=true"],
+               # review-bypass-skills B-1 and B-2: the long alias, and a program other than claude
+               "background-long": CLAUDE_INNER + ["--background"],
+               "background-long-eq": CLAUDE_INNER + ["--background=1"],
+               "bash-program": ["bash"] + CLAUDE_INNER[1:],
+               "abs-bash-program": ["/usr/bin/bash"] + CLAUDE_INNER[1:],
+               "claude-lookalike": ["/opt/claude/bin/claude-wrapper"] + CLAUDE_INNER[1:],
+               "empty": [],
+               "with-bypass-key": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings",
+                                   json.dumps(dict(json.loads(want), **{BYPASS: True}), sort_keys=True,
+                                              separators=(",", ":"))]}
+        for name, inner in bad.items():
+            try:
+                rt.check_claude_settings(inner)
+                out.append(f"{name}: admitted")
+            except rt.Refused:
+                pass
+        login = plant_login(tempfile.mkdtemp(prefix="w-"), "CLAUDE_CODE_OAUTH_TOKEN")
+        try:
+            with mock.patch.object(rt, "read_login", side_effect=AssertionError("login read")):
+                rt.exec_argv(ID["take"], bad["no-settings"], user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
+                             run_tree="/srv/w/t1/tree", login_file=login, caller_env=CALLER)
+            out.append("exec_argv built a claude-code turn without the study's settings")
+        except rt.Refused:
+            pass
+        except AssertionError:
+            out.append("the login was read before the settings refusal")
+        # Every Claude turn reaching the box is a -p run: exec_argv refuses one without it, and builds one with it.
+        with mock.patch.object(rt, "read_login", side_effect=AssertionError("login read")):
+            for name in ("no-print", "print-not-first", "background", "background-long", "bash-program"):
+                try:
+                    rt.exec_argv(ID["take"], bad[name], user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
+                                 run_tree="/srv/w/t1/tree", login_file=login, caller_env=CALLER)
+                    out.append(f"exec_argv built a claude-code turn: {name}")
+                except rt.Refused:
+                    pass
+                except AssertionError:
+                    out.append(f"the login was read before the {name} refusal")
+        argv, _env = rt.exec_argv(ID["take"], CLAUDE_INNER, user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
+                                  run_tree="/srv/w/t1/tree", login_file=login, caller_env=CALLER)
+        tail = argv[len(argv) - len(CLAUDE_INNER):]
+        if tail != CLAUDE_INNER or tail[1] not in ("-p", "--print"):
+            out.append("the built claude-code exec does not end in the -p turn")
+        return out
+
+    def test_the_inline_settings(self):
+        self.assert_green_then_red(self.check, [
+            ("check-skipped", patched(rt, "check_claude_settings", lambda inner: None)),
+            ("switch-on", patched(rt, "claude_study_settings", lambda m: json.dumps(
+                {"availableModels": [m], "env": dict(rt.FALLBACK_ENV), "fallbackModel": [],
+                 "switchModelsOnFlag": True}, sort_keys=True, separators=(",", ":")))),
+            ("no-allowlist", patched(rt, "claude_study_settings", lambda m: json.dumps(
+                {"env": dict(rt.FALLBACK_ENV), "fallbackModel": [], "switchModelsOnFlag": False},
+                sort_keys=True, separators=(",", ":")))),
+            # the key re-added, three ways: in the built settings, as the ruled value, and the ruled check dropped
+            ("bypass-key-re-added", patched(rt, "claude_study_settings", lambda m: json.dumps(
+                {BYPASS: True, "availableModels": [m], "env": dict(rt.FALLBACK_ENV), "fallbackModel": [],
+                 "switchModelsOnFlag": False}, sort_keys=True, separators=(",", ":")))),
+            ("bypass-key-as-value", patched(rt, "CLAUDE_BYPASS_KEY", BYPASS)),
+            ("bypass-still-pending", patched(rt, "CLAUDE_BYPASS_KEY", rt.PENDING)),
+            # -p dropped from the gate, and --bg admitted
+            ("print-check-dropped", patched(rt, "check_claude_settings", _print_check_dropped)),
+            ("background-admitted", patched(rt, "CLAUDE_BACKGROUND_FLAGS", ())),
+            ("background-long-admitted", patched(rt, "CLAUDE_BACKGROUND_FLAGS", ("--bg",))),
+            ("bash-program-admitted", patched(rt, "check_claude_settings", _program_check_dropped)),
+            ("prompt-read-as-flag", patched(rt, "_flag_values", lambda inner, flag: [
+                inner[i + 1] if i + 1 < len(inner) else None for i, t in enumerate(inner) if t == flag])),
+        ])
+
+
+def _inspect_clause_only(sidecar):
+    """A mutant of run_take._check_launch_ready with its sidecar-expectation clause removed."""
+    if rt._is_pending(rt.INSPECT_STATUS):
+        raise rt.NotReady("INSPECT_STATUS is PENDING")
 
 
 ORIG_PROXY_CREATE = rt.proxy_create_argv
@@ -1245,7 +1599,12 @@ class TestLeaked(MutantCase):
 
 # ---------------------------------------------------------------------------- the agent's leftover processes
 UID_MAP = ((0, 1000, 1), (1, 100000, 65536))
-TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID"}
+TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID",
+       "uid_namespace": "host"}
+# docker top's output on athena (docker 29.8.1, rootless), verbatim from the stub take (run 1's columns; its pids).
+ATHENA_TOP_LIVE = ("PID                 UID                 COMMAND\n1527963             10003               sleep\n"
+                   "1529070             10001               python3\n")
+ATHENA_TOP_AFTER_KILL = "PID                 UID                 COMMAND\n1527963             10003               sleep\n"
 
 
 class TestProcesses(MutantCase):
@@ -1272,14 +1631,23 @@ class TestProcesses(MutantCase):
             except rt.Refused:
                 pass
         try:
-            rt.agent_processes(FakeRuntime(), ID["take"], agent_uid=10001, uid_map=UID_MAP)
+            with mock.patch.object(rt, "TOP_FORMAT", rt.PENDING):
+                rt.agent_processes(FakeRuntime(), ID["take"], agent_uid=10001, uid_map=UID_MAP)
             out.append("top read while its form is PENDING")
         except rt.NotReady:
             pass
+        # The filled TOP_FORMAT (container namespace) on the tables athena printed in the stub take
+        # (lane-reports/stub-take-20261014/stub-take-run2.json top_live and top_after_kill): host pids, container uids.
+        for printed, want in ((ATHENA_TOP_LIVE, [1529070]), (ATHENA_TOP_AFTER_KILL, [])):
+            fake = FakeRuntime([(["docker", "top", ID["take"], "-eo", "pid,uid,comm"], ok(printed))])
+            got = rt.agent_processes(fake, ID["take"], agent_uid=10001, uid_map=UID_MAP, caller_env=CALLER)
+            if got != want:
+                out.append(f"the filled form read {got} from athena's table, not {want}")
         fake = FakeRuntime([(["docker", "exec"], ok())])
         rt.kill_agent(fake, ID["take"], agent_user=rt.AGENT_USER, caller_env=CALLER)
-        if fake.calls[0][0] != ["docker", "exec", "--user", "10001:10001", ID["take"], "kill", "-s", "KILL", "--",
-                                "-1"]:
+        if fake.calls[0][0] != ["docker", "exec", "--user", "10001:10001", ID["take"],
+                                "/usr/bin/python3", "-I", "-S", "-c",
+                                "import os,signal\ntry:\n os.kill(-1, signal.SIGKILL)\nexcept ProcessLookupError:\n pass"]:
             out.append(f"kill argv {fake.calls[0][0]}")
         for u in ("0:0", rt.KEEPALIVE_USER):
             try:
@@ -1352,7 +1720,14 @@ class TestCountersAndState(MutantCase):
         except rt.Refused:
             pass
         state = [{"State": {"Running": False, "ExitCode": 137, "OOMKilled": True}}]
-        with mock.patch.object(rt, "INSPECT_STATUS", "confirmed-in-test"):
+        # athena's running take after the stub turns (stub-take-run2.json take_state_after_turns, its typed fields)
+        athena = [{"State": {"Status": "running", "Running": True, "Paused": False, "Restarting": False,
+                             "OOMKilled": False, "Dead": False, "Pid": 1527963, "ExitCode": 0, "Error": ""}}]
+        fake = FakeRuntime([(["docker", "container", "inspect", ID["take"]], ok(json.dumps(athena)))])
+        if rt.container_state(fake, ID["take"], caller_env=CALLER) != {"running": True, "exit_code": 0,
+                                                                       "oom_killed": False}:
+            out.append("the filled spellings misread athena's State")
+        if not rt._is_pending(rt.INSPECT_STATUS):   # the filled spellings read a synthetic exit record too
             fake = FakeRuntime([(["docker", "container", "inspect", ID["take"]], ok(json.dumps(state)))])
             if rt.container_state(fake, ID["take"], caller_env=CALLER) != {"running": False, "exit_code": 137,
                                                                            "oom_killed": True}:
@@ -1364,7 +1739,8 @@ class TestCountersAndState(MutantCase):
             except rt.Refused:
                 pass
         try:
-            rt.container_state(FakeRuntime(), ID["take"])
+            with mock.patch.object(rt, "INSPECT_STATUS", rt.PENDING):
+                rt.container_state(FakeRuntime(), ID["take"])
             out.append("the state was read while the spellings are PENDING")
         except rt.NotReady:
             pass
@@ -1392,7 +1768,7 @@ class TestRunTurn(MutantCase):
         stream = os.path.join(tmp, "turn-1.jsonl")
         fake = FakeRuntime([(["docker", "exec", "--user", "10001:10001"], ok('{"type":"x"}\n', "warn\n"))])
         with filled():
-            r = rt.run_turn(fake, ID["take"], ["agent-cli"], harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
+            r = rt.run_turn(fake, ID["take"], CLAUDE_INNER, harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
                             login_file=login, stream_path=stream, budget_s=900, clock=clock, caller_env=CALLER)
         if (r["exit_code"], r["timed_out"], r["started_at"], r["ended_at"]) != (0, False, 100.0, 107.5):
             out.append(f"turn record {r}")
@@ -1407,7 +1783,7 @@ class TestRunTurn(MutantCase):
         err.stdout = "partial\n"
         fake = FakeRuntime([(["docker", "exec"], err)])
         with filled():
-            r = rt.run_turn(fake, ID["take"], ["agent-cli"], harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
+            r = rt.run_turn(fake, ID["take"], CLAUDE_INNER, harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
                             login_file=login, stream_path=stream2, budget_s=900, clock=clock, caller_env=CALLER)
         if not r["timed_out"] or r["exit_code"] is not None or open(stream2).read() != "partial\n":
             out.append(f"a timeout was not recorded as a timed-out exec: {r}")
@@ -1419,6 +1795,8 @@ class TestRunTurn(MutantCase):
                 out.append(f"stream path {bad} accepted")
             except rt.Refused:
                 pass
+            if bad == stream and (not os.path.exists(stream) or open(stream).read() != '{"type":"x"}\n'):
+                out.append("a refused repeated turn destroyed its original stream")
         return out
 
     def test_run_turn(self):
@@ -1483,10 +1861,961 @@ class TestConfigDir(MutantCase):
 ORIG_REMOVE = rt.remove_config_dir
 
 
+# ------------------------------------------------------------------- the Codex lease's placement (glitch-06, 14 Oct)
+class TestLeasePlacement(MutantCase):
+    """place_lease copies the registered Codex lease file into the per-take config folder as auth.json, behind the
+    closed CODEX_SUBSCRIPTION_NOT_READY gate (opened only after Javier's Codex2 login and the first real walk). It uses
+    no os name beyond OS_ATTRS: an exclusive no-follow create at mode 600, then the existing lstat verifies mode and
+    owner; a mode other than 600 (a umask, say) refuses, failing closed. Every refusal names the file and the rule,
+    never the contents. The planted value is a fake."""
+
+    FAKE = b'{"tokens": {"access_token": "FAKE-lease-access-0123456789-PLANTED"}}\n'
+
+    def src(self, body=None, mode=0o600, folder_mode=0o700):
+        d = tempfile.mkdtemp(prefix="lease-src-")
+        os.chmod(d, folder_mode)
+        p = os.path.join(d, "codex2-auth.json")
+        fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.write(fd, self.FAKE if body is None else body)
+        os.close(fd)
+        os.chmod(p, mode)
+        return p
+
+    def cfg(self, mode=0o700):
+        parent = tempfile.mkdtemp(prefix="w-")
+        path = rt.make_config_dir(parent)
+        os.chmod(path, mode)
+        return path
+
+    def refused(self, out, label, src, cfg, *words):
+        try:
+            rt.place_lease(src, cfg)
+            out.append(f"{label}: placed")
+            return
+        except rt.LoginRefused as e:
+            msg = str(e)
+        except Exception as e:  # noqa: BLE001 - any other exception is a crash, not a refusal
+            out.append(f"{label}: raised {type(e).__name__}, not a refusal")
+            return
+        if any(w not in msg for w in words):
+            out.append(f"{label}: the refusal does not name {words}: {msg}")
+        if "PLANTED" in msg:
+            out.append(f"{label}: the refusal carries the lease's contents")
+
+    def check_gate(self):
+        out = []
+        src, cfg = self.src(), self.cfg()
+        try:
+            rt.place_lease(src, cfg)
+            out.append("the closed gate placed a lease")
+        except rt.NotReady as e:
+            if str(e) != rt.CODEX_SUBSCRIPTION_NOT_READY:
+                out.append(f"the closed gate refused with another message: {e}")
+        if os.path.lexists(os.path.join(cfg, "auth.json")):
+            out.append("the closed gate left a file in the config folder")
+        if rt.CODEX_SUBSCRIPTION_READY is not False:
+            out.append("the Codex gate is not closed in the committed module")
+        return out
+
+    def test_the_gate_stays_closed(self):
+        self.assertEqual(problems_of(self.check_gate), [])
+
+    def check(self):
+        out = []
+        src, cfg = self.src(), self.cfg()
+        dst = rt.place_lease(src, cfg)
+        if dst != os.path.join(cfg, "auth.json"):
+            out.append(f"the lease was placed at {dst!r}, not the config folder's auth.json")
+        else:
+            st = os.lstat(dst)
+            with open(dst, "rb") as fh:
+                same = fh.read() == self.FAKE
+            if not same or not stat_reg(st) or (st.st_mode & 0o7777) != 0o600 or st.st_uid != os.getuid() \
+                    or st.st_nlink != 1:
+                out.append("the placed lease is not the same bytes, a regular file, mode 600, ours, one link")
+        # the source
+        self.refused(out, "a relative source", "codex2-auth.json", self.cfg(), "absolute path")
+        self.refused(out, "a missing source", os.path.join(tempfile.mkdtemp(prefix="w-"), "none.json"), self.cfg(),
+                     "none.json", "does not exist")
+        real = self.src()
+        link = os.path.join(os.path.dirname(real), "link.json")
+        os.symlink(real, link)
+        self.refused(out, "a linked source", link, self.cfg(), "link.json", "regular file, never a link")
+        self.refused(out, "a source at mode 644", self.src(mode=0o644), self.cfg(), "mode must be 600")
+        two = self.src()
+        os.link(two, two + ".2")
+        self.refused(out, "a source with two links", two, self.cfg(), "exactly one link")
+        self.refused(out, "an oversize source", self.src(body=b"x" * (rt.LEASE_MAX_BYTES + 1)), self.cfg(),
+                     "at most")
+        self.refused(out, "an empty source", self.src(body=b""), self.cfg(), "empty")
+        repo = tempfile.mkdtemp(prefix="w-")
+        os.makedirs(os.path.join(repo, ".git"))
+        inrepo = os.path.join(repo, "auth.json")
+        fd = os.open(inrepo, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.write(fd, self.FAKE)
+        os.close(fd)
+        self.refused(out, "a source inside a repository", inrepo, self.cfg(), "outside every repository")
+        # the config folder
+        self.refused(out, "a relative config folder", self.src(), "cfg-x", "absolute path")
+        c = self.cfg()
+        clink = c + "-link"
+        os.symlink(c, clink)
+        self.refused(out, "a linked config folder", self.src(), clink, "a folder, never a link")
+        self.refused(out, "a config folder at mode 755", self.src(), self.cfg(mode=0o755), "mode 700")
+        rcfg = os.path.join(repo, "cfg")
+        os.mkdir(rcfg, 0o700)
+        self.refused(out, "a config folder inside a repository", self.src(), rcfg, "outside every repository")
+        c = self.cfg()
+        open(os.path.join(c, "auth.json"), "w").close()
+        self.refused(out, "a config folder that already holds auth.json", self.src(), c, "auth.json",
+                     "already holds")
+        # a umask that narrows the create: refused, never widened by a chmod
+        c, narrowed_src = self.cfg(), self.src()          # made first: the umask narrows only the placement
+        old = os.umask(0o277)
+        try:
+            self.refused(out, "a placement narrowed by the umask to 400", narrowed_src, c, "auth.json",
+                         "mode must be 600")
+        finally:
+            os.umask(old)
+        with mock.patch.object(rt.os, "getuid", lambda me=os.getuid(): me + 1):
+            self.refused(out, "a source not owned by the reading user", self.src(), self.cfg(), "codex2-auth.json",
+                         "lease file must be owned")
+        self.refused(out, "a missing config folder", self.src(), os.path.join(tempfile.mkdtemp(prefix="w-"), "nope"),
+                     "nope", "does not exist")
+        # the review's NIT 5: with the lexists check blinded, the exclusive no-follow create itself refuses an existing
+        # auth.json and a link planted at its path; neither is written through
+        real_lexists = os.path.lexists
+        for label, plant in (("an existing auth.json the lexists check missed", "file"),
+                             ("a link at auth.json the lexists check missed", "link")):
+            c = self.cfg()
+            dst, elsewhere = os.path.join(c, "auth.json"), os.path.join(c, "elsewhere")
+            with open(elsewhere, "wb") as fh:
+                fh.write(b"untouched")
+            if plant == "file":
+                with open(dst, "wb") as fh:
+                    fh.write(b"untouched")
+            else:
+                os.symlink(elsewhere, dst)
+            with mock.patch.object(rt.os.path, "lexists",
+                                   lambda p, _d=dst: False if p == _d else real_lexists(p)):
+                self.refused(out, label, self.src(), c, "auth.json", "could not be written")
+            for p in (dst, elsewhere):
+                with open(p, "rb") as fh:
+                    if fh.read() != b"untouched":
+                        out.append(f"{label}: {os.path.basename(p)} was written through")
+        real_lstat = os.lstat
+        # the placed file read back as another user's, with a second link, or shorter or longer than the source (the
+        # review of 6c21320b, MINOR 4: both directions, so a `>` in place of `!=` is caught)
+        for label, field, delta, words in (
+                ("a placed lease not owned by the reading user", 4, 1, ("auth.json", "owned")),
+                ("a placed lease with a second link", 3, 1, ("auth.json", "exactly one link")),
+                ("a placed lease shorter than the source", 6, -1, ("auth.json", "whole lease file")),
+                ("a placed lease longer than the source", 6, 1, ("auth.json", "whole lease file"))):
+            c = self.cfg()
+
+            def readback(p, *a, _placed=os.path.join(c, "auth.json"), _field=field, _delta=delta, **k):
+                st = real_lstat(p, *a, **k)
+                if p == _placed:
+                    f = list(st)
+                    f[_field] = f[_field] + _delta
+                    return os.stat_result(f)
+                return st
+            with mock.patch.object(rt.os, "lstat", readback):
+                self.refused(out, label, self.src(), c, *words)
+        return out
+
+    def test_placement(self):
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True):
+            self.assertEqual(problems_of(self.check), [])
+
+
+# ------------------------------------------------------------- the no-login launcher variant (glitch-06, 14 Oct)
+class TestNoLoginLauncher(MutantCase):
+    """glitch-06's ruling 2: LAUNCHER_SOURCE is supplied at run time (docker exec ... python3 -I -S -c SOURCE), never
+    baked into the image, so a variant is built here: the reserved name NO_LOGIN copies no credential into the agent's
+    environment, and launcher_argv admits it only for a Codex row behind the closed lease gate. Claude Code's road is
+    unchanged. The launcher program runs in-process here with os.execvpe faked: no process starts."""
+
+    def run_launcher(self, argv, environ):
+        """The environment the launcher would exec the harness with, or the exception it raised."""
+        import os as real_os
+        got = {}
+
+        def fake_exec(prog, args, env):
+            got["env"] = dict(env)
+            got["args"] = list(args)
+            raise SystemExit(0)
+        cwd = real_os.getcwd()
+        home = tempfile.mkdtemp(prefix="w-")
+        real_os.chdir(home)
+        try:
+            with mock.patch.object(real_os, "execvpe", fake_exec), mock.patch.dict(real_os.environ, environ,
+                                                                                    clear=True), \
+                    mock.patch.object(sys, "argv", ["-c", *argv]):
+                try:
+                    exec(compile(rt.LAUNCHER_SOURCE, "<launcher>", "exec"), {"__name__": "__main__"})
+                except SystemExit:
+                    pass
+                except Exception as e:  # noqa: BLE001 - reported as the launcher's failure
+                    return e
+        finally:
+            real_os.chdir(cwd)
+        return got
+
+    def check(self):
+        out = []
+        home = tempfile.mkdtemp(prefix="w-")
+        # Claude Code's road: the one credential is copied from the exec's environment by its name
+        got = self.run_launcher(["CLAUDE_CODE_OAUTH_TOKEN", "1", f"HOME={home}", "claude", "-p"],
+                                {"CLAUDE_CODE_OAUTH_TOKEN": "FAKE-claude-0123456789-PLANTED"})
+        if not isinstance(got, dict) or got["env"] != {"HOME": home,
+                                                       "CLAUDE_CODE_OAUTH_TOKEN": "FAKE-claude-0123456789-PLANTED"}:
+            out.append(f"the credential road changed: {got!r}"[:200])
+        # the no-login road: nothing is copied, whatever the exec's environment holds
+        got = self.run_launcher([rt.NO_LOGIN, "1", f"HOME={home}", "codex", "exec"],
+                                {"CODEX_API_KEY": "FAKE-api-0123456789-PLANTED", "OPENAI_API_KEY": "FAKE-oa-PLANTED"})
+        if not isinstance(got, dict) or got["env"] != {"HOME": home}:
+            out.append(f"the no-login launcher copied something or failed: {type(got).__name__}")
+        if rt.NO_LOGIN != "-" or rt._NAME.fullmatch(rt.NO_LOGIN):
+            out.append("NO_LOGIN is not the reserved '-' (a name no variable can have)")
+        # launcher_argv: the reserved name only for a Codex row, only behind the open gate
+        try:
+            rt.launcher_argv(rt.NO_LOGIN, {"A": "1"}, ["codex", "exec"], harness=rt.CODEX)
+            out.append("the closed gate admitted the no-login launcher")
+        except rt.NotReady as e:
+            if str(e) != rt.CODEX_SUBSCRIPTION_NOT_READY:
+                out.append(f"the closed gate refused with another message: {e}")
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True):
+            vals = rt.exec_values(rt.CODEX, "/srv/w/t1/tree")   # the review's MINOR 2: exactly the Codex row's names
+            argv = rt.launcher_argv(rt.NO_LOGIN, vals, ["codex", "exec"], harness=rt.CODEX)
+            pairs = [f"{k}={vals[k]}" for k in sorted(vals)]
+            if argv != [*rt.LAUNCHER, "-", str(len(pairs)), *pairs, "codex", "exec"]:
+                out.append(f"the no-login launcher argv is {argv!r}"[:200])
+            for harness in (rt.CLAUDE_CODE, rt.GEMINI, None):
+                try:
+                    rt.launcher_argv(rt.NO_LOGIN, {"A": "1"}, ["x"], harness=harness)
+                    out.append(f"the no-login launcher was admitted for {harness!r}")
+                except rt.NotReady:
+                    out.append(f"{harness!r}: NotReady, not a refusal")
+                except rt.Refused as e:
+                    if "only for a Codex row" not in str(e):
+                        out.append(f"{harness!r}: refused without naming the rule: {e}")
+        return out
+
+    def test_no_login_launcher(self):
+        self.assertEqual(problems_of(self.check), [])
+
+
+# ----------------------------------------------- the Codex row: subscriptions only, no environment login (glitch-06)
+# The billing-route variables named from the pinned Codex binary's own strings (codex-auth-binary-markers.json,
+# sources[0].matches[N].context; the binary's strings run together, so each boundary is the next CODEX_/OPENAI_
+# prefix). The lane report cites each one and lists what the evidence cannot settle.
+CODEX_ROUTE_NAMED = ("CODEX_AUTHAPI_BASE_URL", "CODEX_AGENT_IDENTITY_AUTHAPI_BASE_URL",
+                     "CODEX_AGENT_IDENTITY_JWKS_BASE_URL", "CODEX_REVOKE_TOKEN_URL_OVERRIDE", "CODEX_CONNECTORS_TOKEN",
+                     "OPENAI_ORGANIZATION", "OPENAI_FEDERATION_RULE_ID", "OPENAI_IDENTITY_TOKEN_FILE")
+# glitch-06's ruling on the docs-read candidates (14 Oct 2026): the pinned Codex is 0.162.1 (box/codex/image.lock,
+# harness.version), the version test_env_allowlist's DOCS_READ_VARIABLES was read at (rust-v0.162.1), so its Codex names
+# not already above are refused if present too. Refusing more fails closed.
+CODEX_ROUTE_DOCS_READ = ("OPENAI_PROJECT", "OPENAI_BASE_URL", "CODEX_ACCESS_TOKEN", "OPENAI_WORKLOAD_IDENTITY_CONTEXT",
+                         "CODEX_OSS_BASE_URL", "CODEX_OSS_PORT", "AWS_BEARER_TOKEN_BEDROCK", "AWS_ACCESS_KEY_ID",
+                         "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "AWS_DEFAULT_REGION", "AWS_PROFILE",
+                         # the review's NIT 7: matches[2]'s ambiguous end, both spellings refused (fails closed)
+                         "CODEX_APP_SERVER_LOGIN_ISSUER", "CODEX_APP_SERVER_LOGIN_ISSUERA")
+
+
+# The pinned Codex binary's environment-name sweep (glitch-06, 14 Oct 2026): its committed record and classification.
+_CLONE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+SWEEP_DIR = os.path.join(_CLONE, "lane-reports", "stub-take-20261014", "probes")
+
+
+def _sweep_files():
+    return (os.path.join(SWEEP_DIR, "codex-env-name-sweep-athena-20261014.json"),
+            os.path.join(SWEEP_DIR, "codex-env-name-classification-20261014.json"))
+
+
+CODEX_BINARY_SHA256 = "628e35487d888a28f0427fc37501da529dd3d81fcbad7a2c3421c1e8670d92e1"
+
+
+def run_classifier(script: str, sweep_path: str) -> bytes:
+    """The committed classifier's stdout for the committed sweep, run in this process (runpy, `-I`-equivalent: no
+    process starts under this module's guard), so a classification file is bound to the program that writes it."""
+    import io
+    import runpy
+    out = io.StringIO()
+    argv = sys.argv
+    sys.argv = [script, sweep_path]
+    try:
+        with contextlib.redirect_stdout(out):
+            runpy.run_path(os.path.join(SWEEP_DIR, script), run_name="__main__")
+    finally:
+        sys.argv = argv
+    return out.getvalue().encode()
+
+
+def _lock_image(arm: str) -> str:
+    with open(os.path.join(os.path.dirname(rt.__file__), arm, "image.lock"), encoding="utf-8") as fh:
+        return json.load(fh)["image_id"]
+
+
+def _gemini_refused() -> tuple:
+    with open(os.path.join(SWEEP_DIR, "gemini-env-name-classification-20261014.json"), encoding="utf-8") as fh:
+        return tuple(json.load(fh)["refuse_if_present"])
+
+
+def sweep_refused() -> tuple:
+    with open(_sweep_files()[1], encoding="utf-8") as fh:
+        return tuple(json.load(fh)["refuse_if_present"])
+
+
+class TestCodexBinarySweep(MutantCase):
+    """Every billing, route, credential or ambiguous name the pinned Codex binary carries (the committed sweep and its
+    deterministic classification) is refused if present for every arm; the classification is bound to the sweep by
+    its sha256 and by re-deriving the split names; no take row's own name is refused."""
+
+    def check(self):
+        out = []
+        sweep_path, class_path = _sweep_files()
+        with open(sweep_path, "rb") as fh:
+            sweep_raw = fh.read()
+        sweep = json.loads(sweep_raw)
+        with open(class_path, encoding="utf-8") as fh:
+            cls = json.load(fh)
+        if cls["sweep_sha256"] != hashlib.sha256(sweep_raw).hexdigest():
+            out.append("the classification does not bind the committed sweep's bytes")
+        with open(class_path, "rb") as fh:
+            class_raw = fh.read()
+        if run_classifier("classify_codex_env_names.py", sweep_path) != class_raw:
+            out.append("the committed Codex classification is not the classifier's output for the committed sweep")
+        markers = os.path.join(_CLONE, "lane-reports", "live-box-evidence-2026-10-13", "codex-auth-binary-markers.json")
+        with open(markers, encoding="utf-8") as fh:
+            marker_sha = json.load(fh)["sources"][0]["sha256"]
+        if not (sweep["binary_sha256"] == cls["binary_sha256"] == marker_sha == CODEX_BINARY_SHA256):
+            out.append("the sweep is not of the pinned binary (the full sha256, the markers file's)")
+        if sweep["image"] != _lock_image("codex"):
+            out.append("the Codex sweep is not of the pinned take-o image (box/codex/image.lock image_id)")
+        split = re.compile(r"(?=(?:CODEX|OPENAI|AWS|AZURE|ANTHROPIC|GOOGLE)_)")
+        name = re.compile(r"(CODEX|OPENAI|AWS|AZURE|ANTHROPIC|GOOGLE)_[A-Z0-9_]+")
+        derived = sorted({p for r in sweep["names"] for p in split.split(r) if name.fullmatch(p)})
+        if [r["match"] for r in cls["rows"]] != derived:
+            out.append("the classification does not place every name the sweep found")
+        refuse = set(cls["refuse_if_present"])
+        want = {n for r in cls["rows"] if r["class"] in ("credential", "route", "ambiguous") for n in r["names"]}
+        want |= {g["name"] for r in cls["rows"] for g in r.get("glued", ())
+                 if g["class"] in ("credential", "route", "ambiguous")}
+        if refuse != want:
+            out.append("the refuse list is not every credential, route and ambiguous name (glued ones included)")
+        for n in ("SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "NODE_EXTRA_CA_CERTS",
+                  "GIT_SSL_CAINFO", "NODE_USE_ENV_PROXY", "ELECTRON_GET_USE_PROXY", "NODE_REPL_AUTH_TOKEN",
+                  "EXEC_WRAPPER"):
+            if n not in refuse:
+                out.append(f"{n}, glued in the binary's strings, is not refused")
+        if "HTTPS_PROXY" in refuse:
+            out.append("HTTPS_PROXY, every row's egress proxy, is refused")
+        if tuple(rt.CODEX_BINARY_SWEEP_REFUSED) != tuple(cls["refuse_if_present"]):
+            out.append("run_take's sweep tuple drifted from the committed classification")
+        for arm in (rt.CODEX, rt.CLAUDE_CODE, rt.GEMINI):
+            missing = sorted(refuse - set(rt.refused_variables(arm)))
+            if missing:
+                out.append(f"{arm}: the sweep's names not refused: {missing[:5]}")
+            in_row = sorted(set(rt.TAKE_ENV[arm]) & set(rt.refused_variables(arm)))
+            if in_row:
+                out.append(f"{arm}: its own row's names are refused: {in_row}")
+        if "CODEX_HOME" in rt.refused_variables(rt.CODEX):
+            out.append("CODEX_HOME, the Codex row's own config home, is refused")
+        return out
+
+    def test_the_binary_sweep_is_refused(self):
+        self.assertEqual(problems_of(self.check), [])
+
+
+class TestRefusedPrefixes(MutantCase):
+    """glitch-06's ruling on the sweep's residual (14 Oct 2026): any environment name starting with
+    CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_ or CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_ is refused for every
+    arm, in this process's own environment, the caller's and an exec's request, by name only."""
+
+    PREFIXES = ("CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_", "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_")
+
+    def check(self):
+        out = []
+        if tuple(rt.REFUSED_NAME_PREFIXES) != self.PREFIXES:
+            out.append(f"REFUSED_NAME_PREFIXES is {rt.REFUSED_NAME_PREFIXES!r}")
+        for arm in (rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI):
+            for prefix in self.PREFIXES:
+                for name in (prefix + "HTTPS_PROXY", prefix + "X", prefix):
+                    for where in ("caller", "own", "requested"):
+                        try:
+                            with mock.patch.dict(os.environ, {name: FAKE_VALUE} if where == "own" else {},
+                                                 clear=True):
+                                rt.check_environment(arm, {"PATH": "/bin", name: FAKE_VALUE} if where == "caller"
+                                                     else {"PATH": "/bin"},
+                                                     requested=(name,) if where == "requested" else ())
+                            out.append(f"{arm}: {name} ({where}) admitted")
+                        except rt.Refused as e:
+                            if name not in str(e) or FAKE_VALUE in str(e):
+                                out.append(f"{arm}: {name} ({where}) refused without its name, or with its value")
+            bad = sorted(n for n in rt.TAKE_ENV[arm] if n.startswith(self.PREFIXES))
+            if bad:
+                out.append(f"{arm}: its row names a refused prefix: {bad}")
+        return out
+
+    def test_refused_prefixes(self):
+        self.assertEqual(problems_of(self.check), [])
+
+
+CLAUDE_SWEEP_DIR = os.path.join(_CLONE, "lane-reports", "stub-take-20261015")
+CLAUDE_BINARY_SHA256 = "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de"
+# The ruled names, pinned as a literal (the review of ad71ca07, MINOR 4: a reclassified CLAUDE_CODE_GATEWAY_TOKEN must
+# turn this red, not pass): glitch-6b's 4(i) and the review's three.
+CLAUDE_RULED_REFUSED = (
+    "CLAUDE_CODE_USE_ANTHROPIC_AWS", "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD", "CLAUDE_CODE_USE_MANTLE",
+    "CLAUDE_CODE_USE_GATEWAY", "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST", "CLAUDE_CODE_HOST_CREDS_FILE",
+    "ANTHROPIC_BEDROCK_BASE_URL", "ANTHROPIC_VERTEX_BASE_URL", "ANTHROPIC_FOUNDRY_BASE_URL", "ANTHROPIC_FOUNDRY_RESOURCE",
+    "ANTHROPIC_AWS_BASE_URL", "ANTHROPIC_GOOGLE_CLOUD_BASE_URL", "ANTHROPIC_BEDROCK_MANTLE_BASE_URL",
+    "ANTHROPIC_UNIX_SOCKET", "ANTHROPIC_FOUNDRY_AUTH_TOKEN", "ANTHROPIC_IDENTITY_TOKEN", "ANTHROPIC_IDENTITY_TOKEN_FILE",
+    "ANTHROPIC_ENVIRONMENT_KEY", "ANTHROPIC_WORK_SECRET", "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR",
+    "CLAUDE_CODE_GATEWAY_TOKEN", "CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR", "CLAUDE_CODE_CUSTOM_OAUTH_URL",
+    "AWS_ENDPOINT_URL_BEDROCK_RUNTIME")
+CLAUDE_SIX_SWITCHES = ("CLAUDE_CODE_USE_ANTHROPIC_AWS", "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD", "CLAUDE_CODE_USE_MANTLE",
+                       "CLAUDE_CODE_USE_GATEWAY", "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST", "CLAUDE_CODE_HOST_CREDS_FILE")
+
+
+def _claude_files():
+    d = CLAUDE_SWEEP_DIR
+    return (os.path.join(d, "claude-2.1.296-binary-sweep-20261015.json"),
+            os.path.join(d, "claude-2.1.296-route-names-20261015.json"),
+            os.path.join(d, "claude-2.1.296-env-refusal-20261015b.json"),
+            os.path.join(d, "probes", "classify_claude_env_names_v2.py"))
+
+
+def _claude_refused() -> tuple:
+    with open(_claude_files()[2], encoding="utf-8") as fh:
+        return tuple(json.load(fh)["refuse_if_present"])
+
+
+def _exempting(loads, name):
+    """json.loads that adds `name` to a classification's exempt map (the NIT B mutant: an exemption added)."""
+    def wrapped(raw, *a, **k):
+        doc = loads(raw, *a, **k)
+        if isinstance(doc, dict) and isinstance(doc.get("exempt"), dict):
+            doc["exempt"] = dict(doc["exempt"], **{name: "the operator session's own token"})
+        return doc
+    return wrapped
+
+
+def run_claude_classifier() -> bytes:
+    """classify_claude_env_names.py's stdout for the committed records, run in this process (runpy)."""
+    import io
+    import runpy
+    sweep, route, _, script = _claude_files()
+    out = io.StringIO()
+    argv = sys.argv
+    sys.argv = [script, sweep, route]
+    try:
+        with contextlib.redirect_stdout(out):
+            runpy.run_path(script, run_name="__main__")
+    finally:
+        sys.argv = argv
+    return out.getvalue().encode()
+
+
+class TestClaudeBinarySweep(MutantCase):
+    """glitch-6b's ruling 4(i), 15 Oct 2026: the pinned Claude Code 2.1.296 binary's provider and gateway switches and
+    the inference credentials no stop list held are refused if present for every arm, from the committed sweep (box
+    ba6d7f14) and its deterministic classification, re-run here byte for byte; the binary sha256 sits beside the take
+    lock (run_take.CLAUDE_BINARY), bound to box/image.lock's image id, so a changed image refuses this binding."""
+
+    def check(self):
+        out = []
+        sweep_path, route_path, class_path, _ = _claude_files()
+        with open(class_path, "rb") as fh:
+            class_raw = fh.read()
+        cls = json.loads(class_raw)
+        if run_claude_classifier() != class_raw:
+            out.append("the committed Claude classification is not the classifier's output for the committed sweep")
+        for path, key in ((sweep_path, "sweep_sha256"), (route_path, "route_names_sha256")):
+            with open(path, "rb") as fh:
+                if hashlib.sha256(fh.read()).hexdigest() != cls[key]:
+                    out.append(f"the classification does not bind {os.path.basename(path)}'s bytes")
+        binary = getattr(rt, "CLAUDE_BINARY", None)
+        if not isinstance(binary, dict):
+            return out + ["run_take has no CLAUDE_BINARY beside the take lock"]
+        if not (cls["binary_sha256"] == binary.get("sha256") == CLAUDE_BINARY_SHA256):
+            out.append("the sweep is not of the pinned binary sha256 (run_take.CLAUDE_BINARY)")
+        if not (cls["image"] == binary.get("image_id") == _lock_image(".")):
+            out.append("the Claude binary record is not of box/image.lock's image id")
+        if binary.get("path") != cls["binary_path"]:
+            out.append("CLAUDE_BINARY's path is not the swept path")
+        refuse = tuple(cls["refuse_if_present"])
+        if tuple(getattr(rt, "CLAUDE_BINARY_SWEEP_REFUSED", ())) != refuse:
+            out.append("run_take's Claude sweep tuple drifted from the committed classification")
+        for n in CLAUDE_SIX_SWITCHES:
+            if n not in refuse:
+                out.append(f"{n}, a billing switch outside every pattern, is not refused")
+        claude_refused = rt.refused_variables(rt.CLAUDE_CODE)
+        for n in CLAUDE_RULED_REFUSED:
+            if n not in claude_refused:
+                out.append(f"{n}, a ruled name, is not refused for a Claude take")
+        # Completeness (MINOR 4): every name the sweep's patterns or the route read carried is refused, in a take
+        # row, or exempt with a reason.
+        with open(sweep_path, encoding="utf-8") as fh:
+            swept = set(json.load(fh)["names"])
+        with open(route_path, encoding="utf-8") as fh:
+            swept |= set(json.load(fh)["names"])
+        rows = set().union(*(set(v) for v in rt.TAKE_ENV.values()))
+        exempt = {n for n, why in cls.get("exempt", {}).items() if isinstance(why, str) and why.strip()}
+        if set(cls.get("exempt", {})) != {"CLAUDE_CODE_OAUTH_TOKEN"}:      # closure review NIT B: pinned exactly
+            out.append(f"the exemption set is {sorted(cls.get('exempt', {}))}, not exactly the Claude login")
+        loose = sorted(n for n in swept if n not in claude_refused and n not in rows and n not in exempt)
+        if loose:
+            out.append(f"{len(loose)} swept name(s) neither refused, in a take row nor exempt with a reason: {loose[:6]}")
+        if rt.LOGIN_VARIABLE[rt.CLAUDE_CODE] in refuse:
+            out.append("the Claude row's own login is refused")
+        for arm in (rt.CODEX, rt.CLAUDE_CODE, rt.GEMINI):
+            missing = sorted(set(refuse) - set(rt.refused_variables(arm)))
+            if missing:
+                out.append(f"{arm}: the Claude sweep's names not refused: {missing[:5]}")
+            in_row = sorted(set(rt.TAKE_ENV[arm]) & set(rt.refused_variables(arm)))
+            if in_row:
+                out.append(f"{arm}: its own row's names are refused: {in_row}")
+        try:
+            rt.check_environment(rt.CLAUDE_CODE, {"CLAUDE_CODE_USE_MANTLE": "1"})
+            out.append("a set CLAUDE_CODE_USE_MANTLE does not refuse a Claude take")
+        except rt.Refused:
+            pass
+        return out
+
+    def test_the_claude_binary_sweep_is_refused(self):
+        self.assertEqual(problems_of(self.check), [])
+
+    def test_mutants(self):
+        refuse = tuple(json.loads(open(_claude_files()[2], encoding="utf-8").read())["refuse_if_present"])
+        self.assert_green_then_red(self.check, (
+            ("a switch dropped", lambda: mock.patch.object(rt, "CLAUDE_BINARY_SWEEP_REFUSED",
+                                                           tuple(n for n in refuse if n != "CLAUDE_CODE_USE_MANTLE"))),
+            ("the sweep not in the refused set", lambda: mock.patch.dict(
+                rt.VENDOR_BILLING_ROUTE_VARIABLES, {rt.CLAUDE_CODE: ()})),
+            ("another binary", lambda: mock.patch.dict(rt.CLAUDE_BINARY, {"sha256": "0" * 64})),
+            ("another image", lambda: mock.patch.dict(rt.CLAUDE_BINARY, {"image_id": "sha256:" + "0" * 64})),
+            ("the gateway token reclassified", lambda: _patches(
+                (rt, "CLAUDE_BINARY_SWEEP_REFUSED", tuple(n for n in refuse if n != "CLAUDE_CODE_GATEWAY_TOKEN")),
+                (rt, "VENDOR_BILLING_ROUTE_VARIABLES", dict(
+                    rt.VENDOR_BILLING_ROUTE_VARIABLES,
+                    **{rt.CLAUDE_CODE: tuple(n for n in refuse if n != "CLAUDE_CODE_GATEWAY_TOKEN")})))),
+            ("the session token exempted", lambda: mock.patch.object(
+                json, "loads", _exempting(json.loads, "CLAUDE_CODE_MESSAGING_TOKEN"))),
+            ("a pattern-matched name dropped", lambda: _patches(
+                (rt, "VENDOR_BILLING_ROUTE_VARIABLES", dict(
+                    rt.VENDOR_BILLING_ROUTE_VARIABLES,
+                    **{rt.CLAUDE_CODE: tuple(n for n in refuse if n != "ANTHROPIC_SMALL_FAST_MODEL")})))),
+        ))
+
+
+class TestGeminiPackageSweep(MutantCase):
+    """glitch-06's ruling (14 Oct 2026): the pinned Gemini CLI's environment-name sweep and its deterministic
+    classification (committed under probes/) fill VENDOR_BILLING_ROUTE_VARIABLES[GEMINI]: every credential, route and
+    ambiguous name is refused if present for every arm; GEMINI_API_KEY stays the Gemini arm's own login; no row's own
+    name is refused; take_environment no longer waits on a PENDING Gemini entry."""
+
+    def check(self):
+        out = []
+        sweep_path = os.path.join(SWEEP_DIR, "gemini-env-name-sweep-athena-20261014.json")
+        class_path = os.path.join(SWEEP_DIR, "gemini-env-name-classification-20261014.json")
+        with open(sweep_path, "rb") as fh:
+            sweep_raw = fh.read()
+        sweep = json.loads(sweep_raw)
+        with open(class_path, encoding="utf-8") as fh:
+            cls = json.load(fh)
+        with open(os.path.join(os.path.dirname(rt.__file__), "gemini", "image.lock"), encoding="utf-8") as fh:
+            pinned = json.load(fh)["harness"]["version"]
+        if cls["sweep_sha256"] != hashlib.sha256(sweep_raw).hexdigest():
+            out.append("the classification does not bind the committed sweep's bytes")
+        if sweep["package_version"] != pinned or cls["package_version"] != pinned:
+            out.append(f"the sweep is not of the pinned Gemini CLI {pinned}")
+        if sweep["image"] != _lock_image("gemini"):
+            out.append("the Gemini sweep is not of the pinned take-g image (box/gemini/image.lock image_id)")
+        with open(class_path, "rb") as fh:
+            class_raw = fh.read()
+        if run_classifier("classify_gemini_env_names.py", sweep_path) != class_raw:
+            out.append("the committed Gemini classification is not the classifier's output for the committed sweep")
+        for n in ("WEB_HOST", "EDITOR_URL"):
+            if n not in cls["refuse_if_present"]:
+                out.append(f"{n} is not refused")
+        if sorted(r["name"] for r in cls["rows"]) != sorted(sweep["names"]):
+            out.append("the classification does not place every name the sweep found")
+        refuse = set(cls["refuse_if_present"])
+        if refuse != {r["name"] for r in cls["rows"] if r["class"] in ("credential", "route", "ambiguous")}:
+            out.append("the refuse list is not every credential, route and ambiguous name")
+        if tuple(rt.GEMINI_PACKAGE_SWEEP_REFUSED) != tuple(cls["refuse_if_present"]):
+            out.append("run_take's Gemini sweep tuple drifted from the committed classification")
+        entry = rt.VENDOR_BILLING_ROUTE_VARIABLES[rt.GEMINI]
+        if rt._is_pending(entry) or set(entry) != refuse:
+            out.append("VENDOR_BILLING_ROUTE_VARIABLES[gemini] is not the sweep's refuse list")
+        for arm in (rt.CODEX, rt.CLAUDE_CODE, rt.GEMINI):
+            missing = sorted(refuse - set(rt.refused_variables(arm)))
+            if missing:
+                out.append(f"{arm}: the Gemini sweep's names not refused: {missing[:5]}")
+            in_row = sorted(set(rt.TAKE_ENV[arm]) & set(rt.refused_variables(arm)))
+            if in_row:
+                out.append(f"{arm}: its own row's names are refused: {in_row}")
+        if "GEMINI_API_KEY" in rt.refused_variables(rt.GEMINI):
+            out.append("GEMINI_API_KEY, the Gemini arm's own login, is refused for it")
+        if "GEMINI_API_KEY" not in rt.refused_variables(rt.CLAUDE_CODE):
+            out.append("GEMINI_API_KEY is not refused for another arm")
+        try:
+            rt.take_environment(rt.GEMINI, "/srv/w/t1/tree")
+        except rt.NotReady as e:
+            out.append(f"take_environment still waits for Gemini: {e}")
+        return out
+
+    def test_the_gemini_sweep_is_refused(self):
+        self.assertEqual(problems_of(self.check), [])
+
+
+class TestCodexExec(MutantCase):
+    """glitch-06 (14 Oct 2026): run_take's Codex exec branch, behind the closed CODEX_SUBSCRIPTION_READY gate. A turn
+    is the no-login launcher over the Codex row (CODEX_HOME the config mount, where place_lease put auth.json), running
+    exactly the shapes the pinned 0.162.1 help shows for `codex exec` and `codex exec resume`, with the arm's pinned
+    model; anything else refuses. The lease file passed is checked in place, never read."""
+
+    MODEL = "gpt-6.1-sol"
+    BYPASS = "--dangerously-bypass-approvals-and-sandbox"
+
+    def lease(self, mode=0o600, folder_mode=0o700, name="auth.json"):
+        d = tempfile.mkdtemp(prefix="w-")
+        os.chmod(d, folder_mode)
+        p = os.path.join(d, name)
+        fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.write(fd, b'{"tokens": {}}\n')
+        os.close(fd)
+        os.chmod(p, mode)
+        return p
+
+    def first(self, model=None):
+        return ["codex", "exec", "--json", "-m", model or self.MODEL, self.BYPASS, "fix the failing check"]
+
+    def exec_(self, inner, lf=None, run_tree="/srv/w/t1/tree", workdir="/srv/w/t1/tree", user=None, cid=None,
+              caller=None):
+        return rt.exec_argv(cid or ID["take"], inner, user=user or rt.AGENT_USER, workdir=workdir, harness=rt.CODEX,
+                            run_tree=run_tree, login_file=lf or self.lease(), caller_env=caller or dict(CALLER))
+
+    def refused(self, out, label, inner=None, lf=None, word=None, **kw):
+        try:
+            self.exec_(inner if inner is not None else self.first(), lf=lf, **kw)
+            out.append(f"{label}: admitted")
+        except rt.Refused as e:
+            if word and word not in str(e):
+                out.append(f"{label}: refused for another reason: {e}")
+        except Exception as e:  # noqa: BLE001
+            out.append(f"{label}: raised {type(e).__name__}, not Refused: {str(e)[:120]}")
+
+    def check(self):
+        out = []
+        if tuple(rt.CODEX_MODELS) != ("gpt-6.1-sol", "gpt-6-luna"):
+            out.append(f"CODEX_MODELS is {rt.CODEX_MODELS!r}")
+        if tuple(rt.CODEX_HELP_COMMANDS) != ("resume", "fork", "review", "help"):
+            out.append(f"CODEX_HELP_COMMANDS is {rt.CODEX_HELP_COMMANDS!r}")
+        # the review of 1e10e320, MINOR 3 and NIT 5: the box's turn rules and the adapter's argv agree
+        import codex_adapter
+        if rt._CODEX_SESSION.pattern != codex_adapter._THREAD_ID.pattern:
+            out.append("run_take's session-id form is not codex_adapter's thread-id form")
+        if (rt.CODEX_BYPASS_FLAG,) != tuple(codex_adapter.MODE_FLAGS["bypass"]):
+            out.append("run_take's bypass flag is not codex_adapter's bypass mode flags")
+        with open(os.path.join(HERE, "prereg-draft.json"), encoding="utf-8") as fh:
+            if tuple(json.load(fh)["models"]["O"]) != tuple(rt.CODEX_MODELS):
+                out.append("CODEX_MODELS is not prereg-draft.json's arm O models")
+        # the closed gate: NotReady before anything is checked or read (a bad lease, user or turn never shows first)
+        with mock.patch.dict(os.environ, {}, clear=True), filled():
+            for label, kw in (("a good turn", {}), ("a bad lease", {"lf": self.lease(name="lease.json")}),
+                              ("another user", {"user": "0:0"}), ("a bad turn", {"inner": ["codex", "review"]})):
+                try:
+                    self.exec_(kw.pop("inner", self.first()), **kw)
+                    out.append(f"the closed gate built a Codex exec ({label})")
+                except rt.NotReady as e:
+                    if str(e) != rt.CODEX_SUBSCRIPTION_NOT_READY:
+                        out.append(f"the closed gate refused with another message ({label}): {e}")
+                except Exception as e:  # noqa: BLE001
+                    out.append(f"the closed gate let {label} through to {type(e).__name__}")
+        with mock.patch.dict(os.environ, {}, clear=True), filled(), \
+                mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True):
+            for inner in (self.first(), self.first("gpt-6-luna"),
+                          ["codex", "exec", "--json", "-m", self.MODEL, self.BYPASS, "resume",
+                           "019a2b3c-4d5e-6f70-8192-a3b4c5d6e7f8", "next step"],
+                          ["codex", "exec", self.BYPASS, "--model", self.MODEL, "--json", "go on"]):
+                try:
+                    argv, env = self.exec_(inner)
+                except Exception as e:  # noqa: BLE001
+                    out.append(f"{inner[2:6]}: not built: {type(e).__name__}: {str(e)[:120]}")
+                    continue
+                vals = rt.exec_values(rt.CODEX, "/srv/w/t1/tree")
+                pairs = [f"{k}={vals[k]}" for k in sorted(vals)]
+                want = [rt.RUNTIME_CLIENT, "exec", "--user", rt.AGENT_USER, "--workdir", "/srv/w/t1/tree",
+                        ID["take"], *rt.LAUNCHER, rt.NO_LOGIN, str(len(pairs)), *pairs, *inner]
+                if argv != want:
+                    out.append(f"the Codex argv is off for {inner[2:6]}")
+                if vals.get("CODEX_HOME") != rt.CONFIG_MOUNT:
+                    out.append("CODEX_HOME is not the config mount")
+                if env != rt.runtime_env(dict(CALLER)):
+                    out.append("the Codex client environment is not the runtime's needs alone")
+                if any(n in env for n in ("CODEX_API_KEY", "OPENAI_API_KEY", "-")):
+                    out.append("a credential name rides the Codex client environment")
+            # the turn shapes the pinned help does not show, or the study never uses, each refused
+            B = ["codex", "exec"]
+            for label, inner, word in (
+                    ("a config override", B + ["-c", "model=\"o3\"", "--json", "-m", self.MODEL, self.BYPASS, "x"], None),
+                    ("the open-source provider", B + ["--oss", "--json", "-m", self.MODEL, self.BYPASS, "x"], None),
+                    ("a profile", B + ["-p", "p", "--json", "-m", self.MODEL, self.BYPASS, "x"], None),
+                    ("a feature switch", B + ["--enable", "f", "--json", "-m", self.MODEL, self.BYPASS, "x"], None),
+                    ("another writable dir", B + ["--add-dir", "/x", "--json", "-m", self.MODEL, self.BYPASS, "x"], None),
+                    ("another working root", B + ["-C", "/x", "--json", "-m", self.MODEL, self.BYPASS, "x"], None),
+                    ("the user config ignored", B + ["--ignore-user-config", "--json", "-m", self.MODEL, self.BYPASS,
+                                                     "x"], None),
+                    ("a sandbox mode", B + ["-s", "read-only", "--json", "-m", self.MODEL, self.BYPASS, "x"], None),
+                    ("an output file", B + ["-o", "/x", "--json", "-m", self.MODEL, self.BYPASS, "x"], None),
+                    ("an ephemeral session", B + ["--ephemeral", "--json", "-m", self.MODEL, self.BYPASS, "x"], None),
+                    ("the model glued by =", B + ["--json", "--model=" + self.MODEL, self.BYPASS, "x"], None),
+                    ("no --json", B + ["-m", self.MODEL, self.BYPASS, "x"], "--json"),
+                    ("no model", B + ["--json", self.BYPASS, "x"], "model"),
+                    ("no bypass", B + ["--json", "-m", self.MODEL, "x"], "bypass"),
+                    ("the model twice", B + ["--json", "-m", self.MODEL, "-m", self.MODEL, self.BYPASS, "x"], "once"),
+                    ("--json twice", B + ["--json", "--json", "-m", self.MODEL, self.BYPASS, "x"], "once"),
+                    ("an unpinned model", self.first("o3"), "pinned"),
+                    ("another client", ["claude", "exec", "--json", "-m", self.MODEL, self.BYPASS, "x"], "codex"),
+                    ("an absolute client path", ["/usr/local/bin/codex"] + self.first()[1:], "codex"),
+                    ("another subcommand", ["codex", "review", "--json", "-m", self.MODEL, self.BYPASS, "x"], "exec"),
+                    ("a prompt that reads as a flag", B + ["--json", "-m", self.MODEL, self.BYPASS, "-x"], None),
+                    ("the prompt from stdin", B + ["--json", "-m", self.MODEL, self.BYPASS, "-"], None),
+                    ("no prompt", B + ["--json", "-m", self.MODEL, self.BYPASS], "prompt"),
+                    ("two prompts", B + ["--json", "-m", self.MODEL, self.BYPASS, "x", "y"], "prompt"),
+                    ("resume --last", B + ["--json", "-m", self.MODEL, self.BYPASS, "resume", "--last", "x"], None),
+                    ("resume without a prompt", B + ["--json", "-m", self.MODEL, self.BYPASS, "resume", "abc-1"],
+                     "prompt"),
+                    ("a session id off the form", B + ["--json", "-m", self.MODEL, self.BYPASS, "resume", "a b", "x"],
+                     "session"),
+                    ("an option after resume", B + ["--json", "-m", self.MODEL, self.BYPASS, "resume", "-m", "o3",
+                                                    "abc-1", "x"], None),
+                    ("fork", B + ["--json", "-m", self.MODEL, self.BYPASS, "fork", "abc-1", "x"], None),
+                    ("-m with no model", B + ["--json", self.BYPASS, "x", "-m"], None),
+                    ("-m before the prompt with no model", B + ["--json", self.BYPASS, "-m"], "takes the model"),
+                    # the review of 1e10e320, MAJOR: a one-word prompt that is one of the pinned help's subcommands
+                    # would be run as that subcommand (`codex exec [OPTIONS] <COMMAND> [ARGS]`)
+                    ("`review` as the only prompt", B + ["--json", "-m", self.MODEL, self.BYPASS, "review"],
+                     "subcommand"),
+                    ("`help` as the only prompt", B + ["--json", "-m", self.MODEL, self.BYPASS, "help"], "subcommand"),
+                    ("`fork` as the only prompt", B + ["--json", "-m", self.MODEL, self.BYPASS, "fork"], "subcommand"),
+                    ("`resume` as the only prompt", B + ["--json", "-m", self.MODEL, self.BYPASS, "resume"], None),
+                    ("-m taking the next flag as its model", B + ["-m", "--json", self.BYPASS, "x"],
+                     "takes the model"),
+                    ("a resumed prompt that reads as a flag",
+                     B + ["--json", "-m", self.MODEL, self.BYPASS, "resume", "abc-1", "-x"], "never starts with '-'"),
+                    ("a resumed prompt from stdin",
+                     B + ["--json", "-m", self.MODEL, self.BYPASS, "resume", "abc-1", "-"], "never starts with '-'")):
+                self.refused(out, label, inner=inner, word=word)
+            try:                                       # not a list of strings: refused before any shape is read
+                self.exec_(B + ["--json", "-m", self.MODEL, self.BYPASS, 5])
+                out.append("a non-string turn argument was admitted")
+            except TypeError:
+                pass
+            # the exec's own frame
+            for label, kw, word in (("another user", {"user": "0:0"}, "agent"),
+                                    ("a container id off the form", {"cid": "not-an-id"}, None),
+                                    ("a relative workdir", {"workdir": "srv/w"}, "workdir"),
+                                    ("an API key in the caller's environment",
+                                     {"caller": dict(CALLER, OPENAI_API_KEY=FAKE_VALUE)}, "OPENAI_API_KEY"),
+                                    ("a broker-snapshot name in the caller's environment",
+                                     {"caller": dict(CALLER, CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_X="1")},
+                                     "BROKERED_VALUE_X")):
+                self.refused(out, label, word=word, **kw)
+            # the lease, checked in place and never read
+            run_tree = tempfile.mkdtemp(prefix="w-")
+            inside = os.path.join(run_tree, "cfg")
+            os.mkdir(inside, 0o700)
+            in_tree = os.path.join(inside, "auth.json")
+            fd = os.open(in_tree, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            os.close(fd)
+            good = self.lease()
+            link = os.path.join(os.path.dirname(good), "link")
+            os.symlink(good, link)
+            two = self.lease()
+            os.link(two, two + ".2")
+            for label, lf, word, kw in (
+                    ("a lease file of another name", self.lease(name="lease.json"), "auth.json", {}),
+                    ("a lease at mode 644", self.lease(mode=0o644), "600", {}),
+                    ("a lease folder at mode 755", self.lease(folder_mode=0o755), "700", {}),
+                    ("a link as the lease", link, "auth.json", {}),
+                    ("a lease with two links", two, "one link", {}),
+                    ("a lease inside the run tree", in_tree, "run tree", {"run_tree": run_tree})):
+                self.refused(out, label, lf=lf, word=word, **kw)
+            with mock.patch.object(rt.os, "getuid", lambda me=os.getuid(): me + 1):
+                self.refused(out, "a lease of another owner", lf=self.lease(), word="owned")
+            repo = tempfile.mkdtemp(prefix="w-")
+            os.mkdir(os.path.join(repo, ".git"))
+            in_repo = os.path.join(repo, "cfg")
+            os.mkdir(in_repo, 0o700)
+            fd = os.open(os.path.join(in_repo, "auth.json"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            os.close(fd)
+            self.refused(out, "a lease inside a repository", lf=os.path.join(in_repo, "auth.json"),
+                         word="repository")
+            with mock.patch.object(rt, "read_login", side_effect=AssertionError("read")), \
+                    mock.patch("builtins.open", side_effect=AssertionError("a file was opened")):
+                try:
+                    self.exec_(self.first(), lf=good)
+                except AssertionError as e:
+                    out.append(f"the Codex exec read a file: {e}")
+        return out
+
+    def test_codex_exec(self):
+        self.assertEqual(problems_of(self.check), [])
+
+
+class TestCodexRow(MutantCase):
+    """glitch-06's ruling 1 (14 Oct 2026): no API-key route for Codex, ever. TAKE_ENV[CODEX] carries no credential;
+    LOGIN_VARIABLE[CODEX] is NO_LOGIN (the lease road); every road that expects an environment login refuses a Codex
+    row explicitly; CODEX_API_KEY and OPENAI_API_KEY are refused for a Codex take, by name, never by value. Ruling 3:
+    VENDOR_BILLING_ROUTE_VARIABLES[CODEX] is named from the pinned version's evidence, refused if present."""
+
+    PLANT = "FAKE-api-0123456789abcdef-PLANTED"
+
+    def check(self):
+        out = []
+        row = rt.TAKE_ENV[rt.CODEX]
+        if "CODEX_API_KEY" in row or rt.CREDENTIAL in row.values():
+            out.append("the Codex row still carries an environment credential")
+        if rt.LOGIN_VARIABLE[rt.CODEX] != rt.NO_LOGIN:
+            out.append(f"LOGIN_VARIABLE[codex] is {rt.LOGIN_VARIABLE[rt.CODEX]!r}, not NO_LOGIN")
+        if rt.LOGIN_VARIABLE[rt.CLAUDE_CODE] != "CLAUDE_CODE_OAUTH_TOKEN" or \
+                rt.LOGIN_VARIABLE[rt.GEMINI] != "GEMINI_API_KEY":
+            out.append("another arm's login variable moved")
+        refused = rt.refused_variables(rt.CODEX)
+        for name in ("CODEX_API_KEY", "OPENAI_API_KEY") + CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ:
+            if name not in refused:
+                out.append(f"{name} is not refused for a Codex take")
+            with mock.patch.dict(os.environ, {}, clear=True):
+                try:
+                    rt.check_environment(rt.CODEX, {"PATH": "/bin", name: self.PLANT})
+                    out.append(f"a Codex take admitted {name} in the caller's environment")
+                except rt.Refused as e:
+                    if name not in str(e) or "PLANTED" in str(e):
+                        out.append(f"{name}: the refusal does not name it, or carries the value: {e}")
+        got_route = tuple(rt.VENDOR_BILLING_ROUTE_VARIABLES[rt.CODEX])
+        if got_route[:len(CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ)] != CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ or \
+                set(got_route) != set(CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ) | set(sweep_refused()):
+            out.append(f"VENDOR_BILLING_ROUTE_VARIABLES[codex] is {rt.VENDOR_BILLING_ROUTE_VARIABLES[rt.CODEX]!r}")
+        for name in CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ:     # refuse-if-present for every arm, like the others'
+            if name not in rt.refused_variables(rt.CLAUDE_CODE):
+                out.append(f"{name} is not refused for a Claude Code take")
+        # a road that expects an environment login refuses a Codex row explicitly, never by KeyError
+        d = tempfile.mkdtemp(prefix="w-")
+        p = os.path.join(d, "login")
+        fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.write(fd, b"-=" + self.PLANT.encode() + b"\n")
+        os.close(fd)
+        try:
+            rt.read_login(p, rt.NO_LOGIN)
+            out.append("read_login read a Codex environment login")
+        except rt.LoginRefused as e:
+            if "no environment login" not in str(e) or "PLANTED" in str(e):
+                out.append(f"read_login refused a Codex row without naming the rule: {e}")
+        except Exception as e:  # noqa: BLE001
+            out.append(f"read_login crashed on a Codex row: {type(e).__name__}")
+        try:
+            rt.exec_argv("a" * 64, ["codex", "exec"], user=rt.AGENT_USER, workdir="/", harness=rt.CODEX,
+                         run_tree=d, login_file=p, caller_env={"PATH": "/bin"})
+            out.append("exec_argv admitted a Codex row")
+        except rt.NotReady:
+            pass
+        except Exception as e:  # noqa: BLE001
+            out.append(f"exec_argv refused a Codex row with {type(e).__name__}, not NotReady")
+        return out
+
+    def test_codex_row(self):
+        self.assertEqual(problems_of(self.check), [])
+
+
+class TestReviewFolds41428177(MutantCase):
+    """The review of 41428177 and 9d4bfd40 (glitch-06, 14 Oct 2026). MINOR 1: launcher_argv's harness= is required and
+    the login must be LOGIN_VARIABLE[harness], so a named key for Codex refuses even with the gate open. MINOR 2: the
+    no-login launcher reads the values, not only the harness= claim: exactly the Codex row's names, and no other
+    harness's config home. NIT 6: the module refuses to load when the Codex row names a key, API-key or subscription
+    token variable."""
+
+    def check(self):
+        out = []
+        import inspect
+        if inspect.signature(rt.launcher_argv).parameters["harness"].default is not inspect.Parameter.empty:
+            out.append("launcher_argv's harness= has a default")
+        codex_values = rt.exec_values(rt.CODEX, "/srv/w/t1/tree")
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True):
+            for login in ("CODEX_API_KEY", "OPENAI_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN"):
+                try:
+                    rt.launcher_argv(login, codex_values, ["codex", "exec"], harness=rt.CODEX)
+                    out.append(f"a Codex launcher reading {login} was built with the gate open")
+                except rt.Refused as e:
+                    if "not the login of" not in str(e):
+                        out.append(f"{login}: refused for another reason: {e}")
+            try:
+                rt.launcher_argv("GEMINI_API_KEY", {"A": "1"}, ["claude"], harness=rt.CLAUDE_CODE)
+                out.append("a Claude Code launcher reading Gemini's login was built")
+            except rt.Refused as e:
+                if "not the login of" not in str(e):
+                    out.append(f"cross-arm login refused for another reason: {e}")
+            got = rt.launcher_argv(rt.NO_LOGIN, codex_values, ["codex", "exec"], harness=rt.CODEX)
+            if got[:len(rt.LAUNCHER) + 1] != [*rt.LAUNCHER, "-"]:
+                out.append("the no-login launcher over the Codex row's values was not built")
+            for label, values, word in (
+                    ("Gemini's config home", dict(codex_values, GEMINI_CLI_HOME=rt.CONFIG_MOUNT), "config home"),
+                    ("Claude Code's config home", dict(codex_values, CLAUDE_CONFIG_DIR=rt.CONFIG_MOUNT),
+                     "config home"),
+                    ("an extra name", dict(codex_values, EXTRA_NAME="1"), "exactly the Codex row's names"),
+                    ("a missing name", {k: v for k, v in codex_values.items() if k != "CODEX_HOME"},
+                     "exactly the Codex row's names")):
+                try:
+                    rt.launcher_argv(rt.NO_LOGIN, values, ["codex", "exec"], harness=rt.CODEX)
+                    out.append(f"the no-login launcher was built with {label}")
+                except rt.Refused as e:
+                    if word not in str(e):
+                        out.append(f"{label}: refused for another reason: {e}")
+        # NIT 6: the module itself refuses a Codex row that names a key, API-key or subscription-token variable
+        src = open(rt.__file__, encoding="utf-8").read()
+        anchor = '"CODEX_HOME": CONFIG_MOUNT},'
+        if src.count(anchor) != 1:
+            out.append("the Codex row's anchor is not in the module once")
+        for name in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN"):
+            import types
+            probe = types.ModuleType("rt_probe")
+            probe.__file__ = rt.__file__
+            try:
+                with mock.patch.dict(sys.modules, {"rt_probe": probe}):   # dataclasses read the module back
+                    exec(compile(src.replace(anchor, f'"CODEX_HOME": CONFIG_MOUNT, "{name}": "1"}},'), rt.__file__,
+                                 "exec"), probe.__dict__)
+                out.append(f"the module loaded with {name} in the Codex row")
+            except RuntimeError as e:
+                if name not in str(e):
+                    out.append(f"{name}: the load refusal does not name it: {e}")
+        return out
+
+    def test_review_folds(self):
+        self.assertEqual(problems_of(self.check), [])
+
+
+def stat_reg(st) -> bool:
+    import stat as _stat
+    return _stat.S_ISREG(st.st_mode)
+
+
 # ------------------------------------------------------------------------------- PENDING and neutral names
 class TestPendingAndNames(MutantCase):
-    EXPECT = {"FALLBACK_ENV", "VENDOR_BILLING_ROUTE_VARIABLES", "TOP_FORMAT", "INSPECT_STATUS", "TakeSpec.resources"}
-    CALLER_EXPECT = {"cgroup_dir", "uid_map", "XDG_RUNTIME_DIR in the take", "tree ownership"}
+    # TOP_FORMAT and INSPECT_STATUS FILLED 14 Oct 2026 (stub-take review PASS); FALLBACK_ENV FILLED the same day from
+    # the docs (glitch-06's ruling, Addendum D).
+    # CLAUDE_BYPASS_KEY RULED not required in -p (glitch-06, 14 Oct 2026; CLAUDE_BYPASS_RULING).
+    # VENDOR_BILLING_ROUTE_VARIABLES FILLED 14 Oct 2026: Codex from its binary's sweep, Gemini from its package's.
+    EXPECT = {"TakeSpec.resources"}
+    FILLED_TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID",
+                  "uid_namespace": "container"}
+    # "XDG_RUNTIME_DIR in the take" RETIRED 14 Oct 2026 (glitch-06): measured not needed (test_xdg_runtime_dir_*).
+    CALLER_EXPECT = {"cgroup_dir", "uid_map", "tree ownership"}
+    # The retirement's evidence: two stub takes on athena, by sha256 (run 1 raw, run 6 derived).
+    XDG_EVIDENCE = (("stub-take-run1.json", "67a0698a2e1037fdf5a1c02caea67a1281a5f31c4bc8629adfbb476f07dd83f4"),
+                    ("stub-take-run6.derived.json", "8a56240db70d38a74fbd5d50c836683134259c4617a22800dcd3e6669b63641e"))
 
     def check_pending(self):
         out = []
@@ -1496,14 +2825,73 @@ class TestPendingAndNames(MutantCase):
             out.append(f"CALLER_PENDING = {sorted(rt.CALLER_PENDING)}")
         if not all(rt.PENDING_WHY.get(k) for k in self.EXPECT):
             out.append("a pending value has no reason")
+        if rt.TOP_FORMAT != self.FILLED_TOP:
+            out.append(f"TOP_FORMAT is not the measured form: {rt.TOP_FORMAT!r}")
+        st = rt.INSPECT_STATUS
+        if not (isinstance(st, dict) and st.get("engine") == "29.8.1" and st.get("api_version") == "1.56"
+                and len(st.get("evidence", ())) == 2 and not rt._is_pending(st)):
+            out.append(f"INSPECT_STATUS is not the confirmed record: {st!r}")
+        # CP5 review (f5c17498): each evidence file INSPECT_STATUS names hashes to the sha256 it records.
+        repo = os.path.dirname(os.path.dirname(HERE))
+        for rel, digest in (st.get("evidence", ()) if isinstance(st, dict) else ()):
+            try:
+                with open(os.path.join(repo, rel), "rb") as fh:
+                    got = hashlib.sha256(fh.read()).hexdigest()
+            except OSError:
+                got = None
+            if got != digest:
+                out.append(f"INSPECT_STATUS evidence {rel} does not hash to its recorded sha256")
+        if "policy" not in rt.PENDING_WHY["TakeSpec.resources"].lower():
+            out.append("the resources' reason does not say they are capacity policy")
         return out
+
+    def check_xdg_retired(self):
+        """Row 4 retired on evidence: every agent exec in the two stub takes ran with no XDG_RUNTIME_DIR and returned
+        0, `claude --version` included; the take's environment row sets none; and CALLER_PENDING no longer lists it."""
+        out = []
+        if "XDG_RUNTIME_DIR in the take" in rt.CALLER_PENDING:
+            out.append("CALLER_PENDING still lists XDG_RUNTIME_DIR in the take")
+        if any("XDG_RUNTIME_DIR" in row for row in rt.TAKE_ENV.values()):
+            out.append("a take's environment row sets XDG_RUNTIME_DIR")
+        runs = os.path.join(os.path.dirname(os.path.dirname(HERE)), "lane-reports", "stub-take-20261014")
+        for name, digest in self.XDG_EVIDENCE:
+            with open(os.path.join(runs, name), "rb") as fh:
+                raw = fh.read()
+            if hashlib.sha256(raw).hexdigest() != digest:
+                out.append(f"{name} does not hash to its recorded sha256")
+                continue
+            execs = [c for c in json.loads(raw)["calls"] if c.get("argv", [])[:2] == ["docker", "exec"]
+                     and rt.AGENT_USER in c["argv"]]
+            if len(execs) < 10 or not any("claude" in c["argv"] for c in execs):
+                out.append(f"{name}: too few agent execs to stand as evidence ({len(execs)})")
+            if [c for c in execs if c.get("returncode") != 0 or any("XDG_RUNTIME_DIR" in a for a in c["argv"])]:
+                out.append(f"{name}: an agent exec failed or carried XDG_RUNTIME_DIR")
+        return out
+
+    def test_xdg_runtime_dir_retired_on_evidence(self):
+        self.assert_green_then_red(self.check_xdg_retired, [
+            ("row-kept", patched(rt, "CALLER_PENDING", dict(rt.CALLER_PENDING, **{
+                "XDG_RUNTIME_DIR in the take": "measured at the stub take."}))),
+            ("take-env-sets-it", patched(rt, "TAKE_ENV", dict(rt.TAKE_ENV, **{rt.CLAUDE_CODE: dict(
+                rt.TAKE_ENV[rt.CLAUDE_CODE], XDG_RUNTIME_DIR="/run/user/10001")}))),
+            ("evidence-swapped", patched(type(self), "XDG_EVIDENCE", (
+                (self.XDG_EVIDENCE[0][0], self.XDG_EVIDENCE[1][1]), self.XDG_EVIDENCE[1]))),
+        ])
 
     def test_pending(self):
         self.assert_green_then_red(self.check_pending, [
-            ("fallback-filled", patched(rt, "FALLBACK_ENV", {})),
-            ("top-filled", patched(rt, "TOP_FORMAT", TOP)),
-            ("inspect-filled", patched(rt, "INSPECT_STATUS", "ok")),
-            ("billing-filled", patched(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {"codex": (), "gemini": ()})),
+            ("fallback-unfilled", patched(rt, "FALLBACK_ENV", rt.PENDING)),
+            ("top-unfilled", patched(rt, "TOP_FORMAT", rt.PENDING)),
+            ("top-host-namespace", patched(rt, "TOP_FORMAT", TOP)),
+            ("inspect-unfilled", patched(rt, "INSPECT_STATUS", rt.PENDING)),
+            ("inspect-evidence-swapped", patched(rt, "INSPECT_STATUS", dict(rt.INSPECT_STATUS, evidence=(
+                (rt.INSPECT_STATUS["evidence"][0][0], rt.INSPECT_STATUS["evidence"][1][1]),
+                rt.INSPECT_STATUS["evidence"][1])))),
+            ("resources-said-measured", patched(rt, "PENDING_WHY", dict(rt.PENDING_WHY, **{
+                "TakeSpec.resources": "measured at the cold-start stub take"}))),
+            # FILLED 14 Oct 2026: the clause now guards the fill (a list put back to PENDING shows in pending())
+            ("billing-back-to-pending", patched(rt, "VENDOR_BILLING_ROUTE_VARIABLES",
+                                                {"codex": rt.PENDING, "gemini": rt.PENDING})),
         ])
 
     def check_no_override(self):
@@ -1566,8 +2954,16 @@ SUBPROCESS_SITE = ("DockerRuntime", "run")
 SUBPROCESS_NAMES = frozenset({"run", "TimeoutExpired"})
 GUARDED_MODULES = ("os", "subprocess")
 # W4B2-2, derived once from the three box modules' source and committed (TestAuditAllowlists binds both ways).
-OS_ATTRS = frozenset({"O_CREAT", "O_EXCL", "O_NOFOLLOW", "O_RDONLY", "O_WRONLY", "environ", "fdopen", "getuid",
-                      "listdir", "lstat", "makedirs", "mkdir", "open", "path", "sep", "walk"})
+# Box lane 14 Oct: run_turn's launch journal is flushed to disk before the exec (os.fsync), 0b6f60f9.
+# Box lane 14 Oct (glitch-06's ruling on the lease postflight review's NIT 5, exactly these three, nothing else):
+# preflight._read_capped opens the registered auth.json and then fstats the descriptor, so the file cannot be swapped
+# between the lstat check and the read:
+#   O_NONBLOCK - the open never blocks on a FIFO swapped in after the check;
+#   fstat      - the opened descriptor's device, inode, type, links, mode and owner are compared with the check's lstat;
+#   close      - the descriptor is closed when that comparison refuses, before any byte is read.
+OS_ATTRS = frozenset({"O_CREAT", "O_EXCL", "O_NOFOLLOW", "O_RDONLY", "O_WRONLY", "environ", "fdopen", "fsync",
+                      "getuid", "listdir", "lstat", "makedirs", "mkdir", "open", "path", "sep", "walk",
+                      "O_NONBLOCK", "fstat", "close"})
 DUNDERS_ALLOWED = frozenset({"__file__", "__init__", "__name__"})
 # How subprocess may appear, at DockerRuntime.run only: run as the func of a call, TimeoutExpired in an except.
 SUBPROCESS_USES = frozenset({("run", "call"), ("TimeoutExpired", "except")})
@@ -1575,8 +2971,10 @@ SUBPROCESS_USES = frozenset({("run", "call"), ("TimeoutExpired", "except")})
 # attribute used on each allowed module, and every getattr as (base, constant name).
 # Lane w6a (CP2-preflight-2; glitch-1b's ruling w6a-1, ratified 11 Oct): preflight reads the take lock through w4a's
 # image_lock (load and require_ready only); the two lists below name exactly that, and REACH_MODULES audits its reach.
+# Box lane 14 Oct (glitch-06 ruling 1): preflight imports the sidecar's constants-only launch contract plainly and
+# reads exactly the six names below; the sidecar program itself is never imported by an audited module.
 IMPORT_FROM_ALLOWED = frozenset({("__future__", "annotations"), ("box", "image_lock"), ("box", "preflight"),
-                                 ("box", "run_take"), ("dataclasses", "dataclass"), ("dataclasses", "field"),
+                                 ("box", "run_take"), ("box", "sidecar_contract"), ("dataclasses", "dataclass"), ("dataclasses", "field"),
                                  ("decimal", "Decimal"), ("decimal", "InvalidOperation"), ("typing", "Callable")})
 MODULE_ATTRS = {
     "agent_adapter": frozenset({"COUNTER_FIELDS"}), "dataclasses": frozenset({"replace"}),
@@ -1585,13 +2983,21 @@ MODULE_ATTRS = {
     "json": frozenset({"dump", "dumps", "loads"}),
     "preflight": frozenset({"expected_take_inspect", "inspect_mismatches"}),
     "re": frozenset({"IGNORECASE", "compile", "escape", "fullmatch", "search"}),
-    "run_take": frozenset({"AGENT_USER", "CLAUDE_CODE", "CODEX", "CONFIG_MOUNT", "GEMINI", "HARNESS_ENV",
+    # GEMINI_MODE_ROUTE_VARIABLES: preflight's image check of the Gemini mode-route names (0b6f60f9; glitch-06's
+    # ruling, 14 Oct 2026: exactly this one name).
+    "run_take": frozenset({"AGENT_USER", "CLAUDE_CODE", "CODEX", "CONFIG_MOUNT", "GEMINI", "GEMINI_MODE_ROUTE_VARIABLES",
+                           "HARNESS_ENV",
                            "INSPECT_PATHS", "INSPECT_STATUS", "KEEPALIVE_COMMAND", "KEEPALIVE_USER", "LOGIN_VARIABLE",
                            "NotReady", "PENDING", "PENDING_WHY", "PROXY_ALIAS", "PROXY_URL", "RUNTIME_CLIENT",
+                           # glitch-06 (14 Oct 2026): preflight's create-time environment check reads it, so the
+                           # Codex CLI's per-variable broker-snapshot prefixes are refused at create time too
+                           "REFUSED_NAME_PREFIXES",
                            "Refused", "_abs_path", "_check_id", "_is_pending", "_known_harness", "_path_get",
                            "_write_json", "agent_exec_argv", "check_spec", "config_home_names",
                            "outside_every_repository", "refused_variables", "runtime_env"}),
     "secrets": frozenset({"token_hex"}), "shutil": frozenset({"rmtree"}),
+    "sidecar_contract": frozenset({"BOOT_INSPECT_CAPABILITIES", "BOOT_USER", "INTERPRETER", "PROGRAM",
+                                   "WATCHER_LAUNCHER", "WATCHER_USER"}),
     "stat": frozenset({"S_IMODE", "S_ISLNK", "S_ISREG"}), "sys": frozenset({"path"}),
 }
 GETATTR_ALLOWED = frozenset({("e", "filename"), ("e", "stdout")})
@@ -1908,6 +3314,16 @@ class TestAuditAllowlists(MutantCase):
             out.append("the real modules are not clean")
         return out
 
+    def test_an_unlisted_run_take_name_is_still_refused(self):
+        """glitch-06 ruling, 14 Oct: listing GEMINI_MODE_ROUTE_VARIABLES admits that one name only."""
+        for name in ("GEMINI_MODE_ROUTE_VARIABLES", "TAKE_ENV", "kill_agent"):
+            src = f"from box import run_take\nx = run_take.{name}\n"
+            got = [p for p in audit_source("box/preflight.py", src) if f"run_take.{name}" in p]
+            if name == "GEMINI_MODE_ROUTE_VARIABLES":
+                self.assertEqual(got, [], name)
+            else:
+                self.assertEqual(got, [f"box/preflight.py: run_take.{name} is not in MODULE_ATTRS"], name)
+
     def test_module_keys_bound_to_imports(self):
         """W4B4-1: the keys are exactly the import-bound names, and an import-bound name with no entry is refused."""
         me = sys.modules[__name__]
@@ -2029,6 +3445,149 @@ class TestReachAudit(MutantCase):
             ("reach-widened", patched(me, "REACH_IMPORTS", REACH_IMPORTS | {"subprocess"})),
             ("reach-narrowed", patched(me, "REACH_IMPORTS", REACH_IMPORTS - {"fnmatch"})),
             ("planted-dropped", lambda: mock.patch.dict(REACH_PLANTED, {"imports-subprocess": "x = 1\n"})),
+        ])
+
+
+# glitch-06, 14 Oct 2026: the Codex row still names CODEX_API_KEY as its credential marker (LOGIN_VARIABLE, which
+# drive.py and walk_builders.py read, is derived from it), so its unreachability is proven, not assumed. Gemini's
+# GEMINI_API_KEY is D8 B2's reviewed route (an API key with a hard cap) and stays the one vendor key its row names.
+# Since the Codex exec branch (glitch-06, 14 Oct 2026): exec_argv's first test hands a Codex row to _codex_exec_argv,
+# whose first statement is the closed lease gate; read_login is never on that road.
+_CODEX_REFUSAL = ("    if harness == CODEX:\n        return _codex_exec_argv(container_id, inner, user=user, "
+                  "workdir=workdir, run_tree=run_tree,\n                                "
+                  "login_file=login_file, caller_env=caller_env)\n")
+_CODEX_GATE_FIRST = "    codex_lease_gate()\n    src = os.environ if caller_env is None else caller_env\n"
+_CODEX_BRANCH = ("return _codex_exec_argv(container_id, inner, user=user, workdir=workdir, run_tree=run_tree, "
+                 "login_file=login_file, caller_env=caller_env)")
+
+
+def _run_take_variant(src: str):
+    """box/run_take.py compiled in memory from `src` (never written)."""
+    import types
+    mod = types.ModuleType("box.run_take_variant")
+    mod.__file__ = rt.__file__
+    sys.modules[mod.__name__] = mod             # dataclasses read their module while the class is made
+    try:
+        exec(compile(src, rt.__file__ + " (variant)", "exec"), mod.__dict__)
+    finally:
+        sys.modules.pop(mod.__name__, None)
+    return mod
+
+
+def codex_key_problems(m) -> list:
+    """Every way a Codex take's environment could carry a vendor API key in module `m` ([] when none can)."""
+    out = []
+    # 1. exec_argv refuses Codex (NotReady, the subscription message) before any environment or login is touched.
+    trips = []
+
+    def trip(name):
+        def f(*a, **k):
+            trips.append(name)
+            raise AssertionError(f"exec_argv reached {name} for codex")
+        return f
+    names = ("check_environment", "check_model", "exec_values", "take_environment", "read_login", "runtime_env",
+             "launcher_argv")
+    with contextlib.ExitStack() as stack:
+        for n in names:
+            stack.enter_context(mock.patch.object(m, n, trip(n)))
+        try:
+            m.exec_argv(ID["take"], ["codex", "exec", "x"], user=m.AGENT_USER, workdir="/", harness=m.CODEX,
+                        run_tree="/srv/w0/t1/tree", login_file="/nonexistent/login", caller_env={"PATH": "/bin"})
+            out.append("exec_argv built a Codex turn")
+        except m.NotReady as e:
+            if str(e) != m.CODEX_SUBSCRIPTION_NOT_READY:
+                out.append(f"exec_argv refused Codex for another reason: {e}")
+        except AssertionError as e:
+            out.append(str(e))
+    if trips:
+        out.append(f"exec_argv touched {trips} for codex")
+    # 2. By the source: read_login is called in exec_argv only, after the Codex refusal.
+    src = getattr(m, "_SRC", None)
+    if src is None:
+        with open(m.__file__, encoding="utf-8") as fh:
+            src = fh.read()
+    tree = ast.parse(src)
+    callers = sorted({f.name for f in ast.walk(tree) if isinstance(f, ast.FunctionDef)
+                      for c in ast.walk(f) if isinstance(c, ast.Call) and getattr(c.func, "id", "") == "read_login"})
+    if callers != ["exec_argv"]:
+        out.append(f"read_login is called from {callers}, not exec_argv alone")
+    fn = [f for f in ast.walk(tree) if isinstance(f, ast.FunctionDef) and f.name == "exec_argv"]
+    body = fn[0].body if fn else []
+    first_if = next((i for i, st in enumerate(body) if isinstance(st, ast.If)), None)
+    login_at = next((i for i, st in enumerate(body) if any(isinstance(c, ast.Call) and getattr(c.func, "id", "")
+                                                            == "read_login" for c in ast.walk(st))), None)
+    # O1-1 (review-box-o1.md): the first `if` is exactly `harness == CODEX`, its body exactly the hand-over to
+    # _codex_exec_argv, and no else: a refusal a switch could bypass is not this refusal. Since the Codex exec branch
+    # (14 Oct 2026), _codex_exec_argv's first statement (after its docstring) is exactly `codex_lease_gate()`, whose
+    # body is exactly the one test-and-raise on CODEX_SUBSCRIPTION_READY.
+    want_test = ast.dump(ast.parse("harness == CODEX", mode="eval").body)
+    want_body = [ast.dump(st) for st in ast.parse(_CODEX_BRANCH).body]
+    refusal = first_if is not None and ast.dump(body[first_if].test) == want_test \
+        and [ast.dump(st) for st in body[first_if].body] == want_body and not body[first_if].orelse
+    if not refusal or login_at is None or first_if > login_at:
+        out.append("exec_argv's first test is not the Codex hand-over ahead of the login read")
+    fns = {f.name: f for f in ast.walk(tree) if isinstance(f, ast.FunctionDef)}
+
+    def stmts(name):
+        b = fns[name].body if name in fns else []
+        return [st for st in b if not (isinstance(st, ast.Expr) and isinstance(st.value, ast.Constant))]
+    if [ast.dump(st) for st in stmts("_codex_exec_argv")[:1]] != [ast.dump(st) for st in
+                                                                 ast.parse("codex_lease_gate()").body]:
+        out.append("_codex_exec_argv's first statement is not the closed lease gate")
+    want_gate = [ast.dump(st) for st in ast.parse("if CODEX_SUBSCRIPTION_READY is not True:\n"
+                                                  "    raise NotReady(CODEX_SUBSCRIPTION_NOT_READY)").body]
+    if [ast.dump(st) for st in stmts("codex_lease_gate")] != want_gate:
+        out.append("codex_lease_gate is not exactly the test-and-raise on CODEX_SUBSCRIPTION_READY")
+    # 3. The rows: every vendor key a Codex or Gemini row names is the credential marker (never a value), the strip
+    # list is unchanged, Codex names no key but its refused marker, and Gemini no key but its own reviewed one.
+    if tuple(m.VENDOR_KEY_VARIABLES) != ("CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"):
+        out.append(f"VENDOR_KEY_VARIABLES is {m.VENDOR_KEY_VARIABLES}")
+    for harness, allowed in ((m.CODEX, {"CODEX_API_KEY"}), (m.GEMINI, {"GEMINI_API_KEY"})):
+        keys = {k: v for k, v in m.TAKE_ENV[harness].items() if k in m.VENDOR_KEY_VARIABLES}
+        if set(keys) - allowed:
+            out.append(f"{harness}'s row names vendor keys {sorted(set(keys) - allowed)}")
+        if any(v != m.CREDENTIAL for v in keys.values()):
+            out.append(f"{harness}'s row gives a vendor key a value")
+    return out
+
+
+class TestCodexKeyUnreachable(MutantCase):
+    def test_no_codex_or_gemini_take_env_can_carry_a_vendor_key(self):
+        src = open(rt.__file__, encoding="utf-8").read()
+        self.assertEqual(src.count(_CODEX_REFUSAL), 1)
+        self.assertEqual(src.count(_CODEX_GATE_FIRST), 1)
+        self.assertEqual(src.count("    if CODEX_SUBSCRIPTION_READY is not True:\n"), 1)
+
+        def variant(new_src):
+            mod = _run_take_variant(new_src)
+            mod._SRC = new_src
+            return mod
+        self.assert_green_then_red(lambda: codex_key_problems(rt), [
+            ("codex-refusal-dropped", lambda: mock.patch.object(
+                sys.modules[__name__], "rt", variant(src.replace(_CODEX_REFUSAL, "")))),
+            ("codex-refusal-after-login", lambda: mock.patch.object(sys.modules[__name__], "rt", variant(
+                src.replace(_CODEX_REFUSAL, "").replace("    value = read_login(login_file, login)\n",
+                                                         "    value = read_login(login_file, login)\n" + _CODEX_REFUSAL)))),
+            ("codex-row-gains-openai-key", patched(rt, "TAKE_ENV", dict(rt.TAKE_ENV, **{
+                rt.CODEX: dict(rt.TAKE_ENV[rt.CODEX], OPENAI_API_KEY=rt.CREDENTIAL)}))),
+            ("gemini-key-given-a-value", patched(rt, "TAKE_ENV", dict(rt.TAKE_ENV, **{
+                rt.GEMINI: dict(rt.TAKE_ENV[rt.GEMINI], GEMINI_API_KEY="fake-value")}))),
+            ("strip-list-shortened", patched(rt, "VENDOR_KEY_VARIABLES", rt.VENDOR_KEY_VARIABLES[1:])),
+            # the reviewer's probes (review-box-o1.md, O1-1): A a second read_login caller, B a switch-gated refusal
+            ("probe-A-second-read-login-caller", lambda: mock.patch.object(sys.modules[__name__], "rt", variant(
+                src + "\n\ndef _peek(f):\n    return read_login(f, 'CODEX_API_KEY')\n"))),
+            ("probe-B-refusal-gated-by-a-switch", lambda: mock.patch.object(sys.modules[__name__], "rt", variant(
+                src.replace(_CODEX_REFUSAL, "    if harness == CODEX and not os.environ.get('GAP4_CODEX_API'):\n"
+                                            "        raise NotReady(CODEX_SUBSCRIPTION_NOT_READY)\n")))),
+            ("refusal-body-gains-a-statement", lambda: mock.patch.object(sys.modules[__name__], "rt", variant(
+                src.replace(_CODEX_REFUSAL, "    if harness == CODEX:\n        pass\n"
+                                            "        raise NotReady(CODEX_SUBSCRIPTION_NOT_READY)\n")))),
+            ("gate-not-first-in-the-codex-branch", lambda: mock.patch.object(sys.modules[__name__], "rt", variant(
+                src.replace(_CODEX_GATE_FIRST, "    src = os.environ if caller_env is None else caller_env\n"
+                                               "    check_codex_turn(inner)\n    codex_lease_gate()\n")))),
+            ("gate-gains-a-switch", lambda: mock.patch.object(sys.modules[__name__], "rt", variant(
+                src.replace("    if CODEX_SUBSCRIPTION_READY is not True:\n",
+                            "    if CODEX_SUBSCRIPTION_READY is not True and not os.environ.get('GAP4_CODEX'):\n")))),
         ])
 
 

@@ -1,0 +1,5 @@
+== test_scan_record -k TestLeaseTokens (deep nesting, a folder swapped in) against 4c145f74's scan_record.py
+ERROR: test_refuses_deep_nesting_and_a_folder_swapped_in_never_crashing (test_scan_record.TestLeaseTokens.test_refuses_deep_nesting_and_a_folder_swapped_in_never_crashing)
+RecursionError: maximum recursion depth exceeded while decoding a JSON array from a unicode string
+Ran 5 tests in 0.072s
+FAILED (errors=1)

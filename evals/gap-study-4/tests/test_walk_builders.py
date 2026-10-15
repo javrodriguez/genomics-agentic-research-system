@@ -964,6 +964,8 @@ class B7Production(Drafted):
         self.assertEqual(got["run_tree_origin"], (drive.REPO, variants.PINNED_TREE), "B7.production")
         self.assertEqual(got["table"], routing.load_table(), "B7.production")
         self.assertTrue(callable(got["pin_for"]), "B7.production: CP5's registered pins are not handed to the walks")
+        if TAKE_A_LOCK_READY:
+            self.assertTrue(callable(got["take_spec"]), "B7.production: take-a's ready lock gives no take spec")
         if OWNERSHIP_ON_TREE:
             self.assertIs(got["ownership"], drive._ownership, "B7.production: the ownership road is not the box's")
         else:
@@ -1157,8 +1159,10 @@ def sidecar_for(row, ev, tree, project=None):
     """test_walk_wiring's fake sidecar launch, over the walk's own run tree (the production road also takes the walk's
     project, for its watch list)."""
     from box import sidecar as sc
-    expect = {"user": sc.WATCHER_USER, "network_mode": "none", "cap_drop": ["ALL"],
-              "cap_add": ["CAP_DAC_READ_SEARCH"], "security_opt": ["no-new-privileges"], "privileged": False,
+    # The sidecar's accepted launch (0b6f60f9; its fake inspect is test_box_integration's, fixed in 5f1b33ee).
+    expect = {"user": sc.BOOT_USER, "network_mode": "none", "cap_drop": ["ALL"],
+              "cap_add": list(sc.BOOT_INSPECT_CAPABILITIES), "security_opt": ["no-new-privileges"],
+              "privileged": False, "image": tbi.SIDECAR_IMAGE, "cmd": tbi.sidecar_cmd(tree), "entrypoint": [],
               "pid_mode": "", "mounts": [{"source": tree, "destination": tree, "rw": False},
                                          {"source": ev, "destination": sc.EVIDENCE_MOUNT, "rw": True}]}
     return rt.SidecarLaunch(

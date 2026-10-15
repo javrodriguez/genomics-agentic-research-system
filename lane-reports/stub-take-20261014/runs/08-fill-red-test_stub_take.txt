@@ -1,0 +1,23 @@
+...FF.............
+======================================================================
+FAIL: test_launch_itself_refuses_while_inspect_status_is_pending (__main__.MirrorIsLaunch.test_launch_itself_refuses_while_inspect_status_is_pending)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_stub_take.py", line 286, in test_launch_itself_refuses_while_inspect_status_is_pending
+    self.assertTrue(rt._is_pending(rt.INSPECT_STATUS))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_the_mirror_runs_launchs_steps_argv_for_argv (__main__.MirrorIsLaunch.test_the_mirror_runs_launchs_steps_argv_for_argv)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_stub_take.py", line 275, in test_the_mirror_runs_launchs_steps_argv_for_argv
+    self.assertFalse(st.use_launch())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 18 tests in 1.036s
+
+FAILED (failures=2)

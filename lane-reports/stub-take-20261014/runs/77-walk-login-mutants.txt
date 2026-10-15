@@ -1,0 +1,9 @@
+control 0 of 1
+RED   1/1 run tree admitted
+RED   1/1 second link admitted
+RED   1/1 link folder admitted
+RED   1/1 folder mode unchecked
+RED   1/1 folder group bits admitted
+RED   1/1 place not checked by exec
+RED   1/1 bare admitted
+ALIVE: none

@@ -101,8 +101,7 @@ FAKE_VALUE = "FAKEVALUE-0123456789abcdef-PLANTED"
 @contextlib.contextmanager
 def filled():
     """Every PENDING value, filled in memory only (interface 15), with test-only stand-ins."""
-    with mock.patch.object(tc, "CLAUDE_BYPASS_KEY", "skipDangerousModePermissionPrompt"), \
-            mock.patch.object(tc, "CODEX_REASONING_EFFORT", "medium"), \
+    with mock.patch.object(tc, "CODEX_REASONING_EFFORT", "medium"), \
             mock.patch.object(tc, "GEMINI_THINKING", {"path": "model.thinkingLevel", "value": "default"}), \
             mock.patch.object(tc, "GEMINI_AUTH_SETTING", {"path": "security.auth.selectedType",
                                                           "value": "api-key-stand-in"}), \
@@ -167,7 +166,9 @@ class TestContents(MutantCase):
             doc = tomllib.load(fh)
         want = {"model": "gpt-6.1-sol", "model_reasoning_effort": "medium", "web_search": "disabled",
                 "project_doc_fallback_filenames": ["CLAUDE.md"], "check_for_update_on_startup": False,
-                "forced_login_method": "api", "cli_auth_credentials_store": "ephemeral",
+                # The renderer fold (owner amendment, 13 Oct): Codex reads a ChatGPT subscription login from a
+                # file store; no API-key route.
+                "forced_login_method": "chatgpt", "cli_auth_credentials_store": "file",
                 "features": {"hooks": False}}
         if doc != want:
             out.append(f"codex config.toml reads {doc}")
@@ -178,7 +179,9 @@ class TestContents(MutantCase):
                 "hooksConfig.enabled": False, "general.enableAutoUpdate": False,
                 "general.enableAutoUpdateNotification": False, "privacy.usageStatisticsEnabled": False,
                 "telemetry.enabled": False, "model.name": "gemini-3.8-flash", "model.thinkingLevel": "default",
-                "security.auth.selectedType": "api-key-stand-in"}
+                "security.auth.selectedType": "api-key-stand-in",
+                # The frozen legacy noninteractive path (pinned 0.64.0 evidence; the renderer fold).
+                "experimental.adk.agentSessionNoninteractiveEnabled": False}
         for k, v in want.items():
             try:
                 if get(doc, k) != v:
@@ -191,8 +194,8 @@ class TestContents(MutantCase):
         d, rec = written(tc.CLAUDE_CODE, None)
         with open(os.path.join(d, "settings.json")) as fh:
             doc = json.load(fh)
-        if doc != {"skipDangerousModePermissionPrompt": True}:
-            out.append(f"claude settings hold {doc}, not only the bypass acceptance")
+        if doc != {}:   # the bypass acceptance RULED not required in -p (glitch-06, 14 Oct 2026): nothing to carry
+            out.append(f"claude settings hold {doc}, not nothing")
         if rec["files"] != ["settings.json"] or len(rec["sha256"]) != 64:
             out.append("the write record is off")
         return out
@@ -202,7 +205,9 @@ class TestContents(MutantCase):
             ("web-search-on", patched(tc, "CODEX_TOP", (("web_search", "live"),) + tc.CODEX_TOP[1:])),
             ("hooks-on", patched(tc, "CODEX_FEATURES", (("hooks", True),))),
             ("codex-login-store", patched(tc, "CODEX_TOP", tc.CODEX_TOP[:-1] + (("cli_auth_credentials_store",
-                                                                                  "file"),))),
+                                                                                  "ephemeral"),))),
+            ("codex-login-method", patched(tc, "CODEX_TOP", tc.CODEX_TOP[:-2] + (("forced_login_method", "api"),)
+                                           + tc.CODEX_TOP[-1:])),
             ("gemini-web-fetch", patched(tc, "GEMINI_SETTINGS", (("tools.exclude", ["google_web_search"]),)
                                          + tc.GEMINI_SETTINGS[1:])),
             ("gemini-telemetry", patched(tc, "GEMINI_SETTINGS", tc.GEMINI_SETTINGS[:-1])),
@@ -241,14 +246,35 @@ def _leaves(doc):
 
 
 class TestPending(MutantCase):
-    EXPECT = {"CLAUDE_BYPASS_KEY", "CODEX_REASONING_EFFORT", "GEMINI_THINKING", "GEMINI_AUTH_SETTING",
-              "GEMINI_SETTINGS_PATH"}
+    # GEMINI_SETTINGS_PATH is measured at the pinned 0.64.0 (Storage.getGlobalSettingsPath; the renderer fold).
+    # CLAUDE_BYPASS_KEY RULED not required in -p (glitch-06, 14 Oct 2026): Claude Code's config is ready.
+    EXPECT = {"CODEX_REASONING_EFFORT", "GEMINI_THINKING", "GEMINI_AUTH_SETTING"}
 
     def check(self):
         out = []
         if set(tc.pending()) != self.EXPECT:
             out.append(f"pending() = {sorted(tc.pending())}")
-        for h, m in ((tc.CLAUDE_CODE, None), (tc.CODEX, "gpt-6-luna"), (tc.GEMINI, "gemini-3.5-flash-lite")):
+        if tc.CLAUDE_BYPASS_KEY != rt.CLAUDE_BYPASS_KEY or tc.CLAUDE_BYPASS_NOT_REQUIRED != rt.CLAUDE_BYPASS_NOT_REQUIRED:
+            out.append(f"take_config's bypass value is not run_take's ruled one: {tc.CLAUDE_BYPASS_KEY!r}")
+        d = tempfile.mkdtemp(prefix="w-")
+        rec = tc.write(d, tc.CLAUDE_CODE, model=None)
+        with open(os.path.join(d, "settings.json"), "rb") as fh:
+            if fh.read() != b"{}\n" or rec["files"] != ["settings.json"]:
+                out.append("claude-code's per-take settings are not the empty document")
+        for bad in ("skipDangerousModePermissionPrompt", "k"):
+            with mock.patch.object(tc, "CLAUDE_BYPASS_KEY", bad):
+                try:
+                    tc.files_for(tc.CLAUDE_CODE, model=None)
+                    out.append(f"claude-code config written with bypass value {bad!r}")
+                except tc.Refused:
+                    pass
+        with mock.patch.object(tc, "CLAUDE_BYPASS_KEY", tc.PENDING):
+            try:
+                tc.files_for(tc.CLAUDE_CODE, model=None)
+                out.append("claude-code config written while the bypass ruling is PENDING")
+            except tc.NotReady:
+                pass
+        for h, m in ((tc.CODEX, "gpt-6-luna"), (tc.GEMINI, "gemini-3.5-flash-lite")):
             d = tempfile.mkdtemp(prefix="w-")
             try:
                 tc.write(d, h, model=m)
@@ -263,7 +289,10 @@ class TestPending(MutantCase):
         self.assert_green_then_red(self.check, [
             ("no-ready-gate", patched(tc, "_ready", lambda h: None)),
             ("needs-dropped", patched(tc, "NEEDS", {tc.CLAUDE_CODE: (), tc.CODEX: (), tc.GEMINI: ()})),
-            ("bypass-filled", patched(tc, "CLAUDE_BYPASS_KEY", "k")),
+            ("bypass-key-re-added", patched(tc, "CLAUDE_BYPASS_KEY", "skipDangerousModePermissionPrompt")),
+            ("bypass-key-written", lambda: mock.patch.dict(tc.WRITERS, {tc.CLAUDE_CODE: lambda m: {
+                "settings.json": b'{"skipDangerousModePermissionPrompt": true}\n'}})),
+            ("bypass-unmirrored", patched(tc, "CLAUDE_BYPASS_KEY", "RULED: something else")),
         ])
 
     def test_no_parameter_overrides_a_pending_constant(self):

@@ -1,0 +1,39 @@
+{
+  "argv": [
+    "/Users/javrodher/.local/bin/gitleaks",
+    "dir",
+    "--no-banner",
+    "--redact",
+    "--config",
+    "/Users/javrodher/aegis-builds/gap4-live-box-20261013/lane-reports/live-box-evidence-2026-10-13/raw-scan-20261014/scanner-cwd/defaults.toml",
+    "--exit-code",
+    "1",
+    "--ignore-gitleaks-allow",
+    "--gitleaks-ignore-path",
+    "/dev/null",
+    "/Users/javrodher/aegis-builds/gap4-export-20261014/admitted-20261014",
+    "--report-format",
+    "json",
+    "--report-path",
+    "/Users/javrodher/aegis-builds/gap4-live-box-20261013/lane-reports/live-box-evidence-2026-10-13/raw-scan-20261014/raw-report.json"
+  ],
+  "context": {
+    "config_path": "/Users/javrodher/aegis-builds/gap4-live-box-20261013/lane-reports/live-box-evidence-2026-10-13/raw-scan-20261014/scanner-cwd/defaults.toml",
+    "config_sha256": "27630a96d6c55755cc37620f3933d5cab94b1eb78a726a32e11212972525d76e",
+    "cwd": "/Users/javrodher/aegis-builds/gap4-live-box-20261013/lane-reports/live-box-evidence-2026-10-13/raw-scan-20261014/scanner-cwd",
+    "env": {
+      "HOME": "/Users/javrodher/aegis-builds/gap4-live-box-20261013/lane-reports/live-box-evidence-2026-10-13/raw-scan-20261014/scanner-cwd",
+      "PATH": "/usr/bin:/bin"
+    },
+    "scanner_sha256": "f478677e8858ec3129153dec6e3f8dab5b5f674c120245e7878f89582444d06f",
+    "scanner_version": "8.30.0"
+  },
+  "exit": 1,
+  "finding_count": 1,
+  "report_sha256": "83dd5a2dc2b98def91cbdf93550d81da4eb2e485a7f84d4dac24477605672af2",
+  "scanner_sha256_after": "f478677e8858ec3129153dec6e3f8dab5b5f674c120245e7878f89582444d06f",
+  "stderr": "\u001b[90m12:13AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~1304859 bytes (1.30 MB) in 144ms\u001b[0m\n\u001b[90m12:13AM\u001b[0m \u001b[33mWRN\u001b[0m \u001b[1mleaks found: 1\u001b[0m\n",
+  "stdout": "",
+  "tree_inventory_sha256": "c0d09755cc5d25d6d63d89dc60c9d1cb7c8ca16891d644f35674ca788b797577",
+  "tree_inventory_sha256_after": "c0d09755cc5d25d6d63d89dc60c9d1cb7c8ca16891d644f35674ca788b797577"
+}

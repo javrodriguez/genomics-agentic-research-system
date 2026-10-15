@@ -173,7 +173,7 @@ def build(turns: list, initial: dict, harness=CC, fake_furniture: str = "") -> t
                     tree[f"{RUN}/{p}"] = state_of(v)
         script += [("operator", t["line"])] + t["steps"] + [("harness", CC_FURNITURE, fake_furniture or CC_FURNITURE)]
     health = [{"kind": "watcher-start", "at": 50.0},
-              {"kind": "watcher-stop", "at": 100.0 * len(turns) + 8, "exit_code": 0}]
+              {"kind": "watcher-stop", "at": 100.0 * len(turns) + 8, "exit_code": 0, "ignored_newline_paths": 0}]
     evidence = es.Evidence.from_parts(ledger=ledger, snapshots=snaps, access=[], health=health, blobs=blobs,
                                       table=TABLE)
     with fake_harness():

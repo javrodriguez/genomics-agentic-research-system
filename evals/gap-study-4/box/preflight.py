@@ -16,7 +16,7 @@ Three parts, so the judgment is pure:
 
 The drive step calls one entry point, `collect_and_evaluate(...)` (CP2-preflight-2): it reads the take's lock through
 `load_take_lock` (image_lock.load, the harness's own take image, image_lock.require_ready, then the five LOCK_KEYS
-projected from the validated lock), takes the spec, the take id and the sidecar id from the launch record
+projected from the validated lock) and the sidecar's lock through `load_sidecar_lock` (LW-7), takes the spec, the take id and the sidecar id from the launch record
 (`Launched.spec`, never the pre-launch placeholder), runs the probes and evaluates them with the very same
 evidence folder and sidecar expectation. It never launches, runs a turn or tears down: the drive step's own launch
 and cleanup lifecycle stays around it, and a lock or launch-record refusal raises before any runtime call.
@@ -34,12 +34,14 @@ from __future__ import annotations
 import json
 import os
 import re
+import stat
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Callable
 
 from box import image_lock
 from box import run_take
+from box import sidecar_contract
 
 PENDING = run_take.PENDING
 NotReady = run_take.NotReady
@@ -51,11 +53,34 @@ KEEPALIVE_UID = int(run_take.KEEPALIVE_USER.split(":")[0])
 # CAP_DAC_READ_SEARCH is capability 2: the one capability the watcher holds.
 WATCHER_CAP_EFF = 1 << 2
 
-LOCK_KEYS = ("image_id", "harness.version", "users.agent.uid", "users.watcher.uid", "users.keepalive.uid")
+LOCK_KEYS = ("image_id", "harness.version", "users.agent.uid", "users.watcher.uid", "users.keepalive.uid",
+             "manifest_digest")
+# The platform whose image manifest is the content identity (glitch-06's lock-writer ruling (a), 14 Oct 2026):
+# `docker image inspect --platform linux/amd64` returns that manifest's digest as its Id on athena's containerd
+# store, the same across rebuilds of identical content (measured: candidate2-20261014/index-reading-all).
+# On the classic (graphdriver) store the inspect either errors or returns the image's CONFIG digest; neither equals
+# a lock's manifest digest (the lock writer refuses a record whose manifest digest equals its config digest, LW-4),
+# so a lock written from a containerd build fails closed on a classic store: the check refuses, it never passes.
+IMAGE_PLATFORM = "linux/amd64"
+# The sidecar's own lock (LW-7): its image id and platform manifest are checked like the take image's. The names
+# below are image_lock's values, spelled here (preflight reads image_lock only through load and require_ready; the
+# test binds each to image_lock's own): the sidecar lock's place in box/, each take lock's folder in box/, the
+# sidecar image's name and the shape of an image id.
+SIDECAR_LOCK_KEYS = ("image_id", "manifest_digest")
+SIDECAR_LOCK_IMAGE = "sidecar"
+SIDECAR_LOCK_PATH = "sidecar/image.lock"
+TAKE_LOCK_DIRS = {"take-a": "", "take-o": "codex", "take-g": "gemini"}
+IMAGE_ID_SHAPE = re.compile(r"sha256:[0-9a-f]{64}")
+# The egress proxy's own lock (O-1, glitch-06, 14 Oct 2026), as LW-7 did the sidecar's: the launch record's proxy
+# image and the running proxy must be its image id, and the probe of that image's platform manifest its digest.
+EGRESS_LOCK_KEYS = ("image_id", "manifest_digest")
+EGRESS_LOCK_IMAGE = "egress"
+EGRESS_LOCK_PATH = "egress/image.lock"
+PROXY_CREATE_STEP = "proxy-create"
 # Each harness's own take image (image_lock.TAKE_IMAGES; arms A and C share take-a). Merge binding 8 binds it.
 TAKE_IMAGE = {run_take.CLAUDE_CODE: "take-a", run_take.CODEX: "take-o", run_take.GEMINI: "take-g"}
 SIDECAR_EXPECT_KEYS = ("user", "network_mode", "cap_drop", "cap_add", "security_opt", "privileged", "pid_mode",
-                       "mounts")
+                       "mounts", "image", "cmd", "entrypoint")
 # The take container's mount target for the sidecar's evidence folder; the agent must fail to list it.
 SIDECAR_EVIDENCE_MOUNT = "/srv/ev"
 # Names that must never resolve from the take, beside the other two harnesses' hosts (plan; D8 B2 item 8).
@@ -90,11 +115,29 @@ POSTFLIGHT_CHECKS = ("no-credential-file",)
 # `<harness> --version`'s output form, per harness: a regex with one group (the version) once a walk measures it.
 VERSION_COMMANDS = {run_take.CLAUDE_CODE: ("claude", "--version"), run_take.CODEX: ("codex", "--version"),
                     run_take.GEMINI: ("gemini", "--version")}
-VERSION_PATTERNS = {run_take.CLAUDE_CODE: PENDING, run_take.CODEX: PENDING, run_take.GEMINI: PENDING}
+# FILLED 14 Oct 2026 (box lane; stub-take review PASS, rule R-VERSION): the lock's version replaced by one group in the
+# output measured on athena: claude-code through this module's own harness-version probe in a stub take; codex and
+# gemini from a one-shot container of their locked images (confirm at their first preflight; a mismatch fails closed).
+VERSION_PATTERNS = {run_take.CLAUDE_CODE: '([0-9]+(?:\\.[0-9]+){2})\\ \\(Claude\\ Code\\)',
+                    run_take.CODEX: 'codex\\-cli\\ ([0-9]+(?:\\.[0-9]+){2})',
+                    run_take.GEMINI: '([0-9]+(?:\\.[0-9]+){2})'}
 # The pre-registered study folders that must be absent from the run tree (run-tree-relative; CP5's list).
-STUDY_PATHS = PENDING
-# The round's leak words (CP5's list; interface 16). Round 3's are never committed here.
-LEAK_WORDS = PENDING
+# RULED by Javier, "CP5: all as recommended" (08:11 EDT, 14 Oct 2026), on the draft's value 1
+# (plans/gap-study-round-4/cp5-values-draft-2026-10-14.md): round 3's run_location.excluded_from_the_run_tree,
+# verbatim and in order, read from e2979b31:evals/gap-study-3/prereg.json (the round 4 run tree is exported from the
+# same pinned commit, 844a4ce0, where all seven exist). tests/test_preflight.py binds the two.
+STUDY_PATHS = ("evals", "docs/EVALS.md", ".github", "docs/implementation", "docs/reviews", "docs/specs",
+               "docs/decisions/0041-glitch-produces-the-v1-0-1-gap-assessment.md")
+# The round's leak words for the run tree's PATH only (CP5's list; interface 16; never matched against transcripts).
+# RULED by Javier, "CP5: all as recommended" (08:11 EDT, 14 Oct 2026), the draft's value 2 with items 3 and 4:
+# prereg-draft.json's 25 leak_words (round 3's 23 plus gap-study-4 and round 4), the box users' names from the image
+# locks' users.agent.name and users.watcher.name (dana, eli: bound to the committed locks by tests/test_preflight.py),
+# and gap4. 28 words. Departure from the earlier note "Round 3's are never committed here": the owner's ruling names
+# this literal list, and prereg-draft.json already carries round 3's words.
+LEAK_WORDS = ("evaluation", "eval", "benchmark", "test case", "grading", "graded", "score", "correct answer",
+              "we are testing", "under test", "gap-study", "gap study", "prereg", "pre-registration",
+              "pre-registered", "gap-study-2", "gars-eval-v3", "round 2", "gap-study-3", "gars-eval-v4", "round 3",
+              "allowlist", "allowedTools", "gap-study-4", "round 4", "dana", "eli", "gap4")
 
 # Credential files a harness could leave in its config folder, each with the source that names it. A file whose
 # name merely looks like a credential (CREDENTIAL_LIKE) fails the check too: this lane's stricter reading.
@@ -102,8 +145,10 @@ LEAK_WORDS = PENDING
 # the walk (Review A, glitch-f3's ruling "fold all of it"), and CREDENTIAL_LIKE stays the backstop that catches them.
 CREDENTIAL_FILES = {
     run_take.CLAUDE_CODE: (),
-    run_take.CODEX: (("auth.json", "D8 section 3: 'so no auth.json is written' (forced_login_method api, "
-                                   "cli_auth_credentials_store ephemeral)"),),
+    run_take.CODEX: (("auth.json", "the owner's 13 Oct subscription amendment (take_config.CODEX_TOP: "
+                                   "forced_login_method chatgpt, cli_auth_credentials_store file): the login is "
+                                   "stored in CODEX_HOME/auth.json, the config folder; superseding D8 section 3's "
+                                   "'so no auth.json is written' (api, ephemeral)"),),
     run_take.GEMINI: (),
 }
 CREDENTIAL_LIKE = re.compile(r"(cred|oauth|token|secret|auth|account|\.pem$|\.key$)", re.IGNORECASE)
@@ -270,7 +315,15 @@ for name in os.listdir("/proc"):
         rows.append({"pid": int(name), "unreadable": type(e).__name__})
         continue
     rows.append({"pid": int(name), "uid": int(fields["Uid"].split()[0]), "name": fields.get("Name", "").strip(),
-                 "cap_eff": int(fields.get("CapEff", "0").strip(), 16)})
+                 "uids": [int(x) for x in fields["Uid"].split()],
+                 "gids": [int(x) for x in fields["Gid"].split()],
+                 "groups": [int(x) for x in fields["Groups"].split()],
+                 "no_new_privs": int(fields["NoNewPrivs"].strip()),
+                 "cap_eff": int(fields["CapEff"].strip(), 16),
+                 "cap_prm": int(fields["CapPrm"].strip(), 16),
+                 "cap_inh": int(fields["CapInh"].strip(), 16),
+                 "cap_bnd": int(fields["CapBnd"].strip(), 16),
+                 "cap_amb": int(fields["CapAmb"].strip(), 16)})
 print(json.dumps(sorted(rows, key=lambda r: r["pid"])))
 """
 
@@ -352,8 +405,9 @@ class Probe:
     read: Callable | None = None
 
 
-PROBE_IDS = ("identity", "take-inspect", "harness-version", "cgroup", "listing", "processes", "sidecar-inspect",
-             "health", "watcher-caps", "sockets", "egress", "study-folders")
+PROBE_IDS = ("identity", "take-inspect", "take-image-manifest", "harness-version", "cgroup", "listing", "processes", "sidecar-inspect",
+             "sidecar-image-manifest", "proxy-inspect", "egress-image-manifest", "egress-launch", "health",
+             "watcher-caps", "sockets", "egress", "study-folders")
 PROBE_TIMEOUT_S = 60
 
 
@@ -386,13 +440,20 @@ def _study_folders(run_tree: str):
     return {p: os.path.lexists(os.path.join(run_tree, p)) for p in STUDY_PATHS}
 
 
-def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, evidence_dir: str) -> tuple:
-    """Every probe, in PROBE_IDS order."""
+def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, evidence_dir: str,
+           sidecar_image: str, proxy_id: str, proxy_image: str) -> tuple:
+    """Every probe, in PROBE_IDS order. `sidecar_image` is the image the sidecar launch expects (its manifest is read);
+    `proxy_id` is the egress proxy container and `proxy_image` the image the launch record created it from (O-1)."""
     run_take.check_spec(spec)
     run_take._known_harness(harness)
     _check_hosts(hosts)
     run_take._check_id(take_id, "take id")
     run_take._check_id(sidecar_id, "sidecar id")
+    if not isinstance(sidecar_image, str) or not IMAGE_ID_SHAPE.fullmatch(sidecar_image):
+        raise run_take.Refused("the sidecar image must be a sha256 image id")
+    run_take._check_id(proxy_id, "proxy id")
+    if not isinstance(proxy_image, str) or not IMAGE_ID_SHAPE.fullmatch(proxy_image):
+        raise run_take.Refused("the proxy image must be a sha256 image id")
     evidence_dir = run_take._abs_path(evidence_dir, "evidence_dir")
     agent = lambda inner, home=None: tuple(run_take.agent_exec_argv(take_id, inner, workdir="/",  # noqa: E731
                                                                      config_home=home))
@@ -401,13 +462,22 @@ def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, ev
     return (
         Probe("identity", agent(_py(IDENTITY_PROGRAM))),
         Probe("take-inspect", inspect(take_id)),
+        Probe("take-image-manifest", (run_take.RUNTIME_CLIENT, "image", "inspect", "--platform", IMAGE_PLATFORM,
+                                      "--format", "{{json .Id}}", spec.image)),
         Probe("harness-version", agent(list(VERSION_COMMANDS[harness]), _config_home_values(harness))),
         Probe("cgroup", agent(_py(CGROUP_PROGRAM, CGROUP_ROOT, "cpu.max", "memory.max", "memory.low", "pids.max"))),
         Probe("listing", agent(_py(LISTING_PROGRAM, SIDECAR_EVIDENCE_MOUNT, evidence_dir))),
         Probe("processes", agent(_py(PROCESSES_PROGRAM))),
         Probe("sidecar-inspect", inspect(sidecar_id)),
+        Probe("sidecar-image-manifest", (run_take.RUNTIME_CLIENT, "image", "inspect", "--platform", IMAGE_PLATFORM,
+                                         "--format", "{{json .Id}}", sidecar_image)),
+        Probe("proxy-inspect", inspect(proxy_id)),
+        Probe("egress-image-manifest", (run_take.RUNTIME_CLIENT, "image", "inspect", "--platform", IMAGE_PLATFORM,
+                                        "--format", "{{json .Id}}", proxy_image)),
+        Probe("egress-launch", read=lambda: proxy_image),
         Probe("health", read=lambda: _read_health(os.path.join(evidence_dir, HEALTH))),
-        Probe("watcher-caps", (run_take.RUNTIME_CLIENT, "exec", sidecar_id, *_py(PROCESSES_PROGRAM))),
+        Probe("watcher-caps", (run_take.RUNTIME_CLIENT, "exec", "--user", sidecar_contract.WATCHER_USER,
+                               sidecar_id, *_py(PROCESSES_PROGRAM))),
         Probe("sockets", agent(_py(SOCKETS_PROGRAM))),
         Probe("egress", agent(_py(EGRESS_PROGRAM, run_take.PROXY_ALIAS, _proxy_port(), hosts[harness],
                                   OTHER_HOST_VIA_PROXY, *refused_names(harness, hosts)))),
@@ -499,14 +569,42 @@ def _check_agent(raw, spec, lock, harness, hosts, sidecar_expect, *_):
     return f"uid {AGENT_UID}, no capability, no new privileges"
 
 
-def _check_image(raw, spec, lock, *_):
+def _manifest(raw, pid: str) -> str:
+    try:
+        manifest = json.loads(_plain(raw, pid))
+    except ValueError:
+        raise _Fail(f"probe {pid} is not one JSON string") from None
+    _need(isinstance(manifest, str), f"probe {pid} is not one JSON string")
+    return manifest
+
+
+def _check_image(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir, sidecar_lock, egress_lock, *_):
     obj = _inspect_obj(raw, "take-inspect")
     if _is_pending(run_take.INSPECT_STATUS):
         raise _Fail("the inspect spellings are PENDING")
     image = _lock(lock, "image_id")
     got = _facts(obj, ("image",))["image"]
     _need(got == image and spec.image == image, f"the take's image {got} is not the lock's {image}")
-    return "the take's image is the lock's"
+    # The content identity (ruling (a)): the platform image manifest, which names the config and every layer.
+    want = _lock(lock, "manifest_digest")
+    manifest = _manifest(raw, "take-image-manifest")
+    _need(manifest == want, f"the take image's {IMAGE_PLATFORM} manifest {manifest} is not the lock's {want}")
+    # LW-7: the sidecar's image, by its own lock's id and platform manifest.
+    side_id, side_want = _lock(sidecar_lock, "image_id"), _lock(sidecar_lock, "manifest_digest")
+    _need(isinstance(sidecar_expect, dict) and sidecar_expect.get("image") == side_id,
+          f"the sidecar launch's image is not the sidecar lock's {side_id}")
+    _need(_inspect_obj(raw, "sidecar-inspect").get("Image") == side_id,
+          f"the running sidecar's image is not the sidecar lock's {side_id}")
+    side = _manifest(raw, "sidecar-image-manifest")
+    _need(side == side_want, f"the sidecar image's {IMAGE_PLATFORM} manifest {side} is not its lock's {side_want}")
+    # O-1: the egress proxy's image, by its own lock's id (launched and running) and platform manifest.
+    egress_id, egress_want = _lock(egress_lock, "image_id"), _lock(egress_lock, "manifest_digest")
+    _need(_value(raw, "egress-launch") == egress_id, f"the proxy was not launched from the egress lock's {egress_id}")
+    _need(_inspect_obj(raw, "proxy-inspect").get("Image") == egress_id,
+          f"the running proxy's image is not the egress lock's {egress_id}")
+    egress = _manifest(raw, "egress-image-manifest")
+    _need(egress == egress_want, f"the egress image's {IMAGE_PLATFORM} manifest {egress} is not its lock's {egress_want}")
+    return "the take's, the sidecar's and the egress proxy's images are their locks', by id and by platform manifest"
 
 
 def _check_version(raw, spec, lock, harness, *_):
@@ -583,23 +681,29 @@ def _check_sidecar(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir
           f"sidecar_expect must name exactly {list(SIDECAR_EXPECT_KEYS)}")
     still = sorted(k for k, v in exp.items() if _is_pending(v))
     _need(not still, f"sidecar_expect PENDING: {', '.join(still)}")
-    _need(exp["user"] == f"{WATCHER_UID}:{WATCHER_UID}", "the sidecar does not run as the watcher")
+    _need(exp["user"] == sidecar_contract.BOOT_USER, "the sidecar launch does not use the fixed privilege-drop bootstrap")
     _need(exp["network_mode"] == "none", "the sidecar's expected network is not none")
     _need(exp["security_opt"] == ["no-new-privileges"], "the sidecar's expected security option is not no-new-privileges")
     _need([m.get("destination") for m in exp["mounts"] if isinstance(m, dict) and m.get("rw") is True]
           == [SIDECAR_EVIDENCE_MOUNT], f"the sidecar's one read-write mount is not {SIDECAR_EVIDENCE_MOUNT}")
-    _need(exp["cap_drop"] == ["ALL"] and isinstance(exp["cap_add"], list) and len(exp["cap_add"]) == 1,
-          "the sidecar drops ALL and adds exactly one capability")
+    _need(exp["cap_drop"] == ["ALL"] and isinstance(exp["cap_add"], list)
+          and sorted(exp["cap_add"]) == sorted(sidecar_contract.BOOT_INSPECT_CAPABILITIES),
+          "the sidecar drops ALL and adds exactly its registered bootstrap capabilities")
     _need(exp["privileged"] is False and exp["pid_mode"] == "", "the sidecar is privileged or shares a pid space")
+    prefix = [*sidecar_contract.WATCHER_LAUNCHER, *sidecar_contract.INTERPRETER, sidecar_contract.PROGRAM, "serve"]
+    _need(isinstance(exp["cmd"], list) and exp["cmd"][:len(prefix)] == prefix and exp["entrypoint"] == [],
+          "the sidecar does not exec the fixed privilege-drop launcher")
     want_mounts = [{"source": spec.run_tree, "destination": spec.run_tree, "rw": False}]
     _need(isinstance(exp["mounts"], list) and len(exp["mounts"]) == 2
           and [m for m in exp["mounts"] if m.get("destination") == spec.run_tree] == want_mounts
           and [m.get("rw") for m in exp["mounts"] if m.get("destination") != spec.run_tree] == [True],
           "the sidecar's mounts are not the run tree read-only and one read-write evidence folder")
     _need(not _evidence_source_problems(exp, evidence_dir), "; ".join(_evidence_source_problems(exp, evidence_dir)))
-    bad = inspect_mismatches(_inspect_obj(raw, "sidecar-inspect"), exp, kind="sidecar")
+    inspected = _inspect_obj(raw, "sidecar-inspect")
+    _need(inspected.get("Config", {}).get("Cmd") == exp["cmd"], "the sidecar command differs in order or content")
+    bad = inspect_mismatches(inspected, exp, kind="sidecar")
     _need(not bad, "; ".join(bad))
-    return "no network, its own process space, the run tree read-only, ALL dropped and one added"
+    return "no network, its own process space, the run tree read-only, fixed boot-only capability set"
 
 
 def _check_watcher_started(raw, *_):
@@ -618,7 +722,11 @@ def _check_watcher_cap(raw, *_):
                                          and _int(r.get("uid")) for r in rows), "the sidecar's table is off its shape")
     others = [r for r in rows if r["pid"] != 1]
     _need(others, "no watcher process is running in the sidecar")
-    bad = [r for r in others if r["uid"] != WATCHER_UID or r["cap_eff"] != WATCHER_CAP_EFF]
+    _need(sum(r["pid"] == 1 for r in rows) == 1, "the sidecar has no unique PID 1 watcher")
+    bad = [r for r in rows if r["uid"] != WATCHER_UID
+           or r.get("uids") != [WATCHER_UID] * 4 or r.get("gids") != [WATCHER_UID] * 4
+           or r.get("groups") != [] or r.get("no_new_privs") != 1
+           or any(r.get(k) != WATCHER_CAP_EFF for k in ("cap_eff", "cap_prm", "cap_inh", "cap_bnd", "cap_amb"))]
     _need(not bad, f"a watcher process does not hold exactly CAP_DAC_READ_SEARCH as {WATCHER_UID}: "
                    f"{[(r['pid'], r['uid'], hex(r['cap_eff'])) for r in bad]}")
     return "the watcher holds exactly CAP_DAC_READ_SEARCH"
@@ -645,8 +753,11 @@ def _check_socket(raw, spec, *_):
     _need(isinstance(env, list) and not [e for e in env if str(e).split("=", 1)[0] == "DOCKER_HOST"],
           "DOCKER_HOST is in the take's create-time environment")
     names = {str(e).split("=", 1)[0] for e in env}
-    leaked = sorted(names & (set(run_take.LOGIN_VARIABLE.values()) | set(run_take.refused_variables(
-        run_take.CLAUDE_CODE))))
+    _need(not names.intersection(run_take.GEMINI_MODE_ROUTE_VARIABLES),
+          "Gemini mode-route variable is in the take's create-time environment")
+    refused = set(run_take.LOGIN_VARIABLE.values()) | set(run_take.refused_variables(run_take.CLAUDE_CODE))
+    # glitch-06 (14 Oct 2026): the names the Codex CLI extends per variable are refused by prefix at create time too
+    leaked = sorted(n for n in names if n in refused or n.startswith(run_take.REFUSED_NAME_PREFIXES))
     _need(not leaked, f"credential names in the take's create-time environment: {leaked}")
     return "no runtime socket, no DOCKER_HOST, no credential name at create"
 
@@ -729,13 +840,17 @@ UNREADABLE_CONSEQUENTIAL_ROW = "unreadable-consequential-path"
 
 
 def evaluate(raw: dict, *, spec, lock: dict, sidecar_expect: dict, harness: str, hosts: dict,
-             evidence_dir: str) -> dict:
+             evidence_dir: str, sidecar_lock: dict, egress_lock: dict) -> dict:
     """The preflight record, pure: every check of PREFLIGHT_CHECKS in order, `ok` only when every one passed.
 
     `evidence_dir` is required and has no default (CP2-preflight-3): the folder the probes read, which the sidecar's
     evidence mount source must equal. A missing, relative or unnormalised one refuses (run_take.Refused)."""
     if not isinstance(lock, dict) or set(lock) != set(LOCK_KEYS):
         raise ValueError(f"lock must hold exactly {list(LOCK_KEYS)}")
+    if not isinstance(sidecar_lock, dict) or set(sidecar_lock) != set(SIDECAR_LOCK_KEYS):
+        raise ValueError(f"sidecar_lock must hold exactly {list(SIDECAR_LOCK_KEYS)}")
+    if not isinstance(egress_lock, dict) or set(egress_lock) != set(EGRESS_LOCK_KEYS):
+        raise ValueError(f"egress_lock must hold exactly {list(EGRESS_LOCK_KEYS)}")
     run_take._known_harness(harness)
     evidence_dir = run_take._abs_path(evidence_dir, "evidence_dir")
     checks = []
@@ -744,7 +859,8 @@ def evaluate(raw: dict, *, spec, lock: dict, sidecar_expect: dict, harness: str,
         try:
             if fn is None:
                 raise _Fail("no check is defined")
-            detail, passed = fn(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir), True
+            detail, passed = fn(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir, sidecar_lock,
+                                egress_lock), True
         except _Fail as e:
             detail, passed = str(e), False
         except Exception as e:  # a check that cannot read its records fails, never passes
@@ -783,7 +899,60 @@ def load_take_lock(lock_path: str, *, harness: str) -> dict:
         raise run_take.Refused(f"the lock is the {lock['image']} image's, not {harness}'s take image "
                                f"{TAKE_IMAGE[harness]}")
     image_lock.require_ready(lock)
-    return {k: run_take._path_get(lock, k) for k in LOCK_KEYS}
+    # A schema-1 lock is never ready (its image_id is PENDING); were it to pass, its absent schema-2 field projects
+    # as PENDING, which every check refuses, never as a value.
+    return {k: (run_take._path_get(lock, k) if k != "manifest_digest" or k in lock else PENDING) for k in LOCK_KEYS}
+
+
+def load_sidecar_lock(take_lock_path: str, *, harness: str) -> dict:
+    """The sidecar lock's SIDECAR_LOCK_KEYS (LW-7), read only through w4a's loader: the box folder is the one the take
+    lock was loaded from (image_lock.load has bound that lock to the Dockerfile beside it), the sidecar lock sits at
+    SIDECAR_LOCK_PATH in it (image_lock.load binds it to the sidecar's Dockerfile), it must be the sidecar image's own
+    lock, image_lock.require_ready, then the projection. Called after load_take_lock has accepted the take lock."""
+    run_take._known_harness(harness)
+    take_dir = os.path.dirname(run_take._abs_path(take_lock_path, "lock_path"))
+    box = take_dir
+    for part in reversed([p for p in TAKE_LOCK_DIRS[TAKE_IMAGE[harness]].split("/") if p]):
+        if os.path.basename(box) != part:
+            raise run_take.Refused(f"the take lock is not in its {part}/ folder")
+        box = os.path.dirname(box)
+    side = image_lock.load(os.path.join(box, SIDECAR_LOCK_PATH))
+    if side["image"] != SIDECAR_LOCK_IMAGE:
+        raise run_take.Refused(f"the sidecar lock is the {side['image']} image's")
+    image_lock.require_ready(side)
+    # As for the take lock: a schema-1 lock is never ready; were it to pass, its absent schema-2 field projects as
+    # PENDING, which the check refuses, never as a value.
+    return {k: side[k] if k in side else PENDING for k in SIDECAR_LOCK_KEYS}
+
+
+def load_egress_lock(take_lock_path: str, *, harness: str) -> dict:
+    """The egress lock's EGRESS_LOCK_KEYS (O-1), read only through w4a's loader from the take lock's box folder, as
+    load_sidecar_lock reads the sidecar's: image_lock.load, the egress image's own lock, require_ready, projection."""
+    run_take._known_harness(harness)
+    box = os.path.dirname(run_take._abs_path(take_lock_path, "lock_path"))
+    for part in reversed([p for p in TAKE_LOCK_DIRS[TAKE_IMAGE[harness]].split("/") if p]):
+        if os.path.basename(box) != part:
+            raise run_take.Refused(f"the take lock is not in its {part}/ folder")
+        box = os.path.dirname(box)
+    egress_lock = image_lock.load(os.path.join(box, EGRESS_LOCK_PATH))
+    if egress_lock["image"] != EGRESS_LOCK_IMAGE:
+        raise run_take.Refused(f"the egress lock is the {egress_lock['image']} image's")
+    image_lock.require_ready(egress_lock)
+    return {k: egress_lock[k] if k in egress_lock else PENDING for k in EGRESS_LOCK_KEYS}
+
+
+def _proxy_launch_image(launched) -> str:
+    """The image the launch record's one proxy-create step created the proxy from (its one sha256 image id)."""
+    try:
+        steps = [s for s in launched.steps if isinstance(s, dict) and s.get("step") == PROXY_CREATE_STEP]
+    except (AttributeError, TypeError):
+        raise run_take.Refused("the launch record carries no steps") from None
+    if len(steps) != 1 or not isinstance(steps[0].get("argv"), list):
+        raise run_take.Refused(f"the launch record holds {len(steps)} {PROXY_CREATE_STEP} steps, not one")
+    ids = [a for a in steps[0]["argv"] if isinstance(a, str) and IMAGE_ID_SHAPE.fullmatch(a)]
+    if len(ids) != 1:
+        raise run_take.Refused(f"the {PROXY_CREATE_STEP} step names {len(ids)} image ids, not one")
+    return ids[0]
 
 
 def _launched_parts(launched) -> tuple:
@@ -812,17 +981,21 @@ def collect_and_evaluate(runtime, *, launched, sidecar, lock_path: str, harness:
     and the sidecar's own expectation. Lock and launch-record refusals raise before any runtime call; it creates no
     container, runs no turn, reads no login, writes no record and tears nothing down (the drive step's lifecycle)."""
     lock = load_take_lock(lock_path, harness=harness)
+    sidecar_lock = load_sidecar_lock(lock_path, harness=harness)
+    egress_lock = load_egress_lock(lock_path, harness=harness)
     evidence_dir = run_take._abs_path(evidence_dir, "evidence_dir")
     spec, take_id, sidecar_id = _launched_parts(launched)
     try:
         expect = sidecar.expect
     except AttributeError:
         raise run_take.Refused("sidecar must be the SidecarLaunch the launch used") from None
-    probe_list = probes(spec, take_id=take_id, sidecar_id=sidecar_id, harness=harness, hosts=hosts,
-                        evidence_dir=evidence_dir)
+    sidecar_image = expect.get("image") if isinstance(expect, dict) else None
+    proxy_image = _proxy_launch_image(launched)
+    probe_list = probes(spec, take_id=take_id, sidecar_id=sidecar_id, sidecar_image=sidecar_image, harness=harness,
+                        hosts=hosts, proxy_id=launched.proxy_id, proxy_image=proxy_image, evidence_dir=evidence_dir)
     raw = run(runtime, probe_list, begin_reply=begin_reply, caller_env=caller_env)
     return evaluate(raw, spec=spec, lock=lock, sidecar_expect=expect, harness=harness, hosts=hosts,
-                    evidence_dir=evidence_dir)
+                    evidence_dir=evidence_dir, sidecar_lock=sidecar_lock, egress_lock=egress_lock)
 
 
 # ------------------------------------------------------------------------------------------------ the record
@@ -851,8 +1024,109 @@ def write(record: dict, path: str) -> str:
 
 
 # ------------------------------------------------------------------------------------------- after the take
+# The Codex lease's ONE registered credential file (glitch-06, 14 Oct 2026; the owner's 13 Oct subscription amendment:
+# cli_auth_credentials_store file, so the login lives at CODEX_HOME/auth.json, and CODEX_HOME is the per-take config
+# folder, the lease home). Postflight admits exactly this file at exactly this path, and nothing else credential-shaped.
+LEASE_CREDENTIAL = {run_take.CODEX: "auth.json"}
+LEASE_CREDENTIAL_MAX_BYTES = 1024 * 1024
+
+
+def _read_capped(path: str, cap: int, checked):
+    """The bytes of the regular file the caller's lstat `checked` saw, opened without following a link, or None past
+    `cap`. Never logged or returned in a message: callers compare them only. Opened non-blocking (a FIFO never blocks)
+    and compared on the descriptor with `checked`: the same device, inode, links, mode (the file type with it) and
+    owner, so the file read is the file checked (glitch-06, NIT 5). Anything else raises OSError, naming no contents."""
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    opened = os.fstat(fd)
+    if (opened.st_dev, opened.st_ino, opened.st_nlink, opened.st_mode, opened.st_uid) != \
+            (checked.st_dev, checked.st_ino, checked.st_nlink, checked.st_mode, checked.st_uid):
+        os.close(fd)
+        raise OSError(f"{os.path.basename(path)}: not the regular file that was checked")
+    with os.fdopen(fd, "rb") as fh:
+        data = fh.read(cap + 1)
+    return None if len(data) > cap else data
+
+
+def lease_credential_problems(config_dir: str, harness: str, listing: list) -> tuple:
+    """(problems, the credential-shaped paths the lease admits) for a Codex lease home after the take.
+
+    Admitted: at most one file, LEASE_CREDENTIAL[harness] at the folder's root, a regular file (never a link) with
+    exactly one link, mode 600, owned by the reading user (the host user, after ownership.restore). Refused, each by
+    the file's path and the rule, never its contents: a credential-shaped name anywhere else (a second auth file, a
+    renamed auth file); a file anywhere else whose bytes equal the registered file's (a renamed copy, whatever its
+    name); a symbolic link to the registered file or to a folder above it; a file the host cannot read (refused by
+    path, never raised); the registered path as a link, a non-regular file, with another
+    hard link, another mode or another owner. Absent is refused too (glitch-06, 14 Oct 2026): "exactly one registered
+    credential file" means exactly one."""
+    reg = LEASE_CREDENTIAL[harness]
+    reg_path = os.path.join(config_dir, reg)
+    problems, admitted, reg_bytes = [], [], None
+    if os.path.lexists(reg_path):
+        st = os.lstat(reg_path)
+        if stat.S_ISLNK(st.st_mode):
+            problems.append(f"{reg}: the registered credential must be a regular file, never a link")
+        elif not stat.S_ISREG(st.st_mode):
+            problems.append(f"{reg}: the registered credential must be a regular file")
+        elif st.st_nlink != 1:
+            problems.append(f"{reg}: the registered credential must have exactly one link")
+        elif stat.S_IMODE(st.st_mode) != 0o600:
+            problems.append(f"{reg}: the registered credential's mode must be 600")
+        elif st.st_uid != os.getuid():
+            problems.append(f"{reg}: the registered credential must be owned by the host user")
+        else:
+            try:
+                reg_bytes = _read_capped(reg_path, LEASE_CREDENTIAL_MAX_BYTES, checked=st)
+            except OSError:
+                problems.append(f"{reg}: the registered credential is unreadable, or changed between its check "
+                                f"and its read")
+            else:
+                if reg_bytes is None:
+                    problems.append(f"{reg}: the registered credential is larger than "
+                                    f"{LEASE_CREDENTIAL_MAX_BYTES} bytes")
+                else:
+                    admitted.append(reg)
+    else:
+        problems.append(f"{reg}: absent; the lease home must hold exactly one registered credential file")
+    reg_real = os.path.realpath(reg_path)
+    for rel in listing:
+        if rel == reg:
+            continue
+        path = os.path.join(config_dir, rel)
+        name = os.path.basename(rel)
+        try:
+            st = os.lstat(path)
+        except OSError:
+            problems.append(f"{rel}: unreadable after the take; the lease home must be readable whole")
+            continue
+        if stat.S_ISLNK(st.st_mode):
+            real = os.path.realpath(path)
+            if os.path.commonpath([real, reg_real]) == real \
+                    or name in _credential_names() or CREDENTIAL_LIKE.search(name):
+                problems.append(f"{rel}: a link to the registered credential, to a folder above it, "
+                                f"or with a credential's name")
+            continue
+        if name in _credential_names() or CREDENTIAL_LIKE.search(name):
+            problems.append(f"{rel}: a credential-shaped file outside the registered path {reg}")
+            continue
+        if reg_bytes is not None and stat.S_ISREG(st.st_mode) and st.st_size == len(reg_bytes):
+            try:
+                same = _read_capped(path, LEASE_CREDENTIAL_MAX_BYTES, checked=st) == reg_bytes
+            except OSError:
+                problems.append(f"{rel}: unreadable after the take; the lease home must be readable whole")
+                continue
+            if same:
+                problems.append(f"{rel}: a copy of the registered credential under another name")
+    return problems, admitted
+
+
+def _credential_names() -> set:
+    return {n for files in CREDENTIAL_FILES.values() for n, _source in files}
+
+
 def postflight(config_dir: str, harness: str) -> dict:
-    """The per-take config folder holds no credential file after a take; the full listing is recorded."""
+    """The per-take config folder holds no credential file after a take; the full listing is recorded. A Codex lease
+    home (LEASE_CREDENTIAL) holds exactly its one registered credential file, refusing it absent, and nothing else
+    credential-shaped."""
     run_take._known_harness(harness)
     config_dir = run_take._abs_path(config_dir, "config_dir")
     listing, problems = [], []
@@ -864,11 +1138,19 @@ def postflight(config_dir: str, harness: str) -> dict:
         for root, dirs, files in os.walk(config_dir, onerror=onerror, followlinks=False):
             for name in sorted(dirs) + sorted(files):
                 listing.append(os.path.relpath(os.path.join(root, name), config_dir))
-    names = {n for n, _ in CREDENTIAL_FILES[harness]}
-    hits = sorted(p for p in listing if os.path.basename(p) in names or CREDENTIAL_LIKE.search(os.path.basename(p)))
-    if hits:
-        problems.append(f"credential-like files present: {hits}")
-    check = {"id": POSTFLIGHT_CHECKS[0], "ok": not problems, "detail": "; ".join(problems) or "no credential file"}
+    admitted = []
+    if harness in LEASE_CREDENTIAL and not problems:
+        lease_problems, admitted = lease_credential_problems(config_dir, harness, sorted(listing))
+        problems += lease_problems
+    elif harness not in LEASE_CREDENTIAL:
+        names = {n for n, _ in CREDENTIAL_FILES[harness]}
+        hits = sorted(p for p in listing if os.path.basename(p) in names
+                      or CREDENTIAL_LIKE.search(os.path.basename(p)))
+        if hits:
+            problems.append(f"credential-like files present: {hits}")
+    detail = "; ".join(problems) or ("only the registered credential " + admitted[0] if admitted
+                                     else "no credential file")
+    check = {"id": POSTFLIGHT_CHECKS[0], "ok": not problems, "detail": detail}
     return {"ok": not problems, "checks": [check],
-            "recorded": {"listing": sorted(listing),
+            "recorded": {"listing": sorted(listing), "admitted_credential": admitted,
                          "credential_files": [{"name": n, "source": s} for n, s in CREDENTIAL_FILES[harness]]}}

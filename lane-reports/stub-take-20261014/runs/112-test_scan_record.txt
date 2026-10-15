@@ -1,0 +1,79 @@
+...............................................................................
+----------------------------------------------------------------------
+Ran 79 tests in 0.949s
+
+OK
+
+MUTANT MIN_LENGTH email 1: red 
+MUTANT an empty file list passed: red 
+MUTANT a malformed rules finding read: red 
+MUTANT a scan with no token or key searched passed: red 
+MUTANT a non-callable rules scanner reaching the scan: red 
+MUTANT a login file owned by another accepted: red 
+MUTANT a value surviving its mask written: red 
+MUTANT the not-checked record dropped with no matcher: red 
+MUTANT the matched holdout text put into a result: red 
+MUTANT a login file over 4096 bytes accepted: red 
+MUTANT a login name outside the caller's allowed names accepted: red 
+MUTANT a relative login path accepted: red 
+MUTANT a non-ASCII login value accepted: red 
+MUTANT a login file accepted on the effective uid while the real uid differs: red 
+MUTANT a repo login file reached through a symlinked folder accepted (lexical walk): red 
+MUTANT a login value with 0x1f accepted: red 
+MUTANT delete instead of mask (the line emptied): red 
+MUTANT an empty marker (the value deleted from its line): red 
+MUTANT the rules scanner's findings dropped: red 
+MUTANT a refused scan passed: red 
+MUTANT a non-maskable kind masked (the ledger): red 
+MUTANT a kind skipped (the proxy log): red 
+MUTANT an untouched line dropped (refused by the line guard): red 
+MUTANT a message carrying a value (seen by the check): red 
+MUTANT the PENDING refusals dropped: red 
+MUTANT a login line with trailing whitespace accepted: red 
+MUTANT a login file of mode 644 accepted: red 
+MUTANT rules scanner: pin sha drifts in the adapter: red 
+MUTANT rules scanner: pin sha drifts in the record: red 
+MUTANT rules scanner: version drifts: red 
+MUTANT rules scanner: binary path drifts: red 
+MUTANT rules scanner: scanner silently swapped: red 
+MUTANT rules scanner: factory renamed in the record: red 
+MUTANT rules scanner: adapter renamed in the record: red 
+MUTANT rules scanner: drift check dropped: red 
+MUTANT walk login value not handed to the scan: red 
+mutants run red in this file (36):
+  MIN_LENGTH email 1
+  an empty file list passed
+  a malformed rules finding read
+  a scan with no token or key searched passed
+  a non-callable rules scanner reaching the scan
+  a login file owned by another accepted
+  a value surviving its mask written
+  the not-checked record dropped with no matcher
+  the matched holdout text put into a result
+  a login file over 4096 bytes accepted
+  a login name outside the caller's allowed names accepted
+  a relative login path accepted
+  a non-ASCII login value accepted
+  a login file accepted on the effective uid while the real uid differs
+  a repo login file reached through a symlinked folder accepted (lexical walk)
+  a login value with 0x1f accepted
+  delete instead of mask (the line emptied)
+  an empty marker (the value deleted from its line)
+  the rules scanner's findings dropped
+  a refused scan passed
+  a non-maskable kind masked (the ledger)
+  a kind skipped (the proxy log)
+  an untouched line dropped (refused by the line guard)
+  a message carrying a value (seen by the check)
+  the PENDING refusals dropped
+  a login line with trailing whitespace accepted
+  a login file of mode 644 accepted
+  rules scanner: pin sha drifts in the adapter
+  rules scanner: pin sha drifts in the record
+  rules scanner: version drifts
+  rules scanner: binary path drifts
+  rules scanner: scanner silently swapped
+  rules scanner: factory renamed in the record
+  rules scanner: adapter renamed in the record
+  rules scanner: drift check dropped
+  walk login value not handed to the scan

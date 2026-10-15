@@ -1,0 +1,58 @@
+test_binding_1 (__main__.TestBinding1Users.test_binding_1) ... ok
+test_binding_2 (__main__.TestBinding2Hosts.test_binding_2) ... ok
+test_binding_3 (__main__.TestBinding3Proxy.test_binding_3) ... ok
+test_binding_4 (__main__.TestBinding4SidecarExpect.test_binding_4) ... ok
+test_binding_4_boot_set (__main__.TestBinding4SidecarExpect.test_binding_4_boot_set) ... ok
+test_binding_5 (__main__.TestBinding5Login.test_binding_5) ... ok
+test_binding_5_real_path_on_both_sides (__main__.TestBinding5Login.test_binding_5_real_path_on_both_sides)
+glitch-f3: the real-path walk is bound here, so a change on either side shows. ... ok
+test_the_union_holds_both_outcomes (__main__.TestBinding5Login.test_the_union_holds_both_outcomes) ... ok
+test_binding_6 (__main__.TestBinding6Program.test_binding_6) ... ok
+test_binding_7 (__main__.TestBinding7RoutingNames.test_binding_7) ... ok
+test_binding_8 (__main__.TestBinding8LockKeys.test_binding_8) ... ok
+test_binding_8_loader (__main__.TestBinding8LockKeys.test_binding_8_loader)
+Lane w6a: the loader-to-evaluator connection, red when preflight pairs a harness with another image. ... ok
+test_every_base_binding_still_runs (__main__.TestNothingDropped.test_every_base_binding_still_runs) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 15.008s
+
+OK
+
+MUTANT binding 1: run_take.AGENT_USER moved off the locks: red 
+MUTANT binding 2: take_config.WRITERS gains a harness HOSTS lacks: red 
+MUTANT binding 3: proxy_conf.PORT moved off proxy.conf and PROXY_URL: red 
+MUTANT binding 4: sidecar.EVIDENCE_MOUNT moved off preflight's /srv/ev: red 
+MUTANT binding 4: the filled boot set gains a fifth capability: red 
+MUTANT binding 4: the filled boot set drops SETPCAP: red 
+MUTANT binding 5: scan_record's login cap back at 64 KiB: red 
+MUTANT binding 5: abspath back in scan_record's repository walk: red 
+MUTANT binding 5: abspath back in run_take's repository walk: red 
+MUTANT binding 6: sidecar.PROGRAM moved off the Dockerfile's copy target: red 
+MUTANT binding 7: preflight's C3 key respelled: red 
+MUTANT binding 8: preflight reads a lock key w4a's schema lacks: red 
+MUTANT binding 8: preflight pairs claude-code with the codex take image: red 
+MUTANT binding 8: preflight projects a key the lock does not carry: red 
+MUTANT binding 8: a lock hand-edited by one digest: red 
+MUTANT binding 8: a lock from a different record row: red 
+MUTANT binding 8: a schema-1 PENDING lock where a filled one is required: red 
+MUTANT binding 8: a record other than the reviewed one: red 
+mutants run red in this file (18):
+  binding 1: run_take.AGENT_USER moved off the locks
+  binding 2: take_config.WRITERS gains a harness HOSTS lacks
+  binding 3: proxy_conf.PORT moved off proxy.conf and PROXY_URL
+  binding 4: sidecar.EVIDENCE_MOUNT moved off preflight's /srv/ev
+  binding 4: the filled boot set gains a fifth capability
+  binding 4: the filled boot set drops SETPCAP
+  binding 5: scan_record's login cap back at 64 KiB
+  binding 5: abspath back in scan_record's repository walk
+  binding 5: abspath back in run_take's repository walk
+  binding 6: sidecar.PROGRAM moved off the Dockerfile's copy target
+  binding 7: preflight's C3 key respelled
+  binding 8: preflight reads a lock key w4a's schema lacks
+  binding 8: preflight pairs claude-code with the codex take image
+  binding 8: preflight projects a key the lock does not carry
+  binding 8: a lock hand-edited by one digest
+  binding 8: a lock from a different record row
+  binding 8: a schema-1 PENDING lock where a filled one is required
+  binding 8: a record other than the reviewed one

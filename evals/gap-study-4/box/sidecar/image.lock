@@ -1,30 +1,29 @@
 {
-  "schema": 1,
-  "image": "sidecar",
-  "dockerfile": "sidecar/Dockerfile",
-  "base": "PENDING",
-  "harness": null,
-  "python": "PENDING",
-  "image_id": "PENDING",
-  "users": {
-    "agent": {
-      "name": "dana",
-      "uid": 10001,
-      "gid": 10001
-    },
-    "watcher": {
-      "name": "eli",
-      "uid": 10002,
-      "gid": 10002
-    },
-    "keepalive": {
-      "uid": 10003,
-      "gid": 10003
-    }
+ "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+ "config_digest": "sha256:80951705c2ce29d10782ca4b664c4ee14b680c6ed6fdc8197f45caabad828dfe",
+ "dockerfile": "sidecar/Dockerfile",
+ "harness": null,
+ "image": "sidecar",
+ "image_id": "sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d",
+ "manifest_digest": "sha256:c1409b3323bc991d9c86ed99411455ffba3aabbe6159384d0786216aba092a82",
+ "pending": {},
+ "python": "3.11.2",
+ "schema": 2,
+ "source_commit": "ad766f016693b60e94a2819368a206fa580176d2",
+ "users": {
+  "agent": {
+   "gid": 10001,
+   "name": "dana",
+   "uid": 10001
   },
-  "pending": {
-    "base": "the shared base digest (the take images' base), read and pinned when CP2 builds on the real box",
-    "python": "the image's own python3 version, read from the pinned base when CP2 builds the image (F-16); the sidecar program's floor is 3.11",
-    "image_id": "only a built image has an id; recorded when CP2 builds the image on the real box"
+  "keepalive": {
+   "gid": 10003,
+   "uid": 10003
+  },
+  "watcher": {
+   "gid": 10002,
+   "name": "eli",
+   "uid": 10002
   }
+ }
 }

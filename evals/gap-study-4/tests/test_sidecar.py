@@ -371,7 +371,7 @@ class TestEndstateRoundTrip(TakeCase):
         h = t.health()
         self.assertEqual([x["kind"] for x in h], ["watcher-start", "watcher-stop", "watcher-start"])
         self.assertTrue(first.stop_requested)
-        self.assertEqual(h[1], {"kind": "watcher-stop", "at": r["taken_at"], "exit_code": 0})
+        self.assertEqual(h[1], {"kind": "watcher-stop", "at": r["taken_at"], "exit_code": 0, "ignored_newline_paths": 0})
         self.assertEqual(t.snap("post-1")["taken_at"], h[1]["at"])
         self.assertEqual(h[2]["at"], t.w.established_at)
         self.assertEqual(r["rearmed_at"], t.w.established_at)
@@ -753,7 +753,7 @@ class TestGaps(TakeCase):
         t.sc.pump()
         t.clock.tick(5.0)
         h = t.health()
-        self.assertEqual(h[-1], {"kind": "watcher-stop", "at": died, "exit_code": 1})   # stamped at detection
+        self.assertEqual(h[-1], {"kind": "watcher-stop", "at": died, "exit_code": 1, "ignored_newline_paths": 0})   # stamped at detection
         r = t.sc.handle("snapshot", "post-1")
         self.assertFalse(r["ok"])
         self.assertTrue(any("exited on its own" in p for p in r["problems"]), r)
@@ -960,7 +960,7 @@ class TestGaps(TakeCase):
     def test_mutant_a_second_stop_after_death_goes_red(self):
         class Twice(sidecar.Sidecar):
             def _finish(self):   # mutant: finish stamps a stop whatever happened before
-                self._health(sidecar.WATCHER_STOP, self.clock(), exit_code=0)
+                self._health(sidecar.WATCHER_STOP, self.clock(), exit_code=0, ignored_newline_paths=0)
                 return self._reply("finish", None)
         t = self.take(sidecar_cls=Twice)
         t.sc.handle("begin")
@@ -1333,14 +1333,14 @@ def create_problems(argv) -> list:
     pairs = list(zip(flags, flags[1:]))
     if flags[:2] != ["docker", "create"]:
         p.append("not docker create")
-    for want in [("--network", "none"), ("--user", "10002:10002"), ("--cap-drop", "ALL"),
+    for want in [("--network", "none"), ("--user", "0:0"), ("--cap-drop", "ALL"),
                  ("--cap-add", "DAC_READ_SEARCH"), ("--security-opt", "no-new-privileges")]:
         if want not in pairs:
             p.append(f"missing {want}")
     if "--pull=never" not in flags:
         p.append("missing --pull=never")
-    if [f for f in flags if f == "--cap-add"] != ["--cap-add"]:
-        p.append("not exactly one added capability")
+    if sorted(b for a, b in pairs if a == "--cap-add") != sorted(["DAC_READ_SEARCH", "SETUID", "SETGID", "SETPCAP"]):
+        p.append("not exactly the boot-only capability set")
     mounts = [b for a, b in pairs if a == "--mount"]
     if sorted(mounts) != sorted([f"type=bind,source={RUN_TREE},target={RUN_TREE},readonly",
                                  f"type=bind,source={EVIDENCE},target=/srv/ev"]):
@@ -1349,6 +1349,10 @@ def create_problems(argv) -> list:
                 "--env-file", "-v", "--volume"):
         if any(f == bad or f.startswith(bad + "=") for f in flags):
             p.append(f"forbidden {bad}")
+    launcher = list(sidecar.WATCHER_LAUNCHER)
+    if cmd[:len(launcher)] != launcher:
+        p.append("wrong privilege-drop launcher")
+    cmd = cmd[len(launcher):]
     if cmd[:6] != ["python3", "-I", "-B", "/opt/w/sidecar.py", "serve", "--run-tree"]:
         p.append(f"command {cmd[:6]}")
     if cmd[6:9] != [RUN_TREE, "--evidence", "/srv/ev"] or cmd[9:] != ["--watch", PLAN, "--watch", "out/x"]:
@@ -1370,7 +1374,7 @@ class TestHostHalf(unittest.TestCase):
         mutants = {
             "the run tree mounted read-write": [x.replace(",readonly", "") for x in base],
             "a network": [("bridge" if x == "none" else x) for x in base],
-            "root user": [("0:0" if x == "10002:10002" else x) for x in base],
+            "root watcher": [("--reuid=0" if x == "--reuid=10002" else x) for x in base],
             "no cap drop": [x for j, x in enumerate(base) if not (x == "--cap-drop" or (j and base[j - 1] ==
                                                                                        "--cap-drop"))],
             "a second capability": base[:3] + ["--cap-add", "SYS_ADMIN"] + base[3:],
@@ -1412,7 +1416,8 @@ class TestHostHalf(unittest.TestCase):
 
     def test_expect_from_argv(self):
         self.assertEqual(sidecar.expect_from_argv(create()), {
-            "user": "10002:10002", "network_mode": "none", "cap_drop": ["ALL"], "cap_add": ["PENDING"],
+            "user": "0:0", "network_mode": "none", "cap_drop": ["ALL"], "cap_add": ["PENDING"] * 4,
+            "image": IMAGE, "cmd": create()[create().index(IMAGE) + 1:], "entrypoint": [],
             "security_opt": ["no-new-privileges"], "privileged": False, "pid_mode": "",
             "mounts": [{"source": RUN_TREE, "destination": RUN_TREE, "rw": False},
                        {"source": EVIDENCE, "destination": "/srv/ev", "rw": True}]})
@@ -1424,7 +1429,7 @@ class TestHostHalf(unittest.TestCase):
         self.assertEqual(sidecar.start_argv(CID), ["docker", "start", CID])
         self.assertEqual(sidecar.rm_argv(CID), ["docker", "rm", "-f", CID])
         self.assertEqual(sidecar.ctl_argv(CID, "begin"),
-                         ["docker", "exec", CID, "python3", "-I", "-B", "/opt/w/sidecar.py", "ctl", "begin"])
+                         ["docker", "exec", "--user", "10002:10002", CID, "python3", "-I", "-B", "/opt/w/sidecar.py", "ctl", "begin"])
         self.assertEqual(sidecar.ctl_argv(CID, "snapshot", "post-1")[-2:], ["snapshot", "post-1"])
         self.assertEqual(sidecar.ctl_argv(CID, "snapshot", "pre-2")[-1], "pre-2")
         for bad in [("snapshot", "post-01"), ("snapshot", "pre-1"), ("snapshot", "post-0"), ("snapshot", None),
@@ -1470,6 +1475,9 @@ class TestHostHalf(unittest.TestCase):
         self.assertEqual((sidecar.LEDGER, sidecar.ACCESS, sidecar.HEALTH, sidecar.WATCHED), es.FILES)
         self.assertEqual(sidecar.SPECIAL_KINDS, es.SPECIAL_KINDS)
         self.assertEqual((sidecar.SNAPSHOTS, sidecar.BLOBS), es.FOLDERS)
+        # review nit 7 (14 Oct): the rescan's file and source are endstate's optional file and admitted source
+        self.assertEqual((sidecar.FOUND,), es.OPTIONAL_FILES)
+        self.assertIn(sidecar.FOUND_SOURCE, es.FOUND_SOURCES)
         self.assertEqual((sidecar.WATCHER_START, sidecar.WATCHER_STOP, sidecar.QUEUE_OVERFLOW),
                          (es.WATCHER_START, es.WATCHER_STOP, es.QUEUE_OVERFLOW))
         self.assertEqual((sidecar.OPEN, sidecar.MODIFY, sidecar.DELETE), es.ACCESS_OPS)
@@ -1479,41 +1487,70 @@ class TestHostHalf(unittest.TestCase):
 # ------------------------------------------------------------------------------------------------- PENDING values
 EXPECTED_PENDING = {"inotifywait_argv", "inotifywait_format", "inotifywait_subsecond", "inotifywait_events",
                     "inotify_watch_count", "watch_establish_s"}
+# The production CANDIDATE values (box lane, 14 Oct 2026; under review): the no-model stub on Athena's provisional
+# watcher image (inotifywait 3.22.6.0) and lane-reports/watch-constants-derivation-20261014-v2.json.
+CANDIDATE = {
+    "INOTIFYWAIT_ARGV": ("inotifywait", "--monitor", "--format", "%w%f%0%e%0", "--no-newline"),
+    "INOTIFYWAIT_FORMAT": {"fields": ["path", "events"], "separator": "\x00", "established": "Watches established.",
+                           "setup_lines": ["Setting up watches.  Beware: since -r was given, this may take a while!"]},
+    "INOTIFYWAIT_SUBSECOND": False,
+    "INOTIFYWAIT_EVENTS": ("OPEN", "MODIFY", "CLOSE_WRITE", "MOVED_TO", "CREATE", "DELETE", "MOVED_FROM",
+                           "DELETE_SELF"),
+    "INOTIFY_WATCH_COUNT": 696,
+    "WATCH_ESTABLISH_S": 1.9,
+}
+
+
+def all_pending():
+    """The readiness gate as it stood before the candidate: every watcher value PENDING again, in memory."""
+    return mock.patch.multiple(sidecar, **{f.upper(): "PENDING" for f in EXPECTED_PENDING})
 
 
 class TestPending(unittest.TestCase):
+    def test_the_candidate_values_are_exactly_the_measured_ones(self):
+        self.assertEqual(sidecar.pending(), {})
+        for name, value in CANDIDATE.items():
+            self.assertEqual(getattr(sidecar, name), value, name)
+        self.assertEqual(set(sidecar.INOTIFYWAIT_EVENTS), set(sidecar.EVENT_OPS))
+        self.assertLess(sidecar.WATCH_ESTABLISH_S, sidecar.ESTABLISH_TIMEOUT_S)
+
     def test_the_pending_set(self):
-        self.assertEqual(set(sidecar.pending()), EXPECTED_PENDING)
-        for f in EXPECTED_PENDING:
-            self.assertEqual(getattr(sidecar, f.upper()), "PENDING")
+        with all_pending():
+            self.assertEqual(set(sidecar.pending()), EXPECTED_PENDING)
 
     def test_the_real_factory_refuses_while_pending(self):
-        with self.assertRaises(sidecar.NotReady):
+        with all_pending():
+            with self.assertRaises(sidecar.NotReady):
+                sidecar.inotifywait_factory("/srv/takes/t1/run", (("", False),))
+            for f in EXPECTED_PENDING:   # each one alone still refuses
+                others = {x.upper(): (FORMAT if x == "inotifywait_format" else ["filled-in-memory"])
+                          for x in EXPECTED_PENDING - {f}}
+                with mock.patch.multiple(sidecar, **others):
+                    self.assertEqual(set(sidecar.pending()), {f})
+                    with self.assertRaises(sidecar.NotReady):
+                        sidecar.inotifywait_factory("/srv/takes/t1/run", (("", False),))
+
+    def test_the_ready_factory_reaches_the_guarded_process_start(self):
+        with self.assertRaises(ProcessStartRefused):   # filled values: past the gate, to the (guarded) start
             sidecar.inotifywait_factory("/srv/takes/t1/run", (("", False),))
-        for f in EXPECTED_PENDING:   # each one alone still refuses
-            others = {x.upper(): (FORMAT if x == "inotifywait_format" else ["filled-in-memory"])
-                      for x in EXPECTED_PENDING - {f}}
-            with mock.patch.multiple(sidecar, **others):
-                self.assertEqual(set(sidecar.pending()), {f})
-                with self.assertRaises(sidecar.NotReady):
-                    sidecar.inotifywait_factory("/srv/takes/t1/run", (("", False),))
 
     def test_mutant_dropping_the_refusal_goes_red(self):
-        with mock.patch.object(sidecar, "require_ready", lambda: None):
+        with all_pending(), mock.patch.object(sidecar, "require_ready", lambda: None):
             with self.assertRaises(ProcessStartRefused):   # it reached the (guarded) process start, not NotReady
                 sidecar.inotifywait_factory("/srv/takes/t1/run", (("", False),))
         red("the real factory without its PENDING refusal")
 
     def test_serve_refuses_while_pending(self):
-        with self.assertRaises(sidecar.NotReady):
+        with all_pending(), self.assertRaises(sidecar.NotReady):
             sidecar.main(["serve", "--run-tree", "/srv/takes/t1/run", "--evidence", "/srv/ev", "--watch", PLAN])
 
     def test_no_parameter_overrides_a_pending_value(self):
-        self.assertEqual(pending_parameters(sidecar), [])
-        fake = type(sys)("fake")
-        exec("def f(inotifywait_argv=None):\n    pass\n", fake.__dict__)
-        fake.pending = sidecar.pending
-        self.assertEqual(pending_parameters(fake), ["f(inotifywait_argv)"])
+        with all_pending():
+            self.assertEqual(pending_parameters(sidecar), [])
+            fake = type(sys)("fake")
+            exec("def f(inotifywait_argv=None):\n    pass\n", fake.__dict__)
+            fake.pending = sidecar.pending
+            self.assertEqual(pending_parameters(fake), ["f(inotifywait_argv)"])
         red("a public function taking a PENDING value")
 
 
@@ -1669,7 +1706,8 @@ class TestFold2(TakeCase):
         red("stderr ignored after the watches are established")
 
     def test_the_format_reason_names_stderr_and_the_forced_events(self):
-        why = sidecar.pending()
+        with all_pending():   # the candidate fills the values; the reasons stay the definitions they were measured by
+            why = sidecar.pending()
         self.assertIn("stderr lines", why["inotifywait_format"])
         self.assertIn("IGNORED", why["inotifywait_events"])
         self.assertIn("UNMOUNT", why["inotifywait_events"])
@@ -1848,7 +1886,8 @@ class TestFold3(TakeCase):
         red("any line before the marker accepted")
 
     def test_the_format_reason_names_the_setup_lines(self):
-        self.assertIn("setup lines", sidecar.pending()["inotifywait_format"])
+        with all_pending():
+            self.assertIn("setup lines", sidecar.pending()["inotifywait_format"])
 
     def setup_failing_take(self):
         t = self.take(factory_kw={"establish_after": 10 ** 9})
@@ -1939,6 +1978,13 @@ class TestFold3Ast(unittest.TestCase):
                 used = {n.attr for n in ast.walk(ast.parse(_source(rel))) if isinstance(n, ast.Attribute)}
                 self.assertEqual(spec["attrs"], used)
                 self.assertFalse([a for a in spec["attrs"] if a.startswith("__")])
+
+    def test_an_unlisted_method_name_is_still_refused(self):
+        """glitch-06 ruling, 14 Oct: the rescan's two names are listed; any other new method name still refuses."""
+        src = _source(self.REL) + "\n\ndef _planted(sc):\n    return sc._found_elsewhere()\n"
+        got = [p for p in self.problems(src) if "_found_elsewhere" in p]
+        self.assertEqual(got, [f"{self.REL}: the attribute _found_elsewhere, outside its vocabulary"])
+        self.assertEqual([p for p in self.problems(_source(self.REL)) if "_found" in p or "_present_beneath" in p], [])
 
     def test_mutant_vocabulary_widened_goes_red(self):
         spec = dict(BOX_MODULES[self.REL])
@@ -2152,7 +2198,11 @@ BOX_MODULES = {
             'O_EXCL', 'O_NOFOLLOW', 'O_NONBLOCK', 'O_RDONLY', 'O_WRONLY', 'PIPE', 'Popen', 'SIGKILL', 'SIGTERM',
             'SOCK_STREAM', 'S_ISBLK', 'S_ISCHR', 'S_ISDIR', 'S_ISFIFO', 'S_ISLNK', 'S_ISREG', 'S_ISSOCK', '_access', '_arm', '_arm_gave_up', '_begin', '_beneath',
             '_break', '_drain', '_drain_stderr', '_err', '_established', '_ev', '_event', '_finish', '_floor',
-            '_health', '_move_targets', '_out', '_pause', '_read', '_reply', '_setup_fault', '_setup_line_ok',
+            '_health', '_move_targets', '_out',
+            # glitch-06 ruling, 14 Oct 2026: exactly the new-folder rescan's two methods.
+            '_found', '_present_beneath',
+            # glitch-06's ruling on review r2-1 (14 Oct): the interval's ignored-newline count
+            '_ignored_newline', '_pause', '_read', '_reply', '_setup_fault', '_setup_line_ok',
             '_snap_command', '_snapshot', '_stamp', '_stderr_events', '_stop', '_sweep_temps', '_tail_counts',
             '_temps', '_wait_exit', 'accept', 'add', 'add_argument', 'add_parser', 'add_subparsers', 'append', 'at',
             'basename', 'bind', 'clock', 'close', 'command', 'compile', 'connect', 'count', 'decode', 'dirname',

@@ -1,0 +1,58 @@
+22b15f56
+light ok: load1 5.22 < 16.00, memory pressure normal
+== test_run_take
+ERROR: test_run_take (unittest.loader._FailedTest.test_run_take)
+Ran 1 test in 0.000s
+FAILED (errors=1)
+== test_take_config
+ERROR: test_refusals (test_take_config.TestContents.test_refusals)
+FAIL: test_contents (test_take_config.TestContents.test_contents)
+FAIL: test_names (test_take_config.TestHashAndNames.test_names)
+FAIL: test_pending (test_take_config.TestPending.test_pending)
+Ran 9 tests in 0.037s
+FAILED (failures=3, errors=1)
+== test_preflight
+FAIL: test_pending (test_preflight.TestPending.test_pending)
+Ran 55 tests in 8.034s
+FAILED (failures=1)
+== test_claude_code_adapter
+FAIL: test_a3_the_turn_argv (test_claude_code_adapter.TestTheReaders.test_a3_the_turn_argv)
+FAIL: test_a4_a_turn_on_the_fake_runtime (test_claude_code_adapter.TestTheReaders.test_a4_a_turn_on_the_fake_runtime)
+FAIL: test_witness_allowed_tools_back (test_claude_code_adapter.TestWitnesses.test_witness_allowed_tools_back)
+FAIL: test_witness_exit_ignored (test_claude_code_adapter.TestWitnesses.test_witness_exit_ignored)
+FAIL: test_witness_mode_constant (test_claude_code_adapter.TestWitnesses.test_witness_mode_constant)
+Ran 19 tests in 0.213s
+FAILED (failures=5)
+== test_box_integration
+Ran 61 tests in 364.764s
+OK
+
+[exited with code 0]
+== test_run_take (new tests, HEAD 22b15f56 modules)
+ERROR: test_run_take (unittest.loader._FailedTest.test_run_take)
+ImportError: Failed to import test module: test_run_take
+Ran 1 test in 0.000s
+FAILED (errors=1)
+== test_take_config (new tests, HEAD 22b15f56 modules)
+ERROR: test_refusals (test_take_config.TestContents.test_refusals)
+FAIL: test_contents (test_take_config.TestContents.test_contents)
+AssertionError: Lists differ: ["raised NotReady: claude-code config need[160 chars]on."] != []
+FAIL: test_names (test_take_config.TestHashAndNames.test_names)
+AssertionError: Lists differ: ["raised NotReady: claude-code config need[160 chars]on."] != []
+FAIL: test_pending (test_take_config.TestPending.test_pending)
+AssertionError: Lists differ: ["raised AttributeError: module 'box.run_t[47 chars]ED'"] != []
+"raised AttributeError: module 'box.run_take' has no attribute 'CLAUDE_BYPASS_NOT_REQUIRED'"
+== test_preflight (new tests, HEAD 22b15f56 modules)
+FAIL: test_pending (test_preflight.TestPending.test_pending)
+AssertionError: Lists differ: ["run_take.pending() = ['CLAUDE_BYPASS_KEY[55 chars]S']"] != []
+Ran 55 tests in 7.889s
+FAILED (failures=1)
+== test_claude_code_adapter (new tests, HEAD 22b15f56 modules)
+FAIL: test_a3_the_turn_argv (test_claude_code_adapter.TestTheReaders.test_a3_the_turn_argv)
+AssertionError: Lists differ: ["ERROR A3-argv: NotReady: CLAUDE_BYPASS_K[179 chars]on."] != []
+FAIL: test_a4_a_turn_on_the_fake_runtime (test_claude_code_adapter.TestTheReaders.test_a4_a_turn_on_the_fake_runtime)
+AssertionError: Lists differ: ["ERROR A4-turn: NotReady: CLAUDE_BYPASS_K[179 chars]on."] != []
+FAIL: test_witness_allowed_tools_back (test_claude_code_adapter.TestWitnesses.test_witness_allowed_tools_back)
+AssertionError: Lists differ: ["ERROR A3-argv: NotReady: CLAUDE_BYPASS_K[179 chars]on."] != []
+FAIL: test_witness_exit_ignored (test_claude_code_adapter.TestWitnesses.test_witness_exit_ignored)
+AssertionError: Lists differ: ["ERROR A4-turn: NotReady: CLAUDE_BYPASS_K[179 chars]on."] != []
