@@ -552,3 +552,21 @@ Written by a fresh integration window, under glitch-06.
 - **Merge clone:** merged code head `bd9d05a7` (box `edd65756` + harness `d6ad30c2` + bootstrap `6f2a6390`); log commits follow it. Nothing pushed.
 - **Waiting on:** the bootstrap's NIT A/NIT B commit on top of `6f2a6390` (merge it as the same branch's newer head), then glitch-6b's go for the battery (`--kind gars-gap4 --jobs 24 --solo`).
 - **Open:** `sidecar_for` is the one builder walk_runner still refuses on (no registered per-task watch list).
+
+## Admission battery on bd9d05a7 (15 Oct, launched 04:25:54, read 05:12 EDT)
+
+- Correction to the admission block above: its heading's "04:14-04:4x" should read 04:14-04:22 (the log commit was made at 04:22).
+- `gap4-merge-admit-bd9d05a-bd9d05a-20261015T082555Z`, `--kind gars-gap4 --jobs 24 --solo`, commit `bd9d05a7`.
+- Verdict, derived on the Mac: **FAIL**. Step 1 `Ran 1303`, OK (skipped=82), exit 0. `run_checks: 273 of 274 commands passed`. Account processes 0 at start and at end. Log sha256 `2aca8f84e702edf7420c808f48c8bf7c9ae4b0aeccb2f341d00945c30237c783` (the Mac's hash equals the summary's).
+- **The one red, bootstrap-owned, not merge-level:** `FAIL [w10-walk-runner.txt:6] python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --witnesses`: `setUpModule` errors with "AssertionError: the anchor occurs 0 times in the module".
+  - Reproduced on the Mac with a text-only scan of every `test_walk_runner` mutant (72): only `walk-check-unwritten` (target `walk_runner`) has a missing anchor, `    write_check(folder, check_record(walk, records, table, route_fn, checked=checked))\n`.
+  - Cause: bootstrap `93a98927..9229d10b` (B4) changed that call in `walk_runner.py` to pass one more argument (`checked=checked,` then a continuation line), and the witness anchor in `tests/test_walk_runner.py` was not moved.
+  - The red is on the bootstrap head alone: at `6f2a6390` the anchor is absent from `walk_runner.py`, while `0cd9b1be` and harness `d6ad30c2` still carry it. The bootstrap's newer head `d4f066f4` does not move it either (its test still holds the old anchor).
+  - The fix is the bootstrap lane's: re-anchor `walk-check-unwritten` to the new call. This lane did not change it.
+- Per glitch-6b, the final pre-walk merge waits for word after this red.
+
+## RESUME HERE (15 Oct, after the admission battery)
+
+- **Merge clone:** merged code head `bd9d05a7`; log commits follow it. Nothing pushed.
+- **Admission battery:** FAIL 273 of 274; the one red is the bootstrap's stale `walk-check-unwritten` witness anchor.
+- **Next, on glitch-6b's word:** the final pre-walk merge (bootstrap `d4f066f4` or a newer head carrying the anchor fix; the harness's newest committed head, `664a24e7` at 05:1x), regenerate the draft through build_draft, the four checks and T52, the five Mac modules, the dry walk_runner, then `gap4-merge-prewalk-<sha7>` solo.
