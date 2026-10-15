@@ -666,6 +666,9 @@ class ProxyRoad:
 # source folder instead: a NAMED DEPARTURE, a grading-neutral liveness entry that watched.json's non-empty contract
 # requires, never taken by a task with a graded path. Named residual: the access log is exact-path, so a write beneath a
 # watched folder is seen only through the snapshot diffs.
+WATCH_FALLBACK_TASKS = frozenset({"number-fidelity"})   # the one task ruled to watch its source folder (Addendum 2)
+
+
 def watch_list(row: dict, project: str, run_tree: str) -> list:
     """The run-tree-relative paths the walk's sidecar watches: sorted(variants.graded_paths(task, project)), or, only
     when that is empty, the task's source_template folder rendered for the walk. Refused (BuilderRefused) when a path
@@ -675,6 +678,9 @@ def watch_list(row: dict, project: str, run_tree: str) -> list:
     task_id = row["task"]
     watch = sorted(variants.graded_paths(task_id, project=project))
     if not watch:                                    # the named departure: no graded path, the source folder
+        if task_id not in WATCH_FALLBACK_TASKS:
+            raise BuilderRefused(f"task {task_id!r} has no graded path and is not a ruled fallback task "
+                                 f"({sorted(WATCH_FALLBACK_TASKS)}): its watch list is not derived")
         template = variants.load_task(task_id).get("source_template")
         watch = [os.path.relpath(variants.render_source(template, run_tree, project), run_tree)] if template else []
     if not watch:

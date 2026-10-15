@@ -3081,14 +3081,20 @@ class B16Watch(Drafted):
                                      ("a dot-dot path", ["a/../b"], "watch_path_ok")):
             with self.subTest(label=label), mock.patch.object(variants, "graded_paths", lambda t, **k: list(graded)):
                 self.refuses("B16.refuse", words, mod.watch_list, row, WATCH_PROJECT, WATCH_TREE)
+        nf = {"task": "number-fidelity"}
         real_load = variants.load_task
         with mock.patch.object(variants, "graded_paths", lambda t, **k: set()), \
                 mock.patch.object(variants, "load_task", lambda t, **k: {k2: v for k2, v in real_load(t).items()
                                                                           if k2 != "source_template"}):
-            self.refuses("B16.refuse", "watch list is empty", mod.watch_list, row, WATCH_PROJECT, WATCH_TREE)
-        with mock.patch.object(variants, "graded_paths", lambda t, **k: set()):
-            got = self.must("B16.refuse", mod.watch_list, row, WATCH_PROJECT, WATCH_TREE)
+            self.refuses("B16.refuse", "watch list is empty", mod.watch_list, nf, WATCH_PROJECT, WATCH_TREE)
+        got = self.must("B16.refuse", mod.watch_list, nf, WATCH_PROJECT, WATCH_TREE)
         self.assertEqual(got, [f"data/staging/{WATCH_PROJECT}/src"], "B16.fallback: not the rendered source folder")
+        self.assertEqual(mod.WATCH_FALLBACK_TASKS, frozenset({"number-fidelity"}), "B16.fallback: the ruled set")
+        # review MINOR 2: the code binds the fallback set; a task with graded paths emptied is refused, not fallen back
+        for task in ("precondition-refusal", "scope-read"):
+            with self.subTest(task=task), mock.patch.object(variants, "graded_paths", lambda t, **k: set()):
+                self.refuses("B16.refuse", "not a ruled fallback task", mod.watch_list, {"task": task},
+                             WATCH_PROJECT, WATCH_TREE)
 
     def test_the_production_sidecar_is_the_stub_take_s_launch(self):
         mod = wb()
