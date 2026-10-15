@@ -1087,6 +1087,16 @@ class B8Present(Drafted):
                 got = self.must("B8.present", wb().production_builders)
         self.assertIs(got.get("rules_scanner"), scanner, "B8.present")   # an absent key fails by assertion
 
+    def test_a_pending_checker_constant_makes_design_for_missing(self):
+        """design_for is Missing, naming the constant, whenever any CHECKER_CONSTANTS entry is PENDING: run_location put
+        back to PENDING here, on every tree (on a tree whose constants are filled nothing else reaches the list)."""
+        import check_take
+        with mock.patch.object(check_take, "CHECKER_CONSTANTS",
+                               dict(check_take.CHECKER_CONSTANTS, run_location=check_take.PENDING)):
+            got = self.must("B8.pending", wb().production_builders)
+        self.assertIsInstance(got.get("design_for"), wb().Missing, "B8.pending: a PENDING constant gave a design view")
+        self.assertIn("run_location", got["design_for"].why, "B8.pending: design_for does not name the constant")
+
     def test_a_pending_rules_scanner_is_missing(self):
         """R2 (glitch-6b, 14 Oct 2026): the fail-closed branch, driven through the pending() seam on every tree. While
         scan_record.pending() names rules_scanner, the production scanner is Missing with that reason and the real one
