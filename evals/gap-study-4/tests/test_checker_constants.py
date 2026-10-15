@@ -12,7 +12,9 @@ check's own line goes red (a binding that cannot fail is the threat this lane is
   K-turn        budgets.turn_timeout_s: round 3's prereg.json budgets (e2979b31) and D8's 900 s for every arm.
   K-finalize    budgets.finalize_wait_s: drive.FINALIZE_WAIT_S and round 3's driver_constants.finalize_wait_s.
   K-poll        budgets.poll_s: round 3's drive.py wait_for_samples_csv sleep cap (ast, e2979b31; line 769 there).
-  K-origin      harness_delivered_user_records: [transcript_view.CC_TASK_NOTIFICATION], equal to round 3's list.
+  K-origin      harness_delivered_user_records: origin_kinds [transcript_view.CC_TASK_NOTIFICATION], equal to round 3's
+                list; meta_kinds [transcript_view.CC_SCHEDULED_WAKEUP] (glitch-6b's ruling, 15 Oct 2026, on CP6 walk
+                w006), a departure: round 3's list has no meta_kinds.
   K-location    run_location: round 3's excluded paths in order, box/preflight.STUDY_PATHS (or PENDING, on a tree
                 without CP5's fill: never another value), drive.TREE_IDENTITY[0] and TREE_SUBJECT, round 3's identity
                 and subject; drive.excluded_from_run_tree reads the paths back.
@@ -220,10 +222,14 @@ def k_poll(c):
 def k_origin(c):
     h = c.get("harness_delivered_user_records")
     out = []
-    if h != {"origin_kinds": [transcript_view.CC_TASK_NOTIFICATION]}:
-        out.append(f"K-origin: {h!r} is not exactly [transcript_view.CC_TASK_NOTIFICATION]")
+    if h != {"origin_kinds": [transcript_view.CC_TASK_NOTIFICATION],
+             "meta_kinds": [transcript_view.CC_SCHEDULED_WAKEUP]}:
+        out.append(f"K-origin: {h!r} is not exactly origin_kinds [transcript_view.CC_TASK_NOTIFICATION] and meta_kinds "
+                   f"[transcript_view.CC_SCHEDULED_WAKEUP]")
     if (h or {}).get("origin_kinds") != r3()["harness_delivered_user_records"]["origin_kinds"]:
         out.append("K-origin: the origin kinds are not round 3's")
+    if "meta_kinds" in r3()["harness_delivered_user_records"]:
+        out.append("K-origin: round 3 names meta kinds, so scheduled-wakeup is not the departure the draft says")
     return out
 
 
@@ -358,6 +364,10 @@ WITNESSES = (
     ("budgets-extra", "budgets.extra", 1, k_turn),
     ("origin-plus-auto-continuation", "harness_delivered_user_records.origin_kinds",
      lambda v: v + ["auto-continuation"], k_origin),
+    ("meta-dropped", "harness_delivered_user_records", lambda v: {"origin_kinds": v["origin_kinds"]}, k_origin),
+    ("meta-plus-caveat", "harness_delivered_user_records.meta_kinds", lambda v: v + ["caveat"], k_origin),
+    ("meta-as-origin", "harness_delivered_user_records",
+     lambda v: {"origin_kinds": v["origin_kinds"] + v["meta_kinds"], "meta_kinds": []}, k_origin),
     ("location-path-dropped", "run_location.excluded_from_the_run_tree", lambda v: v[:-1], k_location),
     ("location-path-why", "run_location.excluded_from_the_run_tree", lambda v: [dict(v[0], why="x")] + v[1:],
      k_location),
@@ -678,7 +688,11 @@ class TestTheDraftNamesTheRuling(unittest.TestCase):
                                                             "residuals")}
         self.assertEqual(named["carried"], ["budgets.turn_timeout_s", "budgets.finalize_wait_s", "budgets.poll_s"])
         self.assertEqual(sorted(named["departures"]), ["budgets.finalize_wait_s", "driver_constants.stripped_env",
-                                                       "environment_record", "run_location"])
+                                                       "environment_record",
+                                                       "harness_delivered_user_records.meta_kinds", "run_location"])
+        wake = [e for e in r["departures"] if e["constant"] == "harness_delivered_user_records.meta_kinds"][0]
+        for word in ("scheduled-wakeup", "round 3", "w006", "900 s", "before the freeze"):
+            self.assertIn(word, wake["text"], f"K-draft: the scheduled-wakeup departure does not name {word!r}")
         self.assertEqual(named["limitations"], ["environment_record"])
         self.assertEqual(named["residuals"], ["harness_delivered_user_records"])
         self.assertIn("auto-continuation", r["residuals"][0]["text"])

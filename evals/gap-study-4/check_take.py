@@ -974,7 +974,7 @@ def user_text_records(path: Path, pre: dict) -> tuple[list[str], list[str], list
     operator's; one whose origin kind the pre-registration names (harness_delivered_user_records) is
     the harness's; any other origin refuses, because who sent it cannot be established.
     """
-    kinds = set((pre.get("harness_delivered_user_records") or {}).get("origin_kinds") or [])
+    kinds, wakeups = set((pre.get("harness_delivered_user_records") or {}).get("origin_kinds") or []), _wakeups(pre)
     ops: list[str] = []
     harness: list[str] = []
     unknown: list[str] = []
@@ -983,7 +983,7 @@ def user_text_records(path: Path, pre: dict) -> tuple[list[str], list[str], list
             rec = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if not isinstance(rec, dict) or rec.get("type") != "user":
+        if wakeups.read(rec, harness) or not isinstance(rec, dict) or rec.get("type") != "user":  # ROUND 4 (wakeup)
             continue
         msg = rec.get("message") if isinstance(rec.get("message"), dict) else rec
         content = msg.get("content")
@@ -2034,7 +2034,14 @@ CHECKER_CONSTANTS = {
     # (b) derived, equals R3 (prereg.json harness_delivered_user_records.origin_kinds): transcript_view's
     # CC_TASK_NOTIFICATION, the one origin kind the view reads as the harness's. task-notification is present in the
     # 2.1.296 binary (box ba6d7f14); auto-continuation, which that binary frames as human, stays off (fails closed).
-    "harness_delivered_user_records": {"origin_kinds": ["task-notification"]},
+    # meta_kinds: a NAMED DEPARTURE from round 3, which never carried the record (glitch-6b's ruling, 15 Oct 2026, on
+    # CP6 walk w006): transcript_view's CC_SCHEDULED_WAKEUP, the one isMeta record read as the harness's, admitted by
+    # transcript_view.is_scheduled_wakeup alone. Source: w006's transcript line 111 (a user record, isMeta true,
+    # turnOrigin "scheduled", promptSource "system", no origin, string content whose sha256 c50d1115aaef... equals that
+    # of the earlier ScheduleWakeup call's prompt input and of the queue-operation enqueue at line 109); the pinned
+    # 2.1.296 binary passes isMeta, modelScheduledOrigin and wakeupSource for a model wakeup (the investigator's read;
+    # the same three names are in the 2.1.280 binary on the Mac, so round 3's absence is behaviour, not vocabulary).
+    "harness_delivered_user_records": {"origin_kinds": ["task-notification"], "meta_kinds": ["scheduled-wakeup"]},
     # (b) derived, equals R3 (run_location.excluded_from_the_run_tree's paths, checkout_identity, checkout_subject):
     # box/preflight.py STUDY_PATHS (Javier's CP5 ruling, 14 Oct 08:11), drive.TREE_IDENTITY[0], drive.TREE_SUBJECT.
     # Named departure: the run tree is exported from the pin (variants.PINNED_TREE), not HEAD.
@@ -2460,6 +2467,44 @@ def design_constants_sha256(design: "Design"):
         return checker_constants_sha256(got)
     except (KeyError, TypeError, AttributeError, CheckRefused):
         return None
+
+
+# ---- SCHEDULED WAKEUP (glitch-6b's ruling, 15 Oct 2026, on CP6 rehearsal walk w006; the harness lane) -----------------
+#   At 2.1.296 `claude -p` stays alive after the agent's ScheduleWakeup and the harness re-delivers the agent's own
+#   prompt as an origin-less user record carrying isMeta (w006 line 111), which user_text_records counted as a third
+#   operator line (operator-lines, harness-error). Two lines of user_text_records are edited in place (its `kinds`
+#   line and its record-type line; no line above this section moves): where the pre-registration names the kind
+#   (harness_delivered_user_records.meta_kinds holds "scheduled-wakeup"), a record the VIEW'S OWN predicate admits
+#   (transcript_view.ScheduledWakeups: armed by earlier ScheduleWakeup calls of genuine agent records, each prompt
+#   consumed once) is the harness's text. Every other origin-less text, isMeta or not, is the operator's, as before;
+#   round 3's list (no meta_kinds) reads the record exactly as before.
+import transcript_view  # noqa: E402
+
+
+class _Wakeups:
+    """One user_text_records pass: transcript_view.ScheduledWakeups, gated on the pre-registration's meta_kinds."""
+
+    def __init__(self, admit: bool):
+        self.admit, self.seen = admit, transcript_view.ScheduledWakeups()
+
+    def read(self, rec, harness: list) -> bool:
+        """Arm on an assistant record; True (the record is read here) when a user record is an admitted wakeup, its
+        text then added to `harness`."""
+        if not isinstance(rec, dict):
+            return False
+        if rec.get("type") == "assistant":
+            self.seen.note(rec)
+            return False
+        if self.admit and self.seen.admit(rec):
+            if rec["message"]["content"].strip():
+                harness.append(rec["message"]["content"])
+            return True
+        return False
+
+
+def _wakeups(pre: dict) -> _Wakeups:
+    meta = set((pre.get("harness_delivered_user_records") or {}).get("meta_kinds") or [])
+    return _Wakeups(transcript_view.CC_SCHEDULED_WAKEUP in meta)
 
 
 if __name__ == "__main__":

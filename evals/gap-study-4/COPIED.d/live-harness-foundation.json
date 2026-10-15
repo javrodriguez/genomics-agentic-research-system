@@ -19,7 +19,7 @@
     {
       "path": "COPIED.d/live-harness-foundation.json",
       "status": "new",
-      "reason": "This foundation slice copy record; existing owned-file departures recorded in their owning fragments."
+      "reason": "This foundation slice copy record; existing owned-file departures recorded in their owning fragments. Scheduled-wakeup ruling (glitch-6b, 15 Oct 2026, CP6 walk w006), edits without transfer, named here: transcript_view.py (CC_SCHEDULED_WAKEUP, is_scheduled_wakeup and ScheduledWakeups; the one isMeta record admitted as harness, every other still refused), check_take.py (user_text_records' kinds and record-type lines edited in place, an appended SCHEDULED WAKEUP section, harness_delivered_user_records.meta_kinds in CHECKER_CONSTANTS), build_draft.py and prereg-draft.json (the departure under checker_constants_ruling), tests/test_checker_constants.py (K-origin binds meta_kinds; three witnesses; K-draft names the departure) and tests/test_walk_runner.py (BOOTSTRAP_SPANS: the constants region's new digest and the scheduled-wakeup-lines span)."
     },
     {
       "path": "vendor_provenance.py",
@@ -185,6 +185,11 @@
       "path": "tests/test_machine_gate.py",
       "status": "new",
       "reason": "machine_gate's athena gate (suite-account processes, the reservation and its own hold, unreadable inputs) and its Mac pre-check (list lines, busy and refused, status of a started run), and its environment build, on fakes and a masked replay of the real 15 Oct list, with its witnesses."
+    },
+    {
+      "path": "tests/test_scheduled_wakeup.py",
+      "status": "new",
+      "reason": "Scheduled-wakeup ruling (glitch-6b, 15 Oct 2026, CP6 walk w006): a synthetic w006-shaped take read by both readers with its two operator lines, every near miss refused by the view and read as before by check_take, the consumption rule, the meta_kinds gate, and an in-memory mutant per clause of the shared predicate and per check_take use."
     }
   ]
 }

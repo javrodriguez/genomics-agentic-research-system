@@ -896,13 +896,20 @@ BOOTSTRAP_SPANS = (
      "c3baa5bc41c095a1259592c830aec147df7167525fd5624c6ec7c6a2a38a3efe"),
     ("checker-constants", "# The keys round 3's check() reads that the round-4 draft does not carry (s6b plan, section 0). "
                           "A closed block: a key\n", "\n\ndef harness_guard(",
-     "4e44ef1c85748dec660c73a61fdf14fd0b9c69007daf0cdfc3617ad3ded2acaa"),
+     # glitch-6b's scheduled-wakeup ruling (15 Oct 2026): harness_delivered_user_records gains meta_kinds.
+     "958af31171c9758cdf4c5df7056aca446e92d1afe24f9391b980839e7e3b7bf9"),
     ("r4c10-comment", "#           none (a context variable, so parallel takes never see each other's), else "
                       "prereg.load() as in round 3.\n", "#   R4C-11.",
      "4ec1ebccb7591883e7a87ccb70946669e240acb341205f62405e8e380cc1b3de"),
     ("design-view-docstring", "    pin (D1) and the run tree the driver gave it. `constants` defaults to CHECKER_CONSTANTS",
      "    constants = CHECKER_CONSTANTS if constants is None else constants\n",
      "83dbaff1086fe8dcf34be8b92c0189ad6e1410f5c0db089397f53ce72d182da4"),
+    # glitch-6b's scheduled-wakeup ruling (15 Oct 2026, CP6 walk w006; the harness lane): user_text_records' `kinds`
+    # line and its record-type line, edited in place to read the view's own predicate (check_take's appended
+    # SCHEDULED WAKEUP section); no line moves.
+    ("scheduled-wakeup-lines", "    the harness's; any other origin refuses, because who sent it cannot be established.\n"
+                               '    """\n', '        msg = rec.get("message") if isinstance(rec.get("message"), dict) else rec\n',
+     "8756130eca1fa642bdefd52906d25981f162dcab6e22a66a1fd0c47bd5c6e563"),
 )
 
 

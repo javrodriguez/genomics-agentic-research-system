@@ -64,18 +64,29 @@ documented inputs for that tool; any other key refuses the take.
     (review round 1, W2B1-6): one carrying an `isMeta` or `isApiErrorMessage` key, whatever its value
     (round 3's 54 transcripts carry neither on any of their 6,208 records), and an `assistant` record
     whose `message.model` is `<synthetic>` (round 3 has none).
+    ONE isMeta record is admitted, as harness (glitch-6b's ruling, 15 Oct 2026, on CP6 walk w006): a
+    `scheduled-wakeup`, the agent's own ScheduleWakeup prompt re-delivered by the harness, when
+    is_scheduled_wakeup holds: type `user`, isMeta the boolean true, turnOrigin `scheduled`,
+    promptSource `system`, no `origin`, no isApiErrorMessage, not a sidechain, string content equal to
+    the `prompt` of an EARLIER ScheduleWakeup call in a genuine main-thread agent record that no
+    earlier admitted wakeup has consumed (ScheduledWakeups: each call arms its prompt once; a wakeup
+    consumes the earliest equal one). Its raw type is `user:scheduled-wakeup`. Every other isMeta
+    record is refused as before. check_take.user_text_records imports the same predicate.
 
 THE RAW FIELDS THE `claude-code` PARSER READS (interface 6; a closed list):
 
-    every record      type, isSidechain, isMeta, isApiErrorMessage (either key present refuses it)
-    user              message.content (a string, or a list of blocks), origin.kind
+    every record      type, isSidechain, isMeta, isApiErrorMessage (either key present refuses it, but for
+                      a scheduled wakeup)
+    user              message.content (a string, or a list of blocks), origin.kind; for a scheduled wakeup
+                      also turnOrigin, promptSource and the presence of origin
       tool_result     type, tool_use_id, content (a string, or a list of blocks:
                       text -> text; tool_reference -> tool_name)
     assistant         message.model (`<synthetic>` refuses it), message.content (a list of blocks)
       text            type, text
       thinking        type, thinking
       tool_use        type, id, name, input (its keys checked against CC_TOOLS; the values read are
-                      the ones CC_TOOLS maps: command, run_in_background, file_path, pattern, path)
+                      the ones CC_TOOLS maps: command, run_in_background, file_path, pattern, path;
+                      and ScheduleWakeup's prompt, which only arms a scheduled wakeup)
     attachment        attachment.type, attachment.commandMode, and attachment's other string leaves (text)
     queue-operation   content          last-prompt   lastPrompt        ai-title   aiTitle
     atis-latch        atis             mode          mode              cost-state modelUsage
@@ -107,6 +118,7 @@ No model is called anywhere in this module. Standard library only.
 
 from __future__ import annotations
 
+import contextvars
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -248,6 +260,87 @@ CC_QUEUED_COMMAND = "queued_command"
 # assistant record whose model is CC_SYNTHETIC_MODEL. Round 3's 54 transcripts hold none of them.
 CC_REFUSED_FLAGS = ("isMeta", "isApiErrorMessage")
 CC_SYNTHETIC_MODEL = "<synthetic>"
+# glitch-6b's ruling, 15 Oct 2026 (CP6 walk w006): the one harness-written isMeta record admitted, as harness. At
+# 2.1.296 `claude -p` stays alive after the agent's ScheduleWakeup and the harness re-delivers the agent's own prompt
+# as a user record (w006 transcript line 111: isMeta true, turnOrigin "scheduled", promptSource "system", no origin,
+# content byte-equal to the call's prompt, sha256 c50d1115aaef...). Round 3 never carried one.
+CC_SCHEDULED_WAKEUP = "scheduled-wakeup"
+CC_WAKEUP_TOOL = "ScheduleWakeup"
+CC_WAKEUP_TURN_ORIGIN = "scheduled"
+CC_WAKEUP_PROMPT_SOURCE = "system"
+CC_WAKEUP_ABSENT_KEYS = ("isApiErrorMessage",)
+
+
+def _genuine_agent_record(rec) -> bool:
+    """A main-thread agent record: an assistant record no refusal applies to (no isMeta, no isApiErrorMessage, not a
+    sidechain, not <synthetic>). Only such a record's ScheduleWakeup call arms a wakeup."""
+    if not isinstance(rec, dict) or rec.get("type") != "assistant" or rec.get("isSidechain") is True:
+        return False
+    if any(flag in rec for flag in ("isMeta", "isApiErrorMessage")):
+        return False
+    msg = rec.get("message")
+    return isinstance(msg, dict) and msg.get("model") != CC_SYNTHETIC_MODEL
+
+
+def wakeup_prompts(rec) -> list:
+    """The `prompt` inputs of the ScheduleWakeup calls in one genuine agent record, in order (strings only)."""
+    out = []
+    if not _genuine_agent_record(rec):
+        return out
+    content = rec["message"].get("content")
+    for b in content if isinstance(content, list) else []:
+        if isinstance(b, dict) and b.get("type") == "tool_use" and b.get("name") == CC_WAKEUP_TOOL:
+            prompt = b.get("input").get("prompt") if isinstance(b.get("input"), dict) else None
+            if isinstance(prompt, str):
+                out.append(prompt)
+    return out
+
+
+def is_scheduled_wakeup(rec, armed) -> bool:
+    """The ruling's predicate, every clause required: a user record, isMeta the boolean True, turnOrigin "scheduled",
+    promptSource "system", no origin key, no isApiErrorMessage key, not a sidechain, string content, and that content
+    equal to a prompt in `armed` (the unconsumed prompts of earlier ScheduleWakeup calls, ScheduledWakeups.armed)."""
+    if not isinstance(rec, dict) or rec.get("type") != "user":
+        return False
+    if rec.get("isMeta") is not True:
+        return False
+    if rec.get("turnOrigin") != CC_WAKEUP_TURN_ORIGIN:
+        return False
+    if rec.get("promptSource") != CC_WAKEUP_PROMPT_SOURCE:
+        return False
+    if "origin" in rec:
+        return False
+    if any(k in rec for k in CC_WAKEUP_ABSENT_KEYS):
+        return False
+    if rec.get("isSidechain") is True:
+        return False
+    msg = rec.get("message")
+    content = msg.get("content") if isinstance(msg, dict) else None
+    if not isinstance(content, str):
+        return False
+    return content in armed
+
+
+# The current reading pass's ScheduledWakeups (view._items sets it; None outside a pass).
+_PASS_WAKEUPS = contextvars.ContextVar("_PASS_WAKEUPS", default=None)
+
+
+class ScheduledWakeups:
+    """One reading pass's armed prompts. note(rec) arms every ScheduleWakeup prompt of a genuine agent record;
+    admit(rec) is is_scheduled_wakeup, and when it holds the record consumes the earliest armed equal prompt, so one
+    call admits at most one wakeup (two calls with one prompt admit two). Both readers make one per pass."""
+
+    def __init__(self):
+        self.armed: list = []
+
+    def note(self, rec) -> None:
+        self.armed.extend(wakeup_prompts(rec))
+
+    def admit(self, rec) -> bool:
+        if not is_scheduled_wakeup(rec, self.armed):
+            return False
+        self.armed.remove(rec["message"]["content"])
+        return True
 
 
 class ClaudeCodeSessionParser:
@@ -259,6 +352,9 @@ class ClaudeCodeSessionParser:
     tools = CC_TOOLS
 
     def items(self, line: str) -> list[RawItem]:
+        """One line's items. The pass's ScheduledWakeups is _PASS_WAKEUPS (view._items sets one per pass); a line read
+        outside a pass has none, so no wakeup can be admitted and every isMeta record is refused."""
+        wakeups = _PASS_WAKEUPS.get()
         try:
             r = json.loads(line)
         except ValueError:
@@ -270,13 +366,18 @@ class ClaudeCodeSessionParser:
             raise ViewError(f"unknown record type: {t!r}")
         if r.get("isSidechain") is True:
             raise ViewError("a sidechain record (a sub-agent's): the view reads the main thread only")
-        for flag in CC_REFUSED_FLAGS:
-            if flag in r:
-                raise ViewError(f"a record carrying {flag}: the harness wrote it itself, refused")
+        flagged = [flag for flag in CC_REFUSED_FLAGS if flag in r]
+        if flagged and wakeups is not None and wakeups.admit(r):
+            return [RawItem("user:" + CC_SCHEDULED_WAKEUP, HARNESS, text=r["message"]["content"])]
+        for flag in flagged:
+            raise ViewError(f"a record carrying {flag}: the harness wrote it itself, refused")
         if t == "user":
             return self._user(r)
         if t == "assistant":
-            return self._assistant(r)
+            got = self._assistant(r)
+            if wakeups is not None:
+                wakeups.note(r)
+            return got
         if t == "attachment":
             return self._attachment(r)
         return [RawItem(t, HARNESS, text=_joined(r.get(CC_HARNESS_PAYLOAD[t])))]
@@ -404,15 +505,19 @@ def _items(harness, path_or_lines) -> list[RawItem]:
     if isinstance(parser, VendorBoundParser):
         return parser.bound_items(path_or_lines)
     out = []
-    for i, ln in enumerate(_lines(path_or_lines), 1):
-        try:
-            got = parser.items(ln)
-        except ViewError as e:
-            raise ViewError(f"line {i}: {e}") from None
-        for it in got:
-            if not isinstance(it, RawItem) or it.kind not in KINDS:
-                raise ViewError(f"line {i}: the parser produced an item outside the view's kinds")
-        out.extend(got)
+    token = _PASS_WAKEUPS.set(ScheduledWakeups())     # one pass, one set of armed prompts (the scheduled-wakeup kind)
+    try:
+        for i, ln in enumerate(_lines(path_or_lines), 1):
+            try:
+                got = parser.items(ln)
+            except ViewError as e:
+                raise ViewError(f"line {i}: {e}") from None
+            for it in got:
+                if not isinstance(it, RawItem) or it.kind not in KINDS:
+                    raise ViewError(f"line {i}: the parser produced an item outside the view's kinds")
+            out.extend(got)
+    finally:
+        _PASS_WAKEUPS.reset(token)
     return out
 
 

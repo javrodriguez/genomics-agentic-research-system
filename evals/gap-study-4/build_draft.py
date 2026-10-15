@@ -1221,7 +1221,8 @@ CHECKER_CONSTANTS_RULING = {
          "pre-registered here"},
     ],
     "derived": [
-        {"constant": "harness_delivered_user_records", "from": "transcript_view.CC_TASK_NOTIFICATION; equals round 3",
+        {"constant": "harness_delivered_user_records", "from": "transcript_view.CC_TASK_NOTIFICATION; equals round 3; "
+         "meta_kinds from transcript_view.CC_SCHEDULED_WAKEUP (a departure, below)",
          "evidence": "task-notification is present in the 2.1.296 binary (box ba6d7f14)"},
         {"constant": "run_location", "from": "box/preflight.py STUDY_PATHS (Javier's CP5 ruling, 14 Oct 2026); "
          "drive.TREE_IDENTITY and drive.TREE_SUBJECT; equals round 3"},
@@ -1240,6 +1241,16 @@ CHECKER_CONSTANTS_RULING = {
         {"constant": "environment_record", "text": "Round 3's vocabulary, read from the 2.1.267 binary, extended "
          "with the 2.1.296 names from the pinned binary's static read (box ba6d7f14): three name patterns, thirteen "
          "billing routes, seven API-key names and one subscription token."},
+        # glitch-6b's ruling, 15 Oct 2026, on CP6 rehearsal walk w006 (held): the scheduled-wakeup kind.
+        {"constant": "harness_delivered_user_records.meta_kinds", "text": "A new harness-delivered kind, "
+         "scheduled-wakeup, which round 3 never carried (its 54 transcripts hold no isMeta record). At 2.1.296 "
+         "claude -p stays alive after the agent calls ScheduleWakeup, and the harness re-delivers the agent's own "
+         "wakeup prompt as a user record carrying isMeta (walk w006, transcript line 111). Exactly that record is "
+         "the harness's, never an operator line: type user, isMeta the boolean true, turnOrigin scheduled, "
+         "promptSource system, no origin, and string content equal to the prompt of an earlier ScheduleWakeup call "
+         "that no earlier wakeup consumed (transcript_view.is_scheduled_wakeup, which check_take's record reader "
+         "imports). Every other isMeta record is still refused. A watch for the freeze: a wakeup with a long delay "
+         "keeps -p alive inside the 900 s turn budget, so any walk that reaches it is read before the freeze."},
     ],
     "limitations": [
         {"constant": "environment_record", "text": "The vocabulary is used for recording only; the box's environment "
