@@ -10,9 +10,11 @@ grader excludes `harness` events by kind; this check shows what that exclusion k
 `awareness.PHRASES` against the `harness` events of every transcript, read through the view's parser
 for the take's harness (round 3's takes carry none, so `transcript_view.ROUND3_HARNESS`).
 
-It reads each transcript twice through the view: once whole (so a transcript the view refuses fails
-the check), then one line at a time, so each match has one raw record type, from
-`transcript_view.harness_types`. A line the view maps to no harness record is skipped unread.
+It reads each transcript twice through the view, both times whole: once for its events (so a transcript the view
+refuses fails the check), then for its raw items (`transcript_view.raw_items`), so each match has its one raw record
+type. Only `harness` items are scanned. Item G (glitch-6b, 15 Oct 2026): it used to read the second pass one line at a
+time, and a scheduled-wakeup line read alone has no earlier ScheduleWakeup call, so the check refused a w006-shaped
+take the view reads.
 
 It prints only, per match row: the phrase, the raw record type, the file and a count, tab-separated;
 then one closing line. It NEVER prints a matched line or any text around a match. It exits 0 when
@@ -47,18 +49,11 @@ def furniture(harness: str, path: Path) -> dict[tuple[str, str], int]:
     """{(phrase, raw record type): count} over the harness events of one transcript."""
     view.events(harness, path)  # the whole file first: a refusal fails the check
     counts: dict[tuple[str, str], int] = {}
-    for line in Path(path).read_text(encoding="utf-8").splitlines():
-        types = view.harness_types(harness, [line])
-        if not types:
+    for it in view.raw_items(harness, path):
+        if it.kind != view.HARNESS:
             continue
-        if len(types) != 1:
-            raise view.ViewError("one line mapped to more than one harness record type")
-        raw_type = next(iter(types))
-        for e in view.events(harness, [line]):
-            if e.kind != view.HARNESS:
-                continue
-            for phrase in awareness.scan(e.text):
-                counts[(phrase, raw_type)] = counts.get((phrase, raw_type), 0) + 1
+        for phrase in awareness.scan(it.text):
+            counts[(phrase, it.raw_type)] = counts.get((phrase, it.raw_type), 0) + 1
     return counts
 
 

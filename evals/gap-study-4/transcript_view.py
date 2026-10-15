@@ -593,6 +593,13 @@ def events(harness, path_or_lines) -> list[AgentEvent]:
     return out
 
 
+def raw_items(harness, path_or_lines) -> list[RawItem]:
+    """Every RawItem of one take in one reading pass (item G, glitch-6b 15 Oct 2026: a scheduled wakeup resolves only
+    against the ScheduleWakeup call and result before it, so a reader that needs each item's raw type reads the whole
+    file here, never a line alone). Refuses whatever the parser refuses."""
+    return _items(harness, path_or_lines)
+
+
 def harness_types(harness, path_or_lines) -> dict[str, int]:
     """{raw type: count} of the records this harness's parser mapped to `harness` events."""
     counts: dict[str, int] = {}
