@@ -6,10 +6,13 @@ Ruling built: `plans/gap-study-round-4/first-walk-bootstrap-ruling-2026-10-15.md
 
 ## RESUME HERE
 
-- 02:06 EDT: build commit 93a98927 (B1, B2, B4, B5, B6 and the 2.1.296 vocabulary) is in; nothing pushed.
-- Branch battery (one module at a time, light-ok before each) green on the touched and reading modules; a wider set was running at 02:06.
-- Merged scratch `~/aegis-builds/gap4-bootstrap-scratch` (383e5c2f + this commit as a patch, draft rebuilt by build_draft, identical) built; its battery and the generated-mutant sweeps follow.
-- Next: scratch battery, sweeps under a heavy slot, then the final report to glitch-6b and a fresh opus-medium review (the ruling's threat model).
+- 03:01 EDT: commits 93a98927 (build), 14f17457 (B4 on the check roads, walk_plan fixtures), aed13f75 (sweep fold); nothing pushed.
+- Branch: every touched or constant-reading module green, one at a time after light-ok (logs in ~/aegis-builds/gap4-bootstrap-tools/logs-b1..b4).
+- Merged scratch ~/aegis-builds/gap4-bootstrap-scratch = 383e5c2f + the three commits as patches (applied cleanly; build_draft rebuilt the draft byte-identical): 18 modules green (logs-s1), test_checker_constants green after patch 3; there box/preflight.STUDY_PATHS is filled and equals run_location's paths.
+- Constants digest (both trees): 8fd8c39b2baf1050d9fbe6253dbfab2e3c93030f93da8059730be45ce4f37d7e.
+- Sweeps under one heavy slot (bootstrap-6b, 02:36-03:00, released): every changed function or changed line; after the fold the only survivors are checker_standing's final `return None` (equivalent: the function ends there) and two mutants of environment_record's pre-existing stripped_names line (equivalent while drive.STRIPPED_ENV is empty; not this lane's line).
+- Owed to athena: test_round4.py on the branch head and on the scratch; the unrestricted generated sweeps of check4, check4_walk and environment_record (this lane swept only its changed lines there).
+- Next: glitch-6b's fresh opus-medium review (the ruling's threat model), then the integration lane merges this branch with the harness lane's.
 
 ## What was built
 
