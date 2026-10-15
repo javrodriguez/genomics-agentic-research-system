@@ -85,6 +85,11 @@
       "path": "tests/test_settings_guard.py",
       "status": "new",
       "reason": "Lane live-box: the settings guard against GARS's shipped gars/.claude/settings.json at the pinned commit and stub take 5's athena pre-1 snapshot, each forbidden key, links, shapes and every snapshot change."
+    },
+    {
+      "path": "tests/fixtures/machine-gate-athena-suite-list-20261015.txt",
+      "status": "new",
+      "reason": "Lane live-box (glitch-6b's ruling of 15 Oct 2026, item 2): the Mac's real `athena_suite.py list` read 15 Oct 2026 about 00:58 EDT (1202 lines; 844 busy, 55 refused, 9 started without a verdict), each run name and commit masked, kind, launched, verdict and scope words kept; test_machine_gate replays it through the Mac pre-check."
     }
   ]
 }
