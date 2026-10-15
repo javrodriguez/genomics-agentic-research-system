@@ -491,3 +491,15 @@ Written by a fresh integration window, under glitch-06.
 - **Merge clone:** branch `gap4/live-merge-20261014`. Merged code head `383e5c2f` (box `3f3beb21` + harness `d78c8791`); log commits follow it. Nothing pushed.
 - **Running:** `gap4-merge-final-383e5c2-383e5c2-20261015T043059Z` (solo, the citable final). Do not cancel it.
 - **Next:** `athena_suite.py fetch gap4-merge-final-383e5c2-383e5c2-20261015T043059Z --wait`, derive the verdict on the Mac, list every red by owner, record it here, report to glitch-6b.
+
+## Final battery on 383e5c2f (15 Oct, read 01:10 EDT)
+
+- `gap4-merge-final-383e5c2-383e5c2-20261015T043059Z`, `--kind gars-gap4 --jobs 24 --solo`, slots 1-4, solo 1, commit `383e5c2f987ae13a95f43cefc1ea692bd110709a`.
+- Verdict, derived on the Mac: **PASS** ("every check holds"). Step 1 `Ran 1303`, OK (skipped=82), exit 0. `run_checks: 272 of 272 commands passed`. Account processes 0 at start and at end.
+- Log sha256 `63114034aafd8a3a9f1b4d187858e33733e3e61ba9da128727c6dc100734c095` (the Mac's hash of the fetched log equals the summary's).
+- Reds: none. The 16 reds on `5e722095` are gone: the box test_live_box `NO_LOGIN` red (box `22f80269`) and the 16 test_walk_builders mutant survivors (harness `1b0fce97`, R1 and R2).
+
+## RESUME HERE (15 Oct, after the final battery)
+
+- **Merge clone:** branch `gap4/live-merge-20261014`. Merged code head `383e5c2f` (box `3f3beb21` + harness `d78c8791`), whose battery `gap4-merge-final-383e5c2-383e5c2-20261015T043059Z` is PASS, 272 of 272, solo. Log commits follow it. Nothing pushed.
+- **Next:** nothing owed by this lane until glitch-6b names a next step (a push or the hand-off of `383e5c2f` is not this lane's).
