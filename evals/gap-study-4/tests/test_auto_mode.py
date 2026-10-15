@@ -150,7 +150,8 @@ class TheAutoModeAttachment(unittest.TestCase):
         self.assertNotIn("harness_furniture_ruling", ct.CHECKER_CONSTANTS)
         (dep,) = draft["harness_furniture_ruling"]["departures"]
         self.assertEqual(dep["of"], tv.CC_AUTO_MODE)
-        for word in ("round 3", "bypass", "Bash", "glitch-6b to rule"):
+        for word in ("round 3", "bypass", "Bash", "RULED 15 Oct (glitch-6b)", "CLAUDE_CODE_THRIFTY_SONIC",
+                     "admitted for audit only", "harness-condition-violated"):
             self.assertIn(word, dep["text"])
 
     def test_h_witnesses(self):

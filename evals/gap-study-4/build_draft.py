@@ -1294,9 +1294,10 @@ HARNESS_FURNITURE_RULING = {
          "carry. Under bypassPermissions it is emitted only when its bash-first gate holds (a model cohort, or "
          "CLAUDE_CODE_THRIFTY_SONIC), and it renders into the model's context as a notice that bypass permissions "
          "mode is active and a steer to do work through the Bash tool. The transcript view reads it as harness "
-         "furniture, its rendered text the event's text, so the awareness furniture check counts it. Because it "
-         "changes what the agent is told, and only for the models its gate selects, whether the box suppresses it "
-         "is for glitch-6b to rule before the freeze."}],
+         "furniture, its rendered text the event's text, so the awareness furniture check counts it. It changes what "
+         "the agent is told, and only for the models its gate selects. RULED 15 Oct (glitch-6b): disabled for all "
+         "claude-code takes via CLAUDE_CODE_THRIFTY_SONIC; the record is admitted for audit only; a live take "
+         "carrying it refuses (harness-condition-violated, box lane)."}],
 }
 
 
