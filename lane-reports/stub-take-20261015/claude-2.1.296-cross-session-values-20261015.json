@@ -1,0 +1,57 @@
+{
+ "binary_path": "/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+ "binary_sha256": "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de",
+ "extraction": [
+  {
+   "argv": [
+    "docker",
+    "create",
+    "--pull=never",
+    "--network",
+    "none",
+    "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+    "true"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "397f9117aef1e3d1a485782bb357fa1911c64bf1469f7597eef82179f5e9d152"
+  },
+  {
+   "argv": [
+    "docker",
+    "cp",
+    "-L",
+    "397f9117aef1e3d1a485782bb357fa1911c64bf1469f7597eef82179f5e9d152:/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+    "/tmp/tmp.Xe2ULfcDn9/claude.bin"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": ""
+  },
+  {
+   "argv": [
+    "docker",
+    "rm",
+    "397f9117aef1e3d1a485782bb357fa1911c64bf1469f7597eef82179f5e9d152"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "397f9117aef1e3d1a485782bb357fa1911c64bf1469f7597eef82179f5e9d152"
+  }
+ ],
+ "half_window": 300,
+ "image": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+ "needles": {
+  "sHt=": {
+   "count": 1,
+   "sites": [
+    {
+     "offset": 208909790,
+     "sha256": "0ef3692a72494943a78df28d66ad1e7c60c3dd5ebdc66d02cd853c66b4059bb8",
+     "text": "=>Vi()),Gi=p(()=>Vi(\"allow\"));function Vi(e){return o().superRefine((n,s)=>{let r=Lxe(n,e);if(!r.valid){let i=r.error;if(r.suggestion)i+=`. ${r.suggestion}`;if(r.examples&&r.examples.length>0)i+=`. Examples: ${r.examples.join(\", \")}`;s.addIssue({code:uq.custom,message:i,params:{received:n}})}})}var sHt=[\"accept\",\"hold\",\"refuse\"],e5e=[\"off\",\"basic\",\"full\"],Lg=p(()=>ue(o(),Bko()));function ia(e){return u({allow:T(Gi()).optional().describe(\"List of permission rules for allowed operations\"),deny:T(Fo()).optional().describe(\"List of permission rules for denied operations\"),ask:T(Fo()).optional().descri"
+    }
+   ]
+  }
+ },
+ "probe": "claude-string-context"
+}

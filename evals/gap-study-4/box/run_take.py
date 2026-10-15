@@ -110,6 +110,21 @@ GEMINI_MODE_ROUTE_VARIABLES = ("GEMINI_CLI_EXP_AGENT",)
 # run tree's files, and the argv the per-turn launch journal records for the checker's auto_mode rule).
 BASH_FIRST_STEER_ENV = {"CLAUDE_CODE_THRIFTY_SONIC": "false"}
 
+# THE ISOLATION DENIALS (glitch-6b's ruling, 15 Oct 2026, under Javier's delegation). RemoteTrigger manages claude.ai
+# Routines ("via the claude.ai CCR API"): the one road a take's own login has to work on the account OUTSIDE the box.
+# SendMessage and ListAgents are cross-session channels. All three are DISALLOWED for every claude-code take, and
+# cross-session inbound messages are refused. None of the 25 walks of 15 Oct called them. The names and values are the
+# pinned binary's (lane-reports/stub-take-20261015/claude-2.1.296-isolation-names-20261015.json and
+# claude-2.1.296-cross-session-values-20261015.json; docker create --network none + docker cp, never run):
+# `var N$="RemoteTrigger"`, `var Gn="SendMessage"`, `var xc="ListAgents"`; `--disallowedTools, --disallowed-tools
+# <tools...>` takes a comma or space-separated list; `sHt=["accept","hold","refuse"]`. Defence in depth: the exec argv
+# must deny them (check_claude_settings refuses a turn that denies fewer; the adapter builds the flag) AND the inline
+# settings carry permissions.deny and crossSessionInbound. Not ruled (left as they are): Cron*, ScheduleWakeup,
+# Workflow, the worktree tools, the bundled skills and the two built-in plug-ins.
+ISOLATION_DISALLOWED_TOOLS = ("RemoteTrigger", "SendMessage", "ListAgents")
+CROSS_SESSION_INBOUND = "refuse"
+CLAUDE_DENY_FLAGS = ("--disallowedTools", "--disallowed-tools")
+
 # ------------------------------------------------------------------- THE TAKE ENVIRONMENT (ruling docs-1, w12a)
 # An ALLOWLIST, never a blocklist. Every agent process starts from an EMPTY environment (the turn's launcher, below,
 # execs the harness with exactly this row and nothing else: not the image's ENV, not docker exec's defaults, not the
@@ -919,7 +934,9 @@ def claude_study_settings(model: str) -> str:
         raise NotReady(f"CLAUDE_BYPASS_KEY is PENDING: {PENDING_WHY['CLAUDE_BYPASS_KEY']}")
     if CLAUDE_BYPASS_KEY != CLAUDE_BYPASS_NOT_REQUIRED:
         raise Refused("the study sends no bypass acceptance key: RULED not required in -p runs (CLAUDE_BYPASS_RULING)")
-    return json.dumps({"availableModels": [model], "env": {**FALLBACK_ENV, **BASH_FIRST_STEER_ENV},
+    return json.dumps({"availableModels": [model], "crossSessionInbound": CROSS_SESSION_INBOUND,
+                       "env": {**FALLBACK_ENV, **BASH_FIRST_STEER_ENV},
+                       "permissions": {"deny": list(ISOLATION_DISALLOWED_TOOLS)},
                        "fallbackModel": [], "switchModelsOnFlag": False}, sort_keys=True, separators=(",", ":"))
 
 
@@ -938,6 +955,25 @@ def _flag_values(inner, flag: str) -> list:
             continue
         if tok.startswith(flag + "="):
             out.append(tok[len(flag) + 1:])
+        i += 1
+    return out
+
+
+def _denied_tools(inner) -> set:
+    """Every tool name a Claude Code argv denies by --disallowedTools / --disallowed-tools: the binary's variadic
+    `<tools...>`, so each flag takes the following tokens up to the next one that starts with "-", or its `=` value;
+    each value a comma or space-separated list. The prompt after -p or --print is never read."""
+    out, toks, i = set(), _flag_tokens(inner), 0
+    while i < len(toks):
+        flag, sep, value = toks[i].partition("=")
+        if flag in CLAUDE_DENY_FLAGS:
+            vals = [value] if sep else []
+            i += 1
+            while not sep and i < len(toks) and not toks[i].startswith("-"):
+                vals.append(toks[i])
+                i += 1
+            out |= {n for v in vals for n in v.replace(",", " ").split()}
+            continue
         i += 1
     return out
 
@@ -972,6 +1008,10 @@ def check_claude_settings(inner) -> None:
     models = _flag_values(inner, "--model")
     if len(models) != 1 or not models[0]:
         raise Refused("a claude-code turn names its model exactly once by --model")
+    missing = [t for t in ISOLATION_DISALLOWED_TOOLS if t not in _denied_tools(inner)]
+    if missing:
+        raise Refused(f"a claude-code turn denies {list(ISOLATION_DISALLOWED_TOOLS)} by "
+                      f"{CLAUDE_DENY_FLAGS[0]} (the isolation ruling); it does not deny {missing}")
     given = _flag_values(inner, CLAUDE_SETTINGS_FLAG)
     if given != [claude_study_settings(models[0])]:
         raise Refused(f"a claude-code turn carries exactly one {CLAUDE_SETTINGS_FLAG}: the study's settings for its "

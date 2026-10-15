@@ -1315,7 +1315,8 @@ class TestLaunch(MutantCase):
 
 # A claude-code turn as the adapter builds it: its model once and the study's inline settings (review finding 1).
 CLAUDE_MODEL = "claude-opus-5-5"
-CLAUDE_INNER = ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", rt.claude_study_settings(CLAUDE_MODEL)]
+CLAUDE_INNER = ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", rt.claude_study_settings(CLAUDE_MODEL),
+                "--disallowedTools", "WebFetch", "WebSearch", "RemoteTrigger", "SendMessage", "ListAgents"]
 
 
 ORIG_CHECK_CLAUDE_SETTINGS = rt.check_claude_settings
@@ -1367,8 +1368,9 @@ class TestClaudeSettings(MutantCase):
         out = []
         want = rt.claude_study_settings(CLAUDE_MODEL)
         doc = json.loads(want)
-        if doc != {"availableModels": [CLAUDE_MODEL],
+        if doc != {"availableModels": [CLAUDE_MODEL], "crossSessionInbound": "refuse",
                    "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1", "CLAUDE_CODE_THRIFTY_SONIC": "false"},
+                   "permissions": {"deny": ["RemoteTrigger", "SendMessage", "ListAgents"]},
                    "fallbackModel": [],
                    "switchModelsOnFlag": False}:
             out.append(f"the study's settings are {doc}")
@@ -1381,10 +1383,11 @@ class TestClaudeSettings(MutantCase):
                     out.append(f"bypass key {bad!r} accepted")
                 except rt.Refused:
                     pass
+        DENY = ["--disallowedTools", "WebFetch", "WebSearch", *rt.ISOLATION_DISALLOWED_TOOLS]
         good = [CLAUDE_INNER, ["claude", "-p", "--settings is just prompt text", "--model", CLAUDE_MODEL,
-                               "--settings=" + want],
-                ["claude", "--print", "--bg is just prompt text", "--model", CLAUDE_MODEL, "--settings", want],
-                ["claude", "-p", "--background is just prompt text", "--model", CLAUDE_MODEL, "--settings", want],
+                               "--settings=" + want, *DENY],
+                ["claude", "--print", "--bg is just prompt text", "--model", CLAUDE_MODEL, "--settings", want, *DENY],
+                ["claude", "-p", "--background is just prompt text", "--model", CLAUDE_MODEL, "--settings", want, *DENY],
                 ["/usr/local/bin/claude"] + CLAUDE_INNER[1:]]
         for inner in good:
             try:
@@ -1392,17 +1395,17 @@ class TestClaudeSettings(MutantCase):
             except rt.Refused as e:
                 out.append(f"a well-formed turn was refused: {e}")
         other = rt.claude_study_settings("claude-sonnet-5-5")
-        bad = {"no-settings": ["claude", "-p", "x", "--model", CLAUDE_MODEL],
+        bad = {"no-settings": ["claude", "-p", "x", "--model", CLAUDE_MODEL, *DENY],
                "two-settings": CLAUDE_INNER + ["--settings", want],
-               "another-model's": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", other],
+               "another-model's": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", other, *DENY],
                "switch-true": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings",
-                               want.replace('"switchModelsOnFlag":false', '"switchModelsOnFlag":true')],
-               "no-model": ["claude", "-p", "x", "--settings", want],
+                               want.replace('"switchModelsOnFlag":false', '"switchModelsOnFlag":true'), *DENY],
+               "no-model": ["claude", "-p", "x", "--settings", want, *DENY],
                "two-models": CLAUDE_INNER + ["--model", "claude-sonnet-5-5"],
-               "settings-file": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", "/opt/cfg/s.json"],
+               "settings-file": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", "/opt/cfg/s.json", *DENY],
                # the bypass ruling depends on a -p run: a turn without -p/--print first, or with --bg, is refused
-               "no-print": ["claude", "x", "--model", CLAUDE_MODEL, "--settings", want],
-               "print-not-first": ["claude", "--model", CLAUDE_MODEL, "-p", "x", "--settings", want],
+               "no-print": ["claude", "x", "--model", CLAUDE_MODEL, "--settings", want, *DENY],
+               "print-not-first": ["claude", "--model", CLAUDE_MODEL, "-p", "x", "--settings", want, *DENY],
                "background": CLAUDE_INNER + ["--bg"],
                "background-eq": CLAUDE_INNER + ["--bg=true"],
                # review-bypass-skills B-1 and B-2: the long alias, and a program other than claude
@@ -1414,7 +1417,9 @@ class TestClaudeSettings(MutantCase):
                "empty": [],
                "with-bypass-key": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings",
                                    json.dumps(dict(json.loads(want), **{BYPASS: True}), sort_keys=True,
-                                              separators=(",", ":"))]}
+                                              separators=(",", ":")), *DENY],
+               # the isolation ruling (glitch-6b, 15 Oct 2026): a turn that does not deny the three tools
+               "no-deny": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", want]}
         for name, inner in bad.items():
             try:
                 rt.check_claude_settings(inner)
@@ -3720,6 +3725,106 @@ class TestBashFirstSteerOff(MutantCase):
             ("the evidence swapped", patched(sys.modules[__name__], "STEER_EVIDENCE",
                                              STEER_EVIDENCE[:3] + (("claude-2.1.296-tribool-helpers-20261015.json",
                                                                     "0" * 64),))),
+        ))
+
+
+
+# The isolation denials (glitch-6b's ruling, 15 Oct 2026, under the delegation): RemoteTrigger (claude.ai Routines, the
+# one road a take's token has to the account outside the box), SendMessage and ListAgents (cross-session channels) are
+# DISALLOWED for every claude-code take, and cross-session inbound messages are refused. The names and the setting's
+# values are read from the pinned binary (claude_string_context_probe.py; docker create --network none + docker cp,
+# never run), each record pinned by its bytes here.
+ISOLATION_EVIDENCE = (
+    ("claude-2.1.296-isolation-names-20261015.json", "ba3e3e6d54d06ab495595264521edc329b9123b57944df100acea658a303d81a"),
+    ("claude-2.1.296-cross-session-values-20261015.json",
+     "1ceb44b1e499e7b61365e0fafe7fbae88065899fd217644024d9deb82489dfc4"))
+ISOLATION_TOOL_DECLARATIONS = {"RemoteTrigger": 'var N$="RemoteTrigger",Mcs="Manage scheduled remote Claude Code agents',
+                               "SendMessage": 'var Gn="SendMessage",', "ListAgents": 'var xc="ListAgents",'}
+ISOLATION_FACE = {"SendMessage": 'userFacingName(){return"SendMessage"}', "ListAgents": 'userFacingName(){return"ListAgents"}'}
+
+
+def _isolation_records() -> tuple:
+    out = []
+    for name, digest in ISOLATION_EVIDENCE:
+        with open(os.path.join(CLAUDE_SWEEP_DIR, name), "rb") as fh:
+            raw = fh.read()
+        if hashlib.sha256(raw).hexdigest() != digest:
+            raise AssertionError(f"{name} is not the committed probe record")
+        out.append(json.loads(raw))
+    return tuple(out)
+
+
+def _texts(rec: dict, needle: str) -> list:
+    return [s["text"] for s in rec["needles"].get(needle, {}).get("sites", [])]
+
+
+class TestIsolationDenials(MutantCase):
+    """The three tools are denied by the names the pinned binary declares, on the exec argv (--disallowedTools, a
+    variadic comma-or-space list) AND in the inline settings' permissions.deny; crossSessionInbound is "refuse", one of
+    the binary's values ["accept","hold","refuse"]. run_take refuses a claude-code turn whose argv denies fewer."""
+
+    def check(self):
+        out = []
+        try:
+            names, values = _isolation_records()
+        except AssertionError as e:
+            return [str(e)]
+        for rec in (names, values):
+            if rec.get("binary_sha256") != rt.CLAUDE_BINARY["sha256"] or rec.get("image") != rt.CLAUDE_BINARY["image_id"]:
+                out.append(f"{rec.get('probe')}: not a read of the pinned binary in the pinned image")
+        tools = tuple(getattr(rt, "ISOLATION_DISALLOWED_TOOLS", ()))
+        if tools != ("RemoteTrigger", "SendMessage", "ListAgents"):
+            out.append(f"ISOLATION_DISALLOWED_TOOLS is {tools}, not the ruled three")
+        for tool in tools:
+            decl = ISOLATION_TOOL_DECLARATIONS.get(tool)
+            if decl is None or not any(decl in t for t in _texts(names, f'"{tool}"')):
+                out.append(f"{tool} is not a tool name the pinned binary declares")
+            if tool in ISOLATION_FACE and not any(ISOLATION_FACE[tool] in t for t in _texts(names, f'"{tool}"')):
+                out.append(f"{tool} is not the name the tool answers to")
+        if not any('"--disallowedTools, --disallowed-tools <tools...>",\'Comma or space-separated list of tool names to '
+                   'deny' in t for t in _texts(names, '"--disallowedTools')):
+            out.append("--disallowedTools is not the binary's variadic comma-or-space deny list")
+        if not any('var sHt=["accept","hold","refuse"]' in t and "deny:T(" in t for t in _texts(values, "sHt=")):
+            out.append('"refuse" is not a crossSessionInbound value, or permissions.deny is not in the schema')
+        with filled():
+            st = json.loads(rt.claude_study_settings(CLAUDE_MODEL))
+            if st.get("crossSessionInbound") != "refuse":
+                out.append("the inline settings do not refuse cross-session inbound messages")
+            if st.get("permissions") != {"deny": list(tools)} or not tools:
+                out.append(f"the inline settings' permissions are {st.get('permissions')}")
+            base = ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", rt.claude_study_settings(CLAUDE_MODEL)]
+            for name, tail, ok in (
+                    ("space list", ["--disallowedTools", "WebFetch", "WebSearch", *tools], True),
+                    ("comma list", ["--disallowed-tools=" + ",".join(tools)], True),
+                    ("split over two flags", ["--disallowedTools", "RemoteTrigger", "--disallowed-tools",
+                                              "SendMessage,ListAgents"], True),
+                    ("no deny flag", [], False),
+                    ("one name missing", ["--disallowedTools", "RemoteTrigger", "SendMessage"], False),
+                    ("a near name", ["--disallowedTools", "RemoteTrigger", "SendMessage", "ListPeer"], False),
+                    ("the names after another flag", ["--disallowedTools", "--session-id", *tools], False)):
+                try:
+                    rt.check_claude_settings(base + tail)
+                    if not ok:
+                        out.append(f"{name}: admitted")
+                except rt.Refused as e:
+                    if ok:
+                        out.append(f"{name}: refused ({e})")
+        return out
+
+    def test_the_three_are_denied(self):
+        self.assertEqual(problems_of(self.check), [])
+
+    def test_mutants(self):
+        self.assert_green_then_red(self.check, (
+            ("one tool dropped", patched(rt, "ISOLATION_DISALLOWED_TOOLS", ("RemoteTrigger", "SendMessage"))),
+            ("a misspelt tool", patched(rt, "ISOLATION_DISALLOWED_TOOLS", ("RemoteTriggers", "SendMessage",
+                                                                           "ListAgents"))),
+            ("the argv check dropped", patched(rt, "_denied_tools", lambda inner: set(rt.ISOLATION_DISALLOWED_TOOLS))),
+            ("inbound accepted", patched(rt, "CROSS_SESSION_INBOUND", "accept")),
+            ("another binary", lambda: mock.patch.dict(rt.CLAUDE_BINARY, {"sha256": "0" * 64})),
+            ("the evidence swapped", patched(sys.modules[__name__], "ISOLATION_EVIDENCE",
+                                             ISOLATION_EVIDENCE[:1] + (("claude-2.1.296-cross-session-values-"
+                                                                        "20261015.json", "0" * 64),))),
         ))
 
 

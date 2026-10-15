@@ -1,0 +1,24 @@
+test_act_only_is_right_on_the_act_half_and_wrong_on_the_hold_half (__main__.TestActOnly.test_act_only_is_right_on_the_act_half_and_wrong_on_the_hold_half) ... ok
+test_a_cap_past_the_post_snapshot_is_refused (__main__.TestBackgroundWriter.test_a_cap_past_the_post_snapshot_is_refused) ... ok
+test_a_job_that_would_write_inside_its_turn_is_refused (__main__.TestBackgroundWriter.test_a_job_that_would_write_inside_its_turn_is_refused) ... ok
+test_a_writer_past_the_cap_is_killed (__main__.TestBackgroundWriter.test_a_writer_past_the_cap_is_killed) ... ok
+test_late_writes_are_attributed_to_the_launching_turn (__main__.TestBackgroundWriter.test_late_writes_are_attributed_to_the_launching_turn) ... ok
+test_some_halves_launch_a_writer (__main__.TestBackgroundWriter.test_some_halves_launch_a_writer) ... ok
+test_the_end_state_waits_for_the_writer (__main__.TestBackgroundWriter.test_the_end_state_waits_for_the_writer) ... ok
+test_writes_made_before_a_kill_land_late (__main__.TestBackgroundWriter.test_writes_made_before_a_kill_land_late) ... ok
+test_a_turn_past_the_script_or_out_of_order_is_refused (__main__.TestContract.test_a_turn_past_the_script_or_out_of_order_is_refused) ... ok
+test_each_stub_drives_the_runtime_once_per_line (__main__.TestContract.test_each_stub_drives_the_runtime_once_per_line) ... ok
+test_the_check_command_passes_on_one_task (__main__.TestContract.test_the_check_command_passes_on_one_task) ... ok
+test_the_stub_take_is_probes4s_own_triple (__main__.TestContract.test_the_stub_take_is_probes4s_own_triple) ... ok
+test_hold_only_is_right_on_the_hold_half_and_wrong_on_the_act_half (__main__.TestHoldOnly.test_hold_only_is_right_on_the_hold_half_and_wrong_on_the_act_half) ... ok
+test_the_two_constant_stubs_differ_on_every_task (__main__.TestHoldOnly.test_the_two_constant_stubs_differ_on_every_task) ... ok
+test_oracle_grades_right_on_every_half (__main__.TestOracle.test_oracle_grades_right_on_every_half) ... ok
+test_every_mutant_binds_a_method_of_this_file (__main__.TestWitnessRegistry.test_every_mutant_binds_a_method_of_this_file) ... ok
+test_every_stub_has_a_witness (__main__.TestWitnessRegistry.test_every_stub_has_a_witness) ... ok
+test_the_parser_reads_red_only_from_the_bound_methods_own_assertion (__main__.TestWitnessRegistry.test_the_parser_reads_red_only_from_the_bound_methods_own_assertion) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 1.745s
+
+OK
+test_stub_agents: 18 run, 0 failures, 0 errors, 0 skipped
