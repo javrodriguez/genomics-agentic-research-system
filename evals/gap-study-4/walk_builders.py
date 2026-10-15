@@ -40,10 +40,11 @@ pin_profiles agree on one version; budgets and run_tree_exclude are read from ch
 first-walk bootstrap ruling's B3). A per-harness value is resolved for the row (walk_row, walk_driver_for).
 
 WHAT STAYS MISSING (production_builders: each a Missing with its reason, so walk_runner.main refuses by name): every
-value with no measured or registered source on the tree. sidecar_for has no registered per-task watch list; the
-checker's constants are Missing until the bootstrap fills them; and the walk token's login file and the P-2 gate stay
-Missing until the box and the operator name them. Nothing here fills any of them: a value is either measured or
-registered where it lives, or the command line refuses.
+value with no measured, registered or derived source on the tree. sidecar_for has no registered per-task watch list.
+The checker's constants are not measured by a walk: the first-walk bootstrap ruling (15 Oct 2026) sources, carries
+and derives them in check_take.CHECKER_CONSTANTS, and design_for, budgets and run_tree_exclude stay Missing only
+while a tree still holds them PENDING. The walk token's login file and the P-2 gate stay Missing until the box and the
+operator name them. Nothing here fills any value: it is sourced where it lives, or the command line refuses.
 
 Claude Code, Gemini (its r4-g key file, login_name GEMINI_API_KEY, the same login_secrets for the walk's driver and
 its WalkRepo) and, on the lease road, Codex: a Codex row has no login file (login_name gives run_take.NO_LOGIN); prepare
@@ -535,7 +536,7 @@ def take_a_spec():
 
 # ------------------------------------------------------------------------------------------------ the real-box bring-up
 # glitch-6b (15 Oct 2026), the first Claude walk's critical path: the bring-up values come from the same box functions
-# the stub take drives on the real box (box/stub_take.py, "WHAT RUNS UNMODIFIED") and the box lane's committed, measured
+# the box's stub take drives on the real box (its "WHAT RUNS UNMODIFIED" list) and the box lane's committed, measured
 # records only (the image locks through preflight's own loaders, proxy_conf's rendered configuration, user and hosts).
 # A value with no measured or registered source stays Missing, by name. A value that differs by the row's harness is a
 # PerHarness (or a ProxyRoad), resolved for the row in walk_driver_for (and, for agent_version, in walk_row).
@@ -584,7 +585,8 @@ def config_parent_from_env(environ=None):
         raise BuilderRefused(f"{CONFIG_PARENT_ENV} is not a folder (a link is refused)")
     if os.stat(path).st_uid != os.getuid():
         raise BuilderRefused(f"{CONFIG_PARENT_ENV} is not owned by the caller")
-    if not rt.outside_every_repository(path):
+    outside = rt.outside_every_repository(path)
+    if not outside:
         raise BuilderRefused(f"{CONFIG_PARENT_ENV} sits inside a repository")
     return path
 
@@ -723,20 +725,23 @@ def checker_budgets(constants=None):
 
 
 def checker_run_tree_exclude(constants=None):
-    """CHECKER_CONSTANTS["run_location"]["excluded_from_the_run_tree"], a copy: Missing while run_location or the list
-    is PENDING or not there yet; refused when filled with anything but a non-empty list of distinct relative paths."""
+    """The paths of CHECKER_CONSTANTS["run_location"]["excluded_from_the_run_tree"] ([{"path": <relative path>}, ...],
+    the bootstrap's shape), as a new list: Missing while run_location or the list is PENDING or not there yet; refused
+    when filled with anything but a non-empty list of {"path": ...} entries naming distinct relative paths."""
     import check_take
     c = check_take.CHECKER_CONSTANTS if constants is None else constants
     rl = c.get("run_location", check_take.PENDING)
     value = rl.get(RUN_TREE_EXCLUDE_KEY, check_take.PENDING) if isinstance(rl, dict) else check_take.PENDING
-    if value == check_take.PENDING or check_take._pending_paths(value, RUN_TREE_EXCLUDE_KEY):
+    if check_take._pending_paths(value, RUN_TREE_EXCLUDE_KEY):            # PENDING itself, or anywhere inside
         return Missing(f"the paths the walk's checkout leaves out: check_take.CHECKER_CONSTANTS run_location."
                        f"{RUN_TREE_EXCLUDE_KEY} is PENDING or not there yet (the first-walk bootstrap's B1 fills it)")
-    if not isinstance(value, list) or not value or len(set(map(str, value))) != len(value) or \
-            not all(isinstance(p, str) and p and not p.startswith("/") and ".." not in p.split("/") for p in value):
+    entries = value if isinstance(value, list) else []
+    paths = [e.get("path") for e in entries if isinstance(e, dict)]
+    if not entries or len(paths) != len(entries) or len(set(map(str, paths))) != len(paths) or \
+            not all(isinstance(p, str) and p and not p.startswith("/") and ".." not in p.split("/") for p in paths):
         raise BuilderRefused(f"check_take.CHECKER_CONSTANTS run_location.{RUN_TREE_EXCLUDE_KEY} is not a non-empty "
-                             f"list of distinct relative paths: {value!r}")
-    return list(value)
+                             f"list of {{\"path\": ...}} entries naming distinct relative paths: {value!r}")
+    return paths
 
 
 def production_builders() -> dict:
@@ -751,7 +756,6 @@ def production_builders() -> dict:
     from box import scan_record
     from box import run_take as rt
     from box.egress import proxy_conf
-    box = "next-slices plan item 4, the real-box bring-up (Q-w7b-3)"
     config_parent = config_parent_from_env()
     locks = take_lock_paths()
     versions = agent_versions()
@@ -761,7 +765,7 @@ def production_builders() -> dict:
         "take_spec": take_a_spec(),
         "sidecar_for": Missing(f"the sidecar launch: sidecar.create_argv needs the take's pre-registered consequential "
                                f"paths (its watch list), and no registered per-task list is on the tree; "
-                               f"variants.graded_paths names none for number-fidelity: {box}"),
+                               f"variants.graded_paths names none for number-fidelity"),
         "proxy": proxy_road(config_parent, locks),
         "lock_path": locks if any(not isinstance(v, Missing) for v in locks.values.values()) else
         Missing("the take lock: no harness's take lock is ready: " +

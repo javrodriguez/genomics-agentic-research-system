@@ -307,9 +307,9 @@ def mutants() -> dict:
         "row-version-kept": ("B6.row", "walk_builders",
                              '    row["agent"] = {"harness": row["agent"]["harness"], "version": agent_version}',
                              '    row["agent"]["version"] = agent_version'),
-        "production-runtime-filled": ("B7.production", "walk_builders",
-                                      '        "runtime": Missing(f"the DockerRuntime, built at {box}"),',
-                                      '        "runtime": object(),'),
+        "production-runtime-not-docker": ("B15.production", "walk_builders",   # the bring-up (glitch-6b, 15 Oct)
+                                          '        "runtime": rt.DockerRuntime(),',
+                                          '        "runtime": object(),'),
         "missing-absent-silent": ("B7.production", "walk_builders",
                                   '    out = [(n, "absent from the builder set") for n in NAMES if n not in builders]',
                                   "    out = []"),
@@ -357,7 +357,7 @@ METHOD = {
     "fixture-nothing-admitted": "B5Fixture.test_a_project_fixture_off_its_branch_is_refused",
     "row-slot-not-walk": "B6Row.test_the_design_s_row_as_a_walk_row",
     "row-version-kept": "B6Row.test_the_design_s_row_as_a_walk_row",
-    "production-runtime-filled": "B7Production.test_production_leaves_exactly_these_missing",
+    "production-runtime-not-docker": "B7Production.test_production_leaves_exactly_these_missing",
     "missing-absent-silent": "B7Production.test_missing_names_absent_and_unknown",
     "cli-runs-with-gaps": "B7Production.test_main_refuses_by_name_before_anything",
     "pin-never-present": "B8Present.test_a_measured_pin_is_present",
@@ -2653,12 +2653,20 @@ class B15Bringup(Drafted):
                   {rt.CLAUDE_CODE: {"m1": {"version": None}}}, "not one measured version"),
                  ("empty in both", {rt.CLAUDE_CODE: {"m1": {"version": ""}}},
                   {rt.CLAUDE_CODE: {"m1": {"version": ""}}}, "not one measured version"),
+                 ("a version that is not a string", {rt.CLAUDE_CODE: {"m1": {"version": 5}}},
+                  {rt.CLAUDE_CODE: {"m1": {"version": 5}}}, "not one measured version"),
+                 ("a model pinned None in both", {rt.CLAUDE_CODE: {"m1": None}}, {rt.CLAUDE_CODE: {"m1": None}},
+                  "not one measured version"),
+                 ("a model pinned None in the draft", {rt.CLAUDE_CODE: {"m1": None}}, {rt.CLAUDE_CODE: same},
+                  "differ"),
+                 ("a model pinned None in routing", {rt.CLAUDE_CODE: same}, {rt.CLAUDE_CODE: {"m1": None}},
+                  "differ"),
                  ("absent from routing", {rt.CLAUDE_CODE: same}, {}, "both must pin it"),
                  ("absent from the draft", {}, {rt.CLAUDE_CODE: same}, "both must pin it"))
         for label, draft, table, want in cases:
             a, b = pins(draft, table)
             with self.subTest(label=label), a, b:
-                got = mod.agent_versions().values[rt.CLAUDE_CODE]
+                got = self.must("B15.version", mod.agent_versions).values[rt.CLAUDE_CODE]
                 if want == "1.2.3":
                     self.assertEqual(got, "1.2.3", "B15.version")
                 else:
@@ -2668,6 +2676,11 @@ class B15Bringup(Drafted):
         with a, b:
             got = mod.agent_versions()
         self.assertEqual(set(got.values), {rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI}, "B15.version: the harnesses")
+        # neither file carrying its block at all (no version_pins key, no pin_profiles key): Missing, never a crash
+        with mock.patch.object(prereg, "load", lambda: {}), mock.patch.object(routing, "load_table", lambda: {}):
+            got = mod.agent_versions()
+        self.assertTrue(all(isinstance(v, mod.Missing) and "both must pin it" in v.why for v in got.values.values()),
+                        f"B15.version: no blocks gave {got!r}")
 
     def test_walk_row_takes_the_row_s_own_harness_version(self):
         mod = wb()
@@ -2697,7 +2710,7 @@ class B15Bringup(Drafted):
                                 ("the cap absent", {"budgets": {"turn_timeout_s": 900, "poll_s": 3}},
                                  "budgets.finalize_wait_s")):
             with self.subTest(label=label):
-                got = mod.checker_budgets(c)
+                got = self.must("B3.budgets", mod.checker_budgets, c)
                 self.assertIsInstance(got, mod.Missing, f"B3.budgets: {label} gave {got!r}")
                 self.assertIn(words, got.why, f"B3.budgets: {label}")
                 self.assertIn("CHECKER_CONSTANTS", got.why, f"B3.budgets: {label}")
@@ -2717,22 +2730,23 @@ class B15Bringup(Drafted):
         mod = wb()
         import check_take
         P = check_take.PENDING
-        paths = ["evals", "docs/private", ".github"]
-        rl = {"excluded_from_the_run_tree": paths, "checkout_identity": "gars"}
+        paths = ["evals", "docs/private", ".github"]           # the bootstrap's shape (af1e7fc6): [{"path": p}, ...]
+        rl = {"excluded_from_the_run_tree": [{"path": p} for p in paths], "checkout_identity": "gars"}
         got = mod.checker_run_tree_exclude({"run_location": rl})
         self.assertEqual(got, paths, "B3.exclude: filled")
-        self.assertIsNot(got, paths, "B3.exclude: not a copy")
         for label, c in (("run_location PENDING", {"run_location": P}), ("no run_location", {}),
                          ("the list PENDING", {"run_location": dict(rl, excluded_from_the_run_tree=P)}),
                          ("the list absent", {"run_location": {"checkout_identity": "gars"}}),
                          ("a PENDING inside", {"run_location": dict(rl, excluded_from_the_run_tree={"a": P})})):
             with self.subTest(label=label):
-                got = mod.checker_run_tree_exclude(c)
+                got = self.must("B3.exclude", mod.checker_run_tree_exclude, c)
                 self.assertIsInstance(got, mod.Missing, f"B3.exclude: {label} gave {got!r}")
                 self.assertIn("run_location.excluded_from_the_run_tree", got.why, f"B3.exclude: {label}")
-        for label, v in (("empty", []), ("absolute", ["/etc"]), ("dot-dot", ["a/../b"]), ("repeated", ["a", "a"]),
-                         ("not strings", [3]), ("an empty path", [""]), ("a string", "evals"),
-                         ("a mapping", {"a": "b"})):
+        for label, v in (("empty", []), ("absolute", [{"path": "/etc"}]), ("dot-dot", [{"path": "a/../b"}]),
+                         ("repeated", [{"path": "a"}, {"path": "a"}]), ("not a string", [{"path": 3}]),
+                         ("an empty path", [{"path": ""}]), ("no path", [{"name": "evals"}]),
+                         ("a bare string entry", ["evals"]), ("one bare entry among good", [{"path": "a"}, "b"]),
+                         ("a string", "evals"), ("a mapping", {"path": "evals"})):
             with self.subTest(label=label):
                 self.refuses("B3.exclude", "excluded_from_the_run_tree", mod.checker_run_tree_exclude,
                              {"run_location": dict(rl, excluded_from_the_run_tree=v)})
