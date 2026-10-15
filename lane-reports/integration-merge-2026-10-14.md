@@ -436,3 +436,9 @@ Written by a fresh integration window, under glitch-06.
   - `CodexLeaseRoad` works over the real pair, and `codex_gate_problem` reads the real closed gate.
 - Known and not fought, on glitch-5a's word: the harness passes `login_file` `"-"` where the box exec needs the placed lease path. It fails closed, and the harness fold is queued.
 - Battery: `gap4-merge-5e72209-20261015T015202Z`, solo.
+- **Result:** FAIL; step 1 `Ran 1303`, OK (skipped=82); `run_checks: 256 of 272 commands passed`; log sha256 `2c0633a9b9de4de98fcfe2cea288302988cd596d523f4e9c80ceccda82a07b18`; account processes 0 at start and end. Every earlier Codex-road, env_allowlist, adapter-mutant and witness red is green. The 16 reds:
+  - **test_walk_builders generated mutants, 15 of 16 shards (shard 6 passes); harness's sweep:**
+    - 12 unlisted survivors in `walk_builders.lease_secrets` (box `b9f876b5`'s function, now in the harness module). The sweep's B13 swaps it for `fake_lease_secrets` at the boundary, so no test drives the real one.
+    - 3 in `production_builders` L34-35, the `rules_scanner` pending branch. On the merged tree `scan_record.pending()` has no `rules_scanner`, so the Missing branch never runs.
+    - 1 in `prepare` L16 (`builders.get("lease_path")`, drop-0), past the closed Codex gate.
+  - **test_round4, failures=2; box's test_live_box:** `SubscriptionTransitionRegression.test_walk_login_and_scanner_refuse_before_open` still expects "subscription binding not ready" from `walk_builders.login_secrets`, and per the test's source also from `login_file_by_name`. Under the ruled `NO_LOGIN`, the harness refuses with "a Codex row has no login file (…): its login is the lease". The log shows the `login_secrets` subtest; the second failure is cut by the log's tail, so it is inferred from the source. No Mac rerun: light-ok held at load1 165.
