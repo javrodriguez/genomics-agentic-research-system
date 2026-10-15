@@ -116,20 +116,6 @@ def checker_standing(base, walk: str):
     if not (isinstance(events, dict) and set(events) == {"outside_reach"} and type(events["outside_reach"]) is int
             and events["outside_reach"] >= 0):
         return "check unreadable"
-    # The recheck (glitch-6b's scheduled-wakeup ruling, 15 Oct 2026): the latest committed recheck-<n>.json, when it
-    # re-derives to its exact bytes, supersedes check.json's reasons and digest (walk_regrade.recheck_state); one that
-    # does not re-derive counts nothing, fail closed. check.json itself must still be readable, as above.
-    import walk_regrade
-    try:
-        root, _ = walk_regrade.nrr._repo(Path(base).parent)
-        recheck = walk_regrade.recheck_state(base, walk) if root is not None else None
-    except Exception:  # noqa: BLE001 - an unverifiable recheck counts nothing
-        return "recheck unverifiable: it does not re-derive from the committed records"
-    if recheck is not None:
-        check = dict(check, checker_reasons=recheck["checker_reasons"],
-                     checker_constants_sha256=recheck["checker_constants_sha256"])
-        if not isinstance(check["checker_reasons"], list):
-            return "check unreadable"
     import routing                        # review MINOR 2: every reason a str of the pre-registered vocabulary
     vocabulary = routing.load_table()["operator_reasons"]
     if not all(isinstance(r, str) and r in vocabulary for r in check["checker_reasons"]):

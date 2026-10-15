@@ -47,7 +47,10 @@ routing records the driver folds from the live turns and the box are not committ
 checker's events are not recorded (review F: check.json's outside_reach adds the commit scan's count, and the events
 depend on the machine's home and checkout, which are named, not bound to a recorded fact); the checker's interpreter prefixes and checkout_roots' `~` spellings are the RECHECKING machine's, so
 a recheck run anywhere but the walk's machine is read for any reason change before it is accepted.
-pending_walk.checker_standing reads the latest recheck only when it re-derives to its exact bytes. --check
+recheck_state(base, walk) gives the latest committed recheck only when it re-derives to its exact bytes. Coverage
+(pending_walk.checker_standing, read by walk_plan's register-only road, which starts no process and opens only the
+register, grade.json and check.json) does not read rechecks: a rechecked walk still reads stale there until a ruling
+says how a recheck enters coverage (athena battery on b7aca72a, test_walk_plan P6/P7). --check
 re-derives only each walk's LATEST recheck (review F: an earlier one was made under earlier constants and would never
 re-derive again); every earlier one is checked for its shape and its place in the supersedes chain.
 """
@@ -462,12 +465,23 @@ def commit_recheck(walk: str, n: int, study: Path = HERE, *, secrets, rules_scan
                        holdout_matcher=holdout_matcher)
 
 
+def committed_rechecks(walk: str, study: Path) -> int:
+    """How many rechecks of `walk` the study's HEAD holds: 0 outside a repository, before a first commit, or when none
+    is committed (nothing to verify, so nothing supersedes check.json); RegradeRefused on a misnamed recheck."""
+    root, prefix = nrr._repo(Path(study))
+    if root is None or subprocess.run(["git", "-C", str(root), "rev-parse", "--verify", "-q", "HEAD"],
+                                      capture_output=True).returncode != 0:
+        return 0
+    listed = nrr._git(root, "ls-tree", "-r", "--name-only", "HEAD", "--", _walk_rel(prefix, walk) + "/").splitlines()
+    return len(_committed_rechecks([p.rsplit("/", 1)[1] for p in listed]))
+
+
 def recheck_state(base, walk: str, **kw):
     """The latest committed recheck of a walk under the rehearsals folder `base`, when it re-derives to its exact
-    bytes (recheck_doc with its own recorded machine): its document; None when the walk has none; RegradeRefused
-    when one does not re-derive (fail closed)."""
+    bytes (recheck_doc with its own recorded machine): its document; None when the walk has none committed (outside a
+    repository or before a first commit included); RegradeRefused when one does not re-derive (fail closed)."""
     study = Path(base).parent
-    n = next_recheck(walk, study) - 1
+    n = committed_rechecks(walk, study)
     if n == 0:
         return None
     root, prefix = _repo(study)

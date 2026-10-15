@@ -745,6 +745,33 @@ class R3DeadWalk(Case):
                 self.assertIn("turn-1.jsonl.launch.json", str(e), f"R3.dead-walk: {e}")
 
 
+class R13Recheck(Case):
+    """The recheck (glitch-6b's scheduled-wakeup ruling B, 15 Oct 2026; athena battery on b7aca72a, generated
+    survivors of walk_files' recheck clause): a walk folder's top-level recheck-<n>.json is scanned as a ledger; the
+    same name deeper keeps its folder's kind; every other name keeps the closed map's kind or refuses."""
+
+    def test_the_recheck_clause_of_the_closed_map(self):
+        drive = MODS["drive"]
+        folder = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-0001"
+        (folder / drive.SESSION_DIR).mkdir(parents=True)
+        for name in ("driver-ledger.json", "grade.json", "check.json", "transcript.jsonl", "recheck-1.json",
+                     "recheck-2.json", f"{drive.SESSION_DIR}/recheck-1.json"):
+            (folder / name).write_text("{}\n")
+        kinds = {Path(p).relative_to(folder).as_posix(): k for p, k in self.must("R13.recheck", drive.walk_files, folder)}
+        self.assertEqual(kinds["recheck-1.json"], "ledger", "R13.recheck: a top-level recheck is a ledger")
+        self.assertEqual(kinds["recheck-2.json"], "ledger", "R13.recheck")
+        self.assertEqual(kinds[f"{drive.SESSION_DIR}/recheck-1.json"], "session",
+                         "R13.recheck: the name deeper keeps its folder's kind")
+        self.assertEqual(kinds["transcript.jsonl"], drive.TAKE_FILE_KINDS["transcript.jsonl"],
+                         "R13.recheck: a take file keeps its own kind")
+        for bad in ("recheck-01.json", "recheck-0.json", "recheck-1.jsonl", "stray.json"):
+            with self.subTest(name=bad):
+                (folder / bad).write_text("{}\n")
+                with self.assertRaises(drive.DriveRefused):
+                    drive.walk_files(folder)
+                (folder / bad).unlink()
+
+
 # ------------------------------------------------------------------------------------------------- R4
 class R4Held(Case):
     def test_a_postflight_refusal_is_never_committed(self):
@@ -1576,7 +1603,8 @@ class R12Pending(Case):
                             f"R12.pending: {got[0]['why']}")
 
 
-GENERATED_ORDER = ("R11Units", "R10Guards", "R6Cli", "R7Slot", "G1Generated", "R8WalkRoad", "R4Held", "R12Pending",
+GENERATED_ORDER = ("R13Recheck", "R11Units", "R10Guards", "R6Cli", "R7Slot", "G1Generated", "R8WalkRoad", "R4Held",
+                   "R12Pending",
                    "R3DeadWalk", "R2WalkCheck", "R1Chain", "R5Round3", "R9RealGrade", "TestSysPath")
 
 

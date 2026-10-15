@@ -16,9 +16,8 @@ real walk record is read.
   RC-change     a recheck whose checker reads other reasons, under other constants, reports the old digest and the new,
                 and the reasons added and removed.
   RC-machine    the walk's machine is named exactly {checkout, home, temp_root}, absolute; anything else refuses.
-  RC-standing   pending_walk.checker_standing: a graded walk checked under other constants is stale; a committed
-                recheck under the constants in force lifts it only while it re-derives to its exact bytes; an edited
-                recheck counts nothing.
+  RC-state      walk_regrade.recheck_state: the latest committed recheck, verified by re-deriving it; an edited one
+                refuses. Coverage (pending_walk.checker_standing) still reads check.json alone (left for a ruling).
   RC-check      walk_regrade's --check road (regrade_problems) re-derives every committed recheck, and names an edited
                 one.
 """
@@ -192,29 +191,30 @@ class TheRecheck(twr.Case):
                 with self.subTest(machine=bad), self.assertRaises(wr.RegradeRefused):
                     wr.recheck_doc(WALK, 1, w.root, machine=bad, design_for=r.design_for())
 
-    def test_rc_standing_reads_only_a_verified_recheck(self):
+    def test_rc_state_reads_only_a_verified_recheck(self):
+        """recheck_state verifies the latest committed recheck by re-deriving it. Coverage (pending_walk.checker_standing,
+        read by walk_plan's register-only, no-process road) still reads check.json alone, so a recheck does not yet
+        lift a stale walk there: how it should is left for a ruling (the battery's test_walk_plan P7 binds that road)."""
         import mode_binding as mb
         import pending_walk
         with twr.study() as w:
             r = Rig(w)
             base = w.root / mb.WALKS_DIR
-            stale = pending_walk.checker_standing(base, WALK)
-            self.assertTrue(stale and stale.startswith("stale"), f"RC-standing: the rig's walk reads {stale!r}")
+            self.assertIsNone(wr.recheck_state(base, WALK), "RC-state: no recheck committed yet")
+
             def real(row, run_tree):                             # the constants in force (CHECKER_CONSTANTS)
                 return r.ct.design_view(row, pin=w.pin_for(row), run_tree=str(w.tree))
             with mock.patch.object(wr, "production_design", real):
-                self.must("RC-standing", r.write_and_commit, design_for=real)
-                got = pending_walk.checker_standing(base, WALK)
-                rec = json.loads((base / WALK / "recheck-1.json").read_bytes())
+                self.must("RC-state", r.write_and_commit, design_for=real)
+                rec = wr.recheck_state(base, WALK)
                 self.assertEqual(rec["checker_constants_sha256"], r.ct.checker_constants_sha256())
-                bound = [x for x in rec["checker_reasons"] if x in r.ct.CONSTANT_BOUND_REASONS]
-                self.assertEqual(got, f"constant-bound checker reason: {', '.join(bound)}" if bound else None,
-                                 "RC-standing: a verified recheck under the constants in force")
-                # an edited recheck (committed) counts nothing
-                p = base / WALK / "recheck-1.json"
+                stale = pending_walk.checker_standing(base, WALK)
+                self.assertTrue(stale and stale.startswith("stale"), f"RC-state: coverage reads {stale!r}")
+                p = base / WALK / "recheck-1.json"               # an edited recheck (committed) is refused
                 p.write_bytes(p.read_bytes().replace(b'"n": 1', b'"n": 1 ', 1))
                 git(w.root, "commit", "-q", "-am", "an edited recheck")
-                self.assertTrue(pending_walk.checker_standing(base, WALK).startswith("recheck unverifiable"))
+                with self.assertRaises(wr.RegradeRefused):
+                    wr.recheck_state(base, WALK)
                 self.assertTrue(any("recheck-1.json" in x for x in wr.regrade_problems(w.root)),
                                 "RC-check: --check did not name the edited recheck")
 
