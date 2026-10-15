@@ -377,8 +377,12 @@ def admitted_evidence_blobs(suite_mod, repo: str, head: str, tip: str, gitleaks:
             # encoding and the message), not only %B; MAJOR E, the paths the commit changes, which no patch scan reads.
             _write_private(os.path.join(src, f"commit-{commit}"), _git_out(repo, "cat-file", "commit", commit,
                                                                            binary=True))
-            _write_private(os.path.join(src, f"paths-{commit}"), _git_out(
-                repo, "diff-tree", "-r", "--root", "--name-only", "--no-commit-id", commit, binary=True))
+            # MAJOR G (closure of 78ee31e7): -m, or a merge commit lists no path at all; -z, split on NUL, one path
+            # per line in the scanned file (a path holding a newline still lands whole in the file).
+            changed = _git_out(repo, "diff-tree", "-m", "-z", "-r", "--root", "--name-only", "--no-commit-id", commit,
+                               binary=True)
+            _write_private(os.path.join(src, f"paths-{commit}"),
+                           b"".join(p + b"\n" for p in changed.split(b"\0") if p))
         total = 0
         for oid in sorted(cands):
             if oid in in_head:
@@ -454,6 +458,10 @@ def ship(runner: Runner, *, repo: str, ref: str, suite: str, reserve: str, gitle
         raise LaunchRefused("the Mac pre-check refuses: " + "; ".join(problems))
     if _sha256(reserve) != RESERVE_SHA256:
         raise LaunchRefused("athena-reserve is not the runbook's pinned bytes")
+    # The tag case, closed by construction (closure of 78ee31e7): the ref must name a commit object itself, never an
+    # annotated tag that peels to one (a tag object's own message and tagger are no commit's).
+    if _ok(runner.local(["git", "-C", repo, "cat-file", "-t", ref]), "cat-file -t").strip() != "commit":
+        raise LaunchRefused(f"the ref {ref!r} does not name a commit object (an annotated tag is refused)")
     head = _ok(runner.local(["git", "-C", repo, "rev-parse", "--verify", f"{ref}^{{commit}}"]), "rev-parse").strip()
     if not HEX40.fullmatch(head):
         raise LaunchRefused(f"the ref {ref!r} does not name one commit")
@@ -561,6 +569,9 @@ def fetch(runner: Runner, *, child: str, head: str, ref: str, records: str, gitl
     st = status(runner, child=child)
     if st == "running":
         raise LaunchRefused("the walk is still running; nothing is fetched")
+    if _ok(runner.remote(f"git -C {child}/repo cat-file -t {shlex.quote(ref)}"), "the athena ref's type").strip() \
+            != "commit":
+        raise LaunchRefused(f"athena's ref {ref!r} does not name a commit object (an annotated tag is refused)")
     tip = _ok(runner.remote(f"git -C {child}/repo rev-parse --verify {shlex.quote(ref)}^{{commit}}"),
               "the athena tip").strip()
     if tip == head:

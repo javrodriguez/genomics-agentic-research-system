@@ -82,6 +82,7 @@ class FakeRunner(wl.Runner):
         self.sha_override = {}          # a path whose sha256 athena misreports (the read-back guards)
         self.ancestor_rc = 0            # merge-base --is-ancestor's exit on athena
         self.listheads_override = None  # what `git bundle list-heads` prints, when set
+        self.ref_type = "commit"        # what athena's `git cat-file -t <ref>` prints
 
     def local(self, argv, *, timeout=3600):
         argv = list(argv)
@@ -114,6 +115,8 @@ class FakeRunner(wl.Runner):
             return 0, (self.athena_head or "") + "\n", ""
         if " rev-parse --verify " in cmd:
             return 0, (self.athena_tip or "") + "\n", ""
+        if " cat-file -t " in cmd:
+            return 0, self.ref_type + "\n", ""
         if " merge-base --is-ancestor " in cmd:
             return self.ancestor_rc, "", ""
         if " bundle create " in cmd:
@@ -477,6 +480,25 @@ def l5(mod) -> list:
         _, got, repo, _, _ = fetch_rig(mod, t, suite_kw={"scanned": 0})
         if not isinstance(got, mod.LaunchRefused) or "scanned no commit" not in str(got) or walk_branches(repo):
             out.append(f"L5-guards: a return scan of no commit: {got}")
+    # the tag case: ship refuses a --ref that is an annotated tag; fetch refuses an athena ref that is one
+    with tempfile.TemporaryDirectory() as t:
+        repo, root, head = make_repo(t)
+        git("-C", repo, "tag", "-a", "-m", "a tag", "walk-tag")
+        reserve = reserve_file(t)
+        with mock.patch.object(mod, "PINNED_TREE", root), \
+                mock.patch.object(mod, "RESERVE_SHA256", hashlib.sha256(Path(reserve).read_bytes()).hexdigest()):
+            r = FakeRunner(athena_head=head)
+            try:
+                mod.ship(r, repo=repo, ref="walk-tag", suite="/x", reserve=reserve, gitleaks="gitleaks",
+                         work=os.path.join(t, "w"), precheck=lambda s: [], suite_module=FakeSuite([]))
+                out.append("L5-guards: an annotated tag ships as the ref")
+            except mod.LaunchRefused as e:
+                if "annotated tag" not in str(e) or any(c[0] != "local" for c in r.calls):
+                    out.append(f"L5-guards: the tag ref refused for another reason or after athena: {e}")
+    with tempfile.TemporaryDirectory() as t:
+        _, got, repo, _, _ = fetch_rig(mod, t, after_runner=lambda r, tip: setattr(r, "ref_type", "tag"))
+        if not isinstance(got, mod.LaunchRefused) or "annotated tag" not in str(got) or walk_branches(repo):
+            out.append(f"L5-guards: an athena ref that is a tag is fetched: {got}")
     for name, want, runner_kw, after in (
             ("merge-base head..tip", "athena's tip does not descend from the shipped head", None,
              lambda r, tip: setattr(r, "ancestor_rc", 1)),
@@ -628,6 +650,20 @@ for n in sorted(os.listdir(src)):
             found.append({"File": os.path.join(src, n), "RuleID": "github-pat", "StartLine": i})
 json.dump(found, open(report, "w"))
 """
+
+
+def merge_commit(repo, added_path):
+    """A side commit, then a --no-ff merge of it that also adds `added_path`, a file in neither parent."""
+    git("-C", repo, "checkout", "-q", "-b", "side")
+    Path(repo, "side.txt").write_text("side\n")
+    git("-C", repo, "add", "side.txt")
+    git("-C", repo, "commit", "-q", "-m", "side")
+    git("-C", repo, "checkout", "-q", "main")
+    git("-C", repo, "merge", "-q", "--no-ff", "--no-commit", "side")
+    Path(repo, added_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(repo, added_path).write_text("w\n")
+    git("-C", repo, "add", added_path)
+    git("-C", repo, "commit", "-q", "-m", "merge")
 
 
 def evidence_path(walk, data):
@@ -814,6 +850,17 @@ def l8(mod) -> list:
             except mod.LaunchRefused as e:
                 if ok:
                     out.append(f"L8-blobs: {why} is refused: {e}")
+        # MAJOR G: a merge commit adding a planted-name file that is in neither parent
+        d = os.path.join(t, "planted-merge")
+        os.mkdir(d)
+        repo, _, head = make_repo(d)
+        merge_commit(repo, "evals/gap-study-4/rehearsals/w001/PLANTED-synthetic.txt")
+        tip = git("-C", repo, "rev-parse", "HEAD").strip()
+        try:
+            mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
+            out.append("L8-blobs: a planted path added by a merge commit passes the walk's commit scan")
+        except mod.LaunchRefused:
+            pass
         # MAJOR E and F: a planted path, a planted author
         for why, kind in (("a planted path", "path"), ("a planted author", "author")):
             d = os.path.join(t, why.replace(" ", "-"))
@@ -940,8 +987,13 @@ WITNESSES = {
                                 "L8-blobs"),
     "commit-scan-dropped": ((("            _write_private(os.path.join(src, f\"commit-{commit}\"), ",
                               "            None and _write_private(os.path.join(src, f\"commit-{commit}\"), "),), "L8-blobs"),
-    "paths-unscanned": ((("            _write_private(os.path.join(src, f\"paths-{commit}\"), _git_out(",
-                          "            None and _write_private(os.path.join(src, f\"paths-{commit}\"), _git_out("),), "L8-blobs"),
+    "paths-unscanned": ((("            _write_private(os.path.join(src, f\"paths-{commit}\"),",
+                          "            None and _write_private(os.path.join(src, f\"paths-{commit}\"),"),), "L8-blobs"),
+    "merge-paths-dropped": ((("_git_out(repo, \"diff-tree\", \"-m\", \"-z\",", "_git_out(repo, \"diff-tree\", \"-z\","),), "L8-blobs"),
+    "tag-ref-admitted": ((("    if _ok(runner.local([\"git\", \"-C\", repo, \"cat-file\", \"-t\", ref]), \"cat-file -t\").strip() != \"commit\":",
+                           "    if False:"),), "L5-guards"),
+    "athena-tag-ref-admitted": ((("    if _ok(runner.remote(f\"git -C {child}/repo cat-file -t {shlex.quote(ref)}\"), \"the athena ref's type\").strip() \\\n            != \"commit\":",
+                                  "    if False:"),), "L5-guards"),
     # Named equivalent, no witness: the 1f 8b magic check in gzip_header is the only gate before parsing; dropping it
     # leaves the method byte and zlib's raw inflate to refuse a non-gzip, so only the refusal's words change.
     "back-scan-plain": ((("        n = suite_mod.scan_unpublished(", "        n = 1 or suite_mod.scan_unpublished("),),
@@ -1184,6 +1236,12 @@ class TestRealReturnScan(unittest.TestCase):
             git("-C", a, "add", "w.txt")
             git("-C", a, "commit", "-q", "--author", f"{tok} <a@invalid>", "-m", "walk")
         got, branches = self.case(commit)
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def test_token_named_file_added_by_a_merge_refuses(self):
+        tok = _fake_token()
+        got, branches = self.case(lambda a: merge_commit(a, f"evals/gap-study-4/rehearsals/w001/{tok}.txt"))
         self.assertIsInstance(got, wl.LaunchRefused)
         self.assertEqual(branches, "")
 
