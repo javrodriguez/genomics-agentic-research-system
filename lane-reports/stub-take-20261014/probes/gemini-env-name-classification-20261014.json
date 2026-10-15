@@ -1,8 +1,8 @@
 {
  "counts": {
-  "ambiguous": 135,
+  "ambiguous": 146,
   "credential": 13,
-  "harmless": 305,
+  "harmless": 294,
   "own-login": 1,
   "route": 60,
   "row": 5
@@ -35,6 +35,7 @@
   "DETECT_GCP_RETRIES",
   "DOTENV_KEY",
   "EDITOR_IN_CLOUD_SHELL",
+  "EDITOR_URL",
   "FUNCTION_NAME",
   "FUNCTION_REGION",
   "FUNCTION_TARGET",
@@ -93,6 +94,14 @@
   "GEMINI_CLI_MALFORMED_JSON_RESPONSE_MODEL",
   "GEMINI_CLI_MODEL_SLASH_COMMAND",
   "GEMINI_CLI_RESEARCH_CONTACT_EMAIL",
+  "GEMINI_CLI_ROUTING_CLASSIFIER_THRESHOLD",
+  "GEMINI_CLI_ROUTING_DECISION",
+  "GEMINI_CLI_ROUTING_DECISION_SOURCE",
+  "GEMINI_CLI_ROUTING_FAILURE",
+  "GEMINI_CLI_ROUTING_FAILURE_REASON",
+  "GEMINI_CLI_ROUTING_LATENCY_MS",
+  "GEMINI_CLI_ROUTING_NUMERICAL_ENABLED",
+  "GEMINI_CLI_ROUTING_REASONING",
   "GEMINI_CLI_START_SESSION_API_KEY_ENABLED",
   "GEMINI_CLI_START_SESSION_EMBEDDING_MODEL",
   "GEMINI_CLI_START_SESSION_MODEL",
@@ -145,6 +154,7 @@
   "GEMINI_WRITE_SYSTEM_MD",
   "GITHUB_TOKEN",
   "GOOGLE_ACCOUNTS_FILENAME",
+  "GOOGLE_AI_API_DEFAULT_VERSION",
   "GOOGLE_API_CERTIFICATE_CONFIG",
   "GOOGLE_API_CLIENT_HEADER",
   "GOOGLE_API_KEY",
@@ -211,6 +221,7 @@
   "VERTEX_AI_REQUEST_TYPE_HEADER",
   "VERTEX_AI_SHARED_REQUEST_TYPE_HEADER",
   "VERTEX_AI_US_REP_ENDPOINT",
+  "WEB_HOST",
   "gcloud_project",
   "google_application_credentials",
   "google_cloud_project",
@@ -658,7 +669,7 @@
    "why": "table"
   },
   {
-   "class": "harmless",
+   "class": "ambiguous",
    "name": "EDITOR_URL",
    "read_as": [
     "process.env.X"
@@ -2010,68 +2021,68 @@
    "why": "regex-only rule: a constant with no risky word"
   },
   {
-   "class": "harmless",
+   "class": "ambiguous",
    "name": "GEMINI_CLI_ROUTING_CLASSIFIER_THRESHOLD",
    "read_as": [
     "vendor-regex only"
    ],
-   "why": "regex-only rule: a constant with no risky word"
+   "why": "regex-only rule: a risky word"
   },
   {
-   "class": "harmless",
+   "class": "ambiguous",
    "name": "GEMINI_CLI_ROUTING_DECISION",
    "read_as": [
     "vendor-regex only"
    ],
-   "why": "regex-only rule: a constant with no risky word"
+   "why": "regex-only rule: a risky word"
   },
   {
-   "class": "harmless",
+   "class": "ambiguous",
    "name": "GEMINI_CLI_ROUTING_DECISION_SOURCE",
    "read_as": [
     "vendor-regex only"
    ],
-   "why": "regex-only rule: a constant with no risky word"
+   "why": "regex-only rule: a risky word"
   },
   {
-   "class": "harmless",
+   "class": "ambiguous",
    "name": "GEMINI_CLI_ROUTING_FAILURE",
    "read_as": [
     "vendor-regex only"
    ],
-   "why": "regex-only rule: a constant with no risky word"
+   "why": "regex-only rule: a risky word"
   },
   {
-   "class": "harmless",
+   "class": "ambiguous",
    "name": "GEMINI_CLI_ROUTING_FAILURE_REASON",
    "read_as": [
     "vendor-regex only"
    ],
-   "why": "regex-only rule: a constant with no risky word"
+   "why": "regex-only rule: a risky word"
   },
   {
-   "class": "harmless",
+   "class": "ambiguous",
    "name": "GEMINI_CLI_ROUTING_LATENCY_MS",
    "read_as": [
     "vendor-regex only"
    ],
-   "why": "regex-only rule: a constant with no risky word"
+   "why": "regex-only rule: a risky word"
   },
   {
-   "class": "harmless",
+   "class": "ambiguous",
    "name": "GEMINI_CLI_ROUTING_NUMERICAL_ENABLED",
    "read_as": [
     "vendor-regex only"
    ],
-   "why": "regex-only rule: a constant with no risky word"
+   "why": "regex-only rule: a risky word"
   },
   {
-   "class": "harmless",
+   "class": "ambiguous",
    "name": "GEMINI_CLI_ROUTING_REASONING",
    "read_as": [
     "vendor-regex only"
    ],
-   "why": "regex-only rule: a constant with no risky word"
+   "why": "regex-only rule: a risky word"
   },
   {
    "class": "harmless",
@@ -2962,12 +2973,12 @@
    "why": "regex-only rule: a risky word"
   },
   {
-   "class": "harmless",
+   "class": "ambiguous",
    "name": "GOOGLE_AI_API_DEFAULT_VERSION",
    "read_as": [
     "vendor-regex only"
    ],
-   "why": "regex-only rule: a constant with no risky word"
+   "why": "regex-only rule: a risky word"
   },
   {
    "class": "ambiguous",
@@ -4150,7 +4161,7 @@
    "why": "table"
   },
   {
-   "class": "harmless",
+   "class": "ambiguous",
    "name": "WEB_HOST",
    "read_as": [
     "env[X]"

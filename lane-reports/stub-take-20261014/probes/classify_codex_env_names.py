@@ -49,6 +49,30 @@ GLUED = {
     "CODEX_SANDBOX_NETWORK_DISABLED1": "CODEX_SANDBOX_NETWORK_DISABLED",
     "CODEX_WORK_MOBIL": "CODEX_WORK_MOBILE",
 }
+# The non-prefixed names a glued match runs into (the review of 06775d56, MINOR 3): each is a row of its own, refused for
+# every arm when it is a credential, route or ambiguous name; HTTPS_PROXY is every take row's egress proxy, a row name.
+GLUED_TAILS = {
+    "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILESSL_CERT_DIR": ("SSL_CERT_DIR",),
+    "CODEX_CA_CERTIFICARGO_HTTP_CAINFO": ("CARGO_HTTP_CAINFO",),
+    "CODEX_CA_CERTIFICATESSL_CERT_FILE": ("SSL_CERT_FILE",),
+    "CODEX_CA_CERTIFICATESSL_CERT_FILEREQUESTS_CA_BUNDLECURL_CA_BUNDLENODE_EXTRA_CA_CERTSGIT_SSL_CAINFOCARGO_HTTP_"
+    "CAINFOBUNDLE_SSL_CA_CERT": ("SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "NODE_EXTRA_CA_CERTS",
+                               "GIT_SSL_CAINFO", "CARGO_HTTP_CAINFO", "BUNDLE_SSL_CA_CERT"),
+    "CODEX_ESCALATE_SOCKETEXEC_WRAPPER": ("EXEC_WRAPPER",),
+    "CODEX_EXEC_SERVER_NOISE_AUTH_TOKENNODE_REPL_AUTH_TOKEN": ("NODE_REPL_AUTH_TOKEN",),
+    "CODEX_EXEC_SERVER_PROXY_PRIVATE_IPS_VIA_UPSTREAMREQUEST_DISPATCH_MODEM": ("REQUEST_DISPATCH_MODE",),
+    "CODEX_NETWORK_ALLOW_LOCAL_BINDINGELECTRON_GET_USE_PROXYNODE_USE_ENV_PROXY": ("ELECTRON_GET_USE_PROXY",
+                                                                                  "NODE_USE_ENV_PROXY"),
+    "CODEX_NETWORK_PROXY_ACTIVEPWDOLDPWD": ("PWD", "OLDPWD"),
+    "CODEX_NETWORK_PROXY_ATTRIBUTIONELECTRON_GET_USE_PROXYNODE_USE_ENV_PROXYHTTP_PROXYHTTPS_PROXY": (
+        "ELECTRON_GET_USE_PROXY", "NODE_USE_ENV_PROXY", "HTTP_PROXY", "HTTPS_PROXY"),
+}
+TAIL_CLASS = {"SSL_CERT_FILE": "route", "SSL_CERT_DIR": "route", "REQUESTS_CA_BUNDLE": "route",
+              "CURL_CA_BUNDLE": "route", "NODE_EXTRA_CA_CERTS": "route", "GIT_SSL_CAINFO": "route",
+              "CARGO_HTTP_CAINFO": "route", "BUNDLE_SSL_CA_CERT": "route", "NODE_USE_ENV_PROXY": "route",
+              "ELECTRON_GET_USE_PROXY": "route", "HTTP_PROXY": "route", "NODE_REPL_AUTH_TOKEN": "credential",
+              "EXEC_WRAPPER": "ambiguous", "REQUEST_DISPATCH_MODE": "ambiguous", "HTTPS_PROXY": "row",
+              "PWD": "harmless", "OLDPWD": "harmless"}
 CLASS = {}
 for n in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_BEARER_TOKEN_BEDROCK",
           "AWS_CONTAINER_AUTHORIZATION_TOKEN", "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE", "AWS_WEB_IDENTITY_TOKEN_FILE",
@@ -104,8 +128,12 @@ REFUSE = ("credential", "route", "ambiguous")
 rows, refused, unplaced = [], set(), []
 split_names = sorted({p for r in d["names"] for p in SPLIT.split(r) if NAME.fullmatch(p)})
 for s in split_names:
+    glued = [{"name": n, "class": TAIL_CLASS[n]} for n in GLUED_TAILS.get(s, ())]
+    for g in glued:
+        if g["class"] in REFUSE:
+            refused.add(g["name"])
     if s in FRAGMENT:
-        rows.append({"match": s, "class": "fragment"})
+        rows.append({"match": s, "class": "fragment", **({"glued": glued} if glued else {})})
         continue
     canon = GLUED.get(s, s)
     cls = CLASS.get(canon)
@@ -115,7 +143,7 @@ for s in split_names:
     names = [canon]
     if cls in REFUSE and s != canon and len(s) == len(canon) + 1 and s[-1].isalpha():
         names.append(s)               # a one-capital boundary variant of a refused name: both spellings refused
-    rows.append({"match": s, "class": cls, "names": names})
+    rows.append({"match": s, "class": cls, "names": names, **({"glued": glued} if glued else {})})
     if cls in REFUSE:
         refused.update(names)
 if unplaced:
@@ -124,5 +152,7 @@ print(json.dumps({"sweep": SWEEP.rsplit("/", 1)[-1], "sweep_sha256": hashlib.sha
                   "binary_sha256": d["binary_sha256"], "split_names": len(split_names), "rows": rows,
                   "refuse_if_present": sorted(refused),
                   "counts": {c: sum(1 for r in rows if r["class"] == c) for c in
-                             ("credential", "route", "ambiguous", "harmless", "fragment")}},
+                             ("credential", "route", "ambiguous", "harmless", "fragment")},
+                  "glued_counts": {c: len({g["name"] for r in rows for g in r.get("glued", ()) if g["class"] == c})
+                                   for c in ("row", "credential", "route", "ambiguous", "harmless")}},
                  indent=1, sort_keys=True))

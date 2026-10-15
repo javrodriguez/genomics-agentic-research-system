@@ -2131,6 +2131,30 @@ def _sweep_files():
             os.path.join(SWEEP_DIR, "codex-env-name-classification-20261014.json"))
 
 
+CODEX_BINARY_SHA256 = "628e35487d888a28f0427fc37501da529dd3d81fcbad7a2c3421c1e8670d92e1"
+
+
+def run_classifier(script: str, sweep_path: str) -> bytes:
+    """The committed classifier's stdout for the committed sweep, run in this process (runpy, `-I`-equivalent: no
+    process starts under this module's guard), so a classification file is bound to the program that writes it."""
+    import io
+    import runpy
+    out = io.StringIO()
+    argv = sys.argv
+    sys.argv = [script, sweep_path]
+    try:
+        with contextlib.redirect_stdout(out):
+            runpy.run_path(os.path.join(SWEEP_DIR, script), run_name="__main__")
+    finally:
+        sys.argv = argv
+    return out.getvalue().encode()
+
+
+def _lock_image(arm: str) -> str:
+    with open(os.path.join(os.path.dirname(rt.__file__), arm, "image.lock"), encoding="utf-8") as fh:
+        return json.load(fh)["image_id"]
+
+
 def _gemini_refused() -> tuple:
     with open(os.path.join(SWEEP_DIR, "gemini-env-name-classification-20261014.json"), encoding="utf-8") as fh:
         return tuple(json.load(fh)["refuse_if_present"])
@@ -2156,17 +2180,35 @@ class TestCodexBinarySweep(MutantCase):
             cls = json.load(fh)
         if cls["sweep_sha256"] != hashlib.sha256(sweep_raw).hexdigest():
             out.append("the classification does not bind the committed sweep's bytes")
-        if not str(sweep["binary_sha256"]).startswith("628e35487d888a28") or cls["binary_sha256"] != \
-                sweep["binary_sha256"]:
-            out.append("the sweep is not of the pinned binary (628e3548...)")
+        with open(class_path, "rb") as fh:
+            class_raw = fh.read()
+        if run_classifier("classify_codex_env_names.py", sweep_path) != class_raw:
+            out.append("the committed Codex classification is not the classifier's output for the committed sweep")
+        markers = os.path.join(_CLONE, "lane-reports", "live-box-evidence-2026-10-13", "codex-auth-binary-markers.json")
+        with open(markers, encoding="utf-8") as fh:
+            marker_sha = json.load(fh)["sources"][0]["sha256"]
+        if not (sweep["binary_sha256"] == cls["binary_sha256"] == marker_sha == CODEX_BINARY_SHA256):
+            out.append("the sweep is not of the pinned binary (the full sha256, the markers file's)")
+        if sweep["image"] != _lock_image("codex"):
+            out.append("the Codex sweep is not of the pinned take-o image (box/codex/image.lock image_id)")
         split = re.compile(r"(?=(?:CODEX|OPENAI|AWS|AZURE|ANTHROPIC|GOOGLE)_)")
         name = re.compile(r"(CODEX|OPENAI|AWS|AZURE|ANTHROPIC|GOOGLE)_[A-Z0-9_]+")
         derived = sorted({p for r in sweep["names"] for p in split.split(r) if name.fullmatch(p)})
         if [r["match"] for r in cls["rows"]] != derived:
             out.append("the classification does not place every name the sweep found")
         refuse = set(cls["refuse_if_present"])
-        if refuse != {n for r in cls["rows"] if r["class"] in ("credential", "route", "ambiguous") for n in r["names"]}:
-            out.append("the refuse list is not every credential, route and ambiguous name")
+        want = {n for r in cls["rows"] if r["class"] in ("credential", "route", "ambiguous") for n in r["names"]}
+        want |= {g["name"] for r in cls["rows"] for g in r.get("glued", ())
+                 if g["class"] in ("credential", "route", "ambiguous")}
+        if refuse != want:
+            out.append("the refuse list is not every credential, route and ambiguous name (glued ones included)")
+        for n in ("SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "NODE_EXTRA_CA_CERTS",
+                  "GIT_SSL_CAINFO", "NODE_USE_ENV_PROXY", "ELECTRON_GET_USE_PROXY", "NODE_REPL_AUTH_TOKEN",
+                  "EXEC_WRAPPER"):
+            if n not in refuse:
+                out.append(f"{n}, glued in the binary's strings, is not refused")
+        if "HTTPS_PROXY" in refuse:
+            out.append("HTTPS_PROXY, every row's egress proxy, is refused")
         if tuple(rt.CODEX_BINARY_SWEEP_REFUSED) != tuple(cls["refuse_if_present"]):
             out.append("run_take's sweep tuple drifted from the committed classification")
         for arm in (rt.CODEX, rt.CLAUDE_CODE, rt.GEMINI):
@@ -2239,6 +2281,15 @@ class TestGeminiPackageSweep(MutantCase):
             out.append("the classification does not bind the committed sweep's bytes")
         if sweep["package_version"] != pinned or cls["package_version"] != pinned:
             out.append(f"the sweep is not of the pinned Gemini CLI {pinned}")
+        if sweep["image"] != _lock_image("gemini"):
+            out.append("the Gemini sweep is not of the pinned take-g image (box/gemini/image.lock image_id)")
+        with open(class_path, "rb") as fh:
+            class_raw = fh.read()
+        if run_classifier("classify_gemini_env_names.py", sweep_path) != class_raw:
+            out.append("the committed Gemini classification is not the classifier's output for the committed sweep")
+        for n in ("WEB_HOST", "EDITOR_URL"):
+            if n not in cls["refuse_if_present"]:
+                out.append(f"{n} is not refused")
         if sorted(r["name"] for r in cls["rows"]) != sorted(sweep["names"]):
             out.append("the classification does not place every name the sweep found")
         refuse = set(cls["refuse_if_present"])

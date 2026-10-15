@@ -18,7 +18,7 @@ MUTANTS = [
  ("rt", "a route name dropped", '            "OPENAI_ORGANIZATION",                     # matches[40]: beside the OpenAI-Organization header\n', ''),
  ("rt", "route names never refused", "        if not _is_pending(extra):\n            names |= set(extra)", "        if not _is_pending(extra):\n            pass"),
  # OPENAI_API_KEY is refused twice since the binary sweep (VENDOR_KEY_VARIABLES and the sweep tuple): both removed
- ("rt", "OPENAI_API_KEY admitted for codex", ('VENDOR_KEY_VARIABLES = ("CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY")', '    "OPENAI_API_KEY", "OPENAI_BASE_URL",'), ('VENDOR_KEY_VARIABLES = ("CODEX_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY")', '    "OPENAI_BASE_URL",')),
+ ("rt", "OPENAI_API_KEY admitted for codex", ('VENDOR_KEY_VARIABLES = ("CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY")', '"NODE_USE_ENV_PROXY", "OPENAI_API_KEY", "OPENAI_BASE_URL",'), ('VENDOR_KEY_VARIABLES = ("CODEX_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY")', '"NODE_USE_ENV_PROXY", "OPENAI_BASE_URL",')),
  ("rt", "a docs-read name dropped", '"CODEX_OSS_BASE_URL", "CODEX_OSS_PORT", "AWS_BEARER_TOKEN_BEDROCK", "AWS_ACCESS_KEY_ID",', '"CODEX_OSS_BASE_URL", "AWS_BEARER_TOKEN_BEDROCK", "AWS_ACCESS_KEY_ID",'),
  ("rt", "the docs-read names dropped", '            "OPENAI_PROJECT", "OPENAI_BASE_URL", "CODEX_ACCESS_TOKEN", "OPENAI_WORKLOAD_IDENTITY_CONTEXT",\n', ''),
  ("rt", "a sweep name dropped", '"CODEX_GITHUB_PERSONAL_ACCESS_TOKEN", "CODEX_GUARDIAN_DECISIONS_API_KEY",', '"CODEX_GITHUB_PERSONAL_ACCESS_TOKEN",'),

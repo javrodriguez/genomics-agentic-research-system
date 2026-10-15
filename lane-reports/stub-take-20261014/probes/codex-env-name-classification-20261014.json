@@ -7,6 +7,13 @@
   "harmless": 63,
   "route": 50
  },
+ "glued_counts": {
+  "ambiguous": 2,
+  "credential": 1,
+  "harmless": 2,
+  "route": 11,
+  "row": 1
+ },
  "refuse_if_present": [
   "AWS_ACCESS_KEY_ID",
   "AWS_ACCOUNT_ID",
@@ -45,6 +52,8 @@
   "AWS_WEB_IDENTITY_TOKEN_FILE",
   "AZURE_CLIENT_SECRET",
   "AZURE_FEDERATED_TOKEN_FILE",
+  "BUNDLE_SSL_CA_CERT",
+  "CARGO_HTTP_CAINFO",
   "CODEX_ACCESS_TOKEN",
   "CODEX_AGENT_IDENTITY_AUTHAPI_BASE_URL",
   "CODEX_AGENT_IDENTITY_JWKS_BASE_URL",
@@ -95,14 +104,26 @@
   "CODEX_SNAPSHOT_OVERRIDE",
   "CODEX_SNAPSHOT_PROXY_ENV_SET",
   "CODEX_SNAPSHOT_PROXY_OVERRIDE",
+  "CURL_CA_BUNDLE",
+  "ELECTRON_GET_USE_PROXY",
+  "EXEC_WRAPPER",
+  "GIT_SSL_CAINFO",
   "GOOGLE_APPLICATION_CREDENTIALS",
+  "HTTP_PROXY",
+  "NODE_EXTRA_CA_CERTS",
+  "NODE_REPL_AUTH_TOKEN",
+  "NODE_USE_ENV_PROXY",
   "OPENAI_API_KEY",
   "OPENAI_BASE_URL",
   "OPENAI_CLUSTER",
   "OPENAI_FEDERATION_RULE_ID",
   "OPENAI_IDENTITY_TOKEN_FILE",
   "OPENAI_ORGANIZATION",
-  "OPENAI_WORKLOAD_IDENTITY_CONTEXT"
+  "OPENAI_WORKLOAD_IDENTITY_CONTEXT",
+  "REQUESTS_CA_BUNDLE",
+  "REQUEST_DISPATCH_MODE",
+  "SSL_CERT_DIR",
+  "SSL_CERT_FILE"
  ],
  "rows": [
   {
@@ -168,6 +189,12 @@
   },
   {
    "class": "credential",
+   "glued": [
+    {
+     "class": "route",
+     "name": "SSL_CERT_DIR"
+    }
+   ],
    "match": "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILESSL_CERT_DIR",
    "names": [
     "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE"
@@ -539,6 +566,12 @@
   },
   {
    "class": "fragment",
+   "glued": [
+    {
+     "class": "route",
+     "name": "CARGO_HTTP_CAINFO"
+    }
+   ],
    "match": "CODEX_CA_CERTIFICARGO_HTTP_CAINFO"
   },
   {
@@ -550,6 +583,12 @@
   },
   {
    "class": "route",
+   "glued": [
+    {
+     "class": "route",
+     "name": "SSL_CERT_FILE"
+    }
+   ],
    "match": "CODEX_CA_CERTIFICATESSL_CERT_FILE",
    "names": [
     "CODEX_CA_CERTIFICATE"
@@ -557,6 +596,36 @@
   },
   {
    "class": "route",
+   "glued": [
+    {
+     "class": "route",
+     "name": "SSL_CERT_FILE"
+    },
+    {
+     "class": "route",
+     "name": "REQUESTS_CA_BUNDLE"
+    },
+    {
+     "class": "route",
+     "name": "CURL_CA_BUNDLE"
+    },
+    {
+     "class": "route",
+     "name": "NODE_EXTRA_CA_CERTS"
+    },
+    {
+     "class": "route",
+     "name": "GIT_SSL_CAINFO"
+    },
+    {
+     "class": "route",
+     "name": "CARGO_HTTP_CAINFO"
+    },
+    {
+     "class": "route",
+     "name": "BUNDLE_SSL_CA_CERT"
+    }
+   ],
    "match": "CODEX_CA_CERTIFICATESSL_CERT_FILEREQUESTS_CA_BUNDLECURL_CA_BUNDLENODE_EXTRA_CA_CERTSGIT_SSL_CAINFOCARGO_HTTP_CAINFOBUNDLE_SSL_CA_CERT",
    "names": [
     "CODEX_CA_CERTIFICATE"
@@ -628,6 +697,12 @@
   },
   {
    "class": "route",
+   "glued": [
+    {
+     "class": "ambiguous",
+     "name": "EXEC_WRAPPER"
+    }
+   ],
    "match": "CODEX_ESCALATE_SOCKETEXEC_WRAPPER",
    "names": [
     "CODEX_ESCALATE_SOCKET"
@@ -656,6 +731,12 @@
   },
   {
    "class": "credential",
+   "glued": [
+    {
+     "class": "credential",
+     "name": "NODE_REPL_AUTH_TOKEN"
+    }
+   ],
    "match": "CODEX_EXEC_SERVER_NOISE_AUTH_TOKENNODE_REPL_AUTH_TOKEN",
    "names": [
     "CODEX_EXEC_SERVER_NOISE_AUTH_TOKEN"
@@ -685,6 +766,12 @@
   },
   {
    "class": "route",
+   "glued": [
+    {
+     "class": "ambiguous",
+     "name": "REQUEST_DISPATCH_MODE"
+    }
+   ],
    "match": "CODEX_EXEC_SERVER_PROXY_PRIVATE_IPS_VIA_UPSTREAMREQUEST_DISPATCH_MODEM",
    "names": [
     "CODEX_EXEC_SERVER_PROXY_PRIVATE_IPS_VIA_UPSTREAM"
@@ -873,6 +960,16 @@
   },
   {
    "class": "route",
+   "glued": [
+    {
+     "class": "route",
+     "name": "ELECTRON_GET_USE_PROXY"
+    },
+    {
+     "class": "route",
+     "name": "NODE_USE_ENV_PROXY"
+    }
+   ],
    "match": "CODEX_NETWORK_ALLOW_LOCAL_BINDINGELECTRON_GET_USE_PROXYNODE_USE_ENV_PROXY",
    "names": [
     "CODEX_NETWORK_ALLOW_LOCAL_BINDING"
@@ -898,6 +995,16 @@
   },
   {
    "class": "route",
+   "glued": [
+    {
+     "class": "harmless",
+     "name": "PWD"
+    },
+    {
+     "class": "harmless",
+     "name": "OLDPWD"
+    }
+   ],
    "match": "CODEX_NETWORK_PROXY_ACTIVEPWDOLDPWD",
    "names": [
     "CODEX_NETWORK_PROXY_ACTIVE"
@@ -912,6 +1019,24 @@
   },
   {
    "class": "route",
+   "glued": [
+    {
+     "class": "route",
+     "name": "ELECTRON_GET_USE_PROXY"
+    },
+    {
+     "class": "route",
+     "name": "NODE_USE_ENV_PROXY"
+    },
+    {
+     "class": "route",
+     "name": "HTTP_PROXY"
+    },
+    {
+     "class": "row",
+     "name": "HTTPS_PROXY"
+    }
+   ],
    "match": "CODEX_NETWORK_PROXY_ATTRIBUTIONELECTRON_GET_USE_PROXYNODE_USE_ENV_PROXYHTTP_PROXYHTTPS_PROXY",
    "names": [
     "CODEX_NETWORK_PROXY_ATTRIBUTION"
