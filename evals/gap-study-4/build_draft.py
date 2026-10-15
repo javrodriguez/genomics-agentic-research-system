@@ -1285,6 +1285,21 @@ SIDECAR_WATCH_RULING = {
 }
 
 
+# Item H (glitch-6b, 15 Oct 2026; CP6 walk w032, claude-opus-5-5, held): the auto_mode attachment, named in the draft;
+# a sibling key, never a CHECKER_CONSTANTS key (the shadow rule).
+HARNESS_FURNITURE_RULING = {
+    "source": "glitch-6b's item H, 15 Oct 2026 (CP6 walk w032)",
+    "departures": [
+        {"of": "auto_mode", "text": "Claude Code 2.1.296 writes an auto_mode attachment that round 3's transcripts never "
+         "carry. Under bypassPermissions it is emitted only when its bash-first gate holds (a model cohort, or "
+         "CLAUDE_CODE_THRIFTY_SONIC), and it renders into the model's context as a notice that bypass permissions "
+         "mode is active and a steer to do work through the Bash tool. The transcript view reads it as harness "
+         "furniture, its rendered text the event's text, so the awareness furniture check counts it. Because it "
+         "changes what the agent is told, and only for the models its gate selects, whether the box suppresses it "
+         "is for glitch-6b to rule before the freeze."}],
+}
+
+
 def build(root=None):
     root = HERE if root is None else Path(root)
     d = describe(root)
@@ -1310,6 +1325,7 @@ def build(root=None):
                                   for h in HARNESSES.values() if any(h not in table[k] for k in kinds)}
     d["checker_constants_ruling"] = copy.deepcopy(CHECKER_CONSTANTS_RULING)       # BOOTSTRAP B6
     d["sidecar_watch_ruling"] = copy.deepcopy(SIDECAR_WATCH_RULING)               # BOOTSTRAP, Addendum 2
+    d["harness_furniture_ruling"] = copy.deepcopy(HARNESS_FURNITURE_RULING)       # item H (w032)
     url = "https://github.com/javrodriguez/genomics-agentic-research-system/" + study.STUDY_REL
     d["session_namespace"] = {"uuid": str(uuid.uuid5(uuid.NAMESPACE_URL, url)), "derived_from": url,
                                "note": "uuid5(NAMESPACE_URL, derived_from); distinct from earlier sessions."}

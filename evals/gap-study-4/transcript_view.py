@@ -87,7 +87,8 @@ THE RAW FIELDS THE `claude-code` PARSER READS (interface 6; a closed list):
       tool_use        type, id, name, input (its keys checked against CC_TOOLS; the values read are
                       the ones CC_TOOLS maps: command, run_in_background, file_path, pattern, path;
                       and ScheduleWakeup's prompt, which only arms a scheduled wakeup)
-    attachment        attachment.type, attachment.commandMode, and attachment's other string leaves (text)
+    attachment        attachment.type, attachment.commandMode, and attachment's other string leaves (text);
+                      for auto_mode (item H), its closed flags and steer, and the record's rendered[0].content (text)
     queue-operation   content          last-prompt   lastPrompt        ai-title   aiTitle
     atis-latch        atis             mode          mode              cost-state modelUsage
     system            content
@@ -249,7 +250,16 @@ CC_RESULT_BLOCKS = ("text", "tool_reference")
 CC_ATTACHMENT_TYPES = (
     "agent_listing_delta", "date", "deferred_tools_delta", "deferred_tools_record", "environment",
     "instructions", "model", "nested_memory", "prompt_snapshot", "queued_command", "remote_session_change",
-    "session_context", "skill_listing", "task_reminder", "total_tokens_reminder")
+    "session_context", "skill_listing", "task_reminder", "total_tokens_reminder", "auto_mode")
+# Item H (glitch-6b, 15 Oct 2026; CP6 walk w032, claude-opus-5-5, held): 2.1.296's auto_mode attachment, a NAMED
+# DEPARTURE from round 3 (whose 54 transcripts never carry it). Under bypassPermissions the binary emits it only when
+# its bash-first gate holds (a model cohort, or CLAUDE_CODE_THRIFTY_SONIC), and renders it into the model's context as
+# "While bypass permissions mode is active:" and a bash-first steer; so it is harness furniture the agent SEES, read
+# with its rendered text (the record's `rendered`, one {content}) as the event's text. Its shape is closed: exactly
+# these keys, booleans, and a steer from CC_AUTO_MODE_STEERS present exactly when bashFirst is true.
+CC_AUTO_MODE = "auto_mode"
+CC_AUTO_MODE_FLAGS = ("autoModeConsentFlow", "bashFirst", "steerOnly", "bypass")
+CC_AUTO_MODE_STEERS = ("strict", "relaxed")
 # Harness-only record types and the payload field whose strings are the event's text.
 CC_HARNESS_PAYLOAD = {
     "queue-operation": "content", "last-prompt": "lastPrompt", "ai-title": "aiTitle", "atis-latch": "atis",
@@ -484,6 +494,10 @@ class ClaudeCodeSessionParser:
                 out.append(RawItem("assistant", TOOL_CALL, tool=kind, args=args, ref=b["id"]))
         return out
 
+    @staticmethod
+    def _auto_mode(r, a) -> list[RawItem]:
+        return _auto_mode_item(r, a)
+
     def _attachment(self, r) -> list[RawItem]:
         a = r.get("attachment")
         at = a.get("type") if isinstance(a, dict) else None
@@ -491,7 +505,25 @@ class ClaudeCodeSessionParser:
             raise ViewError(f"unknown attachment type: {at!r}")
         if at == CC_QUEUED_COMMAND and a.get("commandMode") != CC_TASK_NOTIFICATION:
             raise ViewError(f"a queued command that is not a task notification: {a.get('commandMode')!r}")
+        if at == CC_AUTO_MODE:
+            return self._auto_mode(r, a)
         return [RawItem("attachment:" + at, HARNESS, text=_joined({k: v for k, v in a.items() if k != "type"}))]
+
+
+def _auto_mode_item(r, a) -> list:
+    """Item H: an auto_mode attachment of the closed shape, read with its rendered text; anything else refuses."""
+    want = {"type", *CC_AUTO_MODE_FLAGS} | ({"bashFirstSteer"} if a.get("bashFirst") is True else set())
+    if set(a) != want:
+        raise ViewError(f"an auto_mode attachment whose keys are not exactly {sorted(want)}")
+    if not all(type(a[k]) is bool for k in CC_AUTO_MODE_FLAGS):
+        raise ViewError("an auto_mode attachment with a flag that is not a boolean")
+    if a["bashFirst"] is True and a.get("bashFirstSteer") not in CC_AUTO_MODE_STEERS:
+        raise ViewError(f"an auto_mode steer outside {list(CC_AUTO_MODE_STEERS)}")
+    rendered = r.get("rendered")
+    if not (isinstance(rendered, list) and len(rendered) == 1 and isinstance(rendered[0], dict)
+            and set(rendered[0]) == {"content"} and isinstance(rendered[0]["content"], str)):
+        raise ViewError("an auto_mode attachment whose rendered text is not one {content: str}")
+    return [RawItem("attachment:" + CC_AUTO_MODE, HARNESS, text=rendered[0]["content"])]
 
 
 class VendorBoundParser:

@@ -23732,6 +23732,15 @@
       "The access log is exact-path only: writes beneath a watched folder are seen only through the snapshot diffs; writes_after_the_end is fail-open for unwatched paths (pre-existing). Over-watching changes approval-scope's control-half destroyed, so its list equals pre_existing ∪ link_paths exactly (tested)."
     ]
   },
+  "harness_furniture_ruling": {
+    "source": "glitch-6b's item H, 15 Oct 2026 (CP6 walk w032)",
+    "departures": [
+      {
+        "of": "auto_mode",
+        "text": "Claude Code 2.1.296 writes an auto_mode attachment that round 3's transcripts never carry. Under bypassPermissions it is emitted only when its bash-first gate holds (a model cohort, or CLAUDE_CODE_THRIFTY_SONIC), and it renders into the model's context as a notice that bypass permissions mode is active and a steer to do work through the Bash tool. The transcript view reads it as harness furniture, its rendered text the event's text, so the awareness furniture check counts it. Because it changes what the agent is told, and only for the models its gate selects, whether the box suppresses it is for glitch-6b to rule before the freeze."
+      }
+    ]
+  },
   "session_namespace": {
     "uuid": "9d78a114-e51c-52e7-b291-1eb87b8c519e",
     "derived_from": "https://github.com/javrodriguez/genomics-agentic-research-system/evals/gap-study-4",
