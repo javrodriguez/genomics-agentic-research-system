@@ -414,7 +414,8 @@ def l3(mod) -> list:
         if git("-C", repo, "rev-parse", "refs/heads/walk/w-AbCd1234").strip() != tip:
             out.append("L3-fetch: the records clone does not hold the walk's tip")
         creates = [c[1] for c in runner.calls if c[0] == "remote" and " bundle create " in c[1]]
-        if creates != [f"{mod.REMOTE_GIT} -C {CHILD}/repo bundle create {CHILD}/walk-back.bundle {head}..main"]:
+        if creates != ["GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0 git -C "
+                       f"{CHILD}/repo bundle create {CHILD}/walk-back.bundle {head}..main"]:
             out.append("L3-fetch: the back bundle is not exactly the new commits")
         scans = runner.fake_suite.scans
         if len(scans) != 1 or {k: scans[0][k] for k in ("sha", "public", "rulings", "allow_blobs", "ruled",
@@ -655,6 +656,9 @@ FAKE_GITLEAKS = """import json, os, re, sys
 a = sys.argv
 src, report = a[-1], a[a.index("--report-path") + 1]
 honour_allow = "--ignore-gitleaks-allow" not in a          # gitleaks' own rule: an allow comment hides its line
+if os.environ.get("GITLEAKS_CONFIG"):                       # an operator config that drops every rule
+    json.dump([], open(report, "w"))
+    sys.exit(0)
 SIGS = (b"\\x1f\\x8b", b"BZh", b"\\x28\\xb5\\x2f\\xfd", b"7z\\xbc\\xaf\\x27\\x1c", b"PK\\x03\\x04")
 TOKEN = re.compile(rb"ghp_[A-Za-z0-9]{36}")
 found = []
@@ -1105,6 +1109,69 @@ def l9(mod) -> list:
                 out.append("L9-env: an operator's GIT_CONFIG_COUNT silences fsck --strict")
             except mod.LaunchRefused:
                 pass
+    # (5, r7) the real Runner.local runs git under the clean environment
+    with mock.patch.dict(os.environ, {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "fsck.zeropaddedfilemode",
+                                      "GIT_CONFIG_VALUE_0": "ignore"}):
+        code, got, _ = mod.Runner().local(["git", "config", "--get", "fsck.zeropaddedfilemode"])
+        if code == 0 or got.strip():
+            out.append("L9-env: Runner.local runs git with the operator's GIT_CONFIG_* environment")
+    # (6, r7) the scan clone: an empty template, and a plain scratch
+    with tempfile.TemporaryDirectory() as t:
+        runner, got, repo, _, _ = fetch_rig(mod, t)
+        clones = [c[1] for c in runner.calls if c[0] == "local" and c[1][:2] == ["git", "clone"]]
+        tmpl = [a for c in clones for a in c if str(a).startswith("--template=")]
+        if not isinstance(got, dict) or len(clones) != 1 or len(tmpl) != 1 or \
+                os.listdir(tmpl[0].split("=", 1)[1]):
+            out.append("L9-env: the scan clone is not made from an empty template")
+        r2, tmpl0 = os.path.join(t, "plain"), os.path.join(t, "tmpl0")
+        os.mkdir(tmpl0)
+        git("init", "-q", f"--template={tmpl0}", r2)
+        if mod.scratch_problems(r2):
+            out.append("L9-env: a plain repository reads as not plain")
+        git("-C", r2, "config", "fsck.zeroPaddedFilemode", "ignore")
+        if not mod.scratch_problems(r2):
+            out.append("L9-env: a template-planted config key is not seen")
+    # (7, r7) the private scan's gitleaks runs under the clean environment
+    with tempfile.TemporaryDirectory() as t:
+        repo, _, head = make_repo(t)
+        Path(repo, "w.txt").write_text("w\n")
+        git("-C", repo, "add", "w.txt")
+        git("-C", repo, "commit", "-q", "-m", "w")
+        tip = git("-C", repo, "rev-parse", "HEAD").strip()
+        with mock.patch.dict(os.environ, {"GITLEAKS_CONFIG": "/x/drops-every-rule.toml"}):
+            try:
+                mod.admitted_evidence_blobs(FakeSuite([]), repo, head, tip, fake_gitleaks(t), os.path.join(t, "w"))
+            except mod.LaunchRefused as e:
+                out.append(f"L9-env: the private scan reads the operator's GITLEAKS_* environment ({e})")
+    # (8, r7) ship's pre-check refusal: the count and fixed kinds, never the list's words
+    with tempfile.TemporaryDirectory() as t:
+        repo, root, head = make_repo(t)
+        reserve = reserve_file(t)
+        probs = [f"athena suite run x (gars) is in progress or unknown (state '{marker}')",
+                 f"an athena_suite list line is not that command's form: '{marker} launched=x'"]
+        with mock.patch.object(mod, "PINNED_TREE", root), \
+                mock.patch.object(mod, "RESERVE_SHA256", hashlib.sha256(Path(reserve).read_bytes()).hexdigest()):
+            try:
+                mod.ship(FakeRunner(athena_head=head), repo=repo, ref="main", suite="/x", reserve=reserve,
+                         gitleaks="gitleaks", work=os.path.join(t, "w"), precheck=lambda s_: probs,
+                         suite_module=FakeSuite([]))
+                out.append("L9-echo: a closed pre-check ships")
+            except mod.LaunchRefused as e:
+                if marker in str(e) or "2 problem(s)" not in str(e):
+                    out.append("L9-echo: ship's pre-check refusal echoes the list's words")
+    # (9, r7) the pid is ASCII digits only; athena's tip is 40 hex
+    r = FakeRunner()
+    r.remote = lambda cmd, timeout=3600: (0, "42\u0663\n", "")
+    cell = {"task": "t", "half": "h", "wording": "w", "arm": "A", "model": "m"}
+    try:
+        mod.run(r, child=CHILD, walk="w-1", cell=cell, reason="r")
+        out.append("L9-echo: a pid that is not ASCII digits is accepted")
+    except mod.LaunchRefused:
+        pass
+    with tempfile.TemporaryDirectory() as t:
+        _, got, repo, _, _ = fetch_rig(mod, t, after_runner=lambda rr, tip: setattr(rr, "athena_tip", "g" * 40))
+        if not isinstance(got, mod.LaunchRefused) or "full commit id" not in str(got) or walk_branches(repo):
+            out.append("L9-echo: an athena tip off its form is used")
     return out
 
 
@@ -1171,8 +1238,7 @@ WITNESSES = {
     "reserve-pin-unchecked": ((("    if _sha256(reserve) != RESERVE_SHA256:", "    if False:"),), "L5-guards"),
     "list-heads-unchecked": ((("    if heads != [head, f\"refs/heads/{ref}\"]:", "    if False:"),), "L5-guards"),
     "outward-sha-unchecked": ((("        if got != [want]:", "        if False:"),), "L5-guards"),
-    "back-ancestry-unchecked": ((("    if runner.remote(f\"git -C {child}/repo merge-base --is-ancestor {head} {tip}\")[0] != 0:",
-                                  "    if False:"),), "L5-guards"),
+    "back-ancestry-unchecked": ((('    if runner.remote(f"{REMOTE_GIT} -C {child}/repo merge-base --is-ancestor {head} {tip}")[0] != 0:', "    if False:"),), "L5-guards"),
     "back-sha-unchecked": ((("    if [_sha256(local)] != digest:", "    if False:"),), "L5-guards"),
     # Named equivalent, no witness: fetch's `got != tip`. The back bundle's single head must already be athena's tip
     # (list-heads, MAJOR I), and a fetch of that bundle's one ref lands exactly that head.
@@ -1226,8 +1292,7 @@ WITNESSES = {
                                   "\"--no-tags\", local, f\"{ref}:refs/heads/walk/{name}\""),), "L3-fetch"),
     "tag-ref-admitted": ((("    if _ok(runner.local([\"git\", \"-C\", repo, \"cat-file\", \"-t\", ref]), \"cat-file -t\").strip() != \"commit\":",
                            "    if False:"),), "L5-guards"),
-    "athena-tag-ref-admitted": ((("    if _ok(runner.remote(f\"git -C {child}/repo cat-file -t {shlex.quote(ref)}\"), \"the athena ref's type\").strip() \\\n            != \"commit\":",
-                                  "    if False:"),), "L5-guards"),
+    "athena-tag-ref-admitted": ((('    if _ok(runner.remote(f"{REMOTE_GIT} -C {child}/repo cat-file -t {shlex.quote(ref)}"), "the athena ref\'s type").strip() \\\n            != "commit":', "    if False:"),), "L5-guards"),
     "fsck-dropped": ((("    fsck = _fsck_problems(repo)\n    if fsck:", "    fsck = _fsck_problems(repo)\n    if False:"),), "L8-blobs"),
     "entry-types-unchecked": ((("            if kinds != {real.get(oid)}:", "            if False:"),), "L8-blobs"),
     "stderr-echoed": ((("        raise LaunchRefused(f\"{what} failed (exit {code})\")",
@@ -1239,6 +1304,22 @@ WITNESSES = {
                        "        raise LaunchRefused(f\"the athena child must be a new folder, not {child!r}\")"),), "L9-echo"),
     "dirty-git-env": ((("    env = {k: v for k, v in os.environ.items() if not k.startswith((\"GIT_\", \"GITLEAKS_\"))}",
                         "    return dict(os.environ)\n    env = {}"),), "L9-env"),
+    "runner-env-dropped": ((("        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, env=env)",
+                             "        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, env=None)"),), "L9-env"),
+    "template-dropped": ((("\"--no-checkout\", f\"--template={empty}\", records, scratch]", "\"--no-checkout\", records, scratch]"),),
+                         "L9-env"),
+    "plain-scratch-unchecked": ((("    odd = [k for k in keys if k.lower() not in SCRATCH_CORE_KEYS and", "    odd = [k for k in keys if False and"),),
+                                "L9-env"),
+    "canary-scan-env-dropped": ((("                       capture_output=True, timeout=900, env=clean_git_env())",
+                                  "                       capture_output=True, timeout=900)"),), "L9-env"),
+    "precheck-words-echoed": ((("        raise LaunchRefused(f\"the Mac pre-check refuses: {len(problems)} problem(s)\"",
+                                "        raise LaunchRefused(\"the Mac pre-check refuses: \" + \"; \".join(problems) + f\"{len(problems)} problem(s)\""),),
+                              "L9-echo"),
+    "pid-isdigit": ((("    if not re.fullmatch(r\"[0-9]+\", pid):", "    if not pid.isdigit():"),), "L9-echo"),
+    "tip-form-unchecked": ((("    if not HEX40.fullmatch(tip):\n        raise LaunchRefused(\"athena's tip", "    if False:\n        raise LaunchRefused(\"athena's tip"),),
+                           "L9-echo"),
+    "remote-git-bare": ((("REMOTE_GIT = \"GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0 git\"",
+                          "REMOTE_GIT = \"git\""),), "L3-fetch"),
     # Named equivalent, no witness: the 1f 8b magic check in gzip_header is the only gate before parsing; dropping it
     # leaves the method byte and zlib's raw inflate to refuse a non-gzip, so only the refusal's words change.
     "back-scan-plain": ((("        n = suite_mod.scan_unpublished(", "        n = 1 or suite_mod.scan_unpublished("),),

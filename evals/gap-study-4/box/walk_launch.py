@@ -105,6 +105,10 @@ RUN_ENV_ABSENT = {
     "GAP4_ATHENA_SUITE_PY": "read only by test_walk_launch's real-scanner proof on the Mac, never at walk time",
 }
 HEX40 = re.compile(r"[0-9a-f]{40}")
+# machine_gate's own refusal phrases, the only words of a pre-check refusal ship passes on (r7 MINOR)
+PRECHECK_KINDS = {"a run in progress or unknown": "is in progress or unknown", "a list line off its form":
+                  "is not that command's form", "a status that cannot be read": "its status cannot be read",
+                  "a list that cannot be read": "athena_suite list", "no athena_suite.py": "athena_suite.py path"}
 WALK_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 CELL = ("task", "half", "wording", "arm", "model")
 # The outward bundle's scan is athena_suite's own rule (glitch-6b, 15 Oct 2026), its code reused: every carried commit the
@@ -353,6 +357,20 @@ def _all_objects(repo: str) -> set:
     return set(_git_out(repo, "cat-file", "--batch-all-objects", "--batch-check=%(objectname)").split())
 
 
+SCRATCH_CORE_KEYS = ("core.repositoryformatversion", "core.filemode", "core.bare", "core.logallrefupdates",
+                     "core.ignorecase", "core.precomposeunicode", "core.symlinks")
+
+
+def scratch_problems(repo: str) -> list:
+    """athena_suite.assert_plain_scratch's rule: the clone's own config holds only what `git clone` writes (core keys,
+    remote.origin.*, branch.*) and its hooks folder is empty or absent."""
+    keys = [k for k in _git_out(repo, "config", "--local", "--name-only", "--null", "--list").split("\0") if k]
+    odd = [k for k in keys if k.lower() not in SCRATCH_CORE_KEYS and not k.lower().startswith(("remote.origin.",
+                                                                                               "branch."))]
+    hooks = os.path.join(_git_out(repo, "rev-parse", "--absolute-git-dir").strip(), "hooks")
+    return odd + (sorted(os.listdir(hooks)) if os.path.isdir(hooks) else [])
+
+
 def _canary() -> bytes:
     import secrets
     import string
@@ -532,7 +550,11 @@ def ship(runner: Runner, *, repo: str, ref: str, suite: str, reserve: str, gitle
     precheck = machine_gate.mac_precheck if precheck is None else precheck
     problems = precheck(suite)
     if problems:
-        raise LaunchRefused("the Mac pre-check refuses: " + "; ".join(problems))
+        # athena-made words (a run's state, an off-form list line) are never echoed (r7 MINOR): the count, and which
+        # of a fixed set of kinds were seen, only.
+        kinds = sorted({k for p in problems for k, frag in PRECHECK_KINDS.items() if frag in str(p)})
+        raise LaunchRefused(f"the Mac pre-check refuses: {len(problems)} problem(s)"
+                            + (f" ({', '.join(kinds)})" if kinds else ""))
     if _sha256(reserve) != RESERVE_SHA256:
         raise LaunchRefused("athena-reserve is not the runbook's pinned bytes")
     # The tag case, closed by construction (closure of 78ee31e7): the ref must name a commit object itself, never an
@@ -622,7 +644,7 @@ def run_command(*, child: str, walk: str, cell: dict, reason: str) -> str:
 def run(runner: Runner, *, child: str, walk: str, cell: dict, reason: str) -> int:
     out = _ok(runner.remote(run_command(child=child, walk=walk, cell=cell, reason=reason)), "starting the walk")
     pid = out.strip().splitlines()[-1] if out.strip() else ""
-    if not pid.isdigit():
+    if not re.fullmatch(r"[0-9]+", pid):
         raise LaunchRefused("the walk's pid was not recorded")
     return int(pid)
 
@@ -676,7 +698,16 @@ def fetch(runner: Runner, *, child: str, head: str, ref: str, records: str, gitl
     heads = _ok(runner.local(["git", "bundle", "list-heads", local]), "the back bundle's heads").split()
     if heads != [tip, f"refs/heads/{ref}"]:
         raise LaunchRefused("the back bundle's heads are not exactly the walk's tip at its ref")
-    _ok(runner.local(["git", "clone", "-q", "--shared", "--no-checkout", records, scratch]), "the scan clone")
+    # r7 MINOR: the scratch is made from an EMPTY template (athena_suite's scratch_clone), so no template config or
+    # hook (fsck.zeroPaddedFilemode=ignore, say) reaches it, and it must then be plain.
+    empty = os.path.join(work, "empty-template")
+    os.makedirs(empty, exist_ok=True)
+    if os.listdir(empty):
+        raise LaunchRefused("the scratch's empty template folder is not empty")
+    _ok(runner.local(["git", "clone", "-q", "--shared", "--no-checkout", f"--template={empty}", records, scratch]),
+        "the scan clone")
+    if scratch_problems(scratch):
+        raise LaunchRefused("the scan clone is not plain (a config key or a hook beyond what git clone writes)")
     _ok(runner.local(["git", "-C", scratch, "fetch", "-q", "--no-tags", local, f"{ref}:refs/walk/back"]),
         "the scan fetch")
     got = _ok(runner.local(["git", "-C", scratch, "rev-parse", "refs/walk/back"]), "the fetched tip").strip()
