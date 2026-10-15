@@ -800,11 +800,12 @@ def production_builders() -> dict:
                         if drive._ownership is None else drive._ownership)
     out["settings_guard"] = (Missing("the settings guard: box/settings_guard.py (the box lane's d3fd5305) is not on "
                                      "this tree") if drive._settings_guard is None else drive._settings_guard)
-    out["pin_for"] = (Missing("the routing pin: routing.json's pin_profiles are empty until the walks measure them")
+    out["pin_for"] = (Missing("the routing pin: routing.json's pin_profiles are empty (CP5 registers them)")
                       if not table.get("pin_profiles") else (lambda row: batch.expected_pin(row, table)))
     held = [p for k, v in check_take.CHECKER_CONSTANTS.items() for p in check_take._pending_paths(v, k)]
-    out["design_for"] = (Missing(f"the checker's design view: its constants {held} are PENDING until a walk "
-                                 f"measures them") if held else
+    out["design_for"] = (Missing(f"the checker's design view: its constants {held} are PENDING on this tree (the "
+                                 f"first-walk bootstrap ruling sources them: carried from round 3 or derived from "
+                                 f"code)") if held else
                          (lambda row, run_tree: check_take.design_view(row, pin=out["pin_for"](row),
                                                                        run_tree=run_tree)))
     return out
