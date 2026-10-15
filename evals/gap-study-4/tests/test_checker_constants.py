@@ -72,7 +72,10 @@ from box import preflight, run_take as rt  # noqa: E402
 
 R3_COMMIT = "e2979b3143081824aadea73523ec41af30c1ddb1"
 D8_SOURCE = "plans/gap-study-round-4/D8-non-claude-arms.md:294"
+# Review MINOR 5: the D8 file the row was read from, outside this repository (Glitch's plans), by its bytes on 15 Oct.
+D8_FILE_SHA256 = "907baf9719094beb207710bb8f5046c20db34727bef69f76112018760df142c5"
 D8_ROW = "| Turn budget | the driver's 900 s | the same | the same |"
+CLASSIFICATION_PATH = "lane-reports/stub-take-20261015/claude-2.1.296-env-classification-20261015.json"
 CLASSIFICATION_SOURCE = ("box ba6d7f14 lane-reports/stub-take-20261015/claude-2.1.296-env-classification-20261015.json "
                          "(sha256 4e4c81bff32694a5739b2d4e0e39963562ac8b22066ba8737a96a83601e0fcbd), flags.*.names")
 CLASSIFIED = {
@@ -390,6 +393,20 @@ class TestTheConstantsAreBoundToTheirSources(unittest.TestCase):
         self.assertTrue(k_location(ct.CHECKER_CONSTANTS, tuple(paths[:-1])), "a shorter STUDY_PATHS stayed green")
         self.assertIn(preflight.STUDY_PATHS, (preflight.PENDING, tuple(paths)))
 
+    def test_the_typed_classification_is_the_box_files_where_it_is_on_the_tree(self):
+        """Review MINOR 5: CLASSIFIED and OUTSIDE_2_1_296 are typed from the box lane's file (ba6d7f14), which is not on
+        this tree yet. Wherever it is, they must equal what it says; while it is not, the test says so."""
+        path = REPO / CLASSIFICATION_PATH
+        if not path.is_file():
+            print(f"\nNOTE {CLASSIFICATION_PATH} is not on this tree; the typed copy stands ({CLASSIFICATION_SOURCE})",
+                  file=sys.stderr)
+            self.assertFalse(path.exists())
+            return
+        d = json.loads(path.read_text())
+        self.assertEqual({k: d["flags"][k]["names"] for k in CLASSIFIED}, CLASSIFIED)
+        self.assertEqual(sorted(n for n, v in d["partition"].items() if v["matched_by"] == "outside"),
+                         sorted(OUTSIDE_2_1_296))
+
     def test_the_d8_row_and_round_3_sources_are_read(self):
         self.assertEqual(d8_budget(), 900)
         self.assertEqual(r3_poll_cap(), 3.0)
@@ -540,7 +557,7 @@ class TestAWalkTheConstantsDecideIsNeverCounted(unittest.TestCase):
 
     def test_another_digest_or_none_is_stale(self):
         for name, doc in (("other", dict(self.check(), checker_constants_sha256="0" * 64)),
-                          ("none", {k: v for k, v in self.check().items() if k != "checker_constants_sha256"})):
+                          ("null", dict(self.check(), checker_constants_sha256=None))):    # absent: unreadable
             with self.subTest(digest=name):
                 self.write(check=doc)
                 self.assertRegex(pending_walk.coverage_status(self.base, self.WALK) or "", r"^stale")
@@ -566,11 +583,50 @@ class TestAWalkTheConstantsDecideIsNeverCounted(unittest.TestCase):
         finally:
             ct.CHECKER_CONSTANTS = orig
 
-    def test_the_walk_runner_writes_the_digest(self):
+    def test_the_walk_runner_writes_the_digest_it_is_handed(self):
+        """Review MINOR 3: check_record writes the digest of the constants the checker read (the driver's), never the
+        module's; a walk the checker did not run on records none."""
         import walk_runner
-        doc = walk_runner.check_record(self.WALK, {"checker_reasons": [], "events": {}}, {}, lambda r, t: {"route": "x"},
-                                       checked=True)
-        self.assertEqual(doc["checker_constants_sha256"], ct.checker_constants_sha256())
+        args = (self.WALK, {"checker_reasons": [], "events": {}}, {}, lambda r, t: {"route": "x"})
+        self.assertEqual(walk_runner.check_record(*args, checked=True, constants_sha256="ab" * 32)
+                         ["checker_constants_sha256"], "ab" * 32)
+        self.assertIsNone(walk_runner.check_record(*args, checked=False, constants_sha256="ab" * 32)
+                          ["checker_constants_sha256"])
+        self.assertIsNone(walk_runner.check_record(*args, checked=True)["checker_constants_sha256"])
+
+    def test_the_design_views_digest_is_its_constants(self):
+        """Review MINOR 3: design_constants_sha256 recovers the constants a view was built from."""
+        self.assertIsNone(ct.design_constants_sha256("not a design"))
+        pre = copy.deepcopy(ct.CHECKER_CONSTANTS)
+        pre["driver_constants"]["permission_mode_by_arm"] = {"A": "bypassPermissions"}
+        d = ct.Design(task_id="t", spec={}, pre=dict(pre, leak_words=[]), harness="claude-code")
+        self.assertEqual(ct.design_constants_sha256(d), ct.checker_constants_sha256())
+        other = edited("budgets.poll_s", 4)
+        self.assertEqual(ct.design_constants_sha256(d.replace(pre=other)), ct.checker_constants_sha256(other))
+        self.assertIsNone(ct.design_constants_sha256(d.replace(pre=edited("run_location", ct.PENDING))))
+        self.assertIsNone(ct.design_constants_sha256(d.replace(pre={})))
+
+    def test_every_probe_form_is_unreadable(self):
+        """Review MINOR 2: only the walk runner's exact check.json, the checker run, routing not refused, and every
+        reason a string of the pre-registered vocabulary, lets a graded walk count."""
+        good = self.check()
+        probes = {
+            "capitalised": dict(good, checker_reasons=["Constant-Binding"]),
+            "bracketed": dict(good, checker_reasons=["[constant-binding]"]),
+            "nested": dict(good, checker_reasons=[["constant-binding"]]),
+            "not-a-string": dict(good, checker_reasons=[1]),
+            "under-another-key": dict(good, reasons=["constant-binding"]),
+            "a-key-missing": {k: v for k, v in good.items() if k != "events"},
+            "route-refused": dict(good, route=None, route_refused="RoutingError: x"),
+            "route-not-a-string": dict(good, route=None),
+            "not-checked": dict(good, checked=False),
+            "checked-truthy": dict(good, checked=1),
+        }
+        for name, doc in probes.items():
+            with self.subTest(probe=name):
+                self.write(check=doc)
+                self.assertEqual(pending_walk.coverage_status(self.base, self.WALK), "check unreadable")
+
 
 
 class TestTheStripRuleReadsTheRecordVocabulary(unittest.TestCase):

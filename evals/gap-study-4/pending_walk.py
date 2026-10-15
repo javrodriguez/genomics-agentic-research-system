@@ -89,13 +89,18 @@ def coverage_status(base, walk: str):
     return "not graded"
 
 
+CHECK_KEYS = ("walk", "checked", "checker_reasons", "events", "route", "route_refused", "checker_constants_sha256")
+
+
 def checker_standing(base, walk: str):
     """BOOTSTRAP B5 (glitch-6b's first-walk bootstrap ruling, 15 Oct 2026; required, or the falsifier argument fails):
     None when a graded walk's check.json lets it count, else why not. A walk is graded whenever its first agent turn
     ran, whatever its checker reasons; a walk whose checker named a reason a CHECKER_CONSTANTS value decides
     (check_take.CONSTANT_BOUND_REASONS) is never counted, and neither is one checked under constants other than those
     in force (its check.json's checker_constants_sha256): it reads stale until it is regraded. Fail closed: a missing
-    or unreadable check.json, one with no reasons list, and constants still PENDING are each reported."""
+    or unreadable check.json, one not exactly walk_runner.check_record's keys, one the checker did not run on, one whose
+    routing refused, and one with a reason that is not a string of routing.json's operator_reasons (the pre-registered
+    rehearsal_reasons) are "check unreadable"; constants still PENDING are reported too."""
     import json
     from pathlib import Path
     import check_take
@@ -103,7 +108,13 @@ def checker_standing(base, walk: str):
         check = json.loads((Path(base) / walk / "check.json").read_bytes())
     except (OSError, ValueError):
         return "check unreadable"
-    if not isinstance(check, dict) or not isinstance(check.get("checker_reasons"), list):
+    if not isinstance(check, dict) or set(check) != set(CHECK_KEYS) or check.get("checked") is not True \
+            or check.get("route_refused") is not None or not isinstance(check.get("route"), str) \
+            or not isinstance(check.get("checker_reasons"), list):
+        return "check unreadable"
+    import routing                        # review MINOR 2: every reason a str of the pre-registered vocabulary
+    vocabulary = routing.load_table()["operator_reasons"]
+    if not all(isinstance(r, str) and r in vocabulary for r in check["checker_reasons"]):
         return "check unreadable"
     bound = [r for r in check["checker_reasons"] if r in check_take.CONSTANT_BOUND_REASONS]
     if bound:

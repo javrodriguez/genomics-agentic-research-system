@@ -315,7 +315,7 @@ def checked(folder: Path) -> None:
     the checker wrote under the constants in force, naming no constant-bound reason (pending_walk.checker_standing)."""
     import check_take
     (folder / "check.json").write_text(json.dumps({"walk": folder.name, "checked": True, "checker_reasons": [],
-                                                   "events": {}, "route": None, "route_refused": None,
+                                                   "events": {}, "route": "graded", "route_refused": None,
                                                    "checker_constants_sha256": check_take.checker_constants_sha256()}))
 
 

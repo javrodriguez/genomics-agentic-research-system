@@ -2871,6 +2871,13 @@ class TakeDriver:
             raise DriveRefused(f"{self._unrestored(take)}: the take's folders are kept for a human ruling")
         return [] if take is None else self.take_files(take)
 
+    def checker_constants_sha256(self, row: dict):
+        """BOOTSTRAP (review MINOR 3): the digest of the constants the checker read for the slot's take (take_checker
+        records it from the design view), or None when no checker read it; read by walk_runner before published()."""
+        with self._lock:
+            take = self._by_slot.get(row.get("slot")) if isinstance(row, dict) else None
+        return getattr(take, "checker_constants_sha256", None)
+
     def published(self, row: dict, attempt: int) -> None:
         """TakeRepo's on_published (R4-11): the take's records are committed, so its config folder is deleted (by
         the path launch recorded), and the slot's next take starts clean."""
@@ -3281,6 +3288,7 @@ def take_checker(*, design_for, records="takes"):
         if not path.is_file():
             return {"checker_reasons": [READERS_DISAGREE], "checker_events": dict.fromkeys(ids, 0)}
         design = design_for(row, take)
+        take.checker_constants_sha256 = _ct.design_constants_sha256(design)   # BOOTSTRAP: the constants it read
         if records == "walks":                    # D1: the round-4 walk road
             got = _ct.check4_walk(path, row["task"], row["half"], row["walk"], wording_script=design.script,
                                   arm=row["arm"], design=design)

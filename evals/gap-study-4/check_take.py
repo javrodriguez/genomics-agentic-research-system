@@ -2132,8 +2132,8 @@ class Design:
 
 def design_view(row: dict, *, pin: dict, run_tree: str, constants: dict | None = None, root=None) -> Design:
     """R4C-7: the round-4 design for one registered row (its task, half, wording, pressure and arm), the take's routing
-    pin (D1) and the run tree the driver gave it. `constants` defaults to CHECKER_CONSTANTS; a walk's measured values
-    are passed here as data, never patched into prereg."""
+    pin (D1) and the run tree the driver gave it. `constants` defaults to CHECKER_CONSTANTS (ruled values, 15 Oct); other
+    constants (a test rig's) are passed here as data, never patched into prereg."""
     constants = CHECKER_CONSTANTS if constants is None else constants
     harness = (row.get("agent") or {}).get("harness")
     harness_guard(harness)
@@ -2446,6 +2446,20 @@ def checker_constants_sha256(constants: dict | None = None) -> str:
         raise CheckRefused(f"the checker constants {held} are PENDING; they have no digest")
     blob = json.dumps(constants, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def design_constants_sha256(design: "Design"):
+    """Review MINOR 3: the digest of the constants a design view was built from (the ones the checker read), recovered
+    from its pre exactly as design_view merged them: each CHECKER_CONSTANTS key, less the permission_mode_by_arm entry
+    design_view writes into driver_constants. None when the view is not a Design, lacks a key, or holds a PENDING value."""
+    if not isinstance(design, Design) or not isinstance(design.pre, dict):
+        return None
+    try:
+        got = {k: copy.deepcopy(design.pre[k]) for k in CHECKER_CONSTANTS}
+        got["driver_constants"].pop("permission_mode_by_arm", None)
+        return checker_constants_sha256(got)
+    except (KeyError, TypeError, AttributeError, CheckRefused):
+        return None
 
 
 if __name__ == "__main__":

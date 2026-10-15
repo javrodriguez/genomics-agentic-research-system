@@ -83,6 +83,7 @@ clause token, with no error (rule B).
 from __future__ import annotations
 
 import ast
+import hashlib
 import contextlib
 import io
 import json
@@ -875,36 +876,86 @@ def top_names(source: str) -> set:
     return names
 
 
-# BOOTSTRAP (glitch-6b's first-walk bootstrap ruling, 15 Oct 2026; lane bootstrap-constants): the ruling fills
-# check_take.CHECKER_CONSTANTS IN PLACE (B1), corrects the comments and the refusal that said a walk measures them, and
-# binds the ledger's cap and poll in check4 (B4). R5's prefix rule is superseded for exactly these five spans, each
-# (start anchor, end anchor) found once in the base and once now: the base's span is replaced by the current one before
-# the prefix comparison, and every other byte of the base must still be a prefix. The spans' content is bound by
-# tests/test_checker_constants.py (the constants) and tests/test_checker_body.py (the refusal).
+# BOOTSTRAP (glitch-6b's first-walk bootstrap ruling, 15 Oct 2026; lane bootstrap-constants; review MAJOR 1 fold): the
+# ruling fills check_take.CHECKER_CONSTANTS IN PLACE (B1), corrects the comments, the refusal and the docstring that
+# said a walk measures them, and binds the ledger's cap and poll in check4 (B4). R5's prefix rule is superseded for
+# exactly these six regions, each the text strictly between two anchors found once in the base and once now, and each
+# bound to its ruled content: the current region's sha256 is pinned here, so any edit inside one needs a test edit;
+# the constants region must parse to exactly one statement, the CHECKER_CONSTANTS assignment (comments aside). The base's
+# region is replaced by the pinned one before the prefix comparison; every other byte of the base is still a prefix.
 BOOTSTRAP_SPANS = (
-    ("        raise CheckRefused(f\"the design view's constants {list(design.pending)} are still PENDING;",
-     "    if design.task_id != task_id or design.half != half_name:"),
-    ("    led = _ledger_beside(path)\n", "    reasons, kept, lifted = [], [], set()\n"),
-    ("#          and check() reads them through one keyword.", "#   R4C-1/D1."),
-    ("# The keys round 3's check() reads that the round-4 draft does not carry", "\ndef harness_guard("),
-    ("#   R4C-10. run_tree_tmpdir (line 546)", "#   R4C-11."),
+    ("check4-refusal", "    if design.pending:\n", "    if design.task_id != task_id or design.half != half_name:",
+     "5904fcb6d583437ff4dfa2642710a486ac352439eb8b21b80c53dd4774fa10bf"),
+    ("check4-b4-line", 'and the take is "\n                        f"checked as arm {arm!r}")\n',
+     "    reasons, kept, lifted = [], [], set()\n",
+     "9d9613ac97e2245dd571e9f964018330cd8098590bf03a8aecba32e6f79da595"),
+    ("r4c7-comment", "(variants.operator_steps) and its source (the task's source_template rendered with the take's run "
+                     "tree),\n", "#   R4C-1/D1.",
+     "c3baa5bc41c095a1259592c830aec147df7167525fd5624c6ec7c6a2a38a3efe"),
+    ("checker-constants", "# The keys round 3's check() reads that the round-4 draft does not carry (s6b plan, section 0). "
+                          "A closed block: a key\n", "\n\ndef harness_guard(",
+     "4e44ef1c85748dec660c73a61fdf14fd0b9c69007daf0cdfc3617ad3ded2acaa"),
+    ("r4c10-comment", "#           none (a context variable, so parallel takes never see each other's), else "
+                      "prereg.load() as in round 3.\n", "#   R4C-11.",
+     "4ec1ebccb7591883e7a87ccb70946669e240acb341205f62405e8e380cc1b3de"),
+    ("design-view-docstring", "    pin (D1) and the run tree the driver gave it. `constants` defaults to CHECKER_CONSTANTS",
+     "    constants = CHECKER_CONSTANTS if constants is None else constants\n",
+     "83dbaff1086fe8dcf34be8b92c0189ad6e1410f5c0db089397f53ce72d182da4"),
 )
 
 
+def _region(text: str, start: str, end: str, name: str) -> tuple:
+    if text.count(start) != 1:
+        raise AssertionError(f"R5.bootstrap {name}: its start anchor occurs {text.count(start)} times")
+    i = text.index(start) + len(start)
+    j = text.find(end, i)
+    if j < 0:
+        raise AssertionError(f"R5.bootstrap {name}: no end anchor after its start")
+    return i, j
+
+
 def bootstrap_base(base: str, now: str) -> str:
-    """The base with each BOOTSTRAP_SPANS span replaced by the current file's; an anchor not found exactly once in
-    either raises AssertionError."""
-    def span(text, start, end):
-        if text.count(start) != 1:
-            raise AssertionError(f"R5.bootstrap: {start[:50]!r} occurs {text.count(start)} times")
-        i = text.index(start)
-        j = text.index(end, i + len(start))
-        return i, j
-    for start, end in BOOTSTRAP_SPANS:
-        i, j = span(base, start, end)
-        k, m = span(now, start, end)
-        base = base[:i] + now[k:m] + base[j:]
+    """The base with each BOOTSTRAP_SPANS region replaced by the current file's, which must hash to the pinned sha256
+    (and, for the constants region, be exactly one CHECKER_CONSTANTS assignment); otherwise AssertionError."""
+    for name, start, end, digest in BOOTSTRAP_SPANS:
+        i, j = _region(base, start, end, name)
+        k, m = _region(now, start, end, name)
+        got = now[k:m]
+        if hashlib.sha256(got.encode("utf-8")).hexdigest() != digest:
+            raise AssertionError(f"R5.bootstrap {name}: the region is not its ruled content (sha256 differs)")
+        if name == "checker-constants":
+            body = ast.parse(got).body
+            if not (len(body) == 1 and isinstance(body[0], ast.Assign) and len(body[0].targets) == 1
+                    and isinstance(body[0].targets[0], ast.Name) and body[0].targets[0].id == "CHECKER_CONSTANTS"):
+                raise AssertionError("R5.bootstrap checker-constants: the region is not exactly the one "
+                                     "CHECKER_CONSTANTS assignment")
+        base = base[:i] + got + base[j:]
     return base
+
+
+class R5Bootstrap(Case):
+    """Review MAJOR 1: an edit inside any ruled region is red (each region's own witness), and the reviewer's own probe,
+    a statement inserted after CHECKER_CONSTANTS' closing brace, is red."""
+
+    def test_the_tree_passes_and_every_region_edit_is_red(self):
+        self.assertIsNotNone(BASE_CHECK_TAKE, f"R5.bootstrap: git cannot show {BASE}'s check_take.py")
+        now = (HERE / "check_take.py").read_text()
+        base = BASE_CHECK_TAKE[:BASE_CHECK_TAKE.rindex("\nif __name__")]
+        self.assertTrue(now.startswith(bootstrap_base(base, now)), "R5.bootstrap: the tree itself")
+        for name, start, end, _ in BOOTSTRAP_SPANS:
+            with self.subTest(region=name):
+                k, m = _region(now, start, end, name)
+                edited = now[:m] + "x = 1\n" + now[m:] if name == "checker-constants" else now[:k] + " " + now[k:]
+                with self.assertRaises(AssertionError):
+                    bootstrap_base(base, edited)
+
+    def test_the_reviewers_probe_is_red(self):
+        now = (HERE / "check_take.py").read_text()
+        base = BASE_CHECK_TAKE[:BASE_CHECK_TAKE.rindex("\nif __name__")]
+        brace = now.index("\n}\n", now.index("CHECKER_CONSTANTS = {")) + 3
+        probe = now[:brace] + "never_stripped = lambda name, patterns, fixed: False\n" + now[brace:]
+        with self.assertRaises(AssertionError):
+            bootstrap_base(base, probe)
 
 
 class R5Round3(Case):
@@ -1238,6 +1289,14 @@ class R8WalkRoad(Case):
         f = self.copy()
         edit_json(f / "driver-ledger.json", budget_s=1)
         self.one_change(f, "[constant-binding] the take ran with a 1s turn budget")
+
+    def test_the_walk_records_the_digest_of_the_constants_its_checker_read(self):
+        """Review MINOR 3: check.json carries the digest of the constants the walk was checked under (the rig's
+        constants here, not production's)."""
+        ct = MODS["check_take"]
+        check = json.loads((self.folder / "check.json").read_text())
+        self.assertEqual(check["checker_constants_sha256"], ct.checker_constants_sha256(self.w.constants))
+        self.assertNotEqual(check["checker_constants_sha256"], ct.checker_constants_sha256())
 
     def test_the_cap_and_the_poll(self):
         """BOOTSTRAP B4 (15 Oct 2026): check4_walk binds the walk ledger's quiescence cap and poll interval."""
