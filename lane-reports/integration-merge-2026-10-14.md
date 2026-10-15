@@ -570,3 +570,19 @@ Written by a fresh integration window, under glitch-06.
 - **Merge clone:** merged code head `bd9d05a7`; log commits follow it. Nothing pushed.
 - **Admission battery:** FAIL 273 of 274; the one red is the bootstrap's stale `walk-check-unwritten` witness anchor.
 - **Next, on glitch-6b's word:** the final pre-walk merge (bootstrap `d4f066f4` or a newer head carrying the anchor fix; the harness's newest committed head, `664a24e7` at 05:1x), regenerate the draft through build_draft, the four checks and T52, the five Mac modules, the dry walk_runner, then `gap4-merge-prewalk-<sha7>` solo.
+
+## Final pre-walk merge: bootstrap 253fb094, harness 664a24e7 onto bd9d05a7 (15 Oct, 05:17-05:27 EDT)
+
+- `44d9cb4e`: bootstrap `253fb094` (`82eacb72` closure NITs A and B; `d4f066f4` the sidecar watch ruling in the draft; `253fb094` walk-check-unwritten re-anchored). No conflict hunk.
+- `26dd61be`: harness `664a24e7`, the branch's newest committed head when the merge started (`git log -1` at 05:17: `664a24e7 Bind the watch-list fallback to number-fidelity in code; correct the RESUME line`). Brings `184f05b3` (S1-S3) and `664a24e7`. No conflict hunk: the harness `_sidecar_on_tree` block, `EXPECTED_MISSING.remove("sidecar_for")`, `B16Watch` and its `GENERATED_ORDER` entry sit beside the bootstrap's `expected_missing()` and its two B7 asserts; both kept; no duplicate names.
+- Draft: `build_draft.py` run on `26dd61be` left `prereg-draft.json` byte-identical (cmp), so the merged draft is build_draft's output; it carries `sidecar_watch_ruling`.
+- Checks on `26dd61be`: `build_draft --check` ok; `copy_manifest --check` ok, 420 files; `freeze --check` ok, 421 paths; `batch --check` ready. T52: 12 secret-shaped paths, 12 exempt, 0 new.
+- Mac (light-ok before each; CLAUDE_CODE_MESSAGING_TOKEN unset): test_walk_builders 83, test_checker_constants 27, test_walk_runner 83, test_pending_walk 23, test_build_draft 48, all OK; `test_walk_runner.py --witnesses` rc 0, 72/72 red.
+- `walk_runner.py` dry (no GAP4_* set; `--walk w-0001 --task scope-read --half trap --wording w3 --arm A --model claude-opus-5-5`): exit 2, refusing only on `config_parent`, `proxy` (follows it) and `machine_gate`. `sidecar_for` is no longer refused.
+- Battery launched 05:27:24 EDT: `gap4-merge-prewalk-26dd61b-26dd61b-20261015T092724Z`, `--kind gars-gap4 --jobs 24 --solo`, head `26dd61be`.
+
+## RESUME HERE (15 Oct, after the pre-walk launch)
+
+- **Merge clone:** merged code head `26dd61be` (box `edd65756` + harness `664a24e7` + bootstrap `253fb094`); log commits follow it. Nothing pushed.
+- **Running:** `gap4-merge-prewalk-26dd61b-26dd61b-20261015T092724Z`. Do not cancel it.
+- **Next:** fetch with `--wait`, derive the verdict on the Mac, classify every red by owner, record it, report to glitch-6b.
