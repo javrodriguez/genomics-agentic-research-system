@@ -74,7 +74,8 @@ def furniture_problems(mod=af) -> list[str]:
     return out
 
 
-# Item G (glitch-6b, 15 Oct 2026): a w006-shaped take. Its wakeup line resolves only against the ScheduleWakeup call
+# Item G (glitch-6b, 15 Oct 2026): a w006-shaped take. (Round 3's 54 transcripts give 0 match rows, before and after
+# G, so that comparison binds nothing; this synthetic take is what binds G.) Its wakeup line resolves only against the ScheduleWakeup call
 # and result before it, so the check must read the file in one pass, never a line alone. Synthetic text throughout.
 WAKE = "this is a test of the wakeup"
 

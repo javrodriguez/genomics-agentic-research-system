@@ -298,8 +298,17 @@ def wakeup_calls(rec) -> list:
     return out
 
 
+def _genuine_result_record(rec) -> bool:
+    """A main-thread user record no refusal applies to (no isMeta, no isApiErrorMessage, not a sidechain)."""
+    return (isinstance(rec, dict) and rec.get("type") == "user" and rec.get("isSidechain") is not True
+            and not any(flag in rec for flag in ("isMeta", "isApiErrorMessage")))
+
+
 def tool_results(rec) -> list:
-    """(tool_use_id, is_error) of the tool_result blocks of one user record, in order."""
+    """(tool_use_id, is_error) of the tool_result blocks of one genuine user record, in order (review F's NIT: only
+    such a record's result arms a wakeup)."""
+    if not _genuine_result_record(rec):
+        return []
     msg = rec.get("message") if isinstance(rec, dict) and rec.get("type") == "user" else None
     content = msg.get("content") if isinstance(msg, dict) else None
     return [(b.get("tool_use_id"), b.get("is_error") is True) for b in content if isinstance(b, dict)

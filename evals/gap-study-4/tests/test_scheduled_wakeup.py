@@ -130,6 +130,8 @@ NEAR = {
     # review F (15 Oct 2026): an errored call scheduled nothing; a --resume repeat of one call arms it once
     "the call's result is an error": [op(OP1), call(), result(is_error=True), wakeup(), op(OP2)],
     "a call with no result yet": [op(OP1), call(), wakeup(), result(), op(OP2)],
+    "the call's result in a sidechain record": [op(OP1), call(), dict(result(), isSidechain=True), wakeup(), op(OP2)],
+    "the call's result in a meta record": [op(OP1), call(), dict(result(), isMeta=True), wakeup(), op(OP2)],
     "a resumed transcript repeats the call and its result": [op(OP1), call(), result(), call(), result(), wakeup(),
                                                              wakeup(), op(OP2)],
 }
@@ -312,6 +314,7 @@ VIEW_MUTANTS = (
     ("needs-result", "self.waiting[ref] = prompt", "self.armed.append(prompt)"),
     ("result-not-error", "if not errored:", "if True:"),
     ("once-per-id", "if ref not in self.done and ref not in self.waiting:", "if True:"),
+    ("result-genuine", "    if not _genuine_result_record(rec):\n        return []\n", ""),
     ("arm-by-name", 'b.get("name") == CC_WAKEUP_TOOL', "True"),
     ("arm-genuine", "if not _genuine_agent_record(rec):", "if False:"),
 )
