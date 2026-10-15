@@ -573,7 +573,8 @@ class TestArmVariables(MutantCase):
         closed = (set(rt.API_KEY_VARIABLES) | set(rt.BILLING_ROUTE_VARIABLES) | set(rt.SUBSCRIPTION_TOKEN_VARIABLES)
                   | {"CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"}
                   | set(CODEX_ROUTE_NAMED) | set(CODEX_ROUTE_DOCS_READ)    # glitch-06's rulings: every arm
-                  | set(sweep_refused()) | set(_gemini_refused()))
+                  | set(sweep_refused()) | set(_gemini_refused())
+                  | set(_claude_refused()))     # glitch-6b's ruling 4(i), 15 Oct 2026: the Claude binary sweep
         for arm in ARMS:
             got = rt.refused_variables(arm)
             expected = closed - {LOGINS[arm]}
@@ -2259,6 +2260,154 @@ class TestRefusedPrefixes(MutantCase):
 
     def test_refused_prefixes(self):
         self.assertEqual(problems_of(self.check), [])
+
+
+CLAUDE_SWEEP_DIR = os.path.join(_CLONE, "lane-reports", "stub-take-20261015")
+CLAUDE_BINARY_SHA256 = "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de"
+# The ruled names, pinned as a literal (the review of ad71ca07, MINOR 4: a reclassified CLAUDE_CODE_GATEWAY_TOKEN must
+# turn this red, not pass): glitch-6b's 4(i) and the review's three.
+CLAUDE_RULED_REFUSED = (
+    "CLAUDE_CODE_USE_ANTHROPIC_AWS", "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD", "CLAUDE_CODE_USE_MANTLE",
+    "CLAUDE_CODE_USE_GATEWAY", "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST", "CLAUDE_CODE_HOST_CREDS_FILE",
+    "ANTHROPIC_BEDROCK_BASE_URL", "ANTHROPIC_VERTEX_BASE_URL", "ANTHROPIC_FOUNDRY_BASE_URL", "ANTHROPIC_FOUNDRY_RESOURCE",
+    "ANTHROPIC_AWS_BASE_URL", "ANTHROPIC_GOOGLE_CLOUD_BASE_URL", "ANTHROPIC_BEDROCK_MANTLE_BASE_URL",
+    "ANTHROPIC_UNIX_SOCKET", "ANTHROPIC_FOUNDRY_AUTH_TOKEN", "ANTHROPIC_IDENTITY_TOKEN", "ANTHROPIC_IDENTITY_TOKEN_FILE",
+    "ANTHROPIC_ENVIRONMENT_KEY", "ANTHROPIC_WORK_SECRET", "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR",
+    "CLAUDE_CODE_GATEWAY_TOKEN", "CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR", "CLAUDE_CODE_CUSTOM_OAUTH_URL",
+    "AWS_ENDPOINT_URL_BEDROCK_RUNTIME")
+CLAUDE_SIX_SWITCHES = ("CLAUDE_CODE_USE_ANTHROPIC_AWS", "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD", "CLAUDE_CODE_USE_MANTLE",
+                       "CLAUDE_CODE_USE_GATEWAY", "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST", "CLAUDE_CODE_HOST_CREDS_FILE")
+
+
+def _claude_files():
+    d = CLAUDE_SWEEP_DIR
+    return (os.path.join(d, "claude-2.1.296-binary-sweep-20261015.json"),
+            os.path.join(d, "claude-2.1.296-route-names-20261015.json"),
+            os.path.join(d, "claude-2.1.296-env-refusal-20261015b.json"),
+            os.path.join(d, "probes", "classify_claude_env_names_v2.py"))
+
+
+def _claude_refused() -> tuple:
+    with open(_claude_files()[2], encoding="utf-8") as fh:
+        return tuple(json.load(fh)["refuse_if_present"])
+
+
+def _exempting(loads, name):
+    """json.loads that adds `name` to a classification's exempt map (the NIT B mutant: an exemption added)."""
+    def wrapped(raw, *a, **k):
+        doc = loads(raw, *a, **k)
+        if isinstance(doc, dict) and isinstance(doc.get("exempt"), dict):
+            doc["exempt"] = dict(doc["exempt"], **{name: "the operator session's own token"})
+        return doc
+    return wrapped
+
+
+def run_claude_classifier() -> bytes:
+    """classify_claude_env_names.py's stdout for the committed records, run in this process (runpy)."""
+    import io
+    import runpy
+    sweep, route, _, script = _claude_files()
+    out = io.StringIO()
+    argv = sys.argv
+    sys.argv = [script, sweep, route]
+    try:
+        with contextlib.redirect_stdout(out):
+            runpy.run_path(script, run_name="__main__")
+    finally:
+        sys.argv = argv
+    return out.getvalue().encode()
+
+
+class TestClaudeBinarySweep(MutantCase):
+    """glitch-6b's ruling 4(i), 15 Oct 2026: the pinned Claude Code 2.1.296 binary's provider and gateway switches and
+    the inference credentials no stop list held are refused if present for every arm, from the committed sweep (box
+    ba6d7f14) and its deterministic classification, re-run here byte for byte; the binary sha256 sits beside the take
+    lock (run_take.CLAUDE_BINARY), bound to box/image.lock's image id, so a changed image refuses this binding."""
+
+    def check(self):
+        out = []
+        sweep_path, route_path, class_path, _ = _claude_files()
+        with open(class_path, "rb") as fh:
+            class_raw = fh.read()
+        cls = json.loads(class_raw)
+        if run_claude_classifier() != class_raw:
+            out.append("the committed Claude classification is not the classifier's output for the committed sweep")
+        for path, key in ((sweep_path, "sweep_sha256"), (route_path, "route_names_sha256")):
+            with open(path, "rb") as fh:
+                if hashlib.sha256(fh.read()).hexdigest() != cls[key]:
+                    out.append(f"the classification does not bind {os.path.basename(path)}'s bytes")
+        binary = getattr(rt, "CLAUDE_BINARY", None)
+        if not isinstance(binary, dict):
+            return out + ["run_take has no CLAUDE_BINARY beside the take lock"]
+        if not (cls["binary_sha256"] == binary.get("sha256") == CLAUDE_BINARY_SHA256):
+            out.append("the sweep is not of the pinned binary sha256 (run_take.CLAUDE_BINARY)")
+        if not (cls["image"] == binary.get("image_id") == _lock_image(".")):
+            out.append("the Claude binary record is not of box/image.lock's image id")
+        if binary.get("path") != cls["binary_path"]:
+            out.append("CLAUDE_BINARY's path is not the swept path")
+        refuse = tuple(cls["refuse_if_present"])
+        if tuple(getattr(rt, "CLAUDE_BINARY_SWEEP_REFUSED", ())) != refuse:
+            out.append("run_take's Claude sweep tuple drifted from the committed classification")
+        for n in CLAUDE_SIX_SWITCHES:
+            if n not in refuse:
+                out.append(f"{n}, a billing switch outside every pattern, is not refused")
+        claude_refused = rt.refused_variables(rt.CLAUDE_CODE)
+        for n in CLAUDE_RULED_REFUSED:
+            if n not in claude_refused:
+                out.append(f"{n}, a ruled name, is not refused for a Claude take")
+        # Completeness (MINOR 4): every name the sweep's patterns or the route read carried is refused, in a take
+        # row, or exempt with a reason.
+        with open(sweep_path, encoding="utf-8") as fh:
+            swept = set(json.load(fh)["names"])
+        with open(route_path, encoding="utf-8") as fh:
+            swept |= set(json.load(fh)["names"])
+        rows = set().union(*(set(v) for v in rt.TAKE_ENV.values()))
+        exempt = {n for n, why in cls.get("exempt", {}).items() if isinstance(why, str) and why.strip()}
+        if set(cls.get("exempt", {})) != {"CLAUDE_CODE_OAUTH_TOKEN"}:      # closure review NIT B: pinned exactly
+            out.append(f"the exemption set is {sorted(cls.get('exempt', {}))}, not exactly the Claude login")
+        loose = sorted(n for n in swept if n not in claude_refused and n not in rows and n not in exempt)
+        if loose:
+            out.append(f"{len(loose)} swept name(s) neither refused, in a take row nor exempt with a reason: {loose[:6]}")
+        if rt.LOGIN_VARIABLE[rt.CLAUDE_CODE] in refuse:
+            out.append("the Claude row's own login is refused")
+        for arm in (rt.CODEX, rt.CLAUDE_CODE, rt.GEMINI):
+            missing = sorted(set(refuse) - set(rt.refused_variables(arm)))
+            if missing:
+                out.append(f"{arm}: the Claude sweep's names not refused: {missing[:5]}")
+            in_row = sorted(set(rt.TAKE_ENV[arm]) & set(rt.refused_variables(arm)))
+            if in_row:
+                out.append(f"{arm}: its own row's names are refused: {in_row}")
+        try:
+            rt.check_environment(rt.CLAUDE_CODE, {"CLAUDE_CODE_USE_MANTLE": "1"})
+            out.append("a set CLAUDE_CODE_USE_MANTLE does not refuse a Claude take")
+        except rt.Refused:
+            pass
+        return out
+
+    def test_the_claude_binary_sweep_is_refused(self):
+        self.assertEqual(problems_of(self.check), [])
+
+    def test_mutants(self):
+        refuse = tuple(json.loads(open(_claude_files()[2], encoding="utf-8").read())["refuse_if_present"])
+        self.assert_green_then_red(self.check, (
+            ("a switch dropped", lambda: mock.patch.object(rt, "CLAUDE_BINARY_SWEEP_REFUSED",
+                                                           tuple(n for n in refuse if n != "CLAUDE_CODE_USE_MANTLE"))),
+            ("the sweep not in the refused set", lambda: mock.patch.dict(
+                rt.VENDOR_BILLING_ROUTE_VARIABLES, {rt.CLAUDE_CODE: ()})),
+            ("another binary", lambda: mock.patch.dict(rt.CLAUDE_BINARY, {"sha256": "0" * 64})),
+            ("another image", lambda: mock.patch.dict(rt.CLAUDE_BINARY, {"image_id": "sha256:" + "0" * 64})),
+            ("the gateway token reclassified", lambda: _patches(
+                (rt, "CLAUDE_BINARY_SWEEP_REFUSED", tuple(n for n in refuse if n != "CLAUDE_CODE_GATEWAY_TOKEN")),
+                (rt, "VENDOR_BILLING_ROUTE_VARIABLES", dict(
+                    rt.VENDOR_BILLING_ROUTE_VARIABLES,
+                    **{rt.CLAUDE_CODE: tuple(n for n in refuse if n != "CLAUDE_CODE_GATEWAY_TOKEN")})))),
+            ("the session token exempted", lambda: mock.patch.object(
+                json, "loads", _exempting(json.loads, "CLAUDE_CODE_MESSAGING_TOKEN"))),
+            ("a pattern-matched name dropped", lambda: _patches(
+                (rt, "VENDOR_BILLING_ROUTE_VARIABLES", dict(
+                    rt.VENDOR_BILLING_ROUTE_VARIABLES,
+                    **{rt.CLAUDE_CODE: tuple(n for n in refuse if n != "ANTHROPIC_SMALL_FAST_MODEL")})))),
+        ))
 
 
 class TestGeminiPackageSweep(MutantCase):

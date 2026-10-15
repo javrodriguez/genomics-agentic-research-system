@@ -1,0 +1,21 @@
+{
+ "cases": {
+  "nonpublic": {
+   "kind": "Refused",
+   "refused": true,
+   "why": "gitleaks found 1 item(s) in commits that are not public: b.txt:github-pat:1"
+  },
+  "public-only": {
+   "refused": false,
+   "scanned_commits": 0
+  },
+  "unreadable": {
+   "kind": "Refused",
+   "refused": true,
+   "why": "the public reference file:///var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/tmpxz25qvf7/absent.git could not be read anonymously (git exit 128); nothing ships"
+  }
+ },
+ "gitleaks": "/Users/javrodher/.local/bin/gitleaks",
+ "suite": "/Users/javrodher/glitch/workspaces/aegis/ops/athena_suite.py",
+ "verdict": "PASS"
+}
