@@ -310,6 +310,15 @@ def harness_of(draft) -> dict:
 GRADED = '{"graded": true, "row": {}, "grade": {"label": "stand-in"}}\n'
 
 
+def checked(folder: Path) -> None:
+    """BOOTSTRAP B5 (glitch-6b's first-walk bootstrap ruling, 15 Oct 2026): a graded walk counts only beside a check.json
+    the checker wrote under the constants in force, naming no constant-bound reason (pending_walk.checker_standing)."""
+    import check_take
+    (folder / "check.json").write_text(json.dumps({"walk": folder.name, "checked": True, "checker_reasons": [],
+                                                   "events": {}, "route": None, "route_refused": None,
+                                                   "checker_constants_sha256": check_take.checker_constants_sha256()}))
+
+
 def entry(spec: dict, walk: str, **changes) -> dict:
     e = {k: spec[k] for k in FIELDS}
     e.update(walk=walk, reason="synthetic register entry for a test", counted=False)
@@ -412,6 +421,7 @@ class Base(unittest.TestCase):
                 if isinstance(walk, str) and wr.WALK_ID.fullmatch(walk) and not (base / walk).exists():
                     (base / walk).mkdir()
                     (base / walk / "grade.json").write_text(GRADED)
+                    checked(base / walk)
         return base
 
     def raw_register(self, text: str) -> Path:
@@ -653,8 +663,10 @@ class P7RegisterOnly(Base):
                  and Path(p).resolve().is_relative_to(base.resolve())]
         self.assertTrue(under, "P7.register-only: the recorder saw the register (the instrument is armed)")
         grade = (base / "walk-a" / "grade.json").resolve()      # batch-8 ruling: each registered walk's grade
-        self.assertEqual({Path(p).resolve() for _, p in under}, {register, grade},
-                         f"P7.register-only: only the register and each registered walk's grade.json are opened or "
+        check = (base / "walk-a" / "check.json").resolve()      # BOOTSTRAP B5: and its check.json
+        self.assertEqual({Path(p).resolve() for _, p in under}, {register, grade, check},
+                         f"P7.register-only: only the register and each registered walk's grade.json and check.json "
+                         f"are opened or "
                          f"looked up under rehearsals/, and nothing is listed: {sorted(set(under))}")
         self.assertNotIn("list", {kind for kind, _ in under}, "P7.register-only")
         self.assertRegex(out, r"(?m)^covered  .* by walk-a$", "P7.register-only")
@@ -1103,6 +1115,7 @@ class P18Pending(Base):
         self.assertIn("pending, not counted: walk 'g-pending-1'", out,
                       "P18.pending: a regrade that does not re-derive supersedes nothing")
         (base / "g-ungraded-2" / "grade.json").write_text(GRADED)
+        checked(base / "g-ungraded-2")                          # BOOTSTRAP B5
         code, out = self.cli("P18.pending", ["--coverage", "--base", str(base)])
         self.assertEqual(code, 0, f"P18.pending: {out[-300:]}")
         self.assertRegex(out, rf"(?m)^covered  {re.escape(self.sline(spec))} by g-ungraded-2$",

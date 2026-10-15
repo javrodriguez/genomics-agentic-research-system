@@ -575,6 +575,22 @@ class TestTheRealDesign(unittest.TestCase):
         # BOOTSTRAP (15 Oct 2026): the production constants hold the ruled values, so nothing is pending.
         self.assertEqual(ct.design_view(row(), pin=pin(), run_tree=RUN_TREE).pending, ())
 
+    def test_b4_the_ledgers_cap_and_poll_are_bound(self):
+        """BOOTSTRAP B4 (15 Oct 2026): check4 binds the driver ledger's finalize_wait_s and poll_s to the design's
+        budgets; either one changed is constant-binding."""
+        d = view(ct)
+        path = take_folder(d.script)
+        self.assertNotIn("constant-binding", run4(ct, path, d, d.script)["reasons"], "B4: the clean take")
+        ledger_path = path.parent / "driver-ledger.json"
+        clean = ledger_path.read_text()
+        for key, value in (("finalize_wait_s", 30), ("poll_s", 5)):
+            with self.subTest(key=key):
+                ledger_path.write_text(json.dumps(dict(json.loads(clean), **{key: value})))
+                got = run4(ct, path, d, d.script)
+                self.assertIn("constant-binding", got["reasons"], f"B4: {key} {value} was not bound")
+                self.assertTrue(any(key in x for x in got["problems"]), got["problems"])
+        ledger_path.write_text(clean)
+
     def test_the_constants_are_closed_and_never_shadow_the_draft(self):
         self.assertTrue(hasattr(ct, "design_view"), "check_take.py has no design_view (L-S6-1)")
         with self.assertRaises(ct.CheckRefused):

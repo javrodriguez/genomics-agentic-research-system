@@ -1239,6 +1239,14 @@ class R8WalkRoad(Case):
         edit_json(f / "driver-ledger.json", budget_s=1)
         self.one_change(f, "[constant-binding] the take ran with a 1s turn budget")
 
+    def test_the_cap_and_the_poll(self):
+        """BOOTSTRAP B4 (15 Oct 2026): check4_walk binds the walk ledger's quiescence cap and poll interval."""
+        for key in ("finalize_wait_s", "poll_s"):
+            with self.subTest(key=key):
+                f = self.copy()
+                edit_json(f / "driver-ledger.json", **{key: 1})
+                self.one_change(f, f"[constant-binding] the take ran with {key} 1 ")
+
     def test_the_checkout(self):
         f = self.copy()
         n = edit_transcript(f / "transcript.jsonl", attachment("session_context", lambda a: a["context"].update(
