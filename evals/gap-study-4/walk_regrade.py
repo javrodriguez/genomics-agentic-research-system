@@ -22,6 +22,32 @@ drive.codex_cross_check. The document:
    cross-check agreed, or "why" when it refused}.
 A grader that raises refuses the regrade: no partial record is written. The checker's reading and route are not
 re-derived here (they need the design view and its constants); check.json keeps saying the checker never ran.
+
+THE RECHECK (glitch-6b's scheduled-wakeup ruling, 15 Oct 2026; freeze-gate ruling line 51, required before that
+amendment counts). A Claude Code walk whose checker DID run, checked under constants since superseded, is re-checked
+from its COMMITTED records, with no live take, no container and no model:
+
+    python3 evals/gap-study-4/walk_regrade.py --recheck <id> --home H --temp-root T --checkout C
+                            write rehearsals/<id>/recheck-<n>.json, n one past the walk's committed rechecks
+    commit_recheck(<id>, <n>, secrets=..., rules_scanner=...)   scan and commit exactly that file (RECHECK_SUBJECT)
+
+recheck_doc(walk, n, machine=...) reads the walk folder at HEAD, refuses unless every file the walk commit added is
+byte-identical at HEAD (a record edited after its walk commit is a tamper, refused) and its check.json is
+walk_runner.check_record's document with the checker run, then runs the same checker the driver ran
+(drive.take_checker, records="walks": check4_walk on the committed transcript, readers-disagree on a non-empty
+cross-check) against the design view built now (check_take.design_view with the constants in force, the routing pin
+and the walk's run tree). The machine the walk ran on is named, never guessed: `machine` is exactly {home,
+temp_root, checkout}, the checker's CHECK_HOME, CHECK_TEMP and CHECKOUT_REPO while it reads, and the run tree is
+temp_root/neutral_name(walk_session_id(walk)), as drive.run_tree_path builds it on that machine. The document
+{"schema": 1, "walk", "n", "walk_commit", "supersedes" (check.json, or recheck-<n-1>.json), "machine", "run_tree",
+"checker_constants_sha256", "checker_reasons", "checker_events", "was" (the superseded file's digest and reasons),
+"change" (digest from and to, reasons added and removed), "route": null} never edits the old check.json or an
+earlier recheck: each is a new file, append-only by its ordinal. Limits, named: the route is not re-derived (the
+routing records the driver folds from the live turns and the box are not committed), so `route` is null; check.json's
+outside_reach adds the commit scan's count, so the recheck reports the checker's own events by id and names no
+outside_reach; the checker's interpreter prefixes and checkout_roots' `~` spellings are the RECHECKING machine's, so
+a recheck run anywhere but the walk's machine is read for any reason change before it is accepted.
+pending_walk.checker_standing reads the latest recheck only when it re-derives to its exact bytes.
 """
 from __future__ import annotations
 
@@ -45,6 +71,10 @@ import walk_register  # noqa: E402
 REGRADE_FILE = "regrade.json"
 REGRADE_SUBJECT = "Regrade one pending walk; never counted"
 REGRADE_HARNESSES = ("gemini", "codex")      # Codex since Codex slice 3
+RECHECK_PREFIX = "recheck-"
+RECHECK_SUBJECT = "Recheck one walk under the checker constants in force; never counted"
+RECHECK_HARNESSES = ("claude-code",)        # check_take.HARNESSES_WITH_READERS
+MACHINE_KEYS = ("checkout", "home", "temp_root")
 
 
 class RegradeRefused(ValueError):
@@ -143,11 +173,16 @@ def commit_regrade(walk: str, study: Path = HERE, *, secrets, rules_scanner, hol
     """Scan the walk's regrade.json (box/scan_record, kind ledger, as WalkRepo scans a walk's ledgers) and commit it
     alone under REGRADE_SUBJECT. Refuses when anything else is staged, the scan refuses, or the staged blob is not the
     scanned bytes."""
+    return _commit_one(walk, REGRADE_FILE, REGRADE_SUBJECT, study, secrets=secrets, rules_scanner=rules_scanner,
+                       holdout_matcher=holdout_matcher)
+
+
+def _commit_one(walk: str, name: str, subject: str, study: Path, *, secrets, rules_scanner, holdout_matcher) -> str:
     import takes as takes_mod
     from box import scan_record
     study = Path(study)
     root, prefix = _repo(study)
-    rel = f"{_walk_rel(prefix, walk)}/{REGRADE_FILE}"
+    rel = f"{_walk_rel(prefix, walk)}/{name}"
     path = root / rel
     if path.is_symlink() or not path.is_file():
         raise RegradeRefused(f"{rel} is not a regular file")
@@ -168,7 +203,7 @@ def commit_regrade(walk: str, study: Path = HERE, *, secrets, rules_scanner, hol
         nrr._git(root, "reset", "-q", "--", rel)
         raise RegradeRefused(f"the staged regrade is not exactly the scanned {rel}: {staged}")
     with tempfile.NamedTemporaryFile("w", suffix=".msg", delete=False) as fh:
-        fh.write(REGRADE_SUBJECT + "\n")
+        fh.write(subject + "\n")
         msg = fh.name
     try:
         nrr._git(root, "commit", "-q", "-F", msg)
@@ -197,7 +232,227 @@ def regrade_problems(study: Path = HERE, *, readers=None, grade=None) -> list:
             continue
         if again != nrr._show(root, rel):
             out.append(f"walk {parts[0]!r}: {REGRADE_FILE} differs from re-deriving it")
+    for rel in listed:                                   # every committed recheck re-derives to its exact bytes
+        parts = rel[len(walks) + 1:].split("/")
+        if len(parts) != 2 or not parts[1].startswith(RECHECK_PREFIX):
+            continue
+        try:
+            raw = nrr._show(root, rel)
+            n = int(parts[1][len(RECHECK_PREFIX):-len(".json")])
+            again = regrade_bytes(recheck_doc(parts[0], n, study, machine=json.loads(raw)["machine"]))
+        except (RegradeRefused, ValueError, KeyError, TypeError, nrr.RegistrationRefused) as e:
+            out.append(f"walk {parts[0]!r}: {parts[1]} cannot be re-derived: {e}")
+            continue
+        if again != raw:
+            out.append(f"walk {parts[0]!r}: {parts[1]} differs from re-deriving it")
     return out
+
+
+# ---- the recheck (glitch-6b's scheduled-wakeup ruling, 15 Oct 2026) -------------------------------------------------
+
+def recheck_name(n: int) -> str:
+    if type(n) is not int or n < 1:
+        raise RegradeRefused(f"a recheck's ordinal is a positive integer, not {n!r}")
+    return f"{RECHECK_PREFIX}{n}.json"
+
+
+def _committed_rechecks(names) -> list:
+    """The ordinals of the recheck files among `names`; every recheck-* name is recheck-<n>.json and they run 1..k."""
+    import re
+    shape = re.compile(re.escape(RECHECK_PREFIX) + r"([1-9][0-9]*)\.json")
+    odd = [x for x in names if x.startswith(RECHECK_PREFIX) and not shape.fullmatch(x)]
+    if odd:
+        raise RegradeRefused(f"recheck files not named recheck-<n>.json: {odd}")
+    got = sorted(int(shape.fullmatch(x).group(1)) for x in names if shape.fullmatch(x))
+    if got != list(range(1, len(got) + 1)):
+        raise RegradeRefused(f"the walk's rechecks are {got}, not 1..{len(got)}")
+    return got
+
+
+def _machine(machine) -> dict:
+    if not isinstance(machine, dict) or sorted(machine) != sorted(MACHINE_KEYS) or not all(
+            isinstance(v, str) and v.startswith("/") and "\n" not in v for v in machine.values()):
+        raise RegradeRefused(f"the walk's machine is named exactly as {list(MACHINE_KEYS)}, absolute paths; "
+                             f"never guessed")
+    return dict(machine)
+
+
+def _untampered(root: Path, walk_rel: str, commit: str, names) -> None:
+    """Every file the walk commit added is byte-identical at HEAD, and nothing but rechecks and regrade.json was added
+    after it."""
+    then = nrr._git(root, "ls-tree", "-r", commit, "--", walk_rel + "/").splitlines()
+    now = nrr._git(root, "ls-tree", "-r", "HEAD", "--", walk_rel + "/").splitlines()
+    then = {ln.split("\t", 1)[1]: ln.split("\t", 1)[0] for ln in then}
+    now = {ln.split("\t", 1)[1]: ln.split("\t", 1)[0] for ln in now}
+    changed = sorted(p for p in then if now.get(p) != then[p])
+    if changed:
+        raise RegradeRefused(f"the walk's records changed after its walk commit {commit[:12]}: {changed}; a committed "
+                             f"record is never edited, so this walk is refused")
+    later = sorted(p.rsplit("/", 1)[1] for p in now if p not in then)
+    stray = [x for x in later if x != REGRADE_FILE and not x.startswith(RECHECK_PREFIX)]
+    if stray:
+        raise RegradeRefused(f"the walk folder gained {stray} after its walk commit; only rechecks and a regrade may")
+
+
+def _check_fields(doc, name) -> dict:
+    """The superseded file's digest and reasons. check.json must be walk_runner's document with the checker run."""
+    import pending_walk
+    if name == "check.json" and (not isinstance(doc, dict) or set(doc) != set(pending_walk.CHECK_KEYS)
+                                 or doc.get("checked") is not True):
+        raise RegradeRefused("the walk's check.json is not walk_runner's document with the checker run; a recheck "
+                             "re-runs a checker that ran, never runs it first")
+    if not isinstance(doc, dict) or not isinstance(doc.get("checker_reasons"), list):
+        raise RegradeRefused(f"{name} carries no checker reasons")
+    return {"file": name, "checker_constants_sha256": doc.get("checker_constants_sha256"),
+            "checker_reasons": list(doc["checker_reasons"])}
+
+
+def production_design(row, run_tree):
+    """The design view a walk is re-checked against: check_take.design_view with the constants in force, routing's pin
+    for the row and the walk's run tree."""
+    import batch
+    import check_take as ct
+    import routing
+    return ct.design_view(row, pin=batch.expected_pin(row, routing.load_table()), run_tree=run_tree)
+
+
+def production_checker(row, design, base: Path, ledger: dict) -> dict:
+    """The driver's own checker (drive.take_checker, records="walks") on the committed folder."""
+    import types
+    import drive
+    take = types.SimpleNamespace(folder=str(base), cross_check=ledger.get("cross_check"))
+    return drive.take_checker(design_for=lambda r, t: design, records="walks")(row, take, [])
+
+
+def recheck_doc(walk: str, n: int, study: Path = HERE, *, machine, design_for=None, checker=None) -> dict:
+    """The recheck document of ordinal `n` for `walk` (module docstring). `design_for(row, run_tree)` defaults to
+    check_take.design_view with routing's pin; `checker(row, design, folder, ledger)` to production_checker."""
+    import check_take as ct
+    import drive
+    import run as run_mod
+    machine = _machine(machine)
+    if not (isinstance(walk, str) and walk_register.WALK_ID.fullmatch(walk)):
+        raise RegradeRefused(f"{walk!r} is not a walk id")
+    name = recheck_name(n)
+    root, prefix = _repo(Path(study))
+    walk_rel = _walk_rel(prefix, walk)
+    register_rel = nrr._rel(prefix, f"{mode_binding.WALKS_DIR}/{walk_register.REGISTER_NAME}")
+    try:
+        register = json.loads(nrr._show(root, register_rel), object_pairs_hook=walk_register.no_duplicate_keys)
+        entries = [e for e in register["walks"] if isinstance(e, dict) and e.get("walk") == walk]
+    except (ValueError, KeyError, TypeError, walk_register.DuplicateKey, nrr.RegistrationRefused) as e:
+        raise RegradeRefused(f"the committed rehearsals register cannot be read: {e}") from None
+    if len(entries) != 1:
+        raise RegradeRefused(f"walk {walk!r} is not registered once in the committed register")
+    commit = walk_commit(root, walk_rel)
+    names = [p.rsplit("/", 1)[1] for p in nrr._git(root, "ls-tree", "-r", "--name-only", "HEAD", "--",
+                                                    walk_rel + "/").splitlines()]
+    _untampered(root, walk_rel, commit, names)
+    have = _committed_rechecks(names)
+    if n > len(have) + 1:
+        raise RegradeRefused(f"recheck {n} would skip ordinal {len(have) + 1}")
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp) / walk
+        try:
+            nrr._materialize(root, walk_rel, base)
+        except nrr.RegistrationRefused as e:
+            raise RegradeRefused(str(e)) from None
+        for later in range(n, len(have) + 1):             # the doc of ordinal n sees only what came before it
+            (base / recheck_name(later)).unlink()
+        try:
+            ledger = json.loads((base / drive.LEDGER_FILE).read_bytes())
+            old = json.loads((base / "check.json").read_bytes())
+        except (OSError, ValueError) as e:
+            raise RegradeRefused(f"the committed walk's ledger or check.json cannot be read: {e}") from None
+        _check_fields(old, "check.json")
+        prev_name = "check.json" if n == 1 else recheck_name(n - 1)
+        try:
+            prev = _check_fields(json.loads((base / prev_name).read_bytes()), prev_name)
+        except (OSError, ValueError) as e:
+            raise RegradeRefused(f"{prev_name} cannot be read: {e}") from None
+        harness = (ledger.get("agent") or {}).get("harness")
+        if harness not in RECHECK_HARNESSES:
+            raise RegradeRefused(f"no recheck road for harness {harness!r}: only Claude Code walks have record "
+                                 f"readers in check_take.py")
+        if not (base / "transcript.jsonl").is_file():
+            raise RegradeRefused("the committed walk has no transcript.jsonl")
+        try:
+            row = dict(run_mod.walk_row(entries[0], ledger), walk=walk, slot=walk)
+        except ValueError as e:
+            raise RegradeRefused(f"the walk's row cannot be rebuilt: {e}") from None
+        run_tree = machine["temp_root"].rstrip("/") + "/" + drive.neutral_name(ct.walk_session_id(walk))
+        design_for = production_design if design_for is None else design_for
+        saved = (ct.CHECK_HOME, ct.CHECK_TEMP, ct.CHECKOUT_REPO)
+        ct.CHECK_HOME, ct.CHECK_TEMP, ct.CHECKOUT_REPO = (Path(machine["home"]), Path(machine["temp_root"]),
+                                                          Path(machine["checkout"]))
+        try:
+            design = design_for(row, run_tree)
+            digest = ct.design_constants_sha256(design)
+            if digest is None:
+                raise RegradeRefused("the design view's constants have no digest (PENDING or incomplete)")
+            got = (production_checker if checker is None else checker)(row, design, base, ledger)
+        except (ct.CheckRefused, KeyError) as e:
+            raise RegradeRefused(f"the checker refused the walk: {type(e).__name__}: {e}") from None
+        finally:
+            ct.CHECK_HOME, ct.CHECK_TEMP, ct.CHECKOUT_REPO = saved
+    reasons = list(got["checker_reasons"])
+    return {"schema": 1, "walk": walk, "n": n, "walk_commit": commit, "supersedes": prev_name, "machine": machine,
+            "run_tree": design.run_tree, "checker_constants_sha256": digest, "checker_reasons": reasons,
+            "checker_events": dict(got["checker_events"]), "route": None,
+            "was": prev,
+            "change": {"checker_constants_sha256": [prev["checker_constants_sha256"], digest],
+                       "reasons_added": sorted(set(reasons) - set(prev["checker_reasons"])),
+                       "reasons_removed": sorted(set(prev["checker_reasons"]) - set(reasons))}}
+
+
+def next_recheck(walk: str, study: Path = HERE) -> int:
+    root, prefix = _repo(Path(study))
+    walk_rel = _walk_rel(prefix, walk)
+    names = [p.rsplit("/", 1)[1] for p in nrr._git(root, "ls-tree", "-r", "--name-only", "HEAD", "--",
+                                                    walk_rel + "/").splitlines()]
+    return len(_committed_rechecks(names)) + 1
+
+
+def write_recheck(walk: str, study: Path = HERE, **kw) -> Path:
+    """Write the next recheck (one past the committed ones); refuses when that file, or any uncommitted recheck,
+    already exists in the folder: append-only, one at a time."""
+    n = next_recheck(walk, study)
+    folder = Path(study) / mode_binding.WALKS_DIR / walk
+    loose = sorted(p.name for p in folder.glob(RECHECK_PREFIX + "*"))
+    root, prefix = _repo(Path(study))
+    loose = [x for x in loose if not nrr._in_head(root, f"{_walk_rel(prefix, walk)}/{x}")]
+    if loose:
+        raise RegradeRefused(f"uncommitted recheck(s) {loose} in the walk folder; commit or remove them first")
+    data = regrade_bytes(recheck_doc(walk, n, study, **kw))
+    path = folder / recheck_name(n)
+    with open(path, "xb") as fh:
+        fh.write(data)
+    return path
+
+
+def commit_recheck(walk: str, n: int, study: Path = HERE, *, secrets, rules_scanner, holdout_matcher=None) -> str:
+    return _commit_one(walk, recheck_name(n), RECHECK_SUBJECT, study, secrets=secrets, rules_scanner=rules_scanner,
+                       holdout_matcher=holdout_matcher)
+
+
+def recheck_state(base, walk: str, **kw):
+    """The latest committed recheck of a walk under the rehearsals folder `base`, when it re-derives to its exact
+    bytes (recheck_doc with its own recorded machine): its document; None when the walk has none; RegradeRefused
+    when one does not re-derive (fail closed)."""
+    study = Path(base).parent
+    n = next_recheck(walk, study) - 1
+    if n == 0:
+        return None
+    root, prefix = _repo(study)
+    raw = nrr._show(root, f"{_walk_rel(prefix, walk)}/{recheck_name(n)}")
+    try:
+        doc = json.loads(raw)
+        machine = doc["machine"]
+    except (ValueError, KeyError, TypeError) as e:
+        raise RegradeRefused(f"{recheck_name(n)} cannot be read: {e}") from None
+    if regrade_bytes(recheck_doc(walk, n, study, machine=machine, **kw)) != raw:
+        raise RegradeRefused(f"{recheck_name(n)} differs from re-deriving it")
+    return doc
 
 
 def main(argv=None) -> int:
@@ -206,8 +461,20 @@ def main(argv=None) -> int:
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--walk")
     g.add_argument("--check", action="store_true")
+    g.add_argument("--recheck", metavar="WALK")
+    for key in MACHINE_KEYS:
+        ap.add_argument("--" + key.replace("_", "-"), help="the walk machine's own (a recheck needs all three)")
     a = ap.parse_args(argv)
     try:
+        if a.recheck:
+            machine = {k: getattr(a, k) for k in MACHINE_KEYS}
+            path = write_recheck(a.recheck, machine=machine)
+            doc = json.loads(path.read_bytes())
+            ch = doc["change"]
+            print(f"walk_regrade: wrote {path} (supersedes {doc['supersedes']}); digest "
+                  f"{ch['checker_constants_sha256'][0]} -> {ch['checker_constants_sha256'][1]}; reasons added "
+                  f"{ch['reasons_added']}, removed {ch['reasons_removed']}; commit it with commit_recheck")
+            return 0
         if a.check:
             bad = regrade_problems()
             for b in bad:
@@ -216,7 +483,7 @@ def main(argv=None) -> int:
             return 1 if bad else 0
         print(f"walk_regrade: wrote {write_regrade(a.walk)}; commit it with commit_regrade (scanned, alone)")
         return 0
-    except (RegradeRefused, nrr.RegistrationRefused) as e:
+    except (RegradeRefused, nrr.RegistrationRefused, FileExistsError) as e:
         print(f"walk_regrade: REFUSED {e}")
         return 2
 

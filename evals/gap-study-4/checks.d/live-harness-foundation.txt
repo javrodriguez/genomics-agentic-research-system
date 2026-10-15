@@ -21,3 +21,4 @@ python3 -B -W ignore evals/gap-study-4/walk_regrade.py --check
 python3 -B -W ignore evals/gap-study-4/tests/test_codex_identity.py
 python3 -B -W ignore evals/gap-study-4/tests/test_pending_codex_walk.py
 python3 -B -W ignore evals/gap-study-4/tests/test_scheduled_wakeup.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_recheck.py

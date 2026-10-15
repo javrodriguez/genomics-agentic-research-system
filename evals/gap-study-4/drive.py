@@ -3520,6 +3520,9 @@ WALK_GRADE = _mode_binding.WALK_GRADE
 WALK_CHECK = "check.json"     # W10 (D1): the walk's checker reading and its route, beside grade.json
 WALK_REGRADE = "regrade.json"  # live harness (finding 2): a pending walk's superseding regrade, a later commit's only file
 WALK_FILE_KINDS = {WALK_GRADE: "ledger", WALK_CHECK: "ledger", WALK_REGRADE: "ledger"}
+# The scheduled-wakeup ruling (glitch-6b, 15 Oct 2026): a walk's rechecks, recheck-<n>.json (walk_regrade.py), each a
+# later commit's only file, scanned as the ledgers are.
+WALK_RECHECK = re.compile(r"recheck-[1-9][0-9]*\.json")
 WALK_REQUIRED = (WALK_GRADE, WALK_CHECK)
 WALK_PRE_TURN = (PREFLIGHT_RECORD, REFUSAL_RECORD)
 WALK_TRANSCRIPT = "transcript.jsonl"          # W10-R2-3: with a turn record, the sign that a turn ran    # W10 (D3): what says why a walk died before its driver ledger
@@ -3560,7 +3563,8 @@ def walk_files(folder) -> list:
             rel = os.path.relpath(path, folder).split(os.sep)
             if os.path.islink(path) or not os.path.isfile(path):
                 raise DriveRefused(f"{'/'.join(rel)} in the walk folder is not a regular file")
-            out.append((path, record_kind(rel, WALK_FILE_KINDS)))
+            out.append((path, "ledger" if len(rel) == 1 and WALK_RECHECK.fullmatch(name)
+                        else record_kind(rel, WALK_FILE_KINDS)))
     tops = {os.path.relpath(p, folder) for p, _ in out}
     missing = [n for n in WALK_REQUIRED if n not in tops]
     if LEDGER_FILE not in tops and not (tops & set(WALK_PRE_TURN)):

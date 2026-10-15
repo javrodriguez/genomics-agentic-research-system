@@ -19,7 +19,7 @@
     {
       "path": "COPIED.d/live-harness-foundation.json",
       "status": "new",
-      "reason": "This foundation slice copy record; existing owned-file departures recorded in their owning fragments. Scheduled-wakeup ruling (glitch-6b, 15 Oct 2026, CP6 walk w006), edits without transfer, named here: transcript_view.py (CC_SCHEDULED_WAKEUP, is_scheduled_wakeup and ScheduledWakeups; the one isMeta record admitted as harness, every other still refused), check_take.py (user_text_records' kinds and record-type lines edited in place, an appended SCHEDULED WAKEUP section, harness_delivered_user_records.meta_kinds in CHECKER_CONSTANTS), build_draft.py and prereg-draft.json (the departure under checker_constants_ruling), tests/test_checker_constants.py (K-origin binds meta_kinds; three witnesses; K-draft names the departure) and tests/test_walk_runner.py (BOOTSTRAP_SPANS: the constants region's new digest and the scheduled-wakeup-lines span)."
+      "reason": "This foundation slice copy record; existing owned-file departures recorded in their owning fragments. Scheduled-wakeup ruling (glitch-6b, 15 Oct 2026, CP6 walk w006), edits without transfer, named here: transcript_view.py (CC_SCHEDULED_WAKEUP, is_scheduled_wakeup and ScheduledWakeups; the one isMeta record admitted as harness, every other still refused), check_take.py (user_text_records' kinds and record-type lines edited in place, an appended SCHEDULED WAKEUP section, harness_delivered_user_records.meta_kinds in CHECKER_CONSTANTS), build_draft.py and prereg-draft.json (the departure under checker_constants_ruling), tests/test_checker_constants.py (K-origin binds meta_kinds; three witnesses; K-draft names the departure) and tests/test_walk_runner.py (BOOTSTRAP_SPANS: the constants region's new digest and the scheduled-wakeup-lines span). The recheck (same ruling, part B; freeze-gate ruling line 51): walk_regrade.py re-runs the driver's own checker on a committed Claude Code walk into an append-only recheck-<n>.json (old check.json never edited; a record changed after its walk commit refuses; the walk machine named, never guessed); pending_walk.checker_standing reads the latest recheck only while it re-derives; drive.py (edit without transfer) admits recheck-<n>.json in a walk folder's closed file map (WALK_RECHECK), scanned as a ledger."
     },
     {
       "path": "vendor_provenance.py",
@@ -190,6 +190,11 @@
       "path": "tests/test_scheduled_wakeup.py",
       "status": "new",
       "reason": "Scheduled-wakeup ruling (glitch-6b, 15 Oct 2026, CP6 walk w006): a synthetic w006-shaped take read by both readers with its two operator lines, every near miss refused by the view and read as before by check_take, the consumption rule, the meta_kinds gate, and an in-memory mutant per clause of the shared predicate and per check_take use."
+    },
+    {
+      "path": "tests/test_walk_recheck.py",
+      "status": "new",
+      "reason": "The recheck on test_walk_runner's rig (the real runner, driver and checker on the fake box, a scratch study): a walk re-checks to its own reading, rechecks are append-only and leave every earlier file byte-identical, a record changed after the walk commit refuses, a reason and digest change is reported, the machine is named, standing reads only a verified recheck, and --check re-derives every committed recheck."
     }
   ]
 }
