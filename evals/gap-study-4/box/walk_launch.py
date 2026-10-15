@@ -216,7 +216,7 @@ def run_command(*, child: str, walk: str, cell: dict, reason: str) -> str:
         raise LaunchRefused("a walk is run for a reason")
     repo = f"{child}/repo"
     env = (f"env {machine_gate.ENV_ACCOUNT}={SUITE_ACCOUNT} {machine_gate.ENV_RESERVATION}={RESERVATION} "
-           f"{machine_gate.ENV_HOLD}={hid}")
+           f"{machine_gate.ENV_HOLD}={hid} {machine_gate.ENV_SLOTS}={machine_gate.SLOTS}")
     walk_argv = ["python3", "-B", f"{repo}/evals/gap-study-4/walk_runner.py", "--walk", walk]
     for k in CELL:
         walk_argv += [f"--{k}", cell[k]]

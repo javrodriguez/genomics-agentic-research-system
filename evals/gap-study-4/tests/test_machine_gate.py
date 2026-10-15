@@ -18,6 +18,7 @@ a reservation file in a temporary folder, fake athena_suite.py scripts; no ssh, 
   M3-reader   suite_status_reader and mac_precheck over fake athena_suite.py scripts
 
 Witnesses (each red by its own clause): busy-runs, foreign-hold-admitted, unreadable-reservation-admitted,
+invisible-table-admitted, slot-locks-ignored, runner-ignored, runner-argv-unread-quiet, visibility-unchecked,
 unread-processes-admitted, status-error-swallowed, old-env-builds.
 """
 
@@ -43,26 +44,43 @@ import machine_gate as mg  # noqa: E402
 ME = pwd.getpwuid(os.getuid()).pw_name
 REAL_LIST = HERE / "tests" / "fixtures" / "machine-gate-athena-suite-list-20261015.txt"
 HOLD = "gap4-walk-w-0001"
+OK = {"visible": True, "held_slots": [], "runner_pids": []}
 DONE = "run-a kind=gars-gap4 commit=8a598b4919d7 launched=started verdict=PASS"
 REFUSED = "run-b kind=gars-gap4 commit=8a598b4919d7 launched=refused verdict=-"
 BUSY = "run-c kind=gars-gap4 commit=8a598b4919d7 launched=busy verdict=-"
 STARTED = "run-d kind=gars-gap4 commit=8a598b4919d7 launched=started verdict=- jobs=24 scope=all"
 
 
-def fake_proc(t, owned=0):
+def fake_proc(t, owned=0, visible=True, cmdlines=()):
+    """A fake /proc: `1` (the visibility proof) unless invisible, `owned` pids 100.. (owned by this user), and pids
+    500.. whose cmdline is each of `cmdlines` (argv lists)."""
     proc = os.path.join(t, "proc")
     os.mkdir(proc)
     os.mkdir(os.path.join(proc, "self"))
+    if visible:
+        os.mkdir(os.path.join(proc, "1"))
     for n in range(owned):
         os.mkdir(os.path.join(proc, str(100 + n)))
+    for i, argv in enumerate(cmdlines):
+        d = os.path.join(proc, str(500 + i))
+        os.mkdir(d)
+        Path(d, "cmdline").write_bytes(b"\0".join(a.encode() for a in argv) + b"\0")
     return proc
+
+
+def slots_dir(t, n=2):
+    d = os.path.join(t, "slots")
+    os.mkdir(d)
+    for i in range(1, n + 1):
+        Path(d, f"{i}.lock").write_text("")
+    return d
 
 
 def a1(mod) -> list:
     out = []
-    if mod.athena_problems([], ("absent", None), HOLD) != []:
+    if mod.athena_problems([], ("absent", None), HOLD, **OK) != []:
         out.append("A1-athena: no suite process and no reservation is refused")
-    if mod.athena_problems([], ("held", HOLD), HOLD) != []:
+    if mod.athena_problems([], ("held", HOLD), HOLD, **OK) != []:
         out.append("A1-athena: this walk's own hold blocks itself")
     for why, args in (("a suite process", ([4242], ("absent", None), HOLD)),
                       ("an unreadable process table", (None, ("absent", None), HOLD)),
@@ -71,7 +89,14 @@ def a1(mod) -> list:
                       ("no own hold", ([], ("held", HOLD), None)),
                       ("an unreadable reservation", ([], ("unreadable", "synthetic"), HOLD)),
                       ("an unknown reading", ([], ("maybe", None), HOLD))):
-        if not mod.athena_problems(*args):
+        if not mod.athena_problems(*args, **OK):
+            out.append(f"A1-athena: {why} is admitted")
+    for why, kw in (("an invisible process table (hidepid)", dict(OK, visible=False)),
+                    ("a held slot lock", dict(OK, held_slots=["1.lock"])),
+                    ("unreadable slot locks", dict(OK, held_slots=None)),
+                    ("a live athena_suite_remote work process", dict(OK, runner_pids=[777])),
+                    ("an unreadable argv table", dict(OK, runner_pids=None))):
+        if not mod.athena_problems([], ("absent", None), HOLD, **kw):
             out.append(f"A1-athena: {why} is admitted")
     return out
 
@@ -108,30 +133,76 @@ def a2(mod) -> list:
 
 
 def a3(mod) -> list:
+    import fcntl
     out = []
     with tempfile.TemporaryDirectory() as t:
         res = os.path.join(t, "reserved.json")
+        slots = slots_dir(t)
         os.mkdir(os.path.join(t, "a"))
-        idle = fake_proc(os.path.join(t, "a"))
-        if mod.athena_gate(account=ME, reservation_path=res, own_hold=HOLD, proc=idle)() != []:
+        idle = fake_proc(os.path.join(t, "a"), cmdlines=[["python3", "-B", "other.py", "work"]])
+        if mod.athena_gate(account="nobody", reservation_path=res, own_hold=HOLD, slots=slots, proc=idle)() != []:
             out.append("A3-gate: an idle fake machine is refused")
         os.mkdir(os.path.join(t, "b"))
         busy = fake_proc(os.path.join(t, "b"), owned=2)
-        got = mod.athena_gate(account=ME, reservation_path=res, own_hold=HOLD, proc=busy)()
-        if not any("2 process" in x for x in got):
+        got = mod.athena_gate(account=ME, reservation_path=res, own_hold=HOLD, slots=slots, proc=busy)()
+        if not any("process(es) run under" in x for x in got):
             out.append("A3-gate: the account's processes are not seen")
-        if mod.suite_account_pids(ME, busy) != [100, 101]:
+        if mod.suite_account_pids(ME, busy) != [1, 100, 101]:
             out.append("A3-gate: suite_account_pids does not list the account's pids")
         if mod.suite_account_pids("no-such-account-gap4", busy) is not None:
             out.append("A3-gate: an unknown account reads as no process")
         if mod.suite_account_pids(ME, os.path.join(t, "absent-proc")) is not None:
             out.append("A3-gate: an unreadable /proc reads as no process")
+        real_stat = os.stat
+
+        def denied(path, *a, **k):          # NIT 6: a /proc/<pid> stat failing for another reason than ENOENT
+            if path.endswith(os.sep + "100"):
+                raise PermissionError("synthetic")
+            return real_stat(path, *a, **k)
+        with mock.patch.object(mod.os, "stat", denied):
+            if mod.suite_account_pids(ME, busy) is not None:
+                out.append("A3-gate: a /proc/<pid> stat refused by permission reads as a known process list")
+        # MINOR 3: hidepid=invisible, the scan sees nothing and /proc/1 is not there
+        os.mkdir(os.path.join(t, "c"))
+        hidden = fake_proc(os.path.join(t, "c"), visible=False)
+        if mod.processes_visible(hidden) or not mod.athena_gate(account="nobody", reservation_path=res,
+                                                                own_hold=HOLD, slots=slots, proc=hidden)():
+            out.append("A3-gate: an invisible process table opens the gate")
+        if not mod.processes_visible(idle):
+            out.append("A3-gate: a visible /proc/1 is not read as visible")
+        # MINOR 2: a live athena_suite_remote runner on any account, and a held slot lock
+        os.mkdir(os.path.join(t, "d"))
+        runner = fake_proc(os.path.join(t, "d"), cmdlines=[
+            ["/usr/bin/python3", "/home/javier/athena-suites/run-x/athena_suite_remote.py", "work", "--id", "x"]])
+        if mod.remote_runner_pids(runner) != [500]:
+            out.append("A3-gate: a live athena_suite_remote work process is not seen")
+        if not mod.athena_gate(account="nobody", reservation_path=res, own_hold=HOLD, slots=slots, proc=runner)():
+            out.append("A3-gate: a live athena_suite_remote work process opens the gate")
+        unread = os.path.join(t, "d", "proc", "501")
+        os.mkdir(unread)
+        os.mkdir(os.path.join(unread, "cmdline"))          # reading it raises IsADirectoryError (an OSError)
+        if mod.remote_runner_pids(runner) is not None:
+            out.append("A3-gate: an unreadable argv reads as no runner")
+        if mod.held_slot_locks(slots) != []:
+            out.append("A3-gate: free slot locks read as held")
+        fd = os.open(os.path.join(slots, "2.lock"), os.O_RDWR)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if mod.held_slot_locks(slots) != ["2.lock"]:
+                out.append("A3-gate: a held slot lock is not seen")
+            if not mod.athena_gate(account="nobody", reservation_path=res, own_hold=HOLD, slots=slots, proc=idle)():
+                out.append("A3-gate: a held slot lock opens the gate")
+        finally:
+            os.close(fd)
+        if mod.held_slot_locks(os.path.join(t, "no-slots")) is not None:
+            out.append("A3-gate: an unreadable slots folder reads as nothing held")
         with mock.patch.object(mod, "suite_account_pids", side_effect=RuntimeError("synthetic")):
-            if not mod.athena_gate(account=ME, reservation_path=res, own_hold=HOLD, proc=idle)():
+            if not mod.athena_gate(account="nobody", reservation_path=res, own_hold=HOLD, slots=slots, proc=idle)():
                 out.append("A3-gate: an exception while reading reads as nothing running")
         for kw in ({"account": "", "reservation_path": res, "own_hold": HOLD},
                    {"account": ME, "reservation_path": "reserved.json", "own_hold": HOLD},
-                   {"account": ME, "reservation_path": res, "own_hold": "bad id"}):
+                   {"account": ME, "reservation_path": res, "own_hold": "bad id"},
+                   {"account": ME, "reservation_path": res, "own_hold": HOLD, "slots": "slots"}):
             try:
                 mod.athena_gate(**kw)
                 out.append(f"A3-gate: a gate was built from {kw}")
@@ -144,7 +215,7 @@ def a4(mod) -> list:
     out = []
     with tempfile.TemporaryDirectory() as t:
         res = os.path.join(t, "reserved.json")
-        ok = {mod.ENV_ACCOUNT: ME, mod.ENV_RESERVATION: res, mod.ENV_HOLD: HOLD}
+        ok = {mod.ENV_ACCOUNT: ME, mod.ENV_RESERVATION: res, mod.ENV_HOLD: HOLD, mod.ENV_SLOTS: t}
         check, why = mod.gate_from_env(ok)
         if not callable(check) or why is not None:
             out.append(f"A4-env: the named values do not build the gate: {why}")
@@ -154,7 +225,7 @@ def a4(mod) -> list:
                 out.append(f"A4-env: a gate was built without {k}")
         for bad in ({**ok, mod.ENV_ACCOUNT: "no-such-account-gap4"}, {**ok, mod.ENV_RESERVATION: "reserved.json"},
                     {**ok, mod.ENV_RESERVATION: os.path.join(t, "absent", "reserved.json")},
-                    {**ok, mod.ENV_HOLD: "bad id"}):
+                    {**ok, mod.ENV_HOLD: "bad id"}, {**ok, mod.ENV_SLOTS: "slots"}):
             check, why = mod.gate_from_env(bad)
             if check is not None or not why:
                 out.append(f"A4-env: a gate was built from {bad}")
@@ -298,8 +369,20 @@ WITNESSES = {
         "            continue"),), "M2-status"),
     "link-followed": ((("        st = os.lstat(path)\n    except FileNotFoundError:",
                         "        st = os.stat(path)\n    except FileNotFoundError:"),), "A2-reserve"),
-    "dead-proc-is-quiet": ((("    except OSError:\n        return None\n    pids = []",
-                             "    except OSError:\n        return []\n    pids = []"),), "A3-gate"),
+    "dead-proc-is-quiet": ((("    except (KeyError, TypeError):\n        return None\n    try:\n        names = os.listdir(proc)\n"
+                             "    except OSError:\n        return None",
+                             "    except (KeyError, TypeError):\n        return None\n    try:\n        names = os.listdir(proc)\n"
+                             "    except OSError:\n        return []"),), "A3-gate"),
+    "pid-stat-error-quiet": ((("        except FileNotFoundError:\n            continue                       # the process ended "
+                               "between the listing and the stat\n        except OSError:\n            return None",
+                               "        except OSError:\n            continue"),), "A3-gate"),
+    "invisible-table-admitted": ((("    if visible is not True:", "    if False:"),), "A1-athena"),
+    "slot-locks-ignored": ((("    elif held_slots:\n", "    elif False:\n"),), "A1-athena"),
+    "runner-ignored": ((("    elif runner_pids:\n", "    elif False:\n"),), "A1-athena"),
+    "runner-argv-unread-quiet": ((("        except FileNotFoundError:\n            continue                       # the process "
+                                   "ended between the listing and the read\n        except OSError:\n            return None",
+                                   "        except OSError:\n            continue"),), "A3-gate"),
+    "visibility-unchecked": ((("            visible = processes_visible(proc)", "            visible = True"),), "A3-gate"),
     "old-env-builds": ((("    if not account:\n        return None, f\"{ENV_ACCOUNT} does not name the athena suite "
                          "account\"",
                          "    if not account:\n        return (lambda: []), None"),), "A4-env"),
@@ -335,8 +418,10 @@ class TestTheGate(unittest.TestCase):
                 self.assertEqual(mg.main(["mac-precheck", p]), 1)
                 self.assertEqual(mg.main(["nonsense"]), 2)
                 with mock.patch.dict(os.environ, {mg.ENV_ACCOUNT: ME, mg.ENV_RESERVATION: os.path.join(t, "r.json"),
-                                                  mg.ENV_HOLD: HOLD}):
-                    with mock.patch.object(mg, "suite_account_pids", return_value=[]):
+                                                  mg.ENV_HOLD: HOLD, mg.ENV_SLOTS: t}):
+                    with mock.patch.object(mg, "suite_account_pids", return_value=[]), \
+                            mock.patch.object(mg, "remote_runner_pids", return_value=[]), \
+                            mock.patch.object(mg, "processes_visible", return_value=True):
                         self.assertEqual(mg.main(["athena-check"]), 0)
 
 

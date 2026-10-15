@@ -7,14 +7,16 @@ athena (lane-reports/walk-launch-road-2026-10-15.md):
 
 THE ATHENA GATE (the one a take driver checks before each launch; the walk runs ON athena, as javier).
     athena_problems(suite_pids, reservation, own_hold) -> [problem]
-        Admits only when NO process runs under the suite account AND the athena reservation
-        (/srv/aegis-handoff/machine/reserved.json, athena-reserve's file) is absent or held by THIS walk's own hold,
-        matched exactly by its id (`by`). Every unreadable input is a problem, never "nothing running".
+        Admits only when other accounts' processes are visible (/proc/1 stats), NO process runs under the suite
+        account, NO `athena_suite_remote.py work` process runs on any account, NO athena_suite slot lock is held (a
+        non-blocking flock probe), AND the athena reservation (/srv/aegis-handoff/machine/reserved.json,
+        athena-reserve's file) is absent or held by THIS walk's own hold, matched exactly by its id (`by`). Every
+        unreadable input is a problem, never "nothing running".
     suite_account_pids(account, proc="/proc") -> [pid] | None (None: the account or /proc cannot be read)
     read_reservation(path) -> ("absent", None) | ("held", by) | ("unreadable", why)
     athena_gate(*, account, reservation_path, own_hold, proc="/proc") -> () -> [problem]
     gate_from_env(environ) -> (gate, None) | (None, why)
-        From GAP4_SUITE_ACCOUNT, GAP4_RESERVATION and GAP4_OWN_HOLD, which the launch road (box/walk_launch.py) sets
+        From GAP4_SUITE_ACCOUNT, GAP4_RESERVATION, GAP4_OWN_HOLD and GAP4_SUITE_SLOTS, which the launch road (box/walk_launch.py) sets
         on athena under `athena-reserve hold --by <GAP4_OWN_HOLD>`. The walk's own hold never blocks itself; anyone
         else's reservation, expired or not, does.
     The suite list is never read on athena: `athena_suite.py list` reads only the Mac's local run records, so on
@@ -58,6 +60,16 @@ RESERVATION = "/srv/aegis-handoff/machine/reserved.json"
 HOLD_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@-]{0,63}$")
 RESERVATION_MAX_BYTES = 4 * 1024          # athena-reserve's MACHINE_FILE_MAX
 ENV_ACCOUNT, ENV_RESERVATION, ENV_HOLD = "GAP4_SUITE_ACCOUNT", "GAP4_RESERVATION", "GAP4_OWN_HOLD"
+ENV_SLOTS = "GAP4_SUITE_SLOTS"
+# athena_suite_remote's slot locks (~/athena-suites/.slots/<n>.lock, flock'd by every run for its whole life, as
+# javier) and its runner (`athena_suite_remote.py work`, which runs as javier and reaches the suite account only through
+# separate sudo calls, so a run can be live with ZERO suite-account processes: the review of ad71ca07, MINOR 2).
+SLOTS = "/home/javier/athena-suites/.slots"
+SLOT_LOCK = re.compile(r"[0-9]+\.lock")
+REMOTE_RUNNER = "athena_suite_remote.py"
+# A process table the reader cannot fully see (hidepid=invisible without aegis-procview) reads empty and would open
+# the gate: the review of ad71ca07, MINOR 3. /proc/1 (root's init) is visible only to a reader who sees other
+# accounts' processes, so its stat is the gate's proof that the scans below are not vacuous.
 STATUS_TIMEOUT_S = 120
 
 
@@ -88,6 +100,67 @@ def suite_account_pids(account: str, proc: str = "/proc"):
     return sorted(pids)
 
 
+def processes_visible(proc: str = "/proc") -> bool:
+    """True only when /proc/1 can be stat'ed: another account's process (root's init) is visible to this reader."""
+    try:
+        os.stat(os.path.join(proc, "1"))
+    except OSError:
+        return False
+    return True
+
+
+def held_slot_locks(slots: str):
+    """The slot lock files some process holds (a non-blocking flock probe on each, released at once); None when the
+    slots folder or a lock cannot be read (never "nothing held" on doubt)."""
+    import fcntl
+    try:
+        names = sorted(n for n in os.listdir(slots) if SLOT_LOCK.fullmatch(n))
+    except OSError:
+        return None
+    held = []
+    for name in names:
+        try:
+            fd = os.open(os.path.join(slots, name), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        except OSError:
+            return None
+        try:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                held.append(name)
+                continue
+            except OSError:
+                return None
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        finally:
+            os.close(fd)
+    return held
+
+
+def remote_runner_pids(proc: str = "/proc"):
+    """The pids of every `athena_suite_remote.py work` process on any account (its argv read from
+    /proc/<pid>/cmdline); None when /proc or a visible process's argv cannot be read."""
+    try:
+        names = os.listdir(proc)
+    except OSError:
+        return None
+    pids = []
+    for name in names:
+        if not name.isdigit():
+            continue
+        try:
+            with open(os.path.join(proc, name, "cmdline"), "rb") as fh:
+                argv = fh.read().split(b"\0")
+        except FileNotFoundError:
+            continue                       # the process ended between the listing and the read
+        except OSError:
+            return None
+        words = [a.decode("utf-8", "replace") for a in argv]
+        if any(os.path.basename(w) == REMOTE_RUNNER for w in words) and "work" in words:
+            pids.append(int(name))
+    return sorted(pids)
+
+
 def read_reservation(path: str):
     """("absent", None), ("held", by) or ("unreadable", why): a regular file of at most 4 KiB holding one JSON
     object whose `by` is a hold id; anything else is unreadable."""
@@ -114,8 +187,19 @@ def read_reservation(path: str):
     return ("held", by)
 
 
-def athena_problems(suite_pids, reservation, own_hold) -> list:
+def athena_problems(suite_pids, reservation, own_hold, *, visible=False, held_slots=None, runner_pids=None) -> list:
     out = []
+    if visible is not True:
+        out.append("other accounts' processes are not visible to this reader (/proc/1 cannot be stat'ed): an empty "
+                   "process scan would prove nothing")
+    if held_slots is None:
+        out.append("athena_suite's slot locks cannot be read: whether a suite runs is unknown")
+    elif held_slots:
+        out.append(f"athena_suite slot lock(s) held ({', '.join(held_slots)}): an athena suite is running")
+    if runner_pids is None:
+        out.append("the process table's argv cannot be read: whether athena_suite_remote runs is unknown")
+    elif runner_pids:
+        out.append(f"{len(runner_pids)} `{REMOTE_RUNNER} work` process(es) run: an athena suite is running")
     if suite_pids is None:
         out.append(f"the {SUITE_ACCOUNT} account's processes cannot be read: what runs is unknown")
     elif suite_pids:
@@ -136,21 +220,26 @@ def athena_problems(suite_pids, reservation, own_hold) -> list:
     return out
 
 
-def athena_gate(*, account: str, reservation_path: str, own_hold: str, proc: str = "/proc"):
+def athena_gate(*, account: str, reservation_path: str, own_hold: str, slots: str = SLOTS, proc: str = "/proc"):
     if not isinstance(account, str) or not account:
         raise ValueError("account must name the suite account")
     if not isinstance(reservation_path, str) or not os.path.isabs(reservation_path):
         raise ValueError("reservation_path must be an absolute path")
     if not isinstance(own_hold, str) or not HOLD_ID.match(own_hold):
         raise ValueError("own_hold must be a hold id (athena-reserve's BY_RE)")
+    if not isinstance(slots, str) or not os.path.isabs(slots):
+        raise ValueError("slots must be the absolute path of athena_suite's .slots folder")
 
     def check() -> list:
         try:
+            visible = processes_visible(proc)
             pids = suite_account_pids(account, proc)
+            runners = remote_runner_pids(proc)
+            held = held_slot_locks(slots)
             reservation = read_reservation(reservation_path)
         except Exception as e:  # noqa: BLE001 - an unreadable machine is a problem, never "nothing running"
             return [f"the athena gate could not read the machine ({type(e).__name__})"]
-        return athena_problems(pids, reservation, own_hold)
+        return athena_problems(pids, reservation, own_hold, visible=visible, held_slots=held, runner_pids=runners)
     return check
 
 
@@ -169,7 +258,10 @@ def gate_from_env(environ=None):
         return None, f"{ENV_RESERVATION} does not name the athena reservation file's absolute path"
     if not hold or not HOLD_ID.match(hold):
         return None, f"{ENV_HOLD} does not carry this walk's own athena-reserve hold id"
-    return athena_gate(account=account, reservation_path=path, own_hold=hold), None
+    slots = environ.get(ENV_SLOTS)
+    if not slots or not os.path.isabs(slots):
+        return None, f"{ENV_SLOTS} does not name athena_suite's .slots folder"
+    return athena_gate(account=account, reservation_path=path, own_hold=hold, slots=slots), None
 
 
 # ------------------------------------------------------------------------------------------------ the Mac pre-check

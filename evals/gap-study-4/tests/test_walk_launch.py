@@ -288,7 +288,8 @@ def l2(mod) -> list:
     held = cmd[i_hold:]
     for name, value in ((mod.machine_gate.ENV_ACCOUNT, "athena-suite"),
                         (mod.machine_gate.ENV_RESERVATION, mod.RESERVATION),
-                        (mod.machine_gate.ENV_HOLD, "gap4-walk-w-0001")):
+                        (mod.machine_gate.ENV_HOLD, "gap4-walk-w-0001"),
+                        (mod.machine_gate.ENV_SLOTS, "/home/javier/athena-suites/.slots")):
         if f"{name}={value}" not in held or f"{name}={value}" not in cmd[i_test:i_gate]:
             out.append(f"L2-run: {name} is not {value} for both the gate and the walk")
     toks = shlex.split(cmd)
