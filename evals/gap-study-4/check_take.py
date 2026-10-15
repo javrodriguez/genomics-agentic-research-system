@@ -2452,8 +2452,8 @@ def design_constants_sha256(design: "Design"):
     """Review MINOR 3: the digest of the constants a design view was built from (the ones the checker read), recovered
     from its pre exactly as design_view merged them: each CHECKER_CONSTANTS key, less the permission_mode_by_arm entry
     design_view writes into driver_constants. None when the view is not a Design, lacks a key, or holds a PENDING value."""
-    if not isinstance(design, Design) or not isinstance(design.pre, dict):
-        return None
+    if not isinstance(design, Design):
+        return None                                  # a pre that is not a dict fails below, as TypeError
     try:
         got = {k: copy.deepcopy(design.pre[k]) for k in CHECKER_CONSTANTS}
         got["driver_constants"].pop("permission_mode_by_arm", None)

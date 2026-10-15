@@ -564,6 +564,7 @@ class TestAWalkTheConstantsDecideIsNeverCounted(unittest.TestCase):
 
     def test_an_unreadable_check_is_never_counted(self):
         for name, raw in (("missing", None), ("not-json", "{"), ("no-reasons", '{"walk": "w"}'), ("a-list", "[]"),
+                          ("a-number", "1"),
                           ("reasons-not-a-list", '{"checker_reasons": "constant-binding"}')):
             with self.subTest(check=name):
                 p = self.base / self.WALK / "check.json"
@@ -605,6 +606,9 @@ class TestAWalkTheConstantsDecideIsNeverCounted(unittest.TestCase):
         self.assertEqual(ct.design_constants_sha256(d.replace(pre=other)), ct.checker_constants_sha256(other))
         self.assertIsNone(ct.design_constants_sha256(d.replace(pre=edited("run_location", ct.PENDING))))
         self.assertIsNone(ct.design_constants_sha256(d.replace(pre={})))
+        self.assertIsNone(ct.design_constants_sha256(d.replace(pre=[1])))
+        import types
+        self.assertIsNone(ct.design_constants_sha256(types.SimpleNamespace(pre=pre)), "only a Design is read")
 
     def test_every_probe_form_is_unreadable(self):
         """Review MINOR 2: only the walk runner's exact check.json, the checker run, routing not refused, and every
@@ -621,6 +625,8 @@ class TestAWalkTheConstantsDecideIsNeverCounted(unittest.TestCase):
             "route-not-a-string": dict(good, route=None),
             "not-checked": dict(good, checked=False),
             "checked-truthy": dict(good, checked=1),
+            "routed-and-refused": dict(good, route="harness-error", route_refused="RoutingError: x"),
+            "reasons-a-string": dict(good, checker_reasons=""),
         }
         for name, doc in probes.items():
             with self.subTest(probe=name):
