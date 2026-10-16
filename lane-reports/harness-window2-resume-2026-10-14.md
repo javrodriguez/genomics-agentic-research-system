@@ -299,3 +299,20 @@ w053 (no-visible-output nudge): static facts only, nothing built. They are in th
 
 ## Exact next step
 glitch-b5 runs the battery on this head. Then the held walks (w041, and any edited_text_file hold) re-run as new ids.
+
+## RESUME HERE (16 Oct 00:38 EDT; supersedes the blocks above)
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent 88c3e19e). Nothing pushed. No athena access. No mac_slot booking held; no process of this lane running.
+
+Commits since b9392024, each red first and through the gitleaks staged gate (0 findings):
+- 23500a87: ruling 2. context_text sweeps an admitted edited_text_file without its snippet. It changes one line in place (0-based 142), which is pinned by the new context-text span and admitted by the w6j byte check. The type and the filename stay in the sweep. No check reads repository content for leak words, so the snippet is routed to none.
+- 93205aa2: the draft's new sentence tripped lint_language (out-of), and 23500a87 was committed with that red. This commit rewords it. The lint is clean.
+- 88c3e19e: ruling 3. The no-visible-output nudge is admitted as a named departure (is_no_output_nudge, an exact shape) and is gated in check_take by meta_kinds. It is counted in check.json's no_output_nudges. The draft names the facts. The CHECKER_CONSTANTS digest is now b08b5496fe28..., which was d836285fdfda... before.
+
+Mac proof (python3.12, env -u CLAUDE_CODE_MESSAGING_TOKEN, light-ok before each), all OK: no_output_nudge 8, edited_text_file 9, scheduled_wakeup 11, checker_constants 27, auto_mode 6, transcript_view 20, awareness_furniture 7, walk_runner R5Bootstrap 2 and R8WalkRoad 38, checker_body 30, recheck_coverage 5, walk_grade_seam 3, stub_take 19, steer_condition 7, isolation_denials_checker 9, journal_binding 4, rehearsals 9, cp8_prep 4, walk_plan 18, walk_recheck 14, drive_loop 27, walk_wiring 20, pending_walk 23 (170 s). build_draft --check, copy_manifest, lint_language and the w6j byte check are clean.
+Not run on the Mac: the full test_walk_runner and its generated shards, test_round4 and test_box_integration. check_record and _run_one are generated-sweep targets and both gained lines.
+
+Every walk checked under d836285f... now reads stale against the new constants until it is rechecked or rerun.
+
+## Exact next step
+glitch-b5 runs the battery on this head and schedules a fresh reviewer.
