@@ -220,7 +220,8 @@ class World:
                 "HostConfig": {"NetworkMode": ID["net"], "CapDrop": ["ALL"], "CapAdd": None,
                                "SecurityOpt": ["no-new-privileges"], "Privileged": False, "Devices": [],
                                "PidMode": "", "PidsLimit": 256, "Memory": s.memory,
-                               "MemoryReservation": s.memory_reservation, "NanoCpus": 2_000_000_000},
+                               "MemoryReservation": s.memory_reservation, "NanoCpus": 2_000_000_000,
+                               "ReadonlyRootfs": True, "Tmpfs": {"/tmp": "rw,exec,nosuid,nodev,mode=1777", "/var/tmp": "rw,exec,nosuid,nodev,mode=1777"}},
                 "Mounts": [{"Type": "bind", "Source": s.run_tree, "Destination": s.run_tree, "RW": True},
                            {"Type": "bind", "Source": s.config_dir, "Destination": "/opt/cfg", "RW": True}]}],
             "take-image-manifest": json.dumps(MANIFEST) + "\n",
@@ -365,6 +366,13 @@ BREAKS = {
             {"Type": "bind", "Source": "/x", "Destination": "/x", "RW": False}))),
         ("socket-mount", edit_json("take-inspect", lambda d: d[0]["Mounts"].__setitem__(1, {
             "Type": "bind", "Source": "/run/docker.sock", "Destination": "/opt/cfg", "RW": True}))),
+        ("root-writable", edit_json("take-inspect", lambda d: d[0]["HostConfig"].update(ReadonlyRootfs=False))),
+        ("root-unstated", edit_json("take-inspect", lambda d: d[0]["HostConfig"].pop("ReadonlyRootfs"))),
+        ("tmpfs-dropped", edit_json("take-inspect", lambda d: d[0]["HostConfig"]["Tmpfs"].pop("/var/tmp"))),
+        ("tmpfs-added", edit_json("take-inspect", lambda d: d[0]["HostConfig"]["Tmpfs"].update(
+            {"/run/lock": "rw"}))),
+        ("tmpfs-noexec", edit_json("take-inspect", lambda d: d[0]["HostConfig"]["Tmpfs"].update(
+            {"/tmp": "rw,noexec"}))),
         ("tree-read-only", edit_json("take-inspect", lambda d: d[0]["Mounts"][0].update(RW=False))),
         ("cap-add", edit_json("take-inspect", lambda d: d[0]["HostConfig"].update(CapAdd=["NET_RAW"]))),
         ("cap-drop", edit_json("take-inspect", lambda d: d[0]["HostConfig"].update(CapDrop=[]))),

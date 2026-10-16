@@ -265,7 +265,9 @@ def take_folder(script: list, *, records=None, instruction=None) -> Path:
     # holding only the take's own session after each turn and at publish
     own = [["projects/-run", "dir"], [f"projects/-run/{sid()}.jsonl", "file"]]
     sweep = {"files": [[f"/opt/cfg/projects/-run/{sid()}.jsonl", "claude", sid()]], "unreadable": [], "escapes": [],
-             "scanned": 1, "truncated": False}                    # review r14: the take container swept after each turn
+             "mounts": ["/opt/cfg"], "scanned": 1, "truncated": False,
+             "expected": ["/run", "/opt/cfg", "/tmp", "/var/tmp", "/dev/shm", "/etc/hosts", "/etc/hostname",
+                          "/etc/resolv.conf"]}                    # review r14: the take container swept after each turn
     (folder / "session-store.json").write_text(json.dumps({"harness": "claude-code", "root": "projects", "listings": [
         {"at": f"post-{t['n']}", "entries": own} for t in turns] + [{"at": "publish", "entries": own}],
         "sweeps": [dict(sweep, at=f"post-{t['n']}") for t in turns]}))

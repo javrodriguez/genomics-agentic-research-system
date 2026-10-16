@@ -3584,7 +3584,15 @@ def sweep_violations(sweep: dict, admitted: set, own_id: str) -> list:
     for path, kind in sweep.get("unreadable") or []:
         out.append(f"{path} ({kind}) is the agent's and unreadable to the sweep")
     for path, target in sweep.get("escapes") or []:
-        out.append(f"{path} is the agent's link out of the swept roots (to {str(target)[:80]})")
+        out.append(f"{path} is the agent's link that leaves the swept roots (to {str(target)[:80]})")
+    expected = sweep.get("expected")
+    if not isinstance(expected, list):
+        out.append("the sweep records no expected mounts")
+    else:
+        for m in sweep.get("mounts") or []:
+            if m not in expected:
+                out.append(f"{m} is a read-write mount of the take container outside the expected set: the root "
+                           f"filesystem is not read-only, or a mount was added")
     if sweep.get("truncated"):
         out.append("the sweep stopped at its file cap")
     return out
@@ -3632,7 +3640,8 @@ def session_store_problems(path: Path) -> list:
         if "entries" in x:
             admitted |= _admitted_session_files(x["entries"], own)
     for x in sweeps:
-        if "refused" in x or set(x) != {"at", "files", "unreadable", "escapes", "scanned", "truncated"}:
+        if "refused" in x or set(x) != {"at", "files", "unreadable", "escapes", "mounts", "scanned", "truncated",
+                                         "expected"}:
             out.append(f"[{NESTED_AGENT}] the take container could not be swept at {x['at']}: "
                        f"{str(x.get('refused', 'off its shape'))[:200]}")
             continue

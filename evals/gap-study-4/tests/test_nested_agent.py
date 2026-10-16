@@ -207,7 +207,9 @@ CLEAN = [[P, "dir"], [f"{P}/{OWN}", "dir"], [f"{P}/{OWN}/subagents", "dir"],
 def own_sweep(at, extra=()):
     """A clean sweep of the take container at `at`: the take's own session file, and `extra` files."""
     return {"at": at, "files": [[f"{ct.SWEEP_CONFIG_MOUNT}/{P}/{OWN}.jsonl", "claude", OWN], *extra],
-            "unreadable": [], "escapes": [], "scanned": 7, "truncated": False}
+            "unreadable": [], "escapes": [], "mounts": ["/run/t", ct.SWEEP_CONFIG_MOUNT], "scanned": 7,
+            "truncated": False, "expected": ["/run/t", ct.SWEEP_CONFIG_MOUNT, "/tmp", "/var/tmp", "/dev/shm",
+                                             "/etc/hosts", "/etc/hostname", "/etc/resolv.conf"]}
 
 
 def with_store(path, listings, sweeps=None):
@@ -343,15 +345,20 @@ class TheSweep(unittest.TestCase):
     """Review r14 (d): every writable location of the take container swept after every turn for session files."""
 
     fcap = 64 * 1024 * 1024
-    never = ("/proc", "/sys")
+    never = ("/proc", "/sys", "/dev")
+    kept = ("/dev/shm",)
 
-    def sweep(self, *roots):
+    def sweep(self, *roots, ro=("/",)):
+        """The program over a mount table whose read-write mounts are `roots` (and `ro` read-only)."""
         import contextlib
         import io
         from box import run_take as rt
         buf, saved = io.StringIO(), sys.argv
-        sys.argv = ["-c", json.dumps(list(roots)), str(__import__("os").getuid()), "100", str(self.fcap),
-                    json.dumps(list(self.never))]
+        table = Path(tempfile.mkdtemp()) / "mountinfo"
+        table.write_text("".join(f"{i} 1 0:{i} / {r} rw,relatime - ext4 /dev/x rw\n" for i, r in enumerate(roots, 2))
+                         + "".join(f"9{i} 1 0:9 / {r} ro,relatime - overlay x ro\n" for i, r in enumerate(ro)))
+        sys.argv = ["-c", str(table), str(__import__("os").getuid()), "100", str(self.fcap),
+                    json.dumps(list(self.never)), json.dumps(list(self.kept))]
         try:
             with contextlib.redirect_stdout(buf):
                 exec(compile(rt.SWEEP_PROGRAM, "<the session sweep>", "exec"), {"__name__": "__sweep__"})
@@ -432,24 +439,25 @@ class TheSweep(unittest.TestCase):
         from box import run_take as rt
         self.assertEqual(ct.SWEEP_CONFIG_MOUNT, rt.CONFIG_MOUNT)
         self.assertEqual(rt.sweep_roots("/run/t"), ["/run/t", rt.CONFIG_MOUNT, "/tmp", "/var/tmp", "/dev/shm",
-                                                    "/home/dana"])
-        argv = rt.sweep_argv("c" * 64, rt.sweep_roots("/run/t"))
+                                                    "/etc/hosts", "/etc/hostname", "/etc/resolv.conf"])
+        argv = rt.sweep_argv("c" * 64)
+        self.assertEqual(argv[10], "/proc/self/mountinfo")
         self.assertEqual(argv[:9], ["docker", "exec", "--user", rt.AGENT_USER, "c" * 64, "/usr/bin/python3", "-I", "-S",
                                     "-c"])
         for bad in ("not json", json.dumps({"files": []}), json.dumps({"files": [["p"]], "unreadable": [], "scanned": 0,
                                                                        "truncated": False})):
             fake = types.SimpleNamespace(run=lambda argv, env=None, timeout=None, bad=bad: rt.Completed(0, bad, ""))
             with self.assertRaises(rt.Refused):
-                rt.sweep_sessions(fake, "c" * 64, ["/x"])
-        good = {"files": [], "unreadable": [], "escapes": [], "scanned": 0, "truncated": False}
+                rt.sweep_sessions(fake, "c" * 64)
+        good = {"files": [], "unreadable": [], "escapes": [], "mounts": [], "scanned": 0, "truncated": False}
         for bad in (dict(good, scanned="3"), dict(good, truncated="no"), dict(good, escapes=[["only"]])):   # M12 and kin
             fake = types.SimpleNamespace(run=lambda argv, env=None, timeout=None, bad=bad: rt.Completed(
                 0, json.dumps(bad), ""))
             with self.assertRaises(rt.Refused):
-                rt.sweep_sessions(fake, "c" * 64, ["/x"])
+                rt.sweep_sessions(fake, "c" * 64)
         fake = types.SimpleNamespace(run=lambda argv, env=None, timeout=None: rt.Completed(1, "", "boom"))
         with self.assertRaises(rt.Refused):
-            rt.sweep_sessions(fake, "c" * 64, ["/x"])
+            rt.sweep_sessions(fake, "c" * 64)
 
     def test_the_checker_admits_only_the_take_s_own_sessions(self):
         clean = [{"at": "post-1", "entries": CLEAN}, {"at": "publish", "entries": CLEAN}]
@@ -486,6 +494,71 @@ class TheSweep(unittest.TestCase):
                 self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT}, got)
 
 
+class TheReadOnlyRoot(unittest.TestCase):
+    """glitch-b5's ruling on review r15's MAJOR 2: the take container's root filesystem is read-only, the sweep's roots
+    are every read-write mount of the container's own mount table, and a read-write mount outside the expected set
+    refuses; the driver records every EROFS line a turn shows."""
+
+    def test_the_sweep_reads_the_mount_table(self):
+        sw = TheSweep()
+        a, b, c = (Path(tempfile.mkdtemp()) for _ in range(3))
+        for d, sid in ((a, "a1"), (b, "b1"), (c, "c1")):
+            (d / "s.jsonl").write_text(json.dumps({"type": "user", "sessionId": sid}) + "\n")
+        got = sw.sweep(str(a), str(b), "/dev/pts", "/proc/sys", "/dev/shm", ro=(str(c), "/"))
+        self.assertEqual(sorted(f[2] for f in got["files"]), ["a1", "b1"])        # the read-only mount is not read
+        self.assertEqual(got["mounts"], sorted([str(a), str(b), "/dev/shm"]))     # /dev and /proc never, /dev/shm kept
+
+    def test_a_read_write_mount_outside_the_expected_set_refuses(self):
+        clean = [{"at": "post-1", "entries": CLEAN}, {"at": "publish", "entries": CLEAN}]
+        for extra in ("/", "/run/lock", "/home/dana"):
+            with self.subTest(mount=extra):
+                sweep = own_sweep("post-1")
+                sweep["mounts"] = sweep["mounts"] + [extra]
+                got = ct.session_store_problems(with_store(take_folder(), clean, [sweep]))
+                self.assertTrue(any("outside the expected set" in g for g in got), got)
+        sweep = own_sweep("post-1")
+        del sweep["expected"]
+        got = ct.session_store_problems(with_store(take_folder(), clean, [sweep]))
+        self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT})
+        self.assertEqual(ct.session_store_problems(with_store(take_folder(), clean, [own_sweep("post-1")])), [])
+
+    def test_the_driver_records_each_read_only_error(self):
+        d = Path(tempfile.mkdtemp())
+        stream = d / "turn-1.jsonl"
+        stream.write_text(json.dumps({"type": "user", "message": {"content": [
+            {"type": "tool_result", "content": "mkdir: cannot create directory '/home/dana/x': Read-only file system"}]}})
+                          + "\n" + json.dumps({"type": "result"}) + "\n")
+        take = types.SimpleNamespace(read_only_errors=[])
+        adapter = types.SimpleNamespace(stderr_seen=["", "Error: EROFS: read-only file system, open '/run/x'"])
+        drive.TakeDriver._note_read_only_errors(None, take, adapter, 1, types.SimpleNamespace(stream_path=str(stream)))
+        self.assertEqual([(e["turn"], e["where"]) for e in take.read_only_errors], [(1, "stream"), (1, "stderr")])
+        self.assertIn("/home/dana/x", take.read_only_errors[0]["line"])
+        self.assertIn("/run/x", take.read_only_errors[1]["line"])
+        drive.TakeDriver._note_read_only_errors(None, take, types.SimpleNamespace(), 2,
+                                               types.SimpleNamespace(stream_path=None))
+        self.assertEqual(len(take.read_only_errors), 2)
+        self.assertEqual(drive.TAKE_FILE_KINDS.get("read-only-errors.json"), "ledger")
+        import ast
+        src = (HERE.parent / "drive.py").read_text()
+        cls = next(n for n in ast.parse(src).body if isinstance(n, ast.ClassDef) and n.name == "TakeDriver")
+        fns = {n.name: ast.get_source_segment(src, n) for n in cls.body if isinstance(n, ast.FunctionDef)}
+        self.assertIn("self._note_read_only_errors(take, adapter, n, turn)", fns["drive"])
+        self.assertIn("READ_ONLY_ERRORS_RECORD", fns["_take_records"])
+        for mod in ("claude_code_adapter", "codex_adapter", "gemini_adapter"):
+            self.assertIn('setdefault("stderr_seen", []).append(got.get("stderr") or "")',
+                          (HERE.parent / f"{mod}.py").read_text(), mod)
+
+    def test_the_create_argv_and_the_preflight_pin_the_read_only_root(self):
+        from box import preflight as pf
+        from box import run_take as rt
+        self.assertIn("readonly_rootfs", pf.TAKE_FACT_KEYS)
+        self.assertIn("tmpfs", pf.TAKE_FACT_KEYS)
+        self.assertEqual(rt.INSPECT_PATHS["readonly_rootfs"], "HostConfig.ReadonlyRootfs")
+        self.assertEqual(rt.INSPECT_PATHS["tmpfs"], "HostConfig.Tmpfs")
+        self.assertEqual(set(rt.TAKE_TMPFS), {"/tmp", "/var/tmp"})
+        self.assertNotIn("noexec", rt.TMPFS_OPTIONS)
+
+
 class TheVendorRoad(unittest.TestCase):
     """Review r15 MINOR 5 and M10: the driver judges a vendor take's store, sweeps and shell commands."""
 
@@ -494,7 +567,7 @@ class TheVendorRoad(unittest.TestCase):
         listing = [{"at": "post-1", "entries": [["sessions/2026", "dir"], ["sessions/2026/10", "dir"],
                                                ["sessions/2026/10/16", "dir"], [own, "file"]]}]
         mine = {"at": "post-1", "files": [[f"/opt/cfg/{own}", "codex", "t1"]], "unreadable": [], "escapes": [],
-                "scanned": 4, "truncated": False}
+                "mounts": ["/opt/cfg"], "scanned": 4, "truncated": False, "expected": ["/run/t", "/opt/cfg"]}
         self.assertEqual(drive.vendor_nested_problems(listing, [mine], "codex", own, ["ls"], []), [])
         foreign = dict(mine, files=mine["files"] + [["/tmp/r.jsonl", "codex", "t2"]])
         self.assertTrue(drive.vendor_nested_problems(listing, [foreign], "codex", own, ["ls"], []))
@@ -551,10 +624,10 @@ class TheDriver(unittest.TestCase):
         drive.TakeDriver._sweep_sessions(me, take, "post-1")
         self.assertEqual(take.session_sweeps[0]["at"], "post-1")
         self.assertIn("boom", take.session_sweeps[0]["refused"])
-        doc = {"files": [], "unreadable": [], "escapes": [], "scanned": 3, "truncated": False}
+        doc = {"files": [], "unreadable": [], "escapes": [], "mounts": [], "scanned": 3, "truncated": False}
         me.runtime = types.SimpleNamespace(run=lambda argv, env=None, timeout=None: rt.Completed(0, json.dumps(doc), ""))
         drive.TakeDriver._sweep_sessions(me, take, "post-2")
-        self.assertEqual(take.session_sweeps[1], dict(doc, at="post-2"))
+        self.assertEqual(take.session_sweeps[1], dict(doc, at="post-2", expected=rt.sweep_roots("/run/t")))
 
     def test_the_driver_lists_after_every_turn_and_at_publish(self):
         import ast
@@ -580,21 +653,27 @@ class TheDraft(unittest.TestCase):
         text = rows[0]["text"]
         for words in ("nested agent", "session store", "nested_cli_calls", "human sample", "--no-session-pers",
                       "the sweep", "swept locations", "REMAINS", "in-turn", "rebuilds", "CLAUDE_CONFIG_DIR",
-                      "W-3", "r15", "--ephemeral", "Gemini 0.64.0", "/run/lock", "read-only", "mount table",
-                      "every line"):
+                      "W-3", "r15", "--ephemeral", "Gemini 0.64.0", "read-only", "mount table", "outside the expected set",
+                      "every location"):
             self.assertIn(words, text)
         self.assertIn("glitch-b5", rows[0]["ruling"])
         self.assertIn("tests/test_nested_agent.py", rows[0]["closed_check"])
+        ro = [r for r in draft["box_residuals"] if r.get("name") == "read-only root"]
+        self.assertEqual(len(ro), 1)
+        for words in ("--read-only", "/tmp and /var/tmp", "Round 3's box differed", "no container",
+                      "read-only-errors.json", "EROFS"):
+            self.assertIn(words, ro[0]["text"])
 
 
-def func_mutant(mod, fname, old, new):
-    """`mod.fname` with `old` replaced by `new` once in its source, compiled over the module's own globals."""
+def func_mutant(mod, fname, old, new, home=None):
+    """`mod.fname` with `old` replaced by `new` once in its source, compiled over the module's (or `home`'s, for a
+    class's method) own globals."""
     import inspect
     import textwrap
     src = textwrap.dedent(inspect.getsource(getattr(mod, fname)))
     assert src.count(old) == 1, f"{fname}: the anchor occurs {src.count(old)} times"
-    g = dict(mod.__dict__)
-    exec(compile(src.replace(old, new), mod.__file__, "exec"), g)
+    g = dict((home or mod).__dict__)
+    exec(compile(src.replace(old, new), (home or mod).__file__, "exec"), g)
     return g[fname]
 
 
@@ -615,7 +694,7 @@ class TheWitnesses(unittest.TestCase):
         sweep_cases = (TheSweep("test_review_r15_reads"), TheSweep("test_the_program_finds_each_session_shape_and_nothing_else"))
         for name, patch, cases in (
                 ("M1 never-roots entered", mock.patch.object(rt, "SWEEP_PROGRAM", prog.replace(
-                    "    if inside(path, never):\n        return\n", "")), sweep_cases),
+                    "    if barred(path):\n        return\n", "")), sweep_cases),
                 ("M2 an unreadable file never reported", mock.patch.object(rt, "SWEEP_PROGRAM", prog.replace(
                     "    except OSError:\n        if st.st_uid == uid:\n            out[\"unreadable\"].append([path, \"file\"])\n"
                     "        return\n", "    except OSError:\n        return\n")), sweep_cases),
@@ -639,6 +718,15 @@ class TheWitnesses(unittest.TestCase):
                 ("M12 the reply's scanned unchecked", mock.patch.object(rt, "sweep_sessions", func_mutant(
                     rt, "sweep_sessions", 'type(doc["scanned"]) is int and ', "")),
                  (TheSweep("test_the_sweep_s_roots_and_its_argv"),)),
+                ("R15-2 the mount set unread", mock.patch.object(ct, "sweep_violations", func_mutant(
+                    ct, "sweep_violations", "            if m not in expected:", "            if False:")),
+                 (TheReadOnlyRoot("test_a_read_write_mount_outside_the_expected_set_refuses"),)),
+                ("R15-2 the stream's EROFS unread", mock.patch.object(drive.TakeDriver, "_note_read_only_errors",
+                                                                     func_mutant(drive.TakeDriver,
+                                                                                 "_note_read_only_errors",
+                                                                                 'sources.append(("stream", fh.read()))',
+                                                                                 "pass", home=drive)),
+                 (TheReadOnlyRoot("test_the_driver_records_each_read_only_error"),)),
                 ("R15-6 any NAME= token", mock.patch.object(ct, "assigned_variables", lambda c, depth=0: [
                     t.split("=", 1)[0] for t in ct._split_all(c) if "=" in t]),
                  (TheFlag("test_moving_an_agent_cli_s_session_store_refuses"),))):

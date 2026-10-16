@@ -1839,7 +1839,8 @@ TAKE_FILE_KINDS = {"launch.json": "launch", "teardown.json": "launch", "proxy.lo
                    "ownership-grant.json": "launch", "ownership-restore.json": "launch",   # the ownership road
                    "settings-guard.json": "launch",   # the run tree's Claude settings: baseline and per-turn checks
                    "evidence-ledger.jsonl": "evidence", "evidence-ledger-copy.json": "launch",   # review MAJOR 1
-                   "session-store.json": "ledger"}    # W-3b (glitch-b5, 16 Oct 2026): the session store's listings
+                   "session-store.json": "ledger",    # W-3b (glitch-b5, 16 Oct 2026): the session store's listings
+                   "read-only-errors.json": "ledger"}    # R15-2: what the read-only root broke, by turn
 STREAM_NAME = re.compile(r"turn-[1-9][0-9]*\.jsonl")
 # Live harness 13 Oct: the box's per-turn actual-submission journal (run_take: stream path + ".launch.json"), an exact
 # top-level sibling of a turn stream, scanned as an unmaskable launch record. Nearby or nested spellings still refuse.
@@ -2034,6 +2035,7 @@ class _Take:
         self.native_snapshot_refusal = None     # 3c: why a turn's snapshot was not retained (the take stops)
         self.session_store: list = []  # W-3b: the config folder's session store, listed after every turn and at publish
         self.session_sweeps: list = []  # W-3b (review r14): the take container swept for session files after every turn
+        self.read_only_errors: list = []  # R15-2: EROFS lines of the turns' streams and stderr (read-only-errors.json)
         self.native_rel = None         # W-3b: the vendor take's own native session, relative to the config folder
         self.store_refusal = None      # W-3b: a vendor take whose session store holds more than its own session
         self.spec = None               # the ownership road: the TakeSpec the grant and the restore name
@@ -2532,14 +2534,33 @@ class TakeDriver:
         except Exception as e:  # noqa: BLE001 - a listing that fails is recorded, never a pass
             take.session_store.append({"at": at, "refused": f"{type(e).__name__}: {str(e)[:200]}"})
 
+    def _note_read_only_errors(self, take, adapter, n: int, turn) -> None:
+        """glitch-b5's ruling on R15-2 (16 Oct 2026): every line of turn n's stream and of the harness's stderr that
+        names EROFS or "Read-only file system" (READ_ONLY_ERROR), kept in take.read_only_errors as {turn, where,
+        line} (capped), so the first live walks name each path the read-only root broke. Never raised."""
+        try:
+            sources = []
+            if getattr(turn, "stream_path", None) and os.path.isfile(turn.stream_path):
+                with open(turn.stream_path, encoding="utf-8", errors="replace") as fh:
+                    sources.append(("stream", fh.read()))
+            seen = getattr(adapter, "stderr_seen", None) or []
+            if seen:
+                sources.append(("stderr", seen[-1]))
+            for where, text in sources:
+                for line in text.split("\n"):
+                    if READ_ONLY_ERROR.search(line) and len(take.read_only_errors) < READ_ONLY_ERRORS_MAX:
+                        take.read_only_errors.append({"turn": n, "where": where, "line": line[:500]})
+        except Exception as e:  # noqa: BLE001 - the record is evidence; its failure is named in it
+            take.read_only_errors.append({"turn": n, "where": "reader", "line": f"{type(e).__name__}: {e}"[:500]})
+
     def _sweep_sessions(self, take, at: str) -> None:
         """W-3b (glitch-b5's ruling on review r14, 16 Oct 2026): box/run_take.sweep_sessions over the take container's
         writable locations, after the turn's processes are gone and before the teardown, appended to
-        take.session_sweeps as {at, files, unreadable, scanned, truncated} or {at, refused}. Never raised."""
+        take.session_sweeps as {at, files, unreadable, escapes, mounts, scanned, truncated, expected} (expected: the
+        read-write mounts the container should have, run_take.sweep_roots) or {at, refused}. Never raised."""
         try:
-            doc = _run_take.sweep_sessions(self.runtime, take.launched.take_id,
-                                           _run_take.sweep_roots(take.spec.run_tree), caller_env=self.caller_env)
-            take.session_sweeps.append({"at": at, **doc})
+            doc = _run_take.sweep_sessions(self.runtime, take.launched.take_id, caller_env=self.caller_env)
+            take.session_sweeps.append({"at": at, **doc, "expected": _run_take.sweep_roots(take.spec.run_tree)})
         except Exception as e:  # noqa: BLE001 - a sweep that fails is recorded, never a pass
             take.session_sweeps.append({"at": at, "refused": f"{type(e).__name__}: {str(e)[:200]}"})
 
@@ -2603,6 +2624,7 @@ class TakeDriver:
             cmds, unread = _ct.vendor_shell_commands(take.folder, harness)
             store_doc["nested_cli_calls"] = sum(len(_ct.nested_cli_mentions(c)) for c in cmds)
         self._write(take, SESSION_STORE_RECORD, store_doc)
+        self._write(take, READ_ONLY_ERRORS_RECORD, {"read_only_root": True, "errors": list(take.read_only_errors)})
         if vendor:                                # W-3b: no checker reads a vendor take yet, so the driver judges it
             bad = vendor_nested_problems(take.session_store, take.session_sweeps, harness, take.native_rel, cmds,
                                          unread)
@@ -2791,6 +2813,7 @@ class TakeDriver:
                     retained = self._retain_native(take, adapter, n)  # live harness 3c: before any next resume
                     self._list_session_store(take, row, f"post-{n}")      # W-3b: after every turn, through the box
                     self._sweep_sessions(take, f"post-{n}")                # W-3b (r14): the container, before teardown
+                    self._note_read_only_errors(take, adapter, n, turn)      # R15-2: what the read-only root broke
                     after = self._settings_problems(take, f"post-{n}")   # the settings guard, the last turn's too
                     if after:
                         take.settings_stop = f"post-{n}: the run tree's Claude settings: {'; '.join(after)}"
@@ -3294,6 +3317,9 @@ def copy_subagent_files(session_file: Path, session_id: str, folder: Path) -> li
 
 SESSION_STORE_RECORD = "session-store.json"
 SESSION_STORE_LIST_MAX = 5000
+READ_ONLY_ERRORS_RECORD = "read-only-errors.json"   # R15-2 (glitch-b5, 16 Oct 2026)
+READ_ONLY_ERROR = re.compile(r"EROFS|Read-only file system")
+READ_ONLY_ERRORS_MAX = 200
 
 
 def vendor_nested_problems(listings, sweeps, harness: str, native_rel, commands, unread) -> list:

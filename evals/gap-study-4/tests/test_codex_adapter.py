@@ -1252,6 +1252,10 @@ class TestTheAdapter(unittest.TestCase):
     def test_a1_the_stream_read(self):
         self.assertEqual(a1_stream(ca), [])
 
+    def test_the_turns_stderr_is_kept(self):
+        """glitch-b5's ruling on R15-2 (16 Oct 2026): the driver reads each turn's stderr for EROFS lines."""
+        self.assertEqual(a_stderr(ca), [])
+
     def test_a2_the_agents_text_is_never_an_api_error(self):
         self.assertEqual(a2_error(ca), [])
 
@@ -1519,8 +1523,25 @@ class TestWitnesses(unittest.TestCase):
 # not asserted verbatim, and no logic reads them: every refusal is told apart by its exception type, never its words.
 NEGATE = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.In: ast.NotIn, ast.NotIn: ast.In, ast.Is: ast.IsNot,
           ast.IsNot: ast.Is, ast.Lt: ast.GtE, ast.GtE: ast.Lt, ast.Gt: ast.LtE, ast.LtE: ast.Gt}
+@guarded("A-stderr", CA_API)
+def a_stderr(mod, p):
+    """glitch-b5's ruling on R15-2 (16 Oct 2026): each turn's stderr is kept on the adapter (stderr_seen), so the
+    driver can name what a read-only root broke."""
+    box = FakeRuntime([fixture("turn1-tools.jsonl")])
+    a = adapter(mod, box, rollouts=[fixture("rollout-served-other.jsonl")])
+    a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+    real = box.run
+    box.run = lambda *x, **k: (lambda c: rt.Completed(c.returncode, c.stdout, "EROFS-SENTINEL"))(real(*x, **k))
+    a.turn("one", first=True, budget_s=60)
+    out = [] if getattr(a, "stderr_seen", None) == ["EROFS-SENTINEL"] else [f"{p}: the turn's stderr is not kept"]
+    quiet = adapter(mod, FakeRuntime([fixture("turn1-tools.jsonl")]), rollouts=[fixture("rollout-served-other.jsonl")])
+    quiet.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+    quiet.turn("one", first=True, budget_s=60)
+    return out + ([] if getattr(quiet, "stderr_seen", None) == [""] else [f"{p}: an empty stderr is not kept as \"\""])
+
+
 TC_CHECKS = (s1_event, s2_item, s3_key, p1_view, b3_required, b8_types)
-CA_CHECKS = (a1_stream, a2_error, a3_usage, a4_argv, a5_model, a8_journal, a6_turn, a7_source, b1_end, b2_thread, b3_stream,
+CA_CHECKS = (a_stderr, a1_stream, a2_error, a3_usage, a4_argv, a5_model, a8_journal, a6_turn, a7_source, b1_end, b2_thread, b3_stream,
              b4_rollout, b5_usage, b6_empty, b7_blank, b9_record, b10_cut, b11_version, b12_executed, b13_native)
 
 _PREAMBLE = "the import preamble: this test puts the module folder on sys.path before it imports either module"

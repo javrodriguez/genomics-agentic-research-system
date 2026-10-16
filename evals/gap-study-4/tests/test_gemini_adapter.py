@@ -1678,8 +1678,8 @@ EQUIVALENT = {
     'gemini_adapter: assign-empty L328 65756fc1 self._version = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
     'gemini_adapter: assign-empty L329 7f1bf958 self.session_id = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
     'gemini_adapter: unwrap L336 95ba8661 list(VERSION_ARGV)': ('sequence-alike', 'agent_exec_argv takes the tuple as it takes the list', 'list(VERSION_ARGV)'),
-    'gemini_adapter: return-none L407 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
-    'gemini_adapter: stmt-delete L407 9f730a1a return None': ('identical-mutant', "a method's last `return None` deleted still returns None", 'None'),
+    'gemini_adapter: return-none L408 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: stmt-delete L408 9f730a1a return None': ('identical-mutant', "a method's last `return None` deleted still returns None", 'None'),
     'transcript_gemini: stmt-delete L45 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's __future__ import", '__future__'),
     'transcript_gemini: assign-empty L51 e8a221d3 _HERE = os.path.dirname(os.path.abspath(__file__))': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
     'transcript_gemini: cmp-negate#0 L52 7c3b80fa _HERE not in sys.path': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
@@ -1877,8 +1877,22 @@ def _build(tree, name: str, path: Path, inject=None) -> types.ModuleType:
     return mod
 
 
+@guarded("A-stderr", GA_API)
+def a_stderr(mod, p):
+    """glitch-b5's ruling on R15-2 (16 Oct 2026): each turn's stderr is kept on the adapter (stderr_seen), so the
+    driver can name what a read-only root broke."""
+    a, box = take(mod, [fixture("turn1-tools.jsonl")])
+    real = box.run
+    box.run = lambda *x, **k: (lambda c: rt.Completed(c.returncode, c.stdout, "EROFS-SENTINEL"))(real(*x, **k))
+    a.turn("one", first=True, budget_s=60)
+    out = [] if getattr(a, "stderr_seen", None) == ["EROFS-SENTINEL"] else [f"{p}: the turn's stderr is not kept"]
+    quiet, _ = take(mod, [fixture("turn1-tools.jsonl")])
+    quiet.turn("one", first=True, budget_s=60)
+    return out + ([] if getattr(quiet, "stderr_seen", None) == [""] else [f"{p}: an empty stderr is not kept as \"\""])
+
+
 TG_CHECKS = (s1_event, s2_key, s3_words, s4_stats, s5_tools, s6_error_text, p1_view)
-GA_CHECKS = (a1_stream, a2_error, a3_output, a4_stats, a5_model, a6_argv, a7_session, a8_turn, a9_source, a10_mode,
+GA_CHECKS = (a_stderr, a1_stream, a2_error, a3_output, a4_stats, a5_model, a6_argv, a7_session, a8_turn, a9_source, a10_mode,
              a11_identity, a12_executed, a13_native, a14_journal)
 
 

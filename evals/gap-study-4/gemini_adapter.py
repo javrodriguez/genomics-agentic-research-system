@@ -356,6 +356,7 @@ class GeminiAdapter(aa.AgentAdapter):
         got = rt.run_turn(self.runtime, self.take_id, inner, harness=NAME, run_tree=self.run_tree,
                           login_file=self.login_file, stream_path=self.stream_path_for(n), budget_s=budget_s,
                           clock=self.clock, caller_env=self.caller_env)
+        self.__dict__.setdefault("stderr_seen", []).append(got.get("stderr") or "")   # R15-2: EROFS evidence
         after = self.counters_for()
         counters = rt.counter_delta(before, after)
         # Live harness 3a: the exec ran, so what the runtime returned is kept before anything of the turn is read; a

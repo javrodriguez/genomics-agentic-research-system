@@ -613,9 +613,17 @@ class FakeBox:
                 mapping[tgt.split(",", 1)[0]] = src
         cfg, tree = mapping[rt.CONFIG_MOUNT], spec[spec.index("--workdir") + 1]
         tree = mapping.get(tree, tree)
-        roots = [mapping[r] for r in json.loads(a[10]) if r in mapping]
+        # the container's own mount table, as the fake's read-only root has it: the root read-only, the two binds
+        # read-write (at their host paths here), and /proc (never entered)
+        import tempfile as _tf
+        ro = "--read-only" in spec
+        table = _tf.NamedTemporaryFile("w", suffix=".mountinfo", delete=False)
+        table.write(f"1 0 0:1 / / {'ro' if ro else 'rw'},relatime - overlay overlay rw\n"
+                    f"2 1 0:2 / {tree} rw,relatime - ext4 /dev/x rw\n3 1 0:3 / {cfg} rw,relatime - ext4 /dev/x rw\n"
+                    f"4 1 0:4 / /proc rw,nosuid - proc proc rw\n")
+        table.close()
         buf, saved = _io.StringIO(), sys.argv            # in process: the module's process guard spawns nothing
-        sys.argv = ["-c", json.dumps(roots), str(os.getuid()), a[12], a[13], a[14]]
+        sys.argv = ["-c", table.name, str(os.getuid()), a[12], a[13], a[14], a[15]]
         try:
             with _cl.redirect_stdout(buf), FakeBox.as_container(tree), FakeBox.as_container(cfg):   # as the agent
                 exec(compile(rt.SWEEP_PROGRAM, "<the session sweep>", "exec"), {"__name__": "__sweep__"})
@@ -626,6 +634,8 @@ class FakeBox:
         doc["files"] = [[back(f[0])] + f[1:] for f in doc["files"]]
         doc["unreadable"] = [[back(u[0]), u[1]] for u in doc["unreadable"]]
         doc["escapes"] = [[back(u[0]), back(u[1])] for u in doc["escapes"]]
+        doc["mounts"] = sorted(back(m) for m in doc["mounts"])
+        os.unlink(table.name)
         self.sweeps = getattr(self, "sweeps", []) + [doc]
         return ok(json.dumps(doc))
 
@@ -658,7 +668,10 @@ class FakeBox:
                                "SecurityOpt": ["no-new-privileges"], "Privileged": False, "Devices": None,
                                "PidMode": "", "PidsLimit": int(val("--pids-limit")), "Memory": int(val("--memory")),
                                "MemoryReservation": int(val("--memory-reservation")),
-                               "NanoCpus": int(Decimal(val("--cpus")) * 1_000_000_000)},
+                               "NanoCpus": int(Decimal(val("--cpus")) * 1_000_000_000),
+                               "ReadonlyRootfs": "--read-only" in a,       # derived from the create argv, as Docker does
+                               "Tmpfs": {t.split(":", 1)[0]: t.split(":", 1)[1] for i, t in enumerate(a)
+                                         if i and a[i - 1] == "--tmpfs"} or None},
                 "Mounts": [{"Type": "bind", "Source": tree, "Destination": tree, "RW": True},
                            {"Type": "bind", "Source": cfg, "Destination": rt.CONFIG_MOUNT, "RW": True}],
                 "State": {"Running": c["running"], "ExitCode": 0, "OOMKilled": False}}]

@@ -381,6 +381,7 @@ EXPECTED_CREATE = [
     "docker", "create", "--pull=never", "--network", ID["net"], "--user", "10003:10003", "--cap-drop", "ALL",
     "--security-opt", "no-new-privileges", "--pids-limit", "256", "--memory-reservation", str(512 * 2 ** 20),
     "--memory", str(3 * 512 * 2 ** 20), "--cpus", "2",
+    "--read-only", "--tmpfs", "/tmp:rw,exec,nosuid,nodev,mode=1777", "--tmpfs", "/var/tmp:rw,exec,nosuid,nodev,mode=1777",
     "--mount", "type=bind,source=/srv/w/t1/tree,target=/srv/w/t1/tree",
     "--mount", "type=bind,source=/srv/w/t1/cfg,target=/opt/cfg",
     "--workdir", "/srv/w/t1/tree", "--entrypoint", "sleep", IMAGE, "infinity"]
@@ -396,6 +397,11 @@ class TestCreateArgv(MutantCase):
         out += [f"forbidden flag {f}" for f in FORBIDDEN_CREATE if f in flags]
         if argv.count("--mount") != 2:
             out.append("not exactly two mounts")
+        if "--read-only" not in argv:            # the read-only root (glitch-b5's ruling on review r15, 16 Oct 2026)
+            out.append("the root filesystem is not read-only")
+        tmpfs = {argv[i + 1] for i, x in enumerate(argv) if x == "--tmpfs"}
+        if tmpfs != {f"{k}:{v}" for k, v in rt.TAKE_TMPFS.items()} or set(rt.TAKE_TMPFS) != {"/tmp", "/var/tmp"}:
+            out.append(f"the tmpfs mounts are {sorted(tmpfs)}")
         return out
 
     def test_shape(self):
@@ -417,12 +423,26 @@ class TestCreateArgv(MutantCase):
         def agent_pid1(s):
             return [("10001:10001" if a == "10003:10003" else a) for a in orig(s)]
 
+        def writable_root(s):                   # the read-only root (glitch-b5's ruling on review r15, 16 Oct 2026)
+            return [a for a in orig(s) if a != "--read-only"]
+
+        def extra_tmpfs(s):
+            a = orig(s)
+            i = a.index("--read-only") + 1
+            return a[:i] + ["--tmpfs", "/run/lock:rw"] + a[i:]
+
+        def noexec_tmp(s):
+            return [("/tmp:rw,noexec" if a.startswith("/tmp:") else a) for a in orig(s)]
+
         self.assert_green_then_red(self.check_shape, [
             ("env-at-create", patched(rt, "create_argv", with_env)),
             ("alias-on-take", patched(rt, "create_argv", with_alias)),
             ("pull-allowed", patched(rt, "create_argv", no_pull)),
             ("third-mount", patched(rt, "create_argv", third_mount)),
             ("agent-as-pid1", patched(rt, "create_argv", agent_pid1)),
+            ("writable-root", patched(rt, "create_argv", writable_root)),
+            ("extra-tmpfs", patched(rt, "create_argv", extra_tmpfs)),
+            ("noexec-tmp", patched(rt, "create_argv", noexec_tmp)),
             ("keepalive-user", patched(rt, "KEEPALIVE_USER", "10001:10001")),
             ("config-mount", patched(rt, "CONFIG_MOUNT", "/root/cfg")),
             ("keepalive-command", patched(rt, "KEEPALIVE_COMMAND", ("sh",))),
@@ -1026,7 +1046,8 @@ def take_inspect(s):
              "HostConfig": {"NetworkMode": s.network, "CapDrop": ["ALL"], "CapAdd": None,
                             "SecurityOpt": ["no-new-privileges"], "Privileged": False, "Devices": None,
                             "PidMode": "", "PidsLimit": s.pids_limit, "Memory": s.memory,
-                            "MemoryReservation": s.memory_reservation, "NanoCpus": s.nano_cpus()},
+                            "MemoryReservation": s.memory_reservation, "NanoCpus": s.nano_cpus(),
+                            "ReadonlyRootfs": True, "Tmpfs": {"/tmp": "rw,exec,nosuid,nodev,mode=1777", "/var/tmp": "rw,exec,nosuid,nodev,mode=1777"}},
              "Mounts": [{"Type": "bind", "Source": s.run_tree, "Destination": s.run_tree, "RW": True},
                         {"Type": "bind", "Source": s.config_dir, "Destination": "/opt/cfg", "RW": True}]}]
 
@@ -2997,7 +3018,7 @@ MODULE_ATTRS = {
     # ruling, 14 Oct 2026: exactly this one name).
     "run_take": frozenset({"AGENT_USER", "CLAUDE_CODE", "CODEX", "CONFIG_MOUNT", "GEMINI", "GEMINI_MODE_ROUTE_VARIABLES",
                            "HARNESS_ENV",
-                           "INSPECT_PATHS", "INSPECT_STATUS", "KEEPALIVE_COMMAND", "KEEPALIVE_USER", "LOGIN_VARIABLE",
+                           "INSPECT_PATHS", "INSPECT_STATUS", "KEEPALIVE_COMMAND", "KEEPALIVE_USER", "TAKE_TMPFS", "LOGIN_VARIABLE",
                            "NotReady", "PENDING", "PENDING_WHY", "PROXY_ALIAS", "PROXY_URL", "RUNTIME_CLIENT",
                            # glitch-06 (14 Oct 2026): preflight's create-time environment check reads it, so the
                            # Codex CLI's per-variable broker-snapshot prefixes are refused at create time too

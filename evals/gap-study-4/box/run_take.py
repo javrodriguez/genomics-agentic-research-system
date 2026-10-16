@@ -9,8 +9,9 @@ interface 10). `DockerRuntime.run` is the only place in the box that starts a pr
 `shell=False`, and it passes the caller's `env` as the client's WHOLE environment.
 
 THE TAKE CONTAINER. One fresh container per take, kept alive by `sleep infinity` as PID 1 under a third uid
-(`KEEPALIVE_USER`), with exactly two mounts: the run tree read-write at the same absolute path as on the host, and
-the per-take config folder at `CONFIG_MOUNT`. All capabilities dropped, no new privileges, a pids limit, a memory
+(`KEEPALIVE_USER`), with a read-only root filesystem (glitch-b5, 16 Oct 2026) and exactly two bind mounts: the run tree
+read-write at the same absolute path as on the host, and the per-take config folder at `CONFIG_MOUNT`; plus the
+`TAKE_TMPFS` mounts (/tmp, /var/tmp) and Docker's own /dev/shm. All capabilities dropped, no new privileges, a pids limit, a memory
 reservation, a ceiling of exactly three times it, a CPU limit. No environment variable at create, `--pull=never`,
 the image by its id. Every agent action is a `docker exec --user AGENT_USER` into it.
 
@@ -67,6 +68,13 @@ PROXY_URL = "http://proxy:3128"
 CONFIG_MOUNT = "/opt/cfg"
 RUNTIME_CLIENT = "docker"
 KEEPALIVE_COMMAND = ("sleep", "infinity")
+# glitch-b5's ruling on review r15's MAJOR 2 (16 Oct 2026): the take container's root filesystem is read-only. What a
+# take writes, from the image and the pinned binaries read statically (the harness lane's r15 report): its two binds
+# (the run tree, where TMPDIR points, and the config mount, HOME and CLAUDE_CONFIG_DIR), /dev/shm (Docker's own tmpfs,
+# which 2.1.296 opens read-write) and two tmpfs mounts for whatever falls back to /tmp or /var/tmp. A write the root
+# breaks shows on the first live walks as an EROFS line, which the driver records (read-only-errors.json).
+TMPFS_OPTIONS = "rw,exec,nosuid,nodev,mode=1777"
+TAKE_TMPFS = {"/tmp": TMPFS_OPTIONS, "/var/tmp": TMPFS_OPTIONS}
 # The runtime's default network, which the proxy alone joins for its own way out.
 DEFAULT_NETWORK = "bridge"
 
@@ -602,6 +610,8 @@ INSPECT_PATHS = {
     "pids_limit": "HostConfig.PidsLimit", "memory": "HostConfig.Memory",
     "memory_reservation": "HostConfig.MemoryReservation", "nano_cpus": "HostConfig.NanoCpus",
     "mounts": "Mounts", "running": "State.Running", "exit_code": "State.ExitCode", "oom_killed": "State.OOMKilled",
+    # the read-only root (glitch-b5, 16 Oct 2026): the Engine API's spellings, confirmed by the first live walk
+    "readonly_rootfs": "HostConfig.ReadonlyRootfs", "tmpfs": "HostConfig.Tmpfs",
 }
 # FILLED 14 Oct 2026 (box lane; stub-take review PASS): every INSPECT_PATHS spelling resolved in the take's, the
 # sidecar's and the proxy's inspects of both stub takes (rule R-INSPECT).
@@ -822,7 +832,8 @@ def check_spec(spec: TakeSpec) -> None:
 
 
 def create_argv(spec: TakeSpec) -> list:
-    """`docker create` for one take container: no environment, no alias, exactly two mounts, PID 1 the keep-alive."""
+    """`docker create` for one take container: no environment, no alias, a read-only root with exactly two bind mounts
+    and the TAKE_TMPFS mounts, PID 1 the keep-alive."""
     check_spec(spec)
     return [RUNTIME_CLIENT, "create", "--pull=never",
             "--network", spec.network,
@@ -833,6 +844,8 @@ def create_argv(spec: TakeSpec) -> list:
             "--memory-reservation", str(spec.memory_reservation),
             "--memory", str(spec.memory),
             "--cpus", spec.cpus,
+            "--read-only",
+            *[a for path, opts in TAKE_TMPFS.items() for a in ("--tmpfs", f"{path}:{opts}")],
             "--mount", f"type=bind,source={spec.run_tree},target={spec.run_tree}",
             "--mount", f"type=bind,source={spec.config_dir},target={CONFIG_MOUNT}",
             "--workdir", spec.run_tree,
@@ -2074,21 +2087,43 @@ def run_turn(runtime, take_id: str, inner, *, harness: str, run_tree: str, login
 # roots is reported. /proc and /sys are never roots and never entered. A file that does not open with "{" is read no
 # further than its first block. An agent-owned entry the sweep cannot read, and an entry that cannot be lstat'ed
 # under an agent-owned folder, are reported. The checker admits only the take's own session and its sub-agent pairs.
-# The roots are still listed here (SWEEP_FIXED_ROOTS): review r15's MAJOR 2 (a nested session in /run/lock, mode
-# 1777) asks for a read-only root filesystem and roots from the container's own mount table, held for the box check
-# a live run must make first (the harness lane's r15 report).
-AGENT_PASSWD_HOME = "/home/dana"          # the image's agent user (box/Dockerfile useradd --home-dir)
-SWEEP_FIXED_ROOTS = ("/tmp", "/var/tmp", "/dev/shm", AGENT_PASSWD_HOME)
-SWEEP_NEVER_ROOTS = ("/proc", "/sys")       # never a root, never entered
+# Its roots are the read-write mounts of the container's own mount table (review r15's MAJOR 2: a nested session
+# in /run/lock, mode 1777, was outside every listed root); with the root filesystem read-only, those are every location
+# a take can write, and the checker refuses a read-write mount outside sweep_roots().
+AGENT_PASSWD_HOME = "/home/dana"          # the image's agent user (box/Dockerfile useradd --home-dir): read-only now
+# glitch-b5's ruling on review r15's MAJOR 2 (16 Oct 2026): the take container's root filesystem is read-only, and the
+# sweep's roots are every read-write mount of the container's own mount table at sweep time (/proc, /sys and /dev never,
+# /dev/shm kept). The listed set below is only what those mounts are compared against: a read-write mount outside it
+# refuses [nested-agent].
+SWEEP_FIXED_ROOTS = ("/tmp", "/var/tmp", "/dev/shm")
+SWEEP_NEVER_ROOTS = ("/proc", "/sys", "/dev")  # never a root, never entered ...
+SWEEP_KEPT_ROOTS = ("/dev/shm",)               # ... but for these
+SWEEP_MOUNTINFO = "/proc/self/mountinfo"
+# Docker writes these three into every container as read-write bind mounts of root-owned files (the agent cannot write
+# them); they are expected read-write mounts, and the sweep reads them like any other.
+DOCKER_RUNTIME_FILES = ("/etc/hosts", "/etc/hostname", "/etc/resolv.conf")
 SWEEP_MAX_FILES = 200000
 SWEEP_FILE_CAP = 64 * 1024 * 1024           # review r15: every line of a file up to 64 MB; a larger "{" file fails closed
 SWEEP_PROGRAM = r'''
 import json, os, stat, sys
-roots, uid, cap, fcap = json.loads(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
-never = json.loads(sys.argv[5])
-out = {"files": [], "unreadable": [], "escapes": [], "scanned": 0, "truncated": False}
+mountinfo, uid, cap, fcap = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
+never, kept = json.loads(sys.argv[5]), json.loads(sys.argv[6])
+out = {"files": [], "unreadable": [], "escapes": [], "mounts": [], "scanned": 0, "truncated": False}
 def inside(p, tops):
     return any(p == t or p.startswith(t.rstrip("/") + "/") for t in tops)
+def barred(p):
+    return inside(p, never) and not inside(p, kept)
+def unescape(field):
+    return field.encode("latin-1").decode("unicode_escape") if "\\" in field else field
+with open(mountinfo, encoding="utf-8", errors="surrogateescape") as fh:
+    for line in fh:
+        f = line.split(" ")
+        if len(f) > 5 and "rw" in f[5].split(","):
+            point = unescape(f[4])
+            if not barred(point):
+                out["mounts"].append(point)
+out["mounts"] = sorted(set(out["mounts"]))
+roots = out["mounts"]
 def classify(line):
     try:
         r = json.loads(line)
@@ -2124,7 +2159,7 @@ def shape(path, fd):
                 return got
     return None
 def visit(path, parent_uid):
-    if inside(path, never):
+    if barred(path):
         return
     try:
         st = os.lstat(path)
@@ -2135,7 +2170,7 @@ def visit(path, parent_uid):
     if stat.S_ISLNK(st.st_mode):
         if st.st_uid == uid:
             target = os.path.realpath(path)
-            if not inside(target, roots) or inside(target, never):
+            if not inside(target, roots) or barred(target):
                 out["escapes"].append([path, target])
         return
     if stat.S_ISDIR(st.st_mode):
@@ -2181,27 +2216,30 @@ print(json.dumps(out, sort_keys=True))
 
 
 def sweep_roots(run_tree: str) -> list:
-    """The take container's writable locations the sweep reads: the run tree, the config mount, the fixed ones."""
-    return [run_tree, CONFIG_MOUNT, *SWEEP_FIXED_ROOTS]
+    """The read-write mounts the take container is expected to have (its two binds, its tmpfs mounts, /dev/shm and
+    Docker's runtime files): what the sweep's mount table is compared against, never what it reads."""
+    return [run_tree, CONFIG_MOUNT, *SWEEP_FIXED_ROOTS, *DOCKER_RUNTIME_FILES]
 
 
-def sweep_argv(take_id: str, roots: list) -> list:
+def sweep_argv(take_id: str) -> list:
     return [RUNTIME_CLIENT, "exec", "--user", AGENT_USER, _check_id(take_id, "take id"), "/usr/bin/python3", "-I",
-            "-S", "-c", SWEEP_PROGRAM, json.dumps(list(roots)), AGENT_USER.split(":", 1)[0], str(SWEEP_MAX_FILES),
-            str(SWEEP_FILE_CAP), json.dumps(list(SWEEP_NEVER_ROOTS))]
+            "-S", "-c", SWEEP_PROGRAM, SWEEP_MOUNTINFO, AGENT_USER.split(":", 1)[0], str(SWEEP_MAX_FILES),
+            str(SWEEP_FILE_CAP), json.dumps(list(SWEEP_NEVER_ROOTS)), json.dumps(list(SWEEP_KEPT_ROOTS))]
 
 
-def sweep_sessions(runtime, take_id: str, roots: list, *, caller_env=None) -> dict:
+def sweep_sessions(runtime, take_id: str, *, caller_env=None) -> dict:
     """One sweep of the take container (above): {files: [[path, shape, session id]], unreadable: [[path, kind]],
-    escapes: [[link, target]], scanned, truncated}. A failed exec or a reply off that shape raises Refused."""
-    got = runtime.run(sweep_argv(take_id, roots), env=runtime_env(caller_env), timeout=STEP_TIMEOUT_S)
+    escapes: [[link, target]], mounts: [the read-write mount points it read], scanned, truncated}. A failed exec or a
+    reply off that shape raises Refused."""
+    got = runtime.run(sweep_argv(take_id), env=runtime_env(caller_env), timeout=STEP_TIMEOUT_S)
     if got.returncode != 0:
         raise Refused(f"the session sweep exited {got.returncode}: {str(got.stderr)[:200]}")
     try:
         doc = json.loads(got.stdout)
     except (TypeError, ValueError):
         raise Refused("the session sweep's reply is not JSON") from None
-    if not (isinstance(doc, dict) and set(doc) == {"files", "unreadable", "escapes", "scanned", "truncated"}
+    if not (isinstance(doc, dict) and set(doc) == {"files", "unreadable", "escapes", "mounts", "scanned", "truncated"}
+            and isinstance(doc["mounts"], list) and all(isinstance(m, str) for m in doc["mounts"])
             and isinstance(doc["files"], list) and isinstance(doc["unreadable"], list)
             and isinstance(doc["escapes"], list)
             and all(isinstance(u, list) and len(u) == 2 and all(isinstance(x, str) for x in u) for u in doc["escapes"])

@@ -187,7 +187,7 @@ def pending() -> dict:
 # -------------------------------------------------------------------------------------- the take's expected facts
 TAKE_FACT_KEYS = ("image", "user", "entrypoint", "cmd", "working_dir", "network_mode", "cap_drop", "cap_add", "security_opt",
                   "privileged", "devices", "pid_mode", "pids_limit", "memory", "memory_reservation", "nano_cpus",
-                  "mounts")
+                  "mounts", "readonly_rootfs", "tmpfs")
 
 
 def expected_take_inspect(spec) -> dict:
@@ -204,6 +204,7 @@ def expected_take_inspect(spec) -> dict:
             {"type": "bind", "source": spec.run_tree, "destination": spec.run_tree, "rw": True},
             {"type": "bind", "source": spec.config_dir, "destination": run_take.CONFIG_MOUNT, "rw": True}],
             key=lambda m: m["destination"]),
+        "readonly_rootfs": True, "tmpfs": dict(run_take.TAKE_TMPFS),    # the read-only root (glitch-b5, 16 Oct 2026)
     }
 
 
@@ -628,7 +629,7 @@ def _plain(raw, pid):
 def _check_take_inspect(raw, spec, *_):
     bad = inspect_mismatches(_inspect_obj(raw, "take-inspect"), expected_take_inspect(spec), kind="take")
     _need(not bad, "; ".join(bad))
-    return "exactly the two mounts, and every inspected fact equals the spec's"
+    return "a read-only root, exactly the two bind mounts and the tmpfs mounts, and every inspected fact equals the spec's"
 
 
 def _check_limits(raw, spec, *_):
