@@ -279,7 +279,7 @@ class TheEditedTextFileAttachment(unittest.TestCase):
     def test_e_draft_names_the_leak_scope(self):
         draft = json.loads((HERE / "prereg-draft.json").read_text())
         (dep,) = [d for d in draft["harness_furniture_ruling"]["departures"] if d["of"] == KIND]
-        for word in ("RULED 16 Oct (glitch-b5)", "working-tree file content", "left out of the loaded-context leak sweep",
+        for word in ("RULED 16 Oct (glitch-b5)", "working-tree file content", "excluded from the loaded-context leak sweep",
                      "check_take.context_text", "type and filename stay in the sweep",
                      "no check reads repository content for leak words", "never left out"):
             self.assertIn(word, dep["text"])

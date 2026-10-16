@@ -1333,8 +1333,8 @@ HARNESS_FURNITURE_RULING = {
          "operator's words, so the awareness furniture check counts it and no grader reads it as the agent's words. Every "
          "other attachment kind the pinned binary names and the view does not list still refuses. Static read of the "
          "binary: lane-reports/attachment-vocabulary-20261016/edited-text-file-trigger-20261015.json. RULED 16 Oct "
-         "(glitch-b5), the leak scope: the snippet is working-tree file content the agent read, so it is left out of "
-         "the loaded-context leak sweep (check_take.context_text), as content read out of the repository is; its "
+         "(glitch-b5), the leak scope: the snippet is working-tree file content the agent read, so it is excluded from "
+         "the loaded-context leak sweep (check_take.context_text), as content read from the repository is; its "
          "type and filename stay in the sweep, and no check reads repository content for leak words. A record that "
          "is not of the closed shape is refused and never left out."}],
     "walk_scope": "RULED 15 Oct 2026 (glitch-6b): the 25 pre-ruling walks are not rechecked under the steer and "
