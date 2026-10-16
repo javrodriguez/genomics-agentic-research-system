@@ -594,3 +594,16 @@ Open, on athena (glitch-b5):
 
 ## Exact next step
 glitch-b5: the battery on this head, then the walks; r16 on 03711e05..fe0aef73.
+
+## RESUME HERE (16 Oct 09:32 EDT; supersedes the blocks above): r16 folded
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent 2e11a52d). Nothing pushed. athena not used. No Docker on the Mac. No mac_slot booking held; no process of this lane running.
+
+- 2e11a52d: review r16.
+  - Links are reported only into a barred tree or dangling outside the roots, so a venv reads clean.
+  - Assignments are read through wrappers, for, read and printf -v; what still escapes is named in W-3b.
+  - A captured read-only mount table parses exactly, and a missing table is refused.
+  - The expected set is recomputed from the launch journal's run tree, an admitted file over the cap is left to its own readers, and each root is walked once.
+
+## Exact next step
+glitch-b5: r17 (stop at nits), and the battery on this head.
