@@ -367,7 +367,7 @@ class TestMutants(Case):
 
     def test_mutant_dropping_rules_findings_goes_red(self):
         c = self.commit()
-        with mock.patch.object(sr, "_rules", lambda scanner, paths: []):
+        with mock.patch.object(sr, "_rules", lambda scanner, files: ([], [])):
             r = sr.scan(c.files(), SECRETS,
                         rules_scanner=lambda p: [{"path": p[0], "line": 1, "rule": "generic-api-key"}])
         self.assertEqual(r["refused"], [])
@@ -1126,6 +1126,215 @@ class TestLeaseTokens(unittest.TestCase):
         self.assertEqual([(r["path"], r["kind"]) for r in result["refused"]], [(rec, "token")])
         self.assertNotIn(LEASE_ACCESS, json.dumps(result))
         self.assertEqual(Path(rec).read_bytes(), before)          # refused, never masked in a non-agent record
+
+
+# ------------------------------------------------------------------------------------------------- OD57's exact ruling
+# The ruled line is read at test time from the repository's own copy of the doc (blob 2c0ea574), never typed here.
+ENV_DOC = os.path.join(os.path.dirname(STUDY), "..", "gars", "_references", "environment.md")
+OD57_RULE = "generic-api-key"
+
+
+def _env_line() -> str:
+    with open(ENV_DOC, "rb") as fh:
+        return fh.read().split(b"\n")[174].decode()
+
+
+def _one_char_off(text: str) -> str:
+    return text[:-2] + ("x" if text[-2] != "x" else "y") + text[-1]
+
+
+class _Gitleaks:
+    """A fake rules scanner: generic-api-key on every line holding the doc line's first 40 characters (so a one-
+    character change at its end is still flagged, as gitleaks would), plus `extra` {marker: rule} on lines holding a
+    marker. It records every path it is handed (the probe's included) and whether each existed then."""
+
+    def __init__(self, head: str, extra=None):
+        self.head, self.extra, self.calls = head.encode(), dict(extra or {}), []
+
+    def __call__(self, paths):
+        self.calls.append([(p, os.path.exists(p)) for p in paths])
+        out = []
+        for p in paths:
+            with open(p, "rb") as fh:
+                for n, line in enumerate(fh.read().split(b"\n"), 1):
+                    if self.head in line:
+                        out.append({"path": p, "line": n, "rule": OD57_RULE})
+                    out += [{"path": p, "line": n, "rule": r} for m, r in self.extra.items() if m.encode() in line]
+        return out
+
+
+def _cc(*recs) -> bytes:   # Claude Code writes its JSONL with non-ASCII kept raw
+    return b"".join(json.dumps(r, ensure_ascii=False).encode() + b"\n" for r in recs)
+
+
+def _use(uid, name, inp, sidechain=False):
+    return {"type": "assistant", "isSidechain": sidechain,
+            "message": {"content": [{"type": "tool_use", "id": uid, "name": name, "input": inp}]}}
+
+
+def _result(uid, content, tool_use_result=None, sidechain=False):
+    rec = {"type": "user", "isSidechain": sidechain,
+           "message": {"content": [{"type": "tool_result", "tool_use_id": uid, "content": content}]}}
+    if tool_use_result is not None:
+        rec["toolUseResult"] = tool_use_result
+    return rec
+
+
+class TestOD57Ruling(Case):
+    """OD57 (Javier's ruling "scan-envmd-1 safe", 16 Oct 2026): generic-api-key on line 175 of
+    gars/_references/environment.md, inside a Read or a Bash cat/grep result, is admitted by its exact text; nothing
+    else is."""
+
+    def setUp(self):
+        self.text = _env_line()
+        self.doc = "/run/gars/_references/environment.md"
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def write(self, name, body: bytes):
+        p = os.path.join(self.tmp.name, name)
+        with open(p, "wb") as fh:
+            fh.write(body)
+        return p
+
+    def read_record(self, text=None, sidechain=False):
+        t = self.text if text is None else text
+        return _cc({"type": "system", "subtype": "init"},
+                   _use("toolu_R", "Read", {"file_path": self.doc}, sidechain),
+                   _result("toolu_R", f"174\tline before\n175\t{t}\n176\tline after\n",
+                           {"type": "text", "file": {"filePath": self.doc, "content": f"line before\n{t}\nline after"}},
+                           sidechain))
+
+    def bash_record(self, command, output, sidechain=False):
+        return _cc(_use("toolu_B", "Bash", {"command": command}, sidechain),
+                   _result("toolu_B", output, {"stdout": output, "stderr": "", "interrupted": False}, sidechain))
+
+    def scan(self, files, scanner=None):
+        scanner = scanner or _Gitleaks(self.text[:40])
+        return sr.scan(files, SECRETS, rules_scanner=scanner), scanner
+
+    def test_the_pin_is_the_docs_line_175(self):
+        b = self.text.encode()
+        (ruling,) = sr.RULED_LINES
+        self.assertEqual((ruling["ruling"], ruling["rule"]), ("OD57", OD57_RULE))
+        self.assertEqual((len(b), hashlib.sha256(b).hexdigest()), (ruling["bytes"], ruling["sha256"]))
+        self.assertTrue(self.text.startswith("Key pinned versions:"))
+
+    def test_witness_the_exact_line_is_admitted_from_a_read_result(self):
+        p = self.write("transcript.jsonl", self.read_record())
+        before = Path(p).read_bytes()
+        r, g = self.scan([(p, "transcript")])
+        self.assertEqual(r["refused"], [])
+        self.assertEqual(r["ruled"], [{"path": p, "line": 3, "rule": OD57_RULE, "ruling": "OD57"}])
+        self.assertTrue(sr.passed(r))
+        self.assertEqual(Path(p).read_bytes(), before)                 # admitted, never edited
+        self.assertEqual(len(g.calls), 2)                              # the scan, then the probe
+        (probe, existed), = g.calls[1]
+        self.assertTrue(existed)
+        self.assertNotEqual(os.path.dirname(probe), self.tmp.name)    # never in the record folder
+        self.assertFalse(os.path.lexists(probe) or os.path.lexists(os.path.dirname(probe)))
+
+    def test_witness_the_exact_line_is_admitted_from_bash_results_main_and_sub_agent(self):
+        for cmd, out, kind, side in (
+                (f"grep -n 'pinned' {self.doc}", f"175:{self.text}\n", "session", True),
+                (f"grep 'pinned' {self.doc}", f"{self.text}\n", "transcript", False),
+                (f"grep -rn pinned /run/gars/_references", f"/run/gars/_references/environment.md:175:{self.text}\n",
+                 "stream", False),
+                (f"cat -n {self.doc}", f"   174\tline before\n   175\t{self.text}\n", "session", True),
+                (f"cat {self.doc}", f"line before\n{self.text}\nline after\n", "transcript", False)):
+            with self.subTest(cmd=cmd.split()[0:2], kind=kind):
+                p = self.write(f"{kind}-{len(cmd)}.jsonl", self.bash_record(cmd, out, side))
+                r, _ = self.scan([(p, kind)])
+                self.assertEqual(r["refused"], [])
+                self.assertEqual(r["ruled"], [{"path": p, "line": 2, "rule": OD57_RULE, "ruling": "OD57"}])
+
+    def test_witness_a_one_character_change_refuses(self):
+        for rec in (self.read_record(_one_char_off(self.text)),
+                    self.bash_record(f"cat {self.doc}", _one_char_off(self.text) + "\n")):
+            with self.subTest(rec=rec[:30]):
+                p = self.write("transcript.jsonl", rec)
+                r, _ = self.scan([(p, "transcript")])
+                self.assertEqual(r["ruled"], [])
+                self.assertEqual([(x["line"], x["why"]) for x in r["refused"]],
+                                 [(rec.count(b"\n", 0, rec.find(_one_char_off(self.text)[:40].encode())) + 1,
+                                   f"the rules scanner's rule {OD57_RULE!r}")])
+                self.assertFalse(sr.passed(r))
+
+    def test_witness_another_rule_on_the_same_line_refuses(self):
+        p = self.write("transcript.jsonl", self.read_record())
+        r, _ = self.scan([(p, "transcript")], _Gitleaks(self.text[:40], {self.text[:20]: "curl-auth-header"}))
+        self.assertEqual(r["ruled"], [{"path": p, "line": 3, "rule": OD57_RULE, "ruling": "OD57"}])
+        self.assertEqual([(x["line"], x["why"]) for x in r["refused"]],
+                         [(3, "the rules scanner's rule 'curl-auth-header'")])
+        self.assertFalse(sr.passed(r))
+
+    def test_the_line_outside_a_ruled_tool_result_refuses(self):
+        cases = {
+            "an agent's own text": _cc({"type": "assistant", "message": {"content": [
+                {"type": "text", "text": f"the doc says:\n{self.text}\n"}]}}),
+            "a tool result plus the agent's text on one record": _cc(
+                _use("toolu_R", "Read", {"file_path": self.doc}),
+                {"type": "user", "message": {"content": [
+                    {"type": "tool_result", "tool_use_id": "toolu_R", "content": f"175\t{self.text}"},
+                    {"type": "text", "text": self.text}]}}),
+            "a Bash that is not cat or grep": self.bash_record(f"sed -n 175p {self.doc}", self.text + "\n"),
+            "a Bash that only starts with grep's letters": self.bash_record(f"grepx {self.doc}", self.text + "\n"),
+            "a result whose tool_use is missing": _cc(_result("toolu_X", f"175\t{self.text}")),
+            "an Agent's result": _cc(_use("toolu_A", "Agent", {"prompt": "read it"}),
+                                     _result("toolu_A", f"{self.text}\n")),
+            "the line with more on it": self.bash_record(f"cat {self.doc}", f"{self.text} and more\n"),
+        }
+        for name, body in cases.items():
+            with self.subTest(name):
+                p = self.write("transcript.jsonl", body)
+                r, _ = self.scan([(p, "transcript")])
+                self.assertEqual(r["ruled"], [])
+                self.assertEqual([x["why"] for x in r["refused"]], [f"the rules scanner's rule {OD57_RULE!r}"])
+
+    def test_a_match_the_line_does_not_explain_refuses(self):
+        p = self.write("transcript.jsonl", self.bash_record(f"cat {self.doc}", f"{self.text}\napi_key_SECOND\n"))
+        r, g = self.scan([(p, "transcript")], _Gitleaks(self.text[:40], {"api_key_SECOND": OD57_RULE}))
+        self.assertEqual(r["ruled"], [])
+        self.assertEqual([x["line"] for x in r["refused"]], [2, 2])
+        self.assertEqual(len(g.calls), 2)                              # the probe ran and still saw the rule
+
+    def test_a_non_agent_kind_refuses(self):
+        for kind in ("ledger", "evidence", "launch"):
+            with self.subTest(kind=kind):
+                p = self.write(f"{kind}.jsonl", self.read_record())
+                r, g = self.scan([(p, kind)])
+                self.assertEqual(r["ruled"], [])
+                self.assertEqual(len(r["refused"]), 1)
+                self.assertEqual(len(g.calls), 1)                      # no probe
+
+    def test_mutant_without_the_ruling_goes_red(self):
+        p = self.write("transcript.jsonl", self.read_record())
+        with mock.patch.object(sr, "RULED_LINES", ()):
+            r, _ = self.scan([(p, "transcript")])
+        self.assertEqual((r["ruled"], len(r["refused"])), ([], 1))
+        red("OD57's ruling removed (the exact line refused)")
+
+    def test_mutant_any_tool_goes_red(self):
+        p = self.write("transcript.jsonl", self.bash_record(f"sed -n 175p {self.doc}", self.text + "\n"))
+        with mock.patch.object(sr, "_ruled_tool", lambda uses, uid: True):
+            r, _ = self.scan([(p, "transcript")])
+        self.assertEqual(len(r["ruled"]), 1)
+        red("the tool binding dropped (a sed result admitted)")
+
+    def test_mutant_without_the_probe_goes_red(self):
+        p = self.write("transcript.jsonl", self.bash_record(f"cat {self.doc}", f"{self.text}\napi_key_SECOND\n"))
+        g = _Gitleaks(self.text[:40], {"api_key_SECOND": OD57_RULE})
+        first = []
+
+        def once(paths):
+            if first:
+                return []                     # the mutant: the probe sees nothing
+            first.append(1)
+            return g(paths)
+        r, _ = self.scan([(p, "transcript")], once)
+        self.assertEqual(len(r["ruled"]), 2)
+        red("the probe dropped (a second match on the line admitted)")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

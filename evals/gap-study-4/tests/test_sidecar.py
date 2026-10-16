@@ -2220,14 +2220,16 @@ BOX_MODULES = {
     "box/scan_record.py": {
         "imports": {
             "hashlib": {"sha256"},
-            "json": {"loads"},
+            "json": {"dumps", "loads"},
+            # OD57's probe (16 Oct 2026): its own temporary folder and file, removed after the rules scanner reads it
             "os": {"O_NOFOLLOW", "O_NONBLOCK", "O_RDONLY", "close", "fsync", "getuid", "lstat", "open",
-                   "path.abspath", "path.dirname", "path.isabs", "path.join", "path.lexists", "path.realpath",
-                   "read"},
+                   "path.abspath", "path.basename", "path.dirname", "path.isabs", "path.join", "path.lexists",
+                   "path.realpath", "read", "rmdir", "unlink"},
             "re": {"compile"},
             "scrub": {"NOTE"},
             "stat": {"S_IMODE", "S_ISREG"},
             "sys": {"path", "path.insert"},
+            "tempfile": {"mkdtemp"},
         },
         "from": {("__future__", "annotations")},
         # builtin or dunder names the module may bind: closed and pinned, empty today (fold 5, W4C4-1)
@@ -2235,14 +2237,17 @@ BOX_MODULES = {
         "names": {
             'OSError', 'RuntimeError', 'UnicodeDecodeError', 'ValueError', '__file__', 'all', 'any', 'bool', 'bytes',
             'callable', 'dict', 'enumerate', 'int', 'isinstance', 'len', 'list', 'open', 'set', 'sorted', 'str',
-            'tuple', 'zip'},
+            'sum', 'tuple', 'zip'},
         "attrs": {
             'NOTE', 'O_NOFOLLOW', 'O_NONBLOCK', 'O_RDONLY', 'S_IMODE', 'S_ISREG', 'abspath', 'add', 'append',
             'close', 'compile', 'count', 'decode', 'dirname', 'encode', 'endswith', 'fileno', 'find', 'flush',
             'fsync', 'fullmatch', 'getuid', 'group', 'hexdigest', 'insert', 'isabs', 'items', 'join', 'lexists',
             'realpath',
             'loads', 'lstat', 'open', 'path', 'read', 'setdefault', 'sha256', 'split', 'st_mode', 'st_uid',
-            'truncate', 'write'},
+            'truncate', 'write',
+            # OD57's exact ruling (16 Oct 2026)
+            'basename', 'dumps', 'end', 'get', 'match', 'mkdtemp', 'replace', 'rmdir', 'rstrip', 'unlink',
+            'values'},
     },
 }
 # The one subprocess call site of this lane's modules: (enclosing function, attribute).

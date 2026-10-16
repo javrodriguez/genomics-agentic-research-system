@@ -66,6 +66,7 @@ import os
 import re
 import stat
 import sys
+import tempfile
 
 _HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _HERE not in sys.path:
@@ -81,7 +82,7 @@ MARKERS = {"token": "[masked: token]", "key": "[masked: key]", "email": scrub.NO
 HOLDOUT_KIND, RULE_KIND = "holdout", "rule"
 CHECKED, NOT_CHECKED = "checked", "not-checked"
 MIN_LENGTH = {"token": 20, "key": 20, "email": 6}
-RESULT_FIELDS = ("masked", "events", "refused", "files", "holdout")
+RESULT_FIELDS = ("masked", "events", "refused", "files", "holdout", "ruled")
 # The transformation witness (scan_with_witness): one fixed replacement identity per secret kind, bound to the pinned
 # marker map above; a verifier maps an id back to its marker's bytes through replacement_marker, never to caller bytes.
 WITNESS_SCHEMA = 1
@@ -100,6 +101,26 @@ REPLACEMENT_IDS = {"token": "mask-token-v1", "key": "mask-key-v1", "email": "mas
 _LOGIN_LINE = re.compile(rb"([A-Z_][A-Z0-9_]*)=([^\s\"\x1c-\x1f\x80-\xff]{20,})\n")
 _NAME = re.compile(r"[A-Z_][A-Z0-9_]*")
 LOGIN_MAX_BYTES = 4096
+
+# ------------------------------------------------------------------------------------------------- scanner rulings
+# A rules-scanner finding is admitted only by an exact ruling, never by switching a rule off (the push door's style:
+# the rule plus the sha256 of the exact line). OD57 (Javier's own ruling, his verified terminal reply "scan-envmd-1
+# safe" at 2026-10-16T12:52:33Z, outcome "safe" on ask T83, recorded by glitch-27): gitleaks' generic-api-key flags
+# line 175 of gars/_references/environment.md ("Key pinned versions: ...", a list of package versions; blob 2c0ea574,
+# byte-identical on public GARS main a97fa9cd) when an agent reads that doc. The ruling binds that one line's text
+# (sha256 of its 80 bytes, no newline), decoded from the JSON record, inside a tool result (a Read result or a Bash
+# cat/grep result, main thread or sub-agent), in an agent-text kind (MASKABLE). Any other rule, any other line, the
+# same text anywhere outside a tool result, or a match the line alone does not explain still refuses.
+RULED_LINES = (
+    {"ruling": "OD57", "rule": "generic-api-key", "bytes": 80,
+     "sha256": "0b85623f36eef7c6e7ca19c7900e865fd7ddbfe5853197b5c1d2e246d81df313",
+     "source": "gars/_references/environment.md line 175, blob 2c0ea574434dbc4f1b9c454c8788fc68fcca2a13"},
+)
+# The line prefixes a tool result may put before the ruled text (allow-list): Read's and `cat -n`'s line number and
+# tab (or arrow), `grep -n`'s number and colon, and grep's file name (the ruled doc only) with or without a number.
+_RULED_PREFIX = re.compile(r"(?:\s*[0-9]+(?:\t|\u2192)|[0-9]+:|(?:[A-Za-z0-9_.-]*/)*environment\.md:(?:[0-9]+:)?)?")
+_TOOL_RESULT_KEYS = ("toolUseResult", "tool_use_result")
+
 
 # ------------------------------------------------------------------------------------------------- PENDING values
 PENDING = "PENDING"
@@ -435,15 +456,174 @@ def _require_search(secrets):
         raise ScanError("no token or key to search for: a scan that searches for none never passes (fold 2, W4C1-3)")
 
 
-def _rules(scanner, paths) -> list:
-    """Every rules-scanner finding, refused."""
-    out = []
-    for f in scanner(list(paths)):
+def _strings(node, out):
+    """Every string in a decoded JSON value, keys included."""
+    if isinstance(node, str):
+        out.append(node)
+    elif isinstance(node, dict):
+        for k, v in node.items():
+            out.append(k)
+            _strings(v, out)
+    elif isinstance(node, list):
+        for v in node:
+            _strings(v, out)
+    return out
+
+
+def _tool_uses(data: bytes) -> dict:
+    """{tool_use id: [(tool name, its input)]} over every JSON record of a file (main thread or a sub-agent's)."""
+    uses = {}
+
+    def walk(node):
+        if isinstance(node, dict):
+            if node.get("type") == "tool_use" and isinstance(node.get("id"), str):
+                uses.setdefault(node["id"], []).append((node.get("name"), node.get("input")))
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+    for line in _lines(data):
+        try:
+            walk(json.loads(line))
+        except ValueError:
+            continue
+    return uses
+
+
+def _ruled_tool(uses, tool_use_id) -> bool:
+    """A Read, or a Bash whose command is a cat or a grep (OD57's words): one tool_use with that id, no other."""
+    got = uses.get(tool_use_id) if isinstance(tool_use_id, str) else None
+    if not got or len(got) != 1:
+        return False
+    name, inp = got[0]
+    if name == "Read":
+        return True
+    cmd = inp.get("command") if name == "Bash" and isinstance(inp, dict) else None
+    return isinstance(cmd, str) and cmd.split(None, 1)[:1] in (["cat"], ["grep"])
+
+
+def _blocks(node, out):
+    """Every tool_result block in a record (outside its own tool-result keys)."""
+    if isinstance(node, dict):
+        if node.get("type") == "tool_result":
+            out.append(node)
+        for k, v in node.items():
+            if k not in _TOOL_RESULT_KEYS:
+                _blocks(v, out)
+    elif isinstance(node, list):
+        for v in node:
+            _blocks(v, out)
+    return out
+
+
+def _tool_result_strings(node, uses, out):
+    """The strings a ruled tool's result carries: a tool_result block's content (a string, or its text items), and
+    every string under a record's own tool-result key (toolUseResult; tool_use_result in a stream) when every
+    tool_result block of that record is a ruled tool's."""
+    if isinstance(node, dict):
+        if node.get("type") == "tool_result" and _ruled_tool(uses, node.get("tool_use_id")):
+            c = node.get("content")
+            if isinstance(c, str):
+                out.append(c)
+            elif isinstance(c, list):
+                out += [i["text"] for i in c if isinstance(i, dict) and i.get("type") == "text"
+                        and isinstance(i.get("text"), str)]
+        for k, v in node.items():
+            if k in _TOOL_RESULT_KEYS:
+                blocks = _blocks(node, [])
+                if blocks and all(_ruled_tool(uses, x.get("tool_use_id")) for x in blocks):
+                    _strings(v, out)
+            else:
+                _tool_result_strings(v, uses, out)
+    elif isinstance(node, list):
+        for v in node:
+            _tool_result_strings(v, uses, out)
+    return out
+
+
+def _ruled_text(body: bytes, ruling, uses) -> str | None:
+    """The ruled line's text when this JSON record carries it only as whole lines of ruled tools' results, else
+    None."""
+    try:
+        rec = json.loads(body)
+    except ValueError:
+        return None
+    found, hits = None, 0
+    for s in _tool_result_strings(rec, uses, []):
+        for ln in s.split("\n"):
+            for m in (0, _RULED_PREFIX.match(ln).end()):
+                rest = ln[m:].encode("utf-8", "surrogateescape")
+                if len(rest) == ruling["bytes"] and _sha(rest) == ruling["sha256"]:
+                    found, hits = rest.decode(), hits + 1
+                    break
+    if found is None:
+        return None
+    # the text must sit in the record only where it was counted, and appear raw exactly as often (it needs no JSON
+    # escape), so the probe below removes those occurrences and nothing else
+    if json.dumps(found)[1:-1] != found or sum(x.count(found) for x in _strings(rec, [])) != hits \
+            or body.count(found.encode()) != hits:
+        return None
+    return found
+
+
+def _ruled_findings(scanner, files, findings) -> tuple:
+    """(still refused, admitted) for the rule findings. A finding is admitted only when its rule has a ruling, its file
+    is agent text, its line carries the ruled text as tool-result lines alone, and the rules scanner, run again over
+    a probe copy of the file with exactly those occurrences removed, no longer reports that rule on that line."""
+    kinds = dict(files)
+    refused, admitted, candidates = [], [], {}
+    for f in findings:
+        rulings = [r for r in RULED_LINES if r["rule"] == f["rule"]]
+        if rulings and kinds.get(f["path"]) in MASKABLE:
+            with open(f["path"], "rb") as fh:
+                data = fh.read()
+            lines = _lines(data)
+            if f["line"] <= len(lines):
+                body = lines[f["line"] - 1].rstrip(b"\n")
+                text = _ruled_text(body, rulings[0], _tool_uses(data))
+                if text is not None:
+                    candidates.setdefault(f["path"], []).append((f, rulings[0], text))
+                    continue
+        refused.append(f)
+    for path, group in candidates.items():
+        with open(path, "rb") as fh:
+            lines = _lines(fh.read())
+        for f, _, text in group:
+            n = f["line"] - 1
+            lines[n] = lines[n].replace(text.encode(), b"")
+        work = tempfile.mkdtemp(prefix="ruled-probe-")
+        probe = os.path.join(work, os.path.basename(path))
+        try:
+            with open(probe, "xb") as fh:
+                fh.write(b"".join(lines))
+            again = scanner([probe])
+        finally:
+            if os.path.lexists(probe):
+                os.unlink(probe)
+            os.rmdir(work)
+        for g in again:
+            if not _finding_ok(g):
+                raise ScanError("a rules-scanner finding is {path, line, rule}")
+        still = {(g["line"], g["rule"]) for g in again}
+        for f, ruling, _ in group:
+            if (f["line"], f["rule"]) in still:
+                refused.append(f)
+            else:
+                admitted.append({"path": f["path"], "line": f["line"], "rule": f["rule"], "ruling": ruling["ruling"]})
+    return refused, admitted
+
+
+def _rules(scanner, files) -> tuple:
+    """(every rules-scanner finding no exact ruling admits, refused; the admitted ones, each naming its ruling)."""
+    found = []
+    for f in scanner([p for p, _ in files]):
         if not _finding_ok(f):
             raise ScanError("a rules-scanner finding is {path, line, rule}")
-        out.append({"path": f["path"], "line": f["line"], "kind": RULE_KIND,
-                    "why": f"the rules scanner's rule {f['rule']!r}"})
-    return out
+        found.append(f)
+    still, admitted = _ruled_findings(scanner, files, found)
+    return [{"path": f["path"], "line": f["line"], "kind": RULE_KIND,
+             "why": f"the rules scanner's rule {f['rule']!r}"} for f in still], admitted
 
 
 def _holdout(holdout_matcher, path, data) -> list:
@@ -552,9 +732,10 @@ def _scan_core(files, secrets, scanner, holdout_matcher):
         if holdout_matcher is not None:
             refused += _holdout(holdout_matcher, path, after)
         records.append({"path": path, "sha256_before": _sha(before), "sha256_after": _sha(after)})
-    refused += _rules(scanner, [p for p, _ in files])
+    rule_refused, ruled = _rules(scanner, files)
+    refused += rule_refused
     result = {"masked": masked, "events": len(masked), "refused": refused, "files": records,
-              "holdout": NOT_CHECKED if holdout_matcher is None else CHECKED}
+              "holdout": NOT_CHECKED if holdout_matcher is None else CHECKED, "ruled": ruled}
     return result, witnesses
 
 
