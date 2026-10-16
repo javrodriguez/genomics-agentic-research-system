@@ -574,31 +574,36 @@ def count_problems() -> list:
     want_call = {"tool_use_id": CALL_ID, "agent_id": AGENT_ID, "is_async": False, "status": "completed",
                  "resolved_model": PIN, "completion": None}
     got = ct.agent_summary(take_folder())
-    if got != {"agent_calls": 1, "subagents": {"calls": [want_call], "models": [PIN], "stream_file_differences": 0}}:
+    if got != {"agent_calls": 1, "subagents": {"calls": [want_call], "models": [PIN], "stream_file_differences": 0}, "nested_cli_calls": 0}:
         out.append(f"A-count: agent_summary {got}")
-    if ct.agent_summary(take_folder(calls=False)) != {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}}:
+    if ct.agent_summary(take_folder(calls=False)) != {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}, "nested_cli_calls": 0}:
         out.append("A-count: a take with no Agent call")
     route = lambda records, table: {"route": "rehearsal"}  # noqa: E731
     args = ("w001", {"checker_reasons": [], "events": {"outside_reach": 0}}, {}, route)
     doc = wr.check_record(*args, checked=True, constants_sha256="ab" * 32, no_output_nudges=0, agent_summary=got)
     if (doc.get("agent_calls"), doc.get("subagents")) != (1, got["subagents"]):
         out.append(f"A-count: check.json {doc.get('agent_calls')!r}")
-    for bad in (None, {"agent_calls": 1}, {"agent_calls": True, "subagents": got["subagents"]},
-                {"agent_calls": 2, "subagents": got["subagents"]},
-                {"agent_calls": 1, "subagents": {"calls": [dict(want_call, extra=1)], "models": [PIN]}},
-                {"agent_calls": 0, "subagents": {"calls": [], "models": ["b", "a"]}}):
+    for bad in (None, {"agent_calls": 1}, {"agent_calls": True, "subagents": got["subagents"], "nested_cli_calls": 0},
+                {"agent_calls": 2, "subagents": got["subagents"], "nested_cli_calls": 0},
+                {"agent_calls": 1, "subagents": {"calls": [dict(want_call, extra=1)], "models": [PIN]},
+                 "nested_cli_calls": 0},
+                {"agent_calls": 0, "subagents": {"calls": [], "models": ["b", "a"]}, "nested_cli_calls": 0},
+                dict(got, nested_cli_calls=-1), dict(got, nested_cli_calls=None)):        # + W-3b
         try:
             wr.check_record(*args, checked=True, no_output_nudges=0, agent_summary=bad)
             out.append(f"A-count: check_record wrote {bad!r} for a checked walk")
         except ValueError:
             pass
+    for count in (True, -1, 1.0, None):           # the count itself, read on its own (W-3b's third key beside it)
+        if pw.valid_agent_summary(count, {"calls": [], "models": [], "stream_file_differences": 0}, 0):
+            out.append(f"A-count: valid_agent_summary admits agent_calls {count!r}")
     none = wr.check_record(*args, checked=False, no_output_nudges=None)
     if (none["agent_calls"], none["subagents"]) != (None, None):
         out.append("A-count: an unchecked walk carries an Agent record")
     now = ct.checker_constants_sha256()
     base = {"walk": "w001", "checked": True, "checker_reasons": [], "events": {"outside_reach": 0},
             "route": "rehearsal", "route_refused": None, "checker_constants_sha256": now, "no_output_nudges": 0}
-    zero = {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}}
+    zero = {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}, "nested_cli_calls": 0}
     for name, doc_, latest, want in (
             ("the pair under the constants in force", dict(base, **zero), None, None),
             ("no pair under the constants in force", base, None, "check unreadable"),
@@ -1161,7 +1166,9 @@ class TheAgentTool(unittest.TestCase):
              "    if False and type(count) is not int or count < 0 or"),
             ("walk_runner", "check_record validates nothing",
              "    if checked is True and not pending_walk.valid_agent_summary(summary.get(\"agent_calls\"), "
-             "summary.get(\"subagents\")):", "    if False:"),
+             "summary.get(\"subagents\"),\n"
+             "                                                                summary.get(\"nested_cli_calls\")):",
+             "    if False:"),
             ("pending_walk", "the standing's pair unread",
              "    if check.get(\"checker_constants_sha256\") == now and not valid_agent_summary(*eff_agent):",
              "    if False:"),

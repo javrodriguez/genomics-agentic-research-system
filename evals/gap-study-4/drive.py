@@ -1838,7 +1838,8 @@ TAKE_FILE_KINDS = {"launch.json": "launch", "teardown.json": "launch", "proxy.lo
                    "public-config.json": "launch",   # live harness 13 Oct: box take_config.public_record's bytes
                    "ownership-grant.json": "launch", "ownership-restore.json": "launch",   # the ownership road
                    "settings-guard.json": "launch",   # the run tree's Claude settings: baseline and per-turn checks
-                   "evidence-ledger.jsonl": "evidence", "evidence-ledger-copy.json": "launch"}   # review MAJOR 1
+                   "evidence-ledger.jsonl": "evidence", "evidence-ledger-copy.json": "launch",   # review MAJOR 1
+                   "session-store.json": "ledger"}    # W-3b (glitch-b5, 16 Oct 2026): the session store's listings
 STREAM_NAME = re.compile(r"turn-[1-9][0-9]*\.jsonl")
 # Live harness 13 Oct: the box's per-turn actual-submission journal (run_take: stream path + ".launch.json"), an exact
 # top-level sibling of a turn stream, scanned as an unmaskable launch record. Nearby or nested spellings still refuse.
@@ -2031,6 +2032,9 @@ class _Take:
         self.native_hook = False       # live harness 3c: the adapter names a native session to retain per turn
         self.native_snapshots: list = []        # 3c: {file, sha256} per retained turn, under session/
         self.native_snapshot_refusal = None     # 3c: why a turn's snapshot was not retained (the take stops)
+        self.session_store: list = []  # W-3b: the config folder's session store, listed after every turn and at publish
+        self.native_rel = None         # W-3b: the vendor take's own native session, relative to the config folder
+        self.store_refusal = None      # W-3b: a vendor take whose session store holds more than its own session
         self.spec = None               # the ownership road: the TakeSpec the grant and the restore name
         self.grant = None              # {ok, why, record}: the grant's record (ownership-grant.json)
         self.restore = None            # {ok, why, ids, record}: the restore's record (ownership-restore.json)
@@ -2506,12 +2510,26 @@ class TakeDriver:
         try:
             lister, reader = self.config_view(take)
             rel = locate(lister)
+            take.native_rel = rel                                         # W-3b: the store's one admitted session
             take.native_snapshots.append(_native_snapshot.retain_bytes(take.folder, n, reader(rel)))
             return True
         except (_native_snapshot.SnapshotRefused, OSError) as e:
             if take.native_snapshot_refusal is None:
                 take.native_snapshot_refusal = f"turn {n}: native session snapshot not retained: {e}"
             return False
+
+    def _list_session_store(self, take, row, at: str, lister=None) -> None:
+        """W-3b (glitch-b5's pre-freeze ruling, 16 Oct 2026): every entry of the take's session store (check_take
+        SESSION_STORE_ROOTS, by harness) listed through `lister` (the box's, config_view, during the take; the host's
+        after the restore), appended to take.session_store as {at, entries} or, when the listing fails, {at, refused}.
+        Never raised: a refused listing is the checker's to refuse."""
+        import check_take as _ct
+        root = _ct.SESSION_STORE_ROOTS.get(row["agent"]["harness"])
+        try:
+            lister = lister or self.config_view(take)[0]
+            take.session_store.append({"at": at, "entries": store_listing(lister, root)})
+        except Exception as e:  # noqa: BLE001 - a listing that fails is recorded, never a pass
+            take.session_store.append({"at": at, "refused": f"{type(e).__name__}: {str(e)[:200]}"})
 
     def config_view(self, take) -> tuple:
         """(lister(rel_dir), reader(rel_path)) over the take's config folder through the box's operator_list and
@@ -2565,6 +2583,18 @@ class TakeDriver:
             take.cross_check = _cc.cross_check(recs, text, session_id=ident["session_id"]) if cc else []
         else:
             take.cross_check = [f"no session file for {ident['session_id']} in the take's config folder"]
+        self._list_session_store(take, row, "publish", host_lister(take.config_dir))   # W-3b: at publish, host-side
+        import check_take as _ct
+        self._write(take, SESSION_STORE_RECORD, {"harness": harness, "root": _ct.SESSION_STORE_ROOTS.get(harness),
+                                                  "listings": [dict(x) for x in take.session_store]})
+        if vendor:                                # W-3b: no checker reads a vendor take yet, so the driver judges it
+            bad = [f"at {x['at']}: {x['refused']}" if "refused" in x else
+                   f"at {x['at']}: {v}" for x in take.session_store
+                   for v in (["listing refused"] if "refused" in x else
+                             _ct.vendor_store_violations(x["entries"], harness, take.native_rel))]
+            if bad:
+                take.store_refusal = f"[{_ct.NESTED_AGENT}] the session store holds more than the take's own session: " \
+                                     f"{'; '.join(bad[:3])}"
         sources = {id(r): (recs[k]["api_key_source"] if k < len(recs) else None) for k, r in enumerate(rows)}
         env = with_turns(take.environment, rows, sources)
         write_record_atomically(Path(take.folder) / ENVIRONMENT_RECORD_FILE, env)    # replaced whole, never merged
@@ -2746,6 +2776,7 @@ class TakeDriver:
                     killed = killed or (k and bool(left))
                     unreadable += self._ctl(take, "snapshot", f"post-{n}")["unreadable_consequential"]
                     retained = self._retain_native(take, adapter, n)  # live harness 3c: before any next resume
+                    self._list_session_store(take, row, f"post-{n}")      # W-3b: after every turn, through the box
                     after = self._settings_problems(take, f"post-{n}")   # the settings guard, the last turn's too
                     if after:
                         take.settings_stop = f"post-{n}: the run tree's Claude settings: {'; '.join(after)}"
@@ -2794,6 +2825,9 @@ class TakeDriver:
         if take.native_snapshot_refusal is not None:     # live harness 3c: cleaned, recorded and scanned
             raise DriveRefused(f"{take.native_snapshot_refusal}: the take is kept for a human ruling, never a "
                                f"rehearsal or a re-run")
+        if take.store_refusal is not None:               # W-3b: a vendor take's nested agent, cleaned and scanned
+            raise DriveRefused(f"{take.store_refusal}: the take is kept for a human ruling, never a rehearsal or a "
+                               f"re-run")
         pending = take.cross_check_status
         if ok and turns and pending is not None and pending["status"] == "pending":   # D8: graded only cross-checked
             raise NativeCrossCheckPending(f"native cross-check pending ({pending['why']}): the take is kept for a "
@@ -3242,6 +3276,54 @@ def copy_subagent_files(session_file: Path, session_id: str, folder: Path) -> li
                     "sha256": hashlib.sha256(written).hexdigest(), "raw_sha256": hashlib.sha256(raw).hexdigest(),
                     "removed": list(removed)})
     return out
+
+
+SESSION_STORE_RECORD = "session-store.json"
+SESSION_STORE_LIST_MAX = 5000
+
+
+def store_listing(lister, root: str) -> list:
+    """W-3b: [[path, kind], ...] for every entry under `root` (paths relative to the config folder), depth first in
+    name order, through lister(rel_dir) -> [(name, kind)] or None (absent: []). A link is listed and never entered;
+    more than SESSION_STORE_LIST_MAX entries refuses (ValueError)."""
+    out = []
+
+    def walk(rel):
+        got = lister(rel)
+        for item in sorted(got or []):
+            if not (isinstance(item, (list, tuple)) and len(item) == 2 and all(isinstance(x, str) for x in item)):
+                raise ValueError(f"the listing of {rel} is not (name, kind) pairs")
+            name, kind = item
+            path = f"{rel}/{name}"
+            out.append([path, kind])
+            if len(out) > SESSION_STORE_LIST_MAX:
+                raise ValueError(f"the session store holds more than {SESSION_STORE_LIST_MAX} entries")
+            if kind == "dir":
+                walk(path)
+    if not isinstance(root, str) or not root:
+        raise ValueError("no session store is named for the harness")
+    walk(root)
+    return out
+
+
+def host_lister(config_dir: str):
+    """W-3b: the host's lister over the take's config folder after the restore: lister(rel_dir) -> [(name, kind)]
+    (file, dir, link or other, by lstat; never followed) or None when rel_dir is absent or not a real folder."""
+    import stat                               # inside: drive.py's round-3 prefix stays byte-identical (w6e)
+    base = Path(config_dir)
+
+    def lister(rel):
+        p = base / rel
+        if p.is_symlink() or not p.is_dir():
+            return None
+        out = []
+        for q in sorted(p.iterdir()):
+            st = os.lstat(q)
+            kind = ("link" if stat.S_ISLNK(st.st_mode) else "dir" if stat.S_ISDIR(st.st_mode)
+                    else "file" if stat.S_ISREG(st.st_mode) else "other")
+            out.append((q.name, kind))
+        return out
+    return lister
 
 
 def take_session_file(config_dir: str, session_id: str) -> str | None:

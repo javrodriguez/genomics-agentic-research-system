@@ -95,6 +95,7 @@ def grade_views(grade: dict, grader=None) -> dict:
 
 def regrade(name: str, row: dict, spec: dict, transcript, evidence) -> tuple[dict, str]:
     mod = grader_for(name)
+    original = transcript                 # W-3b: the nested agent-CLI count reads the take as it was handed
     transcript, refused = delegation.seam(name, evidence, transcript)   # a delegated take, presented (16 Oct)
     if refused:
         raise mod.GradeError(refused)
@@ -113,6 +114,7 @@ def regrade(name: str, row: dict, spec: dict, transcript, evidence) -> tuple[dic
         got = mod.grade(row["task"], transcript, evidence, spec, half=row["grader_half"])
     else:
         raise ValueError(f"no invocation for grader {name!r}")
+    got = delegation.sampled(got, original)                      # W-3b: a nested agent CLI, to the human sample
     return dict(got, views=grade_views(got, mod)), str(Path(mod.__file__).resolve())
 
 

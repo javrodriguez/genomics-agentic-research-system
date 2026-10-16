@@ -198,15 +198,18 @@ def record_problems() -> list:
     route = lambda records, table: {"route": "rehearsal"}  # noqa: E731
     args = ("w001", {"checker_reasons": [], "events": {"outside_reach": 0}}, {}, route)
     doc = walk_runner.check_record(*args, checked=True, constants_sha256="ab" * 32, no_output_nudges=2,
-                                   agent_summary={"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}})
+                                   agent_summary={"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}, "nested_cli_calls": 0})
     if doc.get("no_output_nudges") != 2:
         out.append(f"N-record: check.json carries {doc.get('no_output_nudges')!r}")
     if walk_runner.check_record(*args, checked=False, no_output_nudges=2).get("no_output_nudges", "absent") is not None:
         out.append("N-record: an unchecked walk carries a count")
-    legacy = {k: v for k, v in doc.items() if k not in ("no_output_nudges", "agent_calls", "subagents")}
-    nudge_only = {k: v for k, v in doc.items() if k not in ("agent_calls", "subagents")}     # before the Agent ruling
+    legacy = {k: v for k, v in doc.items() if k not in ("no_output_nudges", "agent_calls", "subagents",
+                                                        "nested_cli_calls")}
+    nudge_only = {k: v for k, v in doc.items() if k not in ("agent_calls", "subagents", "nested_cli_calls")}
+    pair_only = {k: v for k, v in doc.items() if k != "nested_cli_calls"}                   # before W-3b
     for name, d, ok in (("the new shape", doc, True), ("a file written before the ruling", legacy, True),
                         ("a file written before the Agent ruling", nudge_only, True),
+                        ("a file written before W-3b", pair_only, True),
                         ("a null count", dict(doc, no_output_nudges=None), True),
                         ("a boolean count", dict(doc, no_output_nudges=True), False),
                         ("a negative count", dict(doc, no_output_nudges=-1), False),
@@ -238,7 +241,7 @@ def strict_problems(walk_runner=None, pending_walk=None, walk_regrade=None) -> l
     for bad in (None, True, -1, "1", 1.0):
         try:
             wr.check_record(*args, checked=True, constants_sha256="ab" * 32, no_output_nudges=bad,
-                            agent_summary={"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}})
+                            agent_summary={"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}, "nested_cli_calls": 0})
             out.append(f"N-strict: check_record wrote {bad!r} for a walk the checker ran on")
         except ValueError:
             pass
@@ -255,9 +258,9 @@ def strict_problems(walk_runner=None, pending_walk=None, walk_regrade=None) -> l
                                       ("no key under older constants", ABSENT, "cd" * 32, "stale")):
         doc = {"walk": "w001", "checked": True, "checker_reasons": [], "events": {"outside_reach": 0},
                "route": "rehearsal", "route_refused": None, "checker_constants_sha256": digest,
-               "no_output_nudges": count, "agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}}
+               "no_output_nudges": count, "agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}, "nested_cli_calls": 0}
         if count is ABSENT:                         # a check.json written before either ruling
-            for k in ("no_output_nudges", "agent_calls", "subagents"):
+            for k in ("no_output_nudges", "agent_calls", "subagents", "nested_cli_calls"):
                 del doc[k]
         with tempfile.TemporaryDirectory() as d:
             (Path(d) / "w001").mkdir()
@@ -275,7 +278,7 @@ def strict_problems(walk_runner=None, pending_walk=None, walk_regrade=None) -> l
                                ("a recheck with a null count", {"checker_reasons": [], "checker_constants_sha256": now,
                                                                 "no_output_nudges": None}, "check unreadable"),
                                ("a recheck carrying the count", {"checker_reasons": [], "checker_constants_sha256": now,
-                                                                 "no_output_nudges": 0, "agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}}, None)):
+                                                                 "no_output_nudges": 0, "agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}, "nested_cli_calls": 0}, None)):
         with tempfile.TemporaryDirectory() as d:
             (Path(d) / "w001").mkdir()
             (Path(d) / "w001" / "check.json").write_text(json.dumps(old_doc))

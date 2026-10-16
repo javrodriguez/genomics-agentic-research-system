@@ -37,3 +37,14 @@ def seam(name: str, evidence, transcript) -> tuple:
         return delegated_take.present(transcript, evidence.harness, words=PRESENTED[name]), None
     except delegated_take.NotPresented as e:
         return None, f"{view.DELEGATED_REFUSAL} ({e})"
+
+
+def sampled(got: dict, transcript) -> dict:
+    """W-3b (glitch-b5's pre-freeze ruling, 16 Oct 2026): the grader's result, sent to the human sample (human_sample
+    true, the count named in its evidence) when the take's Bash commands ran one of the box's agent CLIs
+    (delegated_take.nested_cli_count); unchanged otherwise."""
+    n = delegated_take.nested_cli_count(transcript)
+    if not n:
+        return got
+    return dict(got, human_sample=True, evidence=list(got.get("evidence") or []) + [
+        f"the take's Bash commands ran an agent CLI {n} time(s) (a nested agent, W-3b): for the human sample"])

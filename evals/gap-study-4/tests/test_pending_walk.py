@@ -618,7 +618,7 @@ class FixtureWalkCoverage(unittest.TestCase):
                                                             "checker_constants_sha256":
                                                                 check_take.checker_constants_sha256(),
                                                             "no_output_nudges": 0,     # review r6 MINOR 2
-                                                            "agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}}))   # Agent parity, part 6
+                                                            "agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}, "nested_cli_calls": 0}))   # Agent parity, part 6
         self.assertEqual(fixture_walk.walk_coverage(road.study)[task]["walks_committed"], 1, "the control counts")
 
 

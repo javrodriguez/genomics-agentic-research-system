@@ -242,10 +242,11 @@ def agent_summary_problems(check: dict, transcript: Path) -> list:
     if not isinstance(check, dict) or check.get("agent_calls") is None:
         return []
     derived = ct.agent_summary(Path(transcript))
-    recorded = {"agent_calls": check.get("agent_calls"), "subagents": check.get("subagents")}
+    recorded = {"agent_calls": check.get("agent_calls"), "subagents": check.get("subagents"),
+                "nested_cli_calls": check.get("nested_cli_calls")}
     if derived != recorded:
         rec_sub = recorded["subagents"] if isinstance(recorded["subagents"], dict) else {}
-        fields = (["agent_calls"] if recorded["agent_calls"] != derived["agent_calls"] else []) + \
+        fields = [k for k in ("agent_calls", "nested_cli_calls") if recorded[k] != derived[k]] + \
             ([f"subagents.{k}" for k in sorted(set(rec_sub) | set(derived["subagents"]))
               if rec_sub.get(k) != derived["subagents"].get(k)] if isinstance(recorded["subagents"], dict)
              else ["subagents"])                  # review r13 NIT 1: every mismatched field named
@@ -381,7 +382,7 @@ RECHECK_KEYS = ("schema", "walk", "n", "walk_commit", "supersedes", "machine", "
 RECHECK_NUDGE_KEY = "no_output_nudges"
 # glitch-b5's Agent parity ruling, part 6 (16 Oct 2026): a recheck also carries the Agent calls and sub-agent models,
 # re-derived from the committed transcript and streams; a recheck written before it lacks them.
-RECHECK_AGENT_KEYS = ("agent_calls", "subagents")
+RECHECK_AGENT_KEYS = ("agent_calls", "subagents", "nested_cli_calls")    # + W-3b (glitch-b5, 16 Oct 2026)
 
 
 # ---- the recheck (glitch-6b's scheduled-wakeup ruling, 15 Oct 2026) -------------------------------------------------
@@ -540,7 +541,7 @@ def recheck_doc(walk: str, n: int, study: Path = HERE, *, machine, design_for=No
     return {"schema": 1, "walk": walk, "n": n, "walk_commit": commit, "supersedes": prev_name, "machine": machine,
             "run_tree": design.run_tree, "checker_constants_sha256": digest, "checker_reasons": reasons,
             "route": None, "no_output_nudges": nudges, "agent_calls": agents["agent_calls"],
-            "subagents": agents["subagents"],
+            "subagents": agents["subagents"], "nested_cli_calls": agents["nested_cli_calls"],
             "was": prev,
             "change": {"checker_constants_sha256": [prev["checker_constants_sha256"], digest],
                        "reasons_added": sorted(set(reasons) - set(prev["checker_reasons"])),

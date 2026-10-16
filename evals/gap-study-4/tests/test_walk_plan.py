@@ -324,7 +324,7 @@ def checked(folder: Path) -> None:
                                                    "events": {"outside_reach": 0}, "route": "graded", "route_refused": None,
                                                    "checker_constants_sha256": check_take.checker_constants_sha256(),
                                                    "no_output_nudges": 0,     # review r6 MINOR 2: walk_runner's count
-                                                   "agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}}))   # Agent parity, part 6
+                                                   "agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}, "nested_cli_calls": 0}))   # Agent parity, part 6
 
 
 def entry(spec: dict, walk: str, **changes) -> dict:

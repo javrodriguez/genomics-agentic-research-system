@@ -681,7 +681,17 @@ class R2WalkCheck(Case):
             (stray / "subagents" / "agent-0000ffff.jsonl").write_text(json.dumps(   # a leak word in its context
                 {"type": "attachment", "isSidechain": True, "attachment": {"type": "nested_memory",
                                                                           "content": "notes for round 4"}}) + "\n")
+            # W-3b (glitch-b5's pre-freeze ruling, 16 Oct 2026): the driver listed the config folder's session store
+            # after every turn and at publish, holding only the walk's own session; a nested agent's session refuses
+            store = json.loads((folder / "session-store.json").read_text())
+            self.assertEqual(store["listings"][-1]["at"], "publish", "R2.walk-check: the store's publish listing")
+            nested = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-nested"
+            shutil.copytree(folder, nested)
+            own = next(p for p, k in store["listings"][-1]["entries"] if p.endswith(".jsonl") and k == "file")
+            store["listings"][-1]["entries"].append([own.rsplit("/", 1)[0] + "/nested-0000.jsonl", "file"])
+            (nested / "session-store.json").write_text(json.dumps(store))
             for where, why, says in ((unset, hcv, "do not set CLAUDE_CODE_THRIFTY_SONIC off"),
+                                     (nested, "nested-agent", "is not the take's own session record"),
                                      (hold, hcv, "crossSessionInbound is 'hold'"),
                                      (undenied, hcv, "permissions.deny lacks"),
                                      (sep, "transcript-unreadable", "line separator(s) U+2028"),
@@ -1048,8 +1058,9 @@ BOOTSTRAP_SPANS = (
     ("check4-study-conditions", "    problems += design_tree_problems(path, design)               # W7B (Q-w6i-5)\n",
      "    # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm",
      # and the isolation denials' line (glitch-6b's isolation ruling, 15 Oct 2026), and the transcript line check's
-     # (glitch-b5's ruling on review r8, 16 Oct 2026), and the sub-agent records' (the Agent parity ruling, 16 Oct)
-     "c23f0288721768c482a6e25a503af897d84797a5b10824c02fb6201308392947"),
+     # (glitch-b5's ruling on review r8, 16 Oct 2026), and the sub-agent records' (the Agent parity ruling, 16 Oct),
+     # and the session store's and the persistence flag's (W-3b, glitch-b5's pre-freeze ruling, 16 Oct 2026)
+     "d2f869d00d1a2505d3850640c2db63d0a9a2c59c1614defc21549f864887bf05"),
     # glitch-b5's ruling 2 (16 Oct 2026): context_text's one append line sweeps an admitted edited_text_file without its
     # snippet (check_take's appended _swept_attachment_line); no line moves.
     ("context-text", "def context_text(path: Path) -> str:\n", "\n\ndef context_leaks(",
@@ -1478,7 +1489,7 @@ class R8WalkRoad(Case):
         route = lambda records, table: {"route": "rehearsal"}  # noqa: E731
         args = ("w001", {"checker_reasons": []}, {}, route)
         self.assertEqual(wr.check_record(*args, checked=True, no_output_nudges=3,
-                                         agent_summary={"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}})["no_output_nudges"], 3)
+                                         agent_summary={"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}, "nested_cli_calls": 0})["no_output_nudges"], 3)
         self.assertIsNone(wr.check_record(*args, checked=False, no_output_nudges=3)["no_output_nudges"])
         with self.assertRaises(ValueError):           # review r6 MINOR 2: a checked walk is never written with null
             wr.check_record(*args, checked=True)
@@ -1878,7 +1889,7 @@ class R10Guards(Case):
 # the exact refusal, so each kill is by assertion.
 def stub_driver(root: Path, *, walk_check=None, launch=None, drive=None, remove=None, published=None,
                 nudges=lambda row: 0,
-                agents=lambda row: {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}}):
+                agents=lambda row: {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}, "nested_cli_calls": 0}):
     """A walk driver stand-in whose class's launch carries the namespace walk_runner.driver_namespace reads (the drive
     module's LaunchRefused, NativeCrossCheckPending (the pending-walk road, batch-8 review finding 2) and WALK_CHECK,
     or another WALK_CHECK)."""
@@ -2172,11 +2183,13 @@ class R11Units(Case):
         no Agent record, null, a list, a bool count or a record without the sub-agent block holds the walk by its own
         words; nothing is written as check.json or committed. A valid record is written as given."""
         wr = MODS["walk_runner"]
-        zero = {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}}
+        zero = {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}, "nested_cli_calls": 0}
         for name, agents in (("no record", None), ("null", lambda row: None), ("a list", lambda row: [0]),
                              ("a bool count", lambda row: dict(zero, agent_calls=True)),
                              ("no sub-agent block", lambda row: {"agent_calls": 0}),
-                             ("no difference count", lambda row: dict(zero, subagents={"calls": [], "models": []}))):
+                             ("no difference count", lambda row: dict(zero, subagents={"calls": [], "models": []})),
+                             ("no nested CLI count", lambda row: {k: v for k, v in zero.items()
+                                                                  if k != "nested_cli_calls"})):
             with self.subTest(driver=name):
                 root = self.scratch()
                 folder = self.walk_dir(root, dict(self.LEDGER, first_agent_turn=False))
@@ -2194,7 +2207,7 @@ class R11Units(Case):
         one = {"agent_calls": 1, "subagents": {"calls": [{"tool_use_id": "t", "agent_id": "a", "is_async": False,
                                                           "status": "completed", "resolved_model": "m",
                                                           "completion": None}],
-                                               "models": ["m"], "stream_file_differences": 2}}
+                                               "models": ["m"], "stream_file_differences": 2}, "nested_cli_calls": 0}
         got = self.one(stub_driver(root, agents=lambda row: one), dict(self.ENTRY, slot="w-0001"))
         self.assertEqual(got.get("state"), wr.COMMITTED, f"R11.units: {got}")
         check = json.loads((folder / "check.json").read_text())
@@ -2207,7 +2220,7 @@ class R11Units(Case):
         wr = MODS["walk_runner"]
         route = lambda records, table: {"route": "rehearsal"}  # noqa: E731
         args = ("w001", {"checker_reasons": []}, {}, route)
-        zero = {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}}
+        zero = {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}, "nested_cli_calls": 0}
         self.raising(ValueError, "nudge count", wr.check_record, *args, checked=True, agent_summary=zero)
         self.raising(ValueError, "nudge count", wr.check_record, *args, checked=True, no_output_nudges=-1,
                      agent_summary=zero)

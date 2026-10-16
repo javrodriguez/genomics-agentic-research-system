@@ -455,9 +455,10 @@ def description_problems(d):
     old = b.prior_metadata()
     need(len(old["limitations_lines"]) == 11 and d["limitations"] == [
         {"text": line, "round_4_reading": reading} for line,reading in zip(old["limitations_lines"],expected_readings())], "R8.carried")
-    need(d["box_residuals"] == [
+    need(d["box_residuals"][:4] == [
         {"text": "the token is visible to child processes if preflight says so", "conditional_on_preflight": True, "finding": "PENDING"},
-        {"text": "model weights behind an id are not pinnable"}, MODE_RESIDUAL, NEW_FOLDER_RESIDUAL], "R8.residuals")
+        {"text": "model weights behind an id are not pinnable"}, MODE_RESIDUAL, NEW_FOLDER_RESIDUAL]
+         and len(d["box_residuals"]) == 5 and d["box_residuals"][4]["name"] == "W-3b", "R8.residuals")   # + W-3b
     need(d.get("final_stop") == FINAL_STOP, "R8.final-stop")
     need(d["leak_words"] == old["leak_words"] + [study.STUDY, "round 4"] and len(old["leak_words"]) == 23 and
          d["leak_context_excusals"] == old["leak_context_excusals"] and len(d["leak_context_excusals"]) == 3 and
@@ -661,7 +662,7 @@ class Description(unittest.TestCase):
 
     def test_mode_residual_is_bound(self):
         d = self.get()
-        self.assertEqual(len(d["box_residuals"]), 4, "R8.mode-residual")   # 4th: the new-folder gap (14 Oct)
+        self.assertEqual(len(d["box_residuals"]), 5, "R8.mode-residual")   # 4th: the new-folder gap; 5th: W-3b (16 Oct)
         self.assertEqual(d["box_residuals"][2], MODE_RESIDUAL, "R8.mode-residual")
         endstate_tests = (HERE / MODE_CHECK[0]).read_text()
         self.assertIn(f"class {MODE_CHECK[1]}(", endstate_tests, "R8.mode-residual")

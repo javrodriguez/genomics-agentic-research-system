@@ -98,15 +98,17 @@ CHECK_NUDGE_KEY = "no_output_nudges"
 # glitch-b5's Agent parity ruling, part 6 (16 Oct 2026): check.json also carries agent_calls (an int) and subagents
 # ({calls, models}); a check.json written before it lacks both. Under the constants in force a checked walk's
 # effective reading carries a valid pair.
-CHECK_AGENT_KEYS = ("agent_calls", "subagents")
+CHECK_AGENT_KEYS = ("agent_calls", "subagents", "nested_cli_calls")   # + W-3b: the agent-CLI calls Bash ran
 AGENT_CALL_KEYS = ("tool_use_id", "agent_id", "is_async", "status", "resolved_model", "completion")   # + r10 R-B
 
 
-def valid_agent_summary(count, subagents) -> bool:
-    """agent_calls an int >= 0; subagents exactly {calls, models, stream_file_differences (an int >= 0)}: calls a list
+def valid_agent_summary(count, subagents, nested) -> bool:
+    """nested_cli_calls (W-3b) an int >= 0; agent_calls an int >= 0; subagents exactly {calls, models, stream_file_differences (an int >= 0)}: calls a list
     of that many {tool_use_id: str,
     agent_id, status, resolved_model, completion: str or None, is_async: bool or None}, models a sorted list of
     distinct str."""
+    if type(nested) is not int or nested < 0:
+        return False
     if type(count) is not int or count < 0 or not isinstance(subagents, dict) or \
             set(subagents) != {"calls", "models", "stream_file_differences"}:
         return False
@@ -137,9 +139,12 @@ def check_keys_ok(check) -> bool:
     n = check.get(CHECK_NUDGE_KEY)
     if set(check) == set(CHECK_KEYS) | {CHECK_NUDGE_KEY}:
         return n is None or valid_nudge_count(n)
-    a, s = check.get("agent_calls"), check.get("subagents")     # the Agent parity ruling, part 6
+    a, s, c = check.get("agent_calls"), check.get("subagents"), check.get("nested_cli_calls")    # + W-3b
+    if set(check) == set(CHECK_KEYS) | {CHECK_NUDGE_KEY} | set(CHECK_AGENT_KEYS[:2]):    # written before W-3b
+        return (n is None or valid_nudge_count(n)) and ((a is None and s is None) or valid_agent_summary(a, s, 0))
     return (set(check) == set(CHECK_KEYS) | {CHECK_NUDGE_KEY} | set(CHECK_AGENT_KEYS)
-            and (n is None or valid_nudge_count(n)) and ((a is None and s is None) or valid_agent_summary(a, s)))
+            and (n is None or valid_nudge_count(n))
+            and ((a is None and s is None and c is None) or valid_agent_summary(a, s, c)))
 
 
 def checker_standing(base, walk: str):
@@ -171,12 +176,12 @@ def checker_standing(base, walk: str):
     if isinstance(latest, str):
         return latest
     eff_nudges = nudges
-    eff_agent = (check.get("agent_calls"), check.get("subagents"))
+    eff_agent = (check.get("agent_calls"), check.get("subagents"), check.get("nested_cli_calls"))
     if latest is not None:
         check = dict(check, checker_reasons=latest["checker_reasons"],
                      checker_constants_sha256=latest["checker_constants_sha256"])
         eff_nudges = latest.get(CHECK_NUDGE_KEY)
-        eff_agent = (latest.get("agent_calls"), latest.get("subagents"))
+        eff_agent = (latest.get("agent_calls"), latest.get("subagents"), latest.get("nested_cli_calls"))
 
     import routing                        # review MINOR 2: every reason a str of the pre-registered vocabulary
     vocabulary = routing.load_table()["operator_reasons"]
@@ -243,7 +248,8 @@ def latest_recheck(base, walk: str):
         return f"recheck file does not carry its register entry's walk, ordinal and digest: {e['file']}"
     return {"checker_reasons": doc.get("checker_reasons"), "checker_constants_sha256": doc["checker_constants_sha256"],
             CHECK_NUDGE_KEY: doc.get(CHECK_NUDGE_KEY),           # review r7: null in a recheck written before it
-            "agent_calls": doc.get("agent_calls"), "subagents": doc.get("subagents")}     # Agent parity, part 6
+            "agent_calls": doc.get("agent_calls"), "subagents": doc.get("subagents"),      # Agent parity, part 6
+            "nested_cli_calls": doc.get("nested_cli_calls")}                                # W-3b
 
 
 def uncounted_walks(base, walks) -> dict:

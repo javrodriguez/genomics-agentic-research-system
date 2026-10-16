@@ -98,14 +98,16 @@ def check_record(walk: str, records, table, route_fn, *, checked: bool, constant
     if checked is True and not pending_walk.valid_nudge_count(no_output_nudges):
         raise ValueError(f"the checker ran and the nudge count is {no_output_nudges!r}, not an int >= 0")
     summary = agent_summary if isinstance(agent_summary, dict) else {}
-    if checked is True and not pending_walk.valid_agent_summary(summary.get("agent_calls"), summary.get("subagents")):
+    if checked is True and not pending_walk.valid_agent_summary(summary.get("agent_calls"), summary.get("subagents"),
+                                                                summary.get("nested_cli_calls")):
         raise ValueError("the checker ran and the driver gave no valid Agent call count and sub-agent record")
     doc = {"walk": walk, "checked": checked is True, "checker_reasons": list(records.get("checker_reasons") or []),
            "events": records.get("events"), "route": None, "route_refused": None,
            "checker_constants_sha256": constants_sha256 if checked is True else None,
            "no_output_nudges": no_output_nudges if checked is True else None,
            "agent_calls": summary["agent_calls"] if checked is True else None,
-           "subagents": summary["subagents"] if checked is True else None}
+           "subagents": summary["subagents"] if checked is True else None,
+           "nested_cli_calls": summary["nested_cli_calls"] if checked is True else None}      # W-3b
     try:
         doc["route"] = route_fn(records, table)["route"]
     except Exception as e:  # noqa: BLE001 - routing must never sink a walk; its refusal is the walk's record
@@ -223,7 +225,8 @@ def _run_one(driver, repo, row, reason, walk, folder, reached, *, table, route_f
     agents = getattr(driver, "agent_summary", None)                 # the Agent parity ruling, part 6
     agents = agents(row) if callable(agents) else None
     if checked and not (isinstance(agents, dict) and pending_walk.valid_agent_summary(agents.get("agent_calls"),
-                                                                                       agents.get("subagents"))):
+                                                                                       agents.get("subagents"),
+                                                                                       agents.get("nested_cli_calls"))):
         return {"state": HELD, "why": "the checker ran and the driver gave no valid Agent call count; the walk folder "
                                       "is left for a human, never committed"}
     write_check(folder, check_record(walk, records, table, route_fn, checked=checked,

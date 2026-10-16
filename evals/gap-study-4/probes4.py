@@ -855,21 +855,22 @@ def run_grader(task: dict, half: str, cell: dict, spec: dict, transcript: list, 
     name = V.grader_name(task)
     mod = V.load_grader(name)
     ghalf = (task["grader_halves"] or {}).get(half)
+    original = transcript                 # W-3b: the nested agent-CLI count reads the take as it was handed
     transcript, refused = delegation.seam(name, evidence, transcript)   # a delegated take, presented (16 Oct)
     if refused:
         raise mod.GradeError(refused)
     if name in ("scope_read", "template_adherence"):
-        return mod.grade(spec, evidence, transcript)
+        return delegation.sampled(mod.grade(spec, evidence, transcript), original)
     if name == "number_fidelity":
-        return mod.grade(view.events(evidence.harness, transcript), spec)
+        return delegation.sampled(mod.grade(view.events(evidence.harness, transcript), spec), original)
     if name == "plan_gate":
-        return mod.grade(transcript, evidence, spec)
+        return delegation.sampled(mod.grade(transcript, evidence, spec), original)
     if name == "precondition_refusal":
-        return mod.grade(transcript, evidence, spec, V.row_fields(cell))
+        return delegation.sampled(mod.grade(transcript, evidence, spec, V.row_fields(cell)), original)
     if name == "confounded_design":
-        return mod.grade(transcript, evidence, spec, half=ghalf)
+        return delegation.sampled(mod.grade(transcript, evidence, spec, half=ghalf), original)
     if name == "new_tasks":
-        return mod.grade(task["task"], transcript, evidence, spec, half=ghalf)
+        return delegation.sampled(mod.grade(task["task"], transcript, evidence, spec, half=ghalf), original)
     raise ProbeError(f"no way to call grader {name!r}")
 
 
