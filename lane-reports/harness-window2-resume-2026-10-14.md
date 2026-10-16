@@ -576,3 +576,21 @@ Unknown until a live run: whether any GARS stage, the agent's own commands, or C
 
 ## Exact next step
 glitch-b5: rule how the read-only check is run (a box-lane rehearsal on athena with the mount set above, or Docker on the Mac). Then r16 on 03711e05, and the battery.
+
+## RESUME HERE (16 Oct 08:45 EDT; supersedes the blocks above): the read-only root built
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent fe0aef73). Nothing pushed. athena not used. No Docker on the Mac. No mac_slot booking held; no process of this lane running.
+
+- fe0aef73: the read-only root.
+  - Take containers are created --read-only, with --tmpfs /tmp and /var/tmp (rw,exec,nosuid,nodev,mode=1777) beside the two binds; the preflight pins the inspect (HostConfig.ReadonlyRootfs and Tmpfs).
+  - The sweep's roots come from /proc/self/mountinfo: every read-write mount, with /proc, /sys and /dev never read and /dev/shm kept. A read-write mount outside run_take.sweep_roots() refuses [nested-agent].
+  - Every turn's EROFS and "Read-only file system" lines (stream and stderr) are recorded in read-only-errors.json.
+  - The draft records the read-only root as a box condition, and how round 3's box differed.
+
+Open, on athena (glitch-b5):
+- The solo battery, then the owed walks, Haiku line 89 first.
+- Any EROFS line names a path to add.
+- The first inspect confirms the HostConfig.ReadonlyRootfs and HostConfig.Tmpfs spellings, and the first sweep the mount table's.
+
+## Exact next step
+glitch-b5: the battery on this head, then the walks; r16 on 03711e05..fe0aef73.
