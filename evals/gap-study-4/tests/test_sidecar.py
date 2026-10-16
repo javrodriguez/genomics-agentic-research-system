@@ -2251,7 +2251,7 @@ BOX_MODULES = {
             'basename', 'dumps', 'end', 'get', 'match', 'mkdtemp', 'replace', 'rmdir', 'rstrip', 'unlink',
             'values',
             # OD57's Bash shapes (16 Oct 2026; the allow-list's sort check reads startswith)
-            'shlex', 'startswith', 'whitespace_split'},
+            'commenters', 'shlex', 'startswith', 'whitespace_split'},
     },
 }
 # The one subprocess call site of this lane's modules: (enclosing function, attribute).

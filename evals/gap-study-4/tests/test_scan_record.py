@@ -1405,7 +1405,10 @@ class TestOD57Chain(TestOD57Ruling):
                    "grep k " + doc + " | head; sh", "grep k " + doc + " sh", "grep k " + doc + " | cat - eval",
                    # the exact token: no path prefix, no backslash; a sort takes no long option
                    "/bin/grep k " + doc, "/usr/bin/cat " + doc, "\\grep k " + doc, "gr\\ep k " + doc,
-                   "grep k " + doc + " | sort --compress-program=x", "grep k " + doc + " | sort --com=x"]
+                   "grep k " + doc + " | sort --compress-program=x", "grep k " + doc + " | sort --com=x",
+                   # the review of b2738e2: shlex starts a comment at a mid-word #, bash does not; # refuses anywhere
+                   "grep -n Key " + doc + " x#; sh -c 'cat /tmp/other'", "cat " + doc + "#;python3 -c 'print(1)'",
+                   'grep -n "#Key" ' + doc, "grep -n Key " + doc + " # a comment"]
         for cmd in admitted:
             with self.subTest(admitted=cmd):
                 self.assertTrue(sr._ruled_bash(cmd))
@@ -1421,6 +1424,8 @@ class TestOD57Chain(TestOD57Ruling):
             "newline then sh -c": self.bash_record("grep k _references/environment.md\nsh -c 'cat /tmp/other'",
                                                    f"175:{self.text}\n"),
             "time sh -c": self.bash_record("grep -n k _references/environment.md; time sh -c x", f"175:{self.text}\n"),
+            "a mid-word # then sh -c": self.bash_record("grep -n Key _references/environment.md x#; sh -c 'cat /tmp/other'", f"175:{self.text}\n"),
+            "a # glued to the doc": self.bash_record("cat _references/environment.md#;python3 -c 'print(1)'", self.text + "\n"),
             "a user-text copy": _cc({"type": "user", "message": {"content": f"please check:\n{self.text}\n"}}),
         }
         for name, body in cases.items():
@@ -1450,6 +1455,25 @@ class TestOD57Chain(TestOD57Ruling):
                 with _mutant("_ruled_bash", edit):
                     self.assertTrue(self.admitted(self.bash_record(cmd, out)), f"{name}: the mutant still refuses")
                 red(f"OD57 w167: {name}")
+
+    def test_mutation_witnesses_of_the_hash_fixes(self):
+        """The review of b2738e2: the # refusal and the empty commenters, each with its own witness."""
+        # the # refusal: a # anywhere refuses, so a pattern holding one refuses; dropped, it admits
+        benign = 'grep -n "#Key" _references/environment.md'
+        self.assertFalse(sr._ruled_bash(benign))
+        with _mutant("_ruled_bash", ('"#", ', '')):
+            self.assertTrue(sr._ruled_bash(benign), "the # refusal dropped: still refused")
+        red("OD57 #: the # refusal dropped")
+        # the empty commenters: with the # refusal dropped, they alone still refuse the review's repros; with both
+        # dropped, shlex's comment hides the shell and the repros admit
+        for repro in ("grep -n Key _references/environment.md x#; sh -c 'cat /tmp/other'", "cat _references/environment.md#;python3 -c 'print(1)'"):
+            with self.subTest(repro=repro):
+                self.assertFalse(sr._ruled_bash(repro))
+                with _mutant("_ruled_bash", ('"#", ', '')):
+                    self.assertFalse(sr._ruled_bash(repro), "the empty commenters do not refuse it alone")
+                with _mutant("_ruled_bash", ('"#", ', ''), ('lex.commenters = ""', 'pass')):
+                    self.assertTrue(sr._ruled_bash(repro), "both dropped: still refused")
+                red("OD57 #: the empty commenters dropped too")
 
     def test_a_probe_finding_of_the_rule_without_an_int_line_refuses(self):
         body = self.bash_record(W167, self.grep_out())

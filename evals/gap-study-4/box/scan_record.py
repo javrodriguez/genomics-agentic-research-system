@@ -498,9 +498,9 @@ def _tool_uses(data: bytes) -> dict:
 # carrying a shell). The command holds no newline or carriage return, no $(...), backtick or process substitution, and
 # no shell operator but the four separators and > >> < >&; it shell-tokenises; no token anywhere is a shell or eval;
 # every segment (split on &&, ||, ; and |) opens with a word from _RULED_FIRST_WORDS, compared on the exact token (a
-# backslash outside quotes refuses, and a sort takes no long option); and the first segment after an optional leading
-# "cd <dir>" is a grep or cat naming a path that ends in _references/environment.md. Anything else refuses. Admitting
-# less is fine.
+# backslash outside quotes or a # anywhere refuses, and a sort takes no long option); and the first segment after an
+# optional leading "cd <dir>" is a grep or cat naming a path that ends in _references/environment.md. Anything else
+# refuses. Admitting less is fine.
 _RULED_SEPARATORS = ("&&", "||", ";", "|")
 _RULED_REDIRECTS = (">", ">>", "<", ">&")
 _RULED_FIRST_WORDS = ("cd", "grep", "cat", "head", "tail", "sort", "uniq", "wc")
@@ -531,13 +531,16 @@ def _ruled_unquoted_backslash(cmd):
 
 def _ruled_bash(cmd) -> bool:
     """A Bash command OD57 admits (the allow-list above)."""
-    if not isinstance(cmd, str) or any(x in cmd for x in ("\n", "\r", "$(", "`", "<(", ">(")):
+    # "#" refuses anywhere, quoted or not: shlex starts a comment at a mid-word "#" where bash does not (cloud review
+    # of aegis b2738e2), and admitting less is fine
+    if not isinstance(cmd, str) or any(x in cmd for x in ("\n", "\r", "#", "$(", "`", "<(", ">(")):
         return False
     if _ruled_unquoted_backslash(cmd):
         return False
     try:
         lex = shlex.shlex(cmd, posix=True, punctuation_chars=True)
         lex.whitespace_split = True
+        lex.commenters = ""         # defence in depth: no comment ever hides a token from these checks
         tokens = list(lex)
     except ValueError:
         return False
