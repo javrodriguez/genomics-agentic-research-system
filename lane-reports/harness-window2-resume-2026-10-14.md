@@ -448,3 +448,25 @@ Open, for the first live walks on this head:
 
 ## Exact next step
 glitch-b5: r11 and the battery on this head. The held Opus lines 4, 6 and 8 rerun on it.
+
+## RESUME HERE (16 Oct 04:15 EDT; supersedes the blocks above): r11 folded
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent 29f2bb91). Nothing pushed. athena not used. No mac_slot booking held; no process of this lane running.
+
+- 29f2bb91: review r11's fold under glitch-b5's rulings.
+  - R11-1: the reach reads every file record and every stream sub-agent record. A stream record is dropped only when canonical-JSON-equal to a file record of the same sub-agent; the ones that differ are counted into check.json's subagents.stream_file_differences, an int pending_walk requires. The call-level two-way agreement still refuses.
+  - R11-2: tests kill the three surviving mutants (stream-only result, file-only off-list model, meta bound to another agent's call); the dead "n is None or" is gone.
+  - R11-3: nothing of an async call after its task_notification; no task event naming it in another turn; completion from its own turn only; the notification's task_id must match its single task_started.
+  - R11-4: the meta may carry model (a schema alias), effort (a schema value) and name (a string), each bound to the call's input; R-C still binds the resolvedModel.
+  - NITs: each switch compared to exactly the string the study sets (steer "false", reminder "0"; no strip, no case-folding); a stream sub-agent record with no agent_id refuses.
+
+Interpretation flagged to glitch-b5: the NIT said exact "0" for both switches; the steer stays at its set value "false" (compared exactly), since "0" would change run_take and the draft. One-line change if ruled otherwise.
+
+Mac proof: listed in the commit (light-ok first). Not run on the Mac: the generated shards, test_round4 and test_box_integration.
+
+Open, for the first live walks on this head:
+- the 2.1.296 subagents pair's real shape (any mismatch holds), and the take's stream_file_differences count;
+- the first Opus normal half must show 0 silent_turn_reminder records.
+
+## Exact next step
+glitch-b5: r12 (reproduced MINOR+ only) and the battery on this head. The held Opus lines 4, 6 and 8 rerun on it.
