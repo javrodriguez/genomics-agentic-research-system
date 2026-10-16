@@ -1,0 +1,114 @@
+type	transcript_view_admits	round3_transcripts	round4_seen	set_O_offset	list_bv_offset	render_offset	type_literal_creates	proposed
+account_memory_recall	False	0		233139195			0	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+advisor_stripped	False	0		233140351		220066716	3	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+advisor_tool	False	0				220068718	12	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+agent_listing_delta	True	64	pre-ruling walks	233138902			1	ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+agent_mention	False	0		233138924	237424746	220061048	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+already_read_file	False	0		233138994		220069423	2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+append	False	0				220205037	68	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+artifact_opening_prefetch	False	0		233140121		220065117	2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+async_hook_response_batch	False	0		233139014		220069448	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+at_mention_reference	False	0		233138940		220056367	5	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+attention_budget	False	0		233139042			0	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+auto_mode	True	1		233139061			1	ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+auto_mode_exit	False	0		233139073		220062839	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+bash_output_audience_note	False	0		233140427	237424982	220060765	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+batching_reminder	False	0		233140774	237425326	220063564	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+batching_reminder_sent	False	0		233140794	237425346	220069481	0	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+budget_usd	False	0		233139090	237424793	220063685	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+clear	False	0				219838606	2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+command_permissions	False	0		233139103	237424724	220069542	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+compact_file_reference	False	0		233139125		220057490	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+context_efficiency	False	0		233139150	237425130		0	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+context_sections	False	0		233140250		220066418	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+coordinator_context	False	0		233140228		220066034	2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+cowork_memory_context	False	0		233139171	237425055		9	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+credential_org	False	0		233140386		220066761	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+critical_system_reminder	False	0		233139219	237424806	220062503	4	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+date	True	64	pre-ruling walks	233140269		220066955	6	ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+date_change	False	0		233139246		220064807	0	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+deferred_tools_delta	True	64	pre-ruling walks	233139290	237425151		2	ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+deferred_tools_record	True	1		233140403		220066783	1	ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+diagnostics	False	0		233139313			2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+dir_sync_notice	False	0			237425037	220060700	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+directory	False	0		233139327		220055719	4	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+dynamic_skill	False	0		233139339		220061755	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+edited_image_file	False	0		233139355	237424833	220069569	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+edited_text_file	False	0	w041	233139375	237424853	220055868	3	RULE NOW: seen live in w041 (held). Renders as a steer: 'take it as the current state rather than reverting it; if the change looks wrong, say so rather than undoing it yourself'. Shape {type, filename, snippet}; snippet carries file content. Not neutral furniture: admit for audit as a named departure (like auto_mode, a closed shape), or refuse (the walk holds). Not built.
+elapsed_time_reminder	False	0		233140574	237425302	220063500	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+environment	True	64	pre-ruling walks	233140149		220065258	7	ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+file	False	0		233139394			6	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+fork_briefing	False	0				220067063	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+goal_status	False	0		233139401		220069767	4	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+hook_additional_context	False	0		233139415	237424676	220064158	17	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+hook_blocking_error	False	0		233139441		220063989	4	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+hook_cancelled	False	0		233139463		220069594	8	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+hook_deferred_tool	False	0		233139480		220069741	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+hook_error_during_execution	False	0		233139501		220069616	7	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+hook_non_blocking_error	False	0		233139531		220069651	13	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+hook_permission_decision	False	0		233139557		220069709	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+hook_plugin_listing	False	0		233139584			0	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+hook_stopped_continuation	False	0		233139606		220064491	8	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+hook_success	False	0		233139634	237424661		7	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+hook_system_message	False	0		233139649		220069682	4	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+inlined_image_paths	False	0		233139759	237424702	220064323	2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+instructions	True	64	pre-ruling walks	233140276		220066812	1	ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+invoked_skills	False	0		233139671			1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+language	False	0		233140199		220067165	3	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+max_turns_reached	False	0		233139688		220069837	3	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+mcp_dropped_tools_delta	False	0		233139733	237425199		1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+mcp_instructions_delta	False	0		233139708	237425174		1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+mcp_resource	False	0		233139850			2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+memory_update	False	0		233139865	237425225		2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+model	True	64	pre-ruling walks	233140163		220065527	4	ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+nested_memory	True	2		233139881		220060502	1	ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+opened_file_in_ide	False	0		233139915	237424872	220060096	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+output_style	False	0		233139936	237424893	220062123	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+output_style_instructions	False	0		233140171		220065699	2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+output_token_usage	False	0		233139951		220063795	0	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+pdf_reference	False	0		233139972		220057712	2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+peer_mention	False	0		233138963	237424762	220061248	2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+plan_file_reference	False	0		233139988		220060259	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+plan_mode	False	0		233140010	237424908		2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+plan_mode_exit	False	0		233140022	237424920	220062573	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+plan_mode_reentry	False	0		233140039	237424937		1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+poll_events	False	0				220055567	5	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+prefix_delta	False	0		233139275		220064609	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+proactivity	False	0		233140059			2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+prompt_render_point	False	0		233140309		220066664	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+prompt_snapshot	True	64	pre-ruling walks	233140291		220066641	4	ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+queued_command	True	10						ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+read_truncation_notice	False	0		233140073	237424957	220060629	2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+relevant_memories	False	0		233140482			1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+remote_session_change	True	64	pre-ruling walks			220068592	2	ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+sandbox_instructions	False	0		233140098		220064983	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+secondary_reminder	False	0		233140819	237425371	220063624	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+secondary_reminder_sent	False	0		233140840	237425392	220069511	0	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+selected_lines_in_diff	False	0		233140502		220059822	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+selected_lines_in_ide	False	0		233140527		220059609	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+session_context	True	64	pre-ruling walks	233140210		220065834	2	ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+session_cron_carry	False	0				220069786	2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+settled	False	0				219838144	2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+silent_turn_reminder	False	0		233140551	237425279	220063437	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+skill_listing	True	64	pre-ruling walks	233140598		220061594	1	ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+skill_mention	False	0		233138978	237424777	220061303	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+structured_output	False	0		233140614	237425079	220069812	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+task_reminder	True	21	pre-ruling walks	233140634			1	ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+team_context	False	0		233140650	237425099		1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+teammate_shutdown_batch	False	0		233140665		220069862	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+thinking_drop	False	0		233140370		220066740	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+thinking_stripped	False	0		233140331		220066691	6	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+thread_state	False	0		233139260		220064692	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+todo_reminder	False	0		233140691	237425114		1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+token_usage	False	0		233140707	237425241	220063264	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+tool_host_result_lines	False	0		233139825		220068321	2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+tool_hosts_correction	False	0		233139801		220068351	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+tool_hosts_notice	False	0		233139781		220068463	3	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+tool_search_usage_reminder	False	0		233140721			1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+total_tokens_reminder	True	64	pre-ruling walks	233140750	237425255	220063373	2	ADMITTED (transcript_view.CC_ATTACHMENT_TYPES; unchanged)
+ultra_effort_enter	False	0		233140866			2	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+ultra_effort_exit	False	0		233140887		220068187	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+ultrathink_effort	False	0		233140907	237425418	220067286	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+unknown_command_fallback	False	0		233140455	237425010	220060981	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+withheld_memory	False	0		233139897		220060606	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it
+workflow_keyword_request	False	0				220067469	1	REFUSE (default, fail closed): never seen in round 3's 64 transcripts or in round 4; a held walk is the signal to rule it

@@ -560,6 +560,16 @@ class R1Chain(Case):
             self.assertEqual((led["session_id"], led["row"], led["row_commit"]), (walk_sid("w-0001"), None, None),
                              "R1.chain: the walk's identity")
             self.assertTrue(json.loads((folder / "grade.json").read_text())["graded"], "R1.chain")
+            # glitch-6b (16 Oct 2026, the w033-w040 question): a turn whose reply holds its marker sends the next
+            # line, through the production adapter: turn 2 is in the ledger and its launch journal resumes the session
+            rows = led["turns"]
+            self.assertGreaterEqual(len(rows), 2, f"R1.chain: only {len(rows)} turn(s) were driven: {rows}")
+            self.assertEqual((rows[0]["n"], rows[0]["held"], rows[1]["n"]), (1, True, 2), f"R1.chain: {rows}")
+            step2 = w.design_for(w.row, str(w.tree)).script[1]["line"]
+            self.assertTrue(rows[1]["sent"] and step2.split("{", 1)[0] in rows[1]["sent"], f"R1.chain: {rows[1]}")
+            j2 = json.loads((folder / "turn-2.jsonl.launch.json").read_text())
+            self.assertIn("--resume", j2["argv"], "R1.chain: turn 2 does not resume turn 1's session")
+            self.assertEqual(j2["argv"][j2["argv"].index("-p") + 1], rows[1]["sent"], "R1.chain: turn 2's line")
             self.assertIs(json.loads((folder / "check.json").read_text()).get("checked"), True, "R1.chain")
             self.assertEqual(json.loads((folder / "check.json").read_text()).get("route"), "graded",
                              "R1.chain: the walk's records were not routed")
