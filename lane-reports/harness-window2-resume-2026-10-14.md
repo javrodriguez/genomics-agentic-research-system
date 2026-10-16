@@ -379,3 +379,17 @@ Not run on the Mac: the generated shards, test_round4 and test_box_integration.
 
 ## Exact next step
 glitch-b5: r9 and the battery on this head.
+
+## RESUME HERE (16 Oct 02:06 EDT; supersedes the blocks above): the final head
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent 0e9a57c0). It is the final head for the battery at the Haiku/Opus break. Nothing pushed. No athena access. No mac_slot booking held; no process of this lane running.
+
+0e9a57c0 is review r9's wording fold (glitch-b5's ruling, option b; no logic change).
+Correction to the block above: the driver end (claude_code_adapter) refuses U+2028, U+2029 and U+0085. It refuses the other separators only when they reach it untranslated. box/run_take captures the turn's stdout with universal newlines, so a \r becomes \n before the stream file is written, and the session file is read the same way. \r is therefore the checker's to refuse: check_take.transcript_line_problems reads the transcript's bytes. The adapter's \r entry stays as harmless defence in depth. box/run_take.py's capture and drive.py's session read are unchanged.
+Claude Code's writer (JSON.stringify) leaves exactly U+2028, U+2029 and U+0085 raw inside strings. routing.json's ruling text says so (the draft is rebuilt for its sha256), and so do the adapter and check_take comments.
+Before any system-under-test pin bump, scan the new tree for raw U+2028/U+2029/U+0085 (HEAD gars/_system/codex_hook.py:89,92 carries them; glitch-b5's r9 NIT 4, not read here).
+
+Mac proof (python3.12, env -u CLAUDE_CODE_MESSAGING_TOKEN, light-ok first), all OK: line_separators 5, claude_code_adapter 28, routing 288, checker_body 30, jsonl_split 5, walk_runner R5Bootstrap 2, build_draft 48. lint_language, copy_manifest, the w6e and w6j byte checks and build_draft --check are clean. The proof of 9c989213's block stands for the code, which is unchanged.
+
+## Exact next step
+glitch-b5: the battery on this head at the Haiku/Opus break; every walk is rechecked on it before the freeze.
