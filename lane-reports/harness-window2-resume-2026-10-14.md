@@ -267,3 +267,16 @@ Running tests on the Mac: prefix every run with `env -u CLAUDE_CODE_MESSAGING_TO
 
 ## Exact next step
 glitch-6b runs the solo athena battery on this head, including the full generated shards 3, 4, 5, 6, 8 and 10.
+
+## RESUME HERE (15 Oct 23:3x EDT, handoff; supersedes the blocks above)
+
+HEAD: the commit that adds this block (parent 9200d150). Branch codex/gap4-live-harness-20261013, the ship candidate. Nothing pushed. Tree clean except the provenance report (not this lane's). No background process of this lane running; no mac_slot held.
+
+Since e471902f:
+- 870148e3: finding 1 (w033-w040 did-not-reach) is not a code regression. Each turn 1 ended end_turn, exit 0, marker not held: Haiku ran stage 00's finalize itself without the "Confirm to create symlinks under" line. Pre-ruling w002, w003 and w005 did the same. R1 now asserts turn 2 is sent through the production adapter (witness red). Also lane-reports/attachment-vocabulary-20261016/: the binary's 113 attachment names with offsets. glitch-6b ACCEPTED the default: 16 admitted, 96 refused until a held walk asks for a ruling.
+- 9200d150: edited_text_file (a) and (b), and the round-3 auto_mode correction.
+  - (a) `ear`, the changed_files attachment, runs each query over files read whole. A later mtime plus a content change emits {type, filename, snippet}, whoever wrote the file. The only switch, CLAUDE_CODE_DISABLE_ATTACHMENTS, skips the whole attachment list, so it breaks round-3 parity; no targeted switch exists. Record: attachment-vocabulary-20261016/edited-text-file-trigger-20261015.json (offsets and excerpt sha256s).
+  - (b) w041: HISTORY.md, read by the agent via Bash, then rewritten by the agent's own background `stage00_register.py finalize` within turn 1. Neither the operator script nor the sidecar changed it.
+  - Round 3: the 54 graded transcripts carry no auto_mode. The one record is the walk walks/template-adherence/1 (claude-sonnet-5, 2.1.267, permission mode auto): every flag false, auto mode's own notice, not the steer. transcript_view's comment, the draft and test_auto_mode now say so. DONE.
+
+Open for glitch-6b: ruling 1 on edited_text_file. The facts point to "admit as a named departure with a closed shape, snippet counted as furniture", since no switch keeps parity. Nothing is built for it yet.
