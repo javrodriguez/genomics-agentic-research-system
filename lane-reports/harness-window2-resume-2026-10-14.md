@@ -201,3 +201,26 @@ Writer: the harness lane, for glitch-6b. Nothing pushed. Commits since 2cab338a,
 
 ## Exact next step
 glitch-6b launches the athena battery on this head plus the box lane's env commit.
+
+## RESUME HERE (15 Oct 20:02 EDT; supersedes the blocks above)
+
+Writer: the harness lane, restarted by glitch-6b after the Mac restart. Nothing pushed. No athena access. No mac_slot booking held; no process of this lane running.
+HEAD: the commit that adds this block (parent fee76182).
+
+Commits since 1491e946, each red first and through the gitleaks staged gate (0 findings):
+- 7979489a the four athena battery reds on 1491e946 (277/281):
+  - test_pipeline: the pinned rehearsal COMMANDS carry walk_regrade.py --check (1491e946 added it to freeze_rehearsal.WALK_COMMANDS).
+  - test_rehearsals --witnesses: duplicate-keys-admitted and schema-by-value re-anchored on 4e0d64ac's lines; 20/20 red.
+  - test_cp8_prep --witnesses: three anchors re-anchored; walk-commits-uncounted then survived, so H1 now drives a later ordinary commit and its revert; 15/15 red.
+  - test_round4's P14Cli: test_recheck_coverage cached walk_plan, test_walk_layout's tearDown dropped walk_register, so P14's patch missed; test_walk_plan now loads walk_plan afresh and asserts the binding.
+- d55b712b the steer-off condition (box patch b0c6f86c, reviewed): check_take.steer_condition_problems; harness-condition-violated in routing.json's operator_reasons with operator_reasons_round4 (its ruling), bound by routing.check_table and TestRound4Additions; TestRound3Sources still re-derives round 3's 24; the draft names "false", the parser proof and the departure.
+- fee76182 the isolation denials (box patches fd9b2209 and 816e4769, reviewed): the adapter denies RemoteTrigger, SendMessage and ListAgents (spelled in the adapter, bound to run_take's where present); check_take.denied_tool_problems; the draft carries the box report's departures (1)-(4) and walk_scope.
+
+Departures from the box patches (named in the commits): the check_take definitions are appended, not mid-file (R5's round-3 prefix), with check4's added lines a new ruled span check4-study-conditions; the adapter spells the three names (this tree's run_take predates db7c0d14).
+
+RULED (glitch-6b, 15 Oct): the 25 pre-ruling walks are NOT rechecked under the steer or isolation guards. They are rehearsal records of the earlier conditions and never cover CP6 (all 25 refuse on replay, as expected). Every line reruns under the new ship head.
+
+Mac proof (all green unless named): test_round4 full, 4027 run, 2 failures, both test_run_take, because this Claude Code session exports CLAUDE_CODE_MESSAGING_TOKEN and run_take rightly refuses it; test_run_take with it unset is 60 OK. Then the touched modules and neighbours after the three commits: test_walk_runner 84 OK and witnesses 72/72; box_integration 61, walk_builders 83, drive_loop 27, walk_wiring 20, stub_take 19, wave4_bindings 13, live_box 38, routing 287, claude_code_adapter 28, env_allowlist 29, steer 6, isolation 6, auto_mode 6, cp8_prep 4, rehearsals 9; copy_manifest, build_draft, routing and batch checks ok. The generated-mutant shards were not run on the Mac.
+
+## Exact next step
+glitch-6b merges this head with box db7c0d14 into the ship candidate and runs the athena battery (run test_round4 with CLAUDE_CODE_MESSAGING_TOKEN unset on any Claude-hosted runner).
