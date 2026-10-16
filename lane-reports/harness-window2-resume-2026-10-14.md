@@ -354,3 +354,28 @@ Not run on the Mac: the generated shards, test_round4 and test_box_integration.
 
 ## Exact next step
 glitch-b5: r8 and the battery on this head.
+
+## RESUME HERE (16 Oct 01:54 EDT; supersedes the blocks above)
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent 42b48b60). Nothing pushed. No athena access. No mac_slot booking held; no process of this lane running.
+
+Correction to the block above (review r8 NIT): "every transcript read in check_take, transcript_view and vendor_record_binding splits on newline alone" is right only for those three modules. These still call splitlines() and were left as they are:
+- evals/transcript.py (round 3's tx, kept for round 3's reproduction);
+- round2.py:104 and :165 (round 2's reproduction);
+- native_reader_registration.py:414 (the vendor road's first stream line).
+The fail-closed ends below make them moot for a claude-code take. mode_binding.modes_recorded is now newline only (round 4's copy).
+
+42b48b60 is glitch-b5's ruling on review r8's finding 1, reproduced first with scratchpad/r8/u2028.py:
+- the driver (claude_code_adapter) refuses a stream or session text carrying a line separator other than newline (an executed turn's refusal);
+- drive's three round-3 stream readers split on newline only (w6e admits lines 473, 517 and 540);
+- check_take refuses [transcript-unreadable] on a separator or a non-blank line that is not JSON. It is routed like harness-condition-violated (routing.json, test_routing).
+The w6j comment names R5 as the real pin.
+
+Mac proof (python3.12, env -u CLAUDE_CODE_MESSAGING_TOKEN, light-ok first), all OK:
+- line_separators 5, jsonl_split 5, edited_text_file 10, no_output_nudge 9, claude_code_adapter 28, routing 288, mode_binding 8, drive_commit 31, checker_body 30, checker_constants 27, steer_condition 7, isolation_denials_checker 9, journal_binding 4, scheduled_wakeup 11, auto_mode 6, transcript_view 20, stub_take 19, live_box 38, wave4_bindings 13, pending_codex_walk 11, drive_loop 27, walk_wiring 20, rehearsals 9, cp8_prep 4, walk_plan 18, recheck_coverage 5, walk_recheck 17, pending_walk 23, build_draft 48.
+- test_walk_runner, class by class: 85.
+- The w6e and w6j byte checks, walk_regrade --check, mode_binding --check and --walks --check, lint_language, copy_manifest and build_draft --check are clean.
+Not run on the Mac: the generated shards, test_round4 and test_box_integration.
+
+## Exact next step
+glitch-b5: r9 and the battery on this head.
