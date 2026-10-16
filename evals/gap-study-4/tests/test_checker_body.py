@@ -252,7 +252,22 @@ def take_folder(script: list, *, records=None, instruction=None) -> Path:
               "model_requested": r["model"], "session_id": sid(),
               "environment": {"file": "environment.json", "sha256": hashlib.sha256(raw).hexdigest()}}
     (folder / "driver-ledger.json").write_text(json.dumps(ledger))
+    # the study conditions, fail closed (glitch-6b, 15 Oct 2026): a clean claude-code take has each turn's launch
+    # journal as box/run_take writes it, the steer off and the isolation denials in its argv and inline settings
+    for t in turns:
+        (folder / f"turn-{t['n']}.jsonl.launch.json").write_text(json.dumps(study_journal(r["model"])))
     return folder / "transcript.jsonl"
+
+
+def study_journal(model: str) -> dict:
+    """One turn's launch journal as box/run_take records it (db7c0d14): the inner argv, its inline settings."""
+    settings = json.dumps({"availableModels": [model], "crossSessionInbound": "refuse",
+                           "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1", "CLAUDE_CODE_THRIFTY_SONIC": "false"},
+                           "fallbackModel": [], "permissions": {"deny": ["RemoteTrigger", "SendMessage", "ListAgents"]},
+                           "switchModelsOnFlag": False}, sort_keys=True, separators=(",", ":"))
+    return {"schema": 1, "harness": "claude-code", "container_id": "synthetic",
+            "argv": ["claude", "-p", "Synthetic line.", "--model", model, "--disallowedTools", "WebFetch",
+                     "WebSearch", "RemoteTrigger", "SendMessage", "ListAgents", "--settings", settings]}
 
 
 def quiet(fn, *a, **kw):

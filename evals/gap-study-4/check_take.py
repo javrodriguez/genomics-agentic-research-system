@@ -2511,25 +2511,51 @@ def _wakeups(pre: dict) -> _Wakeups:
     return _Wakeups(transcript_view.CC_SCHEDULED_WAKEUP in meta)
 
 
-# THE BASH-FIRST STEER OFF (glitch-6b's study-condition ruling, 15 Oct 2026, approved by Javier's "Your call sounds
-# good"; the box lane's proposal, box 0e0bbe20). Every claude-code take runs with CLAUDE_CODE_THRIFTY_SONIC=false
-# (box/run_take.BASH_FIRST_STEER_ENV), in the exec's pairs and in the inline --settings env each turn's launch journal
-# records. The pinned 2.1.296 binary's parser reads "0", "false", "no" and "off" (lowercased, trimmed) as false
-# (lane-reports/stub-take-20261015/claude-2.1.296-tribool-helpers-20261015.json, vs), and its gate HXt() then never
-# emits the auto_mode attachment (the Bash-first steer). transcript_view admits auto_mode as harness furniture so a
-# take that is not under this condition can be audited (harness 2c3784e6); this rule makes a take that IS under it and
-# still carries one refuse, so a silent environment failure never passes. A take whose journals do not set the switch
-# (the product default: a model-keyed cohort) is not this rule's.
+# THE STUDY CONDITIONS ON EVERY CLAUDE-CODE TURN (glitch-6b's rulings, 15 Oct 2026, under Javier's delegation; Javier
+# approved the steer-off, "Your call sounds good"; the box lane's proposals, box 0e0bbe20 and db7c0d14). FAIL CLOSED
+# (glitch-6b, 15 Oct): every turn of a claude-code take has its launch journal (turn-N.jsonl.launch.json, run_take's
+# record of the argv it ran), and every journal shows each condition; a take that cannot show one refuses
+# [harness-condition-violated], whatever the transcript says.
+#
+# THE BASH-FIRST STEER OFF. Every turn's one inline --settings sets env CLAUDE_CODE_THRIFTY_SONIC off: a string
+# whose stripped, lowercased value the pinned 2.1.296 binary's triBool reads as false, "0", "false", "no" or "off"
+# (the box lane's lane-reports/stub-take-20261015/claude-2.1.296-tribool-helpers-20261015.json); the study sets "false"
+# (box/run_take.BASH_FIRST_STEER_ENV). A JSON boolean, a missing switch or any other value refuses. The gate HXt() then
+# never emits the auto_mode attachment (the Bash-first steer); transcript_view admits auto_mode as harness furniture
+# for audit (harness 2c3784e6), and a claude-code take that carries one refuses, whatever its journals say.
 STEER_SWITCH = "CLAUDE_CODE_THRIFTY_SONIC"
 STEER_OFF_VALUES = ("0", "false", "no", "off")
 AUTO_MODE_ATTACHMENT = "auto_mode"
 HARNESS_CONDITION_VIOLATED = "harness-condition-violated"
 _LAUNCH_JOURNAL = re.compile(r"turn-([1-9][0-9]*)\.jsonl\.launch\.json")
+_TURN_STREAM = re.compile(r"turn-([1-9][0-9]*)\.jsonl")
+_JOURNAL_PRINT_FLAGS = ("-p", "--print")                     # the prompt follows; it is never read as a flag
+_JOURNAL_SETTINGS_FLAG = "--settings"
+# THE ISOLATION DENIALS (box lane run_take.ISOLATION_DISALLOWED_TOOLS and CROSS_SESSION_INBOUND, the names and value
+# the pinned binary declares). Every turn denies RemoteTrigger (claude.ai Routines: the take's login's one road to the
+# account outside the box), SendMessage and ListAgents by --disallowedTools and by the inline settings'
+# permissions.deny, and sets crossSessionInbound "refuse". The binary drops a denied tool from the model's list by
+# name, so a turn's stream init that still lists one, or a transcript deferred_tools_delta that adds one, shows the
+# denial did not hold; a turn stream with no init record cannot show it (fail closed).
+ISOLATION_DENIED_TOOLS = ("RemoteTrigger", "SendMessage", "ListAgents")
+CROSS_SESSION_INBOUND = "refuse"
+_JOURNAL_DENY_FLAGS = ("--disallowedTools", "--disallowed-tools")
 
 
-def _journal_switch(journal: Path):
-    """The switch's value in one launch journal's inline --settings env (None when not set); refuses rather than
-    guess on a journal it cannot read."""
+def _turn_files(path: Path) -> tuple[dict, set]:
+    """{turn: its launch journal} and the turns with a stream, beside the transcript."""
+    journals, streams = {}, set()
+    for p in path.parent.iterdir():
+        if (m := _LAUNCH_JOURNAL.fullmatch(p.name)):
+            journals[int(m.group(1))] = p
+        elif (m := _TURN_STREAM.fullmatch(p.name)):
+            streams.add(int(m.group(1)))
+    return journals, streams
+
+
+def _journal_view(journal: Path) -> tuple[list, list]:
+    """One launch journal's argv tokens (the client and the prompt after -p or --print left out) and its inline
+    --settings objects; refuses rather than guess on a journal it cannot read."""
     try:
         doc = json.loads(journal.read_text())
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
@@ -2537,21 +2563,55 @@ def _journal_switch(journal: Path):
     argv = doc.get("argv") if isinstance(doc, dict) else None
     if not isinstance(argv, list) or not all(isinstance(a, str) for a in argv):
         raise CheckRefused(f"{journal.name}: the launch journal's argv is not a list of strings")
-    values = [argv[i + 1] for i, a in enumerate(argv[:-1]) if a == "--settings"]
-    values += [a.split("=", 1)[1] for a in argv if a.startswith("--settings=")]
-    found = []
+    tokens, i = [], 1
+    while i < len(argv):
+        if argv[i] in _JOURNAL_PRINT_FLAGS:
+            i += 2
+            continue
+        tokens.append(argv[i])
+        i += 1
+    values = [tokens[k + 1] for k, a in enumerate(tokens[:-1]) if a == _JOURNAL_SETTINGS_FLAG]
+    values += [a.split("=", 1)[1] for a in tokens if a.startswith(_JOURNAL_SETTINGS_FLAG + "=")]
+    settings = []
     for v in values:
         try:
             st = json.loads(v)
         except json.JSONDecodeError:
             raise CheckRefused(f"{journal.name}: an inline --settings value is not JSON") from None
-        if not isinstance(st, dict) or not isinstance(st.get("env", {}), dict):
+        if not isinstance(st, dict) or not isinstance(st.get("env", {}), dict) \
+                or not isinstance(st.get("permissions", {}), dict):
             raise CheckRefused(f"{journal.name}: an inline --settings value is not a JSON object with an env object")
-        if STEER_SWITCH in st.get("env", {}):
-            found.append(st["env"][STEER_SWITCH])
-    if len(set(map(str, found))) > 1:
-        raise CheckRefused(f"{journal.name}: the inline settings name {STEER_SWITCH} twice, differently")
-    return found[0] if found else None
+        settings.append(st)
+    return tokens, settings
+
+
+def _journal_denied(tokens: list) -> set:
+    """Every tool name the argv denies by --disallowedTools / --disallowed-tools: the binary's variadic <tools...>,
+    each flag taking the tokens up to the next one that starts with "-", or its = value; comma or space separated
+    (as box/run_take._denied_tools reads it)."""
+    out, i = set(), 0
+    while i < len(tokens):
+        flag, sep, value = tokens[i].partition("=")
+        if flag in _JOURNAL_DENY_FLAGS:
+            vals = [value] if sep else []
+            i += 1
+            while not sep and i < len(tokens) and not tokens[i].startswith("-"):
+                vals.append(tokens[i])
+                i += 1
+            out |= {n for v in vals for n in v.replace(",", " ").split()}
+            continue
+        i += 1
+    return out
+
+
+def _journal_gaps(what: str, journals: dict, streams: set) -> list[str]:
+    """No journal at all, or a turn stream with no journal: the condition cannot be shown (fail closed)."""
+    if not journals:
+        return [f"[{HARNESS_CONDITION_VIOLATED}] no turn's launch journal is beside the transcript: {what} cannot be "
+                f"shown"]
+    missing = sorted(streams - set(journals))
+    return [f"[{HARNESS_CONDITION_VIOLATED}] turn(s) {missing} ran with no launch journal: {what} cannot be shown "
+            f"for them"] if missing else []
 
 
 def _auto_mode_records(path: Path) -> int:
@@ -2570,40 +2630,57 @@ def _auto_mode_records(path: Path) -> int:
 
 
 def steer_condition_problems(path: Path) -> list[str]:
-    """The study condition held: under the switch off (any turn's journal), no auto_mode record and no turn without
-    it. [harness-condition-violated] otherwise."""
-    journals = sorted((int(m.group(1)), p) for p in path.parent.iterdir()
-                      if (m := _LAUNCH_JOURNAL.fullmatch(p.name)))
-    values = [(n, _journal_switch(p)) for n, p in journals]
-    off = [n for n, v in values if isinstance(v, str) and v.strip().lower() in STEER_OFF_VALUES]
-    if not off:
-        return []
-    problems = []
-    if len(off) != len(values):
-        others = [n for n, _ in values if n not in off]
-        problems.append(f"[{HARNESS_CONDITION_VIOLATED}] {STEER_SWITCH} is off in turn(s) {off} and not in turn(s) "
-                        f"{others}: the bash-first steer condition did not hold for the whole take")
+    """The steer-off condition held on every turn: each turn's journal carries exactly one inline --settings whose
+    env sets the switch off, and the transcript carries no auto_mode record. [harness-condition-violated] otherwise,
+    fail closed."""
+    journals, streams = _turn_files(path)
+    problems = _journal_gaps("the bash-first steer-off condition", journals, streams)
+    bad = []
+    for n, journal in sorted(journals.items()):
+        _, settings = _journal_view(journal)
+        value = settings[0].get("env", {}).get(STEER_SWITCH) if len(settings) == 1 else None
+        if not (isinstance(value, str) and value.strip().lower() in STEER_OFF_VALUES):
+            bad.append(n)
+    if bad:
+        problems.append(f"[{HARNESS_CONDITION_VIOLATED}] turn(s) {bad} do not set {STEER_SWITCH} off (a string in "
+                        f"{list(STEER_OFF_VALUES)}) in exactly one inline --settings: the bash-first steer-off "
+                        f"condition did not hold on every turn")
     count = _auto_mode_records(path)
     if count:
-        problems.append(f"[{HARNESS_CONDITION_VIOLATED}] the take ran with {STEER_SWITCH} off, and its transcript "
-                        f"carries {count} auto_mode attachment(s): the bash-first steer reached the agent")
+        problems.append(f"[{HARNESS_CONDITION_VIOLATED}] the transcript carries {count} auto_mode attachment(s): the "
+                        f"bash-first steer reached the agent")
     return problems
 
 
-# THE ISOLATION DENIALS (glitch-6b's ruling, 15 Oct 2026; box lane run_take.ISOLATION_DISALLOWED_TOOLS, the names the
-# pinned 2.1.296 binary declares). Every claude-code take denies RemoteTrigger (claude.ai Routines: the take's login's
-# one road to the account outside the box), SendMessage and ListAgents, by --disallowedTools and by the inline
-# settings' permissions.deny. The binary drops a denied tool from the model's list by name, so a turn's stream init
-# that still lists one shows the denial did not hold: [harness-condition-violated], on every claude-code take.
-ISOLATION_DENIED_TOOLS = ("RemoteTrigger", "SendMessage", "ListAgents")
-_TURN_STREAM = re.compile(r"turn-([1-9][0-9]*)\.jsonl")
-
-
 def denied_tool_problems(path: Path) -> list[str]:
-    """No turn's stream init offers a denied tool. Read from the raw turn streams beside the transcript."""
-    problems = []
-    streams = sorted((int(m.group(1)), p) for p in path.parent.iterdir() if (m := _TURN_STREAM.fullmatch(p.name)))
-    for n, stream in streams:
+    """The isolation denials held on every turn: each turn's journal denies the three tools by --disallowedTools and
+    by its one inline --settings' permissions.deny, with crossSessionInbound "refuse"; each turn stream has an init
+    record and none offers one; no transcript deferred_tools_delta adds one. [harness-condition-violated] otherwise,
+    fail closed."""
+    journals, streams = _turn_files(path)
+    problems = _journal_gaps("the isolation denials", journals, streams)
+    want = set(ISOLATION_DENIED_TOOLS)
+    for n, journal in sorted(journals.items()):
+        tokens, settings = _journal_view(journal)
+        gaps = []
+        if not want <= _journal_denied(tokens):
+            gaps.append(f"--disallowedTools lacks {sorted(want - _journal_denied(tokens))}")
+        if len(settings) != 1:
+            gaps.append(f"{len(settings)} inline --settings, not one")
+        else:
+            deny = settings[0].get("permissions", {}).get("deny", [])
+            deny = set(deny) if isinstance(deny, list) and all(isinstance(d, str) for d in deny) else set()
+            if not want <= deny:
+                gaps.append(f"permissions.deny lacks {sorted(want - deny)}")
+            if settings[0].get("crossSessionInbound") != CROSS_SESSION_INBOUND:
+                gaps.append(f"crossSessionInbound is {settings[0].get('crossSessionInbound')!r}, not "
+                            f"{CROSS_SESSION_INBOUND!r}")
+        if gaps:
+            problems.append(f"[{HARNESS_CONDITION_VIOLATED}] turn {n}'s launch journal: {'; '.join(gaps)}: the "
+                            f"isolation denials did not hold")
+    for n in sorted(streams):
+        stream = path.parent / f"turn-{n}.jsonl"
+        inits = 0
         for line in stream.read_text(errors="replace").splitlines():
             try:
                 rec = json.loads(line)
@@ -2611,13 +2688,32 @@ def denied_tool_problems(path: Path) -> list[str]:
                 continue
             if not (isinstance(rec, dict) and rec.get("type") == "system" and rec.get("subtype") == "init"):
                 continue
+            inits += 1
             tools = rec.get("tools")
             if not isinstance(tools, list):
                 raise CheckRefused(f"{stream.name}: an init record whose tools are not a list")
-            offered = sorted(set(map(str, tools)) & set(ISOLATION_DENIED_TOOLS))
+            offered = sorted(set(map(str, tools)) & want)
             if offered:
                 problems.append(f"[{HARNESS_CONDITION_VIOLATED}] turn {n}'s init offers {offered}: the isolation "
                                 f"denials did not hold")
+        if not inits:
+            problems.append(f"[{HARNESS_CONDITION_VIOLATED}] turn {n}'s stream has no init record: the isolation "
+                            f"denials cannot be shown for it")
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        att = rec.get("attachment") if isinstance(rec, dict) and rec.get("type") == "attachment" else None
+        if not (isinstance(att, dict) and att.get("type") == "deferred_tools_delta"):
+            continue
+        added = att.get("addedNames", [])
+        if not isinstance(added, list):
+            raise CheckRefused("a deferred_tools_delta whose addedNames is not a list")
+        offered = sorted(set(map(str, added)) & want)
+        if offered:
+            problems.append(f"[{HARNESS_CONDITION_VIOLATED}] a deferred_tools_delta adds {offered}: the isolation "
+                            f"denials did not hold")
     return problems
 
 

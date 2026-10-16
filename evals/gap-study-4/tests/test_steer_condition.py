@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""The bash-first steer OFF is a study condition the checker verifies (glitch-6b's ruling, 15 Oct 2026, approved by
-Javier's "Your call sounds good"; proposed by the box lane for the harness lane to route).
+"""The bash-first steer OFF is a study condition the checker verifies on every turn, fail closed (glitch-6b's rulings,
+15 Oct 2026, approved by Javier's "Your call sounds good"; proposed by the box lane, made fail closed by glitch-6b's
+ruling of the same day).
 
 Every claude-code take runs with CLAUDE_CODE_THRIFTY_SONIC=false (box/run_take.BASH_FIRST_STEER_ENV), in the exec's
-pairs and in the inline --settings env that each turn's launch journal (turn-N.jsonl.launch.json) records. Claude Code
-2.1.296 then never emits its auto_mode attachment (the Bash-first steer). A silent failure of that switch must not
-pass, so:
+pairs and in the one inline --settings env that each turn's launch journal (turn-N.jsonl.launch.json) records. Claude
+Code 2.1.296 then never emits its auto_mode attachment (the Bash-first steer). So:
 
-  S-violated   a take whose launch journals set the switch off and whose transcript carries an auto_mode
-               attachment yields one `[harness-condition-violated]` refusal naming the count.
-  S-clean      the switch off and no auto_mode record: nothing.
-  S-not-set    no journal sets the switch (the product default, e.g. the 15 Oct walks): this rule says nothing;
-               the switch on: nothing either (another condition, not this one's).
-  S-disagree   turns that disagree on the switch refuse: the condition did not hold for the whole take.
+  S-violated   every turn sets the switch "false" and the transcript carries an auto_mode attachment: one
+               `[harness-condition-violated]` refusal naming the count.
+  S-clean      every turn sets it to a string the binary reads as false ("false", "0", "no", "off", any case, padded)
+               and no auto_mode record: nothing.
+  S-closed     fail closed: a turn whose settings do not set the switch, set it on, set a JSON boolean or any other
+               value; a turn stream with no journal; no journal at all; two inline --settings: each refuses; and an
+               auto_mode record refuses whatever the journals say.
+  S-prompt     a --settings that is the prompt after -p is never read as the settings.
   S-unreadable a launch journal that is not JSON, or a --settings value that is not a JSON object, raises
                CheckRefused rather than guess.
   S-wired      check4 and check4_walk both add these problems for the take.
@@ -24,9 +26,11 @@ Synthetic fixtures only.
 from __future__ import annotations
 
 import ast
+import contextlib
 import json
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -38,64 +42,115 @@ sys.path.insert(0, str(HERE))
 import check_take as ct  # noqa: E402
 
 SWITCH = "CLAUDE_CODE_THRIFTY_SONIC"
+DENY = ["RemoteTrigger", "SendMessage", "ListAgents"]
 AUTO = {"type": "attachment", "isSidechain": False,
         "attachment": {"type": "auto_mode", "autoModeConsentFlow": False, "bashFirst": True,
                        "bashFirstSteer": "relaxed", "steerOnly": True, "bypass": True},
         "rendered": [{"content": "While bypass permissions mode is active:\n\nSynthetic steer."}],
         "renderedRole": "system"}
 USER = {"type": "user", "message": {"content": "Run stage 00."}}
+UNSET = object()
 
 
-def settings(value):
-    env = {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1"}
-    if value is not None:
+def settings(value=UNSET):
+    """The study's inline settings as box/run_take.claude_study_settings writes them, the switch as given."""
+    env = {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1", SWITCH: "false"}
+    if value is UNSET:
+        pass
+    elif value is None:
+        del env[SWITCH]
+    else:
         env[SWITCH] = value
-    return json.dumps({"availableModels": ["m"], "env": env, "fallbackModel": [], "switchModelsOnFlag": False},
+    return json.dumps({"availableModels": ["m"], "crossSessionInbound": "refuse", "env": env, "fallbackModel": [],
+                       "permissions": {"deny": DENY}, "switchModelsOnFlag": False},
                       sort_keys=True, separators=(",", ":"))
 
 
-def journal(value):
+def journal(value=UNSET, extra=()):
     return {"schema": 1, "harness": "claude-code",
-            "argv": ["claude", "-p", "x", "--model", "m", "--settings", settings(value), "--session-id", "s"]}
+            "argv": ["claude", "-p", "x", "--model", "m", "--disallowedTools", *DENY, "--settings", settings(value),
+                     *extra, "--session-id", "s"]}
 
 
-def take(tmp: Path, records, switch_values) -> Path:
+def take(tmp: Path, records, switch_values, streams=None) -> Path:
+    """A take folder: the transcript, one turn stream per value (or `streams`), one journal per value."""
     path = tmp / "transcript.jsonl"
     path.write_text("".join(json.dumps(r) + "\n" for r in records))
-    for n, v in enumerate(switch_values, 1):
+    for n in range(1, (len(switch_values) if streams is None else streams) + 1):
         (tmp / f"turn-{n}.jsonl").write_text("")
-        (tmp / f"turn-{n}.jsonl.launch.json").write_text(json.dumps(journal(v)))
+    for n, v in enumerate(switch_values, 1):
+        doc = v if isinstance(v, dict) else journal(v)
+        (tmp / f"turn-{n}.jsonl.launch.json").write_text(json.dumps(doc))
     return path
 
 
+@contextlib.contextmanager
+def source_mutant(old: str, new: str):
+    """check_take's steer_condition_problems taken from a copy of its source with one anchored edit, patched in."""
+    src = Path(ct.__file__).read_text()
+    assert src.count(old) == 1, f"anchor occurs {src.count(old)} times: {old!r}"
+    m = types.ModuleType("check_take_witness")
+    m.__file__ = ct.__file__
+    sys.modules[m.__name__] = m
+    try:
+        exec(compile(src.replace(old, new), ct.__file__, "exec"), m.__dict__)
+    finally:
+        del sys.modules[m.__name__]
+    with mock.patch.object(ct, "steer_condition_problems", m.steer_condition_problems):
+        yield
+
+
 class Steer(unittest.TestCase):
-    def run_case(self, records, values):
+    def run_case(self, records, values, streams=None):
         with tempfile.TemporaryDirectory() as d:
-            return ct.steer_condition_problems(take(Path(d), records, values))
+            return ct.steer_condition_problems(take(Path(d), records, values, streams))
 
     def check_violated(self):
-        got = self.run_case([USER, AUTO, USER, AUTO], ["false", "false"])
+        got = self.run_case([USER, AUTO, USER, AUTO], [UNSET, UNSET])
         if len(got) != 1 or not got[0].startswith("[harness-condition-violated] ") or "2 auto_mode" not in got[0]:
             return [f"S-violated: {got}"]
         if ct.reason_ids(got) != ["harness-condition-violated"]:
             return ["S-violated: not routable by its id"]
-        for off in ("0", "off", " FALSE "):
-            if not self.run_case([AUTO], [off]):
-                return [f"S-violated: {off!r} not read as off"]
         return []
 
     def check_quiet(self):
         out = []
-        for name, records, values in (("S-clean", [USER], ["false"]), ("S-not-set", [AUTO], [None]),
-                                      ("S-on", [AUTO], ["1"]), ("S-no-journal", [AUTO], [])):
+        for name, records, values in (("S-clean", [USER], [UNSET]), ("S-clean two turns", [USER, USER], [UNSET] * 2),
+                                      ("S-clean 0", [USER], ["0"]), ("S-clean off", [USER], ["off"]),
+                                      ("S-clean no", [USER], ["no"]), ("S-clean padded upper", [USER], [" FALSE "])):
             got = self.run_case(records, values)
             if got:
                 out.append(f"{name}: {got}")
         return out
 
-    def check_disagree(self):
-        got = self.run_case([USER], ["false", None])
-        return [] if ct.reason_ids(got) == ["harness-condition-violated"] else [f"S-disagree: {got}"]
+    def check_closed(self):
+        out = []
+        cases = {
+            "the switch not set": ([USER], [None], None),
+            "the switch on": ([USER], ["1"], None),
+            "the switch true": ([USER], ["true"], None),
+            "a JSON false": ([USER], [False], None),
+            "an empty string": ([USER], [""], None),
+            "auto_mode with no journal": ([USER, AUTO], [], 1),
+            "auto_mode with the switch unset": ([USER, AUTO], [None], None),
+            "one turn of two not set": ([USER], [UNSET, None], None),
+            "a stream with no journal": ([USER], [UNSET], 2),
+            "no journal at all": ([USER], [], 1),
+            "no journal and no stream": ([USER], [], 0),
+            "two inline settings": ([USER], [journal(extra=("--settings", settings()))], None),
+        }
+        for name, (records, values, streams) in cases.items():
+            got = self.run_case(records, values, streams)
+            if ct.reason_ids(got)[:1] != ["harness-condition-violated"]:
+                out.append(f"S-closed {name}: {got}")
+        return out
+
+    def check_prompt(self):
+        # the prompt is the word "--settings": the study's settings after it are the prompt's neighbour, not a value
+        smuggled = journal()
+        smuggled["argv"] = ["claude", "-p", "--settings", settings(), "--model", "m", "--disallowedTools", *DENY]
+        got = self.run_case([USER], [smuggled])
+        return [] if ct.reason_ids(got) == ["harness-condition-violated"] else [f"S-prompt: {got}"]
 
     def check_unreadable(self):
         out = []
@@ -127,8 +182,11 @@ class Steer(unittest.TestCase):
     def test_quiet(self):
         self.assertEqual(self.check_quiet(), [])
 
-    def test_disagree(self):
-        self.assertEqual(self.check_disagree(), [])
+    def test_closed(self):
+        self.assertEqual(self.check_closed(), [])
+
+    def test_prompt(self):
+        self.assertEqual(self.check_prompt(), [])
 
     def test_unreadable(self):
         self.assertEqual(self.check_unreadable(), [])
@@ -137,14 +195,24 @@ class Steer(unittest.TestCase):
         self.assertEqual(self.check_wired(), [])
 
     def test_witnesses(self):
-        all_checks = lambda: (self.check_violated() + self.check_quiet() + self.check_disagree()  # noqa: E731
-                              + self.check_unreadable())
+        all_checks = lambda: (self.check_violated() + self.check_quiet() + self.check_closed()  # noqa: E731
+                              + self.check_prompt() + self.check_unreadable())
         mutants = (
             ("no off values", lambda: mock.patch.object(ct, "STEER_OFF_VALUES", ())),
+            ("on read as off", lambda: mock.patch.object(ct, "STEER_OFF_VALUES", ("0", "false", "no", "off", "1"))),
+            ("switch absent read as off", lambda: source_mutant(
+                '        if not (isinstance(value, str) and value.strip().lower() in STEER_OFF_VALUES):',
+                '        if value is not None and not (isinstance(value, str) and value.strip().lower() in STEER_OFF_VALUES):')),
+            ("not a string read as off", lambda: source_mutant(
+                '        if not (isinstance(value, str) and value.strip().lower() in STEER_OFF_VALUES):',
+                '        if not (str(value).strip().lower() in STEER_OFF_VALUES):')),
             ("another switch name", lambda: mock.patch.object(ct, "STEER_SWITCH", "CLAUDE_CODE_OTHER")),
-            ("every value read as off", lambda: mock.patch.object(ct, "STEER_OFF_VALUES",
-                                                                  ("0", "false", "no", "off", "1", ""))),
             ("another attachment type", lambda: mock.patch.object(ct, "AUTO_MODE_ATTACHMENT", "auto_mode_exit")),
+            ("missing journal read as nothing", lambda: mock.patch.object(ct, "_journal_gaps", lambda *a: [])),
+            ("auto_mode only under the switch", lambda: source_mutant(
+                '    count = _auto_mode_records(path)\n    if count:',
+                '    count = _auto_mode_records(path) if journals and not bad else 0\n    if count:')),
+            ("the prompt read as flags", lambda: mock.patch.object(ct, "_JOURNAL_PRINT_FLAGS", ())),
         )
         for name, ctx in mutants:
             with ctx():

@@ -224,3 +224,25 @@ Mac proof (all green unless named): test_round4 full, 4027 run, 2 failures, both
 
 ## Exact next step
 glitch-6b merges this head with box db7c0d14 into the ship candidate and runs the athena battery (run test_round4 with CLAUDE_CODE_MESSAGING_TOKEN unset on any Claude-hosted runner).
+
+## RESUME HERE (15 Oct, evening; supersedes the block above)
+
+Writer: the harness lane, for glitch-6b. Nothing pushed. No athena access. HEAD: the commit that adds this block (parent dd499432). One commit, red first, through the gitleaks staged gate.
+
+Ruled (glitch-6b, 15 Oct): departures 1 (check_take functions appended; the check4-study-conditions span) and 2 (the adapter spells the three names, bound by test) ACCEPTED. The open ruling: require the switch, fail closed, and the same for the isolation conditions.
+
+This commit (the fail-closed fold, with the review of 1491e946..dd499432, CHANGES):
+- MAJOR: every claude-code turn needs its launch journal; each journal's one inline --settings sets CLAUDE_CODE_THRIFTY_SONIC to a STRING whose stripped, lowercased value is in STEER_OFF_VALUES ("0", "false", "no", "off"), and carries the three-tool deny by --disallowedTools and permissions.deny with crossSessionInbound "refuse". A missing journal, a missing switch, a JSON boolean or any other value, two settings, and any auto_mode record (whatever the journals say) refuse [harness-condition-violated]. The prompt after -p is never read as a flag.
+- NIT folded: a turn stream with no init record, and a transcript deferred_tools_delta whose addedNames includes one of the three, refuse.
+- MINOR: test_walk_runner R2 drives check4_walk on a committed walk missing a launch journal (refuses), with a witness (the claude-code branch turned off, it passes unnamed).
+- walk_register: a recheck commit whose register cannot be read (absent, not JSON, duplicate key) is named, fail closed (it read as empty before). Witnesses for its no_duplicate_keys read and its --full-history log (test_walk_recheck TheRechecksHistory).
+- tests/test_checker_body's clean take now carries each turn's study launch journal (it had none; drive_loop D8 uses it).
+- The draft: harness_furniture_ruling.fail_closed, one line.
+- From the a6a01b1c preview's reds, folded here: the draft's "out of the box" (lint_language's out-of pattern, w8e and test_build_draft) now reads "as the product ships"; R2 also drives a walk missing only the switch and one with crossSessionInbound "hold", and holds another harness clear of the conditions, killing the six check4_walk survivors of shards 3, 4, 5, 6, 8 and 10 (6 run, 6 killed on the scratch merge).
+
+On this tree alone (no box db7c0d14), test_walk_runner R1/R2/R8 and test_walk_wiring E1 refuse harness-condition-violated: this tree's run_take writes no steer or isolation settings. They pass on the scratch merge with db7c0d14 (/Users/javrodher/aegis-builds/gap4-harness-scratch-ship-20261015). The ship head must be the merge.
+
+Running tests on the Mac: prefix every run with `env -u CLAUDE_CODE_MESSAGING_TOKEN` (a Claude Code session exports it and run_take rightly refuses it; athena's runner does not carry it), and run the witness runners under python3.12 (they expect 3.11+ unittest output).
+
+## Exact next step
+glitch-6b merges this head with box db7c0d14 into the ship candidate and runs the athena battery.

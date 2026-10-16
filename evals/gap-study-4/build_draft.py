@@ -1299,8 +1299,8 @@ HARNESS_FURNITURE_RULING = {
          "the agent is told, and only for the models its gate selects. RULED 15 Oct (glitch-6b): disabled for all "
          "claude-code takes via CLAUDE_CODE_THRIFTY_SONIC, set to \"false\" (the box lane's parser proof: the pinned "
          "binary's triBool reads \"0\", \"false\", \"no\" and \"off\" as false; records under "
-         "lane-reports/stub-take-20261015/claude-2.1.296-*.json in the box lane). The departure: out of the box, the "
-         "steer depends on the model; the study turns it off for every claude-code take. The record is admitted for "
+         "lane-reports/stub-take-20261015/claude-2.1.296-*.json in the box lane). The departure: as the product ships, "
+         "the steer depends on the model; the study turns it off for every claude-code take. The record is admitted for "
          "audit only; a take whose launch journals set the switch off and whose transcript still carries it refuses "
          "(harness-condition-violated, check_take.steer_condition_problems)."},
         # glitch-6b's isolation ruling (15 Oct 2026, under Javier's delegation): the box lane report's named
@@ -1320,6 +1320,10 @@ HARNESS_FURNITURE_RULING = {
                   "isolation guards. They are rehearsal records of the earlier conditions and never cover CP6; replayed "
                   "under the isolation guard all 25 refuse, as expected (box lane). Every line reruns under the new ship "
                   "head.",
+    "fail_closed": "RULED 15 Oct 2026 (glitch-6b): fail closed, every turn of a claude-code take must show in its "
+                   "launch journal CLAUDE_CODE_THRIFTY_SONIC \"false\", the deny of RemoteTrigger, SendMessage and "
+                   "ListAgents (--disallowedTools and permissions.deny) and crossSessionInbound \"refuse\", or the take "
+                   "refuses (harness-condition-violated).",
 }
 
 

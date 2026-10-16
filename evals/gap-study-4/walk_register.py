@@ -481,20 +481,25 @@ def _tree_without_rechecks(git, rev: str, rel: str):
 def rechecks_append_only_problems(git, reg_rel: str) -> list[str]:
     """The rechecks list at HEAD starts with the rechecks list of every recheck commit in the history."""
     def rechecks_at(rev):
+        """The register's rechecks at `rev`; None when it is absent, not JSON or carries a duplicate key."""
         shown = git("show", f"{rev}:{reg_rel}")
+        if shown.returncode != 0:
+            return None
         try:
-            return rechecks_of(json.loads(shown.stdout, object_pairs_hook=no_duplicate_keys)) \
-                if shown.returncode == 0 else []
+            return rechecks_of(json.loads(shown.stdout, object_pairs_hook=no_duplicate_keys))
         except (ValueError, DuplicateKey):
-            return []
-    head = rechecks_at("HEAD")
+            return None
+    head = rechecks_at("HEAD") or []               # HEAD's register is check()'s to refuse
     log = git("log", "--full-history", "--no-merges", "--format=%H%x1f%s", "HEAD", "--", reg_rel)
     out = []
     for line in log.stdout.splitlines():
         sha, _, subject = line.partition("\x1f")
         if subject == RECHECK_SUBJECT:
             then = rechecks_at(sha)
-            if head[:len(then)] != then:
+            if then is None:                           # glitch-6b (15 Oct): fail closed, never read as empty
+                out.append(f"the register at the recheck commit {sha[:12]} cannot be read (absent, not JSON, or a "
+                           f"duplicate key): the rechecks list cannot be shown append-only")
+            elif head[:len(then)] != then:
                 out.append(f"the rechecks the recheck commit {sha[:12]} registered are not the start of HEAD's: the "
                            f"rechecks list is append-only")
     return out

@@ -20640,7 +20640,7 @@
     "aborted"
   ],
   "routing": {
-    "sha256": "48f53296a9b22391a36b74fef522a13ddb2710a007c725909d64daaf22b1d9af",
+    "sha256": "8ac5fa41580ebca1967ed237c552f5c47d0ff4e99c29b58e64748e57e4e060f0",
     "about": "Round 4's routing table, pre-registered data. Decided by routing.py only, from harness-side records only, never from the agent's text. Route, phase, turn-end and batch-state strings are graders/labels4.py's and are checked against it on load. A row matches when the take is in its phase, every all_of condition holds, at least one any_of condition holds (when any_of is given), and no none_of condition holds. The winning rows are the matched rows at the highest precedence level; matched rows at that level that name different routes are a tie and are refused, as is an input that matches no row. Rows never read a text-derived count (the events record): those are annotations, below."
   },
   "predictions_rule": {
@@ -23737,7 +23737,7 @@
     "departures": [
       {
         "of": "auto_mode",
-        "text": "Claude Code 2.1.296 writes an auto_mode attachment that round 3's transcripts never carry. Under bypassPermissions it is emitted only when its bash-first gate holds (a model cohort, or CLAUDE_CODE_THRIFTY_SONIC), and it renders into the model's context as a notice that bypass permissions mode is active and a steer to do work through the Bash tool. The transcript view reads it as harness furniture, its rendered text the event's text, so the awareness furniture check counts it. It changes what the agent is told, and only for the models its gate selects. RULED 15 Oct (glitch-6b): disabled for all claude-code takes via CLAUDE_CODE_THRIFTY_SONIC, set to \"false\" (the box lane's parser proof: the pinned binary's triBool reads \"0\", \"false\", \"no\" and \"off\" as false; records under lane-reports/stub-take-20261015/claude-2.1.296-*.json in the box lane). The departure: out of the box, the steer depends on the model; the study turns it off for every claude-code take. The record is admitted for audit only; a take whose launch journals set the switch off and whose transcript still carries it refuses (harness-condition-violated, check_take.steer_condition_problems)."
+        "text": "Claude Code 2.1.296 writes an auto_mode attachment that round 3's transcripts never carry. Under bypassPermissions it is emitted only when its bash-first gate holds (a model cohort, or CLAUDE_CODE_THRIFTY_SONIC), and it renders into the model's context as a notice that bypass permissions mode is active and a steer to do work through the Bash tool. The transcript view reads it as harness furniture, its rendered text the event's text, so the awareness furniture check counts it. It changes what the agent is told, and only for the models its gate selects. RULED 15 Oct (glitch-6b): disabled for all claude-code takes via CLAUDE_CODE_THRIFTY_SONIC, set to \"false\" (the box lane's parser proof: the pinned binary's triBool reads \"0\", \"false\", \"no\" and \"off\" as false; records under lane-reports/stub-take-20261015/claude-2.1.296-*.json in the box lane). The departure: as the product ships, the steer depends on the model; the study turns it off for every claude-code take. The record is admitted for audit only; a take whose launch journals set the switch off and whose transcript still carries it refuses (harness-condition-violated, check_take.steer_condition_problems)."
       },
       {
         "of": "isolation-removals",
@@ -23752,7 +23752,8 @@
         "text": "The messaging socket still binds inside the run tree (a host bind mount); only --bare skips it, and --bare refuses the login. Squid logs only CONNECT host:port, so a call to a non-inference path on api.anthropic.com cannot be told apart from inference in the records."
       }
     ],
-    "walk_scope": "RULED 15 Oct 2026 (glitch-6b): the 25 pre-ruling walks are not rechecked under the steer and isolation guards. They are rehearsal records of the earlier conditions and never cover CP6; replayed under the isolation guard all 25 refuse, as expected (box lane). Every line reruns under the new ship head."
+    "walk_scope": "RULED 15 Oct 2026 (glitch-6b): the 25 pre-ruling walks are not rechecked under the steer and isolation guards. They are rehearsal records of the earlier conditions and never cover CP6; replayed under the isolation guard all 25 refuse, as expected (box lane). Every line reruns under the new ship head.",
+    "fail_closed": "RULED 15 Oct 2026 (glitch-6b): fail closed, every turn of a claude-code take must show in its launch journal CLAUDE_CODE_THRIFTY_SONIC \"false\", the deny of RemoteTrigger, SendMessage and ListAgents (--disallowedTools and permissions.deny) and crossSessionInbound \"refuse\", or the take refuses (harness-condition-violated)."
   },
   "session_namespace": {
     "uuid": "9d78a114-e51c-52e7-b291-1eb87b8c519e",

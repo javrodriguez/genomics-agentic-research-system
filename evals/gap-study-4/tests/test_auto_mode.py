@@ -153,7 +153,7 @@ class TheAutoModeAttachment(unittest.TestCase):
                      "admitted for audit only", "harness-condition-violated",
                      # glitch-6b's ruling (15 Oct 2026): the value, its parser proof and records, and the departure
                      'set to "false"', 'triBool reads "0", "false", "no" and "off" as false',
-                     "lane-reports/stub-take-20261015/claude-2.1.296-", "out of the box, the steer depends on the model",
+                     "lane-reports/stub-take-20261015/claude-2.1.296-", "as the product ships, the steer depends on the model",
                      "the study turns it off for every claude-code take"):
             self.assertIn(word, dep["text"])
         self.assertNotIn("(box lane parser proof)", dep["text"], "the proof is named by its records, not deferred")
@@ -180,6 +180,12 @@ class TheAutoModeAttachment(unittest.TestCase):
             self.assertIn(w, scope)
         for w in ("glitch-6b", "15 Oct 2026"):
             self.assertIn(w, ruling["source"])
+        # glitch-6b (15 Oct 2026): the conditions are required on every turn, fail closed (one line)
+        note = ruling["fail_closed"]
+        self.assertEqual(len(note.splitlines()), 1)
+        for w in ("every turn", 'CLAUDE_CODE_THRIFTY_SONIC "false"', "RemoteTrigger, SendMessage and ListAgents",
+                  'crossSessionInbound "refuse"', "launch journal", "harness-condition-violated", "fail closed"):
+            self.assertIn(w, note)
 
     def test_h_witnesses(self):
         for name, old, new in MUTANTS:

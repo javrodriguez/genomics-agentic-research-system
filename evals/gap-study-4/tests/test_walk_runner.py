@@ -600,6 +600,75 @@ class R2WalkCheck(Case):
                                 w.row["half"], walk_id, wording_script=design.script, design=design)
                 binding = [p for p in got if p.startswith("[session-binding]")]
                 self.assertEqual([p.startswith(says) for p in binding], [True], f"R2.walk-check {walk_id}: {binding}")
+            # the study conditions on the walk road (glitch-6b's review MINOR, 15 Oct 2026): the walk as committed
+            # passes them; a copy missing a turn's launch journal refuses through check4_walk, fail closed
+            hcv = "harness-condition-violated"
+            bare = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-bare"
+            shutil.copytree(folder, bare)
+            journals = sorted(bare.glob("turn-*.jsonl.launch.json"))
+            self.assertTrue(journals, "R2.walk-check: the committed walk carries its launch journals")
+            journals[0].unlink()
+            def view_of(mod):
+                return mod.design_view(w.row, pin=w.pin_for(w.row), run_tree=str(w.tree), constants=w.constants)
+            def read(where, mod=ct):
+                view = view_of(mod)
+                return self.must("R2.walk-check", mod.check4_walk, where / "transcript.jsonl", w.row["task"],
+                                 w.row["half"], "w-0001", wording_script=view.script, arm=w.row["arm"],
+                                 design=view)["reasons"]
+            got = read(folder)
+            self.assertNotIn(hcv, got, f"R2.walk-check: the committed walk refused: {got}")
+            got = read(bare)
+            self.assertIn(hcv, got, f"R2.walk-check: a missing journal passed: {got}")
+            # the witness: check4_walk's claude-code branch turned off, the missing journal passes unnamed
+            src = Path(ct.__file__).read_text()
+            site = ("    if design.harness == CLAUDE_CODE:\n        problems += steer_condition_problems(path)"
+                    "                     # the bash-first steer OFF")
+            self.assertEqual(src.count(site), 1, "R2.walk-check: the check4_walk branch's anchor")
+            m = types.ModuleType("check_take_witness")
+            m.__file__ = ct.__file__
+            sys.modules[m.__name__] = m
+            try:
+                exec(compile(src.replace(site, site.replace("design.harness == CLAUDE_CODE", "False")),
+                             ct.__file__, "exec"), m.__dict__)
+            finally:
+                del sys.modules[m.__name__]
+            got = read(bare, m)
+            self.assertNotIn(hcv, got, f"R2.walk-check witness: {got}")
+            # each condition on its own (the generated sweep's survivors on a6a01b1c): a walk whose journals keep
+            # everything but drop the switch refuses by the steer call; one that sets crossSessionInbound "hold"
+            # refuses by the isolation call
+            def edited(name, edit):
+                where = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / name
+                shutil.copytree(folder, where)
+                for j in sorted(where.glob("turn-*.jsonl.launch.json")):
+                    doc = json.loads(j.read_text())
+                    i = doc["argv"].index("--settings")
+                    st = json.loads(doc["argv"][i + 1])
+                    edit(st)
+                    doc["argv"][i + 1] = json.dumps(st, sort_keys=True, separators=(",", ":"))
+                    j.write_text(json.dumps(doc))
+                return where
+            unset = edited("w-unset", lambda st: st["env"].pop("CLAUDE_CODE_THRIFTY_SONIC"))
+            hold = edited("w-hold", lambda st: st.__setitem__("crossSessionInbound", "hold"))
+            for where, says in ((unset, "do not set CLAUDE_CODE_THRIFTY_SONIC off"),
+                                (hold, "crossSessionInbound is 'hold'")):
+                got = self.must("R2.walk-check", ct.check4_walk, where / "transcript.jsonl", w.row["task"],
+                                w.row["half"], "w-0001", wording_script=view_of(ct).script, arm=w.row["arm"],
+                                design=view_of(ct))
+                self.assertIn(hcv, got["reasons"], f"R2.walk-check {where.name}: {got['reasons']}")
+                self.assertTrue(any(says in p for p in got["problems"]), f"R2.walk-check {where.name}: {got}")
+            # the conditions are claude-code's: a harness the guard admits (a reader registered later) is not held
+            # to them on the same records
+            import copy as copy_module            # `copy` is this test's walk-folder copy above
+            other = copy_module.copy(view_of(ct))
+            other.harness = "synthetic-harness"
+            with mock.patch.object(ct, "HARNESSES_WITH_READERS", (*ct.HARNESSES_WITH_READERS, "synthetic-harness")):
+                try:
+                    got = ct.check4_walk(unset / "transcript.jsonl", w.row["task"], w.row["half"], "w-0001",
+                                         wording_script=other.script, arm=w.row["arm"], design=other)["reasons"]
+                except ct.CheckRefused as e:
+                    got = [f"refused: {e}"]
+            self.assertNotIn(hcv, got, f"R2.walk-check: another harness was held to claude-code's conditions: {got}")
 
     def test_a_take_identity_is_refused_at_launch(self):
         with study(take_identity=True) as w:

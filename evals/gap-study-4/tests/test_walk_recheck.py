@@ -316,5 +316,85 @@ class TheRecheck(twr.Case):
                 self.assertEqual(got == [], ok, got)
 
 
+def register_source_mutant(old: str, new: str):
+    """walk_register compiled with one anchored edit, never placed in sys.modules under its own name."""
+    import walk_register
+    src = Path(walk_register.__file__).read_text()
+    assert src.count(old) == 1, f"anchor occurs {src.count(old)} times: {old!r}"
+    m = types.ModuleType("walk_register_witness")
+    m.__file__ = walk_register.__file__
+    sys.modules[m.__name__] = m
+    try:
+        exec(compile(src.replace(old, new), walk_register.__file__, "exec"), m.__dict__)
+    finally:
+        del sys.modules[m.__name__]
+    return m
+
+
+class TheRechecksHistory(unittest.TestCase):
+    """glitch-6b (15 Oct 2026): the two clauses of walk_register.rechecks_append_only_problems that had no witness.
+
+      RA-dupkey   a recheck commit's register is read with no_duplicate_keys: one that carries a duplicate key (or is
+                  not JSON) cannot show the list append-only and is named, never read as empty or as its last value.
+      RA-history  the register's log is read with --full-history: a recheck commit on a side branch that a merge
+                  -s ours dropped is still read, and the drop is named.
+    Each has a witness: the clause edited out, the case passes silently. Plain scratch repositories, no walk."""
+
+    REG = "rehearsals/register.json"
+
+    def repo(self) -> Path:
+        import tempfile
+        root = Path(tempfile.mkdtemp(dir=twr.tbi.SCRATCH)).resolve() / "r"
+        root.mkdir()
+        git(root, "init", "-q", "-b", "main")
+        git(root, "config", "user.email", "scratch@example.invalid")
+        git(root, "config", "user.name", "scratch")
+        git(root, "config", "maintenance.auto", "false")
+        (root / "rehearsals").mkdir()
+        return root
+
+    def commit(self, root: Path, text: str, subject: str):
+        (root / self.REG).write_text(text)
+        git(root, "add", "--", self.REG)
+        git(root, "commit", "-q", "-m", subject)
+
+    @staticmethod
+    def problems(mod, root: Path):
+        def g(*args):
+            return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
+        return mod.rechecks_append_only_problems(g, TheRechecksHistory.REG)
+
+    def test_ra_dupkey_a_recheck_commits_register_with_a_duplicate_key_is_named(self):
+        import walk_register
+        root = self.repo()
+        self.commit(root, '{"schema": 2, "walks": [], "rechecks": [{"n": 1}], "rechecks": [{"n": 2}]}\n',
+                    walk_register.RECHECK_SUBJECT)
+        self.commit(root, '{"schema": 2, "walks": [], "rechecks": [{"n": 2}]}\n', "a later register")
+        got = self.problems(walk_register, root)
+        self.assertTrue(any("cannot be read" in p for p in got), f"RA-dupkey: {got}")
+        m = register_source_mutant(
+            "            return rechecks_of(json.loads(shown.stdout, object_pairs_hook=no_duplicate_keys))",
+            "            return rechecks_of(json.loads(shown.stdout, object_pairs_hook=dict))")
+        self.assertEqual(self.problems(m, root), [], "RA-dupkey witness: read as its last value, nothing is named")
+
+    def test_ra_history_a_recheck_dropped_by_a_merge_ours_is_named(self):
+        import walk_register
+        root = self.repo()
+        self.commit(root, '{"schema": 1, "walks": []}\n', "the register")
+        git(root, "checkout", "-q", "-b", "side")
+        self.commit(root, '{"schema": 2, "walks": [], "rechecks": [{"n": 1}]}\n', walk_register.RECHECK_SUBJECT)
+        git(root, "checkout", "-q", "main")
+        git(root, "merge", "-q", "-s", "ours", "--no-ff", "--no-edit", "side")
+        self.assertEqual(json.loads((root / self.REG).read_text()), {"schema": 1, "walks": []})
+        got = self.problems(walk_register, root)
+        self.assertTrue(any("append-only" in p for p in got), f"RA-history: {got}")
+        m = register_source_mutant(
+            '    log = git("log", "--full-history", "--no-merges", "--format=%H%x1f%s", "HEAD", "--", reg_rel)\n'
+            '    out = []',
+            '    log = git("log", "--no-merges", "--format=%H%x1f%s", "HEAD", "--", reg_rel)\n'
+            '    out = []')
+        self.assertEqual(self.problems(m, root), [], "RA-history witness: the side branch is pruned, nothing is named")
+
+
 if __name__ == "__main__":
     unittest.main()
