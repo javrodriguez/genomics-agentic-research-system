@@ -530,3 +530,21 @@ Open:
 
 ## Exact next step
 glitch-b5: r14 on 26ea8729..9e57ce79, and the battery on this head.
+
+## RESUME HERE (16 Oct 07:29 EDT; supersedes the blocks above): r14 folded
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent 953d358c). Nothing pushed. athena not used. No mac_slot booking held; no process of this lane running.
+
+- 953d358c: review r14.
+  - The counter is token-level; the persistence switch is refused by its prefix; moving an agent CLI's store (HOME and kin) refuses.
+  - The in-box session sweep runs after every turn (box/run_take.sweep_sessions; on the stub walk about 1.5 ms per sweep).
+  - Store files are admitted by their producer.
+  - Multi-call presentation fixtures and r14's witnesses.
+  - The draft's W-3b names what remains.
+
+Open:
+- test_box_integration (its fake box gains the sweep) is not run on the Mac.
+- The first live walks show whether the sweep or the producer allow-list holds a clean walk.
+
+## Exact next step
+glitch-b5: r15 on 953d358c, and the battery on this head.
