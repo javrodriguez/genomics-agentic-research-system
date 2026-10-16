@@ -2828,8 +2828,9 @@ def _no_duplicate_keys(pairs) -> dict:
 
 
 # ---- EVERY LINE ONE RECORD (glitch-b5's ruling on review r8's finding 1, 16 Oct 2026) ---------------------------------
-#   str.splitlines also splits on the separators below, and Claude Code's JSON writer leaves U+2028 and U+2029 raw
-#   inside strings. Round 3's transcript reader (evals/transcript.py, kept as it is: round 3 reproduces from it) and
+#   str.splitlines also splits on the separators below, and Claude Code's writer (JSON.stringify) leaves exactly
+#   U+2028, U+2029 and U+0085 raw inside strings (it escapes the C0 ones). This end alone carries \r (glitch-b5's
+#   ruling on review r9): it reads the transcript's bytes, while the driver's capture translates \r. Round 3's transcript reader (evals/transcript.py, kept as it is: round 3 reproduces from it) and
 #   the driver's old stream readers dropped such a record, so a reached wait point read did-not-reach. A claude-code
 #   take or walk whose transcript carries one of them, or a non-blank newline-split line that is not JSON, refuses
 #   [transcript-unreadable] (an operator reason with its round-4 ruling, routed by the generic rows like

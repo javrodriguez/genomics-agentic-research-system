@@ -2,14 +2,16 @@
 """A record carrying a line separator other than newline fails closed at both ends (glitch-b5's ruling on review r8's
 finding 1, 16 Oct 2026).
 
-Claude Code's JSON writer leaves U+2028 and U+2029 raw inside strings. str.splitlines() also splits on them (and on
-\\r, \\x0b, \\x0c, \\x1c-\\x1e and \\x85), so an assistant record carrying one was dropped by round 3's transcript reader
+Claude Code's writer (JSON.stringify) leaves exactly U+2028, U+2029 and U+0085 raw inside strings. str.splitlines() also
+splits on them (and on \\r, \\x0b, \\x0c and \\x1c-\\x1e), so an assistant record carrying one was dropped by round 3's transcript reader
 (evals/transcript.py, kept as it is: round 3 reproduces from it) and by the driver's stream readers: a wait point the
 agent reached read did-not-reach, and readers-disagree compares user text only. So:
 
   L-driver    the driver's stream reader (claude_code_adapter.read_stream, the turn's stdout) refuses a stream carrying
               any of those separators (StreamError; after the exec it is an executed turn's refusal, so the take or
-              walk stops for a ruling); the stream file is opened with newline="" so \\r is seen, never translated; the
+              walk stops for a ruling); the stream file is opened with newline="", which keeps a \\r the file holds,
+              though box/run_take's capture has already translated a \\r from the harness (review r9), so on the real
+              road \\r is the checker's to refuse; the
               cross-check names a session file carrying one (a problem, never a crash). A plain stream still reads.
   L-split     the driver's other readers split on "\\n" alone: drive.stream_split, drive.stream_init_source,
               drive.modes_recorded and mode_binding.modes_recorded read a record carrying U+2028 whole.

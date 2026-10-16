@@ -109,9 +109,13 @@ class ExecutedStreamRefused(StreamError, aa.ExecutedTurnRefused):
 
 
 # glitch-b5's ruling on review r8's finding 1 (16 Oct 2026): str.splitlines() also splits on these, and Claude Code's
-# JSON writer leaves U+2028 and U+2029 raw inside strings, so a record carrying one was dropped (a reached wait point
-# read did-not-reach). The driver fails closed: a stream or session text carrying any of them refuses (StreamError,
-# after the exec an executed turn's refusal), and every JSONL text here splits on "\n" alone.
+# writer (JSON.stringify) leaves exactly U+2028, U+2029 and U+0085 raw inside strings (it escapes the C0 ones), so a
+# record carrying one was dropped (a reached wait point read did-not-reach). The driver fails closed: a stream or
+# session text carrying any of them refuses (StreamError, after the exec an executed turn's refusal), and every JSONL
+# text here splits on "\n" alone. On the real road this end refuses U+2028, U+2029 and U+0085, and the C0 ones only
+# when they reach it untranslated: box/run_take captures the turn's stdout with universal newlines (review r9), so a
+# \r becomes \n before the stream file is written, and the session file is read the same way. The \r entry is kept as
+# harmless defence in depth; \r is the checker's to refuse (check_take.transcript_line_problems reads the bytes).
 LINE_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029")
 
 
