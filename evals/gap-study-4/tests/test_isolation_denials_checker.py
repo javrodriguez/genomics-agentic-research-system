@@ -84,6 +84,7 @@ def take(tmp: Path, turns, journals=None, records=()) -> Path:
         recs.append({"type": "result", "subtype": "success"})
         (tmp / f"turn-{n}.jsonl").write_text("".join(json.dumps(r) + "\n" for r in recs))
     for n, doc in enumerate([journal()] * len(turns) if journals is None else journals, 1):
+        doc = dict(doc, stream=doc.get("stream", f"/synthetic/host/take/turn-{n}.jsonl"))   # r5 NIT (b)
         (tmp / f"turn-{n}.jsonl.launch.json").write_text(json.dumps(doc))
     return path
 

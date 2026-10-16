@@ -2530,6 +2530,12 @@ HARNESS_CONDITION_VIOLATED = "harness-condition-violated"
 _LAUNCH_JOURNAL = re.compile(r"turn-([1-9][0-9]*)\.jsonl\.launch\.json")
 _TURN_STREAM = re.compile(r"turn-([1-9][0-9]*)\.jsonl")
 _JOURNAL_PRINT_FLAGS = ("-p", "--print")                     # the prompt follows; it is never read as a flag
+# r5 review NITs (a)-(c) (glitch-6b's queue, 16 Oct 2026): run_take's argv is [claude, -p or --print, prompt, flags...]
+# (box/run_take.check_claude_settings), so the prompt is read by POSITION and every later token is read as written (a
+# stray -p no longer hides the token after it); each journal is bound to its own turn and harness (its harness
+# "claude-code", its stream named turn-N.jsonl for its own N, its client claude, as box/run_take.CLAUDE_CLIENT); and a
+# journal whose turn has no stream refuses, since that turn's init cannot be shown.
+_JOURNAL_CLIENT = "claude"
 _JOURNAL_SETTINGS_FLAG = "--settings"
 # THE ISOLATION DENIALS (box lane run_take.ISOLATION_DISALLOWED_TOOLS and CROSS_SESSION_INBOUND, the names and value
 # the pinned binary declares). Every turn denies RemoteTrigger (claude.ai Routines: the take's login's one road to the
@@ -2553,23 +2559,41 @@ def _turn_files(path: Path) -> tuple[dict, set]:
     return journals, streams
 
 
-def _journal_view(journal: Path) -> tuple[list, list]:
-    """One launch journal's argv tokens (the client and the prompt after -p or --print left out) and its inline
-    --settings objects; refuses rather than guess on a journal it cannot read."""
+def _journal_doc(journal: Path):
+    """One launch journal's JSON; refuses rather than guess on a journal it cannot read."""
     try:
-        doc = json.loads(journal.read_text())
+        return json.loads(journal.read_text())
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
         raise CheckRefused(f"{journal.name}: the launch journal cannot be read ({type(e).__name__})") from None
+
+
+def _journal_client(client) -> bool:
+    """run_take's client: claude, or an absolute path whose basename is claude."""
+    return isinstance(client, str) and (client == _JOURNAL_CLIENT or (
+        os.path.isabs(client) and os.path.basename(client) == _JOURNAL_CLIENT))
+
+
+def _journal_bound(doc, n: int) -> bool:
+    """r5 NIT (b): the journal is turn n's of a claude-code take: harness claude-code, its stream turn-n.jsonl, its
+    client claude."""
+    if not isinstance(doc, dict):
+        return False
+    stream, argv = doc.get("stream"), doc.get("argv")
+    return (doc.get("harness") == CLAUDE_CODE and isinstance(stream, str) and os.path.basename(stream) == f"turn-{n}.jsonl"
+            and _journal_client(argv[0] if isinstance(argv, list) and argv else None))
+
+
+def _journal_view(journal: Path) -> tuple[list, list]:
+    """One launch journal's argv tokens (the client, the print flag and the prompt at position 2 left out) and its
+    inline --settings objects; refuses rather than guess on a journal it cannot read."""
+    doc = _journal_doc(journal)
     argv = doc.get("argv") if isinstance(doc, dict) else None
     if not isinstance(argv, list) or not all(isinstance(a, str) for a in argv):
         raise CheckRefused(f"{journal.name}: the launch journal's argv is not a list of strings")
-    tokens, i = [], 1
-    while i < len(argv):
-        if argv[i] in _JOURNAL_PRINT_FLAGS:
-            i += 2
-            continue
-        tokens.append(argv[i])
-        i += 1
+    if len(argv) < 3 or argv[1] not in _JOURNAL_PRINT_FLAGS:
+        raise CheckRefused(f"{journal.name}: the launch journal's argv is not run_take's [client, -p or --print, "
+                           f"prompt, ...]")
+    tokens = argv[3:]
     values = [tokens[k + 1] for k, a in enumerate(tokens[:-1]) if a == _JOURNAL_SETTINGS_FLAG]
     values += [a.split("=", 1)[1] for a in tokens if a.startswith(_JOURNAL_SETTINGS_FLAG + "=")]
     settings = []
@@ -2605,13 +2629,26 @@ def _journal_denied(tokens: list) -> set:
 
 
 def _journal_gaps(what: str, journals: dict, streams: set) -> list[str]:
-    """No journal at all, or a turn stream with no journal: the condition cannot be shown (fail closed)."""
+    """No journal at all, a turn stream with no journal, a journal with no stream (r5 NIT (c)), or a journal not bound
+    to its turn and harness (r5 NIT (b)): the condition cannot be shown (fail closed)."""
     if not journals:
         return [f"[{HARNESS_CONDITION_VIOLATED}] no turn's launch journal is beside the transcript: {what} cannot be "
                 f"shown"]
+    out = []
     missing = sorted(streams - set(journals))
-    return [f"[{HARNESS_CONDITION_VIOLATED}] turn(s) {missing} ran with no launch journal: {what} cannot be shown "
-            f"for them"] if missing else []
+    if missing:
+        out.append(f"[{HARNESS_CONDITION_VIOLATED}] turn(s) {missing} ran with no launch journal: {what} cannot be "
+                   f"shown for them")
+    streamless = sorted(set(journals) - streams)
+    if streamless:
+        out.append(f"[{HARNESS_CONDITION_VIOLATED}] turn(s) {streamless} have a launch journal and no stream: {what} "
+                   f"cannot be shown for them")
+    unbound = [n for n, journal in sorted(journals.items()) if not _journal_bound(_journal_doc(journal), n)]
+    if unbound:
+        out.append(f"[{HARNESS_CONDITION_VIOLATED}] turn(s) {unbound}: the launch journal is not that turn's of a "
+                   f"{CLAUDE_CODE} take (harness {CLAUDE_CODE!r}, stream turn-N.jsonl, client {_JOURNAL_CLIENT}): "
+                   f"{what} cannot be shown for them")
+    return out
 
 
 def _auto_mode_records(path: Path) -> int:

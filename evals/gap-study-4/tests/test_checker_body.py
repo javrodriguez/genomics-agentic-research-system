@@ -255,7 +255,12 @@ def take_folder(script: list, *, records=None, instruction=None) -> Path:
     # the study conditions, fail closed (glitch-6b, 15 Oct 2026): a clean claude-code take has each turn's launch
     # journal as box/run_take writes it, the steer off and the isolation denials in its argv and inline settings
     for t in turns:
-        (folder / f"turn-{t['n']}.jsonl.launch.json").write_text(json.dumps(study_journal(r["model"])))
+        doc = dict(study_journal(r["model"]), stream=str(folder / f"turn-{t['n']}.jsonl"))    # r5 NIT (b): its turn
+        (folder / f"turn-{t['n']}.jsonl.launch.json").write_text(json.dumps(doc))
+        # r5 NIT (c): a journal's turn has its stream, whose init offers none of the three denied tools
+        (folder / f"turn-{t['n']}.jsonl").write_text(json.dumps(
+            {"type": "system", "subtype": "init", "session_id": sid(), "tools": ["Bash", "Read"], "model": r["model"]})
+            + "\n" + json.dumps({"type": "result", "subtype": "success"}) + "\n")
     return folder / "transcript.jsonl"
 
 

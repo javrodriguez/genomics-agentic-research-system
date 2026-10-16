@@ -79,7 +79,8 @@ def take(tmp: Path, records, switch_values, streams=None) -> Path:
     for n in range(1, (len(switch_values) if streams is None else streams) + 1):
         (tmp / f"turn-{n}.jsonl").write_text("")
     for n, v in enumerate(switch_values, 1):
-        doc = v if isinstance(v, dict) else journal(v)
+        doc = dict(v) if isinstance(v, dict) else journal(v)
+        doc.setdefault("stream", f"/synthetic/host/take/turn-{n}.jsonl")   # r5 NIT (b): bound to its own turn
         (tmp / f"turn-{n}.jsonl.launch.json").write_text(json.dumps(doc))
     return path
 
@@ -155,7 +156,7 @@ class Steer(unittest.TestCase):
     def check_unreadable(self):
         out = []
         for name, text in (("not json", "{"), ("settings not an object", json.dumps(
-                {"argv": ["claude", "--settings", "[]"]})), ("argv not a list", json.dumps({"argv": "claude"}))):
+                {"argv": ["claude", "-p", "x", "--settings", "[]"]})), ("argv not a list", json.dumps({"argv": "claude"}))):
             with tempfile.TemporaryDirectory() as d:
                 path = take(Path(d), [AUTO], [])
                 (Path(d) / "turn-1.jsonl.launch.json").write_text(text)
