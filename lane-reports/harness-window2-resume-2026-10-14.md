@@ -607,3 +607,25 @@ Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (
 
 ## Exact next step
 glitch-b5: r17 (stop at nits), and the battery on this head.
+
+## RESUME HERE (16 Oct 12:32 EDT; supersedes the blocks above): the final fold
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent 1077f568). Nothing pushed. No Docker on the Mac. No mac_slot booking held.
+
+- 3a263ffe: review r17's NITs.
+- 1a06fba6: db9ffe1f's battery reds (2f0b76ab carries the same).
+  - The vendor shell-command reader counts a stream line it cannot read (unread_stream_lines in session-store.json) and never refuses on it; the adapter's read_stream still validates every line.
+  - The adapters read stderr by its key, so the generated stderr mutants are killed (Codex and Gemini).
+- 1077f568: OD57, Javier's ruling on ask T83.
+  - box/scan_record.py admits generic-api-key on gars/_references/environment.md line 175 by the sha256 of its exact text, only inside a Read or a Bash cat/grep result (main thread or sub-agent), only in agent text, and only when a probe rescan without that text no longer reports the rule on that line.
+  - The scan result lists each admitted finding under "ruled", naming OD57. Every other finding still refuses.
+  - The draft has no scanner-rulings place, so it is unchanged.
+- Mac pre-check on the working tree: 116 of 120 modules run, 115 green. test_walk_launch timed out at 1200 s (it also stops on an export of 3a263ffe). Four modules were not run on the Mac (test_walk_wiring, test_wave4_bindings, test_wave6_bindings, test_write_image_lock): the Mac battery was stopped on glitch-b5's word, under load.
+
+Open (glitch-b5):
+- The record battery on athena on this head.
+- The walk return scan (walk_launch fetch, athena_suite.scan_unpublished) carries no allowance by glitch-6b's ruling, so a walk whose committed transcript holds the line may still be refused at fetch. OD57 there needs its own wiring and ruling.
+- Held walks w088 and w133 stay as records; lines 94 and 13 re-run as new ids.
+
+## Exact next step
+glitch-b5: the athena battery on this head, then the walks.
