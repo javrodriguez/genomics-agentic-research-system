@@ -493,20 +493,47 @@ def _tool_uses(data: bytes) -> dict:
     return uses
 
 
-# The Bash shapes OD57 admits (glitch-b5's ruling of 16 Oct 2026, after walk w167): the command, split on &&, ||, ;
-# and | and shell-tokenised, has a grep or cat segment, after any leading cd segments only, naming a path that ends in
-# _references/environment.md. A parse failure, $(...), backticks, a process substitution, any other shell
-# operator, or a segment opening with a wrapper (eval, sh -c, bash -c and kin) refuses. Admitting less is fine.
+# The Bash shapes OD57 admits (glitch-b5's rulings of 16 Oct 2026: after walk w167, then an ALLOW-LIST after the cloud
+# review of aegis 41de680 found two ways past an enumerated wrapper list: a newline separator, and a prefix command
+# carrying a shell). The command holds no newline or carriage return, no $(...), backtick or process substitution, and
+# no shell operator but the four separators and > >> < >&; it shell-tokenises; no token anywhere is a shell or eval;
+# every segment (split on &&, ||, ; and |) opens with a word from _RULED_FIRST_WORDS, compared on the exact token (a
+# backslash outside quotes refuses, and a sort takes no long option); and the first segment after an optional leading
+# "cd <dir>" is a grep or cat naming a path that ends in _references/environment.md. Anything else refuses. Admitting
+# less is fine.
 _RULED_SEPARATORS = ("&&", "||", ";", "|")
 _RULED_REDIRECTS = (">", ">>", "<", ">&")
-_RULED_WRAPPERS = ("eval", "sh", "bash", "zsh", "dash", "ksh", "exec", "source", ".", "xargs", "env", "command",
-                   "builtin", "sudo", "nohup", "timeout")
+_RULED_FIRST_WORDS = ("cd", "grep", "cat", "head", "tail", "sort", "uniq", "wc")
+_RULED_SHELLS = ("sh", "bash", "zsh", "dash", "ksh", "eval")
 _RULED_DOC = "_references/environment.md"
 
 
+def _ruled_unquoted_backslash(cmd):
+    """A backslash outside quotes (a first word is compared on its exact token: no \\grep, no /bin/grep)."""
+    quote, skip = None, False
+    for ch in cmd:
+        if skip:
+            skip = False
+        elif quote == "'":
+            if ch == "'":
+                quote = None
+        elif quote == '"':
+            if ch == "\\":
+                skip = True
+            elif ch == '"':
+                quote = None
+        elif ch in "'\"":
+            quote = ch
+        elif ch == "\\":
+            return True
+    return False
+
+
 def _ruled_bash(cmd) -> bool:
-    """A Bash command OD57 admits (the shapes above)."""
-    if not isinstance(cmd, str) or any(x in cmd for x in ("$(", "`", "<(", ">(")):
+    """A Bash command OD57 admits (the allow-list above)."""
+    if not isinstance(cmd, str) or any(x in cmd for x in ("\n", "\r", "$(", "`", "<(", ">(")):
+        return False
+    if _ruled_unquoted_backslash(cmd):
         return False
     try:
         lex = shlex.shlex(cmd, posix=True, punctuation_chars=True)
@@ -524,11 +551,14 @@ def _ruled_bash(cmd) -> bool:
         else:
             cur.append(t)
     segments.append(cur)
-    if "eval" in tokens or any(not seg or seg[0] in _RULED_WRAPPERS for seg in segments):
+    if any(t in _RULED_SHELLS for t in tokens):
         return False
-    i = 0
-    while i < len(segments) and segments[i][0] == "cd" and len(segments[i]) == 2:
-        i += 1
+    # sort's --compress-program runs a program, and a long option may be abbreviated: a sort takes no long option
+    if any(seg and seg[0] == "sort" and any(t.startswith("--") for t in seg[1:]) for seg in segments):
+        return False
+    if any(not seg or seg[0] not in _RULED_FIRST_WORDS for seg in segments):
+        return False
+    i = 1 if segments[0][0] == "cd" and len(segments[0]) == 2 else 0
     if i == len(segments) or segments[i][0] not in ("grep", "cat"):
         return False
     return any(t == _RULED_DOC or t.endswith("/" + _RULED_DOC) for t in segments[i][1:])

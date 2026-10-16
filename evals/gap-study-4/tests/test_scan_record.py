@@ -1382,16 +1382,30 @@ class TestOD57Chain(TestOD57Ruling):
 
     def test_the_bash_shapes(self):
         doc = "_references/environment.md"
-        admitted = [W167, f"grep -n pinned {doc}", f"cat {doc}", f"cat -n /run/gars/{doc}",
-                    f"cd /run/gars && cd gars && grep -n Key {doc} | head -5", f"grep -n Key {doc} 2>&1 | head",
-                    f"grep -n Key {doc}; echo done", f"grep 'Key pinned' {doc} || true"]
-        refused = [f"cd x && sed -n 175p {doc}", "grep -n pinned _references/other.md", f"echo $(cat {doc})",
-                   f"cat \"$(cat x)/{doc}\"", f"cat \"`cat x`/{doc}\"", f"eval cat {doc}", f"sh -c 'cat {doc}'",
-                   f"bash -c 'grep -n Key {doc}'", f"cat {doc} | sh -c 'cat y'", f"grep \"unclosed {doc}",
-                   f"head -200 {doc}", f"echo hi && grep -n Key {doc}", f"cat <({doc})", f"grep -n Key {doc} &",
-                   f"(cat {doc})", f"cd && grep -n Key {doc}", f"grep -rn Key /run/gars/_references",
-                   f"cat {doc}x", f"cat {doc}.bak", f"cat my{doc}", "", f"&& cat {doc}", f"xargs cat {doc}",
-                   None, 3]
+        admitted = [W167, "grep -n pinned " + doc, "cat " + doc, "cat -n /run/gars/" + doc,
+                    "cd /run/gars && grep -n Key " + doc + " | sort | uniq | wc -l",
+                    "grep -n Key " + doc + " 2>&1 | head", "grep -n Key " + doc + " | tail -3",
+                    "grep 'Key pinned' " + doc, 'grep -n "a\\|b" ' + doc]
+        refused = ["cd x && sed -n 175p " + doc, "grep -n pinned _references/other.md", "echo $(cat " + doc + ")",
+                   'cat "$(cat x)/' + doc + '"', 'cat "`cat x`/' + doc + '"', "eval cat " + doc,
+                   "sh -c 'cat " + doc + "'", "bash -c 'grep -n Key " + doc + "'", "cat " + doc + " | sh -c 'cat y'",
+                   'grep "unclosed ' + doc, "echo hi && grep -n Key " + doc, "cat <(" + doc + ")",
+                   "grep -n Key " + doc + " &", "(cat " + doc + ")", "cd && grep -n Key " + doc,
+                   "grep -rn Key /run/gars/_references", "cat " + doc + "x", "cat " + doc + ".bak", "cat my" + doc,
+                   "", "&& cat " + doc, "xargs cat " + doc, None, 3,
+                   # the allow-list (review of 41de680): one leading cd only, and no first word off the list
+                   "cd /run/gars && cd gars && grep -n Key " + doc, "grep -n Key " + doc + "; echo done",
+                   "grep 'Key pinned' " + doc + " || true", "head -200 " + doc, "sed -n 175p " + doc,
+                   # the review's repros: a newline or carriage return separator, a prefix command carrying a shell
+                   "grep k " + doc + "\nsh -c 'cat /tmp/other'", "grep k " + doc + "\r\nsh -c 'cat /tmp/other'",
+                   "grep k " + doc + "\nxargs cat /tmp/other", "grep k " + doc + "; time sh -c x",
+                   "grep k " + doc + "; nice sh -c x", "grep k " + doc + " | stdbuf -o0 cat",
+                   "nice grep k " + doc, "time grep k " + doc, "grep k " + doc + " | xargs cat",
+                   "grep k " + doc + " | find . -exec cat {} +", "grep k " + doc + " | busybox cat",
+                   "grep k " + doc + " | head; sh", "grep k " + doc + " sh", "grep k " + doc + " | cat - eval",
+                   # the exact token: no path prefix, no backslash; a sort takes no long option
+                   "/bin/grep k " + doc, "/usr/bin/cat " + doc, "\\grep k " + doc, "gr\\ep k " + doc,
+                   "grep k " + doc + " | sort --compress-program=x", "grep k " + doc + " | sort --com=x"]
         for cmd in admitted:
             with self.subTest(admitted=cmd):
                 self.assertTrue(sr._ruled_bash(cmd))
@@ -1404,6 +1418,9 @@ class TestOD57Chain(TestOD57Ruling):
             "cd x && sed": self.bash_record("cd x && sed -n 175p _references/environment.md", self.text + "\n"),
             "grep another file": self.bash_record("grep -n pinned _references/other.md", f"175:{self.text}\n"),
             "echo $(cat ...)": self.bash_record("echo $(cat _references/environment.md)", self.text + "\n"),
+            "newline then sh -c": self.bash_record("grep k _references/environment.md\nsh -c 'cat /tmp/other'",
+                                                   f"175:{self.text}\n"),
+            "time sh -c": self.bash_record("grep -n k _references/environment.md; time sh -c x", f"175:{self.text}\n"),
             "a user-text copy": _cc({"type": "user", "message": {"content": f"please check:\n{self.text}\n"}}),
         }
         for name, body in cases.items():
@@ -1411,16 +1428,21 @@ class TestOD57Chain(TestOD57Ruling):
                 self.assertFalse(self.admitted(body))
 
     def test_mutation_witnesses_of_the_bash_shapes(self):
+        LINE = self.text
         cases = (
-            ("the doc path dropped", "grep -n pinned _references/other.md", f"175:{self.text}\n",
+            ("the doc path dropped", "grep -n pinned _references/other.md", "175:%s\n" % LINE,
              ('return any(t == _RULED_DOC or t.endswith("/" + _RULED_DOC) for t in segments[i][1:])',
               "return True")),
-            ("the grep-or-cat first word dropped", "cd x && sed -n 175p _references/environment.md", self.text + "\n",
+            ("the grep-or-cat first word dropped", "cd x && head -200 _references/environment.md", LINE + "\n",
              ('segments[i][0] not in ("grep", "cat")', "False")),
-            ("the substitution guard dropped", 'cat "$(cat x)/_references/environment.md"', self.text + "\n",
-             ('any(x in cmd for x in ("$(", "`", "<(", ">("))', "False")),
-            ("the wrapper guard dropped", "cat _references/environment.md | sh -c 'cat y'", self.text + "\n",
-             ("any(not seg or seg[0] in _RULED_WRAPPERS for seg in segments)", "False")),
+            ("the substitution guard dropped", 'cat "$(cat x)/_references/environment.md"', LINE + "\n",
+             ('"$(", "`", ', "")),
+            ("the allow-list dropped", "grep -n Key _references/environment.md; xargs cat /tmp/other",
+             "175:%s\n" % LINE, ("seg[0] not in _RULED_FIRST_WORDS", "False")),
+            ("the newline refusal dropped", "grep -n Key _references/environment.md\nxargs cat /tmp/other",
+             "175:%s\n" % LINE, (r'"\n", "\r", ', "")),
+            ("the backslash refusal dropped", "\\grep -n Key _references/environment.md", "175:%s\n" % LINE,
+             ("if _ruled_unquoted_backslash(cmd):", "if False:")),
         )
         for name, cmd, out, edit in cases:
             with self.subTest(name):
