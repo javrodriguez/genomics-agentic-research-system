@@ -200,6 +200,16 @@
       "model": "claude-sonnet-5-5",
       "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted",
       "counted": false
+    },
+    {
+      "walk": "w157",
+      "task": "plan-gate",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted",
+      "counted": false
     }
   ]
 }
