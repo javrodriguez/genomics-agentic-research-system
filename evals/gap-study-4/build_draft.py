@@ -1363,6 +1363,19 @@ HARNESS_FURNITURE_RULING = {
          "the checker ran on is never written without a count (it is held), a check.json under the constants in force "
          "without one is unreadable, and walk_regrade re-derives the count from the committed transcript and names a "
          "mismatch (review r6, 16 Oct)."}],
+    # glitch-b5's Agent parity ruling (16 Oct 2026, CP6 walk w083): a note, not a departure (round 3 offered the tool).
+    "parity_notes": [
+        {"of": "Agent", "text": "Round 3 offered the Agent (sub-agent) tool in 64 of its 64 transcripts (each "
+         "prompt_snapshot's tool list, at Claude Code 2.1.267 and 2.1.280) and never called it. Round 4 keeps it, "
+         "under the same name at 2.1.296 (its stream init lists it as Task), and reads its sub-agent's records: the "
+         "transcript view reads the call, its input keys closed at the 2.1.296 schema; the sub-agent's own records are "
+         "read from the turn streams (records with parent_tool_use_id set) and from the copied subagents files, bound "
+         "to the call by its id and agent id, and every reach check reads their tool calls as the agent's own. A "
+         "sub-agent's words never count toward a wait point or the agent's visible output. A sub-agent runs on the "
+         "pinned model or, by explicit choice, on claude-haiku-5-5, claude-sonnet-5-5 or claude-opus-5-5; any other "
+         "model stops the take. Each take's check.json records its Agent calls and sub-agent models. RULED 16 Oct "
+         "(glitch-b5): parity, so a note and not a departure; a sub-agent file of a shape not yet seen holds the walk "
+         "for a ruling (walk w083 was held on the call itself)."}],
     "walk_scope": "RULED 15 Oct 2026 (glitch-6b): the 25 pre-ruling walks are not rechecked under the steer and "
                   "isolation guards. They are rehearsal records of the earlier conditions and never cover CP6; replayed "
                   "under the isolation guard all 25 refuse, as expected (box lane). Every line reruns under the new ship "

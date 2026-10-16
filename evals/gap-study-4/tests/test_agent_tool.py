@@ -490,6 +490,24 @@ def count_problems() -> list:
     return out
 
 
+def draft_problems() -> list:
+    draft = json.loads((HERE / "prereg-draft.json").read_text())
+    ruling = draft["harness_furniture_ruling"]
+    out = []
+    if "Agent" in {d["of"] for d in ruling["departures"]}:
+        out.append("A-draft: Agent is listed as a departure; the ruling made it a parity note")
+    notes = [n for n in ruling.get("parity_notes", []) if n.get("of") == "Agent"]
+    if len(notes) != 1:
+        return out + ["A-draft: no single Agent parity note"]
+    for word in ("64 of its 64 transcripts", "never called it", "2.1.267 and 2.1.280", "2.1.296", "Task",
+                 "parent_tool_use_id", "subagents files", "every reach check", "never count toward a wait point",
+                 "claude-haiku-5-5, claude-sonnet-5-5 or claude-opus-5-5", "check.json", "RULED 16 Oct (glitch-b5)",
+                 "not a departure", "holds the walk", "w083"):
+        if word not in notes[0]["text"]:
+            out.append(f"A-draft: the note does not say {word!r}")
+    return out
+
+
 class TheAgentTool(unittest.TestCase):
     def test_a_view(self):
         self.assertEqual(view_problems(), [])
@@ -551,6 +569,9 @@ class TheAgentTool(unittest.TestCase):
                     got = [f"raised {type(e).__name__}"]
                 print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
                 self.assertTrue(got, name)
+
+    def test_a_draft(self):
+        self.assertEqual(draft_problems(), [])
 
     def test_a_count(self):
         self.assertEqual(count_problems(), [])
