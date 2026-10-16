@@ -81,7 +81,7 @@ def walk_entry(row: dict, reason: str) -> dict:
 
 
 def check_record(walk: str, records, table, route_fn, *, checked: bool, constants_sha256=None,
-                 no_output_nudges=None) -> dict:
+                 no_output_nudges=None, agent_summary=None) -> dict:
     """check.json: whether the checker ran (W10 review note: it runs only when a turn ran, and its reading is then
     the driver ledger's companion; otherwise the driver hands an empty reading, which this file must not pass off
     as a clean one), the checker's reasons and events as the drive returned them, and the route routing gives the
@@ -89,16 +89,23 @@ def check_record(walk: str, records, table, route_fn, *, checked: bool, constant
     (constants_sha256: the driver's checker_constants_sha256(row)), null when it did not run, which
     pending_walk.coverage_status compares with the constants in force. Read, never counted. And (glitch-b5's ruling 3)
     no_output_nudges: how many no-visible-output nudges the checked transcript carries (the driver's
-    no_output_nudges(row)), null when the checker did not run; analysis stratifies by it."""
+    no_output_nudges(row)), null when the checker did not run; analysis stratifies by it. And (glitch-b5's Agent parity
+    ruling, part 6) agent_calls and subagents: the checked transcript's Agent calls and sub-agent models (the driver's
+    agent_summary(row)), null when the checker did not run."""
     if not isinstance(records, dict):
         raise TypeError("the drive returned no records")
     # review r6 MINOR 2 (glitch-b5, 16 Oct 2026): when the checker ran, its count is written, never null
     if checked is True and not pending_walk.valid_nudge_count(no_output_nudges):
         raise ValueError(f"the checker ran and the nudge count is {no_output_nudges!r}, not an int >= 0")
+    summary = agent_summary if isinstance(agent_summary, dict) else {}
+    if checked is True and not pending_walk.valid_agent_summary(summary.get("agent_calls"), summary.get("subagents")):
+        raise ValueError("the checker ran and the driver gave no valid Agent call count and sub-agent record")
     doc = {"walk": walk, "checked": checked is True, "checker_reasons": list(records.get("checker_reasons") or []),
            "events": records.get("events"), "route": None, "route_refused": None,
            "checker_constants_sha256": constants_sha256 if checked is True else None,
-           "no_output_nudges": no_output_nudges if checked is True else None}
+           "no_output_nudges": no_output_nudges if checked is True else None,
+           "agent_calls": summary["agent_calls"] if checked is True else None,
+           "subagents": summary["subagents"] if checked is True else None}
     try:
         doc["route"] = route_fn(records, table)["route"]
     except Exception as e:  # noqa: BLE001 - routing must never sink a walk; its refusal is the walk's record
@@ -213,9 +220,15 @@ def _run_one(driver, repo, row, reason, walk, folder, reached, *, table, route_f
     if checked and not pending_walk.valid_nudge_count(nudges):       # review r6 MINOR 2: held, never written as null
         return {"state": HELD, "why": f"the checker ran and the driver gave nudge count {nudges!r}; the walk folder is "
                                       f"left for a human, never committed"}
+    agents = getattr(driver, "agent_summary", None)                 # the Agent parity ruling, part 6
+    agents = agents(row) if callable(agents) else None
+    if checked and not (isinstance(agents, dict) and pending_walk.valid_agent_summary(agents.get("agent_calls"),
+                                                                                       agents.get("subagents"))):
+        return {"state": HELD, "why": "the checker ran and the driver gave no valid Agent call count; the walk folder "
+                                      "is left for a human, never committed"}
     write_check(folder, check_record(walk, records, table, route_fn, checked=checked,
                                      constants_sha256=read(row) if callable(read) else None,
-                                     no_output_nudges=nudges))
+                                     no_output_nudges=nudges, agent_summary=agents))
     try:
         run_mod.write_walk_grade(entry, folder, grade=grade)
         got = repo.commit_walk(entry)

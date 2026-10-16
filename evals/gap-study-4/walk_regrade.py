@@ -60,6 +60,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -236,6 +237,21 @@ def nudge_count_problems(check: dict, transcript: Path) -> list:
     return []
 
 
+def agent_summary_problems(check: dict, transcript: Path) -> list:
+    """The Agent parity ruling, part 6: check.json's agent_calls and subagents, where present, are check_take's reading
+    of the committed transcript and the turn streams beside it; a mismatch is named. A check.json without them (written
+    before the ruling) is not re-derived."""
+    import check_take as ct
+    if not isinstance(check, dict) or check.get("agent_calls") is None:
+        return []
+    derived = ct.agent_summary(Path(transcript))
+    recorded = {"agent_calls": check.get("agent_calls"), "subagents": check.get("subagents")}
+    if derived != recorded:
+        return [f"check.json's agent_calls and subagents ({recorded['agent_calls']!r}) are not the committed "
+                f"transcript's ({derived['agent_calls']})"]
+    return []
+
+
 def regrade_problems(study: Path = HERE, *, readers=None, grade=None) -> list:
     """Every committed regrade.json must re-derive to its exact bytes."""
     study = Path(study)
@@ -283,6 +299,11 @@ def regrade_problems(study: Path = HERE, *, readers=None, grade=None) -> list:
             path = Path(tmp) / "transcript.jsonl"
             path.write_bytes(transcript)
             out += [f"walk {parts[0]!r}: {p}" for p in nudge_count_problems(check, path)]
+            for rel2 in listed:                     # the Agent parity ruling, part 6: the streams beside it too
+                tail = rel2[len(walks) + 1:].split("/")
+                if len(tail) == 2 and tail[0] == parts[0] and re.fullmatch(r"turn-[1-9][0-9]*\.jsonl", tail[1]):
+                    (Path(tmp) / tail[1]).write_bytes(nrr._show(root, rel2))
+            out += [f"walk {parts[0]!r}: {p}" for p in agent_summary_problems(check, path)]
     return out
 
 
@@ -322,7 +343,7 @@ def recheck_chain_problems(root, prefix, walk: str, names, study) -> list:
             raw = nrr._show(root, rel)
             doc = json.loads(raw)
             want = "check.json" if n == 1 else recheck_name(n - 1)
-            if not isinstance(doc, dict) or set(doc) - {RECHECK_NUDGE_KEY} != set(RECHECK_KEYS) or (doc["walk"], doc["n"], doc["supersedes"],
+            if not isinstance(doc, dict) or set(doc) - {RECHECK_NUDGE_KEY, *RECHECK_AGENT_KEYS} != set(RECHECK_KEYS) or (doc["walk"], doc["n"], doc["supersedes"],
                                                                               doc["was"].get("file")) != (walk, n, want, want):
                 out.append(f"walk {walk!r}: {recheck_name(n)} is not a recheck of ordinal {n} superseding {want}")
                 continue
@@ -340,6 +361,9 @@ RECHECK_KEYS = ("schema", "walk", "n", "walk_commit", "supersedes", "machine", "
 # review r7 MINOR 2 (glitch-b5, 16 Oct 2026): a recheck also carries check_take's count of the committed transcript; a
 # recheck written before the fold lacks it, and either shape is a recheck's (re-deriving the latest one writes the key)
 RECHECK_NUDGE_KEY = "no_output_nudges"
+# glitch-b5's Agent parity ruling, part 6 (16 Oct 2026): a recheck also carries the Agent calls and sub-agent models,
+# re-derived from the committed transcript and streams; a recheck written before it lacks them.
+RECHECK_AGENT_KEYS = ("agent_calls", "subagents")
 
 
 # ---- the recheck (glitch-6b's scheduled-wakeup ruling, 15 Oct 2026) -------------------------------------------------
@@ -474,6 +498,10 @@ def recheck_doc(walk: str, n: int, study: Path = HERE, *, machine, design_for=No
         if forged:
             raise RegradeRefused(forged[0])
         nudges = ct.no_output_nudges(base / "transcript.jsonl")           # review r7 MINOR 2: the recheck's own count
+        forged = agent_summary_problems(old, base / "transcript.jsonl")    # the Agent parity ruling, part 6
+        if forged:
+            raise RegradeRefused(forged[0])
+        agents = ct.agent_summary(base / "transcript.jsonl")
         try:
             row = dict(run_mod.walk_row(entries[0], ledger), walk=walk, slot=walk)
         except ValueError as e:
@@ -496,7 +524,8 @@ def recheck_doc(walk: str, n: int, study: Path = HERE, *, machine, design_for=No
     reasons = list(got["checker_reasons"])
     return {"schema": 1, "walk": walk, "n": n, "walk_commit": commit, "supersedes": prev_name, "machine": machine,
             "run_tree": design.run_tree, "checker_constants_sha256": digest, "checker_reasons": reasons,
-            "route": None, "no_output_nudges": nudges,
+            "route": None, "no_output_nudges": nudges, "agent_calls": agents["agent_calls"],
+            "subagents": agents["subagents"],
             "was": prev,
             "change": {"checker_constants_sha256": [prev["checker_constants_sha256"], digest],
                        "reasons_added": sorted(set(reasons) - set(prev["checker_reasons"])),

@@ -95,6 +95,27 @@ CHECK_KEYS = ("walk", "checked", "checker_reasons", "events", "route", "route_re
 CHECK_NUDGE_KEY = "no_output_nudges"
 
 
+# glitch-b5's Agent parity ruling, part 6 (16 Oct 2026): check.json also carries agent_calls (an int) and subagents
+# ({calls, models}); a check.json written before it lacks both. Under the constants in force a checked walk's
+# effective reading carries a valid pair.
+CHECK_AGENT_KEYS = ("agent_calls", "subagents")
+AGENT_CALL_KEYS = ("tool_use_id", "agent_id", "is_async", "status", "resolved_model")
+
+
+def valid_agent_summary(count, subagents) -> bool:
+    """agent_calls an int >= 0; subagents exactly {calls, models}: calls a list of that many {tool_use_id: str,
+    agent_id, status, resolved_model: str or None, is_async: bool or None}, models a sorted list of distinct str."""
+    if type(count) is not int or count < 0 or not isinstance(subagents, dict) or set(subagents) != {"calls", "models"}:
+        return False
+    calls, models = subagents["calls"], subagents["models"]
+    if not isinstance(calls, list) or len(calls) != count or not isinstance(models, list) \
+            or not all(type(m) is str for m in models) or models != sorted(set(models)):
+        return False
+    return all(isinstance(c, dict) and set(c) == set(AGENT_CALL_KEYS) and type(c["tool_use_id"]) is str
+               and all(c[k] is None or type(c[k]) is str for k in ("agent_id", "status", "resolved_model"))
+               and (c["is_async"] is None or type(c["is_async"]) is bool) for c in calls)
+
+
 def valid_nudge_count(n) -> bool:
     """A no-visible-output nudge count: an int >= 0 (never a bool, a float or null)."""
     return type(n) is int and n >= 0
@@ -108,7 +129,11 @@ def check_keys_ok(check) -> bool:
     if set(check) == set(CHECK_KEYS):
         return True
     n = check.get(CHECK_NUDGE_KEY)
-    return set(check) == set(CHECK_KEYS) | {CHECK_NUDGE_KEY} and (n is None or valid_nudge_count(n))
+    if set(check) == set(CHECK_KEYS) | {CHECK_NUDGE_KEY}:
+        return n is None or valid_nudge_count(n)
+    a, s = check.get("agent_calls"), check.get("subagents")     # the Agent parity ruling, part 6
+    return (set(check) == set(CHECK_KEYS) | {CHECK_NUDGE_KEY} | set(CHECK_AGENT_KEYS)
+            and (n is None or valid_nudge_count(n)) and ((a is None and s is None) or valid_agent_summary(a, s)))
 
 
 def checker_standing(base, walk: str):
@@ -140,10 +165,12 @@ def checker_standing(base, walk: str):
     if isinstance(latest, str):
         return latest
     eff_nudges = nudges
+    eff_agent = (check.get("agent_calls"), check.get("subagents"))
     if latest is not None:
         check = dict(check, checker_reasons=latest["checker_reasons"],
                      checker_constants_sha256=latest["checker_constants_sha256"])
         eff_nudges = latest.get(CHECK_NUDGE_KEY)
+        eff_agent = (latest.get("agent_calls"), latest.get("subagents"))
 
     import routing                        # review MINOR 2: every reason a str of the pre-registered vocabulary
     vocabulary = routing.load_table()["operator_reasons"]
@@ -163,6 +190,8 @@ def checker_standing(base, walk: str):
     # check.json's own
     if check.get("checker_constants_sha256") == now and not valid_nudge_count(eff_nudges):
         return "check unreadable: no no-visible-output nudge count under the checker constants in force"
+    if check.get("checker_constants_sha256") == now and not valid_agent_summary(*eff_agent):    # Agent parity, part 6
+        return "check unreadable: no Agent call count under the checker constants in force"
     if check.get("checker_constants_sha256") != now:
         return "stale: checked under other checker constants; regrade it"
     return None
@@ -207,7 +236,8 @@ def latest_recheck(base, walk: str):
             or type(doc.get("n")) is not int or type(e.get("n")) is not int or doc["n"] != e["n"]:
         return f"recheck file does not carry its register entry's walk, ordinal and digest: {e['file']}"
     return {"checker_reasons": doc.get("checker_reasons"), "checker_constants_sha256": doc["checker_constants_sha256"],
-            CHECK_NUDGE_KEY: doc.get(CHECK_NUDGE_KEY)}            # review r7: null in a recheck written before it
+            CHECK_NUDGE_KEY: doc.get(CHECK_NUDGE_KEY),           # review r7: null in a recheck written before it
+            "agent_calls": doc.get("agent_calls"), "subagents": doc.get("subagents")}     # Agent parity, part 6
 
 
 def uncounted_walks(base, walks) -> dict:

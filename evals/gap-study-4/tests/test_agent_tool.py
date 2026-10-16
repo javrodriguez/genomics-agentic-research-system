@@ -37,6 +37,12 @@ tool_use_result, type, uuid}. Everything is synthetic.
   A-reach    the reach readers read the sub-agent's stream tool calls as the main agent's (a sub-agent's read of the
              study's materials is counted and lifted), and a sub-agent file's attachments are swept for leak words;
              check4 and check4_walk do all of it.
+  A-count    check.json carries agent_calls (an int) and subagents ({calls: per call tool_use_id, agent_id, is_async,
+             status, resolved_model; models: the sorted sub-agent models}), the same strictness as no_output_nudges:
+             check_record refuses a checked walk without a valid pair and walk_runner holds it; pending_walk reads a
+             reading under the constants in force without one as unreadable (the latest recheck's when there is
+             one); a recheck carries them re-derived, and walk_regrade names a check.json whose pair is not the
+             committed transcript's.
 """
 
 from __future__ import annotations
@@ -414,6 +420,76 @@ def reach_problems(ct=None) -> list:
     return out
 
 
+def count_problems() -> list:
+    import json as _json
+    import tempfile
+    from unittest import mock
+    import ast
+    import check_take as ct
+    import pending_walk as pw
+    import walk_regrade as wg
+    import walk_runner as wr
+    out = []
+    want_call = {"tool_use_id": CALL_ID, "agent_id": AGENT_ID, "is_async": False, "status": "completed",
+                 "resolved_model": PIN}
+    got = ct.agent_summary(take_folder())
+    if got != {"agent_calls": 1, "subagents": {"calls": [want_call], "models": [PIN]}}:
+        out.append(f"A-count: agent_summary {got}")
+    if ct.agent_summary(take_folder(calls=False)) != {"agent_calls": 0, "subagents": {"calls": [], "models": []}}:
+        out.append("A-count: a take with no Agent call")
+    route = lambda records, table: {"route": "rehearsal"}  # noqa: E731
+    args = ("w001", {"checker_reasons": [], "events": {"outside_reach": 0}}, {}, route)
+    doc = wr.check_record(*args, checked=True, constants_sha256="ab" * 32, no_output_nudges=0, agent_summary=got)
+    if (doc.get("agent_calls"), doc.get("subagents")) != (1, got["subagents"]):
+        out.append(f"A-count: check.json {doc.get('agent_calls')!r}")
+    for bad in (None, {"agent_calls": 1}, {"agent_calls": True, "subagents": got["subagents"]},
+                {"agent_calls": 2, "subagents": got["subagents"]},
+                {"agent_calls": 1, "subagents": {"calls": [dict(want_call, extra=1)], "models": [PIN]}},
+                {"agent_calls": 0, "subagents": {"calls": [], "models": ["b", "a"]}}):
+        try:
+            wr.check_record(*args, checked=True, no_output_nudges=0, agent_summary=bad)
+            out.append(f"A-count: check_record wrote {bad!r} for a checked walk")
+        except ValueError:
+            pass
+    none = wr.check_record(*args, checked=False, no_output_nudges=None)
+    if (none["agent_calls"], none["subagents"]) != (None, None):
+        out.append("A-count: an unchecked walk carries an Agent record")
+    now = ct.checker_constants_sha256()
+    base = {"walk": "w001", "checked": True, "checker_reasons": [], "events": {"outside_reach": 0},
+            "route": "rehearsal", "route_refused": None, "checker_constants_sha256": now, "no_output_nudges": 0}
+    zero = {"agent_calls": 0, "subagents": {"calls": [], "models": []}}
+    for name, doc_, latest, want in (
+            ("the pair under the constants in force", dict(base, **zero), None, None),
+            ("no pair under the constants in force", base, None, "check unreadable"),
+            ("null pair under the constants in force", dict(base, agent_calls=None, subagents=None), None,
+             "check unreadable"),
+            ("an older reading rechecked without the pair", dict(base, checker_constants_sha256="cd" * 32),
+             {"checker_reasons": [], "checker_constants_sha256": now, "no_output_nudges": 0}, "check unreadable"),
+            ("an older reading rechecked with the pair", dict(base, checker_constants_sha256="cd" * 32),
+             dict({"checker_reasons": [], "checker_constants_sha256": now, "no_output_nudges": 0}, **zero), None)):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "w001").mkdir()
+            (Path(d) / "w001" / "check.json").write_text(_json.dumps(doc_))
+            with mock.patch.object(pw, "latest_recheck", lambda b, w, latest=latest: latest):
+                got_ = pw.checker_standing(d, "w001")
+        if not (got_ is None if want is None else isinstance(got_, str) and got_.startswith(want)):
+            out.append(f"A-count standing, {name}: {got_!r}")
+    path = take_folder()
+    if wg.agent_summary_problems(dict(base, **got), path) != []:
+        out.append("A-count: the true pair is named")
+    if not wg.agent_summary_problems(dict(base, agent_calls=0, subagents={"calls": [], "models": []}), path):
+        out.append("A-count: a forged pair is not named")
+    if wg.agent_summary_problems(base, path) != []:
+        out.append("A-count: a check.json written before the ruling is re-derived")
+    tree = ast.parse(Path(wg.__file__).read_text())
+    for fn, need in (("recheck_doc", {"agent_summary_problems"}), ("regrade_problems", {"agent_summary_problems"})):
+        body = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == fn)
+        called = {c.func.id for c in ast.walk(body) if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
+        if not need <= called:
+            out.append(f"A-count: walk_regrade.{fn} does not re-derive the pair")
+    return out
+
+
 class TheAgentTool(unittest.TestCase):
     def test_a_view(self):
         self.assertEqual(view_problems(), [])
@@ -473,6 +549,40 @@ class TheAgentTool(unittest.TestCase):
                     got = check_problems(m) + reach_problems(m)
                 except Exception as e:  # noqa: BLE001
                     got = [f"raised {type(e).__name__}"]
+                print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
+                self.assertTrue(got, name)
+
+    def test_a_count(self):
+        self.assertEqual(count_problems(), [])
+
+    def test_a_count_witnesses(self):
+        from unittest import mock
+        import pending_walk
+        import walk_regrade
+        import walk_runner
+        cases = (
+            ("pending_walk", "valid_agent_summary", "    if type(count) is not int or count < 0 or",
+             "    if False and type(count) is not int or count < 0 or"),
+            ("walk_runner", "check_record validates nothing",
+             "    if checked is True and not pending_walk.valid_agent_summary(summary.get(\"agent_calls\"), "
+             "summary.get(\"subagents\")):", "    if False:"),
+            ("pending_walk", "the standing's pair unread",
+             "    if check.get(\"checker_constants_sha256\") == now and not valid_agent_summary(*eff_agent):",
+             "    if False:"),
+            ("walk_regrade", "the regrade compares nothing", "    if derived != recorded:", "    if False:"),
+        )
+        mods = {"pending_walk": pending_walk, "walk_runner": walk_runner, "walk_regrade": walk_regrade}
+        for modname, name, old, new in cases:
+            with self.subTest(witness=name):
+                m = mutant(mods[modname], old, new)
+                for attr in ("RegradeRefused",):
+                    if hasattr(mods[modname], attr):
+                        setattr(m, attr, getattr(mods[modname], attr))
+                with mock.patch.dict(sys.modules, {modname: m}):
+                    try:
+                        got = count_problems()
+                    except Exception as e:  # noqa: BLE001
+                        got = [f"raised {type(e).__name__}"]
                 print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
                 self.assertTrue(got, name)
 

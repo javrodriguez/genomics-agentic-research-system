@@ -3015,6 +3015,19 @@ def subagent_problems(path: Path) -> list[str]:
     return out
 
 
+def agent_summary(path: Path) -> dict:
+    """glitch-b5's Agent parity ruling, part 6 (16 Oct 2026): {agent_calls: the count of Agent calls, subagents:
+    {calls: agent_calls(path), models: the sorted sub-agent models (resolvedModel and the stream's message.model)}},
+    written into check.json so analysis can stratify by them."""
+    calls = agent_calls(path)
+    models = {c["resolved_model"] for c in calls if c["resolved_model"]}
+    for _, rec in stream_subagent_records(path):
+        m = (rec.get("message") or {}).get("model") if rec.get("type") == "assistant" else None
+        if isinstance(m, str):
+            models.add(m)
+    return {"agent_calls": len(calls), "subagents": {"calls": calls, "models": sorted(models)}}
+
+
 def subagent_reach_file(path: Path):
     """A scratch transcript of the main agent's records and every sub-agent stream record, which the reach readers read
     as the main agent's; None when the take has no sub-agent record."""

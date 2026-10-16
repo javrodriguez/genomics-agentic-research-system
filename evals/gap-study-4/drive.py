@@ -2887,6 +2887,13 @@ class TakeDriver:
             take = self._by_slot.get(row.get("slot")) if isinstance(row, dict) else None
         return getattr(take, "checker_constants_sha256", None)
 
+    def agent_summary(self, row: dict):
+        """glitch-b5's Agent parity ruling, part 6: the checked transcript's Agent calls and sub-agent models
+        (take_checker records them), or None when no checker read one; read by walk_runner into check.json."""
+        with self._lock:
+            take = self._by_slot.get(row.get("slot")) if isinstance(row, dict) else None
+        return getattr(take, "agent_summary", None)
+
     def no_output_nudges(self, row: dict):
         """glitch-b5's ruling 3 (i): how many no-visible-output nudges the transcript the checker read carries
         (take_checker records it), or None when no checker read one; read by walk_runner into check.json."""
@@ -3386,6 +3393,7 @@ def take_checker(*, design_for, records="takes"):
         design = design_for(row, take)
         take.checker_constants_sha256 = _ct.design_constants_sha256(design)   # BOOTSTRAP: the constants it read
         take.no_output_nudges = _ct.no_output_nudges(path)       # glitch-b5's ruling 3: the nudges it carries
+        take.agent_summary = _ct.agent_summary(path)              # the Agent parity ruling, part 6: its Agent calls
         if records == "walks":                    # D1: the round-4 walk road
             got = _ct.check4_walk(path, row["task"], row["half"], row["walk"], wording_script=design.script,
                                   arm=row["arm"], design=design)
