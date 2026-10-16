@@ -246,3 +246,24 @@ Running tests on the Mac: prefix every run with `env -u CLAUDE_CODE_MESSAGING_TO
 
 ## Exact next step
 glitch-6b merges this head with box db7c0d14 into the ship candidate and runs the athena battery.
+
+## RESUME HERE (15 Oct 22:2x EDT; supersedes the blocks above)
+
+Writer: the harness lane, for glitch-6b. Nothing pushed. No athena access. HEAD: the commit that adds this block.
+This branch IS the ship candidate (glitch-6b's ruling): 1f63acaa (the fail-closed fold, with the a6a01b1c preview's lint and survivor reds folded in), then 8e4a274a (merge of box db7c0d14, no conflict hunk, gitleaks 0), then this commit.
+
+This commit: tests/test_scan_record.py's test_mutant_relative_path_goes_red (box-owned, named in the fragment) computes its relative path before patching isabs. Under python3.12, relpath reads isabs through abspath, so the patched isabs bent the path ("the login file cannot be found"); 3.13 passed. It is green under both now.
+
+The a6a01b1c reds (athena 274/283):
+- w8e lint and test_build_draft (and test_round4's one failure): the draft's "out of the box" matched lint_language's out-of pattern. It now reads "as the product ships" (in 1f63acaa).
+- test_walk_runner generated shards 3, 4, 5, 6, 8 and 10: one survivor each, all on check4_walk's claude-code branch (L33 to L35). R2 now drives a walk missing only the switch, one with crossSessionInbound "hold", and a harness the guard admits that is held to no condition. On the scratch merge, `--only` those six ids gave 6 run, 6 killed. The full shards were NOT rerun on the Mac (about 15 minutes each on athena, about 5x on the Mac).
+
+Mac proof on this branch (python3.12, env -u CLAUDE_CODE_MESSAGING_TOKEN, heavy mac_slot), all OK:
+- build_draft 48, scan_record 80, auto_mode 6, steer 7, isolation 9, walk_runner 84, walk_recheck 13, checker_body 30, drive_loop 27, walk_wiring 20, run_take 64, env_allowlist 29, claude_code_adapter 28, stub_take 19, live_box 38, wave4_bindings 13, routing 287, check_take 15, rehearsals 9 (witnesses 20/20), cp8_prep 4 (witnesses 15/15);
+- copy_manifest, build_draft and routing checks; the w8e lint line clean.
+- test_round4 on the scratch merge of 1f63acaa's content: 4080 run, 2 reds, both fixed since (the lint wording, and the scan_record 3.12 path).
+
+Running tests on the Mac: prefix every run with `env -u CLAUDE_CODE_MESSAGING_TOKEN`, and run under python3.12 (the witness runners expect 3.11+ unittest output).
+
+## Exact next step
+glitch-6b runs the solo athena battery on this head, including the full generated shards 3, 4, 5, 6, 8 and 10.

@@ -583,8 +583,9 @@ class TestLoginBinding5(unittest.TestCase):
 
     def test_mutant_relative_path_goes_red(self):
         p = self.write(f"{GOOD}={TOKEN}\n")
+        rel = os.path.relpath(p)       # before the patch: 3.12's relpath reads isabs through abspath (3.13's does not)
         with mock.patch.object(sr.os.path, "isabs", lambda q: True):
-            self.assertEqual(sr.read_login(os.path.relpath(p), GOOD, allowed=(GOOD,)), TOKEN)
+            self.assertEqual(sr.read_login(rel, GOOD, allowed=(GOOD,)), TOKEN)
         red("a relative login path accepted")
 
 
