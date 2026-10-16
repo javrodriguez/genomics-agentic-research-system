@@ -548,3 +548,31 @@ Open:
 
 ## Exact next step
 glitch-b5: r15 on 953d358c, and the battery on this head.
+
+## RESUME HERE (16 Oct 08:15 EDT; supersedes the blocks above): r15 folded but for the read-only root
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent 03711e05). Nothing pushed. athena not used. No mac_slot booking held; no process of this lane running.
+
+- 03711e05: review r15.
+  - R15-1: the workflow writers. R15-3: lstat failures and links that leave the roots are reported.
+  - R15-4: every line is read, up to 64 MB per file. R15-5: the vendor road runs the readers.
+  - R15-6: assignments are refused only in assignment position. R15-7: r15's mutants are killed.
+  - R15-2's count is now a regex over the raw command text.
+
+HELD: R15-2's read-only root filesystem and roots from the mount table. The ruling says to check the box read-only first; the Mac has no running Docker daemon, and building and running the take image is not light work.
+
+Static inventory of where the box writes:
+- Claude Code 2.1.296:
+  - CLAUDE_CONFIG_DIR and HOME, both /opt/cfg: projects/, shell snapshots and the rest of its config.
+  - os.tmpdir(), which is TMPDIR, the run tree's .tmp: its claude-<uid> temp folder. The binary falls back to /tmp only when TMPDIR is unset.
+  - /dev/shm: the binary opens it read-write for a file-descriptor handoff. Docker mounts a tmpfs there even under --read-only.
+- GARS stages: python3 standard library in the run tree, with PYTHONDONTWRITEBYTECODE=1; git writes inside the run tree. The image has no pip, conda or uv.
+- Codex and Gemini: CODEX_HOME and GEMINI_CLI_HOME, both /opt/cfg.
+- Other processes: the keep-alive is "sleep infinity"; the kill and sweep execs run "python3 -I -S" and write nothing.
+
+Proposed mount set: docker create --read-only, --tmpfs /tmp, --tmpfs /var/tmp, the default /dev/shm, plus the two binds as today. /run, /run/lock and /home/dana stay read-only.
+
+Unknown until a live run: whether any GARS stage, the agent's own commands, or Claude Code writes elsewhere. The box lane's create-argv pins ("exactly two mounts") and the preflight's inspect checks change with this.
+
+## Exact next step
+glitch-b5: rule how the read-only check is run (a box-lane rehearsal on athena with the mount set above, or Docker on the Mac). Then r16 on 03711e05, and the battery.
