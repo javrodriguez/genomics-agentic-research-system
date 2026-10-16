@@ -1291,8 +1291,10 @@ HARNESS_FURNITURE_RULING = {
     "source": "glitch-6b's item H, 15 Oct 2026 (CP6 walk w032); glitch-6b's steer-off and isolation rulings, "
               "15 Oct 2026 (the box lane report's item 2)",
     "departures": [
-        {"of": "auto_mode", "text": "Claude Code 2.1.296 writes an auto_mode attachment that round 3's transcripts never "
-         "carry. Under bypassPermissions it is emitted only when its bash-first gate holds (a model cohort, or "
+        {"of": "auto_mode", "text": "Claude Code 2.1.296 writes an auto_mode attachment that round 3's 54 graded transcripts never "
+         "carry; no round-3 take carries it. One round-3 walk does (walks/template-adherence/1, claude-sonnet-5 at "
+         "2.1.267, run in permission mode auto): every flag false, rendering auto mode's own notice, not the bash-first "
+         "steer. Under bypassPermissions it is emitted only when its bash-first gate holds (a model cohort, or "
          "CLAUDE_CODE_THRIFTY_SONIC), and it renders into the model's context as a notice that bypass permissions "
          "mode is active and a steer to do work through the Bash tool. The transcript view reads it as harness "
          "furniture, its rendered text the event's text, so the awareness furniture check counts it. It changes what "

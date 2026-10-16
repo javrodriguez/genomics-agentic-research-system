@@ -154,7 +154,10 @@ class TheAutoModeAttachment(unittest.TestCase):
                      # glitch-6b's ruling (15 Oct 2026): the value, its parser proof and records, and the departure
                      'set to "false"', 'triBool reads "0", "false", "no" and "off" as false',
                      "lane-reports/stub-take-20261015/claude-2.1.296-", "as the product ships, the steer depends on the model",
-                     "the study turns it off for every claude-code take"):
+                     "the study turns it off for every claude-code take",
+                     # the round-3 record (glitch-6b, 15 Oct 2026): no take, one walk, auto mode's own notice
+                     "round 3's 54 graded transcripts never carry", "walks/template-adherence/1",
+                     "claude-sonnet-5 at 2.1.267", "permission mode auto", "not the bash-first steer"):
             self.assertIn(word, dep["text"])
         self.assertNotIn("(box lane parser proof)", dep["text"], "the proof is named by its records, not deferred")
 

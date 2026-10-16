@@ -1,0 +1,75 @@
+{
+ "record": "edited_text_file: trigger, switch and w041's writer (harness lane, 15 Oct 2026 EDT, for glitch-6b's ruling 1)",
+ "binary_sha256": "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de",
+ "image": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+ "method": "on athena at nice 19 / ionice idle: docker create --pull=never --network none, docker cp -L, docker rm (never run); w041 read from /home/javier/gap4-held-walks/w-E91dWW6d/w041 for names, timestamps and record keys only",
+ "trigger": {
+  "producer": {
+   "function": "ear",
+   "offset": 219278765,
+   "excerpt_sha256": "5ff77a34d53d952c6482b28f32a5f19b748da4ebb51f6d0fda7e0efa1b6a7ec9",
+   "excerpt_span": [
+    219278765,
+    219281465
+   ]
+  },
+  "registered_as": {
+   "name": "changed_files",
+   "offset": 219243501,
+   "excerpt_sha256": "2f916f3de7a58cb1127eea9267da746362f000da87e9841633382f1fae8abdc0"
+  },
+  "reading": "Each query's attachment pass runs ear over readFileState, the files the agent has read whole (a read with offset or limit is skipped). A file whose mtime is later than the recorded read and whose content differs yields {type: edited_text_file, filename, snippet} (the diff; empty past 16384 snippet chars in a pass). Who wrote the file is not read: any writer outside the agent's own Edit/Write updates of readFileState counts (inferred from the code: those tools update readFileState). The only inner gate is a remote feature flag, tengu_fallow_plover, which adds a skip and is not a study-settable switch.",
+  "second_caller": {
+   "offset": 251567234,
+   "excerpt_sha256": "959d91668e4e596a64c35be67fbdb9d83035b2125d673a56e4749348200a83e6",
+   "reading": "a changed-files pass for tracked agents, the same producer"
+  }
+ },
+ "switch": {
+  "name": "CLAUDE_CODE_DISABLE_ATTACHMENTS",
+  "gate": {
+   "offset": 219240558,
+   "excerpt_sha256": "95450fb288ed8fc7d5a580e1286be151bd7f7c579209b469447256ec7a79b00c"
+  },
+  "reading": "The only switch: with CLAUDE_CODE_DISABLE_ATTACHMENTS (or CLAUDE_CODE_SIMPLE, or a bare fork) the whole per-query attachment list is skipped; only a small set is still produced (the mention pass, agent_listing_delta and two others). It also gates total_tokens reminders, deferred tools, proactivity and the AGENTS.md plug-in. So it would drop kinds round 3's 54 graded transcripts carry (environment, instructions, task_reminder, total_tokens_reminder and more): no round-3 parity. No targeted switch for changed_files exists in this binary. The changelog says repository settings cannot set it; the shell, user and managed settings can.",
+  "changelog": {
+   "offset": 224634922,
+   "excerpt_sha256": "1e32dc9e0a3575a39c0bc7bc9c7d5adc651b3a011aa6b8e9fe9f6e432a15ff4b"
+  }
+ },
+ "w041": {
+  "file": "projects/run-2725f4c6/HISTORY.md (under the run tree's gars/)",
+  "attachment_line": 58,
+  "attachment_keys": [
+   "filename",
+   "snippet",
+   "type"
+  ],
+  "turns": 1,
+  "timeline_utc": [
+   [
+    "03:13:01.623",
+    "line 31",
+    "Bash naming HISTORY.md (the agent's own read; not the Read tool)"
+   ],
+   [
+    "03:13:13.465",
+    "line 49",
+    "Bash, run_in_background, running _system/stage00_register.py finalize"
+   ],
+   [
+    "03:13:16.624",
+    "line 55",
+    "ScheduleWakeup"
+   ],
+   [
+    "03:13:16.636",
+    "line 58",
+    "edited_text_file for HISTORY.md"
+   ]
+  ],
+  "writer": "the agent's own background job: stage00_register.py finalize rewrites CONTEXT.md and HISTORY.md (gars/_system/stage00_register.py lines 635-648 at 844a4ce). Not the operator script (one turn; the setup runs before turn 1, before any read) and not the sidecar (it watches and snapshots; HISTORY.md is not in its watched.json)",
+  "inferred": "that Claude Code 2.1.296 tracks a file read by Bash into readFileState (the attachment fired for a file the Read tool never opened)"
+ },
+ "offsets_note": "each offset is the start of the excerpt window whose sha256 is given"
+}
