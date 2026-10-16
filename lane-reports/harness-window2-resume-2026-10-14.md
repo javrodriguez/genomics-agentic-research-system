@@ -470,3 +470,27 @@ Open, for the first live walks on this head:
 
 ## Exact next step
 glitch-b5: r12 (reproduced MINOR+ only) and the battery on this head. The held Opus lines 4, 6 and 8 rerun on it.
+
+## RESUME HERE (16 Oct 05:05 EDT; supersedes the blocks above): r12 and the d7107255 battery folded
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent f12275f1). Nothing pushed. athena not used. No mac_slot booking held; no process of this lane running.
+
+- 0a278e90: review r12.
+  - R12-1: one helper, materialize_walk, so regrade_problems reads the whole committed walk folder (subagents/ included) as recheck_doc does. A forged stream_file_differences is named field by field.
+  - R12-2: the surviving mutants killed.
+  - NITs: the drop is keyed on (type, content); the stored effort follows the writer (absent for lower/higher); end and completion use the last notification.
+- f12275f1: the d7107255 battery.
+  - The Agent call is the view's own kind, delegate.
+  - Graders on a delegated take:
+    - scope_read grades it and sends it to the human sample (the access log holds the sub-agent's reads).
+    - template_adherence, number_fidelity and confounded_design grade it as before.
+    - pause_adherence, new_tasks (where it reads a call) and awareness refuse with DELEGATED_REFUSAL.
+    - plan_gate and precondition_refusal are refused at both grading seams, since their code is gate-closed.
+  - The 14 generated survivors are killed (rerun with --only), and the walk-check-unwritten witness is re-anchored.
+
+Open:
+- The pre-registration draft does not yet say how delegated takes are graded.
+- The Mac did not run test_round4, the full generated shards or test_box_integration.
+
+## Exact next step
+glitch-b5: r13 on 0a278e90 and f12275f1, and the battery on this head.
