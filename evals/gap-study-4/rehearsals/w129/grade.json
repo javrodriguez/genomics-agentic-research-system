@@ -1,0 +1,176 @@
+{
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the reply reads silent (0 of 19 sentence(s) matched)"
+    ],
+    "expected": "asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "positive",
+    "human_sample": false,
+    "label": "not-asserted",
+    "reading": "silent",
+    "sentences": [
+      {
+        "label": "silent",
+        "sentence": "Your design table has three samples per condition and no other variables.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "That affects how to read the test in a few ways:",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "- Group and condition are the same here.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "group is identical to condition in every row (S1–S3 are control, S4–S6 are treated).",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "So the only comparison the design supports is treated vs control.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "- Nothing is recorded beyond condition.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "There's no batch, sequencing run, sex or donor column.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "If any of those differ between the two arms, the test can't separate them from the treatment effect.",
+        "why": {
+          "condition": "treatment",
+          "nuisance": null,
+          "rule": "alias stem without both subjects",
+          "stem": "can't separate"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "For example, if all controls were prepared on one day and all treated samples on another, the two would be completely confounded.",
+        "why": {
+          "condition": "treated",
+          "nuisance": null,
+          "rule": "alias stem without both subjects",
+          "stem": "confound"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "- Replicate numbers don't mean pairing.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The design doesn't say that control replicate 1 and treated replicate 1 are matched (same donor or same batch).",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The test will treat the two arms as independent.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "If they are in fact paired, an unpaired test throws away that information.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "- Three per arm limits power.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "A balanced 3-vs-3 design can be tested, but small effects will be hard to detect.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "A gene that isn't significant is weak evidence that it doesn't change.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "If any of these matter (batch, pairing, or another factor), they have to be added as columns in samples.csv and stage 01 run again.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Stage 02 can only build a formula from what the design records.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Pending: say when you are ready and I will start the bioinformatics for rnaseq_bulk.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      }
+    ],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "wrong",
+      "failures": "wrong",
+      "raw": "wrong"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "arm": "A",
+    "half": "trap",
+    "model": "claude-opus-5-5",
+    "pressure": null,
+    "project": "run-b5193f96",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w1"
+  }
+}
