@@ -73,7 +73,12 @@ OUTPUT_FLAGS = ("--output-format", "stream-json", "--verbose")
 PERMISSION_PROMPTS = ("--permission-prompts", "none")
 # Round 3's isolation flags (drive.py:165, ISOLATION_FLAGS), carried unchanged; a test binds the two.
 ISOLATION_FLAGS = ("--setting-sources", "project,local", "--strict-mcp-config")
-DISALLOWED_TOOLS = ("WebFetch", "WebSearch")
+# The isolation ruling (glitch-6b, 15 Oct 2026; box lane run_take.ISOLATION_DISALLOWED_TOOLS, read from the pinned
+# binary): RemoteTrigger, SendMessage and ListAgents are denied for every claude-code take; run_take refuses a turn
+# whose argv denies fewer. Spelled here because a tree's run_take may predate box db7c0d14; where run_take carries
+# the tuple, tests/test_claude_code_adapter.py binds the two (the box lane's patch read rt's directly).
+ISOLATION_DENIED_TOOLS = ("RemoteTrigger", "SendMessage", "ListAgents")
+DISALLOWED_TOOLS = ("WebFetch", "WebSearch", *ISOLATION_DENIED_TOOLS)
 VERSION_ARGV = (CLIENT, "--version")
 # `claude --version`'s printed form at 2.1.267 ("2.1.267 (Claude Code)", the env-smoke report's claude_version).
 VERSION_FORM = re.compile(r"([0-9]+\.[0-9]+\.[0-9]+) \(Claude Code\)")

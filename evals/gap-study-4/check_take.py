@@ -1956,6 +1956,7 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
     problems += design_tree_problems(path, design)               # W7B (Q-w6i-5)
     if design.harness == CLAUDE_CODE:
         problems += steer_condition_problems(path)               # the bash-first steer OFF (glitch-6b, 15 Oct)
+        problems += denied_tool_problems(path)   # the isolation denials (glitch-6b, 15 Oct)
     # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm, so the ledger's arm must be the take's.
     led = _ledger_beside(path)
     if led is not None and led.get("arm") != arm:
@@ -2398,6 +2399,7 @@ def check4_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wordi
     problems += design_tree_problems(path, design)                     # D1: as for a take
     if design.harness == CLAUDE_CODE:
         problems += steer_condition_problems(path)                     # the bash-first steer OFF (glitch-6b, 15 Oct)
+        problems += denied_tool_problems(path)   # the isolation denials (glitch-6b, 15 Oct)
     beside = _ledger_beside(path)
     if isinstance(beside, dict) and beside.get("arm") != arm:
         problems.append(f"[constant-binding] the walk's driver ledger records arm {beside.get('arm')!r}, and the walk is "
@@ -2585,6 +2587,37 @@ def steer_condition_problems(path: Path) -> list[str]:
     if count:
         problems.append(f"[{HARNESS_CONDITION_VIOLATED}] the take ran with {STEER_SWITCH} off, and its transcript "
                         f"carries {count} auto_mode attachment(s): the bash-first steer reached the agent")
+    return problems
+
+
+# THE ISOLATION DENIALS (glitch-6b's ruling, 15 Oct 2026; box lane run_take.ISOLATION_DISALLOWED_TOOLS, the names the
+# pinned 2.1.296 binary declares). Every claude-code take denies RemoteTrigger (claude.ai Routines: the take's login's
+# one road to the account outside the box), SendMessage and ListAgents, by --disallowedTools and by the inline
+# settings' permissions.deny. The binary drops a denied tool from the model's list by name, so a turn's stream init
+# that still lists one shows the denial did not hold: [harness-condition-violated], on every claude-code take.
+ISOLATION_DENIED_TOOLS = ("RemoteTrigger", "SendMessage", "ListAgents")
+_TURN_STREAM = re.compile(r"turn-([1-9][0-9]*)\.jsonl")
+
+
+def denied_tool_problems(path: Path) -> list[str]:
+    """No turn's stream init offers a denied tool. Read from the raw turn streams beside the transcript."""
+    problems = []
+    streams = sorted((int(m.group(1)), p) for p in path.parent.iterdir() if (m := _TURN_STREAM.fullmatch(p.name)))
+    for n, stream in streams:
+        for line in stream.read_text(errors="replace").splitlines():
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not (isinstance(rec, dict) and rec.get("type") == "system" and rec.get("subtype") == "init"):
+                continue
+            tools = rec.get("tools")
+            if not isinstance(tools, list):
+                raise CheckRefused(f"{stream.name}: an init record whose tools are not a list")
+            offered = sorted(set(map(str, tools)) & set(ISOLATION_DENIED_TOOLS))
+            if offered:
+                problems.append(f"[{HARNESS_CONDITION_VIOLATED}] turn {n}'s init offers {offered}: the isolation "
+                                f"denials did not hold")
     return problems
 
 

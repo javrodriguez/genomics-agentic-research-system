@@ -938,11 +938,12 @@ BOOTSTRAP_SPANS = (
                                '    """\n', '        msg = rec.get("message") if isinstance(rec.get("message"), dict) else rec\n',
      "8756130eca1fa642bdefd52906d25981f162dcab6e22a66a1fd0c47bd5c6e563"),
     # glitch-6b's steer-off ruling (15 Oct 2026; the box lane's check_take patch, reviewed and applied by the harness
-    # lane): check4 adds the study-condition problems for a claude-code take, inserted between two base lines; the
+    # lane): check4 adds the study-condition problems (steer, isolation) for a claude-code take, inserted between two base lines; the
     # functions it calls are appended.
     ("check4-study-conditions", "    problems += design_tree_problems(path, design)               # W7B (Q-w6i-5)\n",
      "    # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm",
-     "fabe94a2faf810ebc5493d651800e7092e9e5a4de0c2fc4c3b0f627bba16f92d"),
+     # and the isolation denials' line (glitch-6b's isolation ruling, 15 Oct 2026)
+     "b44680e34254e3cc2556b34efca350fe155ed7c7e768e67c3a4f0d5ffaf63e6e"),
 )
 
 

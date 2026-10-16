@@ -316,8 +316,9 @@ def a3_argv(mod, p):
         if inner[inner.index("--permission-mode") + 1] != BYPASS:
             out.append(f"{p}: turn {n} passes mode {inner[inner.index('--permission-mode') + 1]!r}, not the pin's")
         i = inner.index("--disallowedTools")
-        if inner[i + 1:i + 3] != ["WebFetch", "WebSearch"]:
-            out.append(f"{p}: turn {n} disallows {inner[i + 1:i + 3]}")
+        want_denied = ["WebFetch", "WebSearch", "RemoteTrigger", "SendMessage", "ListAgents"]
+        if inner[i + 1:i + 1 + len(want_denied)] != want_denied:
+            out.append(f"{p}: turn {n} disallows {inner[i + 1:i + 1 + len(want_denied)]}")
         if not all(f in inner for f in mod.ISOLATION_FLAGS) or inner[inner.index("--model") + 1] != MODEL:
             out.append(f"{p}: turn {n} lacks round 3's isolation flags or the row's model")
         want = ["--session-id", SID] if n == 1 else ["--resume", SID]
@@ -643,6 +644,20 @@ class TestTheReaders(unittest.TestCase):
         got = [ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign)
                and any(isinstance(t, ast.Name) and t.id == "ISOLATION_FLAGS" for t in n.targets)]
         self.assertEqual(got, [getattr(cca, "ISOLATION_FLAGS", None)])
+
+    def test_the_isolation_denials_are_run_takes(self):
+        """The isolation ruling (glitch-6b, 15 Oct 2026): every turn denies round 3's two web tools and then
+        RemoteTrigger, SendMessage and ListAgents. The three are spelled here because this tree's run_take may not
+        carry them yet; where run_take carries ISOLATION_DISALLOWED_TOOLS (box db7c0d14 on), they are its, in order."""
+        denied = getattr(cca, "DISALLOWED_TOOLS", None)
+        self.assertEqual(denied, ("WebFetch", "WebSearch", "RemoteTrigger", "SendMessage", "ListAgents"))
+        self.assertEqual(getattr(cca, "ISOLATION_DENIED_TOOLS", None), denied[2:])
+        theirs = getattr(rt, "ISOLATION_DISALLOWED_TOOLS", None)
+        if theirs is not None:
+            self.assertEqual(tuple(theirs), cca.ISOLATION_DENIED_TOOLS)
+        # the binding reads run_take's list: one that differs is caught (witness)
+        with mock.patch.object(rt, "ISOLATION_DISALLOWED_TOOLS", ("RemoteTrigger", "SendMessage"), create=True):
+            self.assertNotEqual(tuple(rt.ISOLATION_DISALLOWED_TOOLS), cca.ISOLATION_DENIED_TOOLS)
 
     def test_a_version_that_does_not_parse_refuses(self):
         self.assertTrue(hasattr(cca, "ClaudeCodeAdapter"), "claude_code_adapter.py has no ClaudeCodeAdapter")

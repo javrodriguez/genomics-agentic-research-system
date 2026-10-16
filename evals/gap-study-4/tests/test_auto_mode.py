@@ -148,8 +148,7 @@ class TheAutoModeAttachment(unittest.TestCase):
         import check_take as ct
         draft = json.loads((HERE / "prereg-draft.json").read_text())
         self.assertNotIn("harness_furniture_ruling", ct.CHECKER_CONSTANTS)
-        (dep,) = draft["harness_furniture_ruling"]["departures"]
-        self.assertEqual(dep["of"], tv.CC_AUTO_MODE)
+        (dep,) = [d for d in draft["harness_furniture_ruling"]["departures"] if d["of"] == tv.CC_AUTO_MODE]
         for word in ("round 3", "bypass", "Bash", "RULED 15 Oct (glitch-6b)", "CLAUDE_CODE_THRIFTY_SONIC",
                      "admitted for audit only", "harness-condition-violated",
                      # glitch-6b's ruling (15 Oct 2026): the value, its parser proof and records, and the departure
@@ -158,6 +157,29 @@ class TheAutoModeAttachment(unittest.TestCase):
                      "the study turns it off for every claude-code take"):
             self.assertIn(word, dep["text"])
         self.assertNotIn("(box lane parser proof)", dep["text"], "the proof is named by its records, not deferred")
+
+    def test_the_draft_names_the_box_lanes_departures_and_the_walk_scope(self):
+        """glitch-6b's isolation ruling (15 Oct 2026): the box lane report's named departures (1)-(4) (the steer
+        off, (2), is the auto_mode entry above) and the scope ruling on the 25 pre-ruling walks."""
+        draft = json.loads((HERE / "prereg-draft.json").read_text())
+        ruling = draft["harness_furniture_ruling"]
+        deps = {d["of"]: d["text"] for d in ruling["departures"]}
+        self.assertEqual(set(deps), {tv.CC_AUTO_MODE, "isolation-removals", "version-difference", "residuals"})
+        words = {
+            "isolation-removals": ("RemoteTrigger", "SendMessage", "ListAgents", 'crossSessionInbound is "refuse"',
+                                   "Round 3 offered all three", "no take in either round called one",
+                                   "harness-condition-violated"),
+            "version-difference": ("2.1.296", "plugin-authoring skill", "kept"),
+            "residuals": ("messaging socket", "bind mount", "CONNECT host:port", "api.anthropic.com"),
+        }
+        for of, need in words.items():
+            for w in need:
+                self.assertIn(w, deps[of], of)
+        scope = ruling["walk_scope"]
+        for w in ("25 pre-ruling walks", "not rechecked", "rehearsal records", "never cover CP6", "new ship head"):
+            self.assertIn(w, scope)
+        for w in ("glitch-6b", "15 Oct 2026"):
+            self.assertIn(w, ruling["source"])
 
     def test_h_witnesses(self):
         for name, old, new in MUTANTS:

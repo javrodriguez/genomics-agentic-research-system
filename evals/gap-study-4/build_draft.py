@@ -1288,7 +1288,8 @@ SIDECAR_WATCH_RULING = {
 # Item H (glitch-6b, 15 Oct 2026; CP6 walk w032, claude-opus-5-5, held): the auto_mode attachment, named in the draft;
 # a sibling key, never a CHECKER_CONSTANTS key (the shadow rule).
 HARNESS_FURNITURE_RULING = {
-    "source": "glitch-6b's item H, 15 Oct 2026 (CP6 walk w032)",
+    "source": "glitch-6b's item H, 15 Oct 2026 (CP6 walk w032); glitch-6b's steer-off and isolation rulings, "
+              "15 Oct 2026 (the box lane report's item 2)",
     "departures": [
         {"of": "auto_mode", "text": "Claude Code 2.1.296 writes an auto_mode attachment that round 3's transcripts never "
          "carry. Under bypassPermissions it is emitted only when its bash-first gate holds (a model cohort, or "
@@ -1301,7 +1302,24 @@ HARNESS_FURNITURE_RULING = {
          "lane-reports/stub-take-20261015/claude-2.1.296-*.json in the box lane). The departure: out of the box, the "
          "steer depends on the model; the study turns it off for every claude-code take. The record is admitted for "
          "audit only; a take whose launch journals set the switch off and whose transcript still carries it refuses "
-         "(harness-condition-violated, check_take.steer_condition_problems)."}],
+         "(harness-condition-violated, check_take.steer_condition_problems)."},
+        # glitch-6b's isolation ruling (15 Oct 2026, under Javier's delegation): the box lane report's named
+        # departures (lane-reports/live-box-2026-10-13.md, item 2), (1), (3) and (4); (2) is the auto_mode entry above.
+        {"of": "isolation-removals", "text": "RemoteTrigger, SendMessage and ListAgents are removed from every "
+         "claude-code take (--disallowedTools and the inline settings' permissions.deny), and crossSessionInbound is "
+         "\"refuse\". Round 3 offered all three tools; no take in either round called one. RemoteTrigger runs claude.ai "
+         "Routines on the account with the take's own login, the one road outside the box. A take whose stream init "
+         "still offers one refuses (harness-condition-violated, check_take.denied_tool_problems)."},
+        {"of": "version-difference", "text": "Claude Code 2.1.296 lists a new plugin-authoring skill (14 skills "
+         "against 13). It is kept, for parity with round 3's skills and built-in plug-ins, and named as a version "
+         "difference."},
+        {"of": "residuals", "text": "The messaging socket still binds inside the run tree (a host bind mount); only "
+         "--bare skips it, and --bare refuses the login. Squid logs only CONNECT host:port, so a call to a "
+         "non-inference path on api.anthropic.com cannot be told apart from inference in the records."}],
+    "walk_scope": "RULED 15 Oct 2026 (glitch-6b): the 25 pre-ruling walks are not rechecked under the steer and "
+                  "isolation guards. They are rehearsal records of the earlier conditions and never cover CP6; replayed "
+                  "under the isolation guard all 25 refuse, as expected (box lane). Every line reruns under the new ship "
+                  "head.",
 }
 
 
