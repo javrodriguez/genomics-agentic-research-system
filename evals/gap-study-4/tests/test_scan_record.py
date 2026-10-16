@@ -23,6 +23,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -1238,7 +1239,7 @@ class TestOD57Ruling(Case):
         for cmd, out, kind, side in (
                 (f"grep -n 'pinned' {self.doc}", f"175:{self.text}\n", "session", True),
                 (f"grep 'pinned' {self.doc}", f"{self.text}\n", "transcript", False),
-                (f"grep -rn pinned /run/gars/_references", f"/run/gars/_references/environment.md:175:{self.text}\n",
+                (f"grep -rn pinned {self.doc}", f"/run/gars/_references/environment.md:175:{self.text}\n",
                  "stream", False),
                 (f"cat -n {self.doc}", f"   174\tline before\n   175\t{self.text}\n", "session", True),
                 (f"cat {self.doc}", f"line before\n{self.text}\nline after\n", "transcript", False)):
@@ -1335,6 +1336,161 @@ class TestOD57Ruling(Case):
         self.assertEqual(len(r["ruled"]), 2)
         red("the probe dropped (a second match on the line admitted)")
 
+
+
+# ------------------------------------------------------------------------------------------------- OD57, after w167
+# glitch-b5's ruling (16 Oct 2026, applying OD57 to the same bytes): walk w167's sub-agent read the line through
+# `cd <run>/gars && grep -n -i "..." _references/environment.md <two more files> 2>/dev/null | head -30`. A Bash
+# command is admitted when, split on &&, ||, ; and | and shell-tokenised, its first segment after any leading cd is a
+# grep or cat naming a path that ends in _references/environment.md. Plus the aegis review of 4043a29's findings 2
+# and 3 on this twin: a probe finding of the rule without an int line refuses, and each conjunct of the "nowhere else
+# on the record" guard has its own witness.
+W167 = ('cd /tmp/run-c8021046/gars && grep -n -i "deseq\\|sklearn\\|scikit\\|pydeseq" _references/environment.md '
+        '_references/gars-bio.conda.txt _references/gars-bio.lock.txt 2>/dev/null | head -30')
+NOT_ESCAPED = "json.dumps(found)[1:-1] != found"
+DECODED_ELSEWHERE = "sum(x.count(found) for x in _strings(rec, [])) != hits"
+RAW_ELSEWHERE = "body.count(found.encode()) != hits"
+
+
+def _mutant(fn_name, *edits):
+    """sr.<fn_name> rebuilt from its source with each (old, new) edit applied once, as a mock patch."""
+    src = textwrap.dedent(inspect.getsource(getattr(sr, fn_name)))
+    for old, new in edits:
+        if src.count(old) != 1:
+            raise AssertionError(f"mutant edit {old!r} matches {src.count(old)} times in {fn_name}")
+        src = src.replace(old, new)
+    ns = dict(vars(sr))
+    exec(compile(src, f"{fn_name}_mutant", "exec"), ns)
+    return mock.patch.object(sr, fn_name, ns[fn_name])
+
+
+class TestOD57Chain(TestOD57Ruling):
+    """Inherits TestOD57Ruling's fixtures; its own tests below (the parent's run once, in the parent)."""
+
+    def grep_out(self, text=None):
+        return f"_references/environment.md:175:{self.text if text is None else text}\n"
+
+    def admitted(self, body, kind="transcript", scanner=None):
+        p = self.write(f"{kind}.jsonl", body)
+        r, _ = self.scan([(p, kind)], scanner)
+        return r["ruled"] != [] and r["refused"] == []
+
+    def test_witness_w167s_command_is_admitted_in_its_transcript_and_its_stream(self):
+        for kind, side in (("transcript", False), ("stream", True)):
+            with self.subTest(kind=kind):
+                self.assertTrue(self.admitted(self.bash_record(W167, self.grep_out(), side), kind))
+
+    def test_the_bash_shapes(self):
+        doc = "_references/environment.md"
+        admitted = [W167, f"grep -n pinned {doc}", f"cat {doc}", f"cat -n /run/gars/{doc}",
+                    f"cd /run/gars && cd gars && grep -n Key {doc} | head -5", f"grep -n Key {doc} 2>&1 | head",
+                    f"grep -n Key {doc}; echo done", f"grep 'Key pinned' {doc} || true"]
+        refused = [f"cd x && sed -n 175p {doc}", "grep -n pinned _references/other.md", f"echo $(cat {doc})",
+                   f"cat \"$(cat x)/{doc}\"", f"cat \"`cat x`/{doc}\"", f"eval cat {doc}", f"sh -c 'cat {doc}'",
+                   f"bash -c 'grep -n Key {doc}'", f"cat {doc} | sh -c 'cat y'", f"grep \"unclosed {doc}",
+                   f"head -200 {doc}", f"echo hi && grep -n Key {doc}", f"cat <({doc})", f"grep -n Key {doc} &",
+                   f"(cat {doc})", f"cd && grep -n Key {doc}", f"grep -rn Key /run/gars/_references",
+                   f"cat {doc}x", f"cat {doc}.bak", f"cat my{doc}", "", f"&& cat {doc}", f"xargs cat {doc}",
+                   None, 3]
+        for cmd in admitted:
+            with self.subTest(admitted=cmd):
+                self.assertTrue(sr._ruled_bash(cmd))
+        for cmd in refused:
+            with self.subTest(refused=cmd):
+                self.assertFalse(sr._ruled_bash(cmd))
+
+    def test_the_named_refusals_refuse_end_to_end(self):
+        cases = {
+            "cd x && sed": self.bash_record("cd x && sed -n 175p _references/environment.md", self.text + "\n"),
+            "grep another file": self.bash_record("grep -n pinned _references/other.md", f"175:{self.text}\n"),
+            "echo $(cat ...)": self.bash_record("echo $(cat _references/environment.md)", self.text + "\n"),
+            "a user-text copy": _cc({"type": "user", "message": {"content": f"please check:\n{self.text}\n"}}),
+        }
+        for name, body in cases.items():
+            with self.subTest(name):
+                self.assertFalse(self.admitted(body))
+
+    def test_mutation_witnesses_of_the_bash_shapes(self):
+        cases = (
+            ("the doc path dropped", "grep -n pinned _references/other.md", f"175:{self.text}\n",
+             ('return any(t == _RULED_DOC or t.endswith("/" + _RULED_DOC) for t in segments[i][1:])',
+              "return True")),
+            ("the grep-or-cat first word dropped", "cd x && sed -n 175p _references/environment.md", self.text + "\n",
+             ('segments[i][0] not in ("grep", "cat")', "False")),
+            ("the substitution guard dropped", 'cat "$(cat x)/_references/environment.md"', self.text + "\n",
+             ('any(x in cmd for x in ("$(", "`", "<(", ">("))', "False")),
+            ("the wrapper guard dropped", "cat _references/environment.md | sh -c 'cat y'", self.text + "\n",
+             ("any(not seg or seg[0] in _RULED_WRAPPERS for seg in segments)", "False")),
+        )
+        for name, cmd, out, edit in cases:
+            with self.subTest(name):
+                self.assertFalse(self.admitted(self.bash_record(cmd, out)))
+                with _mutant("_ruled_bash", edit):
+                    self.assertTrue(self.admitted(self.bash_record(cmd, out)), f"{name}: the mutant still refuses")
+                red(f"OD57 w167: {name}")
+
+    def test_a_probe_finding_of_the_rule_without_an_int_line_refuses(self):
+        body = self.bash_record(W167, self.grep_out())
+        for line, rule, admit in ((None, OD57_RULE, False), ("2", OD57_RULE, False), (True, OD57_RULE, False),
+                                  (None, "curl-auth-header", True)):
+            with self.subTest(line=line, rule=rule):
+                g = _Gitleaks(self.text[:40])
+                calls = []
+
+                def scanner(paths):
+                    calls.append(1)
+                    if len(calls) == 1:
+                        return g(paths)
+                    return [{"path": paths[0], "line": line, "rule": rule}]
+                self.assertEqual(self.admitted(body, scanner=scanner), admit)
+        g = _Gitleaks(self.text[:40])
+        calls = []
+
+        def malformed(paths):
+            calls.append(1)
+            return g(paths) if len(calls) == 1 else [{"path": paths[0], "line": None, "rule": OD57_RULE}]
+        with _mutant("_ruled_findings", ('type(g["line"]) is not int or ', "")):
+            self.assertTrue(self.admitted(body, scanner=malformed))
+        red("OD57 probe: a line that is not an int read as no finding")
+
+    def same_record(self, extra):
+        """A Read and its result, where the result's user record also carries `extra` (raw JSON members)."""
+        rec = json.dumps(_result("toolu_R", f"174\tline before\n175\t{self.text}\n176\tline after\n"),
+                         ensure_ascii=False)
+        return _cc(_use("toolu_R", "Read", {"file_path": self.doc})) + (rec[:-1] + ", " + extra + "}\n").encode()
+
+    def check_conjunct(self, body, conjunct, rulings=None):
+        """Refuses as is; admits with only `conjunct` replaced by False."""
+        with mock.patch.object(sr, "RULED_LINES", rulings or sr.RULED_LINES):
+            self.assertFalse(self.admitted(body))
+            with _mutant("_ruled_text", (conjunct, "False")):
+                self.assertTrue(self.admitted(body), f"the mutant still refuses: no witness of {conjunct!r}")
+        red(f"OD57 nowhere-else: {conjunct}")
+
+    def test_the_same_record_case_refuses_and_the_whole_guard_is_what_refuses_it(self):
+        rec = _result("toolu_R", [{"type": "text", "text": f"175\t{self.text}\n"}])
+        rec["message"]["content"].append({"type": "text", "text": f"please check this:\n{self.text}\n"})
+        body = _cc(_use("toolu_R", "Read", {"file_path": self.doc}), rec)
+        self.assertFalse(self.admitted(body))
+        with _mutant("_ruled_text", (NOT_ESCAPED, "False"), (DECODED_ELSEWHERE, "False"), (RAW_ELSEWHERE, "False")):
+            self.assertTrue(self.admitted(body))
+        red("OD57 nowhere-else: the whole guard")
+
+    def test_witness_an_escaped_copy_is_caught_decoded(self):
+        hidden = json.dumps({"type": "text", "text": self.text}).replace("`", "\\u0060")
+        self.check_conjunct(self.same_record('"note": ' + hidden), DECODED_ELSEWHERE)
+
+    def test_witness_a_copy_the_parser_drops_is_caught_raw(self):
+        self.check_conjunct(self.same_record('"note": %s, "note": "x"' % json.dumps(self.text)), RAW_ELSEWHERE)
+
+    def test_witness_a_ruled_text_json_escapes_is_refused(self):
+        line = self.text + " é"
+        ruling = dict(sr.RULED_LINES[0], bytes=len(line.encode()), sha256=hashlib.sha256(line.encode()).hexdigest())
+        self.check_conjunct(self.read_record(line), NOT_ESCAPED, (ruling,))
+
+
+for _name in [n for n in vars(TestOD57Ruling) if n.startswith("test_")]:
+    setattr(TestOD57Chain, _name, None)      # the parent's tests run once, in the parent
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

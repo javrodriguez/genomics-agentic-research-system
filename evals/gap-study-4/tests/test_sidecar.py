@@ -2227,6 +2227,8 @@ BOX_MODULES = {
                    "path.realpath", "read", "rmdir", "unlink"},
             "re": {"compile"},
             "scrub": {"NOTE"},
+            # OD57's Bash shapes (glitch-b5, 16 Oct 2026, after walk w167): the command is shell-tokenised
+            "shlex": {"shlex"},
             "stat": {"S_IMODE", "S_ISREG"},
             "sys": {"path", "path.insert"},
             "tempfile": {"mkdtemp"},
@@ -2237,7 +2239,7 @@ BOX_MODULES = {
         "names": {
             'OSError', 'RuntimeError', 'UnicodeDecodeError', 'ValueError', '__file__', 'all', 'any', 'bool', 'bytes',
             'callable', 'dict', 'enumerate', 'int', 'isinstance', 'len', 'list', 'open', 'set', 'sorted', 'str',
-            'sum', 'tuple', 'zip'},
+            'sum', 'tuple', 'type', 'zip'},
         "attrs": {
             'NOTE', 'O_NOFOLLOW', 'O_NONBLOCK', 'O_RDONLY', 'S_IMODE', 'S_ISREG', 'abspath', 'add', 'append',
             'close', 'compile', 'count', 'decode', 'dirname', 'encode', 'endswith', 'fileno', 'find', 'flush',
@@ -2247,7 +2249,9 @@ BOX_MODULES = {
             'truncate', 'write',
             # OD57's exact ruling (16 Oct 2026)
             'basename', 'dumps', 'end', 'get', 'match', 'mkdtemp', 'replace', 'rmdir', 'rstrip', 'unlink',
-            'values'},
+            'values',
+            # OD57's Bash shapes (16 Oct 2026)
+            'shlex', 'whitespace_split'},
     },
 }
 # The one subprocess call site of this lane's modules: (enclosing function, attribute).

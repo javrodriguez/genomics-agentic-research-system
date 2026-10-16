@@ -64,6 +64,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import stat
 import sys
 import tempfile
@@ -108,9 +109,10 @@ LOGIN_MAX_BYTES = 4096
 # safe" at 2026-10-16T12:52:33Z, outcome "safe" on ask T83, recorded by glitch-27): gitleaks' generic-api-key flags
 # line 175 of gars/_references/environment.md ("Key pinned versions: ...", a list of package versions; blob 2c0ea574,
 # byte-identical on public GARS main a97fa9cd) when an agent reads that doc. The ruling binds that one line's text
-# (sha256 of its 80 bytes, no newline), decoded from the JSON record, inside a tool result (a Read result or a Bash
-# cat/grep result, main thread or sub-agent), in an agent-text kind (MASKABLE). Any other rule, any other line, the
-# same text anywhere outside a tool result, or a match the line alone does not explain still refuses.
+# (sha256 of its 80 bytes, no newline), decoded from the JSON record, inside a tool result (a Read result, or a Bash
+# grep or cat of that doc as _ruled_bash reads it; main thread or sub-agent), in an agent-text kind (MASKABLE). Any
+# other rule, any other line, the same text anywhere outside a tool result, or a match the line alone does not
+# explain still refuses.
 RULED_LINES = (
     {"ruling": "OD57", "rule": "generic-api-key", "bytes": 80,
      "sha256": "0b85623f36eef7c6e7ca19c7900e865fd7ddbfe5853197b5c1d2e246d81df313",
@@ -491,8 +493,49 @@ def _tool_uses(data: bytes) -> dict:
     return uses
 
 
+# The Bash shapes OD57 admits (glitch-b5's ruling of 16 Oct 2026, after walk w167): the command, split on &&, ||, ;
+# and | and shell-tokenised, has a grep or cat segment, after any leading cd segments only, naming a path that ends in
+# _references/environment.md. A parse failure, $(...), backticks, a process substitution, any other shell
+# operator, or a segment opening with a wrapper (eval, sh -c, bash -c and kin) refuses. Admitting less is fine.
+_RULED_SEPARATORS = ("&&", "||", ";", "|")
+_RULED_REDIRECTS = (">", ">>", "<", ">&")
+_RULED_WRAPPERS = ("eval", "sh", "bash", "zsh", "dash", "ksh", "exec", "source", ".", "xargs", "env", "command",
+                   "builtin", "sudo", "nohup", "timeout")
+_RULED_DOC = "_references/environment.md"
+
+
+def _ruled_bash(cmd) -> bool:
+    """A Bash command OD57 admits (the shapes above)."""
+    if not isinstance(cmd, str) or any(x in cmd for x in ("$(", "`", "<(", ">(")):
+        return False
+    try:
+        lex = shlex.shlex(cmd, posix=True, punctuation_chars=True)
+        lex.whitespace_split = True
+        tokens = list(lex)
+    except ValueError:
+        return False
+    segments, cur = [], []
+    for t in tokens:
+        if t in _RULED_SEPARATORS:
+            segments.append(cur)
+            cur = []
+        elif t and set(t) <= set("();<>|&") and t not in _RULED_REDIRECTS:
+            return False
+        else:
+            cur.append(t)
+    segments.append(cur)
+    if "eval" in tokens or any(not seg or seg[0] in _RULED_WRAPPERS for seg in segments):
+        return False
+    i = 0
+    while i < len(segments) and segments[i][0] == "cd" and len(segments[i]) == 2:
+        i += 1
+    if i == len(segments) or segments[i][0] not in ("grep", "cat"):
+        return False
+    return any(t == _RULED_DOC or t.endswith("/" + _RULED_DOC) for t in segments[i][1:])
+
+
 def _ruled_tool(uses, tool_use_id) -> bool:
-    """A Read, or a Bash whose command is a cat or a grep (OD57's words): one tool_use with that id, no other."""
+    """A Read, or a Bash command _ruled_bash admits: one tool_use with that id, no other."""
     got = uses.get(tool_use_id) if isinstance(tool_use_id, str) else None
     if not got or len(got) != 1:
         return False
@@ -500,7 +543,7 @@ def _ruled_tool(uses, tool_use_id) -> bool:
     if name == "Read":
         return True
     cmd = inp.get("command") if name == "Bash" and isinstance(inp, dict) else None
-    return isinstance(cmd, str) and cmd.split(None, 1)[:1] in (["cat"], ["grep"])
+    return _ruled_bash(cmd)
 
 
 def _blocks(node, out):
@@ -605,9 +648,9 @@ def _ruled_findings(scanner, files, findings) -> tuple:
         for g in again:
             if not _finding_ok(g):
                 raise ScanError("a rules-scanner finding is {path, line, rule}")
-        still = {(g["line"], g["rule"]) for g in again}
         for f, ruling, _ in group:
-            if (f["line"], f["rule"]) in still:
+            # a probe finding of the rule whose line is not a number fails closed (aegis review of 4043a29, finding 2)
+            if any(g["rule"] == f["rule"] and (type(g["line"]) is not int or g["line"] == f["line"]) for g in again):
                 refused.append(f)
             else:
                 admitted.append({"path": f["path"], "line": f["line"], "rule": f["rule"], "ruling": ruling["ruling"]})
