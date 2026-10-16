@@ -248,6 +248,12 @@ CC_TOOLS = {
     "ScheduleWakeup": (OTHER, {}, ("delaySeconds", "reason", "prompt", "noop", "stop")),
     "ToolSearch": (OTHER, {}, ("query", "max_results")),
     "Monitor": (OTHER, {}, ("process_id",)),
+    # glitch-b5's ruling (16 Oct 2026, option 1, parity; CP6 walk w083): round 3 offered Agent in 64 of 64 transcripts
+    # and never called it. Its input keys are the 2.1.296 schema's, closed (the Agent tool's zod object and its
+    # extensions; cwd is omitted from the schema the model sees, so it refuses). Its sub-agent's own records are read
+    # from the turn stream and the copied subagents files by the checker, never by this view.
+    "Agent": (OTHER, {}, ("description", "prompt", "subagent_type", "model", "effort", "run_in_background", "name",
+                          "team_name", "mode", "isolation")),
 }
 CC_ASSISTANT_BLOCKS = ("text", "thinking", "tool_use")
 CC_USER_BLOCKS = ("tool_result",)

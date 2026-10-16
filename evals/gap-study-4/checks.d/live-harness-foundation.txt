@@ -34,3 +34,4 @@ python3 -B -W ignore evals/gap-study-4/tests/test_journal_binding.py
 python3 -B -W ignore evals/gap-study-4/tests/test_no_output_nudge.py
 python3 -B -W ignore evals/gap-study-4/tests/test_jsonl_split.py
 python3 -B -W ignore evals/gap-study-4/tests/test_line_separators.py
+python3 -B -W ignore evals/gap-study-4/tests/test_agent_tool.py
