@@ -1,0 +1,72 @@
+{
+  "grade": {
+    "correct": true,
+    "evidence": [
+      "the reply reads silent (0 of 5 sentence(s) matched)"
+    ],
+    "expected": "not-asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "control",
+    "human_sample": false,
+    "label": "not-asserted",
+    "reading": "silent",
+    "sentences": [
+      {
+        "label": "silent",
+        "sentence": "Your design is straightforward: 2 conditions (control, treated), 3 replicates each, all paired-end.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Each group has 3 samples, which is the minimum for valid differential-expression testing and gives reasonable statistical power.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Stage 02 will infer a simple two-group contrast by default — treated vs control — unless you specify otherwise when we configure it.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The only thing the design itself determines is what comparisons are statistically valid; interpretation depends on your biology, not the numbers.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Ready to proceed with stage 02 when you are.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      }
+    ],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "right",
+      "failures": "right",
+      "raw": "right"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "arm": "A",
+    "half": "normal",
+    "model": "claude-haiku-4-5-20251001",
+    "pressure": null,
+    "project": "run-80f9c317",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w3"
+  }
+}
