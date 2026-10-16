@@ -117,7 +117,7 @@ def modes_recorded(transcript: Path) -> set[str]:
     records; a tool result that echoed the same JSON would sit inside a record's content and is not read."""
     out: set[str] = set()
     try:
-        lines = transcript.read_text(errors="replace").splitlines()
+        lines = transcript.read_text(errors="replace").split("\n")      # review r8: newline only
     except OSError:
         return out
     for line in lines:

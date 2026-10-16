@@ -1023,8 +1023,9 @@ BOOTSTRAP_SPANS = (
     # functions it calls are appended.
     ("check4-study-conditions", "    problems += design_tree_problems(path, design)               # W7B (Q-w6i-5)\n",
      "    # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm",
-     # and the isolation denials' line (glitch-6b's isolation ruling, 15 Oct 2026)
-     "b44680e34254e3cc2556b34efca350fe155ed7c7e768e67c3a4f0d5ffaf63e6e"),
+     # and the isolation denials' line (glitch-6b's isolation ruling, 15 Oct 2026), and the transcript line check's
+     # (glitch-b5's ruling on review r8, 16 Oct 2026)
+     "dc1e1efe628de58fd6a244e65b2b52413140d7a2aa262a681ad08d3cf75428e7"),
     # glitch-b5's ruling 2 (16 Oct 2026): context_text's one append line sweeps an admitted edited_text_file without its
     # snippet (check_take's appended _swept_attachment_line); no line moves.
     ("context-text", "def context_text(path: Path) -> str:\n", "\n\ndef context_leaks(",

@@ -471,7 +471,7 @@ def stream_split(stdout: str) -> tuple[str, str]:
     """
     said: list[str] = []
     harness: list[str] = []
-    for raw in stdout.splitlines():
+    for raw in stdout.split("\n"):
         raw = raw.strip()
         if not raw:
             continue
@@ -515,7 +515,7 @@ def stream_init_source(stdout: str) -> str | None:
     None when no init record carries a string there. Never the word "none": a source the harness did not
     report is recorded as unreported, and a spelling of our own would read as a value it gave.
     """
-    for raw in (stdout or "").splitlines():
+    for raw in (stdout or "").split("\n"):
         raw = raw.strip()
         if not raw:
             continue
@@ -538,7 +538,7 @@ def modes_recorded(transcript: Path) -> set[str]:
     """
     out: set[str] = set()
     try:
-        lines = transcript.read_text(errors="replace").splitlines()
+        lines = transcript.read_text(errors="replace").split("\n")
     except OSError:
         return out
     for line in lines:

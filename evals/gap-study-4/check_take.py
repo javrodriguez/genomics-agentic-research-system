@@ -1957,6 +1957,7 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
     if design.harness == CLAUDE_CODE:
         problems += steer_condition_problems(path)               # the bash-first steer OFF (glitch-6b, 15 Oct)
         problems += denied_tool_problems(path)   # the isolation denials (glitch-6b, 15 Oct)
+        problems += transcript_line_problems(path)   # every line one JSON record (glitch-b5, 16 Oct)
     # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm, so the ledger's arm must be the take's.
     led = _ledger_beside(path)
     if led is not None and led.get("arm") != arm:
@@ -2404,6 +2405,7 @@ def check4_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wordi
     if design.harness == CLAUDE_CODE:
         problems += steer_condition_problems(path)                     # the bash-first steer OFF (glitch-6b, 15 Oct)
         problems += denied_tool_problems(path)   # the isolation denials (glitch-6b, 15 Oct)
+        problems += transcript_line_problems(path)   # every line one JSON record (glitch-b5, 16 Oct)
     beside = _ledger_beside(path)
     if isinstance(beside, dict) and beside.get("arm") != arm:
         problems.append(f"[constant-binding] the walk's driver ledger records arm {beside.get('arm')!r}, and the walk is "
@@ -2822,6 +2824,44 @@ def _no_duplicate_keys(pairs) -> dict:
     if len(keys) != len(set(keys)):
         raise ValueError(f"a duplicated key: {sorted(k for k in set(keys) if keys.count(k) > 1)}")
     return dict(pairs)
+
+
+
+# ---- EVERY LINE ONE RECORD (glitch-b5's ruling on review r8's finding 1, 16 Oct 2026) ---------------------------------
+#   str.splitlines also splits on the separators below, and Claude Code's JSON writer leaves U+2028 and U+2029 raw
+#   inside strings. Round 3's transcript reader (evals/transcript.py, kept as it is: round 3 reproduces from it) and
+#   the driver's old stream readers dropped such a record, so a reached wait point read did-not-reach. A claude-code
+#   take or walk whose transcript carries one of them, or a non-blank newline-split line that is not JSON, refuses
+#   [transcript-unreadable] (an operator reason with its round-4 ruling, routed by the generic rows like
+#   harness-condition-violated). The bytes are read as written (no newline translation), so a \r is seen.
+TRANSCRIPT_UNREADABLE = "transcript-unreadable"
+TRANSCRIPT_LINE_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029")
+
+
+def transcript_line_problems(path: Path) -> list[str]:
+    """[transcript-unreadable] when a line separator other than newline is in the transcript, or a non-blank line of
+    it (split on newline alone) is not JSON; [] otherwise."""
+    try:
+        text = Path(path).read_bytes().decode("utf-8", errors="replace")
+    except OSError as e:
+        raise CheckRefused(f"the transcript cannot be read ({type(e).__name__})") from None
+    out = []
+    seps = sorted({f"U+{ord(s):04X}" for s in TRANSCRIPT_LINE_SEPARATORS if s in text})
+    if seps:
+        out.append(f"[{TRANSCRIPT_UNREADABLE}] the transcript carries line separator(s) {', '.join(seps)} other than newline: "
+                   f"a reader that splits on them drops the record, so the take is never read")
+    bad = []
+    for i, line in enumerate(text.split("\n"), 1):
+        if not line.strip():
+            continue
+        try:
+            json.loads(line)
+        except json.JSONDecodeError:
+            bad.append(i)
+    if bad and not seps:
+        out.append(f"[{TRANSCRIPT_UNREADABLE}] line(s) {bad[:5]} of the transcript are not JSON: a record cut or "
+                   f"joined is never read as another")
+    return out
 
 
 if __name__ == "__main__":

@@ -1674,7 +1674,7 @@ class TestCapKeyNames(unittest.TestCase):
 
 # Round 4's named operator-reason additions, typed once (TestRound4Additions binds each to its ruling and to the
 # round-4 checker line that emits it; TestRound3Sources keeps round 3's ids re-derived beside them).
-ROUND4_ADDED_REASONS = ("harness-condition-violated",)
+ROUND4_ADDED_REASONS = ("harness-condition-violated", "transcript-unreadable")   # + glitch-b5, 16 Oct 2026
 CHECK_TAKE4 = "evals/gap-study-4/check_take.py"
 
 
@@ -1688,7 +1688,7 @@ class TestRound4Additions(unittest.TestCase):
 
     def test_the_addition_is_listed_with_its_ruling(self):
         add = REAL["operator_reasons_round4"]
-        self.assertEqual(add["ids"], [self.HCV])
+        self.assertEqual(add["ids"], list(ROUND4_ADDED_REASONS))
         self.assertIn(self.HCV, REAL["operator_reasons"])
         self.assertNotIn(self.HCV, REAL["operator_reason_sources"])
         src = add["sources"][self.HCV]
@@ -1710,6 +1710,27 @@ class TestRound4Additions(unittest.TestCase):
                                  (B, labels4.REHEARSAL, "operator-reason-before-first-turn")):
             rec = baseline(phase)
             rec["checker_reasons"] = [self.HCV]
+            got = routing.route(rec, t)
+            self.assertEqual((got["route"], got["rows"]), (want, [row]), phase)
+
+    def test_transcript_unreadable_is_listed_emitted_and_routed(self):
+        """glitch-b5's ruling on review r8 (16 Oct 2026): transcript-unreadable, routed like harness-condition-violated."""
+        tu = "transcript-unreadable"
+        src = REAL["operator_reasons_round4"]["sources"][tu]
+        for cite in ("glitch-b5", "16 Oct 2026", "U+2028", "harness-condition-violated"):
+            self.assertIn(cite, src["ruling"])
+        self.assertEqual(src["emitted_at"], CHECK_TAKE4)
+        self.assertNotIn(tu, REAL["operator_reason_sources"])
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        with open(os.path.join(root, CHECK_TAKE4), encoding="utf-8") as f:
+            text = f.read()
+        self.assertIn(f'TRANSCRIPT_UNREADABLE = "{tu}"', text)
+        self.assertIn('f"[{TRANSCRIPT_UNREADABLE}] ', text)
+        t = test_table()
+        for phase, want, row in ((A, labels4.HARNESS_ERROR, "operator-reason-after-first-turn"),
+                                 (B, labels4.REHEARSAL, "operator-reason-before-first-turn")):
+            rec = baseline(phase)
+            rec["checker_reasons"] = [tu]
             got = routing.route(rec, t)
             self.assertEqual((got["route"], got["rows"]), (want, [row]), phase)
 

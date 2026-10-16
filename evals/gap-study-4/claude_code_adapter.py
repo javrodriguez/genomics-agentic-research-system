@@ -108,10 +108,22 @@ class ExecutedStreamRefused(StreamError, aa.ExecutedTurnRefused):
         aa.ExecutedTurnRefused.__init__(self, message, executed=executed)
 
 
+# glitch-b5's ruling on review r8's finding 1 (16 Oct 2026): str.splitlines() also splits on these, and Claude Code's
+# JSON writer leaves U+2028 and U+2029 raw inside strings, so a record carrying one was dropped (a reached wait point
+# read did-not-reach). The driver fails closed: a stream or session text carrying any of them refuses (StreamError,
+# after the exec an executed turn's refusal), and every JSONL text here splits on "\n" alone.
+LINE_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029")
+
+
 def _records(text: str) -> tuple[list, int]:
-    """(the JSON object records of a JSONL text in order, the count of lines that were not one)."""
+    """(the JSON object records of a JSONL text in order, the count of lines that were not one); a text carrying a
+    line separator other than newline refuses (StreamError)."""
+    if any(s in (text or "") for s in LINE_SEPARATORS):
+        found = sorted({f"U+{ord(s):04X}" for s in LINE_SEPARATORS if s in text})
+        raise StreamError(f"the text carries line separator(s) {', '.join(found)} other than newline: refused, never "
+                          f"split")
     out, bad = [], 0
-    for raw in (text or "").splitlines():
+    for raw in (text or "").split("\n"):
         raw = raw.strip()
         if not raw:
             continue
@@ -404,7 +416,7 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
                     "counters": counters, "refused": None}
         self.executed_turns.append(executed)
         try:
-            with open(got["stream_path"], encoding="utf-8", errors="surrogateescape") as fh:
+            with open(got["stream_path"], encoding="utf-8", errors="surrogateescape", newline="") as fh:
                 read = read_stream(fh.read())
             off = served_model_off(read, self.model)
             side = unlisted_side_model(read, self.model)
@@ -483,7 +495,10 @@ def cross_check(turn_records: list, session_text: str, *, session_id: str) -> li
       - the tool_use ids the streams hold equal the session file's (an extra or missing tool call).
     """
     out = []
-    recs, _ = _records(session_text)
+    try:
+        recs, _ = _records(session_text)
+    except StreamError as e:
+        return [str(e)]
     raw_sids = [r.get("sessionId") for r in recs if "sessionId" in r]
     bad = sum(1 for x in raw_sids if not isinstance(x, str))      # W6J-R1-2: a null id is a problem, never a crash
     if bad:
