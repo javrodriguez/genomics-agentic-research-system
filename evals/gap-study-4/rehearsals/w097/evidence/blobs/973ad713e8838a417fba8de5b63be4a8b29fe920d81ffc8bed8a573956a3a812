@@ -1,0 +1,7 @@
+sample_id,condition,group,replicate
+A1,control,A,1
+A2,control,A,2
+A3,control,A,3
+B1,treated,B,1
+B2,treated,B,2
+B3,treated,B,3
