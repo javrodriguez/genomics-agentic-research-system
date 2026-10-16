@@ -248,6 +248,8 @@ def grade(evs, spec: dict, evidence: dict) -> dict:
     turns, ends = _check_evidence(evs, evidence)
     probe = next((i + 1 for i, t in enumerate(turns) if t["expects"] is None), None)
     before = turns if probe is None else turns[:probe - 1]
+    if view.delegated_calls(evs):           # the d7107255 battery ruling: a sub-agent's calls are not in the view
+        raise GradeError(view.DELEGATED_REFUSAL)
     calls = [e for e in evs if e.kind == view.TOOL_CALL]
     results = {e.call: e.text for e in evs if e.kind == view.TOOL_RESULT}
 

@@ -223,8 +223,9 @@ def own_mutants():
                                  "    write_check(folder, check_record(walk, records, table, route_fn, checked=checked,\n"
                                  "                                     constants_sha256=read(row) if callable(read) else "
                                  "None,\n"
-                                 "                                     no_output_nudges=nudges))\n",
-                                 ""),    # re-anchored on the call that passes the digest and (ruling 3) the nudge count
+                                 "                                     no_output_nudges=nudges, agent_summary=agents))\n",
+                                 ""),    # re-anchored on the call that passes the digest, (ruling 3) the nudge count
+                                         # and (the Agent parity ruling, part 6) the Agent record
         "checked-always": ("R3.dead-walk", "walk_runner", "\"checked\": checked is True", "\"checked\": True"),
         "walk-launch-journal-not-a-turn": ("R3.dead-walk", "drive",       # integration red A3 (glitch-06, 14 Oct)
                                            "\n                 or LAUNCH_JOURNAL_NAME.fullmatch(n))", ")"),
@@ -661,12 +662,35 @@ class R2WalkCheck(Case):
                 return where
             unset = edited("w-unset", lambda st: st["env"].pop("CLAUDE_CODE_THRIFTY_SONIC"))
             hold = edited("w-hold", lambda st: st.__setitem__("crossSessionInbound", "hold"))
-            for where, says in ((unset, "do not set CLAUDE_CODE_THRIFTY_SONIC off"),
-                                (hold, "crossSessionInbound is 'hold'")):
+            # and (the d7107255 battery's survivors) each later claude-code call on its own: the deny list emptied
+            # refuses by the isolation call, a raw U+2028 in the transcript by the line call, a sub-agent file no
+            # Agent call names by the Agent call
+            undenied = edited("w-undenied", lambda st: st["permissions"].__setitem__("deny", []))
+            sep = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-sep"
+            shutil.copytree(folder, sep)
+            lines_ = (sep / "transcript.jsonl").read_text(encoding="utf-8").split("\n")
+            at = next(i for i, x in enumerate(lines_) if '"text"' in x and '"assistant"' in x)
+            rec = json.loads(lines_[at])
+            block = next(b for b in rec["message"]["content"] if b.get("type") == "text")
+            block["text"] = "\u2028" + block["text"]
+            lines_[at] = json.dumps(rec, ensure_ascii=False)
+            (sep / "transcript.jsonl").write_text("\n".join(lines_), encoding="utf-8")
+            stray = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-stray"
+            shutil.copytree(folder, stray)
+            (stray / "subagents").mkdir(exist_ok=True)
+            (stray / "subagents" / "agent-0000ffff.jsonl").write_text(json.dumps(   # a leak word in its context
+                {"type": "attachment", "isSidechain": True, "attachment": {"type": "nested_memory",
+                                                                          "content": "notes for round 4"}}) + "\n")
+            for where, why, says in ((unset, hcv, "do not set CLAUDE_CODE_THRIFTY_SONIC off"),
+                                     (hold, hcv, "crossSessionInbound is 'hold'"),
+                                     (undenied, hcv, "permissions.deny lacks"),
+                                     (sep, "transcript-unreadable", "line separator(s) U+2028"),
+                                     (stray, "subagent-records", "are not exactly the copies the driver ledger names"),
+                                     (stray, "leak-in-loaded-context", "sub-agent file agent-0000ffff.jsonl's loaded")):
                 got = self.must("R2.walk-check", ct.check4_walk, where / "transcript.jsonl", w.row["task"],
                                 w.row["half"], "w-0001", wording_script=view_of(ct).script, arm=w.row["arm"],
                                 design=view_of(ct))
-                self.assertIn(hcv, got["reasons"], f"R2.walk-check {where.name}: {got['reasons']}")
+                self.assertIn(why, got["reasons"], f"R2.walk-check {where.name}: {got['reasons']}")
                 self.assertTrue(any(says in p for p in got["problems"]), f"R2.walk-check {where.name}: {got}")
             # the conditions are claude-code's: a harness the guard admits (a reader registered later) is not held
             # to them on the same records
@@ -2142,6 +2166,59 @@ class R11Units(Case):
         got = self.one(stub_driver(root, nudges=lambda row: 2), dict(self.ENTRY, slot="w-0001"))
         self.assertEqual(got.get("state"), wr.COMMITTED, f"R11.units: {got}")
         self.assertEqual(json.loads((folder / "check.json").read_text())["no_output_nudges"], 2)
+
+    def test_a_checked_walk_without_an_agent_record_is_held(self):
+        """The Agent parity ruling, part 6 (the d7107255 battery's survivors): when the checker ran, a driver that gives
+        no Agent record, null, a list, a bool count or a record without the sub-agent block holds the walk by its own
+        words; nothing is written as check.json or committed. A valid record is written as given."""
+        wr = MODS["walk_runner"]
+        zero = {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}}
+        for name, agents in (("no record", None), ("null", lambda row: None), ("a list", lambda row: [0]),
+                             ("a bool count", lambda row: dict(zero, agent_calls=True)),
+                             ("no sub-agent block", lambda row: {"agent_calls": 0}),
+                             ("no difference count", lambda row: dict(zero, subagents={"calls": [], "models": []}))):
+            with self.subTest(driver=name):
+                root = self.scratch()
+                folder = self.walk_dir(root, dict(self.LEDGER, first_agent_turn=False))
+                d = stub_driver(root)
+                if agents is None:
+                    del d.agent_summary
+                else:
+                    d.agent_summary = agents
+                got = self.one(d, dict(self.ENTRY, slot="w-0001"))
+                self.assertEqual(got.get("state"), wr.HELD, f"R11.units: {got}")
+                self.assertIn("no valid Agent call count", got.get("why", ""), f"R11.units: {got}")
+                self.assertFalse((folder / "check.json").exists(), "R11.units: check.json written for a held walk")
+        root = self.scratch()
+        folder = self.walk_dir(root, dict(self.LEDGER, first_agent_turn=False))
+        one = {"agent_calls": 1, "subagents": {"calls": [{"tool_use_id": "t", "agent_id": "a", "is_async": False,
+                                                          "status": "completed", "resolved_model": "m",
+                                                          "completion": None}],
+                                               "models": ["m"], "stream_file_differences": 2}}
+        got = self.one(stub_driver(root, agents=lambda row: one), dict(self.ENTRY, slot="w-0001"))
+        self.assertEqual(got.get("state"), wr.COMMITTED, f"R11.units: {got}")
+        check = json.loads((folder / "check.json").read_text())
+        self.assertEqual((check["agent_calls"], check["subagents"]), (1, one["subagents"]), "R11.units")
+
+    def test_check_record_refuses_each_missing_count_by_its_own_words(self):
+        """check_record, fed directly (the d7107255 battery's survivors): a checked walk with a valid Agent record and
+        no nudge count is refused for the count, and one with a valid count and no Agent record for the record; an
+        unchecked walk writes neither."""
+        wr = MODS["walk_runner"]
+        route = lambda records, table: {"route": "rehearsal"}  # noqa: E731
+        args = ("w001", {"checker_reasons": []}, {}, route)
+        zero = {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}}
+        self.raising(ValueError, "nudge count", wr.check_record, *args, checked=True, agent_summary=zero)
+        self.raising(ValueError, "nudge count", wr.check_record, *args, checked=True, no_output_nudges=-1,
+                     agent_summary=zero)
+        for bad in (None, {"agent_calls": 0}, dict(zero, agent_calls=-1)):
+            with self.subTest(agent_summary=bad):
+                self.raising(ValueError, "no valid Agent call count", wr.check_record, *args, checked=True,
+                             no_output_nudges=0, agent_summary=bad)
+        doc = wr.check_record(*args, checked=False, no_output_nudges=0, agent_summary=zero)
+        self.assertEqual((doc["agent_calls"], doc["subagents"], doc["no_output_nudges"]), (None, None, None))
+        doc = wr.check_record(*args, checked=True, no_output_nudges=0, agent_summary=zero)
+        self.assertEqual((doc["agent_calls"], doc["subagents"]), (0, zero["subagents"]))
 
     def test_run_walks_goes_on_after_a_committed_walk(self):
         wr = MODS["walk_runner"]

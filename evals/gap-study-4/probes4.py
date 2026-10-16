@@ -99,6 +99,7 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 import variants as V  # noqa: E402
+from graders import delegation  # noqa: E402
 from graders import endstate as es  # noqa: E402
 import transcript_view as view  # noqa: E402
 
@@ -854,6 +855,9 @@ def run_grader(task: dict, half: str, cell: dict, spec: dict, transcript: list, 
     name = V.grader_name(task)
     mod = V.load_grader(name)
     ghalf = (task["grader_halves"] or {}).get(half)
+    refused = delegation.seam_refusal(name, evidence, transcript)    # the d7107255 battery ruling
+    if refused:
+        raise mod.GradeError(refused)
     if name in ("scope_read", "template_adherence"):
         return mod.grade(spec, evidence, transcript)
     if name == "number_fidelity":

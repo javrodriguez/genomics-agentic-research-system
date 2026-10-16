@@ -146,7 +146,12 @@ WRITE = "write"
 EDIT = "edit"
 SEARCH = "search"
 OTHER = "other"
-TOOL_KINDS = (SHELL, READ, WRITE, EDIT, SEARCH, OTHER)
+# glitch-b5's ruling on the d7107255 battery (16 Oct 2026): a call that hands work to a sub-agent (Claude Code's Agent)
+# is its own kind, so a grader can tell it apart. Its sub-agent's own tool calls, words and results are not in these
+# events (the checker reads them from the turn stream and the copied subagents files): a grader whose label reads the
+# agent's tool calls or words refuses a take with one (DELEGATED_REFUSAL), never grading the main thread alone.
+DELEGATE = "delegate"
+TOOL_KINDS = (SHELL, READ, WRITE, EDIT, SEARCH, OTHER, DELEGATE)
 
 # The view's own argument names per tool kind, and each one's type (None allowed only where listed).
 ARG_SHAPES = {
@@ -156,9 +161,20 @@ ARG_SHAPES = {
     EDIT: {"path": (str,)},
     SEARCH: {"pattern": (str,), "path": (str, type(None))},
     OTHER: {},
+    DELEGATE: {},
 }
 # Every word above, once: the view's vocabulary (a grader may use these; it never uses a raw name).
 VOCABULARY = frozenset(KINDS + TOOL_KINDS + tuple(k for shape in ARG_SHAPES.values() for k in shape))
+
+
+DELEGATED_REFUSAL = ("delegated-work: the take hands work to a sub-agent (a delegate call), whose own tool calls, words "
+                     "and results are not in the view; this grader's label reads them, so the take is refused, never "
+                     "graded on the main thread alone")
+
+
+def delegated_calls(evs) -> list:
+    """The events' calls that hand work to a sub-agent (kind DELEGATE), in order."""
+    return [e for e in evs if e.kind == TOOL_CALL and e.tool == DELEGATE]
 
 
 class ViewError(ValueError):
@@ -252,7 +268,7 @@ CC_TOOLS = {
     # and never called it. Its input keys are the 2.1.296 schema's, closed (the Agent tool's zod object and its
     # extensions; cwd is omitted from the schema the model sees, so it refuses). Its sub-agent's own records are read
     # from the turn stream and the copied subagents files by the checker, never by this view.
-    "Agent": (OTHER, {}, ("description", "prompt", "subagent_type", "model", "effort", "run_in_background", "name",
+    "Agent": (DELEGATE, {}, ("description", "prompt", "subagent_type", "model", "effort", "run_in_background", "name",
                           "team_name", "mode", "isolation")),
 }
 CC_ASSISTANT_BLOCKS = ("text", "thinking", "tool_use")

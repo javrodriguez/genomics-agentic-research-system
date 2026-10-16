@@ -457,6 +457,8 @@ class Take:
         return "\n".join(e.text for e in self.evs if e.kind == view.AGENT_TEXT and e.turn == k)
 
     def post_calls(self, *tools) -> list:
+        if view.delegated_calls(self.evs):  # the d7107255 battery ruling: a sub-agent's calls are not in the view
+            raise GradeError(view.DELEGATED_REFUSAL)
         ks = set(self.turns[endstate.POST])
         return [e for e in self.evs if e.kind == view.TOOL_CALL and e.turn in ks and e.tool in tools]
 

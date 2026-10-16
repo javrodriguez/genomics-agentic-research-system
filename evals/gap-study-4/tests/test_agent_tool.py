@@ -109,7 +109,7 @@ def view_problems(view=tv) -> list:
             continue
         calls = [e for e in evs if e.kind == view.TOOL_CALL]
         results = [e for e in evs if e.kind == view.TOOL_RESULT]
-        if [(e.tool, e.args) for e in calls] != [(view.OTHER, {})]:
+        if [(e.tool, e.args) for e in calls] != [(view.DELEGATE, {})]:   # its own kind (the d7107255 battery ruling)
             out.append(f"A-view {name}: calls {[(e.tool, e.args) for e in calls]}")
         if [e.text for e in results] != ["Stages 00 to 03."] or results[0].call != calls[0].call:
             out.append(f"A-view {name}: results {[e.text for e in results]}")

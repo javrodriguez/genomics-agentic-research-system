@@ -43,7 +43,7 @@ import stats
 import takes
 import transcript_view
 import variants
-from graders import labels4
+from graders import delegation, labels4
 import mode_binding
 import walk_register
 import pending_walk  # live harness (registration review finding 2): a pending vendor walk's grade
@@ -95,6 +95,9 @@ def grade_views(grade: dict, grader=None) -> dict:
 
 def regrade(name: str, row: dict, spec: dict, transcript, evidence) -> tuple[dict, str]:
     mod = grader_for(name)
+    refused = delegation.seam_refusal(name, evidence, transcript)    # the d7107255 battery ruling
+    if refused:
+        raise mod.GradeError(refused)
     if name in ("scope_read", "template_adherence"):
         got = mod.grade(spec, evidence, transcript)
     elif name == "number_fidelity":

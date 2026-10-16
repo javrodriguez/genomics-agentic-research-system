@@ -1434,7 +1434,8 @@ class FreezeCoverage(unittest.TestCase):
                  "batch.py", "routing.py", "routing.json", "variants.py", "intervals.py",
                  "transcript_view.py", "agent_adapter.py", "harness_bookkeeping.py", "graders/labels4.py",
                  "mode_binding.py", "walk_register.py",       # W8A: run.py and copy_manifest.py import these
-                 "pending_walk.py")                           # live harness (15429361): run.py imports it
+                 "pending_walk.py",                           # live harness (15429361): run.py imports it
+                 "graders/delegation.py")                     # the d7107255 battery ruling: run.py imports it
         with manifest_repository() as (repo, root, folder), tempfile.TemporaryDirectory() as tmp:
             fragment = json.loads((folder / "synthetic.json").read_text())
             entries = {e["path"]: e for e in fragment["files"]}
