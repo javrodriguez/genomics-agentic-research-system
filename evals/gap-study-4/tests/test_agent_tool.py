@@ -23,6 +23,11 @@ tool_use_result, type, uuid}. Everything is synthetic.
   A-models   a sub-agent model is admitted only when it is the pin's (inherit) or one of the 2.1.296 first-party alias
              ids for haiku, sonnet and opus (SUBAGENT_EXPLICIT_MODELS); anything else is named (subagent_model_off),
              and a modelUsage key is a side key only for SIDE_MODELS or an admitted sub-agent model this turn served.
+  A-copy     drive.copy_subagent_files copies <session>/subagents/**/agent-<id>.jsonl byte for byte into the folder's
+             subagents/ and names each (file, agent id, sha256); record_kind scans it as a transcript; _take_records
+             copies before the config folder goes and the ledger names the copies. A file not of the shape derived
+             from 2.1.296 (user or assistant records, isSidechain true, the file's agentId, the session's id, newline
+             only), any other file there, a symlink or a duplicate id HOLDS (DriveRefused). No folder: nothing.
 """
 
 from __future__ import annotations
@@ -213,6 +218,82 @@ def mutant(mod, old, new):
     return m
 
 
+SID = "11111111-2222-3333-4444-555555555555"
+
+
+def side_record(kind="assistant", **over):
+    r = {"parentUuid": None, "isSidechain": True, "agentId": AGENT_ID, "sessionId": SID, "type": kind, "uuid": "u",
+         "timestamp": "t", "version": "2.1.296",
+         "message": {"role": kind, "model": PIN, "content": [{"type": "tool_use", "id": "toolu_sub", "name": "Bash",
+                                                                "input": {"command": "ls"}}]}}
+    r.update(over)
+    return r
+
+
+def config_with(files: dict) -> Path:
+    import tempfile
+    root = Path(tempfile.mkdtemp())
+    proj = root / "projects" / "p"
+    proj.mkdir(parents=True)
+    (proj / f"{SID}.jsonl").write_text("{}\n")
+    for rel, text in files.items():
+        f = proj / SID / "subagents" / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_bytes(text.encode("utf-8"))
+    return proj / f"{SID}.jsonl"
+
+
+def copy_problems(drive=None) -> list:
+    import tempfile
+    if drive is None:
+        import drive
+    out = []
+    good = "".join(json.dumps(r) + "\n" for r in (side_record(), side_record("user")))
+    src = config_with({f"agent-{AGENT_ID}.jsonl": good})
+    folder = Path(tempfile.mkdtemp())
+    try:
+        got = drive.copy_subagent_files(src, SID, folder)
+    except Exception as e:  # noqa: BLE001
+        return [f"A-copy: a file of the derived shape refused: {type(e).__name__}: {e}"]
+    dest = folder / "subagents" / f"agent-{AGENT_ID}.jsonl"
+    import hashlib
+    if got != [{"file": f"subagents/agent-{AGENT_ID}.jsonl", "agent_id": AGENT_ID,
+                "sha256": hashlib.sha256(good.encode()).hexdigest()}] or dest.read_bytes() != good.encode():
+        out.append(f"A-copy: {got}")
+    if drive.record_kind(["subagents", f"agent-{AGENT_ID}.jsonl"]) != "transcript":
+        out.append("A-copy: a copied sub-agent file has no transcript scan kind")
+    if drive.copy_subagent_files(config_with({}), SID, Path(tempfile.mkdtemp())) != []:
+        out.append("A-copy: no folder copied something")
+    held = {
+        "an attachment record": [side_record(type="attachment")],
+        "isSidechain false": [side_record(isSidechain=False)],
+        "another agent id": [side_record(agentId="zzz")],
+        "another session": [side_record(sessionId="other")],
+    }
+    cases = {name: {f"agent-{AGENT_ID}.jsonl": "".join(json.dumps(r) + "\n" for r in recs)}
+             for name, recs in held.items()}
+    cases["a raw U+2028"] = {f"agent-{AGENT_ID}.jsonl": json.dumps(side_record(), ensure_ascii=False)
+                             .replace('"ls"', '"l\u2028s"') + "\n"}
+    cases["a line that is not JSON"] = {f"agent-{AGENT_ID}.jsonl": good + "not json\n"}
+    cases["another file there"] = {f"agent-{AGENT_ID}.jsonl": good, "notes.txt": "x"}
+    cases["a duplicate id"] = {f"agent-{AGENT_ID}.jsonl": good, f"sub/agent-{AGENT_ID}.jsonl": good}
+    for name, files in cases.items():
+        try:
+            drive.copy_subagent_files(config_with(files), SID, Path(tempfile.mkdtemp()))
+            out.append(f"A-copy: {name} was copied, not held")
+        except drive.DriveRefused:
+            pass
+    import ast
+    tree = ast.parse(Path(drive.__file__).read_text())
+    body = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "_take_records")
+    if "copy_subagent_files" not in {c.func.id for c in ast.walk(body) if isinstance(c, ast.Call)
+                                      and isinstance(c.func, ast.Name)}:
+        out.append("A-copy: _take_records does not copy the sub-agent files")
+    if 'ledger["subagents"] = subagents' not in ast.get_source_segment(Path(drive.__file__).read_text(), body):
+        out.append("A-copy: the ledger does not name the copies")
+    return out
+
+
 class TheAgentTool(unittest.TestCase):
     def test_a_view(self):
         self.assertEqual(view_problems(), [])
@@ -222,6 +303,27 @@ class TheAgentTool(unittest.TestCase):
 
     def test_a_models(self):
         self.assertEqual(model_problems(), [])
+
+    def test_a_copy(self):
+        self.assertEqual(copy_problems(), [])
+
+    def test_a_copy_witnesses(self):
+        import drive
+        for name, old, new in (
+                ("the shape unread", "        bad = subagent_shape_problems(text, m.group(1), session_id)\n",
+                 "        bad = []\n"),
+                ("other files copied past", "        if m is None or not p.is_file():\n", "        if False:\n"),
+                ("the agent id unbound", 'rec.get("agentId") != agent_id or ', ""),
+                ("not scanned", 'SUBAGENT_FILE.fullmatch(name):     # Agent parity: a transcript', "False:")):
+            with self.subTest(witness=name):
+                m = mutant(drive, old, new)
+                m.DriveRefused = drive.DriveRefused
+                try:
+                    got = copy_problems(m)
+                except Exception as e:  # noqa: BLE001
+                    got = [f"raised {type(e).__name__}"]
+                print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
+                self.assertTrue(got, name)
 
     def test_a_stream_witnesses(self):
         import claude_code_adapter as cca

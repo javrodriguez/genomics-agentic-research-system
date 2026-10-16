@@ -2542,7 +2542,7 @@ class TakeDriver:
         harness = row["agent"]["harness"]
         vendor = harness in VENDOR_HARNESSES          # live harness integration: its own native evidence, never Claude's
         src = None if vendor else take_session_file(take.config_dir, ident["session_id"])
-        published, text, recorded = None, None, "unrecorded"
+        published, text, recorded, subagents = None, None, "unrecorded", None
         history = (native_history_record(harness, Path(take.folder) / _native_snapshot.SESSION_DIR,
                                          take.native_snapshots) if take.native_hook else None)
         joined = history is not None and history["status"] == "joined"
@@ -2558,6 +2558,7 @@ class TakeDriver:
                 published = publish_transcript(Path(src), Path(take.folder))
             except SystemExit as e:              # scrub.py refuses by SystemExit: a stop here, never an exit
                 raise DriveRefused(f"the session file could not be published: {e}") from None
+            subagents = copy_subagent_files(Path(src), ident["session_id"], Path(take.folder))   # Agent parity, R-A
             path = Path(take.folder) / "transcript.jsonl"
             text = path.read_text(encoding="utf-8", errors="replace")
             recorded = mode_recorded(path)
@@ -2598,6 +2599,8 @@ class TakeDriver:
                   "cross_check": None if take.cross_check is None else list(take.cross_check),
                   "cost": cost,
                   "streams": [os.path.basename(t.stream_path) for t in turns if t.stream_path]}
+        if not vendor:          # glitch-b5's Agent parity ruling (16 Oct 2026): the sub-agent files copied, named, bound
+            ledger["subagents"] = subagents
         ledger["operator_steps"] = [            # the ownership road: operator steps, never agent events
             {"step": OWNERSHIP_STEPS[0], "ok": (take.grant or {}).get("ok"), "record": OWNERSHIP_GRANT_RECORD},
             {"step": OWNERSHIP_STEPS[1], "ok": (take.restore or {}).get("ok"), "record": OWNERSHIP_RESTORE_RECORD}]
@@ -3086,6 +3089,86 @@ def native_history_record(harness: str, session_dir, refs, *, readers=None) -> d
     return {"status": "joined", "why": None, "interactions": len(facts), "basis": NATIVE_HISTORY_BASIS}
 
 
+# ---- THE SUB-AGENT FILES (glitch-b5's Agent parity ruling, 16 Oct 2026, part 2 and R-A) ----------------------------------
+#   2.1.296 writes a sub-agent's own transcript to <projects>/<project>/<session id>/subagents/[<subdir>/]agent-<id>.jsonl
+#   (a static read of the pinned binary), beside the session file. _take_records copies each one byte for byte into the
+#   take or walk folder's subagents/, before published() deletes the config folder, and names it in the driver ledger
+#   (file, agent id, sha256); record_kind scans it as a transcript. Its shape has never been seen live, so its reader
+#   is CLOSED, derived from the binary's sidechain writer: every line one JSON object of type user or assistant,
+#   isSidechain true, agentId the file's id, sessionId the session's, and no line separator but newline. A file of any
+#   other shape, or any other file under subagents/, HOLDS the take or walk for a ruling (DriveRefused), so the first
+#   live Agent walk shows it.
+SUBAGENTS_DIR = "subagents"
+SUBAGENT_FILE = re.compile(r"agent-([A-Za-z0-9_-]{1,64})\.jsonl")
+SUBAGENT_RECORD_TYPES = ("user", "assistant")
+_LINE_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029")
+
+
+def subagent_shape_problems(text: str, agent_id: str, session_id: str) -> list:
+    """Why a sub-agent file is not of the shape this lane derived (an empty list when it is)."""
+    out = []
+    seps = sorted({f"U+{ord(s):04X}" for s in _LINE_SEPARATORS if s in text})
+    if seps:
+        out.append(f"line separator(s) {', '.join(seps)} other than newline")
+    for i, line in enumerate(text.split("\n"), 1):
+        if not line.strip():
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            out.append(f"line {i} is not JSON")
+            continue
+        if not isinstance(rec, dict):
+            out.append(f"line {i} is not an object")
+        elif rec.get("type") not in SUBAGENT_RECORD_TYPES:
+            out.append(f"line {i} is of type {str(rec.get('type'))[:40]!r}, not one of {list(SUBAGENT_RECORD_TYPES)}")
+        elif rec.get("isSidechain") is not True or rec.get("agentId") != agent_id or rec.get("sessionId") != session_id:
+            out.append(f"line {i} does not carry isSidechain true, the file's agentId and the session's id")
+    return out
+
+
+def copy_subagent_files(session_file: Path, session_id: str, folder: Path) -> list:
+    """Copy <session dir>/subagents/**/agent-<id>.jsonl byte for byte into folder/subagents/, keeping its path below
+    subagents/; [{file, agent_id, sha256}] in path order. Anything else there, a symlink, a duplicate agent id or a file
+    not of the derived shape refuses (DriveRefused): the take or walk is held for a ruling, never graded."""
+    base = Path(session_file).parent / session_id / SUBAGENTS_DIR
+    if not base.exists():
+        return []
+    if base.is_symlink() or not base.is_dir():
+        raise DriveRefused(f"{SUBAGENTS_DIR}/ beside the session file is not a folder")
+    out, ids = [], set()
+    for p in sorted(base.rglob("*")):
+        rel = p.relative_to(base)
+        if p.is_symlink():
+            raise DriveRefused(f"{SUBAGENTS_DIR}/{rel.as_posix()} is a symlink: held for a ruling")
+        if p.is_dir():
+            continue
+        m = SUBAGENT_FILE.fullmatch(p.name)
+        if m is None or not p.is_file():
+            raise DriveRefused(f"{SUBAGENTS_DIR}/{rel.as_posix()} is not a sub-agent file of the derived shape "
+                               f"(agent-<id>.jsonl): held for a ruling")
+        if m.group(1) in ids:
+            raise DriveRefused(f"two sub-agent files carry agent id {m.group(1)}: held for a ruling")
+        ids.add(m.group(1))
+        raw = p.read_bytes()
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            raise DriveRefused(f"{SUBAGENTS_DIR}/{rel.as_posix()} is not UTF-8: held for a ruling") from None
+        bad = subagent_shape_problems(text, m.group(1), session_id)
+        if bad:
+            raise DriveRefused(f"{SUBAGENTS_DIR}/{rel.as_posix()} is not of the shape derived from 2.1.296 ({bad[0]}; "
+                               f"{len(bad)} problem(s)): held for a ruling (glitch-b5, 16 Oct 2026)")
+        dest = Path(folder) / SUBAGENTS_DIR / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(raw)
+        out.append({"file": f"{SUBAGENTS_DIR}/{rel.as_posix()}", "agent_id": m.group(1),
+                    "sha256": hashlib.sha256(raw).hexdigest()})
+    return out
+
+
 def take_session_file(config_dir: str, session_id: str) -> str | None:
     """S6c C6: the session file Claude Code wrote for this id under the take's config folder (the container's
     CLAUDE_CONFIG_DIR): <config>/projects/*/<id>.jsonl, round 3's session_file rule (review 11, blocker 3: found by
@@ -3557,6 +3640,8 @@ def record_kind(rel: list, extra: dict | None = None) -> str:
         return EVIDENCE_KINDS.get(rel[1], "evidence") if len(rel) > 2 else "evidence"
     if rel[0] == SESSION_DIR and len(rel) >= 2:
         return "session"
+    if rel[0] == SUBAGENTS_DIR and len(rel) >= 2 and SUBAGENT_FILE.fullmatch(name):     # Agent parity: a transcript
+        return "transcript"
     raise DriveRefused(f"{'/'.join(rel)} in the take folder has no scan kind")
 
 
