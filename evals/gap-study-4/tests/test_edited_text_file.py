@@ -21,6 +21,11 @@ exists; CLAUDE_CODE_DISABLE_ATTACHMENTS would drop kinds round 3 carries. Round 
                edited_text_file shape.
   E-draft      the study draft names the departure: what it is, why it is admitted, that round 3 never showed it.
   E-witness    each clause dropped in an in-memory mutant turns a check red.
+  E-leak       glitch-b5's ruling 2 (16 Oct 2026): the snippet is working-tree file content, what the agent read out of
+               the repository, so check_take.context_text leaves it out of the loaded-context leak sweep. A leak word
+               in the snippet of an admitted record names no leak; the same word in the filename still does; a near
+               miss carrying the word in its snippet is refused by the view and stays whole in the sweep. Another
+               attachment's words are swept as before. Each clause has a witness.
 
 Every fixture here is synthetic; the vocabulary record is read, never written.
 """
@@ -177,6 +182,63 @@ MUTANTS = (
 )
 
 
+def leak_problems(ct=None) -> list:
+    """E-leak, over check_take's own readers (context_text, context_leaks) and the pre-registration's leak words."""
+    import check_take
+    import prereg
+    ct = check_take if ct is None else ct
+    pre = prereg.load()
+    word = "evaluation"
+    if word not in pre["leak_words"]:
+        return [f"E-leak: {word!r} is not a leak word any more; the fixture needs another"]
+    cases = {
+        "a word in an admitted snippet": (record(snippet=f"     3\tStage 00 {word} notes\n"), set(), True),
+        "the word in the filename": (record(filename=f"/synthetic/{word}/HISTORY.md"), {word}, True),
+        "a near miss carrying it in its snippet": (record(snippet=f"{word}", commandMode="prompt"), {word}, False),
+        "a near miss with the type misspelled": (record(type="Edited_text_file", snippet=word), {word}, False),
+        "another attachment's words": ({"type": "attachment", "attachment": {"type": "date", "date": word}}, {word},
+                                       True),
+    }
+    out = []
+    for name, (rec, want, admitted) in cases.items():
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "transcript.jsonl"
+            p.write_text("\n".join(lines(OP, rec)) + "\n")
+            got = ct.context_leaks(ct.context_text(p), pre)
+            try:
+                tv.events(CC, p)
+                read = True
+            except tv.ViewError:
+                read = False
+        if got != want:
+            out.append(f"E-leak {name}: the sweep names {sorted(got)}, not {sorted(want)}")
+        if read != admitted:
+            out.append(f"E-leak {name}: the view {'reads' if read else 'refuses'} it")
+    return out
+
+
+def check_take_mutant(old: str, new: str):
+    import check_take
+    src = Path(check_take.__file__).read_text(encoding="utf-8")
+    if src.count(old) != 1:
+        raise AssertionError(f"mutation site occurs {src.count(old)} times: {old!r}")
+    m = types.ModuleType("check_take_mutant")
+    m.__file__ = check_take.__file__
+    sys.modules[m.__name__] = m
+    try:
+        exec(compile(src.replace(old, new), check_take.__file__, "exec"), m.__dict__)
+    finally:
+        del sys.modules[m.__name__]
+    return m
+
+
+LEAK_MUTANTS = (
+    ("snippet swept", "            out.append(_swept_attachment_line(rec, line))", "            out.append(line)"),
+    ("filename dropped too", 'if k != "snippet"}', 'if k == "type"}'),
+    ("shape unchecked", "and transcript_view.is_edited_text_file(att)", ""),
+)
+
+
 class TheEditedTextFileAttachment(unittest.TestCase):
     def test_e_admit_a_w041_shaped_record(self):
         self.assertEqual(admit_problems(), [])
@@ -203,6 +265,24 @@ class TheEditedTextFileAttachment(unittest.TestCase):
                      "lane-reports/attachment-vocabulary-20261016/edited-text-file-trigger-20261015.json"):
             self.assertIn(word, dep["text"])
         self.assertIn("edited_text_file", draft["harness_furniture_ruling"]["source"])
+
+    def test_e_leak_the_snippet_is_repository_content(self):
+        self.assertEqual(leak_problems(), [])
+
+    def test_e_leak_witnesses(self):
+        for name, old, new in LEAK_MUTANTS:
+            with self.subTest(clause=name):
+                got = leak_problems(check_take_mutant(old, new))
+                print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
+                self.assertTrue(got, name)
+
+    def test_e_draft_names_the_leak_scope(self):
+        draft = json.loads((HERE / "prereg-draft.json").read_text())
+        (dep,) = [d for d in draft["harness_furniture_ruling"]["departures"] if d["of"] == KIND]
+        for word in ("RULED 16 Oct (glitch-b5)", "working-tree file content", "left out of the loaded-context leak sweep",
+                     "check_take.context_text", "type and filename stay in the sweep",
+                     "no check reads repository content for leak words", "never left out"):
+            self.assertIn(word, dep["text"])
 
     def test_e_witnesses(self):
         for name, old, new in MUTANTS:

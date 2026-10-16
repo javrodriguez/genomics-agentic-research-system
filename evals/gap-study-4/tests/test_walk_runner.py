@@ -1023,6 +1023,10 @@ BOOTSTRAP_SPANS = (
      "    # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm",
      # and the isolation denials' line (glitch-6b's isolation ruling, 15 Oct 2026)
      "b44680e34254e3cc2556b34efca350fe155ed7c7e768e67c3a4f0d5ffaf63e6e"),
+    # glitch-b5's ruling 2 (16 Oct 2026): context_text's one append line sweeps an admitted edited_text_file without its
+    # snippet (check_take's appended _swept_attachment_line); no line moves.
+    ("context-text", "def context_text(path: Path) -> str:\n", "\n\ndef context_leaks(",
+     "393ae37ff8f2083fca95eea0fdfcaa61e04a004ace0562f01716f6273d8748b0"),
 )
 
 

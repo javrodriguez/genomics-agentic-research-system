@@ -140,7 +140,7 @@ def context_text(path: Path) -> str:
         except json.JSONDecodeError:
             continue
         if isinstance(rec, dict) and rec.get("type") == "attachment":
-            out.append(line)
+            out.append(_swept_attachment_line(rec, line))  # ROUND 4 (ruling 2): an edited file's snippet is repository content
     return " ".join(out).lower()
 
 
@@ -2752,6 +2752,24 @@ def denied_tool_problems(path: Path) -> list[str]:
             problems.append(f"[{HARNESS_CONDITION_VIOLATED}] a deferred_tools_delta adds {offered}: the isolation "
                             f"denials did not hold")
     return problems
+
+
+
+# ---- THE EDITED FILE'S SNIPPET (glitch-b5's ruling 2, 16 Oct 2026, on the edited_text_file departure) -----------------
+#   context_text's own contract: what the agent read out of the repository is handled apart from the loaded-context
+#   leak sweep. An edited_text_file's snippet is the changed lines of a working-tree file the agent had read whole, so
+#   one line of context_text (edited in place, no line moves; tests/test_walk_runner.py's context-text span) sweeps an
+#   admitted record without its snippet. Only a record of exactly the view's closed shape (transcript_view.
+#   is_edited_text_file) loses it; its type and filename stay in the sweep, and every other record is swept whole. No
+#   check in this file reads repository content for leak words (the path readers, study_paths_read and the outside
+#   reads, read tool-call paths), so the snippet is routed to none.
+def _swept_attachment_line(rec: dict, line: str) -> str:
+    """The text context_text sweeps for one attachment record: an admitted edited_text_file without its snippet,
+    anything else the line as written."""
+    att = rec.get("attachment")
+    if isinstance(att, dict) and transcript_view.is_edited_text_file(att):
+        return json.dumps(dict(rec, attachment={k: v for k, v in att.items() if k != "snippet"}), ensure_ascii=False)
+    return line
 
 
 if __name__ == "__main__":

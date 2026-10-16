@@ -553,6 +553,18 @@ def _edited_text_file_item(a) -> list:
     return [RawItem("attachment:" + CC_EDITED_TEXT_FILE, HARNESS, text=a["snippet"])]
 
 
+def is_edited_text_file(a) -> bool:
+    """glitch-b5's ruling 2 (16 Oct 2026): whether an attachment is an edited_text_file of exactly the admitted closed
+    shape (the reader's own clauses), so check_take leaves only such a record's snippet out of its leak sweep."""
+    if not (isinstance(a, dict) and a.get("type") == CC_EDITED_TEXT_FILE):
+        return False
+    try:
+        _edited_text_file_item(a)
+    except ViewError:
+        return False
+    return True
+
+
 class VendorBoundParser:
     """The published vendor road requires a ledger-bound file, not loose lines."""
     def __init__(self, harness):

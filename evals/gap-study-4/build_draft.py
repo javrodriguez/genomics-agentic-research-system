@@ -1290,7 +1290,7 @@ SIDECAR_WATCH_RULING = {
 HARNESS_FURNITURE_RULING = {
     "source": "glitch-6b's item H, 15 Oct 2026 (CP6 walk w032); glitch-6b's steer-off and isolation rulings, "
               "15 Oct 2026 (the box lane report's item 2); glitch-6b's ruling 1 on edited_text_file, 15 Oct 2026 "
-              "(CP6 walk w041)",
+              "(CP6 walk w041); glitch-b5's ruling 2 on its leak scope, 16 Oct 2026",
     "departures": [
         {"of": "auto_mode", "text": "Claude Code 2.1.296 writes an auto_mode attachment that round 3's 54 graded transcripts never "
          "carry; no round-3 take carries it. One round-3 walk does (walks/template-adherence/1, claude-sonnet-5 at "
@@ -1332,7 +1332,11 @@ HARNESS_FURNITURE_RULING = {
          "refuses) and reads it as harness furniture: its snippet is the event's text, not the agent's or the "
          "operator's words, so the awareness furniture check counts it and no grader reads it as the agent's words. Every "
          "other attachment kind the pinned binary names and the view does not list still refuses. Static read of the "
-         "binary: lane-reports/attachment-vocabulary-20261016/edited-text-file-trigger-20261015.json."}],
+         "binary: lane-reports/attachment-vocabulary-20261016/edited-text-file-trigger-20261015.json. RULED 16 Oct "
+         "(glitch-b5), the leak scope: the snippet is working-tree file content the agent read, so it is left out of "
+         "the loaded-context leak sweep (check_take.context_text), as content read out of the repository is; its "
+         "type and filename stay in the sweep, and no check reads repository content for leak words. A record that "
+         "is not of the closed shape is refused and never left out."}],
     "walk_scope": "RULED 15 Oct 2026 (glitch-6b): the 25 pre-ruling walks are not rechecked under the steer and "
                   "isolation guards. They are rehearsal records of the earlier conditions and never cover CP6; replayed "
                   "under the isolation guard all 25 refuse, as expected (box lane). Every line reruns under the new ship "
