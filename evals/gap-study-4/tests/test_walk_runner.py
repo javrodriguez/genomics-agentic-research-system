@@ -222,8 +222,10 @@ def own_mutants():
         "walk-check-unwritten": ("R1.chain", "walk_runner",
                                  "    write_check(folder, check_record(walk, records, table, route_fn, checked=checked,\n"
                                  "                                     constants_sha256=read(row) if callable(read) else "
-                                 "None))\n",
-                                 ""),    # BOOTSTRAP: re-anchored on the call that now passes the checker's digest
+                                 "None,\n"
+                                 "                                     no_output_nudges=nudges(row) if callable(nudges) "
+                                 "else None))\n",
+                                 ""),    # re-anchored on the call that passes the digest and (ruling 3) the nudge count
         "checked-always": ("R3.dead-walk", "walk_runner", "\"checked\": checked is True", "\"checked\": True"),
         "walk-launch-journal-not-a-turn": ("R3.dead-walk", "drive",       # integration red A3 (glitch-06, 14 Oct)
                                            "\n                 or LAUNCH_JOURNAL_NAME.fullmatch(n))", ")"),
@@ -1002,8 +1004,9 @@ BOOTSTRAP_SPANS = (
      "c3baa5bc41c095a1259592c830aec147df7167525fd5624c6ec7c6a2a38a3efe"),
     ("checker-constants", "# The keys round 3's check() reads that the round-4 draft does not carry (s6b plan, section 0). "
                           "A closed block: a key\n", "\n\ndef harness_guard(",
-     # glitch-6b's scheduled-wakeup ruling (15 Oct 2026): harness_delivered_user_records gains meta_kinds.
-     "958af31171c9758cdf4c5df7056aca446e92d1afe24f9391b980839e7e3b7bf9"),
+     # glitch-6b's scheduled-wakeup ruling (15 Oct 2026): harness_delivered_user_records gains meta_kinds; glitch-b5's
+     # ruling 3 (16 Oct 2026, w053): meta_kinds also names the no-visible-output nudge.
+     "6b43580ce1a777062f7d5dc7bd2c40ed6939c037c0bf417f228aa71cd9ef8c79"),
     ("r4c10-comment", "#           none (a context variable, so parallel takes never see each other's), else "
                       "prereg.load() as in round 3.\n", "#   R4C-11.",
      "4ec1ebccb7591883e7a87ccb70946669e240acb341205f62405e8e380cc1b3de"),
@@ -1423,6 +1426,20 @@ class R8WalkRoad(Case):
         check = json.loads((self.folder / "check.json").read_text())
         self.assertEqual(check["checker_constants_sha256"], ct.checker_constants_sha256(self.w.constants))
         self.assertNotEqual(check["checker_constants_sha256"], ct.checker_constants_sha256())
+
+    def test_the_walk_records_its_no_output_nudge_count(self):
+        """glitch-b5's ruling 3 (16 Oct 2026): check.json carries the nudges the checked transcript holds (none in the
+        rig's), read through the driver from take_checker; check_record writes the count it is handed, null when the
+        checker did not run."""
+        check = json.loads((self.folder / "check.json").read_text())
+        self.assertIs(type(check["no_output_nudges"]), int)
+        self.assertEqual(check["no_output_nudges"], MODS["check_take"].no_output_nudges(self.folder / "transcript.jsonl"))
+        wr = MODS["walk_runner"]
+        route = lambda records, table: {"route": "rehearsal"}  # noqa: E731
+        args = ("w001", {"checker_reasons": []}, {}, route)
+        self.assertEqual(wr.check_record(*args, checked=True, no_output_nudges=3)["no_output_nudges"], 3)
+        self.assertIsNone(wr.check_record(*args, checked=False, no_output_nudges=3)["no_output_nudges"])
+        self.assertIsNone(wr.check_record(*args, checked=True)["no_output_nudges"])
 
     def test_the_cap_and_the_poll(self):
         """BOOTSTRAP B4 (15 Oct 2026): check4_walk binds the walk ledger's quiescence cap and poll interval."""

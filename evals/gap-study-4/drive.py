@@ -2884,6 +2884,13 @@ class TakeDriver:
             take = self._by_slot.get(row.get("slot")) if isinstance(row, dict) else None
         return getattr(take, "checker_constants_sha256", None)
 
+    def no_output_nudges(self, row: dict):
+        """glitch-b5's ruling 3 (i): how many no-visible-output nudges the transcript the checker read carries
+        (take_checker records it), or None when no checker read one; read by walk_runner into check.json."""
+        with self._lock:
+            take = self._by_slot.get(row.get("slot")) if isinstance(row, dict) else None
+        return getattr(take, "no_output_nudges", None)
+
     def published(self, row: dict, attempt: int) -> None:
         """TakeRepo's on_published (R4-11): the take's records are committed, so its config folder is deleted (by
         the path launch recorded), and the slot's next take starts clean."""
@@ -3295,6 +3302,7 @@ def take_checker(*, design_for, records="takes"):
             return {"checker_reasons": [READERS_DISAGREE], "checker_events": dict.fromkeys(ids, 0)}
         design = design_for(row, take)
         take.checker_constants_sha256 = _ct.design_constants_sha256(design)   # BOOTSTRAP: the constants it read
+        take.no_output_nudges = _ct.no_output_nudges(path)       # glitch-b5's ruling 3: the nudges it carries
         if records == "walks":                    # D1: the round-4 walk road
             got = _ct.check4_walk(path, row["task"], row["half"], row["walk"], wording_script=design.script,
                                   arm=row["arm"], design=design)

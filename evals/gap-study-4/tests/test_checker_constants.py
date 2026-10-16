@@ -222,10 +222,11 @@ def k_poll(c):
 def k_origin(c):
     h = c.get("harness_delivered_user_records")
     out = []
+    # glitch-b5's ruling 3 (16 Oct 2026, w053): meta_kinds also names the no-visible-output nudge
     if h != {"origin_kinds": [transcript_view.CC_TASK_NOTIFICATION],
-             "meta_kinds": [transcript_view.CC_SCHEDULED_WAKEUP]}:
+             "meta_kinds": [transcript_view.CC_SCHEDULED_WAKEUP, transcript_view.CC_NO_OUTPUT_NUDGE]}:
         out.append(f"K-origin: {h!r} is not exactly origin_kinds [transcript_view.CC_TASK_NOTIFICATION] and meta_kinds "
-                   f"[transcript_view.CC_SCHEDULED_WAKEUP]")
+                   f"[transcript_view.CC_SCHEDULED_WAKEUP, transcript_view.CC_NO_OUTPUT_NUDGE]")
     if (h or {}).get("origin_kinds") != r3()["harness_delivered_user_records"]["origin_kinds"]:
         out.append("K-origin: the origin kinds are not round 3's")
     if "meta_kinds" in r3()["harness_delivered_user_records"]:

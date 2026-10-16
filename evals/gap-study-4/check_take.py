@@ -2044,7 +2044,11 @@ CHECKER_CONSTANTS = {
     # of the earlier ScheduleWakeup call's prompt input and of the queue-operation enqueue at line 109); the pinned
     # 2.1.296 binary passes isMeta, modelScheduledOrigin and wakeupSource for a model wakeup (the investigator's read;
     # the same three names are in the 2.1.280 binary on the Mac, so round 3's absence is behaviour, not vocabulary).
-    "harness_delivered_user_records": {"origin_kinds": ["task-notification"], "meta_kinds": ["scheduled-wakeup"]},
+    # glitch-b5's ruling 3 (16 Oct 2026, CP6 walk w053): meta_kinds also names transcript_view.CC_NO_OUTPUT_NUDGE, the
+    # 2.1.296 no-visible-output nudge (a named departure; the same code path is in 2.1.267 and 2.1.280, and round 3's
+    # 64 transcripts carry no isMeta record), admitted by transcript_view.is_no_output_nudge alone.
+    "harness_delivered_user_records": {"origin_kinds": ["task-notification"],
+                                       "meta_kinds": ["scheduled-wakeup", "no-visible-output-nudge"]},
     # (b) derived, equals R3 (run_location.excluded_from_the_run_tree's paths, checkout_identity, checkout_subject):
     # box/preflight.py STUDY_PATHS (Javier's CP5 ruling, 14 Oct 08:11), drive.TREE_IDENTITY[0], drive.TREE_SUBJECT.
     # Named departure: the run tree is exported from the pin (variants.PINNED_TREE), not HEAD.
@@ -2488,16 +2492,20 @@ import transcript_view  # noqa: E402
 
 
 class _Wakeups:
-    """One user_text_records pass: transcript_view.ScheduledWakeups, gated on the pre-registration's meta_kinds."""
+    """One user_text_records pass: transcript_view.ScheduledWakeups, and (glitch-b5's ruling 3) the no-visible-output
+    nudge, each gated on the pre-registration's meta_kinds."""
 
-    def __init__(self, admit: bool):
-        self.admit, self.seen = admit, transcript_view.ScheduledWakeups()
+    def __init__(self, admit: bool, nudge: bool = False):
+        self.admit, self.nudge, self.seen = admit, nudge, transcript_view.ScheduledWakeups()
 
     def read(self, rec, harness: list) -> bool:
-        """True (the record is read here) when the record is an admitted wakeup, its text then added to `harness`;
-        otherwise the record is noted (a ScheduleWakeup call, or its result arming the prompt)."""
+        """True (the record is read here) when the record is an admitted wakeup or nudge, its text then added to
+        `harness`; otherwise the record is noted (a ScheduleWakeup call, or its result arming the prompt)."""
         if not isinstance(rec, dict):
             return False
+        if self.nudge and transcript_view.is_no_output_nudge(rec):
+            harness.append(rec["message"]["content"])
+            return True
         if self.admit and self.seen.admit(rec):
             if rec["message"]["content"].strip():
                 harness.append(rec["message"]["content"])
@@ -2508,7 +2516,19 @@ class _Wakeups:
 
 def _wakeups(pre: dict) -> _Wakeups:
     meta = set((pre.get("harness_delivered_user_records") or {}).get("meta_kinds") or [])
-    return _Wakeups(transcript_view.CC_SCHEDULED_WAKEUP in meta)
+    return _Wakeups(transcript_view.CC_SCHEDULED_WAKEUP in meta, transcript_view.CC_NO_OUTPUT_NUDGE in meta)
+
+
+def no_output_nudges(path: Path) -> int:
+    """glitch-b5's ruling 3 (i): how many no-visible-output nudges the transcript carries, read from the raw lines by
+    the view's own predicate (walk_runner writes it into check.json, so analysis can stratify by it)."""
+    recs = []
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            recs.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return sum(1 for rec in recs if transcript_view.is_no_output_nudge(rec))
 
 
 # THE STUDY CONDITIONS ON EVERY CLAUDE-CODE TURN (glitch-6b's rulings, 15 Oct 2026, under Javier's delegation; Javier

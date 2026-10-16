@@ -72,6 +72,10 @@ documented inputs for that tool; any other key refuses the take.
     earlier admitted wakeup has consumed (ScheduledWakeups: each call arms its prompt once; a wakeup
     consumes the earliest equal one). Its raw type is `user:scheduled-wakeup`. Every other isMeta
     record is refused as before. check_take.user_text_records imports the same predicate.
+    A SECOND isMeta record is admitted, as harness (glitch-b5's ruling 3, 16 Oct 2026, on CP6 walk w053): the
+    no-visible-output nudge, when is_no_output_nudge holds: type `user`, isMeta and turnCompanion the boolean true,
+    string content equal to CC_NO_OUTPUT_NUDGE_TEXT byte for byte, no origin, no isApiErrorMessage, not a sidechain.
+    Its raw type is `user:no-visible-output-nudge`; it never starts a turn.
 
 THE RAW FIELDS THE `claude-code` PARSER READS (interface 6; a closed list):
 
@@ -293,6 +297,18 @@ CC_WAKEUP_TOOL = "ScheduleWakeup"
 CC_WAKEUP_TURN_ORIGIN = "scheduled"
 CC_WAKEUP_PROMPT_SOURCE = "system"
 CC_WAKEUP_ABSENT_KEYS = ("isApiErrorMessage",)
+# glitch-b5's ruling 3 (16 Oct 2026; CP6 walk w053, Haiku, held on transcript line 107): the second isMeta record
+# admitted, as harness, a NAMED DEPARTURE from round 3 (whose 64 transcripts carry no isMeta record). When a model
+# response ends with end_turn or stop_sequence, is not an API error and carries no text block with visible text, the
+# 2.1.296 query loop (offset 224269128; the string at 207900138) writes a user record {isMeta: true, turnCompanion:
+# true} whose content is exactly CC_NO_OUTPUT_NUDGE_TEXT and asks the model again; at most once per model round, the
+# guard reset after each tool round; no env or setting gates it. 2.1.267 and 2.1.280 carry the same path. Admitted
+# by is_no_output_nudge alone: type user, isMeta the boolean true, turnCompanion the boolean true, string content
+# equal to the text byte for byte, no origin, no isApiErrorMessage, not a sidechain. Its raw type is
+# `user:no-visible-output-nudge`. Every other isMeta record is refused as before.
+CC_NO_OUTPUT_NUDGE = "no-visible-output-nudge"
+CC_NO_OUTPUT_NUDGE_TEXT = ("[Your previous response had no visible output. Please continue and produce a user-visible "
+                           "response.]")
 
 
 def _genuine_agent_record(rec) -> bool:
@@ -336,6 +352,17 @@ def tool_results(rec) -> list:
     content = msg.get("content") if isinstance(msg, dict) else None
     return [(b.get("tool_use_id"), b.get("is_error") is True) for b in content if isinstance(b, dict)
             and b.get("type") == "tool_result"] if isinstance(content, list) else []
+
+
+def is_no_output_nudge(rec) -> bool:
+    """glitch-b5's ruling 3: the 2.1.296 no-visible-output nudge, exactly; shared by check_take's record reader."""
+    if not (isinstance(rec, dict) and rec.get("type") == "user" and rec.get("isMeta") is True
+            and rec.get("turnCompanion") is True):
+        return False
+    if rec.get("isSidechain") is True or any(k in rec for k in ("isApiErrorMessage", "origin")):
+        return False
+    msg = rec.get("message")
+    return isinstance(msg, dict) and msg.get("content") == CC_NO_OUTPUT_NUDGE_TEXT      # only a str equals it (JSON)
 
 
 def is_scheduled_wakeup(rec, armed) -> bool:
@@ -424,6 +451,8 @@ class ClaudeCodeSessionParser:
         flagged = [flag for flag in CC_REFUSED_FLAGS if flag in r]
         if flagged and wakeups is not None and wakeups.admit(r):
             return [RawItem("user:" + CC_SCHEDULED_WAKEUP, HARNESS, text=r["message"]["content"])]
+        if flagged and is_no_output_nudge(r):
+            return [RawItem("user:" + CC_NO_OUTPUT_NUDGE, HARNESS, text=r["message"]["content"])]
         for flag in flagged:
             raise ViewError(f"a record carrying {flag}: the harness wrote it itself, refused")
         if t == "user":

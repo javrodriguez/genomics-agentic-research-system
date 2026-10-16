@@ -90,6 +90,19 @@ def coverage_status(base, walk: str):
 
 
 CHECK_KEYS = ("walk", "checked", "checker_reasons", "events", "route", "route_refused", "checker_constants_sha256")
+# glitch-b5's ruling 3 (16 Oct 2026): walk_runner.check_record also writes the walk's no-visible-output nudge count; a
+# check.json written before the ruling lacks it. Either shape is walk_runner's; the count is an int >= 0 or null.
+CHECK_NUDGE_KEY = "no_output_nudges"
+
+
+def check_keys_ok(check) -> bool:
+    """check.json carries exactly walk_runner's keys, with or without the nudge count, and that count is a count."""
+    if not isinstance(check, dict):
+        return False
+    if set(check) == set(CHECK_KEYS):
+        return True
+    n = check.get(CHECK_NUDGE_KEY)
+    return set(check) == set(CHECK_KEYS) | {CHECK_NUDGE_KEY} and (n is None or (type(n) is int and n >= 0))
 
 
 def checker_standing(base, walk: str):
@@ -108,7 +121,7 @@ def checker_standing(base, walk: str):
         check = json.loads((Path(base) / walk / "check.json").read_bytes())
     except (OSError, ValueError):
         return "check unreadable"
-    if not isinstance(check, dict) or set(check) != set(CHECK_KEYS) or check.get("checked") is not True \
+    if not check_keys_ok(check) or check.get("checked") is not True \
             or check.get("route_refused") is not None or not isinstance(check.get("route"), str) \
             or not isinstance(check.get("checker_reasons"), list):
         return "check unreadable"

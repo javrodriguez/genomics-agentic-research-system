@@ -356,7 +356,7 @@ def _untampered(root: Path, walk_rel: str, commit: str, names) -> None:
 def _check_fields(doc, name) -> dict:
     """The superseded file's digest and reasons. check.json must be walk_runner's document with the checker run."""
     import pending_walk
-    if name == "check.json" and (not isinstance(doc, dict) or set(doc) != set(pending_walk.CHECK_KEYS)
+    if name == "check.json" and (not pending_walk.check_keys_ok(doc)
                                  or doc.get("checked") is not True):
         raise RegradeRefused("the walk's check.json is not walk_runner's document with the checker run; a recheck "
                              "re-runs a checker that ran, never runs it first")

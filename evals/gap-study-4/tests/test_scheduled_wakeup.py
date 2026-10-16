@@ -295,7 +295,8 @@ class TheAdmitRule(unittest.TestCase):
 
     def test_the_constant_names_the_kind(self):
         self.assertEqual(ct.CHECKER_CONSTANTS["harness_delivered_user_records"],
-                         {"origin_kinds": [tv.CC_TASK_NOTIFICATION], "meta_kinds": [tv.CC_SCHEDULED_WAKEUP]})
+                         {"origin_kinds": [tv.CC_TASK_NOTIFICATION],      # + glitch-b5's ruling 3 (w053)
+                          "meta_kinds": [tv.CC_SCHEDULED_WAKEUP, tv.CC_NO_OUTPUT_NUDGE]})
 
 
 # Each clause of the predicate, the consumption, the arming filters, and check_take's use: (name, module, old, new).
@@ -348,7 +349,8 @@ class TheWitnesses(unittest.TestCase):
         self.assertTrue(got)
 
     def test_check_take_dropping_the_gate_goes_red(self):
-        m = source_mutant(ct, "return _Wakeups(transcript_view.CC_SCHEDULED_WAKEUP in meta)", "return _Wakeups(True)")
+        m = source_mutant(ct, "return _Wakeups(transcript_view.CC_SCHEDULED_WAKEUP in meta, ",   # ruling 3: two gates
+                         "return _Wakeups(True, ")
         ops, harness, _, _ = record_reader(W006, meta=False, mod=m)
         print(f"\nWITNESS check_take-gate: {'red' if len(ops) != 3 else 'NOT KILLED'}", end=" ", file=sys.stderr)
         self.assertNotEqual(len(ops), 3)

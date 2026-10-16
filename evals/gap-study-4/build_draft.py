@@ -1233,7 +1233,7 @@ CHECKER_CONSTANTS_RULING = {
     ],
     "derived": [
         {"constant": "harness_delivered_user_records", "from": "transcript_view.CC_TASK_NOTIFICATION; equals round 3; "
-         "meta_kinds from transcript_view.CC_SCHEDULED_WAKEUP (a departure, below)",
+         "meta_kinds from transcript_view.CC_SCHEDULED_WAKEUP and CC_NO_OUTPUT_NUDGE (departures, below)",
          "evidence": "task-notification is present in the 2.1.296 binary (box ba6d7f14)"},
         {"constant": "run_location", "from": "box/preflight.py STUDY_PATHS (Javier's CP5 ruling, 14 Oct 2026); "
          "drive.TREE_IDENTITY and drive.TREE_SUBJECT; equals round 3"},
@@ -1261,7 +1261,10 @@ CHECKER_CONSTANTS_RULING = {
          "promptSource system, no origin, and string content equal to the prompt of an earlier ScheduleWakeup call "
          "that no earlier wakeup consumed (transcript_view.is_scheduled_wakeup, which check_take's record reader "
          "imports). Every other isMeta record is still refused. A watch for the freeze: a wakeup with a long delay "
-         "keeps -p alive inside the 900 s turn budget, so any walk that reaches it is read before the freeze."},
+         "keeps -p alive inside the 900 s turn budget, so any walk that reaches it is read before the freeze. A "
+         "second kind, no-visible-output-nudge (glitch-b5's ruling 3, 16 Oct 2026, walk w053), is the 2.1.296 "
+         "nudge after a response with no visible output, admitted by transcript_view.is_no_output_nudge alone; it "
+         "is named under harness_furniture_ruling."},
     ],
     "limitations": [
         {"constant": "environment_record", "text": "The vocabulary is used for recording only; the box's environment "
@@ -1290,7 +1293,8 @@ SIDECAR_WATCH_RULING = {
 HARNESS_FURNITURE_RULING = {
     "source": "glitch-6b's item H, 15 Oct 2026 (CP6 walk w032); glitch-6b's steer-off and isolation rulings, "
               "15 Oct 2026 (the box lane report's item 2); glitch-6b's ruling 1 on edited_text_file, 15 Oct 2026 "
-              "(CP6 walk w041); glitch-b5's ruling 2 on its leak scope, 16 Oct 2026",
+              "(CP6 walk w041); glitch-b5's ruling 2 on its leak scope, 16 Oct 2026; glitch-b5's ruling 3 on the "
+              "no-visible-output nudge, 16 Oct 2026 (CP6 walk w053)",
     "departures": [
         {"of": "auto_mode", "text": "Claude Code 2.1.296 writes an auto_mode attachment that round 3's 54 graded transcripts never "
          "carry; no round-3 take carries it. One round-3 walk does (walks/template-adherence/1, claude-sonnet-5 at "
@@ -1336,7 +1340,24 @@ HARNESS_FURNITURE_RULING = {
          "(glitch-b5), the leak scope: the snippet is working-tree file content the agent read, so it is excluded from "
          "the loaded-context leak sweep (check_take.context_text), as content read from the repository is; its "
          "type and filename stay in the sweep, and no check reads repository content for leak words. A record that "
-         "is not of the closed shape is refused and never left out."}],
+         "is not of the closed shape is refused and never left out."},
+        # glitch-b5's ruling 3 (16 Oct 2026; CP6 walk w053, Haiku, held on transcript line 107).
+        {"of": "no-visible-output-nudge", "text": "Claude Code 2.1.296 writes a user record carrying isMeta true and "
+         "turnCompanion true, whose content is exactly \"[Your previous response had no visible output. Please "
+         "continue and produce a user-visible response.]\", when a model response ends with end_turn or stop_sequence, "
+         "is not an API error and has no text block with visible text (not for the compact or side query sources, "
+         "and not right after a StructuredOutput call or the tools named in CLAUDE_CODE_TERMINAL_MCP_TOOLS). It drops "
+         "the empty response and asks the model again. A guard allows it at most once per model round; the guard is "
+         "reset after each tool round, so it can recur later in one operator turn, and a second empty response in a "
+         "row ends the turn. There is no switch: no env or setting gates it. Static read of the pinned binary "
+         "(sha256 24972e3b...): the trigger at offset 224269128, the string at 207900138. Round 3's versions carry "
+         "the same path (2.1.267 at offset 188247583, 2.1.280 at offset 205033400), and round 3's 64 transcripts "
+         "(54 graded, 8 walks, 2 rehearsals) carry no isMeta record, so it never fired there. Walk w053 (Haiku) is "
+         "the first record of it. RULED 16 Oct (glitch-b5): a named departure. Exactly that record (type user, both "
+         "flags the boolean true, the content byte for byte, no origin) is read as harness furniture, never an "
+         "operator line and never the agent's words; it starts no turn, and only the exact string is set apart from "
+         "the operator lines the leak check reads. Every other isMeta record is still refused. Each walk's check.json "
+         "records how many the checked transcript carries (no_output_nudges), so analysis can stratify by it."}],
     "walk_scope": "RULED 15 Oct 2026 (glitch-6b): the 25 pre-ruling walks are not rechecked under the steer and "
                   "isolation guards. They are rehearsal records of the earlier conditions and never cover CP6; replayed "
                   "under the isolation guard all 25 refuse, as expected (box lane). Every line reruns under the new ship "
