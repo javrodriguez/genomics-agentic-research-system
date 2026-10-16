@@ -135,13 +135,16 @@ def checker_standing(base, walk: str):
     if not (isinstance(events, dict) and set(events) == {"outside_reach"} and type(events["outside_reach"]) is int
             and events["outside_reach"] >= 0):
         return "check unreadable"
-    own, nudges = check.get("checker_constants_sha256"), check.get(CHECK_NUDGE_KEY)   # check.json's own reading
+    nudges = check.get(CHECK_NUDGE_KEY)                       # check.json's own count
     latest = latest_recheck(base, walk)      # the recheck-coverage ruling (glitch-6b, 15 Oct 2026)
     if isinstance(latest, str):
         return latest
+    eff_nudges = nudges
     if latest is not None:
         check = dict(check, checker_reasons=latest["checker_reasons"],
                      checker_constants_sha256=latest["checker_constants_sha256"])
+        eff_nudges = latest.get(CHECK_NUDGE_KEY)
+
     import routing                        # review MINOR 2: every reason a str of the pre-registered vocabulary
     vocabulary = routing.load_table()["operator_reasons"]
     if not isinstance(check["checker_reasons"], list) or \
@@ -155,8 +158,10 @@ def checker_standing(base, walk: str):
     except check_take.CheckRefused:
         return "the checker constants in force are PENDING"
     # review r6 MINOR 2 (glitch-b5, 16 Oct 2026): a walk checked under the constants in force carries its nudge count;
-    # null (or no key) stands only for a check.json written under older constants
-    if own == now and not valid_nudge_count(nudges):
+    # null (or no key) stands only for a reading under older constants. Review r7 MINOR 2: the reading that counts is
+    # the EFFECTIVE one, the latest recheck's when there is one (its count, which walk_regrade recomputes), else
+    # check.json's own
+    if check.get("checker_constants_sha256") == now and not valid_nudge_count(eff_nudges):
         return "check unreadable: no no-visible-output nudge count under the checker constants in force"
     if check.get("checker_constants_sha256") != now:
         return "stale: checked under other checker constants; regrade it"
@@ -201,7 +206,8 @@ def latest_recheck(base, walk: str):
             or doc.get("walk") != walk \
             or type(doc.get("n")) is not int or type(e.get("n")) is not int or doc["n"] != e["n"]:
         return f"recheck file does not carry its register entry's walk, ordinal and digest: {e['file']}"
-    return {"checker_reasons": doc.get("checker_reasons"), "checker_constants_sha256": doc["checker_constants_sha256"]}
+    return {"checker_reasons": doc.get("checker_reasons"), "checker_constants_sha256": doc["checker_constants_sha256"],
+            CHECK_NUDGE_KEY: doc.get(CHECK_NUDGE_KEY)}            # review r7: null in a recheck written before it
 
 
 def uncounted_walks(base, walks) -> dict:

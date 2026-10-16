@@ -316,6 +316,42 @@ class TheRecheck(twr.Case):
                 self.assertEqual(got == [], ok, got)
 
 
+class TheNudgeRederivation(twr.Case):
+    """Review r7 (glitch-b5, 16 Oct 2026), over committed fixture walks: a recheck carries check_take's count of the
+    committed transcript (R7-2); a walk committed with a forged count is named by --check's re-derivation and refused
+    by a recheck; a walk whose transcript is gone at HEAD is named (R7-3)."""
+
+    def test_rn_a_recheck_carries_the_transcripts_count(self):
+        import mode_binding as mb
+        with twr.study() as w:
+            r = Rig(w)
+            doc = self.must("RN-count", r.doc)
+            want = r.ct.no_output_nudges(w.root / mb.WALKS_DIR / WALK / "transcript.jsonl")
+            self.assertIs(type(doc.get("no_output_nudges")), int, f"RN-count: {doc.get('no_output_nudges')!r}")
+            self.assertEqual(doc["no_output_nudges"], want)
+            self.assertEqual(wr.regrade_problems(w.root), [], "RN-count: a true count is named")
+
+    def test_rn_a_forged_count_is_named_and_refused(self):
+        with twr.study() as w:
+            w.driver.no_output_nudges = lambda row: 5          # the walk is committed with a count its transcript lacks
+            r = Rig(w)
+            self.assertEqual(r.old()["no_output_nudges"], 5)
+            got = wr.regrade_problems(w.root)
+            self.assertTrue(any(WALK in p and "no_output_nudges is 5" in p for p in got), f"RN-forged: {got}")
+            with self.assertRaises(wr.RegradeRefused) as cm:
+                r.doc()
+            self.assertIn("no_output_nudges is 5", str(cm.exception))
+
+    def test_rn_a_walk_without_its_transcript_is_named(self):
+        import mode_binding as mb
+        with twr.study() as w:
+            Rig(w)
+            git(w.root, "rm", "-q", "--", f"{mb.WALKS_DIR}/{WALK}/transcript.jsonl")
+            git(w.root, "commit", "-q", "-m", "drop the transcript (fixture)")
+            got = wr.regrade_problems(w.root)
+            self.assertTrue(any(WALK in p and "cannot be re-derived" in p for p in got), f"RN-gone: {got}")
+
+
 def register_source_mutant(old: str, new: str):
     """walk_register compiled with one anchored edit, never placed in sys.modules under its own name."""
     import walk_register

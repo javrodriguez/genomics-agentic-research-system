@@ -322,7 +322,7 @@ def recheck_chain_problems(root, prefix, walk: str, names, study) -> list:
             raw = nrr._show(root, rel)
             doc = json.loads(raw)
             want = "check.json" if n == 1 else recheck_name(n - 1)
-            if not isinstance(doc, dict) or set(doc) != set(RECHECK_KEYS) or (doc["walk"], doc["n"], doc["supersedes"],
+            if not isinstance(doc, dict) or set(doc) - {RECHECK_NUDGE_KEY} != set(RECHECK_KEYS) or (doc["walk"], doc["n"], doc["supersedes"],
                                                                               doc["was"].get("file")) != (walk, n, want, want):
                 out.append(f"walk {walk!r}: {recheck_name(n)} is not a recheck of ordinal {n} superseding {want}")
                 continue
@@ -337,6 +337,9 @@ def recheck_chain_problems(root, prefix, walk: str, names, study) -> list:
 
 RECHECK_KEYS = ("schema", "walk", "n", "walk_commit", "supersedes", "machine", "run_tree", "checker_constants_sha256",
                 "checker_reasons", "route", "was", "change")
+# review r7 MINOR 2 (glitch-b5, 16 Oct 2026): a recheck also carries check_take's count of the committed transcript; a
+# recheck written before the fold lacks it, and either shape is a recheck's (re-deriving the latest one writes the key)
+RECHECK_NUDGE_KEY = "no_output_nudges"
 
 
 # ---- the recheck (glitch-6b's scheduled-wakeup ruling, 15 Oct 2026) -------------------------------------------------
@@ -470,6 +473,7 @@ def recheck_doc(walk: str, n: int, study: Path = HERE, *, machine, design_for=No
         forged = nudge_count_problems(old, base / "transcript.jsonl")      # review r6 MINOR 2
         if forged:
             raise RegradeRefused(forged[0])
+        nudges = ct.no_output_nudges(base / "transcript.jsonl")           # review r7 MINOR 2: the recheck's own count
         try:
             row = dict(run_mod.walk_row(entries[0], ledger), walk=walk, slot=walk)
         except ValueError as e:
@@ -492,7 +496,7 @@ def recheck_doc(walk: str, n: int, study: Path = HERE, *, machine, design_for=No
     reasons = list(got["checker_reasons"])
     return {"schema": 1, "walk": walk, "n": n, "walk_commit": commit, "supersedes": prev_name, "machine": machine,
             "run_tree": design.run_tree, "checker_constants_sha256": digest, "checker_reasons": reasons,
-            "route": None,
+            "route": None, "no_output_nudges": nudges,
             "was": prev,
             "change": {"checker_constants_sha256": [prev["checker_constants_sha256"], digest],
                        "reasons_added": sorted(set(reasons) - set(prev["checker_reasons"])),

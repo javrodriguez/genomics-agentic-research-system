@@ -632,7 +632,7 @@ class BoundLine(str):
 
 class BoundTranscript(collections.abc.Sequence):
     """One take's transcript as BOTH contracts take it: an immutable sequence of the file's lines (read_text(utf-8)
-    .splitlines(), the bytes the graders were always handed) that also carries its `.path`, which the vendor binding
+    split by jsonl_lines, on newline only, the bytes the graders were always handed) that also carries its `.path`, which the vendor binding
     (vendor_record_binding.bound_items) needs to read the envelope's ledger and native streams beside it. It is not a
     str, bytes or os.PathLike, so a grader's guard against a bare path still refuses one; bound_items re-reads `.path`
     and refuses when its lines are not the carried ones, so one value never carries two transcripts. Each line is a
@@ -644,7 +644,7 @@ class BoundTranscript(collections.abc.Sequence):
         p = Path(path)
         object.__setattr__(self, "_path", p)
         object.__setattr__(self, "_lines", tuple(BoundLine(x, self)
-                                                 for x in p.read_text(encoding="utf-8").splitlines()))
+                                                 for x in jsonl_lines(p.read_text(encoding="utf-8"))))
 
     @classmethod
     def of(cls, value):
@@ -688,9 +688,18 @@ def _parser(harness):
     return PARSERS[harness]
 
 
+def jsonl_lines(text: str) -> list[str]:
+    """A JSONL file's records: split on "\\n" alone (review r7: str.splitlines also splits on U+2028, U+2029, \\x85 and
+    others, which JSON strings carry raw), the empty piece after the final newline dropped."""
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    return lines
+
+
 def _lines(path_or_lines) -> list[str]:
     if isinstance(path_or_lines, (str, Path)):
-        lines = Path(path_or_lines).read_text(encoding="utf-8").splitlines()
+        lines = jsonl_lines(Path(path_or_lines).read_text(encoding="utf-8"))
     else:
         lines = list(path_or_lines)
     for i, ln in enumerate(lines, 1):

@@ -1017,7 +1017,7 @@ BOOTSTRAP_SPANS = (
     # SCHEDULED WAKEUP section); no line moves.
     ("scheduled-wakeup-lines", "    the harness's; any other origin refuses, because who sent it cannot be established.\n"
                                '    """\n', '        msg = rec.get("message") if isinstance(rec.get("message"), dict) else rec\n',
-     "8756130eca1fa642bdefd52906d25981f162dcab6e22a66a1fd0c47bd5c6e563"),
+     "403ded1cdce16ae6a4eed516db368b597e43ec3997085494d3d098c6d0543fc5"),
     # glitch-6b's steer-off ruling (15 Oct 2026; the box lane's check_take patch, reviewed and applied by the harness
     # lane): check4 adds the study-condition problems (steer, isolation) for a claude-code take, inserted between two base lines; the
     # functions it calls are appended.
@@ -1028,7 +1028,7 @@ BOOTSTRAP_SPANS = (
     # glitch-b5's ruling 2 (16 Oct 2026): context_text's one append line sweeps an admitted edited_text_file without its
     # snippet (check_take's appended _swept_attachment_line); no line moves.
     ("context-text", "def context_text(path: Path) -> str:\n", "\n\ndef context_leaks(",
-     "393ae37ff8f2083fca95eea0fdfcaa61e04a004ace0562f01716f6273d8748b0"),
+     "d81967915c9f93175441cb1ba85becea3a432babccdbd218a06a3bb1e0b955ac"),
 )
 
 
@@ -1042,9 +1042,25 @@ def _region(text: str, start: str, end: str, name: str) -> tuple:
     return i, j
 
 
+# Review r7's observation (glitch-b5, 16 Oct 2026): every transcript read in check_take splits on "\n" alone, never
+# str.splitlines() (which also splits on U+2028 and kin). Each listed text is replaced in the base, exactly `count` times
+# (the base's own count, pinned), before the regions; every other byte of the base is still a prefix.
+# The scheduled-wakeup-lines and context-text regions each hold one such read, so both are re-pinned with it.
+BOOTSTRAP_SUBSTITUTIONS = (
+    ('.read_text(errors="replace").splitlines()', '.read_text(errors="replace").split("\\n")', 18),
+    ('.read_text(encoding="utf-8", errors="replace").splitlines()',
+     '.read_text(encoding="utf-8", errors="replace").split("\\n")', 2),
+)
+
+
 def bootstrap_base(base: str, now: str) -> str:
-    """The base with each BOOTSTRAP_SPANS region replaced by the current file's, which must hash to the pinned sha256
-    (and, for the constants region, be exactly one CHECKER_CONSTANTS assignment); otherwise AssertionError."""
+    """The base with each BOOTSTRAP_SUBSTITUTIONS text replaced (exactly its pinned count) and each BOOTSTRAP_SPANS
+    region replaced by the current file's, which must hash to the pinned sha256 (and, for the constants region, be
+    exactly one CHECKER_CONSTANTS assignment); otherwise AssertionError."""
+    for old, new, count in BOOTSTRAP_SUBSTITUTIONS:
+        if base.count(old) != count:
+            raise AssertionError(f"R5.bootstrap: the base holds {base.count(old)} of {old!r}, not {count}")
+        base = base.replace(old, new)
     for name, start, end, digest in BOOTSTRAP_SPANS:
         i, j = _region(base, start, end, name)
         k, m = _region(now, start, end, name)

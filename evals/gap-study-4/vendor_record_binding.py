@@ -68,7 +68,7 @@ def bound_items(harness, path):
     path = Path(path)
     if carried is not None:
         try:
-            now = tuple(_regular_bytes(path).decode("utf-8").splitlines())
+            now = tuple(tv.jsonl_lines(_regular_bytes(path).decode("utf-8")))   # review r7: newline only
         except (OSError, UnicodeError) as exc:
             raise tv.ViewError(f"missing bound record: {exc}") from None
         if now != carried:

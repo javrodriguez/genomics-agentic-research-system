@@ -105,7 +105,7 @@ def neutral_name(session_id: str) -> str:
 
 def session_id_of(path: Path) -> str:
     """The session id Claude Code recorded, read from the transcript itself."""
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -134,7 +134,7 @@ def context_text(path: Path) -> str:
     `eval` because it listed a directory has not been leaked to.
     """
     out = []
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -198,7 +198,7 @@ def study_paths_read(path: Path) -> list[str]:
     and nothing would have said so.
     """
     seen = []
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -331,7 +331,7 @@ def outside_checkout_reads(path: Path, repo: Path | None = None) -> list[str]:
     roots = checkout_roots(repo)
     sibling = sibling_pattern(repo)
     seen: list[str] = []
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -422,7 +422,7 @@ def interpreter_prefixes(home: Path, repo: Path | None = None) -> list[str]:
 
 def session_run_tree(path: Path) -> str | None:
     """The working directory the session opened in, from its own environment record."""
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         if '"environment"' not in line:
             continue
         try:
@@ -453,7 +453,7 @@ def outside_home_reads(path: Path, home: Path | None = None, repo: Path | None =
     temp_forms = sorted(_spellings(Path(wd).parent), key=len, reverse=True) if wd else []
     own_tree = Path(wd).name if wd else None
     seen: list[str] = []
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -603,7 +603,7 @@ def outside_temp_reads(path: Path, temp_root: Path | None = None) -> list[str]:
     variables = tuple(f for n in scratch[1] for f in ("${" + n + "}", "$" + n)) if scratch else _TEMP_VARIABLES
     variable_real = f"{wd.rstrip('/')}/{scratch[0]}" if wd and scratch else written
     seen: list[str] = []
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -660,7 +660,7 @@ def inherited_context(path: Path) -> list[str]:
     files: list[str] = []
     extra: list[str] = []
     connectors: list[str] = []
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -702,7 +702,7 @@ def published_email_problems(path: Path) -> list[str]:
     so a transcript still carrying it is not in the published form the pre-registration fixes -- and
     the address is the operator's own.
     """
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    for line in path.read_text(encoding="utf-8", errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -746,7 +746,7 @@ def model_problems(path: Path, expected: str) -> list[str]:
     compute it from the row's commit and open a session with it under another model.
     """
     seen: dict = {}
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -772,7 +772,7 @@ def agent_turn_count(path: Path) -> int:
     speaking, so it neither binds a model nor counts as the agent's first turn.
     """
     n = 0
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -791,7 +791,7 @@ def agent_turn_count(path: Path) -> int:
 def last_stop_reason(path: Path) -> str | None:
     """The stop reason of the last assistant record that carries one."""
     out = None
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -926,7 +926,7 @@ def memory_section_offered(path: Path) -> bool:
     home. The isolation flags do not remove it; `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` does, measured on
     a smoke with and without it. Read from the `prompt_snapshot` record, never from text the agent wrote.
     """
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         if AUTO_MEMORY_MARK not in line:
             continue
         try:
@@ -947,7 +947,7 @@ def prompt_snapshot_present(path: Path) -> bool:
     carry one.
     """
     snapshot_found = False
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         if '"prompt_snapshot"' not in line:
             continue
         try:
@@ -978,7 +978,7 @@ def user_text_records(path: Path, pre: dict) -> tuple[list[str], list[str], list
     ops: list[str] = []
     harness: list[str] = []
     unknown: list[str] = []
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -1151,7 +1151,7 @@ def checkout_problems(path: Path, pre: dict) -> list[str]:
     """
     rl = pre["run_location"]
     gs = ""
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         if '"session_context"' not in line:
             continue
         try:
@@ -1185,7 +1185,7 @@ def instruction_content_problems(path: Path) -> list[str]:
     """
     wd = None
     files: list[dict] = []
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         if '"attachment"' not in line:
             continue
         try:
@@ -1881,7 +1881,7 @@ def modes_recorded(path: Path) -> set:
     """Every record-level `permissionMode` string, one JSON record at a time (spelled here, as mode_binding.py spells
     its own, so neither checks the other against itself)."""
     out = set()
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    for line in path.read_text(encoding="utf-8", errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -2180,7 +2180,7 @@ def agent_output_count(path: Path) -> int:
     """R4C-8: assistant records holding completed agent output, text or a tool call (agent_adapter's agent_output
     rule). The harness's own API-error record (isApiErrorMessage) is not the model speaking and never counts."""
     n = 0
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -2236,7 +2236,7 @@ def pinned_instruction_problems(path: Path, design: "Design") -> list[str]:
     """R4C-11: instruction_content_problems' reading, against the pinned tree's bytes the view carries."""
     wd = None
     files: list[dict] = []
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         if '"attachment"' not in line:
             continue
         try:
@@ -2523,7 +2523,7 @@ def no_output_nudges(path: Path) -> int:
     """glitch-b5's ruling 3 (i): how many no-visible-output nudges the transcript carries, read from the raw lines by
     the view's own predicate (walk_runner writes it into check.json, so analysis can stratify by it)."""
     recs = []
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         try:
             recs.append(json.loads(line))
         except json.JSONDecodeError:
@@ -2675,7 +2675,7 @@ def _auto_mode_records(path: Path) -> int:
     """The transcript's auto_mode attachment records, read from the raw lines (no view: this count must hold even
     where a view refuses or admits the record)."""
     n = 0
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -2738,7 +2738,7 @@ def denied_tool_problems(path: Path) -> list[str]:
     for n in sorted(streams):
         stream = path.parent / f"turn-{n}.jsonl"
         inits = 0
-        for line in stream.read_text(errors="replace").splitlines():
+        for line in stream.read_text(errors="replace").split("\n"):
             try:
                 rec = json.loads(line)
             except json.JSONDecodeError:
@@ -2756,7 +2756,7 @@ def denied_tool_problems(path: Path) -> list[str]:
         if not inits:
             problems.append(f"[{HARNESS_CONDITION_VIOLATED}] turn {n}'s stream has no init record: the isolation "
                             f"denials cannot be shown for it")
-    for line in path.read_text(errors="replace").splitlines():
+    for line in path.read_text(errors="replace").split("\n"):
         try:
             rec = json.loads(line)
         except json.JSONDecodeError:
@@ -2785,9 +2785,10 @@ def denied_tool_problems(path: Path) -> list[str]:
 #   reads, read tool-call paths), so the snippet is routed to none.
 #   Review r6 MINOR 1 (glitch-b5, 16 Oct 2026): the sweep reads the RAW line with only the snippet's string value cut
 #   out, never a re-serialised parse, which drops every earlier copy of a duplicated key (a word in one would vanish).
-#   The value is located by its key: a JSON string can hold `"snippet"` only escaped, so an unescaped `"snippet":`
-#   followed by a string is a key. When that key is not found exactly once (a duplicate, a top-level twin, an escaped
-#   key spelling) the line is swept whole: fail closed.
+#   The value is located by its key text `"snippet":` followed by a string, found exactly once; review r7 showed that
+#   text can also close another key (`"x\"snippet":`) and miss an escaped spelling of the real key, so the cut is kept
+#   only when it removes exactly the parsed snippet from a line without duplicate keys (three guards below). In every
+#   other case the line is swept whole: fail closed.
 _SNIPPET_KEY = re.compile(r'"snippet"\s*:\s*(?=")')
 
 
@@ -2802,7 +2803,25 @@ def _swept_attachment_line(rec: dict, line: str) -> str:
         return line
     start = keys[0].end()
     _, end = json.decoder.scanstring(line, start + 1)
-    return line[:start] + '""' + line[end:]
+    cut = line[:start] + '""' + line[end:]
+    # review r7 MINOR 1 (glitch-b5, 16 Oct 2026): the regex can find a key the parse did not keep (an escaped spelling
+    # of the real key, or `\"snippet":` closing another key), so the cut stands only when the cut line parses, with no
+    # duplicate key, to the record with exactly its snippet emptied. That one guard implies the two fix.py also names:
+    # the cut changes no key, so a duplicate in the line is a duplicate in the cut (refused), and the only string whose
+    # emptying yields that record is the parsed snippet itself.
+    try:
+        kept = json.loads(cut, object_pairs_hook=_no_duplicate_keys) == dict(rec, attachment=dict(att, snippet=""))
+    except ValueError:
+        kept = False
+    return cut if kept else line
+
+
+def _no_duplicate_keys(pairs) -> dict:
+    """A JSON object whose keys are unique, else ValueError (review r7): a duplicate's earlier copy is never dropped."""
+    keys = [k for k, _ in pairs]
+    if len(keys) != len(set(keys)):
+        raise ValueError(f"a duplicated key: {sorted(k for k in set(keys) if keys.count(k) > 1)}")
+    return dict(pairs)
 
 
 if __name__ == "__main__":

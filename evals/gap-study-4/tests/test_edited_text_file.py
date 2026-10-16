@@ -236,6 +236,16 @@ RAW_CASES = {
     "a top-level snippet key beside the attachment's": ('{"type": "attachment", "snippet": "' + W + '", "attachment": '
                                                         '{"type": "edited_text_file", "filename": "/a/HISTORY.md", '
                                                         '"snippet": "' + W + '"}}', {W}),
+    # review r7 (cut.py): an escaped key spelling; the regex finds a different string than the parsed snippet
+    "A: an escaped twin after the real key": ('{"type":"attachment","attachment":{"type":"edited_text_file",'
+                                              '"filename":"f.py","snippet":"' + W + ' x","snipp\\u0065t":"benign"}}',
+                                              {W}),
+    "B: a top-level twin, the attachment's key escaped": ('{"type":"attachment","snippet":"' + W + ' x","attachment":'
+                                                          '{"type":"edited_text_file","filename":"f.py",'
+                                                          '"snipp\\u0065t":"benign"}}', {W}),
+    "C: a key ending in an escaped quote and snippet": ('{"type":"attachment","x\\"snippet":"' + W + ' x",'
+                                                        '"attachment":{"type":"edited_text_file","filename":"f.py",'
+                                                        '"snipp\\u0065t":"benign"}}', {W}),
     "an escaped snippet is removed whole": ('{"type": "attachment", "isSidechain": false, "attachment": {"type": '
                                             '"edited_text_file", "filename": "/a/HISTORY.md", "snippet": '
                                             '"caf\\u00e9 \\/ ' + W + ' \\"q\\" \\\\"}}', set()),
@@ -260,6 +270,20 @@ def raw_problems(ct=None) -> list:
     line, _ = RAW_CASES["a top-level snippet key beside the attachment's"]
     if ct._swept_attachment_line(json.loads(line), line) != line:
         out.append("E-raw: a line whose snippet key occurs twice is not swept whole")
+    # review r7: lines the cut must leave whole even where no word would show the difference (the output itself)
+    whole = {
+        "a twin key text, equal value, closing another key": '{"type":"attachment","x\\"snippet":"same","attachment":'
+            '{"type":"edited_text_file","filename":"f.py","snipp\\u0065t":"same"}}',
+        "the attachment's key first, a top-level twin after": '{"type":"attachment","attachment":{"type":'
+            '"edited_text_file","filename":"f.py","snippet":"same"},"snippet":"same"}',
+        "an escaped duplicate before the real key": '{"type":"attachment","attachment":{"type":"edited_text_file",'
+            '"filename":"f.py","snipp\\u0065t":"same","snippet":"same"}}',
+        "an escaped duplicate after the real key": '{"type":"attachment","attachment":{"type":"edited_text_file",'
+            '"filename":"f.py","snippet":"same","snipp\\u0065t":"same"}}',
+    }
+    for name, line in whole.items():
+        if ct._swept_attachment_line(json.loads(line), line) != line:
+            out.append(f"E-raw: {name}: cut, not swept whole")
     line, _ = RAW_CASES["an escaped snippet is removed whole"]
     swept = ct._swept_attachment_line(json.loads(line), line)
     if json.loads(swept)["attachment"] != {"type": "edited_text_file", "filename": "/a/HISTORY.md", "snippet": ""}:
@@ -284,11 +308,16 @@ def check_take_mutant(old: str, new: str):
 
 LEAK_MUTANTS = (
     ("snippet swept", "            out.append(_swept_attachment_line(rec, line))", "            out.append(line)"),
-    ("filename dropped too", "    return line[:start] + '\"\"' + line[end:]", "    return '{\"type\": \"attachment\"}'"),
+    ("filename dropped too", "    return cut if kept else line", "    return '{\"type\": \"attachment\"}'"),
     ("shape unchecked", "and transcript_view.is_edited_text_file(att)", ""),
-    ("the parse swept, not the raw line", "    return line[:start] + '\"\"' + line[end:]",
+    ("the parse swept, not the raw line", "    return cut if kept else line",
      "    return json.dumps(dict(rec, attachment={k: v for k, v in att.items() if k != \"snippet\"}))"),
     ("located more than once", "    if len(keys) != 1:", "    if not keys:"),
+    # review r7: the cut's one guard (fix.py's other two are implied by it; see check_take), and its duplicate refusal
+    ("the cut line unchecked", "        kept = json.loads(cut, object_pairs_hook=_no_duplicate_keys) == dict(rec, "
+     "attachment=dict(att, snippet=\"\"))", "        kept = True"),
+    ("duplicates read in the cut", "        kept = json.loads(cut, object_pairs_hook=_no_duplicate_keys) == dict(rec, ",
+     "        kept = json.loads(cut) == dict(rec, "),
 )
 
 

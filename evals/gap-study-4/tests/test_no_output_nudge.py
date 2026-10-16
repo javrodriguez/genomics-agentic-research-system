@@ -260,6 +260,24 @@ def strict_problems(walk_runner=None, pending_walk=None, walk_regrade=None) -> l
             got = pw.checker_standing(d, "w001")
         if not (got is None if want is None else isinstance(got, str) and got.startswith(want)):
             out.append(f"N-strict standing, {name}: {got!r}")
+    # review r7 MINOR 2: a check.json under older constants with a null count, rechecked under the constants in force,
+    # counts only once the recheck carries a count (the reviewer's rc.py, its recheck mocked)
+    old_doc = {"walk": "w001", "checked": True, "checker_reasons": [], "events": {"outside_reach": 0},
+               "route": "rehearsal", "route_refused": None, "checker_constants_sha256": "cd" * 32,
+               "no_output_nudges": None}
+    for name, latest, want in (("a recheck without a count", {"checker_reasons": [], "checker_constants_sha256": now},
+                                "check unreadable"),
+                               ("a recheck with a null count", {"checker_reasons": [], "checker_constants_sha256": now,
+                                                                "no_output_nudges": None}, "check unreadable"),
+                               ("a recheck carrying the count", {"checker_reasons": [], "checker_constants_sha256": now,
+                                                                 "no_output_nudges": 0}, None)):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "w001").mkdir()
+            (Path(d) / "w001" / "check.json").write_text(json.dumps(old_doc))
+            with mock.patch.object(pw, "latest_recheck", lambda b, w, latest=latest: latest):
+                got = pw.checker_standing(d, "w001")
+        if not (got is None if want is None else isinstance(got, str) and got.startswith(want)):
+            out.append(f"N-strict rechecked, {name}: {got!r}")
     with tempfile.TemporaryDirectory() as d:
         p = Path(d) / "transcript.jsonl"
         p.write_text("\n".join(lines(OP, nudge(), SAID)) + "\n")
@@ -318,8 +336,10 @@ STRICT_MUTANTS = (
     ("check_record writes null", "walk_runner",
      "    if checked is True and not pending_walk.valid_nudge_count(no_output_nudges):", "    if False:"),
     ("a bool is a count", "pending_walk", "type(n) is int and n >= 0", "isinstance(n, int) and n >= 0"),
-    ("standing reads null", "pending_walk", "if own == now and not valid_nudge_count(nudges):", "if False:"),
+    ("standing reads null", "pending_walk", '== now and not valid_nudge_count(eff_nudges):', "== now and False:"),
     ("forged count read", "walk_regrade", "    if got != want:", "    if False:"),
+    ("the recheck's count unread", "pending_walk", "        eff_nudges = latest.get(CHECK_NUDGE_KEY)\n",
+     "        eff_nudges = nudges\n"),
 )
 COUNT_MUTANTS = (
     ("count any isMeta user record", "if transcript_view.is_no_output_nudge(rec))",
