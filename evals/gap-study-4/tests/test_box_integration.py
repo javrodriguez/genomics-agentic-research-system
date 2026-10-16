@@ -615,7 +615,7 @@ class FakeBox:
         tree = mapping.get(tree, tree)
         roots = [mapping[r] for r in json.loads(a[10]) if r in mapping]
         buf, saved = _io.StringIO(), sys.argv            # in process: the module's process guard spawns nothing
-        sys.argv = ["-c", json.dumps(roots), str(os.getuid()), a[12], a[13]]
+        sys.argv = ["-c", json.dumps(roots), str(os.getuid()), a[12], a[13], a[14]]
         try:
             with _cl.redirect_stdout(buf), FakeBox.as_container(tree), FakeBox.as_container(cfg):   # as the agent
                 exec(compile(rt.SWEEP_PROGRAM, "<the session sweep>", "exec"), {"__name__": "__sweep__"})
@@ -625,6 +625,7 @@ class FakeBox:
         back = lambda p: rt.CONFIG_MOUNT + p[len(cfg):] if p == cfg or p.startswith(cfg + "/") else p  # noqa: E731
         doc["files"] = [[back(f[0])] + f[1:] for f in doc["files"]]
         doc["unreadable"] = [[back(u[0]), u[1]] for u in doc["unreadable"]]
+        doc["escapes"] = [[back(u[0]), back(u[1])] for u in doc["escapes"]]
         self.sweeps = getattr(self, "sweeps", []) + [doc]
         return ok(json.dumps(doc))
 

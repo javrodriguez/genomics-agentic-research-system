@@ -3296,13 +3296,13 @@ def subagent_leak_problems(path: Path, pre: dict) -> list[str]:
 #   with none of the take's denials, its transcript outside the checked record. Its token read is the named residual
 #   W-3; the nested agent is W-3b. Review r14: enumerating spellings does not converge, so each reader works from the
 #   producer's vocabulary (the shell's tokens, the harness's own session shapes and file names):
-#     - the count: every shell token (plan_gate's split, quoted strings split again) whose basename is an agent CLI's
-#       name or that names an agent CLI's package, anywhere in a Bash command, main thread and sub-agents, is counted
-#       into check.json's nested_cli_calls; a nonzero count sends the take to the human sample (an over-count, such
-#       as `which claude`, only does that);
-#     - the refusals [nested-agent], routed like harness-condition-violated: a token carrying "--no-session-pers"
-#       (2.1.296's switch that turns transcript writes off, and its abbreviations and =value forms); a token that
-#       assigns or exports CLAUDE_CONFIG_DIR, CODEX_HOME, GEMINI_CLI_HOME or HOME (the study's tasks never need them);
+#     - the count (review r15): every mention of an agent CLI in a Bash command's raw text (claude, codex or gemini as
+#       a whole word, or a package's name), main thread and sub-agents, is counted into check.json's nested_cli_calls;
+#       a nonzero count sends the take to the human sample (an over-count, such as `cat claude.md`, only does that);
+#     - the refusals [nested-agent], routed like harness-condition-violated: a command carrying a session-off switch
+#       by its prefix (2.1.296's "--no-session-pers"; Codex's "--ephemeral"), in its raw text or a token; a command
+#       that assigns or exports CLAUDE_CONFIG_DIR, CODEX_HOME, GEMINI_CLI_HOME or HOME in assignment position (the
+#       study's tasks never need them);
 #     - the session store (claude-code's projects/, Codex's sessions/, Gemini's .gemini/tmp/), listed after every turn
 #       and at publish, holds only the take's own session and the files its producer writes for it (below);
 #     - the sweep: after every turn, inside the box, every writable location of the take container is read for files
@@ -3315,9 +3315,18 @@ SWEEP_CONFIG_MOUNT = "/opt/cfg"           # box/run_take.CONFIG_MOUNT (tests/tes
 NESTED_CLIS = ("claude", "codex", "gemini")
 NESTED_PACKAGES = {"@anthropic-ai/claude-code": "claude", "@openai/codex": "codex", "@google/gemini-cli": "gemini"}
 NO_PERSISTENCE_PREFIX = "--no-session-pers"
+# review r15: the switches that turn an agent CLI's session writes off, by harness. Codex 0.162.1: --ephemeral. Gemini
+# 0.64.0 (its bundle read statically, 16 Oct 2026): ChatRecordingService is constructed on every chat, and no CLI
+# switch or setting turns it off, so none.
+NO_PERSISTENCE_PREFIXES = {CLAUDE_CODE: (NO_PERSISTENCE_PREFIX,), "codex": ("--ephemeral",), "gemini": ()}
 NESTED_HOME_VARIABLES = ("CLAUDE_CONFIG_DIR", "CODEX_HOME", "GEMINI_CLI_HOME", "HOME")
-_DECLARERS = ("export", "declare", "typeset", "local", "readonly")
+_DECLARERS = ("export", "declare", "typeset", "local", "readonly", "env")
 _HOME_ASSIGNMENT = re.compile(r"(?:%s)\+?=" % "|".join(NESTED_HOME_VARIABLES))
+_ANY_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\+?=", re.S)
+_RESERVED_WORDS = ("if", "then", "else", "elif", "fi", "do", "done", "while", "until", "for", "case", "esac", "!", "{",
+                   "}", "time")
+# review r15: the count reads the raw command text, so no shell form hides a mention (an over-count only samples)
+NESTED_CLI_MENTION = re.compile(r"(?:^|[^A-Za-z0-9_-])(claude|codex|gemini)(?=[^A-Za-z0-9_-]|$)")
 WORKFLOW_TOOL = "Workflow"                # 2.1.296: var pu="Workflow"
 COMPACT_BOUNDARY = ("system", "compact_boundary")
 # What 2.1.296 writes in <projects>/<project>/<session>/ besides subagents/ and tool-results/, each by its producer
@@ -3346,22 +3355,76 @@ def _split_all(command: str, depth: int = 0) -> list:
     return out
 
 
-def nested_cli_tokens(command: str) -> list:
-    """The agent CLIs a shell command's tokens name (by CLI name), wherever they stand: a whitespace-free token whose
-    basename is claude, codex or gemini, or that names one's package (a path into it included)."""
+def nested_cli_mentions(command: str) -> list:
+    """Every mention of an agent CLI in a command's raw text (review r15): each match of NESTED_CLI_MENTION (claude,
+    codex or gemini as a whole word, a path's last part included) and each of the packages' names, by CLI name."""
+    out = [m.group(1) for m in NESTED_CLI_MENTION.finditer(command or "")]
+    for pkg, cli in NESTED_PACKAGES.items():
+        out += [cli] * (command or "").count(pkg)
+    return out
+
+
+def assigned_variables(command: str, depth: int = 0) -> list:
+    """The variable names a shell command assigns or exports, in assignment position only (review r15): the prefix
+    assignments before a simple command's word (or a bare assignment), and the names after export, declare, typeset,
+    local, readonly or env (their options skipped); what sh -c and eval run, plan_gate.DEPTH deep. A NAME=value inside
+    an echo's or a grep's arguments is not in assignment position."""
+    from graders import plan_gate as _pg
+    words = _pg.split(command)
+    segments, cur = [], []
+    for w in words + [";"]:
+        if _pg._separator(w):
+            if cur:
+                segments.append(cur)
+            cur = []
+        else:
+            cur.append(w)
     out = []
-    for t in _split_all(command):
-        if any(c.isspace() for c in t):
+    for seg in segments:
+        j = 0
+        while j < len(seg) and seg[j] in _RESERVED_WORDS:      # a compound command's words: do, then, if, !, {
+            j += 1
+        while j < len(seg) and _ANY_ASSIGNMENT.match(seg[j]):
+            out.append(seg[j].split("=", 1)[0].rstrip("+"))
+            j += 1
+        if j >= len(seg):
             continue
-        w = t.strip("`'\"$(){}")
-        name = w.rsplit("/", 1)[-1]
-        if name in NESTED_CLIS:
-            out.append(name)
-            continue
-        for pkg, cli in NESTED_PACKAGES.items():
-            if pkg in w:
-                out.append(cli)
-                break
+        word, rest = seg[j].rsplit("/", 1)[-1], seg[j + 1:]
+        if word in _DECLARERS:
+            for tok in rest:
+                if tok.startswith("-"):
+                    continue
+                if _ANY_ASSIGNMENT.match(tok):
+                    out.append(tok.split("=", 1)[0].rstrip("+"))
+                elif re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", tok) and word != "env":
+                    out.append(tok)
+                elif word == "env":
+                    break
+        elif depth < _pg.DEPTH and word == _pg.EVAL and rest:
+            out += assigned_variables(" ".join(rest), depth + 1)
+        elif depth < _pg.DEPTH and word in _pg.SHELLS:
+            for k, tok in enumerate(rest[:3]):
+                if tok.startswith("-") and not tok.startswith("--") and "c" in tok[1:] and k + 1 < len(rest):
+                    out += assigned_variables(rest[k + 1], depth + 1)
+                    break
+    return out
+
+
+def command_problems(commands, harness: str = CLAUDE_CODE) -> list:
+    """[nested-agent] for each shell command that carries a session-off switch of the harness (by prefix, in the raw
+    text or a token), or assigns or exports a variable that moves an agent CLI's session store."""
+    out = []
+    prefixes = NO_PERSISTENCE_PREFIXES.get(harness, ()) + (NO_PERSISTENCE_PREFIX,)
+    for c in commands:
+        toks = _split_all(c)
+        hit = sorted({p for p in prefixes if p in c or any(p in t for t in toks)})
+        if hit:
+            out.append(f"[{NESTED_AGENT}] a shell command carries {hit[0]}...: a nested agent that writes no session "
+                       f"would pass the session store and the sweep")
+        moved = sorted(set(assigned_variables(c)) & set(NESTED_HOME_VARIABLES))
+        if moved:
+            out.append(f"[{NESTED_AGENT}] a shell command assigns or exports {moved}: a nested agent's session "
+                       f"written outside the store")
     return out
 
 
@@ -3374,46 +3437,74 @@ def _bash_commands(path: Path) -> list:
 
 
 def nested_cli_calls(path: Path) -> int:
-    """How many agent-CLI tokens the take's Bash commands carry (nested_cli_tokens), main thread and sub-agents."""
-    return sum(len(nested_cli_tokens(c)) for c in _bash_commands(path))
+    """How many agent-CLI mentions the take's Bash commands carry (nested_cli_mentions), main thread and sub-agents."""
+    return sum(len(nested_cli_mentions(c)) for c in _bash_commands(path))
+
+
+def vendor_shell_commands(folder, harness: str) -> tuple:
+    """(the shell commands of a vendor take's turn streams, read through the view's own parser for the harness, and
+    one problem per line the parser refuses: fail closed). Review r15 MINOR 5: the vendor road runs the readers too."""
+    import transcript_codex as _tc
+    import transcript_gemini as _tg
+    import transcript_view as _tv
+    parser = _tc.CodexParser() if harness == "codex" else _tg.GeminiParser()
+    cmds, bad = [], []
+    for p in sorted(Path(folder).glob("turn-*.jsonl"), key=lambda q: q.name):
+        if not re.fullmatch(r"turn-[1-9][0-9]*\.jsonl", p.name):
+            continue
+        for n, line in enumerate(p.read_text(encoding="utf-8", errors="replace").split("\n"), 1):
+            if not line.strip():
+                continue
+            try:
+                items = parser.items(line)
+            except Exception as e:  # noqa: BLE001 - a line the parser refuses is not read as no command
+                bad.append(f"[{NESTED_AGENT}] {p.name} line {n} cannot be read for its shell commands "
+                           f"({type(e).__name__})")
+                continue
+            cmds += [it.args["command"] for it in items if it.kind == _tv.TOOL_CALL and it.tool == _tv.SHELL
+                     and isinstance((it.args or {}).get("command"), str)]
+    return cmds, bad
 
 
 def nested_agent_flag_problems(path: Path) -> list:
-    """[nested-agent] for each Bash command line whose tokens carry the persistence switch's prefix, or assign or
-    export a variable that moves an agent CLI's session store."""
-    out = []
-    for c in _bash_commands(path):
-        toks = _split_all(c)
-        if any(NO_PERSISTENCE_PREFIX in t for t in toks):
-            out.append(f"[{NESTED_AGENT}] a Bash command line carries {NO_PERSISTENCE_PREFIX}...: a nested agent that "
-                       f"writes no session would pass the session store and the sweep")
-        if any(_HOME_ASSIGNMENT.match(t) or (t in NESTED_HOME_VARIABLES and i and toks[i - 1] in _DECLARERS)
-               for i, t in enumerate(toks)):
-            out.append(f"[{NESTED_AGENT}] a Bash command line assigns or exports one of {list(NESTED_HOME_VARIABLES)}: "
-                       f"a nested agent's session written outside the store")
-    return out
+    """command_problems over the take's Bash commands, main thread and sub-agents."""
+    return command_problems(_bash_commands(path), CLAUDE_CODE)
 
 
 def _take_facts(path: Path) -> set:
     """The producers the take's own records show: "compaction" (a compact_boundary record), "workflow" (a Workflow
-    tool call, main thread or sub-agent)."""
+    tool call, main thread or sub-agent), and "workflow-run:<id>" for each run id a Workflow call's own result
+    record names (any toolUseResult key spelled runId or workflowRunId); with none named, any run id is admitted."""
     recs = _records_of(path)
     out = set()
     if any((r.get("type"), r.get("subtype")) == COMPACT_BOUNDARY for r in recs):
         out.add("compaction")
     calls = [b for r in recs + subagent_reach_records(path)[0] if r.get("type") == "assistant"
              for b in _tool_use_blocks(r)]
-    if any(b.get("name") == WORKFLOW_TOOL for b in calls):
+    wf = {b.get("id") for b in calls if b.get("name") == WORKFLOW_TOOL}
+    if wf:
         out.add("workflow")
+    for r in recs:
+        tur = r.get("toolUseResult")
+        if r.get("type") == "user" and _result_ids(r) & wf and isinstance(tur, dict):
+            out |= {f"workflow-run:{v}" for k, v in tur.items() if k in ("runId", "workflowRunId") and isinstance(v, str)}
     return out
 
 
+def _run_ok(run: str, facts: set) -> bool:
+    """A Workflow run id admitted: the take called Workflow, and the run is one its results name (when any do)."""
+    named = {f[len("workflow-run:"):] for f in facts if f.startswith("workflow-run:")}
+    return "workflow" in facts and (not named or run in named)
+
+
 def _sub_agent_file_ok(p: list, facts: set) -> bool:
-    """p: the path parts after <session>/subagents/; a pair file at its top, or under workflows/<runId>/ when the take
-    called the Workflow tool."""
+    """p: the path parts after <session>/subagents/; a pair file at its top, or under workflows/<runId>/ (a pair, or
+    the run's journal.jsonl: 2.1.296's class sn writes jr(Q0(runId), "journal.jsonl")) for an admitted run."""
     name = p[-1]
     pair = bool(_SUBAGENT_FILE.fullmatch(name) or _SUBAGENT_META.fullmatch(name))
-    return pair and (len(p) == 1 or (len(p) == 3 and p[0] == "workflows" and "workflow" in facts))
+    if len(p) == 1:
+        return pair
+    return len(p) == 3 and p[0] == "workflows" and _run_ok(p[1], facts) and (pair or name == "journal.jsonl")
 
 
 def claude_store_violations(entries, own: str, facts=frozenset()) -> list:
@@ -3440,11 +3531,18 @@ def claude_store_violations(entries, own: str, facts=frozenset()) -> list:
             or (len(p) == 4 and p[2] == own and p[3] in ("subagents", "tool-results") and kind == "dir")
             or (len(p) == 4 and p[2] == own and kind == "file" and SESSION_FILES_BY_PRODUCER.get(p[3]) in facts)
             or (len(p) == 4 and p[2] == own and kind == "dir" and SESSION_FOLDERS_BY_PRODUCER.get(p[3]) in facts)
-            or (len(p) == 5 and p[2] == own and p[3] == "workflows" and "workflow" in facts and kind == "file"
-                and p[4].endswith(".json"))
-            or (len(p) >= 5 and p[2] == own and p[3] == "subagents" and kind == "file" and _sub_agent_file_ok(inner, facts))
-            or (len(p) in (5, 6) and p[2] == own and p[3] == "subagents" and kind == "dir" and inner[0] == "workflows"
+            or (len(p) == 5 and p[2] == own and p[3] == "workflows" and kind == "file" and p[4].endswith(".json")
+                and _run_ok(p[4][:-5], facts))
+            or (len(p) == 5 and p[2] == own and p[3] == "workflows" and p[4] == "scripts" and kind == "dir"
                 and "workflow" in facts)
+            or (len(p) == 6 and p[2] == own and p[3:5] == ["workflows", "scripts"] and kind == "file"
+                and re.fullmatch(r".+-([A-Za-z0-9_-]+)\.js", p[5]) is not None
+                and any(_run_ok(p[5][:-3][i + 1:], facts) for i, ch in enumerate(p[5][:-3]) if ch == "-"))
+            or (len(p) >= 5 and p[2] == own and p[3] == "subagents" and kind == "file" and _sub_agent_file_ok(inner, facts))
+            or (len(p) == 5 and p[2] == own and p[3] == "subagents" and kind == "dir" and inner[0] == "workflows"
+                and "workflow" in facts)
+            or (len(p) == 6 and p[2] == own and p[3] == "subagents" and kind == "dir" and inner[0] == "workflows"
+                and _run_ok(inner[1], facts))
             or (len(p) == 5 and p[2] == own and p[3] == "tool-results" and kind == "file")))
         if not ok:
             out.append(f"{rel} ({kind}) is not the take's own session record: a nested agent's session, or a path no "
@@ -3485,6 +3583,8 @@ def sweep_violations(sweep: dict, admitted: set, own_id: str) -> list:
             out.append(f"{path} is a {shape} session ({str(sid)[:40]}) and not the take's own record")
     for path, kind in sweep.get("unreadable") or []:
         out.append(f"{path} ({kind}) is the agent's and unreadable to the sweep")
+    for path, target in sweep.get("escapes") or []:
+        out.append(f"{path} is the agent's link out of the swept roots (to {str(target)[:80]})")
     if sweep.get("truncated"):
         out.append("the sweep stopped at its file cap")
     return out
@@ -3532,7 +3632,7 @@ def session_store_problems(path: Path) -> list:
         if "entries" in x:
             admitted |= _admitted_session_files(x["entries"], own)
     for x in sweeps:
-        if "refused" in x or set(x) != {"at", "files", "unreadable", "scanned", "truncated"}:
+        if "refused" in x or set(x) != {"at", "files", "unreadable", "escapes", "scanned", "truncated"}:
             out.append(f"[{NESTED_AGENT}] the take container could not be swept at {x['at']}: "
                        f"{str(x.get('refused', 'off its shape'))[:200]}")
             continue

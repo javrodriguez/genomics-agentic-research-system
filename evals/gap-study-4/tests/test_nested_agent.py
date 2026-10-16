@@ -38,16 +38,15 @@ import transcript_view as tv  # noqa: E402
 from test_agent_tool import (AGENT_ID, ASYNC, BASH, CALL_ID, SID, jl, pair, side_record, sub,  # noqa: E402,F401
                              sub_result, take_folder)
 
-# review r14's count.py cases, every one naming an agent CLI by a token: each counts (the count is token-level, so a
-# wrapper, a reserved word or a quoted -c string never hides the name; an over-count only sends the take to the
-# human sample). A name the shell assembles at run time (c=claude; $c) is not a token: W-3b's named residual.
+# review r14's count.py cases, every one naming an agent CLI: each counts (review r15: the count reads the raw text, so
+# no wrapper, reserved word or quoting hides the name; an over-count only sends the take to the human sample).
 COUNTED = (
     "claude -p hi", "/usr/local/bin/claude -p hi", "command claude -p hi", "exec claude -p hi",
     "echo $(claude -p hi)", "echo `claude -p hi`", "x=$(claude -p hi)",
     "bash <<EOF\nclaude -p hi\nEOF", "f(){ claude -p hi; }; f", "(claude -p hi)", "{ claude -p hi; }",
     "if true; then claude -p hi; fi", "sh -c \"echo a; claude -p 'x'\"", "bash -lc 'claude -p x'",
     "bash -c 'sh -c \"claude -p x\"'", "eval 'claude -p x'", "nice -n 5 claude -p x", "timeout -s KILL 5 claude -p x",
-    "sudo -u bob claude -p x", "env -i A=1 claude -p x", "\\claude -p x", "c\\laude -p x", "\"claude\" -p x",
+    "sudo -u bob claude -p x", "env -i A=1 claude -p x", "\\claude -p x", "\"claude\" -p x",
     "'claude' -p x", "node $(which claude) -p x", "python3 -c \"import os; os.system('claude -p x')\"",
     "echo hi | claude -p x", "true && claude -p x", "xargs claude -p < f", "time -p claude -p x",
     "npx @anthropic-ai/claude-code -p x", "npx -y @anthropic-ai/claude-code@2.1.296 -p x",
@@ -59,8 +58,11 @@ COUNTED = (
     "parallel claude ::: x", "find . -exec claude -p x \\;", "timeout 30 codex exec 'x'", "gemini -p x",
     "node /usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js -p x", "npx -y @openai/codex exec x",
     "npm exec -- @google/gemini-cli -p x")
-NOT_COUNTED = ("ls", "cat claude.md", "ls ~/.claude", "python3 -c 'print(1)'", "npm install codex-tools",
-               "npx prettier x", "grep -c claudette notes.txt")
+NOT_COUNTED = ("ls", "python3 -c 'print(1)'", "npm install codex-tools", "npx prettier x", "grep -c claudette notes.txt")
+# review r15: the raw text over-counts these (they only sample the take) ...
+OVER_COUNTED = ("cat claude.md", "ls ~/.claude", "which claude", "echo 'claude is a model'")
+# ... and a name the shell rebuilds from pieces is not counted (W-3b's named residual; the store and the sweep stand)
+RAW_MISSES = ("c\\laude -p x", "c=cla; ${c}ude -p x")
 
 
 def bash(cmd, tid="toolu_b1"):
@@ -84,13 +86,19 @@ def take_with(main_cmds=(), sub_cmds=()):
 
 class TheCount(unittest.TestCase):
     def test_each_agent_cli_spelling_is_counted(self):
-        for cmd in COUNTED:
+        for cmd in COUNTED + OVER_COUNTED:
             with self.subTest(cmd=cmd):
-                self.assertTrue(ct.nested_cli_tokens(cmd), cmd)
-        for cmd in NOT_COUNTED:
+                self.assertTrue(ct.nested_cli_mentions(cmd), cmd)
+        for cmd in NOT_COUNTED + RAW_MISSES:
             with self.subTest(cmd=cmd):
-                self.assertEqual(ct.nested_cli_tokens(cmd), [])
-        self.assertEqual(ct.nested_cli_tokens("claude -p a; codex exec b && gemini -p c"), ["claude", "codex", "gemini"])
+                self.assertEqual(ct.nested_cli_mentions(cmd), [])
+        self.assertEqual(ct.nested_cli_mentions("claude -p a; codex exec b && gemini -p c"), ["claude", "codex", "gemini"])
+        self.assertEqual(ct.nested_cli_mentions("npx @anthropic-ai/claude-code -p x"), ["claude"])
+        for cmd in ("python3 -c \"import subprocess; subprocess.run(['claude','-p','hi'])\"",
+                    "node -e 'require(\"child_process\").execSync(\"claude -p hi\")'", "claude&", "claude>out.txt",
+                    "claude|tee x", "claude<<<hi"):            # review r15's count2.py, read from the raw text
+            with self.subTest(cmd=cmd):
+                self.assertTrue(ct.nested_cli_mentions(cmd), cmd)
 
     def test_the_main_thread_and_the_sub_agents_are_counted(self):
         self.assertEqual(ct.nested_cli_calls(take_folder()), 0)
@@ -168,15 +176,23 @@ class TheFlag(unittest.TestCase):
         got = ct.nested_agent_flag_problems(take_with(sub_cmds=["claude --no-session-persistence -p y"]))
         self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT})
         self.assertEqual(ct.NO_PERSISTENCE_PREFIX, "--no-session-pers")
+        got = ct.nested_agent_flag_problems(take_with(main_cmds=[
+            "python3 -c \"import subprocess; subprocess.run(['claude','-p','--no-session-persistence','x'])\""]))
+        self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT}, got)
+        self.assertEqual(ct.reason_ids(ct.command_problems(["codex exec --ephemeral x"], "codex")), [ct.NESTED_AGENT])
+        self.assertEqual(ct.command_problems(["codex exec --ephemeral x"], "claude-code"), [])
+        self.assertEqual(ct.NO_PERSISTENCE_PREFIXES["gemini"], ())
 
     def test_moving_an_agent_cli_s_session_store_refuses(self):
         for cmd in ("for i in 1; do CLAUDE_CONFIG_DIR=/tmp/n claude -p 'do the stage'; done",
                     "export HOME=/tmp/h; claude -p x", "env CODEX_HOME=/tmp/c codex exec x", "GEMINI_CLI_HOME=/x gemini",
-                    "export CLAUDE_CONFIG_DIR", "declare -x HOME=/tmp", "HOME+=/x ls"):
+                    "export CLAUDE_CONFIG_DIR", "declare -x HOME=/tmp", "HOME+=/x ls", "set -a; HOME=/x",
+                    "if true; then HOME=/x claude; fi", "bash -c 'HOME=/x claude -p y'"):
             with self.subTest(cmd=cmd):
                 got = ct.nested_agent_flag_problems(take_with(main_cmds=[cmd]))
                 self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT}, got)
-        for cmd in ("echo $HOME", "ls ~", "cd $HOME/x", "printenv HOME", "MYHOME=/x ls"):
+        for cmd in ("echo $HOME", "ls ~", "cd $HOME/x", "printenv HOME", "MYHOME=/x ls", 'echo "HOME=$HOME"',
+                    "grep -n HOME= setup.sh", "env -u CLAUDE_CONFIG_DIR ls", "unset HOME", "echo HOME=/x"):
             with self.subTest(cmd=cmd):
                 self.assertEqual(ct.nested_agent_flag_problems(take_with(main_cmds=[cmd])), [])
 
@@ -191,7 +207,7 @@ CLEAN = [[P, "dir"], [f"{P}/{OWN}", "dir"], [f"{P}/{OWN}/subagents", "dir"],
 def own_sweep(at, extra=()):
     """A clean sweep of the take container at `at`: the take's own session file, and `extra` files."""
     return {"at": at, "files": [[f"{ct.SWEEP_CONFIG_MOUNT}/{P}/{OWN}.jsonl", "claude", OWN], *extra],
-            "unreadable": [], "scanned": 7, "truncated": False}
+            "unreadable": [], "escapes": [], "scanned": 7, "truncated": False}
 
 
 def with_store(path, listings, sweeps=None):
@@ -276,6 +292,28 @@ class TheStore(unittest.TestCase):
         path.write_text(jl(*recs))
         self.assertEqual(ct._take_facts(path), {"compaction", "workflow"})
 
+    def test_the_workflow_writers(self):
+        """R15-1: the run's journal (subagents/workflows/<runId>/journal.jsonl) and its scripts
+        (workflows/scripts/<name>-<runId>.js), with a Workflow call; bound to the run its result names, when it names
+        one."""
+        wf = [[f"{P}/{OWN}/subagents/workflows", "dir"], [f"{P}/{OWN}/subagents/workflows/run1", "dir"],
+              [f"{P}/{OWN}/subagents/workflows/run1/journal.jsonl", "file"], [f"{P}/{OWN}/workflows", "dir"],
+              [f"{P}/{OWN}/workflows/scripts", "dir"], [f"{P}/{OWN}/workflows/scripts/survey-run1.js", "file"]]
+        self.assertTrue(ct.claude_store_violations(CLEAN + wf, OWN))
+        self.assertEqual(ct.claude_store_violations(CLEAN + wf, OWN, {"workflow"}), [])
+        self.assertEqual(ct.claude_store_violations(CLEAN + wf, OWN, {"workflow", "workflow-run:run1"}), [])
+        self.assertTrue(ct.claude_store_violations(CLEAN + wf, OWN, {"workflow", "workflow-run:run9"}))
+        self.assertTrue(ct.claude_store_violations(CLEAN + [[f"{P}/{OWN}/subagents/workflows/run1/other.jsonl", "file"]]
+                                                   + wf[:2], OWN, {"workflow"}))
+        path = take_folder()
+        recs = [json.loads(x) for x in path.read_text().splitlines()]
+        recs.append({"type": "assistant", "message": {"role": "assistant", "content": [
+            {"type": "tool_use", "id": "toolu_w", "name": "Workflow", "input": {}}]}})
+        recs.append({"type": "user", "message": {"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": "toolu_w", "content": "ok"}]}, "toolUseResult": {"runId": "run1"}})
+        path.write_text(jl(*recs))
+        self.assertEqual(ct._take_facts(path), {"workflow", "workflow-run:run1"})
+
     def test_the_vendor_stores(self):
         own = "sessions/2026/10/16/rollout-2026-10-16T10-00-00-t1.jsonl"
         clean = [["sessions/2026", "dir"], ["sessions/2026/10", "dir"], ["sessions/2026/10/16", "dir"], [own, "file"]]
@@ -304,12 +342,16 @@ class TheStore(unittest.TestCase):
 class TheSweep(unittest.TestCase):
     """Review r14 (d): every writable location of the take container swept after every turn for session files."""
 
+    fcap = 64 * 1024 * 1024
+    never = ("/proc", "/sys")
+
     def sweep(self, *roots):
         import contextlib
         import io
         from box import run_take as rt
         buf, saved = io.StringIO(), sys.argv
-        sys.argv = ["-c", json.dumps(list(roots)), str(__import__("os").getuid()), "100", str(rt.SWEEP_HEAD_BYTES)]
+        sys.argv = ["-c", json.dumps(list(roots)), str(__import__("os").getuid()), "100", str(self.fcap),
+                    json.dumps(list(self.never))]
         try:
             with contextlib.redirect_stdout(buf):
                 exec(compile(rt.SWEEP_PROGRAM, "<the session sweep>", "exec"), {"__name__": "__sweep__"})
@@ -345,6 +387,47 @@ class TheSweep(unittest.TestCase):
             (many / f"f{i}").write_text("x")
         self.assertTrue(self.sweep(str(many))["truncated"])
 
+    def test_review_r15_reads(self):
+        """R15-3/4 and the mutants M1, M2, M9: every line is read up to the cap; a larger "{" file, an agent-owned file
+        or folder the sweep cannot read, an lstat that fails under an agent-owned folder, and an agent-owned link out
+        of the roots are each reported; a never-root (a fake /proc here) is never entered."""
+        import os
+        d = Path(tempfile.mkdtemp())
+        filler = "".join(json.dumps({"n": i}) + "\n" for i in range(40))
+        (d / "late.jsonl").write_text(filler + json.dumps({"type": "user", "sessionId": "late1"}) + "\n")
+        (d / "wide.jsonl").write_text(json.dumps({"pad": "x" * 9000}) + "\n"
+                                      + json.dumps({"type": "user", "sessionId": "wide1"}) + "\n")
+        (d / "history.jsonl").write_text(json.dumps({"display": "x", "sessionId": "h1", "project": "/p"}) + "\n")
+        (d / "anytype.jsonl").write_text(json.dumps({"type": "queue-operation", "sessionId": "q1"}) + "\n")
+        (d / "locked.jsonl").write_text(json.dumps({"type": "user", "sessionId": "x"}) + "\n")
+        os.chmod(d / "locked.jsonl", 0)
+        (d / "noexec").mkdir()
+        (d / "noexec" / "f.jsonl").write_text("{}")
+        os.chmod(d / "noexec", 0o444)
+        out = Path(tempfile.mkdtemp())
+        (d / "away").symlink_to(out)
+        proc = d / "fakeproc"
+        proc.mkdir()
+        (proc / "s.jsonl").write_text(json.dumps({"type": "user", "sessionId": "p1"}) + "\n")
+        big = Path(tempfile.mkdtemp())
+        (big / "big.jsonl").write_text("{" + "x" * 3000)
+        self.never = (str(proc),)
+        try:
+            got = self.sweep(str(d), str(proc))
+            self.fcap = 2000
+            capped = self.sweep(str(big))
+        finally:
+            os.chmod(d / "locked.jsonl", 0o600)
+            os.chmod(d / "noexec", 0o700)
+            del self.never, self.fcap
+        found = {f[2] for f in got["files"]}
+        self.assertEqual(found, {"late1", "wide1", "q1"}, got["files"])          # history.jsonl: no type, no session
+        self.assertIn([str(d / "locked.jsonl"), "file"], got["unreadable"])
+        self.assertIn([str(d / "noexec" / "f.jsonl"), "lstat"], got["unreadable"])
+        self.assertEqual(got["escapes"], [[str(d / "away"), os.path.realpath(out)]])
+        self.assertFalse(any("fakeproc" in f[0] for f in got["files"]))
+        self.assertEqual(capped["unreadable"], [[str(big / "big.jsonl"), "over-cap"]])
+
     def test_the_sweep_s_roots_and_its_argv(self):
         from box import run_take as rt
         self.assertEqual(ct.SWEEP_CONFIG_MOUNT, rt.CONFIG_MOUNT)
@@ -356,6 +439,12 @@ class TheSweep(unittest.TestCase):
         for bad in ("not json", json.dumps({"files": []}), json.dumps({"files": [["p"]], "unreadable": [], "scanned": 0,
                                                                        "truncated": False})):
             fake = types.SimpleNamespace(run=lambda argv, env=None, timeout=None, bad=bad: rt.Completed(0, bad, ""))
+            with self.assertRaises(rt.Refused):
+                rt.sweep_sessions(fake, "c" * 64, ["/x"])
+        good = {"files": [], "unreadable": [], "escapes": [], "scanned": 0, "truncated": False}
+        for bad in (dict(good, scanned="3"), dict(good, truncated="no"), dict(good, escapes=[["only"]])):   # M12 and kin
+            fake = types.SimpleNamespace(run=lambda argv, env=None, timeout=None, bad=bad: rt.Completed(
+                0, json.dumps(bad), ""))
             with self.assertRaises(rt.Refused):
                 rt.sweep_sessions(fake, "c" * 64, ["/x"])
         fake = types.SimpleNamespace(run=lambda argv, env=None, timeout=None: rt.Completed(1, "", "boom"))
@@ -380,10 +469,53 @@ class TheSweep(unittest.TestCase):
             with self.subTest(case=name):
                 got = ct.session_store_problems(with_store(take_folder(), clean, [sweep]))
                 self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT}, got)
+        for name, sweep in (
+                ("M5: a codex file at the take's own path", {**own_sweep("post-1"), "files": [
+                    [f"{mount}/{P}/{OWN}.jsonl", "codex", OWN]]}),
+                ("M7: a session file under the own folder outside subagents/", own_sweep("post-1", [
+                    [f"{mount}/{P}/{OWN}/tool-results/x.jsonl", "claude", OWN]])),
+                ("R15-3: an agent-owned link out of the roots", {**own_sweep("post-1"), "escapes": [["/tmp/l", "/run"]]})):
+            with self.subTest(case=name):
+                listed = [{"at": "post-1", "entries": CLEAN + [[f"{P}/{OWN}/tool-results/x.jsonl", "file"]]},
+                          {"at": "publish", "entries": CLEAN}]
+                got = ct.session_store_problems(with_store(take_folder(), listed, [sweep]))
+                self.assertTrue(any("sweep" in g for g in got), got)
         for sweeps in ([], [own_sweep("post-2")], [own_sweep("post-1"), own_sweep("post-1")]):
             with self.subTest(sweeps=[x["at"] for x in sweeps]):
                 got = ct.session_store_problems(with_store(take_folder(), clean, sweeps))
                 self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT}, got)
+
+
+class TheVendorRoad(unittest.TestCase):
+    """Review r15 MINOR 5 and M10: the driver judges a vendor take's store, sweeps and shell commands."""
+
+    def test_the_vendor_judgment(self):
+        own = "sessions/2026/10/16/rollout-2026-10-16T10-00-00-t1.jsonl"
+        listing = [{"at": "post-1", "entries": [["sessions/2026", "dir"], ["sessions/2026/10", "dir"],
+                                               ["sessions/2026/10/16", "dir"], [own, "file"]]}]
+        mine = {"at": "post-1", "files": [[f"/opt/cfg/{own}", "codex", "t1"]], "unreadable": [], "escapes": [],
+                "scanned": 4, "truncated": False}
+        self.assertEqual(drive.vendor_nested_problems(listing, [mine], "codex", own, ["ls"], []), [])
+        foreign = dict(mine, files=mine["files"] + [["/tmp/r.jsonl", "codex", "t2"]])
+        self.assertTrue(drive.vendor_nested_problems(listing, [foreign], "codex", own, ["ls"], []))
+        self.assertTrue(drive.vendor_nested_problems(listing, [mine], "codex", own, ["codex exec --ephemeral x"], []))
+        self.assertTrue(drive.vendor_nested_problems(listing, [mine], "codex", own, ["CODEX_HOME=/tmp/c codex exec"],
+                                                     []))
+        self.assertTrue(drive.vendor_nested_problems(listing, [mine], "codex", own, ["ls"], ["unread line"]))
+
+    def test_the_vendor_streams_are_read_for_their_shell_commands(self):
+        d = Path(tempfile.mkdtemp())
+        lines = [{"type": "item.started", "item": {"id": "c1", "type": "command_execution",
+                                                   "command": "codex exec --ephemeral x", "aggregated_output": "",
+                                                   "exit_code": None, "status": "in_progress"}}]
+        (d / "turn-1.jsonl").write_text("".join(json.dumps(r) + "\n" for r in lines))
+        cmds, bad = ct.vendor_shell_commands(d, "codex")
+        self.assertEqual((cmds, bad), (["codex exec --ephemeral x"], []))
+        (d / "turn-2.jsonl").write_text('{"type": "not-a-codex-record"}\n')
+        self.assertEqual(len(ct.vendor_shell_commands(d, "codex")[1]), 1)
+        src = (HERE.parent / "drive.py").read_text()
+        self.assertIn("_ct.vendor_shell_commands(take.folder, harness)", src)
+        self.assertIn("bad = vendor_nested_problems(", src)
 
 
 class TheDriver(unittest.TestCase):
@@ -419,7 +551,7 @@ class TheDriver(unittest.TestCase):
         drive.TakeDriver._sweep_sessions(me, take, "post-1")
         self.assertEqual(take.session_sweeps[0]["at"], "post-1")
         self.assertIn("boom", take.session_sweeps[0]["refused"])
-        doc = {"files": [], "unreadable": [], "scanned": 3, "truncated": False}
+        doc = {"files": [], "unreadable": [], "escapes": [], "scanned": 3, "truncated": False}
         me.runtime = types.SimpleNamespace(run=lambda argv, env=None, timeout=None: rt.Completed(0, json.dumps(doc), ""))
         drive.TakeDriver._sweep_sessions(me, take, "post-2")
         self.assertEqual(take.session_sweeps[1], dict(doc, at="post-2"))
@@ -447,12 +579,71 @@ class TheDraft(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         text = rows[0]["text"]
         for words in ("nested agent", "session store", "nested_cli_calls", "human sample", "--no-session-pers",
-                      "the sweep", "every writable location", "REMAINS", "in-turn", "assembles", "CLAUDE_CONFIG_DIR",
-                      "W-3", "review r14"):
+                      "the sweep", "swept locations", "REMAINS", "in-turn", "rebuilds", "CLAUDE_CONFIG_DIR",
+                      "W-3", "r15", "--ephemeral", "Gemini 0.64.0", "/run/lock", "read-only", "mount table",
+                      "every line"):
             self.assertIn(words, text)
         self.assertIn("glitch-b5", rows[0]["ruling"])
         self.assertIn("tests/test_nested_agent.py", rows[0]["closed_check"])
 
+
+def func_mutant(mod, fname, old, new):
+    """`mod.fname` with `old` replaced by `new` once in its source, compiled over the module's own globals."""
+    import inspect
+    import textwrap
+    src = textwrap.dedent(inspect.getsource(getattr(mod, fname)))
+    assert src.count(old) == 1, f"{fname}: the anchor occurs {src.count(old)} times"
+    g = dict(mod.__dict__)
+    exec(compile(src.replace(old, new), mod.__file__, "exec"), g)
+    return g[fname]
+
+
+class TheWitnesses(unittest.TestCase):
+    """Review r15's mutants (scratchpad/r15/muts.txt), re-anchored on this code: each turns a test above red."""
+
+    @staticmethod
+    def red(*cases) -> bool:
+        r = unittest.TestResult()
+        for c in cases:
+            c.run(r)
+        return bool(r.failures or r.errors)
+
+    def test_each_mutant_is_killed(self):
+        from unittest import mock
+        from box import run_take as rt
+        prog = rt.SWEEP_PROGRAM
+        sweep_cases = (TheSweep("test_review_r15_reads"), TheSweep("test_the_program_finds_each_session_shape_and_nothing_else"))
+        for name, patch, cases in (
+                ("M1 never-roots entered", mock.patch.object(rt, "SWEEP_PROGRAM", prog.replace(
+                    "    if inside(path, never):\n        return\n", "")), sweep_cases),
+                ("M2 an unreadable file never reported", mock.patch.object(rt, "SWEEP_PROGRAM", prog.replace(
+                    "    except OSError:\n        if st.st_uid == uid:\n            out[\"unreadable\"].append([path, \"file\"])\n"
+                    "        return\n", "    except OSError:\n        return\n")), sweep_cases),
+                ("M9 the first block only", mock.patch.object(rt, "SWEEP_PROGRAM", prog.replace(
+                    "    while size <= fcap:", "    while False:")), sweep_cases),
+                ("R15-3 lstat failures dropped", mock.patch.object(rt, "SWEEP_PROGRAM", prog.replace(
+                    "            out[\"unreadable\"].append([path, \"lstat\"])", "            pass")), sweep_cases),
+                ("R15-3 escapes dropped", mock.patch.object(rt, "SWEEP_PROGRAM", prog.replace(
+                    "                out[\"escapes\"].append([path, target])", "                pass")), sweep_cases),
+                ("R15-4 over-cap passed", mock.patch.object(rt, "SWEEP_PROGRAM", prog.replace(
+                    "        out[\"unreadable\"].append([path, \"over-cap\"])", "        pass")), sweep_cases),
+                ("M5 the shape unread", mock.patch.object(ct, "sweep_violations", func_mutant(
+                    ct, "sweep_violations", 'path in admitted and shape == "claude" and sid == own_id',
+                    "path in admitted and sid == own_id")), (TheSweep("test_the_checker_admits_only_the_take_s_own_sessions"),)),
+                ("M7 the admitted set widened", mock.patch.object(ct, "_admitted_session_files", func_mutant(
+                    ct, "_admitted_session_files", 'and rel.split("/")[3] == "subagents"', "")),
+                 (TheSweep("test_the_checker_admits_only_the_take_s_own_sessions"),)),
+                ("M10 the vendor's own file widened", mock.patch.object(drive, "vendor_nested_problems", func_mutant(
+                    drive, "vendor_nested_problems", 'files=[f for f in x["files"] if f[0] not in own]', "files=[]")),
+                 (TheVendorRoad("test_the_vendor_judgment"),)),
+                ("M12 the reply's scanned unchecked", mock.patch.object(rt, "sweep_sessions", func_mutant(
+                    rt, "sweep_sessions", 'type(doc["scanned"]) is int and ', "")),
+                 (TheSweep("test_the_sweep_s_roots_and_its_argv"),)),
+                ("R15-6 any NAME= token", mock.patch.object(ct, "assigned_variables", lambda c, depth=0: [
+                    t.split("=", 1)[0] for t in ct._split_all(c) if "=" in t]),
+                 (TheFlag("test_moving_an_agent_cli_s_session_store_refuses"),))):
+            with self.subTest(witness=name), patch:
+                self.assertTrue(self.red(*cases), name)
 
 if __name__ == "__main__":
     unittest.main()

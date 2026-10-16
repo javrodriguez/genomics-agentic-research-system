@@ -162,7 +162,7 @@ def _sub_records(folder: Path, aid: str, words: str) -> list:
 
 
 def nested_cli_count(transcript) -> int:
-    """W-3b: how many agent-CLI tokens the take's Bash commands carry (check_take.nested_cli_tokens): over
+    """W-3b: how many agent-CLI mentions the take's Bash commands carry (check_take.nested_cli_mentions): over
     the take folder (main thread and sub-agents, check_take.nested_cli_calls) when the transcript is bound to it, else
     over the lines handed (a probe's synthetic take)."""
     import check_take as ct
@@ -177,6 +177,6 @@ def nested_cli_count(transcript) -> int:
             continue
         if isinstance(r, dict) and r.get("type") == "assistant":
             recs.append(r)
-    return sum(len(ct.nested_cli_tokens(b["input"]["command"])) for r in recs for b in _blocks(r)
+    return sum(len(ct.nested_cli_mentions(b["input"]["command"])) for r in recs for b in _blocks(r)
                if b.get("type") == "tool_use" and b.get("name") == "Bash" and isinstance(b.get("input"), dict)
                and isinstance(b["input"].get("command"), str))

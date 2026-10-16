@@ -2597,22 +2597,17 @@ class TakeDriver:
             take.cross_check = [f"no session file for {ident['session_id']} in the take's config folder"]
         self._list_session_store(take, row, "publish", host_lister(take.config_dir))   # W-3b: at publish, host-side
         import check_take as _ct
-        self._write(take, SESSION_STORE_RECORD, {"harness": harness, "root": _ct.SESSION_STORE_ROOTS.get(harness),
-                                                  "listings": [dict(x) for x in take.session_store],
-                                                  "sweeps": [dict(x) for x in take.session_sweeps]})
+        store_doc = {"harness": harness, "root": _ct.SESSION_STORE_ROOTS.get(harness),
+                     "listings": [dict(x) for x in take.session_store], "sweeps": [dict(x) for x in take.session_sweeps]}
+        if vendor:                                # review r15 MINOR 5: the vendor road's shell commands read too
+            cmds, unread = _ct.vendor_shell_commands(take.folder, harness)
+            store_doc["nested_cli_calls"] = sum(len(_ct.nested_cli_mentions(c)) for c in cmds)
+        self._write(take, SESSION_STORE_RECORD, store_doc)
         if vendor:                                # W-3b: no checker reads a vendor take yet, so the driver judges it
-            bad = [f"at {x['at']}: {x['refused']}" if "refused" in x else
-                   f"at {x['at']}: {v}" for x in take.session_store
-                   for v in (["listing refused"] if "refused" in x else
-                             _ct.vendor_store_violations(x["entries"], harness, take.native_rel))]
-            own = {f"{_run_take.CONFIG_MOUNT}/{take.native_rel}"} if take.native_rel else set()
-            bad += [f"the sweep at {x['at']}: {v}" for x in take.session_sweeps
-                    for v in (["sweep refused"] if "refused" in x else
-                              [w for w in _ct.sweep_violations(dict(x, files=[f for f in x["files"] if f[0] not in own]),
-                                                               set(), None)])]
+            bad = vendor_nested_problems(take.session_store, take.session_sweeps, harness, take.native_rel, cmds,
+                                         unread)
             if bad:
-                take.store_refusal = f"[{_ct.NESTED_AGENT}] the session store holds more than the take's own session: " \
-                                     f"{'; '.join(bad[:3])}"
+                take.store_refusal = f"[{_ct.NESTED_AGENT}] a nested agent may have run: {'; '.join(bad[:3])}"
         sources = {id(r): (recs[k]["api_key_source"] if k < len(recs) else None) for k, r in enumerate(rows)}
         env = with_turns(take.environment, rows, sources)
         write_record_atomically(Path(take.folder) / ENVIRONMENT_RECORD_FILE, env)    # replaced whole, never merged
@@ -3299,6 +3294,22 @@ def copy_subagent_files(session_file: Path, session_id: str, folder: Path) -> li
 
 SESSION_STORE_RECORD = "session-store.json"
 SESSION_STORE_LIST_MAX = 5000
+
+
+def vendor_nested_problems(listings, sweeps, harness: str, native_rel, commands, unread) -> list:
+    """W-3b on the vendor road (no checker reads a vendor take yet, so the driver judges it): every store listing
+    holds only the take's own native session (check_take.vendor_store_violations), every sweep finds no session but
+    it, and the turn streams' shell commands carry no session-off switch and move no store (check_take.
+    command_problems; a stream line the parser refuses counts too)."""
+    import check_take as _ct
+    bad = [f"at {x['at']}: {v}" for x in listings
+           for v in (["listing refused"] if "refused" in x else
+                     _ct.vendor_store_violations(x["entries"], harness, native_rel))]
+    own = {f"{_run_take.CONFIG_MOUNT}/{native_rel}"} if native_rel else set()
+    bad += [f"the sweep at {x['at']}: {v}" for x in sweeps
+            for v in (["sweep refused"] if "refused" in x else
+                      _ct.sweep_violations(dict(x, files=[f for f in x["files"] if f[0] not in own]), set(), None))]
+    return bad + list(unread) + _ct.command_problems(commands, harness)
 
 
 def store_listing(lister, root: str) -> list:

@@ -2065,55 +2065,78 @@ def run_turn(runtime, take_id: str, inner, *, harness: str, run_tree: str, login
 
 
 # ------------------------------------------------------------------------------------------------ the session sweep
-# W-3b (glitch-b5's ruling on review r14, 16 Oct 2026): after every turn, inside the take container (its agent's
-# processes gone, before the teardown), every writable location is read for files of an agent session's shape: a
-# Claude Code session record (sessionId and type user, assistant, attachment, system or summary), a Codex rollout's
-# session_meta, a Gemini chat's sessionId and projectHash, among a file's first non-blank lines. It runs as the agent's
-# own uid through the image's isolated Python (/usr/bin/python3 -I -S, root-owned, as kill_agent does): a link is
-# never followed, /proc and /sys are never roots, a file that does not open with "{" is read no further than its first
-# block, and an entry owned by the agent that the sweep cannot read is reported (the agent can hide nothing from its
-# own uid but by its modes). The checker admits only the take's own session and its sub-agent pairs.
+# W-3b (glitch-b5's rulings on reviews r14 and r15, 16 Oct 2026): after every turn, inside the take container (its
+# agent's processes gone, before the teardown), the swept locations are read for files of an agent session's shape:
+# a Codex rollout's session_meta, a record with a sessionId string and a type string (Claude Code's; any type), a
+# Gemini chat's sessionId and projectHash, on ANY line of a file up to SWEEP_FILE_CAP (a larger file that opens with
+# "{" is reported, fail closed). It runs as the agent's own uid through the image's isolated Python (/usr/bin/python3
+# -I -S, root-owned, as kill_agent does). A link is never followed: an agent-owned link whose target leaves the swept
+# roots is reported. /proc and /sys are never roots and never entered. A file that does not open with "{" is read no
+# further than its first block. An agent-owned entry the sweep cannot read, and an entry that cannot be lstat'ed
+# under an agent-owned folder, are reported. The checker admits only the take's own session and its sub-agent pairs.
+# The roots are still listed here (SWEEP_FIXED_ROOTS): review r15's MAJOR 2 (a nested session in /run/lock, mode
+# 1777) asks for a read-only root filesystem and roots from the container's own mount table, held for the box check
+# a live run must make first (the harness lane's r15 report).
 AGENT_PASSWD_HOME = "/home/dana"          # the image's agent user (box/Dockerfile useradd --home-dir)
 SWEEP_FIXED_ROOTS = ("/tmp", "/var/tmp", "/dev/shm", AGENT_PASSWD_HOME)
+SWEEP_NEVER_ROOTS = ("/proc", "/sys")       # never a root, never entered
 SWEEP_MAX_FILES = 200000
-SWEEP_HEAD_BYTES = 8 * 1024 * 1024
+SWEEP_FILE_CAP = 64 * 1024 * 1024           # review r15: every line of a file up to 64 MB; a larger "{" file fails closed
 SWEEP_PROGRAM = r'''
 import json, os, stat, sys
-roots, uid, cap, head = json.loads(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
-out = {"files": [], "unreadable": [], "scanned": 0, "truncated": False}
-CLAUDE = ("user", "assistant", "attachment", "system", "summary")
-def shape(fd):
-    first = os.read(fd, 4096)
-    if not first.lstrip()[:1] == b"{":
+roots, uid, cap, fcap = json.loads(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
+never = json.loads(sys.argv[5])
+out = {"files": [], "unreadable": [], "escapes": [], "scanned": 0, "truncated": False}
+def inside(p, tops):
+    return any(p == t or p.startswith(t.rstrip("/") + "/") for t in tops)
+def classify(line):
+    try:
+        r = json.loads(line)
+    except ValueError:
         return None
-    data = first + os.read(fd, head - len(first)) if len(first) == 4096 else first
-    seen = 0
-    for line in data.split(b"\n"):
-        if not line.strip():
-            continue
-        seen += 1
-        if seen > 8:
-            break
-        try:
-            r = json.loads(line)
-        except ValueError:
-            continue
-        if not isinstance(r, dict):
-            continue
-        if isinstance(r.get("sessionId"), str) and r.get("type") in CLAUDE:
-            return ["claude", r["sessionId"]]
-        if r.get("type") == "session_meta":
-            p = r.get("payload") if isinstance(r.get("payload"), dict) else {}
-            return ["codex", p.get("id") if isinstance(p.get("id"), str) else None]
-        if isinstance(r.get("sessionId"), str) and isinstance(r.get("projectHash"), str):
-            return ["gemini", r["sessionId"]]
+    if not isinstance(r, dict):
+        return None
+    if r.get("type") == "session_meta":
+        q = r.get("payload") if isinstance(r.get("payload"), dict) else {}
+        return ["codex", q.get("id") if isinstance(q.get("id"), str) else None]
+    if isinstance(r.get("sessionId"), str) and isinstance(r.get("type"), str):
+        return ["claude", r["sessionId"]]
+    if isinstance(r.get("sessionId"), str) and isinstance(r.get("projectHash"), str):
+        return ["gemini", r["sessionId"]]
     return None
-def visit(path):
+def shape(path, fd):
+    first = os.read(fd, 4096)
+    if first.lstrip()[:1] != b"{":
+        return None
+    chunks, size = [first], len(first)
+    while size <= fcap:
+        b = os.read(fd, 1048576)
+        if not b:
+            break
+        chunks.append(b)
+        size += len(b)
+    if size > fcap:
+        return "over-cap"
+    for line in b"".join(chunks).split(b"\n"):
+        if line.strip():
+            got = classify(line)
+            if got:
+                return got
+    return None
+def visit(path, parent_uid):
+    if inside(path, never):
+        return
     try:
         st = os.lstat(path)
     except OSError:
+        if parent_uid == uid:
+            out["unreadable"].append([path, "lstat"])
         return
     if stat.S_ISLNK(st.st_mode):
+        if st.st_uid == uid:
+            target = os.path.realpath(path)
+            if not inside(target, roots) or inside(target, never):
+                out["escapes"].append([path, target])
         return
     if stat.S_ISDIR(st.st_mode):
         try:
@@ -2125,7 +2148,7 @@ def visit(path):
         for n in names:
             if out["truncated"]:
                 return
-            visit(os.path.join(path, n))
+            visit(os.path.join(path, n), st.st_uid)
         return
     if not stat.S_ISREG(st.st_mode):
         return
@@ -2140,19 +2163,19 @@ def visit(path):
             out["unreadable"].append([path, "file"])
         return
     try:
-        got = shape(fd)
+        got = shape(path, fd)
     except OSError:
         got = None
         if st.st_uid == uid:
             out["unreadable"].append([path, "file"])
     finally:
         os.close(fd)
-    if got:
+    if got == "over-cap":
+        out["unreadable"].append([path, "over-cap"])
+    elif got:
         out["files"].append([path] + got)
 for root in roots:
-    if root.rstrip("/") in ("/proc", "/sys") or root.startswith(("/proc/", "/sys/")):
-        continue
-    visit(root)
+    visit(root, None)
 print(json.dumps(out, sort_keys=True))
 '''
 
@@ -2165,12 +2188,12 @@ def sweep_roots(run_tree: str) -> list:
 def sweep_argv(take_id: str, roots: list) -> list:
     return [RUNTIME_CLIENT, "exec", "--user", AGENT_USER, _check_id(take_id, "take id"), "/usr/bin/python3", "-I",
             "-S", "-c", SWEEP_PROGRAM, json.dumps(list(roots)), AGENT_USER.split(":", 1)[0], str(SWEEP_MAX_FILES),
-            str(SWEEP_HEAD_BYTES)]
+            str(SWEEP_FILE_CAP), json.dumps(list(SWEEP_NEVER_ROOTS))]
 
 
 def sweep_sessions(runtime, take_id: str, roots: list, *, caller_env=None) -> dict:
     """One sweep of the take container (above): {files: [[path, shape, session id]], unreadable: [[path, kind]],
-    scanned, truncated}. A failed exec or a reply off that shape raises Refused."""
+    escapes: [[link, target]], scanned, truncated}. A failed exec or a reply off that shape raises Refused."""
     got = runtime.run(sweep_argv(take_id, roots), env=runtime_env(caller_env), timeout=STEP_TIMEOUT_S)
     if got.returncode != 0:
         raise Refused(f"the session sweep exited {got.returncode}: {str(got.stderr)[:200]}")
@@ -2178,8 +2201,10 @@ def sweep_sessions(runtime, take_id: str, roots: list, *, caller_env=None) -> di
         doc = json.loads(got.stdout)
     except (TypeError, ValueError):
         raise Refused("the session sweep's reply is not JSON") from None
-    if not (isinstance(doc, dict) and set(doc) == {"files", "unreadable", "scanned", "truncated"}
+    if not (isinstance(doc, dict) and set(doc) == {"files", "unreadable", "escapes", "scanned", "truncated"}
             and isinstance(doc["files"], list) and isinstance(doc["unreadable"], list)
+            and isinstance(doc["escapes"], list)
+            and all(isinstance(u, list) and len(u) == 2 and all(isinstance(x, str) for x in u) for u in doc["escapes"])
             and type(doc["scanned"]) is int and type(doc["truncated"]) is bool
             and all(isinstance(f, list) and len(f) == 3 and isinstance(f[0], str) and isinstance(f[1], str)
                     for f in doc["files"])
