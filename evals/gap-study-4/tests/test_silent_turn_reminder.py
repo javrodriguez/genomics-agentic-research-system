@@ -67,7 +67,7 @@ def take(value="0", name=SWITCH) -> Path:
 
 def env_problems(rt=None) -> list:
     if rt is None:
-        import run_take as rt
+        from box import run_take as rt
     out = []
     env = rt.TAKE_ENV[rt.CLAUDE_CODE]
     if env.get(SWITCH) != "0":
