@@ -237,6 +237,7 @@ def expected_row(harness, run_tree):
     own = {"claude-code": {"DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
                            "ENABLE_CLAUDEAI_MCP_SERVERS": "false", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
                            "CLAUDE_CODE_THRIFTY_SONIC": "false",   # the bash-first steer OFF (glitch-6b, 15 Oct)
+                           "CLAUDE_CODE_SILENT_TURN_REMINDER": "0",   # the silent-turn reminder OFF (glitch-b5, 16 Oct)
                            "CLAUDE_CONFIG_DIR": "/opt/cfg"},
            "codex": {"CODEX_HOME": "/opt/cfg"},
            "gemini": {"GEMINI_CLI_HOME": "/opt/cfg"}}[harness]

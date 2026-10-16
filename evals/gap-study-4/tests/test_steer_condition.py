@@ -54,7 +54,7 @@ UNSET = object()
 
 def settings(value=UNSET):
     """The study's inline settings as box/run_take.claude_study_settings writes them, the switch as given."""
-    env = {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1", SWITCH: "false"}
+    env = {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1", SWITCH: "false", "CLAUDE_CODE_SILENT_TURN_REMINDER": "0"}   # + glitch-b5's parity switch
     if value is UNSET:
         pass
     elif value is None:
@@ -151,7 +151,8 @@ class Steer(unittest.TestCase):
         smuggled = journal()
         smuggled["argv"] = ["claude", "-p", "--settings", settings(), "--model", "m", "--disallowedTools", *DENY]
         got = self.run_case([USER], [smuggled])
-        return [] if ct.reason_ids(got) == ["harness-condition-violated"] else [f"S-prompt: {got}"]
+        # glitch-b5's parity switch (16 Oct 2026): the smuggled settings set neither switch, so each is named
+        return [] if set(ct.reason_ids(got)) == {"harness-condition-violated"} else [f"S-prompt: {got}"]
 
     def check_unreadable(self):
         out = []

@@ -2550,6 +2550,11 @@ def no_output_nudges(path: Path) -> int:
 # never emits the auto_mode attachment (the Bash-first steer); transcript_view admits auto_mode as harness furniture
 # for audit (harness 2c3784e6), and a claude-code take that carries one refuses, whatever its journals say.
 STEER_SWITCH = "CLAUDE_CODE_THRIFTY_SONIC"
+# THE SILENT-TURN REMINDER OFF (glitch-b5's parity ruling, 16 Oct 2026; CP6 walks w126, w128 and w130, claude-opus-5-5,
+# held on the silent_turn_reminder attachment): 2.1.296 writes it after 5 silent tool-only API turns, default-on for
+# claude-opus-5-5; round 3 never received one. Its triBool switch is set "0" on every turn (box/run_take
+# SILENT_TURN_REMINDER_ENV) and proved per turn exactly as the steer's; the transcript view keeps refusing the record.
+SILENT_TURN_SWITCH = "CLAUDE_CODE_SILENT_TURN_REMINDER"
 STEER_OFF_VALUES = ("0", "false", "no", "off")
 AUTO_MODE_ATTACHMENT = "auto_mode"
 HARNESS_CONDITION_VIOLATED = "harness-condition-violated"
@@ -2698,16 +2703,18 @@ def steer_condition_problems(path: Path) -> list[str]:
     fail closed."""
     journals, streams = _turn_files(path)
     problems = _journal_gaps("the bash-first steer-off condition", journals, streams)
-    bad = []
-    for n, journal in sorted(journals.items()):
-        _, settings = _journal_view(journal)
-        value = settings[0].get("env", {}).get(STEER_SWITCH) if len(settings) == 1 else None
-        if not (isinstance(value, str) and value.strip().lower() in STEER_OFF_VALUES):
-            bad.append(n)
-    if bad:
-        problems.append(f"[{HARNESS_CONDITION_VIOLATED}] turn(s) {bad} do not set {STEER_SWITCH} off (a string in "
-                        f"{list(STEER_OFF_VALUES)}) in exactly one inline --settings: the bash-first steer-off "
-                        f"condition did not hold on every turn")
+    for switch in (STEER_SWITCH, SILENT_TURN_SWITCH):      # glitch-b5 (16 Oct 2026): the silent-turn reminder too
+        bad = []
+        for n, journal in sorted(journals.items()):
+            _, settings = _journal_view(journal)
+            value = settings[0].get("env", {}).get(switch) if len(settings) == 1 else None
+            if not (isinstance(value, str) and value.strip().lower() in STEER_OFF_VALUES):
+                bad.append(n)
+        if bad:
+            problems.append(f"[{HARNESS_CONDITION_VIOLATED}] turn(s) {bad} do not set {switch} off (a string in "
+                            f"{list(STEER_OFF_VALUES)}) in exactly one inline --settings: the "
+                            f"{'bash-first steer-off' if switch == STEER_SWITCH else 'silent-turn reminder off'} "
+                            f"condition did not hold on every turn")
     count = _auto_mode_records(path)
     if count:
         problems.append(f"[{HARNESS_CONDITION_VIOLATED}] the transcript carries {count} auto_mode attachment(s): the "

@@ -40,7 +40,8 @@ import check_take as ct  # noqa: E402
 
 DENY = ["RemoteTrigger", "SendMessage", "ListAgents"]
 SETTINGS = json.dumps({"availableModels": ["m"], "crossSessionInbound": "refuse",
-                       "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1", "CLAUDE_CODE_THRIFTY_SONIC": "false"},
+                       "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1", "CLAUDE_CODE_THRIFTY_SONIC": "false",
+                               "CLAUDE_CODE_SILENT_TURN_REMINDER": "0"},
                        "fallbackModel": [], "permissions": {"deny": DENY}, "switchModelsOnFlag": False},
                       sort_keys=True, separators=(",", ":"))
 OTHER = json.dumps({"crossSessionInbound": "hold", "env": {"CLAUDE_CODE_THRIFTY_SONIC": "true"},

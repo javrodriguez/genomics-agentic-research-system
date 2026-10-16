@@ -1375,7 +1375,17 @@ HARNESS_FURNITURE_RULING = {
          "pinned model or, by explicit choice, on claude-haiku-5-5, claude-sonnet-5-5 or claude-opus-5-5; any other "
          "model stops the take. Each take's check.json records its Agent calls and sub-agent models. RULED 16 Oct "
          "(glitch-b5): parity, so a note and not a departure; a sub-agent file of a shape not yet seen holds the walk "
-         "for a ruling (walk w083 was held on the call itself)."}],
+         "for a ruling (walk w083 was held on the call itself)."},
+        # glitch-b5's parity ruling (16 Oct 2026; CP6 walks w126, w128 and w130, claude-opus-5-5, held).
+        {"of": "silent_turn_reminder", "text": "Claude Code 2.1.296 writes a silent_turn_reminder attachment (a fixed "
+         "text) on the main agent after 5 silent tool-only API turns, at most 3 per stretch, and it is default-on for "
+         "models carrying the opus 5.5 prompt bundle (claude-opus-5-5). Round 3's versions, 2.1.267 and 2.1.280, "
+         "carry the same path, and round 3 received it in 0 of 64 transcripts. Its switch, "
+         "CLAUDE_CODE_SILENT_TURN_REMINDER, is read before every gate. RULED 16 Oct (glitch-b5): a parity condition, "
+         "as the bash-first steer is. Every claude-code take sets CLAUDE_CODE_SILENT_TURN_REMINDER \"0\" in its env and "
+         "in its inline settings, each turn's launch journal records it, and a turn that does not show it off refuses "
+         "(harness-condition-violated). The transcript view still refuses the attachment, so a reminder that reached "
+         "the agent holds the walk (walks w126, w128 and w130 were held on it)."}],
     "walk_scope": "RULED 15 Oct 2026 (glitch-6b): the 25 pre-ruling walks are not rechecked under the steer and "
                   "isolation guards. They are rehearsal records of the earlier conditions and never cover CP6; replayed "
                   "under the isolation guard all 25 refuse, as expected (box lane). Every line reruns under the new ship "

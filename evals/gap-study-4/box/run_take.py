@@ -109,6 +109,13 @@ GEMINI_MODE_ROUTE_VARIABLES = ("GEMINI_CLI_EXP_AGENT",)
 # value rides the exec's pairs (the row below) and the inline settings' env (claude_study_settings: the level above the
 # run tree's files, and the argv the per-turn launch journal records for the checker's auto_mode rule).
 BASH_FIRST_STEER_ENV = {"CLAUDE_CODE_THRIFTY_SONIC": "false"}
+# THE SILENT-TURN REMINDER OFF (glitch-b5's parity ruling, 16 Oct 2026; CP6 walks w126, w128 and w130, claude-opus-5-5,
+# held). 2.1.296 writes a silent_turn_reminder attachment on the main agent after 5 silent tool-only API turns (at most
+# 3 per stretch), default-on for models carrying the opus 5.5 prompt bundle; round 3 (2.1.267 and 2.1.280, which carry
+# the path) never received one. Its switch CLAUDE_CODE_SILENT_TURN_REMINDER is a triBool read before every gate (a
+# read-only static read of the pinned binary, for glitch-b5): "0" turns it off. It rides the exec's pairs and the
+# inline settings' env like the steer's, so every turn's launch journal records it for check_take's condition check.
+SILENT_TURN_REMINDER_ENV = {"CLAUDE_CODE_SILENT_TURN_REMINDER": "0"}
 
 # THE ISOLATION DENIALS (glitch-6b's ruling, 15 Oct 2026, under Javier's delegation). RemoteTrigger manages claude.ai
 # Routines ("via the claude.ai CCR API"): the one road a take's own login has to work on the account OUTSIDE the box.
@@ -140,7 +147,8 @@ TAKE_ENV = {
     CLAUDE_CODE: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
                   "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
                   "DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", **ISOLATION_ENV,
-                  **BASH_FIRST_STEER_ENV, "CLAUDE_CONFIG_DIR": CONFIG_MOUNT, "CLAUDE_CODE_OAUTH_TOKEN": CREDENTIAL},
+                  **BASH_FIRST_STEER_ENV, **SILENT_TURN_REMINDER_ENV, "CLAUDE_CONFIG_DIR": CONFIG_MOUNT,
+                  "CLAUDE_CODE_OAUTH_TOKEN": CREDENTIAL},
     CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
             "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
             "CODEX_HOME": CONFIG_MOUNT},     # no credential: subscriptions only (glitch-06, 14 Oct; the 13 Oct amendment)
@@ -935,7 +943,7 @@ def claude_study_settings(model: str) -> str:
     if CLAUDE_BYPASS_KEY != CLAUDE_BYPASS_NOT_REQUIRED:
         raise Refused("the study sends no bypass acceptance key: RULED not required in -p runs (CLAUDE_BYPASS_RULING)")
     return json.dumps({"availableModels": [model], "crossSessionInbound": CROSS_SESSION_INBOUND,
-                       "env": {**FALLBACK_ENV, **BASH_FIRST_STEER_ENV},
+                       "env": {**FALLBACK_ENV, **BASH_FIRST_STEER_ENV, **SILENT_TURN_REMINDER_ENV},
                        "permissions": {"deny": list(ISOLATION_DISALLOWED_TOOLS)},
                        "fallbackModel": [], "switchModelsOnFlag": False}, sort_keys=True, separators=(",", ":"))
 

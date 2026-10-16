@@ -360,6 +360,7 @@ class TestSharedValues(MutantCase):
                 rt.CLAUDE_CODE: {"DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
                                  "HTTPS_PROXY": "http://proxy:3128", "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
                                  "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1", "CLAUDE_CODE_THRIFTY_SONIC": "false",
+                                 "CLAUDE_CODE_SILENT_TURN_REMINDER": "0",   # glitch-b5's parity switch (16 Oct 2026)
                                  "CLAUDE_CONFIG_DIR": "/opt/cfg"},
                 rt.CODEX: {"HTTPS_PROXY": "http://proxy:3128", "CODEX_HOME": "/opt/cfg"},
                 rt.GEMINI: {"HTTPS_PROXY": "http://proxy:3128", "GEMINI_CLI_HOME": "/opt/cfg"},
@@ -650,9 +651,10 @@ class TestExecArgv(MutantCase):
         # Departure w12a-2 (ruling docs-1): the values ride as the launcher's NAME=VALUE pairs, the agent starting
         # from an empty environment plus its TAKE_ENV row; the login still rides as `-e NAME` only.
         want = ["docker", "exec", "--user", "10001:10001", "--workdir", "/srv/w/t1/tree",
-                "-e", "CLAUDE_CODE_OAUTH_TOKEN", ID["take"], *rt.LAUNCHER, "CLAUDE_CODE_OAUTH_TOKEN", "14",
+                "-e", "CLAUDE_CODE_OAUTH_TOKEN", ID["take"], *rt.LAUNCHER, "CLAUDE_CODE_OAUTH_TOKEN", "15",
                 "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
-                "CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK=1", "CLAUDE_CODE_THRIFTY_SONIC=false",
+                "CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK=1", "CLAUDE_CODE_SILENT_TURN_REMINDER=0",
+                "CLAUDE_CODE_THRIFTY_SONIC=false",
                 "CLAUDE_CONFIG_DIR=/opt/cfg", "DISABLE_AUTOUPDATER=1", "ENABLE_CLAUDEAI_MCP_SERVERS=false",
                 "HOME=/opt/cfg", "HTTPS_PROXY=http://proxy:3128", "LANG=C.UTF-8",
                 f"PATH={rt.TAKE_PATH}", f"TEMP={t}", f"TMP={t}", f"TMPDIR={t}", *CLAUDE_INNER]
@@ -1369,7 +1371,8 @@ class TestClaudeSettings(MutantCase):
         want = rt.claude_study_settings(CLAUDE_MODEL)
         doc = json.loads(want)
         if doc != {"availableModels": [CLAUDE_MODEL], "crossSessionInbound": "refuse",
-                   "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1", "CLAUDE_CODE_THRIFTY_SONIC": "false"},
+                   "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1", "CLAUDE_CODE_THRIFTY_SONIC": "false",
+                           "CLAUDE_CODE_SILENT_TURN_REMINDER": "0"},   # + glitch-b5's parity switch (16 Oct 2026)
                    "permissions": {"deny": ["RemoteTrigger", "SendMessage", "ListAgents"]},
                    "fallbackModel": [],
                    "switchModelsOnFlag": False}:

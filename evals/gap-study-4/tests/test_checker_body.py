@@ -267,7 +267,8 @@ def take_folder(script: list, *, records=None, instruction=None) -> Path:
 def study_journal(model: str) -> dict:
     """One turn's launch journal as box/run_take records it (db7c0d14): the inner argv, its inline settings."""
     settings = json.dumps({"availableModels": [model], "crossSessionInbound": "refuse",
-                           "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1", "CLAUDE_CODE_THRIFTY_SONIC": "false"},
+                           "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1", "CLAUDE_CODE_THRIFTY_SONIC": "false",
+                                   "CLAUDE_CODE_SILENT_TURN_REMINDER": "0"},   # + glitch-b5's parity switch (16 Oct 2026)
                            "fallbackModel": [], "permissions": {"deny": ["RemoteTrigger", "SendMessage", "ListAgents"]},
                            "switchModelsOnFlag": False}, sort_keys=True, separators=(",", ":"))
     return {"schema": 1, "harness": "claude-code", "container_id": "synthetic",
