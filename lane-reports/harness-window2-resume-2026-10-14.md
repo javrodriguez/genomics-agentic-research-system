@@ -425,3 +425,26 @@ Every walk checked on an earlier head reads "check unreadable" until rechecked o
 
 ## Exact next step
 glitch-b5: r10 and the battery on this head.
+
+## RESUME HERE (16 Oct 03:43 EDT; supersedes the blocks above): r10 folded, silent-turn reminder off
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent 692dcf12). Nothing pushed. athena was used only for one keys-and-enumerated-values-only read of held w083's turn-1.jsonl (glitch-b5's permission), with nothing written there but a temporary reader, which was removed. No mac_slot booking held; no process of this lane running.
+
+- 25dd1eaa: review r10's fold (F1, F2, R-B revised, F3, NITs).
+  - F1: the sub-agent file's tool calls feed every reach reader, and the stream and the file must agree both ways.
+  - F2: the meta file (closed shape, bound by toolUseId), attachments under the view's own allow-list, U+2028/U+2029/U+0085 inside strings admitted, the jsonl scrubbed as the transcript is, and the account email counted.
+  - R-B: async_launched is read only with its task_notification in its own turn, before the final result. remote_launched refuses; errored calls are recorded.
+  - F3: a sub-agent's API errors are routed as the agent's.
+  - The w083 structure-only model reads clean.
+- 692dcf12: glitch-b5's parity switch. CLAUDE_CODE_SILENT_TURN_REMINDER "0" is set in TAKE_ENV and the inline settings, and proved per turn by steer_condition_problems. The view still refuses silent_turn_reminder, and the draft has its parity note.
+
+Mac proof: listed in both commits (python3.12, env -u CLAUDE_CODE_MESSAGING_TOKEN, light-ok first). Every module listed there is green; build_draft is 48 OK on the committed draft.
+Not run on the Mac: the generated shards, test_round4 and test_box_integration.
+
+Open, for the first live walks on this head:
+- the 2.1.296 subagents pair's real shape (any mismatch holds);
+- a meta with a "model" key (an explicit-model sub-agent) holds under the closed shape;
+- the first Opus normal half must show 0 silent_turn_reminder records.
+
+## Exact next step
+glitch-b5: r11 and the battery on this head. The held Opus lines 4, 6 and 8 rerun on it.
