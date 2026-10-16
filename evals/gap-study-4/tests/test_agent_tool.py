@@ -28,6 +28,15 @@ tool_use_result, type, uuid}. Everything is synthetic.
              copies before the config folder goes and the ledger names the copies. A file not of the shape derived
              from 2.1.296 (user or assistant records, isSidechain true, the file's agentId, the session's id, newline
              only), any other file there, a symlink or a duplicate id HOLDS (DriveRefused). No folder: nothing.
+  A-check    check_take.subagent_problems binds the records: the copies are exactly the ledger's; one file per Agent
+             call's agentId; each stream sub-agent record bound to an Agent call by parent call and agent id; the
+             stream and the file agree on the tool calls; a call with no result naming its sub-agent, or running in
+             the background unfinished, refuses (another status is recorded, not refused); a model off the pin's and
+             the alias ids refuses; a sub-agent call to a denied isolation tool refuses [harness-condition-violated];
+             a sub-agent file's lines are newline-split JSON. A clean take, and one with no Agent call, read clean.
+  A-reach    the reach readers read the sub-agent's stream tool calls as the main agent's (a sub-agent's read of the
+             study's materials is counted and lifted), and a sub-agent file's attachments are swept for leak words;
+             check4 and check4_walk do all of it.
 """
 
 from __future__ import annotations
@@ -294,6 +303,117 @@ def copy_problems(drive=None) -> list:
     return out
 
 
+def take_folder(*, calls=True, result_over=None, stream_recs=None, files=None, ledger_subagents="auto",
+                pin=PIN) -> Path:
+    """A synthetic take folder: transcript.jsonl (an operator line, an Agent call and its result), turn-1.jsonl (the
+    main init and call, and the sub-agent's records), subagents/agent-<id>.jsonl, and driver-ledger.json naming them."""
+    import hashlib
+    import tempfile
+    d = Path(tempfile.mkdtemp())
+    recs = [OP] + ([agent_call(), agent_result(**(result_over or {}))] if calls else [])
+    (d / "transcript.jsonl").write_text("".join(json.dumps(r) + "\n" for r in recs))
+    bash = {"type": "tool_use", "id": "toolu_sub", "name": "Bash", "input": {"command": "ls"}}
+    default_stream = [sub(tool=bash), sub("user", text="ok")] if calls else []
+    (d / "turn-1.jsonl").write_text(stream(INIT, main_said("x") if calls else main_said("x", call=False),
+                                           *(default_stream if stream_recs is None else stream_recs), RESULT))
+    good = "".join(json.dumps(r) + "\n" for r in (side_record(), side_record("user")))
+    files = {f"agent-{AGENT_ID}.jsonl": good} if files is None and calls else (files or {})
+    listed = []
+    for name, text in files.items():
+        f = d / "subagents" / name
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(text)
+        listed.append({"file": f"subagents/{name}", "agent_id": name[6:-6],
+                       "sha256": hashlib.sha256(text.encode()).hexdigest()})
+    led = {"model_requested": pin, "subagents": listed if ledger_subagents == "auto" else ledger_subagents}
+    (d / "driver-ledger.json").write_text(json.dumps(led))
+    return d / "transcript.jsonl"
+
+
+def check_problems(ct=None) -> list:
+    if ct is None:
+        import check_take as ct
+    out = []
+    bash = {"type": "tool_use", "id": "toolu_sub", "name": "Bash", "input": {"command": "ls"}}
+    for name, kw in (("a clean take", {}), ("no Agent call", {"calls": False}),
+                     ("a failed, not running, sub-agent", {"result_over": {"status": "failed"}}),
+                     ("an explicit opus sub-agent", {"result_over": {"resolvedModel": "claude-opus-5-5"},
+                                                     "stream_recs": [sub(model="claude-opus-5-5", tool=bash)]})):
+        got = ct.subagent_problems(take_folder(**kw))
+        if got:
+            out.append(f"A-check {name}: refused {got}")
+    sr = ["subagent-records"]
+    good = "".join(json.dumps(r) + "\n" for r in (side_record(), side_record("user")))
+    refused = {
+        "a copy the ledger does not name": ({"ledger_subagents": []}, sr),
+        "no ledger list": ({"ledger_subagents": None}, sr),
+        "a file no call names": ({"files": {f"agent-{AGENT_ID}.jsonl": good, "agent-zzz.jsonl": good}}, sr),
+        "a call with no file": ({"files": {}}, sr),
+        "a call with no result agent": ({"result_over": {"agentId": None}}, sr),
+        "a background sub-agent unfinished": ({"result_over": {"isAsync": True, "status": "running"}}, sr),
+        "a resolved model off the list": ({"result_over": {"resolvedModel": "claude-fable-5-1"}}, sr),
+        "a stream model off the list": ({"stream_recs": [sub(model="claude-sonnet-4-5", tool=bash)]}, sr),
+        "a stream record of another agent": ({"stream_recs": [sub(tool=bash, agent_id="zzz")]}, sr),
+        "stream and file disagree": ({"stream_recs": [sub(tool=dict(bash, id="toolu_other"))]}, sr),
+        "a denied tool": ({"stream_recs": [sub(tool={"type": "tool_use", "id": "toolu_sub", "name": "SendMessage",
+                                                     "input": {}})],
+                           "files": {f"agent-{AGENT_ID}.jsonl": json.dumps(side_record(message={
+                               "role": "assistant", "model": PIN, "content": [{"type": "tool_use", "id": "toolu_sub",
+                                                                                "name": "SendMessage", "input": {}}]}))
+                                     + "\n"}}, ["harness-condition-violated"]),
+        "a raw U+2028 in a sub-agent file": ({"files": {f"agent-{AGENT_ID}.jsonl": good.replace(
+            '"ls"', '"l\u2028s"', 1)}}, ["transcript-unreadable"]),
+    }
+    for name, (kw, want) in refused.items():
+        got = ct.subagent_problems(take_folder(**kw))
+        if not set(want) <= set(ct.reason_ids(got)):
+            out.append(f"A-check {name}: {got}")
+    return out
+
+
+def reach_problems(ct=None) -> list:
+    import prereg
+    if ct is None:
+        import check_take as ct
+    out = []
+    peek = {"type": "tool_use", "id": "toolu_sub", "name": "Read",
+            "input": {"file_path": "/repo/evals/gap-study-4/prereg.json"}}
+    path = take_folder(stream_recs=[sub(tool=peek)], files={f"agent-{AGENT_ID}.jsonl": json.dumps(side_record(
+        message={"role": "assistant", "model": PIN, "content": [peek]})) + "\n"})
+    if ct.event_counts(path)[ct.EVENT_STUDY] != 0:
+        out.append("A-reach: the main transcript alone already counts the read")
+    reach = ct.subagent_reach_file(path)
+    try:
+        counts = ct.event_counts(reach)
+    finally:
+        ct._drop(reach)
+    if counts[ct.EVENT_STUDY] < 1 or ct.reason_ids(ct.reach_event_problems(counts)) != [ct.EVENT_STUDY]:
+        out.append(f"A-reach: a sub-agent's read of the study's materials is not counted ({counts})")
+    counts0 = ct.event_counts(path)
+    got = ct.subagent_reach_problems(path, prereg.load(), counts0)
+    if counts0[ct.EVENT_STUDY] < 1 or ct.EVENT_STUDY not in ct.reason_ids(got):
+        out.append(f"A-reach: subagent_reach_problems does not count and lift the sub-agent's reach ({counts0})")
+    if ct.subagent_reach_file(take_folder(calls=False)) is not None:
+        out.append("A-reach: a take with no sub-agent record gets a reach file")
+    leak = {"type": "attachment", "isSidechain": True, "agentId": AGENT_ID, "sessionId": SID,
+            "attachment": {"type": "nested_memory", "content": "notes for the evaluation"}}
+    lp = take_folder(files={f"agent-{AGENT_ID}.jsonl": json.dumps(leak) + "\n"})
+    if ct.reason_ids(ct.subagent_leak_problems(lp, prereg.load())) != ["leak-in-loaded-context"]:
+        out.append("A-reach: a sub-agent file's leak word is not swept")
+    import ast
+    tree = ast.parse(Path(ct.__file__).read_text())
+    for fn in ("check4", "check4_walk"):
+        body = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == fn)
+        called = {c.func.id for c in ast.walk(body) if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
+        missing = {"subagent_problems", "subagent_reach_problems"} - called
+        if missing:
+            out.append(f"A-reach: {fn} does not call {sorted(missing)}")
+    import claude_code_adapter as cca
+    if tuple(ct.SUBAGENT_EXPLICIT_MODELS) != tuple(cca.SUBAGENT_EXPLICIT_MODELS):
+        out.append("A-reach: the checker's and the driver's admitted sub-agent models differ")
+    return out
+
+
 class TheAgentTool(unittest.TestCase):
     def test_a_view(self):
         self.assertEqual(view_problems(), [])
@@ -320,6 +440,37 @@ class TheAgentTool(unittest.TestCase):
                 m.DriveRefused = drive.DriveRefused
                 try:
                     got = copy_problems(m)
+                except Exception as e:  # noqa: BLE001
+                    got = [f"raised {type(e).__name__}"]
+                print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
+                self.assertTrue(got, name)
+
+    def test_a_check(self):
+        self.assertEqual(check_problems(), [])
+
+    def test_a_reach(self):
+        self.assertEqual(reach_problems(), [])
+
+    def test_a_check_witnesses(self):
+        import check_take as ct
+        for name, old, new in (
+                ("the ledger unread", "            {e.get(\"file\"): e.get(\"sha256\") for e in listed} != on_disk:",
+                 "            False:"),
+                ("calls and files unbound", "    if set(files) != named:", "    if False:"),
+                ("a running sub-agent read", '        elif c["is_async"] is True and c["status"] != "completed":',
+                 "        elif False:"),
+                ("stream records unbound", '        if call is None or rec.get("agent_id") != call["agent_id"]:',
+                 "        if call is None:"),
+                ("stream and file not compared", "        if stream_calls[aid] != file_calls[aid]:", "        if False:"),
+                ("the reach file empty", "    subs = stream_subagent_records(path)\n    if not subs:",
+                 "    subs = []\n    if not subs:"),
+                ("the counts not updated", "    counts.update(merged)\n", ""),
+                ("sub-agent leaks unswept", "        leaked = sorted(context_leaks(context_text(p), pre))",
+                 "        leaked = []")):
+            with self.subTest(witness=name):
+                m = mutant(ct, old, new)
+                try:
+                    got = check_problems(m) + reach_problems(m)
                 except Exception as e:  # noqa: BLE001
                     got = [f"raised {type(e).__name__}"]
                 print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)

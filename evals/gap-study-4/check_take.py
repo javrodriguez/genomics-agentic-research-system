@@ -1958,6 +1958,8 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
         problems += steer_condition_problems(path)               # the bash-first steer OFF (glitch-6b, 15 Oct)
         problems += denied_tool_problems(path)   # the isolation denials (glitch-6b, 15 Oct)
         problems += transcript_line_problems(path)   # every line one JSON record (glitch-b5, 16 Oct)
+        problems += subagent_problems(path)   # the Agent tool's records bound (glitch-b5, 16 Oct)
+        problems += subagent_reach_problems(path, design.pre, counts)   # and their reach counted, in place
     # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm, so the ledger's arm must be the take's.
     led = _ledger_beside(path)
     if led is not None and led.get("arm") != arm:
@@ -2406,6 +2408,8 @@ def check4_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wordi
         problems += steer_condition_problems(path)                     # the bash-first steer OFF (glitch-6b, 15 Oct)
         problems += denied_tool_problems(path)   # the isolation denials (glitch-6b, 15 Oct)
         problems += transcript_line_problems(path)   # every line one JSON record (glitch-b5, 16 Oct)
+        problems += subagent_problems(path)   # the Agent tool's records bound (glitch-b5, 16 Oct)
+        problems += subagent_reach_problems(path, design.pre, counts)   # and their reach counted, in place
     beside = _ledger_beside(path)
     if isinstance(beside, dict) and beside.get("arm") != arm:
         problems.append(f"[constant-binding] the walk's driver ledger records arm {beside.get('arm')!r}, and the walk is "
@@ -2863,6 +2867,208 @@ def transcript_line_problems(path: Path) -> list[str]:
         out.append(f"[{TRANSCRIPT_UNREADABLE}] line(s) {bad[:5]} of the transcript are not JSON: a record cut or "
                    f"joined is never read as another")
     return out
+
+
+
+# ---- THE AGENT TOOL (glitch-b5's Agent parity ruling, 16 Oct 2026, parts 2 to 6; CP6 walk w083) -----------------------
+#   Round 3 offered Agent in 64 of 64 transcripts and never called it; round 4 reads its sub-agent's records. The
+#   PRIMARY record of a sub-agent's actions is the turn stream (turn-N.jsonl beside the transcript): its assistant and
+#   user records with parent_tool_use_id set, bound by parent_tool_use_id to the transcript's Agent tool_use id and by
+#   agent_id to that call's toolUseResult.agentId (w083's keys). Every reach check reads those records' tool calls as
+#   the main agent's (subagent_reach_file feeds event_counts; reach_event_problems lifts the events). The copied
+#   subagents/agent-<id>.jsonl files (drive.copy_subagent_files) must be the ones the driver ledger names, one per
+#   Agent call's agentId, and agree with the stream on the tool calls; their attachments' words are swept for leaks
+#   and their lines are newline-split JSON. A sub-agent still running at the turn's end (a call with no result naming
+#   its agent, or isAsync with a status other than completed), a model off the pin's and SUBAGENT_EXPLICIT_MODELS,
+#   and a sub-agent call to a denied isolation tool refuse. [subagent-records] is an operator reason with its round-4
+#   ruling, routed like harness-condition-violated.
+AGENT_TOOL = "Agent"
+SUBAGENT_RECORDS = "subagent-records"
+SUBAGENTS_DIR = "subagents"
+_SUBAGENT_FILE = re.compile(r"agent-([A-Za-z0-9_-]{1,64})\.jsonl")
+# claude_code_adapter.SUBAGENT_EXPLICIT_MODELS, the 2.1.296 first-party alias ids (tests/test_agent_tool binds the two)
+SUBAGENT_EXPLICIT_MODELS = ("claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5")
+
+
+def _records_of(p: Path) -> list:
+    out = []
+    for line in Path(p).read_text(encoding="utf-8", errors="replace").split("\n"):
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(rec, dict):
+            out.append(rec)
+    return out
+
+
+def _tool_use_blocks(rec: dict) -> list:
+    content = (rec.get("message") or {}).get("content") if isinstance(rec.get("message"), dict) else None
+    return [b for b in content if isinstance(b, dict) and b.get("type") == "tool_use"] if isinstance(content, list) else []
+
+
+def agent_calls(path: Path) -> list:
+    """The transcript's Agent calls, in order: {tool_use_id, agent_id, is_async, status, resolved_model}, the last four
+    from the call's tool_result toolUseResult (None where it carries none)."""
+    calls: dict = {}
+    recs = _records_of(path)
+    for rec in recs:
+        if rec.get("type") == "assistant" and rec.get("isSidechain") is not True:
+            for b in _tool_use_blocks(rec):
+                if b.get("name") == AGENT_TOOL and isinstance(b.get("id"), str):
+                    calls.setdefault(b["id"], {"tool_use_id": b["id"], "agent_id": None, "is_async": None,
+                                               "status": None, "resolved_model": None})
+    for rec in recs:
+        content = (rec.get("message") or {}).get("content") if isinstance(rec.get("message"), dict) else None
+        if rec.get("type") != "user" or not isinstance(content, list):
+            continue
+        tur = rec.get("toolUseResult")
+        for b in content:
+            if isinstance(b, dict) and b.get("type") == "tool_result" and b.get("tool_use_id") in calls \
+                    and isinstance(tur, dict):
+                c = calls[b["tool_use_id"]]
+                c["agent_id"] = tur.get("agentId") if isinstance(tur.get("agentId"), str) else None
+                c["is_async"] = tur.get("isAsync") if isinstance(tur.get("isAsync"), bool) else None
+                c["status"] = tur.get("status") if isinstance(tur.get("status"), str) else None
+                c["resolved_model"] = tur.get("resolvedModel") if isinstance(tur.get("resolvedModel"), str) else None
+    return list(calls.values())
+
+
+def stream_subagent_records(path: Path) -> list:
+    """(turn, record) for each sub-agent record of the turn streams beside the transcript: an assistant or user record
+    with parent_tool_use_id set (a harness event naming a call is not one)."""
+    out = []
+    streams = sorted((int(m.group(1)), p) for p in Path(path).parent.iterdir()
+                     if (m := _TURN_STREAM.fullmatch(p.name)))
+    for n, p in streams:
+        for rec in _records_of(p):
+            if rec.get("type") in ("assistant", "user") and rec.get("parent_tool_use_id") is not None:
+                out.append((n, rec))
+    return out
+
+
+def subagent_files(path: Path) -> dict:
+    """{agent id: path} of the copied sub-agent files under the folder's subagents/."""
+    base = Path(path).parent / SUBAGENTS_DIR
+    return {m.group(1): p for p in sorted(base.rglob("*")) if p.is_file() and (m := _SUBAGENT_FILE.fullmatch(p.name))} \
+        if base.is_dir() else {}
+
+
+def subagent_problems(path: Path) -> list[str]:
+    """[subagent-records] (and, for a denied tool, [harness-condition-violated]) for each way the sub-agent records
+    fail to bind or show a sub-agent still running; [] for a take with no Agent call and no sub-agent record."""
+    calls, files, subs = agent_calls(path), subagent_files(path), stream_subagent_records(path)
+    led = _ledger_beside(path) or {}
+    pin = led.get("model_requested")
+    out = []
+    if not (calls or files or subs or led.get("subagents")):
+        return out
+    by_call = {c["tool_use_id"]: c for c in calls}
+    listed = led.get("subagents")
+    on_disk = {p.relative_to(Path(path).parent).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+               for p in files.values()}
+    if not isinstance(listed, list) or not all(isinstance(e, dict) for e in listed) or \
+            {e.get("file"): e.get("sha256") for e in listed} != on_disk:
+        out.append(f"[{SUBAGENT_RECORDS}] the sub-agent files in the folder ({sorted(on_disk)}) are not exactly the "
+                   f"copies the driver ledger names: a file found and not copied, or copied and not named")
+    for c in calls:
+        if c["agent_id"] is None:
+            out.append(f"[{SUBAGENT_RECORDS}] Agent call {c['tool_use_id']} has no result naming its sub-agent: it was "
+                       f"still running when the turn ended")
+        elif c["is_async"] is True and c["status"] != "completed":
+            out.append(f"[{SUBAGENT_RECORDS}] Agent call {c['tool_use_id']} runs in the background (status "
+                       f"{str(c['status'])[:20]!r}): a sub-agent still running when the turn ended")
+        if c["resolved_model"] is not None and c["resolved_model"] != pin \
+                and c["resolved_model"] not in SUBAGENT_EXPLICIT_MODELS:
+            out.append(f"[{SUBAGENT_RECORDS}] Agent call {c['tool_use_id']} resolved model "
+                       f"{c['resolved_model'][:60]!r}, neither the pin's nor one of {list(SUBAGENT_EXPLICIT_MODELS)}")
+    named = {c["agent_id"] for c in calls if c["agent_id"]}
+    if set(files) != named:
+        out.append(f"[{SUBAGENT_RECORDS}] {len(calls)} Agent call(s) name sub-agents {sorted(named)} and the folder "
+                   f"holds files for {sorted(files)}: each call's sub-agent has exactly one file")
+    stream_calls: dict = {}
+    for n, rec in subs:
+        call = by_call.get(rec.get("parent_tool_use_id"))
+        if call is None or rec.get("agent_id") != call["agent_id"]:
+            out.append(f"[{SUBAGENT_RECORDS}] turn {n}'s sub-agent record is not bound to an Agent call of the "
+                       f"transcript by its parent call and agent id")
+            continue
+        model = (rec.get("message") or {}).get("model") if rec.get("type") == "assistant" else None
+        if model is not None and model != pin and model not in SUBAGENT_EXPLICIT_MODELS:
+            out.append(f"[{SUBAGENT_RECORDS}] turn {n}'s sub-agent ran on {str(model)[:60]!r}, neither the pin's nor "
+                       f"one of {list(SUBAGENT_EXPLICIT_MODELS)}")
+        if rec.get("type") == "assistant":
+            stream_calls.setdefault(call["agent_id"], set()).update(
+                (b.get("id"), b.get("name")) for b in _tool_use_blocks(rec))
+    file_calls = {aid: {(b.get("id"), b.get("name")) for rec in _records_of(p) if rec.get("type") == "assistant"
+                        for b in _tool_use_blocks(rec)} for aid, p in files.items()}
+    for aid in sorted(set(stream_calls) & set(file_calls)):
+        if stream_calls[aid] != file_calls[aid]:
+            out.append(f"[{SUBAGENT_RECORDS}] sub-agent {aid}'s tool calls in the stream and in its file disagree "
+                       f"({len(stream_calls[aid])} against {len(file_calls[aid])})")
+    denied = sorted({name for calls_ in list(stream_calls.values()) + list(file_calls.values()) for _, name in calls_
+                     if name in ISOLATION_DENIED_TOOLS})
+    if denied:
+        out.append(f"[{HARNESS_CONDITION_VIOLATED}] a sub-agent called {denied}: the isolation denials did not hold")
+    for p in files.values():
+        out += [x.replace("the transcript", f"sub-agent file {p.name}", 1) for x in transcript_line_problems(p)]
+    return out
+
+
+def subagent_reach_file(path: Path):
+    """A scratch transcript of the main agent's records and every sub-agent stream record, which the reach readers read
+    as the main agent's; None when the take has no sub-agent record."""
+    subs = stream_subagent_records(path)
+    if not subs:
+        return None
+    fd, name = tempfile.mkstemp(prefix="reach-", suffix=".jsonl")
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(Path(path).read_text(encoding="utf-8", errors="replace").rstrip("\n") + "\n")
+        fh.write("".join(json.dumps(rec, ensure_ascii=False) + "\n" for _, rec in subs))
+    return Path(name)
+
+
+def reach_event_problems(counts: dict) -> list[str]:
+    """One problem per event the reach readers counted over the main and sub-agent records, so check4 lifts it."""
+    return [f"[{eid}] {n} instance(s), counting the sub-agents' tool calls" for eid, n in counts.items() if n]
+
+
+def subagent_reach_problems(path: Path, pre: dict, counts: dict) -> list[str]:
+    """The sub-agents' reach, read by the reach readers over the main and sub-agent stream records under the design's
+    pre (R4C-10): `counts` is updated in place to those counts, each counted event lifted (reach_event_problems), and
+    the sub-agent files' attachments swept for leak words."""
+    out = subagent_leak_problems(path, pre)
+    reach = subagent_reach_file(path)
+    if reach is None:
+        return out
+    token = _PRE_IN_FORCE.set(pre)
+    try:
+        merged = event_counts(reach)
+    finally:
+        _PRE_IN_FORCE.reset(token)
+        _drop(reach)
+    if set(merged) != set(counts):
+        raise CheckRefused("the reach readers' event ids differ between the main and the sub-agent reading")
+    counts.update(merged)
+    return out + reach_event_problems(merged)
+
+
+def subagent_leak_problems(path: Path, pre: dict) -> list[str]:
+    """[leak-in-loaded-context] for a leak word in a copied sub-agent file's attachment records (the main sweep's rule)."""
+    out = []
+    for p in subagent_files(path).values():
+        leaked = sorted(context_leaks(context_text(p), pre))
+        if leaked:
+            out.append(f"[leak-in-loaded-context] sub-agent file {p.name}'s loaded context contains {leaked}")
+    return out
+
+
+def _drop(p) -> None:
+    if p is not None:
+        try:
+            os.unlink(p)
+        except OSError:
+            pass
 
 
 if __name__ == "__main__":
