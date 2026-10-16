@@ -545,7 +545,8 @@ class TestAWalkTheConstantsDecideIsNeverCounted(unittest.TestCase):
         self.write(grade={"graded": True, "row": {}, "grade": {}},
                    check={"walk": self.WALK, "checked": True, "checker_reasons": [], "events": {"outside_reach": 0},
                           "route": "graded",
-                          "route_refused": None, "checker_constants_sha256": ct.checker_constants_sha256()})
+                          "route_refused": None, "checker_constants_sha256": ct.checker_constants_sha256(),
+                          "no_output_nudges": 0})          # review r6 MINOR 2: walk_runner's count
 
     def tearDown(self):
         shutil.rmtree(self.base.parent, ignore_errors=True)
@@ -610,11 +611,12 @@ class TestAWalkTheConstantsDecideIsNeverCounted(unittest.TestCase):
         module's; a walk the checker did not run on records none."""
         import walk_runner
         args = (self.WALK, {"checker_reasons": [], "events": {}}, {}, lambda r, t: {"route": "x"})
-        self.assertEqual(walk_runner.check_record(*args, checked=True, constants_sha256="ab" * 32)
+        # review r6 MINOR 2 (16 Oct 2026): a checked walk is handed its nudge count too (0 here)
+        self.assertEqual(walk_runner.check_record(*args, checked=True, constants_sha256="ab" * 32, no_output_nudges=0)
                          ["checker_constants_sha256"], "ab" * 32)
         self.assertIsNone(walk_runner.check_record(*args, checked=False, constants_sha256="ab" * 32)
                           ["checker_constants_sha256"])
-        self.assertIsNone(walk_runner.check_record(*args, checked=True)["checker_constants_sha256"])
+        self.assertIsNone(walk_runner.check_record(*args, checked=True, no_output_nudges=0)["checker_constants_sha256"])
 
     def test_the_design_views_digest_is_its_constants(self):
         """Review MINOR 3: design_constants_sha256 recovers the constants a view was built from."""

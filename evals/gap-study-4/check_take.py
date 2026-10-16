@@ -2783,13 +2783,26 @@ def denied_tool_problems(path: Path) -> list[str]:
 #   is_edited_text_file) loses it; its type and filename stay in the sweep, and every other record is swept whole. No
 #   check in this file reads repository content for leak words (the path readers, study_paths_read and the outside
 #   reads, read tool-call paths), so the snippet is routed to none.
+#   Review r6 MINOR 1 (glitch-b5, 16 Oct 2026): the sweep reads the RAW line with only the snippet's string value cut
+#   out, never a re-serialised parse, which drops every earlier copy of a duplicated key (a word in one would vanish).
+#   The value is located by its key: a JSON string can hold `"snippet"` only escaped, so an unescaped `"snippet":`
+#   followed by a string is a key. When that key is not found exactly once (a duplicate, a top-level twin, an escaped
+#   key spelling) the line is swept whole: fail closed.
+_SNIPPET_KEY = re.compile(r'"snippet"\s*:\s*(?=")')
+
+
 def _swept_attachment_line(rec: dict, line: str) -> str:
-    """The text context_text sweeps for one attachment record: an admitted edited_text_file without its snippet,
-    anything else the line as written."""
+    """The text context_text sweeps for one attachment record: the raw line, with an admitted edited_text_file's
+    snippet value (and only it) replaced by an empty string; anything else, or a snippet not located once, whole."""
     att = rec.get("attachment")
-    if isinstance(att, dict) and transcript_view.is_edited_text_file(att):
-        return json.dumps(dict(rec, attachment={k: v for k, v in att.items() if k != "snippet"}), ensure_ascii=False)
-    return line
+    if not (isinstance(att, dict) and transcript_view.is_edited_text_file(att)):
+        return line
+    keys = list(_SNIPPET_KEY.finditer(line))
+    if len(keys) != 1:
+        return line
+    start = keys[0].end()
+    _, end = json.decoder.scanstring(line, start + 1)
+    return line[:start] + '""' + line[end:]
 
 
 if __name__ == "__main__":

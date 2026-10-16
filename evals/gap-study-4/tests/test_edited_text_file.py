@@ -26,6 +26,10 @@ exists; CLAUDE_CODE_DISABLE_ATTACHMENTS would drop kinds round 3 carries. Round 
                in the snippet of an admitted record names no leak; the same word in the filename still does; a near
                miss carrying the word in its snippet is refused by the view and stays whole in the sweep. Another
                attachment's words are swept as before. Each clause has a witness.
+  E-raw        review r6 MINOR 1 (glitch-b5, 16 Oct 2026): the sweep reads the RAW line with only the snippet's value
+               removed, never a re-serialised parse, so a duplicated key (top-level, or an earlier duplicate
+               "attachment" object) cannot hide a word the raw line shows; a snippet written with escapes is removed
+               whole; a line whose "snippet" key is not found exactly once is swept whole (fail closed).
 
 Every fixture here is synthetic; the vocabulary record is read, never written.
 """
@@ -217,6 +221,52 @@ def leak_problems(ct=None) -> list:
     return out
 
 
+W = "evaluation"
+RAW_CASES = {
+    # the reviewer's dup.py (review r6): each carries the word in a copy the last-key-wins parse drops
+    "a duplicated top-level key": ('{"type": "attachment", "isSidechain": false, "note": "' + W + '", "note": "x", '
+                                   '"attachment": {"type": "edited_text_file", "filename": "/a/HISTORY.md", '
+                                   '"snippet": "ok"}}', {W}),
+    "a duplicated attachment key": ('{"type": "attachment", "isSidechain": false, "attachment": {"type": "date", '
+                                    '"date": "' + W + '"}, "attachment": {"type": "edited_text_file", "filename": '
+                                    '"/a/HISTORY.md", "snippet": "ok"}}', {W}),
+    "a duplicated snippet key": ('{"type": "attachment", "isSidechain": false, "attachment": {"type": '
+                                 '"edited_text_file", "filename": "/a/HISTORY.md", "snippet": "' + W + '", '
+                                 '"snippet": "ok"}}', {W}),
+    "a top-level snippet key beside the attachment's": ('{"type": "attachment", "snippet": "' + W + '", "attachment": '
+                                                        '{"type": "edited_text_file", "filename": "/a/HISTORY.md", '
+                                                        '"snippet": "' + W + '"}}', {W}),
+    "an escaped snippet is removed whole": ('{"type": "attachment", "isSidechain": false, "attachment": {"type": '
+                                            '"edited_text_file", "filename": "/a/HISTORY.md", "snippet": '
+                                            '"caf\\u00e9 \\/ ' + W + ' \\"q\\" \\\\"}}', set()),
+}
+
+
+def raw_problems(ct=None) -> list:
+    """E-raw: raw transcript lines through check_take's sweep."""
+    import check_take
+    import prereg
+    ct = check_take if ct is None else ct
+    pre = prereg.load()
+    out = []
+    for name, (line, want) in RAW_CASES.items():
+        json.loads(line)                                  # every case is a line the transcript reader accepts
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "transcript.jsonl"
+            p.write_text(json.dumps(OP) + "\n" + line + "\n")
+            got = ct.context_leaks(ct.context_text(p), pre)
+        if got != want:
+            out.append(f"E-raw {name}: the sweep names {sorted(got)}, not {sorted(want)}")
+    line, _ = RAW_CASES["a top-level snippet key beside the attachment's"]
+    if ct._swept_attachment_line(json.loads(line), line) != line:
+        out.append("E-raw: a line whose snippet key occurs twice is not swept whole")
+    line, _ = RAW_CASES["an escaped snippet is removed whole"]
+    swept = ct._swept_attachment_line(json.loads(line), line)
+    if json.loads(swept)["attachment"] != {"type": "edited_text_file", "filename": "/a/HISTORY.md", "snippet": ""}:
+        out.append(f"E-raw: the escaped snippet's removal left {swept!r}")
+    return out
+
+
 def check_take_mutant(old: str, new: str):
     import check_take
     src = Path(check_take.__file__).read_text(encoding="utf-8")
@@ -234,8 +284,11 @@ def check_take_mutant(old: str, new: str):
 
 LEAK_MUTANTS = (
     ("snippet swept", "            out.append(_swept_attachment_line(rec, line))", "            out.append(line)"),
-    ("filename dropped too", 'if k != "snippet"}', 'if k == "type"}'),
+    ("filename dropped too", "    return line[:start] + '\"\"' + line[end:]", "    return '{\"type\": \"attachment\"}'"),
     ("shape unchecked", "and transcript_view.is_edited_text_file(att)", ""),
+    ("the parse swept, not the raw line", "    return line[:start] + '\"\"' + line[end:]",
+     "    return json.dumps(dict(rec, attachment={k: v for k, v in att.items() if k != \"snippet\"}))"),
+    ("located more than once", "    if len(keys) != 1:", "    if not keys:"),
 )
 
 
@@ -269,10 +322,17 @@ class TheEditedTextFileAttachment(unittest.TestCase):
     def test_e_leak_the_snippet_is_repository_content(self):
         self.assertEqual(leak_problems(), [])
 
+    def test_e_raw_the_raw_line_is_swept(self):
+        self.assertEqual(raw_problems(), [])
+
     def test_e_leak_witnesses(self):
         for name, old, new in LEAK_MUTANTS:
             with self.subTest(clause=name):
-                got = leak_problems(check_take_mutant(old, new))
+                m = check_take_mutant(old, new)
+                try:
+                    got = leak_problems(m) + raw_problems(m)
+                except Exception as e:  # noqa: BLE001 - a mutant that crashes the sweep or its reading is red too
+                    got = [f"raised {type(e).__name__}"]
                 print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
                 self.assertTrue(got, name)
 
@@ -281,7 +341,8 @@ class TheEditedTextFileAttachment(unittest.TestCase):
         (dep,) = [d for d in draft["harness_furniture_ruling"]["departures"] if d["of"] == KIND]
         for word in ("RULED 16 Oct (glitch-b5)", "working-tree file content", "excluded from the loaded-context leak sweep",
                      "check_take.context_text", "type and filename stay in the sweep",
-                     "no check reads repository content for leak words", "never left out"):
+                     "no check reads repository content for leak words", "never left out",
+                     "raw line with only the snippet's value cut", "swept whole"):
             self.assertIn(word, dep["text"])
 
     def test_e_witnesses(self):

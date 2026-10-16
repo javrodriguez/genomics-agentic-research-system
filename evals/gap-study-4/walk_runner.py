@@ -92,6 +92,9 @@ def check_record(walk: str, records, table, route_fn, *, checked: bool, constant
     no_output_nudges(row)), null when the checker did not run; analysis stratifies by it."""
     if not isinstance(records, dict):
         raise TypeError("the drive returned no records")
+    # review r6 MINOR 2 (glitch-b5, 16 Oct 2026): when the checker ran, its count is written, never null
+    if checked is True and not pending_walk.valid_nudge_count(no_output_nudges):
+        raise ValueError(f"the checker ran and the nudge count is {no_output_nudges!r}, not an int >= 0")
     doc = {"walk": walk, "checked": checked is True, "checker_reasons": list(records.get("checker_reasons") or []),
            "events": records.get("events"), "route": None, "route_refused": None,
            "checker_constants_sha256": constants_sha256 if checked is True else None,
@@ -206,9 +209,13 @@ def _run_one(driver, repo, row, reason, walk, folder, reached, *, table, route_f
     checked = (folder / LEDGER_FILE).is_file()     # the checker ran exactly when the driver wrote its ledger
     read = getattr(driver, "checker_constants_sha256", None)       # BOOTSTRAP: the constants the checker read
     nudges = getattr(driver, "no_output_nudges", None)              # ruling 3: the nudges the checker's transcript holds
+    nudges = nudges(row) if callable(nudges) else None
+    if checked and not pending_walk.valid_nudge_count(nudges):       # review r6 MINOR 2: held, never written as null
+        return {"state": HELD, "why": f"the checker ran and the driver gave nudge count {nudges!r}; the walk folder is "
+                                      f"left for a human, never committed"}
     write_check(folder, check_record(walk, records, table, route_fn, checked=checked,
                                      constants_sha256=read(row) if callable(read) else None,
-                                     no_output_nudges=nudges(row) if callable(nudges) else None))
+                                     no_output_nudges=nudges))
     try:
         run_mod.write_walk_grade(entry, folder, grade=grade)
         got = repo.commit_walk(entry)

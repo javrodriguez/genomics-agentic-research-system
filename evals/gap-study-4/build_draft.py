@@ -1340,7 +1340,9 @@ HARNESS_FURNITURE_RULING = {
          "(glitch-b5), the leak scope: the snippet is working-tree file content the agent read, so it is excluded from "
          "the loaded-context leak sweep (check_take.context_text), as content read from the repository is; its "
          "type and filename stay in the sweep, and no check reads repository content for leak words. A record that "
-         "is not of the closed shape is refused and never left out."},
+         "is not of the closed shape is refused and never left out. The sweep reads the raw line with only the "
+         "snippet's value cut, never a re-serialised parse, so a duplicated key cannot hide a word; where the snippet "
+         "key is not found exactly once, the line is swept whole (review r6, 16 Oct)."},
         # glitch-b5's ruling 3 (16 Oct 2026; CP6 walk w053, Haiku, held on transcript line 107).
         {"of": "no-visible-output-nudge", "text": "Claude Code 2.1.296 writes a user record carrying isMeta true and "
          "turnCompanion true, whose content is exactly \"[Your previous response had no visible output. Please "
@@ -1357,7 +1359,10 @@ HARNESS_FURNITURE_RULING = {
          "flags the boolean true, the content byte for byte, no origin) is read as harness furniture, never an "
          "operator line and never the agent's words; it starts no turn, and only the exact string is set apart from "
          "the operator lines the leak check reads. Every other isMeta record is still refused. Each walk's check.json "
-         "records how many the checked transcript carries (no_output_nudges), so analysis can stratify by it."}],
+         "records how many the checked transcript carries (no_output_nudges), so analysis can stratify by it. A walk "
+         "the checker ran on is never written without a count (it is held), a check.json under the constants in force "
+         "without one is unreadable, and walk_regrade re-derives the count from the committed transcript and names a "
+         "mismatch (review r6, 16 Oct)."}],
     "walk_scope": "RULED 15 Oct 2026 (glitch-6b): the 25 pre-ruling walks are not rechecked under the steer and "
                   "isolation guards. They are rehearsal records of the earlier conditions and never cover CP6; replayed "
                   "under the isolation guard all 25 refuse, as expected (box lane). Every line reruns under the new ship "

@@ -95,14 +95,20 @@ CHECK_KEYS = ("walk", "checked", "checker_reasons", "events", "route", "route_re
 CHECK_NUDGE_KEY = "no_output_nudges"
 
 
+def valid_nudge_count(n) -> bool:
+    """A no-visible-output nudge count: an int >= 0 (never a bool, a float or null)."""
+    return type(n) is int and n >= 0
+
+
 def check_keys_ok(check) -> bool:
-    """check.json carries exactly walk_runner's keys, with or without the nudge count, and that count is a count."""
+    """check.json carries exactly walk_runner's keys, with or without the nudge count, and that count is a count or
+    null. Whether null may stand is checker_standing's (review r6 MINOR 2): only under older constants."""
     if not isinstance(check, dict):
         return False
     if set(check) == set(CHECK_KEYS):
         return True
     n = check.get(CHECK_NUDGE_KEY)
-    return set(check) == set(CHECK_KEYS) | {CHECK_NUDGE_KEY} and (n is None or (type(n) is int and n >= 0))
+    return set(check) == set(CHECK_KEYS) | {CHECK_NUDGE_KEY} and (n is None or valid_nudge_count(n))
 
 
 def checker_standing(base, walk: str):
@@ -129,6 +135,7 @@ def checker_standing(base, walk: str):
     if not (isinstance(events, dict) and set(events) == {"outside_reach"} and type(events["outside_reach"]) is int
             and events["outside_reach"] >= 0):
         return "check unreadable"
+    own, nudges = check.get("checker_constants_sha256"), check.get(CHECK_NUDGE_KEY)   # check.json's own reading
     latest = latest_recheck(base, walk)      # the recheck-coverage ruling (glitch-6b, 15 Oct 2026)
     if isinstance(latest, str):
         return latest
@@ -147,6 +154,10 @@ def checker_standing(base, walk: str):
         now = check_take.checker_constants_sha256()
     except check_take.CheckRefused:
         return "the checker constants in force are PENDING"
+    # review r6 MINOR 2 (glitch-b5, 16 Oct 2026): a walk checked under the constants in force carries its nudge count;
+    # null (or no key) stands only for a check.json written under older constants
+    if own == now and not valid_nudge_count(nudges):
+        return "check unreadable: no no-visible-output nudge count under the checker constants in force"
     if check.get("checker_constants_sha256") != now:
         return "stale: checked under other checker constants; regrade it"
     return None

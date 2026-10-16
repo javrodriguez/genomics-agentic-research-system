@@ -223,8 +223,7 @@ def own_mutants():
                                  "    write_check(folder, check_record(walk, records, table, route_fn, checked=checked,\n"
                                  "                                     constants_sha256=read(row) if callable(read) else "
                                  "None,\n"
-                                 "                                     no_output_nudges=nudges(row) if callable(nudges) "
-                                 "else None))\n",
+                                 "                                     no_output_nudges=nudges))\n",
                                  ""),    # re-anchored on the call that passes the digest and (ruling 3) the nudge count
         "checked-always": ("R3.dead-walk", "walk_runner", "\"checked\": checked is True", "\"checked\": True"),
         "walk-launch-journal-not-a-turn": ("R3.dead-walk", "drive",       # integration red A3 (glitch-06, 14 Oct)
@@ -1439,7 +1438,8 @@ class R8WalkRoad(Case):
         args = ("w001", {"checker_reasons": []}, {}, route)
         self.assertEqual(wr.check_record(*args, checked=True, no_output_nudges=3)["no_output_nudges"], 3)
         self.assertIsNone(wr.check_record(*args, checked=False, no_output_nudges=3)["no_output_nudges"])
-        self.assertIsNone(wr.check_record(*args, checked=True)["no_output_nudges"])
+        with self.assertRaises(ValueError):           # review r6 MINOR 2: a checked walk is never written with null
+            wr.check_record(*args, checked=True)
 
     def test_the_cap_and_the_poll(self):
         """BOOTSTRAP B4 (15 Oct 2026): check4_walk binds the walk ledger's quiescence cap and poll interval."""
@@ -1834,7 +1834,8 @@ class R10Guards(Case):
 # a few values were never read back (the walk id in the result, a failed deletion's reason, a route refusal's text);
 # and run_walks was never handed two walks that both commit. Each test here feeds the bad input directly and reads
 # the exact refusal, so each kill is by assertion.
-def stub_driver(root: Path, *, walk_check=None, launch=None, drive=None, remove=None, published=None):
+def stub_driver(root: Path, *, walk_check=None, launch=None, drive=None, remove=None, published=None,
+                nudges=lambda row: 0):
     """A walk driver stand-in whose class's launch carries the namespace walk_runner.driver_namespace reads (the drive
     module's LaunchRefused, NativeCrossCheckPending (the pending-walk road, batch-8 review finding 2) and WALK_CHECK,
     or another WALK_CHECK)."""
@@ -1854,6 +1855,8 @@ def stub_driver(root: Path, *, walk_check=None, launch=None, drive=None, remove=
     d.drive = note("drive", drive or (lambda row, cid: {"checker_reasons": [], "events": {}}))
     d.remove = note("remove", remove or (lambda cid: None))
     d.published = note("published", published or (lambda row, n: None))
+    if nudges is not None:                     # review r6 MINOR 2: the count a checker that ran hands over
+        d.no_output_nudges = nudges
     return d
 
 
@@ -2099,6 +2102,25 @@ class R11Units(Case):
         self.assertEqual({k: got.get(k) for k in ("walk", "state", "commit", "graded", "route", "checker_reasons")},
                          {"walk": "w-0001", "state": wr.COMMITTED, "commit": "c0", "graded": False,
                           "route": "synthetic-route", "checker_reasons": []}, f"R11.units: {got}")
+
+    def test_a_checked_walk_without_a_nudge_count_is_held(self):
+        """Review r6 MINOR 2 (glitch-b5, 16 Oct 2026): when the checker ran (the ledger is there), a driver that gives
+        no count, null, a bool or a negative count holds the walk; nothing is written as check.json or committed."""
+        wr = MODS["walk_runner"]
+        for name, nudges in (("no count", None), ("null", lambda row: None), ("a bool", lambda row: True),
+                             ("a negative count", lambda row: -1)):
+            with self.subTest(driver=name):
+                root = self.scratch()
+                folder = self.walk_dir(root, dict(self.LEDGER, first_agent_turn=False))
+                got = self.one(stub_driver(root, nudges=nudges), dict(self.ENTRY, slot="w-0001"))
+                self.assertEqual(got.get("state"), wr.HELD, f"R11.units: {got}")
+                self.assertIn("nudge count", got.get("why", ""), f"R11.units: {got}")
+                self.assertFalse((folder / "check.json").exists(), "R11.units: check.json written for a held walk")
+        root = self.scratch()
+        folder = self.walk_dir(root, dict(self.LEDGER, first_agent_turn=False))
+        got = self.one(stub_driver(root, nudges=lambda row: 2), dict(self.ENTRY, slot="w-0001"))
+        self.assertEqual(got.get("state"), wr.COMMITTED, f"R11.units: {got}")
+        self.assertEqual(json.loads((folder / "check.json").read_text())["no_output_nudges"], 2)
 
     def test_run_walks_goes_on_after_a_committed_walk(self):
         wr = MODS["walk_runner"]

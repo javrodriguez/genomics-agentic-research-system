@@ -223,6 +223,19 @@ def _commit_one(walk: str, name: str, subject: str, study: Path, *, secrets, rul
     return nrr._git(root, "rev-parse", "HEAD")
 
 
+def nudge_count_problems(check: dict, transcript: Path) -> list:
+    """Review r6 MINOR 2 (glitch-b5, 16 Oct 2026): check.json's no_output_nudges, where it is a count, is check_take's
+    count of the committed transcript; a mismatch is named. A null (an older check.json) is not re-derived."""
+    import check_take as ct
+    want = check.get("no_output_nudges") if isinstance(check, dict) else None
+    if not pending_walk.valid_nudge_count(want):          # null (or a shape check_keys_ok refuses) is not re-derived
+        return []
+    got = ct.no_output_nudges(Path(transcript))
+    if got != want:
+        return [f"check.json's no_output_nudges is {want} and the committed transcript carries {got}"]
+    return []
+
+
 def regrade_problems(study: Path = HERE, *, readers=None, grade=None) -> list:
     """Every committed regrade.json must re-derive to its exact bytes."""
     study = Path(study)
@@ -251,6 +264,25 @@ def regrade_problems(study: Path = HERE, *, readers=None, grade=None) -> list:
     for walk, names in sorted(by_walk.items()):
         out += recheck_chain_problems(root, prefix, walk, names, study)
     out += register_recheck_problems(root, prefix, by_walk)
+    for rel in listed:                    # review r6 MINOR 2: every committed count re-derived from its transcript
+        parts = rel[len(walks) + 1:].split("/")
+        if len(parts) != 2 or parts[1] != "check.json":
+            continue
+        try:
+            check = json.loads(nrr._show(root, rel))
+        except (ValueError, nrr.RegistrationRefused):
+            continue                      # check.json's own shape is pending_walk's and the register's to judge
+        if not isinstance(check, dict) or not isinstance(check.get("no_output_nudges"), int):
+            continue
+        try:
+            transcript = nrr._show(root, f"{walks}/{parts[0]}/transcript.jsonl")
+        except nrr.RegistrationRefused as e:
+            out.append(f"walk {parts[0]!r}: its nudge count cannot be re-derived: {e}")
+            continue
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "transcript.jsonl"
+            path.write_bytes(transcript)
+            out += [f"walk {parts[0]!r}: {p}" for p in nudge_count_problems(check, path)]
     return out
 
 
@@ -435,6 +467,9 @@ def recheck_doc(walk: str, n: int, study: Path = HERE, *, machine, design_for=No
                                  f"readers in check_take.py")
         if not (base / "transcript.jsonl").is_file():
             raise RegradeRefused("the committed walk has no transcript.jsonl")
+        forged = nudge_count_problems(old, base / "transcript.jsonl")      # review r6 MINOR 2
+        if forged:
+            raise RegradeRefused(forged[0])
         try:
             row = dict(run_mod.walk_row(entries[0], ledger), walk=walk, slot=walk)
         except ValueError as e:

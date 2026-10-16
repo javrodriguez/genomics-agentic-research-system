@@ -616,7 +616,8 @@ class FixtureWalkCoverage(unittest.TestCase):
         (road.folder / "check.json").write_text(json.dumps({"walk": WALK, "checked": True, "checker_reasons": [],
                                                             "events": {"outside_reach": 0}, "route": "graded", "route_refused": None,
                                                             "checker_constants_sha256":
-                                                                check_take.checker_constants_sha256()}))
+                                                                check_take.checker_constants_sha256(),
+                                                            "no_output_nudges": 0}))   # review r6 MINOR 2
         self.assertEqual(fixture_walk.walk_coverage(road.study)[task]["walks_committed"], 1, "the control counts")
 
 

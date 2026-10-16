@@ -24,6 +24,11 @@ transcripts carry no isMeta record at all.
   N-record     walk_runner.check_record writes the count as check.json's no_output_nudges (None when the checker did
                not run); pending_walk and walk_regrade read check.json with or without the key (files written before
                this ruling lack it), and refuse a value that is not a count.
+  N-strict     review r6 MINOR 2 (glitch-b5, 16 Oct 2026): a checked walk's count is never null. check_record refuses
+               to write anything but an int >= 0 when the checker ran, and walk_runner holds such a walk; pending_walk
+               reads a check.json under the constants in force without a count as unreadable (null only under older
+               constants, or when the checker did not run); walk_regrade recomputes check_take's count from the
+               committed transcript, in --check and in a recheck, and names a forged count.
   N-constant   CHECKER_CONSTANTS' meta_kinds names both kinds.
   N-draft      the draft names the departure with its facts.
   N-witness    each clause dropped in memory turns a check red.
@@ -40,6 +45,7 @@ import tempfile
 import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent.parent
@@ -215,6 +221,68 @@ def record_problems() -> list:
     return out
 
 
+ABSENT = object()
+
+
+def strict_problems(walk_runner=None, pending_walk=None, walk_regrade=None) -> list:
+    import pending_walk as pw
+    import walk_regrade as wg
+    import walk_runner as wr
+    wr, pw, wg = walk_runner or wr, pending_walk or pw, walk_regrade or wg
+    out = []
+    route = lambda records, table: {"route": "rehearsal"}  # noqa: E731
+    args = ("w001", {"checker_reasons": [], "events": {"outside_reach": 0}}, {}, route)
+    for bad in (None, True, -1, "1", 1.0):
+        try:
+            wr.check_record(*args, checked=True, constants_sha256="ab" * 32, no_output_nudges=bad)
+            out.append(f"N-strict: check_record wrote {bad!r} for a walk the checker ran on")
+        except ValueError:
+            pass
+    for bad in (None, True, False, -1, "1", 1.0):
+        if pw.valid_nudge_count(bad):
+            out.append(f"N-strict: {bad!r} reads as a count")
+    if wr.check_record(*args, checked=False, no_output_nudges=None)["no_output_nudges"] is not None:
+        out.append("N-strict: an unchecked walk carries a count")
+    now = ct.checker_constants_sha256()
+    for name, count, digest, want in (("a count under the constants in force", 0, now, None),
+                                      ("null under the constants in force", None, now, "check unreadable"),
+                                      ("no key under the constants in force", ABSENT, now, "check unreadable"),
+                                      ("null under older constants", None, "cd" * 32, "stale"),
+                                      ("no key under older constants", ABSENT, "cd" * 32, "stale")):
+        doc = {"walk": "w001", "checked": True, "checker_reasons": [], "events": {"outside_reach": 0},
+               "route": "rehearsal", "route_refused": None, "checker_constants_sha256": digest,
+               "no_output_nudges": count}
+        if count is ABSENT:
+            del doc["no_output_nudges"]
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "w001").mkdir()
+            (Path(d) / "w001" / "check.json").write_text(json.dumps(doc))
+            got = pw.checker_standing(d, "w001")
+        if not (got is None if want is None else isinstance(got, str) and got.startswith(want)):
+            out.append(f"N-strict standing, {name}: {got!r}")
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / "transcript.jsonl"
+        p.write_text("\n".join(lines(OP, nudge(), SAID)) + "\n")
+        for name, count, named in (("the true count", 1, False), ("a forged count", 3, True),
+                                   ("a forged zero", 0, True), ("null", None, False)):
+            got = wg.nudge_count_problems({"no_output_nudges": count}, p)
+            if bool(got) is not named:
+                out.append(f"N-strict re-derivation, {name}: {got}")
+    import ast
+    tree = ast.parse(Path(wg.__file__).read_text())
+    for fn in ("regrade_problems", "recheck_doc"):
+        body = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == fn)
+        if "nudge_count_problems" not in {c.func.id for c in ast.walk(body)
+                                          if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}:
+            out.append(f"N-strict: walk_regrade.{fn} does not recompute the count")
+    tree = ast.parse(Path(wr.__file__).read_text())
+    body = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_run_one")
+    if "valid_nudge_count" not in {c.func.attr for c in ast.walk(body) if isinstance(c, ast.Call)
+                                   and isinstance(c.func, ast.Attribute)}:
+        out.append("N-strict: walk_runner._run_one does not hold a walk whose checker gave no count")
+    return out
+
+
 def source_mutant(mod, old: str, new: str):
     src = Path(mod.__file__).read_text(encoding="utf-8")
     if src.count(old) != 1:
@@ -237,6 +305,7 @@ VIEW_MUTANTS = (
     ("sender keys", ' or any(k in rec for k in ("isApiErrorMessage", "origin"))', ""),
     ("exact string", 'msg.get("content") == CC_NO_OUTPUT_NUDGE_TEXT', 'str(msg.get("content")).strip() == CC_NO_OUTPUT_NUDGE_TEXT.strip()'),
     ("the admission", "        if flagged and is_no_output_nudge(r):\n", "        if False:\n"),
+    ("sidechain", 'if rec.get("isSidechain") is True or any(', "if any("),
 )
 CHECKER_MUTANTS = (
     ("ungated", "        if self.nudge and transcript_view.is_no_output_nudge(rec):",
@@ -244,6 +313,13 @@ CHECKER_MUTANTS = (
     ("not the harness's text", "            harness.append(rec[\"message\"][\"content\"])\n            return True\n"
      "        if self.admit", "            return True\n        if self.admit"),
     ("gate on the wakeup kind", "transcript_view.CC_NO_OUTPUT_NUDGE in meta)", "transcript_view.CC_SCHEDULED_WAKEUP in meta)"),
+)
+STRICT_MUTANTS = (
+    ("check_record writes null", "walk_runner",
+     "    if checked is True and not pending_walk.valid_nudge_count(no_output_nudges):", "    if False:"),
+    ("a bool is a count", "pending_walk", "type(n) is int and n >= 0", "isinstance(n, int) and n >= 0"),
+    ("standing reads null", "pending_walk", "if own == now and not valid_nudge_count(nudges):", "if False:"),
+    ("forged count read", "walk_regrade", "    if got != want:", "    if False:"),
 )
 COUNT_MUTANTS = (
     ("count any isMeta user record", "if transcript_view.is_no_output_nudge(rec))",
@@ -267,6 +343,9 @@ class TheNoOutputNudge(unittest.TestCase):
     def test_n_record(self):
         self.assertEqual(record_problems(), [])
 
+    def test_n_strict(self):
+        self.assertEqual(strict_problems(), [])
+
     def test_n_constant(self):
         self.assertEqual(ct.CHECKER_CONSTANTS["harness_delivered_user_records"],
                          {"origin_kinds": [tv.CC_TASK_NOTIFICATION],
@@ -281,7 +360,8 @@ class TheNoOutputNudge(unittest.TestCase):
                      "no switch", "2.1.267", "2.1.280", "round 3's 64 transcripts", "no isMeta record",
                      "w053", "RULED 16 Oct (glitch-b5)", "named departure", "harness furniture",
                      "never an operator line", "check.json", "no_output_nudges",
-                     "224269128", "207900138", "188247583", "205033400", "24972e3b"):
+                     "224269128", "207900138", "188247583", "205033400", "24972e3b",
+                     "never written without a count", "re-derives the count from the committed transcript"):
             self.assertIn(word, dep["text"])
         r = draft["checker_constants_ruling"]
         (meta,) = [e for e in r["departures"] if e["constant"] == "harness_delivered_user_records.meta_kinds"]
@@ -293,6 +373,10 @@ class TheNoOutputNudge(unittest.TestCase):
                 m = source_mutant(tv, old, new)
                 try:
                     got = admit_problems(m) + refuse_problems(m)
+                    # review r6 note: the view refuses a sidechain record before the predicate runs, so a clause the
+                    # view never reaches is held by check_take's readers, which call the same predicate
+                    with mock.patch.object(ct.transcript_view, "is_no_output_nudge", m.is_no_output_nudge):
+                        got += count_problems() + checker_problems()
                 except Exception as e:  # noqa: BLE001 - a mutant that crashes the reader is red too
                     got = [f"raised {type(e).__name__}"]
                 print(f"\nWITNESS view {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
@@ -301,6 +385,18 @@ class TheNoOutputNudge(unittest.TestCase):
             with self.subTest(checker=name):
                 got = checker_problems(source_mutant(ct, old, new))
                 print(f"\nWITNESS checker {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
+                self.assertTrue(got, name)
+        for name, mod, old, new in STRICT_MUTANTS:
+            with self.subTest(strict=name):
+                import pending_walk
+                import walk_regrade
+                import walk_runner
+                mods = {"walk_runner": walk_runner, "pending_walk": pending_walk, "walk_regrade": walk_regrade}
+                m = source_mutant(mods[mod], old, new)
+                if mod == "walk_regrade":
+                    m.RegradeRefused = walk_regrade.RegradeRefused
+                got = strict_problems(**{mod: m})
+                print(f"\nWITNESS strict {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
                 self.assertTrue(got, name)
         for name, old, new in COUNT_MUTANTS:
             with self.subTest(count=name):
