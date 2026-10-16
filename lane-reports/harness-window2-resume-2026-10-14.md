@@ -494,3 +494,21 @@ Open:
 
 ## Exact next step
 glitch-b5: r13 on 0a278e90 and f12275f1, and the battery on this head.
+
+## RESUME HERE (16 Oct 05:32 EDT; supersedes the blocks above): delegated takes presented to the graders
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent d6506219). Nothing pushed. athena not used. No mac_slot booking held; no process of this lane running. r13 of 3d0597f9..611f46dd passed; its NITs are folded here.
+
+- d6506219: glitch-b5's pre-freeze ruling.
+  - delegated_take.present splices each Agent call's sub-agent session file into the main thread as the agent's own. Its text is presented as reasoning for the reply readers and as text for awareness.
+  - graders/delegation.seam presents to plan_gate, precondition_refusal and new_tasks on both roads; the graders are unchanged and their gates hold.
+  - A named refusal is kept only for what cannot be presented.
+  - Parity: plan_gate 46, precondition_refusal 140 and new_tasks 44 moved cases grade identically, and pause_adherence too.
+  - The dated draft note "Agent grading" is in the draft. The r13 NITs: every field named; one harness field.
+
+Open:
+- The stream copy of a sub-agent's records is not presented; differences are counted in check.json.
+- Nested agents through Bash: claude is on the take's PATH and the walk token reaches Bash children (no subprocess env scrub). This is reported to glitch-b5 as an isolation question, not built.
+
+## Exact next step
+glitch-b5: review d6506219, and the battery on this head.
