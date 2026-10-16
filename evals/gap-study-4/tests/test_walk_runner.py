@@ -690,8 +690,18 @@ class R2WalkCheck(Case):
             own = next(p for p, k in store["listings"][-1]["entries"] if p.endswith(".jsonl") and k == "file")
             store["listings"][-1]["entries"].append([own.rsplit("/", 1)[0] + "/nested-0000.jsonl", "file"])
             (nested / "session-store.json").write_text(json.dumps(store))
+            # review r14 (d): the sweep of the take container ran after every turn and found only the walk's own session;
+            # a nested session in /tmp refuses
+            self.assertEqual([x["at"] for x in store["sweeps"]], [x["at"] for x in store["listings"][:-1]],
+                             "R2.walk-check: one sweep per turn")
+            swept = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-swept"
+            shutil.copytree(folder, swept)
+            store2 = json.loads((folder / "session-store.json").read_text())
+            store2["sweeps"][0]["files"].append(["/tmp/n/projects/-x/n1.jsonl", "claude", "n1"])
+            (swept / "session-store.json").write_text(json.dumps(store2))
             for where, why, says in ((unset, hcv, "do not set CLAUDE_CODE_THRIFTY_SONIC off"),
                                      (nested, "nested-agent", "is not the take's own session record"),
+                                     (swept, "nested-agent", "/tmp/n/projects/-x/n1.jsonl is a claude session"),
                                      (hold, hcv, "crossSessionInbound is 'hold'"),
                                      (undenied, hcv, "permissions.deny lacks"),
                                      (sep, "transcript-unreadable", "line separator(s) U+2028"),

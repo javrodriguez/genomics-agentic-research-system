@@ -15,13 +15,16 @@ turn stream's copy of the same records is not read here: check_take counts every
 
 THE PRESENTATION, record by record of the sub-agent's file:
   attachment          dropped: the sub-agent's loaded context, harness furniture the checker's leak sweep reads.
-  the first user line dropped: the call's own prompt, already the agent's words in its call.
+  the first user line dropped: the call's own prompt, already the agent's words in its call; a string or a list of
+                      text blocks (review r14 NIT 3: the static read did not settle which 2.1.296 writes, so both).
   user, tool results  presented as the agent's tool results.
   assistant           presented as the agent's: its tool calls and thinking as they are. Its text as `words` says:
                       "reasoning" (the reply-reading graders: the operator never read the sub-agent's text, only the
                       agent's reply, so it is presented as the agent's reasoning, which none of them reads) or "text"
                       (awareness: the sub-agent's words are scanned as the agent's).
-The Agent call's own block and its result are not presented: the sub-agent's records stand in their place.
+The Agent call's own block and its result are not presented: the sub-agent's records stand in their place. For an
+async call (run_in_background) the order is approximate (review r14 NIT 4): the sub-agent ran beside the agent's own
+later records of that turn, and its records are presented as one run at the call's place, before them.
 
 THE FALLBACK. Anything else is not presented and refuses by a named reason (NotPresented): a transcript not bound to
 its folder (a probe's synthetic lines), a call whose result names no sub-agent (an errored call), a missing file, a
@@ -131,7 +134,8 @@ def _sub_records(folder: Path, aid: str, words: str) -> list:
             continue
         if t == "user":
             c = (r.get("message") or {}).get("content") if isinstance(r.get("message"), dict) else None
-            if isinstance(c, str):
+            if isinstance(c, str) or (isinstance(c, list) and c and all(isinstance(b, dict) and b.get("type") == "text"
+                                                                        and isinstance(b.get("text"), str) for b in c)):
                 if prompt_seen or out:
                     raise NotPresented(f"sub-agent {aid}'s line {n} is a user line after its prompt, which no "
                                        f"operator sent")
@@ -158,7 +162,7 @@ def _sub_records(folder: Path, aid: str, words: str) -> list:
 
 
 def nested_cli_count(transcript) -> int:
-    """W-3b: how many agent-CLI invocations the take's Bash commands carry (check_take.nested_cli_invocations): over
+    """W-3b: how many agent-CLI tokens the take's Bash commands carry (check_take.nested_cli_tokens): over
     the take folder (main thread and sub-agents, check_take.nested_cli_calls) when the transcript is bound to it, else
     over the lines handed (a probe's synthetic take)."""
     import check_take as ct
@@ -173,6 +177,6 @@ def nested_cli_count(transcript) -> int:
             continue
         if isinstance(r, dict) and r.get("type") == "assistant":
             recs.append(r)
-    return sum(len(ct.nested_cli_invocations(b["input"]["command"])) for r in recs for b in _blocks(r)
+    return sum(len(ct.nested_cli_tokens(b["input"]["command"])) for r in recs for b in _blocks(r)
                if b.get("type") == "tool_use" and b.get("name") == "Bash" and isinstance(b.get("input"), dict)
                and isinstance(b["input"].get("command"), str))

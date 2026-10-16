@@ -2033,6 +2033,7 @@ class _Take:
         self.native_snapshots: list = []        # 3c: {file, sha256} per retained turn, under session/
         self.native_snapshot_refusal = None     # 3c: why a turn's snapshot was not retained (the take stops)
         self.session_store: list = []  # W-3b: the config folder's session store, listed after every turn and at publish
+        self.session_sweeps: list = []  # W-3b (review r14): the take container swept for session files after every turn
         self.native_rel = None         # W-3b: the vendor take's own native session, relative to the config folder
         self.store_refusal = None      # W-3b: a vendor take whose session store holds more than its own session
         self.spec = None               # the ownership road: the TakeSpec the grant and the restore name
@@ -2531,6 +2532,17 @@ class TakeDriver:
         except Exception as e:  # noqa: BLE001 - a listing that fails is recorded, never a pass
             take.session_store.append({"at": at, "refused": f"{type(e).__name__}: {str(e)[:200]}"})
 
+    def _sweep_sessions(self, take, at: str) -> None:
+        """W-3b (glitch-b5's ruling on review r14, 16 Oct 2026): box/run_take.sweep_sessions over the take container's
+        writable locations, after the turn's processes are gone and before the teardown, appended to
+        take.session_sweeps as {at, files, unreadable, scanned, truncated} or {at, refused}. Never raised."""
+        try:
+            doc = _run_take.sweep_sessions(self.runtime, take.launched.take_id,
+                                           _run_take.sweep_roots(take.spec.run_tree), caller_env=self.caller_env)
+            take.session_sweeps.append({"at": at, **doc})
+        except Exception as e:  # noqa: BLE001 - a sweep that fails is recorded, never a pass
+            take.session_sweeps.append({"at": at, "refused": f"{type(e).__name__}: {str(e)[:200]}"})
+
     def config_view(self, take) -> tuple:
         """(lister(rel_dir), reader(rel_path)) over the take's config folder through the box's operator_list and
         operator_read (drive-wiring review MAJOR 1: the folder is the agent's during the take). A failure of either is
@@ -2586,12 +2598,18 @@ class TakeDriver:
         self._list_session_store(take, row, "publish", host_lister(take.config_dir))   # W-3b: at publish, host-side
         import check_take as _ct
         self._write(take, SESSION_STORE_RECORD, {"harness": harness, "root": _ct.SESSION_STORE_ROOTS.get(harness),
-                                                  "listings": [dict(x) for x in take.session_store]})
+                                                  "listings": [dict(x) for x in take.session_store],
+                                                  "sweeps": [dict(x) for x in take.session_sweeps]})
         if vendor:                                # W-3b: no checker reads a vendor take yet, so the driver judges it
             bad = [f"at {x['at']}: {x['refused']}" if "refused" in x else
                    f"at {x['at']}: {v}" for x in take.session_store
                    for v in (["listing refused"] if "refused" in x else
                              _ct.vendor_store_violations(x["entries"], harness, take.native_rel))]
+            own = {f"{_run_take.CONFIG_MOUNT}/{take.native_rel}"} if take.native_rel else set()
+            bad += [f"the sweep at {x['at']}: {v}" for x in take.session_sweeps
+                    for v in (["sweep refused"] if "refused" in x else
+                              [w for w in _ct.sweep_violations(dict(x, files=[f for f in x["files"] if f[0] not in own]),
+                                                               set(), None)])]
             if bad:
                 take.store_refusal = f"[{_ct.NESTED_AGENT}] the session store holds more than the take's own session: " \
                                      f"{'; '.join(bad[:3])}"
@@ -2777,6 +2795,7 @@ class TakeDriver:
                     unreadable += self._ctl(take, "snapshot", f"post-{n}")["unreadable_consequential"]
                     retained = self._retain_native(take, adapter, n)  # live harness 3c: before any next resume
                     self._list_session_store(take, row, f"post-{n}")      # W-3b: after every turn, through the box
+                    self._sweep_sessions(take, f"post-{n}")                # W-3b (r14): the container, before teardown
                     after = self._settings_problems(take, f"post-{n}")   # the settings guard, the last turn's too
                     if after:
                         take.settings_stop = f"post-{n}: the run tree's Claude settings: {'; '.join(after)}"

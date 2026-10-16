@@ -283,6 +283,127 @@ class TheFallback(unittest.TestCase):
             self.assertIsNone(refused)
 
 
+def multi_take(*, synthetic=False, first_line=None):
+    """Review r14 R14-3: one assistant record mixing text, a Bash call and two Agent calls with different sub-agents,
+    then text; each sub-agent ran its own Bash call. The presented order is the record's own: its text and Bash call,
+    sub-agent A's records, sub-agent B's records, then its closing text."""
+    main = [{"type": "user", "message": {"role": "user", "content": "Run the survey."}},
+            {"type": "assistant", "message": {"role": "assistant", "content": [
+                {"type": "text", "text": "BEFORE"},
+                {"type": "tool_use", "id": "toolu_main", "name": "Bash", "input": {"command": "ls"}},
+                {"type": "tool_use", "id": "toolu_A", "name": "Agent",
+                 "input": {"description": "a", "prompt": "do a", "subagent_type": "general-purpose"}},
+                {"type": "tool_use", "id": "toolu_B", "name": "Agent",
+                 "input": {"description": "b", "prompt": "do b", "subagent_type": "general-purpose"}},
+                {"type": "text", "text": "AFTER"}]}},
+            {"type": "user", "message": {"role": "user", "content": [
+                {"type": "tool_result", "tool_use_id": "toolu_main", "content": "listing"},
+                {"type": "tool_result", "tool_use_id": "toolu_A", "content": "A done"},
+                {"type": "tool_result", "tool_use_id": "toolu_B", "content": "B done"}]},
+             "toolUseResult": {"agentId": "aaaaaaaa", "status": "completed", "isAsync": False}}]
+    # one result record carries both calls' results; each call's agent is named by a result record of its own
+    main[2]["message"]["content"] = main[2]["message"]["content"][:2]
+    main.append({"type": "user", "message": {"role": "user", "content": [
+        {"type": "tool_result", "tool_use_id": "toolu_B", "content": "B done"}]},
+        "toolUseResult": {"agentId": "bbbbbbbb", "status": "completed", "isAsync": False}})
+    d = Path(tempfile.mkdtemp())
+    (d / "transcript.jsonl").write_text("".join(json.dumps(r) + "\n" for r in main), encoding="utf-8")
+    (d / "subagents").mkdir()
+    for aid, cmd in (("aaaaaaaa", "echo A"), ("bbbbbbbb", "echo B")):
+        prompt = first_line if first_line is not None else f"do {aid[0]}"
+        side = [{"type": "attachment", "isSidechain": True, "agentId": aid,
+                 "attachment": {"type": "nested_memory", "content": "notes"}},
+                {"type": "user", "isSidechain": True, "agentId": aid, "message": {"role": "user", "content": prompt}},
+                {"type": "assistant", "isSidechain": True, "agentId": aid, "message": {
+                    "role": "assistant", "model": "<synthetic>" if synthetic else "claude-haiku-4-5-20251001",
+                    "content": [{"type": "tool_use", "id": f"toolu_{aid[0]}1", "name": "Bash",
+                                 "input": {"command": cmd}}]}},
+                {"type": "user", "isSidechain": True, "agentId": aid, "message": {"role": "user", "content": [
+                    {"type": "tool_result", "tool_use_id": f"toolu_{aid[0]}1", "content": f"out {aid[0]}"}]}}]
+        (d / "subagents" / f"agent-{aid}.jsonl").write_text("".join(json.dumps(r) + "\n" for r in side))
+    return tv.BoundTranscript(d / "transcript.jsonl")
+
+
+def multi_problems(dt=None) -> list:
+    """What the multi-call take must present (R14-3), and the first line's two forms (NIT 3)."""
+    if dt is None:
+        import delegated_take as dt
+    out = []
+    try:
+        evs = dt.presented_events(tv.ROUND3_HARNESS, multi_take(), words="text")
+    except Exception as e:  # noqa: BLE001
+        return [f"R14-3: the multi-call take was not presented: {type(e).__name__}: {e}"]
+    seq = [("text", e.text) if e.kind == tv.AGENT_TEXT else ("call", e.args.get("command")) if e.kind == tv.TOOL_CALL
+           else None for e in evs]
+    seq = [x for x in seq if x]
+    want = [("text", "BEFORE"), ("call", "ls"), ("call", "echo A"), ("call", "echo B"), ("text", "AFTER")]
+    if seq != want:
+        out.append(f"R14-3: presented {seq}, not {want}")
+    shown = dt.present(multi_take(), tv.ROUND3_HARNESS, words="text")
+    if not any('"model": "claude-haiku-4-5-20251001"' in x for x in shown):
+        out.append("R14-3: a sub-agent record's model is not presented (a <synthetic> one would pass)")
+    try:
+        dt.present(multi_take(synthetic=True), tv.ROUND3_HARNESS, words="text")
+        out.append("R14-3: a <synthetic> sub-agent record was presented")
+    except tv.ViewError:
+        pass
+    for name, line in (("a string", "do it"), ("a list of text blocks", [{"type": "text", "text": "do it"}])):
+        try:
+            dt.present(multi_take(first_line=line), tv.ROUND3_HARNESS, words="text")
+        except Exception as e:  # noqa: BLE001
+            out.append(f"NIT 3: a first line as {name} refused: {e}")
+    try:
+        dt.present(multi_take(first_line=[{"type": "image", "source": {}}]), tv.ROUND3_HARNESS, words="text")
+        out.append("NIT 3: a first line of other blocks was presented")
+    except dt.NotPresented:
+        pass
+    return out
+
+
+class TheMultiCall(unittest.TestCase):
+    def test_r14_3(self):
+        self.assertEqual(multi_problems(), [])
+
+    def test_r14_witnesses(self):
+        """Review r14's delegated_take mutants (scratchpad/r14/m_dt.txt), re-anchored where needed: each goes red here
+        or in TheParity."""
+        import delegated_take as dt
+        cases = (
+            ("M1 sub-records appended at the end", "                    out += _sub_records(folder, agent_of[b[\"id\"]], words)",
+             "                    out.extend([])  # M1"),
+            ("M2 every call reads the first call's agent", "agent_of[b[\"id\"]], words)", "agent_of[calls[0]], words)"),
+            ("M4 the agent call's result kept",
+             "kept = [b for b in _blocks(r) if not (b.get(\"type\") == \"tool_result\" and b.get(\"tool_use_id\") in calls)]",
+             "kept = list(_blocks(r))"),
+            ("M5 the main record's other blocks after the sub-records",
+             "                    if kept:\n                        out.append(_with_content(r, kept))\n                        kept = []\n",
+             ""),
+            ("M6 attachment kept", "        if t == \"attachment\":\n            continue",
+             "        if t == \"attachment\" and False:\n            continue"),
+            ("M8 nested check removed", "    if view.delegated_calls(view.events(harness, shown)):", "    if False:"),
+            ("M9 model dropped", "            if \"model\" in msg:", "            if False:"))
+        for name, old, new in cases:
+            with self.subTest(witness=name):
+                src = Path(dt.__file__).read_text(encoding="utf-8")
+                self.assertEqual(src.count(old), 1, name)
+                m = types.ModuleType("delegated_take_witness")
+                m.__file__ = dt.__file__
+                sys.modules[m.__name__] = m
+                try:
+                    exec(compile(src.replace(old, new), dt.__file__, "exec"), m.__dict__)
+                finally:
+                    del sys.modules[m.__name__]
+                got = multi_problems(m)
+                if not got:
+                    from unittest import mock
+                    with mock.patch.dict(sys.modules, {"delegated_take": m}):
+                        r = unittest.TestResult()
+                        TheParity("test_plan_gate").run(r)
+                        TheFallback("test_each_refusal_names_its_reason").run(r)
+                        got = r.failures + r.errors
+                print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'}", end=" ", file=sys.stderr)
+                self.assertTrue(got, name)
+
 class TheDraft(unittest.TestCase):
     def test_the_draft_says_how_a_delegated_take_is_graded(self):
         draft = json.loads((HERE.parent / "prereg-draft.json").read_text())

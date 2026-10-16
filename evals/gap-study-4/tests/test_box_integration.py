@@ -570,6 +570,9 @@ class FakeBox:
             if not self.stubborn:
                 self.procs[a[4]] = []
             return ok()
+        if a[:4] == ["docker", "exec", "--user", rt.AGENT_USER] and a[5:10] == ["/usr/bin/python3", "-I", "-S", "-c",
+                                                                             rt.SWEEP_PROGRAM]:
+            return self.sweep(a)                      # W-3b (review r14): the session sweep, run on the host's folders
         if a[:2] == ["docker", "top"]:
             rows = []
             for proc in self.procs.get(a[2], []):
@@ -595,6 +598,35 @@ class FakeBox:
         if a == [rt.RUNTIME_CLIENT, "network", "ls", "--no-trunc", "--quiet"]:     # S6b R-S6-net
             return ok("".join(n + "\n" for n in sorted(self.networks)))
         raise GuardTripped(f"the fake box refuses {a!r}"[:200])
+
+    def sweep(self, a):
+        """The session sweep's program run over the take's host folders, each container root mapped to its host folder
+        (the run tree is mounted at its own path; the config mount at rt.CONFIG_MOUNT; the container's own /tmp and
+        kin are empty here), its paths mapped back to the container's."""
+        import contextlib as _cl
+        import io as _io
+        spec = self.specs[a[4]]
+        mapping = {}
+        for m in spec:                                   # every bind mount: container target -> host source
+            if m.startswith("type=bind,source=") and ",target=" in m:
+                src, tgt = m[len("type=bind,source="):].split(",target=", 1)
+                mapping[tgt.split(",", 1)[0]] = src
+        cfg, tree = mapping[rt.CONFIG_MOUNT], spec[spec.index("--workdir") + 1]
+        tree = mapping.get(tree, tree)
+        roots = [mapping[r] for r in json.loads(a[10]) if r in mapping]
+        buf, saved = _io.StringIO(), sys.argv            # in process: the module's process guard spawns nothing
+        sys.argv = ["-c", json.dumps(roots), str(os.getuid()), a[12], a[13]]
+        try:
+            with _cl.redirect_stdout(buf), FakeBox.as_container(tree), FakeBox.as_container(cfg):   # as the agent
+                exec(compile(rt.SWEEP_PROGRAM, "<the session sweep>", "exec"), {"__name__": "__sweep__"})
+        finally:
+            sys.argv = saved
+        doc = json.loads(buf.getvalue())
+        back = lambda p: rt.CONFIG_MOUNT + p[len(cfg):] if p == cfg or p.startswith(cfg + "/") else p  # noqa: E731
+        doc["files"] = [[back(f[0])] + f[1:] for f in doc["files"]]
+        doc["unreadable"] = [[back(u[0]), u[1]] for u in doc["unreadable"]]
+        self.sweeps = getattr(self, "sweeps", []) + [doc]
+        return ok(json.dumps(doc))
 
     def inspect(self, cid):
         c = self.containers.get(cid)

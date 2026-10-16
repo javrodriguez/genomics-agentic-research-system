@@ -2062,3 +2062,128 @@ def run_turn(runtime, take_id: str, inner, *, harness: str, run_tree: str, login
         fh.write(out)
     return {"exit_code": code, "timed_out": timed_out, "started_at": started, "ended_at": ended,
             "stream_path": stream_path, "stderr": err, "launch_path": launch_path}
+
+
+# ------------------------------------------------------------------------------------------------ the session sweep
+# W-3b (glitch-b5's ruling on review r14, 16 Oct 2026): after every turn, inside the take container (its agent's
+# processes gone, before the teardown), every writable location is read for files of an agent session's shape: a
+# Claude Code session record (sessionId and type user, assistant, attachment, system or summary), a Codex rollout's
+# session_meta, a Gemini chat's sessionId and projectHash, among a file's first non-blank lines. It runs as the agent's
+# own uid through the image's isolated Python (/usr/bin/python3 -I -S, root-owned, as kill_agent does): a link is
+# never followed, /proc and /sys are never roots, a file that does not open with "{" is read no further than its first
+# block, and an entry owned by the agent that the sweep cannot read is reported (the agent can hide nothing from its
+# own uid but by its modes). The checker admits only the take's own session and its sub-agent pairs.
+AGENT_PASSWD_HOME = "/home/dana"          # the image's agent user (box/Dockerfile useradd --home-dir)
+SWEEP_FIXED_ROOTS = ("/tmp", "/var/tmp", "/dev/shm", AGENT_PASSWD_HOME)
+SWEEP_MAX_FILES = 200000
+SWEEP_HEAD_BYTES = 8 * 1024 * 1024
+SWEEP_PROGRAM = r'''
+import json, os, stat, sys
+roots, uid, cap, head = json.loads(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
+out = {"files": [], "unreadable": [], "scanned": 0, "truncated": False}
+CLAUDE = ("user", "assistant", "attachment", "system", "summary")
+def shape(fd):
+    first = os.read(fd, 4096)
+    if not first.lstrip()[:1] == b"{":
+        return None
+    data = first + os.read(fd, head - len(first)) if len(first) == 4096 else first
+    seen = 0
+    for line in data.split(b"\n"):
+        if not line.strip():
+            continue
+        seen += 1
+        if seen > 8:
+            break
+        try:
+            r = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(r, dict):
+            continue
+        if isinstance(r.get("sessionId"), str) and r.get("type") in CLAUDE:
+            return ["claude", r["sessionId"]]
+        if r.get("type") == "session_meta":
+            p = r.get("payload") if isinstance(r.get("payload"), dict) else {}
+            return ["codex", p.get("id") if isinstance(p.get("id"), str) else None]
+        if isinstance(r.get("sessionId"), str) and isinstance(r.get("projectHash"), str):
+            return ["gemini", r["sessionId"]]
+    return None
+def visit(path):
+    try:
+        st = os.lstat(path)
+    except OSError:
+        return
+    if stat.S_ISLNK(st.st_mode):
+        return
+    if stat.S_ISDIR(st.st_mode):
+        try:
+            names = sorted(os.listdir(path))
+        except OSError:
+            if st.st_uid == uid:
+                out["unreadable"].append([path, "dir"])
+            return
+        for n in names:
+            if out["truncated"]:
+                return
+            visit(os.path.join(path, n))
+        return
+    if not stat.S_ISREG(st.st_mode):
+        return
+    out["scanned"] += 1
+    if out["scanned"] > cap:
+        out["truncated"] = True
+        return
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError:
+        if st.st_uid == uid:
+            out["unreadable"].append([path, "file"])
+        return
+    try:
+        got = shape(fd)
+    except OSError:
+        got = None
+        if st.st_uid == uid:
+            out["unreadable"].append([path, "file"])
+    finally:
+        os.close(fd)
+    if got:
+        out["files"].append([path] + got)
+for root in roots:
+    if root.rstrip("/") in ("/proc", "/sys") or root.startswith(("/proc/", "/sys/")):
+        continue
+    visit(root)
+print(json.dumps(out, sort_keys=True))
+'''
+
+
+def sweep_roots(run_tree: str) -> list:
+    """The take container's writable locations the sweep reads: the run tree, the config mount, the fixed ones."""
+    return [run_tree, CONFIG_MOUNT, *SWEEP_FIXED_ROOTS]
+
+
+def sweep_argv(take_id: str, roots: list) -> list:
+    return [RUNTIME_CLIENT, "exec", "--user", AGENT_USER, _check_id(take_id, "take id"), "/usr/bin/python3", "-I",
+            "-S", "-c", SWEEP_PROGRAM, json.dumps(list(roots)), AGENT_USER.split(":", 1)[0], str(SWEEP_MAX_FILES),
+            str(SWEEP_HEAD_BYTES)]
+
+
+def sweep_sessions(runtime, take_id: str, roots: list, *, caller_env=None) -> dict:
+    """One sweep of the take container (above): {files: [[path, shape, session id]], unreadable: [[path, kind]],
+    scanned, truncated}. A failed exec or a reply off that shape raises Refused."""
+    got = runtime.run(sweep_argv(take_id, roots), env=runtime_env(caller_env), timeout=STEP_TIMEOUT_S)
+    if got.returncode != 0:
+        raise Refused(f"the session sweep exited {got.returncode}: {str(got.stderr)[:200]}")
+    try:
+        doc = json.loads(got.stdout)
+    except (TypeError, ValueError):
+        raise Refused("the session sweep's reply is not JSON") from None
+    if not (isinstance(doc, dict) and set(doc) == {"files", "unreadable", "scanned", "truncated"}
+            and isinstance(doc["files"], list) and isinstance(doc["unreadable"], list)
+            and type(doc["scanned"]) is int and type(doc["truncated"]) is bool
+            and all(isinstance(f, list) and len(f) == 3 and isinstance(f[0], str) and isinstance(f[1], str)
+                    for f in doc["files"])
+            and all(isinstance(u, list) and len(u) == 2 and all(isinstance(x, str) for x in u)
+                    for u in doc["unreadable"])):
+        raise Refused("the session sweep's reply is off its shape")
+    return doc
