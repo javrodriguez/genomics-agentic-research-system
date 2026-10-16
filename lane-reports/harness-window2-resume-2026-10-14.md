@@ -280,3 +280,22 @@ Since e471902f:
   - Round 3: the 54 graded transcripts carry no auto_mode. The one record is the walk walks/template-adherence/1 (claude-sonnet-5, 2.1.267, permission mode auto): every flag false, auto mode's own notice, not the steer. transcript_view's comment, the draft and test_auto_mode now say so. DONE.
 
 Open for glitch-6b: ruling 1 on edited_text_file. The facts point to "admit as a named departure with a closed shape, snippet counted as furniture", since no switch keeps parity. Nothing is built for it yet.
+
+## RESUME HERE (16 Oct 00:18 EDT; supersedes the blocks above)
+
+Writer: the harness lane, briefed by glitch-b5. HEAD: the commit that adds this block (parent 3ee511df). Branch codex/gap4-live-harness-20261013. Nothing pushed. No athena access. No mac_slot booking held; no process of this lane running. Tree clean except the provenance report and untracked lane notes (not this lane's).
+
+Commits since 4ce3318f, each red first and through the gitleaks staged gate (0 findings):
+- bd012b34: glitch-6b's ruling 1. edited_text_file is admitted as a named departure. Its shape is closed: exactly type, filename and snippet, as strings, the filename non-empty. The snippet is the harness event's text. The draft's harness_furniture_ruling names it. tests/test_edited_text_file.py: the near misses and ten spelling variants refuse; the allow-list is the vocabulary record's 16 plus this one, and the other 96 refuse.
+- 7c2010ce: r5 NITs (a)-(c). The journal prompt is read by position. Each journal is bound to its turn and harness (harness, stream turn-N.jsonl, client claude). A journal with no stream refuses. tests/test_journal_binding.py is new. The fixtures in test_steer_condition, test_isolation_denials_checker and test_checker_body carry run_take's stream.
+- 3ee511df: r5 NIT (d). rechecks_append_only_problems reads its log's exit status (RA-rc).
+
+Mac proof (python3.12, env -u CLAUDE_CODE_MESSAGING_TOKEN, light-ok before each), all OK: edited_text_file 6, auto_mode 6, transcript_view 20, awareness_furniture 7, pause_adherence 30, build_draft 48 (38 s), journal_binding 4, steer_condition 7, isolation_denials_checker 9, checker_body 30, checker_constants 27, walk_runner R5Bootstrap 2, drive_loop 27, walk_wiring 20, stub_take 19, identity_mode_evidence 8, walk_recheck 14 (74 s). copy_manifest, build_draft --check and the lint_language line are clean.
+Not run on the Mac: test_pending_walk (it timed out at 90 s, so it is left to the battery), the full test_walk_runner, test_round4 and the generated shards.
+
+Open for glitch-b5 (finding): check_take.context_text reads every attachment line. So with edited_text_file now admitted, a leak word in a snippet (the agent's own file content) is named by context_leaks. On a synthetic record, a snippet carrying "evaluation" gave {'evaluation'}. Nothing was changed for this.
+
+w053 (no-visible-output nudge): static facts only, nothing built. They are in the report to glitch-b5. The 2.1.296 linux-x64 npm tarball matches the registry integrity, and its binary's sha256 is the pinned 24972e3b.... The trigger is in the query loop (reason thinking_only_retry). round 3's 64 transcripts carry 0 isMeta records. 2.1.267 and 2.1.280 carry the same code path.
+
+## Exact next step
+glitch-b5 runs the battery on this head. Then the held walks (w041, and any edited_text_file hold) re-run as new ids.
