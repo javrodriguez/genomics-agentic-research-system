@@ -2910,6 +2910,9 @@ AGENT_ERRORED = "errored"
 TASK_TERMINAL_STATUSES = ("completed", "failed", "stopped")
 # review r11, R11-4: the keys 2.1.296's meta writer spreads from the Agent call's input when it passes them
 SUBAGENT_META_FROM_INPUT = ("model", "effort", "name")
+# review r12 NIT: with tengu_snappy_pelican off (its default), 2.1.296's writer drops an input effort of lower or higher
+# from the meta and passes every other level through
+SUBAGENT_EFFORT_NOT_STORED = ("lower", "higher")
 _SUBAGENT_REFUSED_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e")
 _SYNTHETIC = "<synthetic>"
 
@@ -2949,7 +2952,7 @@ def _turn_streams(path: Path) -> list:
 def agent_calls(path: Path) -> list:
     """The transcript's Agent calls, in order: {tool_use_id, agent_id, is_async, status, resolved_model, completion};
     the middle four from the call's toolUseResult (status "errored" when it is not an object), completion the status
-    of the call's task_notification in the turn streams (None when there is none)."""
+    of the last task_notification naming the call in its own turn's stream (None when there is none)."""
     calls: dict = {}
     recs = _records_of(path)
     for rec in recs:
@@ -3106,14 +3109,14 @@ def subagent_problems(path: Path) -> list[str]:
             final, recs = final_of_turn[n]
             done = [i for i, r in enumerate(recs) if r.get("type") == "system" and r.get("subtype") == "task_notification"
                     and r.get("tool_use_id") == cid]
-            if not done or done[0] > final:
+            if not done or done[-1] > final:
                 out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid}'s completion is not in its own turn before the "
                            f"turn's final result")
             else:
-                end = done[0]                        # review r11: nothing of the call after its notification
-                started = {r.get("task_id") for r in recs if r.get("type") == "system"
-                           and r.get("subtype") == "task_started" and r.get("tool_use_id") == cid}
-                if len(started) != 1 or recs[done[0]].get("task_id") not in started:
+                end = done[-1]                       # review r12 NIT: the notification agent_calls' completion reads
+                started = [r.get("task_id") for r in recs if r.get("type") == "system"
+                           and r.get("subtype") == "task_started" and r.get("tool_use_id") == cid]
+                if len(started) != 1 or recs[end].get("task_id") != started[0]:
                     out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid}'s task_notification does not name the task its "
                                f"task_started began")
         for m, (fin, recs) in final_of_turn.items():
@@ -3138,7 +3141,7 @@ def subagent_problems(path: Path) -> list[str]:
         call = by_call.get(meta.get("toolUseId")) if isinstance(meta, dict) else None
         given = inputs.get(meta.get("toolUseId")) if isinstance(meta, dict) else None
         if call is not None and isinstance(given, dict) and \
-                any(meta.get(k) != given.get(k) for k in SUBAGENT_META_FROM_INPUT):     # review r11, R11-4
+                _meta_input_mismatch(meta, given):                                       # review r11, R11-4
             out.append(f"[{SUBAGENT_RECORDS}] sub-agent {aid}'s meta does not carry the call's own "
                        f"{list(SUBAGENT_META_FROM_INPUT)}")
         if call is None or call["agent_id"] != aid:
@@ -3194,6 +3197,18 @@ def agent_summary(path: Path) -> dict:
                                                     "stream_file_differences": subagent_reach_records(path)[1]}}
 
 
+def _meta_input_mismatch(meta: dict, given: dict) -> bool:
+    """Whether the meta's model, effort and name are not what 2.1.296's writer stores from the call's own input: each
+    equal to the input's, except an input effort of lower or higher, which leaves the meta with no effort key."""
+    for k in SUBAGENT_META_FROM_INPUT:
+        if k == "effort" and given.get(k) in SUBAGENT_EFFORT_NOT_STORED:
+            if k in meta:
+                return True
+        elif meta.get(k) != given.get(k):
+            return True
+    return False
+
+
 def _canon(value) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
@@ -3201,19 +3216,20 @@ def _canon(value) -> str:
 def subagent_reach_records(path: Path) -> tuple:
     """(the sub-agent records the reach readers read, how many stream records differ from the file) (review r11,
     R11-1): every file record (assistant and user) and every stream sub-agent record, a stream record dropped ONLY
-    when its message content is canonical-JSON-equal to a file record's of the same sub-agent, so each distinct
-    instance is read once. A stream record of an agent with a file that matches none of the file's records is counted
+    when its type and message content are canonical-JSON-equal to a file record's of the same sub-agent (review r12),
+    so each distinct instance is read once. A stream record of an agent with a file that matches none of the file's records is counted
     as a difference, never refused: 2.1.296 rewrites what it stores (stripForStorage, the placeholder for a
     sub-agent's results), so a difference may be legitimate; the call-level two-way agreement still refuses."""
     files = {aid: [r for r in _records_of(q) if r.get("type") in ("assistant", "user")]
              for aid, q in subagent_files(path).items()}
-    held = {aid: {_canon((r.get("message") or {}).get("content")) for r in recs if isinstance(r.get("message"), dict)}
-            for aid, recs in files.items()}
+    held = {aid: {(r.get("type"), _canon((r.get("message") or {}).get("content"))) for r in recs
+                  if isinstance(r.get("message"), dict)}
+            for aid, recs in files.items()}       # review r12 NIT: keyed on the record's type and its content
     out, differ = [r for recs in files.values() for r in recs], 0
     for _, rec in stream_subagent_records(path):
         aid = rec.get("agent_id")
         content = (rec.get("message") or {}).get("content") if isinstance(rec.get("message"), dict) else None
-        if aid in held and _canon(content) in held[aid]:
+        if aid in held and (rec.get("type"), _canon(content)) in held[aid]:
             continue
         if aid in held:
             differ += 1

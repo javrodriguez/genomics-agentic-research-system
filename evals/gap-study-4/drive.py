@@ -3124,8 +3124,9 @@ SUBAGENT_REQUEST_SHAPES = ("foreground", "background")
 # review r11, R11-4: 2.1.296's meta writer spreads model, effort and name from the Agent call's input when it passes
 # them; the checker binds each to the call. model is the input's alias (the schema's enum), effort one of the schema's
 # effort values (Ia and bXo, read statically), name a string.
+# review r12 NIT: the writer stores no effort for an input of lower or higher, so the meta admits only the levels it stores
 SUBAGENT_META_OPTIONAL = {"model": ("sonnet", "opus", "haiku", "fable"),
-                          "effort": ("low", "medium", "high", "xhigh", "max", "lower", "higher"), "name": None}
+                          "effort": ("low", "medium", "high", "xhigh", "max"), "name": None}
 _REFUSED_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e")
 
 

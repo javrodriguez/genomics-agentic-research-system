@@ -126,10 +126,7 @@ def regrade_doc(walk: str, study: Path = HERE, *, readers=None, grade=None) -> d
         raise RegradeRefused(f"walk {walk!r} is not registered once in the committed register")
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp) / walk
-        try:
-            nrr._materialize(root, walk_rel, base)
-        except nrr.RegistrationRefused as e:
-            raise RegradeRefused(str(e)) from None
+        materialize_walk(root, walk_rel, base)
         try:
             ledger = json.loads((base / drive.LEDGER_FILE).read_bytes())
             stored = json.loads((base / drive.WALK_GRADE).read_bytes())
@@ -247,9 +244,19 @@ def agent_summary_problems(check: dict, transcript: Path) -> list:
     derived = ct.agent_summary(Path(transcript))
     recorded = {"agent_calls": check.get("agent_calls"), "subagents": check.get("subagents")}
     if derived != recorded:
-        return [f"check.json's agent_calls and subagents ({recorded['agent_calls']!r}) are not the committed "
-                f"transcript's ({derived['agent_calls']})"]
+        rec_sub = recorded["subagents"] if isinstance(recorded["subagents"], dict) else {}
+        fields = (["agent_calls"] if recorded["agent_calls"] != derived["agent_calls"] else []) + \
+            [f"subagents.{k}" for k in sorted(set(rec_sub) | set(derived["subagents"]))
+             if rec_sub.get(k) != derived["subagents"].get(k)] if isinstance(recorded["subagents"], dict) else ["subagents"]
+        named = ", ".join(f"{f} (recorded {_field(recorded, f)!r}, derived {_field(derived, f)!r})" for f in fields)
+        return [f"check.json's agent_calls and subagents are not the committed walk folder's reading: {named}"[:600]]
     return []
+
+
+def _field(doc: dict, dotted: str):
+    for k in dotted.split("."):
+        doc = doc.get(k) if isinstance(doc, dict) else None
+    return doc
 
 
 def regrade_problems(study: Path = HERE, *, readers=None, grade=None) -> list:
@@ -290,21 +297,31 @@ def regrade_problems(study: Path = HERE, *, readers=None, grade=None) -> list:
             continue                      # check.json's own shape is pending_walk's and the register's to judge
         if not isinstance(check, dict) or not isinstance(check.get("no_output_nudges"), int):
             continue
-        try:
-            transcript = nrr._show(root, f"{walks}/{parts[0]}/transcript.jsonl")
-        except nrr.RegistrationRefused as e:
-            out.append(f"walk {parts[0]!r}: its nudge count cannot be re-derived: {e}")
-            continue
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "transcript.jsonl"
-            path.write_bytes(transcript)
+        with tempfile.TemporaryDirectory() as tmp:  # review r12 R12-1: the whole walk folder, as recheck_doc reads it
+            base = Path(tmp) / parts[0]
+            try:
+                materialize_walk(root, f"{walks}/{parts[0]}", base)
+            except RegradeRefused as e:
+                out.append(f"walk {parts[0]!r}: its nudge count cannot be re-derived: {e}")
+                continue
+            path = base / "transcript.jsonl"
+            if not path.is_file():
+                out.append(f"walk {parts[0]!r}: its nudge count cannot be re-derived: the committed walk has no "
+                           f"transcript.jsonl")
+                continue
             out += [f"walk {parts[0]!r}: {p}" for p in nudge_count_problems(check, path)]
-            for rel2 in listed:                     # the Agent parity ruling, part 6: the streams beside it too
-                tail = rel2[len(walks) + 1:].split("/")
-                if len(tail) == 2 and tail[0] == parts[0] and re.fullmatch(r"turn-[1-9][0-9]*\.jsonl", tail[1]):
-                    (Path(tmp) / tail[1]).write_bytes(nrr._show(root, rel2))
             out += [f"walk {parts[0]!r}: {p}" for p in agent_summary_problems(check, path)]
     return out
+
+
+def materialize_walk(root, walk_rel: str, into: Path) -> None:
+    """The committed walk folder at HEAD (every blob: the transcript, the turn streams, subagents/ and its metas),
+    written under `into`: the one road regrade_doc, recheck_doc and regrade_problems read a walk by (review r12
+    R12-1), so no reader re-derives from a partial folder."""
+    try:
+        nrr._materialize(root, walk_rel, into)
+    except nrr.RegistrationRefused as e:
+        raise RegradeRefused(str(e)) from None
 
 
 def register_recheck_problems(root, prefix, by_walk: dict) -> list:
@@ -471,10 +488,7 @@ def recheck_doc(walk: str, n: int, study: Path = HERE, *, machine, design_for=No
         raise RegradeRefused(f"recheck {n} would skip ordinal {len(have) + 1}")
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp) / walk
-        try:
-            nrr._materialize(root, walk_rel, base)
-        except nrr.RegistrationRefused as e:
-            raise RegradeRefused(str(e)) from None
+        materialize_walk(root, walk_rel, base)
         for later in range(n, len(have) + 1):             # the doc of ordinal n sees only what came before it
             (base / recheck_name(later)).unlink()
         try:

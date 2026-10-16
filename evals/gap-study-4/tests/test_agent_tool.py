@@ -623,7 +623,9 @@ def count_problems() -> list:
     if wg.agent_summary_problems(base, path) != []:
         out.append("A-count: a check.json written before the ruling is re-derived")
     tree = ast.parse(Path(wg.__file__).read_text())
-    for fn, need in (("recheck_doc", {"agent_summary_problems"}), ("regrade_problems", {"agent_summary_problems"})):
+    for fn, need in (("recheck_doc", {"agent_summary_problems", "materialize_walk"}),
+                     ("regrade_problems", {"agent_summary_problems", "materialize_walk"}),
+                     ("regrade_doc", {"materialize_walk"})):   # review r12 R12-1: one road to the walk folder
         body = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == fn)
         called = {c.func.id for c in ast.walk(body) if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
         if not need <= called:
@@ -879,6 +881,116 @@ def r11_problems(ct=None) -> list:
     return out
 
 
+
+def meta_case(given: dict, stored: dict) -> Path:
+    """A take whose Agent call passes `given` and whose sub-agent meta stores `stored` (the model resolved as passed)."""
+    model = {"opus": "claude-opus-5-5"}.get(given.get("model"), PIN)
+    path = take_folder(result_over={"resolvedModel": model}, stream_recs=[
+        sub(model=model, tool=BASH, text=None), sub_result()],
+        files=pair(jl(side_record(message={"role": "assistant", "model": model, "content": [BASH]}),
+                      side_record("user")), meta(**stored)))
+    recs = [json.loads(x) for x in path.read_text().splitlines()]
+    recs[1]["message"]["content"][0]["input"].update(given)
+    path.write_text(jl(*recs))
+    return path
+
+
+def committed_walk(take: Path, check: dict) -> Path:
+    """A git repo holding `take`'s folder as the committed walk rehearsals/w001 with `check` as its check.json."""
+    import shutil
+    import subprocess
+    import tempfile
+    repo = Path(tempfile.mkdtemp())
+    w = repo / "rehearsals" / "w001"
+    shutil.copytree(take.parent, w)
+    (w / "check.json").write_text(json.dumps(check))
+
+    def g(*a):
+        subprocess.run(["git", "-C", str(repo), *a], capture_output=True, check=True)
+    g("init", "-q")
+    g("config", "maintenance.auto", "false")
+    g("add", "-A")
+    g("-c", "user.name=x", "-c", "user.email=x@x.invalid", "commit", "-qm", "w")
+    return repo
+
+
+def r12_problems(ct=None, wg=None) -> list:
+    """Review r12: the regrade reads the whole committed walk folder (R12-1), the surviving mutants (R12-2) and the
+    ruled NITs (the drop keyed on type and content, the stored effort, the last notification)."""
+    if ct is None:
+        import check_take as ct
+    if wg is None:
+        import walk_regrade as wg
+    out = []
+    sr = "subagent-records"
+    # R12-1: regrade_problems on a committed walk with subagents/, its true count clean and a forged 0 named
+    peek = {"type": "tool_use", "id": "toolu_sub", "name": "Read", "input": {"file_path": STUDY}}
+    benign = dict(peek, input={"file_path": "/run/README.md"})
+    take = take_folder(stream_recs=[sub(tool=peek, text=None), sub_result()],
+                       files=pair(jl(side_record(message={"role": "assistant", "model": PIN, "content": [benign]}),
+                                     side_record("user"))))
+    true = ct.agent_summary(take)
+    if true["subagents"]["stream_file_differences"] != 1:
+        out.append(f"R12-1: the fixture's true difference count is {true['subagents']['stream_file_differences']}")
+    check = {"checker_reasons": [], "no_output_nudges": ct.no_output_nudges(take), **true}
+    got = wg.regrade_problems(committed_walk(take, check))
+    if got:
+        out.append(f"R12-1: the true count of a committed walk is named: {got}")
+    forged = dict(check, subagents=dict(true["subagents"], stream_file_differences=0))
+    got = wg.regrade_problems(committed_walk(take, forged))
+    if not any("stream_file_differences" in p for p in got):
+        out.append(f"R12-1: a forged 0 on a committed walk with subagents/ is not named: {got}")
+    # R12-2a: the effort and name binding, and the NIT's stored effort
+    for name, given, stored, clean in (
+            ("an effort the call did not pass", {"effort": "high"}, {"effort": "low"}, False),
+            ("a name the call did not pass", {"name": "surveyor"}, {"name": "other"}, False),
+            ("a passed effort the meta lacks", {"effort": "high"}, {}, False),
+            ("a lower effort stored", {"effort": "lower"}, {"effort": "low"}, False),
+            ("a higher effort stored", {"effort": "higher"}, {"effort": "high"}, False),
+            ("control: a lower effort not stored", {"effort": "lower"}, {}, True),
+            ("control: a higher effort not stored", {"effort": "higher"}, {}, True),
+            ("control: effort and name stored as passed", {"effort": "max", "name": "surveyor"},
+             {"effort": "max", "name": "surveyor"}, True)):
+        got = ct.subagent_problems(meta_case(given, stored))
+        if clean and got:
+            out.append(f"R12-2a {name}: refused {got}")
+        if not clean and sr not in ct.reason_ids(got):
+            out.append(f"R12-2a {name}: read {got}")
+    # R12-2b: a stream record whose keys come in another order is the file's own record
+    reordered = {k: BASH[k] for k in reversed(list(BASH))}
+    n = ct.agent_summary(take_folder(stream_recs=[sub(tool=reordered, text=None), sub_result()]))
+    if n["subagents"]["stream_file_differences"] != 0:
+        out.append("R12-2b: a record with its keys in another order reads as differing")
+    # R12-2c: exactly one task_started
+    got = ct.subagent_problems(take_folder(result_over=ASYNC, stream_recs=[
+        started(), started(task="t2"), sub(tool=BASH, text=None), sub_result(), notification()]))
+    if sr not in ct.reason_ids(got):
+        out.append(f"R12-2c: two task_started for one call read {got}")
+    # R12-2d: the drop is per sub-agent: B's stream record equal only to A's file record is read and counted
+    two = two_agents_folder(CALL_ID)
+    base_n = ct.agent_summary(two)["subagents"]["stream_file_differences"]
+    lines_ = (two.parent / "turn-1.jsonl").read_text().splitlines()
+    cross = sub(tool=BASH, text=None, parent=f"{CALL_ID}_2", agent_id="bbbbbbbb")
+    (two.parent / "turn-1.jsonl").write_text("\n".join(lines_[:-1]) + "\n" + stream(cross) + lines_[-1] + "\n")
+    recs, differ = ct.subagent_reach_records(two)
+    if differ != base_n + 1 or not any(r.get("agent_id") == "bbbbbbbb" and r.get("message") == cross["message"]
+                                       for r in recs):
+        out.append(f"R12-2d: sub-agent B's record equal only to A's file record: {differ} differences (base {base_n})")
+    # NIT: the drop is keyed on the record's type too
+    as_user = sub("user", text=None)
+    as_user["message"]["content"] = [BASH]
+    n = ct.agent_summary(take_folder(stream_recs=[sub(tool=BASH, text=None), sub_result(), as_user]))
+    if n["subagents"]["stream_file_differences"] != 1:
+        out.append("R12 NIT: a user record carrying an assistant record's content is dropped as the file's")
+    # NIT: end and completion read the same notification, the last in the call's own turn
+    two_n = take_folder(result_over=ASYNC, stream_recs=[
+        started(), sub(tool=BASH, text=None), notification("failed"), sub_result(), notification()])
+    if [c["completion"] for c in ct.agent_calls(two_n)] != ["completed"]:
+        out.append(f"R12 NIT: the completion is not the last notification's: {ct.agent_calls(two_n)}")
+    if ct.subagent_problems(two_n):
+        out.append(f"R12 NIT: a record before the last notification refused {ct.subagent_problems(two_n)}")
+    return out
+
 class TheAgentTool(unittest.TestCase):
     def test_a_view(self):
         self.assertEqual(view_problems(), [])
@@ -931,7 +1043,7 @@ class TheAgentTool(unittest.TestCase):
                 ("calls and files unbound", "    if set(files) != named or set(metas) != named:", "    if False:"),
                 ("a running sub-agent read", '        if c["status"] == "async_launched" and c["completion"] not in '
                  'TASK_TERMINAL_STATUSES:', "        if False:"),
-                ("a completion after the result read", "            if not done or done[0] > final:",
+                ("a completion after the result read", "            if not done or done[-1] > final:",
                  "            if not done:"),
                 ("late records read", "            if late or later_events:", "            if later_events:"),
                 ("the metas unbound", '        if call is None or call["agent_id"] != aid:', "        if False:"),
@@ -969,22 +1081,57 @@ class TheAgentTool(unittest.TestCase):
     def test_r11_witnesses(self):
         import check_take as ct
         for name, old, new in (
-                ("a stream record dropped when only its call matches", "        if aid in held and _canon(content) in "
-                 "held[aid]:\n            continue", "        if aid in held:\n            continue"),
+                ("a stream record dropped when only its call matches", "        if aid in held and (rec.get(\"type\"), "
+                 "_canon(content)) in held[aid]:\n            continue", "        if aid in held:\n            continue"),
                 ("the file-model check off", "                    out += _model_problem(f\"sub-agent {aid}'s file\", "
                  "model, pin)\n", "                    pass\n"),
                 ("a meta bound to any call", '        if call is None or call["agent_id"] != aid:', "        if call is None:"),
-                ("records after the notification read", "                end = done[0]", "                end = None"),
-                ("task ids unchecked", '                if len(started) != 1 or recs[done[0]].get("task_id") not in started:',
+                ("records after the notification read", "                end = done[-1]", "                end = None"),
+                ("task ids unchecked", '                if len(started) != 1 or recs[end].get("task_id") != started[0]:',
                  "                if False:"),
                 ("later task events read", "            if late or later_events:", "            if late:"),
-                ("the meta's inputs unbound", "any(meta.get(k) != given.get(k) for k in SUBAGENT_META_FROM_INPUT)",
+                ("the meta's inputs unbound", "_meta_input_mismatch(meta, given)",
                  "False"),
                 ("records without an agent id bound", 'not isinstance(rec.get("agent_id"), str) or ', "")):
             with self.subTest(witness=name):
                 m = mutant(ct, old, new)
                 try:
                     got = r11_problems(m)
+                except Exception as e:  # noqa: BLE001
+                    got = [f"raised {type(e).__name__}"]
+                print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
+                self.assertTrue(got, name)
+
+    def test_r12(self):
+        self.assertEqual(r12_problems(), [])
+
+    def test_r12_witnesses(self):
+        import check_take as ct
+        import walk_regrade as wg
+        for name, mod, old, new in (
+                ("R12-1: the regrade reads the transcript alone", wg,
+                 '                materialize_walk(root, f"{walks}/{parts[0]}", base)\n',
+                 '                base.mkdir(parents=True)\n                (base / "transcript.jsonl").write_bytes('
+                 'nrr._show(root, f"{walks}/{parts[0]}/transcript.jsonl"))\n'),
+                ("R12-2a: the effort and name unbound", ct,
+                 'SUBAGENT_META_FROM_INPUT = ("model", "effort", "name")', 'SUBAGENT_META_FROM_INPUT = ("model",)'),
+                ("NIT: a lower effort may be stored", ct, "            if k in meta:\n                return True",
+                 "            pass"),
+                ("NIT: a lower effort must be stored", ct,
+                 'if k == "effort" and given.get(k) in SUBAGENT_EFFORT_NOT_STORED:', "if False:"),
+                ("R12-2b: the canon unsorted", ct, "json.dumps(value, sort_keys=True, separators",
+                 "json.dumps(value, sort_keys=False, separators"),
+                ("R12-2c: two task_started admitted", ct, "if len(started) != 1 or", "if len(started) < 1 or"),
+                ("R12-2d: held across sub-agents", ct, 'if aid in held and (rec.get("type"), _canon(content)) in held[aid]:',
+                 'if aid in held and any((rec.get("type"), _canon(content)) in v for v in held.values()):'),
+                ("NIT: the drop keyed on content alone", ct,
+                 'if aid in held and (rec.get("type"), _canon(content)) in held[aid]:',
+                 'if aid in held and _canon(content) in {c for _, c in held[aid]}:'),
+                ("NIT: end at the first notification", ct, "                end = done[-1]", "                end = done[0]")):
+            with self.subTest(witness=name):
+                m = mutant(mod, old, new)
+                try:
+                    got = r12_problems(ct=m) if mod is ct else r12_problems(wg=m)
                 except Exception as e:  # noqa: BLE001
                     got = [f"raised {type(e).__name__}"]
                 print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
