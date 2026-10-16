@@ -334,3 +334,23 @@ Not run on the Mac: the generated shards, test_round4 and test_box_integration.
 
 ## Exact next step
 glitch-b5: the battery and a fresh review on this head. Every walk is rechecked on the final head before the freeze.
+
+## RESUME HERE (16 Oct 01:28 EDT; supersedes the blocks above)
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent 25076228). Nothing pushed. No athena access (walks run there on 0c830443). No mac_slot booking held; no process of this lane running.
+
+25076228 folds review r7 (three MINORs and the observation). Each was reproduced first with the reviewer's scratchpad/r7 scripts.
+- R7-1: a cut is kept only when the cut line parses, with no duplicate key, to the record with exactly its snippet emptied. fix.py's other two guards are implied by this one and were equivalent mutants when written, so they are not written.
+- R7-2: a recheck carries the transcript's count, and standing reads the effective reading.
+- R7-3: TheNudgeRederivation runs over committed fixture walks. It kills the reviewer's three mutants and a fourth.
+- R7-obs: every transcript read in check_take, transcript_view and vendor_record_binding splits on "\n" alone (R5 BOOTSTRAP_SUBSTITUTIONS, the w6j byte check).
+Open for a ruling: evals/transcript.py (round 3's tx) still splits with splitlines(). A user record carrying U+2028 refuses readers-disagree (fail closed).
+
+Mac proof (python3.12, env -u CLAUDE_CODE_MESSAGING_TOKEN, light-ok first), all OK:
+- edited_text_file 10, no_output_nudge 9, jsonl_split 5, transcript_view 20, awareness_furniture 7, vendor_record_binding 12, vendor_provenance 6, vendor_take_records 4, scheduled_wakeup 11, auto_mode 6, steer_condition 7, isolation_denials_checker 9, journal_binding 4, checker_body 30, checker_constants 27, recheck_coverage 5, walk_plan 18, walk_grade_seam 3, rehearsals 9, cp8_prep 4, pause_adherence 30, stub_take 19, drive_loop 27, walk_wiring 20, walk_recheck 17, pending_walk 23, build_draft 48.
+- test_walk_runner, class by class: 85.
+- lint_language, copy_manifest, build_draft --check, walk_regrade --check and the w6j byte check are clean.
+Not run on the Mac: the generated shards, test_round4 and test_box_integration.
+
+## Exact next step
+glitch-b5: r8 and the battery on this head.
