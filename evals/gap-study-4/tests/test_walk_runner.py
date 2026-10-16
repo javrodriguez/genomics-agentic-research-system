@@ -1454,7 +1454,7 @@ class R8WalkRoad(Case):
         route = lambda records, table: {"route": "rehearsal"}  # noqa: E731
         args = ("w001", {"checker_reasons": []}, {}, route)
         self.assertEqual(wr.check_record(*args, checked=True, no_output_nudges=3,
-                                         agent_summary={"agent_calls": 0, "subagents": {"calls": [], "models": []}})["no_output_nudges"], 3)
+                                         agent_summary={"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}})["no_output_nudges"], 3)
         self.assertIsNone(wr.check_record(*args, checked=False, no_output_nudges=3)["no_output_nudges"])
         with self.assertRaises(ValueError):           # review r6 MINOR 2: a checked walk is never written with null
             wr.check_record(*args, checked=True)
@@ -1854,7 +1854,7 @@ class R10Guards(Case):
 # the exact refusal, so each kill is by assertion.
 def stub_driver(root: Path, *, walk_check=None, launch=None, drive=None, remove=None, published=None,
                 nudges=lambda row: 0,
-                agents=lambda row: {"agent_calls": 0, "subagents": {"calls": [], "models": []}}):
+                agents=lambda row: {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}}):
     """A walk driver stand-in whose class's launch carries the namespace walk_runner.driver_namespace reads (the drive
     module's LaunchRefused, NativeCrossCheckPending (the pending-walk road, batch-8 review finding 2) and WALK_CHECK,
     or another WALK_CHECK)."""

@@ -3121,6 +3121,11 @@ SUBAGENT_META = re.compile(r"agent-([A-Za-z0-9_-]{1,64})\.meta\.json")
 SUBAGENT_RECORD_TYPES = ("user", "assistant", "attachment")
 SUBAGENT_META_KEYS = ("agentType", "description", "requestNonInteractive", "requestShape", "spawnDepth", "toolUseId")
 SUBAGENT_REQUEST_SHAPES = ("foreground", "background")
+# review r11, R11-4: 2.1.296's meta writer spreads model, effort and name from the Agent call's input when it passes
+# them; the checker binds each to the call. model is the input's alias (the schema's enum), effort one of the schema's
+# effort values (Ia and bXo, read statically), name a string.
+SUBAGENT_META_OPTIONAL = {"model": ("sonnet", "opus", "haiku", "fable"),
+                          "effort": ("low", "medium", "high", "xhigh", "max", "lower", "higher"), "name": None}
 _REFUSED_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e")
 
 
@@ -3130,8 +3135,12 @@ def subagent_meta_problems(raw: bytes) -> list:
         meta = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
         return ["it is not UTF-8 JSON"]
-    if not isinstance(meta, dict) or set(meta) != set(SUBAGENT_META_KEYS):
-        return [f"its keys are not exactly {list(SUBAGENT_META_KEYS)}"]
+    if not isinstance(meta, dict) or not set(SUBAGENT_META_KEYS) <= set(meta) \
+            or not set(meta) <= set(SUBAGENT_META_KEYS) | set(SUBAGENT_META_OPTIONAL):
+        return [f"its keys are not {list(SUBAGENT_META_KEYS)} plus any of {list(SUBAGENT_META_OPTIONAL)}"]
+    for k, allowed in SUBAGENT_META_OPTIONAL.items():
+        if k in meta and not (type(meta[k]) is str and (allowed is None or meta[k] in allowed)):
+            return [f"its {k} is not one the 2.1.296 Agent schema admits"]
     if not (type(meta["agentType"]) is str and type(meta["description"]) is str and type(meta["toolUseId"]) is str
             and type(meta["requestNonInteractive"]) is bool and meta["requestShape"] in SUBAGENT_REQUEST_SHAPES
             and type(meta["spawnDepth"]) is int and meta["spawnDepth"] == 1):

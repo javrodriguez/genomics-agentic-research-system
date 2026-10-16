@@ -116,9 +116,8 @@ class Steer(unittest.TestCase):
 
     def check_quiet(self):
         out = []
-        for name, records, values in (("S-clean", [USER], [UNSET]), ("S-clean two turns", [USER, USER], [UNSET] * 2),
-                                      ("S-clean 0", [USER], ["0"]), ("S-clean off", [USER], ["off"]),
-                                      ("S-clean no", [USER], ["no"]), ("S-clean padded upper", [USER], [" FALSE "])):
+        # review r11 NIT (glitch-b5, 16 Oct 2026): only the exact string the study sets, "false", proves the switch off
+        for name, records, values in (("S-clean", [USER], [UNSET]), ("S-clean two turns", [USER, USER], [UNSET] * 2)):
             got = self.run_case(records, values)
             if got:
                 out.append(f"{name}: {got}")
@@ -132,6 +131,11 @@ class Steer(unittest.TestCase):
             "the switch true": ([USER], ["true"], None),
             "a JSON false": ([USER], [False], None),
             "an empty string": ([USER], [""], None),
+            "another off spelling, 0": ([USER], ["0"], None),
+            "another off spelling, off": ([USER], ["off"], None),
+            "another off spelling, no": ([USER], ["no"], None),
+            "padded and upper case": ([USER], [" FALSE "], None),
+            "capitalised": ([USER], ["False"], None),
             "auto_mode with no journal": ([USER, AUTO], [], 1),
             "auto_mode with the switch unset": ([USER, AUTO], [None], None),
             "one turn of two not set": ([USER], [UNSET, None], None),
@@ -200,14 +204,15 @@ class Steer(unittest.TestCase):
         all_checks = lambda: (self.check_violated() + self.check_quiet() + self.check_closed()  # noqa: E731
                               + self.check_prompt() + self.check_unreadable())
         mutants = (
-            ("no off values", lambda: mock.patch.object(ct, "STEER_OFF_VALUES", ())),
-            ("on read as off", lambda: mock.patch.object(ct, "STEER_OFF_VALUES", ("0", "false", "no", "off", "1"))),
+            ("another required value", lambda: mock.patch.dict(ct.STEER_REQUIRED, {ct.STEER_SWITCH: "0"})),
+            ("a stripped, case-folded compare", lambda: source_mutant(
+                "value == STEER_REQUIRED[switch]):", "value.strip().lower() == STEER_REQUIRED[switch]):")),
             ("switch absent read as off", lambda: source_mutant(
-                '        if not (isinstance(value, str) and value.strip().lower() in STEER_OFF_VALUES):',
-                '        if value is not None and not (isinstance(value, str) and value.strip().lower() in STEER_OFF_VALUES):')),
+                '            if not (isinstance(value, str) and value == STEER_REQUIRED[switch]):',
+                '            if value is not None and not (isinstance(value, str) and value == STEER_REQUIRED[switch]):')),
             ("not a string read as off", lambda: source_mutant(
-                '        if not (isinstance(value, str) and value.strip().lower() in STEER_OFF_VALUES):',
-                '        if not (str(value).strip().lower() in STEER_OFF_VALUES):')),
+                '            if not (isinstance(value, str) and value == STEER_REQUIRED[switch]):',
+                '            if not (str(value).lower() == STEER_REQUIRED[switch]):')),
             ("another switch name", lambda: mock.patch.object(ct, "STEER_SWITCH", "CLAUDE_CODE_OTHER")),
             ("another attachment type", lambda: mock.patch.object(ct, "AUTO_MODE_ATTACHMENT", "auto_mode_exit")),
             ("missing journal read as nothing", lambda: mock.patch.object(ct, "_journal_gaps", lambda *a: [])),

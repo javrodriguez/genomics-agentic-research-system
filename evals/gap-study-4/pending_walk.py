@@ -103,10 +103,15 @@ AGENT_CALL_KEYS = ("tool_use_id", "agent_id", "is_async", "status", "resolved_mo
 
 
 def valid_agent_summary(count, subagents) -> bool:
-    """agent_calls an int >= 0; subagents exactly {calls, models}: calls a list of that many {tool_use_id: str,
+    """agent_calls an int >= 0; subagents exactly {calls, models, stream_file_differences (an int >= 0)}: calls a list
+    of that many {tool_use_id: str,
     agent_id, status, resolved_model, completion: str or None, is_async: bool or None}, models a sorted list of
     distinct str."""
-    if type(count) is not int or count < 0 or not isinstance(subagents, dict) or set(subagents) != {"calls", "models"}:
+    if type(count) is not int or count < 0 or not isinstance(subagents, dict) or \
+            set(subagents) != {"calls", "models", "stream_file_differences"}:
+        return False
+    d = subagents["stream_file_differences"]               # review r11, R11-1: how many stream records differ
+    if type(d) is not int or d < 0:
         return False
     calls, models = subagents["calls"], subagents["models"]
     if not isinstance(calls, list) or len(calls) != count or not isinstance(models, list) \

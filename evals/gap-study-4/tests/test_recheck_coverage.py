@@ -61,7 +61,7 @@ def recheck_doc(n: int, digest: str, reasons=(), walk="w-0001") -> bytes:
     doc = {"schema": 1, "walk": walk, "n": n, "checker_constants_sha256": digest, "checker_reasons": list(reasons),
            "supersedes": "check.json" if n == 1 else f"recheck-{n - 1}.json",
            "no_output_nudges": 0,            # review r7 MINOR 2: a recheck carries the transcript's count
-           "agent_calls": 0, "subagents": {"calls": [], "models": []}}    # Agent parity, part 6
+           "agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}}    # Agent parity, part 6
     return (json.dumps(doc, indent=2, sort_keys=True) + "\n").encode()
 
 

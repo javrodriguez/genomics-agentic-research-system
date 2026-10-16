@@ -140,7 +140,7 @@ def main_said(text=None, call=True):
 
 
 def sub(kind="assistant", parent=CALL_ID, model=PIN, text="SUB-MARK", tool=None, **over):
-    content = [{"type": "text", "text": text}]
+    content = [{"type": "text", "text": text}] if text is not None else []
     if tool:
         content.append(tool)
     msg = {"id": "msg_sub", "role": kind, "content": content}
@@ -371,6 +371,19 @@ def copy_problems(drive=None) -> list:
     return out
 
 
+def sub_result(tid="toolu_sub", content="ok"):
+    """A sub-agent's tool result in the stream, its message content the file's own (side_record("user"))."""
+    r = sub("user", text=None)
+    r["message"]["content"] = [{"type": "tool_result", "tool_use_id": tid, "content": content}]
+    return r
+
+
+def started(call=CALL_ID, task="t1"):
+    return {"type": "system", "subtype": "task_started", "description": "d", "is_backgrounded": True, "prompt": "p",
+            "run_id": "run", "session_id": "s", "spawn_depth": 1, "subagent_type": "general-purpose", "task_id": task,
+            "task_type": "local_agent", "tool_use_id": call, "uuid": "u-s"}
+
+
 def notification(status="completed", call=CALL_ID):
     return {"type": "system", "subtype": "task_notification", "task_id": "t1", "tool_use_id": call, "status": status,
             "output_file": "", "summary": "", "session_id": "s", "uuid": "u-n"}
@@ -393,7 +406,7 @@ def take_folder(*, calls=True, result_over=None, tur=None, stream_recs=None, fil
             r["toolUseResult"] = tur
         recs.append(r)
     (d / "transcript.jsonl").write_text(jl(*recs))
-    default_stream = [sub(tool=BASH), sub("user", text="ok")] if calls else []
+    default_stream = [sub(tool=BASH, text=None), sub_result()] if calls else []   # the file's own records, by content
     head = main_said("x") if calls else main_said("x", call=False)
     for i in range(1, n_calls if calls else 0):                 # every call of the transcript is made in turn 1
         head["message"]["content"].append({"type": "tool_use", "id": f"{CALL_ID}_{i + 1}", "name": "Agent",
@@ -437,9 +450,9 @@ def check_problems(ct=None) -> list:
                                                                              "content": [BASH]}),
                                                         side_record("user")))},
         "an async call completed in its turn (w083's shape)": {"result_over": ASYNC, "stream_recs": [
-            sub(tool=BASH), sub("user", text="ok"), notification()]},
+            started(), sub(tool=BASH, text=None), sub_result(), notification()]},
         "an async call that failed in its turn": {"result_over": ASYNC, "stream_recs": [
-            sub(tool=BASH), sub("user", text="ok"), notification("failed")]},
+            started(), sub(tool=BASH, text=None), sub_result(), notification("failed")]},
         "a sub-agent API error (F3)": {"stream_recs": [sub(tool=BASH), sub("user", text="ok"), api]},
         "a raw U+2028 inside a string of a sub-agent file": {"files": pair(jl(side_record(message={
             "role": "assistant", "model": PIN, "content": [dict(BASH)]}), side_attachment(
@@ -462,11 +475,12 @@ def check_problems(ct=None) -> list:
         "two calls sharing one sub-agent": ({"n_calls": 2}, sr),
         "a call with no result agent": ({"result_over": {"agentId": None}}, sr),
         "an async call with no completion": ({"result_over": ASYNC}, sr),
-        "an async completion after the final result": ({"result_over": ASYNC, "after_result": [notification()]}, sr),
+        "an async completion after the final result": ({"result_over": ASYNC, "stream_recs": [
+            started(), sub(tool=BASH, text=None), sub_result()], "after_result": [notification()]}, sr),
         "an async call whose notification is not terminal": ({"result_over": ASYNC, "stream_recs": [
-            sub(tool=BASH), sub("user", text="ok"), notification("running")]}, sr),
+            started(), sub(tool=BASH, text=None), sub_result(), notification("running")]}, sr),
         "a sub-agent record after the final result": ({"result_over": ASYNC, "stream_recs": [
-            sub(tool=BASH), sub("user", text="ok"), notification()], "after_result": [late]}, sr),
+            started(), sub(tool=BASH, text=None), sub_result(), notification()], "after_result": [late]}, sr),
         "a sub-agent record in a later turn": ({"turn2": [sub("user", text="still going")]}, sr),
         "a remote sub-agent": ({"result_over": {"status": "remote_launched"}}, sr),
         "an unknown status": ({"result_over": {"status": "teleported"}}, sr),
@@ -507,7 +521,7 @@ def reach_problems(ct=None) -> list:
     peek = {"type": "tool_use", "id": "toolu_peek", "name": "Read",
             "input": {"file_path": "/repo/evals/gap-study-4/prereg.json"}}
     peek_file = pair(jl(side_record(message={"role": "assistant", "model": PIN, "content": [peek]})))
-    for name, kw in (("the stream and the file", {"stream_recs": [sub(tool=peek)], "files": peek_file}),
+    for name, kw in (("the stream and the file", {"stream_recs": [sub(tool=peek, text=None)], "files": peek_file}),
                      ("the file alone (F1 case B)", {"stream_recs": [], "files": peek_file})):
         path = take_folder(**kw)
         counts0 = ct.event_counts(path)
@@ -560,9 +574,9 @@ def count_problems() -> list:
     want_call = {"tool_use_id": CALL_ID, "agent_id": AGENT_ID, "is_async": False, "status": "completed",
                  "resolved_model": PIN, "completion": None}
     got = ct.agent_summary(take_folder())
-    if got != {"agent_calls": 1, "subagents": {"calls": [want_call], "models": [PIN]}}:
+    if got != {"agent_calls": 1, "subagents": {"calls": [want_call], "models": [PIN], "stream_file_differences": 0}}:
         out.append(f"A-count: agent_summary {got}")
-    if ct.agent_summary(take_folder(calls=False)) != {"agent_calls": 0, "subagents": {"calls": [], "models": []}}:
+    if ct.agent_summary(take_folder(calls=False)) != {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}}:
         out.append("A-count: a take with no Agent call")
     route = lambda records, table: {"route": "rehearsal"}  # noqa: E731
     args = ("w001", {"checker_reasons": [], "events": {"outside_reach": 0}}, {}, route)
@@ -584,7 +598,7 @@ def count_problems() -> list:
     now = ct.checker_constants_sha256()
     base = {"walk": "w001", "checked": True, "checker_reasons": [], "events": {"outside_reach": 0},
             "route": "rehearsal", "route_refused": None, "checker_constants_sha256": now, "no_output_nudges": 0}
-    zero = {"agent_calls": 0, "subagents": {"calls": [], "models": []}}
+    zero = {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}}
     for name, doc_, latest, want in (
             ("the pair under the constants in force", dict(base, **zero), None, None),
             ("no pair under the constants in force", base, None, "check unreadable"),
@@ -604,7 +618,7 @@ def count_problems() -> list:
     path = take_folder()
     if wg.agent_summary_problems(dict(base, **got), path) != []:
         out.append("A-count: the true pair is named")
-    if not wg.agent_summary_problems(dict(base, agent_calls=0, subagents={"calls": [], "models": []}), path):
+    if not wg.agent_summary_problems(dict(base, agent_calls=0, subagents={"calls": [], "models": [], "stream_file_differences": 0}), path):
         out.append("A-count: a forged pair is not named")
     if wg.agent_summary_problems(base, path) != []:
         out.append("A-count: a check.json written before the ruling is re-derived")
@@ -744,6 +758,127 @@ def w083_problems() -> list:
     return out
 
 
+STUDY = "/run/evals/gap-study-4/prereg.json"
+
+
+def two_agents_folder(meta_for_a_call) -> Path:
+    """Two Agent calls with two sub-agents (a1b2c3d4 for call 1, bbbbbbbb for call 2), each with a stream and a pair;
+    sub-agent a1b2c3d4's meta names `meta_for_a_call`."""
+    import hashlib
+    path = take_folder(n_calls=2)
+    d = path.parent
+    recs = [json.loads(x) for x in path.read_text().splitlines()]
+    recs[-1]["toolUseResult"]["agentId"] = "bbbbbbbb"
+    path.write_text(jl(*recs))
+    stream_text = (d / "turn-1.jsonl").read_text().splitlines()
+    extra = [sub(tool=dict(BASH, id="toolu_b"), text=None, parent=f"{CALL_ID}_2", agent_id="bbbbbbbb")]
+    (d / "turn-1.jsonl").write_text("\n".join(stream_text[:-1]) + "\n" + stream(*extra) + stream_text[-1] + "\n")
+    b_recs = jl(side_record(agentId="bbbbbbbb", message={"role": "assistant", "model": PIN,
+                                                         "content": [dict(BASH, id="toolu_b")]}))
+    (d / "subagents" / "agent-bbbbbbbb.jsonl").write_text(b_recs)
+    (d / "subagents" / "agent-bbbbbbbb.meta.json").write_text(meta(toolUseId=f"{CALL_ID}_2"))
+    (d / "subagents" / f"agent-{AGENT_ID}.meta.json").write_text(meta(toolUseId=meta_for_a_call))
+    listed = [{"file": q.relative_to(d).as_posix(), "agent_id": "x", "sha256": hashlib.sha256(q.read_bytes()).hexdigest()}
+              for q in sorted((d / "subagents").iterdir())]
+    (d / "driver-ledger.json").write_text(json.dumps({"model_requested": PIN, "subagents": listed}))
+    return path
+
+
+def r11_problems(ct=None) -> list:
+    import prereg
+    import tempfile
+    import drive
+    if ct is None:
+        import check_take as ct
+    out = []
+
+    def study_count(path):
+        counts = ct.event_counts(path)
+        ct.subagent_reach_problems(path, prereg.load(), counts)
+        return counts[ct.EVENT_STUDY]
+    peek = {"type": "tool_use", "id": "toolu_sub", "name": "Read", "input": {"file_path": STUDY}}
+    benign = dict(peek, input={"file_path": "/run/README.md"})
+    file_benign = pair(jl(side_record(message={"role": "assistant", "model": PIN, "content": [benign]}),
+                          side_record("user")))
+    cases = {
+        "R11-1a: the stream's input names the study, the file's does not": (
+            {"stream_recs": [sub(tool=peek, text=None), sub_result()], "files": file_benign}, 1),
+        "R11-1b: the stream's result names the study, the file's does not": (
+            {"stream_recs": [sub(tool=BASH, text=None), sub_result(content="see " + STUDY)]}, 1),
+        "R11-1 control: both carry the same read": (
+            {"stream_recs": [sub(tool=peek, text=None), sub_result()],
+             "files": pair(jl(side_record(message={"role": "assistant", "model": PIN, "content": [peek]}),
+                              side_record("user")))}, 1),
+        "R11-2a: the file holds the call, only the stream its result": (
+            {"stream_recs": [sub(tool=BASH, text=None), sub_result(content="see " + STUDY)],
+             "files": pair(jl(side_record()))}, 1),
+    }
+    for name, (kw, want) in cases.items():
+        got = study_count(take_folder(**kw))
+        if got != want:
+            out.append(f"{name}: the study read counts {got}, not {want}")
+    diff = ct.agent_summary(take_folder(**cases["R11-1a: the stream's input names the study, the file's does not"][0]))
+    if diff["subagents"]["stream_file_differences"] != 1:
+        out.append(f"R11-1: the difference count is {diff['subagents']['stream_file_differences']}, not 1")
+    if ct.agent_summary(take_folder())["subagents"]["stream_file_differences"] != 0:
+        out.append("R11-1: a stream equal to its file reads as differing")
+    sr = "subagent-records"
+    refused = {
+        "R11-2b: a file-only off-list model": {"files": pair(jl(side_record(message={
+            "role": "assistant", "model": "claude-sonnet-4-5", "content": [BASH]}), side_record("user")))},
+        "R11-3a: a record after the notification, before the final result": {"result_over": ASYNC, "stream_recs": [
+            started(), sub(tool=BASH, text=None), sub_result(), notification(), sub(tool=dict(BASH, id="toolu_late"))],
+            "files": pair(jl(side_record(), side_record("user"),
+                             side_record(message={"role": "assistant", "model": PIN,
+                                                  "content": [dict(BASH, id="toolu_late")]})))},
+        "R11-3b: a notification naming another task": {"result_over": ASYNC, "stream_recs": [
+            started(), sub(tool=BASH, text=None), sub_result(), dict(notification(), task_id="t-other")]},
+        "R11-3c: a task event naming the call in a later turn": {"result_over": ASYNC, "stream_recs": [
+            started(), sub(tool=BASH, text=None), sub_result(), notification()], "turn2": [notification("stopped")]},
+        "R11-3d: no task_started for the notification": {"result_over": ASYNC, "stream_recs": [
+            sub(tool=BASH, text=None), sub_result(), notification()]},
+        "R11-4: a meta model the call did not pass": {"files": pair(jl(side_record(), side_record("user")),
+                                                                    meta(model="opus"))},
+        "NIT: an errored call's stream record with no agent_id": {"tur": "Error: x", "files": {},
+                                                                  "stream_recs": [sub(tool=BASH, agent_id=None)]},
+    }
+    for name, kw in refused.items():
+        got = ct.subagent_problems(take_folder(**kw))
+        if sr not in ct.reason_ids(got):
+            out.append(f"{name}: {got}")
+    c3 = take_folder(result_over=ASYNC, stream_recs=[started(), sub(tool=BASH, text=None), sub_result(),
+                                                     notification()], turn2=[notification("stopped")])
+    if [c["completion"] for c in ct.agent_calls(c3)] != ["completed"]:
+        out.append(f"R11-3: completion is not taken from the call's own turn: {ct.agent_calls(c3)}")
+    if sr not in ct.reason_ids(ct.subagent_problems(two_agents_folder(f"{CALL_ID}_2"))):
+        out.append("R11-2c: a meta bound to a call that names another sub-agent was read")
+    if ct.subagent_problems(two_agents_folder(CALL_ID)):
+        out.append(f"R11-2c control: two bound sub-agents refused {ct.subagent_problems(two_agents_folder(CALL_ID))}")
+    passed = {"model": "opus", "effort": "high", "name": "surveyor"}
+    ok = take_folder(result_over={"resolvedModel": "claude-opus-5-5"}, stream_recs=[
+        sub(model="claude-opus-5-5", tool=BASH, text=None), sub_result()],
+        files=pair(jl(side_record(message={"role": "assistant", "model": "claude-opus-5-5", "content": [BASH]}),
+                      side_record("user")), meta(**passed)))
+    recs = [json.loads(x) for x in ok.read_text().splitlines()]
+    recs[1]["message"]["content"][0]["input"].update(passed)
+    ok.write_text(jl(*recs))
+    if ct.subagent_problems(ok):
+        out.append(f"R11-4: a meta carrying the call's own model, effort and name refused {ct.subagent_problems(ok)}")
+    try:
+        drive.copy_subagent_files(config_with(pair(meta_text=meta(**passed))), SID, Path(tempfile.mkdtemp()))
+    except drive.DriveRefused as e:
+        out.append(f"R11-4: the driver held a meta with the call's model, effort and name: {e}")
+    for name, extra in (("an effort off the schema", {"effort": "turbo"}), ("a model id, not an alias",
+                        {"model": "claude-opus-5-5"}), ("a name that is not a string", {"name": 7}),
+                       ("another key", {"stoppedByUser": True})):
+        try:
+            drive.copy_subagent_files(config_with(pair(meta_text=meta(**extra))), SID, Path(tempfile.mkdtemp()))
+            out.append(f"R11-4: {name} was copied, not held")
+        except drive.DriveRefused:
+            pass
+    return out
+
+
 class TheAgentTool(unittest.TestCase):
     def test_a_view(self):
         self.assertEqual(view_problems(), [])
@@ -798,7 +933,7 @@ class TheAgentTool(unittest.TestCase):
                  'TASK_TERMINAL_STATUSES:', "        if False:"),
                 ("a completion after the result read", "            if not done or done[0] > final:",
                  "            if not done:"),
-                ("late records read", "            if late:\n                out.append", "            if False:\n                out.append"),
+                ("late records read", "            if late or later_events:", "            if later_events:"),
                 ("the metas unbound", '        if call is None or call["agent_id"] != aid:', "        if False:"),
                 ("any status read", '        if c["status"] not in AGENT_STATUSES or c["status"] == "remote_launched":',
                  "        if False:"),
@@ -809,14 +944,13 @@ class TheAgentTool(unittest.TestCase):
                  "                out += _model_problem(f\"turn {n}'s", "        if rec.get(\"type\") == \"assistant\":\n            "
                  "model = (rec.get(\"message\") or {}).get(\"model\")\n            if isinstance(model, str):\n"
                  "                out += _model_problem(f\"turn {n}'s"),
-                ("the file's calls not fed to the reach", "        fh.write(\"\".join(json.dumps(rec, ensure_ascii=False) + "
-                 "\"\\n\" for recs in files.values() for rec in recs))\n", ""),
+                ("the file's calls not fed to the reach", "    out, differ = [r for recs in files.values() for r in recs], 0",
+                 "    out, differ = [], 0"),
                 ("the account email of the files uncounted", "    merged[EVENT_EMAIL] += sum(", "    merged[EVENT_EMAIL] += 0 * sum("),
-                ("stream records unbound", '        if call is None or rec.get("agent_id") != call["agent_id"]:',
-                 "        if call is None:"),
+                ("stream records unbound", '        if call is None or not isinstance(rec.get("agent_id"), str) or '
+                 'rec.get("agent_id") != call["agent_id"]:', "        if call is None:"),
                 ("stream and file not compared", "        if mine != theirs:", "        if False:"),
-                ("the reach file empty", "    if not subs and not files:\n        return None",
-                 "    if True:\n        return None"),
+                ("the reach file empty", "    if not recs:\n        return None", "    if True:\n        return None"),
                 ("the counts not updated", "    counts.update(merged)\n", ""),
                 ("sub-agent leaks unswept", "        leaked = sorted(context_leaks(context_text(q), pre))",
                  "        leaked = []")):
@@ -824,6 +958,33 @@ class TheAgentTool(unittest.TestCase):
                 m = mutant(ct, old, new)
                 try:
                     got = check_problems(m) + reach_problems(m)
+                except Exception as e:  # noqa: BLE001
+                    got = [f"raised {type(e).__name__}"]
+                print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
+                self.assertTrue(got, name)
+
+    def test_r11(self):
+        self.assertEqual(r11_problems(), [])
+
+    def test_r11_witnesses(self):
+        import check_take as ct
+        for name, old, new in (
+                ("a stream record dropped when only its call matches", "        if aid in held and _canon(content) in "
+                 "held[aid]:\n            continue", "        if aid in held:\n            continue"),
+                ("the file-model check off", "                    out += _model_problem(f\"sub-agent {aid}'s file\", "
+                 "model, pin)\n", "                    pass\n"),
+                ("a meta bound to any call", '        if call is None or call["agent_id"] != aid:', "        if call is None:"),
+                ("records after the notification read", "                end = done[0]", "                end = None"),
+                ("task ids unchecked", '                if len(started) != 1 or recs[done[0]].get("task_id") not in started:',
+                 "                if False:"),
+                ("later task events read", "            if late or later_events:", "            if late:"),
+                ("the meta's inputs unbound", "any(meta.get(k) != given.get(k) for k in SUBAGENT_META_FROM_INPUT)",
+                 "False"),
+                ("records without an agent id bound", 'not isinstance(rec.get("agent_id"), str) or ', "")):
+            with self.subTest(witness=name):
+                m = mutant(ct, old, new)
+                try:
+                    got = r11_problems(m)
                 except Exception as e:  # noqa: BLE001
                     got = [f"raised {type(e).__name__}"]
                 print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)

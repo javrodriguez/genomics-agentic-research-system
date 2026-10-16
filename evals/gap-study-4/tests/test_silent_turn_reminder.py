@@ -74,6 +74,8 @@ def env_problems(rt=None) -> list:
         out.append(f"T-env: TAKE_ENV sets {SWITCH} to {env.get(SWITCH)!r}")
     if json.loads(rt.claude_study_settings("claude-opus-5-5"))["env"].get(SWITCH) != "0":
         out.append("T-env: the inline settings do not set the switch off")
+    if ct.STEER_REQUIRED != {**rt.BASH_FIRST_STEER_ENV, **rt.SILENT_TURN_REMINDER_ENV}:
+        out.append("T-env: the checker's exact strings are not the ones run_take sets")
     if "CLAUDE_CODE_MODEL_CAPABILITIES" in env or "CLAUDE_CODE_MODEL_CAPABILITIES" in \
             json.loads(rt.claude_study_settings("claude-opus-5-5"))["env"]:
         out.append("T-env: CLAUDE_CODE_MODEL_CAPABILITIES is set; the ruling sets one switch")
@@ -83,11 +85,12 @@ def env_problems(rt=None) -> list:
 def check_problems(mod=None) -> list:
     mod = mod or ct
     out = []
-    for value in ("0", "false", "no", "off", " OFF "):
-        got = mod.steer_condition_problems(take(value))
-        if got:
-            out.append(f"T-check {value!r}: refused {got}")
-    for name, kw in (("unset", {"value": UNSET}), ("on", {"value": "1"}), ("true", {"value": "true"}),
+    got = mod.steer_condition_problems(take("0"))
+    if got:
+        out.append(f"T-check '0': refused {got}")
+    # review r11 NIT (glitch-b5, 16 Oct 2026): exactly "0", the string the study sets; no strip, no other spelling
+    for name, kw in (("padded", {"value": " 0"}), ("false", {"value": "false"}), ("off", {"value": "off"}),
+                     ("unset", {"value": UNSET}), ("on", {"value": "1"}), ("true", {"value": "true"}),
                      ("a JSON boolean", {"value": False}), ("an empty string", {"value": ""}),
                      ("a misspelled name", {"name": SWITCH + "S"})):
         got = mod.steer_condition_problems(take(**kw))

@@ -2555,6 +2555,10 @@ STEER_SWITCH = "CLAUDE_CODE_THRIFTY_SONIC"
 # claude-opus-5-5; round 3 never received one. Its triBool switch is set "0" on every turn (box/run_take
 # SILENT_TURN_REMINDER_ENV) and proved per turn exactly as the steer's; the transcript view keeps refusing the record.
 SILENT_TURN_SWITCH = "CLAUDE_CODE_SILENT_TURN_REMINDER"
+# review r11 NIT (glitch-b5, 16 Oct 2026): each switch is compared to EXACTLY the string the study sets
+# (box/run_take BASH_FIRST_STEER_ENV and SILENT_TURN_REMINDER_ENV; tests/test_silent_turn_reminder binds the two), with
+# no strip and no case-folding: the binary's own trim differs from Python's, so only the one string is proof.
+STEER_REQUIRED = {STEER_SWITCH: "false", SILENT_TURN_SWITCH: "0"}
 STEER_OFF_VALUES = ("0", "false", "no", "off")
 AUTO_MODE_ATTACHMENT = "auto_mode"
 HARNESS_CONDITION_VIOLATED = "harness-condition-violated"
@@ -2708,11 +2712,11 @@ def steer_condition_problems(path: Path) -> list[str]:
         for n, journal in sorted(journals.items()):
             _, settings = _journal_view(journal)
             value = settings[0].get("env", {}).get(switch) if len(settings) == 1 else None
-            if not (isinstance(value, str) and value.strip().lower() in STEER_OFF_VALUES):
+            if not (isinstance(value, str) and value == STEER_REQUIRED[switch]):
                 bad.append(n)
         if bad:
-            problems.append(f"[{HARNESS_CONDITION_VIOLATED}] turn(s) {bad} do not set {switch} off (a string in "
-                            f"{list(STEER_OFF_VALUES)}) in exactly one inline --settings: the "
+            problems.append(f"[{HARNESS_CONDITION_VIOLATED}] turn(s) {bad} do not set {switch} off (exactly the "
+                            f"string {STEER_REQUIRED[switch]!r}) in exactly one inline --settings: the "
                             f"{'bash-first steer-off' if switch == STEER_SWITCH else 'silent-turn reminder off'} "
                             f"condition did not hold on every turn")
     count = _auto_mode_records(path)
@@ -2904,6 +2908,8 @@ SUBAGENT_EXPLICIT_MODELS = ("claude-haiku-5-5", "claude-sonnet-5-5", "claude-opu
 AGENT_STATUSES = ("completed", "async_launched", "remote_launched")
 AGENT_ERRORED = "errored"
 TASK_TERMINAL_STATUSES = ("completed", "failed", "stopped")
+# review r11, R11-4: the keys 2.1.296's meta writer spreads from the Agent call's input when it passes them
+SUBAGENT_META_FROM_INPUT = ("model", "effort", "name")
 _SUBAGENT_REFUSED_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e")
 _SYNTHETIC = "<synthetic>"
 
@@ -2965,9 +2971,13 @@ def agent_calls(path: Path) -> list:
             c["status"] = tur.get("status") if isinstance(tur.get("status"), str) else None
             c["resolved_model"] = tur.get("resolvedModel") if isinstance(tur.get("resolvedModel"), str) else None
     for _, stream in _turn_streams(path):
-        for rec in _records_of(stream):
+        recs = _records_of(stream)
+        own = {b.get("id") for r in recs if r.get("type") == "assistant" and r.get("parent_tool_use_id") is None
+               for b in _tool_use_blocks(r)}          # review r11: the completion is read in the call's own turn only
+        for rec in recs:
             if rec.get("type") == "system" and rec.get("subtype") == "task_notification" \
-                    and rec.get("tool_use_id") in calls and isinstance(rec.get("status"), str):
+                    and rec.get("tool_use_id") in calls and rec.get("tool_use_id") in own \
+                    and isinstance(rec.get("status"), str):
                 calls[rec["tool_use_id"]]["completion"] = rec["status"]
     return list(calls.values())
 
@@ -3091,6 +3101,7 @@ def subagent_problems(path: Path) -> list[str]:
         if c["resolved_model"] is not None:
             out += _model_problem(f"Agent call {cid}'s sub-agent", c["resolved_model"], pin)
         n = turn_of_call.get(cid)
+        end = None                                   # the index after which nothing of the call may come, in turn n
         if n is not None and c["status"] == "async_launched":
             final, recs = final_of_turn[n]
             done = [i for i, r in enumerate(recs) if r.get("type") == "system" and r.get("subtype") == "task_notification"
@@ -3098,27 +3109,44 @@ def subagent_problems(path: Path) -> list[str]:
             if not done or done[0] > final:
                 out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid}'s completion is not in its own turn before the "
                            f"turn's final result")
+            else:
+                end = done[0]                        # review r11: nothing of the call after its notification
+                started = {r.get("task_id") for r in recs if r.get("type") == "system"
+                           and r.get("subtype") == "task_started" and r.get("tool_use_id") == cid}
+                if len(started) != 1 or recs[done[0]].get("task_id") not in started:
+                    out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid}'s task_notification does not name the task its "
+                               f"task_started began")
         for m, (fin, recs) in final_of_turn.items():
+            limit = end if (m == n and end is not None) else fin
             late = [i for i, r in enumerate(recs) if r.get("type") in ("assistant", "user")
                     and (r.get("parent_tool_use_id") == cid or (c["agent_id"] and r.get("agent_id") == c["agent_id"]))
-                    and (n is None or m != n or i > fin)]
-            if late:
-                out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid}'s sub-agent wrote after its turn's final result or "
-                           f"in another turn")
+                    and (m != n or i > limit)]
+            later_events = [i for i, r in enumerate(recs) if m != n and r.get("type") == "system"
+                            and r.get("tool_use_id") == cid]
+            if late or later_events:
+                out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid}'s sub-agent wrote after its completion or its turn's "
+                           f"final result, or a task event names it in another turn")
                 break
     named = {c["agent_id"] for c in calls if c["agent_id"] and c["status"] != AGENT_ERRORED}
     if set(files) != named or set(metas) != named:
         out.append(f"[{SUBAGENT_RECORDS}] {len(named)} Agent call(s) name sub-agents {sorted(named)} and the folder "
                    f"holds files for {sorted(files)} and metas for {sorted(metas)}: each call's sub-agent has exactly "
                    f"one of each")
+    inputs = {b.get("id"): b.get("input") for r in _records_of(path) if r.get("type") == "assistant"
+              for b in _tool_use_blocks(r) if b.get("name") == AGENT_TOOL}
     for aid, meta in metas.items():
         call = by_call.get(meta.get("toolUseId")) if isinstance(meta, dict) else None
+        given = inputs.get(meta.get("toolUseId")) if isinstance(meta, dict) else None
+        if call is not None and isinstance(given, dict) and \
+                any(meta.get(k) != given.get(k) for k in SUBAGENT_META_FROM_INPUT):     # review r11, R11-4
+            out.append(f"[{SUBAGENT_RECORDS}] sub-agent {aid}'s meta does not carry the call's own "
+                       f"{list(SUBAGENT_META_FROM_INPUT)}")
         if call is None or call["agent_id"] != aid:
             out.append(f"[{SUBAGENT_RECORDS}] sub-agent {aid}'s meta is not bound to the Agent call that names it")
     stream_recs: dict = {}
     for n, rec in subs:
         call = by_call.get(rec.get("parent_tool_use_id"))
-        if call is None or rec.get("agent_id") != call["agent_id"]:
+        if call is None or not isinstance(rec.get("agent_id"), str) or rec.get("agent_id") != call["agent_id"]:
             out.append(f"[{SUBAGENT_RECORDS}] turn {n}'s sub-agent record is not bound to an Agent call of the "
                        f"transcript by its parent call and agent id")
             continue
@@ -3162,34 +3190,47 @@ def agent_summary(path: Path) -> dict:
         m = (rec.get("message") or {}).get("model") if rec.get("type") == "assistant" and not _api_error(rec) else None
         if isinstance(m, str):
             models.add(m)
-    return {"agent_calls": len(calls), "subagents": {"calls": calls, "models": sorted(models)}}
+    return {"agent_calls": len(calls), "subagents": {"calls": calls, "models": sorted(models),
+                                                    "stream_file_differences": subagent_reach_records(path)[1]}}
+
+
+def _canon(value) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def subagent_reach_records(path: Path) -> tuple:
+    """(the sub-agent records the reach readers read, how many stream records differ from the file) (review r11,
+    R11-1): every file record (assistant and user) and every stream sub-agent record, a stream record dropped ONLY
+    when its message content is canonical-JSON-equal to a file record's of the same sub-agent, so each distinct
+    instance is read once. A stream record of an agent with a file that matches none of the file's records is counted
+    as a difference, never refused: 2.1.296 rewrites what it stores (stripForStorage, the placeholder for a
+    sub-agent's results), so a difference may be legitimate; the call-level two-way agreement still refuses."""
+    files = {aid: [r for r in _records_of(q) if r.get("type") in ("assistant", "user")]
+             for aid, q in subagent_files(path).items()}
+    held = {aid: {_canon((r.get("message") or {}).get("content")) for r in recs if isinstance(r.get("message"), dict)}
+            for aid, recs in files.items()}
+    out, differ = [r for recs in files.values() for r in recs], 0
+    for _, rec in stream_subagent_records(path):
+        aid = rec.get("agent_id")
+        content = (rec.get("message") or {}).get("content") if isinstance(rec.get("message"), dict) else None
+        if aid in held and _canon(content) in held[aid]:
+            continue
+        if aid in held:
+            differ += 1
+        out.append(rec)
+    return out, differ
 
 
 def subagent_reach_file(path: Path):
-    """A scratch transcript of the main agent's records and every sub-agent record, the files' and the stream's (a
-    stream record whose calls or results the file already holds is not repeated), which the reach readers read as the
-    main agent's; None when the take has no sub-agent record (review r10 F1)."""
-    subs = stream_subagent_records(path)
-    files = {aid: [r for r in _records_of(q) if r.get("type") in ("assistant", "user")]
-             for aid, q in subagent_files(path).items()}
-    if not subs and not files:
+    """A scratch transcript of the main agent's records and every sub-agent record subagent_reach_records gives, which
+    the reach readers read as the main agent's; None when the take has no sub-agent record."""
+    recs, _ = subagent_reach_records(path)
+    if not recs:
         return None
-    held = {aid: (_calls_of(recs), set().union(*[_result_ids(r) for r in recs]) if recs else set())
-            for aid, recs in files.items()}
-    extra = []
-    for _, rec in subs:
-        calls_, results = held.get(rec.get("agent_id"), (set(), set()))
-        own_calls = {(b.get("id"), b.get("name")) for b in _tool_use_blocks(rec)}
-        if rec.get("type") == "assistant" and own_calls and own_calls <= calls_:
-            continue
-        if rec.get("type") == "user" and _result_ids(rec) and _result_ids(rec) <= results:
-            continue
-        extra.append(rec)
     fd, name = tempfile.mkstemp(prefix="reach-", suffix=".jsonl")
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
         fh.write(Path(path).read_text(encoding="utf-8", errors="replace").rstrip("\n") + "\n")
-        fh.write("".join(json.dumps(rec, ensure_ascii=False) + "\n" for recs in files.values() for rec in recs))
-        fh.write("".join(json.dumps(rec, ensure_ascii=False) + "\n" for rec in extra))
+        fh.write("".join(json.dumps(rec, ensure_ascii=False) + "\n" for rec in recs))
     return Path(name)
 
 
