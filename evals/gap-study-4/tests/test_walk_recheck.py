@@ -338,6 +338,7 @@ class TheRechecksHistory(unittest.TestCase):
                   not JSON) cannot show the list append-only and is named, never read as empty or as its last value.
       RA-history  the register's log is read with --full-history: a recheck commit on a side branch that a merge
                   -s ours dropped is still read, and the drop is named.
+      RA-rc       (r5 NIT (d)) a register log that fails is named, never read as an empty history.
     Each has a witness: the clause edited out, the case passes silently. Plain scratch repositories, no walk."""
 
     REG = "rehearsals/register.json"
@@ -394,6 +395,20 @@ class TheRechecksHistory(unittest.TestCase):
             '    log = git("log", "--no-merges", "--format=%H%x1f%s", "HEAD", "--", reg_rel)\n'
             '    out = []')
         self.assertEqual(self.problems(m, root), [], "RA-history witness: the side branch is pruned, nothing is named")
+
+    def test_ra_rc_a_register_log_that_fails_is_named(self):
+        """r5 review NIT (d) (glitch-6b's queue, 16 Oct 2026): the register's `git log --full-history` exit status is
+        read. A log that fails (here a repository with no commit: rc 128) cannot show the rechecks list append-only and
+        is named, never read as an empty history."""
+        import walk_register
+        root = self.repo()
+        got = self.problems(walk_register, root)
+        self.assertTrue(any("history cannot be read" in p for p in got), f"RA-rc: {got}")
+        m = register_source_mutant(
+            "    if log.returncode != 0:\n        return [f\"the register's history cannot be read ({log.stderr.strip()[:200]}): "
+            "the rechecks list cannot be shown append-only\"]\n",
+            "")
+        self.assertEqual(self.problems(m, root), [], "RA-rc witness: the failed log reads as no history, nothing named")
 
 
 if __name__ == "__main__":

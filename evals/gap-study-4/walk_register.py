@@ -492,6 +492,9 @@ def rechecks_append_only_problems(git, reg_rel: str) -> list[str]:
     head = rechecks_at("HEAD") or []               # HEAD's register is check()'s to refuse
     log = git("log", "--full-history", "--no-merges", "--format=%H%x1f%s", "HEAD", "--", reg_rel)
     out = []
+    # r5 review NIT (d) (glitch-6b's queue, 16 Oct 2026): a log that fails is named, never read as an empty history
+    if log.returncode != 0:
+        return [f"the register's history cannot be read ({log.stderr.strip()[:200]}): the rechecks list cannot be shown append-only"]
     for line in log.stdout.splitlines():
         sha, _, subject = line.partition("\x1f")
         if subject == RECHECK_SUBJECT:
