@@ -2128,7 +2128,9 @@ roots = out["mounts"]
 real_roots = [os.path.realpath(r) for r in roots]     # a link's target compared by realpath too
 real_never, real_kept = [os.path.realpath(n) for n in never], [os.path.realpath(k) for k in kept]
 walk = []                          # review r16 NIT: each tree walked once (a root inside another, by realpath, is not)
-for r in sorted(roots, key=lambda q: len(os.path.realpath(q))):
+given = sorted({os.path.realpath(r) if os.path.islink(r) else r for r in roots},   # review r17 NIT 2: a root that is
+               key=lambda q: len(os.path.realpath(q)))                              # a link is walked at its realpath
+for r in given:
     if not inside(os.path.realpath(r), [os.path.realpath(w) for w in walk]):
         walk.append(r)
 def classify(line):
@@ -2175,13 +2177,13 @@ def visit(path, parent_uid):
             out["unreadable"].append([path, "lstat"])
         return
     if stat.S_ISLNK(st.st_mode):
-        # review r16 MAJOR: with the root read-only, a link to a read-only location hides nothing (a venv's links into
-        # /usr); an agent-owned link is reported only into a barred tree (/proc, /sys, /dev but /dev/shm), or dangling
-        # outside the swept roots. Every writable location is a read-write mount, so a swept root or a barred one.
+        # reviews r16 and r17: with the root read-only, a link to a read-only location hides nothing (a venv's links into
+        # /usr, a genomics link to /mnt/refs/hg38.fa); an agent-owned link is reported only into a barred tree (/proc,
+        # /sys, /dev but /dev/shm), caught by realpath even when its target is missing. Every writable location is a
+        # read-write mount, so a swept root or a barred one.
         if st.st_uid == uid:
             target = os.path.realpath(path)
-            if (barred(target) or (inside(target, real_never) and not inside(target, real_kept))
-                    or (not os.path.lexists(target) and not inside(target, roots + real_roots))):
+            if barred(target) or (inside(target, real_never) and not inside(target, real_kept)):
                 out["escapes"].append([path, target])
         return
     if stat.S_ISDIR(st.st_mode):

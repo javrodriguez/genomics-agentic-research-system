@@ -3368,7 +3368,13 @@ def nested_cli_mentions(command: str) -> list:
 _LOOKED_THROUGH = {"env": ("-u", "--unset", "-C", "--chdir", "-S", "--split-string"),
                    "timeout": ("-s", "--signal", "-k", "--kill-after"), "nice": ("-n", "--adjustment"),
                    "stdbuf": ("-i", "-o", "-e"), "xargs": ("-I", "-n", "-P", "-L", "-d", "-a", "-E", "-s"),
-                   "exec": ("-a",), "nohup": (), "setsid": (), "command": (), "builtin": (), "time": ()}
+                   "exec": ("-a",), "nohup": (), "setsid": (), "command": (), "builtin": (), "time": (),
+                   # review r17 NIT 4
+                   "ionice": ("-c", "--class", "-n", "--classdata", "-p", "--pid", "-P", "--pgid", "-u", "--uid"),
+                   "flock": ("-w", "--wait", "--timeout", "-E", "--conflict-exit-code"),
+                   "taskset": (), "chrt": ("-T", "--sched-runtime", "-P", "--sched-period", "-D", "--sched-deadline")}
+# the positional each takes before its command: flock's lock file, taskset's mask, chrt's priority
+_LOOKED_THROUGH_POSITIONAL = {"flock": 1, "taskset": 1, "chrt": 1}
 
 
 def assigned_variables(command: str, depth: int = 0) -> list:
@@ -3393,7 +3399,7 @@ def assigned_variables(command: str, depth: int = 0) -> list:
         j = 0
         while j < len(seg):
             w = seg[j].rsplit("/", 1)[-1]
-            if seg[j] in _RESERVED_WORDS and seg[j] != "for":
+            if seg[j] in _RESERVED_WORDS and seg[j] not in ("for", "time"):     # time: looked through, its -p too
                 j += 1
             elif _ANY_ASSIGNMENT.match(seg[j]):
                 out.append(seg[j].split("=", 1)[0].rstrip("+"))
@@ -3403,7 +3409,8 @@ def assigned_variables(command: str, depth: int = 0) -> list:
                 while j < len(seg) and seg[j].startswith("-") and not _ANY_ASSIGNMENT.match(seg[j]):
                     opt = seg[j]
                     j += 1
-                    if w == "env" and opt.split("=", 1)[0] in ("-S", "--split-string"):
+                    if (w == "env" and opt.split("=", 1)[0] in ("-S", "--split-string")) or \
+                            (w == "flock" and opt.split("=", 1)[0] in ("-c", "--command")):
                         text = opt.split("=", 1)[1] if "=" in opt else (seg[j] if j < len(seg) else "")
                         j += 0 if "=" in opt else 1
                         if depth < _pg.DEPTH:
@@ -3412,6 +3419,7 @@ def assigned_variables(command: str, depth: int = 0) -> list:
                         j += 1
                 if w == "timeout" and j < len(seg) and re.fullmatch(r"[0-9.]+[smhd]?", seg[j]):
                     j += 1
+                j += min(_LOOKED_THROUGH_POSITIONAL.get(w, 0), max(len(seg) - j - 1, 0))
             else:
                 break
         if j >= len(seg):

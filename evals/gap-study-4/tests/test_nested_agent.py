@@ -193,7 +193,11 @@ class TheFlag(unittest.TestCase):
                     "timeout 600 env CLAUDE_CONFIG_DIR=/tmp/x claude -p hi", "nohup env CLAUDE_CONFIG_DIR=/tmp/x claude &",
                     "exec env HOME=/tmp/x claude -p hi", "env -S 'HOME=/tmp/x claude -p hi'",
                     "nice -n 5 env HOME=/x claude", "for HOME in /tmp/x; do claude -p hi; done",
-                    "read HOME <<< /tmp/x; claude -p hi", "printf -v HOME /tmp/x; claude -p hi"):
+                    "read HOME <<< /tmp/x; claude -p hi", "printf -v HOME /tmp/x; claude -p hi",
+                    # review r17 NIT 4
+                    "ionice -c 3 env HOME=/x claude", "flock /tmp/l env HOME=/x claude",
+                    "flock -c 'HOME=/x claude' /tmp/l", "taskset -c 0-3 env HOME=/x claude",
+                    "chrt -f 10 env HOME=/x claude", "time -p env HOME=/x claude"):
             with self.subTest(cmd=cmd):
                 got = ct.nested_agent_flag_problems(take_with(main_cmds=[cmd]))
                 self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT}, got)
@@ -425,7 +429,8 @@ class TheSweep(unittest.TestCase):
         proc = d / "fakeproc"
         proc.mkdir()
         (d / "intobarred").symlink_to(proc)
-        (d / "dangling").symlink_to("/nonexistent-r16/x")
+        (d / "intobarredmissing").symlink_to(proc / "missing")    # caught by realpath even when missing (r17)
+        (d / "dangling").symlink_to("/nonexistent-r16/x")          # review r17 NIT 1: dangling outside reads clean
         (d / "danglingin").symlink_to(d / "missing")
         (proc / "s.jsonl").write_text(json.dumps({"type": "user", "sessionId": "p1"}) + "\n")
         big = Path(tempfile.mkdtemp())
@@ -444,7 +449,8 @@ class TheSweep(unittest.TestCase):
         self.assertIn([str(d / "locked.jsonl"), "file"], got["unreadable"])
         self.assertIn([str(d / "noexec" / "f.jsonl"), "lstat"], got["unreadable"])
         self.assertEqual(sorted(got["escapes"]), sorted([[str(d / "intobarred"), os.path.realpath(proc)],
-                                                         [str(d / "dangling"), os.path.realpath("/nonexistent-r16/x")]]))
+                                                         [str(d / "intobarredmissing"),
+                                                          os.path.realpath(proc / "missing")]]))
         self.assertFalse(any("fakeproc" in f[0] for f in got["files"]))
         self.assertEqual(capped["unreadable"], [[str(big / "big.jsonl"), "over-cap"]])
 
@@ -462,6 +468,24 @@ class TheSweep(unittest.TestCase):
         swept = self.sweep(str(tree))
         self.assertEqual((swept["escapes"], swept["unreadable"], swept["files"]), ([], [], []))
         self.assertTrue(os.path.realpath(tree / ".venv" / "bin" / "python3").startswith("/"))
+
+    def test_links_by_where_they_lead(self):
+        """Review r17: a link into /dev still reports; a genomics link to a reference outside the swept roots (on the
+        read-only root, missing here) reads clean; a root that is itself a link is walked at its realpath; a root
+        inside another is walked once."""
+        import os
+        d = Path(tempfile.mkdtemp())
+        (d / "to_devnull").symlink_to("/dev/null")
+        (d / "hg38.fa").symlink_to("/mnt/refs/hg38.fa")
+        real = Path(tempfile.mkdtemp())
+        (real / "s.jsonl").write_text(json.dumps({"type": "user", "sessionId": "via-link"}) + "\n")
+        via = Path(tempfile.mkdtemp()) / "rootlink"
+        via.symlink_to(real)
+        (d / "inner").mkdir()
+        (d / "inner" / "x.jsonl").write_text(json.dumps({"type": "user", "sessionId": "once"}) + "\n")
+        got = self.sweep(str(d), str(d / "inner"), str(via))
+        self.assertEqual(got["escapes"], [[str(d / "to_devnull"), os.path.realpath("/dev/null")]])
+        self.assertEqual(sorted(f[2] for f in got["files"]), ["once", "via-link"])
 
     def test_a_captured_read_only_mount_table(self):
         """Review r16 MINOR 3: Docker --read-only's mount table shape (optional fields, a \\040 path, /dev/mqueue,
@@ -758,7 +782,7 @@ class TheDraft(unittest.TestCase):
         for words in ("nested agent", "session store", "nested_cli_calls", "human sample", "--no-session-pers",
                       "the sweep", "swept locations", "REMAINS", "in-turn", "rebuilds", "CLAUDE_CONFIG_DIR",
                       "W-3", "r15", "--ephemeral", "Gemini 0.64.0", "read-only", "mount table", "outside the expected set",
-                      "every location"):
+                      "every location", "wrappers not on the reader's list"):
             self.assertIn(words, text)
         self.assertIn("glitch-b5", rows[0]["ruling"])
         self.assertIn("tests/test_nested_agent.py", rows[0]["closed_check"])
@@ -839,8 +863,11 @@ class TheWitnesses(unittest.TestCase):
                     'with (open(mountinfo, encoding="utf-8", errors="surrogateescape") if os.path.exists(mountinfo) '
                     'else __import__("io").StringIO()) as fh:')), (TheSweep("test_a_captured_read_only_mount_table"),)),
                 ("R16-1 every agent link reported", mock.patch.object(rt, "SWEEP_PROGRAM", prog.replace(
-                    "            if (barred(target) or", "            if True or (barred(target) or")),
+                    "            if barred(target) or", "            if True or barred(target) or")),
                  (TheSweep("test_a_venv_reads_clean"),)),
+                ("R17 NIT 2 a linked root walked as given", mock.patch.object(rt, "SWEEP_PROGRAM", prog.replace(
+                    "os.path.realpath(r) if os.path.islink(r) else r for r in roots", "r for r in roots")),
+                 (TheSweep("test_links_by_where_they_lead"),)),
                 ("R16-2 no wrapper looked through", mock.patch.object(ct, "_LOOKED_THROUGH", {}),
                  (TheFlag("test_moving_an_agent_cli_s_session_store_refuses"),)),
                 ("R16 NIT the over-cap exemption widened", mock.patch.object(ct, "sweep_violations", func_mutant(
