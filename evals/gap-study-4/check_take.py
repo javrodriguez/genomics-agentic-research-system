@@ -3485,7 +3485,11 @@ def nested_cli_calls(path: Path) -> int:
 
 def vendor_shell_commands(folder, harness: str) -> tuple:
     """(the shell commands of a vendor take's turn streams, read through the view's own parser for the harness, and
-    one problem per line the parser refuses: fail closed). Review r15 MINOR 5: the vendor road runs the readers too."""
+    how many lines the parser did not read). Review r15 MINOR 5: the vendor road runs the readers too. The stream's
+    validity is the adapter's to judge, not this reader's: the vendor adapter's read_stream reads every line through
+    the same check_record and refuses the turn on a line off its tables, so on a completed turn only a cut last line
+    (a timed-out turn) goes unread here; the count is recorded (session-store.json), never a refusal (the d7107255..
+    db9ffe1f battery: the rig's stub streams are not vendor-shaped)."""
     import transcript_codex as _tc
     import transcript_gemini as _tg
     import transcript_view as _tv
@@ -3499,9 +3503,8 @@ def vendor_shell_commands(folder, harness: str) -> tuple:
                 continue
             try:
                 items = parser.items(line)
-            except Exception as e:  # noqa: BLE001 - a line the parser refuses is not read as no command
-                bad.append(f"[{NESTED_AGENT}] {p.name} line {n} cannot be read for its shell commands "
-                           f"({type(e).__name__})")
+            except Exception:  # noqa: BLE001 - counted, never a refusal (above)
+                bad.append(f"{p.name}:{n}")
                 continue
             cmds += [it.args["command"] for it in items if it.kind == _tv.TOOL_CALL and it.tool == _tv.SHELL
                      and isinstance((it.args or {}).get("command"), str)]

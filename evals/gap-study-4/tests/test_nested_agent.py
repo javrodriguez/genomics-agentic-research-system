@@ -671,7 +671,7 @@ class TheReadOnlyRoot(unittest.TestCase):
         self.assertIn("self._note_read_only_errors(take, adapter, n, turn)", fns["drive"])
         self.assertIn("READ_ONLY_ERRORS_RECORD", fns["_take_records"])
         for mod in ("claude_code_adapter", "codex_adapter", "gemini_adapter"):
-            self.assertIn('setdefault("stderr_seen", []).append(got.get("stderr") or "")',
+            self.assertIn('setdefault("stderr_seen", []).append(got["stderr"])',
                           (HERE.parent / f"{mod}.py").read_text(), mod)
 
     def test_the_create_argv_and_the_preflight_pin_the_read_only_root(self):

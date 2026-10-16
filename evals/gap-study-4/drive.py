@@ -2623,11 +2623,12 @@ class TakeDriver:
         if vendor:                                # review r15 MINOR 5: the vendor road's shell commands read too
             cmds, unread = _ct.vendor_shell_commands(take.folder, harness)
             store_doc["nested_cli_calls"] = sum(len(_ct.nested_cli_mentions(c)) for c in cmds)
+            store_doc["unread_stream_lines"] = len(unread)        # the adapter judged the stream; counted here
         self._write(take, SESSION_STORE_RECORD, store_doc)
         self._write(take, READ_ONLY_ERRORS_RECORD, {"read_only_root": True, "errors": list(take.read_only_errors)})
         if vendor:                                # W-3b: no checker reads a vendor take yet, so the driver judges it
             bad = vendor_nested_problems(take.session_store, take.session_sweeps, harness, take.native_rel, cmds,
-                                         unread, take.spec.run_tree)
+                                         [], take.spec.run_tree)
             if bad:
                 take.store_refusal = f"[{_ct.NESTED_AGENT}] a nested agent may have run: {'; '.join(bad[:3])}"
         sources = {id(r): (recs[k]["api_key_source"] if k < len(recs) else None) for k, r in enumerate(rows)}
@@ -3326,7 +3327,7 @@ def vendor_nested_problems(listings, sweeps, harness: str, native_rel, commands,
     """W-3b on the vendor road (no checker reads a vendor take yet, so the driver judges it): every store listing
     holds only the take's own native session (check_take.vendor_store_violations), every sweep finds no session but
     it, and the turn streams' shell commands carry no session-off switch and move no store (check_take.
-    command_problems; a stream line the parser refuses counts too)."""
+    command_problems). `unread` is kept for a caller's own refusals; the drive passes none (vendor_shell_commands)."""
     import check_take as _ct
     bad = [f"at {x['at']}: {v}" for x in listings
            for v in (["listing refused"] if "refused" in x else
