@@ -95,13 +95,13 @@ def grade_views(grade: dict, grader=None) -> dict:
 
 def regrade(name: str, row: dict, spec: dict, transcript, evidence) -> tuple[dict, str]:
     mod = grader_for(name)
-    refused = delegation.seam_refusal(name, evidence, transcript)    # the d7107255 battery ruling
+    transcript, refused = delegation.seam(name, evidence, transcript)   # a delegated take, presented (16 Oct)
     if refused:
         raise mod.GradeError(refused)
     if name in ("scope_read", "template_adherence"):
         got = mod.grade(spec, evidence, transcript)
-    elif name == "number_fidelity":
-        got = mod.grade(transcript_view.events(row["agent"]["harness"], transcript), spec)
+    elif name == "number_fidelity":     # review r13 NIT 4: the harness the seam and every grader read, the evidence's
+        got = mod.grade(transcript_view.events(evidence.harness, transcript), spec)
     elif name == "precondition_refusal":
         got = mod.grade(transcript, evidence, spec, variants.row_fields({k: row[k] for k in
                                                                      ("half", "wording", "repeat", "pressure")}))

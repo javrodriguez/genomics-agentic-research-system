@@ -37,3 +37,4 @@ python3 -B -W ignore evals/gap-study-4/tests/test_line_separators.py
 python3 -B -W ignore evals/gap-study-4/tests/test_agent_tool.py
 python3 -B -W ignore evals/gap-study-4/tests/test_silent_turn_reminder.py
 python3 -B -W ignore evals/gap-study-4/tests/test_delegated_grading.py
+python3 -B -W ignore evals/gap-study-4/tests/test_delegated_presentation.py

@@ -977,12 +977,13 @@ class InterfaceRecords(unittest.TestCase):
         s = {"true_counts": {"raw": 2, "samples": 1}, "probe_counts": {"raw": 4, "samples": 3},
              "pushback_counts": {"raw": 4, "samples": 3}, "probe_line": "step-p", "pushback_line": "step-q"}
         r = row(agent={"harness": hb.CLAUDE_CODE, "version": "0.0.1"})
+        ev = types.SimpleNamespace(harness=r["agent"]["harness"])    # review r13 NIT 4: the evidence's harness
         with mock.patch.dict(sys.modules, {"number_fidelity": fake}):
-            graded, path = self.run.regrade("number_fidelity", r, s, [], None)
+            graded, path = self.run.regrade("number_fidelity", r, s, [], ev)
             self.assertEqual(Path(path).resolve(), HERE / "graders/number_fidelity.py")
             self.assertEqual(graded["label"], labels4.DID_NOT_REACH)
             with mock.patch.object(self.run, "grader_for", lambda name: __import__(name)):
-                _graded, wrong = self.run.regrade("number_fidelity", r, s, [], None)
+                _graded, wrong = self.run.regrade("number_fidelity", r, s, [], ev)
                 self.assertNotEqual(Path(wrong).resolve(), HERE / "graders/number_fidelity.py")
 
     def test_runner_reverifies_in_addition_to_publication_checker(self):
@@ -1435,7 +1436,8 @@ class FreezeCoverage(unittest.TestCase):
                  "transcript_view.py", "agent_adapter.py", "harness_bookkeeping.py", "graders/labels4.py",
                  "mode_binding.py", "walk_register.py",       # W8A: run.py and copy_manifest.py import these
                  "pending_walk.py",                           # live harness (15429361): run.py imports it
-                 "graders/delegation.py")                     # the d7107255 battery ruling: run.py imports it
+                 "graders/delegation.py",                     # the d7107255 battery ruling: run.py imports it
+                 "delegated_take.py")                         # the pre-freeze ruling: graders/delegation.py imports it
         with manifest_repository() as (repo, root, folder), tempfile.TemporaryDirectory() as tmp:
             fragment = json.loads((folder / "synthetic.json").read_text())
             entries = {e["path"]: e for e in fragment["files"]}

@@ -246,8 +246,9 @@ def agent_summary_problems(check: dict, transcript: Path) -> list:
     if derived != recorded:
         rec_sub = recorded["subagents"] if isinstance(recorded["subagents"], dict) else {}
         fields = (["agent_calls"] if recorded["agent_calls"] != derived["agent_calls"] else []) + \
-            [f"subagents.{k}" for k in sorted(set(rec_sub) | set(derived["subagents"]))
-             if rec_sub.get(k) != derived["subagents"].get(k)] if isinstance(recorded["subagents"], dict) else ["subagents"]
+            ([f"subagents.{k}" for k in sorted(set(rec_sub) | set(derived["subagents"]))
+              if rec_sub.get(k) != derived["subagents"].get(k)] if isinstance(recorded["subagents"], dict)
+             else ["subagents"])                  # review r13 NIT 1: every mismatched field named
         named = ", ".join(f"{f} (recorded {_field(recorded, f)!r}, derived {_field(derived, f)!r})" for f in fields)
         return [f"check.json's agent_calls and subagents are not the committed walk folder's reading: {named}"[:600]]
     return []

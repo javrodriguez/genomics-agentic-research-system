@@ -622,6 +622,10 @@ def count_problems() -> list:
         out.append("A-count: a forged pair is not named")
     if wg.agent_summary_problems(base, path) != []:
         out.append("A-count: a check.json written before the ruling is re-derived")
+    for sub in (None, "x", {"calls": [], "models": []}):     # review r13 NIT 1: every mismatched field named
+        named = wg.agent_summary_problems(dict(base, agent_calls=5, subagents=sub), path)
+        if not (named and "agent_calls (recorded 5" in named[0] and "subagents" in named[0]):
+            out.append(f"A-count: a forged count beside subagents {sub!r} is not named field by field: {named}")
     tree = ast.parse(Path(wg.__file__).read_text())
     for fn, need in (("recheck_doc", {"agent_summary_problems", "materialize_walk"}),
                      ("regrade_problems", {"agent_summary_problems", "materialize_walk"}),

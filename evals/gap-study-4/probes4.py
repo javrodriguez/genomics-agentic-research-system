@@ -855,7 +855,7 @@ def run_grader(task: dict, half: str, cell: dict, spec: dict, transcript: list, 
     name = V.grader_name(task)
     mod = V.load_grader(name)
     ghalf = (task["grader_halves"] or {}).get(half)
-    refused = delegation.seam_refusal(name, evidence, transcript)    # the d7107255 battery ruling
+    transcript, refused = delegation.seam(name, evidence, transcript)   # a delegated take, presented (16 Oct)
     if refused:
         raise mod.GradeError(refused)
     if name in ("scope_read", "template_adherence"):

@@ -12,7 +12,11 @@ turn (transcript_view.events wrapped, so every grader reads the take through its
 
   REFUSES   a grader whose label or flag reads the agent's tool calls (pause_adherence, plan_gate,
             precondition_refusal, and new_tasks wherever it reads a call) or words (awareness: a phrase the
-            sub-agent wrote would go unscanned) refuses by DELEGATED_REFUSAL.
+            sub-agent wrote would go unscanned), handed the raw take, refuses by DELEGATED_REFUSAL (pause_adherence,
+            new_tasks and awareness in their own code, the backstop; plan_gate and precondition_refusal, whose code a
+            closing gate holds, nowhere but the seam). Since glitch-b5's pre-freeze ruling (16 Oct 2026) the grading
+            roads hand them the PRESENTED take instead (graders/delegation.seam, delegated_take.present; parity in
+            tests/test_delegated_presentation.py), and refuse only what cannot be presented.
   GRADES    a grader whose label reads only the end state (which holds the sub-agent's writes, and in the access
             log its reads, as the agent's own) and the agent's own reply grades the take as before:
             number_fidelity and confounded_design here; scope_read and template_adherence in their own modules
@@ -20,6 +24,7 @@ turn (transcript_view.events wrapped, so every grader reads the take through its
 """
 from __future__ import annotations
 
+import json
 import sys
 import types
 import unittest
@@ -81,27 +86,28 @@ class TheRefusingGraders(unittest.TestCase):
                 self.assertEqual(outcome(t.grade_case, case)[0], "graded")
                 self.assertEqual(delegated(t.grade_case, case), REFUSED)
 
-    def test_plan_gate_and_precondition_refusal_at_the_seam(self):
-        """Their code is held to its base by a closing gate, so the grader itself still grades a delegated take (the
-        gap the seam closes); both grading roads refuse it before calling the grader, and call it for a take with no
-        delegate call."""
-        import types
+    def test_both_roads_present_a_delegated_take(self):
+        """plan_gate's and precondition_refusal's code is held to its base by a closing gate, so the grader itself
+        still grades a delegated take on its main thread alone; both grading roads hand plan_gate, precondition_refusal
+        and new_tasks the presented take (graders/delegation.seam), refuse by a named reason what cannot be presented
+        (a probe's unbound lines), and hand a take with no delegate call over as it is."""
         import probes4
         import run as run_mod
         import test_plan_gate as tg
         import test_precondition_refusal as tr
-        from test_agent_tool import OP, agent_call, agent_result, lines
+        from graders import delegation
+        from test_delegated_presentation import delegated_folder
         half, kw, _, _ = next(iter(tg.CASES.values()))
         self.assertEqual(delegated(tg.g, half, **kw)[0], "graded")
         rhalf, rkw, *_ = next(iter(tr.CASES.values()))
         self.assertEqual(delegated(tr.g, rhalf, **rkw)[0], "graded")
-        with_call = lines(OP, agent_call(), agent_result())
-        without = lines(OP)
-        ev = types.SimpleNamespace(harness=tv.ROUND3_HARNESS)
-        for name in ("plan_gate", "precondition_refusal"):
+        lines, ev = next((t for t in (tg.take(c[0], **c[1]) for c in tg.CASES.values()) if delegated_folder(t[0])))
+        bound = delegated_folder(lines)
+        unbound = [json.dumps(json.loads(x)) for x in bound]
+        for name in ("plan_gate", "precondition_refusal", "new_tasks"):
             calls = []
             stub = types.SimpleNamespace(GradeError=pg.GradeError,
-                                         grade=lambda *a, calls=calls: calls.append(a) or {"label": "x"})
+                                         grade=lambda *a, calls=calls, **k: calls.append(a) or {"label": "x"})
             roads = {
                 "probes4.run_grader": lambda t, name=name: (
                     mock.patch.object(probes4.V, "grader_name", lambda task: name),
@@ -115,8 +121,8 @@ class TheRefusingGraders(unittest.TestCase):
                     lambda: run_mod.regrade(name, {"half": "", "wording": "", "repeat": 0, "pressure": "",
                                                    "grader_half": None, "task": "x"}, {}, t, ev))}
             for road, build in roads.items():
-                with self.subTest(grader=name, road=road):
-                    for transcript, refused in ((with_call, True), (without, False)):
+                for transcript, want in ((bound, "presented"), (unbound, "refused"), (lines, "as it is")):
+                    with self.subTest(grader=name, road=road, want=want):
                         calls.clear()
                         *patches, go = build(transcript)
                         with patches[0], patches[1], patches[2]:
@@ -127,10 +133,33 @@ class TheRefusingGraders(unittest.TestCase):
                                 got = str(e)
                             except Exception:  # noqa: BLE001 - a road's own bookkeeping after the grade
                                 got = "after"
-                        if refused:
-                            self.assertEqual((got, calls), (tv.DELEGATED_REFUSAL, []))
+                        handed = [a for c in calls for a in c if isinstance(a, (list, tuple)) and a
+                                  and isinstance(a[0], str)]
+                        if want == "refused":
+                            self.assertEqual(calls, [])
+                            self.assertTrue(got.startswith(tv.DELEGATED_REFUSAL) and "not bound" in got, got)
+                        elif want == "presented":
+                            self.assertEqual(len(handed), 1, calls)
+                            self.assertFalse(any('"Agent"' in x for x in handed[0]))
+                            self.assertFalse(tv.delegated_calls(tv.events(tv.ROUND3_HARNESS, list(handed[0]))))
+                            self.assertEqual(len([e for e in tv.events(tv.ROUND3_HARNESS, list(handed[0]))
+                                                  if e.kind == tv.TOOL_CALL]),
+                                             len([e for e in tv.events(tv.ROUND3_HARNESS, lines)
+                                                  if e.kind == tv.TOOL_CALL]))
                         else:
-                            self.assertEqual(len(calls), 1, (got, calls))
+                            self.assertEqual(len(handed), 1, calls)
+                            self.assertIs(handed[0], transcript)
+            with self.subTest(witness=f"{name}: the seam presents nothing"), \
+                    mock.patch.object(delegation, "PRESENTED", {}), \
+                    mock.patch.object(run_mod.variants, "row_fields", lambda r: {}), \
+                    mock.patch.object(run_mod, "grader_for", lambda n: stub):
+                calls.clear()
+                try:
+                    run_mod.regrade(name, {"half": "", "wording": "", "repeat": 0, "pressure": "",
+                                           "grader_half": None, "task": "x"}, {}, bound, ev)
+                except Exception:  # noqa: BLE001
+                    pass
+                self.assertTrue(calls and calls[0][0 if name != "new_tasks" else 1] is bound)
 
     def test_new_tasks_wherever_it_reads_a_call(self):
         """Every label case: refused exactly when its grader reads the take's tool calls (Take.post_calls), and
@@ -207,12 +236,6 @@ class TheWitnesses(unittest.TestCase):
         import test_new_tasks as tn
         import test_pause_adherence as tp
         site = "    if view.delegated_calls(evs):           # the d7107255 battery ruling"
-        from graders import delegation
-        from test_agent_tool import OP, agent_call, agent_result, lines
-        seam = self.witness(delegation, 'REFUSED_AT_THE_SEAM = ("plan_gate", "precondition_refusal")',
-                            "REFUSED_AT_THE_SEAM = ()")
-        self.assertIsNone(seam.seam_refusal("plan_gate", types.SimpleNamespace(harness=tv.ROUND3_HARNESS),
-                                              lines(OP, agent_call(), agent_result())))
         for name, run in (
                 ("pause_adherence", lambda: tp.grade_case(next(iter(tp.CASES.values())), mod=self.witness(pa, site))),
                 ("awareness", lambda: ta_.grade(ta_.LABEL_CASES[0][0], mod=self.witness(
