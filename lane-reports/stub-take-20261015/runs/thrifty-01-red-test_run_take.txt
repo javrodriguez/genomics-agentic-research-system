@@ -1,0 +1,113 @@
+Thu Oct 15 18:30:51 EDT 2026
+clean env: env -i PATH HOME LANG; run_take.py at HEAD 6528894f, tests edited
+test_mutants (__main__.TestBashFirstSteerOff.test_mutants) ... FAIL
+test_the_steer_is_off (__main__.TestBashFirstSteerOff.test_the_steer_is_off) ... FAIL
+test_the_inline_settings (__main__.TestClaudeSettings.test_the_inline_settings) ... FAIL
+test_agent_exec_argv (__main__.TestExecArgv.test_agent_exec_argv) ... ok
+test_config_home_refusals (__main__.TestExecArgv.test_config_home_refusals) ... ok
+test_exec_argv (__main__.TestExecArgv.test_exec_argv) ... FAIL
+
+======================================================================
+FAIL: test_mutants (__main__.TestBashFirstSteerOff.test_mutants)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_run_take.py", line 3709, in test_mutants
+    self.assert_green_then_red(self.check, (
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+        ("the switch on", lambda: _patches((rt, "TAKE_ENV", on),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<10 lines>...
+                                                                "0" * 64),))),
+                                                                ^^^^^^^^^^^^^^
+    ))
+    ^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_run_take.py", line 168, in assert_green_then_red
+    self.assertEqual(problems_of(check), [], "the guard is red on the real module")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['the claude-code row does not carry CLAUD[50 chars] it'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'the claude-code row does not carry CLAUDE_CODE_THRIFTY_SONIC as BASH_FIRST_STEER_ENV gives it'
+
++ []
+- ['the claude-code row does not carry CLAUDE_CODE_THRIFTY_SONIC as '
+-  'BASH_FIRST_STEER_ENV gives it'] : the guard is red on the real module
+
+======================================================================
+FAIL: test_the_steer_is_off (__main__.TestBashFirstSteerOff.test_the_steer_is_off)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_run_take.py", line 3702, in test_the_steer_is_off
+    self.assertEqual(problems_of(self.check), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['the claude-code row does not carry CLAUD[50 chars] it'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'the claude-code row does not carry CLAUDE_CODE_THRIFTY_SONIC as BASH_FIRST_STEER_ENV gives it'
+
++ []
+- ['the claude-code row does not carry CLAUDE_CODE_THRIFTY_SONIC as '
+-  'BASH_FIRST_STEER_ENV gives it']
+
+======================================================================
+FAIL: test_the_inline_settings (__main__.TestClaudeSettings.test_the_inline_settings)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_run_take.py", line 1452, in test_the_inline_settings
+    self.assert_green_then_red(self.check, [
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+        ("check-skipped", patched(rt, "check_claude_settings", lambda inner: None)),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<18 lines>...
+            inner[i + 1] if i + 1 < len(inner) else None for i, t in enumerate(inner) if t == flag])),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_run_take.py", line 168, in assert_green_then_red
+    self.assertEqual(problems_of(check), [], "the guard is red on the real module")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["the study's settings are {'availableMode[126 chars]se}"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"the study's settings are {'availableModels': ['claude-opus-5-5'], 'env': {'CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK': '1'}, 'fallbackModel': [], 'switchModelsOnFlag': False}"
+
++ []
+- ["the study's settings are {'availableModels': ['claude-opus-5-5'], 'env': "
+-  "{'CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK': '1'}, 'fallbackModel': [], "
+-  "'switchModelsOnFlag': False}"] : the guard is red on the real module
+
+======================================================================
+FAIL: test_exec_argv (__main__.TestExecArgv.test_exec_argv)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_run_take.py", line 739, in test_exec_argv
+    self.assert_green_then_red(self.check, [
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+        ("value-in-argv", patched(rt, "exec_argv", value_in_argv)),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+        ("tmp-variables-dropped", patched(rt, "RUN_TREE_TMPDIR_VARIABLES", ())),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_run_take.py", line 168, in assert_green_then_red
+    self.assertEqual(problems_of(check), [], "the guard is red on the real module")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['exec argv differs: [\'docker\', \'exec\'[1416 chars]\']'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'exec argv differs: [\'docker\', \'exec\', \'--user\', \'10001:10001\', \'--workdir\', \'/srv/w/t1/tree\', \'-e\', \'CLAUDE_CODE_OAUTH_TOKEN\', \'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\', \'/usr/bin/python3\', \'-I\', \'-S\', \'-c\', "import os,sys\\na=sys.argv[1:]\\nk,n=a[0],int(a[1])\\ne=dict(x.split(\'=\',1) for x in a[2:2+n])\\nif k!=\'-\':e[k]=os.environ[k]\\ndirs=[e[\'HOME\']]\\nd=os.getcwd()\\nwhile True:\\n dirs.append(d)\\n parent=os.path.dirname(d)\\n if parent==d: break\\n d=parent\\nfor d in dirs:\\n for name in (\'.env\',os.path.join(\'.gemini\',\'.env\')):\\n  p=os.path.join(d,name)\\n  if os.path.lexists(p): raise SystemExit(\'refusing .env file: \'+p)\\nc=a[2+n:]\\nos.execvpe(c[0],c,e)\\n", \'CLAUDE_CODE_OAUTH_TOKEN\', \'13\', \'CLAUDE_CODE_DISABLE_AUTO_MEMORY=1\', \'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1\', \'CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK=1\', \'CLAUDE_CONFIG_DIR=/opt/cfg\', \'DISABLE_AUTOUPDATER=1\', \'ENABLE_CLAUDEAI_MCP_SERVERS=false\', \'HOME=/opt/cfg\', \'HTTPS_PROXY=http://proxy:3128\', \'LANG=C.UTF-8\', \'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\', \'TEMP=/srv/w/t1/tree/.tmp\', \'TMP=/srv/w/t1/tree/.tmp\', \'TMPDIR=/srv/w/t1/tree/.tmp\', \'claude\', \'-p\', \'x\', \'--model\', \'claude-opus-5-5\', \'--settings\', \'{"availableModels":["claude-opus-5-5"],"env":{"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK":"1"},"fallbackModel":[],"switchModelsOnFlag":false}\']'
+
+Diff is 1526 characters long. Set self.maxDiff to None to see it. : the guard is red on the real module
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.015s
+
+FAILED (failures=4)
+  mutant guard-dropped: red - login name accepted: ['CODEX_API_KEY=/opt/cfg']
+  mutant name-unchecked: red - login name accepted: ['CODEX_API_KEY=/opt/cfg']
+  mutant many-entries: red - two entries accepted: ['CLAUDE_CONFIG_DIR=/opt/cfg', 'CODEX_HOME=/opt/cfg']

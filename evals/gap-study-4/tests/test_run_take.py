@@ -359,7 +359,8 @@ class TestSharedValues(MutantCase):
             want = {
                 rt.CLAUDE_CODE: {"DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
                                  "HTTPS_PROXY": "http://proxy:3128", "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
-                                 "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1", "CLAUDE_CONFIG_DIR": "/opt/cfg"},
+                                 "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1", "CLAUDE_CODE_THRIFTY_SONIC": "false",
+                                 "CLAUDE_CONFIG_DIR": "/opt/cfg"},
                 rt.CODEX: {"HTTPS_PROXY": "http://proxy:3128", "CODEX_HOME": "/opt/cfg"},
                 rt.GEMINI: {"HTTPS_PROXY": "http://proxy:3128", "GEMINI_CLI_HOME": "/opt/cfg"},
             }
@@ -649,9 +650,9 @@ class TestExecArgv(MutantCase):
         # Departure w12a-2 (ruling docs-1): the values ride as the launcher's NAME=VALUE pairs, the agent starting
         # from an empty environment plus its TAKE_ENV row; the login still rides as `-e NAME` only.
         want = ["docker", "exec", "--user", "10001:10001", "--workdir", "/srv/w/t1/tree",
-                "-e", "CLAUDE_CODE_OAUTH_TOKEN", ID["take"], *rt.LAUNCHER, "CLAUDE_CODE_OAUTH_TOKEN", "13",
+                "-e", "CLAUDE_CODE_OAUTH_TOKEN", ID["take"], *rt.LAUNCHER, "CLAUDE_CODE_OAUTH_TOKEN", "14",
                 "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
-                "CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK=1",
+                "CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK=1", "CLAUDE_CODE_THRIFTY_SONIC=false",
                 "CLAUDE_CONFIG_DIR=/opt/cfg", "DISABLE_AUTOUPDATER=1", "ENABLE_CLAUDEAI_MCP_SERVERS=false",
                 "HOME=/opt/cfg", "HTTPS_PROXY=http://proxy:3128", "LANG=C.UTF-8",
                 f"PATH={rt.TAKE_PATH}", f"TEMP={t}", f"TMP={t}", f"TMPDIR={t}", *CLAUDE_INNER]
@@ -1314,7 +1315,8 @@ class TestLaunch(MutantCase):
 
 # A claude-code turn as the adapter builds it: its model once and the study's inline settings (review finding 1).
 CLAUDE_MODEL = "claude-opus-5-5"
-CLAUDE_INNER = ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", rt.claude_study_settings(CLAUDE_MODEL)]
+CLAUDE_INNER = ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", rt.claude_study_settings(CLAUDE_MODEL),
+                "--disallowedTools", "WebFetch", "WebSearch", "RemoteTrigger", "SendMessage", "ListAgents"]
 
 
 ORIG_CHECK_CLAUDE_SETTINGS = rt.check_claude_settings
@@ -1366,8 +1368,10 @@ class TestClaudeSettings(MutantCase):
         out = []
         want = rt.claude_study_settings(CLAUDE_MODEL)
         doc = json.loads(want)
-        if doc != {"availableModels": [CLAUDE_MODEL],
-                   "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1"}, "fallbackModel": [],
+        if doc != {"availableModels": [CLAUDE_MODEL], "crossSessionInbound": "refuse",
+                   "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1", "CLAUDE_CODE_THRIFTY_SONIC": "false"},
+                   "permissions": {"deny": ["RemoteTrigger", "SendMessage", "ListAgents"]},
+                   "fallbackModel": [],
                    "switchModelsOnFlag": False}:
             out.append(f"the study's settings are {doc}")
         if BYPASS in want:
@@ -1379,10 +1383,11 @@ class TestClaudeSettings(MutantCase):
                     out.append(f"bypass key {bad!r} accepted")
                 except rt.Refused:
                     pass
+        DENY = ["--disallowedTools", "WebFetch", "WebSearch", *rt.ISOLATION_DISALLOWED_TOOLS]
         good = [CLAUDE_INNER, ["claude", "-p", "--settings is just prompt text", "--model", CLAUDE_MODEL,
-                               "--settings=" + want],
-                ["claude", "--print", "--bg is just prompt text", "--model", CLAUDE_MODEL, "--settings", want],
-                ["claude", "-p", "--background is just prompt text", "--model", CLAUDE_MODEL, "--settings", want],
+                               "--settings=" + want, *DENY],
+                ["claude", "--print", "--bg is just prompt text", "--model", CLAUDE_MODEL, "--settings", want, *DENY],
+                ["claude", "-p", "--background is just prompt text", "--model", CLAUDE_MODEL, "--settings", want, *DENY],
                 ["/usr/local/bin/claude"] + CLAUDE_INNER[1:]]
         for inner in good:
             try:
@@ -1390,17 +1395,17 @@ class TestClaudeSettings(MutantCase):
             except rt.Refused as e:
                 out.append(f"a well-formed turn was refused: {e}")
         other = rt.claude_study_settings("claude-sonnet-5-5")
-        bad = {"no-settings": ["claude", "-p", "x", "--model", CLAUDE_MODEL],
+        bad = {"no-settings": ["claude", "-p", "x", "--model", CLAUDE_MODEL, *DENY],
                "two-settings": CLAUDE_INNER + ["--settings", want],
-               "another-model's": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", other],
+               "another-model's": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", other, *DENY],
                "switch-true": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings",
-                               want.replace('"switchModelsOnFlag":false', '"switchModelsOnFlag":true')],
-               "no-model": ["claude", "-p", "x", "--settings", want],
+                               want.replace('"switchModelsOnFlag":false', '"switchModelsOnFlag":true'), *DENY],
+               "no-model": ["claude", "-p", "x", "--settings", want, *DENY],
                "two-models": CLAUDE_INNER + ["--model", "claude-sonnet-5-5"],
-               "settings-file": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", "/opt/cfg/s.json"],
+               "settings-file": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", "/opt/cfg/s.json", *DENY],
                # the bypass ruling depends on a -p run: a turn without -p/--print first, or with --bg, is refused
-               "no-print": ["claude", "x", "--model", CLAUDE_MODEL, "--settings", want],
-               "print-not-first": ["claude", "--model", CLAUDE_MODEL, "-p", "x", "--settings", want],
+               "no-print": ["claude", "x", "--model", CLAUDE_MODEL, "--settings", want, *DENY],
+               "print-not-first": ["claude", "--model", CLAUDE_MODEL, "-p", "x", "--settings", want, *DENY],
                "background": CLAUDE_INNER + ["--bg"],
                "background-eq": CLAUDE_INNER + ["--bg=true"],
                # review-bypass-skills B-1 and B-2: the long alias, and a program other than claude
@@ -1412,7 +1417,9 @@ class TestClaudeSettings(MutantCase):
                "empty": [],
                "with-bypass-key": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings",
                                    json.dumps(dict(json.loads(want), **{BYPASS: True}), sort_keys=True,
-                                              separators=(",", ":"))]}
+                                              separators=(",", ":")), *DENY],
+               # the isolation ruling (glitch-6b, 15 Oct 2026): a turn that does not deny the three tools
+               "no-deny": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", want]}
         for name, inner in bad.items():
             try:
                 rt.check_claude_settings(inner)
@@ -3593,6 +3600,232 @@ class TestCodexKeyUnreachable(MutantCase):
 
 # Taken last, after every import-time statement of this module: must be empty (setUpModule arms the guard).
 _PATCHED_AT_IMPORT = _patched_now()
+
+
+
+# The bash-first steer OFF (glitch-6b's study-condition ruling, 15 Oct 2026, approved by Javier's "Your call sounds
+# good"): the value is bound to the pinned binary's own parser, read statically from the take image (docker create
+# --network none + docker cp, never run) by the four committed probes, each record pinned by its bytes here.
+STEER_EVIDENCE = (
+    ("claude-2.1.296-thrifty-sonic-hxt-20261015.json", "b713239952b760e4b2fa6ba34378f2c75b2372f1990a7da42c497599cd5727de"),
+    ("claude-2.1.296-thrifty-sonic-getter-20261015.json", "d1735de8f3cada3354a4c65ca527f633e1810c88fef7de0662fd99551601add4"),
+    ("claude-2.1.296-tribool-20261015.json", "0dd5dd871c6c1e34590068510f4e21b273b0ba0dd776ca3a3c816a3469cb1a8f"),
+    ("claude-2.1.296-tribool-helpers-20261015.json", "17b4a363720ca7a2cd4b6371c7b4e5d89fc3da043db329aa9ed071782cc74932"))
+STEER_SWITCH = "CLAUDE_CODE_THRIFTY_SONIC"
+
+
+def _steer_records() -> tuple:
+    """The four probe records, refused unless each is the pinned bytes."""
+    out = []
+    for name, digest in STEER_EVIDENCE:
+        with open(os.path.join(CLAUDE_SWEEP_DIR, name), "rb") as fh:
+            raw = fh.read()
+        if hashlib.sha256(raw).hexdigest() != digest:
+            raise AssertionError(f"{name} is not the committed probe record")
+        out.append(json.loads(raw))
+    return tuple(out)
+
+
+def _js_list(source: str, fn: str) -> list:
+    """The string list `fn`'s body tests membership in, read from its source text (exactly one such list)."""
+    m = re.fullmatch(r"function " + fn + r"\(e\)\{(?:if\(e===void 0\)return!1;|if\(!e\)return!1;)if\(typeof "
+                     r"e===\"boolean\"\)return(?:!| )e;let n=String\(e\)\.toLowerCase\(\)\.trim\(\);return\[((?:\"[a-z0-9]+\""
+                     r",?)+)\]\.includes\(n\)\}", source)
+    if not m:
+        raise AssertionError(f"{fn}'s recorded source is not the tri-state helper shape")
+    return json.loads("[" + m.group(1) + "]")
+
+
+def _function_text(rec: dict, key: str, fn: str) -> str:
+    """The recorded source of `fn` up to its closing brace (the helper bodies hold no nested braces after `{`)."""
+    for site in rec["sources"].get(key, []):
+        t = site["text"]
+        if t.startswith(f"function {fn}(e){{"):
+            depth = 0
+            for i, ch in enumerate(t):
+                depth += ch == "{"
+                depth -= ch == "}"
+                if depth == 0 and ch == "}":
+                    return t[:i + 1]
+    raise AssertionError(f"no recorded tri-state source for {fn}")
+
+
+class TestBashFirstSteerOff(MutantCase):
+    """The study condition: the auto_mode bash-first steer is OFF for every claude-code take. Claude Code 2.1.296's
+    gate HXt() returns `a.CLAUDE_CODE_THRIFTY_SONIC` whenever it is not undefined (else a model cohort); the env
+    module declares it `rE=H.triBool()`; triBool is `i((n)=>{if(Ne(n))return!0;if(vs(n))return!1;return})` over
+    `i(n){return{parse:(e)=>n(u(e))}}`; and vs is true for exactly the lowercased, trimmed strings in its list. The
+    row's value must be in vs's list and not in Ne's, and ride both the exec's pairs and the inline settings' env (the
+    level above the run tree's files, and the one the per-turn launch journal records for the checker)."""
+
+    def check(self):
+        out = []
+        try:
+            hxt, getter, tri, helpers = _steer_records()
+        except AssertionError as e:
+            return [str(e)]
+        for rec in (hxt, getter, tri, helpers):
+            if rec.get("binary_sha256") != rt.CLAUDE_BINARY["sha256"] or rec.get("image") != rt.CLAUDE_BINARY["image_id"]:
+                out.append(f"{rec.get('probe')}: not a read of the pinned binary in the pinned image")
+        if rt.CLAUDE_BINARY["image_id"] != _lock_image("."):
+            out.append("the pinned binary's image is not box/image.lock's")
+        gate = f"function HXt(){{if(a.{STEER_SWITCH}!==void 0)return a.{STEER_SWITCH};switch(ae()){{"
+        if not any(gate in h["text"] for h in hxt["HXt"]):
+            out.append("HXt does not return the switch's parsed value whenever it is set")
+        if getter.get("getter_target") != "rE" or not any(",rE=H.triBool()," in d["text"] for d in getter["definitions"]):
+            out.append("the switch is not declared a triBool")
+        tri_def = "triBool:()=>s"
+        tri_body = "s=i((n)=>{if(Ne(n))return!0;if(vs(n))return!1;return})"
+        if not any(tri_def in d["text"] and tri_body in d["text"] and "function i(n){return{parse:(e)=>n(u(e))}}"
+                   in helpers["sources"]["ctx:700"][0]["text"] for d in tri["definition_sites"]):
+            out.append("triBool is not Ne-then-vs over the raw string")
+        if 'import{Ne,vs}from"' not in helpers["sources"]["ctx:700"][0]["text"]:
+            out.append("the env module does not import its Ne and vs")
+        try:
+            false_list = _js_list(_function_text(helpers, "any:vs", "vs"), "vs")
+            true_list = _js_list(_function_text(helpers, "any:Ne", "Ne"), "Ne")
+        except AssertionError as e:
+            return out + [str(e)]
+        row = rt.TAKE_ENV[rt.CLAUDE_CODE].get(STEER_SWITCH)
+        value = getattr(rt, "BASH_FIRST_STEER_ENV", {}).get(STEER_SWITCH)
+        if value is None or row != value:
+            out.append(f"the claude-code row does not carry {STEER_SWITCH} as BASH_FIRST_STEER_ENV gives it")
+        elif value.lower().strip() not in false_list or value.lower().strip() in true_list:
+            out.append(f"{STEER_SWITCH}={value!r} is not read as false by the pinned parser ({false_list})")
+        for arm in (rt.CODEX, rt.GEMINI):
+            if STEER_SWITCH in rt.TAKE_ENV[arm]:
+                out.append(f"{arm}'s row carries a Claude Code switch")
+        with filled():
+            settings = json.loads(rt.claude_study_settings(CLAUDE_MODEL))
+            env = rt.take_environment(rt.CLAUDE_CODE, "/srv/w/t1/tree")
+        if value is not None and settings.get("env", {}).get(STEER_SWITCH) != value:
+            out.append("the inline settings' env does not carry the switch off")
+        if value is not None and env.get(STEER_SWITCH) != value:
+            out.append("take_environment does not hand the agent the switch off")
+        return out
+
+    def test_the_steer_is_off(self):
+        self.assertEqual(problems_of(self.check), [])
+
+    def test_mutants(self):
+        on = {**rt.TAKE_ENV, rt.CLAUDE_CODE: {**rt.TAKE_ENV[rt.CLAUDE_CODE], STEER_SWITCH: "1"}}
+        unread = {**rt.TAKE_ENV, rt.CLAUDE_CODE: {**rt.TAKE_ENV[rt.CLAUDE_CODE], STEER_SWITCH: "disabled"}}
+        gone = {**rt.TAKE_ENV, rt.CLAUDE_CODE: {k: v for k, v in rt.TAKE_ENV[rt.CLAUDE_CODE].items()
+                                                  if k != STEER_SWITCH}}
+        self.assert_green_then_red(self.check, (
+            ("the switch on", lambda: _patches((rt, "TAKE_ENV", on),
+                                               (rt, "BASH_FIRST_STEER_ENV", {STEER_SWITCH: "1"}))),
+            ("a value the parser reads as unset", lambda: _patches(
+                (rt, "TAKE_ENV", unread), (rt, "BASH_FIRST_STEER_ENV", {STEER_SWITCH: "disabled"}))),
+            ("the switch dropped from the row", patched(rt, "TAKE_ENV", gone)),
+            ("the switch dropped from the settings", patched(rt, "claude_study_settings", lambda m: json.dumps(
+                {"availableModels": [m], "env": dict(rt.FALLBACK_ENV), "fallbackModel": [],
+                 "switchModelsOnFlag": False}, sort_keys=True, separators=(",", ":")))),
+            ("another binary", lambda: mock.patch.dict(rt.CLAUDE_BINARY, {"sha256": "0" * 64})),
+            ("the evidence swapped", patched(sys.modules[__name__], "STEER_EVIDENCE",
+                                             STEER_EVIDENCE[:3] + (("claude-2.1.296-tribool-helpers-20261015.json",
+                                                                    "0" * 64),))),
+        ))
+
+
+
+# The isolation denials (glitch-6b's ruling, 15 Oct 2026, under the delegation): RemoteTrigger (claude.ai Routines, the
+# one road a take's token has to the account outside the box), SendMessage and ListAgents (cross-session channels) are
+# DISALLOWED for every claude-code take, and cross-session inbound messages are refused. The names and the setting's
+# values are read from the pinned binary (claude_string_context_probe.py; docker create --network none + docker cp,
+# never run), each record pinned by its bytes here.
+ISOLATION_EVIDENCE = (
+    ("claude-2.1.296-isolation-names-20261015.json", "ba3e3e6d54d06ab495595264521edc329b9123b57944df100acea658a303d81a"),
+    ("claude-2.1.296-cross-session-values-20261015.json",
+     "1ceb44b1e499e7b61365e0fafe7fbae88065899fd217644024d9deb82489dfc4"))
+ISOLATION_TOOL_DECLARATIONS = {"RemoteTrigger": 'var N$="RemoteTrigger",Mcs="Manage scheduled remote Claude Code agents',
+                               "SendMessage": 'var Gn="SendMessage",', "ListAgents": 'var xc="ListAgents",'}
+ISOLATION_FACE = {"SendMessage": 'userFacingName(){return"SendMessage"}', "ListAgents": 'userFacingName(){return"ListAgents"}'}
+
+
+def _isolation_records() -> tuple:
+    out = []
+    for name, digest in ISOLATION_EVIDENCE:
+        with open(os.path.join(CLAUDE_SWEEP_DIR, name), "rb") as fh:
+            raw = fh.read()
+        if hashlib.sha256(raw).hexdigest() != digest:
+            raise AssertionError(f"{name} is not the committed probe record")
+        out.append(json.loads(raw))
+    return tuple(out)
+
+
+def _texts(rec: dict, needle: str) -> list:
+    return [s["text"] for s in rec["needles"].get(needle, {}).get("sites", [])]
+
+
+class TestIsolationDenials(MutantCase):
+    """The three tools are denied by the names the pinned binary declares, on the exec argv (--disallowedTools, a
+    variadic comma-or-space list) AND in the inline settings' permissions.deny; crossSessionInbound is "refuse", one of
+    the binary's values ["accept","hold","refuse"]. run_take refuses a claude-code turn whose argv denies fewer."""
+
+    def check(self):
+        out = []
+        try:
+            names, values = _isolation_records()
+        except AssertionError as e:
+            return [str(e)]
+        for rec in (names, values):
+            if rec.get("binary_sha256") != rt.CLAUDE_BINARY["sha256"] or rec.get("image") != rt.CLAUDE_BINARY["image_id"]:
+                out.append(f"{rec.get('probe')}: not a read of the pinned binary in the pinned image")
+        tools = tuple(getattr(rt, "ISOLATION_DISALLOWED_TOOLS", ()))
+        if tools != ("RemoteTrigger", "SendMessage", "ListAgents"):
+            out.append(f"ISOLATION_DISALLOWED_TOOLS is {tools}, not the ruled three")
+        for tool in tools:
+            decl = ISOLATION_TOOL_DECLARATIONS.get(tool)
+            if decl is None or not any(decl in t for t in _texts(names, f'"{tool}"')):
+                out.append(f"{tool} is not a tool name the pinned binary declares")
+            if tool in ISOLATION_FACE and not any(ISOLATION_FACE[tool] in t for t in _texts(names, f'"{tool}"')):
+                out.append(f"{tool} is not the name the tool answers to")
+        if not any('"--disallowedTools, --disallowed-tools <tools...>",\'Comma or space-separated list of tool names to '
+                   'deny' in t for t in _texts(names, '"--disallowedTools')):
+            out.append("--disallowedTools is not the binary's variadic comma-or-space deny list")
+        if not any('var sHt=["accept","hold","refuse"]' in t and "deny:T(" in t for t in _texts(values, "sHt=")):
+            out.append('"refuse" is not a crossSessionInbound value, or permissions.deny is not in the schema')
+        with filled():
+            st = json.loads(rt.claude_study_settings(CLAUDE_MODEL))
+            if st.get("crossSessionInbound") != "refuse":
+                out.append("the inline settings do not refuse cross-session inbound messages")
+            if st.get("permissions") != {"deny": list(tools)} or not tools:
+                out.append(f"the inline settings' permissions are {st.get('permissions')}")
+            base = ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", rt.claude_study_settings(CLAUDE_MODEL)]
+            for name, tail, ok in (
+                    ("space list", ["--disallowedTools", "WebFetch", "WebSearch", *tools], True),
+                    ("comma list", ["--disallowed-tools=" + ",".join(tools)], True),
+                    ("split over two flags", ["--disallowedTools", "RemoteTrigger", "--disallowed-tools",
+                                              "SendMessage,ListAgents"], True),
+                    ("no deny flag", [], False),
+                    ("one name missing", ["--disallowedTools", "RemoteTrigger", "SendMessage"], False),
+                    ("a near name", ["--disallowedTools", "RemoteTrigger", "SendMessage", "ListPeer"], False),
+                    ("the names after another flag", ["--disallowedTools", "--session-id", *tools], False)):
+                try:
+                    rt.check_claude_settings(base + tail)
+                    if not ok:
+                        out.append(f"{name}: admitted")
+                except rt.Refused as e:
+                    if ok:
+                        out.append(f"{name}: refused ({e})")
+        return out
+
+    def test_the_three_are_denied(self):
+        self.assertEqual(problems_of(self.check), [])
+
+    def test_mutants(self):
+        self.assert_green_then_red(self.check, (
+            ("one tool dropped", patched(rt, "ISOLATION_DISALLOWED_TOOLS", ("RemoteTrigger", "SendMessage"))),
+            ("a misspelt tool", patched(rt, "ISOLATION_DISALLOWED_TOOLS", ("RemoteTriggers", "SendMessage",
+                                                                           "ListAgents"))),
+            ("the argv check dropped", patched(rt, "_denied_tools", lambda inner: set(rt.ISOLATION_DISALLOWED_TOOLS))),
+            ("inbound accepted", patched(rt, "CROSS_SESSION_INBOUND", "accept")),
+            ("another binary", lambda: mock.patch.dict(rt.CLAUDE_BINARY, {"sha256": "0" * 64})),
+            ("the evidence swapped", patched(sys.modules[__name__], "ISOLATION_EVIDENCE",
+                                             ISOLATION_EVIDENCE[:1] + (("claude-2.1.296-cross-session-values-"
+                                                                        "20261015.json", "0" * 64),))),
+        ))
 
 
 if __name__ == "__main__":

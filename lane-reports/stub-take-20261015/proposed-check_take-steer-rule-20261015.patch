@@ -1,0 +1,274 @@
+diff --git a/evals/gap-study-4/check_take.py b/evals/gap-study-4/check_take.py
+index 220cc734..c47675ea 100644
+--- a/evals/gap-study-4/check_take.py
++++ b/evals/gap-study-4/check_take.py
+@@ -1891,6 +1891,85 @@ def modes_recorded(path: Path) -> set:
+     return out
+ 
+ 
++# THE BASH-FIRST STEER OFF (glitch-6b's study-condition ruling, 15 Oct 2026, approved by Javier's "Your call sounds
++# good"; the box lane's proposal, box 0e0bbe20). Every claude-code take runs with CLAUDE_CODE_THRIFTY_SONIC=false
++# (box/run_take.BASH_FIRST_STEER_ENV), in the exec's pairs and in the inline --settings env each turn's launch journal
++# records. The pinned 2.1.296 binary's parser reads "0", "false", "no" and "off" (lowercased, trimmed) as false
++# (lane-reports/stub-take-20261015/claude-2.1.296-tribool-helpers-20261015.json, vs), and its gate HXt() then never
++# emits the auto_mode attachment (the Bash-first steer). transcript_view admits auto_mode as harness furniture so a
++# take that is not under this condition can be audited (harness 2c3784e6); this rule makes a take that IS under it and
++# still carries one refuse, so a silent environment failure never passes. A take whose journals do not set the switch
++# (the product default: a model-keyed cohort) is not this rule's.
++STEER_SWITCH = "CLAUDE_CODE_THRIFTY_SONIC"
++STEER_OFF_VALUES = ("0", "false", "no", "off")
++AUTO_MODE_ATTACHMENT = "auto_mode"
++HARNESS_CONDITION_VIOLATED = "harness-condition-violated"
++_LAUNCH_JOURNAL = re.compile(r"turn-([1-9][0-9]*)\.jsonl\.launch\.json")
++
++
++def _journal_switch(journal: Path):
++    """The switch's value in one launch journal's inline --settings env (None when not set); refuses rather than
++    guess on a journal it cannot read."""
++    try:
++        doc = json.loads(journal.read_text())
++    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
++        raise CheckRefused(f"{journal.name}: the launch journal cannot be read ({type(e).__name__})") from None
++    argv = doc.get("argv") if isinstance(doc, dict) else None
++    if not isinstance(argv, list) or not all(isinstance(a, str) for a in argv):
++        raise CheckRefused(f"{journal.name}: the launch journal's argv is not a list of strings")
++    values = [argv[i + 1] for i, a in enumerate(argv[:-1]) if a == "--settings"]
++    values += [a.split("=", 1)[1] for a in argv if a.startswith("--settings=")]
++    found = []
++    for v in values:
++        try:
++            st = json.loads(v)
++        except json.JSONDecodeError:
++            raise CheckRefused(f"{journal.name}: an inline --settings value is not JSON") from None
++        if not isinstance(st, dict) or not isinstance(st.get("env", {}), dict):
++            raise CheckRefused(f"{journal.name}: an inline --settings value is not a JSON object with an env object")
++        if STEER_SWITCH in st.get("env", {}):
++            found.append(st["env"][STEER_SWITCH])
++    if len(set(map(str, found))) > 1:
++        raise CheckRefused(f"{journal.name}: the inline settings name {STEER_SWITCH} twice, differently")
++    return found[0] if found else None
++
++
++def _auto_mode_records(path: Path) -> int:
++    """The transcript's auto_mode attachment records, read from the raw lines (no view: this count must hold even
++    where a view refuses or admits the record)."""
++    n = 0
++    for line in path.read_text(errors="replace").splitlines():
++        try:
++            rec = json.loads(line)
++        except json.JSONDecodeError:
++            continue
++        if (isinstance(rec, dict) and rec.get("type") == "attachment" and isinstance(rec.get("attachment"), dict)
++                and rec["attachment"].get("type") == AUTO_MODE_ATTACHMENT):
++            n += 1
++    return n
++
++
++def steer_condition_problems(path: Path) -> list[str]:
++    """The study condition held: under the switch off (any turn's journal), no auto_mode record and no turn without
++    it. [harness-condition-violated] otherwise."""
++    journals = sorted((int(m.group(1)), p) for p in path.parent.iterdir()
++                      if (m := _LAUNCH_JOURNAL.fullmatch(p.name)))
++    values = [(n, _journal_switch(p)) for n, p in journals]
++    off = [n for n, v in values if isinstance(v, str) and v.strip().lower() in STEER_OFF_VALUES]
++    if not off:
++        return []
++    problems = []
++    if len(off) != len(values):
++        others = [n for n, _ in values if n not in off]
++        problems.append(f"[{HARNESS_CONDITION_VIOLATED}] {STEER_SWITCH} is off in turn(s) {off} and not in turn(s) "
++                        f"{others}: the bash-first steer condition did not hold for the whole take")
++    count = _auto_mode_records(path)
++    if count:
++        problems.append(f"[{HARNESS_CONDITION_VIOLATED}] the take ran with {STEER_SWITCH} off, and its transcript "
++                        f"carries {count} auto_mode attachment(s): the bash-first steer reached the agent")
++    return problems
++
++
+ def recorded_mode_problems(path: Path, pre: dict, arm) -> list[str]:
+     """R4C-5: the session recorded exactly the arm's pinned mode, and nothing else."""
+     want = mode_for_arm(pre, arm)
+@@ -1954,6 +2033,8 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
+     if not is_walk:
+         problems += recorded_mode_problems(path, design.pre, arm)
+     problems += design_tree_problems(path, design)               # W7B (Q-w6i-5)
++    if design.harness == CLAUDE_CODE:
++        problems += steer_condition_problems(path)               # the bash-first steer OFF (glitch-6b, 15 Oct)
+     # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm, so the ledger's arm must be the take's.
+     led = _ledger_beside(path)
+     if led is not None and led.get("arm") != arm:
+@@ -2320,6 +2401,8 @@ def check4_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wordi
+         _PRE_IN_FORCE.reset(token)
+     problems += recorded_mode_problems(path, design.pre, arm)          # D1: as for a take
+     problems += design_tree_problems(path, design)                     # D1: as for a take
++    if design.harness == CLAUDE_CODE:
++        problems += steer_condition_problems(path)                     # the bash-first steer OFF (glitch-6b, 15 Oct)
+     beside = _ledger_beside(path)
+     if isinstance(beside, dict) and beside.get("arm") != arm:
+         problems.append(f"[constant-binding] the walk's driver ledger records arm {beside.get('arm')!r}, and the walk is "
+diff --git a/evals/gap-study-4/tests/test_steer_condition.py b/evals/gap-study-4/tests/test_steer_condition.py
+new file mode 100644
+index 00000000..4110347e
+--- /dev/null
++++ b/evals/gap-study-4/tests/test_steer_condition.py
+@@ -0,0 +1,160 @@
++#!/usr/bin/env python3
++"""The bash-first steer OFF is a study condition the checker verifies (glitch-6b's ruling, 15 Oct 2026, approved by
++Javier's "Your call sounds good"; proposed by the box lane for the harness lane to route).
++
++Every claude-code take runs with CLAUDE_CODE_THRIFTY_SONIC=false (box/run_take.BASH_FIRST_STEER_ENV), in the exec's
++pairs and in the inline --settings env that each turn's launch journal (turn-N.jsonl.launch.json) records. Claude Code
++2.1.296 then never emits its auto_mode attachment (the Bash-first steer). A silent failure of that switch must not
++pass, so:
++
++  S-violated   a take whose launch journals set the switch off and whose transcript carries an auto_mode
++               attachment yields one `[harness-condition-violated]` refusal naming the count.
++  S-clean      the switch off and no auto_mode record: nothing.
++  S-not-set    no journal sets the switch (the product default, e.g. the 15 Oct walks): this rule says nothing;
++               the switch on: nothing either (another condition, not this one's).
++  S-disagree   turns that disagree on the switch refuse: the condition did not hold for the whole take.
++  S-unreadable a launch journal that is not JSON, or a --settings value that is not a JSON object, raises
++               CheckRefused rather than guess.
++  S-wired      check4 and check4_walk both add these problems for the take.
++  S-witness    each clause dropped in memory turns a check red.
++
++Synthetic fixtures only.
++"""
++
++from __future__ import annotations
++
++import ast
++import json
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++from unittest import mock
++
++sys.dont_write_bytecode = True
++HERE = Path(__file__).resolve().parent.parent
++sys.path.insert(0, str(HERE))
++
++import check_take as ct  # noqa: E402
++
++SWITCH = "CLAUDE_CODE_THRIFTY_SONIC"
++AUTO = {"type": "attachment", "isSidechain": False,
++        "attachment": {"type": "auto_mode", "autoModeConsentFlow": False, "bashFirst": True,
++                       "bashFirstSteer": "relaxed", "steerOnly": True, "bypass": True},
++        "rendered": [{"content": "While bypass permissions mode is active:\n\nSynthetic steer."}],
++        "renderedRole": "system"}
++USER = {"type": "user", "message": {"content": "Run stage 00."}}
++
++
++def settings(value):
++    env = {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1"}
++    if value is not None:
++        env[SWITCH] = value
++    return json.dumps({"availableModels": ["m"], "env": env, "fallbackModel": [], "switchModelsOnFlag": False},
++                      sort_keys=True, separators=(",", ":"))
++
++
++def journal(value):
++    return {"schema": 1, "harness": "claude-code",
++            "argv": ["claude", "-p", "x", "--model", "m", "--settings", settings(value), "--session-id", "s"]}
++
++
++def take(tmp: Path, records, switch_values) -> Path:
++    path = tmp / "transcript.jsonl"
++    path.write_text("".join(json.dumps(r) + "\n" for r in records))
++    for n, v in enumerate(switch_values, 1):
++        (tmp / f"turn-{n}.jsonl").write_text("")
++        (tmp / f"turn-{n}.jsonl.launch.json").write_text(json.dumps(journal(v)))
++    return path
++
++
++class Steer(unittest.TestCase):
++    def run_case(self, records, values):
++        with tempfile.TemporaryDirectory() as d:
++            return ct.steer_condition_problems(take(Path(d), records, values))
++
++    def check_violated(self):
++        got = self.run_case([USER, AUTO, USER, AUTO], ["false", "false"])
++        if len(got) != 1 or not got[0].startswith("[harness-condition-violated] ") or "2 auto_mode" not in got[0]:
++            return [f"S-violated: {got}"]
++        if ct.reason_ids(got) != ["harness-condition-violated"]:
++            return ["S-violated: not routable by its id"]
++        for off in ("0", "off", " FALSE "):
++            if not self.run_case([AUTO], [off]):
++                return [f"S-violated: {off!r} not read as off"]
++        return []
++
++    def check_quiet(self):
++        out = []
++        for name, records, values in (("S-clean", [USER], ["false"]), ("S-not-set", [AUTO], [None]),
++                                      ("S-on", [AUTO], ["1"]), ("S-no-journal", [AUTO], [])):
++            got = self.run_case(records, values)
++            if got:
++                out.append(f"{name}: {got}")
++        return out
++
++    def check_disagree(self):
++        got = self.run_case([USER], ["false", None])
++        return [] if ct.reason_ids(got) == ["harness-condition-violated"] else [f"S-disagree: {got}"]
++
++    def check_unreadable(self):
++        out = []
++        for name, text in (("not json", "{"), ("settings not an object", json.dumps(
++                {"argv": ["claude", "--settings", "[]"]})), ("argv not a list", json.dumps({"argv": "claude"}))):
++            with tempfile.TemporaryDirectory() as d:
++                path = take(Path(d), [AUTO], [])
++                (Path(d) / "turn-1.jsonl.launch.json").write_text(text)
++                try:
++                    ct.steer_condition_problems(path)
++                    out.append(f"S-unreadable: {name} was read")
++                except ct.CheckRefused:
++                    pass
++        return out
++
++    def check_wired(self):
++        tree = ast.parse(Path(ct.__file__).read_text())
++        out = []
++        for fn in ("check4", "check4_walk"):
++            body = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == fn)
++            calls = {c.func.id for c in ast.walk(body) if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
++            if "steer_condition_problems" not in calls:
++                out.append(f"S-wired: {fn} does not add the steer condition's problems")
++        return out
++
++    def test_violated(self):
++        self.assertEqual(self.check_violated(), [])
++
++    def test_quiet(self):
++        self.assertEqual(self.check_quiet(), [])
++
++    def test_disagree(self):
++        self.assertEqual(self.check_disagree(), [])
++
++    def test_unreadable(self):
++        self.assertEqual(self.check_unreadable(), [])
++
++    def test_wired(self):
++        self.assertEqual(self.check_wired(), [])
++
++    def test_witnesses(self):
++        all_checks = lambda: (self.check_violated() + self.check_quiet() + self.check_disagree()  # noqa: E731
++                              + self.check_unreadable())
++        mutants = (
++            ("no off values", lambda: mock.patch.object(ct, "STEER_OFF_VALUES", ())),
++            ("another switch name", lambda: mock.patch.object(ct, "STEER_SWITCH", "CLAUDE_CODE_OTHER")),
++            ("every value read as off", lambda: mock.patch.object(ct, "STEER_OFF_VALUES",
++                                                                  ("0", "false", "no", "off", "1", ""))),
++            ("another attachment type", lambda: mock.patch.object(ct, "AUTO_MODE_ATTACHMENT", "auto_mode_exit")),
++        )
++        for name, ctx in mutants:
++            with ctx():
++                try:
++                    got = all_checks()
++                except Exception as e:  # noqa: BLE001 - a mutant that crashes a check is red too
++                    got = [f"raised {type(e).__name__}"]
++            print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
++            self.assertTrue(got, name)
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)

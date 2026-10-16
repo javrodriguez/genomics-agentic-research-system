@@ -26,6 +26,7 @@ back-scan-plain, and one per unexercised guard (MINOR 5).
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -82,6 +83,7 @@ class FakeRunner(wl.Runner):
         self.sha_override = {}          # a path whose sha256 athena misreports (the read-back guards)
         self.ancestor_rc = 0            # merge-base --is-ancestor's exit on athena
         self.listheads_override = None  # what `git bundle list-heads` prints, when set
+        self.ref_type = "commit"        # what athena's `git cat-file -t <ref>` prints
 
     def local(self, argv, *, timeout=3600):
         argv = list(argv)
@@ -108,12 +110,14 @@ class FakeRunner(wl.Runner):
             if path in self.sha_override:
                 return 0, self.sha_override[path] + "  " + path + "\n", ""
             return (0, hashlib.sha256(Path(src).read_bytes()).hexdigest() + "  " + path + "\n", "") if src else (1, "", "")
-        if cmd.startswith("git clone -q -b"):
+        if " clone -q -b " in cmd:
             return 0, "", ""
         if cmd.endswith("/repo rev-parse HEAD"):
             return 0, (self.athena_head or "") + "\n", ""
         if " rev-parse --verify " in cmd:
             return 0, (self.athena_tip or "") + "\n", ""
+        if " cat-file -t " in cmd:
+            return 0, self.ref_type + "\n", ""
         if " merge-base --is-ancestor " in cmd:
             return self.ancestor_rc, "", ""
         if " bundle create " in cmd:
@@ -177,6 +181,9 @@ class FakeSuite:
         if self.public_error:
             raise RuntimeError("the public reference could not be read anonymously; nothing ships")
         return list(self.public)
+
+    def binary_blobs_hashed(self, repo, sha, present):
+        return nul_blobs(repo, sha, present)
 
     def rulings_file(self, repo):
         return os.path.join(repo, ".git", "hooks", "glitch-gitleaksignore")
@@ -349,10 +356,12 @@ def l2(mod) -> list:
     return out
 
 
-def fetch_rig(mod, t, *, walk_state="exit=0", commit_on_athena=True, suite_kw=None, suite=None, gitleaks="gitleaks",
-              make_commit=None, runner_kw=None, after_runner=None):
+def fetch_rig(mod, t, *, walk_state="exit=0", commit_on_athena=True, suite_kw=None, suite=None, gitleaks=None,
+              make_commit=None, runner_kw=None, after_runner=None, make_bundle=None):
     """A Mac records clone at `head`, an athena clone with one walk commit (or make_commit(athena)), the real
     `<head>..main` bundle; fetch through the fake athena with a fake athena_suite (or the real one, `suite`)."""
+    if gitleaks is None:
+        gitleaks = fake_gitleaks(t)
     repo, root, head = make_repo(t)
     athena = os.path.join(t, "athena-repo")
     git("clone", "-q", repo, athena)
@@ -366,7 +375,10 @@ def fetch_rig(mod, t, *, walk_state="exit=0", commit_on_athena=True, suite_kw=No
     tip = git("-C", athena, "rev-parse", "HEAD").strip()
     back = os.path.join(t, "athena-back.bundle")
     if commit_on_athena:
-        git("-C", athena, "bundle", "create", back, f"{head}..main")
+        if make_bundle is None:
+            git("-C", athena, "bundle", "create", back, f"{head}..main")
+        else:
+            make_bundle(athena, head, back)
     runner = FakeRunner(athena_tip=tip, walk_state=walk_state, back_bundle=back, **(runner_kw or {}))
     if after_runner is not None:
         after_runner(runner, tip)
@@ -379,6 +391,14 @@ def fetch_rig(mod, t, *, walk_state="exit=0", commit_on_athena=True, suite_kw=No
         got = e
     runner.fake_suite = fake
     return runner, got, repo, head, tip
+
+
+def fake_gitleaks(t):
+    path = os.path.join(t, "fake-gitleaks")
+    if not os.path.exists(path):
+        Path(path).write_text("#!" + sys.executable + "\n" + FAKE_GITLEAKS)
+        os.chmod(path, 0o755)
+    return path
 
 
 def walk_branches(repo):
@@ -394,7 +414,8 @@ def l3(mod) -> list:
         if git("-C", repo, "rev-parse", "refs/heads/walk/w-AbCd1234").strip() != tip:
             out.append("L3-fetch: the records clone does not hold the walk's tip")
         creates = [c[1] for c in runner.calls if c[0] == "remote" and " bundle create " in c[1]]
-        if creates != [f"git -C {CHILD}/repo bundle create {CHILD}/walk-back.bundle {head}..main"]:
+        if creates != ["GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0 git -C "
+                       f"{CHILD}/repo bundle create {CHILD}/walk-back.bundle {head}..main"]:
             out.append("L3-fetch: the back bundle is not exactly the new commits")
         scans = runner.fake_suite.scans
         if len(scans) != 1 or {k: scans[0][k] for k in ("sha", "public", "rulings", "allow_blobs", "ruled",
@@ -410,12 +431,28 @@ def l3(mod) -> list:
                      and "fetch" in c[1])
         if i_scan is None or not i_scan < i_rec:
             out.append("L3-fetch: the records clone is fetched before the scan")
+        rec_fetch = runner.calls[i_rec][1]
+        if "--no-tags" not in rec_fetch or rec_fetch[-1] != "refs/walk/back:refs/heads/walk/w-AbCd1234" \
+                or any(str(a).endswith(".bundle") for a in rec_fetch):
+            out.append("L3-fetch: the records clone is not filled from the scanned scratch's refs/walk/back alone")
     with tempfile.TemporaryDirectory() as t:
         _, got, repo, _, _ = fetch_rig(mod, t, suite_kw={"nonpublic_finding": True})
         if not isinstance(got, mod.LaunchRefused):
             out.append("L3-fetch: a finding in the walk's commits is fetched (no allowance comes back)")
         elif walk_branches(repo):
             out.append("L3-fetch: a refused fetch left a walk branch")
+    # MAJOR I: an extra blob riding in the pack, an annotated tag riding with the ref: refused, records untouched
+    for why, maker in (("an extra unreachable blob", bundle_with_extra_blob(b"PLANTED synthetic extra\n")),
+                       ("an annotated tag ref", bundle_with_tag)):
+        with tempfile.TemporaryDirectory() as t:
+            runner, got, repo, _, _ = fetch_rig(mod, t, make_bundle=maker)
+            if not isinstance(got, mod.LaunchRefused):
+                out.append(f"L3-fetch: a back bundle with {why} is fetched")
+            if walk_branches(repo) or git("-C", repo, "for-each-ref", "refs/tags/").strip():
+                out.append(f"L3-fetch: a back bundle with {why} left a ref in the records clone")
+            if any(c[0] == "local" and c[1][:3] == ["git", "-C", repo] and "fetch" in c[1] and
+                   any(str(a).endswith(".bundle") for a in c[1]) for c in runner.calls):
+                out.append("L3-fetch: the records clone is fetched from the bundle, not the scanned scratch")
     with tempfile.TemporaryDirectory() as t:
         _, got, _, _, _ = fetch_rig(mod, t, walk_state="running")
         if not isinstance(got, mod.LaunchRefused):
@@ -464,12 +501,32 @@ def l5(mod) -> list:
         _, got, repo, _, _ = fetch_rig(mod, t, suite_kw={"scanned": 0})
         if not isinstance(got, mod.LaunchRefused) or "scanned no commit" not in str(got) or walk_branches(repo):
             out.append(f"L5-guards: a return scan of no commit: {got}")
+    # the tag case: ship refuses a --ref that is an annotated tag; fetch refuses an athena ref that is one
+    with tempfile.TemporaryDirectory() as t:
+        repo, root, head = make_repo(t)
+        git("-C", repo, "tag", "-a", "-m", "a tag", "walk-tag")
+        reserve = reserve_file(t)
+        with mock.patch.object(mod, "PINNED_TREE", root), \
+                mock.patch.object(mod, "RESERVE_SHA256", hashlib.sha256(Path(reserve).read_bytes()).hexdigest()):
+            r = FakeRunner(athena_head=head)
+            try:
+                mod.ship(r, repo=repo, ref="walk-tag", suite="/x", reserve=reserve, gitleaks="gitleaks",
+                         work=os.path.join(t, "w"), precheck=lambda s: [], suite_module=FakeSuite([]))
+                out.append("L5-guards: an annotated tag ships as the ref")
+            except mod.LaunchRefused as e:
+                if "annotated tag" not in str(e) or any(c[0] != "local" for c in r.calls):
+                    out.append(f"L5-guards: the tag ref refused for another reason or after athena: {e}")
+    with tempfile.TemporaryDirectory() as t:
+        _, got, repo, _, _ = fetch_rig(mod, t, after_runner=lambda r, tip: setattr(r, "ref_type", "tag"))
+        if not isinstance(got, mod.LaunchRefused) or "annotated tag" not in str(got) or walk_branches(repo):
+            out.append(f"L5-guards: an athena ref that is a tag is fetched: {got}")
     for name, want, runner_kw, after in (
             ("merge-base head..tip", "athena's tip does not descend from the shipped head", None,
              lambda r, tip: setattr(r, "ancestor_rc", 1)),
             ("the back bundle sha", "the back bundle's sha256 on the Mac is not athena's", None,
              lambda r, tip: r.sha_override.update({f"{CHILD}/walk-back.bundle": "0" * 64})),
-            ("got != tip", "the back bundle's tip is not athena's", None,
+            ("the back bundle's heads (MAJOR I; it now also stands in front of got != tip)",
+             "the back bundle's heads are not exactly the walk's tip at its ref", None,
              lambda r, tip: setattr(r, "athena_tip", "f" * 40))):
         with tempfile.TemporaryDirectory() as t:
             _, got, repo, _, _ = fetch_rig(mod, t, runner_kw=runner_kw, after_runner=after)
@@ -580,6 +637,544 @@ def l7(mod) -> list:
     return out
 
 
+def nul_blobs(repo, sha, present):
+    """athena_suite.binary_blobs_hashed's rule, for the fakes: (path, blob id, sha256) of every blob reachable from
+    sha and not from present whose first 8000 bytes hold a NUL."""
+    objs = git("-C", repo, "rev-list", "--objects", sha, *(["--not"] + list(present) if present else [])).splitlines()
+    out = []
+    for line in objs:
+        oid, _, path = line.partition(" ")
+        if not path or git("-C", repo, "cat-file", "-t", oid).strip() != "blob":
+            continue
+        body = subprocess.run(["git", "-C", repo, "cat-file", "blob", oid], capture_output=True, env=GIT_ENV).stdout
+        if b"\0" in body[:8000]:
+            out.append((path, oid, hashlib.sha256(body).hexdigest()))
+    return sorted(out)
+
+
+FAKE_GITLEAKS = """import json, os, re, sys
+a = sys.argv
+src, report = a[-1], a[a.index("--report-path") + 1]
+honour_allow = "--ignore-gitleaks-allow" not in a          # gitleaks' own rule: an allow comment hides its line
+if os.environ.get("GITLEAKS_CONFIG"):                       # an operator config that drops every rule
+    json.dump([], open(report, "w"))
+    sys.exit(0)
+SIGS = (b"\\x1f\\x8b", b"BZh", b"\\x28\\xb5\\x2f\\xfd", b"7z\\xbc\\xaf\\x27\\x1c", b"PK\\x03\\x04")
+TOKEN = re.compile(rb"ghp_[A-Za-z0-9]{36}")
+found = []
+for n in sorted(os.listdir(src)):
+    data = open(os.path.join(src, n), "rb").read()
+    if data.startswith(SIGS) or data[257:262] == b"ustar":      # gitleaks dir skips what looks like an archive
+        continue
+    for i, line in enumerate(data.splitlines(), 1):
+        if honour_allow and b"gitleaks:allow" in line:
+            continue
+        if b"PLANTED" in line:
+            found.append({"File": os.path.join(src, n), "RuleID": "x", "StartLine": i})
+        if TOKEN.search(line):
+            found.append({"File": os.path.join(src, n), "RuleID": "github-pat", "StartLine": i})
+json.dump(found, open(report, "w"))
+"""
+
+
+def empty_subtree_commit(repo, name):
+    """A commit whose tree adds one EMPTY subtree entry `name` (no file under it): diff-tree -r never lists it."""
+    empty = subprocess.run(["git", "-C", repo, "hash-object", "-t", "tree", "-w", "--stdin"], input=b"",
+                           capture_output=True, env=GIT_ENV, check=True).stdout.decode().strip()
+    listing = git("-C", repo, "ls-tree", "HEAD")
+    tree = subprocess.run(["git", "-C", repo, "mktree"], input=(listing + f"040000 tree {empty}\t{name}\n").encode(),
+                          capture_output=True, env=GIT_ENV, check=True).stdout.decode().strip()
+    c = git("-C", repo, "commit-tree", tree, "-p", "HEAD", "-m", "walk").strip()
+    git("-C", repo, "update-ref", "refs/heads/main", c)
+    git("-C", repo, "reset", "-q", "--hard", "main")
+
+
+def _hash_tree(repo, raw: bytes, literally=False) -> str:
+    argv = ["git", "-C", repo, "hash-object", "-t", "tree", "-w", "--stdin"] + (["--literally"] if literally else [])
+    return subprocess.run(argv, input=raw, capture_output=True, env=GIT_ENV, check=True).stdout.decode().strip()
+
+
+def _raw_root(repo) -> bytes:
+    return subprocess.run(["git", "-C", repo, "cat-file", "tree", "HEAD^{tree}"], capture_output=True, env=GIT_ENV,
+                          check=True).stdout
+
+
+def _commit_tree(repo, tree):
+    c = git("-C", repo, "commit-tree", tree, "-p", "HEAD", "-m", "walk").strip()
+    git("-C", repo, "update-ref", "refs/heads/main", c)
+
+
+def disguised_tree_commit(repo, inner_name):
+    """A commit whose root carries `100644 innocent <TREE id>`: a blob-mode entry pointing at a tree object (written
+    with hash-object --literally) whose inner tree holds an empty folder named `inner_name`."""
+    empty = _hash_tree(repo, b"")
+    inner = _hash_tree(repo, f"40000 {inner_name}".encode() + b"\0" + bytes.fromhex(empty))
+    outer = _hash_tree(repo, _raw_root(repo) + b"100644 innocent\0" + bytes.fromhex(inner), literally=True)
+    _commit_tree(repo, outer)
+
+
+def zero_padded_mode_commit(repo):
+    """A commit whose root adds `040000 zdir <empty tree>`: a zero-padded file mode, which every reader accepts and
+    only fsck --strict reports."""
+    empty = _hash_tree(repo, b"")
+    outer = _hash_tree(repo, _raw_root(repo) + b"040000 zdir\0" + bytes.fromhex(empty), literally=True)
+    _commit_tree(repo, outer)
+
+
+def octopus_commit(repo):
+    """A clean three-parent merge: two side commits and HEAD, the tree HEAD's."""
+    sides = []
+    for n in (1, 2):
+        Path(repo, f"side{n}.txt").write_text(f"{n}\n")
+        git("-C", repo, "add", f"side{n}.txt")
+        tree = git("-C", repo, "write-tree").strip()
+        sides.append(git("-C", repo, "commit-tree", tree, "-p", "HEAD", "-m", f"side {n}").strip())
+        git("-C", repo, "reset", "-q", "--hard", "HEAD")
+    c = git("-C", repo, "commit-tree", git("-C", repo, "rev-parse", "HEAD^{tree}").strip(), "-p", "HEAD",
+            "-p", sides[0], "-p", sides[1], "-m", "octopus").strip()
+    git("-C", repo, "update-ref", "refs/heads/main", c)
+    git("-C", repo, "reset", "-q", "--hard", "main")
+
+
+def bundle_with_extra_blob(content: bytes):
+    """A make_bundle for fetch_rig: the walk's objects plus one blob no commit reaches, packed by pack-objects."""
+    def make(athena, head, back):
+        tip = git("-C", athena, "rev-parse", "main").strip()
+        extra = subprocess.run(["git", "-C", athena, "hash-object", "-w", "--stdin"], input=content,
+                               capture_output=True, env=GIT_ENV, check=True).stdout.decode().strip()
+        objs = git("-C", athena, "rev-list", "--objects", "--no-object-names", tip, "--not", head).split() + [extra]
+        pack = subprocess.run(["git", "-C", athena, "pack-objects", "--stdout"], input="\n".join(objs).encode(),
+                              capture_output=True, env=GIT_ENV, check=True).stdout
+        Path(back).write_bytes(f"# v2 git bundle\n-{head} head\n{tip} refs/heads/main\n\n".encode() + pack)
+    return make
+
+
+def bundle_with_tag(athena, head, back):
+    """A make_bundle for fetch_rig: the walk's range plus an annotated tag, refs/tags/evil, on the tip."""
+    git("-C", athena, "tag", "-a", "evil", "-m", "PLANTED synthetic tag", "main")
+    git("-C", athena, "bundle", "create", back, f"{head}..main", "evil")
+
+
+def merge_commit(repo, added_path):
+    """A side commit, then a --no-ff merge of it that also adds `added_path`, a file in neither parent."""
+    git("-C", repo, "checkout", "-q", "-b", "side")
+    Path(repo, "side.txt").write_text("side\n")
+    git("-C", repo, "add", "side.txt")
+    git("-C", repo, "commit", "-q", "-m", "side")
+    git("-C", repo, "checkout", "-q", "main")
+    git("-C", repo, "merge", "-q", "--no-ff", "--no-commit", "side")
+    Path(repo, added_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(repo, added_path).write_text("w\n")
+    git("-C", repo, "add", added_path)
+    git("-C", repo, "commit", "-q", "-m", "merge")
+
+
+def evidence_path(walk, data):
+    return f"evals/gap-study-4/rehearsals/{walk}/evidence/blobs/" + hashlib.sha256(data).hexdigest()
+
+
+def blob_rig(t, files):
+    """A head commit, then one walk commit adding `files` ({path: bytes}); returns (repo, head, tip)."""
+    repo, _, head = make_repo(t)
+    for path, data in files.items():
+        full = Path(repo, path)
+        full.parent.mkdir(parents=True, exist_ok=True)
+        full.write_bytes(data)
+        git("-C", repo, "add", path)
+    git("-C", repo, "commit", "-q", "-m", "walk")
+    return repo, head, git("-C", repo, "rev-parse", "HEAD").strip()
+
+
+def make_gz(payload: bytes, *, extra=None, name=None, comment=None, fhcrc=False, reserved=0,
+            mtime=b"\x00\x00\x00\x00", level=6) -> bytes:
+    """One RFC 1952 member built by hand, so the header fields a test needs can be set."""
+    import zlib
+    flg = reserved | (0x04 if extra is not None else 0) | (0x08 if name is not None else 0) \
+        | (0x10 if comment is not None else 0) | (0x02 if fhcrc else 0)
+    head = b"\x1f\x8b\x08" + bytes([flg]) + mtime + b"\x00\xff"
+    if extra is not None:
+        head += len(extra).to_bytes(2, "little") + extra
+    if name is not None:
+        head += name + b"\x00"
+    if comment is not None:
+        head += comment + b"\x00"
+    if fhcrc:
+        head += (zlib.crc32(head) & 0xFFFF).to_bytes(2, "little")
+    c = zlib.compressobj(level, zlib.DEFLATED, -zlib.MAX_WBITS)
+    body = c.compress(payload) + c.flush()
+    return head + body + (zlib.crc32(payload) & 0xFFFFFFFF).to_bytes(4, "little") \
+        + (len(payload) & 0xFFFFFFFF).to_bytes(4, "little")
+
+
+_BOMB = []
+
+
+def _absolute_cap_bomb() -> bytes:
+    """MINOR 3's bomb, made once per process: ~17.3 MiB of base64 text (no NUL), gzip level 1 (~1.3:1, far under
+    256:1), so only the 16 MiB absolute cap refuses it."""
+    if not _BOMB:
+        import base64
+        import gzip
+        _BOMB.append(gzip.compress(base64.b64encode(os.urandom(13 * 1024 * 1024)), 1))
+    return _BOMB[0]
+
+
+def l8(mod) -> list:
+    """glitch-6b's ruling (b) with the review of b1f5c952 folded: the watcher's gzip evidence blobs ship only parsed,
+    decoded within the per-blob and per-walk bounds, and scanned clean, payload and header fields alike."""
+    import gzip
+    import io
+    out = []
+    text = json.dumps({"path": "plan/approved.json", "text": "ok"}).encode()
+    clean = gzip.compress(text)
+
+    def decode(data, limit=None):
+        buf = io.BytesIO()
+        limit = min(mod.BLOB_MAX_BYTES, len(data) * mod.BLOB_MAX_RATIO) if limit is None else limit
+        return mod.gunzip_to(data, buf, limit), buf.getvalue()
+    try:
+        (n, fields), got = decode(clean)
+        if got != text or n != len(text) or fields:
+            out.append("L8-blobs: a clean gzip does not decode to its bytes")
+        (_, fields), got = decode(make_gz(text, name=b"n.json", comment=b"c", extra=b"xx", fhcrc=True))
+        if got != text or [k for k, _v in fields] != ["FEXTRA", "FNAME", "FCOMMENT"]:
+            out.append("L8-blobs: the header fields are not returned for the scan")
+    except mod.LaunchRefused as e:
+        out.append(f"L8-blobs: a clean gzip is refused: {e}")
+    big_gz = _absolute_cap_bomb()
+    for why, data in (("a non-gzip binary", b"\x00\x01binary"), ("a 20 MiB zero bomb", gzip.compress(b"\0" * (20 << 20))),
+                      ("a ratio bomb", gzip.compress(b"a" * (300 * 1024))),
+                      ("an absolute-cap bomb (no NUL, under 256:1, over 16 MiB)", big_gz),
+                      ("trailing bytes", clean + b"x"), ("a truncated stream", clean[:-6]),
+                      ("a binary payload", gzip.compress(b"\x00\x00bin")),
+                      ("a reserved flag bit", make_gz(text, reserved=0x20)),
+                      ("a bad FHCRC", (lambda g: g[:10] + bytes([g[10] ^ 0xFF, g[11]]) + g[12:])(make_gz(text, fhcrc=True))),
+                      ("a bad CRC32", clean[:-8] + b"\x00\x00\x00\x00" + clean[-4:])):
+        try:
+            decode(data)
+            out.append(f"L8-blobs: {why} decodes")
+        except mod.LaunchRefused:
+            pass
+    with tempfile.TemporaryDirectory() as t:
+        fake = fake_gitleaks(t)
+        suite = FakeSuite([])
+        planted = gzip.compress(b"PLANTED synthetic marker")
+        pad = b"x" * 257
+        textlike = b"\x1f\x8b\x08\x01" + b"A" * 60                     # git reads it as text: no NUL
+        second = gzip.compress(b"another clean record\n")
+        cases = {
+            "clean": ({evidence_path("w001", clean): clean}, True),
+            "planted payload": ({evidence_path("w001", planted): planted}, False),
+            "planted allow line": ((lambda g: {evidence_path("w001", g): g})(
+                gzip.compress(b"PLANTED synthetic  # gitleaks:allow\n")), False),
+            "planted FNAME": ((lambda g: {evidence_path("w001", g): g})(make_gz(text, name=b"PLANTED")), False),
+            "planted FCOMMENT": ((lambda g: {evidence_path("w001", g): g})(make_gz(text, comment=b"PLANTED")), False),
+            "planted FEXTRA": ((lambda g: {evidence_path("w001", g): g})(make_gz(text, extra=b"PLANTED")), False),
+            "non-gzip": ({evidence_path("w001", b"\x00raw"): b"\x00raw"}, False),
+            "bomb": ((lambda g: {evidence_path("w001", g): g})(gzip.compress(b"a" * (20 << 20))), False),
+            "absolute-cap bomb": ({evidence_path("w001", big_gz): big_gz}, False),
+            "outside": ({"evals/gap-study-4/rehearsals/w001/rec.json.gz": clean}, False),
+            "also outside": ({evidence_path("w001", clean): clean,
+                              "evals/gap-study-4/rehearsals/w001/copy.gz": clean}, False),
+            "misnamed": ({"evals/gap-study-4/rehearsals/w001/evidence/blobs/" + "0" * 64: clean}, False),
+            "text-looking gzip": ({"evals/gap-study-4/rehearsals/w001/notes.txt": textlike}, False),
+            "long FNAME": ((lambda g: {evidence_path("w001", g): g})(make_gz(text, name=b"n" * 5000)), False),
+        }
+        for sig, payload in (("gzip", b"\x1f\x8b\x08y"), ("bzip2", b"BZh9"), ("zstd", b"\x28\xb5\x2f\xfd"),
+                             ("7z", b"7z\xbc\xaf\x27\x1c"), ("zip", b"PK\x03\x04"),
+                             ("tar", pad + b"ustar00")):
+            g = gzip.compress(payload + b"\nfill\nPLANTED synthetic\n")
+            cases[f"{sig}-signature payload"] = ({evidence_path("w001", g): g}, False)
+        for name, (files, ok) in cases.items():
+            d = os.path.join(t, name.replace(" ", "-"))
+            os.mkdir(d)
+            repo, head, tip = blob_rig(d, files)
+            try:
+                got = mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
+                if not ok:
+                    out.append(f"L8-blobs: the {name} case is admitted")
+                elif len(got) != 1:
+                    out.append(f"L8-blobs: the clean case admits {len(got)} blob(s)")
+            except mod.LaunchRefused as e:
+                if ok:
+                    out.append(f"L8-blobs: the clean case is refused: {e}")
+                elif "PLANTED" in str(e) or "synthetic" in str(e):
+                    out.append("L8-blobs: a refusal prints decompressed content")
+            if os.path.exists(os.path.join(d, "w")) and any(n.startswith("blobs-") for n in os.listdir(os.path.join(d, "w"))):
+                out.append(f"L8-blobs: the {name} case left its decompressed folder")
+        # MAJOR 2: the per-walk total and count caps
+        two = {evidence_path("w001", clean): clean, evidence_path("w001", second): second}
+        for why, patch in (("the total cap", ("BLOB_TOTAL_MAX", len(text) + 5)), ("the count cap", ("BLOB_MAX_COUNT", 1))):
+            d = os.path.join(t, why.replace(" ", "-"))
+            os.mkdir(d)
+            repo, head, tip = blob_rig(d, two)
+            with mock.patch.object(mod, patch[0], patch[1]):
+                try:
+                    mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
+                    out.append(f"L8-blobs: {why} is not enforced")
+                except mod.LaunchRefused:
+                    pass
+        # a blob already in the shipped head's history
+        d = os.path.join(t, "inhead")
+        os.mkdir(d)
+        repo, _, _ = make_repo(d)
+        pth = evidence_path("w001", clean)
+        Path(repo, pth).parent.mkdir(parents=True)
+        Path(repo, pth).write_bytes(clean)
+        git("-C", repo, "add", pth)
+        git("-C", repo, "commit", "-q", "-m", "in head")
+        head = git("-C", repo, "rev-parse", "HEAD").strip()
+        Path(repo, "n.txt").write_text("n\n")
+        git("-C", repo, "add", "n.txt")
+        git("-C", repo, "commit", "-q", "-m", "walk")
+        tip = git("-C", repo, "rev-parse", "HEAD").strip()
+        with mock.patch.object(mod, "evidence_candidates", lambda r, h, tp: {
+                git("-C", repo, "rev-parse", f"HEAD~1:{pth}").strip(): {pth}}):
+            try:
+                mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
+                out.append("L8-blobs: a blob from the shipped head's history is admitted")
+            except mod.LaunchRefused:
+                pass
+        # MAJOR B: a walk commit's message, tar-signed at offset 257 with a marker after it, and a plain one
+        for why, msg, ok in (("a ustar-signed message", "x" * 257 + "ustar00\nPLANTED synthetic\n", False),
+                             ("a planted message", "walk\nPLANTED synthetic\n", False),
+                             ("a clean message", "Commit one walk; never counted\n", True)):
+            d = os.path.join(t, why.replace(" ", "-"))
+            os.mkdir(d)
+            repo, _, head = make_repo(d)
+            Path(repo, "w.txt").write_text("w\n")
+            git("-C", repo, "add", "w.txt")
+            git("-C", repo, "commit", "-q", "-m", msg)
+            tip = git("-C", repo, "rev-parse", "HEAD").strip()
+            try:
+                mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
+                if not ok:
+                    out.append(f"L8-blobs: {why} passes the walk's message scan")
+            except mod.LaunchRefused as e:
+                if ok:
+                    out.append(f"L8-blobs: {why} is refused: {e}")
+        # MAJOR G: a merge commit adding a planted-name file that is in neither parent
+        d = os.path.join(t, "planted-merge")
+        os.mkdir(d)
+        repo, _, head = make_repo(d)
+        merge_commit(repo, "evals/gap-study-4/rehearsals/w001/PLANTED-synthetic.txt")
+        tip = git("-C", repo, "rev-parse", "HEAD").strip()
+        try:
+            mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
+            out.append("L8-blobs: a planted path added by a merge commit passes the walk's commit scan")
+        except mod.LaunchRefused:
+            pass
+        # MAJOR H: an empty subtree named with a planted marker; a clean octopus (refused by construction)
+        for why, make in (("an empty planted subtree", lambda r: empty_subtree_commit(r, "PLANTED-synthetic")),
+                          ("a clean octopus", octopus_commit)):
+            d = os.path.join(t, why.replace(" ", "-"))
+            os.mkdir(d)
+            repo, _, head = make_repo(d)
+            make(repo)
+            tip = git("-C", repo, "rev-parse", "HEAD").strip()
+            try:
+                mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
+                out.append(f"L8-blobs: {why} passes the walk's commit scan")
+            except mod.LaunchRefused as e:
+                if why == "a clean octopus" and "parents" not in str(e):
+                    out.append(f"L8-blobs: the octopus refused for another reason: {e}")
+        # The sibling review: a blob-mode entry pointing at a tree (both layers; then each layer alone), and a
+        # zero-padded mode only fsck --strict sees
+        for why, make, iso in (("a disguised tree", lambda r: disguised_tree_commit(r, "PLANTED-synthetic"), None),
+                               ("a disguised tree, fsck aside", lambda r: disguised_tree_commit(r, "PLANTED-synthetic"),
+                                ("_fsck_problems", lambda r: [])),
+                               ("a zero-padded mode", zero_padded_mode_commit, None)):
+            d = os.path.join(t, why.replace(" ", "-").replace(",", ""))
+            os.mkdir(d)
+            repo, _, head = make_repo(d)
+            make(repo)
+            tip = git("-C", repo, "rev-parse", "main").strip()
+            ctx = mock.patch.object(mod, iso[0], iso[1], create=True) if iso else contextlib.nullcontext()
+            with ctx:
+                try:
+                    mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
+                    out.append(f"L8-blobs: {why} passes the walk's commit scan")
+                except mod.LaunchRefused:
+                    pass
+        # The type layer on its own: the tree listing itself refuses a blob-mode entry naming a tree (the later
+        # cat-file of the candidates would also fail, so only this direct reading isolates the layer)
+        d = os.path.join(t, "disguised-listing")
+        os.mkdir(d)
+        repo, _, _ = make_repo(d)
+        disguised_tree_commit(repo, "PLANTED-synthetic")
+        try:
+            mod._tree_entries(repo, git("-C", repo, "rev-parse", "main").strip())
+            out.append("L8-blobs: a blob-mode entry naming a tree is listed without refusal")
+        except (mod.LaunchRefused, AttributeError) as e:
+            if isinstance(e, AttributeError):
+                out.append("L8-blobs: no tree-entry listing to check")
+        # MAJOR E and F: a planted path, a planted author
+        for why, kind in (("a planted path", "path"), ("a planted author", "author")):
+            d = os.path.join(t, why.replace(" ", "-"))
+            os.mkdir(d)
+            repo, _, head = make_repo(d)
+            fname = "evals/gap-study-4/rehearsals/w001/PLANTED-synthetic.txt" if kind == "path" else "w.txt"
+            Path(repo, fname).parent.mkdir(parents=True, exist_ok=True)
+            Path(repo, fname).write_text("w\n")
+            git("-C", repo, "add", fname)
+            if kind == "author":
+                git("-C", repo, "commit", "-q", "--author", "PLANTED synthetic <a@invalid>", "-m", "w")
+            else:
+                git("-C", repo, "commit", "-q", "-m", "w")
+            tip = git("-C", repo, "rev-parse", "HEAD").strip()
+            try:
+                mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
+                out.append(f"L8-blobs: {why} passes the walk's commit scan")
+            except mod.LaunchRefused:
+                pass
+    return out
+
+
+def bundle_with_token_header(token: str):
+    """A make_bundle for fetch_rig: a valid bundle with one extra header line carrying `token`, which `git bundle
+    list-heads` reports on stderr ("unrecognized header: <token>")."""
+    def make(athena, head, back):
+        tip = git("-C", athena, "rev-parse", "main").strip()
+        objs = git("-C", athena, "rev-list", "--objects", "--no-object-names", tip, "--not", head).split()
+        pack = subprocess.run(["git", "-C", athena, "pack-objects", "--stdout"], input="\n".join(objs).encode(),
+                              capture_output=True, env=GIT_ENV, check=True).stdout
+        Path(back).write_bytes(f"# v2 git bundle\n-{head} head\n{tip} refs/heads/main\n{token}\n\n".encode() + pack)
+    return make
+
+
+def l9(mod) -> list:
+    """The closure review of a3b09f02: no athena-made byte is echoed, and git runs under a clean environment."""
+    import io
+    out = []
+    marker = "PLANTEDmarker" + "Q" * 20
+    # (1) a token in a bundle header: absent from the refusal and from main()'s printed JSON
+    with tempfile.TemporaryDirectory() as t:
+        runner, got, repo, head, _ = fetch_rig(mod, t, make_bundle=bundle_with_token_header(marker))
+        if not isinstance(got, mod.LaunchRefused):
+            out.append("L9-echo: a bundle with a token header line is fetched")
+        elif marker in str(got):
+            out.append("L9-echo: the refusal echoes athena-made bytes (a bundle header)")
+    with tempfile.TemporaryDirectory() as t:
+        fake = fake_gitleaks(t)
+        holder = {}
+
+        def capture(r, tip):
+            holder["runner"] = r
+        _, got, repo, head, _ = fetch_rig(mod, t, make_bundle=bundle_with_token_header(marker), after_runner=capture)
+        r2 = holder["runner"]
+        work2 = os.path.join(t, "work2")
+        buf = io.StringIO()
+        with mock.patch.object(mod, "Runner", lambda: r2), contextlib.redirect_stdout(buf):
+            code = mod.main(["fetch", "--child", CHILD, "--head", head, "--ref", "main", "--records", repo,
+                             "--gitleaks", fake, "--work", work2, "--suite", "/x/athena_suite.py"])
+        if code == 0 or marker in buf.getvalue() or "refused" not in buf.getvalue():
+            out.append("L9-echo: main() prints athena-made bytes, or does not refuse")
+    # (2) a foreign refusal's words are not echoed (a path can hold a token)
+    with tempfile.TemporaryDirectory() as t:
+        _, got, _, _, _ = fetch_rig(mod, t, suite_kw={"nonpublic_finding": True})
+        if not isinstance(got, mod.LaunchRefused) or "x.txt" in str(got):
+            out.append("L9-echo: a foreign refusal's words (a path) are echoed")
+    # (2b) athena's mktemp output is never echoed when it is off its form
+    try:
+        mod._child("/home/javier/" + marker)
+        out.append("L9-echo: a child off its form is admitted")
+    except mod.LaunchRefused as e:
+        if marker in str(e):
+            out.append("L9-echo: the child check echoes athena's mktemp output")
+    # (3) status passes only its closed forms
+    for state in ("exit=0; " + marker, marker, "exit=1234"):
+        r = FakeRunner(walk_state=state)
+        try:
+            mod.status(r, child=CHILD)
+            out.append(f"L9-echo: status returns an open form ({len(state)} bytes)")
+        except mod.LaunchRefused as e:
+            if marker in str(e):
+                out.append("L9-echo: status echoes athena-made bytes")
+    # (4) the clean environment: athena_suite.clean_git_env's rule, and the config-silencing probe
+    with mock.patch.dict(os.environ, {"GIT_DIR": "/x", "GITLEAKS_CONFIG": "/y", "KEEP_ME": "1"}):
+        env = mod.clean_git_env()
+        if any(k.startswith(("GIT_", "GITLEAKS_")) and k not in ("GIT_CONFIG_GLOBAL", "GIT_CONFIG_NOSYSTEM",
+                                                                  "GIT_TERMINAL_PROMPT") for k in env) \
+                or env.get("GIT_CONFIG_GLOBAL") != os.devnull or env.get("GIT_CONFIG_NOSYSTEM") != "1" \
+                or env.get("GIT_TERMINAL_PROMPT") != "0" or env.get("KEEP_ME") != "1":
+            out.append("L9-env: clean_git_env is not athena_suite's rule")
+    with tempfile.TemporaryDirectory() as t:
+        repo, _, head = make_repo(t)
+        zero_padded_mode_commit(repo)
+        tip = git("-C", repo, "rev-parse", "main").strip()
+        silence = {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "fsck.zeroPaddedFilemode", "GIT_CONFIG_VALUE_0": "ignore"}
+        with mock.patch.dict(os.environ, silence):
+            try:
+                mod.admitted_evidence_blobs(FakeSuite([]), repo, head, tip, fake_gitleaks(t), os.path.join(t, "w"))
+                out.append("L9-env: an operator's GIT_CONFIG_COUNT silences fsck --strict")
+            except mod.LaunchRefused:
+                pass
+    # (5, r7) the real Runner.local runs git under the clean environment
+    with mock.patch.dict(os.environ, {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "fsck.zeropaddedfilemode",
+                                      "GIT_CONFIG_VALUE_0": "ignore"}):
+        code, got, _ = mod.Runner().local(["git", "config", "--get", "fsck.zeropaddedfilemode"])
+        if code == 0 or got.strip():
+            out.append("L9-env: Runner.local runs git with the operator's GIT_CONFIG_* environment")
+    # (6, r7) the scan clone: an empty template, and a plain scratch
+    with tempfile.TemporaryDirectory() as t:
+        runner, got, repo, _, _ = fetch_rig(mod, t)
+        clones = [c[1] for c in runner.calls if c[0] == "local" and c[1][:2] == ["git", "clone"]]
+        tmpl = [a for c in clones for a in c if str(a).startswith("--template=")]
+        if not isinstance(got, dict) or len(clones) != 1 or len(tmpl) != 1 or \
+                os.listdir(tmpl[0].split("=", 1)[1]):
+            out.append("L9-env: the scan clone is not made from an empty template")
+        r2, tmpl0 = os.path.join(t, "plain"), os.path.join(t, "tmpl0")
+        os.mkdir(tmpl0)
+        git("init", "-q", f"--template={tmpl0}", r2)
+        if mod.scratch_problems(r2):
+            out.append("L9-env: a plain repository reads as not plain")
+        git("-C", r2, "config", "fsck.zeroPaddedFilemode", "ignore")
+        if not mod.scratch_problems(r2):
+            out.append("L9-env: a template-planted config key is not seen")
+    # (7, r7) the private scan's gitleaks runs under the clean environment
+    with tempfile.TemporaryDirectory() as t:
+        repo, _, head = make_repo(t)
+        Path(repo, "w.txt").write_text("w\n")
+        git("-C", repo, "add", "w.txt")
+        git("-C", repo, "commit", "-q", "-m", "w")
+        tip = git("-C", repo, "rev-parse", "HEAD").strip()
+        with mock.patch.dict(os.environ, {"GITLEAKS_CONFIG": "/x/drops-every-rule.toml"}):
+            try:
+                mod.admitted_evidence_blobs(FakeSuite([]), repo, head, tip, fake_gitleaks(t), os.path.join(t, "w"))
+            except mod.LaunchRefused as e:
+                out.append(f"L9-env: the private scan reads the operator's GITLEAKS_* environment ({e})")
+    # (8, r7) ship's pre-check refusal: the count and fixed kinds, never the list's words
+    with tempfile.TemporaryDirectory() as t:
+        repo, root, head = make_repo(t)
+        reserve = reserve_file(t)
+        probs = [f"athena suite run x (gars) is in progress or unknown (state '{marker}')",
+                 f"an athena_suite list line is not that command's form: '{marker} launched=x'"]
+        with mock.patch.object(mod, "PINNED_TREE", root), \
+                mock.patch.object(mod, "RESERVE_SHA256", hashlib.sha256(Path(reserve).read_bytes()).hexdigest()):
+            try:
+                mod.ship(FakeRunner(athena_head=head), repo=repo, ref="main", suite="/x", reserve=reserve,
+                         gitleaks="gitleaks", work=os.path.join(t, "w"), precheck=lambda s_: probs,
+                         suite_module=FakeSuite([]))
+                out.append("L9-echo: a closed pre-check ships")
+            except mod.LaunchRefused as e:
+                if marker in str(e) or "2 problem(s)" not in str(e):
+                    out.append("L9-echo: ship's pre-check refusal echoes the list's words")
+    # (9, r7) the pid is ASCII digits only; athena's tip is 40 hex
+    r = FakeRunner()
+    r.remote = lambda cmd, timeout=3600: (0, "42\u0663\n", "")
+    cell = {"task": "t", "half": "h", "wording": "w", "arm": "A", "model": "m"}
+    try:
+        mod.run(r, child=CHILD, walk="w-1", cell=cell, reason="r")
+        out.append("L9-echo: a pid that is not ASCII digits is accepted")
+    except mod.LaunchRefused:
+        pass
+    with tempfile.TemporaryDirectory() as t:
+        _, got, repo, _, _ = fetch_rig(mod, t, after_runner=lambda rr, tip: setattr(rr, "athena_tip", "g" * 40))
+        if not isinstance(got, mod.LaunchRefused) or "full commit id" not in str(got) or walk_branches(repo):
+            out.append("L9-echo: an athena tip off its form is used")
+    return out
+
+
 def l4(mod) -> list:
     out = []
     with tempfile.TemporaryDirectory() as t:
@@ -603,7 +1198,7 @@ def l4(mod) -> list:
 
 
 CHECKS = {"L1-ship": l1, "L2-run": l2, "L3-fetch": l3, "L4-bounds": l4, "L5-guards": l5, "L6-start": l6,
-          "L7-env": l7}
+          "L7-env": l7, "L8-blobs": l8, "L9-echo": l9, "L9-env": l9}
 
 
 def witness(edits) -> types.ModuleType:
@@ -631,7 +1226,8 @@ WITNESSES = {
     "hold-dropped": ((("    held = (f\"python3 {child}/athena-reserve hold --by {hid} -- {walk_env} \"",
                        "    held = (f\"{walk_env} \""),), "L2-run"),
     "claim-dropped": ((("python3 -I -c {shlex.quote(claim)} {RESERVATION} {hid}; ", ""),), "L2-run"),
-    "claim-not-exclusive": ((("os.O_WRONLY | os.O_CREAT | os.O_EXCL, ", "os.O_WRONLY | os.O_CREAT, "),), "L2-run"),
+    "claim-not-exclusive": ((("os.open(sys.argv[1], os.O_WRONLY | os.O_CREAT | os.O_EXCL, ",
+                              "os.open(sys.argv[1], os.O_WRONLY | os.O_CREAT, "),), "L2-run"),
     "claim-left-on-closed-gate": ((("|| {{ rm -f {RESERVATION}; exit 1; }}", "|| exit 1"),), "L2-run"),
     "back-range-whole-history": ((("bundle create {child}/walk-back.bundle {head}..{shlex.quote(ref)}",
                                    "bundle create {child}/walk-back.bundle {shlex.quote(ref)}"),), "L3-fetch"),
@@ -642,10 +1238,12 @@ WITNESSES = {
     "reserve-pin-unchecked": ((("    if _sha256(reserve) != RESERVE_SHA256:", "    if False:"),), "L5-guards"),
     "list-heads-unchecked": ((("    if heads != [head, f\"refs/heads/{ref}\"]:", "    if False:"),), "L5-guards"),
     "outward-sha-unchecked": ((("        if got != [want]:", "        if False:"),), "L5-guards"),
-    "back-ancestry-unchecked": ((("    if runner.remote(f\"git -C {child}/repo merge-base --is-ancestor {head} {tip}\")[0] != 0:",
-                                  "    if False:"),), "L5-guards"),
+    "back-ancestry-unchecked": ((('    if runner.remote(f"{REMOTE_GIT} -C {child}/repo merge-base --is-ancestor {head} {tip}")[0] != 0:', "    if False:"),), "L5-guards"),
     "back-sha-unchecked": ((("    if [_sha256(local)] != digest:", "    if False:"),), "L5-guards"),
-    "back-tip-unchecked": ((("    if got != tip:", "    if False:"),), "L5-guards"),
+    # Named equivalent, no witness: fetch's `got != tip`. The back bundle's single head must already be athena's tip
+    # (list-heads, MAJOR I), and a fetch of that bundle's one ref lands exactly that head.
+    "back-heads-unchecked": ((("    if heads != [tip, f\"refs/heads/{ref}\"]:\n        raise LaunchRefused(\"the back bundle's heads",
+                               "    if False:\n        raise LaunchRefused(\"the back bundle's heads"),), "L5-guards"),
     "back-scan-empty-admitted": ((("    if not isinstance(n, int) or n < 1:", "    if not isinstance(n, int):"),),
                                  "L5-guards"),
     "reserve-presence-unchecked": ((("test -f {child}/athena-reserve || exit 1; ", ""),), "L2-run"),
@@ -656,6 +1254,74 @@ WITNESSES = {
     "config-parent-dropped": (((" {machine_gate.ENV_SLOTS}={machine_gate.SLOTS} {CONFIG_PARENT_ENV}={CONFIG_PARENT}",
                                 " {machine_gate.ENV_SLOTS}={machine_gate.SLOTS}"),), "L7-env"),
     "identity-dropped": ((("    walk_env = f\"{env} {COMMIT_IDENTITY}\"", "    walk_env = env"),), "L7-env"),
+    "blob-bound-dropped": ((("            limit = min(BLOB_MAX_BYTES, len(data) * BLOB_MAX_RATIO, BLOB_TOTAL_MAX - total)",
+                             "            limit = 1 << 40"),), "L8-blobs"),
+    "absolute-cap-dropped": ((("            limit = min(BLOB_MAX_BYTES, len(data) * BLOB_MAX_RATIO, BLOB_TOTAL_MAX - total)",
+                               "            limit = min(len(data) * BLOB_MAX_RATIO, BLOB_TOTAL_MAX - total)"),), "L8-blobs"),
+    "count-cap-dropped": ((("    if len(cands) > BLOB_MAX_COUNT:", "    if False:"),), "L8-blobs"),
+    "blob-path-unchecked": ((("            if not all(EVIDENCE_BLOB.fullmatch(p) and p.rsplit(\"/\", 1)[1] == name for p in where):",
+                              "            if False:"),), "L8-blobs"),
+    "blob-name-unbound": ((("EVIDENCE_BLOB.fullmatch(p) and p.rsplit(\"/\", 1)[1] == name for p in where",
+                            "EVIDENCE_BLOB.fullmatch(p) for p in where"),), "L8-blobs"),
+    "blob-head-history-unchecked": ((("            if oid in in_head:", "            if False:"),), "L8-blobs"),
+    "decompressed-findings-ignored": ((("        if problems:\n            names = sorted(", "        if False:\n            names = sorted("),),
+                                       "L8-blobs"),
+    "header-fields-unscanned": ((("_write_private(os.path.join(src, oid + \".header\"),",
+                                  "(lambda *x: None)(os.path.join(src, oid + \".header\"),"),), "L8-blobs"),
+    "reserved-bits-admitted": ((("    if flg & GZ_RESERVED:", "    if False:"),), "L8-blobs"),
+    "fhcrc-unchecked": ((("        if len(data) < i + 2 or int.from_bytes(data[i:i + 2], \"little\") != zlib.crc32(data[:i]) & 0xFFFF:",
+                          "        if len(data) < i + 2:"),), "L8-blobs"),
+    "trailer-unchecked": ((("    if int.from_bytes(trailer[:4], \"little\") != crc or", "    if False and int.from_bytes(trailer[:4], \"little\") != crc or"),), "L8-blobs"),
+    "text-gzip-skipped": ((("        if head_bytes[:2] == b\"\\x1f\\x8b\" or b\"\\0\" in head_bytes:", "        if b\"\\0\" in head_bytes:"),), "L8-blobs"),
+    "allow-comments-honoured": ((("\"--exit-code\", \"0\", \"--ignore-gitleaks-allow\",", "\"--exit-code\", \"0\","),),
+                                "L8-blobs"),
+    "canary-missing-ignored": ((("        if canaries.get(name, 0) != 1:", "        if False:"),), "L8-blobs"),
+    "field-cap-dropped": ((("            if j - i > GZ_FIELD_MAX:", "            if False:"),), "L8-blobs"),
+    "commit-object-unscanned": ((("_git_out(repo, \"cat-file\", \"commit\", commit,", "_git_out(repo, \"log\", \"-1\", \"--format=%B\", commit,"),),
+                                "L8-blobs"),
+    "commit-scan-dropped": ((("            _write_private(os.path.join(src, f\"commit-{commit}\"), ",
+                              "            None and _write_private(os.path.join(src, f\"commit-{commit}\"), "),), "L8-blobs"),
+    "paths-unscanned": ((("            _write_private(os.path.join(src, f\"paths-{commit}\"),",
+                          "            None and _write_private(os.path.join(src, f\"paths-{commit}\"),"),), "L8-blobs"),
+    "empty-subtrees-dropped": ((("    raw = _git_out(repo, \"ls-tree\", \"-r\", \"-t\", \"-z\", \"--full-tree\", commit, binary=True)",
+                                 "    raw = _git_out(repo, \"ls-tree\", \"-r\", \"-z\", \"--full-tree\", commit, binary=True)"),),
+                               "L8-blobs"),
+    "octopus-admitted": ((("            if len(parents) >= 3:", "            if False:"),), "L8-blobs"),
+    "extra-objects-admitted": ((("    if _all_objects(scratch) - before != expected - before:", "    if False:"),), "L3-fetch"),
+    "records-from-the-bundle": ((("\"--no-tags\", scratch, f\"refs/walk/back:refs/heads/walk/{name}\"",
+                                  "\"--no-tags\", local, f\"{ref}:refs/heads/walk/{name}\""),), "L3-fetch"),
+    "tag-ref-admitted": ((("    if _ok(runner.local([\"git\", \"-C\", repo, \"cat-file\", \"-t\", ref]), \"cat-file -t\").strip() != \"commit\":",
+                           "    if False:"),), "L5-guards"),
+    "athena-tag-ref-admitted": ((('    if _ok(runner.remote(f"{REMOTE_GIT} -C {child}/repo cat-file -t {shlex.quote(ref)}"), "the athena ref\'s type").strip() \\\n            != "commit":', "    if False:"),), "L5-guards"),
+    "fsck-dropped": ((("    fsck = _fsck_problems(repo)\n    if fsck:", "    fsck = _fsck_problems(repo)\n    if False:"),), "L8-blobs"),
+    "entry-types-unchecked": ((("            if kinds != {real.get(oid)}:", "            if False:"),), "L8-blobs"),
+    "stderr-echoed": ((("        raise LaunchRefused(f\"{what} failed (exit {code})\")",
+                        "        raise LaunchRefused(f\"{what} failed (exit {code}): {(err or '').strip()[:200]}\")"),), "L9-echo"),
+    "foreign-words-echoed": ((("        why = str(e) if isinstance(e, LaunchRefused) else f\"{type(e).__name__} (its words are not echoed)\"",
+                               "        why = str(e)"),), "L9-echo"),
+    "status-open-form": ((("    if not re.fullmatch(r\"running|lost|exit=[0-9]{1,3}\", state):", "    if False:"),), "L9-echo"),
+    "child-echoed": ((("        raise LaunchRefused(\"the athena child must be a new /home/javier/w-XXXXXXXX folder\")",
+                       "        raise LaunchRefused(f\"the athena child must be a new folder, not {child!r}\")"),), "L9-echo"),
+    "dirty-git-env": ((("    env = {k: v for k, v in os.environ.items() if not k.startswith((\"GIT_\", \"GITLEAKS_\"))}",
+                        "    return dict(os.environ)\n    env = {}"),), "L9-env"),
+    "runner-env-dropped": ((("        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, env=env)",
+                             "        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, env=None)"),), "L9-env"),
+    "template-dropped": ((("\"--no-checkout\", f\"--template={empty}\", records, scratch]", "\"--no-checkout\", records, scratch]"),),
+                         "L9-env"),
+    "plain-scratch-unchecked": ((("    odd = [k for k in keys if k.lower() not in SCRATCH_CORE_KEYS and", "    odd = [k for k in keys if False and"),),
+                                "L9-env"),
+    "canary-scan-env-dropped": ((("                       capture_output=True, timeout=900, env=clean_git_env())",
+                                  "                       capture_output=True, timeout=900)"),), "L9-env"),
+    "precheck-words-echoed": ((("        raise LaunchRefused(f\"the Mac pre-check refuses: {len(problems)} problem(s)\"",
+                                "        raise LaunchRefused(\"the Mac pre-check refuses: \" + \"; \".join(problems) + f\"{len(problems)} problem(s)\""),),
+                              "L9-echo"),
+    "pid-isdigit": ((("    if not re.fullmatch(r\"[0-9]+\", pid):", "    if not pid.isdigit():"),), "L9-echo"),
+    "tip-form-unchecked": ((("    if not HEX40.fullmatch(tip):\n        raise LaunchRefused(\"athena's tip", "    if False:\n        raise LaunchRefused(\"athena's tip"),),
+                           "L9-echo"),
+    "remote-git-bare": ((("REMOTE_GIT = \"GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0 git\"",
+                          "REMOTE_GIT = \"git\""),), "L3-fetch"),
+    # Named equivalent, no witness: the 1f 8b magic check in gzip_header is the only gate before parsing; dropping it
+    # leaves the method byte and zlib's raw inflate to refuse a non-gzip, so only the refusal's words change.
     "back-scan-plain": ((("        n = suite_mod.scan_unpublished(", "        n = 1 or suite_mod.scan_unpublished("),),
                         "L3-fetch"),
 }
@@ -682,6 +1348,12 @@ class TestTheRoad(unittest.TestCase):
 
     def test_l7_env(self):
         self.assertEqual(l7(wl), [])
+
+    def test_l8_blobs(self):
+        self.assertEqual(l8(wl), [])
+
+    def test_l9_echo_and_env(self):
+        self.assertEqual(l9(wl), [])
 
     def test_pinned_tree_is_variants(self):
         import variants
@@ -751,6 +1423,7 @@ class TestRealReturnScan(unittest.TestCase):
         self.assertEqual(branches, "")
 
     def test_binary_blob_refuses(self):
+        """A gzip OUTSIDE rehearsals/<walk>/evidence/blobs/ refuses (it is not the watcher's evidence)."""
         import gzip
 
         def commit(a):
@@ -758,6 +1431,158 @@ class TestRealReturnScan(unittest.TestCase):
             git("-C", a, "add", "rec.json.gz")
             git("-C", a, "commit", "-q", "-m", "record")
         got, branches = self.case(commit)
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def evidence_commit(self, files):
+        def commit(a):
+            for path, data in files.items():
+                Path(a, path).parent.mkdir(parents=True, exist_ok=True)
+                Path(a, path).write_bytes(data)
+                git("-C", a, "add", path)
+            git("-C", a, "commit", "-q", "-m", "walk")
+        return commit
+
+    def test_evidence_gzip_with_a_token_refuses(self):
+        import gzip
+        data = gzip.compress(json.dumps({"text": f"token = {_fake_token()}"}).encode())
+        got, branches = self.case(self.evidence_commit({evidence_path("w001", data): data}))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertIn("private scan refused", str(got))
+        self.assertEqual(branches, "")
+
+    def test_clean_evidence_gzip_is_fetched(self):
+        import gzip
+        data = gzip.compress(json.dumps({"path": "plan/approved.json", "op": "open"}).encode())
+        got, branches = self.case(self.evidence_commit({evidence_path("w001", data): data}))
+        self.assertIsInstance(got, dict, got)
+        self.assertIn("refs/heads/walk/w-AbCd1234", branches)
+
+    def test_non_gzip_evidence_blob_refuses(self):
+        data = b"\x00\x01raw evidence"
+        got, branches = self.case(self.evidence_commit({evidence_path("w001", data): data}))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def test_evidence_gzip_bomb_refuses(self):
+        import gzip
+        data = gzip.compress(b"\0" * (20 * 1024 * 1024))
+        got, branches = self.case(self.evidence_commit({evidence_path("w001", data): data}))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def header_case(self, **field):
+        data = make_gz(json.dumps({"op": "open"}).encode(), **{k: f"token = {_fake_token()}".encode() for k in field})
+        got, branches = self.case(self.evidence_commit({evidence_path("w001", data): data}))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertIn("private scan refused", str(got))
+        self.assertEqual(branches, "")
+
+    def test_token_in_gzip_fextra_refuses(self):
+        self.header_case(extra=True)
+
+    def test_token_in_gzip_fname_refuses(self):
+        self.header_case(name=True)
+
+    def test_token_in_gzip_fcomment_refuses(self):
+        self.header_case(comment=True)
+
+    def test_allow_line_inside_evidence_gzip_refuses(self):
+        import gzip
+        data = gzip.compress(f"token = {_fake_token()}  # gitleaks:allow\n".encode())
+        got, branches = self.case(self.evidence_commit({evidence_path("w001", data): data}))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertIn("private scan refused", str(got))
+        self.assertEqual(branches, "")
+
+    def test_text_looking_gzip_is_not_skipped(self):
+        data = b"\x1f\x8b\x08\x01" + b"A" * 60
+        got, branches = self.case(self.evidence_commit({"evals/gap-study-4/rehearsals/w001/notes.txt": data}))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def signature_case(self, prefix: bytes):
+        import gzip
+        data = gzip.compress(prefix + b"\nfill\n" + f"token = {_fake_token()}\n".encode())
+        got, branches = self.case(self.evidence_commit({evidence_path("w001", data): data}))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertIn("private scan refused", str(got))
+        self.assertEqual(branches, "")
+
+    def test_gzip_signature_payload_refuses(self):
+        self.signature_case(b"\x1f\x8b\x08y")
+
+    def test_bzip2_signature_payload_refuses(self):
+        self.signature_case(b"BZh9")
+
+    def test_zstd_signature_payload_refuses(self):
+        self.signature_case(b"\x28\xb5\x2f\xfd")
+
+    def test_7z_signature_payload_refuses(self):
+        self.signature_case(b"7z\xbc\xaf\x27\x1c")
+
+    def test_zip_signature_payload_refuses(self):
+        self.signature_case(b"PK\x03\x04")
+
+    def test_tar_ustar_at_257_payload_refuses(self):
+        self.signature_case(b"x" * 257 + b"ustar00")
+
+    def message_case(self, pad: int):
+        def commit(a):
+            Path(a, "w.txt").write_text("w\n")
+            git("-C", a, "add", "w.txt")
+            git("-C", a, "commit", "-q", "-m", "x" * pad + "ustar00\n" + f"token = {_fake_token()}\n")
+        got, branches = self.case(commit)
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def test_ustar_at_257_of_the_message_refuses(self):
+        self.message_case(257)
+
+    def test_ustar_at_257_of_athena_suites_message_stream_refuses(self):
+        # athena_suite's stdin stream is `%H%n%B`: 41 bytes (the id and its newline) come first, so ustar at 216 of
+        # the message sits at 257 of that stream, where gitleaks skips it (the closure review's MAJOR B reproduction)
+        self.message_case(257 - 41)
+
+    def test_token_in_a_path_refuses(self):
+        tok = _fake_token()
+
+        def commit(a):
+            path = f"evals/gap-study-4/rehearsals/w001/{tok}.txt"
+            Path(a, path).parent.mkdir(parents=True, exist_ok=True)
+            Path(a, path).write_text("w\n")
+            git("-C", a, "add", path)
+            git("-C", a, "commit", "-q", "-m", "walk")
+        got, branches = self.case(commit)
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def test_token_in_the_author_refuses(self):
+        tok = _fake_token()
+
+        def commit(a):
+            Path(a, "w.txt").write_text("w\n")
+            git("-C", a, "add", "w.txt")
+            git("-C", a, "commit", "-q", "--author", f"{tok} <a@invalid>", "-m", "walk")
+        got, branches = self.case(commit)
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def test_token_named_file_added_by_a_merge_refuses(self):
+        tok = _fake_token()
+        got, branches = self.case(lambda a: merge_commit(a, f"evals/gap-study-4/rehearsals/w001/{tok}.txt"))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def test_token_named_empty_subtree_refuses(self):
+        tok = _fake_token()
+        got, branches = self.case(lambda a: empty_subtree_commit(a, tok))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def test_token_folder_inside_a_disguised_tree_refuses(self):
+        tok = _fake_token()
+        got, branches = self.case(lambda a: disguised_tree_commit(a, tok))
         self.assertIsInstance(got, wl.LaunchRefused)
         self.assertEqual(branches, "")
 

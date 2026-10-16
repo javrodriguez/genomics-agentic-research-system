@@ -96,6 +96,35 @@ VENDOR_KEY_VARIABLES = ("CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GO
 # The current independently grounded transcript projection admits the legacy path.
 GEMINI_MODE_ROUTE_VARIABLES = ("GEMINI_CLI_EXP_AGENT",)
 
+# THE BASH-FIRST STEER OFF (glitch-6b's study-condition ruling, 15 Oct 2026, approved by Javier's "Your call sounds
+# good"). Under bypassPermissions, Claude Code 2.1.296 tells the model "While bypass permissions mode is active:" plus a
+# Bash-first steer (an auto_mode attachment, renderedRole system) whenever its gate HXt() holds: the env switch when it
+# is set, otherwise a model-keyed cohort (CP6 walk w032, claude-opus-5-5, got it; the Haiku walks did not). The study
+# condition is the steer OFF for every claude-code take, whatever the model; the product default is model-dependent
+# (a named departure). Read statically from the pinned binary in the take image (docker create --network none +
+# docker cp, never run; lane-reports/stub-take-20261015/claude-2.1.296-thrifty-sonic-*.json and
+# claude-2.1.296-tribool*.json, bound by tests/test_run_take.py TestBashFirstSteerOff): HXt returns
+# a.CLAUDE_CODE_THRIFTY_SONIC whenever it is not undefined; it is declared rE=H.triBool(); triBool is true for Ne's
+# list ["1","true","yes","on"] and false for vs's ["0","false","no","off"] (lowercased, trimmed), else undefined. The
+# value rides the exec's pairs (the row below) and the inline settings' env (claude_study_settings: the level above the
+# run tree's files, and the argv the per-turn launch journal records for the checker's auto_mode rule).
+BASH_FIRST_STEER_ENV = {"CLAUDE_CODE_THRIFTY_SONIC": "false"}
+
+# THE ISOLATION DENIALS (glitch-6b's ruling, 15 Oct 2026, under Javier's delegation). RemoteTrigger manages claude.ai
+# Routines ("via the claude.ai CCR API"): the one road a take's own login has to work on the account OUTSIDE the box.
+# SendMessage and ListAgents are cross-session channels. All three are DISALLOWED for every claude-code take, and
+# cross-session inbound messages are refused. None of the 25 walks of 15 Oct called them. The names and values are the
+# pinned binary's (lane-reports/stub-take-20261015/claude-2.1.296-isolation-names-20261015.json and
+# claude-2.1.296-cross-session-values-20261015.json; docker create --network none + docker cp, never run):
+# `var N$="RemoteTrigger"`, `var Gn="SendMessage"`, `var xc="ListAgents"`; `--disallowedTools, --disallowed-tools
+# <tools...>` takes a comma or space-separated list; `sHt=["accept","hold","refuse"]`. Defence in depth: the exec argv
+# must deny them (check_claude_settings refuses a turn that denies fewer; the adapter builds the flag) AND the inline
+# settings carry permissions.deny and crossSessionInbound. Not ruled (left as they are): Cron*, ScheduleWakeup,
+# Workflow, the worktree tools, the bundled skills and the two built-in plug-ins.
+ISOLATION_DISALLOWED_TOOLS = ("RemoteTrigger", "SendMessage", "ListAgents")
+CROSS_SESSION_INBOUND = "refuse"
+CLAUDE_DENY_FLAGS = ("--disallowedTools", "--disallowed-tools")
+
 # ------------------------------------------------------------------- THE TAKE ENVIRONMENT (ruling docs-1, w12a)
 # An ALLOWLIST, never a blocklist. Every agent process starts from an EMPTY environment (the turn's launcher, below,
 # execs the harness with exactly this row and nothing else: not the image's ENV, not docker exec's defaults, not the
@@ -111,7 +140,7 @@ TAKE_ENV = {
     CLAUDE_CODE: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
                   "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
                   "DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", **ISOLATION_ENV,
-                  "CLAUDE_CONFIG_DIR": CONFIG_MOUNT, "CLAUDE_CODE_OAUTH_TOKEN": CREDENTIAL},
+                  **BASH_FIRST_STEER_ENV, "CLAUDE_CONFIG_DIR": CONFIG_MOUNT, "CLAUDE_CODE_OAUTH_TOKEN": CREDENTIAL},
     CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
             "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
             "CODEX_HOME": CONFIG_MOUNT},     # no credential: subscriptions only (glitch-06, 14 Oct; the 13 Oct amendment)
@@ -213,7 +242,7 @@ FALLBACK_MODEL_FLAG = "--fallback-model"
 #   fallbackModel []           the chain is taken whole from the highest file that defines it: here, none
 #   availableModels [model]    the take's pinned model only (non-managed lists merge, so box/settings_guard.py also
 #                              refuses a run tree whose settings files carry the key)
-#   env                        FALLBACK_ENV again, at a level above the run tree's files
+#   env                        FALLBACK_ENV and BASH_FIRST_STEER_ENV again, at a level above the run tree's files
 CLAUDE_SETTINGS_FLAG = "--settings"
 # The walk tokens' files on athena (box lane, 14 Oct 2026; the CP2 hands card's "separately prepared protected Athena
 # file for that account"). One file per account, in a folder of its own: /home/javier/gap4-secrets/<account>/, mode 700,
@@ -905,7 +934,9 @@ def claude_study_settings(model: str) -> str:
         raise NotReady(f"CLAUDE_BYPASS_KEY is PENDING: {PENDING_WHY['CLAUDE_BYPASS_KEY']}")
     if CLAUDE_BYPASS_KEY != CLAUDE_BYPASS_NOT_REQUIRED:
         raise Refused("the study sends no bypass acceptance key: RULED not required in -p runs (CLAUDE_BYPASS_RULING)")
-    return json.dumps({"availableModels": [model], "env": dict(FALLBACK_ENV),
+    return json.dumps({"availableModels": [model], "crossSessionInbound": CROSS_SESSION_INBOUND,
+                       "env": {**FALLBACK_ENV, **BASH_FIRST_STEER_ENV},
+                       "permissions": {"deny": list(ISOLATION_DISALLOWED_TOOLS)},
                        "fallbackModel": [], "switchModelsOnFlag": False}, sort_keys=True, separators=(",", ":"))
 
 
@@ -924,6 +955,25 @@ def _flag_values(inner, flag: str) -> list:
             continue
         if tok.startswith(flag + "="):
             out.append(tok[len(flag) + 1:])
+        i += 1
+    return out
+
+
+def _denied_tools(inner) -> set:
+    """Every tool name a Claude Code argv denies by --disallowedTools / --disallowed-tools: the binary's variadic
+    `<tools...>`, so each flag takes the following tokens up to the next one that starts with "-", or its `=` value;
+    each value a comma or space-separated list. The prompt after -p or --print is never read."""
+    out, toks, i = set(), _flag_tokens(inner), 0
+    while i < len(toks):
+        flag, sep, value = toks[i].partition("=")
+        if flag in CLAUDE_DENY_FLAGS:
+            vals = [value] if sep else []
+            i += 1
+            while not sep and i < len(toks) and not toks[i].startswith("-"):
+                vals.append(toks[i])
+                i += 1
+            out |= {n for v in vals for n in v.replace(",", " ").split()}
+            continue
         i += 1
     return out
 
@@ -958,6 +1008,10 @@ def check_claude_settings(inner) -> None:
     models = _flag_values(inner, "--model")
     if len(models) != 1 or not models[0]:
         raise Refused("a claude-code turn names its model exactly once by --model")
+    missing = [t for t in ISOLATION_DISALLOWED_TOOLS if t not in _denied_tools(inner)]
+    if missing:
+        raise Refused(f"a claude-code turn denies {list(ISOLATION_DISALLOWED_TOOLS)} by "
+                      f"{CLAUDE_DENY_FLAGS[0]} (the isolation ruling); it does not deny {missing}")
     given = _flag_values(inner, CLAUDE_SETTINGS_FLAG)
     if given != [claude_study_settings(models[0])]:
         raise Refused(f"a claude-code turn carries exactly one {CLAUDE_SETTINGS_FLAG}: the study's settings for its "

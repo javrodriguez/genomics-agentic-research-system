@@ -1,0 +1,150 @@
+{
+ "anchor": "var H={str:()=>o,rawStr:()=>f,bool:()=>l,triBool:()=>s",
+ "anchor_offset": 207489196,
+ "binary_path": "/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+ "binary_sha256": "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de",
+ "extraction": [
+  {
+   "argv": [
+    "docker",
+    "create",
+    "--pull=never",
+    "--network",
+    "none",
+    "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+    "true"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "3e337f41ec250685cc4c91a586493744639beed2c2ec100082b9095ac4db88e2"
+  },
+  {
+   "argv": [
+    "docker",
+    "cp",
+    "-L",
+    "3e337f41ec250685cc4c91a586493744639beed2c2ec100082b9095ac4db88e2:/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+    "/tmp/tmp.wiAVq0oBTQ/claude.bin"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": ""
+  },
+  {
+   "argv": [
+    "docker",
+    "rm",
+    "3e337f41ec250685cc4c91a586493744639beed2c2ec100082b9095ac4db88e2"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "3e337f41ec250685cc4c91a586493744639beed2c2ec100082b9095ac4db88e2"
+  }
+ ],
+ "image": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+ "probe": "claude-fn-source",
+ "sources": {
+  "any:Ne": [
+   {
+    "offset": 207104974,
+    "sha256_600": "93f20a6512135c97c310366c4d8938efadb0e51d6630da22f0a561ff7c9a2b67",
+    "text": "function Ne(t){var e=this.has(t)&&delete this.__data__[t];return this.size-=e?1:0,e}var gt=Ne;var Pe=\"__lodash_hash_undefined__\",Re=Object.prototype,De=Re.hasOwnProperty;function Le(t){var e=this.__data__;if(m){var n=e[t];return n===Pe?void 0:n}return De.call(e,t)?e[t]:void 0}var ht=Le;var Me=Object.prototype,Ie=Me.hasOwnProperty;function ke(t){var e=this.__data__;return m?e[t]!==void 0:Ie.call(e,t)}var mt=ke;var $e=\"__lodash_hash_undefined__\";function je(t,e){var n=this.__data__;return this.size+=this.has(t)?0:1,n[t]=m&&e===void 0?$e:e,this}var xt=je;function v(t){var e=-1,n=t==null?0:t.lengt"
+   },
+   {
+    "offset": 207125723,
+    "sha256_600": "09daef7f7bf04d8a673d1e0b1f14733372188fc04ddd5b0e04b9a075979b4131",
+    "text": "function Ne(e){if(!e)return!1;if(typeof e===\"boolean\")return e;let n=String(e).toLowerCase().trim();return[\"1\",\"true\",\"yes\",\"on\"].includes(n)}function vs(e){if(e===void 0)return!1;if(typeof e===\"boolean\")return!e;let n=String(e).toLowerCase().trim();return[\"0\",\"false\",\"no\",\"off\"].includes(n)}function XR(e){if(!e||e.startsWith(\"-\")||e.startsWith(\"/\"))return!1;if(e.includes(\"..\"))return!1;if(e.split(\"/\").some((n)=>n===\".\"||n===\"\"))return!1;return/^[a-zA-Z0-9/._+@-]+$/.test(e)}var s=globalThis.process?.getBuiltinModule?.(\"async_hooks\"),iin=s?(e)=>s.AsyncResource.bind(e):(e)=>e;function Oe(){let e"
+   },
+   {
+    "offset": 209217235,
+    "sha256_600": "14eb75c7d7a66e3ab5d099c0d2fdc4fc0dc22ed16af2453aa83b370e487a0606",
+    "text": "function Ne(e,n){return{...e,...N(e,(r)=>r===\"GIT_SSH_COMMAND\"||r===\"GIT_SSH\"),GIT_SSH:void 0,GIT_SSH_COMMAND:n}}function mGn(e,n,{strictHostKeys:r=!0}={}){let{chosen:o,named:i}=K(e,n),s=Rt(i===void 0?\"ssh\":yt(e,i),r);if(s===void 0||s===he&&At(o))return{command:o,env:e};let u=`${o} ${s}`;return{command:u,env:Ne(e,u)}}function K(e,n){let r=H(tA(e,\"GIT_SSH_COMMAND\"))??H(n),o=H(tA(e,\"GIT_SSH\"));return{chosen:r??so([o??\"ssh\"]),named:r!==void 0?wt(r):o}}function kIs(e,n){let r=tA(e,\"GIT_SSH_VARIANT\"),{chosen:o,named:i}=K(e,n);return(r===void 0||r===\"auto\")&&i!==void 0&&![\"ssh\",\"plink\",\"tortoiseplin"
+   },
+   {
+    "offset": 209368291,
+    "sha256_600": "a7848dd822f6dd8a816ead17ac7baa0e1a318074e60e08007e2d4fbe8374e183",
+    "text": "function Ne(e){let n=v(e);return n===\"ENOENT\"||n===\"ENOTDIR\"}async function lo(e){let n=[],r=\"absent\",s=[],S=new Map;async function E(C,w){let k=ae(yH,...C),N;try{N=await Ce(k,e)}catch(U){if(Ne(U))return\"disarmed\";n.push(Onn(k,U)),r=\"didNotLoad\"}let H=await qxs(yH,C,w,S);if(H!==null)s.push(H);if(N===void 0)return\"disarmed\";let G=N.trim()===\"\"?{}:mt(N,!1);if(!L(G))return n.push(bzn(k)),r=\"didNotLoad\",\"disarmed\";return r=bUe(r,\"loaded\"),$Eo(G)}let h=ae(yH,\"managed-settings.json\"),y=await E([\"managed-settings.json\"]);if(y===\"armed\")return{flag:y,records:n,loadState:r,links:s};let R=y===\"unreadabl"
+   },
+   {
+    "offset": 209484866,
+    "sha256_600": "13ded048e95b8d5a2db94bea1d6ca56b9eb95d6402f401a9aede175bf4dbc7a5",
+    "text": "function Ne(e,r,n){let i=ne(e,r);r.fs.mkdir(i,(u)=>{if(!u)return me.probe(i,r.fs,(c,p,y)=>{if(c)return r.fs.rmdir(i,()=>{}),n(c);n(null,p,y)});if(u.code!==\"EEXIST\")return n(u);if(r.stale<=0)return n(Object.assign(Error(\"Lock file is already being held\"),{code:\"ELOCKED\",file:e}));r.fs.stat(i,(c,p)=>{if(c){if(c.code===\"ENOENT\")return Ne(e,{...r,stale:0},n);return n(c)}if(!rt(p,r))return n(Object.assign(Error(\"Lock file is already being held\"),{code:\"ELOCKED\",file:e}));nt(e,r,(y)=>{if(y)return n(y);Ne(e,{...r,stale:0},n)})})})}function rt(e,r){return e.mtime.getTime()<Date.now()-r.stale}function "
+   },
+   {
+    "offset": 210577930,
+    "sha256_600": "6a497cd450edb8a7c6694420ded67e2ca1f83df0fb299c55aa50b7d0a447d94d",
+    "text": "function Ne(e){return e.type===\"MemberExpression\"&&e.property.type===\"PrivateIdentifier\"||e.type===\"ChainExpression\"&&Ne(e.expression)||e.type===\"ParenthesizedExpression\"&&Ne(e.expression)}f.parseExprSubscripts=function(e,t){var i=this.start,s=this.startLoc,r=this.parseExprAtom(e,t);if(r.type===\"ArrowFunctionExpression\"&&this.input.slice(this.lastTokStart,this.lastTokEnd)!==\")\")return r;var n=this.parseSubscripts(r,i,s,!1,t);if(e&&n.type===\"MemberExpression\"){if(e.parenthesizedAssign>=n.start)e.parenthesizedAssign=-1;if(e.parenthesizedBind>=n.start)e.parenthesizedBind=-1;if(e.trailingComma>=n."
+   },
+   {
+    "offset": 210742922,
+    "sha256_600": "2386a4af077b32084458d6d06eae50d78bc48223fbdf047c106dd53e86c4c398",
+    "text": "function Ne(e,t,o){if(e.deny===void 0)return o(e)?void 0:`neither ${t} nor { deny }`;return typeof e.deny===\"string\"?o(e)?`a deny beside ${t}`:void 0:\"a deny that is not a string\"}function lF(e,t,o){let r=e.filter((s)=>!Object.hasOwn(t,s)&&Object.hasOwn(o,s));if(r.length===0)return t;let n={...t};for(let s of r)n[s]=o[s];return n}var we=(e)=>(t,o)=>lF(e,t,o);var ro=({event:e,restored:t,checkArgument:o,check:r})=>({event:e,restoreArgument:we(t),checkArgument:o,check:C(r)});function at(e,t,o=B(e)){for(let r=0;r<o;r+=1){let n=r in e?t(e[r]):void 0;if(n!==void 0)return[r,n]}return}var Gs=(e,t)=>er"
+   },
+   {
+    "offset": 210973809,
+    "sha256_600": "d932cd8330746995a101349dbb65948a672830b158344987fa5f04a2d9532ea8",
+    "text": "function Ne(e,t){let r=F(e.client),o=e.props.key,n=e.props.module;if(r===\"\"||r===void 0)return je(e,t.plugin);if(!(typeof r===\"string\"&&typeof o===\"string\"&&typeof n===\"string\"&&t.seen.has(ie({plugin:r,key:o,module:n}))))throw new Me(`${t.plugin}: returned a Client it did not draw (${String(r)}/${String(o)} ${String(n)}); a render hook may keep the ones next(e) returned and change their props, not which plugin, key or module they name`);return e}var Ce=(e,t)=>({...e,group:{plugin:t}});function Y(e,t,r){let o=fSr(t),n=e.groups.get(o)??0;if(n<1)throw new Me(`${e.plugin}: returned a ${r} in anoth"
+   },
+   {
+    "offset": 207772044,
+    "sha256_600": "7bbdef9a9f3fc0239495c497f56e0fab5787ac0ae926aab82dd5dff407813883",
+    "text": "Ne=({contents:e})=>e,ae=(e)=>{throw Error(`Streams in object mode are not supported: ${String(e)}`)},ue=(e)=>e.length;async function Ge(e,n){return D(e,mo,n)}var oo=()=>({contents:new ArrayBuffer(0)}),io=(e)=>ao.encode(e),ao=new TextEncoder,ln=(e)=>new Uint8Array(e),fn=(e)=>new Uint8Array(e.buffer,e.byteOffset,e.byteLength),uo=(e,n)=>e.slice(0,n),co=(e,{contents:n,length:r},o)=>{let s=gn()?fo(n,o):lo(n,o);return new Uint8Array(s).set(e,r),s},lo=(e,n)=>{if(n<=e.byteLength)return e;let r=new ArrayBuffer(mn(n));return new Uint8Array(r).set(new Uint8Array(e),0),r},fo=(e,n)=>{if(n<=e.maxByteLength)"
+   }
+  ],
+  "any:vs": [
+   {
+    "offset": 207125865,
+    "sha256_600": "b726117fbcb9efef4c8681dfb9886ed028cf2b5b59cb43543ceafe143c38979e",
+    "text": "function vs(e){if(e===void 0)return!1;if(typeof e===\"boolean\")return!e;let n=String(e).toLowerCase().trim();return[\"0\",\"false\",\"no\",\"off\"].includes(n)}function XR(e){if(!e||e.startsWith(\"-\")||e.startsWith(\"/\"))return!1;if(e.includes(\"..\"))return!1;if(e.split(\"/\").some((n)=>n===\".\"||n===\"\"))return!1;return/^[a-zA-Z0-9/._+@-]+$/.test(e)}var s=globalThis.process?.getBuiltinModule?.(\"async_hooks\"),iin=s?(e)=>s.AsyncResource.bind(e):(e)=>e;function Oe(){let e=new Set;return{subscribe(n){let r=iin(n);return e.add(r),()=>{e.delete(r)}},emit(...n){let r;for(let o of e)try{o(...n)}catch(i){(r??=[]).pus"
+   },
+   {
+    "offset": 211754833,
+    "sha256_600": "d115c1cc898a73d86aec7db24c9776620b5752141066e410cf3555882b980b40",
+    "text": "function vs(e){return e.map((n)=>{if(!(\"cache_control\"in n))return n;let{cache_control:s,...r}=n;return r})}function zs(e){let n=e.text;return typeof n===\"string\"?n:void 0}function Sa(e,n){let s={};for(let r=0;r<e.length;r++)s[n[r]??`__idx_${r}`]=WM(e[r]);return s}function ba(e){let n=0;for(let s of e)n+=zs(s)?.length??0;return n}function js(e,n){return{systemPromptChanged:n.systemHash!==e.systemHash,toolSchemasChanged:n.toolsHash!==e.toolsHash,modelChanged:n.model!==e.model,fastModeChanged:n.fastMode!==e.fastMode,cacheControlChanged:n.cacheControlHash!==e.cacheControlHash,globalCacheStrategyC"
+   },
+   {
+    "offset": 212129290,
+    "sha256_600": "e31143e939127faaf9e9efda9795998299bf91be13ce3f94471b82c0349b1168",
+    "text": "function vs(e){return Array.isArray(e)?e:[e]}var Cd=void 0,Qr=\"\",bs=\" \",Jr=\"\\\\\",Ad=/^\\s+$/,Td=/(?:[^\\\\]|^)\\\\$/,Od=/^\\\\!/,Dd=/^\\\\#/,Id=/\\r?\\n/g,$d=/^\\.{0,2}\\/|^\\.{1,2}$/,Fd=/\\/$/,Bt=\"/\",_s=\"node-ignore\";if(typeof Symbol<\"u\")_s=Symbol.for(\"node-ignore\");var ks=_s,zt=(e,n,r)=>(Object.defineProperty(e,n,{value:r}),r),Ld=/([0-z])-([0-z])/g,Ps=()=>!1,Nd=(e)=>e.replace(Ld,(n,r,s)=>r.charCodeAt(0)<=s.charCodeAt(0)?n:Qr),Gd=(e)=>{let{length:n}=e;return e.slice(0,n-n%2)},Bd=[[/^\\uFEFF/,()=>Qr],[/((?:\\\\\\\\)*?)(\\\\?\\s+)$/,(e,n,r)=>n+(r.indexOf(\"\\\\\")===0?bs:Qr)],[/(\\\\+?)\\s/g,(e,n)=>{let{length:r}=n;return n."
+   },
+   {
+    "offset": 222841876,
+    "sha256_600": "32e212e41caa30729b1f8364e3f8f89e96fb747e2b68602e82e52e047e3e0373",
+    "text": "function vs(e){if(!u2t(e))return!1;let n=e.indexOf(sde);return n!==-1&&n<l2t}function Ml(e){if(!u2t(e))return null;let n=Rn.length,r=(w)=>{if(!e.startsWith(w,n))return!1;return n+=w.length,!0},s;if(r(' lang=\"')){let w=e.indexOf('\"',n);if(w===-1||!Rr(e.slice(n,w)))return null;s=e.slice(n,w),n=w+1}if(!r(\"><head>\"+sde))return null;let h=n+BMe,b=0;while(b<2&&r(\"<script>\")){let w=e.indexOf(\"</script>\",n);if(w===-1||w>h)return null;let S=e.slice(n,w);if(S===\"\"||S.includes(\"<!--\")||/<\\/script/i.test(S))return null;n=w+9,b++}if(b===0||!r(G_e))return null;let y=r(ms);if(!y&&!r(bs))return null;if(!r(\"<s"
+   },
+   {
+    "offset": 225138557,
+    "sha256_600": "564e195891f9d3a583663038248aa9c7b29f79ad7d4cd050a7ae7a0cce633c0b",
+    "text": "function vs(e){let n=l7(Yit),s=M$(),r=!n&&e.designSync&&s,c=!n&&dOe(),h=new Set([...s?[\"consent\",\"revoke\"]:[],...r?[\"sync\",\"login\"]:[],...c?[\"import\",\"export\",\"status\"]:[]]);return ps.filter((y)=>h.has(y.value))}function lt(e){let n=()=>Bo(e),s=()=>ys[n()??\"consent\"];Gs({name:Yit,description:()=>s().description(),menuDescription:()=>s().menu(),argumentHint:()=>s().hint,subcommands:at,subcommandsBareOnly:!0,isEnabled:()=>n()!==null,survivesBundledKillSwitch:!0,policyGate:()=>n()===\"types\"?void 0:C0e,userInvocable:!0,disableModelInvocation:!0,async getArgumentCompletions(r,c){if(r.length>0)retur"
+   },
+   {
+    "offset": 225414388,
+    "sha256_600": "ed600f896e6baff7c37a6b3c98987124b0890c863745812b38418f52d5a7d538",
+    "text": "function vs({cwd:e,toolPermissionContext:o,applyCoordinatorFilter:n,agentsJson:r,agentSetting:s,commandsPromise:y,agentDefsPromise:S,deferCommands:E,onToolsLoaded:C,storageV5:M}){let P=J0(o);if(n&&xa()){let{applyCoordinatorToolFilter:Me}=await import(\"/$bunfs/root/chunk-q7et7gpb.js\");P=Me(P)}C?.(),y?.catch(()=>{}),S?.catch(()=>{});let L=y??Lp(e,M);if(E)L.catch(()=>{});let[G,U]=await Promise.all([E?Promise.resolve([]):L,S??CA(e,M)]),he=[];if(r&&!br(\"agents\",{explicitlyRequested:!0}))try{let Me=mt(r);if(Me)he=Pwt(Me,\"flagSettings\")}catch(Me){c(Me)}else if(r)t(\"--agents: ignored in safe mode (use"
+   },
+   {
+    "offset": 226860587,
+    "sha256_600": "dd7e15ec93ba93ae219605c8e3313763b8012e21b9dc9460b7f6f9aa92d024b1",
+    "text": "function vs(){a.set(\"CLAUDE_CODE_HOOKS_SAME_THREAD\",ze),st().hookRegistration??=Promise.resolve(),rs(Ot)}function Ms(e){let r=new Set([Z]);for(let{name:n,source:s}of e){if(!/^[a-z0-9][a-z0-9-]*$/.test(n))throw new Me(`test(name, { plugins }): \"${n}\" is no plugin name (lowercase letters, digits and dashes)`);if(r.has(n)){let i=n===Z;throw new Me(i?`test(name, { plugins }): \"${n}\" is the name the hooks of the test load under; name the plugin otherwise`:`test(name, { plugins }): \"${n}\" is named twice`)}yo(n,s),r.add(n)}}var Ps=p(()=>u({plugin:o(),key:o(),value:o(),requestId:o().optional(),surface"
+   },
+   {
+    "offset": 228347125,
+    "sha256_600": "c315b428782d39bbf4d758abc8c8ea1dc27342a4d648a75dd474062f54c2c0b1",
+    "text": "function vs(e){let r;for(let s of Object.keys(e)){let p=Reflect.get(e,s);if(typeof p!==\"string\")continue;let w=Pd(p);if(w!==p)r??={...e},Reflect.set(r,s,w)}return r??e}function F9n(e,r,s,p,w,h,A,F,M,pe,W,Z,H,Se,Ae){let me=ar(s),y=ir(e,r,me,p,w,A,F,M,pe,W,Z,H,Se,Ae),o={sanitize:(Pe)=>Pe===null||typeof Pe!==\"object\"&&typeof Pe!==\"function\"?Pe:{},toStr:(Pe)=>QQt(Pe)},u=Hn((Pe)=>me({type:\"progress\",toolUseID:\"workflow_log\",data:{type:\"workflow_log\",message:Pe}}),o),n=Object.freeze({__proto__:null,total:F?.total??null,spent:YM(()=>F?.getTurnSpent()??0),remaining:YM(()=>F?.total==null?1/0:Math.max(0"
+   },
+   {
+    "offset": 223436068,
+    "sha256_600": "facdd2fec5a8d302ba1b8f1eb33518552983da9de22e3a1c85e96553c0eb10ad",
+    "text": "vs=(e)=>Ge({type:\"content_block_delta\",index:e.index,delta:{type:\"text_delta\",text:e.text}});var Ki=(e)=>Ge({type:\"content_block_delta\",index:e.index,delta:{type:\"thinking_delta\",thinking:e.text,estimated_tokens:null}});function zi(e){switch(e.kind){case\"text\":return vs(e);case\"thinking\":return Ki(e);case\"input\":return Wi(e);default:return vs(e)}}function qi(e,s){if(s.message.context_management!==void 0)e.message.context_management=s.message.context_management}function Gi(e,s){let{tool:n}=s,r=s.kind===\"tool\"&&n!==void 0,y=s.kind===\"thinking\",h=r?{type:\"tool_use\",id:n.id,name:n.name,input:{}}:y"
+   }
+  ],
+  "ctx:700": [
+   {
+    "offset": 207488496,
+    "sha256_600": "8ebb3024e74e22bcab0439e41282aa875a29199080221603d88d25049cfe9a6c",
+    "text": "opic's products, including training models..// You are responsible for reviewing any code suggestions before use...// (c) Anthropic PBC. All rights reserved. Use is subject to the Legal Agreements outlined here: https://code.claude.com/docs/en/legal-and-compliance...// Version: 2.1.296.import{Ne,vs}from\"/$bunfs/root/chunk-j27d47mr.js\";import{aOo,Dd}from\"/$bunfs/root/chunk-6kc68p18.js\";function i(n){return{parse:(e)=>n(u(e))}}function t(n){let e=n?.trim();return e?e:void 0}function u(n){return n===void 0?void 0:String(n)}var o=i(t),f=i((n)=>n),l=i((n)=>Ne(n)),s=i((n)=>{if(Ne(n))return!0;if(vs(n))return!1;return}),a=d();function SMs(n){if(typeof n===\"boolean\")return n?\"1\":\"0\";return String(n)}"
+   }
+  ]
+ },
+ "window": 6000
+}

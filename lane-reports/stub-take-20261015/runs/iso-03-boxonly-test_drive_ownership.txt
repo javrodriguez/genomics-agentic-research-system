@@ -1,0 +1,35 @@
+
+MUTANT baseline-refusal-redriven: red by R6-ruling (1 own, 0 errors) .
+MUTANT baseline-skipped: red by S1-baseline (7 own, 0 errors) .
+MUTANT commit-reads-a-held-take: red by O4-held (2 own, 0 errors) .
+MUTANT early-launch-unrestored: red by O9-early (2 own, 0 errors) .
+MUTANT executed-post-unchecked: red by S4-executed (2 own, 0 errors) .
+MUTANT grant-refusal-redriven: red by R6-ruling (1 own, 0 errors) .
+MUTANT grant-skipped: red by O1-grant (1 own, 0 errors) ./Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py (witness):2363: ResourceWarning: unclosed file <_io.BufferedWriter name='/private/tmp/w6h-3wjzf4qh/tree-tmprh73f799-1/gars/projects/run-0000abcd/00_data/rnaseq_bulk/samples.csv'>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+
+MUTANT host-side-copy: red by O8-operator (1 own, 0 errors) ./Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py (witness):2348: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/w6h-3wjzf4qh/tree-tmpy2a8yc0h-1/gars/projects/run-0000abcd/00_data/rnaseq_bulk/samples.csv'>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py (witness):2348: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/w6h-3wjzf4qh/tree-tmpmb7k4xxw-1/gars/projects/run-0000abcd/00_data/rnaseq_bulk/samples.csv'>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+
+MUTANT host-side-poll: red by O8-operator (2 own, 0 errors) .
+MUTANT host-side-save: red by O8-operator (1 own, 0 errors) .
+MUTANT later-unchecked: red by S3-later (1 own, 0 errors) .
+MUTANT ledger-copy-skipped: red by L1-ledger (1 own, 0 errors) .
+MUTANT ledger-into-evidence: red by L1-ledger (1 own, 0 errors) .
+MUTANT machine-gate-unchecked: red by P2-machine (4 own, 0 errors) .
+MUTANT missing-snapshot-passes: red by S3-later (1 own, 0 errors) .
+MUTANT native-read-host-side: red by N1-native (2 own, 0 errors) .
+MUTANT one-turn-reached: red by B3-one-road (1 own, 0 errors) .
+MUTANT post-unchecked: red by S3-later (3 own, 0 errors) .
+MUTANT reply-sha-unchecked: red by O8-operator (1 own, 0 errors) .
+MUTANT restore-after-postflight: red by O2-restore (2 own, 0 errors) .
+MUTANT restore-skipped-on-launch-error: red by O3-launch (2 own, 0 errors) .
+MUTANT scan-after-failed-restore: red by O4-held (2 own, 0 errors) .
+MUTANT turn-one-unchecked: red by S2-turn-one (3 own, 0 errors) .
+MUTANT uid-map-unread: red by U1-uid-map (2 own, 0 errors) ....................
+----------------------------------------------------------------------
+Ran 43 tests in 199.857s
+
+OK

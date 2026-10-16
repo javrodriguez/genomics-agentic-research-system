@@ -1,0 +1,75 @@
+{
+ "HXt": [
+  {
+   "offset": 211196350,
+   "text": "r===!1)return\"none\";if(CCe(n)||y(n)||Nl()?.[G]===!0||r)return\"forced\";return U7t(e)?\"cohort\":\"none\"}function HXt(){if(a.CLAUDE_CODE_THRIFTY_SONIC!==void 0)return a.CLAUDE_CODE_THRIFTY_SONIC;switch(ae()){case\"forced\":return!0;case\"none\":return!1;case\"cohort\":return k(G,!1)}}var D=\"tengu_cozy_teapot\";function N(e){return e===\"strict\"||e===\"relaxed\"?e:void 0}function Igs(){return a.CLAUDE_CODE_COZY_TEAPOT??h().bashFirstSteerVariant()}function ce(){return N(Nl()?.[D])??(y(We(NQ(tt())))?\"relaxed\":void 0)??N(Gr(D,null))??\"strict\"}var ue=\"tengu_gorse_plover\",S=\"tengu_willow_tern\";function le(e,n){return e||Nl()?.[n]===!0||k(n,!1)}function Ogs(){let e=wo();return e.bashActFirstEnabled??=le(a.CLAUDE_"
+  }
+ ],
+ "binary_path": "/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+ "binary_sha256": "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de",
+ "contexts": [
+  {
+   "offset": 101066204,
+   "text": "tSessionAssignment..&...../.bashFirstSessionAssignmentCompiledOnly......wv..bashFirstSteerVariant...........leanPromptCompiledOnly.......[..modelForPrompt........f.modelForPromptCompiledOnly.. ....4..delegationCostsFirstCompiledOnly........promptModelSwapsLogged..........unusableWritingOverrideTold.........coldStarts......92..pendingAttribution..........dropExpectedAt........+.touchedAt........e..CLAUDE_CODE_THRIFTY_SONIC........h..-eap($|\\[)..........opus_5_5_prompt_bundle......z...len:....d...browser_state......../..GrowthBook: 7...h... is not a JSON array of model ids; treating it as empty.....s:E.bashActFirstEnabled.....s...CLAUDE_CODE_GORSE_PLOVER.....x..lean_prompt.....T...claude-3-...........amber_astrolabe.........CLAUDE_CODE_AMBER_ASTROLABE....._...lucky_cerf........H.tengu_lucky_"
+  },
+  {
+   "offset": 207544689,
+   "text": "n,CLAUDE_CODE_SUBAGENT_CONFIG_WARNING:()=>us,CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL:()=>WC,CLAUDE_CODE_SUBAGENT_PROMPT_SNAPSHOT:()=>Rn,CLAUDE_CODE_SUPPRESS_SESSION_ATTRIBUTION:()=>Sn,CLAUDE_CODE_SYNC_PLUGINS:()=>Un,CLAUDE_CODE_SYNC_PLUGIN_INSTALL:()=>In,CLAUDE_CODE_SYNC_SKILLS:()=>xn,CLAUDE_CODE_TAG_ISMETA_MESSAGES:()=>Nn,CLAUDE_CODE_THINKING_DISPLAY_UPDATES:()=>ys,CLAUDE_CODE_THISTLE_GREBE:()=>oE,CLAUDE_CODE_THRIFTY_SONIC:()=>rE,CLAUDE_CODE_TOASTY_THIMBLE:()=>_E,CLAUDE_CODE_TODO_REMINDER_MODE:()=>is,CLAUDE_CODE_TOTAL_TOKENS_REMINDER:()=>xs,CLAUDE_CODE_TOTAL_TOKENS_REMINDER_AFTER_USER_TURN:()=>bs,CLAUDE_CODE_TOTAL_TOKENS_REMINDER_BUDGET:()=>Ns,CLAUDE_CODE_TRANSCRIPT_LOCAL_GC:()=>ln,CLAUDE_CODE_TURN_UPDATES:()=>fs,CLAUDE_CODE_TWO_STAGE_CLASSIFIER:()=>Pn,CLAUDE_CODE_USE_COWORK_PLUGINS:()=>Mn,"
+  },
+  {
+   "offset": 211196370,
+   "text": "es(s))}function Pgs(e){return a.CLAUDE_CODE_BASALT_COVE||U(\"basalt_cove\",e)}var G=\"tengu_thrifty_sonic\";function ae(){let e=h();return Hoe()?e.bashFirstSessionAssignmentCompiledOnly():e.bashFirstSessionAssignment()}function v(){let e=NQ(tt()),n=We(e),r=w_(n,\"thrifty_sonic\",e);if(r===!1)return\"none\";if(CCe(n)||y(n)||Nl()?.[G]===!0||r)return\"forced\";return U7t(e)?\"cohort\":\"none\"}function HXt(){if(a.CLAUDE_CODE_THRIFTY_SONIC!==void 0)return a.CLAUDE_CODE_THRIFTY_SONIC;switch(ae()){case\"forced\":return!0;case\"none\":return!1;case\"cohort\":return k(G,!1)}}var D=\"tengu_cozy_teapot\";function N(e){return e===\"strict\"||e===\"relaxed\"?e:void 0}function Igs(){return a.CLAUDE_CODE_COZY_TEAPOT??h().bashFirstSteerVariant()}function ce(){return N(Nl()?.[D])??(y(We(NQ(tt())))?\"relaxed\":void 0)??N(Gr(D,null))?"
+  },
+  {
+   "offset": 211196414,
+   "text": "BASALT_COVE||U(\"basalt_cove\",e)}var G=\"tengu_thrifty_sonic\";function ae(){let e=h();return Hoe()?e.bashFirstSessionAssignmentCompiledOnly():e.bashFirstSessionAssignment()}function v(){let e=NQ(tt()),n=We(e),r=w_(n,\"thrifty_sonic\",e);if(r===!1)return\"none\";if(CCe(n)||y(n)||Nl()?.[G]===!0||r)return\"forced\";return U7t(e)?\"cohort\":\"none\"}function HXt(){if(a.CLAUDE_CODE_THRIFTY_SONIC!==void 0)return a.CLAUDE_CODE_THRIFTY_SONIC;switch(ae()){case\"forced\":return!0;case\"none\":return!1;case\"cohort\":return k(G,!1)}}var D=\"tengu_cozy_teapot\";function N(e){return e===\"strict\"||e===\"relaxed\"?e:void 0}function Igs(){return a.CLAUDE_CODE_COZY_TEAPOT??h().bashFirstSteerVariant()}function ce(){return N(Nl()?.[D])??(y(We(NQ(tt())))?\"relaxed\":void 0)??N(Gr(D,null))??\"strict\"}var ue=\"tengu_gorse_plover\",S=\"ten"
+  }
+ ],
+ "extraction": [
+  {
+   "argv": [
+    "docker",
+    "create",
+    "--pull=never",
+    "--network",
+    "none",
+    "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+    "true"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "596626ed11ddc5f77eae7f9a1e3f8f86c76947d284924a36ffb39ee939fe6821"
+  },
+  {
+   "argv": [
+    "docker",
+    "cp",
+    "-L",
+    "596626ed11ddc5f77eae7f9a1e3f8f86c76947d284924a36ffb39ee939fe6821:/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+    "/tmp/tmp.d4RMrkGlIb/claude.bin"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": ""
+  },
+  {
+   "argv": [
+    "docker",
+    "rm",
+    "596626ed11ddc5f77eae7f9a1e3f8f86c76947d284924a36ffb39ee939fe6821"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "596626ed11ddc5f77eae7f9a1e3f8f86c76947d284924a36ffb39ee939fe6821"
+  }
+ ],
+ "image": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+ "occurrences": 4,
+ "parser_callers": [
+  "if"
+ ],
+ "parser_sources": {
+  "if": []
+ },
+ "probe": "claude-thrifty-sonic"
+}
