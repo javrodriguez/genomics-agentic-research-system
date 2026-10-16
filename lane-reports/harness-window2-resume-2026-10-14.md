@@ -512,3 +512,21 @@ Open:
 
 ## Exact next step
 glitch-b5: review d6506219, and the battery on this head.
+
+## RESUME HERE (16 Oct 06:24 EDT; supersedes the blocks above): W-3b nested agents bounded
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent 9e57ce79). Nothing pushed. athena not used. No mac_slot booking held; no process of this lane running.
+
+- 26ea8729: the same one-line import fix as glitch-b5's 72c9e520, so the two lines do not diverge.
+- 9e57ce79: W-3b.
+  - Session store: the driver lists the store into session-store.json after every turn (through the box) and at publish (on the host). The checker refuses [nested-agent] for claude-code; the driver judges Codex and Gemini.
+  - Count: nested_cli_calls is the third Agent key in check.json; a nonzero count sends the take to the human sample.
+  - --no-session-persistence in a Bash command line refuses.
+  - Draft: box residual W-3b.
+
+Open:
+- Gemini's tmp folder may hold other entries a live walk shows, and they would hold it.
+- A nested CLI with another config folder AND a spelling the count misses is not bounded (stated in W-3b).
+
+## Exact next step
+glitch-b5: r14 on 26ea8729..9e57ce79, and the battery on this head.
