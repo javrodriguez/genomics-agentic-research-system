@@ -393,3 +393,35 @@ Mac proof (python3.12, env -u CLAUDE_CODE_MESSAGING_TOKEN, light-ok first), all 
 
 ## Exact next step
 glitch-b5: the battery on this head at the Haiku/Opus break; every walk is rechecked on it before the freeze.
+
+## RESUME HERE (16 Oct 03:02 EDT; supersedes the blocks above): Agent parity built
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent d247a0e3). Nothing pushed. No athena access. No mac_slot booking held; no process of this lane running.
+
+glitch-b5's Agent parity ruling (option 1; R-A to R-D; CP6 walk w083). Each part was red first, and each commit passed the gates on their exit status (lint_language, copy_manifest, the w6e and w6j byte checks, build_draft --check, gitleaks):
+- f34c8a3d part 1: the view reads Agent (kind other). Its input keys are the 2.1.296 schema's closed set (description, prompt, subagent_type, model, effort, run_in_background, name, team_name, mode, isolation); cwd refuses.
+- 170b6727 parts 4 and 5, R-C: read_stream keeps assistant and user records with parent_tool_use_id set apart as a sub-agent's (never the agent's words, output or main calls). A late record refuses (R-B).
+  - SUBAGENT_EXPLICIT_MODELS = claude-haiku-5-5, claude-sonnet-5-5, claude-opus-5-5 (2.1.296's first-party alias ids; fable is not admitted). A model off the pin's and that list stops the take (SubagentModelOffList).
+  - TAKE_ENV and the inline settings set neither CLAUDE_CODE_SUBAGENT_MODEL nor CLAUDE_CODE_SUBAGENT_MODEL_FORCE.
+- 31513e1b part 2, R-A: _take_records copies <session>/subagents/**/agent-<id>.jsonl byte for byte before the config folder goes. The ledger names each copy, and they are scanned as transcripts. The reader is CLOSED (derived from the binary): a file of any other shape HOLDS the walk.
+- 91ae369e part 3: check_take binds the sub-agent records. Failures refuse [subagent-records], a new round-4 operator reason routed like harness-condition-violated (routing.json, test_routing). A denied tool refuses [harness-condition-violated], and a file separator [transcript-unreadable].
+  - The reach readers read the stream sub-agent records as the agent's own, and the files' attachments are swept for leaks. This sits inside check4's ruled span (re-pinned) and in check4_walk.
+- bbacb27a part 6: check.json's agent_calls (int) and subagents ({calls, models}), with the same strictness as no_output_nudges. Rechecks carry them re-derived, and walk_regrade names a forged pair.
+- d247a0e3 part 7: the draft's parity note.
+
+Static reads of the pinned 2.1.296 (sha256 24972e3b..., never run): the subagents path (lg); the sidechain writer (insertMessageChain); the Agent schema (Lo/$o/jn); the agent types' models (Explore and Plan "inherit", with an opus-family cap that does not bind haiku or opus; general-purpose and claude have no model field; statusline-setup "sonnet"); the alias catalog (aliases.*.default).
+
+Mac proof (python3.12, env -u CLAUDE_CODE_MESSAGING_TOKEN, light-ok first), all OK:
+- agent_tool 12 (17 witnesses), claude_code_adapter 28, routing 289, checker_body 30, checker_constants 27, steer 7, isolation 9, journal_binding 4, line_separators 5, no_output_nudge 9, edited_text_file 10, auto_mode 6, scheduled_wakeup 11, transcript_view 20, pause_adherence 30, awareness_furniture 7.
+- drive_commit 31, drive_loop 27, executed_turn_refusal 10, vendor_take_records 4, native_reader_registration 7, walk_wiring 20, cp8_prep 4, stub_take 19, wave4_bindings 13, live_box 38, identity_mode_evidence 8, drive_box_seams 6, walk_grade_seam 3, rehearsals 9, walk_plan 18, recheck_coverage 5, walk_recheck 17, pending_walk 23, build_draft 48.
+- test_walk_runner, class by class: 85.
+- walk_regrade --check ok.
+Not run on the Mac: the generated shards (check_record and _run_one gained lines again), test_round4 and test_box_integration.
+
+What a live Agent walk will show, and what holds it:
+- the subagents file's real shape: a mismatch holds the walk for a ruling;
+- whether 2.1.296 writes the file under -p: a missing file refuses [subagent-records].
+Every walk checked on an earlier head reads "check unreadable" until rechecked on this head, which carries the Agent pair.
+
+## Exact next step
+glitch-b5: r10 and the battery on this head.
