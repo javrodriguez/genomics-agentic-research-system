@@ -3096,27 +3096,57 @@ def native_history_record(harness: str, session_dir, refs, *, readers=None) -> d
     return {"status": "joined", "why": None, "interactions": len(facts), "basis": NATIVE_HISTORY_BASIS}
 
 
-# ---- THE SUB-AGENT FILES (glitch-b5's Agent parity ruling, 16 Oct 2026, part 2 and R-A) ----------------------------------
+# ---- THE SUB-AGENT FILES (glitch-b5's Agent parity ruling, 16 Oct 2026, part 2 and R-A; review r10's F2) -----------
 #   2.1.296 writes a sub-agent's own transcript to <projects>/<project>/<session id>/subagents/[<subdir>/]agent-<id>.jsonl
-#   (a static read of the pinned binary), beside the session file. _take_records copies each one byte for byte into the
-#   take or walk folder's subagents/, before published() deletes the config folder, and names it in the driver ledger
-#   (file, agent id, sha256); record_kind scans it as a transcript. Its shape has never been seen live, so its reader
-#   is CLOSED, derived from the binary's sidechain writer: every line one JSON object of type user or assistant,
-#   isSidechain true, agentId the file's id, sessionId the session's, and no line separator but newline. A file of any
-#   other shape, or any other file under subagents/, HOLDS the take or walk for a ruling (DriveRefused), so the first
-#   live Agent walk shows it.
+#   (a static read of the pinned binary), beside the session file, with agent-<id>.meta.json beside it (review r10's
+#   survey of 20 real 2.1.267 and 2.1.280 sdk-cli files: 20 pairs). _take_records copies each pair before published()
+#   deletes the config folder: the meta byte for byte, the jsonl byte for byte and then scrubbed as the transcript is
+#   (scrub.scrub_text: session_context.userEmail removed, refused if anything else would change); the driver ledger
+#   names each (file, agent id, sha256 of what was written, and for the jsonl its raw sha256 and what was removed);
+#   record_kind scans both as transcripts. 2.1.296's own files are unseen, so the reader stays CLOSED, from the binary
+#   and the survey:
+#     agent-<id>.meta.json   exactly {agentType: str, description: str, requestNonInteractive: bool, requestShape:
+#                            "foreground" or "background", spawnDepth: 1, toolUseId: str} (a nested sub-agent, depth 2,
+#                            or any other key, such as model, holds)
+#     agent-<id>.jsonl       every non-blank line one JSON object of type user, assistant or attachment, isSidechain
+#                            true, agentId the file's id, sessionId the session's; an attachment admitted only under the
+#                            main transcript view's own allow-list and closed shapes (transcript_view's reader); a raw
+#                            U+2028, U+2029 or U+0085 is admitted (it can only sit inside a JSON string, and every
+#                            reader here splits on newline alone), any other line separator is not
+#   A file of any other shape, an unpaired file, any other file under subagents/, a symlink or a duplicate id HOLDS the
+#   take or walk for a ruling (DriveRefused), so the first live Agent walk shows 2.1.296's shape.
 SUBAGENTS_DIR = "subagents"
 SUBAGENT_FILE = re.compile(r"agent-([A-Za-z0-9_-]{1,64})\.jsonl")
-SUBAGENT_RECORD_TYPES = ("user", "assistant")
-_LINE_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029")
+SUBAGENT_META = re.compile(r"agent-([A-Za-z0-9_-]{1,64})\.meta\.json")
+SUBAGENT_RECORD_TYPES = ("user", "assistant", "attachment")
+SUBAGENT_META_KEYS = ("agentType", "description", "requestNonInteractive", "requestShape", "spawnDepth", "toolUseId")
+SUBAGENT_REQUEST_SHAPES = ("foreground", "background")
+_REFUSED_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e")
+
+
+def subagent_meta_problems(raw: bytes) -> list:
+    """Why a sub-agent meta file is not of the closed shape (an empty list when it is)."""
+    try:
+        meta = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return ["it is not UTF-8 JSON"]
+    if not isinstance(meta, dict) or set(meta) != set(SUBAGENT_META_KEYS):
+        return [f"its keys are not exactly {list(SUBAGENT_META_KEYS)}"]
+    if not (type(meta["agentType"]) is str and type(meta["description"]) is str and type(meta["toolUseId"]) is str
+            and type(meta["requestNonInteractive"]) is bool and meta["requestShape"] in SUBAGENT_REQUEST_SHAPES
+            and type(meta["spawnDepth"]) is int and meta["spawnDepth"] == 1):
+        return ["a value is not of its closed type (spawnDepth 1 only: a nested sub-agent is not read)"]
+    return []
 
 
 def subagent_shape_problems(text: str, agent_id: str, session_id: str) -> list:
-    """Why a sub-agent file is not of the shape this lane derived (an empty list when it is)."""
+    """Why a sub-agent jsonl is not of the shape this lane admits (an empty list when it is)."""
+    import transcript_view as _tv
     out = []
-    seps = sorted({f"U+{ord(s):04X}" for s in _LINE_SEPARATORS if s in text})
+    seps = sorted({f"U+{ord(s):04X}" for s in _REFUSED_SEPARATORS if s in text})
     if seps:
         out.append(f"line separator(s) {', '.join(seps)} other than newline")
+    parser = _tv.ClaudeCodeSessionParser()
     for i, line in enumerate(text.split("\n"), 1):
         if not line.strip():
             continue
@@ -3131,48 +3161,76 @@ def subagent_shape_problems(text: str, agent_id: str, session_id: str) -> list:
             out.append(f"line {i} is of type {str(rec.get('type'))[:40]!r}, not one of {list(SUBAGENT_RECORD_TYPES)}")
         elif rec.get("isSidechain") is not True or rec.get("agentId") != agent_id or rec.get("sessionId") != session_id:
             out.append(f"line {i} does not carry isSidechain true, the file's agentId and the session's id")
+        elif rec["type"] == "attachment":
+            try:
+                parser._attachment(rec)
+            except _tv.ViewError as e:
+                out.append(f"line {i}: an attachment the transcript view does not admit ({str(e)[:80]})")
     return out
 
 
 def copy_subagent_files(session_file: Path, session_id: str, folder: Path) -> list:
-    """Copy <session dir>/subagents/**/agent-<id>.jsonl byte for byte into folder/subagents/, keeping its path below
-    subagents/; [{file, agent_id, sha256}] in path order. Anything else there, a symlink, a duplicate agent id or a file
-    not of the derived shape refuses (DriveRefused): the take or walk is held for a ruling, never graded."""
+    """Copy each <session dir>/subagents/**/agent-<id>.jsonl and its agent-<id>.meta.json into folder/subagents/,
+    keeping its path below subagents/: [{file, agent_id, sha256[, raw_sha256, removed]}] in path order. Anything else
+    there, an unpaired or duplicate id, a symlink, or a file not of the admitted shape refuses (DriveRefused): the take
+    or walk is held for a ruling, never graded."""
     base = Path(session_file).parent / session_id / SUBAGENTS_DIR
     if not base.exists():
         return []
     if base.is_symlink() or not base.is_dir():
         raise DriveRefused(f"{SUBAGENTS_DIR}/ beside the session file is not a folder")
-    out, ids = [], set()
+    jsonl, meta = {}, {}
     for p in sorted(base.rglob("*")):
         rel = p.relative_to(base)
         if p.is_symlink():
             raise DriveRefused(f"{SUBAGENTS_DIR}/{rel.as_posix()} is a symlink: held for a ruling")
         if p.is_dir():
             continue
-        m = SUBAGENT_FILE.fullmatch(p.name)
-        if m is None or not p.is_file():
-            raise DriveRefused(f"{SUBAGENTS_DIR}/{rel.as_posix()} is not a sub-agent file of the derived shape "
-                               f"(agent-<id>.jsonl): held for a ruling")
-        if m.group(1) in ids:
-            raise DriveRefused(f"two sub-agent files carry agent id {m.group(1)}: held for a ruling")
-        ids.add(m.group(1))
+        m, mm = SUBAGENT_FILE.fullmatch(p.name), SUBAGENT_META.fullmatch(p.name)
+        if not p.is_file() or (m is None and mm is None):
+            raise DriveRefused(f"{SUBAGENTS_DIR}/{rel.as_posix()} is not a sub-agent file of the admitted shape "
+                               f"(agent-<id>.jsonl, agent-<id>.meta.json): held for a ruling")
+        table, agent = (jsonl, m.group(1)) if m else (meta, mm.group(1))
+        if agent in table:
+            raise DriveRefused(f"two sub-agent files carry agent id {agent}: held for a ruling")
+        table[agent] = (p, rel)
+    if set(jsonl) != set(meta):
+        raise DriveRefused(f"sub-agent ids {sorted(set(jsonl) ^ set(meta))} have a jsonl or a meta file without the "
+                           f"other: held for a ruling")
+    out = []
+    for agent in sorted(jsonl):
+        mp, mrel = meta[agent]
+        mraw = mp.read_bytes()
+        bad = subagent_meta_problems(mraw)
+        if bad:
+            raise DriveRefused(f"{SUBAGENTS_DIR}/{mrel.as_posix()} is not of the admitted shape ({bad[0]}): held for a "
+                               f"ruling (glitch-b5, 16 Oct 2026)")
+        p, rel = jsonl[agent]
         raw = p.read_bytes()
         try:
             text = raw.decode("utf-8")
         except UnicodeDecodeError:
             raise DriveRefused(f"{SUBAGENTS_DIR}/{rel.as_posix()} is not UTF-8: held for a ruling") from None
-        bad = subagent_shape_problems(text, m.group(1), session_id)
+        bad = subagent_shape_problems(text, agent, session_id)
         if bad:
-            raise DriveRefused(f"{SUBAGENTS_DIR}/{rel.as_posix()} is not of the shape derived from 2.1.296 ({bad[0]}; "
-                               f"{len(bad)} problem(s)): held for a ruling (glitch-b5, 16 Oct 2026)")
-        dest = Path(folder) / SUBAGENTS_DIR / rel
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
-        with os.fdopen(fd, "wb") as fh:
-            fh.write(raw)
-        out.append({"file": f"{SUBAGENTS_DIR}/{rel.as_posix()}", "agent_id": m.group(1),
-                    "sha256": hashlib.sha256(raw).hexdigest()})
+            raise DriveRefused(f"{SUBAGENTS_DIR}/{rel.as_posix()} is not of the admitted shape ({bad[0]}; {len(bad)} "
+                               f"problem(s)): held for a ruling (glitch-b5, 16 Oct 2026)")
+        try:
+            body, removed = scrub_mod.scrub_text(text)      # scrubbed as the transcript is (Ruling 10)
+        except SystemExit as e:
+            raise DriveRefused(f"{SUBAGENTS_DIR}/{rel.as_posix()} could not be scrubbed ({e}): held for a ruling") from None
+        written = body.encode("utf-8")
+        for dest_rel, data in ((mrel, mraw), (rel, written)):
+            dest = Path(folder) / SUBAGENTS_DIR / dest_rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(data)
+        out.append({"file": f"{SUBAGENTS_DIR}/{mrel.as_posix()}", "agent_id": agent,
+                    "sha256": hashlib.sha256(mraw).hexdigest()})
+        out.append({"file": f"{SUBAGENTS_DIR}/{rel.as_posix()}", "agent_id": agent,
+                    "sha256": hashlib.sha256(written).hexdigest(), "raw_sha256": hashlib.sha256(raw).hexdigest(),
+                    "removed": list(removed)})
     return out
 
 
@@ -3648,8 +3706,8 @@ def record_kind(rel: list, extra: dict | None = None) -> str:
         return EVIDENCE_KINDS.get(rel[1], "evidence") if len(rel) > 2 else "evidence"
     if rel[0] == SESSION_DIR and len(rel) >= 2:
         return "session"
-    if rel[0] == SUBAGENTS_DIR and len(rel) >= 2 and SUBAGENT_FILE.fullmatch(name):     # Agent parity: a transcript
-        return "transcript"
+    if rel[0] == SUBAGENTS_DIR and len(rel) >= 2 and (SUBAGENT_FILE.fullmatch(name) or SUBAGENT_META.fullmatch(name)):
+        return "transcript"                       # Agent parity: a sub-agent's records and its meta, scanned as text
     raise DriveRefused(f"{'/'.join(rel)} in the take folder has no scan kind")
 
 

@@ -187,7 +187,20 @@ def stream_problems(cca=None) -> list:
     only_sub = cca.read_stream(stream(INIT, main_said(None), sub(), RESULT))
     if only_sub["agent_text"] or only_sub["agent_output"] is not True:     # the main call itself is output
         out.append(f"A-stream: a turn whose only words are the sub-agent's reads {only_sub['agent_text']!r}")
+    api = sub(model="<synthetic>", isApiErrorMessage=True, text="API Error: 429", error="rate_limit")
+    read_api = cca.read_stream(stream(INIT, main_said("x"), sub(tool=BASH), api, RESULT))
+    if "<synthetic>" in read_api["subagent_models"] or cca.subagent_model_off(read_api, PIN) is not None \
+            or not any(e["text"] == "API Error: 429" for e in read_api["api_errors"]):
+        out.append(f"A-stream F3: a sub-agent API error is not routed as the agent's ({read_api['api_errors']})")
+    nested = sub(parent="toolu_sub", text="deeper")
+    try:
+        cca.read_stream(stream(INIT, main_said("x"), sub(tool=BASH), nested))
+        out.append("A-stream: a nested sub-agent's record was read")
+    except cca.StreamError as e:
+        if "nested" not in str(e):
+            out.append(f"A-stream: a nested sub-agent is refused with the wrong words: {e}")
     for name, text in (("a parent call not made in this turn", stream(INIT, main_said("x"), sub(parent="toolu_other"))),
+                       ("a record with an agent_id and no parent", stream(INIT, main_said("x"), sub(parent=None))),
                        ("a sub-agent assistant record with no model", stream(INIT, main_said("x"), sub(model=None))),
                        ("a parent id that is not a string", stream(INIT, main_said("x"), sub(parent=7)))):
         try:
@@ -234,15 +247,45 @@ def mutant(mod, old, new):
 
 
 SID = "11111111-2222-3333-4444-555555555555"
+BASH = {"type": "tool_use", "id": "toolu_sub", "name": "Bash", "input": {"command": "ls"}}
+EMAIL = "someone@example.invalid"
 
 
 def side_record(kind="assistant", **over):
     r = {"parentUuid": None, "isSidechain": True, "agentId": AGENT_ID, "sessionId": SID, "type": kind, "uuid": "u",
          "timestamp": "t", "version": "2.1.296",
-         "message": {"role": kind, "model": PIN, "content": [{"type": "tool_use", "id": "toolu_sub", "name": "Bash",
-                                                                "input": {"command": "ls"}}]}}
+         "message": {"role": kind, "model": PIN, "content": [BASH]} if kind == "assistant" else
+         {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "toolu_sub", "content": "ok"}]}}
     r.update(over)
     return r
+
+
+def side_attachment(att, **over):
+    r = {"parentUuid": None, "isSidechain": True, "agentId": AGENT_ID, "sessionId": SID, "type": "attachment",
+         "uuid": "u", "timestamp": "t", "version": "2.1.296", "attachment": att}
+    r.update(over)
+    return r
+
+
+def meta(**over):
+    m = {"agentType": "general-purpose", "description": "Survey", "requestNonInteractive": True,
+         "requestShape": "foreground", "spawnDepth": 1, "toolUseId": CALL_ID}
+    m.update(over)
+    return json.dumps(m)
+
+
+def jl(*recs, ascii_=True):
+    return "".join(json.dumps(r, ensure_ascii=ascii_) + "\n" for r in recs)
+
+
+# the survey's shape (review r10): an admitted attachment and the account's session context beside the records
+GOOD = jl(side_attachment({"type": "nested_memory", "content": "project notes"}),
+          side_attachment({"type": "session_context", "context": {"userEmail": EMAIL}}),
+          side_record(), side_record("user"))
+
+
+def pair(text=GOOD, meta_text=None, agent=AGENT_ID):
+    return {f"agent-{agent}.jsonl": text, f"agent-{agent}.meta.json": meta() if meta_text is None else meta_text}
 
 
 def config_with(files: dict) -> Path:
@@ -259,40 +302,59 @@ def config_with(files: dict) -> Path:
 
 
 def copy_problems(drive=None) -> list:
+    import hashlib
     import tempfile
     if drive is None:
         import drive
     out = []
-    good = "".join(json.dumps(r) + "\n" for r in (side_record(), side_record("user")))
-    src = config_with({f"agent-{AGENT_ID}.jsonl": good})
     folder = Path(tempfile.mkdtemp())
     try:
-        got = drive.copy_subagent_files(src, SID, folder)
+        got = drive.copy_subagent_files(config_with(pair()), SID, folder)
     except Exception as e:  # noqa: BLE001
-        return [f"A-copy: a file of the derived shape refused: {type(e).__name__}: {e}"]
+        return [f"A-copy: the surveyed shape refused: {type(e).__name__}: {e}"]
     dest = folder / "subagents" / f"agent-{AGENT_ID}.jsonl"
-    import hashlib
-    if got != [{"file": f"subagents/agent-{AGENT_ID}.jsonl", "agent_id": AGENT_ID,
-                "sha256": hashlib.sha256(good.encode()).hexdigest()}] or dest.read_bytes() != good.encode():
+    written = dest.read_bytes()
+    if EMAIL in written.decode() or b'"isSidechain": true' not in written.replace(b'"isSidechain":true', b'"isSidechain": true'):
+        out.append("A-copy: the copy is not the scrubbed jsonl")
+    if (folder / "subagents" / f"agent-{AGENT_ID}.meta.json").read_text() != meta():
+        out.append("A-copy: the meta is not copied byte for byte")
+    want = [{"file": f"subagents/agent-{AGENT_ID}.meta.json", "agent_id": AGENT_ID,
+             "sha256": hashlib.sha256(meta().encode()).hexdigest()},
+            {"file": f"subagents/agent-{AGENT_ID}.jsonl", "agent_id": AGENT_ID,
+             "sha256": hashlib.sha256(written).hexdigest(), "raw_sha256": hashlib.sha256(GOOD.encode()).hexdigest(),
+             "removed": ["session_context.userEmail"]}]
+    if got != want:
         out.append(f"A-copy: {got}")
-    if drive.record_kind(["subagents", f"agent-{AGENT_ID}.jsonl"]) != "transcript":
-        out.append("A-copy: a copied sub-agent file has no transcript scan kind")
+    for name in (f"agent-{AGENT_ID}.jsonl", f"agent-{AGENT_ID}.meta.json"):
+        if drive.record_kind(["subagents", name]) != "transcript":
+            out.append(f"A-copy: {name} has no transcript scan kind")
     if drive.copy_subagent_files(config_with({}), SID, Path(tempfile.mkdtemp())) != []:
         out.append("A-copy: no folder copied something")
+    raw_ls = jl(side_record(message={"role": "assistant", "model": PIN, "content": [
+        dict(BASH, input={"command": "echo a b c\x85d"})]}), ascii_=False)
+    try:
+        drive.copy_subagent_files(config_with(pair(raw_ls)), SID, Path(tempfile.mkdtemp()))
+    except drive.DriveRefused as e:
+        out.append(f"A-copy: a raw U+2028, U+2029 or U+0085 inside a string was held: {e}")
     held = {
-        "an attachment record": [side_record(type="attachment")],
-        "isSidechain false": [side_record(isSidechain=False)],
-        "another agent id": [side_record(agentId="zzz")],
-        "another session": [side_record(sessionId="other")],
+        "an attachment kind the view does not admit": pair(jl(side_attachment({"type": "silent_turn_reminder"}))),
+        "an admitted kind of another shape": pair(jl(side_attachment({"type": "edited_text_file", "filename": "f"}))),
+        "a system record": pair(jl(side_record(type="system"))),
+        "isSidechain false": pair(jl(side_record(isSidechain=False))),
+        "another agent id": pair(jl(side_record(agentId="zzz"))),
+        "another session": pair(jl(side_record(sessionId="other"))),
+        "a raw vertical tab": pair(jl(side_record()).replace('"ls"', '"l\x0bs"')),
+        "a line that is not JSON": pair(GOOD + "not json\n"),
+        "another file there": dict(pair(), **{"notes.txt": "x"}),
+        "a duplicate id": dict(pair(), **{f"sub/agent-{AGENT_ID}.jsonl": GOOD}),
+        "a jsonl without its meta": {f"agent-{AGENT_ID}.jsonl": GOOD},
+        "a meta without its jsonl": {f"agent-{AGENT_ID}.meta.json": meta()},
+        "a meta with a model key": pair(meta_text=meta(model="claude-opus-5-5")),
+        "a nested sub-agent's meta": pair(meta_text=meta(spawnDepth=2)),
+        "a meta of another request shape": pair(meta_text=meta(requestShape="inline")),
+        "a meta that is not JSON": pair(meta_text="{"),
     }
-    cases = {name: {f"agent-{AGENT_ID}.jsonl": "".join(json.dumps(r) + "\n" for r in recs)}
-             for name, recs in held.items()}
-    cases["a raw U+2028"] = {f"agent-{AGENT_ID}.jsonl": json.dumps(side_record(), ensure_ascii=False)
-                             .replace('"ls"', '"l\u2028s"') + "\n"}
-    cases["a line that is not JSON"] = {f"agent-{AGENT_ID}.jsonl": good + "not json\n"}
-    cases["another file there"] = {f"agent-{AGENT_ID}.jsonl": good, "notes.txt": "x"}
-    cases["a duplicate id"] = {f"agent-{AGENT_ID}.jsonl": good, f"sub/agent-{AGENT_ID}.jsonl": good}
-    for name, files in cases.items():
+    for name, files in held.items():
         try:
             drive.copy_subagent_files(config_with(files), SID, Path(tempfile.mkdtemp()))
             out.append(f"A-copy: {name} was copied, not held")
@@ -309,103 +371,168 @@ def copy_problems(drive=None) -> list:
     return out
 
 
-def take_folder(*, calls=True, result_over=None, stream_recs=None, files=None, ledger_subagents="auto",
-                pin=PIN) -> Path:
-    """A synthetic take folder: transcript.jsonl (an operator line, an Agent call and its result), turn-1.jsonl (the
-    main init and call, and the sub-agent's records), subagents/agent-<id>.jsonl, and driver-ledger.json naming them."""
+def notification(status="completed", call=CALL_ID):
+    return {"type": "system", "subtype": "task_notification", "task_id": "t1", "tool_use_id": call, "status": status,
+            "output_file": "", "summary": "", "session_id": "s", "uuid": "u-n"}
+
+
+def take_folder(*, calls=True, result_over=None, tur=None, stream_recs=None, files=None, ledger_subagents="auto",
+                pin=PIN, after_result=(), turn2=None, n_calls=1) -> Path:
+    """A synthetic take folder modelled on w083's keys: transcript.jsonl (an operator line, the Agent call(s) and
+    result(s)), turn-1.jsonl (the main init and call, the sub-agent's records, then the result), subagents/ (the pair),
+    and driver-ledger.json naming the copies."""
     import hashlib
     import tempfile
     d = Path(tempfile.mkdtemp())
-    recs = [OP] + ([agent_call(), agent_result(**(result_over or {}))] if calls else [])
-    (d / "transcript.jsonl").write_text("".join(json.dumps(r) + "\n" for r in recs))
-    bash = {"type": "tool_use", "id": "toolu_sub", "name": "Bash", "input": {"command": "ls"}}
-    default_stream = [sub(tool=bash), sub("user", text="ok")] if calls else []
-    (d / "turn-1.jsonl").write_text(stream(INIT, main_said("x") if calls else main_said("x", call=False),
-                                           *(default_stream if stream_recs is None else stream_recs), RESULT))
-    good = "".join(json.dumps(r) + "\n" for r in (side_record(), side_record("user")))
-    files = {f"agent-{AGENT_ID}.jsonl": good} if files is None and calls else (files or {})
+    recs = [OP]
+    for i in range(n_calls if calls else 0):
+        cid = CALL_ID if i == 0 else f"{CALL_ID}_{i + 1}"
+        recs.append(agent_call(call_id=cid))
+        r = agent_result(call_id=cid, **(result_over or {}))
+        if tur is not None:
+            r["toolUseResult"] = tur
+        recs.append(r)
+    (d / "transcript.jsonl").write_text(jl(*recs))
+    default_stream = [sub(tool=BASH), sub("user", text="ok")] if calls else []
+    head = main_said("x") if calls else main_said("x", call=False)
+    for i in range(1, n_calls if calls else 0):                 # every call of the transcript is made in turn 1
+        head["message"]["content"].append({"type": "tool_use", "id": f"{CALL_ID}_{i + 1}", "name": "Agent",
+                                           "input": {"description": "Survey", "prompt": "List the stages."}})
+    (d / "turn-1.jsonl").write_text(stream(INIT, head,
+                                           *(default_stream if stream_recs is None else stream_recs), RESULT,
+                                           *after_result))
+    if turn2 is not None:
+        (d / "turn-2.jsonl").write_text(stream(INIT, *turn2, RESULT))
+    good = jl(side_record(), side_record("user"))
+    files = pair(good) if files is None and calls else (files or {})
     listed = []
     for name, text in files.items():
         f = d / "subagents" / name
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text(text)
-        listed.append({"file": f"subagents/{name}", "agent_id": name[6:-6],
+        listed.append({"file": f"subagents/{name}", "agent_id": AGENT_ID,
                        "sha256": hashlib.sha256(text.encode()).hexdigest()})
     led = {"model_requested": pin, "subagents": listed if ledger_subagents == "auto" else ledger_subagents}
     (d / "driver-ledger.json").write_text(json.dumps(led))
     return d / "transcript.jsonl"
 
 
+ASYNC = {"isAsync": True, "status": "async_launched"}
+
+
 def check_problems(ct=None) -> list:
     if ct is None:
         import check_take as ct
     out = []
-    bash = {"type": "tool_use", "id": "toolu_sub", "name": "Bash", "input": {"command": "ls"}}
-    for name, kw in (("a clean take", {}), ("no Agent call", {"calls": False}),
-                     ("a failed, not running, sub-agent", {"result_over": {"status": "failed"}}),
-                     ("an explicit opus sub-agent", {"result_over": {"resolvedModel": "claude-opus-5-5"},
-                                                     "stream_recs": [sub(model="claude-opus-5-5", tool=bash)]})):
+    api = sub(model="<synthetic>", isApiErrorMessage=True, text="API Error: 429")
+    clean = {
+        "a clean take": {},
+        "no Agent call": {"calls": False},
+        "an errored call (a non-dict result), recorded": {"tur": "Error: the agent could not start", "files": {},
+                                                          "stream_recs": []},
+        "an explicit opus sub-agent": {"result_over": {"resolvedModel": "claude-opus-5-5"},
+                                       "stream_recs": [sub(model="claude-opus-5-5", tool=BASH), sub("user", text="ok")],
+                                       "files": pair(jl(side_record(message={"role": "assistant",
+                                                                             "model": "claude-opus-5-5",
+                                                                             "content": [BASH]}),
+                                                        side_record("user")))},
+        "an async call completed in its turn (w083's shape)": {"result_over": ASYNC, "stream_recs": [
+            sub(tool=BASH), sub("user", text="ok"), notification()]},
+        "an async call that failed in its turn": {"result_over": ASYNC, "stream_recs": [
+            sub(tool=BASH), sub("user", text="ok"), notification("failed")]},
+        "a sub-agent API error (F3)": {"stream_recs": [sub(tool=BASH), sub("user", text="ok"), api]},
+        "a raw U+2028 inside a string of a sub-agent file": {"files": pair(jl(side_record(message={
+            "role": "assistant", "model": PIN, "content": [dict(BASH)]}), side_attachment(
+            {"type": "nested_memory", "content": "a b"}), side_record("user"), ascii_=False))},
+    }
+    for name, kw in clean.items():
         got = ct.subagent_problems(take_folder(**kw))
         if got:
             out.append(f"A-check {name}: refused {got}")
     sr = ["subagent-records"]
-    good = "".join(json.dumps(r) + "\n" for r in (side_record(), side_record("user")))
+    late = sub(tool=dict(BASH, id="toolu_late"))
     refused = {
         "a copy the ledger does not name": ({"ledger_subagents": []}, sr),
         "no ledger list": ({"ledger_subagents": None}, sr),
-        "a file no call names": ({"files": {f"agent-{AGENT_ID}.jsonl": good, "agent-zzz.jsonl": good}}, sr),
+        "a file no call names": ({"files": dict(pair(), **pair(agent="zzz"))}, sr),
         "a call with no file": ({"files": {}}, sr),
+        "a call with no meta": ({"files": {f"agent-{AGENT_ID}.jsonl": jl(side_record(), side_record("user"))}}, sr),
+        "a meta bound to another call": ({"files": pair(jl(side_record(), side_record("user")),
+                                                        meta_text=meta(toolUseId="toolu_other"))}, sr),
+        "two calls sharing one sub-agent": ({"n_calls": 2}, sr),
         "a call with no result agent": ({"result_over": {"agentId": None}}, sr),
-        "a background sub-agent unfinished": ({"result_over": {"isAsync": True, "status": "running"}}, sr),
+        "an async call with no completion": ({"result_over": ASYNC}, sr),
+        "an async completion after the final result": ({"result_over": ASYNC, "after_result": [notification()]}, sr),
+        "an async call whose notification is not terminal": ({"result_over": ASYNC, "stream_recs": [
+            sub(tool=BASH), sub("user", text="ok"), notification("running")]}, sr),
+        "a sub-agent record after the final result": ({"result_over": ASYNC, "stream_recs": [
+            sub(tool=BASH), sub("user", text="ok"), notification()], "after_result": [late]}, sr),
+        "a sub-agent record in a later turn": ({"turn2": [sub("user", text="still going")]}, sr),
+        "a remote sub-agent": ({"result_over": {"status": "remote_launched"}}, sr),
+        "an unknown status": ({"result_over": {"status": "teleported"}}, sr),
         "a resolved model off the list": ({"result_over": {"resolvedModel": "claude-fable-5-1"}}, sr),
-        "a stream model off the list": ({"stream_recs": [sub(model="claude-sonnet-4-5", tool=bash)]}, sr),
-        "a stream record of another agent": ({"stream_recs": [sub(tool=bash, agent_id="zzz")]}, sr),
-        "stream and file disagree": ({"stream_recs": [sub(tool=dict(bash, id="toolu_other"))]}, sr),
+        "a resolved model with a context suffix": ({"result_over": {"resolvedModel": "claude-opus-5-5[1m]"}}, sr),
+        "a stream model off the list": ({"stream_recs": [sub(model="claude-sonnet-4-5", tool=BASH),
+                                                         sub("user", text="ok")]}, sr),
+        "a stream record of another agent": ({"stream_recs": [sub(tool=BASH, agent_id="zzz")]}, sr),
+        "stream and file disagree": ({"stream_recs": [sub(tool=dict(BASH, id="toolu_other")),
+                                                      sub("user", text="ok")]}, sr),
+        "F1 case B: calls in the file, none in the stream": ({"stream_recs": []}, sr),
+        "F1 case C: the stream holds only a user record": ({"stream_recs": [sub("user", text="go")]}, sr),
         "a denied tool": ({"stream_recs": [sub(tool={"type": "tool_use", "id": "toolu_sub", "name": "SendMessage",
                                                      "input": {}})],
-                           "files": {f"agent-{AGENT_ID}.jsonl": json.dumps(side_record(message={
-                               "role": "assistant", "model": PIN, "content": [{"type": "tool_use", "id": "toolu_sub",
-                                                                                "name": "SendMessage", "input": {}}]}))
-                                     + "\n"}}, ["harness-condition-violated"]),
-        "a raw U+2028 in a sub-agent file": ({"files": {f"agent-{AGENT_ID}.jsonl": good.replace(
-            '"ls"', '"l\u2028s"', 1)}}, ["transcript-unreadable"]),
+                           "files": pair(jl(side_record(message={"role": "assistant", "model": PIN, "content": [
+                               {"type": "tool_use", "id": "toolu_sub", "name": "SendMessage", "input": {}}]})))},
+                          ["harness-condition-violated"]),
+        "a raw vertical tab in a sub-agent file": ({"files": pair(jl(side_record()).replace('"ls"', '"l\x0bs"'))},
+                                                   ["transcript-unreadable"]),
     }
     for name, (kw, want) in refused.items():
         got = ct.subagent_problems(take_folder(**kw))
         if not set(want) <= set(ct.reason_ids(got)):
             out.append(f"A-check {name}: {got}")
+    got = ct.subagent_problems(take_folder(result_over={"resolvedModel": "claude-opus-5-5[1m]"}))
+    if not any("context-window suffix" in g for g in got):
+        out.append("A-check: a context suffix is not named plainly")
     return out
 
 
 def reach_problems(ct=None) -> list:
     import prereg
+    import tempfile
+    import drive
     if ct is None:
         import check_take as ct
     out = []
-    peek = {"type": "tool_use", "id": "toolu_sub", "name": "Read",
+    peek = {"type": "tool_use", "id": "toolu_peek", "name": "Read",
             "input": {"file_path": "/repo/evals/gap-study-4/prereg.json"}}
-    path = take_folder(stream_recs=[sub(tool=peek)], files={f"agent-{AGENT_ID}.jsonl": json.dumps(side_record(
-        message={"role": "assistant", "model": PIN, "content": [peek]})) + "\n"})
-    if ct.event_counts(path)[ct.EVENT_STUDY] != 0:
-        out.append("A-reach: the main transcript alone already counts the read")
-    reach = ct.subagent_reach_file(path)
-    try:
-        counts = ct.event_counts(reach)
-    finally:
-        ct._drop(reach)
-    if counts[ct.EVENT_STUDY] < 1 or ct.reason_ids(ct.reach_event_problems(counts)) != [ct.EVENT_STUDY]:
-        out.append(f"A-reach: a sub-agent's read of the study's materials is not counted ({counts})")
-    counts0 = ct.event_counts(path)
-    got = ct.subagent_reach_problems(path, prereg.load(), counts0)
-    if counts0[ct.EVENT_STUDY] < 1 or ct.EVENT_STUDY not in ct.reason_ids(got):
-        out.append(f"A-reach: subagent_reach_problems does not count and lift the sub-agent's reach ({counts0})")
+    peek_file = pair(jl(side_record(message={"role": "assistant", "model": PIN, "content": [peek]})))
+    for name, kw in (("the stream and the file", {"stream_recs": [sub(tool=peek)], "files": peek_file}),
+                     ("the file alone (F1 case B)", {"stream_recs": [], "files": peek_file})):
+        path = take_folder(**kw)
+        counts0 = ct.event_counts(path)
+        if counts0[ct.EVENT_STUDY] != 0:
+            out.append(f"A-reach {name}: the main transcript alone already counts the read")
+        got = ct.subagent_reach_problems(path, prereg.load(), counts0)
+        if counts0[ct.EVENT_STUDY] != 1 or ct.EVENT_STUDY not in ct.reason_ids(got):
+            out.append(f"A-reach {name}: the sub-agent's read is not counted once and lifted ({counts0})")
     if ct.subagent_reach_file(take_folder(calls=False)) is not None:
         out.append("A-reach: a take with no sub-agent record gets a reach file")
-    leak = {"type": "attachment", "isSidechain": True, "agentId": AGENT_ID, "sessionId": SID,
-            "attachment": {"type": "nested_memory", "content": "notes for the evaluation"}}
-    lp = take_folder(files={f"agent-{AGENT_ID}.jsonl": json.dumps(leak) + "\n"})
-    if ct.reason_ids(ct.subagent_leak_problems(lp, prereg.load())) != ["leak-in-loaded-context"]:
+    leaky = jl(side_attachment({"type": "nested_memory", "content": "notes for the evaluation"}), side_record(),
+               side_record("user"))
+    try:                                   # the leak case is a file the driver itself admits, so the sweep is not vacuous
+        drive.copy_subagent_files(config_with(pair(leaky)), SID, Path(tempfile.mkdtemp()))
+    except drive.DriveRefused as e:
+        out.append(f"A-reach: the leak fixture is a file the driver would hold: {e}")
+    if ct.reason_ids(ct.subagent_leak_problems(take_folder(files=pair(leaky)), prereg.load())) != \
+            ["leak-in-loaded-context"]:
         out.append("A-reach: a sub-agent file's leak word is not swept")
+    unscrubbed = take_folder(files=pair(jl(side_attachment({"type": "session_context", "context": {"userEmail": EMAIL}}),
+                                         side_record(), side_record("user"))))
+    counts = ct.event_counts(unscrubbed)
+    got = ct.subagent_reach_problems(unscrubbed, prereg.load(), counts)
+    if counts[ct.EVENT_EMAIL] < 1 or ct.EVENT_EMAIL not in ct.reason_ids(got):
+        out.append("A-reach: a sub-agent file's account email is not counted")
     import ast
     tree = ast.parse(Path(ct.__file__).read_text())
     for fn in ("check4", "check4_walk"):
@@ -431,7 +558,7 @@ def count_problems() -> list:
     import walk_runner as wr
     out = []
     want_call = {"tool_use_id": CALL_ID, "agent_id": AGENT_ID, "is_async": False, "status": "completed",
-                 "resolved_model": PIN}
+                 "resolved_model": PIN, "completion": None}
     got = ct.agent_summary(take_folder())
     if got != {"agent_calls": 1, "subagents": {"calls": [want_call], "models": [PIN]}}:
         out.append(f"A-count: agent_summary {got}")
@@ -508,6 +635,115 @@ def draft_problems() -> list:
     return out
 
 
+def w083_folder(with_file=True) -> Path:
+    """A structure-only model of held walk w083 (Haiku, plan-gate trap w1): every record's type, subtype, key set and
+    enumerated values as read on athena (glitch-b5's transcript keys; this lane's keys-only read of turn-1.jsonl, 16
+    Oct 2026: 142 lines), every value synthetic. Turn 1: init, the agent's own calls, the Agent call, the
+    background_tasks_changed and task_started events, the call's async result, the sub-agent's 38 records (tool calls
+    Read, Bash and Write) between task_progress events, task_updated, task_notification (status completed),
+    background_tasks_changed, a second init, the agent's further calls, and two result records. Its subagents files
+    are NOT seen (the config folder was deleted at publish), so with_file models a pair that agrees with the stream."""
+    import hashlib
+    import tempfile
+    d = Path(tempfile.mkdtemp())
+    call_input = {"description": "Survey the stages", "prompt": "List the stages."}
+    tur = {"agentId": AGENT_ID, "canContinueAgent": False, "canReadOutputFile": True, "description": "Survey the stages",
+           "isAsync": True, "outputFile": "/tmp/out", "prompt": "List the stages.", "resolvedModel": PIN,
+           "status": "async_launched"}
+    result = agent_result(**{k: v for k, v in tur.items()})
+    (d / "transcript.jsonl").write_text(jl(OP, agent_call(call_input), result))
+
+    def main(content, **extra):
+        r = {"type": "assistant", "parent_tool_use_id": None, "request_id": "r", "session_id": "s", "timestamp": "t",
+             "uuid": "u", "message": {"id": "m", "model": PIN, "role": "assistant", "content": content}}
+        r.update(extra)
+        return r
+
+    def main_result(tid):
+        return {"type": "user", "parent_tool_use_id": None, "session_id": "s", "timestamp": "t", "tool_result_meta": {},
+                "tool_use_result": {}, "uuid": "u", "message": {"role": "user", "content": [
+                    {"type": "tool_result", "tool_use_id": tid, "content": "ok"}]}}
+
+    def subrec(kind, content):
+        r = {"type": kind, "agent_id": AGENT_ID, "parent_tool_use_id": CALL_ID, "session_id": "s",
+             "subagent_type": "general-purpose", "task_description": "Survey the stages", "timestamp": "t", "uuid": "u",
+             "message": {"role": kind, "content": content}}
+        if kind == "assistant":
+            r["request_id"] = "r"
+            r["message"].update(id="ms", model=PIN)
+        else:
+            r["tool_result_meta"] = {}
+        return r
+
+    def progress():
+        return {"type": "system", "subtype": "task_progress", "description": "d", "last_tool_name": "Bash",
+                "run_id": "run", "session_id": "s", "task_id": "t1", "tool_use_id": CALL_ID, "usage": {}, "uuid": "u"}
+    init = dict(INIT, agents=[], analytics_disabled=True, capabilities={}, cwd="/run")
+    recs = [init, {"type": "system", "subtype": "thinking_tokens", "estimated_tokens": 1, "estimated_tokens_delta": 1,
+                   "session_id": "s", "uuid": "u"},
+            main([{"type": "thinking", "thinking": "t"}], thinking_display="x", thinking_duration_ms=1),
+            main([{"type": "tool_use", "id": "toolu_m1", "name": "Read", "input": {"file_path": "/run/a"}}]),
+            main_result("toolu_m1"), {"type": "rate_limit_event", "rate_limit_info": {}, "session_id": "s", "uuid": "u"},
+            main([{"type": "tool_use", "id": CALL_ID, "name": "Agent", "input": call_input}]),
+            {"type": "system", "subtype": "background_tasks_changed", "session_id": "s", "tasks": [], "uuid": "u"},
+            {"type": "system", "subtype": "task_started", "description": "d", "is_backgrounded": True, "prompt": "p",
+             "run_id": "run", "session_id": "s", "spawn_depth": 1, "subagent_type": "general-purpose", "task_id": "t1",
+             "task_type": "local_agent", "tool_use_id": CALL_ID, "uuid": "u"},
+            main_result(CALL_ID), main([{"type": "text", "text": "I have started a survey."}])]
+    sub_calls = []
+    for i, name in enumerate(("Read", "Bash", "Read", "Read", "Bash", "Bash", "Bash", "Bash", "Read", "Read", "Read",
+                              "Bash", "Read", "Write")):
+        tid = f"toolu_s{i}"
+        inp = {"file_path": "/run/x"} if name in ("Read", "Write") else {"command": "ls"}
+        if name == "Write":
+            inp["content"] = "y"
+        sub_calls.append((tid, name, inp))
+        recs += [subrec("assistant", [{"type": "tool_use", "id": tid, "name": name, "input": inp}]), progress(),
+                 subrec("user", [{"type": "tool_result", "tool_use_id": tid, "content": "ok"}])]
+    recs += [subrec("assistant", [{"type": "text", "text": "Survey done."}]),
+             {"type": "system", "subtype": "task_updated", "patch": {}, "run_id": "run", "session_id": "s",
+              "task_id": "t1", "uuid": "u"},
+             notification("completed"),
+             {"type": "system", "subtype": "background_tasks_changed", "session_id": "s", "tasks": [], "uuid": "u"},
+             init, main([{"type": "tool_use", "id": "toolu_m2", "name": "Edit",
+                          "input": {"file_path": "/run/b", "old_string": "a", "new_string": "b"}}]),
+             main_result("toolu_m2"), main([{"type": "text", "text": "Done."}]), RESULT, dict(RESULT, origin={})]
+    (d / "turn-1.jsonl").write_text(stream(*recs))
+    listed = []
+    if with_file:
+        side = []
+        for tid, name, inp in sub_calls:
+            side += [side_record(message={"role": "assistant", "model": PIN, "content": [
+                {"type": "tool_use", "id": tid, "name": name, "input": inp}]}),
+                side_record("user", message={"role": "user", "content": [
+                    {"type": "tool_result", "tool_use_id": tid, "content": "ok"}]})]
+        for name, text in pair(jl(*side), meta(requestShape="background")).items():
+            (d / "subagents").mkdir(exist_ok=True)
+            (d / "subagents" / name).write_text(text)
+            listed.append({"file": f"subagents/{name}", "agent_id": AGENT_ID,
+                           "sha256": hashlib.sha256(text.encode()).hexdigest()})
+    (d / "driver-ledger.json").write_text(json.dumps({"model_requested": PIN, "subagents": listed}))
+    return d / "transcript.jsonl"
+
+
+def w083_problems() -> list:
+    import check_take as ct
+    import claude_code_adapter as cca
+    out = []
+    path = w083_folder()
+    read = cca.read_stream(path.with_name("turn-1.jsonl").read_text())
+    if "Survey done." in read["agent_text"] or read["subagent_models"] != [PIN] or \
+            cca.subagent_model_off(read, PIN) is not None or cca.served_model_off(read, PIN) is not None:
+        out.append(f"A-w083: the stream reads {read['agent_text']!r}, {read['subagent_models']}")
+    got = ct.subagent_problems(path)
+    if got:
+        out.append(f"A-w083: refused {got}")
+    summary = ct.agent_summary(path)["subagents"]["calls"]
+    if [(c["status"], c["is_async"], c["completion"]) for c in summary] != [("async_launched", True, "completed")]:
+        out.append(f"A-w083: the call reads {summary}")
+    return out
+
+
 class TheAgentTool(unittest.TestCase):
     def test_a_view(self):
         self.assertEqual(view_problems(), [])
@@ -524,11 +760,18 @@ class TheAgentTool(unittest.TestCase):
     def test_a_copy_witnesses(self):
         import drive
         for name, old, new in (
-                ("the shape unread", "        bad = subagent_shape_problems(text, m.group(1), session_id)\n",
+                ("the shape unread", "        bad = subagent_shape_problems(text, agent, session_id)\n",
                  "        bad = []\n"),
-                ("other files copied past", "        if m is None or not p.is_file():\n", "        if False:\n"),
+                ("other files copied past", "        if not p.is_file() or (m is None and mm is None):\n",
+                 "        if False:\n"),
                 ("the agent id unbound", 'rec.get("agentId") != agent_id or ', ""),
-                ("not scanned", 'SUBAGENT_FILE.fullmatch(name):     # Agent parity: a transcript', "False:")):
+                ("attachments unread", "                parser._attachment(rec)\n", "                pass\n"),
+                ("the meta unread", "        bad = subagent_meta_problems(mraw)\n", "        bad = []\n"),
+                ("unpaired files copied", "    if set(jsonl) != set(meta):\n", "    if False:\n"),
+                ("not scrubbed", "        written = body.encode(\"utf-8\")\n", "        written = raw\n"),
+                ("every separator refused", '_REFUSED_SEPARATORS = ("\\r", "\\x0b", "\\x0c", "\\x1c", "\\x1d", "\\x1e")',
+                 '_REFUSED_SEPARATORS = ("\\r", "\\x0b", "\\x0c", "\\x1c", "\\x1d", "\\x1e", "\\u2028")'),
+                ("not scanned", "(SUBAGENT_FILE.fullmatch(name) or SUBAGENT_META.fullmatch(name)):", "False:")):
             with self.subTest(witness=name):
                 m = mutant(drive, old, new)
                 m.DriveRefused = drive.DriveRefused
@@ -550,16 +793,32 @@ class TheAgentTool(unittest.TestCase):
         for name, old, new in (
                 ("the ledger unread", "            {e.get(\"file\"): e.get(\"sha256\") for e in listed} != on_disk:",
                  "            False:"),
-                ("calls and files unbound", "    if set(files) != named:", "    if False:"),
-                ("a running sub-agent read", '        elif c["is_async"] is True and c["status"] != "completed":',
-                 "        elif False:"),
+                ("calls and files unbound", "    if set(files) != named or set(metas) != named:", "    if False:"),
+                ("a running sub-agent read", '        if c["status"] == "async_launched" and c["completion"] not in '
+                 'TASK_TERMINAL_STATUSES:', "        if False:"),
+                ("a completion after the result read", "            if not done or done[0] > final:",
+                 "            if not done:"),
+                ("late records read", "            if late:\n                out.append", "            if False:\n                out.append"),
+                ("the metas unbound", '        if call is None or call["agent_id"] != aid:', "        if False:"),
+                ("any status read", '        if c["status"] not in AGENT_STATUSES or c["status"] == "remote_launched":',
+                 "        if False:"),
+                ("an errored call refused", "        if c[\"status\"] == AGENT_ERRORED:\n            continue\n", ""),
+                ("two calls on one agent read", "    if len(agents) != len(set(agents)):", "    if False:"),
+                ("API errors read as models", "        if rec.get(\"type\") == \"assistant\" and not _api_error(rec):\n            "
+                 "model = (rec.get(\"message\") or {}).get(\"model\")\n            if isinstance(model, str):\n"
+                 "                out += _model_problem(f\"turn {n}'s", "        if rec.get(\"type\") == \"assistant\":\n            "
+                 "model = (rec.get(\"message\") or {}).get(\"model\")\n            if isinstance(model, str):\n"
+                 "                out += _model_problem(f\"turn {n}'s"),
+                ("the file's calls not fed to the reach", "        fh.write(\"\".join(json.dumps(rec, ensure_ascii=False) + "
+                 "\"\\n\" for recs in files.values() for rec in recs))\n", ""),
+                ("the account email of the files uncounted", "    merged[EVENT_EMAIL] += sum(", "    merged[EVENT_EMAIL] += 0 * sum("),
                 ("stream records unbound", '        if call is None or rec.get("agent_id") != call["agent_id"]:',
                  "        if call is None:"),
-                ("stream and file not compared", "        if stream_calls[aid] != file_calls[aid]:", "        if False:"),
-                ("the reach file empty", "    subs = stream_subagent_records(path)\n    if not subs:",
-                 "    subs = []\n    if not subs:"),
+                ("stream and file not compared", "        if mine != theirs:", "        if False:"),
+                ("the reach file empty", "    if not subs and not files:\n        return None",
+                 "    if True:\n        return None"),
                 ("the counts not updated", "    counts.update(merged)\n", ""),
-                ("sub-agent leaks unswept", "        leaked = sorted(context_leaks(context_text(p), pre))",
+                ("sub-agent leaks unswept", "        leaked = sorted(context_leaks(context_text(q), pre))",
                  "        leaked = []")):
             with self.subTest(witness=name):
                 m = mutant(ct, old, new)
@@ -569,6 +828,10 @@ class TheAgentTool(unittest.TestCase):
                     got = [f"raised {type(e).__name__}"]
                 print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
                 self.assertTrue(got, name)
+
+    def test_a_w083(self):
+        """w083's real shape, modelled from its keys, now reads clean (with a sub-agent file pair that agrees)."""
+        self.assertEqual(w083_problems(), [])
 
     def test_a_draft(self):
         self.assertEqual(draft_problems(), [])

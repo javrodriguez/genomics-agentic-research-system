@@ -99,12 +99,13 @@ CHECK_NUDGE_KEY = "no_output_nudges"
 # ({calls, models}); a check.json written before it lacks both. Under the constants in force a checked walk's
 # effective reading carries a valid pair.
 CHECK_AGENT_KEYS = ("agent_calls", "subagents")
-AGENT_CALL_KEYS = ("tool_use_id", "agent_id", "is_async", "status", "resolved_model")
+AGENT_CALL_KEYS = ("tool_use_id", "agent_id", "is_async", "status", "resolved_model", "completion")   # + r10 R-B
 
 
 def valid_agent_summary(count, subagents) -> bool:
     """agent_calls an int >= 0; subagents exactly {calls, models}: calls a list of that many {tool_use_id: str,
-    agent_id, status, resolved_model: str or None, is_async: bool or None}, models a sorted list of distinct str."""
+    agent_id, status, resolved_model, completion: str or None, is_async: bool or None}, models a sorted list of
+    distinct str."""
     if type(count) is not int or count < 0 or not isinstance(subagents, dict) or set(subagents) != {"calls", "models"}:
         return False
     calls, models = subagents["calls"], subagents["models"]
@@ -112,7 +113,7 @@ def valid_agent_summary(count, subagents) -> bool:
             or not all(type(m) is str for m in models) or models != sorted(set(models)):
         return False
     return all(isinstance(c, dict) and set(c) == set(AGENT_CALL_KEYS) and type(c["tool_use_id"]) is str
-               and all(c[k] is None or type(c[k]) is str for k in ("agent_id", "status", "resolved_model"))
+               and all(c[k] is None or type(c[k]) is str for k in ("agent_id", "status", "resolved_model", "completion"))
                and (c["is_async"] is None or type(c["is_async"]) is bool) for c in calls)
 
 

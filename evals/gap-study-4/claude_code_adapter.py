@@ -204,9 +204,17 @@ def read_stream(text: str) -> dict:
             sids.append(sid)
         kind = rec.get("type")
         parent = rec.get("parent_tool_use_id")
+        if parent is None and kind in SUBAGENT_RECORD_TYPES and rec.get("agent_id") is not None:
+            raise StreamError("a record carries an agent_id and no parent_tool_use_id: neither the agent's nor a "
+                              "sub-agent's (review r10 NIT)")
         if parent is not None and kind in SUBAGENT_RECORD_TYPES:
             subs.append(_subagent_record(rec, parent))
-            if subs[-1]["model"] is not None and subs[-1]["model"] not in sub_models:
+            if subs[-1]["api_error"]:                 # review r10 F3: routed as the agent's own API errors are
+                words = "\n".join(t for t in _texts(rec) if t)
+                harness.append(words)
+                api.append({"status": status, "type": rec.get("error") if isinstance(rec.get("error"), str)
+                            else None, "text": words or None})
+            elif subs[-1]["model"] is not None and subs[-1]["model"] not in sub_models:
                 sub_models.append(subs[-1]["model"])
             continue
         if kind == INIT_TYPE and rec.get("subtype") == INIT_SUBTYPE:
@@ -262,9 +270,14 @@ def read_stream(text: str) -> dict:
     # glitch-b5's ruling R-B: a sub-agent record whose parent call is not one of this turn's own calls was written by a
     # sub-agent still running after its turn ended (or a stray): the turn is never read as complete
     late = [s for s in subs if s["parent_tool_use_id"] not in tools]
+    nested_parents = {t["id"] for s in subs for t in s["tool_uses"]}
+    if any(s["parent_tool_use_id"] in nested_parents for s in late):
+        raise StreamError("a sub-agent record answers a call a sub-agent made: a nested sub-agent, which this reader "
+                          "does not read (refused for a ruling)")
     if late:
-        raise StreamError(f"{len(late)} sub-agent record(s) answer a call this turn did not make (first parent "
-                          f"{late[0]['parent_tool_use_id']!r}): a sub-agent wrote after its turn ended")
+        raise StreamError(f"{len(late)} sub-agent record(s) answer a call this turn's agent did not make (first parent "
+                          f"{late[0]['parent_tool_use_id']!r}): a sub-agent of an earlier turn wrote after its turn "
+                          f"ended")
     return {"init": init, "init_extra": extra, "inits": inits, "agent_text": "\n".join(said),
             "harness_text": "\n".join(h for h in harness if h), "agent_output": output, "api_errors": api,
             "calls": calls, "tool_use_ids": tools, "result": result, "session_ids": sids, "undecoded": bad,
@@ -288,11 +301,12 @@ def _subagent_record(rec: dict, parent) -> dict:
         raise StreamError("a sub-agent record whose parent_tool_use_id is not a non-empty string")
     msg = rec.get("message") if isinstance(rec.get("message"), dict) else {}
     model = msg.get("model")
-    if kind == "assistant" and (not isinstance(model, str) or not model):
+    api_error = kind == "assistant" and _is_api_error(rec)      # review r10 F3: the harness's words, never a model
+    if kind == "assistant" and not api_error and (not isinstance(model, str) or not model):
         raise StreamError(f"a sub-agent assistant record names no model ({model!r}): an unknown shape")
     agent = rec.get("agent_id")
     return {"type": kind, "agent_id": agent if isinstance(agent, str) else None, "parent_tool_use_id": parent,
-            "model": model if kind == "assistant" else None,
+            "model": model if kind == "assistant" and not api_error else None, "api_error": api_error,
             "tool_uses": [{"id": b.get("id"), "name": b.get("name"), "input": b.get("input")}
                           for b in _blocks(rec) if b.get("type") == "tool_use"]}
 

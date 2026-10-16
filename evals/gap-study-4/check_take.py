@@ -2870,24 +2870,35 @@ def transcript_line_problems(path: Path) -> list[str]:
 
 
 
-# ---- THE AGENT TOOL (glitch-b5's Agent parity ruling, 16 Oct 2026, parts 2 to 6; CP6 walk w083) -----------------------
-#   Round 3 offered Agent in 64 of 64 transcripts and never called it; round 4 reads its sub-agent's records. The
-#   PRIMARY record of a sub-agent's actions is the turn stream (turn-N.jsonl beside the transcript): its assistant and
-#   user records with parent_tool_use_id set, bound by parent_tool_use_id to the transcript's Agent tool_use id and by
-#   agent_id to that call's toolUseResult.agentId (w083's keys). Every reach check reads those records' tool calls as
-#   the main agent's (subagent_reach_file feeds event_counts; reach_event_problems lifts the events). The copied
-#   subagents/agent-<id>.jsonl files (drive.copy_subagent_files) must be the ones the driver ledger names, one per
-#   Agent call's agentId, and agree with the stream on the tool calls; their attachments' words are swept for leaks
-#   and their lines are newline-split JSON. A sub-agent still running at the turn's end (a call with no result naming
-#   its agent, or isAsync with a status other than completed), a model off the pin's and SUBAGENT_EXPLICIT_MODELS,
-#   and a sub-agent call to a denied isolation tool refuse. [subagent-records] is an operator reason with its round-4
-#   ruling, routed like harness-condition-violated.
+# ---- THE AGENT TOOL (glitch-b5's Agent parity ruling, 16 Oct 2026, parts 2 to 6, and review r10's folds; w083) -----------
+#   Round 3 offered Agent in 64 of 64 transcripts and never called it; round 4 reads its sub-agent's records. A sub-agent's
+#   actions are on two records: the turn stream (its assistant and user records with parent_tool_use_id set, bound by
+#   parent_tool_use_id to the transcript's Agent tool_use id and by agent_id to that call's toolUseResult.agentId) and
+#   the copied subagents/agent-<id>.jsonl (bound by its id, and by its agent-<id>.meta.json's toolUseId to the call).
+#   Every reach check reads the tool calls of BOTH as the main agent's (review r10 F1: a call the file holds and the
+#   stream does not is still read), and the two must agree, both ways, for every agent with a file (an absent stream
+#   side is the empty set). The files' attachments are swept for leak words and their account-email field is read like
+#   the transcript's. Statuses are 2.1.296's Agent results (completed, async_launched, remote_launched): completed is
+#   read; async_launched only with completion evidence in the call's own turn (the stream's system task_notification for
+#   the call, status completed, failed or stopped, before the turn's final result) and no record of that sub-agent
+#   after it or in a later turn (review r10, R-B revised: w083's own shape); remote_launched (a sub-agent outside the
+#   box) refuses; an errored call (a non-dict toolUseResult) is recorded as errored. A model off the pin's and
+#   SUBAGENT_EXPLICIT_MODELS refuses; a sub-agent's API-error record is the harness's, never a model (F3). A denied
+#   isolation tool refuses [harness-condition-violated]. [subagent-records] is a round-4 operator reason routed like
+#   harness-condition-violated.
 AGENT_TOOL = "Agent"
 SUBAGENT_RECORDS = "subagent-records"
 SUBAGENTS_DIR = "subagents"
 _SUBAGENT_FILE = re.compile(r"agent-([A-Za-z0-9_-]{1,64})\.jsonl")
+_SUBAGENT_META = re.compile(r"agent-([A-Za-z0-9_-]{1,64})\.meta\.json")
 # claude_code_adapter.SUBAGENT_EXPLICIT_MODELS, the 2.1.296 first-party alias ids (tests/test_agent_tool binds the two)
 SUBAGENT_EXPLICIT_MODELS = ("claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5")
+# 2.1.296's Agent tool results (the output union, read statically) and its task_notification statuses (the SDK schema)
+AGENT_STATUSES = ("completed", "async_launched", "remote_launched")
+AGENT_ERRORED = "errored"
+TASK_TERMINAL_STATUSES = ("completed", "failed", "stopped")
+_SUBAGENT_REFUSED_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e")
+_SYNTHETIC = "<synthetic>"
 
 
 def _records_of(p: Path) -> list:
@@ -2907,9 +2918,25 @@ def _tool_use_blocks(rec: dict) -> list:
     return [b for b in content if isinstance(b, dict) and b.get("type") == "tool_use"] if isinstance(content, list) else []
 
 
+def _result_ids(rec: dict) -> set:
+    content = (rec.get("message") or {}).get("content") if isinstance(rec.get("message"), dict) else None
+    return {b.get("tool_use_id") for b in content if isinstance(b, dict) and b.get("type") == "tool_result"} \
+        if isinstance(content, list) else set()
+
+
+def _api_error(rec: dict) -> bool:
+    msg = rec.get("message") if isinstance(rec.get("message"), dict) else {}
+    return rec.get("isApiErrorMessage") is True or rec.get("is_api_error_message") is True or msg.get("model") == _SYNTHETIC
+
+
+def _turn_streams(path: Path) -> list:
+    return sorted((int(m.group(1)), p) for p in Path(path).parent.iterdir() if (m := _TURN_STREAM.fullmatch(p.name)))
+
+
 def agent_calls(path: Path) -> list:
-    """The transcript's Agent calls, in order: {tool_use_id, agent_id, is_async, status, resolved_model}, the last four
-    from the call's tool_result toolUseResult (None where it carries none)."""
+    """The transcript's Agent calls, in order: {tool_use_id, agent_id, is_async, status, resolved_model, completion};
+    the middle four from the call's toolUseResult (status "errored" when it is not an object), completion the status
+    of the call's task_notification in the turn streams (None when there is none)."""
     calls: dict = {}
     recs = _records_of(path)
     for rec in recs:
@@ -2917,20 +2944,24 @@ def agent_calls(path: Path) -> list:
             for b in _tool_use_blocks(rec):
                 if b.get("name") == AGENT_TOOL and isinstance(b.get("id"), str):
                     calls.setdefault(b["id"], {"tool_use_id": b["id"], "agent_id": None, "is_async": None,
-                                               "status": None, "resolved_model": None})
+                                               "status": None, "resolved_model": None, "completion": None})
     for rec in recs:
-        content = (rec.get("message") or {}).get("content") if isinstance(rec.get("message"), dict) else None
-        if rec.get("type") != "user" or not isinstance(content, list):
+        if rec.get("type") != "user":
             continue
-        tur = rec.get("toolUseResult")
-        for b in content:
-            if isinstance(b, dict) and b.get("type") == "tool_result" and b.get("tool_use_id") in calls \
-                    and isinstance(tur, dict):
-                c = calls[b["tool_use_id"]]
-                c["agent_id"] = tur.get("agentId") if isinstance(tur.get("agentId"), str) else None
-                c["is_async"] = tur.get("isAsync") if isinstance(tur.get("isAsync"), bool) else None
-                c["status"] = tur.get("status") if isinstance(tur.get("status"), str) else None
-                c["resolved_model"] = tur.get("resolvedModel") if isinstance(tur.get("resolvedModel"), str) else None
+        for rid in _result_ids(rec) & set(calls):
+            c, tur = calls[rid], rec.get("toolUseResult")
+            if not isinstance(tur, dict):
+                c["status"] = AGENT_ERRORED           # review r10: an errored call, recorded and never refused
+                continue
+            c["agent_id"] = tur.get("agentId") if isinstance(tur.get("agentId"), str) else None
+            c["is_async"] = tur.get("isAsync") if isinstance(tur.get("isAsync"), bool) else None
+            c["status"] = tur.get("status") if isinstance(tur.get("status"), str) else None
+            c["resolved_model"] = tur.get("resolvedModel") if isinstance(tur.get("resolvedModel"), str) else None
+    for _, stream in _turn_streams(path):
+        for rec in _records_of(stream):
+            if rec.get("type") == "system" and rec.get("subtype") == "task_notification" \
+                    and rec.get("tool_use_id") in calls and isinstance(rec.get("status"), str):
+                calls[rec["tool_use_id"]]["completion"] = rec["status"]
     return list(calls.values())
 
 
@@ -2938,9 +2969,7 @@ def stream_subagent_records(path: Path) -> list:
     """(turn, record) for each sub-agent record of the turn streams beside the transcript: an assistant or user record
     with parent_tool_use_id set (a harness event naming a call is not one)."""
     out = []
-    streams = sorted((int(m.group(1)), p) for p in Path(path).parent.iterdir()
-                     if (m := _TURN_STREAM.fullmatch(p.name)))
-    for n, p in streams:
+    for n, p in _turn_streams(path):
         for rec in _records_of(p):
             if rec.get("type") in ("assistant", "user") and rec.get("parent_tool_use_id") is not None:
                 out.append((n, rec))
@@ -2948,96 +2977,212 @@ def stream_subagent_records(path: Path) -> list:
 
 
 def subagent_files(path: Path) -> dict:
-    """{agent id: path} of the copied sub-agent files under the folder's subagents/."""
+    """{agent id: path} of the copied sub-agent jsonl files under the folder's subagents/."""
     base = Path(path).parent / SUBAGENTS_DIR
     return {m.group(1): p for p in sorted(base.rglob("*")) if p.is_file() and (m := _SUBAGENT_FILE.fullmatch(p.name))} \
         if base.is_dir() else {}
 
 
+def subagent_metas(path: Path) -> dict:
+    """{agent id: the parsed meta (None when unreadable)} of the copied agent-<id>.meta.json files."""
+    base = Path(path).parent / SUBAGENTS_DIR
+    out = {}
+    for p in sorted(base.rglob("*")) if base.is_dir() else []:
+        m = _SUBAGENT_META.fullmatch(p.name)
+        if m and p.is_file():
+            try:
+                out[m.group(1)] = json.loads(p.read_text(encoding="utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                out[m.group(1)] = None
+    return out
+
+
+def subagent_file_line_problems(p: Path) -> list:
+    """[transcript-unreadable] for a sub-agent file carrying a line separator other than newline, U+2028, U+2029 and
+    U+0085 (those three sit inside JSON strings and every reader here splits on newline alone), or a non-blank line
+    that is not JSON."""
+    text = Path(p).read_bytes().decode("utf-8", errors="replace")
+    seps = sorted({f"U+{ord(s):04X}" for s in _SUBAGENT_REFUSED_SEPARATORS if s in text})
+    bad = []
+    for i, line in enumerate(text.split("\n"), 1):
+        if line.strip():
+            try:
+                json.loads(line)
+            except json.JSONDecodeError:
+                bad.append(i)
+    out = []
+    if seps:
+        out.append(f"[{TRANSCRIPT_UNREADABLE}] sub-agent file {Path(p).name} carries line separator(s) "
+                   f"{', '.join(seps)} other than newline")
+    if bad:
+        out.append(f"[{TRANSCRIPT_UNREADABLE}] line(s) {bad[:5]} of sub-agent file {Path(p).name} are not JSON")
+    return out
+
+
+def _calls_of(recs) -> set:
+    return {(b.get("id"), b.get("name")) for rec in recs if rec.get("type") == "assistant" and not _api_error(rec)
+            for b in _tool_use_blocks(rec)}
+
+
+def _model_problem(where: str, model: str, pin) -> list:
+    if model == pin or model in SUBAGENT_EXPLICIT_MODELS:
+        return []
+    why = ("a context-window suffix on the model id is not on the admitted list"
+           if "[" in model else "neither the pin's nor one of the admitted ids")
+    return [f"[{SUBAGENT_RECORDS}] {where} ran on {model[:60]!r}: {why} ({list(SUBAGENT_EXPLICIT_MODELS)} and the pin's)"]
+
+
 def subagent_problems(path: Path) -> list[str]:
-    """[subagent-records] (and, for a denied tool, [harness-condition-violated]) for each way the sub-agent records
-    fail to bind or show a sub-agent still running; [] for a take with no Agent call and no sub-agent record."""
-    calls, files, subs = agent_calls(path), subagent_files(path), stream_subagent_records(path)
+    """[subagent-records] (and, for a denied tool, [harness-condition-violated]; for a bad line,
+    [transcript-unreadable]) for each way the sub-agent records fail to bind, or show a sub-agent still running; [] for
+    a take with no Agent call and no sub-agent record."""
+    calls, files, metas = agent_calls(path), subagent_files(path), subagent_metas(path)
+    subs = stream_subagent_records(path)
     led = _ledger_beside(path) or {}
     pin = led.get("model_requested")
     out = []
-    if not (calls or files or subs or led.get("subagents")):
+    if not (calls or files or metas or subs or led.get("subagents")):
         return out
     by_call = {c["tool_use_id"]: c for c in calls}
     listed = led.get("subagents")
-    on_disk = {p.relative_to(Path(path).parent).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
-               for p in files.values()}
+    base = Path(path).parent
+    on_disk = {q.relative_to(base).as_posix(): hashlib.sha256(q.read_bytes()).hexdigest()
+               for q in sorted((base / SUBAGENTS_DIR).rglob("*")) if q.is_file()} if (base / SUBAGENTS_DIR).is_dir() else {}
     if not isinstance(listed, list) or not all(isinstance(e, dict) for e in listed) or \
             {e.get("file"): e.get("sha256") for e in listed} != on_disk:
         out.append(f"[{SUBAGENT_RECORDS}] the sub-agent files in the folder ({sorted(on_disk)}) are not exactly the "
                    f"copies the driver ledger names: a file found and not copied, or copied and not named")
+    streams = dict(_turn_streams(path))
+    turn_of_call, final_of_turn = {}, {}
+    for n, sp in streams.items():
+        recs = _records_of(sp)
+        results = [i for i, r in enumerate(recs) if r.get("type") == "result"]
+        final_of_turn[n] = (results[-1] if results else len(recs), recs)
+        for r in recs:
+            if r.get("type") == "assistant" and r.get("parent_tool_use_id") is None:
+                for b in _tool_use_blocks(r):
+                    if b.get("id") in by_call:
+                        turn_of_call[b["id"]] = n
+    agents = [c["agent_id"] for c in calls if c["agent_id"]]
+    if len(agents) != len(set(agents)):
+        out.append(f"[{SUBAGENT_RECORDS}] two Agent calls name one sub-agent: calls and sub-agents are one to one")
     for c in calls:
-        if c["agent_id"] is None:
-            out.append(f"[{SUBAGENT_RECORDS}] Agent call {c['tool_use_id']} has no result naming its sub-agent: it was "
+        cid = c["tool_use_id"]
+        if c["status"] == AGENT_ERRORED:
+            continue
+        if c["status"] is None or c["agent_id"] is None:
+            out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid} has no result naming its sub-agent and a status: it was "
                        f"still running when the turn ended")
-        elif c["is_async"] is True and c["status"] != "completed":
-            out.append(f"[{SUBAGENT_RECORDS}] Agent call {c['tool_use_id']} runs in the background (status "
-                       f"{str(c['status'])[:20]!r}): a sub-agent still running when the turn ended")
-        if c["resolved_model"] is not None and c["resolved_model"] != pin \
-                and c["resolved_model"] not in SUBAGENT_EXPLICIT_MODELS:
-            out.append(f"[{SUBAGENT_RECORDS}] Agent call {c['tool_use_id']} resolved model "
-                       f"{c['resolved_model'][:60]!r}, neither the pin's nor one of {list(SUBAGENT_EXPLICIT_MODELS)}")
-    named = {c["agent_id"] for c in calls if c["agent_id"]}
-    if set(files) != named:
-        out.append(f"[{SUBAGENT_RECORDS}] {len(calls)} Agent call(s) name sub-agents {sorted(named)} and the folder "
-                   f"holds files for {sorted(files)}: each call's sub-agent has exactly one file")
-    stream_calls: dict = {}
+            continue
+        if c["status"] not in AGENT_STATUSES or c["status"] == "remote_launched":
+            out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid} has status {c['status'][:30]!r}: only completed, and "
+                       f"async_launched with its completion in the same turn, are read (remote_launched runs outside "
+                       f"the box)")
+        if c["status"] == "async_launched" and c["completion"] not in TASK_TERMINAL_STATUSES:
+            out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid} runs in the background and its turn holds no completion "
+                       f"for it: a sub-agent still running when the turn ended")
+        if c["resolved_model"] is not None:
+            out += _model_problem(f"Agent call {cid}'s sub-agent", c["resolved_model"], pin)
+        n = turn_of_call.get(cid)
+        if n is not None and c["status"] == "async_launched":
+            final, recs = final_of_turn[n]
+            done = [i for i, r in enumerate(recs) if r.get("type") == "system" and r.get("subtype") == "task_notification"
+                    and r.get("tool_use_id") == cid]
+            if not done or done[0] > final:
+                out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid}'s completion is not in its own turn before the "
+                           f"turn's final result")
+        for m, (fin, recs) in final_of_turn.items():
+            late = [i for i, r in enumerate(recs) if r.get("type") in ("assistant", "user")
+                    and (r.get("parent_tool_use_id") == cid or (c["agent_id"] and r.get("agent_id") == c["agent_id"]))
+                    and (n is None or m != n or i > fin)]
+            if late:
+                out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid}'s sub-agent wrote after its turn's final result or "
+                           f"in another turn")
+                break
+    named = {c["agent_id"] for c in calls if c["agent_id"] and c["status"] != AGENT_ERRORED}
+    if set(files) != named or set(metas) != named:
+        out.append(f"[{SUBAGENT_RECORDS}] {len(named)} Agent call(s) name sub-agents {sorted(named)} and the folder "
+                   f"holds files for {sorted(files)} and metas for {sorted(metas)}: each call's sub-agent has exactly "
+                   f"one of each")
+    for aid, meta in metas.items():
+        call = by_call.get(meta.get("toolUseId")) if isinstance(meta, dict) else None
+        if call is None or call["agent_id"] != aid:
+            out.append(f"[{SUBAGENT_RECORDS}] sub-agent {aid}'s meta is not bound to the Agent call that names it")
+    stream_recs: dict = {}
     for n, rec in subs:
         call = by_call.get(rec.get("parent_tool_use_id"))
         if call is None or rec.get("agent_id") != call["agent_id"]:
             out.append(f"[{SUBAGENT_RECORDS}] turn {n}'s sub-agent record is not bound to an Agent call of the "
                        f"transcript by its parent call and agent id")
             continue
-        model = (rec.get("message") or {}).get("model") if rec.get("type") == "assistant" else None
-        if model is not None and model != pin and model not in SUBAGENT_EXPLICIT_MODELS:
-            out.append(f"[{SUBAGENT_RECORDS}] turn {n}'s sub-agent ran on {str(model)[:60]!r}, neither the pin's nor "
-                       f"one of {list(SUBAGENT_EXPLICIT_MODELS)}")
-        if rec.get("type") == "assistant":
-            stream_calls.setdefault(call["agent_id"], set()).update(
-                (b.get("id"), b.get("name")) for b in _tool_use_blocks(rec))
-    file_calls = {aid: {(b.get("id"), b.get("name")) for rec in _records_of(p) if rec.get("type") == "assistant"
-                        for b in _tool_use_blocks(rec)} for aid, p in files.items()}
-    for aid in sorted(set(stream_calls) & set(file_calls)):
-        if stream_calls[aid] != file_calls[aid]:
+        stream_recs.setdefault(call["agent_id"], []).append(rec)
+        if rec.get("type") == "assistant" and not _api_error(rec):
+            model = (rec.get("message") or {}).get("model")
+            if isinstance(model, str):
+                out += _model_problem(f"turn {n}'s sub-agent", model, pin)
+    file_recs = {aid: _records_of(q) for aid, q in files.items()}
+    for aid in sorted(file_recs):
+        mine, theirs = _calls_of(stream_recs.get(aid, [])), _calls_of(file_recs[aid])
+        if mine != theirs:
             out.append(f"[{SUBAGENT_RECORDS}] sub-agent {aid}'s tool calls in the stream and in its file disagree "
-                       f"({len(stream_calls[aid])} against {len(file_calls[aid])})")
-    denied = sorted({name for calls_ in list(stream_calls.values()) + list(file_calls.values()) for _, name in calls_
-                     if name in ISOLATION_DENIED_TOOLS})
+                       f"({len(mine)} against {len(theirs)})")
+        for rec in file_recs[aid]:
+            if rec.get("type") == "assistant" and not _api_error(rec):
+                model = (rec.get("message") or {}).get("model")
+                if isinstance(model, str):
+                    out += _model_problem(f"sub-agent {aid}'s file", model, pin)
+    every = set()
+    for recs in list(stream_recs.values()) + list(file_recs.values()):
+        every |= _calls_of(recs)
+    denied = sorted({name for _, name in every if name in ISOLATION_DENIED_TOOLS})
     if denied:
         out.append(f"[{HARNESS_CONDITION_VIOLATED}] a sub-agent called {denied}: the isolation denials did not hold")
-    for p in files.values():
-        out += [x.replace("the transcript", f"sub-agent file {p.name}", 1) for x in transcript_line_problems(p)]
-    return out
+    for q in files.values():
+        out += subagent_file_line_problems(q)
+    return list(dict.fromkeys(out))
 
 
 def agent_summary(path: Path) -> dict:
     """glitch-b5's Agent parity ruling, part 6 (16 Oct 2026): {agent_calls: the count of Agent calls, subagents:
-    {calls: agent_calls(path), models: the sorted sub-agent models (resolvedModel and the stream's message.model)}},
-    written into check.json so analysis can stratify by them."""
+    {calls: agent_calls(path), models: the sorted sub-agent models (resolvedModel and the stream's and files'
+    message.model, API-error records aside)}}, written into check.json so analysis can stratify by them."""
     calls = agent_calls(path)
     models = {c["resolved_model"] for c in calls if c["resolved_model"]}
-    for _, rec in stream_subagent_records(path):
-        m = (rec.get("message") or {}).get("model") if rec.get("type") == "assistant" else None
+    recs = [rec for _, rec in stream_subagent_records(path)]
+    for q in subagent_files(path).values():
+        recs += _records_of(q)
+    for rec in recs:
+        m = (rec.get("message") or {}).get("model") if rec.get("type") == "assistant" and not _api_error(rec) else None
         if isinstance(m, str):
             models.add(m)
     return {"agent_calls": len(calls), "subagents": {"calls": calls, "models": sorted(models)}}
 
 
 def subagent_reach_file(path: Path):
-    """A scratch transcript of the main agent's records and every sub-agent stream record, which the reach readers read
-    as the main agent's; None when the take has no sub-agent record."""
+    """A scratch transcript of the main agent's records and every sub-agent record, the files' and the stream's (a
+    stream record whose calls or results the file already holds is not repeated), which the reach readers read as the
+    main agent's; None when the take has no sub-agent record (review r10 F1)."""
     subs = stream_subagent_records(path)
-    if not subs:
+    files = {aid: [r for r in _records_of(q) if r.get("type") in ("assistant", "user")]
+             for aid, q in subagent_files(path).items()}
+    if not subs and not files:
         return None
+    held = {aid: (_calls_of(recs), set().union(*[_result_ids(r) for r in recs]) if recs else set())
+            for aid, recs in files.items()}
+    extra = []
+    for _, rec in subs:
+        calls_, results = held.get(rec.get("agent_id"), (set(), set()))
+        own_calls = {(b.get("id"), b.get("name")) for b in _tool_use_blocks(rec)}
+        if rec.get("type") == "assistant" and own_calls and own_calls <= calls_:
+            continue
+        if rec.get("type") == "user" and _result_ids(rec) and _result_ids(rec) <= results:
+            continue
+        extra.append(rec)
     fd, name = tempfile.mkstemp(prefix="reach-", suffix=".jsonl")
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
         fh.write(Path(path).read_text(encoding="utf-8", errors="replace").rstrip("\n") + "\n")
-        fh.write("".join(json.dumps(rec, ensure_ascii=False) + "\n" for _, rec in subs))
+        fh.write("".join(json.dumps(rec, ensure_ascii=False) + "\n" for recs in files.values() for rec in recs))
+        fh.write("".join(json.dumps(rec, ensure_ascii=False) + "\n" for rec in extra))
     return Path(name)
 
 
@@ -3047,9 +3192,9 @@ def reach_event_problems(counts: dict) -> list[str]:
 
 
 def subagent_reach_problems(path: Path, pre: dict, counts: dict) -> list[str]:
-    """The sub-agents' reach, read by the reach readers over the main and sub-agent stream records under the design's
-    pre (R4C-10): `counts` is updated in place to those counts, each counted event lifted (reach_event_problems), and
-    the sub-agent files' attachments swept for leak words."""
+    """The sub-agents' reach, read by the reach readers over the main and every sub-agent record under the design's
+    pre (R4C-10): `counts` is updated in place to those counts (the account-email field of the sub-agent files counted
+    too), each counted event lifted (reach_event_problems), and the sub-agent files' attachments swept for leak words."""
     out = subagent_leak_problems(path, pre)
     reach = subagent_reach_file(path)
     if reach is None:
@@ -3062,6 +3207,7 @@ def subagent_reach_problems(path: Path, pre: dict, counts: dict) -> list[str]:
         _drop(reach)
     if set(merged) != set(counts):
         raise CheckRefused("the reach readers' event ids differ between the main and the sub-agent reading")
+    merged[EVENT_EMAIL] += sum(len(published_email_problems(q)) for q in subagent_files(path).values())
     counts.update(merged)
     return out + reach_event_problems(merged)
 
@@ -3069,10 +3215,10 @@ def subagent_reach_problems(path: Path, pre: dict, counts: dict) -> list[str]:
 def subagent_leak_problems(path: Path, pre: dict) -> list[str]:
     """[leak-in-loaded-context] for a leak word in a copied sub-agent file's attachment records (the main sweep's rule)."""
     out = []
-    for p in subagent_files(path).values():
-        leaked = sorted(context_leaks(context_text(p), pre))
+    for q in subagent_files(path).values():
+        leaked = sorted(context_leaks(context_text(q), pre))
         if leaked:
-            out.append(f"[leak-in-loaded-context] sub-agent file {p.name}'s loaded context contains {leaked}")
+            out.append(f"[leak-in-loaded-context] sub-agent file {q.name}'s loaded context contains {leaked}")
     return out
 
 
