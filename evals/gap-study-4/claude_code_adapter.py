@@ -197,11 +197,18 @@ def read_stream(text: str) -> dict:
     for rec in recs:
         if rec.get("type") == "result" and _int(rec.get("api_error_status")):
             status = rec["api_error_status"]
+    subs, sub_models = [], []
     for rec in recs:
         sid = rec.get("session_id")
         if isinstance(sid, str) and sid not in sids:
             sids.append(sid)
         kind = rec.get("type")
+        parent = rec.get("parent_tool_use_id")
+        if parent is not None and kind in SUBAGENT_RECORD_TYPES:
+            subs.append(_subagent_record(rec, parent))
+            if subs[-1]["model"] is not None and subs[-1]["model"] not in sub_models:
+                sub_models.append(subs[-1]["model"])
+            continue
         if kind == INIT_TYPE and rec.get("subtype") == INIT_SUBTYPE:
             inits += 1
             if inits == 1:
@@ -252,10 +259,42 @@ def read_stream(text: str) -> dict:
                 harness.append(words)
                 api.append({"status": status, "type": rec.get("subtype") if isinstance(rec.get("subtype"), str)
                             else None, "text": words or None})
+    # glitch-b5's ruling R-B: a sub-agent record whose parent call is not one of this turn's own calls was written by a
+    # sub-agent still running after its turn ended (or a stray): the turn is never read as complete
+    late = [s for s in subs if s["parent_tool_use_id"] not in tools]
+    if late:
+        raise StreamError(f"{len(late)} sub-agent record(s) answer a call this turn did not make (first parent "
+                          f"{late[0]['parent_tool_use_id']!r}): a sub-agent wrote after its turn ended")
     return {"init": init, "init_extra": extra, "inits": inits, "agent_text": "\n".join(said),
             "harness_text": "\n".join(h for h in harness if h), "agent_output": output, "api_errors": api,
             "calls": calls, "tool_use_ids": tools, "result": result, "session_ids": sids, "undecoded": bad,
-            "served_models": models, "model_usage": usage}
+            "served_models": models, "model_usage": usage, "subagent_records": subs, "subagent_models": sub_models}
+
+
+# glitch-b5's Agent parity ruling (16 Oct 2026, part 4): an assistant or user stream record with parent_tool_use_id set
+# is a sub-agent's (a harness event such as tool_progress also names the call it reports on, and is not; the recorded
+# haiku probe carries one) (w083's turn 1: 38 of them, types assistant and user, keyed agent_id, message, parent_tool_use_id, request_id,
+# session_id, subagent_type, task_description, timestamp, tool_result_meta, tool_use_result, type, uuid). Its words
+# never count toward a wait point or the agent's visible output, and its calls never join the main calls the
+# cross-check compares; the checker reads its tool calls for every reach check.
+SUBAGENT_RECORD_TYPES = ("assistant", "user")
+
+
+def _subagent_record(rec: dict, parent) -> dict:
+    """One sub-agent stream record: {type, agent_id, parent_tool_use_id, model, tool_uses: [{id, name, input}]}; a
+    parent id that is not a string, or an assistant record with no model, refuses (StreamError)."""
+    kind = rec.get("type")
+    if not isinstance(parent, str) or not parent:
+        raise StreamError("a sub-agent record whose parent_tool_use_id is not a non-empty string")
+    msg = rec.get("message") if isinstance(rec.get("message"), dict) else {}
+    model = msg.get("model")
+    if kind == "assistant" and (not isinstance(model, str) or not model):
+        raise StreamError(f"a sub-agent assistant record names no model ({model!r}): an unknown shape")
+    agent = rec.get("agent_id")
+    return {"type": kind, "agent_id": agent if isinstance(agent, str) else None, "parent_tool_use_id": parent,
+            "model": model if kind == "assistant" else None,
+            "tool_uses": [{"id": b.get("id"), "name": b.get("name"), "input": b.get("input")}
+                          for b in _blocks(rec) if b.get("type") == "tool_use"]}
 
 
 # Review MINOR 5 (glitch-06's ruling, 14 Oct 2026): a modelUsage key beside the pin's is a side call only for a model on
@@ -267,6 +306,27 @@ SIDE_MODELS = ("claude-haiku-4-5-20251001",)
 # another model may leave only a modelUsage key, which the closed list above then reads as a mismatch.
 FIRST_WALK_ACCEPTANCE = ("a turn that uses the Agent tool shows its subagent's assistant records in the 2.1.296 "
                          "stream (parent_tool_use_id set), each carrying message.model",)
+# glitch-b5's ruling R-C (16 Oct 2026): a sub-agent runs on the pin's model (every built-in agent type inherits at
+# these arms: Explore and Plan by "inherit", general-purpose and claude by no model field; statusline-setup names
+# sonnet) or, by the Agent tool's model input, on an explicit choice. The explicit ids admitted are 2.1.296's
+# first-party alias ids (its baked model catalog's aliases: opus, sonnet, haiku; fable is not admitted); anything
+# else stops the take (subagent_model_off). The models a turn's sub-agents served are recorded per take.
+SUBAGENT_EXPLICIT_MODELS = ("claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5")
+
+
+def subagent_model_off(read: dict, model: str):
+    """The first sub-agent model this turn served that is neither the pin's nor in SUBAGENT_EXPLICIT_MODELS, else
+    None."""
+    for m in read.get("subagent_models") or ():
+        if m != model and m not in SUBAGENT_EXPLICIT_MODELS:
+            return m
+    return None
+
+
+def admitted_subagent_models(read: dict, model: str) -> set:
+    """The sub-agent models this turn served that are admitted: a modelUsage key for one is a sub-agent's, not a
+    switch or an unlisted side model."""
+    return {m for m in read.get("subagent_models") or () if m == model or m in SUBAGENT_EXPLICIT_MODELS}
 
 
 def side_calls(read: dict, model: str) -> dict:
@@ -300,7 +360,10 @@ def served_model_off(read: dict, model: str):
     if usage is not None and ((read["served_models"] and model not in usage) or (usage and model not in usage)):
         others = [k for k in read["model_usage"] if k != model]
         return others[0] if others else "<modelUsage names no model>"
+    subagents = admitted_subagent_models(read, model)          # glitch-b5's ruling R-C: a sub-agent's own usage
     for k in read["model_usage"] or ():
+        if k in subagents:
+            continue
         if k != model and k not in SIDE_MODELS:     # a side key off the closed list is a mismatch
             return k
     return None
@@ -315,7 +378,10 @@ def unlisted_side_model(read: dict, model: str):
     if any(m != model for m in read["served_models"]) or (read["served_models"] and model not in usage) or \
             (usage and model not in usage):            # review MINOR 1: a modelUsage without the pin's is a switch
         return None
+    subagents = admitted_subagent_models(read, model)          # glitch-b5's ruling R-C: a sub-agent's own usage
     for k in usage:
+        if k in subagents:
+            continue
         if k != model and k not in SIDE_MODELS:
             return k
     return None
@@ -326,6 +392,11 @@ SIDE_KEY_REPR_MAX = 120     # review MINOR 2: a side key is stream text; its rep
 
 class SideModelOffList(RuntimeError):
     """A turn called a side model off SIDE_MODELS: the take stops for a ruling (an executed turn's refusal)."""
+
+
+class SubagentModelOffList(RuntimeError):
+    """A turn's sub-agent ran on a model off the admitted list: the take stops for a ruling (an executed turn's
+    refusal)."""
 
 
 def argv(line: str, *, model: str, permission_mode: str, session_id: str, first: bool) -> list:
@@ -424,6 +495,11 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
                 read = read_stream(fh.read())
             off = served_model_off(read, self.model)
             side = unlisted_side_model(read, self.model)
+            sub_off = subagent_model_off(read, self.model)
+            if sub_off is not None:                    # glitch-b5's ruling R-C: stops the take for a ruling
+                raise SubagentModelOffList(f"turn {n}'s sub-agent ran on {repr(sub_off)[:SIDE_KEY_REPR_MAX]}, neither "
+                                           f"the pin's model nor one of {list(SUBAGENT_EXPLICIT_MODELS)}: the take "
+                                           f"stops for a ruling (glitch-b5, 16 Oct 2026)")
             if side is not None:                       # D-INT-2c: stops the take, its tokens in the refusal
                 raise SideModelOffList(f"turn {n} called side model {repr(side)[:SIDE_KEY_REPR_MAX]}, not on "
                                        f"SIDE_MODELS {list(SIDE_MODELS)}; "
