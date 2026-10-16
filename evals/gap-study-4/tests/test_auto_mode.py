@@ -167,7 +167,9 @@ class TheAutoModeAttachment(unittest.TestCase):
         draft = json.loads((HERE / "prereg-draft.json").read_text())
         ruling = draft["harness_furniture_ruling"]
         deps = {d["of"]: d["text"] for d in ruling["departures"]}
-        self.assertEqual(set(deps), {tv.CC_AUTO_MODE, "isolation-removals", "version-difference", "residuals"})
+        # glitch-6b's ruling 1 (15 Oct 2026, w041): edited_text_file is a fifth departure (test_edited_text_file binds it)
+        self.assertEqual(set(deps), {tv.CC_AUTO_MODE, "isolation-removals", "version-difference", "residuals",
+                                     tv.CC_EDITED_TEXT_FILE})
         words = {
             "isolation-removals": ("RemoteTrigger", "SendMessage", "ListAgents", 'crossSessionInbound is "refuse"',
                                    "Round 3 offered all three", "no take in either round called one",

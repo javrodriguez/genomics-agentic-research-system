@@ -88,7 +88,8 @@ THE RAW FIELDS THE `claude-code` PARSER READS (interface 6; a closed list):
                       the ones CC_TOOLS maps: command, run_in_background, file_path, pattern, path;
                       and ScheduleWakeup's prompt, which only arms a scheduled wakeup)
     attachment        attachment.type, attachment.commandMode, and attachment's other string leaves (text);
-                      for auto_mode (item H), its closed flags and steer, and the record's rendered[0].content (text)
+                      for auto_mode (item H), its closed flags and steer, and the record's rendered[0].content (text);
+                      for edited_text_file (ruling 1, w041), exactly filename and snippet (the snippet is the text)
     queue-operation   content          last-prompt   lastPrompt        ai-title   aiTitle
     atis-latch        atis             mode          mode              cost-state modelUsage
     system            content
@@ -250,7 +251,7 @@ CC_RESULT_BLOCKS = ("text", "tool_reference")
 CC_ATTACHMENT_TYPES = (
     "agent_listing_delta", "date", "deferred_tools_delta", "deferred_tools_record", "environment",
     "instructions", "model", "nested_memory", "prompt_snapshot", "queued_command", "remote_session_change",
-    "session_context", "skill_listing", "task_reminder", "total_tokens_reminder", "auto_mode")
+    "session_context", "skill_listing", "task_reminder", "total_tokens_reminder", "auto_mode", "edited_text_file")
 # Item H (glitch-6b, 15 Oct 2026; CP6 walk w032, claude-opus-5-5, held): 2.1.296's auto_mode attachment, a NAMED
 # DEPARTURE from round 3 (whose 54 graded transcripts never carry it; one round-3 walk, not a take, does:
 # walks/template-adherence/1 at e2979b31, claude-sonnet-5 at 2.1.267 in permission mode auto, every flag false, its
@@ -262,6 +263,16 @@ CC_ATTACHMENT_TYPES = (
 CC_AUTO_MODE = "auto_mode"
 CC_AUTO_MODE_FLAGS = ("autoModeConsentFlow", "bashFirst", "steerOnly", "bypass")
 CC_AUTO_MODE_STEERS = ("strict", "relaxed")
+# glitch-6b's ruling 1 (15 Oct 2026; CP6 walk w041, held): 2.1.296's edited_text_file attachment, a NAMED DEPARTURE from
+# round 3 (whose 64 transcripts at e2979b31 never carry it). Each query's changed_files pass runs over the files the
+# agent has read whole; a file whose mtime is later than the read and whose content differs yields exactly {type,
+# filename, snippet}, whoever wrote it (in w041 the agent's own background job), rendered to the model as a steer to
+# take the change as the current state. No targeted switch exists (CLAUDE_CODE_DISABLE_ATTACHMENTS would drop round-3
+# kinds); lane-reports/attachment-vocabulary-20261016/edited-text-file-trigger-20261015.json. Read as harness furniture:
+# the snippet is the event's text, never the agent's or the operator's words. Closed shape: exactly these keys, the
+# filename a non-empty string, the snippet a string (empty past the binary's snippet budget).
+CC_EDITED_TEXT_FILE = "edited_text_file"
+CC_EDITED_TEXT_FILE_KEYS = ("type", "filename", "snippet")
 # Harness-only record types and the payload field whose strings are the event's text.
 CC_HARNESS_PAYLOAD = {
     "queue-operation": "content", "last-prompt": "lastPrompt", "ai-title": "aiTitle", "atis-latch": "atis",
@@ -509,6 +520,8 @@ class ClaudeCodeSessionParser:
             raise ViewError(f"a queued command that is not a task notification: {a.get('commandMode')!r}")
         if at == CC_AUTO_MODE:
             return self._auto_mode(r, a)
+        if at == CC_EDITED_TEXT_FILE:
+            return _edited_text_file_item(a)
         return [RawItem("attachment:" + at, HARNESS, text=_joined({k: v for k, v in a.items() if k != "type"}))]
 
 
@@ -526,6 +539,18 @@ def _auto_mode_item(r, a) -> list:
             and set(rendered[0]) == {"content"} and isinstance(rendered[0]["content"], str)):
         raise ViewError("an auto_mode attachment whose rendered text is not one {content: str}")
     return [RawItem("attachment:" + CC_AUTO_MODE, HARNESS, text=rendered[0]["content"])]
+
+
+def _edited_text_file_item(a) -> list:
+    """glitch-6b's ruling 1: an edited_text_file attachment of the closed shape, its snippet the harness event's text;
+    anything else refuses."""
+    if set(a) != set(CC_EDITED_TEXT_FILE_KEYS):
+        raise ViewError(f"an edited_text_file attachment whose keys are not exactly {sorted(CC_EDITED_TEXT_FILE_KEYS)}")
+    if type(a["filename"]) is not str or not a["filename"]:
+        raise ViewError("an edited_text_file attachment whose filename is not a non-empty string")
+    if type(a["snippet"]) is not str:
+        raise ViewError("an edited_text_file attachment whose snippet is not a string")
+    return [RawItem("attachment:" + CC_EDITED_TEXT_FILE, HARNESS, text=a["snippet"])]
 
 
 class VendorBoundParser:
