@@ -316,3 +316,21 @@ Every walk checked under d836285f... now reads stale against the new constants u
 
 ## Exact next step
 glitch-b5 runs the battery on this head and schedules a fresh reviewer.
+
+## RESUME HERE (16 Oct 01:02 EDT; supersedes the blocks above)
+
+Writer: the harness lane, for glitch-b5. HEAD: the commit that adds this block (parent bf730fb7). Nothing pushed. No athena access. No mac_slot booking held; no process of this lane running.
+
+bf730fb7 folds review r6 of e471902f..5824c344 (two MINORs and a note). Each was reproduced first with the reviewer's dup.py and mut2.py. The commit went through the gitleaks staged gate, gated on its exit status.
+- MINOR 1: the leak sweep reads the raw line with only the admitted snippet's value cut. The value is located by its one unescaped key; if the key is not found exactly once, the line is swept whole.
+- MINOR 2: a checked walk is never written without its nudge count; walk_runner holds such a walk. pending_walk reads a check.json under the constants in force without a count as unreadable. walk_regrade re-derives the count from the committed transcript, in --check and in a recheck.
+- The note: the sidechain-clause witness now reads check_take's count, and that mutant is red.
+
+Mac proof (python3.12, env -u CLAUDE_CODE_MESSAGING_TOKEN, light-ok first), all OK:
+- no_output_nudge 9, edited_text_file 10, checker_constants 27, scheduled_wakeup 11, checker_body 30, recheck_coverage 5, rehearsals 9, cp8_prep 4, walk_plan 18, walk_grade_seam 3, walk_recheck 14, pending_walk 23 (170 s), build_draft 48.
+- test_walk_runner, class by class, 84 tests in all: R5 2, R8 38, R1 1, R2 6, R3 4, R4 7, R12 3, R13 1, R6 1, R7 1, R10 3, R11 15, G1 1, R9 1, R5Round3 1, TestSysPath 1.
+- walk_regrade --check, copy_manifest, build_draft --check and lint_language are clean.
+Not run on the Mac: the generated shards, test_round4 and test_box_integration.
+
+## Exact next step
+glitch-b5: the battery and a fresh review on this head. Every walk is rechecked on the final head before the freeze.
