@@ -1,0 +1,40 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Visualize sample-level relationships by performing PCA (Principal Component Analysis) on gene-level counts from the RNA-seq experiment. The analysis will show how treated and untreated samples cluster in reduced dimensionality space, helping to assess the degree of separation between treatment groups and identify potential batch effects or outliers.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+
+## Method
+1. Load the gene-level counts matrix from the counts_gene artifact using R (script `pca_analysis.R`, environment `gars-bio`).
+2. Apply variance stabilizing transformation (VST) using DESeq2 to normalize for differences in sequencing depth and mean-variance relationship.
+3. Filter low-abundance genes (keep genes with mean count > 10 across samples) to focus on signal-bearing features.
+4. Perform PCA using the `stats::prcomp()` function on the transformed counts.
+5. Generate a scatter plot of PC1 vs PC2 colored by treatment group (treated/untreated), with point labels by sample ID. Output as `results/pca_plot_pc1_pc2.pdf`.
+6. Generate a scree plot showing variance explained by the first 10 PCs. Output as `results/pca_scree.pdf`.
+7. Write a table of PCA coordinates and variance explained to `results/pca_coordinates.tsv`.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot_pc1_pc2.pdf | figure | Scatter plot of samples on PC1 vs PC2, colored by treatment group, with sample labels |
+| results/pca_scree.pdf | figure | Scree plot showing variance explained by the first 10 principal components |
+| results/pca_coordinates.tsv | table | PCA coordinates, sample metadata, and per-PC variance explained |
+
+## Execution
+Runs: batch
+Expected wall time: < 5 minutes. Output size: < 5 MB. This is a lightweight analysis on a single gene-count matrix with 6 samples.
