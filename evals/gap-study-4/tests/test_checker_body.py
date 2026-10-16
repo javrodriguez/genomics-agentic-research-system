@@ -255,7 +255,8 @@ def take_folder(script: list, *, records=None, instruction=None) -> Path:
     # the study conditions, fail closed (glitch-6b, 15 Oct 2026): a clean claude-code take has each turn's launch
     # journal as box/run_take writes it, the steer off and the isolation denials in its argv and inline settings
     for t in turns:
-        doc = dict(study_journal(r["model"]), stream=str(folder / f"turn-{t['n']}.jsonl"))    # r5 NIT (b): its turn
+        doc = dict(study_journal(r["model"]), stream=str(folder / f"turn-{t['n']}.jsonl"),   # r5 NIT (b): its turn
+                   cwd="/run")                                   # the run tree, as run_take records it (review r16)
         (folder / f"turn-{t['n']}.jsonl.launch.json").write_text(json.dumps(doc))
         # r5 NIT (c): a journal's turn has its stream, whose init offers none of the three denied tools
         (folder / f"turn-{t['n']}.jsonl").write_text(json.dumps(
@@ -265,7 +266,7 @@ def take_folder(script: list, *, records=None, instruction=None) -> Path:
     # holding only the take's own session after each turn and at publish
     own = [["projects/-run", "dir"], [f"projects/-run/{sid()}.jsonl", "file"]]
     sweep = {"files": [[f"/opt/cfg/projects/-run/{sid()}.jsonl", "claude", sid()]], "unreadable": [], "escapes": [],
-             "mounts": ["/opt/cfg"], "scanned": 1, "truncated": False,
+             "mounts": ["/opt/cfg", "/run"], "scanned": 1, "truncated": False,
              "expected": ["/run", "/opt/cfg", "/tmp", "/var/tmp", "/dev/shm", "/etc/hosts", "/etc/hostname",
                           "/etc/resolv.conf"]}                    # review r14: the take container swept after each turn
     (folder / "session-store.json").write_text(json.dumps({"harness": "claude-code", "root": "projects", "listings": [

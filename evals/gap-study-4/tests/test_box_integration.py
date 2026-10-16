@@ -618,9 +618,17 @@ class FakeBox:
         import tempfile as _tf
         ro = "--read-only" in spec
         table = _tf.NamedTemporaryFile("w", suffix=".mountinfo", delete=False)
+        # the --tmpfs mounts (review r16 MINOR 3): one empty host folder per take for each, mapped back
+        tmpfs = getattr(self, "tmpfs_dirs", {}).setdefault(a[4], {t.split(":", 1)[0]: _tf.mkdtemp(prefix="tmpfs-")
+                                                                  for i, t in enumerate(spec)
+                                                                  if i and spec[i - 1] == "--tmpfs"})
+        self.tmpfs_dirs = getattr(self, "tmpfs_dirs", {})
+        self.tmpfs_dirs[a[4]] = tmpfs
         table.write(f"1 0 0:1 / / {'ro' if ro else 'rw'},relatime - overlay overlay rw\n"
                     f"2 1 0:2 / {tree} rw,relatime - ext4 /dev/x rw\n3 1 0:3 / {cfg} rw,relatime - ext4 /dev/x rw\n"
-                    f"4 1 0:4 / /proc rw,nosuid - proc proc rw\n")
+                    f"4 1 0:4 / /proc rw,nosuid - proc proc rw\n"
+                    + "".join(f"{5 + i} 1 0:{5 + i} / {host} rw,nosuid,nodev,relatime - tmpfs tmpfs rw,mode=1777\n"
+                              for i, host in enumerate(tmpfs.values())))
         table.close()
         buf, saved = _io.StringIO(), sys.argv            # in process: the module's process guard spawns nothing
         sys.argv = ["-c", table.name, str(os.getuid()), a[12], a[13], a[14], a[15]]
@@ -630,7 +638,13 @@ class FakeBox:
         finally:
             sys.argv = saved
         doc = json.loads(buf.getvalue())
-        back = lambda p: rt.CONFIG_MOUNT + p[len(cfg):] if p == cfg or p.startswith(cfg + "/") else p  # noqa: E731
+        hosts = {cfg: rt.CONFIG_MOUNT, **{host: path for path, host in tmpfs.items()}}
+
+        def back(p):
+            for host, inner in hosts.items():
+                if p == host or p.startswith(host + "/"):
+                    return inner + p[len(host):]
+            return p
         doc["files"] = [[back(f[0])] + f[1:] for f in doc["files"]]
         doc["unreadable"] = [[back(u[0]), u[1]] for u in doc["unreadable"]]
         doc["escapes"] = [[back(u[0]), back(u[1])] for u in doc["escapes"]]

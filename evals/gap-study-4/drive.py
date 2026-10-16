@@ -2627,7 +2627,7 @@ class TakeDriver:
         self._write(take, READ_ONLY_ERRORS_RECORD, {"read_only_root": True, "errors": list(take.read_only_errors)})
         if vendor:                                # W-3b: no checker reads a vendor take yet, so the driver judges it
             bad = vendor_nested_problems(take.session_store, take.session_sweeps, harness, take.native_rel, cmds,
-                                         unread)
+                                         unread, take.spec.run_tree)
             if bad:
                 take.store_refusal = f"[{_ct.NESTED_AGENT}] a nested agent may have run: {'; '.join(bad[:3])}"
         sources = {id(r): (recs[k]["api_key_source"] if k < len(recs) else None) for k, r in enumerate(rows)}
@@ -3322,7 +3322,7 @@ READ_ONLY_ERROR = re.compile(r"EROFS|Read-only file system")
 READ_ONLY_ERRORS_MAX = 200
 
 
-def vendor_nested_problems(listings, sweeps, harness: str, native_rel, commands, unread) -> list:
+def vendor_nested_problems(listings, sweeps, harness: str, native_rel, commands, unread, run_tree=None) -> list:
     """W-3b on the vendor road (no checker reads a vendor take yet, so the driver judges it): every store listing
     holds only the take's own native session (check_take.vendor_store_violations), every sweep finds no session but
     it, and the turn streams' shell commands carry no session-off switch and move no store (check_take.
@@ -3334,7 +3334,8 @@ def vendor_nested_problems(listings, sweeps, harness: str, native_rel, commands,
     own = {f"{_run_take.CONFIG_MOUNT}/{native_rel}"} if native_rel else set()
     bad += [f"the sweep at {x['at']}: {v}" for x in sweeps
             for v in (["sweep refused"] if "refused" in x else
-                      _ct.sweep_violations(dict(x, files=[f for f in x["files"] if f[0] not in own]), set(), None))]
+                      _ct.sweep_violations(dict(x, files=[f for f in x["files"] if f[0] not in own]), set(), None,
+                                           run_tree))]
     return bad + list(unread) + _ct.command_problems(commands, harness)
 
 

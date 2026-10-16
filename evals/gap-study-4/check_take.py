@@ -3320,7 +3320,7 @@ NO_PERSISTENCE_PREFIX = "--no-session-pers"
 # switch or setting turns it off, so none.
 NO_PERSISTENCE_PREFIXES = {CLAUDE_CODE: (NO_PERSISTENCE_PREFIX,), "codex": ("--ephemeral",), "gemini": ()}
 NESTED_HOME_VARIABLES = ("CLAUDE_CONFIG_DIR", "CODEX_HOME", "GEMINI_CLI_HOME", "HOME")
-_DECLARERS = ("export", "declare", "typeset", "local", "readonly", "env")
+_DECLARERS = ("export", "declare", "typeset", "local", "readonly")
 _HOME_ASSIGNMENT = re.compile(r"(?:%s)\+?=" % "|".join(NESTED_HOME_VARIABLES))
 _ANY_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\+?=", re.S)
 _RESERVED_WORDS = ("if", "then", "else", "elif", "fi", "do", "done", "while", "until", "for", "case", "esac", "!", "{",
@@ -3364,11 +3364,20 @@ def nested_cli_mentions(command: str) -> list:
     return out
 
 
+# review r16 MINOR 2: the wrappers the assignment reader looks through, with their options that take an argument
+_LOOKED_THROUGH = {"env": ("-u", "--unset", "-C", "--chdir", "-S", "--split-string"),
+                   "timeout": ("-s", "--signal", "-k", "--kill-after"), "nice": ("-n", "--adjustment"),
+                   "stdbuf": ("-i", "-o", "-e"), "xargs": ("-I", "-n", "-P", "-L", "-d", "-a", "-E", "-s"),
+                   "exec": ("-a",), "nohup": (), "setsid": (), "command": (), "builtin": (), "time": ()}
+
+
 def assigned_variables(command: str, depth: int = 0) -> list:
-    """The variable names a shell command assigns or exports, in assignment position only (review r15): the prefix
-    assignments before a simple command's word (or a bare assignment), and the names after export, declare, typeset,
-    local, readonly or env (their options skipped); what sh -c and eval run, plan_gate.DEPTH deep. A NAME=value inside
-    an echo's or a grep's arguments is not in assignment position."""
+    """The variable names a shell command assigns or exports, in assignment position (review r15), looking through
+    wrappers (review r16): the prefix assignments before a simple command's word (after a compound command's reserved
+    words, and after env, timeout, nohup, exec, nice, stdbuf, xargs, setsid, command or builtin with their options);
+    the names after export, declare, typeset, local or readonly; a for loop's variable; read's names; printf -v's;
+    what env -S, sh -c and eval run, plan_gate.DEPTH deep. A NAME=value inside an echo's or a grep's arguments is
+    not in assignment position."""
     from graders import plan_gate as _pg
     words = _pg.split(command)
     segments, cur = [], []
@@ -3382,11 +3391,29 @@ def assigned_variables(command: str, depth: int = 0) -> list:
     out = []
     for seg in segments:
         j = 0
-        while j < len(seg) and seg[j] in _RESERVED_WORDS:      # a compound command's words: do, then, if, !, {
-            j += 1
-        while j < len(seg) and _ANY_ASSIGNMENT.match(seg[j]):
-            out.append(seg[j].split("=", 1)[0].rstrip("+"))
-            j += 1
+        while j < len(seg):
+            w = seg[j].rsplit("/", 1)[-1]
+            if seg[j] in _RESERVED_WORDS and seg[j] != "for":
+                j += 1
+            elif _ANY_ASSIGNMENT.match(seg[j]):
+                out.append(seg[j].split("=", 1)[0].rstrip("+"))
+                j += 1
+            elif w in _LOOKED_THROUGH:
+                j += 1
+                while j < len(seg) and seg[j].startswith("-") and not _ANY_ASSIGNMENT.match(seg[j]):
+                    opt = seg[j]
+                    j += 1
+                    if w == "env" and opt.split("=", 1)[0] in ("-S", "--split-string"):
+                        text = opt.split("=", 1)[1] if "=" in opt else (seg[j] if j < len(seg) else "")
+                        j += 0 if "=" in opt else 1
+                        if depth < _pg.DEPTH:
+                            out += assigned_variables(text, depth + 1)
+                    elif opt in _LOOKED_THROUGH[w] and j < len(seg):
+                        j += 1
+                if w == "timeout" and j < len(seg) and re.fullmatch(r"[0-9.]+[smhd]?", seg[j]):
+                    j += 1
+            else:
+                break
         if j >= len(seg):
             continue
         word, rest = seg[j].rsplit("/", 1)[-1], seg[j + 1:]
@@ -3396,10 +3423,17 @@ def assigned_variables(command: str, depth: int = 0) -> list:
                     continue
                 if _ANY_ASSIGNMENT.match(tok):
                     out.append(tok.split("=", 1)[0].rstrip("+"))
-                elif re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", tok) and word != "env":
+                elif re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", tok):
                     out.append(tok)
-                elif word == "env":
-                    break
+        elif word == "for" and rest and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", rest[0]):
+            out.append(rest[0])
+        elif word == "read":
+            k = 0
+            while k < len(rest) and rest[k].startswith("-"):
+                k += 2 if rest[k] in ("-a", "-d", "-i", "-n", "-N", "-p", "-t", "-u") else 1
+            out += [t for t in rest[k:] if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", t)]
+        elif word == "printf" and len(rest) > 1 and rest[0] == "-v":
+            out.append(rest[1])
         elif depth < _pg.DEPTH and word == _pg.EVAL and rest:
             out += assigned_variables(" ".join(rest), depth + 1)
         elif depth < _pg.DEPTH and word in _pg.SHELLS:
@@ -3573,29 +3607,59 @@ def vendor_store_violations(entries, harness: str, own_rel: str) -> list:
     return out
 
 
-def sweep_violations(sweep: dict, admitted: set, own_id: str) -> list:
+SWEEP_EXPECTED_FIXED = ("/tmp", "/var/tmp", "/dev/shm", "/etc/hosts", "/etc/hostname", "/etc/resolv.conf")
+
+
+def sweep_expected(run_tree: str) -> list:
+    """box/run_take.sweep_roots(run_tree), recomputed here (tests/test_nested_agent.py binds the two): the read-write
+    mounts a take container may have."""
+    return [run_tree, SWEEP_CONFIG_MOUNT, *SWEEP_EXPECTED_FIXED]
+
+
+def sweep_violations(sweep: dict, admitted: set, own_id: str, run_tree=None) -> list:
     """Why one sweep of the take container (box/run_take.sweep_sessions: {files: [[path, shape, session id]],
-    unreadable: [[path, kind]] owned by the agent, ...}) shows a nested agent: a session-shaped file other than an
-    admitted path whose session is the take's own, or an entry the agent made unreadable to it."""
+    unreadable: [[path, kind]] owned by the agent, escapes, mounts, ...}) shows a nested agent: a session-shaped file
+    other than an admitted path whose session is the take's own; an entry the agent made unreadable to it (an admitted
+    path over the size cap aside: its own readers read it); a link into a barred tree or dangling outside the roots; a
+    read-write mount outside the expected set, recomputed from the take's run tree (review r16), or the run tree or the
+    config mount not among the swept mounts."""
     out = []
     for path, shape, sid in sweep.get("files") or []:
         if not (path in admitted and shape == "claude" and sid == own_id):
             out.append(f"{path} is a {shape} session ({str(sid)[:40]}) and not the take's own record")
     for path, kind in sweep.get("unreadable") or []:
+        if kind == "over-cap" and path in admitted:
+            continue
         out.append(f"{path} ({kind}) is the agent's and unreadable to the sweep")
     for path, target in sweep.get("escapes") or []:
-        out.append(f"{path} is the agent's link that leaves the swept roots (to {str(target)[:80]})")
-    expected = sweep.get("expected")
-    if not isinstance(expected, list):
-        out.append("the sweep records no expected mounts")
+        out.append(f"{path} is the agent's link into a barred tree or dangling outside the swept roots (to "
+                   f"{str(target)[:80]})")
+    if not (isinstance(run_tree, str) and run_tree):
+        out.append("the take's run tree is not known, so the expected mounts cannot be recomputed")
     else:
-        for m in sweep.get("mounts") or []:
+        expected = sweep_expected(run_tree)
+        if sweep.get("expected") != expected:
+            out.append("the sweep's recorded expected set is not the one recomputed from the take's run tree")
+        mounts = sweep.get("mounts") or []
+        for m in mounts:
             if m not in expected:
                 out.append(f"{m} is a read-write mount of the take container outside the expected set: the root "
                            f"filesystem is not read-only, or a mount was added")
+        for need in (run_tree, SWEEP_CONFIG_MOUNT):
+            if need not in mounts:
+                out.append(f"{need} is not among the swept read-write mounts")
     if sweep.get("truncated"):
         out.append("the sweep stopped at its file cap")
     return out
+
+
+def _take_run_tree(path: Path):
+    """The take's run tree as the box recorded it: the cwd of its first turn's launch journal (run_take.run_turn)."""
+    try:
+        doc = json.loads((Path(path).parent / "turn-1.jsonl.launch.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return doc.get("cwd") if isinstance(doc, dict) and isinstance(doc.get("cwd"), str) else None
 
 
 def _admitted_session_files(listing_entries, own: str) -> set:
@@ -3645,7 +3709,8 @@ def session_store_problems(path: Path) -> list:
             out.append(f"[{NESTED_AGENT}] the take container could not be swept at {x['at']}: "
                        f"{str(x.get('refused', 'off its shape'))[:200]}")
             continue
-        out += [f"[{NESTED_AGENT}] the sweep at {x['at']}: {v}" for v in sweep_violations(x, admitted, own)][:5]
+        out += [f"[{NESTED_AGENT}] the sweep at {x['at']}: {v}"
+                for v in sweep_violations(x, admitted, own, _take_run_tree(path))][:5]
     return out
 
 def _drop(p) -> None:

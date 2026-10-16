@@ -2099,8 +2099,9 @@ SWEEP_FIXED_ROOTS = ("/tmp", "/var/tmp", "/dev/shm")
 SWEEP_NEVER_ROOTS = ("/proc", "/sys", "/dev")  # never a root, never entered ...
 SWEEP_KEPT_ROOTS = ("/dev/shm",)               # ... but for these
 SWEEP_MOUNTINFO = "/proc/self/mountinfo"
-# Docker writes these three into every container as read-write bind mounts of root-owned files (the agent cannot write
-# them); they are expected read-write mounts, and the sweep reads them like any other.
+# Docker bind-mounts these three runtime files into every container; under ReadonlyRootfs it mounts them read-only
+# (moby, review r16), so they are not among the read-write mounts. They stay in the expected set so a runtime that mounts
+# them read-write (root-owned files the agent cannot write) still compares clean; the sweep reads them either way.
 DOCKER_RUNTIME_FILES = ("/etc/hosts", "/etc/hostname", "/etc/resolv.conf")
 SWEEP_MAX_FILES = 200000
 SWEEP_FILE_CAP = 64 * 1024 * 1024           # review r15: every line of a file up to 64 MB; a larger "{" file fails closed
@@ -2124,6 +2125,12 @@ with open(mountinfo, encoding="utf-8", errors="surrogateescape") as fh:
                 out["mounts"].append(point)
 out["mounts"] = sorted(set(out["mounts"]))
 roots = out["mounts"]
+real_roots = [os.path.realpath(r) for r in roots]     # a link's target compared by realpath too
+real_never, real_kept = [os.path.realpath(n) for n in never], [os.path.realpath(k) for k in kept]
+walk = []                          # review r16 NIT: each tree walked once (a root inside another, by realpath, is not)
+for r in sorted(roots, key=lambda q: len(os.path.realpath(q))):
+    if not inside(os.path.realpath(r), [os.path.realpath(w) for w in walk]):
+        walk.append(r)
 def classify(line):
     try:
         r = json.loads(line)
@@ -2168,9 +2175,13 @@ def visit(path, parent_uid):
             out["unreadable"].append([path, "lstat"])
         return
     if stat.S_ISLNK(st.st_mode):
+        # review r16 MAJOR: with the root read-only, a link to a read-only location hides nothing (a venv's links into
+        # /usr); an agent-owned link is reported only into a barred tree (/proc, /sys, /dev but /dev/shm), or dangling
+        # outside the swept roots. Every writable location is a read-write mount, so a swept root or a barred one.
         if st.st_uid == uid:
             target = os.path.realpath(path)
-            if not inside(target, roots) or barred(target):
+            if (barred(target) or (inside(target, real_never) and not inside(target, real_kept))
+                    or (not os.path.lexists(target) and not inside(target, roots + real_roots))):
                 out["escapes"].append([path, target])
         return
     if stat.S_ISDIR(st.st_mode):
@@ -2209,7 +2220,7 @@ def visit(path, parent_uid):
         out["unreadable"].append([path, "over-cap"])
     elif got:
         out["files"].append([path] + got)
-for root in roots:
+for root in walk:
     visit(root, None)
 print(json.dumps(out, sort_keys=True))
 '''

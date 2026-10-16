@@ -187,7 +187,13 @@ class TheFlag(unittest.TestCase):
         for cmd in ("for i in 1; do CLAUDE_CONFIG_DIR=/tmp/n claude -p 'do the stage'; done",
                     "export HOME=/tmp/h; claude -p x", "env CODEX_HOME=/tmp/c codex exec x", "GEMINI_CLI_HOME=/x gemini",
                     "export CLAUDE_CONFIG_DIR", "declare -x HOME=/tmp", "HOME+=/x ls", "set -a; HOME=/x",
-                    "if true; then HOME=/x claude; fi", "bash -c 'HOME=/x claude -p y'"):
+                    "if true; then HOME=/x claude; fi", "bash -c 'HOME=/x claude -p y'",
+                    # review r16's r2_assign.py: through env's argument-taking options and other wrappers
+                    "env -u PATH CLAUDE_CONFIG_DIR=/tmp/x claude -p hi", "env -C /tmp HOME=/tmp/x claude -p hi",
+                    "timeout 600 env CLAUDE_CONFIG_DIR=/tmp/x claude -p hi", "nohup env CLAUDE_CONFIG_DIR=/tmp/x claude &",
+                    "exec env HOME=/tmp/x claude -p hi", "env -S 'HOME=/tmp/x claude -p hi'",
+                    "nice -n 5 env HOME=/x claude", "for HOME in /tmp/x; do claude -p hi; done",
+                    "read HOME <<< /tmp/x; claude -p hi", "printf -v HOME /tmp/x; claude -p hi"):
             with self.subTest(cmd=cmd):
                 got = ct.nested_agent_flag_problems(take_with(main_cmds=[cmd]))
                 self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT}, got)
@@ -219,6 +225,9 @@ def with_store(path, listings, sweeps=None):
                                                                   "listings": listings, "sweeps": sweeps}))
     led = json.loads((path.parent / "driver-ledger.json").read_text())
     (path.parent / "driver-ledger.json").write_text(json.dumps(dict(led, session_id=OWN)))
+    journal = path.parent / "turn-1.jsonl.launch.json"        # the box's record of the run tree (review r16)
+    if not journal.exists():
+        journal.write_text(json.dumps({"schema": 1, "harness": "claude-code", "cwd": "/run/t"}))
     return path
 
 
@@ -412,9 +421,12 @@ class TheSweep(unittest.TestCase):
         (d / "noexec" / "f.jsonl").write_text("{}")
         os.chmod(d / "noexec", 0o444)
         out = Path(tempfile.mkdtemp())
-        (d / "away").symlink_to(out)
+        (d / "away").symlink_to(out)                       # review r16: to an existing read-only place: not reported
         proc = d / "fakeproc"
         proc.mkdir()
+        (d / "intobarred").symlink_to(proc)
+        (d / "dangling").symlink_to("/nonexistent-r16/x")
+        (d / "danglingin").symlink_to(d / "missing")
         (proc / "s.jsonl").write_text(json.dumps({"type": "user", "sessionId": "p1"}) + "\n")
         big = Path(tempfile.mkdtemp())
         (big / "big.jsonl").write_text("{" + "x" * 3000)
@@ -431,9 +443,72 @@ class TheSweep(unittest.TestCase):
         self.assertEqual(found, {"late1", "wide1", "q1"}, got["files"])          # history.jsonl: no type, no session
         self.assertIn([str(d / "locked.jsonl"), "file"], got["unreadable"])
         self.assertIn([str(d / "noexec" / "f.jsonl"), "lstat"], got["unreadable"])
-        self.assertEqual(got["escapes"], [[str(d / "away"), os.path.realpath(out)]])
+        self.assertEqual(sorted(got["escapes"]), sorted([[str(d / "intobarred"), os.path.realpath(proc)],
+                                                         [str(d / "dangling"), os.path.realpath("/nonexistent-r16/x")]]))
         self.assertFalse(any("fakeproc" in f[0] for f in got["files"]))
         self.assertEqual(capped["unreadable"], [[str(big / "big.jsonl"), "over-cap"]])
+
+    def test_a_venv_reads_clean(self):
+        """Review r16 MAJOR: `python3 -m venv --without-pip` in the run tree links bin/python3 into the read-only
+        system; with the root read-only those links hide nothing, and the sweep reports none."""
+        import os
+        import subprocess
+        tree = Path(tempfile.mkdtemp())
+        got = subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(tree / ".venv")], capture_output=True,
+                             text=True)
+        self.assertEqual(got.returncode, 0, got.stderr)
+        links = [p for p in (tree / ".venv").rglob("*") if p.is_symlink()]
+        self.assertTrue(any(p.name.startswith("python3") for p in links), links)
+        swept = self.sweep(str(tree))
+        self.assertEqual((swept["escapes"], swept["unreadable"], swept["files"]), ([], [], []))
+        self.assertTrue(os.path.realpath(tree / ".venv" / "bin" / "python3").startswith("/"))
+
+    def test_a_captured_read_only_mount_table(self):
+        """Review r16 MINOR 3: Docker --read-only's mount table shape (optional fields, a \\040 path, /dev/mqueue,
+        the masked /proc/kcore, read-only /etc binds, the two tmpfs mounts) parsed to exactly the read-write mounts;
+        a table that cannot be read raises (the reply is refused)."""
+        import contextlib
+        import io
+        from box import run_take as rt
+        base = Path(tempfile.mkdtemp())
+        tree, cfg, tmp, vtmp, shm = (base / "run tree", base / "cfg", base / "tmp", base / "vtmp", base / "shm")
+        for d in (tree, cfg, tmp, vtmp, shm):
+            d.mkdir()
+        esc = lambda p: str(p).replace(" ", "\\040")  # noqa: E731
+        lines = [
+            "600 520 0:50 / / ro,relatime master:200 - overlay overlay rw,lowerdir=/a,upperdir=/b,workdir=/c",
+            "601 600 0:53 / /proc rw,nosuid,nodev,noexec,relatime - proc proc rw",
+            "602 600 0:54 / /dev rw,nosuid - tmpfs tmpfs rw,size=65536k,mode=755",
+            "603 602 0:55 / /dev/pts rw,nosuid,noexec,relatime - devpts devpts rw,gid=5,mode=620,ptmxmode=666",
+            "604 600 0:56 / /sys ro,nosuid,nodev,noexec,relatime - sysfs sysfs ro",
+            "606 602 0:52 / /dev/mqueue rw,nosuid,nodev,noexec,relatime - mqueue mqueue rw",
+            f"607 600 0:57 / {shm} rw,nosuid,nodev,noexec,relatime - tmpfs shm rw,size=65536k",
+            f"608 600 0:58 / {tmp} rw,nosuid,nodev,relatime - tmpfs tmpfs rw,mode=1777",
+            f"609 600 0:59 / {vtmp} rw,nosuid,nodev,relatime - tmpfs tmpfs rw,mode=1777",
+            "610 600 8:2 /var/lib/docker/containers/x/resolv.conf /etc/resolv.conf ro,relatime - ext4 /dev/sda2 rw",
+            "612 600 8:2 /var/lib/docker/containers/x/hosts /etc/hosts ro,relatime - ext4 /dev/sda2 rw",
+            f"613 600 8:2 {esc(tree)} {esc(tree)} rw,relatime shared:1 master:2 - ext4 /dev/sda2 rw",
+            f"614 600 8:2 /srv/cfg {cfg} rw,relatime - ext4 /dev/sda2 rw",
+            "616 601 0:54 /null /proc/kcore rw,nosuid - tmpfs tmpfs rw,size=65536k,mode=755"]
+        table = base / "mountinfo"
+        table.write_text("\n".join(lines) + "\n")
+
+        def run(path):
+            buf, saved = io.StringIO(), sys.argv
+            sys.argv = ["-c", str(path), str(__import__("os").getuid()), "100", str(rt.SWEEP_FILE_CAP),
+                        json.dumps(list(rt.SWEEP_NEVER_ROOTS)), json.dumps(list(rt.SWEEP_KEPT_ROOTS))]
+            try:
+                with contextlib.redirect_stdout(buf):
+                    exec(compile(rt.SWEEP_PROGRAM, "<the session sweep>", "exec"), {"__name__": "__sweep__"})
+            finally:
+                sys.argv = saved
+            return json.loads(buf.getvalue())
+        (tree / "s.jsonl").write_text(json.dumps({"type": "user", "sessionId": "t1"}) + "\n")
+        got = run(table)
+        self.assertEqual(got["mounts"], sorted(str(p) for p in (tree, cfg, tmp, vtmp, shm)))
+        self.assertEqual([f[2] for f in got["files"]], ["t1"])
+        with self.assertRaises(OSError):
+            run(base / "no-such-mountinfo")
 
     def test_the_sweep_s_roots_and_its_argv(self):
         from box import run_take as rt
@@ -522,6 +597,33 @@ class TheReadOnlyRoot(unittest.TestCase):
         self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT})
         self.assertEqual(ct.session_store_problems(with_store(take_folder(), clean, [own_sweep("post-1")])), [])
 
+    def test_the_expected_set_is_recomputed_from_the_run_tree(self):
+        """Review r16 NIT: the expected set is recomputed from the box's own record of the run tree (the first turn's
+        launch journal), and the run tree and the config mount must be among the swept mounts."""
+        from box import run_take as rt
+        self.assertEqual(ct.sweep_expected("/run/t"), rt.sweep_roots("/run/t"))
+        clean = [{"at": "post-1", "entries": CLEAN}, {"at": "publish", "entries": CLEAN}]
+        for name, edit in (("an expected set written wider", lambda x: x["expected"].append("/run/lock")),
+                           ("the run tree not swept", lambda x: x["mounts"].remove("/run/t")),
+                           ("the config mount not swept", lambda x: x["mounts"].remove(ct.SWEEP_CONFIG_MOUNT))):
+            with self.subTest(case=name):
+                sweep = own_sweep("post-1")
+                edit(sweep)
+                got = ct.session_store_problems(with_store(take_folder(), clean, [sweep]))
+                self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT}, got)
+        path = with_store(take_folder(), clean, [own_sweep("post-1")])
+        (path.parent / "turn-1.jsonl.launch.json").unlink()
+        self.assertTrue(any("run tree is not known" in g for g in ct.session_store_problems(path)))
+
+    def test_an_admitted_file_over_the_cap_is_its_own_readers(self):
+        clean = [{"at": "post-1", "entries": CLEAN}, {"at": "publish", "entries": CLEAN}]
+        mount = ct.SWEEP_CONFIG_MOUNT
+        own_path = f"{mount}/{P}/{OWN}.jsonl"
+        big = {**own_sweep("post-1"), "files": [], "unreadable": [[own_path, "over-cap"]]}
+        self.assertEqual(ct.session_store_problems(with_store(take_folder(), clean, [big])), [])
+        other = {**own_sweep("post-1"), "unreadable": [["/tmp/n.jsonl", "over-cap"]]}
+        self.assertTrue(ct.session_store_problems(with_store(take_folder(), clean, [other])))
+
     def test_the_driver_records_each_read_only_error(self):
         d = Path(tempfile.mkdtemp())
         stream = d / "turn-1.jsonl"
@@ -567,10 +669,12 @@ class TheVendorRoad(unittest.TestCase):
         listing = [{"at": "post-1", "entries": [["sessions/2026", "dir"], ["sessions/2026/10", "dir"],
                                                ["sessions/2026/10/16", "dir"], [own, "file"]]}]
         mine = {"at": "post-1", "files": [[f"/opt/cfg/{own}", "codex", "t1"]], "unreadable": [], "escapes": [],
-                "mounts": ["/opt/cfg"], "scanned": 4, "truncated": False, "expected": ["/run/t", "/opt/cfg"]}
-        self.assertEqual(drive.vendor_nested_problems(listing, [mine], "codex", own, ["ls"], []), [])
+                "mounts": ["/opt/cfg", "/run/t"], "scanned": 4, "truncated": False,
+                "expected": ct.sweep_expected("/run/t")}
+        self.assertEqual(drive.vendor_nested_problems(listing, [mine], "codex", own, ["ls"], [], "/run/t"), [])
+        self.assertTrue(drive.vendor_nested_problems(listing, [mine], "codex", own, ["ls"], []))   # no run tree
         foreign = dict(mine, files=mine["files"] + [["/tmp/r.jsonl", "codex", "t2"]])
-        self.assertTrue(drive.vendor_nested_problems(listing, [foreign], "codex", own, ["ls"], []))
+        self.assertTrue(drive.vendor_nested_problems(listing, [foreign], "codex", own, ["ls"], [], "/run/t"))
         self.assertTrue(drive.vendor_nested_problems(listing, [mine], "codex", own, ["codex exec --ephemeral x"], []))
         self.assertTrue(drive.vendor_nested_problems(listing, [mine], "codex", own, ["CODEX_HOME=/tmp/c codex exec"],
                                                      []))
@@ -727,6 +831,24 @@ class TheWitnesses(unittest.TestCase):
                                                                                  'sources.append(("stream", fh.read()))',
                                                                                  "pass", home=drive)),
                  (TheReadOnlyRoot("test_the_driver_records_each_read_only_error"),)),
+                ("R16-3 M2 no unescape", mock.patch.object(rt, "SWEEP_PROGRAM", prog.replace(
+                    'return field.encode("latin-1").decode("unicode_escape") if "\\\\" in field else field',
+                    "return field")), (TheSweep("test_a_captured_read_only_mount_table"),)),
+                ("R16-3 M8 a missing table passes", mock.patch.object(rt, "SWEEP_PROGRAM", prog.replace(
+                    'with open(mountinfo, encoding="utf-8", errors="surrogateescape") as fh:',
+                    'with (open(mountinfo, encoding="utf-8", errors="surrogateescape") if os.path.exists(mountinfo) '
+                    'else __import__("io").StringIO()) as fh:')), (TheSweep("test_a_captured_read_only_mount_table"),)),
+                ("R16-1 every agent link reported", mock.patch.object(rt, "SWEEP_PROGRAM", prog.replace(
+                    "            if (barred(target) or", "            if True or (barred(target) or")),
+                 (TheSweep("test_a_venv_reads_clean"),)),
+                ("R16-2 no wrapper looked through", mock.patch.object(ct, "_LOOKED_THROUGH", {}),
+                 (TheFlag("test_moving_an_agent_cli_s_session_store_refuses"),)),
+                ("R16 NIT the over-cap exemption widened", mock.patch.object(ct, "sweep_violations", func_mutant(
+                    ct, "sweep_violations", 'if kind == "over-cap" and path in admitted:', 'if kind == "over-cap":')),
+                 (TheReadOnlyRoot("test_an_admitted_file_over_the_cap_is_its_own_readers"),)),
+                ("R16 NIT the expected set not recomputed", mock.patch.object(ct, "sweep_violations", func_mutant(
+                    ct, "sweep_violations", 'if sweep.get("expected") != expected:', "if False:")),
+                 (TheReadOnlyRoot("test_the_expected_set_is_recomputed_from_the_run_tree"),)),
                 ("R15-6 any NAME= token", mock.patch.object(ct, "assigned_variables", lambda c, depth=0: [
                     t.split("=", 1)[0] for t in ct._split_all(c) if "=" in t]),
                  (TheFlag("test_moving_an_agent_cli_s_session_store_refuses"),))):
