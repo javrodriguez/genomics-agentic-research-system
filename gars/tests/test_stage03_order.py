@@ -7,6 +7,12 @@ that order as one job and stops at the first failure; it is bound with the other
 declared output older than the run that should have produced it, so a stale copy left by an
 earlier attempt never passes as this run's result. A plan without a Scripts section keeps the
 earlier behaviour.
+
+The runner is one job, so it carries one set of Slurm directives, written by `approve` from the
+listed scripts' leading `#SBATCH` lines (the fold of REVIEW-85a1b4a, finding 1): `--time` is the
+sum of the scripts' times, memory and `--cpus-per-task` the largest, and every other directive
+must agree; a disagreement or a value approve cannot parse is refused with nothing written. The
+launcher and the venue policy then read the runner's directives, as they read a single script's.
 """
 import argparse
 import contextlib
@@ -144,6 +150,87 @@ class ScriptOrderTests(unittest.TestCase):
         self.assertEqual(self.approve()[0], 0)
         self.assertFalse(self.runner.exists())
         self.assertEqual(self.finish(self.first), 'COMPLETED')
+
+
+class RunnerDirectiveTests(unittest.TestCase):
+    """The runner's #SBATCH lines are the listed scripts' (the fold of REVIEW-85a1b4a, finding 1)."""
+
+    setUp = ScriptOrderTests.setUp
+    approve = ScriptOrderTests.approve
+
+    def directives(self):
+        return [l for l in self.runner.read_text().splitlines() if l.startswith('#SBATCH')]
+
+    def refused_with_nothing_written(self):
+        code, result = self.approve()
+        self.assertEqual(code, 2, result)
+        self.assertFalse(self.runner.exists())
+        self.assertIn('Status: DRAFT', self.plan.read_text())
+        self.assertFalse(analysis.approval_record_path(self.plan, self.workspace).exists())
+        return ' '.join(result['blocked'])
+
+    def test_the_slurm_launcher_carries_the_scripts_directives(self):
+        """The reviewer's reproduction: the launcher's header was `#!/bin/bash` and nothing else."""
+        self.first.write_text('#SBATCH --mem=64G\n#SBATCH --time=12:00:00\n' + FIRST)
+        self.assertEqual(self.approve()[0], 0)
+        with patch.object(ex, '_submit_once', return_value=('J', None)) as backend:
+            job, why = ex.submit(self.root, self.runner, ex.SLURM)
+        self.assertEqual((job, why), ('J', None))
+        header = Path(backend.call_args[0][1]).read_text().split('cd ', 1)[0]
+        self.assertIn('#SBATCH --mem=64G\n', header)
+        self.assertIn('#SBATCH --time=12:00:00\n', header)
+
+    def test_the_local_venue_refuses_the_runner_as_it_refuses_the_script(self):
+        alone = self.root / '03_custom_analysis/02_alone'
+        (alone / 'scripts').mkdir(parents=True)
+        (alone / 'results').mkdir()
+        (alone / 'PLAN.md').write_text(PLAN.replace('## Scripts\n1. scripts/01_first.sh\n'
+                                                    '2. scripts/02_second.sh\n', ''))
+        script = alone / 'scripts/01_first.sh'
+        script.write_text('#SBATCH --mem=64G\n' + FIRST)
+        self.first.write_text('#SBATCH --mem=64G\n' + FIRST)
+        refusals = []
+        for name, submitted in (('02_alone', script), ('01_fixture', self.runner)):
+            self.args.analysis = name
+            self.assertEqual(self.approve()[0], 0)
+            with patch.object(ex, '_local_submit') as backend:
+                job, why = ex.submit(self.root, submitted, ex.LOCAL)
+                backend.assert_not_called()
+            self.assertIsNone(job)
+            refusals.append(why)
+        self.assertIn('venue_not_permitted: venue local memory rule: above 8 GiB', refusals[0])
+        self.assertEqual(refusals[1], refusals[0])
+
+    def test_the_scripts_times_add_up(self):
+        self.first.write_text('#SBATCH --time=12:00:00\n' + FIRST)
+        self.second.write_text('#SBATCH --time=12:00:00\n' + SECOND)
+        self.assertEqual(self.approve()[0], 0)
+        self.assertEqual(self.directives(), ['#SBATCH --time=24:00:00'])
+
+    def test_the_largest_memory_and_cpus_win(self):
+        self.first.write_text('#SBATCH --mem=16G\n#SBATCH --cpus-per-task=2\n' + FIRST)
+        self.second.write_text('#SBATCH --mem=4096M\n#SBATCH --cpus-per-task=8\n' + SECOND)
+        self.assertEqual(self.approve()[0], 0)
+        self.assertEqual(self.directives(), ['#SBATCH --mem=16G', '#SBATCH --cpus-per-task=8'])
+
+    def test_a_disagreement_is_refused_naming_the_scripts_and_the_directive(self):
+        self.first.write_text('#SBATCH --partition=short\n' + FIRST)
+        self.second.write_text('#SBATCH --partition=long\n' + SECOND)
+        blocked = self.refused_with_nothing_written()
+        for word in ('--partition', 'scripts/01_first.sh', 'scripts/02_second.sh'):
+            self.assertIn(word, blocked)
+
+    def test_a_time_on_some_scripts_only_is_refused(self):
+        self.first.write_text('#SBATCH --time=12:00:00\n' + FIRST)
+        blocked = self.refused_with_nothing_written()
+        for word in ('--time', 'scripts/02_second.sh'):
+            self.assertIn(word, blocked)
+
+    def test_a_value_approve_cannot_parse_is_refused(self):
+        self.first.write_text('#SBATCH --mem=lots\n' + FIRST)
+        blocked = self.refused_with_nothing_written()
+        for word in ('--mem', 'scripts/01_first.sh'):
+            self.assertIn(word, blocked)
 
 
 if __name__ == '__main__':
