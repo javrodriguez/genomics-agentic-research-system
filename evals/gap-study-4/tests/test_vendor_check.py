@@ -39,11 +39,14 @@ P1, the vendor view and raw records (plan sections 4 and 9; review 36ce125 MINOR
                rollout CommandExecution naming the checkout while the exec command does not; an exec command reaching
                evals/; a study path only as an object key (MINOR 1, codex and gemini); a gemini list_directory whose
                dir_path the view's mapping drops; a snapshot toolCalls args path; a tool_result naming the checkout;
-               a refused snapshot and an mcp_tool_call (transcript-unreadable).
+               a snapshot tool-response turn's functionResponse naming evals/ or the checkout (round 9 ruling 1);
+               a refused snapshot, a snapshot the ledger's digest does not bind and an mcp_tool_call
+               (transcript-unreadable).
   P1-witness   check_take.py compiled in memory with each P1 mutant (ViewError swallowed, an empty view read as clean,
                the view's args read in place of raw leaves, CommandExecution only, an unreadable tool record skipped,
-               the encoded arguments read as the leaf, an undecodable leaf read as text, each source skipped, values
-               only, the raw readers' refusal swallowed) goes red on the cases above.
+               the encoded arguments read as the leaf, an undecodable leaf read as text, each source skipped, the
+               snapshot's tool-response turns skipped, its ledger digest unchecked, values only, the raw readers'
+               refusal swallowed) goes red on the cases above.
 
 Fakes and synthetic sources only: no take, model, container or network.
 """
@@ -380,8 +383,9 @@ def codex_done(parts, k, kind):
 
 
 def f3_codex_escaped(parts):
-    # source 3 only, reachable only after decoding: `\/` for each solidus and `e` for one letter
-    codex_done(parts, 2, "function_call")["arguments"] = r'{"cmd": "cat evals\/gap-study-4\/prereg-draft.json"}'
+    # source 3 only, reachable only after decoding: `\/` for each solidus and `\u0065` for one letter (round 9
+    # ruling 2, review 89ee5a8 NIT 1: the escaped letter is the plan's leg)
+    codex_done(parts, 2, "function_call")["arguments"] = r'{"cmd": "cat \u0065vals\/gap-study-4\/prereg-draft.json"}'
 
 
 def f3_codex_undecodable(parts):
@@ -431,6 +435,17 @@ def f3_gemini_object_key(parts):
     response["response"] = {"evals/gap-study-4/notes.txt": "x"}
 
 
+def f3_gemini_tool_response(parts):
+    # round 9 ruling 1 (review 89ee5a8 MINOR 1): the snapshot's tool-response user turn alone names the study; its
+    # toolCalls result and every stream record stay clean
+    parts["native"][2][2]["content"][0]["functionResponse"]["response"] = {
+        "output": "evals/gap-study-4/prereg-draft.json says ..."}
+
+
+def f3_gemini_tool_response_checkout(parts):
+    parts["native"][2][2]["content"][0]["functionResponse"]["response"] = {"output": f"{ct.CHECKOUT_REPO}/README.md"}
+
+
 def f3_gemini_tool_result(parts):
     for rec in parts["streams"][2]:
         if rec["type"] == "tool_result":
@@ -456,6 +471,8 @@ REACH_CASES = (
     ("gemini snapshot toolCalls args", "gemini", f3_gemini_snapshot_args, STUDY),
     ("gemini study path only as an object key", "gemini", f3_gemini_object_key, STUDY),
     ("gemini tool_result naming the checkout", "gemini", f3_gemini_tool_result, OUTSIDE),
+    ("gemini snapshot tool-response turn reaching evals/", "gemini", f3_gemini_tool_response, STUDY),
+    ("gemini snapshot tool-response turn naming the checkout", "gemini", f3_gemini_tool_response_checkout, OUTSIDE),
     ("gemini snapshot the projection refuses", "gemini", f3_gemini_snapshot_refused, UNREADABLE),
 )
 
@@ -494,7 +511,7 @@ def p1_problems(mod) -> list:
                                                ValueError) if harness == "codex" else []
             want = {"codex": 4 + 2 + sum(r["type"] == "response_item" and r["payload"]["type"] in
                                          mod.CODEX_RESPONSE_READ for r in rollout),
-                    "gemini": 4 + 2}[harness]
+                    "gemini": 4 + 2 + 2}[harness]       # + each tool-response turn's part (round 9 ruling 1)
             if len(records) != want:
                 out.append(f"{harness}: {len(records)} raw tool records read, not {want}")
             # a stream whose bytes are not its envelope's: refused on both roads, never clean
@@ -503,6 +520,15 @@ def p1_problems(mod) -> list:
             for road, got in (("view", view), ("reach", reach)):
                 if [p.split("] ")[0] + "]" for p in got["problems"]] != [UNREADABLE]:
                     out.append(f"{harness} digest broken: the {road} is not transcript-unreadable: {got['problems']}")
+        # the last snapshot's bytes are not the ones the ledger binds (round 9 ruling 2, review 89ee5a8 NIT 2)
+        with take(harness) as path:
+            ledger = json.loads((path.parent / "driver-ledger.json").read_text(encoding="utf-8"))
+            ledger["native_snapshots"][-1]["sha256"] = "0" * 64
+            (path.parent / "driver-ledger.json").write_text(json.dumps(ledger), encoding="utf-8")
+            got = mod.vendor_reach(path, harness)
+            if [p.split("] ")[0] + "]" for p in got["problems"]] != [UNREADABLE]:
+                out.append(f"{harness} snapshot digest broken: the reach is not transcript-unreadable: "
+                           f"{got['problems']}")
         with take(harness) as path, mock.patch.object(mod.transcript_view, "events", lambda *a, **k: []):
             if [p.split("] ")[0] + "]" for p in mod.vendor_take_view(path, harness)["problems"]] != [UNREADABLE]:
                 out.append(f"{harness}: an empty view is read as clean")
@@ -589,6 +615,11 @@ P1_WITNESSES = {
     "the native snapshot skipped": (('        out += read(raw, f"session/{name}")\n', '        pass\n'),),
     "values only (MINOR 1)": (('"input": asked}', '"input": transcript_view._strings(asked)}'),
                               ('"content": returned}', '"content": transcript_view._strings(returned)}')),
+    "the snapshot's tool-response turns skipped (round 9 ruling 1)": ((
+        '                out.append((f"{where} message {message.get(\'id\')!r} response {i + 1}", {}, part))\n',
+        '                pass\n'),),
+    "the snapshot's ledger digest unchecked (round 9 ruling 2)": ((
+        '        if hashlib.sha256(raw).hexdigest() != snaps[-1].get("sha256"):\n', '        if False:\n'),),
     "the raw readers' refusal swallowed": ((
         '        return {"problems": [f"[{TRANSCRIPT_UNREADABLE}] the {harness} raw records refuse the take: {e}"],\n',
         '        return {"problems": [],\n'),),
