@@ -46,7 +46,8 @@ This stage performs the steps in Process and nothing else.
 - Never run a bioinformatics workflow, aligner, or QC tool, and never read FASTQ contents. That
   is stage 02's work.
 - Filesystem reads are limited to: this workspace's own files, and inside the named project its
-  `CONTEXT.md`, `HISTORY.md`, `_config/` and `00_data/`. Do not read or search elsewhere.
+  `CONTEXT.md`, `HISTORY.md`, `_config/` and `00_data/`; on a non-public project, only its
+  `00_data/dataset.tsv` (Definitions). Do not read or search elsewhere.
 - Do not report incidental observations about the user's filesystem or prior analyses.
 - If you believe a step should deviate, stop and ask. Do not act first and report afterwards.
 
@@ -244,10 +245,22 @@ Full integrity also validates every plain or gzip FASTQ record: four whole lines
 @ header, + separator, matching sequence/quality lengths; violation → `integrity`.
 Class 6 is measured with --verify-integrity full; stage 01 default is none.
 
+**Non-public project (decisions 0107, 0141).** A project is non-public unless every data row of
+its `00_data/dataset.tsv` reads exactly `public` in `data_class`; an absent or unreadable row
+counts as non-public, and the session's catch-up prints the label. On a non-public project the
+guard keeps the project out of the model's prompt: it refuses every Read of a file in it except
+that dataset row and the `STATUS` files, every write or append there (`HISTORY.md` included, whose
+append needs a Read first), and every typed call except the doors in `CLOSED_PROJECT_DOORS`
+(`_system/guard_hook.py`), which run only as `python3 _system/tool_call.py <door> '<json>'` from
+the workspace root, their output filtered. No stage 01 step is a door, so on a non-public project
+this stage is the user's: reply T10 and stop. Never work around a refusal.
+
 ## Process
 1. Activated when the user asks to prepare samplesheets or to proceed past stage 00. Reply T1.
-2. Resolve the project directory from the title. Read each assay config for the declarations
-   above. For each undeclared RNA strandedness or RNA/ATAC replication unit or reference
+2. Resolve the project directory from the title and read its `00_data/dataset.tsv`. On a
+   non-public project (Definitions) reply T10 and stop: every later step reads or writes a file
+   the guard refuses there. Otherwise read each assay config for the declarations above. For
+   each undeclared RNA strandedness or RNA/ATAC replication unit or reference
    release, send T9 listing only missing keys and wait for the user's values. Write exactly
    their supplied values into the existing `_config/<Assay ID>.yaml` path (0019), adding
    missing top-level keys and preserving other settings. Never invent values or use
@@ -266,6 +279,7 @@ Class 6 is measured with --verify-integrity full; stage 01 default is none.
 
    It needs no conda environment; when library_index is present it streams up to 1,000 records per FASTQ. Parse its JSON; branch on its
    **exit code** per Definitions.
+   On a non-public project the validator is not a door: T10, as in step 2.
 4. Exit 3 → reply T6 using its `error` field, and stop.
 5. Exit 1 → reply T3, rendering every entry of every assay's `failures` array verbatim in the
    table. Write no outputs. For undeclared config values, return to step 2 and T9;
@@ -298,10 +312,12 @@ Class 6 is measured with --verify-integrity full; stage 01 default is none.
 13. Append the script's `history_entry` to the project's `HISTORY.md` **verbatim**, replacing
     `<ISO-8601 date>` with today's date. Do not restate its numbers in your own words — they are
     the script's counts, not your recollection.
+    On a non-public project this append is the user's: T10.
 14. Reply T4 using `wrote`, each assay's `counts`, and its `config_unfilled` — the scientific
     decisions still outstanding in `_config/<Assay ID>.yaml`. Stage 00 seeded that file, so the
     user is completing it, not authoring it. Offer to write values they give you; never choose
     one yourself.
+    On a non-public project the config is the user's to write: T10.
 
 ## Response Format
 Every message you send in this stage is one of the templates below, with placeholders filled.
@@ -420,6 +436,20 @@ Proceeding with <samples_included> of <samples_total> samples. Raw data and file
 untouched, so this is reversible: add the rows back to samples.csv and run stage 01 again.
 
 Confirm to proceed with the reduced set, or reply `cancel`.
+```
+
+**T10 — Non-public project**
+```
+<title> is a non-public project (data_class <label>), so I cannot run stage 01 for it: its
+steps read the design, the config and the files registry, and only public data may enter a
+hosted-model prompt (decision 0107). Nothing was read or written.
+
+Stage 01 is yours for this project. From the workspace root, run
+
+  python3 _system/stage01_samplesheet.py --project projects/<title> --check
+
+then the writer with the flags you clear, and append the history_entry it prints to
+projects/<title>/HISTORY.md verbatim. Its output stays with you.
 ```
 
 ## OUTPUT
