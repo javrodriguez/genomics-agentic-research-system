@@ -207,7 +207,8 @@ differential-expression sub-stage of 02_bioinformatics.
 
 | Code | Meaning | Reply |
 |---|---|---|
-| 0 | clean (checked, or written) | T2 then T4 |
+| 0 | the read-only `--check` run (step 3) is clean; nothing is written, so the stage is not done | steps 6, 7 and 8 in that order (T7, T5, T8 as each applies), then the writer at step 9; only the writer completes the stage |
+| 0 | the writer (step 9) wrote every samplesheet and its exit gate passed | T2 then T4 |
 | 1 | validation failed; nothing written | T3 |
 | 2 | a human gate is uncleared; nothing written | T7 and/or T5 |
 | 3 | preconditions not met | T6 |
