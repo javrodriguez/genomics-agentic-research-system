@@ -64,6 +64,11 @@ def _frontmatter(text):
     return text[3:end] if end != -1 else None
 
 
+# The words of a line that builds a history entry or a run record, for the provenance rule.
+ENTRY_OR_MANIFEST = ("Model:", "history_entry", "complete_manifest", "collect_failure",
+                     '"model"', "manifest")
+
+
 def conform_one(wrapper_dir):
     """Every rule the standard makes checkable. Returns a list of failures (empty == passes).
 
@@ -174,6 +179,21 @@ def conform_one(wrapper_dir):
                           "%s never declares a \"--model\" flag; collect must accept it "
                           "and record the harness's model in its history entry (0024, 0303)"
                           % module.name))
+    # Declaring the flag is not reading the harness: collect must take its model from
+    # ws.history_model, and the flag's value must never reach a line that builds the history
+    # entry or the run record (lane gars-t74, ruling 1 on REVIEW-9eb28d9). A wrapper written
+    # to the old checklist (`model = args.model or "unknown"`) passed every rule above.
+    collect = re.search(r"^def cmd_collect\(.*?(?=^def |\Z)", src, re.M | re.S)
+    body = collect.group(0) if collect else ""
+    if collect and "ws.history_model(" not in body:
+        fails.append(fail("provenance",
+                          "%s: cmd_collect never calls ws.history_model; the model a history "
+                          "entry names is the harness's, never the flag's (0303)" % module.name))
+    for line in body.splitlines():
+        if "args.model" in line and any(w in line for w in ENTRY_OR_MANIFEST):
+            fails.append(fail("provenance",
+                              "%s: the flag's value reaches the history entry or the run "
+                              "record: %s (0303)" % (module.name, line.strip())))
 
     # --- the exit gate -------------------------------------------------------------------
     if "OUTPUTS.tsv" not in src:
@@ -450,6 +470,7 @@ def module_source(spec):
     lines.append('    results = substage / "run" / "results"')
     lines.append('    samples = wl.samplesheet_samples(paths["samplesheet"])')
     lines.append('    fails = []')
+    lines.append('    model = ws.history_model(WORKSPACE, args.model)  # the harness\'s (0303)')
     lines.append('')
     lines.append('    # The exit gate. CONTENT, not existence (decision 0010): the gate below')
     lines.append('    # must prove every sample survived the pipeline, because a sample lost to')
@@ -464,7 +485,7 @@ def module_source(spec):
     lines.append('')
     lines.append('    if fails:')
     lines.append('        result["failures"] = fails')
-    lines.append('        return wl.collect_failure(substage, result, EXIT_FAILURE)')
+    lines.append('        return wl.collect_failure(substage, result, EXIT_FAILURE, model)')
     lines.append('')
     lines.append('    with ws.atomic_open(substage / "OUTPUTS.tsv") as fh:')
     lines.append('        fh.write("# type\\trole\\tpath\\n")')
@@ -475,7 +496,6 @@ def module_source(spec):
     lines.append('    wl.write_status(substage, "COMPLETE")  # STATUS follows collect.')
     lines.append('')
     lines.append('    version = ws.template_version(WORKSPACE)')
-    lines.append('    model = ws.history_model(WORKSPACE, args.model)  # the harness\'s (0303)')
     lines.append('    entry = "\\n".join([')
     lines.append('        "## <ISO-8601 date> — 02_bioinformatics/%s/%s — pipeline complete"')
     lines.append('        % (ASSAY, SUBSTAGE),')
@@ -558,7 +578,7 @@ def skill_md_source(spec):
         "python3 %s.py prepare --project projects/<title>"
         % spec["wrapper_name"].replace("-", "_"),
         "sbatch <substage>/submit.sh                       # written by prepare",
-        "python3 %s.py collect --project projects/<title> --model \"<model id>\""
+        "python3 %s.py collect --project projects/<title>"
         % spec["wrapper_name"].replace("-", "_"),
         "```",
         "",
