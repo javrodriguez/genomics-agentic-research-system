@@ -189,6 +189,14 @@ def conform_one(wrapper_dir):
         fails.append(fail("provenance",
                           "%s: cmd_collect never calls ws.history_model; the model a history "
                           "entry names is the harness's, never the flag's (0303)" % module.name))
+    # The flag may appear only as ws.history_model's argument: a line-by-line match passed
+    # `model = args.model or model` after the call (lane gars-t74, REVIEW-85a1b4a finding 3).
+    inside = sum(call.count("args.model")
+                 for call in re.findall(r"ws\.history_model\(([^()]*)\)", body))
+    if body.count("args.model") > inside:
+        fails.append(fail("provenance",
+                          "%s: cmd_collect reads args.model outside its ws.history_model( call; "
+                          "the flag may only be that call's argument (0303, 0308)" % module.name))
     for line in body.splitlines():
         if "args.model" in line and any(w in line for w in ENTRY_OR_MANIFEST):
             fails.append(fail("provenance",
