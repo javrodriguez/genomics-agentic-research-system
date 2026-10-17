@@ -59,7 +59,7 @@ helpers and the resolver need no conda environment; stage 02's skills do.
    row as excluded and leaves its raw data in place, so the choice is reversible.
 4. `_config/` is already seeded — stage 00 filled every derivable value and marked the
    scientific decisions `<REQUIRED>`. Stage 02 completes those from menus (genome; contrast
-   and formula, or peak type, per assay) and asks you to confirm before writing. Schema and rationale:
+   and formula, peak type, or library chemistry, per assay) and asks you to confirm before writing. Schema and rationale:
    `_references/config_schema.md`.
 5. Run stages 01 → 02 → 03 in order, reading the output between each.
 

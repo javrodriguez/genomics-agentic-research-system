@@ -145,12 +145,14 @@ config. Never work around a refusal.
 
    The decisions are per-assay (`ASSAY_DECISIONS` in `_system/configure.py`): every assay
    chooses a genome; an assay with a `de` block additionally chooses a contrast (and may give a
-   formula); an assay with a `peaks` block chooses a peak type.
+   formula); an assay with a `peaks` block chooses a peak type; a `protocol` assay (scrnaseq)
+   chooses a library chemistry, from the menu filtered to the `aligner` its config names.
 
    ```bash
    python3 _system/configure.py genomes --assay <Assay ID>
    python3 _system/configure.py contrasts --project projects/<title> --assay <Assay ID>   # de assays
    python3 _system/configure.py peaks                                                     # peaks assays
+   python3 _system/configure.py protocols --aligner <the config's aligner>                # protocol assays
    ```
 
    Reply T8 rendering the genome menu plus this assay's decision menu. Wait. Then, with the
@@ -158,8 +160,12 @@ config. Never work around a refusal.
 
    ```bash
    python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> \
-       --genome <n> [--contrast <n>] [--formula "<theirs>"] [--peaks-type <n>] --dry-run
+       --genome <n> [--contrast <n>] [--formula "<theirs>"] [--peaks-type <n>] \
+       [--protocol <n> --aligner <the config's aligner>] --dry-run
    ```
+
+   For a protocol assay pass `--aligner` as the config names it: left out, `apply` writes its
+   own default aligner over the config's.
 
    Reply T9 showing what it would write and **wait for confirmation**. On confirmation, re-run
    without `--dry-run`. Exit 1 → report its `error` and return to T8; never retry with a value the
@@ -271,7 +277,8 @@ Reply with one genome number and one number from the second menu, e.g. `01, 02`.
 Render the genome block from `configure.py genomes --assay <Assay ID>` and the second block
 from this assay's decision menu — `contrasts` for a de assay (every ordered level pair with
 its meaning, plus the formula default), `peaks` for a peaks assay (narrow | broad with their
-meanings) — **all verbatim from their JSON**. Do not add a reference that is not in the
+meanings), `protocols` for a protocol assay (each chemistry the config's aligner supports,
+with its meaning) — **all verbatim from their JSON**. Do not add a reference that is not in the
 registry, and do not offer a contrast the design does not support. A contrast marked
 `testable: false` is shown with the reason, never as a choice.
 
@@ -283,8 +290,9 @@ This is what I will write to _config/<Assay ID>.yaml:
     fasta:       <path>
     gtf:         <path>
     derived_dir: <path or "none — indices will be built, ~40 min and 43 GB">
-  <this assay's decision lines: de.formula + de.contrast, or peaks.type — with meanings,
-   and for a peaks assay the genome-derived macs_gsize and mito_name being set with it>
+  <this assay's decision lines: de.formula + de.contrast, peaks.type, or protocol + aligner —
+   with meanings, and for a peaks assay the genome-derived macs_gsize and mito_name being set
+   with it>
 
 Nothing else in the file changes. Confirm to write it, or say what to change.
 ```
@@ -334,8 +342,8 @@ hosted-model prompt (decision 0107), and no door covers them. Nothing was read o
 That step is yours. From the workspace root, run the menus and choose from them:
 
   python3 _system/configure.py genomes --assay <Assay ID>
-  <this assay's decision menu: configure.py contrasts --project projects/<title> --assay <Assay ID> | configure.py peaks>
-  python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula "<yours>"] [--peaks-type <n>]
+  <this assay's decision menu: configure.py contrasts --project projects/<title> --assay <Assay ID> | configure.py peaks | configure.py protocols --aligner <the config's aligner>>
+  python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula "<yours>"] [--peaks-type <n>] [--protocol <n> --aligner <the config's aligner>]
 
 Tell me when the config is done; I then continue to the sub-stage table, which reads only the
 STATUS files.
