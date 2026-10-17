@@ -411,11 +411,23 @@ def start_problems(table: dict) -> list[str]:
     return p
 
 
+class PinProfileMissing(KeyError):
+    """Lane vendor-admission T4 P0b (R-4): a row whose harness and model have no pin profile, refused by name; still a
+    KeyError for any caller that catches one."""
+
+    def __str__(self) -> str:
+        return str(self.args[0]) if self.args else ""
+
+
 def expected_pin(row: dict, table: dict) -> dict:
     """The pin a take of this registered row must run under: its harness (the row's agent), its model, and that
-    model's profile under that harness (interface 8: pin_profiles is keyed by harness, then model)."""
+    model's profile under that harness (interface 8: pin_profiles is keyed by harness, then model). A harness or model
+    without a profile refuses by name (PinProfileMissing): CP5 registers the O and G profiles (T4 plan R-4)."""
     harness = row["agent"]["harness"]
-    return dict(table["pin_profiles"][harness][row["model"]], model=row["model"], harness=harness)
+    profile = (table["pin_profiles"].get(harness) or {}).get(row["model"])
+    if profile is None:
+        raise PinProfileMissing(f"routing.json's pin_profiles hold no {harness}/{row['model']} profile; CP5 registers it")
+    return dict(profile, model=row["model"], harness=harness)
 
 
 def agent_problems(row: dict) -> list[str]:
