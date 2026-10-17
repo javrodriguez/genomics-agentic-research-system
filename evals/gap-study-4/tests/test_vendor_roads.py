@@ -32,6 +32,16 @@ address, read by name at scan time; the reader and its refusals live in walk_bui
   AE-witness  walk_builders.py compiled in memory with each of the extra-key, address, missing-key and mode checks
               deleted goes red.
 
+Ruling 2: the plan's fail-closed rule lands now. Until the record exists every codex and gemini walk refuses before
+launch by name, and none runs with a shorter list; Claude Code walks are untouched.
+
+  AE-closed   with no record, lease_secrets refuses at take start naming the record before any lease token is read,
+              CodexLeaseRoad refuses when the walk is built, login_secrets refuses a Gemini take when its secrets()
+              is made (not at the first scan), and walk_driver_for refuses a codex and a gemini row before
+              drive.walk_driver is called; a Claude Code take's login_secrets, with no record and no WALK_LOGIN_FILES,
+              is admitted and reads only its token; with a TEST DATA record each vendor road is admitted. Three
+              witnesses (each road's record read deleted) go red.
+
 Scratch repositories and fakes only, under test_walk_builders' module setup: no take, model, vendor, network,
 Docker, credential or holdout. Every address here is TEST DATA under the reserved .invalid domain.
 """
@@ -291,6 +301,85 @@ def record_problems(wb_mod) -> list:
     return out
 
 
+def closed_problems(wb_mod, tmp: Path) -> list:
+    """AE-closed on one walk_builders module (the real one or a witness): [] or each failure."""
+    from box import scan_record
+    out = []
+    absent = str(tmp / "absent" / "account-emails.json")
+    src = str(twb.lease_file(tmp))
+    gemini_login = str(twb.login_file(f"GEMINI_API_KEY={twb.GEMINI_KEY}\n"))
+    claude_login = str(twb.login_file("CLAUDE_CODE_OAUTH_TOKEN=" + "synthetic-claude-token-" + "a" * 12 + "\n"))
+    reads = []
+    real_lease, real_login = scan_record.read_lease_tokens, scan_record.read_login
+
+    def counted(fn):
+        return lambda *a, **k: reads.append(fn.__name__) or fn(*a, **k)
+
+    def refuses(label, fn, *args):
+        why = refusal(wb_mod, fn, *args)
+        if why is None:
+            out.append(f"AE-closed: {label} was admitted with no account record")
+        elif "account-emails.json" not in why:
+            out.append(f"AE-closed: {label} refused for another reason: {why}")
+
+    with mock.patch.object(scan_record, "read_lease_tokens", counted(real_lease)), \
+            mock.patch.object(scan_record, "read_login", counted(real_login)):
+        with mock.patch.object(wb_mod, "account_emails_path", lambda: absent):
+            refuses("lease_secrets", wb_mod.lease_secrets, src)
+            if "read_lease_tokens" in reads:
+                out.append("AE-closed: lease_secrets read the lease's tokens before refusing")
+            refuses("CodexLeaseRoad", wb_mod.CodexLeaseRoad, src)
+            refuses("login_secrets for a gemini take", wb_mod.login_secrets, gemini_login, "gemini")
+            for row in ({"walk": "w-0001", "arm": "O", "agent": {"harness": "codex", "version": "0.162.1"}},
+                        {"walk": "w-0001", "arm": "G", "agent": {"harness": "gemini", "version": "0.64.0"}}):
+                built = []
+                login = "-" if row["arm"] == "O" else gemini_login
+                with walk_driver_world(wb_mod, tmp, built):
+                    refuses(f"walk_driver_for a {row['agent']['harness']} row", wb_mod.walk_driver_for,
+                            dict(WORLD, lease_path=src), row, login, tmp / "tree")
+                if built:
+                    out.append(f"AE-closed: a {row['agent']['harness']} row reached {built} with no account record")
+        with mock.patch.object(wb_mod, "account_emails_path", side_effect=AssertionError("account_emails_path")), \
+                mock.patch.object(twb.rt, "WALK_LOGIN_FILES", None, create=True):
+            try:
+                secrets = wb_mod.login_secrets(claude_login, "claude-code")
+                if [k for k, _ in secrets()] != ["token"]:
+                    out.append(f"AE-closed: a Claude Code take's secrets are {[k for k, _ in secrets()]}")
+            except Exception as e:  # noqa: BLE001
+                out.append(f"AE-closed: a Claude Code take was refused: {type(e).__name__}")
+        reads.clear()
+        with twb.account_boundary(wb_mod):
+            for label, fn, args in (("lease_secrets", wb_mod.lease_secrets, (src,)),
+                                    ("CodexLeaseRoad", wb_mod.CodexLeaseRoad, (src,)),
+                                    ("login_secrets for a gemini take", wb_mod.login_secrets,
+                                     (gemini_login, "gemini"))):
+                why = refusal(wb_mod, fn, *args)
+                if why is not None:
+                    out.append(f"AE-closed: {label} refused on a TEST DATA record: {why}")
+            if "read_login" in reads:
+                out.append("AE-closed: the Gemini key was read before a scan asked")
+    return out
+
+
+# walk_driver_for's collaborators, faked at the boundary (test_walk_builders' B13 and B14 shape)
+WORLD = {"rules_scanner": lambda paths: [], "runtime": "rt", "config_parent": "/synthetic", "budgets": (600, 5, 1),
+         "take_spec": lambda r, c, t: "spec", "sidecar_for": None, "proxy": None, "lock_path": None, "hosts": None,
+         "cgroup_dir_for": lambda t: "", "pin_for": None, "design_for": None, "uid_map": None, "clock": None,
+         "sleep": None, "ownership": None, "settings_guard": None, "machine_gate": None}
+
+
+@contextlib.contextmanager
+def walk_driver_world(wb_mod, tmp: Path, built: list):
+    drive = twb.MODS["drive"]
+    with mock.patch.object(drive, "walk_driver", lambda **kw: built.append("drive.walk_driver") or "driver"), \
+            mock.patch.object(drive, "WalkRepo", lambda **kw: built.append("drive.WalkRepo") or "repo"), \
+            mock.patch.object(drive, "records_repo", lambda root: "/synthetic/repo"), \
+            mock.patch.object(wb_mod, "build_walk_fixture", lambda r, t, p: ({"sha256": "0" * 64}, "/synthetic/src")), \
+            mock.patch.object(wb_mod, "walk_identity", lambda *a, **k: {"walk": "w-0001"}), \
+            mock.patch.object(twb.rt, "CODEX_SUBSCRIPTION_READY", True, create=True):
+        yield
+
+
 class R6Config(twb.Drafted):
     def test_r6_no_configured_fallback_name(self):
         from box import take_config
@@ -339,6 +428,28 @@ class R6Witnesses(twb.Drafted):
                             ("GEMINI_SETTINGS", take_config.GEMINI_SETTINGS + (("context.fileName", ["CLAUDE.md"]),))):
             with self.subTest(witness=attr), mock.patch.object(take_config, attr, value):
                 self.assertNotEqual(config_problems(take_config), [], f"a fallback in {attr} stayed green")
+
+
+class AEClosed(twb.Drafted):
+    def test_ae_every_vendor_take_refuses_without_the_record(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(closed_problems(twb.wb(), Path(t)), [])
+
+    def test_ae_witness_each_road_without_its_record_read_goes_red(self):
+        for name, site in AE_CLOSED_WITNESSES.items():
+            with self.subTest(witness=name), tempfile.TemporaryDirectory() as t:
+                mod = compiled(HERE / "walk_builders.py", "walk_builders_ae_witness",
+                               ((site, site.replace("account_emails(", "(lambda harness: None)(", 1)),))
+                self.assertNotEqual(closed_problems(mod, Path(t)), [], f"witness {name} stayed green")
+
+
+AE_CLOSED_WITNESSES = {
+    "lease_secrets reads no record": ("    account_emails(rt.CODEX)                   "
+                                      "# round 10 ruling 2: no record, no take\n"),
+    "CodexLeaseRoad reads no record": ("        account_emails(rt.CODEX)                "
+                                       "# round 10 ruling 2: no record, no walk\n"),
+    "login_secrets reads no record": "        account_emails(rt.GEMINI)\n",
+}
 
 
 class AERecord(twb.Drafted):

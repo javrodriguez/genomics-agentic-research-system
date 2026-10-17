@@ -1973,10 +1973,38 @@ def fake_place_lease(placed: list):
     return place
 
 
-def fake_lease_secrets(reads: list):
+# Round 10 ruling 2 (glitch-b5, Sat 17 Oct 2026; the T4 plan's section 9): every codex and gemini take refuses before
+# launch, by name, until the account record (walk_builders.ACCOUNT_EMAILS) exists; the vendor rows here run on a TEST
+# DATA record, clearly fake addresses under the reserved .invalid domain, never a real account's.
+TEST_ACCOUNT_EMAILS = {"operator": "operator@example.invalid", "codex": "codex-account@example.invalid",
+                       "gemini": "gemini-account@example.invalid"}
+
+
+def account_record_file(folder: Path, record=None) -> Path:
+    """A TEST DATA account record, mode 600, in `folder` (outside every repository)."""
+    f = Path(folder) / "account-emails.json"
+    f.write_text(json.dumps(TEST_ACCOUNT_EMAILS if record is None else record))
+    os.chmod(f, 0o600)
+    return f
+
+
+@contextlib.contextmanager
+def account_boundary(mod, record=None):
+    """mod.account_emails_path patched to a TEST DATA record for the block (round 10 ruling 2's fail-closed road)."""
+    with tempfile.TemporaryDirectory() as t:
+        f = account_record_file(Path(t), record)
+        with mock.patch.object(mod, "account_emails_path", lambda: str(f)):
+            yield f
+
+
+def fake_lease_secrets(reads: list, mod=None):
     """walk_builders.lease_secrets' contract (box b9f876b5): every access_token and refresh_token in auth.json read at
-    take start (a missing file raises: no take), read again at each call, every value read kept."""
+    take start (a missing file raises: no take), read again at each call, every value read kept; with `mod`, its
+    account record read first (round 10 ruling 2: no record, no Codex take)."""
     def lease_secrets(auth_path):
+        if mod is not None:
+            mod.account_emails(rt.CODEX)
+
         def tokens():
             doc = json.loads(Path(auth_path).read_text())
             reads.append(auth_path)
@@ -1999,7 +2027,7 @@ def lease_boundary(mod, *, ready=True):
     with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", ready, create=True), \
             mock.patch.object(rt, "NO_LOGIN", "-", create=True), \
             mock.patch.object(rt, "place_lease", fake_place_lease(placed), create=True), \
-            mock.patch.object(mod, "lease_secrets", fake_lease_secrets(reads), create=True):
+            mock.patch.object(mod, "lease_secrets", fake_lease_secrets(reads, mod), create=True):
         yield placed, reads
 
 
@@ -2098,7 +2126,12 @@ def b13_prepare_problems(mod, tmp: Path) -> list:
 def b13_secrets_problems(mod, tmp: Path) -> list:
     """NIT 4 (box review): a Codex walk's driver and its WalkRepo get one and the same secrets(), the lease road's;
     the lease is placed in the driver's spec_for (after make_config_dir), read at once, and before that nothing
-    scans."""
+    scans. On a TEST DATA account record (round 10 ruling 2)."""
+    with account_boundary(mod):
+        return _b13_secrets_problems(mod, tmp)
+
+
+def _b13_secrets_problems(mod, tmp: Path) -> list:
     out = []
     drive = MODS["drive"]
     got = {}
@@ -2304,11 +2337,11 @@ class B13Lease(Drafted):
             self.assertTrue(reader, "B13.lease_secrets: the box's lease road is on this tree but its lease reader "
                                     "(scan_record.read_lease_tokens, walk_builders.lease_secrets) is not")
         if reader:
-            with tempfile.TemporaryDirectory() as t:
+            with tempfile.TemporaryDirectory() as t, account_boundary(mod):      # round 10 ruling 2: a TEST DATA record
                 self.assertEqual(lease_secrets_contract_problems(mod.lease_secrets, Path(t), scan_record.LoginError),
                                  [])
-        with tempfile.TemporaryDirectory() as t:
-            self.assertEqual(lease_secrets_contract_problems(fake_lease_secrets([]), Path(t), OSError), [])
+        with tempfile.TemporaryDirectory() as t, account_boundary(mod):
+            self.assertEqual(lease_secrets_contract_problems(fake_lease_secrets([], mod), Path(t), OSError), [])
 
 
 # ------------------------------------------------------------------------------------------------- B14
@@ -2402,7 +2435,13 @@ def b14_prepare_problems(mod, tmp: Path) -> list:
 @problems_by_assertion("B14.secrets")
 def b14_secrets_problems(mod, tmp: Path) -> list:
     """A Gemini walk's driver and its WalkRepo get one and the same secrets(): login_secrets over the key file, read
-    only when the scan asks, giving the key's value as the exact-value mask's token."""
+    only when the scan asks, giving the key's value as the exact-value mask's token. On a TEST DATA account record
+    (round 10 ruling 2)."""
+    with account_boundary(mod):
+        return _b14_secrets_problems(mod, tmp)
+
+
+def _b14_secrets_problems(mod, tmp: Path) -> list:
     out = []
     drive = MODS["drive"]
     got = {}

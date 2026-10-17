@@ -1028,6 +1028,20 @@ class TestLeaseTokens(unittest.TestCase):
         self.addCleanup(t.cleanup)
         return t.name
 
+    def account_record(self):
+        """Round 10 ruling 2 (glitch-b5, Sat 17 Oct 2026; the T4 plan's section 9): a Codex take refuses before launch
+        without the account record, so the lease road runs here on a TEST DATA one (clearly fake .invalid addresses),
+        walk_builders.account_emails_path patched to it for the test's life."""
+        wb = _walk_builders()
+        f = os.path.join(self.folder(), "account-emails.json")
+        with open(f, "w", encoding="utf-8") as fh:
+            json.dump({"operator": "operator@example.invalid", "codex": "codex-account@example.invalid",
+                       "gemini": "gemini-account@example.invalid"}, fh)
+        os.chmod(f, 0o600)
+        patch = mock.patch.object(wb, "account_emails_path", lambda: f)
+        patch.start()
+        self.addCleanup(patch.stop)
+
     def refused(self, path, rule_word):
         with self.assertRaises(sr.LoginError) as cm:
             sr.read_lease_tokens(path)
@@ -1090,6 +1104,7 @@ class TestLeaseTokens(unittest.TestCase):
             self.assertNotIn(LEASE_ACCESS, str(cm.exception))
 
     def test_lease_secrets_reads_at_take_start_and_keeps_every_value(self):
+        self.account_record()
         d = self.folder()
         path = lease_auth(d)
         secrets = _walk_builders().lease_secrets(path)            # take start: read now
@@ -1109,6 +1124,7 @@ class TestLeaseTokens(unittest.TestCase):
         import drive
         from box import preflight as pf
         from box import run_take as rt
+        self.account_record()
         home, takef = self.folder(), self.folder()
         lease_auth(home)
         os.makedirs(os.path.join(home, "sessions", LEASE_ACCESS))   # the synthetic value as a name

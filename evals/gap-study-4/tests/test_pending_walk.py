@@ -17,6 +17,7 @@ import json
 import os
 import shutil
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -128,6 +129,15 @@ def git(root, *args):
     return tbi.git(root, *args)
 
 
+def account_record_patch(walk_builders):
+    """Round 10 ruling 2 (glitch-b5, Sat 17 Oct 2026; the T4 plan's section 9): every codex and gemini take refuses
+    before launch without the account record, so a vendor walk here runs on a TEST DATA one (clearly fake .invalid
+    addresses) under the scratch folder: a patch, not started, of walk_builders.account_emails_path to it."""
+    import test_walk_builders as twb
+    f = twb.account_record_file(Path(tempfile.mkdtemp(dir=tbi.SCRATCH, prefix="accounts-")))
+    return mock.patch.object(walk_builders, "account_emails_path", lambda: str(f))
+
+
 class Road:
     """One scratch study (the reader's sources, the draft and tasks, an empty register) and one Gemini walk through
     the real road: WalkDriver(records="walks") with harness_adapter_for, walk_runner.run_walks, WalkRepo."""
@@ -217,6 +227,7 @@ class Road:
         if not callable(getattr(walk_builders, "lease_secrets", None)):
             patches.append(mock.patch.object(walk_builders, "lease_secrets", twb.fake_lease_secrets(reads),
                                              create=True))
+        patches.append(account_record_patch(walk_builders))     # round 10 ruling 2: a TEST DATA account record
         for patch in patches:
             patch.start()
             self.test.addCleanup(patch.stop)
@@ -698,6 +709,9 @@ class GeminiKeyMask(unittest.TestCase):
     def keyed_road(self, **kw):
         import walk_builders
         road = Road(self, box=KeyedGeminiBox(summary=f"a session naming {LOGIN_VALUE}"), **kw)
+        patch = account_record_patch(walk_builders)             # round 10 ruling 2: a TEST DATA account record
+        patch.start()
+        self.addCleanup(patch.stop)
         road.driver.secrets = road.repo.secrets = walk_builders.login_secrets(str(road.login), rt.GEMINI)
         return road
 
