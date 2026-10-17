@@ -18,6 +18,10 @@ drove the production caller into the real grader.
            transcript is a bound envelope (vendor_record_binding), so the graders must be handed a value that is both
            the file's lines and bound to its path (transcript_view.BoundTranscript); each vendor cell reaches its real
            grader or refuses for a designed reason, never "vendor events require a bound transcript path".
+           Lane vendor-admission T1 (glitch-b5, 16 Oct 2026): grading admits a vendor walk only through a registered
+           reader and an agreed native cross-check, so each vendor walk's driver ledger carries the agreed
+           cross_check_status and the seam hands write_walk_grade an injected registry holding its harness (TEST
+           DATA, as the TABLE entries are).
 
 Every fixture is synthetic: no walk's transcript is read.
 """
@@ -43,6 +47,7 @@ AGENT = {"harness": "claude-code", "version": "2.1.296"}
 VENDOR = {"codex": ("synthetic-codex-model", {"harness": "codex", "version": "0.162.1"}, "O"),
           "gemini": ("synthetic-gemini-model", {"harness": "gemini", "version": "0.64.0"}, "G")}
 SESSION, VENDOR_ID = "study-walk-1", "vendor-1"
+AGREED = {"status": "agreed", "why": None}          # drive.gemini_cross_check's and codex_cross_check's agreed shape
 PROJECT = "run-0a1b2c3d"
 
 
@@ -107,6 +112,7 @@ def walk_folder(root: Path, task: str, cell: dict, harness: str = "claude-code")
         (folder / "transcript.jsonl").write_text("\n".join(lines) + "\n")
     else:
         extra = vendor_records(folder, harness, [json.loads(x)["message"]["content"] for x in lines[::2]])
+        extra["cross_check_status"] = dict(AGREED)          # lane vendor-admission T1: graded only cross-checked
     ledger = [{"kind": "take", "model": model, "agent": agent, "run_tree": "", "home": None}]
     t = 1000.0
     health = [{"kind": "watcher-start", "at": t - 1}]        # a clean watcher: paused at each snapshot, re-armed after
@@ -132,6 +138,12 @@ def walk_folder(root: Path, task: str, cell: dict, harness: str = "claude-code")
     return entry, folder
 
 
+def registered_reader(raw, ordinal):
+    """TEST DATA: the injected registry's reader (lane vendor-admission T1); grading admits on its presence and never
+    calls it."""
+    raise AssertionError("grading never calls the native reader")
+
+
 def seam(task: str, root: Path, run_mod=None, harness: str = "claude-code") -> tuple[str, str]:
     """(outcome, detail) of the production grading entry on one task's synthetic walk: "graded", "refused" (a
     designed refusal inside the grader), "UNDESIGNED", or "NOT REACHED" (refused before the task's grader was entered:
@@ -153,7 +165,8 @@ def seam(task: str, root: Path, run_mod=None, harness: str = "claude-code") -> t
         return mod
     try:
         with mock.patch.object(run_mod, "grader_for", grader_for):
-            path = run_mod.write_walk_grade(entry, folder)
+            path = run_mod.write_walk_grade(entry, folder, **({} if harness == "claude-code" else
+                                                                {"readers": {harness: registered_reader}}))
     except UNDESIGNED as e:
         return "UNDESIGNED", f"{type(e).__name__}: {e}"
     except Exception as e:  # noqa: BLE001 - a designed refusal of the grader, the view or the evidence reader
