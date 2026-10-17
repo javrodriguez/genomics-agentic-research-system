@@ -338,6 +338,26 @@ class AuthoringTests(unittest.TestCase):
                 self.assertEqual(code, 1, payload)
                 self.assertIn('provenance', [f['check'] for f in payload['failures']])
 
+    def test_conform_allows_args_only_as_a_plain_attribute_or_the_one_call(self):
+        """The fold of REVIEW-de77fe0, finding 2: an allow-list, not forbidden spellings. Line 222
+        kept, one line added after it; each of the review's eleven reproductions passed at de77fe0."""
+        anchor = '    result = {"command": "collect", "ok": False,'
+        for added in ('    a = args\n    model = a.model or model\n',
+                      '    model = (lambda ns: ns.model)(args) or model\n',
+                      '    model = builtins.getattr(args, "model") or model\n',
+                      '    g = getattr\n    model = g(args, "model") or model\n',
+                      '    v = vars\n    model = v(args)["model"] or model\n',
+                      '    model = getattr(*(args, "model")) or model\n',
+                      '    model = args.__getattribute__("model") or model\n',
+                      '    model = object.__getattribute__(args, "model") or model\n',
+                      '    model = operator.attrgetter("model")(args) or model\n',
+                      '    model = dict(args._get_kwargs())["model"] or model\n',
+                      '    model = ws.history_model(WORKSPACE, (m := args.model)) and (m or model)\n'):
+            with self.subTest(line=added):
+                code, payload = self.conform_mutant(anchor, added + anchor)
+                self.assertEqual(code, 1, payload)
+                self.assertIn('provenance', [f['check'] for f in payload['failures']])
+
     def test_every_shipped_wrapper_still_conforms(self):
         result = run([sys.executable, self.TOOL, 'conform', GARS / '_system/wrappers'])
         self.assertEqual(result.returncode, 0, result.stdout.decode())
