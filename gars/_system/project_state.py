@@ -216,7 +216,9 @@ def render_project(project, last):
             out.append("- stage 02: not started")
 
     stage3 = project / "03_custom_analysis"
-    analyses = sorted(d for d in stage3.iterdir() if d.is_dir()) if stage3.is_dir() else []
+    # A dot name is never an analysis: it is the sibling stage 03 `create` builds one in (0295).
+    analyses = sorted(d for d in stage3.iterdir() if d.is_dir() and
+                      not d.name.startswith(".")) if stage3.is_dir() else []
     if analyses:
         out.append("### custom analyses")
         for a in analyses:
