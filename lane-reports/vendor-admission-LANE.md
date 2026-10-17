@@ -1,4 +1,4 @@
-Status: planning
+Status: running
 
 # Lane vendor-admission: groundwork for arms O (Codex) and G (Gemini)
 
@@ -188,5 +188,6 @@ Build every fail-closed piece that arms O and G need after native-reader registr
 
 ## Progress
 - 2026-10-16 21:01 EDT: lane opened by glitch-b5.
+- 2026-10-16 21:04 EDT: cloud executor picked up the lane; gitleaks v8.28.0 installed; starting T0.
 
-RESUME HERE: read this file, then start T0 (prove the blocker, then the fix).
+RESUME HERE: T0 in progress (prove the blocker through walk_builders design_for on fakes, then option (a)).
