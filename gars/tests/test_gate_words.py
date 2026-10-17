@@ -82,5 +82,32 @@ class Stage01ExitTableTests(unittest.TestCase):
                          'the row must say the writer, not the check, completes the stage')
 
 
+class Stage01GateWordTests(unittest.TestCase):
+    """T7 and T5 close on `exclude` and `overwrite`; the writer refuses a switch with no
+    matching check record (S01-yes), and step 10 sends that refusal back to the check."""
+
+    def closing_words(self, text, name):
+        block = template(text, name)
+        self.assertTrue(block, '%s template not found' % name)
+        last = [l.strip() for l in block.splitlines() if l.strip()][-1]
+        return re.findall(r'`([^`]+)`', last)
+
+    def test_stage01_gates_name_one_word_each(self):
+        text = read(STAGE01)
+        found = steps(text)
+        for name, word, number in (('T7', 'exclude', '6'), ('T5', 'overwrite', '7')):
+            with self.subTest(template=name):
+                self.assertEqual(self.closing_words(text, name), [word, 'cancel'])
+                body = found[number]
+                self.assertIn('`%s`' % word, body)
+                self.assertRegex(body, r'[Aa]ny other reply[^.]*%s again' % name,
+                                 'step %s must re-send %s on any other reply' % (number, name))
+
+    def test_stage01_refused_switch_returns_to_the_check(self):
+        body = steps(read(STAGE01))['10']
+        self.assertRegex(body, r'step 3', 'a refused switch must go back to the check (step 3)')
+        self.assertIn('--check', body)
+
+
 if __name__ == '__main__':
     unittest.main()
