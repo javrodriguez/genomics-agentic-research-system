@@ -12,3 +12,5 @@ python3 -B -W ignore evals/gap-study-4/tests/test_vendor_script.py
 # asserting its edited files are disjoint from the native readers' source lists (drive.py excepted for P0 alone).
 python3 -B -W ignore evals/gap-study-4/tests/test_vendor_check.py
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py PF freeze.py check_take.py tests/test_freeze_shapes.py tests/test_vendor_check.py tests/check_vendor_sources.py
+python3 -B -W ignore evals/gap-study-4/tests/test_take_checker_dispatch.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P0 drive.py check_take.py tests/test_take_checker_dispatch.py

@@ -32,6 +32,11 @@
       "reason": "Lane vendor-admission T4 (plan v4 section 9, NIT 7): checks.d's per-piece line; exits 1 when a piece names a file in native_reader_registration's READER_SOURCES or CODEX_SOURCES (drive.py excepted for P0, edit A), or a file that does not exist."
     },
     {
+      "path": "tests/test_take_checker_dispatch.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P0 (plan v4 section 6, R-3, ruled by glitch-b5 on Sat 17 Oct 2026): drive.take_checker on test_drive_loop's D8 world. P0-vendor: a codex and a gemini take on the real vendor design view refuse with CheckRefused, naming the harness, before check_take's design_constants_sha256, no_output_nudges, agent_summary, check4 or check4_walk is called, on the take road and the walk road. P0-claude: a claude-code take's reasons, events and three side readings equal the direct calls take_checker made before edit A, on both roads (the walk road with a take carrying no identity), a failed cross-check still adding readers-disagree. Two in-memory witnesses (drive.py's side readings moved before the dispatch; check_take.py's claude-code entry roads swapped) go red."
+    },
+    {
       "path": "checks.d/vendor-admission.txt",
       "status": "new",
       "reason": "Lane vendor-admission: this lane's local checks (interface 2), one line per new test module."
@@ -39,7 +44,7 @@
     {
       "path": "COPIED.d/vendor-admission.json",
       "status": "new",
-      "reason": "Lane vendor-admission (glitch-b5, 16 Oct 2026): this lane's copy record. Its edits to files other lanes own are recorded as departures in their owning fragments: run.py (w8a-walk-layout), walk_regrade.py and tests/test_walk_grade_seam.py (live-harness-foundation), harness_bookkeeping.py and tests/test_harness_bookkeeping.py (w2a-cp3-endstate), freeze.py (w8b-holdout-digests), check_take.py's T4 VENDOR READERS section (w10-walk-runner), codex_adapter.py (w11a-codex-adapter), gemini_adapter.py (w11b-gemini-adapter) and, for the vendor-t3b follow-up, tests/test_walk_runner.py (w10-walk-runner)."
+      "reason": "Lane vendor-admission (glitch-b5, 16 Oct 2026): this lane's copy record. Its edits to files other lanes own are recorded as departures in their owning fragments: run.py (w8a-walk-layout), walk_regrade.py and tests/test_walk_grade_seam.py (live-harness-foundation), harness_bookkeeping.py and tests/test_harness_bookkeeping.py (w2a-cp3-endstate), freeze.py (w8b-holdout-digests), check_take.py's T4 VENDOR READERS section and drive.py's edit A (w10-walk-runner), codex_adapter.py (w11a-codex-adapter), gemini_adapter.py (w11b-gemini-adapter) and, for the vendor-t3b follow-up, tests/test_walk_runner.py (w10-walk-runner)."
     }
   ]
 }

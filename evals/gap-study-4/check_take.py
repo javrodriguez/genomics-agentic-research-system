@@ -3884,5 +3884,37 @@ def vendor_pending(harness: str, key: str, reader, *args, **kwargs) -> list:
     return got
 
 
+
+# ---- P0. THE CHECKER DISPATCH (plan section 6, edit A; R-3) ---------------------------------------------------------
+# drive.take_checker asks checker_for(design) for the take's (entry, side) right after design_for and before any
+# reading of the take; a harness with no entry refuses there with CheckRefused. claude-code's entry and side are
+# exactly what take_checker called before edit A, so a claude-code record is byte-identical. The entry takes the take
+# itself, not its row index: walk_regrade.production_checker's take carries no identity, and only the take road reads
+# it. P3 adds the vendor entries and P5 their side.
+def _claude_code_side(path, design) -> tuple:
+    """(checker_constants_sha256, no_output_nudges, agent_summary) of a claude-code take."""
+    return design_constants_sha256(design), no_output_nudges(path), agent_summary(path)
+
+
+def _claude_code_entry(path, row, design, *, take, records) -> dict:
+    if records == "walks":                # D1: the round-4 walk road
+        return check4_walk(path, row["task"], row["half"], row["walk"], wording_script=design.script, arm=row["arm"],
+                           design=design)
+    return check4(path, row["task"], row["half"], take.identity["row"], False, wording_script=design.script,
+                  arm=row["arm"], design=design)
+
+
+CHECKER_ENTRIES = {CLAUDE_CODE: (_claude_code_entry, _claude_code_side)}
+
+
+def checker_for(design) -> tuple:
+    """(entry, side) for the design's harness; a harness with no entry here refuses with CheckRefused."""
+    harness = getattr(design, "harness", None)
+    if harness not in CHECKER_ENTRIES:
+        raise CheckRefused(f"harness {harness!r} has no checker entry in check_take.py (checker_for admits "
+                           f"{sorted(CHECKER_ENTRIES)}); its take is never read with Claude Code's readers")
+    return CHECKER_ENTRIES[harness]
+
+
 if __name__ == "__main__":
     raise SystemExit(main())

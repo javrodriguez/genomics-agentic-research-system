@@ -3599,15 +3599,11 @@ def take_checker(*, design_for, records="takes"):
         if not path.is_file():
             return {"checker_reasons": [READERS_DISAGREE], "checker_events": dict.fromkeys(ids, 0)}
         design = design_for(row, take)
-        take.checker_constants_sha256 = _ct.design_constants_sha256(design)   # BOOTSTRAP: the constants it read
-        take.no_output_nudges = _ct.no_output_nudges(path)       # glitch-b5's ruling 3: the nudges it carries
-        take.agent_summary = _ct.agent_summary(path)              # the Agent parity ruling, part 6: its Agent calls
-        if records == "walks":                    # D1: the round-4 walk road
-            got = _ct.check4_walk(path, row["task"], row["half"], row["walk"], wording_script=design.script,
-                                  arm=row["arm"], design=design)
-        else:
-            got = _ct.check4(path, row["task"], row["half"], take.identity["row"], False, wording_script=design.script,
-                             arm=row["arm"], design=design)
+        entry, side = _ct.checker_for(design)     # T4 edit A: the harness's entry, refused before the take is read
+        # BOOTSTRAP: the constants it read; glitch-b5's ruling 3: the nudges it carries; the Agent parity ruling,
+        # part 6: its Agent calls (claude-code's side is exactly those three readers, as before edit A)
+        take.checker_constants_sha256, take.no_output_nudges, take.agent_summary = side(path, design)
+        got = entry(path, row, design, take=take, records=records)     # D1: records "walks" is the walk road
         reasons = list(got["reasons"])
         if take.cross_check and READERS_DISAGREE not in reasons:
             reasons.append(READERS_DISAGREE)
