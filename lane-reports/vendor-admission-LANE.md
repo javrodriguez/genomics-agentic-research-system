@@ -1,4 +1,4 @@
-Status: blocked
+Status: running
 
 BLOCKED ON glitch-b5 (round 10, 15:54 EDT): the round 10 rulings are recorded below, unbuilt. The executor's next step, relabelling the round 9 BLOCKED ON paragraph (line 5 of this file) as answered by round 10, was refused by the auto-mode classifier as "[Instruction Poisoning]" before any file changed; per the protocol it was not retried or reworded, and nothing of rulings 1-5 was started. Needed: glitch-b5 or Javier confirms round 10 to the cloud session directly (or approves the action), then the run resumes at ruling 1 (the account-emails.json reader in walk_builders).
 
@@ -316,5 +316,6 @@ Build every fail-closed piece that arms O and G need after native-reader registr
 - 2026-10-17 15:32 EDT: Status: blocked on P2's account-email secrets() pairs (top of this file); group (c) otherwise built and ready for review.
 - 2026-10-17 15:53 EDT: round 10 (glitch-b5's answer to the block) picked up by the cloud executor (scheduled run); Status: running. Rulings recorded above.
 - 2026-10-17 15:54 EDT: Status: blocked; a lane-file edit was refused by the classifier (top of this file); nothing of rulings 1-5 built.
+- 2026-10-17 16:06 EDT: glitch-b5 confirmed round 10 to the session directly (scheduled run); Status: running. Building rulings 1-5 in order, ruling 1 first.
 
 RESUME HERE: BLOCKED on glitch-b5 confirming round 10 to the session (top of this file). Then build round 10 in its order (rulings recorded; ruling 1 first) and, build them as ruled (red first: a vendor stream carrying a swept address is masked and counts 1, two hits in two files count 1, a secrets() without the operator's or the vendor account's address goes red), then review stop (c) for group (c) as a whole (185a7bd7..HEAD); the group (c) review also checks round 9's fold. Then group (d): P3 (check4_vendor and check4_walk_vendor holding check4's preamble over vendor_check and vendor_round4_problems, the event-count invariant with vendor event counts from vendor_reach and vendor_email_problems, checker_for admitting them; R-1's harness_guard rewording under a BOOTSTRAP_SPANS entry, the r4c9 re-pin and V0's rename and witness) and P4 (the vendor session-store shape, native_rel from both filename ids, section 2's legs 1-5). Then review stop (d).
