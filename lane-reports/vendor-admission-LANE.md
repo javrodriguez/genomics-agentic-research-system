@@ -1,4 +1,4 @@
-Status: needs-review
+Status: running
 
 ROUND 8 GROUP (b) SUMMARY FOR REVIEW (cloud executor, 2026-10-17 13:48 EDT): group (a)'s NITs 1 and 2 are folded and P1 is built, each red then green, and pushed. Review range: f24ee9c6..89ee5a86.
 - NIT 1, round 8 ruling 1 (red 5e413660, failures=2; green abdd12c0): freeze.registration_problems turns any OSError out of production_readers (a missing git binary is a FileNotFoundError) into leg iii's named refusal, "the native-reader registry could not run (<type>: <text>)", so the freeze names the arm and leg; FS-check gains the FileNotFoundError and PermissionError cases and a witness deleting that refusal.
@@ -291,5 +291,6 @@ Build every fail-closed piece that arms O and G need after native-reader registr
 
 - 2026-10-17 13:35 EDT: NIT 1 done (red 5e413660, green abdd12c0); NIT 2 done (red 9b221cd8, green 44f2ecac).
 - 2026-10-17 13:48 EDT: P1 done (red 38671e5d, green 89ee5a86). Group (b) complete; Status: needs-review.
+- 2026-10-17 14:35 EDT: round 9 (group (b) review folds, then group (c), P2) picked up by the cloud executor (scheduled run); Status: running.
 
 RESUME HERE: NEEDS REVIEW of group (b), the NIT 1 and 2 folds and P1 (f24ee9c6..89ee5a86). After the review and glitch-b5's folds, build group (c), P2: the vendor check body (plan section 1, section 9's P2 lines), one function per reason reusing the pure helpers, every PENDING leg through vendor_pending (VP-keys becomes equality), the account-email per-take unit and secrets() pairs, the readers-disagree cases, R-6's instruction files (AGENTS.md, GEMINI.md, bytes equal to the pinned CLAUDE.md, sha256-bound; where no road places them in a vendor checkout, P2 writes it with its own red test), the SAME-row fixture binding and plan section 7's READER-item half (round 8 ruling 3), and the home and temp legs of read-outside-the-checkout on the vendor cwd. Then review stop (c).
