@@ -270,5 +270,76 @@ class RunnerDirectiveTests(unittest.TestCase):
                              '_system/venue_policy.py'):
                     self.assertIn(word, blocked)
 
+
+INPUTS = '''## Inputs
+| Artifact type | Assay | Resolved from | Path |
+|---|---|---|---|
+%s
+'''
+ROW = '| counts_gene | %s | 02_bioinformatics/rnaseq/01_x | counts.tsv |'
+
+
+class AssayInputTests(unittest.TestCase):
+    """S03-assay: in a project with more than one assay every Inputs row names its assay, and a
+    named assay must be one the project has; a one-assay project is unchanged (0312)."""
+    setUp = ScriptOrderTests.setUp
+    approve = ScriptOrderTests.approve
+
+    def assays(self, *names):
+        for name in names:
+            (self.root / '00_data' / name).mkdir(parents=True, exist_ok=True)
+
+    def plan_with(self, *cells):
+        rows = '\n'.join(ROW % c for c in cells)
+        self.plan.write_text(PLAN.replace('## Scripts', INPUTS % rows + '## Scripts', 1))
+
+    def test_a_two_assay_input_with_no_assay_is_refused(self):
+        self.assays('rnaseq', 'atacseq')
+        self.plan_with('rnaseq', '')
+        code, result = self.approve()
+        self.assertEqual(code, 2, result)
+        self.assertTrue(any('names no assay' in b for b in result['blocked']), result['blocked'])
+        self.assertFalse(self.runner.exists())
+
+    def test_a_two_assay_table_with_no_assay_column_is_refused(self):
+        self.assays('rnaseq', 'atacseq')
+        self.plan.write_text(PLAN.replace('## Scripts', '## Inputs\n| Artifact type | Resolved '
+                             'from | Path |\n|---|---|---|\n| counts_gene | x | y |\n'
+                             '## Scripts', 1))
+        code, result = self.approve()
+        self.assertEqual(code, 2, result)
+        self.assertTrue(any('Assay column' in b for b in result['blocked']), result['blocked'])
+
+    def test_an_assay_the_project_lacks_is_refused(self):
+        self.assays('rnaseq')
+        self.plan_with('chipseq')
+        code, result = self.approve()
+        self.assertEqual(code, 2, result)
+        self.assertTrue(any("'chipseq'" in b and 'rnaseq' in b for b in result['blocked']),
+                        result['blocked'])
+
+    def test_every_input_naming_its_assay_is_approved(self):
+        self.assays('rnaseq', 'atacseq')
+        self.plan_with('rnaseq', 'atacseq')
+        code, result = self.approve()
+        self.assertEqual(code, 0, result)
+
+    def test_a_one_assay_project_keeps_its_three_column_table(self):
+        self.assays('rnaseq')
+        self.plan.write_text(PLAN.replace('## Scripts', '## Inputs\n| Artifact type | Resolved '
+                             'from | Path |\n|---|---|---|\n| counts_gene | x | y |\n'
+                             '## Scripts', 1))
+        code, result = self.approve()
+        self.assertEqual(code, 0, result)
+
+    def test_the_skeleton_and_the_contract_name_each_inputs_assay(self):
+        self.assertIn('| Artifact type | Assay | Resolved from | Path |', analysis.PLAN_SKELETON)
+        text = (GARS / '03_custom_analysis/CONTEXT.md').read_text()
+        process = ' '.join(text.split('## Process', 1)[1].split('## Response Format', 1)[0].split())
+        self.assertIn('for every assay of the project', process,
+                      'step 1 must list the results of every assay, not one')
+        self.assertIn('names its assay', process, "step 3 must say each input names its assay")
+
+
 if __name__ == '__main__':
     unittest.main()
