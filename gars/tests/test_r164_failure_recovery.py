@@ -388,6 +388,8 @@ class CallSiteRecoveryTests(unittest.TestCase):
                                       ['K1', 'A', 'GA', '1'], ['K2', 'A', 'GA', '2'],
                                       ['K3', second, 'GB', '1'], ['K4', second, 'GB', '2']])
         with contextlib.redirect_stdout(io.StringIO()):
+            if force:       # --force clears T5 only against the check the user saw (S01-yes)
+                self.assertEqual(s01.main(['--project', str(self.root), '--check']), 0)
             return s01.main(['--project', str(self.root)] + (['--force'] if force else []))
 
     def test_stage01_interrupted_keeps_each_previous_file(self):

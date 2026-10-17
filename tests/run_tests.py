@@ -262,6 +262,9 @@ class WorkspaceFixture(unittest.TestCase):
         sheet = self.project / "01_samplesheets" / "rnaseq_bulk_samplesheet.csv"
         design = self.project / "01_samplesheets" / "rnaseq_bulk_design.csv"
         a = sheet.read_bytes(), design.read_bytes()
+        # --force clears T5 only against the --check the user was shown (S01-yes)
+        code, _, raw = run(self.sheet, ["--project", "projects/tall-test", "--check"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, _, raw = run(self.sheet, ["--project", "projects/tall-test", "--force"], self.ws)
         self.assertEqual(code, 0, raw)
         b = sheet.read_bytes(), design.read_bytes()
@@ -281,10 +284,16 @@ class WorkspaceFixture(unittest.TestCase):
         # restore
         code, _, raw = run(self.reg, ["finalize", "--data-class", "public", "--purpose", "fixture", "--project", "projects/tall-test"], self.ws)
         self.assertEqual(code, 0, raw)
+        # --force clears T5 only against the --check the user was shown (S01-yes)
+        code, _, raw = run(self.sheet, ["--project", "projects/tall-test", "--check"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, _, raw = run(self.sheet, ["--project", "projects/tall-test", "--force"], self.ws)
         self.assertEqual(code, 0, raw)
 
     def test_08_model_flag_lands_in_history(self):
+        # --force clears T5 only against the --check the user was shown (S01-yes)
+        code, _, raw = run(self.sheet, ["--project", "projects/tall-test", "--check"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.sheet, ["--project", "projects/tall-test", "--force",
                                           "--model", "claude-test-1"], self.ws)
         self.assertEqual(code, 0, raw)
@@ -739,6 +748,10 @@ class AtacseqWrapperTests(unittest.TestCase):
             r[head.index("replicate")] = str((i - 1) % 2 + 1)
         with samples_csv.open("w", newline="") as fh:
             csv.writer(fh).writerows(rows)
+        # --force clears T5 only against the --check the user was shown (S01-yes)
+        code, _, raw = run(self.sheet_py, ["--project", "projects/atac-test", "--check"],
+                           self.ws)
+        self.assertEqual(code, 0, raw)
         code, _, raw = run(self.sheet_py, ["--project", "projects/atac-test", "--force"],
                            self.ws)
         self.assertEqual(code, 0, raw)
@@ -1144,6 +1157,10 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
         # fix the dangling control, emit, and check the derived control_replicate
         fill["CHIP2"]["control"] = "INPUT1"
         self._fill_design(project, "chipseq_bulk", fill)
+        # --confirm-exclusions clears T7 only against the --check the user was shown (S01-yes)
+        code, _, raw = run(self.sheet_py, ["--project", "projects/chip-test", "--check"],
+                           self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.sheet_py, ["--project", "projects/chip-test",
                                              "--confirm-exclusions"], self.ws)
         self.assertEqual(code, 0, raw)
@@ -1171,6 +1188,10 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
         self.assertIn("antibody", msgs)
         fill["CHIP1"]["group"] = "IP_KO"
         self._fill_design(project, "chipseq_bulk", fill)
+        # --force clears T5 only against the --check the user was shown (S01-yes)
+        code, _, raw = run(self.sheet_py, ["--project", "projects/chip-test", "--check"],
+                           self.ws)
+        self.assertEqual(code, 0, raw)
         code, _, raw = run(self.sheet_py, ["--project", "projects/chip-test",
                                            "--confirm-exclusions", "--force"], self.ws)
         self.assertEqual(code, 0, raw)

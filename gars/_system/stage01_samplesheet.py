@@ -5,8 +5,11 @@ The deterministic core of `01_prepare_samplesheets`. The contract orchestrates; 
 See docs/decisions/0011-deterministic-artifacts-in-stages-00-01.md for why.
 
 This script decides what is TRUE. It never prompts, never proceeds past a gate on its own, and
-never writes unless told which gate the user cleared. The agent decides what to say and when to
-stop.
+never writes an artifact unless told which gate the user cleared. The agent decides what to say
+and when to stop. A clean `--check` writes one thing, its own record of what the user is about to
+be shown (`.stage01_check.json` at the project root: the excluded samples, the existing files'
+sha256); `--confirm-exclusions` and `--force` clear a gate only when that record still matches
+(S01-yes). It sits outside `01_samplesheets/`, so that folder holds only the artifacts.
 
 Stdlib only, on purpose: stages 00 and 01 must run with no conda environment (unlike stage 02).
 The consequence is that `_config/<assay>.yaml` is read by a narrow top-level regex for the top-level
@@ -22,13 +25,15 @@ Emits a single JSON object on stdout. Exit codes:
     0  ok            checked clean, or written
     1  failures      validation failed; nothing written
     2  needs_confirm exclusions present without --confirm-exclusions, or existing
-                     samplesheets without --force. Nothing written.
+                     samplesheets without --force, or either switch with no matching
+                     --check record. Nothing written.
     3  preconditions project or required inputs missing
 """
 
 import argparse
 import csv
 import gzip
+import hashlib
 from collections import Counter
 from statistics import median
 import json
@@ -849,6 +854,73 @@ def validate_assay(project, assay):
 
 # --- writing -----------------------------------------------------------------------------------
 
+CHECK_RECORD = ".stage01_check.json"
+
+
+def gate_subjects(project, exclusions, existing):
+    """What the two gates are about, as the check records it and the writer compares it."""
+    return {"exclusions": {a: sorted(e["sample_id"] for e in excl)
+                           for a, excl in sorted(exclusions.items())},
+            "existing": {name: hashlib.sha256((project / "01_samplesheets" / name)
+                                              .read_bytes()).hexdigest()
+                         for name in sorted(existing)}}
+
+
+def write_check_record(project, subjects):
+    with ws.atomic_open(project / CHECK_RECORD) as fh:
+        json.dump(subjects, fh, indent=2, sort_keys=True)
+        fh.write("\n")
+
+
+def read_check_record(project):
+    try:
+        with (project / CHECK_RECORD).open() as fh:
+            record = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    return record if isinstance(record, dict) else None
+
+
+def unmatched_switches(project, subjects, confirm_exclusions, force):
+    """Why each switch the agent passed does not match the check the user saw (S01-yes).
+
+    A switch is judged only when it clears a gate that is present: --confirm-exclusions with
+    exclusions, --force with existing samplesheets. Each needs the record the last clean --check
+    wrote, and that record's subject must equal today's, byte for byte for the files.
+    """
+    clearing = []
+    if confirm_exclusions and subjects["exclusions"]:
+        clearing.append(("exclusions", "--confirm-exclusions", "T7"))
+    if force and subjects["existing"]:
+        clearing.append(("existing", "--force", "T5"))
+    if not clearing:
+        return []
+    record = read_check_record(project)
+    why = []
+    for key, flag, template in clearing:
+        if record is None:
+            why.append("%s clears template %s only against the --check the user was shown, and "
+                       "no --check is recorded; run --check and show %s again" % (flag, template,
+                                                                                  template))
+            continue
+        seen, now = record.get(key), subjects[key]
+        if seen == now:
+            continue
+        if key == "exclusions":
+            detail = "; ".join("%s now excludes %s, the check showed %s"
+                               % (a, ", ".join(now.get(a, [])) or "none",
+                                  ", ".join((seen or {}).get(a, [])) or "none")
+                               for a in sorted(set(now) | set(seen or {}))
+                               if now.get(a) != (seen or {}).get(a))
+        else:
+            detail = "changed since the check: " + ", ".join(
+                n for n in sorted(set(now) | set(seen or {}))
+                if now.get(n) != (seen or {}).get(n))
+        why.append("%s does not match the --check the user was shown (%s); run --check and "
+                   "show %s again" % (flag, detail, template))
+    return why
+
+
 def write_assay(project, assay, res):
     """Write the samplesheet and design table. Returns (paths, gate_failures)."""
     sheet_dir = project / "01_samplesheets"
@@ -1066,13 +1138,15 @@ def main(argv=None):
         if any(r["failures"] for r in results.values()):
             return emit(result, EXIT_FAILURES)
 
+    subjects = gate_subjects(project, exclusions, existing)
     if args.check:
+        write_check_record(project, subjects)
         result["ok"] = True
         result["exclusions_pending"] = bool(exclusions)
         result["existing_outputs"] = existing
         return emit(result, EXIT_OK)
 
-    blocked = []
+    blocked = unmatched_switches(project, subjects, args.confirm_exclusions, args.force)
     if exclusions and not args.confirm_exclusions:
         blocked.append("exclusions present; re-run with --confirm-exclusions once the user has "
                        "confirmed (template T7)")
