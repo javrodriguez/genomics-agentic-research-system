@@ -1664,9 +1664,10 @@ class RenderMethodsTests(unittest.TestCase):
         case.prepare()
         case.fake_run()
         case.submit()
-        # The run record names the harness's session model, not the flag (decision 0303).
+        # The run record names the harness's session model, not the flag (decision 0303); the
+        # flag passes another value, so the render tells the two apart (NIT 3, decision 0304).
         (case.ws / '.gars_session_model').write_text('claude-opus-5-5\n')
-        case.collect()
+        case.collect('claude-fake-9')
         shutil.copyfile(str(case.manifest_path), str(self.path('live.json')))
         text = self.traced(('live.json',), stage03=False)
         self.assertNotIn(str(case.fixture.tmp), text)
@@ -1680,7 +1681,8 @@ class RenderMethodsTests(unittest.TestCase):
         workspace = self.root / 'workspace'
         workspace.mkdir()
         (workspace / '_references').symlink_to(GARS / '_references', target_is_directory=True)
-        # The history names the harness's session model, not the flag (decision 0303).
+        # The history names the harness's session model, not the flag (decision 0303); the
+        # flag below passes another value, so the render tells the two apart (decision 0304).
         (workspace / '.gars_session_model').write_text('claude-opus-5-5\n')
         project = workspace / 'projects/p'
         write_fixture_dataset(project)
@@ -1702,7 +1704,7 @@ class RenderMethodsTests(unittest.TestCase):
         exit_file = adir / 'run/launcher.sh.local.exit'
         exit_file.write_text('0')
         (jobs / 'fixture.json').write_text(json.dumps({'script': str(launcher), 'exit_file': str(exit_file)}))
-        args = argparse.Namespace(project=str(project), analysis='01_methods', model='claude-opus-5-5', date=None)
+        args = argparse.Namespace(project=str(project), analysis='01_methods', model='claude-fake-9', date=None)
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(stage.cmd_approve(args, workspace), 0)
         verified = io.StringIO()

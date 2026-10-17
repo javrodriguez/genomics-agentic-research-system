@@ -11,7 +11,8 @@ and level names:
 
 `apply --dry-run` prints the would-be file and records its sha256 (`_config/.<assay>.dry_run.json`);
 `apply` without it writes only those exact bytes, so a write cannot carry a setting the user was
-not shown (R-confirm, decision 0302).
+not shown (R-confirm, decision 0302); the record also carries the sha256 of the file the dry run
+read, so a file changed since, by an edit or by that record's own write, needs a new dry run (0304).
 
 The point is not convenience. A FASTA typed by hand can be paired with a mismatched GTF, and a
 contrast typed by hand can name a level that does not exist in the design -- both produce a
@@ -342,8 +343,9 @@ def read_dry_run(record, assay):
     if not isinstance(data, dict) or data.get("assay") != assay:
         return None
     sha, shown = data.get("sha256"), data.get("selections")
-    if not (isinstance(sha, str) and re.match(r"[0-9a-f]{64}\Z", sha)):
-        return None
+    for value in (sha, data.get("read_sha256")):
+        if not (isinstance(value, str) and re.match(r"[0-9a-f]{64}\Z", value)):
+            return None
     if not (isinstance(shown, dict) and all(isinstance(k, str) and isinstance(v, str)
                                             for k, v in shown.items())):
         return None
@@ -354,16 +356,22 @@ def describe(shown):
     return ", ".join("%s %s" % (k, shown[k]) for k in SELECTION_KEYS if k in shown) or "none"
 
 
-def unmatched_dry_run(record, assay, text, shown):
+def unmatched_dry_run(record, assay, text, shown, read):
     """Why this write is not the dry run the user was shown, or None when it is, byte for byte.
 
     The record holds the sha256 of the text the dry run would have written, so a write with other
-    selections, or onto a config that changed since, cannot pass as the one confirmed in T9.
+    selections cannot pass as the one confirmed in T9; and the sha256 of the config file the dry
+    run read, so a file changed since (an edit, or this record's own write) needs a new dry run:
+    a record is single-use after a write, as the stage 01 check record is (0300).
     """
     data = read_dry_run(record, assay)
     if data is None:
         return ("no dry run is recorded for %s: run this apply with --dry-run, show its "
                 "config_preview, and write only after the reply `write`" % assay)
+    if data["read_sha256"] != sha256_text(read):
+        return ("_config/%s.yaml changed since the dry run was shown (it was edited, or that "
+                "dry run was already written); run the dry run again and show it before writing"
+                % assay)
     if data["sha256"] == sha256_text(text):
         return None
     if data["selections"] != shown:
@@ -498,7 +506,7 @@ def cmd_apply(args, workspace):
         result.update({"protocol": chosen["value"], "protocol_meaning": chosen["meaning"],
                        "aligner": aligner})
 
-    text = cfg.read_text(encoding="utf-8")
+    text = read = cfg.read_text(encoding="utf-8")
     for key in ("fasta_sha256", "gtf_sha256"):
         value = genome.get(key, "UNKNOWN")
         text, replaced = set_yaml_scalar(text, key, value, "  ")
@@ -531,7 +539,8 @@ def cmd_apply(args, workspace):
     record = Path(args.project) / dry_run_record(args.assay)
     if args.dry_run:
         with ws.atomic_open(record) as fh:
-            json.dump({"assay": args.assay, "sha256": sha256_text(text), "selections": shown},
+            json.dump({"assay": args.assay, "sha256": sha256_text(text),
+                       "read_sha256": sha256_text(read), "selections": shown},
                       fh, indent=2, sort_keys=True)
             fh.write("\n")
         result["ok"] = True
@@ -539,7 +548,7 @@ def cmd_apply(args, workspace):
         result["config_preview"] = text
         return emit(result, EXIT_OK)
 
-    refusal = unmatched_dry_run(record, args.assay, text, shown)
+    refusal = unmatched_dry_run(record, args.assay, text, shown, read)
     if refusal:
         result["error"] = refusal
         return emit(result, EXIT_REFUSED)

@@ -458,10 +458,13 @@ def configure_apply(test, tmp):
         'aligner: simpleaf\n')
     argv = ['--workspace', str(case.root), 'apply', '--project', str(case.project),
             '--assay', 'scrnaseq', '--genome', 'G1', '--protocol', '10XV3', '--aligner', 'star']
-    # apply writes only what the dry run showed, so the dry run comes first (R-confirm)
-    with contextlib.redirect_stdout(io.StringIO()):
-        test.assertEqual(configure.main(argv + ['--dry-run']), 0)
-    return case.root, lambda: configure.main(argv)
+    # apply writes only what the dry run showed, so the dry run comes first (R-confirm), and
+    # before every apply: a record is single-use after a write (ruling 2 on REVIEW-9eb28d9)
+    def call():
+        with contextlib.redirect_stdout(io.StringIO()):
+            test.assertEqual(configure.main(argv + ['--dry-run']), 0)
+        return configure.main(argv)
+    return case.root, call
 
 
 def adapt_counts(test, tmp):

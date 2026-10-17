@@ -168,7 +168,9 @@ config. Never work around a refusal.
    own default aligner over the config's.
 
    The dry run records what it would write (`_config/.<Assay ID>.dry_run.json`, the text's
-   sha256 and the settings), and `apply` without `--dry-run` writes only those exact bytes.
+   sha256, the sha256 of the config it read, and the settings), and `apply` without `--dry-run`
+   writes only those exact bytes, once, onto that same config: an edit since, or the write
+   itself, needs a new dry run and T9.
    Reply T9 showing what it would write and **wait for the reply `write`**. On `write`, re-run
    the same command without `--dry-run`. Any other reply (a change, "yes but…") is not a write:
    re-run the dry run with the settings the user now chose, or the same ones, and send T9 again.
