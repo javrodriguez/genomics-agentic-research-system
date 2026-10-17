@@ -398,14 +398,17 @@ class CallSiteRecoveryTests(unittest.TestCase):
         self.assertEqual(self.stage01(data, 'reverse', 'B', force=False), 0)
         written = ['rnaseq_bulk_samplesheet.csv', 'rnaseq_bulk_design.csv',
                    'rnaseq_bulk_design_check.json']
-        self.assertEqual(self.listing(sheets), sorted(written))
+        # The stage's own check record sits beside the artifacts (glitch-b5's ruling 2 of
+        # 17 Oct on the S01-yes review); the listing is otherwise the three artifacts.
+        listed = sorted(written + [s01.CHECK_RECORD])
+        self.assertEqual(self.listing(sheets), listed)
         before = {name: (sheets / name).read_bytes() for name in written}
         for name in written:
             with self.subTest(file=name):
                 with replace_refused_for(name), self.assertRaises(OSError):
                     self.stage01(data, 'forward', 'C')
                 self.assertEqual((sheets / name).read_bytes(), before[name])
-                self.assertEqual(self.listing(sheets), sorted(written))
+                self.assertEqual(self.listing(sheets), listed)
                 for other in written:
                     (sheets / other).write_bytes(before[other])
         self.assertEqual(self.stage01(data, 'forward', 'C'), 0)

@@ -37,7 +37,7 @@ def steps(text):
 
 
 def step_running(text, command):
-    """The one Process step whose command block runs `command`."""
+    """Every Process step whose command block runs `command`, in order."""
     hits = [body for body in steps(text).values() if command in body]
     return hits
 

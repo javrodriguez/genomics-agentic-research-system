@@ -208,7 +208,7 @@ differential-expression sub-stage of 02_bioinformatics.
 
 | Code | Meaning | Reply |
 |---|---|---|
-| 0 | the read-only `--check` run (step 3) is clean; nothing is written, so the stage is not done | steps 6, 7 and 8 in that order (T7, T5, T8 as each applies), then the writer at step 9; only the writer completes the stage |
+| 0 | the `--check` run (step 3) is clean; it writes only its check record (OUTPUT), so the stage is not done | steps 6, 7 and 8 in that order (T7, T5, T8 as each applies), then the writer at step 9; only the writer completes the stage |
 | 0 | the writer (step 9) wrote every samplesheet and its exit gate passed | T2 then T4 |
 | 1 | validation failed; nothing written | T3 |
 | 2 | a human gate is uncleared, or a switch does not match the latest `--check`; nothing written | step 10: T7 and/or T5, or back to the check |
@@ -311,7 +311,8 @@ this stage is the user's: reply T10 and stop. Never work around a refusal.
    `unknown`.
 
 10. Exit 2 → a gate you believed cleared was not. When a `blocked` entry says a switch does not
-   match the `--check` the user was shown, or that no `--check` is recorded, return to step 3:
+   match the `--check` the user was shown, that no `--check` is recorded, or that the last write
+   consumed it, return to step 3:
    re-run the check and show its T7 or T5 again, since what the user agreed to has changed.
    Otherwise reply T5 or T7 as its `blocked` array indicates and return to step 6. Never re-run
    adding a flag the user did not confirm.
@@ -470,6 +471,7 @@ Written to `projects/<project_title>/01_samplesheets/`, by the script and never 
 | `<Assay ID>_design.csv` | `sample_id,condition,group,replicate`, preserving optional RNA/ATAC `batch` and `subject`. One row per included sample. Consumed by the differential-expression sub-stage of 02_bioinformatics. |
 
 | `<Assay ID>_design_check.json` | Executed checks and outcomes, declared replication unit, release and pairing; re-read at the exit gate. |
+| `.stage01_check.json` | The check record, one per project: each assay's excluded sample ids and the existing artifacts' sha256 as the last clean `--check` saw them; a check with nothing to gate keeps none. `--confirm-exclusions` and `--force` are honoured only against it; a write replaces it with the writer's own, which clears no gate. Written by `--check` and the writer, read by nothing downstream. |
 
 The `HISTORY.md` entry records the **template version this stage ran under** and
 `Deep file-integrity verification: full|none`. The version is stamped per stage, not only at

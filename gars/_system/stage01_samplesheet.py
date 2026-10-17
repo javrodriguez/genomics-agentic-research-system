@@ -7,9 +7,11 @@ See docs/decisions/0011-deterministic-artifacts-in-stages-00-01.md for why.
 This script decides what is TRUE. It never prompts, never proceeds past a gate on its own, and
 never writes an artifact unless told which gate the user cleared. The agent decides what to say
 and when to stop. A clean `--check` writes one thing, its own record of what the user is about to
-be shown (`.stage01_check.json` at the project root: the excluded samples, the existing files'
+be shown (`01_samplesheets/.stage01_check.json`: the excluded samples, the existing files'
 sha256); `--confirm-exclusions` and `--force` clear a gate only when that record still matches
-(S01-yes). It sits outside `01_samplesheets/`, so that folder holds only the artifacts.
+(S01-yes). A write consumes it: the writer leaves its own record, which clears no gate, so every
+later switch needs a new `--check` (record 0300). The record is a dotfile beside the artifacts,
+where the guard refuses the agent's Write; a check with nothing to gate keeps none.
 
 Stdlib only, on purpose: stages 00 and 01 must run with no conda environment (unlike stage 02).
 The consequence is that `_config/<assay>.yaml` is read by a narrow top-level regex for the top-level
@@ -857,6 +859,12 @@ def validate_assay(project, assay):
 CHECK_RECORD = ".stage01_check.json"
 
 
+def check_record_path(project):
+    """The stage's own record, beside its artifacts: inside 01_samplesheets/ the guard already
+    refuses the agent's Write, and the three-artifact listing names it nowhere (record 0300)."""
+    return project / "01_samplesheets" / CHECK_RECORD
+
+
 def gate_subjects(project, exclusions, existing):
     """What the two gates are about, as the check records it and the writer compares it."""
     return {"exclusions": {a: sorted(e["sample_id"] for e in excl)
@@ -866,19 +874,36 @@ def gate_subjects(project, exclusions, existing):
                          for name in sorted(existing)}}
 
 
-def write_check_record(project, subjects):
-    with ws.atomic_open(project / CHECK_RECORD) as fh:
-        json.dump(subjects, fh, indent=2, sort_keys=True)
+def write_check_record(project, subjects, written_by):
+    """`written_by` is "check" for what the user was shown, "writer" once a write consumed it:
+    a writer's record clears no gate, so every later switch needs a new --check."""
+    path = check_record_path(project)
+    path.parent.mkdir(exist_ok=True)
+    with ws.atomic_open(path) as fh:
+        json.dump(dict(subjects, written_by=written_by), fh, indent=2, sort_keys=True)
         fh.write("\n")
+
+
+def well_formed(record):
+    """The shape write_check_record writes; anything else is no record (review NIT 2)."""
+    def strings(values):
+        return isinstance(values, list) and all(isinstance(v, str) for v in values)
+    return (isinstance(record, dict)
+            and record.get("written_by") in ("check", "writer")
+            and isinstance(record.get("exclusions"), dict)
+            and all(isinstance(k, str) and strings(v) for k, v in record["exclusions"].items())
+            and isinstance(record.get("existing"), dict)
+            and all(isinstance(k, str) and isinstance(v, str)
+                    for k, v in record["existing"].items()))
 
 
 def read_check_record(project):
     try:
-        with (project / CHECK_RECORD).open() as fh:
+        with check_record_path(project).open() as fh:
             record = json.load(fh)
     except (OSError, ValueError):
         return None
-    return record if isinstance(record, dict) else None
+    return record if well_formed(record) else None
 
 
 def unmatched_switches(project, subjects, confirm_exclusions, force):
@@ -902,6 +927,11 @@ def unmatched_switches(project, subjects, confirm_exclusions, force):
             why.append("%s clears template %s only against the --check the user was shown, and "
                        "no --check is recorded; run --check and show %s again" % (flag, template,
                                                                                   template))
+            continue
+        if record["written_by"] != "check":
+            why.append("%s clears template %s only against a --check the user was shown since "
+                       "the last write, and the last write consumed it; run --check and show %s "
+                       "again" % (flag, template, template))
             continue
         seen, now = record.get(key), subjects[key]
         if seen == now:
@@ -1053,7 +1083,9 @@ def main(argv=None):
     ap.add_argument("--project", type=Path,
                     help="path to projects/<project_title>/ (not needed with --list-formats)")
     ap.add_argument("--check", action="store_true",
-                    help="validate only; write nothing")
+                    help="validate only; write nothing but the check record "
+                         "(01_samplesheets/.stage01_check.json) the two switches are judged "
+                         "against, kept only when there is a gate to record")
     ap.add_argument("--confirm-exclusions", action="store_true",
                     help="the user has confirmed the excluded samples (contract template T7)")
     ap.add_argument("--force", action="store_true",
@@ -1140,7 +1172,15 @@ def main(argv=None):
 
     subjects = gate_subjects(project, exclusions, existing)
     if args.check:
-        write_check_record(project, subjects)
+        if subjects["exclusions"] or subjects["existing"]:
+            write_check_record(project, subjects, "check")
+        else:
+            # Nothing to gate: an empty record refuses every switch exactly as no record does,
+            # so none is kept, and a fresh project's check still creates no folder.
+            try:
+                check_record_path(project).unlink()
+            except FileNotFoundError:
+                pass
         result["ok"] = True
         result["exclusions_pending"] = bool(exclusions)
         result["existing_outputs"] = existing
@@ -1165,6 +1205,11 @@ def main(argv=None):
         if gate:
             result["assays"][assay]["failures"].extend(gate)
             gate_failures.extend(gate)
+    # The write consumed the check: the record now holds what is on disk, marked as the
+    # writer's, so no later switch replays the consent the user gave (review finding 1).
+    written = [Path(p).name for p in result["wrote"]
+               if (project / p).is_file() and Path(p).parent.name == "01_samplesheets"]
+    write_check_record(project, gate_subjects(project, {}, written), "writer")
 
     if gate_failures:
         return emit(result, EXIT_FAILURES)

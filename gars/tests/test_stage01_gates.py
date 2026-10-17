@@ -1,7 +1,7 @@
 """Stage 01's two human gates bind to the check the user saw (FIXES.md item S01-yes).
 
 `--confirm-exclusions` clears T7 and `--force` clears T5. Each is honoured only against the record
-the read-only `--check` wrote: the same excluded samples, the same existing files byte for byte.
+the `--check` wrote: the same excluded samples, the same existing files byte for byte.
 A switch with no matching record is refused (exit 2), so an agent cannot clear a gate the user
 never saw, nor one whose subject changed after they saw it.
 """
