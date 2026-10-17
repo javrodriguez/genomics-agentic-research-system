@@ -46,6 +46,7 @@ HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
 
 from box import walk_launch as wl  # noqa: E402
+from box import scan_record as sr  # noqa: E402  (OD57's reviewed line rulings)
 
 CHILD = "/home/javier/w-AbCd1234"
 GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@invalid", "GIT_COMMITTER_NAME": "t",
@@ -150,11 +151,18 @@ class FakeSuite:
     """athena_suite's functions as outward_scan calls them, logging into the runner's call list."""
     ALLOWLIST = "/fake/athena_suite_allowlist.json"
     PUBLIC_REFERENCE = {"gars": "https://example.invalid/gars.git"}
+    RULED_LINES = sr.RULED_LINES        # the reviewed OD57 line rulings (walk_launch.od57_bound)
 
-    def __init__(self, log, *, public=("a" * 40,), public_error=False, nonpublic_finding=False, hits=(), scanned=3):
+    def __init__(self, log, *, public=("a" * 40,), public_error=False, nonpublic_finding=False, hits=(), scanned=3,
+                 ruled_lines=()):
         self.log, self.public, self.public_error = log, list(public), public_error
         self.scans, self.scanned = [], scanned
         self.nonpublic_finding, self.hits = nonpublic_finding, list(hits)
+        self.ruled_lines = list(ruled_lines)     # what scan_unpublished appends to its ruled list
+
+    @staticmethod
+    def _ruled_bash(cmd):
+        return False
 
     def committed_allowlist(self, path):
         self.log.append(("suite", ["committed_allowlist", path]))
@@ -195,6 +203,8 @@ class FakeSuite:
                            "allow_blobs": allow_blobs, "ruled": ruled, "ruled_messages": ruled_messages})
         if self.nonpublic_finding:
             raise RuntimeError("gitleaks found 1 item(s) in commits that are not public: x.txt:generic-api-key:1")
+        if ruled_used is not None:
+            ruled_used.extend(self.ruled_lines)
         return self.scanned
 
 
@@ -1386,6 +1396,86 @@ def _fake_token():
     return "ghp_" + "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(36))
 
 
+# OD57 on the walk return road (glitch-b5's ruling, 16 Oct 2026). The ruled line is public (GARS main a97fa9cd,
+# gars/_references/environment.md line 175) and is built here from its parts, so this file holds no line a scanner
+# reads as one finding; test_the_built_line_is_the_pin binds it to the ruling's sha256.
+OD57_PINS = ("clawbio==0.6.1", "scikit-learn==1.9.0", "pydeseq2==0.5.4")
+OD57_LINE = "%s pinned versions: %s," % ("Key", ", ".join("`%s`" % p for p in OD57_PINS))
+OD57_RECORD = "evals/gap-study-4/rehearsals/w001/transcript.jsonl"
+OD57_CMD = ('cd /tmp/run-c8021046/gars && grep -n -i "deseq\\|sklearn" _references/environment.md '
+            '_references/gars-bio.conda.txt 2>/dev/null | head -30')
+
+
+def od57_records(*recs) -> str:
+    return "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in recs)
+
+
+def od57_bash_result(command, output):
+    return od57_records(
+        {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "toolu_B", "name": "Bash",
+                                                       "input": {"command": command}}]}},
+        {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "toolu_B",
+                                                  "content": output}]},
+         "toolUseResult": {"stdout": output, "stderr": "", "interrupted": False}})
+
+
+def od57_commit(body):
+    def commit(a):
+        Path(a, OD57_RECORD).parent.mkdir(parents=True, exist_ok=True)
+        Path(a, OD57_RECORD).write_text(body)
+        git("-C", a, "add", OD57_RECORD)
+        git("-C", a, "commit", "-q", "-m", "walk")
+    return commit
+
+
+class TestOD57ReturnRoad(unittest.TestCase):
+    """walk_launch.fetch binds the suite's line rulings to the reviewed OD57 ones and records each admission."""
+
+    def test_the_built_line_is_the_pin(self):
+        (r,) = sr.RULED_LINES
+        self.assertEqual((len(OD57_LINE.encode()), hashlib.sha256(OD57_LINE.encode()).hexdigest()),
+                         (r["bytes"], r["sha256"]))
+
+    def test_an_admission_is_recorded_under_lines_ruled(self):
+        entry = "OD57:%s:%s:2" % ("e" * 40, OD57_RECORD)
+        with tempfile.TemporaryDirectory() as t:
+            _, got, _, _, _ = fetch_rig(wl, t, suite_kw={"ruled_lines": [entry, entry]})
+        self.assertIsInstance(got, dict, got)
+        self.assertEqual(got["lines_ruled"], [entry])
+
+    def test_a_clean_fetch_records_no_line(self):
+        with tempfile.TemporaryDirectory() as t:
+            _, got, _, _, _ = fetch_rig(wl, t)
+        self.assertEqual(got["lines_ruled"], [])
+
+    def test_any_other_ruled_entry_refuses(self):
+        for entry in ("content:abc", "message:" + "f" * 64, "OD58:x", 7):
+            with self.subTest(entry=entry), tempfile.TemporaryDirectory() as t:
+                _, got, repo, _, _ = fetch_rig(wl, t, suite_kw={"ruled_lines": [entry]})
+                self.assertIsInstance(got, wl.LaunchRefused)
+                self.assertIn("other than an OD57 line", str(got))
+                self.assertEqual(walk_branches(repo), "")
+
+    def test_a_suite_without_the_reviewed_rulings_refuses(self):
+        changed = (dict(sr.RULED_LINES[0], sha256="0" * 64),)
+        for name, attrs in (("no RULED_LINES", {"RULED_LINES": None}), ("another sha256", {"RULED_LINES": changed}),
+                            ("a second ruling", {"RULED_LINES": sr.RULED_LINES * 2}),
+                            ("no Bash allow-list", {"_ruled_bash": None})):
+            with self.subTest(name), tempfile.TemporaryDirectory() as t, \
+                    mock.patch.multiple(FakeSuite, **attrs):
+                _, got, repo, _, _ = fetch_rig(wl, t)
+                self.assertIsInstance(got, wl.LaunchRefused)
+                self.assertIn("not the reviewed OD57 ones", str(got))
+                self.assertEqual(walk_branches(repo), "")
+
+    def test_mutation_witness_the_ruled_list_dropped_records_nothing(self):
+        entry = "OD57:%s:%s:2" % ("e" * 40, OD57_RECORD)
+        mod = witness([("allow, None, ruled, None)", "allow, None, None, None)")])
+        with tempfile.TemporaryDirectory() as t:
+            _, got, _, _, _ = fetch_rig(mod, t, suite_kw={"ruled_lines": [entry]})
+        self.assertEqual(got["lines_ruled"], [])        # the admission would go unrecorded
+
+
 class TestRealReturnScan(unittest.TestCase):
     """The review's MAJOR 1, on the REAL scanner: athena_suite.scan_unpublished and gitleaks themselves, through
     fetch. A `gitleaks:allow` line, a token in a commit message and a token inside a .json.gz blob each refuse, and
@@ -1403,6 +1493,31 @@ class TestRealReturnScan(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             _, got, repo, _, _ = fetch_rig(wl, t, suite=self.suite, gitleaks=self.gitleaks, make_commit=make_commit)
             return got, walk_branches(repo)
+
+    def test_od57_line_in_a_cd_grep_head_result_is_admitted_and_recorded(self):
+        out = "_references/environment.md:175:%s\n" % OD57_LINE
+        with tempfile.TemporaryDirectory() as t:
+            _, got, repo, _, tip = fetch_rig(wl, t, suite=self.suite, gitleaks=self.gitleaks,
+                                             make_commit=od57_commit(od57_bash_result(OD57_CMD, out)))
+            branches = walk_branches(repo)
+        self.assertIsInstance(got, dict, got)
+        self.assertEqual(got["lines_ruled"], ["OD57:%s:%s:2" % (tip, OD57_RECORD)])
+        self.assertIn("refs/heads/walk/w-AbCd1234", branches)
+
+    def test_od57_line_in_user_text_refuses(self):
+        body = od57_records({"type": "user", "message": {"content": "please check this:\n%s\n" % OD57_LINE}})
+        got, branches = self.case(od57_commit(body))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def test_od57_mutation_witness_the_ruled_list_dropped_goes_red(self):
+        out = "_references/environment.md:175:%s\n" % OD57_LINE
+        mod = witness([("allow, None, ruled, None)", "allow, None, None, None)")])
+        with tempfile.TemporaryDirectory() as t:
+            _, got, _, _, _ = fetch_rig(mod, t, suite=self.suite, gitleaks=self.gitleaks,
+                                        make_commit=od57_commit(od57_bash_result(OD57_CMD, out)))
+        self.assertIsInstance(got, dict, got)
+        self.assertEqual(got["lines_ruled"], [])         # admitted by the suite, but no longer recorded
 
     def test_allow_comment_refuses(self):
         def commit(a):

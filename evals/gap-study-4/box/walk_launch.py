@@ -68,6 +68,7 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 import machine_gate  # noqa: E402
+from box import scan_record as _scan_record  # noqa: E402  (OD57's reviewed line rulings)
 
 PINNED_TREE = "844a4ce0d89437ca043363981a86096f6383a141"      # variants.PINNED_TREE; a test binds the two
 HOST = "athena"
@@ -525,6 +526,31 @@ def load_suite(suite: str):
     return mod
 
 
+# OD57 on the walk return road (glitch-b5's ruling, 16 Oct 2026, after the walk operator found no ruling reached it):
+# athena_suite.scan_unpublished admits OD57's one line (its RULED_LINES, through _ruled_bash's allow-list, aegis
+# c1c4496) exactly as it does for a suite run. The return road binds the loaded suite's line rulings to the reviewed
+# ones (box/scan_record.RULED_LINES: the same ruling, rule, length and sha256) and refuses a suite without them, hands
+# scan_unpublished a ruled list, and records each admission under "lines_ruled"; anything else on that list refuses.
+def od57_bound(suite_mod) -> None:
+    """Refuses unless the suite's line rulings are exactly the reviewed OD57 ones and it carries the Bash allow-list."""
+    def binding(rulings):
+        return [(r.get("ruling"), r.get("rule"), r.get("bytes"), r.get("sha256")) for r in rulings
+                if isinstance(r, dict)]
+    got = getattr(suite_mod, "RULED_LINES", None)
+    if not isinstance(got, tuple) or len(got) != len(_scan_record.RULED_LINES) \
+            or binding(got) != binding(_scan_record.RULED_LINES) \
+            or not callable(getattr(suite_mod, "_ruled_bash", None)):
+        raise LaunchRefused("the athena_suite.py's line rulings are not the reviewed OD57 ones; nothing is fetched")
+
+
+def od57_lines(ruled) -> list:
+    """The OD57 admissions scan_unpublished listed; any other entry refuses (the return road allows nothing else)."""
+    prefixes = tuple(r["ruling"] + ":" for r in _scan_record.RULED_LINES)
+    if not all(isinstance(u, str) and u.startswith(prefixes) for u in ruled):
+        raise LaunchRefused("the return scan admitted something other than an OD57 line; nothing is fetched")
+    return sorted(set(ruled))
+
+
 def outward_scan(suite_mod, *, repo: str, bundle: str, head: str, gitleaks: str, work: str) -> int:
     """athena_suite.cmd_run's checks over a scratch clone of the bundle, its own functions: the secret-shaped names
     (less the reviewed exemptions) and ignore files, then gitleaks over every commit the public GARS remote does not
@@ -722,10 +748,12 @@ def fetch(runner: Runner, *, child: str, head: str, ref: str, records: str, gitl
     # blobs are the watcher's gzip evidence blobs, each decoded and scanned clean first: glitch-6b's ruling (b)): its
     # --ignore-gitleaks-allow, empty ignore file, remerge diffs, commit-message scan and binary-blob refusal.
     suite_mod = load_suite(suite) if suite_module is None else suite_module
+    od57_bound(suite_mod)
+    ruled = []          # OD57's admissions (od57_lines), recorded below as lines_ruled
     try:
         allow = admitted_evidence_blobs(suite_mod, scratch, head, tip, gitleaks, os.path.join(work, "blob-scan"))
         n = suite_mod.scan_unpublished(scratch, tip, os.path.join(work, "back-scan-work"), gitleaks, [head], None,
-                                       allow, None, None, None)
+                                       allow, None, ruled, None)
     except Exception as e:  # noqa: BLE001 - athena_suite's Refused, a git or scanner failure: nothing is fetched
         # athena-made bytes (a path, a commit message) can sit in a foreign refusal's words: only this road's own
         # refusals, which name ids, counts and rules, are passed on; any other names its type alone.
@@ -733,6 +761,7 @@ def fetch(runner: Runner, *, child: str, head: str, ref: str, records: str, gitl
         raise LaunchRefused(f"the return scan refused, nothing is fetched: {why}") from None
     if not isinstance(n, int) or n < 1:
         raise LaunchRefused("the return scan scanned no commit past the head; nothing is fetched")
+    lines_ruled = od57_lines(ruled)
     name = os.path.basename(child)
     _ok(runner.local(["git", "-C", records, "fetch", "-q", "--no-tags", scratch, f"refs/walk/back:refs/heads/walk/{name}"]),
         "the records fetch")                                     # from the scanned scratch only, never the bundle
@@ -741,7 +770,8 @@ def fetch(runner: Runner, *, child: str, head: str, ref: str, records: str, gitl
     if _all_objects(records) - before != expected - before:
         raise LaunchRefused(f"the records clone gained objects beyond the walk's commits (branch walk/{name} is "
                             f"left for a human)")
-    return {"state": st, "fetched": tip, "branch": f"walk/{name}", "bundle_sha256": digest[0]}
+    return {"state": st, "fetched": tip, "branch": f"walk/{name}", "bundle_sha256": digest[0],
+            "lines_ruled": lines_ruled}
 
 
 def main(argv=None) -> int:
