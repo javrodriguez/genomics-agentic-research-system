@@ -115,6 +115,53 @@ def flag_reads_outside_history_model(tree):
     return sorted(set(lines))
 
 
+def args_unpinned_in_collect(tree):
+    """(line, what) pairs in cmd_collect that loosen the allow-list's hold on the name `args`
+    (0311): a signature other than one plain parameter named `args`, or any binding of `args`
+    or `ws` inside the function (a store or delete, a for, with or comprehension target, a
+    walrus, a nested def's or lambda's parameter, a nested def or class of that name, an import
+    as, an except as, a global or nonlocal). The allow-list reads loads of the name; it holds
+    only while the name is the namespace and ws is the module."""
+    collect = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "cmd_collect"]
+    if not collect:
+        return []
+    fn, pinned, found = collect[0], ("args", "ws"), []
+    sig = fn.args
+    if (len(sig.args) != 1 or sig.args[0].arg != "args" or getattr(sig, "posonlyargs", [])
+            or sig.kwonlyargs or sig.vararg or sig.kwarg or sig.defaults or sig.kw_defaults):
+        found.append((fn.lineno, "the signature is not def cmd_collect(args)"))
+    for node in ast.walk(fn):
+        if isinstance(node, ast.Name) and node.id in pinned and not isinstance(node.ctx, ast.Load):
+            found.append((node.lineno, "%s is rebound" % node.id))
+        elif isinstance(node, (ast.FunctionDef, getattr(ast, "AsyncFunctionDef", ()), ast.Lambda)):
+            if node is not fn:
+                a = node.args
+                params = (list(getattr(a, "posonlyargs", [])) + a.args + a.kwonlyargs
+                          + [x for x in (a.vararg, a.kwarg) if x])
+                for p in params:
+                    if p.arg in pinned:
+                        found.append((node.lineno, "%s is a nested parameter" % p.arg))
+                if getattr(node, "name", None) in pinned:
+                    found.append((node.lineno, "%s is rebound" % node.name))
+        elif isinstance(node, ast.ClassDef) and node.name in pinned:
+            found.append((node.lineno, "%s is rebound" % node.name))
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            for alias in node.names:
+                if (alias.asname or alias.name.split(".")[0]) in pinned:
+                    found.append((node.lineno, "%s is rebound by an import" % (alias.asname or alias.name)))
+        elif isinstance(node, ast.ExceptHandler) and node.name in pinned:
+            found.append((node.lineno, "%s is rebound" % node.name))
+        elif isinstance(node, (ast.Global, ast.Nonlocal)):
+            for n in node.names:
+                if n in pinned:
+                    found.append((node.lineno, "%s is declared %s" % (n, type(node).__name__.lower())))
+        elif type(node).__name__ in ("MatchAs", "MatchStar") and getattr(node, "name", None) in pinned:
+            found.append((node.lineno, "%s is rebound" % node.name))
+        elif type(node).__name__ == "MatchMapping" and getattr(node, "rest", None) in pinned:
+            found.append((node.lineno, "%s is rebound" % node.rest))
+    return sorted(set(found))
+
+
 def conform_one(wrapper_dir):
     """Every rule the standard makes checkable. Returns a list of failures (empty == passes).
 
@@ -245,6 +292,13 @@ def conform_one(wrapper_dir):
                           "ws.history_model( call (line %d); args may only be read as "
                           "args.<field>, and the flag only as a whole argument of that call "
                           "(0303, 0308, 0309, 0310)" % (module.name, line)))
+    # The allow-list above holds only while args is the namespace and ws the module (lane
+    # gars-t74, REVIEW-f3c7520 finding 1: a renamed parameter or a rebound ws read the flag).
+    for line, what in args_unpinned_in_collect(tree):
+        fails.append(fail("provenance",
+                          "%s: cmd_collect line %d: %s; it takes exactly one plain parameter "
+                          "named args and binds neither args nor ws (0311)"
+                          % (module.name, line, what)))
     for line in body.splitlines():
         if "args.model" in line and any(w in line for w in ENTRY_OR_MANIFEST):
             fails.append(fail("provenance",
