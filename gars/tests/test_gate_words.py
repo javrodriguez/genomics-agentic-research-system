@@ -132,5 +132,24 @@ class RouterProtocolMenuTests(unittest.TestCase):
         self.assertIn('--protocol <n>', closed)
 
 
+class RouterWriteGateTests(unittest.TestCase):
+    """T9 closes on the reply `write`; step 3a writes only on it and re-sends T9 on any other
+    reply, and `apply` writes only bytes equal to a recorded dry run (R-confirm)."""
+
+    def test_router_config_gate_names_one_word(self):
+        text = read(ROUTER)
+        block = template(text, 'T9')
+        self.assertTrue(block, 'T9 template not found')
+        last = [l.strip() for l in block.splitlines() if l.strip()][-1]
+        self.assertEqual(re.findall(r'`([^`]+)`', last), ['write'],
+                         'T9 must close on the one fixed word `write`: %r' % last)
+        body = steps(text)['3a']
+        self.assertIn('`write`', body, 'step 3a must write only on the reply `write`')
+        self.assertRegex(body, r'[Aa]ny other reply[^.]*T9 again',
+                         'step 3a must re-send T9 on any other reply')
+        closed = template(text, 'T10')
+        self.assertIn('--dry-run', closed, "T10's terminal steps must run the dry run first")
+
+
 if __name__ == '__main__':
     unittest.main()
