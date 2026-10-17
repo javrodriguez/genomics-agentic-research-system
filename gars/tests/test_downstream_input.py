@@ -95,6 +95,20 @@ class DownstreamCase(object):
         self.assertNotIn(MADE_UP, out)
         self.assertIn('ignored', err)
 
+    def test_an_explicit_path_with_nothing_resolved_names_no_supplier(self):
+        """0305's residual (REVIEW-85a1b4a finding 2): nothing resolved at prepare, an explicit
+        path used, an upstream completed before collect; the run did not read its artifact."""
+        status = self.upstream / 'STATUS'
+        kept = status.read_text()
+        status.unlink()
+        self.assertEqual(self.wrapper('prepare', '--h5ad', self.upstream / self.WRONG)[0], 0)
+        status.write_text(kept)
+        self.g.fake_wrapper_run()
+        self.g.submit()
+        code, out, err = self.wrapper('collect')
+        self.assertEqual(code, 0, out + err)
+        self.assertIn('Matrix supplied by: unknown', json.loads(out)['history_entry'])
+
 
 class ScrnaQcClusterInputTests(DownstreamCase, unittest.TestCase):
     KEY = 'scrna-qc-cluster'
@@ -113,13 +127,38 @@ class SpatialClusterCountInputTests(DownstreamCase, unittest.TestCase):
 
 
 class RnaseqDeSupplierTests(unittest.TestCase):
-    """D-supplier for rnaseq-de: "Counts supplied by" names the resolver's producer."""
+    """D-supplier for rnaseq-de: "Counts supplied by" names the resolver's producer only when
+    prepare read that producer's artifact, and prepare refuses other counts once the resolver
+    finds one (REVIEW-85a1b4a finding 2)."""
+
+    REL = 'run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv'
 
     def setUp(self):
         self.g = GROUPS.ManifestGroupsTests('test_model_sentinels_and_known_prefix')
         self.g.setUp()
         self.addCleanup(self.g.doCleanups)
+        self.producer = self.g.project / '02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper'
+
+    def run_through(self):
         self.g.prepare(); self.g.fake_run(); self.g.submit()
+
+    def complete_producer(self, sha256=None):
+        complete(self.producer, [('counts_gene', self.REL)], [self.REL])
+        artifact = self.producer / self.REL
+        artifact.write_bytes(Path(self.g.fixture.counts_native).read_bytes())
+        if sha256:
+            (self.producer / 'OUTPUTS.tsv').write_text(
+                '# type\trole\tpath\tsha256\tartifact_class\n'
+                'counts_gene\tnative\t%s\t%s\tdurable\n' % (self.REL, sha256))
+        return artifact
+
+    def prepare(self, counts):
+        g = self.g
+        (g.project / '_config/executor.yaml').write_text('name: local\n')
+        result = run([sys.executable, g.fixture.de, 'prepare', '--project', g.project,
+                      '--counts', counts, '--design',
+                      g.project / '01_samplesheets/rnaseq_bulk_design.csv'], cwd=g.ws, env=g.env)
+        return result.returncode, result.stdout.decode() + result.stderr.decode()
 
     def collect(self):
         g = self.g
@@ -129,18 +168,44 @@ class RnaseqDeSupplierTests(unittest.TestCase):
         return json.loads(result.stdout.decode())['history_entry'], result.stdout.decode()
 
     def test_the_resolvers_producer_never_the_flag(self):
-        stage = self.g.project / '02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper'
-        rel = 'run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv'
-        complete(stage, [('counts_gene', rel)], [rel])
-        entry, out = self.collect()
-        self.assertIn('Counts supplied by: 01_nfcore-rnaseq-wrapper', entry)
-        self.assertNotIn(MADE_UP, out)
-
-    def test_no_producer_is_unknown_never_the_flag(self):
+        """The reviewer's reproduction: prepare read counts outside the project, and a producer
+        completed afterwards did not supply them (glitch-b5's ruling 2 on REVIEW-85a1b4a)."""
+        self.run_through()
+        self.complete_producer()
         entry, out = self.collect()
         self.assertIn('Counts supplied by: unknown', entry)
         self.assertNotIn(MADE_UP, out)
 
+    def test_no_producer_is_unknown_never_the_flag(self):
+        self.run_through()
+        entry, out = self.collect()
+        self.assertIn('Counts supplied by: unknown', entry)
+        self.assertNotIn(MADE_UP, out)
+
+    def test_prepare_refuses_counts_other_than_the_resolvers(self):
+        self.complete_producer()
+        code, out = self.prepare(self.g.fixture.counts_native)
+        self.assertEqual(code, 2, out)
+        self.assertIn(str((self.producer / self.REL).resolve()), out)
+        self.assertFalse((self.g.stage / 'reproducibility/manifest.json').exists(), 'nothing written')
+        self.assertFalse((self.g.stage / 'submit.sh').exists(), 'nothing written')
+
+    def test_the_producer_is_named_when_prepare_read_its_artifact(self):
+        artifact = self.complete_producer()
+        code, out = self.prepare(artifact)
+        self.assertEqual(code, 0, out)
+        self.g.fake_run(); self.g.submit()
+        entry, out = self.collect()
+        self.assertIn('Counts supplied by: 01_nfcore-rnaseq-wrapper', entry)
+        self.assertNotIn(MADE_UP, out)
+
+    def test_a_producer_whose_recorded_sha256_differs_is_not_named(self):
+        artifact = self.complete_producer(sha256='0' * 64)
+        code, out = self.prepare(artifact)
+        self.assertEqual(code, 0, out)
+        self.g.fake_run(); self.g.submit()
+        entry, out = self.collect()
+        self.assertIn('Counts supplied by: unknown', entry)
 
 if __name__ == '__main__':
     unittest.main()
