@@ -43,26 +43,71 @@ def nonpublic_templates(text):
                       re.M)
 
 
+def silent_steps(read):
+    """(steps checked, steps that name neither a door nor the Non-public template), each
+    contract's text from read(path)."""
+    silent, seen = [], 0
+    for path in STAGES + SUBSTAGES:
+        text = read(path)
+        found, templates = steps(text), nonpublic_templates(text)
+        assert len(templates) <= 1, path
+        assert set(NAMED[path]) <= set(found), (path, sorted(found))
+        for number, step in sorted(found.items()):
+            if number not in NAMED[path] and not REFUSED.search(step):
+                continue
+            seen += 1
+            if DOOR.search(step):
+                continue
+            if templates and re.search(r'\b%s\b' % templates[0], step):
+                continue
+            silent.append('%s step %s' % (path, number))
+    return seen, silent
+
+
+def contract(path):
+    return (GARS / path).read_text()
+
+
+def mutant(edits):
+    """A reader that applies {path: (old, new)} edits in memory; each old must occur."""
+    def read(path):
+        text = contract(path)
+        for old, new in edits.get(path, ()):
+            assert old in text, (path, old)
+            text = text.replace(old, new)
+        return text
+    return read
+
+
+NFCORE = tuple(path for path in SUBSTAGES if '/01_nfcore-' in path)
+DE = '02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md'
+STAGE03 = '03_custom_analysis/CONTEXT.md'
+# The review's in-memory mutants (REVIEW-d699112 finding 2, ruling 2): each removes or
+# misspells a stop or door step the detector must see.
+MUTANTS = {
+    'nf-core step 2 stop deleted': {
+        path: (('   On a non-public project, reply T7 and stop here (Definitions).\n', ''),)
+        for path in NFCORE},
+    'executor.status misspelled in 02_rnaseq-de step 7': {
+        DE: (("tool_call.py executor.status\n   '{\"workspace\"",
+              "tool_call.py executor.statu\n   '{\"workspace\""),)},
+    'stage 03 step 2 stop deleted': {
+        STAGE03: (('\n   On a non-public project `create` is not a door: reply T7 and stop.', ''),)},
+}
+
+
 class ClosedProjectContractTests(unittest.TestCase):
     def test_every_refused_read_names_a_door_or_the_users_message(self):
-        silent, seen = [], 0
         self.assertEqual(len(SUBSTAGES), 10)
-        for path in STAGES + SUBSTAGES:
-            text = (GARS / path).read_text()
-            found, templates = steps(text), nonpublic_templates(text)
-            self.assertLessEqual(len(templates), 1, path)
-            self.assertTrue(set(NAMED[path]) <= set(found), (path, sorted(found)))
-            for number, step in sorted(found.items()):
-                if number not in NAMED[path] and not REFUSED.search(step):
-                    continue
-                seen += 1
-                if DOOR.search(step):
-                    continue
-                if templates and re.search(r'\b%s\b' % templates[0], step):
-                    continue
-                silent.append('%s step %s' % (path, number))
+        seen, silent = silent_steps(contract)
         print('refused-read steps: %d checked, %d silent' % (seen, len(silent)), flush=True)
         self.assertEqual(silent, [])
+
+    def test_the_reviews_mutants_turn_the_detector_red(self):
+        self.assertEqual(len(NFCORE), 7)
+        for name, edits in sorted(MUTANTS.items()):
+            with self.subTest(mutant=name):
+                self.assertNotEqual(silent_steps(mutant(edits))[1], [], name)
 
 
 if __name__ == '__main__':
