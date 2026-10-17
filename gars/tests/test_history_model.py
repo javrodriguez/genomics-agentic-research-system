@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import sys
+import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -266,6 +267,75 @@ class WrapperCollectTests(unittest.TestCase):
         self.assertEqual(model_lines(json.loads(result.stdout.decode())['history_entry']),
                          ['unknown'])
 
+
+
+class AuthoringTests(unittest.TestCase):
+    """The authoring road: a wrapper the skill scaffolds, and conform's verdict on one, read the
+    harness's model too (glitch-b5's ruling 1 on REVIEW-9eb28d9, lanes/gars-t74/RULINGS.md)."""
+
+    TOOL = GARS / '_system/authoring/create_bioinformatics_skill.py'
+    SOURCE = GARS / '_system/wrappers/nfcore-atacseq-wrapper'
+    SPEC = {'assay_id': 'demo_assay', 'assay_label': 'Demo assay',
+            'wrapper_name': 'demo-wrapper', 'substage': '01_demo-wrapper',
+            'pipeline': 'nf-core/demo', 'pipeline_version': '1.0.0',
+            'samplesheet_header': ['sample', 'fastq_1', 'fastq_2'],
+            'required_config_keys': ['reference.fasta'],
+            'artifacts': [{'type': 'counts_gene', 'path': 'run/counts.tsv',
+                           'content_gate': True}]}
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, str(self.tmp), True)
+        self.author = module(self.TOOL, 'history_model_author')
+
+    def conform_mutant(self, old, new):
+        dest = self.tmp / self.SOURCE.name
+        if dest.exists():
+            shutil.rmtree(str(dest))
+        shutil.copytree(str(self.SOURCE), str(dest))
+        target = dest / 'nfcore_atacseq_wrapper.py'
+        src = target.read_text(encoding='utf-8')
+        self.assertIn(old, src)
+        target.write_text(src.replace(old, new), encoding='utf-8')
+        result = run([sys.executable, self.TOOL, 'conform', dest])
+        return result.returncode, json.loads(result.stdout.decode())
+
+    def test_conform_refuses_a_collect_that_reads_the_flag(self):
+        """The reviewer's reproduction: the checklist's reading, with conform green at 9eb28d9."""
+        code, payload = self.conform_mutant('ws.history_model(WORKSPACE, args.model)',
+                                            'args.model or "unknown"')
+        self.assertEqual(code, 1, payload)
+        self.assertIn('provenance', [f['check'] for f in payload['failures']])
+
+    def test_conform_refuses_the_flag_on_an_entry_or_manifest_line(self):
+        for old, new in (('"Model: %s" % model,', '"Model: %s" % args.model,'),
+                         ('wl.complete_manifest(substage, model, "COMPLETE")',
+                          'wl.complete_manifest(substage, args.model, "COMPLETE")'),
+                         ('wl.collect_failure(substage, result, EXIT_FAILURE, model)',
+                          'wl.collect_failure(substage, result, EXIT_FAILURE, args.model)')):
+            with self.subTest(line=new):
+                code, payload = self.conform_mutant(old, new)
+                self.assertEqual(code, 1, payload)
+                self.assertIn('provenance', [f['check'] for f in payload['failures']])
+
+    def test_every_shipped_wrapper_still_conforms(self):
+        result = run([sys.executable, self.TOOL, 'conform', GARS / '_system/wrappers'])
+        self.assertEqual(result.returncode, 0, result.stdout.decode())
+
+    def test_the_scaffold_reads_the_session_model_on_both_paths(self):
+        """NIT 2 folded: the generated failure path names the same session model."""
+        source = self.author.module_source(self.SPEC)
+        read = source.index('model = ws.history_model(WORKSPACE, args.model)')
+        failed = source.index('wl.collect_failure(substage, result, EXIT_FAILURE, model)')
+        self.assertLess(read, failed)
+        collect = source.split('def cmd_collect', 1)[1].split('def main', 1)[0]
+        self.assertEqual(collect.count('args.model'), 1, 'collect reads the flag elsewhere')
+
+    def test_the_scaffolded_skill_md_never_passes_the_flag(self):
+        text = self.author.skill_md_source(self.SPEC)
+        collect = [line for line in text.splitlines() if ' collect ' in line]
+        self.assertEqual(len(collect), 1, collect)
+        self.assertNotIn('--model', collect[0])
 
 
 class ContractWordingTests(unittest.TestCase):
