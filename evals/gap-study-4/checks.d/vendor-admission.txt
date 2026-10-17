@@ -8,3 +8,7 @@ python3 -B -W ignore evals/gap-study-4/tests/test_vendor_admission.py
 python3 -B -W ignore evals/gap-study-4/tests/test_vendor_admission_regrade.py
 python3 -B -W ignore evals/gap-study-4/tests/test_freeze_shapes.py
 python3 -B -W ignore evals/gap-study-4/tests/test_vendor_script.py
+# T4 (the v4 plan, ruled by glitch-b5 on 17 Oct 2026): the vendor check readers' bindings, and one line per piece
+# asserting its edited files are disjoint from the native readers' source lists (drive.py excepted for P0 alone).
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_check.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py PF freeze.py check_take.py tests/test_freeze_shapes.py tests/test_vendor_check.py tests/check_vendor_sources.py

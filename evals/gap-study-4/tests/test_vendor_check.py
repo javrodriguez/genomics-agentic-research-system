@@ -18,6 +18,8 @@ PF, the freeze gate's half in check_take.py (plan section 7; review 36ce125 MINO
                head the live check asserts the calls are a subset of the map's keys; P2 makes it equality. Three
                mutants on synthetic sources (a refusal written outside the helper, a key dropped from the map, a map key
                with no call site) go red here already.
+  sources      tests/check_vendor_sources.py (checks.d's per-piece line, plan NIT 7) refuses a piece naming a
+               READER_SOURCES or CODEX_SOURCES file, drive.py excepted for P0 alone.
   VP-fixtures  a SAME row's fixture is a file labelled RECORDED (walk and CLI version) in its folder's README, and
                VENDOR_CHECK_SHAPES_SOURCE reads "recorded" only while every row of that harness is settled.
 
@@ -75,17 +77,29 @@ def none_reader(*args, **kwargs):
 
 
 @contextlib.contextmanager
-def settled(harness: str, key: str, state: str = "SAME", **fields):
-    """The map with one key settled (TEST DATA, patched in), and synthetic_reader defined in check_take."""
+def settled(harness: str, key: str, state: str = "SAME", *, root: Path | None = None, **fields):
+    """The map with one key settled (TEST DATA, patched in), synthetic_reader and none_reader defined in check_take,
+    and (unless `root` is given) a scratch fixtures folder holding vendor-check/recorded-<harness>.jsonl labelled
+    RECORDED at a walk on that harness's CLI."""
     rows = copy.deepcopy(ct.VENDOR_PENDING_ROWS)
     row = {"reason": rows[harness][key]["reason"], "state": state, "reader": "synthetic_reader"}
-    row.update({"SAME": {"fixture": "vendor-check/synthetic.jsonl"}, "NOT COMPARABLE": {"ruling": "R-7"}}
+    row.update({"SAME": {"fixture": f"vendor-check/recorded-{harness}.jsonl"}, "NOT COMPARABLE": {"ruling": "R-7"}}
                .get(state, {}))
     row.update(fields)
     rows[harness][key] = {k: v for k, v in row.items() if v is not None}
-    with mock.patch.object(ct, "VENDOR_PENDING_ROWS", rows), \
-            mock.patch.object(ct, "synthetic_reader", synthetic_reader, create=True), \
-            mock.patch.object(ct, "none_reader", none_reader, create=True):
+    with contextlib.ExitStack() as stack:
+        if root is None:
+            root = Path(stack.enter_context(tempfile.TemporaryDirectory()))
+            folder = root / "tests" / "fixtures" / "vendor-check"
+            folder.mkdir(parents=True)
+            for h, cli in (("codex", "codex-cli"), ("gemini", "gemini-cli")):
+                (folder / f"recorded-{h}.jsonl").write_text("{}\n")
+            (folder / "README.md").write_text("- `recorded-codex.jsonl`: RECORDED at walk w-0001, codex-cli 0.0.1.\n"
+                                              "- `recorded-gemini.jsonl`: RECORDED at walk w-0002, gemini-cli 0.0.1.\n")
+        stack.enter_context(mock.patch.object(ct, "HERE", root))
+        stack.enter_context(mock.patch.object(ct, "VENDOR_PENDING_ROWS", rows))
+        stack.enter_context(mock.patch.object(ct, "synthetic_reader", synthetic_reader, create=True))
+        stack.enter_context(mock.patch.object(ct, "none_reader", none_reader, create=True))
         yield rows
 
 
@@ -252,6 +266,22 @@ class VPKeys(unittest.TestCase):
                 self.assertNotEqual(vp_keys_problems(source, probe), [], f"mutant {name} stayed green")
 
 
+class SourceLists(unittest.TestCase):
+    def test_check_vendor_sources_refuses_a_listed_file_outside_p0(self):
+        sys.path.insert(0, str(HERE / "tests"))
+        try:
+            import check_vendor_sources as cvs
+        finally:
+            sys.path.remove(str(HERE / "tests"))
+        self.assertEqual(cvs.problems("PF", ["freeze.py", "check_take.py"]), [])
+        self.assertEqual(cvs.problems("P0", ["drive.py", "check_take.py"]), [])
+        for piece, files in (("PF", ["drive.py"]), ("P1", ["transcript_view.py"]), ("P2", ["codex_native.py"]),
+                             ("P5", ["native_snapshot.py"]), ("PX", ["check_take.py"]), ("P1", []),
+                             ("P1", ["no-such-file.py"])):
+            with self.subTest(piece=piece, files=files):
+                self.assertNotEqual(cvs.problems(piece, files), [])
+
+
 class VPFixtures(unittest.TestCase):
     def test_vp_fixtures_a_same_row_needs_a_recorded_fixture(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -263,15 +293,15 @@ class VPFixtures(unittest.TestCase):
                 "- `synthetic.jsonl`: SYNTHETIC, from the documented shape.\n"
                 "- `recorded.jsonl`: RECORDED at walk w-0042, gemini-cli 0.64.0.\n")
             with mock.patch.object(ct, "HERE", Path(tmp)):
-                with settled("gemini", "T-4", fixture="vendor-check/recorded.jsonl"):
+                with settled("gemini", "T-4", root=Path(tmp), fixture="vendor-check/recorded.jsonl"):
                     self.assertIsNone(ct.vendor_row_problem("gemini", "T-4", ct.VENDOR_PENDING_ROWS["gemini"]["T-4"]))
                 for fixture in ("vendor-check/synthetic.jsonl", "vendor-check/absent.jsonl", "elsewhere/recorded.jsonl",
                                 "../vendor-check/recorded.jsonl"):
-                    with self.subTest(fixture=fixture), settled("gemini", "T-4", fixture=fixture):
+                    with self.subTest(fixture=fixture), settled("gemini", "T-4", root=Path(tmp), fixture=fixture):
                         self.assertIsNotNone(ct.vendor_row_problem("gemini", "T-4",
                                                                    ct.VENDOR_PENDING_ROWS["gemini"]["T-4"]))
                 with self.subTest(case="another CLI's label"), \
-                        settled("codex", "T-5", fixture="vendor-check/recorded.jsonl"):
+                        settled("codex", "T-5", root=Path(tmp), fixture="vendor-check/recorded.jsonl"):
                     self.assertIsNotNone(ct.vendor_row_problem("codex", "T-5", ct.VENDOR_PENDING_ROWS["codex"]["T-5"]))
 
     def test_vp_fixtures_recorded_shapes_need_every_row_settled(self):

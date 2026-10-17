@@ -3741,5 +3741,148 @@ def _drop(p) -> None:
             pass
 
 
+
+# =====================================================================================================================
+# T4 VENDOR READERS (lane vendor-admission; lane-reports/vendor-T4-PLAN.md v4, ruled READY by glitch-b5 on Sat 17 Oct
+# 2026, on Javier's typed word "vendor-t4: yes"). Appended; no line above moves (R5).
+#   PF. THE FREEZE GATE'S HALF (plan section 7). VENDOR_CHECK_SHAPES_SOURCE says whether this file's vendor readers
+#       were re-tested on a recorded walk; freeze.unrecorded_shapes_problem's leg (ii) needs it "recorded" and every
+#       VENDOR_PENDING_ROWS row of the harness settled. A row is one PENDING cell of the comparability table
+#       (lane-reports/vendor-T4-TABLE.md), keyed by its table row with a leg suffix where a row holds several, with
+#       the reason id its refusal carries and its state: PENDING; SAME with the RECORDED fixture it was re-tested on
+#       and the reader that reads it; or NOT COMPARABLE with its recorded ruling and the reader of its partial check.
+#       Every vendor PENDING refusal is raised through vendor_pending at its one site, and a settled key's site must
+#       hand in the reader its row names (review 36ce125 MINOR 2, ruling 2 of 12:35), so settling a key never
+#       silences a refusal no reader covers. No PENDING reason is an event id (plan line 15).
+# =====================================================================================================================
+
+VENDOR_HARNESSES = ("codex", "gemini")
+VENDOR_CHECK_SHAPES_SOURCE = {"codex": "documented", "gemini": "documented"}
+VENDOR_SHAPES_SOURCES = ("documented", "recorded")
+VENDOR_ROW_STATES = (PENDING, "SAME", "NOT COMPARABLE")
+VENDOR_ROW_KEYS = {PENDING: {"reason", "state"}, "SAME": {"reason", "state", "fixture", "reader"},
+                   "NOT COMPARABLE": {"reason", "state", "ruling", "reader"}}
+# The CLI each harness's RECORDED fixture label names (tests/test_codex_adapter.py and tests/test_gemini_adapter.py's
+# RECORDED_LABEL, W11A-R1-9 and W11B-R1-9).
+VENDOR_FIXTURE_CLI = {"codex": "codex-cli", "gemini": "gemini-cli"}
+VENDOR_PENDING_ROWS = {
+    "codex": {
+        "T-5": {"reason": "unknown-harness-origin", "state": PENDING},
+        "T-8:file-change": {"reason": TRANSCRIPT_UNREADABLE, "state": PENDING},
+        "T-10": {"reason": "leak-in-loaded-context", "state": PENDING},
+        "T-12:offered-context": {"reason": "inherited-context", "state": PENDING},
+        "T-12:instruction-files": {"reason": "inherited-context", "state": PENDING},
+        "T-12:prompt-snapshot": {"reason": "inherited-context", "state": PENDING},
+        "T-12:memory": {"reason": "inherited-context", "state": PENDING},
+        "T-13": {"reason": "checkout-binding", "state": PENDING},
+        "T-14": {"reason": "checkout-binding", "state": PENDING},
+        "T-16": {"reason": "constant-binding", "state": PENDING},
+        "T-17:billing-route": {"reason": "environment-record", "state": PENDING},
+        "T-18": {"reason": HARNESS_CONDITION_VIOLATED, "state": PENDING},
+    },
+    "gemini": {
+        "T-4": {"reason": "readers-disagree", "state": PENDING},
+        "T-10": {"reason": "leak-in-loaded-context", "state": PENDING},
+        "T-11": {"reason": "inherited-context", "state": PENDING},
+        "T-12:offered-context": {"reason": "inherited-context", "state": PENDING},
+        "T-12:instruction-files": {"reason": "inherited-context", "state": PENDING},
+        "T-12:prompt-snapshot": {"reason": "inherited-context", "state": PENDING},
+        "T-12:memory": {"reason": "inherited-context", "state": PENDING},
+        "T-13": {"reason": "checkout-binding", "state": PENDING},
+        "T-14": {"reason": "checkout-binding", "state": PENDING},
+        "T-17:billing-route": {"reason": "environment-record", "state": PENDING},
+        "T-18": {"reason": HARNESS_CONDITION_VIOLATED, "state": PENDING},
+    },
+}
+
+
+def _vendor_recorded_fixture_problem(harness: str, fixture) -> str | None:
+    """None when `fixture` ("<folder>/<file>" under tests/fixtures) exists and its folder's README labels it RECORDED
+    at a walk on this harness's CLI; else why not."""
+    parts = fixture.split("/") if isinstance(fixture, str) else []
+    if len(parts) != 2 or not all(parts) or any(x in (".", "..") for x in parts):
+        return f"its fixture {fixture!r} is not <folder>/<file> under tests/fixtures"
+    folder = HERE / "tests" / "fixtures" / parts[0]
+    if not (folder / parts[1]).is_file():
+        return f"its fixture {fixture!r} does not exist"
+    try:
+        readme = (folder / "README.md").read_text(encoding="utf-8").split("\n")
+    except OSError:
+        return f"its fixture {fixture!r} has no README label list"
+    label = re.compile(r"^- `" + re.escape(parts[1]) + r"`: RECORDED at walk [A-Za-z0-9][A-Za-z0-9._-]*, "
+                       + re.escape(VENDOR_FIXTURE_CLI[harness]) + r" [0-9]+\.[0-9]+\.[0-9]+\.")
+    if not any(label.match(line) for line in readme):
+        return f"its fixture {fixture!r} is not labelled RECORDED at a walk on {VENDOR_FIXTURE_CLI[harness]}"
+    return None
+
+
+def vendor_row_problem(harness: str, key: str, row) -> str | None:
+    """Why one VENDOR_PENDING_ROWS row is off its shape, or None. A PENDING row holds its reason and state only; a
+    SAME row also names its RECORDED fixture and its reader, a NOT COMPARABLE row its ruling and its reader; a reader
+    is a function of this module."""
+    if not isinstance(row, dict) or row.get("state") not in VENDOR_ROW_STATES:
+        return f"its state is not one of {list(VENDOR_ROW_STATES)}"
+    state = row["state"]
+    if set(row) != VENDOR_ROW_KEYS[state]:
+        return f"a {state} row holds exactly {sorted(VENDOR_ROW_KEYS[state])}, not {sorted(row)}"
+    if not (isinstance(row["reason"], str) and row["reason"]) or row["reason"] in (EVENT_STUDY, EVENT_EMAIL,
+                                                                                   EVENT_OUTSIDE):
+        return f"its reason {row['reason']!r} is not a reason id (an event id never carries a PENDING refusal)"
+    if state == PENDING:
+        return None
+    reader = row["reader"]
+    if not (isinstance(reader, str) and callable(globals().get(reader))):
+        return f"it is {state} with reader {reader!r}, which is no function of check_take.py"
+    if state == "SAME":
+        return _vendor_recorded_fixture_problem(harness, row["fixture"])
+    if not (isinstance(row["ruling"], str) and row["ruling"].strip()):
+        return "it is NOT COMPARABLE without its recorded ruling"
+    return None
+
+
+def vendor_rows_problems(harness: str) -> list:
+    """Freeze leg (ii)'s settled condition: each row of the harness still PENDING or off its shape, named. An unknown
+    harness raises KeyError."""
+    out = []
+    for key, row in VENDOR_PENDING_ROWS[harness].items():
+        reason = row.get("reason") if isinstance(row, dict) else None
+        problem = vendor_row_problem(harness, key, row)
+        if problem:
+            out.append(f"{key} {reason}: {problem}")
+        elif row["state"] == PENDING:
+            out.append(f"{key} {reason} is PENDING")
+    return out
+
+
+def vendor_shapes_problems(harness: str) -> list:
+    """VENDOR_CHECK_SHAPES_SOURCE[harness] is one of the two words, and reads "recorded" only with every row of the
+    harness settled."""
+    source = VENDOR_CHECK_SHAPES_SOURCE.get(harness)
+    if source not in VENDOR_SHAPES_SOURCES:
+        return [f"VENDOR_CHECK_SHAPES_SOURCE[{harness!r}] is {source!r}, off {list(VENDOR_SHAPES_SOURCES)}"]
+    return vendor_rows_problems(harness) if source == "recorded" else []
+
+
+def vendor_pending(harness: str, key: str, reader, *args, **kwargs) -> list:
+    """The one road for a vendor PENDING refusal (plan section 7). While the row of (harness, key) is PENDING, its
+    refusal under the row's reason id; once it is settled, the problems of `reader(*args, **kwargs)`, which must be
+    the very function the row names (ruling 2 of 12:35), else CheckRefused. An unknown harness or key raises
+    KeyError, never a pass."""
+    row = VENDOR_PENDING_ROWS[harness][key]
+    problem = vendor_row_problem(harness, key, row)
+    if problem is None and row["state"] == PENDING:
+        return [f"[{row['reason']}] no vendor reader yet ({key})"]
+    name = getattr(reader, "__name__", None)
+    if problem is None and (reader is None or name != row["reader"] or globals().get(name) is not reader):
+        problem = f"its call site hands in reader {name!r}, not the row's {row['reader']!r}"
+    if problem:
+        raise CheckRefused(f"VENDOR_PENDING_ROWS {harness} {key}: {problem}")
+    got = reader(*args, **kwargs)
+    if not (isinstance(got, list) and all(isinstance(p, str) for p in got)):
+        raise CheckRefused(f"VENDOR_PENDING_ROWS {harness} {key}: its reader {name} returned {type(got).__name__}, "
+                           "not a list of problems")
+    return got
+
+
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -312,21 +312,50 @@ RECORDED_SHAPES = "recorded"
 
 
 def unrecorded_shapes_problem(draft):
-    """Why the freeze refuses the draft's vendor arms (each arm named), or None: a row whose harness is codex or gemini
-    while that adapter's SHAPES_SOURCE is not "recorded"."""
+    """Why the freeze refuses the draft's vendor arms (each arm and leg named), or None. Lane vendor-admission T4 PF
+    (lane-reports/vendor-T4-PLAN.md v4 section 7, ruled by glitch-b5 on 17 Oct 2026): a row whose harness is codex or
+    gemini is frozen only when all three legs hold for that harness: (i) its adapter's SHAPES_SOURCE is "recorded"
+    (T3); (ii) check_take.VENDOR_CHECK_SHAPES_SOURCE is "recorded" and every VENDOR_PENDING_ROWS row of the harness is
+    settled; (iii) native_reader_registration.production_readers() holds the harness."""
     import importlib
     rows = draft.get("rows") or []
     bad = []
     for harness in sorted({(r.get("agent") or {}).get("harness") for r in rows} & set(SHAPES_ADAPTERS)):
         module = SHAPES_ADAPTERS[harness]
+        legs = []
         source = importlib.import_module(module).SHAPES_SOURCE
         if source != RECORDED_SHAPES:
-            arms = sorted({r.get("arm") for r in rows if (r.get("agent") or {}).get("harness") == harness}, key=str)
-            bad += [f"arm {arm} ({harness}): {module}.py's SHAPES_SOURCE is {source!r}" for arm in arms]
+            legs.append(f"leg i: {module}.py's SHAPES_SOURCE is {source!r}")
+        legs += [f"leg ii: {p}" for p in vendor_reader_problems(harness)]
+        legs += [f"leg iii: {p}" for p in registration_problems(harness)]
+        arms = sorted({r.get("arm") for r in rows if (r.get("agent") or {}).get("harness") == harness}, key=str)
+        bad += [f"arm {arm} ({harness}): {leg}" for arm in arms for leg in legs]
     if not bad:
         return None
-    return ("the freeze refuses " + "; ".join(bad) + f", not {RECORDED_SHAPES!r}: an arm whose adapter was never "
-            "re-tested on a stream recorded at its first real walk is never frozen (ruling Q-3)")
+    return ("the freeze refuses " + "; ".join(bad) + f"; each leg must read {RECORDED_SHAPES!r} or hold: an arm whose "
+            "adapter and checker readers were never re-tested on a stream recorded at its first real walk, or whose "
+            "native reader is not registered, is never frozen (ruling Q-3; T4 plan section 7)")
+
+
+def vendor_reader_problems(harness):
+    """Leg (ii): check_take's vendor readers were re-tested on a recorded walk and every PENDING row is settled."""
+    import check_take
+    if harness not in check_take.VENDOR_PENDING_ROWS:
+        return [f"check_take.py's VENDOR_PENDING_ROWS has no {harness} block"]
+    source = check_take.VENDOR_CHECK_SHAPES_SOURCE.get(harness)
+    out = [] if source == RECORDED_SHAPES else [f"check_take.py's VENDOR_CHECK_SHAPES_SOURCE is {source!r}"]
+    return out + check_take.vendor_rows_problems(harness)
+
+
+def registration_problems(harness):
+    """Leg (iii): Javier's committed acceptance registers the harness's native reader; a refusing registry is named,
+    never a traceback."""
+    import native_reader_registration
+    try:
+        readers = native_reader_registration.production_readers()
+    except native_reader_registration.RegistrationRefused as e:
+        return [f"the native-reader registry refuses: {e}"]
+    return [] if harness in readers else [f"no native reader is registered for {harness} (no committed acceptance)"]
 
 
 def draft_holdout_problem(draft):

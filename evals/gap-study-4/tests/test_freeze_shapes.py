@@ -163,6 +163,15 @@ def main_problems(mod) -> list:
         for a in vendors:
             if f"arm {a} " not in text:
                 out.append(f"{arms} at documented: the refusal does not name arm {a}: {text[:200]!r}")
+        # T4 PF: leg i alone, with legs ii and iii settled, still refuses (so T3's witnesses keep their meaning)
+        with settled(legs=("ii", "rows", "iii"), **{a: True for a in vendors}):
+            code, text, written = run_main(mod, draft(arms))
+        if code != 1 or written or "REFUSE" not in text:
+            out.append(f"{arms} at documented, legs ii and iii settled: not refused (exit {code})")
+        for a in vendors:
+            if f"arm {a} ({HARNESS[a]}): leg i: " not in text or f"arm {a} ({HARNESS[a]}): leg ii" in text:
+                out.append(f"{arms} at documented, legs ii and iii settled: not leg i alone for arm {a}: "
+                           f"{text[:300]!r}")
         with settled(**{a: True for a in vendors}):
             code, text, written = run_main(mod, draft(arms))
         if code != 0 or len(written) != 1:
