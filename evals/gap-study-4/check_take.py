@@ -3929,7 +3929,7 @@ def checker_for(design) -> tuple:
 # a tool's input (what it was asked) and a tool's result (what it returned), so study_paths_read reads keys and
 # values (json.dumps of each record, as C's reads each tool_use input; MINOR 1) and outside_checkout_reads reads every
 # string value (C's _tool_strings). The home and temp legs of read-outside-the-checkout need the session's run tree,
-# which a vendor take carries only in its native cwd (T-4, T-11): they land with P2's cwd readers.
+# which a vendor take carries only in its native cwd (T-4, T-11): P2 adds them, on vendor_session_cwd.
 import codex_native as _codex_native  # noqa: E402
 import gemini_projection as _gemini_projection  # noqa: E402
 import gemini_session_replay as _gemini_replay  # noqa: E402
@@ -4116,10 +4116,11 @@ def vendor_reach_lines(records) -> list:
     return out
 
 
-def vendor_reach(path, harness, repo: Path | None = None) -> dict:
-    """{"problems", "study", "outside", "records"}: study-materials-reached and the checkout leg of
-    read-outside-the-checkout on the vendor take's raw records, worded as check() words them; a take the raw readers
-    refuse is transcript-unreadable, never clean."""
+def vendor_reach(path, harness, repo: Path | None = None, *, run_tree: str | None = None) -> dict:
+    """{"problems", "study", "outside", "records"}: study-materials-reached and read-outside-the-checkout on the vendor
+    take's raw records, worded as check() words them: the checkout leg, and (P2) the home and temp legs with
+    `run_tree`, the session's own working directory (vendor_session_cwd), as the one tree they admit, none when it is
+    None; a take the raw readers refuse is transcript-unreadable, never clean."""
     try:
         records = vendor_raw_records(path, harness)
     except VendorUnreadable as e:
@@ -4128,9 +4129,14 @@ def vendor_reach(path, harness, repo: Path | None = None) -> dict:
     fd, tmp = tempfile.mkstemp(suffix=".jsonl")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            if run_tree:                 # where C's readers find the session's working directory (session_run_tree)
+                fh.write(json.dumps({"type": "attachment", "attachment": {
+                    "type": "environment", "snapshot": {"workingDirectory": run_tree}}}) + "\n")
             fh.write("".join(line + "\n" for line in vendor_reach_lines(records)))
         study = study_paths_read(Path(tmp))
         outside = outside_checkout_reads(Path(tmp), repo)
+        outside += outside_home_reads(Path(tmp), repo=repo)
+        outside += outside_temp_reads(Path(tmp))
     finally:
         _drop(tmp)
     problems = []
@@ -4144,6 +4150,563 @@ def vendor_reach(path, harness, repo: Path | None = None) -> dict:
                         "the folder holding its sibling worktrees and the root above them hold the study; a take reads "
                         "its own run tree.")
     return {"problems": problems, "study": study, "outside": outside, "records": len(records)}
+
+
+
+# ---- P2. THE VENDOR CHECK BODY (plan sections 1 and 9; round 8 ruling 3; round 9 of glitch-b5, Sat 17 Oct 2026) ----
+# vendor_check is check()'s body for a codex or gemini take or round-4 walk, one function per reason of plan section
+# 1a, reusing C's pure helpers wherever the reading is the same (required_steps, operator_line_problems,
+# continuation_problems, fixture_binding_problems, completion_problems' ledger legs, constant_problems); it reads the
+# vendor's own records, never Claude Code's. The operator lines are the bound envelopes' (bound_items forces them equal
+# to the ledger's `sent`), first bound to the CLI-written user record of every turn (vendor_operator_problems,
+# readers-disagree, run before the view so a differing gemini stream reads readers-disagree, never
+# transcript-unreadable); the agent's text per turn is the bound view's; reach is P1's raw readers with the home and
+# temp legs on the session's own working directory (codex: the rollout's turn_context.cwd, T-11; gemini: none, T-4 and
+# T-11 are PENDING, so its legs admit no tree, which errs strict; no vendor temp or home path is masked). Section 1b's
+# readings are vendor_round4_problems: the run tree (T-4), the mode (T-16), the denied tools (T-18), stream lines no
+# parser read, nested-agent switches in the CLI's own commands, and codex file_change content (T-8). Every PENDING leg
+# is raised through vendor_pending at its one site, its harness and key written as literals (VP-keys), with no reader
+# yet. P3 adds the entries that hold check4's preamble and lift the event lines (study, email, outside); P4 the session
+# store and binding legs 1-5; P5 the model, the environment record and the merged constants.
+import codex_adapter as _codex_adapter  # noqa: E402
+import gemini_adapter as _gemini_adapter  # noqa: E402
+import gemini_stream_join as _gemini_join  # noqa: E402
+import scrub as _scrub  # noqa: E402
+
+VENDOR_ADAPTERS = {"codex": _codex_adapter, "gemini": _gemini_adapter}
+# The outcomes after which a turn may end cut: completion_problems' own list of the cut, paused and rehearsal shapes.
+VENDOR_CUT_OUTCOMES = ("timed-out", "aborted", "PAUSE", "REHEARSAL")
+# What each harness's argv names its resumed session by (codex_adapter.RESUME, gemini_adapter.RESUME_FLAG).
+VENDOR_RESUME_TOKENS = {"codex": _codex_adapter.RESUME, "gemini": _gemini_adapter.RESUME_FLAG}
+
+
+def _vendor_envelopes(path) -> list:
+    """The take's turn envelopes as bound_items reads them; raises transcript_view.ViewError on a broken file."""
+    return [_binding._json(x) for x in _binding._jsonl_lines(_binding._regular_bytes(Path(path)).decode("utf-8"))]
+
+
+def _vendor_stream(path, env) -> str:
+    """One envelope's turn stream, its bytes the envelope's sha256 binds; raises VendorUnreadable."""
+    raw = _binding._regular_bytes(Path(path).parent / env["stream"])
+    if hashlib.sha256(raw).hexdigest() != env["sha256"]:
+        raise VendorUnreadable(f"{env['stream']}: its bytes are not the ones its envelope binds")
+    return raw.decode("utf-8")
+
+
+def _vendor_last_snapshot(path, ledger) -> bytes:
+    """The last retained native snapshot the ledger names, its bytes the ledger's sha256 binds; raises
+    VendorUnreadable."""
+    snaps = ledger.get("native_snapshots") if isinstance(ledger, dict) else None
+    if not (isinstance(snaps, list) and snaps and isinstance(snaps[-1], dict)):
+        raise VendorUnreadable("the ledger names no retained native snapshot")
+    name = snaps[-1].get("file")
+    if not (isinstance(name, str) and name and Path(name).name == name and name not in (".", "..")):
+        raise VendorUnreadable(f"the last native snapshot {name!r} is not a confined basename")
+    raw = _binding._regular_bytes(Path(path).parent / "session" / name)
+    if hashlib.sha256(raw).hexdigest() != snaps[-1].get("sha256"):
+        raise VendorUnreadable(f"session/{name}: its bytes are not the ones the ledger binds")
+    return raw
+
+
+_VENDOR_READ_ERRORS = (VendorUnreadable, transcript_view.ViewError, UnicodeError, KeyError, TypeError, AttributeError,
+                       _codex_native.ReaderRefused, _gemini_join.JoinRefused, _gemini_projection.ProjectionRefused)
+
+
+def vendor_operator_problems(path, harness) -> list:
+    """readers-disagree, operator turns (plan section 1a, T-3): the lines the envelopes and the ledger carry, per
+    ordinal, against the CLI-written user record of each turn: codex, each turn's UserMessage in the last retained
+    rollout (codex_native.read_rollout); gemini, each turn stream's user message (gemini_stream_join.read_call) and
+    each native interaction's `sent` (gemini_projection.project). A count or a text that differs is readers-disagree;
+    a record no reader can read is transcript-unreadable."""
+    path = Path(path)
+    try:
+        envelopes = _vendor_envelopes(path)
+        ledger = _binding._json(_binding._regular_bytes(path.parent / "driver-ledger.json").decode("utf-8"))
+        sent = [env["sent"] for env in envelopes]
+        rows = [t.get("sent") for t in ledger.get("turns") or []]
+        raw = _vendor_last_snapshot(path, ledger)
+        if harness == "codex":
+            readers = {"the rollout's UserMessage items": [t["sent"] for t in _codex_native.read_rollout(raw)["turns"]]}
+        else:
+            streams = [_vendor_stream(path, env) for env in envelopes]
+            readers = {"the turn streams' user messages": [_gemini_join.read_call(s)["sent"] for s in streams],
+                       "the native snapshot's interactions": [f["sent"] for f in _gemini_projection.project(raw)]}
+    except _VENDOR_READ_ERRORS as e:
+        return [f"[{TRANSCRIPT_UNREADABLE}] the {harness} operator records cannot be read: {type(e).__name__}: {e}"]
+    out = []
+    if rows != sent:
+        out.append(f"[readers-disagree] the ledger's {len(rows)} sent line(s) are not the envelopes' {len(sent)}, in "
+                   "order; which lines the operator sent cannot be established")
+    for name, got in readers.items():
+        if len(got) != len(sent):
+            out.append(f"[readers-disagree] {name} hold {len(got)} turn(s) and the envelopes {len(sent)}: the CLI's "
+                       "own record and the driver's disagree on how many turns were sent")
+            continue
+        bad = [k for k, (a, b) in enumerate(zip(got, sent), 1) if a != b]
+        if bad:
+            out.append(f"[readers-disagree] {name} are not the envelopes' sent line at turn(s) {bad}: which lines "
+                       "the operator sent cannot be established")
+    return out
+
+
+def _vendor_turns(events) -> list:
+    """check()'s turn list from the bound view: each operator line a user turn, each agent text an assistant turn."""
+    out = []
+    for e in events:
+        if e.kind == transcript_view.OPERATOR:
+            out.append({"role": "user", "text": e.text})
+        elif e.kind == transcript_view.AGENT_TEXT:
+            out.append({"role": "assistant", "text": e.text})
+    return out
+
+
+def vendor_origin_problems(harness) -> list:
+    """unknown-harness-origin (T-5): codex PENDING (the rollout's response_item messages are read by no reader yet);
+    gemini's non-operator user record is an extra interaction or a `sent` mismatch, vendor_operator_problems'
+    readers-disagree."""
+    return vendor_pending("codex", "T-5", None) if harness == "codex" else []
+
+
+def vendor_first_turn_problems(events) -> list:
+    """no-first-agent-turn (T-1): no completed agent output in the bound view, text or a tool call (R4C-8's rule)."""
+    if any(e.kind == transcript_view.TOOL_CALL or (e.kind == transcript_view.AGENT_TEXT and (e.text or "").strip())
+           for e in events):
+        return []
+    return [f"[{NO_FIRST_AGENT_TURN}] no agent turn produced completed output (text or a tool call). Without a first "
+            "agent turn this is a rehearsal by definition, not a take that happened to go badly."]
+
+
+def vendor_session_id(path, harness) -> str:
+    """The session id the CLI wrote: the first stream's thread.started thread_id (codex) or init session_id (gemini),
+    read from the stream's own bytes; "" when it carries none or cannot be read."""
+    key, kind = ("thread_id", "thread.started") if harness == "codex" else ("session_id", "init")
+    try:
+        text = _vendor_stream(path, _vendor_envelopes(path)[0])
+        for line in transcript_view.jsonl_lines(text):
+            rec = _binding._json(line)
+            if isinstance(rec, dict) and rec.get("type") == kind and isinstance(rec.get(key), str):
+                return rec[key]
+    except _VENDOR_READ_ERRORS + (IndexError,):
+        return ""
+    return ""
+
+
+def vendor_session_id_problems(path, harness) -> list:
+    """no-session-id (T-2): the CLI wrote no session id in its own stream (the envelope's session_id is the driver's
+    take identity, never this reading's source)."""
+    if vendor_session_id(path, harness):
+        return []
+    return ["[no-session-id] the CLI's own stream records no session id, so the take cannot be tied to its vendor "
+            "session"]
+
+
+def vendor_ledger_turn_problems(ledger, script, expected_source) -> list:
+    """outcome-binding and fixture-binding on the ledger's rows (check():1654-1678, the same lines for every harness):
+    a row whose number is no line of the script, a recovery the script attaches none to, a row twice, and a source
+    other than the one the half's fixture kind implies."""
+    out = []
+    if ledger and isinstance(script, list):
+        step_ns = {s["n"] for s in script}
+        recoveries = {s["n"] for s in script if s.get("recovery")}
+        seen_rows: set = set()
+        for row in ledger.get("turns") or []:
+            n, recovery = row.get("n"), bool(row.get("recovery"))
+            if n not in step_ns:
+                out.append(f"[outcome-binding] the ledger records a turn {n!r}, which is not a line on this half's "
+                           "script")
+                break
+            if recovery and n not in recoveries:
+                out.append(f"[outcome-binding] the ledger records a recovery on turn {n}, and the frozen file attaches "
+                           "no recovery to that line")
+                break
+            if (n, recovery) in seen_rows:
+                out.append(f"[outcome-binding] the ledger records turn {n} twice with the same shape; the driver writes "
+                           "one row for each line it sends")
+                break
+            seen_rows.add((n, recovery))
+    if ledger and ledger.get("source") is not None and ledger.get("source") != expected_source:
+        out.append(f"[fixture-binding] the driver handed the agent the source {ledger.get('source')!r}, and this half's "
+                   f"fixture kind implies {expected_source!r}")
+    return out
+
+
+def vendor_leak_problems(ops, pre) -> list:
+    """leak-in-operator-turn (T-6): a pre-registered leak word in the bound operator lines, check()'s test."""
+    joined = normalise(" ".join(ops)).lower()
+    leaked = sorted({w for w in pre["leak_words"] if w.lower() in joined})
+    if not leaked:
+        return []
+    return [f"[leak-in-operator-turn] an operator turn contains {leaked}, which tells the agent what this is. The take "
+            "is void: a leak does not show in the verdict, it simply looks like a pass."]
+
+
+def vendor_loaded_context_problems(harness) -> list:
+    """leak-in-loaded-context (T-10): PENDING for both until a recorded walk shows the instruction and environment
+    records the CLI loads (R-6's files are placed by walk_builders.build_run_tree)."""
+    return vendor_pending("codex", "T-10", None) if harness == "codex" else vendor_pending("gemini", "T-10", None)
+
+
+def vendor_session_cwd(path, harness):
+    """The working directory the session recorded: codex, the one turn_context.cwd every turn of the last retained
+    rollout carries (None when they differ, or none can be read); gemini, None (no native cwd, T-4 and T-11)."""
+    if harness != "codex":
+        return None
+    try:
+        raw = _vendor_last_snapshot(path, _binding._json(_binding._regular_bytes(
+            Path(path).parent / "driver-ledger.json").decode("utf-8")))
+        cwds = {t["cwd"] for t in _codex_native.read_rollout(raw)["turns"]}
+    except _VENDOR_READ_ERRORS:
+        return None
+    cwd = cwds.pop() if len(cwds) == 1 else None
+    return cwd if isinstance(cwd, str) and cwd else None
+
+
+def vendor_inherited_cwd_problems(path, harness) -> list:
+    """inherited-context, the working directory (T-11): codex, the rollout records one working directory for the
+    session, or what it loaded cannot be placed; gemini PENDING (no native cwd)."""
+    if harness != "codex":
+        return vendor_pending("gemini", "T-11", None)
+    if vendor_session_cwd(path, harness) is None:
+        return ["[inherited-context] the rollout records no one working directory for the session, so what it loaded "
+                "cannot be placed"]
+    return []
+
+
+def _vendor_journal(path, k: int):
+    """Turn k's launch journal (box/run_take.run_turn's <stream>.launch.json), or None when it is absent or
+    unreadable."""
+    try:
+        doc = json.loads((Path(path).parent / f"turn-{k}.jsonl.launch.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    return doc if isinstance(doc, dict) else None
+
+
+def _vendor_after(argv: list, token: str):
+    """The argument after `token` in argv, or None."""
+    return argv[argv.index(token) + 1] if token in argv[:-1] else None
+
+
+def vendor_offered_context_problems(path, harness, design, arm) -> list:
+    """inherited-context, the extra directories and tool servers offered (T-12:offered-context): PENDING for the
+    session-side record; its input-side leg runs: every turn has the box's launch journal (its harness, its stream
+    turn-<k>.jsonl), and the journal's argv is exactly the adapter's own invocation (codex_adapter.argv or
+    gemini_adapter.argv) for the envelope's line, the journal's model and resumed id and the arm's pinned mode, so a
+    directory, a tool server or any other option the adapter never writes refuses. Which id is resumed, and the model,
+    are P4's and P5's to bind."""
+    out = (vendor_pending("codex", "T-12:offered-context", None) if harness == "codex"
+           else vendor_pending("gemini", "T-12:offered-context", None))
+    mode = mode_for_arm(design.pre, arm)
+    adapter = VENDOR_ADAPTERS[harness]
+    try:
+        envelopes = _vendor_envelopes(path)
+    except transcript_view.ViewError as e:
+        return out + [f"[inherited-context] the envelopes cannot be read, so what each turn was offered cannot be shown "
+                      f"({e})"]
+    for k, env in enumerate(envelopes, 1):
+        doc = _vendor_journal(path, k)
+        argv = doc.get("argv") if doc else None
+        if not (doc and doc.get("harness") == harness and isinstance(doc.get("stream"), str)
+                and posixpath.basename(doc["stream"]) == f"turn-{k}.jsonl"
+                and isinstance(argv, list) and all(isinstance(a, str) for a in argv)):
+            out.append(f"[inherited-context] turn {k} has no launch journal of this {harness} take's turn, so the "
+                       "directories and tool servers it was offered cannot be shown")
+            continue
+        if not isinstance(mode, str):
+            out.append(f"[inherited-context] arm {arm!r} pins no permission mode, so turn {k}'s registered invocation "
+                       "cannot be rebuilt")
+            continue
+        try:
+            want = adapter.argv(env.get("sent"), model=_vendor_after(argv, adapter.MODEL_FLAG), mode=mode,
+                                session_id=_vendor_after(argv, VENDOR_RESUME_TOKENS[harness]), first=k == 1)
+        except (adapter.StreamError, TypeError) as e:
+            want = f"none ({e})"
+        if argv != want:
+            out.append(f"[inherited-context] turn {k}'s launch was not the adapter's registered invocation: an option "
+                       "it never writes could grant a directory or a tool server outside the checkout")
+    return out
+
+
+def vendor_instruction_file_problems(harness) -> list:
+    """inherited-context, the instruction files the CLI loaded (T-12:instruction-files): PENDING (R-6's files are
+    placed by walk_builders.build_run_tree; which the CLI loaded is a session-side record not yet seen)."""
+    return (vendor_pending("codex", "T-12:instruction-files", None) if harness == "codex"
+            else vendor_pending("gemini", "T-12:instruction-files", None))
+
+
+def vendor_email_problems(path) -> list:
+    """account-email (T-9), the per-take unit: one event when any published vendor file of the take (the envelopes,
+    every turn stream, every retained native snapshot the ledger names) carries the email marker the scan writes
+    (scrub.NOTE, box/scan_record's MARKERS), else none; any number of hits counts one, as C's one field does. The
+    drive's bound (its count not above the scan's masked email hits, drive.py) refuses a marker the scan did not
+    write."""
+    path = Path(path)
+    names = [path.name]
+    try:
+        names += [env["stream"] for env in _vendor_envelopes(path)]
+    except (transcript_view.ViewError, UnicodeError, KeyError, TypeError):
+        pass
+    ledger = _ledger_beside(path) or {}
+    snaps = ledger.get("native_snapshots") if isinstance(ledger.get("native_snapshots"), list) else []
+    names += [f"session/{s['file']}" for s in snaps if isinstance(s, dict) and isinstance(s.get("file"), str)]
+    marker = _scrub.NOTE.encode("utf-8")
+    for name in names:
+        try:
+            if marker in (path.parent / name).read_bytes():
+                return [f"[{EVENT_EMAIL}] a published file of this take ({name}) carries the email marker: an account "
+                        "address was in the take's records and the scan masked it"]
+        except OSError:
+            continue
+    return []
+
+
+def vendor_turn_end_problems(path, harness, ledger) -> list:
+    """outcome-binding's "ended at the end of a turn" (T-24) on the CLI's own records: unless the ledger records the
+    take cut, paused or a rehearsal, every turn stream ends its turn: codex, exactly one turn.completed and no
+    turn.failed (codex_adapter.end_reason's rule); gemini, exactly one result record, its status success
+    (gemini_adapter.end_reason's)."""
+    outcome = (ledger or {}).get("outcome")
+    if not isinstance(outcome, str) or outcome.startswith(VENDOR_CUT_OUTCOMES):
+        return []                                  # completion_problems refuses an outcome off the driver's shapes
+    out = []
+    try:
+        envelopes = _vendor_envelopes(path)
+    except transcript_view.ViewError as e:
+        return [f"[outcome-binding] the envelopes cannot be read, so whether each turn ended cannot be shown ({e})"]
+    for k, env in enumerate(envelopes, 1):
+        try:
+            recs = [r for r in map(_binding._json, transcript_view.jsonl_lines(_vendor_stream(path, env)))
+                    if isinstance(r, dict)]
+        except _VENDOR_READ_ERRORS:
+            recs = None
+        if recs is None:
+            ended = False
+        elif harness == "codex":
+            types = [r.get("type") for r in recs]
+            ended = types.count("turn.completed") == 1 and "turn.failed" not in types
+        else:
+            results = [r for r in recs if r.get("type") == "result"]
+            ended = len(results) == 1 and results[0].get("status") == "success"
+        if not ended:
+            out.append(f"[outcome-binding] the ledger records {outcome!r} and turn {k}'s own stream does not end its "
+                       "turn: a take the driver did not record as cut must end every turn at the end of a turn")
+    return out
+
+
+def vendor_project_problems(ops, expected_project) -> list:
+    """project-name (T-6): the bound operator lines name the neutral name of the driver's session id."""
+    if expected_project and expected_project.lower() not in normalise(" ".join(ops)).lower():
+        return [f"[project-name] no operator turn names the project {expected_project!r}, which is the name derived "
+                "from this take's session id. The transcript cannot be tied back to its ledger row."]
+    return []
+
+
+def vendor_take_binding_problems(task_id, half_name, row_index, sid) -> list:
+    """invocation and session-binding, a take's ledger row (check():1747-1769): the row exists, is this task and half,
+    is committed, and the driver's session id (the envelopes' and the ledger's) is uuid5 of its commit; plan section
+    2's legs 1-5, which bind the vendor id to it, are P4's."""
+    if row_index is None:
+        return [TAKE_ROW_NEEDED]
+    rows = takes_mod.load_rows()
+    if not (0 <= row_index < len(rows)):
+        return ["[session-binding] " + f"no ledger row {row_index}"]
+    out = []
+    row = rows[row_index]
+    if (row["task"], row["half"]) != (task_id, half_name):
+        out.append("[session-binding] " + f"row {row_index} is {row['task']}/{row['half']}, not {task_id}/{half_name}")
+    commits = takes_mod.row_commits()
+    if row_index not in commits:
+        out.append("[session-binding] " + f"row {row_index} is not committed, so the session id it implies does not "
+                   "exist and nothing binds this take to a pre-registration")
+    else:
+        want = takes_mod.session_id_for(commits[row_index])
+        if sid != want:
+            out.append("[session-binding] " + f"the take's session id does not match its row's commit: the envelopes "
+                       f"say {sid}, and uuid5(namespace, {commits[row_index][:12]}) is {want}")
+    return out
+
+
+def vendor_walk_binding_problems(path, task_id, half_name, walk_id, sid) -> list:
+    """session-binding, a round-4 walk (check_walk's D2 legs): the driver's session id is walk_session_id(walk_id),
+    and the ledger names this task and half, that session and no row."""
+    want = walk_session_id(walk_id)
+    out = []
+    if sid != want:
+        out.append("[session-binding] " + f"the session id does not match its walk: the envelopes say {sid}, and "
+                   f"uuid5(namespace, {WALK_SESSION_PREFIX}{walk_id}) is {want}")
+    ledger = _ledger_beside(path)
+    if not isinstance(ledger, dict):
+        return out + ["[session-binding] no driver ledger beside the walk's transcript, so nothing binds it to its walk"]
+    if (ledger.get("task"), ledger.get("half")) != (task_id, half_name):
+        out.append("[session-binding] " + f"the driver ledger is {ledger.get('task')}/{ledger.get('half')}, not "
+                   f"{task_id}/{half_name}")
+    if ledger.get("session_id") != want:
+        out.append("[session-binding] " + f"the driver ledger records session {ledger.get('session_id')}, not the "
+                   f"walk's {want}")
+    if ledger.get("row") is not None or ledger.get("row_commit") is not None:
+        out.append("[session-binding] the driver ledger records a ledger row for a walk; a walk has none")
+    return out
+
+
+def vendor_environment_problems(harness) -> list:
+    """environment-record (T-17): the billing-route leg PENDING for both (codex_adapter and gemini_adapter's PENDING
+    billing-route variables); the record itself is read against the ruled vendor block in P5."""
+    return (vendor_pending("codex", "T-17:billing-route", None) if harness == "codex"
+            else vendor_pending("gemini", "T-17:billing-route", None))
+
+
+def vendor_checkout_problems(harness) -> list:
+    """checkout-binding (T-13, the session's own git status; T-14, the instruction files it loaded): PENDING for
+    both; the driver's checkout record is never their source."""
+    if harness == "codex":
+        return vendor_pending("codex", "T-13", None) + vendor_pending("codex", "T-14", None)
+    return vendor_pending("gemini", "T-13", None) + vendor_pending("gemini", "T-14", None)
+
+
+def vendor_prompt_problems(harness) -> list:
+    """inherited-context, the prompt snapshot and the memory folder (T-12:prompt-snapshot, T-12:memory): PENDING for
+    both until a recorded walk shows a session-side record of either."""
+    if harness == "codex":
+        return vendor_pending("codex", "T-12:prompt-snapshot", None) + vendor_pending("codex", "T-12:memory", None)
+    return vendor_pending("gemini", "T-12:prompt-snapshot", None) + vendor_pending("gemini", "T-12:memory", None)
+
+
+def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_script, design, arm: str,
+                 walk_id=None) -> list:
+    """check()'s body for a vendor take (its ledger row `row_index`) or round-4 walk (`walk_id`), read against
+    `design`, plan section 1a, in check()'s order; P3's entries hold check4's preamble and lift the event lines."""
+    path = Path(path)
+    harness = _vendor_harness(getattr(design, "harness", None))
+    pre, half = design.pre, design.spec[half_name]
+    ledger = _ledger_beside(path)
+    problems = vendor_operator_problems(path, harness)
+    view = {"events": None, "problems": []} if problems else vendor_take_view(path, harness)
+    problems += view["problems"]
+    bound = view["events"] is not None
+    turns = _vendor_turns(view["events"] or [])
+    ops = [t["text"] for t in turns if t["role"] == "user"]
+    problems += vendor_origin_problems(harness)
+    if bound:
+        problems += vendor_first_turn_problems(view["events"])
+    problems += vendor_session_id_problems(path, harness)
+    sid = str((ledger or {}).get("session_id") or "")
+    expected_project = neutral_name(sid) if sid else ""
+    script = wording_script
+    if isinstance(script, str):
+        problems.append("[script-not-a-list] " + f"this task's operator script is a reference ({script}), not a list "
+                        "of turns; the frozen file must hold the lines it sends")
+        return problems
+    expected_source = design.source(expected_project)
+    if bound:
+        required, stop_problems = required_steps(script, path, turns, False, expected_project, expected_source, ())
+        problems += stop_problems
+        line_problems = operator_line_problems(ops, required, expected_project, expected_source)
+        problems += line_problems
+        if not line_problems:
+            problems += continuation_problems(turns, required, [], expected_project, expected_source)
+    problems += fixture_binding_problems(path, half, False)[0]
+    if bound:
+        problems += vendor_leak_problems(ops, pre)
+    problems += vendor_loaded_context_problems(harness)
+    problems += vendor_inherited_cwd_problems(path, harness)
+    problems += vendor_offered_context_problems(path, harness, design, arm)
+    problems += vendor_instruction_file_problems(harness)
+    problems += vendor_email_problems(path)
+    problems += completion_problems(path, ledger, pre)
+    problems += vendor_turn_end_problems(path, harness, ledger)
+    problems += vendor_ledger_turn_problems(ledger, script, expected_source)
+    if bound:                   # the raw readers stand on the records the view bound; they refuse where it refused
+        problems += vendor_reach(path, harness, run_tree=vendor_session_cwd(path, harness))["problems"]
+        problems += vendor_project_problems(ops, expected_project)
+    if walk_id is None:
+        problems += vendor_take_binding_problems(task_id, half_name, row_index, sid)
+    else:
+        problems += vendor_walk_binding_problems(path, task_id, half_name, walk_id, sid)
+    problems += vendor_environment_problems(harness)
+    problems += constant_problems(ledger, pre)              # the ledger's budget, mode and gars tree (T-24)
+    problems += vendor_checkout_problems(harness)
+    problems += vendor_prompt_problems(harness)
+    return problems
+
+
+# ---- P2, section 1b: the round-4 readings ---------------------------------------------------------------------------
+def vendor_design_tree_problems(path, harness, design) -> list:
+    """readers-disagree, the run tree (T-4; design_tree_problems' reading): codex, every rollout turn's
+    turn_context.cwd, and every turn's launch journal cwd as a second leg, against the run tree the design was built
+    with; gemini PENDING (no native cwd)."""
+    if harness != "codex":
+        return vendor_pending("gemini", "T-4", None)
+    out = []
+    try:
+        ledger = _binding._json(_binding._regular_bytes(Path(path).parent / "driver-ledger.json").decode("utf-8"))
+        cwds = [t["cwd"] for t in _codex_native.read_rollout(_vendor_last_snapshot(path, ledger))["turns"]]
+    except _VENDOR_READ_ERRORS as e:
+        return [f"[{TRANSCRIPT_UNREADABLE}] the rollout cannot be read, so where the session ran cannot be shown "
+                f"({type(e).__name__}: {e})"]
+    for k, cwd in enumerate(cwds, 1):
+        if cwd != design.run_tree:
+            out.append(f"[readers-disagree] the driver gave the take the run tree {design.run_tree!r} and the rollout "
+                       f"records that turn {k} ran in {cwd!r}")
+    for k in range(1, len(cwds) + 1):
+        doc = _vendor_journal(path, k)
+        if doc is not None and doc.get("cwd") != design.run_tree:
+            out.append(f"[readers-disagree] turn {k}'s launch journal records the working folder {doc.get('cwd')!r}, "
+                       f"not the run tree {design.run_tree!r}")
+    return out
+
+
+def vendor_recorded_mode_problems(harness) -> list:
+    """constant-binding, the permission mode the session recorded (T-16): codex PENDING (turn_context.approval_policy
+    is carried raw and never accepted); gemini NOT COMPARABLE (no session-side mode record; the mode's flags are bound
+    as submitted by vendor_offered_context_problems' rebuilt invocation)."""
+    return vendor_pending("codex", "T-16", None) if harness == "codex" else []
+
+
+def vendor_denied_tool_problems(harness) -> list:
+    """harness-condition-violated, the tools the CLI really offers (T-18): PENDING for both."""
+    return vendor_pending("codex", "T-18", None) if harness == "codex" else vendor_pending("gemini", "T-18", None)
+
+
+def vendor_unread_problems(path, harness, ledger) -> list:
+    """transcript-unreadable (T-23): a line of a turn stream in the take folder that the harness's own parser did not
+    read (vendor_shell_commands' count), unless the ledger records the take cut, where a last line may be cut too."""
+    outcome = (ledger or {}).get("outcome")
+    _, bad = vendor_shell_commands(Path(path).parent, harness)
+    if bad and not (isinstance(outcome, str) and outcome.startswith(("timed-out", "aborted"))):
+        return [f"[{TRANSCRIPT_UNREADABLE}] {len(bad)} line(s) of the take's turn streams are off the {harness} "
+                f"parser's tables (first: {bad[0]}), and the take was not cut"]
+    return []
+
+
+def vendor_nested_flag_problems(path, harness) -> list:
+    """nested-agent (T-21): command_problems over the CLI's own shell commands (vendor_shell_commands), as the drive
+    runs it for a vendor take."""
+    return command_problems(vendor_shell_commands(Path(path).parent, harness)[0], harness)
+
+
+def vendor_file_change_problems(path, harness) -> list:
+    """transcript-unreadable, codex file_change content (T-8:file-change): PENDING while any exec stream holds a
+    file_change item (its patch text is read by no reader yet; the cross-check refuses it too)."""
+    if harness != "codex":
+        return []
+    try:
+        for env in _vendor_envelopes(path):
+            for line in transcript_view.jsonl_lines(_vendor_stream(path, env)):
+                rec = _binding._json(line)
+                if isinstance(rec, dict) and (rec.get("item") or {}).get("type") == _tx_codex.FILE_CHANGE:
+                    return vendor_pending("codex", "T-8:file-change", None)
+    except _VENDOR_READ_ERRORS:
+        return []                                  # the view refuses an unreadable stream
+    return []
+
+
+def vendor_round4_problems(path, design) -> list:
+    """Plan section 1b's readings for a vendor take or walk, in check4's order."""
+    harness = _vendor_harness(getattr(design, "harness", None))
+    ledger = _ledger_beside(Path(path))
+    return (vendor_design_tree_problems(path, harness, design) + vendor_recorded_mode_problems(harness)
+            + vendor_denied_tool_problems(harness) + vendor_unread_problems(path, harness, ledger)
+            + vendor_nested_flag_problems(path, harness) + vendor_file_change_problems(path, harness))
 
 
 if __name__ == "__main__":

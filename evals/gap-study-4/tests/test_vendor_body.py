@@ -16,7 +16,8 @@ check_take.vendor_round4_problems (section 1b).
               stream reads readers-disagree, never transcript-unreadable); no agent output; no CLI session id; a
               script that is a reference; a stop with no wait point, a stop at a held marker, a line off the script,
               a reply missing its marker; the fixture hash and the source; a leak word; a launch argv the adapter never
-              writes and a missing launch journal (inherited-context); the email marker in a published file (one
+              writes, a missing launch journal and one naming another turn's stream (inherited-context); the ledger's
+              sent line differing, and a last snapshot the ledger does not bind; the email marker in a published file (one
               event for any number of hits); a turn that did not end, an outcome off the driver's shapes and a ledger
               row off the script (outcome-binding); reach into evals/, the home folder and the temp folder, and a path
               under the session's own run tree admitted; the project name; the ledger row, the commit-derived and the
@@ -244,6 +245,21 @@ def case_user_record_differs(t):
     return lambda p: p["streams"][2][1].update(content="other"), None
 
 
+def case_ledger_sent_differs(t):
+    t.turns = [{"n": s["n"], "recovery": False, "exit": 0, "then": None, "sent": line if s["n"] != 2 else "other"}
+               for s, line in zip(t.design.script, t.lines)]
+    return None, None
+
+
+def case_snapshot_unbound(t):
+    def edit(path):
+        led = path.parent / "driver-ledger.json"
+        doc = json.loads(led.read_text())
+        doc["native_snapshots"][-1]["sha256"] = "0" * 64
+        led.write_text(json.dumps(doc))
+    return None, edit
+
+
 def case_snapshot_differs(t):
     return lambda p: p["native"][2][0]["content"][0].update(text="other"), None
 
@@ -369,6 +385,13 @@ CASES = {
     "the gemini snapshot's interaction differs from the envelopes": (("gemini",), case_snapshot_differs,
                                                                      {"readers-disagree": 1}, None),
     "the CLI's record holds an extra turn": (("codex", "gemini"), case_extra_turn, {"readers-disagree": 1}, None),
+    "the ledger's sent line differs from the envelopes": (("codex", "gemini"), case_ledger_sent_differs,
+                                                          {"readers-disagree": 1}, None),
+    # the last retained snapshot the ledger does not bind: no reader of it stands (codex's cwd and run tree too)
+    "a codex snapshot the ledger does not bind": (("codex",), case_snapshot_unbound,
+                                                  {"transcript-unreadable": 2, "inherited-context": 1}, None),
+    "a gemini snapshot the ledger does not bind": (("gemini",), case_snapshot_unbound, {"transcript-unreadable": 1},
+                                                   None),
     # no-first-agent-turn (T-1); the replies' markers go with the output
     "no agent output": (("codex", "gemini"), edits(no_agent_output, None),
                         {"no-first-agent-turn": 1, "continued-past-unheld-marker": 2}, None),
@@ -559,6 +582,15 @@ def pending_call_sites(source: str) -> list:
 P2_WITNESSES = {
     "the CLI's user records not compared": (("    for name, got in readers.items():\n", "    for name, got in ():\n"),
                                            "the CLI's user record differs from the envelopes"),
+    "the ledger's sent lines not compared": (("    if rows != sent:\n", "    if False:\n"),
+                                            "the ledger's sent line differs from the envelopes"),
+    "the snapshot's ledger digest unchecked": ((
+        '    raw = _binding._regular_bytes(Path(path).parent / "session" / name)\n'
+        '    if hashlib.sha256(raw).hexdigest() != snaps[-1].get("sha256"):\n'
+        '        raise VendorUnreadable(f"session/{name}: its bytes are not the ones the ledger binds")\n'
+        '    return raw\n',
+        '    return _binding._regular_bytes(Path(path).parent / "session" / name)\n'),
+        "a codex snapshot the ledger does not bind"),
     "the envelope read twice": ((
         '            readers = {"the rollout\'s UserMessage items": [t["sent"] for t in '
         '_codex_native.read_rollout(raw)["turns"]]}\n',
