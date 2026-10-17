@@ -115,13 +115,17 @@ def flag_reads_outside_history_model(tree):
     return sorted(set(lines))
 
 
+NAMESPACE_READERS = ("locals", "globals", "vars", "_getframe")
+
+
 def args_unpinned_in_collect(tree):
     """(line, what) pairs in cmd_collect that loosen the allow-list's hold on the name `args`
     (0311): a signature other than one plain parameter named `args`, or any binding of `args`
     or `ws` inside the function (a store or delete, a for, with or comprehension target, a
     walrus, a nested def's or lambda's parameter, a nested def or class of that name, an import
-    as, an except as, a global or nonlocal). The allow-list reads loads of the name; it holds
-    only while the name is the namespace and ws is the module."""
+    as, an except as, a global or nonlocal), or any use of locals, globals, vars or
+    sys._getframe, which reach it without naming it. The allow-list reads loads of the name;
+    it holds only while the name is the namespace and ws is the module."""
     collect = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "cmd_collect"]
     if not collect:
         return []
@@ -159,6 +163,12 @@ def args_unpinned_in_collect(tree):
             found.append((node.lineno, "%s is rebound" % node.name))
         elif type(node).__name__ == "MatchMapping" and getattr(node, "rest", None) in pinned:
             found.append((node.lineno, "%s is rebound" % node.rest))
+        # locals, globals, vars and sys._getframe reach the namespace without naming it
+        # (REVIEW-f3c7520 NIT 1); any reference fails, called or not, so an alias cannot hide one.
+        if isinstance(node, ast.Name) and node.id in NAMESPACE_READERS:
+            found.append((node.lineno, "%s reaches the namespace without naming args" % node.id))
+        elif isinstance(node, ast.Attribute) and node.attr == "_getframe":
+            found.append((node.lineno, "_getframe reaches the namespace without naming args"))
     return sorted(set(found))
 
 
@@ -297,7 +307,8 @@ def conform_one(wrapper_dir):
     for line, what in args_unpinned_in_collect(tree):
         fails.append(fail("provenance",
                           "%s: cmd_collect line %d: %s; it takes exactly one plain parameter "
-                          "named args and binds neither args nor ws (0311)"
+                          "named args, binds neither args nor ws and never calls locals, "
+                          "globals, vars or sys._getframe (0311)"
                           % (module.name, line, what)))
     for line in body.splitlines():
         if "args.model" in line and any(w in line for w in ENTRY_OR_MANIFEST):
