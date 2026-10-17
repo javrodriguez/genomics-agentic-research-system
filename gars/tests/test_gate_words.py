@@ -9,6 +9,7 @@ from support import GARS
 
 STAGE00 = '00_initialize_project/CONTEXT.md'
 STAGE01 = '01_prepare_samplesheets/CONTEXT.md'
+ROUTER = '02_bioinformatics/CONTEXT.md'
 
 
 def read(path):
@@ -107,6 +108,28 @@ class Stage01GateWordTests(unittest.TestCase):
         body = steps(read(STAGE01))['10']
         self.assertRegex(body, r'step 3', 'a refused switch must go back to the check (step 3)')
         self.assertIn('--check', body)
+
+
+
+class RouterProtocolMenuTests(unittest.TestCase):
+    """For a protocol assay (scrnaseq) the router offers the chemistry menu beside the genome
+    and shows the chosen chemistry in T9 (R-protocol); `apply` refuses without `--protocol`."""
+
+    def test_router_offers_and_confirms_the_chemistry(self):
+        text = read(ROUTER)
+        body = steps(text)['3a']
+        self.assertIn('configure.py protocols --aligner', body,
+                      'step 3a must run the chemistry menu for a protocol assay')
+        self.assertIn('--protocol <n>', body, "step 3a's apply must pass the chosen chemistry")
+        self.assertIn('--aligner', body.split('configure.py apply', 1)[-1],
+                      "step 3a's apply must pass the config's aligner, not apply's default")
+        render = text.split('**T9 — ', 1)[0].split('**T8 — ', 1)[-1]
+        self.assertIn('`protocols`', render, 'T8 must say how the chemistry menu is rendered')
+        self.assertRegex(template(text, 'T9'), r'protocol',
+                         'T9 must show the chosen chemistry')
+        closed = template(text, 'T10')
+        self.assertIn('configure.py protocols', closed)
+        self.assertIn('--protocol <n>', closed)
 
 
 if __name__ == '__main__':
