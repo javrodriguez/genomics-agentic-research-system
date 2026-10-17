@@ -11,7 +11,9 @@ PF, the freeze gate's half in check_take.py (plan section 7; review 36ce125 MINO
                (<key>)") while the key is PENDING, raises KeyError for an unknown harness or key, and once a key is
                settled calls the reader the row names and returns its problems; a settled key with no reader, another
                reader, a reader returning no list, or a row off its shape (a SAME with no fixture, a NOT COMPARABLE with
-               no ruling) refuses with CheckRefused, so settling a key never silences a refusal no reader covers.
+               no ruling) refuses with CheckRefused, so settling a key never silences a refusal no reader covers. A
+               row's reader is a function defined in check_take itself: a class or an imported name refuses (round 8
+               ruling 2).
   VP-keys      read from check_take.py's AST: every vendor_pending call names its harness and key as literals and a
                key of the map; a settled key's call site passes, as its reader, the very function its row names; the
                text "no vendor reader yet" occurs only inside vendor_pending's body. The call sites are P2's, so on this
@@ -74,6 +76,11 @@ def another_reader(*args, **kwargs):
 
 def none_reader(*args, **kwargs):
     return None
+
+
+# TEST DATA: the readers settled() patches into check_take stand for functions defined there (round 8 ruling 2 admits
+# only a function whose module is check_take); another_reader is never patched in and stays foreign.
+synthetic_reader.__module__ = none_reader.__module__ = ct.__name__
 
 
 @contextlib.contextmanager
@@ -224,6 +231,22 @@ class VPHelper(unittest.TestCase):
         with self.subTest(case="a row carrying an extra key"), \
                 settled("codex", "T-5", "SAME", note="x"), self.assertRaises(ct.CheckRefused):
             ct.vendor_pending("codex", "T-5", synthetic_reader)
+
+    def test_vp_helper_a_reader_is_a_function_defined_in_check_take(self):
+        # round 8 ruling 2 (review e7496cf NIT 2): a class of the module, an imported class and an imported function
+        # are callable globals of check_take, never its readers
+        foreign = {"a class of check_take (CheckRefused)": "CheckRefused", "an imported class (Path)": "Path",
+                   "an imported function": "imported_reader", "a module": "json"}
+        for name, reader in foreign.items():
+            with self.subTest(case=name), settled("codex", "T-5", reader=reader), \
+                    mock.patch.object(ct, "imported_reader", contextlib.contextmanager, create=True):
+                row = ct.VENDOR_PENDING_ROWS["codex"]["T-5"]
+                self.assertIn("no function of check_take.py", ct.vendor_row_problem("codex", "T-5", row) or "")
+                self.assertTrue(any(p.startswith("T-5 ") for p in ct.vendor_rows_problems("codex")))
+                with self.assertRaises(ct.CheckRefused):
+                    ct.vendor_pending("codex", "T-5", getattr(ct, reader))
+        with settled("codex", "T-5"):
+            self.assertIsNone(ct.vendor_row_problem("codex", "T-5", ct.VENDOR_PENDING_ROWS["codex"]["T-5"]))
 
     def test_vp_helper_settling_a_key_closes_its_row_for_the_freeze(self):
         with settled("gemini", "T-4"):

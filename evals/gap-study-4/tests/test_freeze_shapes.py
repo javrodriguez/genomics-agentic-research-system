@@ -116,6 +116,9 @@ def synthetic_reader(*args, **kwargs):
     return []
 
 
+synthetic_reader.__module__ = check_take.__name__  # TEST DATA: stands for a reader defined in check_take (round 8 ruling 2)
+
+
 @contextlib.contextmanager
 def settled(*, legs=("i", "ii", "rows", "iii"), registry=None, **arms):
     """TEST DATA: each named arm (O, G) with the named legs of the freeze gate settled: "i" its adapter recorded, "ii"
