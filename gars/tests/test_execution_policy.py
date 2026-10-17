@@ -14,6 +14,7 @@ from support import GARS, write_fixture_dataset
 import executorlib as ex
 import wrapperlib as wl
 from tools.execution import config_holds
+import resolve_artifact as ra
 
 
 class ExecutionPolicyTests(unittest.TestCase):
@@ -101,6 +102,8 @@ class ExecutionPolicyTests(unittest.TestCase):
         from tools import policy
         collect_tools={Path(t['argv'][1]).stem:t for t in policy.registry() if t['name'].endswith('.collect')}
         real_run=legacy.run
+        consumed={'scrna_qc_cluster':('h5ad','h5ad'),'spatial_cluster_count':('h5ad','h5ad'),
+                  'rnaseq_de':('counts_gene','counts')}
         def prepared_run(script,args,cwd,**kwargs):
             if args and args[0]=='collect' and Path(script).stem in collect_tools:
                 tool=collect_tools[Path(script).stem]
@@ -111,7 +114,15 @@ class ExecutionPolicyTests(unittest.TestCase):
                     substage.mkdir(parents=True,exist_ok=True)
                     cfg=project/'_config'/(tool['assay']+'.yaml')
                     (substage/'submit.sh').write_text('#!/bin/bash\nexit 0\n')
-                    wl.write_reproducibility(substage,tool['assay'],project,{'config':cfg},[])
+                    inputs={'config':cfg}
+                    # A consumer's stand-in records the resolved producer artifact as its input,
+                    # under the label its real prepare uses (ruling 1 of the fold of REVIEW-8f5ae09).
+                    if Path(script).stem in consumed:
+                        wanted,label=consumed[Path(script).stem]
+                        hit,_=ra.upstream(project,tool['assay'],wanted,tool['substage'])
+                        if hit is not None:
+                            inputs[label]=project/hit['resolved']
+                    wl.write_reproducibility(substage,tool['assay'],project,inputs,[])
                 # Each inherited content case is an independent completed-run fixture.
                 # It does not model lifecycle recovery by editing completed outputs.
                 if (substage/'STATUS').exists():
