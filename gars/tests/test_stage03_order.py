@@ -242,6 +242,22 @@ class RunnerDirectiveTests(unittest.TestCase):
         for word in ('--mem ', '--mem-per-cpu', 'scripts/01_first.sh', 'scripts/02_second.sh'):
             self.assertIn(word, blocked)
 
+    def mem_per_gpu_after(self, first):
+        """The fold of REVIEW-de77fe0, finding 1: --mem, --mem-per-cpu and --mem-per-gpu are one
+        family, and Slurm refuses a job asking more than one (the review's reproduction)."""
+        self.first.write_text('#SBATCH %s\n' % first + FIRST)
+        self.second.write_text('#SBATCH --mem-per-gpu=4G\n#SBATCH --gpus=1\n' + SECOND)
+        blocked = self.refused_with_nothing_written()
+        for word in (first.split('=')[0] + ' (scripts/01_first.sh)',
+                     '--mem-per-gpu (scripts/02_second.sh)'):
+            self.assertIn(word, blocked)
+
+    def test_mem_with_mem_per_gpu_across_the_scripts_is_refused(self):
+        self.mem_per_gpu_after('--mem=8G')
+
+    def test_mem_per_cpu_with_mem_per_gpu_across_the_scripts_is_refused(self):
+        self.mem_per_gpu_after('--mem-per-cpu=8G')
+
     def test_a_refused_memory_value_names_the_accepted_forms(self):
         """The fold of REVIEW-8f5ae09, NIT 2: unitless megabytes stay refused, and the refusal
         says which forms approve reads."""
