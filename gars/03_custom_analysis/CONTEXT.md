@@ -146,7 +146,9 @@ refusal.
    that order as one job and stops at the first failure (decision 0307). Give each script its
    resources in its leading `#SBATCH` lines; the runner carries them as the one job's: the times
    add up, memory and `--cpus-per-task` take the largest, any other directive must agree, and
-   `approve` refuses a disagreement or a value it cannot read (decision 0308).
+   `approve` refuses a disagreement or a value it cannot read (decision 0308). Ask memory one
+   way in every script, `--mem` or `--mem-per-cpu`: Slurm refuses a job asking both, so
+   `approve` refuses scripts that mix them (decision 0309).
    On a non-public project the plan is the user's to write: T7.
 4. Reply T2 and stop. The user reads the plan and its scripts, edits them if they wish, and
    answers.
