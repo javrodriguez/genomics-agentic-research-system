@@ -352,7 +352,10 @@ class AuthoringTests(unittest.TestCase):
                       '    model = object.__getattribute__(args, "model") or model\n',
                       '    model = operator.attrgetter("model")(args) or model\n',
                       '    model = dict(args._get_kwargs())["model"] or model\n',
-                      '    model = ws.history_model(WORKSPACE, (m := args.model)) and (m or model)\n'):
+                      '    model = ws.history_model(WORKSPACE, (m := args.model)) and (m or model)\n',
+                      # A witness for the clause the walrus row cannot reach: args.model stays a
+                      # whole argument, the assignment expression sits elsewhere in the call.
+                      '    model = ws.history_model(WORKSPACE, args.model, *[(m := model)])\n'):
             with self.subTest(line=added):
                 code, payload = self.conform_mutant(anchor, added + anchor)
                 self.assertEqual(code, 1, payload)
