@@ -14,7 +14,7 @@
     {
       "path": "tests/test_freeze_shapes.py",
       "status": "new",
-      "reason": "Lane vendor-admission T3 (glitch-b5, 16 Oct 2026), ruling Q-3: freeze.main against a temporary folder with faked git, review, pins, prepare and writer refuses a fixture draft with an O row, a G row or both while that adapter's SHAPES_SOURCE is \"documented\", naming each arm and writing nothing, and passes once it is patched to \"recorded\"; a claude-code-only draft passes; on the committed draft unrecorded_shapes_problem names arms O and G; freeze.py --check is unchanged. Two in-memory witnesses (the call deleted, the comparison disabled) go red."
+      "reason": "Lane vendor-admission T3 (glitch-b5, 16 Oct 2026), ruling Q-3: freeze.main against a temporary folder with faked git, review, pins, prepare and writer refuses a fixture draft with an O row, a G row or both while that adapter's SHAPES_SOURCE is \"documented\", naming each arm and writing nothing, and passes once it is patched to \"recorded\"; a claude-code-only draft passes; on the committed draft unrecorded_shapes_problem names arms O and G; freeze.py --check is unchanged. Round-2 ruling 2: each adapter's SHAPES_SOURCE docstring paragraph names freeze.py's refusal of its arm, never a later slice. Two in-memory witnesses (the call deleted, the comparison disabled) go red."
     },
     {
       "path": "checks.d/vendor-admission.txt",
@@ -24,7 +24,7 @@
     {
       "path": "COPIED.d/vendor-admission.json",
       "status": "new",
-      "reason": "Lane vendor-admission (glitch-b5, 16 Oct 2026): this lane's copy record. Its edits to files other lanes own are recorded as departures in their owning fragments: run.py (w8a-walk-layout), walk_regrade.py and tests/test_walk_grade_seam.py (live-harness-foundation), harness_bookkeeping.py and tests/test_harness_bookkeeping.py (w2a-cp3-endstate), freeze.py (w8b-holdout-digests)."
+      "reason": "Lane vendor-admission (glitch-b5, 16 Oct 2026): this lane's copy record. Its edits to files other lanes own are recorded as departures in their owning fragments: run.py (w8a-walk-layout), walk_regrade.py and tests/test_walk_grade_seam.py (live-harness-foundation), harness_bookkeeping.py and tests/test_harness_bookkeeping.py (w2a-cp3-endstate), freeze.py (w8b-holdout-digests), codex_adapter.py (w11a-codex-adapter) and gemini_adapter.py (w11b-gemini-adapter)."
     }
   ]
 }

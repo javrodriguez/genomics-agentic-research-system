@@ -10,8 +10,8 @@ SHAPES_SOURCE. Every stream and rollout shape this module reads is DOCUMENTED, n
 recorded before J3's keys (D8:113-115). Ruling Q-3 (glitch-2f, 12 Oct 2026): build on the documented shapes now; the
 freeze refuses any arm whose adapter has not been re-tested on a stream recorded at its first real walk. So
 `SHAPES_SOURCE` is "documented", the adapter reports it in its harness record and in every turn record, and a test
-holds it at "documented" while no recorded-stream fixture exists. The freeze-side refusal is owed to a later slice
-(freeze.py is outside this lane's file list).
+holds it at "documented" while no recorded-stream fixture exists. Lane vendor-admission T3 (glitch-b5): freeze.py now
+refuses a design row of this harness (arm O) while SHAPES_SOURCE is not "recorded" (freeze.unrecorded_shapes_problem).
 
 THE ARGV (D8:107-112):
 
