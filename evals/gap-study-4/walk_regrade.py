@@ -20,7 +20,9 @@ drive.codex_cross_check. The document:
    "cross_check": drive.gemini_cross_check over the committed snapshots and streams, the one shared join,
    "graded", and either "row" and "grade" (run.walk_row and run.grade_walk_folder, or `grade` in tests) when the
    cross-check agreed, or "why" when it refused}.
-A grader that raises refuses the regrade: no partial record is written. The checker's reading and route are not
+A grader that raises refuses the regrade: no partial record is written. Before any grader, run.vendor_admission (lane
+vendor-admission T1) is handed the regrade's own cross-check and registry: anything but exactly the agreed shape, or a
+registry without the walk's harness, refuses. The checker's reading and route are not
 re-derived here (they need the design view and its constants); check.json keeps saying the checker never ran.
 
 THE RECHECK (glitch-6b's scheduled-wakeup ruling, 15 Oct 2026; freeze-gate ruling line 51, required before that
@@ -152,12 +154,23 @@ def regrade_doc(walk: str, study: Path = HERE, *, readers=None, grade=None) -> d
                "cross_check": cross}
         if cross["status"] != "agreed":
             return dict(doc, graded=False, why=f"not graded, because the native cross-check refused: {cross['why']}")
+        admitted(harness, readers, cross)
         row = run_mod.walk_row(entries[0], ledger)
         try:
             got = (run_mod.grade_walk_folder if grade is None else grade)(row, base)
         except Exception as e:  # noqa: BLE001 - a grader that cannot grade the walk refuses the whole regrade
             raise RegradeRefused(f"the grader refused the walk: {type(e).__name__}: {e}") from None
         return dict(doc, graded=True, row=row, grade=got)
+
+
+def admitted(harness, readers, cross) -> None:
+    """Lane vendor-admission T1: run.vendor_admission on the regrade's OWN cross-check and the registry it holds (the
+    pending walk's ledger still says pending); RegradeRefused naming why, before any grader."""
+    import run as run_mod
+    try:
+        run_mod.vendor_admission(harness, readers, cross)
+    except run_mod.VendorAdmissionRefused as e:
+        raise RegradeRefused(f"vendor admission refuses the regrade: {e}") from None
 
 
 def regrade_bytes(doc: dict) -> bytes:

@@ -1,0 +1,25 @@
+{
+  "lane": "vendor-admission",
+  "files": [
+    {
+      "path": "tests/test_vendor_admission.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T1 (glitch-b5, 16 Oct 2026, under Javier's standing delegation). The grading callers' vendor admission on synthetic walk and take folders (test_walk_grade_seam's), with TEST-DATA vendor TABLE entries patched in: every unadmitted case (no registered reader, another vendor's reader only, a cross-check refused, missing, None, carrying an extra key, a why that is not None, another spelling, a list) refuses on the walk road (run.grade_walk) and the take road (run.grade_committed) naming its reason, before endstate.Evidence.load; the production registry on this tree ({}) and a refusing one refuse; a pending walk keeps its pending document; controls reach the reader for a registered, agreed vendor and for claude-code with neither; evidence naming another vendor never reaches a grader. Three in-memory witnesses (the guard's body, each road's call) go red."
+    },
+    {
+      "path": "tests/test_vendor_admission_regrade.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T1 (glitch-b5, 16 Oct 2026). The regrade road on test_pending_walk's accepted Gemini walk in a scratch repository: walk_regrade.regrade_doc refuses an agreed cross-check carrying an extra key and a registry without the walk's harness, naming each, and regrades with its own reader and agreed cross-check; walk_regrade.py compiled in memory without its guard call goes red on both cases."
+    },
+    {
+      "path": "checks.d/vendor-admission.txt",
+      "status": "new",
+      "reason": "Lane vendor-admission: this lane's local checks (interface 2), one line per new test module."
+    },
+    {
+      "path": "COPIED.d/vendor-admission.json",
+      "status": "new",
+      "reason": "Lane vendor-admission (glitch-b5, 16 Oct 2026): this lane's copy record. Its edits to files other lanes own are recorded as departures in their owning fragments: run.py (w8a-walk-layout), walk_regrade.py and tests/test_walk_grade_seam.py (live-harness-foundation)."
+    }
+  ]
+}

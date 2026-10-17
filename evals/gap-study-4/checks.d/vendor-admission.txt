@@ -1,0 +1,6 @@
+# Lane vendor-admission: groundwork for arms O (Codex) and G (Gemini), directed by glitch-b5 under Javier's standing
+# delegation (16 Oct 2026). T1: a vendor take, walk or regrade is graded only through a registered reader and an
+# agreed native cross-check (run.vendor_admission). One command per line, run from the repository root. Fixtures only:
+# no take, model, container or network.
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_admission.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_admission_regrade.py

@@ -50,6 +50,46 @@ import pending_walk  # live harness (registration review finding 2): a pending v
 
 RECORDS = HERE / "records"
 
+# ---- vendor admission (lane vendor-admission T1, glitch-b5, 16 Oct 2026): defence in depth at the grading callers --
+# A Codex or Gemini take reaches endstate.Evidence.load only when the reader registry the caller holds includes its
+# harness (native_reader_registration.production_readers(), or `readers` handed in by tests) and the native cross-check
+# handed in is exactly drive's agreed shape. The take and walk roads read it from the driver ledger's
+# cross_check_status; walk_regrade passes its own re-derived cross-check. claude-code is untouched.
+VENDOR_HARNESSES = ("codex", "gemini")             # drive.VENDOR_HARNESSES; run.py does not import drive
+AGREED_CROSS_CHECK = {"status": "agreed", "why": None}   # drive.gemini_cross_check's and codex_cross_check's
+
+
+class VendorAdmissionRefused(ValueError):
+    """A vendor take offered for grading without a registered reader and an agreed native cross-check."""
+
+
+def vendor_admission(harness, readers, cross) -> None:
+    """Refuse (VendorAdmissionRefused) a codex or gemini take unless `readers` (None: the production registry) holds a
+    reader for its harness and `cross` is exactly {"status": "agreed", "why": None}; any other harness passes."""
+    if harness not in VENDOR_HARNESSES:
+        return
+    if readers is None:
+        import native_reader_registration as nrr
+        try:
+            readers = nrr.production_readers()
+        except nrr.RegistrationRefused as e:
+            raise VendorAdmissionRefused(f"harness {harness!r}: the reader registration refuses: {e}") from None
+    if not isinstance(readers, dict) or readers.get(harness) is None:
+        raise VendorAdmissionRefused(f"harness {harness!r}: no registered {harness} native reader in the registry "
+                                     f"grading holds; a vendor take is graded only through one")
+    if type(cross) is not dict or cross != AGREED_CROSS_CHECK or cross["why"] is not None:
+        raise VendorAdmissionRefused(f"harness {harness!r}: the native cross-check is {cross!r}, not exactly "
+                                     f"{AGREED_CROSS_CHECK!r}; a vendor take is graded only cross-checked")
+
+
+def ledger_cross_check(folder):
+    """The driver ledger's cross_check_status in `folder`; None when it is absent or unreadable (never agreement)."""
+    try:
+        ledger = json.loads((Path(folder) / "driver-ledger.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return ledger.get("cross_check_status") if isinstance(ledger, dict) else None
+
 
 def grader_for(name: str):
     """Load the v4 file itself, regardless of a cached module of the same name."""
@@ -214,8 +254,9 @@ def transcript_lines(path) -> "transcript_view.BoundTranscript":
     return transcript_view.BoundTranscript(path)
 
 
-def grade_committed(row: dict, outcome: dict) -> dict:
-    """The real callback: bound take artifacts and specs, with the same pure grader path."""
+def grade_committed(row: dict, outcome: dict, *, readers=None) -> dict:
+    """The real callback: bound take artifacts and specs, with the same pure grader path. A vendor take is admitted
+    first (vendor_admission: `readers`, None for the production registry, and its driver ledger's cross-check)."""
     from graders import endstate
     path = (HERE / row["record_dir"]).resolve()
     takes_root = (HERE / mode_binding.TAKES_DIR).resolve()
@@ -235,6 +276,7 @@ def grade_committed(row: dict, outcome: dict) -> dict:
     task = variants.load_task(row["task"])
     spec = variants.grader_spec(row["task"], row["half"], row["wording"], pressure=row["pressure"],
                                 project=row["project"])
+    vendor_admission((row.get("agent") or {}).get("harness"), readers, ledger_cross_check(path))
     evidence = endstate.Evidence.load(path / "evidence")
     require_evidence_identity(row, evidence)
     named = dict(row, grader_half=(task["grader_halves"] or {}).get(row["half"]))
@@ -274,7 +316,8 @@ def walk_row(entry: dict, ledger: dict, cell: dict | None = None) -> dict:
 
 def grade_walk_folder(row: dict, folder: Path) -> dict:
     """The real grading of a walk folder: the same v4 grader road as grade_committed, past its take-folder binding.
-    graded_by is study-relative, so the bytes are the same on every machine."""
+    graded_by is study-relative, so the bytes are the same on every machine. It admits nothing itself: its callers do
+    (grade_walk on the driver ledger's cross-check, walk_regrade on its own re-derived one)."""
     from graders import endstate
     task = variants.load_task(row["task"])
     spec = variants.grader_spec(row["task"], row["half"], row["wording"], pressure=row["pressure"],
@@ -287,10 +330,12 @@ def grade_walk_folder(row: dict, folder: Path) -> dict:
     return dict(got, graded_by=Path(module).resolve().relative_to(HERE.resolve()).as_posix())
 
 
-def grade_walk(entry: dict, folder, cell: dict | None = None, grade=None) -> dict:
+def grade_walk(entry: dict, folder, cell: dict | None = None, grade=None, *, readers=None) -> dict:
     """grade.json's document for one walk: {"graded": true, "row", "grade"} when its driver ledger records a first
     agent turn, else {"graded": false, "why"} with the ledger's own outcome. `grade` stands in for
-    grade_walk_folder (tests); `cell` ({pressure, repeat}) is optional and must equal the driver ledger's."""
+    grade_walk_folder (tests); `cell` ({pressure, repeat}) is optional and must equal the driver ledger's. A vendor
+    walk is admitted first (vendor_admission: `readers`, None for the production registry, and the driver ledger's
+    cross-check), whichever grade stands in."""
     folder = Path(folder)
     if not (folder / "driver-ledger.json").is_file():         # D3
         return {"graded": False, "why": "not graded, because " + died_before_turn_one(folder)}
@@ -302,6 +347,7 @@ def grade_walk(entry: dict, folder, cell: dict | None = None, grade=None) -> dic
     if pending is not None:
         return pending
     row = walk_row(entry, ledger, cell)
+    vendor_admission(row["agent"].get("harness"), readers, ledger.get("cross_check_status"))
     return {"graded": True, "row": row, "grade": (grade_walk_folder if grade is None else grade)(row, folder)}
 
 
@@ -333,10 +379,10 @@ def walk_grade_bytes(doc: dict) -> bytes:
     return (json.dumps(doc, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8")
 
 
-def write_walk_grade(entry: dict, folder, cell: dict | None = None, grade=None) -> Path:
+def write_walk_grade(entry: dict, folder, cell: dict | None = None, grade=None, *, readers=None) -> Path:
     """Write a walk's grade.json (before WalkRepo commits the walk)."""
     path = Path(folder) / mode_binding.WALK_GRADE
-    path.write_bytes(walk_grade_bytes(grade_walk(entry, folder, cell, grade)))
+    path.write_bytes(walk_grade_bytes(grade_walk(entry, folder, cell, grade, readers=readers)))
     return path
 
 

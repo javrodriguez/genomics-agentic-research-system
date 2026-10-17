@@ -60,6 +60,9 @@ def other(harness: str) -> str:
     return "gemini" if harness == "codex" else "codex"
 
 
+ABSENT = object()
+
+
 def cases(harness: str) -> dict:
     """name -> (readers, cross-check in the ledger (ABSENT: no key), the words the refusal must carry)."""
     r = {harness: stand_in_reader}
@@ -77,14 +80,15 @@ def cases(harness: str) -> dict:
     }
 
 
-ABSENT = object()
-
-
 def vendor_walk(root: Path, harness: str, cross=ABSENT, task: str = "plan-gate"):
+    """The seam's vendor walk (its ledger carries the agreed cross-check) with `cross` in its place, or none (ABSENT)."""
     entry, folder = seam.walk_folder(root, task, variants.cells(task)[0], harness)
+    path = folder / "driver-ledger.json"
+    ledger = json.loads(path.read_text())
+    del ledger["cross_check_status"]
     if cross is not ABSENT:
-        path = folder / "driver-ledger.json"
-        path.write_text(json.dumps(dict(json.loads(path.read_text()), cross_check_status=cross)))
+        ledger["cross_check_status"] = cross
+    path.write_text(json.dumps(ledger))
     return entry, folder
 
 
@@ -218,9 +222,9 @@ class Controls(unittest.TestCase):
                 self.assertEqual(len(loads), 1, f"{road} {harness}: {got!r}")
                 self.assertNotIsInstance(got, Exception, f"{road} {harness}: {got!r}")
 
-    def test_va_the_reader_refuses_evidence_of_another_vendor(self):
+    def test_va_evidence_of_another_vendor_never_reaches_a_grader(self):
         # a walk admitted as gemini (its row, its ledger, its reader, its agreed cross-check) whose evidence names
-        # codex: the reader is handed a table holding the admitted harness only, so it refuses the codex take itself
+        # codex: run.require_evidence_identity refuses it after the reader and before any grader
         loads, graded = [], []
         with tempfile.TemporaryDirectory() as tmp:
             entry, folder = vendor_walk(Path(tmp), "gemini", AGREED)
@@ -231,11 +235,11 @@ class Controls(unittest.TestCase):
             with mock.patch.dict(hb.TABLE, fake_table()), \
                     mock.patch.object(endstate.Evidence, "load", spying_load(loads)), \
                     mock.patch.object(run, "regrade", grader_spy(graded)):
-                with self.assertRaises(endstate.EvidenceError) as cm:
+                with self.assertRaises(ValueError) as cm:
                     run.grade_walk(entry, folder, readers={"gemini": stand_in_reader})
         self.assertEqual(len(loads), 1)
         self.assertEqual(graded, [])
-        self.assertIn("'codex' has no bookkeeping entry", str(cm.exception))
+        self.assertIn("the evidence names another model or agent", str(cm.exception))
 
     def test_va_control_claude_code_needs_neither(self):
         loads, graded = [], []
@@ -266,10 +270,10 @@ def mutant(old: str, new: str):
 WITNESSES = {
     "the guard's body": ("    if harness not in VENDOR_HARNESSES:\n        return\n",
                          "    if True:\n        return\n", ("walk", "take")),
-    "the walk road's call": ("table = admitted_table(harness, readers, ledger.get(\"cross_check_status\"))",
-                             "table = None", ("walk",)),
-    "the take road's call": ("table = admitted_table(harness, readers, ledger_cross_check(path))",
-                             "table = None", ("take",)),
+    "the walk road's call": ("    vendor_admission(row[\"agent\"].get(\"harness\"), readers, "
+                             "ledger.get(\"cross_check_status\"))\n", "", ("walk",)),
+    "the take road's call": ("    vendor_admission((row.get(\"agent\") or {}).get(\"harness\"), readers, "
+                             "ledger_cross_check(path))\n", "", ("take",)),
 }
 
 
