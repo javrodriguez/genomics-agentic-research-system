@@ -140,13 +140,11 @@ def config_problems(tc) -> list:
 
 
 def draft_problems() -> list:
-    import build_draft
+    """The committed draft's instruction_files (build_draft --check binds the draft to the writer, and
+    test_build_draft's R15.instructions binds the writer to take_config.INSTRUCTION_FILES)."""
     got = json.loads((HERE / "prereg-draft.json").read_text())["instruction_files"]
     want = {"codex": ["AGENTS.md"], "gemini": ["GEMINI.md"]}
-    out = [] if got == want else [f"the draft's instruction_files are {got}"]
-    if build_draft.build()["instruction_files"] != want:
-        out.append("build_draft builds other instruction_files")
-    return out
+    return [] if got == want else [f"the draft's instruction_files are {got}"]
 
 
 def compiled(path: Path, name: str, edits=()) -> types.ModuleType:

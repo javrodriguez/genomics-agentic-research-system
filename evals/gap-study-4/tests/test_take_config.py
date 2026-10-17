@@ -164,8 +164,9 @@ class TestContents(MutantCase):
         d, rec = written(tc.CODEX, "gpt-6.1-sol")
         with open(os.path.join(d, "config.toml"), "rb") as fh:
             doc = tomllib.load(fh)
+        # R-6 (glitch-b5's ruling of 17 Oct 2026; lane vendor-admission T4 P2): no instruction-file name is configured
         want = {"model": "gpt-6.1-sol", "model_reasoning_effort": "medium", "web_search": "disabled",
-                "project_doc_fallback_filenames": ["CLAUDE.md"], "check_for_update_on_startup": False,
+                "check_for_update_on_startup": False,
                 # The renderer fold (owner amendment, 13 Oct): Codex reads a ChatGPT subscription login from a
                 # file store; no API-key route.
                 "forced_login_method": "chatgpt", "cli_auth_credentials_store": "file",
@@ -175,7 +176,7 @@ class TestContents(MutantCase):
         d, rec = written(tc.GEMINI, "gemini-3.8-flash")
         with open(os.path.join(d, ".gemini", "settings.json")) as fh:
             doc = json.load(fh)
-        want = {"tools.exclude": ["google_web_search", "web_fetch"], "context.fileName": ["CLAUDE.md"],
+        want = {"tools.exclude": ["google_web_search", "web_fetch"],          # R-6: no context.fileName
                 "hooksConfig.enabled": False, "general.enableAutoUpdate": False,
                 "general.enableAutoUpdateNotification": False, "privacy.usageStatisticsEnabled": False,
                 "telemetry.enabled": False, "model.name": "gemini-3.8-flash", "model.thinkingLevel": "default",

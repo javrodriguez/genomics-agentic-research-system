@@ -1488,8 +1488,9 @@ def build(root=None):
     d["effort"] = {h: {m: copy.deepcopy(take_config.CODEX_REASONING_EFFORT if h == CODEX else
                       take_config.GEMINI_THINKING if h == GEMINI else PENDING) for m in MODELS[a]}
                    for a, h in HARNESSES.items()}
-    d["instruction_files"] = {CODEX: dict(take_config.CODEX_TOP)["project_doc_fallback_filenames"],
-                               GEMINI: dict(take_config.GEMINI_SETTINGS)["context.fileName"]}
+    # R-6 (glitch-b5, 17 Oct 2026; lane vendor-admission T4 P2): each vendor CLI's native file, configured nowhere
+    d["instruction_files"] = {CODEX: [take_config.INSTRUCTION_FILES[CODEX]],
+                               GEMINI: [take_config.INSTRUCTION_FILES[GEMINI]]}
     d["served_model_rule"] = {h: PENDING for h in HARNESSES.values()}
     # Departure D-INT-2 (glitch-06 under the standing delegation, 14 Oct 2026; for Javier's review before the freeze;
     # this field only, the harness lane's narrow extension): arm O's rule is routing's own sentence, read from routing.

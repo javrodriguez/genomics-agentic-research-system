@@ -20,7 +20,8 @@ WHAT IS BUILT HERE (glitch-2f's assignment under Javier's standing delegation, T
                       (the folder itself is a real-box value: run_take.CALLER_PENDING["cgroup_dir"]).
   build_run_tree      the walk's checkout: drive.clean_run_tree of the pinned tree at the walk's own neutral name
                       (one commit, no remote, clean status, nothing above it); a refusal is BuilderRefused and leaves
-                      nothing behind.
+                      nothing behind. R-6 (lane vendor-admission T4 P2): a codex or gemini walk's checkout also
+                      carries its CLI's native instruction file, a byte-identical copy of the pinned CLAUDE.md.
   build_walk_fixture  the half's fixture built inside the run tree by drive.build_take_fixture (every kind round 3
                       builds), refused by name when nothing was built, when a project fixture records no stage 01
                       exit or not the one its variant is built to reach, or another variant, or when the source the
@@ -456,9 +457,10 @@ def counters_reader(cgroup_dir_for):
 
 
 # ------------------------------------------------------------------------------------------------ the run tree
-def build_run_tree(walk: str, *, repo, commit: str, exclude) -> Path:
+def build_run_tree(walk: str, *, repo, commit: str, exclude, harness=None) -> Path:
     """The walk's own checkout of `commit` (drive.clean_run_tree: git archive minus `exclude`, one neutral commit,
-    named for the walk's session); any refusal or failure is BuilderRefused, and clean_run_tree leaves nothing."""
+    named for the walk's session), and for a codex or gemini `harness` its native instruction file (R-6,
+    place_instruction_file); any refusal or failure is BuilderRefused, and nothing is left behind."""
     import check_take
     import drive
     if not isinstance(commit, str) or not HEX40.fullmatch(commit):
@@ -468,9 +470,59 @@ def build_run_tree(walk: str, *, repo, commit: str, exclude) -> Path:
         raise BuilderRefused("the run tree's exclusions are a list of relative paths")
     sid = check_take.walk_session_id(walk)
     try:
-        return drive.clean_run_tree(commit, sid, list(exclude), Path(repo))
+        tree = drive.clean_run_tree(commit, sid, list(exclude), Path(repo))
     except (SystemExit, Exception) as e:  # noqa: BLE001 - clean_run_tree refuses by SystemExit
         raise BuilderRefused(f"the run tree was not built: {type(e).__name__}: {e}") from None
+    try:
+        place_instruction_file(tree, harness, repo=repo, commit=commit, session_id=sid, exclude=list(exclude))
+    except BaseException:
+        shutil.rmtree(tree, ignore_errors=True)
+        raise
+    return tree
+
+
+# ------------------------------------------------------------------------------------------------ R-6
+# glitch-b5's ruling R-6 (Sat 17 Oct 2026, about 12:35 EDT, under Javier's delegation; lane vendor-admission T4 P2):
+# every arm gets byte-identical instructions under its CLI's native name, AGENTS.md for Codex and GEMINI.md for Gemini
+# (box/take_config.INSTRUCTION_FILES), each equal to the pinned tree's CLAUDE.md and bound by sha256 to it; no
+# configured fallback name is used (take_config writes none). drive.clean_run_tree takes no edit (drive.py is in both
+# native-reader source lists), so the copy is placed here, after it, into the checkout's one commit (amended, so the
+# checkout keeps one commit, its neutral subject and a clean status), and drive.run_tree_problems is read again on the
+# built tree. The copy is of the root CLAUDE.md only: gars/CLAUDE.md, which Claude Code loads when the agent works under
+# gars/, has no copy (named for glitch-b5 in the lane's summary).
+def place_instruction_file(tree: Path, harness, *, repo, commit: str, session_id: str, exclude: list):
+    """R-6: the harness's native instruction file at the checkout's root, the pinned CLAUDE.md's bytes at `commit`,
+    committed into the checkout's one commit; its name, or None for a harness that reads CLAUDE.md itself. Refuses
+    (BuilderRefused) an origin with no root CLAUDE.md, a commit already carrying the name, or a copy whose sha256 is
+    not the pinned file's."""
+    import hashlib
+    import subprocess
+    import drive
+    from box import take_config
+    name = take_config.INSTRUCTION_FILES.get(harness)
+    if name is None:
+        return None
+    got = subprocess.run(["git", "-C", str(repo), "show", f"{commit}:CLAUDE.md"], capture_output=True)
+    if got.returncode != 0:
+        raise BuilderRefused(f"the pinned tree carries no root CLAUDE.md, so {harness}'s {name} has nothing to copy")
+    pinned = got.stdout
+    target = Path(tree) / name
+    if os.path.lexists(target):
+        raise BuilderRefused(f"the pinned tree already carries {name}: {harness} would read instructions the other "
+                             f"arms are not given")
+    target.write_bytes(pinned)
+    for args in (("add", "--", name),
+                 ("commit", "-q", "--amend", "--no-verify", "--no-edit"),
+                 ):
+        subprocess.run(["git", "-C", str(tree), *args], check=True, capture_output=True)
+    committed = subprocess.run(["git", "-C", str(tree), "show", f"HEAD:{name}"], capture_output=True).stdout
+    want = hashlib.sha256(pinned).hexdigest()
+    if hashlib.sha256(committed).hexdigest() != want or hashlib.sha256(target.read_bytes()).hexdigest() != want:
+        raise BuilderRefused(f"{name} in the checkout is not the pinned CLAUDE.md's bytes (sha256 {want[:12]})")
+    problems = drive.run_tree_problems(Path(tree), session_id, exclude)
+    if problems:
+        raise BuilderRefused(f"the checkout with {name} placed: {'; '.join(problems)}")
+    return name
 
 
 def remove_run_tree(tree) -> str | None:
@@ -1000,7 +1052,8 @@ def prepare(builders: dict, args) -> tuple[dict, str, Path]:
         login = login_file_by_name(builders["login_path"], harness)
     check_row_values(builders, harness)            # a per-harness value missing for this row: before any checkout
     repo, commit = builders["run_tree_origin"]
-    return row, login, build_run_tree(args.walk, repo=repo, commit=commit, exclude=builders["run_tree_exclude"])
+    return row, login, build_run_tree(args.walk, repo=repo, commit=commit, exclude=builders["run_tree_exclude"],
+                                      harness=harness)
 
 
 def walk_driver_for(builders: dict, row: dict, login: str, tree: Path, *, real: bool = False):

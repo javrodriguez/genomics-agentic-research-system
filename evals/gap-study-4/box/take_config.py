@@ -14,6 +14,10 @@ run_take.py (this lane's decision) so each file stays one owner and small.
   - gemini: `settings.json` with D8's values verbatim, `model.name` from the caller; the thinking level, the API-key
     auth-type setting (name and value) are PENDING. The installed0.64.0 source establishes the file location
     under GEMINI_CLI_HOME and the explicitly frozen legacy noninteractive path.
+  - R-6 (glitch-b5's ruling of Sat 17 Oct 2026, under Javier's delegation; lane vendor-admission T4 P2): neither vendor
+    file configures an instruction-file name. D8's `project_doc_fallback_filenames = ["CLAUDE.md"]` and
+    `context.fileName = ["CLAUDE.md"]` are removed: each CLI reads its native file (INSTRUCTION_FILES), which
+    walk_builders.build_run_tree places in the checkout as a byte-identical copy of the pinned tree's CLAUDE.md.
 
 `write()` refuses (NotReady) while any value its harness needs is PENDING. No public function takes a PENDING value
 as a parameter; tests fill them only by patching this module in memory. No key ever enters a config file: no
@@ -45,18 +49,20 @@ CLAUDE_SETTINGS = "settings.json"
 # Codex: D8 section 3 plus owner's 13 Oct subscription-only amendment.
 CODEX_CONFIG = "config.toml"
 CODEX_REASONING_EFFORT = PENDING
-CODEX_TOP = (("web_search", "disabled"), ("project_doc_fallback_filenames", ["CLAUDE.md"]),
-             ("check_for_update_on_startup", False), ("forced_login_method", "chatgpt"),
+CODEX_TOP = (("web_search", "disabled"), ("check_for_update_on_startup", False), ("forced_login_method", "chatgpt"),
              ("cli_auth_credentials_store", "file"))
 CODEX_FEATURES = (("hooks", False),)
 
 # gemini: D8 section 3, verbatim, as dotted paths into settings.json.
-GEMINI_SETTINGS = (("tools.exclude", ["google_web_search", "web_fetch"]), ("context.fileName", ["CLAUDE.md"]),
-                   ("hooksConfig.enabled", False), ("general.enableAutoUpdate", False),
+GEMINI_SETTINGS = (("tools.exclude", ["google_web_search", "web_fetch"]), ("hooksConfig.enabled", False), ("general.enableAutoUpdate", False),
                    ("general.enableAutoUpdateNotification", False), ("privacy.usageStatisticsEnabled", False),
                    ("telemetry.enabled", False),
                    ("experimental.adk.agentSessionNoninteractiveEnabled", False))
 GEMINI_MODEL_PATH = "model.name"
+# R-6: the instruction file each vendor CLI reads by its own default name, configured nowhere (no fallback name is used
+# or accepted): Codex's AGENTS.md, Gemini CLI's GEMINI.md. walk_builders.build_run_tree places each as a copy of the
+# pinned tree's CLAUDE.md, the file the claude-code arm reads.
+INSTRUCTION_FILES = {CODEX: "AGENTS.md", GEMINI: "GEMINI.md"}
 # Each, once measured: {"path": "<dotted path>", "value": <JSON value>}.
 GEMINI_THINKING = PENDING
 GEMINI_AUTH_SETTING = PENDING

@@ -756,8 +756,9 @@ def ready_problems(d):
     ns = d["session_namespace"]
     need(ns["derived_from"].endswith('/' + study.STUDY_REL) and ns["uuid"] == str(uuid.uuid5(uuid.NAMESPACE_URL, ns["derived_from"])) and
          ns["uuid"] != "9607c78d-18c9-5965-9202-5f09043bdf0c", "R33.namespace")
-    need(d["instruction_files"] == {CODEX: dict(take_config.CODEX_TOP)["project_doc_fallback_filenames"],
-                                   GEMINI: dict(take_config.GEMINI_SETTINGS)["context.fileName"]}, "R15.instructions")
+    # R-6 (glitch-b5's ruling of 17 Oct 2026; lane vendor-admission T4 P2): the native names, no configured fallback
+    need(d["instruction_files"] == {CODEX: [take_config.INSTRUCTION_FILES[CODEX]],
+                                   GEMINI: [take_config.INSTRUCTION_FILES[GEMINI]]}, "R15.instructions")
     import routing as _routing                   # D-INT-2: arm O's served-model rule is routing's own sentence
     need(d["price_table"] == "PENDING" and d["served_model_rule"][CODEX] == _routing.SERVED_MODEL_LIMIT and
          all(v == "PENDING" for h, v in d["served_model_rule"].items() if h != CODEX) and

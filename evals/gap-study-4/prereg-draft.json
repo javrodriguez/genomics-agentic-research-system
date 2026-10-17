@@ -23593,10 +23593,10 @@
   },
   "instruction_files": {
     "codex": [
-      "CLAUDE.md"
+      "AGENTS.md"
     ],
     "gemini": [
-      "CLAUDE.md"
+      "GEMINI.md"
     ]
   },
   "served_model_rule": {
