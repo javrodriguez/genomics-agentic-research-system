@@ -329,9 +329,11 @@ def mutants() -> dict:
         "run-tree-commit-unchecked": ("B4.run-tree", "walk_builders",
                                       "    if not isinstance(commit, str) or not HEX40.fullmatch(commit):",
                                       "    if False:"),
+        # re-anchored (lane vendor-admission round 10, drift from R-6's green 20cea4ed, which made the call's
+        # result `tree`): the same guard, the walk's own session id handed to clean_run_tree
         "run-tree-session-another": ("B4.run-tree", "walk_builders",
-                                     "        return drive.clean_run_tree(commit, sid, list(exclude), Path(repo))",
-                                     "        return drive.clean_run_tree(commit, check_take.walk_session_id(walk + "
+                                     "        tree = drive.clean_run_tree(commit, sid, list(exclude), Path(repo))",
+                                     "        tree = drive.clean_run_tree(commit, check_take.walk_session_id(walk + "
                                      "'x'), list(exclude), Path(repo))"),
         "run-tree-exclude-dropped": ("B4.run-tree", "walk_builders", "commit, sid, list(exclude), Path(repo))",
                                      "commit, sid, [], Path(repo))"),

@@ -275,68 +275,78 @@ def account_emails(harness, path=None) -> tuple:
     what = f"the account record ({ACCOUNT_EMAILS})"
     if harness not in (rt.CODEX, rt.GEMINI):
         raise BuilderRefused(f"{what}: harness {harness!r} sweeps no account address (only codex and gemini takes do)")
-    path = account_emails_path() if path is None else path
-    if not isinstance(path, str) or not os.path.isabs(path):
+    where = account_emails_path() if path is None else path
+    if not isinstance(where, str) or not os.path.isabs(where):
         raise BuilderRefused(f"{what} is named by an absolute path")
     try:
-        st = os.lstat(path)
+        rec = os.lstat(where)
     except OSError:
-        raise BuilderRefused(f"{path}: {what} does not exist; the walk host's operator writes it before the first "
+        raise BuilderRefused(f"{where}: {what} does not exist; the walk host's operator writes it before the first "
                              f"vendor walk, and until then every codex and gemini take refuses") from None
-    if not stat.S_ISREG(st.st_mode):
-        raise BuilderRefused(f"{path}: {what} must be a regular file, never a link")
-    if stat.S_IMODE(st.st_mode) != 0o600:
-        raise BuilderRefused(f"{path}: the account record's mode must be 600 ({ACCOUNT_EMAILS})")
-    if st.st_uid != os.getuid():
-        raise BuilderRefused(f"{path}: {what} must be owned by the reading user")
-    if not rt.outside_every_repository(path):
-        raise BuilderRefused(f"{path}: {what} must sit outside every repository")
+    if not stat.S_ISREG(rec.st_mode):
+        raise BuilderRefused(f"{where}: {what} must be a regular file, never a link")
+    if stat.S_IMODE(rec.st_mode) != 0o600:
+        raise BuilderRefused(f"{where}: the account record's mode must be 600 ({ACCOUNT_EMAILS})")
+    if rec.st_uid != os.getuid():
+        raise BuilderRefused(f"{where}: {what} must be owned by the reading user")
+    if not rt.outside_every_repository(where):
+        raise BuilderRefused(f"{where}: {what} must sit outside every repository")
     try:
-        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        fd = os.open(where, os.O_NOFOLLOW | os.O_NONBLOCK | os.O_RDONLY)
     except OSError:
-        raise BuilderRefused(f"{path}: {what} cannot be opened") from None
+        raise BuilderRefused(f"{where}: {what} cannot be opened") from None
     try:
         opened = os.fstat(fd)                  # the file read is the file checked
-        if (opened.st_dev, opened.st_ino, opened.st_mode) != (st.st_dev, st.st_ino, st.st_mode):
-            raise BuilderRefused(f"{path}: {what} changed between its check and its read")
+        if (opened.st_ino, opened.st_dev, opened.st_mode) != (rec.st_ino, rec.st_dev, rec.st_mode):
+            raise BuilderRefused(f"{where}: {what} changed between its check and its read")
         raw = os.read(fd, ACCOUNT_EMAILS_MAX_BYTES + 1)
     finally:
         os.close(fd)
     if len(raw) > ACCOUNT_EMAILS_MAX_BYTES:
-        raise BuilderRefused(f"{path}: {what} is larger than {ACCOUNT_EMAILS_MAX_BYTES} bytes")
+        raise BuilderRefused(f"{where}: {what} is larger than {ACCOUNT_EMAILS_MAX_BYTES} bytes")
     try:
         doc = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_keys)
     except (UnicodeError, ValueError):
-        raise BuilderRefused(f"{path}: {what} is not one JSON object with unique keys") from None
+        raise BuilderRefused(f"{where}: {what} is not one JSON object with unique keys") from None
     if not isinstance(doc, dict):
-        raise BuilderRefused(f"{path}: {what} is not one JSON object")
+        raise BuilderRefused(f"{where}: {what} is not one JSON object")
     extra = [k for k in doc if k not in ACCOUNT_EMAIL_KEYS]
     if extra:
         named = ", ".join(json.dumps(k) if _KEY_NAME.fullmatch(k) else "a key that is not a name" for k in extra)
-        raise BuilderRefused(f"{path}: {what} holds keys other than {', '.join(map(json.dumps, ACCOUNT_EMAIL_KEYS))}: "
+        raise BuilderRefused(f"{where}: {what} holds keys other than {', '.join(map(json.dumps, ACCOUNT_EMAIL_KEYS))}: "
                              f"{named}")
     for key in ("operator", harness):
         if key not in doc:
-            raise BuilderRefused(f'{path}: {what} holds no key "{key}" (a {harness} take sweeps it)')
+            raise BuilderRefused(f'{where}: {what} holds no key "{key}" (a {harness} take sweeps it)')
     for key, value in doc.items():
         if not _is_address(value):
-            raise BuilderRefused(f'{path}: {what}\'s "{key}" value is not an email address')
+            raise BuilderRefused(f'{where}: {what}\'s "{key}" value is not an email address')
     return doc["operator"], doc[harness]
+
+
+def email_pairs(harness) -> list:
+    """Round 10 ruling 4 (the T4 plan's sections 1a and 9, account-email): a codex or gemini take's ("email", value)
+    pairs for the scan, the operator's address then the take's account address, read from the account record now (at
+    each scan) and never held here."""
+    operator, account = account_emails(harness)
+    return [("email", operator), ("email", account)]
 
 
 def login_secrets(login_file: str, harness):
     """The scan's secrets(): the login value read at scan time by scan_record.read_login (never held here). A Gemini
-    take's refuses now without the account record (round 10 ruling 2), before its walk is built."""
+    take's refuses now without the account record (round 10 ruling 2), before its walk is built, and its secrets()
+    end with the record's two email pairs, read at each scan (ruling 4)."""
     from box import run_take as rt
     from box import scan_record
+    if harness == rt.GEMINI:                   # round 10 ruling 2: no account record, no Gemini take
+        account_emails(rt.GEMINI)
     name = login_name(harness)
     if name == NO_LOGIN or login_file == NO_LOGIN:
         _no_login_file("login_secrets")
-    if harness == rt.GEMINI:                   # round 10 ruling 2: no account record, no Gemini take
-        account_emails(rt.GEMINI)
 
     def secrets():
-        return [("token", scan_record.read_login(login_file, name, allowed=tuple(rt.LOGIN_VARIABLE.values())))]
+        token = [("token", scan_record.read_login(login_file, name, allowed=tuple(rt.LOGIN_VARIABLE.values())))]
+        return token + email_pairs(rt.GEMINI) if harness == rt.GEMINI else token
     return secrets
 
 
@@ -348,7 +358,8 @@ def lease_secrets(auth_path: str):
     is never read: the refresh residual, closed on the lease road by refreshing only on the host, between turns). A
     departure from login_secrets' "never held", named: the values read are kept for this take's scans, because a
     refresh rewrites auth.json and the first values may already be in the records. Without the account record it
-    refuses before any token is read (round 10 ruling 2: no record, no Codex take)."""
+    refuses before any token is read (round 10 ruling 2: no record, no Codex take); secrets() ends with the record's
+    two email pairs, read at each scan (ruling 4)."""
     from box import run_take as rt
     from box import scan_record
     account_emails(rt.CODEX)                   # round 10 ruling 2: no record, no take
@@ -358,7 +369,7 @@ def lease_secrets(auth_path: str):
         for v in scan_record.read_lease_tokens(auth_path):
             if v not in seen:
                 seen.append(v)
-        return [("token", v) for v in seen]
+        return [("token", v) for v in seen] + email_pairs(rt.CODEX)
     return secrets
 
 # ------------------------------------------------------------------------------------------------ the Codex lease

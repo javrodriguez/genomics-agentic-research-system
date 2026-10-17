@@ -589,7 +589,8 @@ AE_WITNESSES = {
     "the extra-key check deleted": "    if extra:\n",
     "the address check deleted": "        if not _is_address(value):\n",
     "the missing-key check deleted": "        if key not in doc:\n",
-    "the mode check deleted": "    if stat.S_IMODE(st.st_mode) != 0o600:\n        raise BuilderRefused(f\"{path}: the account record",
+    "the mode check deleted": ("    if stat.S_IMODE(rec.st_mode) != 0o600:\n"
+                               "        raise BuilderRefused(f\"{where}: the account record"),
 }
 
 
