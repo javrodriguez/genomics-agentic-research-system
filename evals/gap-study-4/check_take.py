@@ -3917,5 +3917,229 @@ def checker_for(design) -> tuple:
     return CHECKER_ENTRIES[harness]
 
 
+
+# ---- P1. THE VENDOR VIEW AND RAW RECORDS (plan sections 4 and 9; review 36ce125 MINOR 1, ruling 1 of 12:35) -------
+# vendor_take_view is the bound view of a vendor take (transcript_view.events over vendor_record_binding.bound_items):
+# a ViewError, or a view holding no event, is the take's transcript-unreadable refusal, never a clean reading. (It is
+# not plan section 6's vendor_view(design), P5's design road, which takes a Design and keeps that name.)
+# vendor_raw_records reads what the agent actually executed from the CLI-written bytes, never from the view's mapped
+# arguments: each digest-bound stream file again, line by line, every line through the parser that bound it, and the
+# last retained native snapshot once its own reader accepts it; every string of each tool record is read, a field the
+# record type defines as a JSON document decoded first. vendor_reach hands those records to C's own reach readers as
+# a tool's input (what it was asked) and a tool's result (what it returned), so study_paths_read reads keys and
+# values (json.dumps of each record, as C's reads each tool_use input; MINOR 1) and outside_checkout_reads reads every
+# string value (C's _tool_strings). The home and temp legs of read-outside-the-checkout need the session's run tree,
+# which a vendor take carries only in its native cwd (T-4, T-11): they land with P2's cwd readers.
+import codex_native as _codex_native  # noqa: E402
+import gemini_projection as _gemini_projection  # noqa: E402
+import gemini_session_replay as _gemini_replay  # noqa: E402
+import transcript_codex as _tx_codex  # noqa: E402
+import transcript_gemini as _tx_gemini  # noqa: E402
+import vendor_record_binding as _binding  # noqa: E402
+
+# The closed partition of codex_native.RESPONSE_ITEMS (plan section 4, source 3): READ, every string of the record;
+# NOT TOOL RECORDS, read by their own checks (message by unknown-harness-origin T-5, additional_tools by denied tools
+# T-18); REFUSED, the take refuses whatever the record is. A type outside the partition refuses too (fail closed).
+CODEX_RESPONSE_READ = ("function_call", "function_call_output", "local_shell_call", "custom_tool_call",
+                       "custom_tool_call_output", "tool_search_call", "tool_search_output", "web_search_call")
+CODEX_RESPONSE_NOT_TOOL = ("message", "agent_message", "reasoning", "additional_tools", "configuration_update")
+CODEX_RESPONSE_REFUSED = ("image_generation_call", "compaction", "compaction_summary", "context_compaction")
+# The READ records that are what a tool returned; every other READ record is what a tool was asked.
+CODEX_RESPONSE_RETURNED = ("function_call_output", "custom_tool_call_output", "tool_search_output")
+# The fields a record type defines as a JSON document, field by field: decoded, and its own leaves read in place of
+# the encoded text (review 10ac86f MINOR 4); one that is not a string or does not decode refuses the take.
+VENDOR_JSON_DOCUMENTS = {"codex": {"function_call": ("arguments",)}, "gemini": {}}
+# The fields of a mixed record that are what the tool returned: the command's output; the rest is what it was asked.
+VENDOR_RETURNED_FIELDS = {"command_execution": ("aggregated_output",), "CommandExecution": ("aggregated_output",),
+                          "toolCalls": ("result", "resultDisplay")}
+
+
+class VendorUnreadable(ValueError):
+    """A vendor take's records the P1 readers cannot read: transcript-unreadable, never a pass."""
+
+
+def _vendor_harness(harness) -> str:
+    if harness not in VENDOR_HARNESSES:
+        raise CheckRefused(f"harness {harness!r} is not a vendor harness of the T4 readers ({list(VENDOR_HARNESSES)})")
+    return harness
+
+
+def vendor_take_view(path, harness) -> dict:
+    """{"events": the bound view's events, "problems": []}, or {"events": None, "problems": [its refusal]}."""
+    _vendor_harness(harness)
+    try:
+        evs = transcript_view.events(harness, path)
+    except transcript_view.ViewError as e:
+        return {"events": None, "problems": [f"[{TRANSCRIPT_UNREADABLE}] the {harness} view refuses the take: {e}"]}
+    if not evs:
+        return {"events": None, "problems": [f"[{TRANSCRIPT_UNREADABLE}] the {harness} view holds no event"]}
+    return {"events": evs, "problems": []}
+
+
+def _decoded(value, where: str, field: str):
+    if not isinstance(value, str):
+        raise VendorUnreadable(f"{where}: {field} is a JSON document by its record type, and is not a string")
+    try:
+        return json.loads(value)
+    except ValueError:
+        raise VendorUnreadable(f"{where}: {field} does not decode as the JSON document its record type defines") from None
+
+
+def _vendor_split(rec: dict, kind: str, where: str, documents=()) -> tuple:
+    """(where, asked, returned) of one tool record: VENDOR_RETURNED_FIELDS[kind] are what the tool returned, every
+    other field what it was asked; a JSON-document field is decoded in place."""
+    rec = dict(rec)
+    for field in documents:
+        if field in rec:
+            rec[field] = _decoded(rec[field], where, field)
+    returned = VENDOR_RETURNED_FIELDS.get(kind, ())
+    return (where, {k: v for k, v in rec.items() if k not in returned},
+            {k: v for k, v in rec.items() if k in returned})
+
+
+def _codex_exec_records(text: str, where: str) -> list:
+    """Source 1: every command_execution and file_change item of one exec stream (its file_change content is P2's
+    PENDING leg, T-8:file-change); an mcp_tool_call refuses (no tool server is configured in a take)."""
+    out = []
+    for n, line in enumerate(transcript_view.jsonl_lines(text), 1):
+        rec = _tx_codex.decode(line)
+        t, it = _tx_codex.check_record(rec)
+        if it == _tx_codex.MCP_TOOL_CALL:
+            raise VendorUnreadable(f"{where} line {n}: an mcp_tool_call, and no tool server is configured in a take")
+        if it in (_tx_codex.COMMAND_EXECUTION, _tx_codex.FILE_CHANGE):
+            out.append(_vendor_split(rec["item"], it, f"{where} line {n}"))
+    return out
+
+
+def _codex_rollout_records(raw: bytes, where: str) -> list:
+    """Sources 2 and 3: every CommandExecution item, and every READ response_item, of the rollout read_rollout
+    accepts; a REFUSED response_item, or one outside the partition, refuses."""
+    try:
+        _codex_native.read_rollout(raw)
+    except _codex_native.ReaderRefused as e:
+        raise VendorUnreadable(f"{where}: the rollout reader refuses it: {e}") from None
+    out = []
+    for n, rec in enumerate(_codex_native._json_lines(raw, VendorUnreadable), 1):
+        pay, at = rec["payload"], f"{where} line {n}"
+        item = pay.get("item") if rec["type"] == "event_msg" and pay.get("type") == "item_completed" else None
+        if isinstance(item, dict) and item.get("type") == "CommandExecution":
+            out.append(_vendor_split(item, "CommandExecution", at))
+        if rec["type"] != "response_item":
+            continue
+        kind = pay.get("type")
+        if kind in CODEX_RESPONSE_REFUSED:
+            raise VendorUnreadable(f"{at}: a response_item {kind}, which the vendor readers refuse")
+        if kind in CODEX_RESPONSE_READ:
+            got = _vendor_split(pay, kind, at, VENDOR_JSON_DOCUMENTS["codex"].get(kind, ()))
+            out.append((at, {}, {**got[1], **got[2]}) if kind in CODEX_RESPONSE_RETURNED else got)
+        elif kind not in CODEX_RESPONSE_NOT_TOOL:
+            raise VendorUnreadable(f"{at}: a response_item {kind!r} outside the readers' partition")
+    return out
+
+
+def _gemini_stream_records(text: str, where: str) -> list:
+    """Source 1: every tool_use (asked: its parameters, the leaves the view's mapping drops included) and every
+    tool_result (returned) of one stream."""
+    out = []
+    for n, line in enumerate(transcript_view.jsonl_lines(text), 1):
+        rec = _tx_gemini.decode(line)
+        if rec["type"] == _tx_gemini.TOOL_USE:
+            out.append((f"{where} line {n}", rec, {}))
+        elif rec["type"] == _tx_gemini.TOOL_RESULT:
+            out.append((f"{where} line {n}", {}, rec))
+    return out
+
+
+def _gemini_snapshot_records(raw: bytes, where: str) -> list:
+    """Source 2: every toolCalls entry (asked: args; returned: result and resultDisplay) of the snapshot
+    gemini_projection accepts."""
+    try:
+        _gemini_projection.project(raw)
+        messages = _gemini_replay.replay(raw)["messages"]
+    except (_gemini_projection.ProjectionRefused, _gemini_replay.ReplayRefused) as e:
+        raise VendorUnreadable(f"{where}: the native session reader refuses it: {e}") from None
+    out = []
+    for message in messages:
+        for i, tool in enumerate(message.get("toolCalls") or [] if message.get("type") == "gemini" else []):
+            out.append(_vendor_split(tool, "toolCalls", f"{where} message {message.get('id')!r} tool {i + 1}"))
+    return out
+
+
+def vendor_raw_records(path, harness) -> list:
+    """[(where, asked, returned)] of every tool record of a vendor take, read from its CLI-written bytes (plan section
+    4): the turn streams the envelopes bind, then the last retained native snapshot. Raises VendorUnreadable."""
+    _vendor_harness(harness)
+    path = Path(path)
+    try:
+        _binding.bound_items(harness, path)    # the envelopes, ledger and digests bound; every line on its tables
+        envelopes = [_binding._json(x) for x in _binding._jsonl_lines(_binding._regular_bytes(path).decode("utf-8"))]
+        ledger = _binding._json(_binding._regular_bytes(path.parent / "driver-ledger.json").decode("utf-8"))
+        out = []
+        for env in envelopes:
+            raw = _binding._regular_bytes(path.parent / env["stream"])
+            if hashlib.sha256(raw).hexdigest() != env["sha256"]:
+                raise VendorUnreadable(f"{env['stream']}: its bytes are not the ones its envelope binds")
+            read = _codex_exec_records if harness == "codex" else _gemini_stream_records
+            out += read(raw.decode("utf-8"), env["stream"])
+        snaps = ledger.get("native_snapshots")
+        if not (isinstance(snaps, list) and snaps and isinstance(snaps[-1], dict)):
+            raise VendorUnreadable("the ledger names no retained native snapshot")
+        name = snaps[-1].get("file")
+        if not (isinstance(name, str) and name and Path(name).name == name and name not in (".", "..")):
+            raise VendorUnreadable(f"the last native snapshot {name!r} is not a confined basename")
+        raw = _binding._regular_bytes(path.parent / "session" / name)
+        if hashlib.sha256(raw).hexdigest() != snaps[-1].get("sha256"):
+            raise VendorUnreadable(f"session/{name}: its bytes are not the ones the ledger binds")
+        read = _codex_rollout_records if harness == "codex" else _gemini_snapshot_records
+        out += read(raw, f"session/{name}")
+    except (transcript_view.ViewError, UnicodeError, KeyError, TypeError) as e:
+        raise VendorUnreadable(f"{type(e).__name__}: {e}") from None
+    return out
+
+
+def vendor_reach_lines(records) -> list:
+    """C-shaped session lines for C's own reach readers: each record's asked part as an assistant tool_use input, its
+    returned part as a user tool_result content, keys and values whole."""
+    out = []
+    for _where, asked, returned in records:
+        if asked:
+            out.append(json.dumps({"type": "assistant", "message": {"content": [{"type": "tool_use",
+                                                                                 "input": asked}]}}))
+        if returned:
+            out.append(json.dumps({"type": "user", "message": {"content": [{"type": "tool_result",
+                                                                            "content": returned}]}}))
+    return out
+
+
+def vendor_reach(path, harness, repo: Path | None = None) -> dict:
+    """{"problems", "study", "outside", "records"}: study-materials-reached and the checkout leg of
+    read-outside-the-checkout on the vendor take's raw records, worded as check() words them; a take the raw readers
+    refuse is transcript-unreadable, never clean."""
+    try:
+        records = vendor_raw_records(path, harness)
+    except VendorUnreadable as e:
+        return {"problems": [f"[{TRANSCRIPT_UNREADABLE}] the {harness} raw records refuse the take: {e}"],
+                "study": [], "outside": [], "records": None}
+    fd, tmp = tempfile.mkstemp(suffix=".jsonl")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write("".join(line + "\n" for line in vendor_reach_lines(records)))
+        study = study_paths_read(Path(tmp))
+        outside = outside_checkout_reads(Path(tmp), repo)
+    finally:
+        _drop(tmp)
+    problems = []
+    if study:
+        problems.append(f"[{EVENT_STUDY}] the agent reached this study's own materials under evals/ ({len(study)} "
+                        f"mention(s); first: {study[0][:70]!r}). The design it is being measured against is readable "
+                        "from the checkout it works in.")
+    if outside:
+        problems.append(f"[{EVENT_OUTSIDE}] a tool call or its result named a path outside this session's own "
+                        f"checkout {len(outside)} time(s) -- first: {outside[0][:120]!r}. This repository's checkout, "
+                        "the folder holding its sibling worktrees and the root above them hold the study; a take reads "
+                        "its own run tree.")
+    return {"problems": problems, "study": study, "outside": outside, "records": len(records)}
+
+
 if __name__ == "__main__":
     raise SystemExit(main())
