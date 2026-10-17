@@ -48,7 +48,11 @@ SKIP_ALLOWED: tuple[str, ...] = (
 #   walk_mutation.py: the generator of tests/test_walk_runner.py's generated mutants (lane w10-walk-runner, ruling
 #   w10-R3-fold); it holds no test and is imported and run by test_walk_runner (G1, --generated-mutants).
 #   Departure w10-7 (lane w10-walk-runner, athena fold of run gap4-w10-5ff8b2e-20261013T003648Z).
-HELPERS: tuple[str, ...] = ("walk_mutation.py",)
+#   check_vendor_sources.py: lane vendor-admission T4's source-list check (plan v4 section 9, NIT 7), run by
+#   checks.d/vendor-admission.txt once per piece and imported by tests/test_vendor_check.py (SourceLists).
+#   vendor_check_fixtures.py: lane vendor-admission T4's writer of F1 and F2 (plan v4 section 8), imported by
+#   tests/test_vendor_check.py and tests/test_vendor_body.py and run as --check by checks.d/vendor-admission.txt.
+HELPERS: tuple[str, ...] = ("walk_mutation.py", "check_vendor_sources.py", "vendor_check_fixtures.py")
 
 
 def suite(folder: Path | None = None) -> unittest.TestSuite:
