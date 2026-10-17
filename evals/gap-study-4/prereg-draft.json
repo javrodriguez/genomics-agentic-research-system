@@ -20640,7 +20640,7 @@
     "aborted"
   ],
   "routing": {
-    "sha256": "ef74f6c7dc8dd8d4b7f13bbda094ae63f36a184ebf8a273603c6e493321c7965",
+    "sha256": "2f8b7f72df3f11c5e96543d752ccf2470be8bce2b03005b9056de22ba0ca2fb9",
     "about": "Round 4's routing table, pre-registered data. Decided by routing.py only, from harness-side records only, never from the agent's text. Route, phase, turn-end and batch-state strings are graders/labels4.py's and are checked against it on load. A row matches when the take is in its phase, every all_of condition holds, at least one any_of condition holds (when any_of is given), and no none_of condition holds. The winning rows are the matched rows at the highest precedence level; matched rows at that level that name different routes are a tie and are refused, as is an input that matches no row. Rows never read a text-derived count (the events record): those are annotations, below."
   },
   "predictions_rule": {

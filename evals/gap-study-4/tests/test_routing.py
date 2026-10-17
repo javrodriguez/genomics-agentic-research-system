@@ -201,6 +201,8 @@ def apply_witness(rec: dict, cond: dict, table: dict) -> set:
         set_path(rec, path, ["data/staging/samples.csv"])
     elif op == "in_operator_reasons":
         set_path(rec, path, [any_phase_reason(table)])
+    elif op == "has":                                   # glitch-b5's ruling 3 (17 Oct 2026): one named reason
+        set_path(rec, path, [cond["value"]])
     elif op == "in_checker_events":
         set_path(rec, path, [table["checker_reasons_become_events"]["ids"][0]])
     elif op == "in_rate_limit_markers":
@@ -1138,6 +1140,7 @@ _CONDITION_MUTANT = {"eq": ("value", "__mutated__"), "ne": ("op", "eq"), "gt": (
                      "is_null": ("op", "not_null"), "nonempty": ("op", "empty"), "empty": ("op", "nonempty"),
                      "in_operator_reasons": ("op", "is_null"), "in_checker_events": ("op", "is_null"),
                      "in_rate_limit_markers": ("op", "is_null"),
+                     "has": ("value", "__mutated__"),            # glitch-b5's ruling 3 (17 Oct 2026)
                      "differs_from_pin": ("op", "is_null"), "nonzero_outside_timeout": ("op", "is_null"),
                      # glitch-f3's ruling (fold 3): the mutant is lane decision 5's old rule, a missing init a mismatch
                      "present_differs_from_pin": ("op", "differs_from_pin")}
