@@ -1087,6 +1087,11 @@ def _submit_analysis(root, script, descriptor):
     except ValueError:
         return None, ('R-073: %s is not under scripts/: a stage 03 script is written there and '
                       'approved with the plan (decision 0306)' % script.relative_to(adir))
+    from stage03_analysis import RUNNER, ordered_scripts
+    if ordered_scripts((adir / 'PLAN.md').read_text(encoding='utf-8')) and \
+            script != (adir / RUNNER).resolve():
+        return None, ('R-073: the plan orders its scripts; submit %s, which runs them in that '
+                      'order as one job (decision 0307)' % RUNNER)
     executed = descriptor
     problems = validate(executed)
     if problems:

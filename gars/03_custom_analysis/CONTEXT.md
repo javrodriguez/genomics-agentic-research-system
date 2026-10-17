@@ -140,8 +140,10 @@ refusal.
    one fits; Execution keeps its `Runs: batch` line unless the user explicitly asked for the
    login node. This is the step where your judgment belongs — spend it here, not at the
    keyboard later. Then write every script the Method runs under `scripts/`, each failing on
-   any failed command as step 7 says. `approve` binds the plan and these scripts together,
-   byte for byte, so nothing is written there after approval (decision 0306).
+   any failed command as step 7 says, and list them in run order in the plan's Scripts section.
+   `approve` binds the plan and these scripts together, byte for byte, so nothing is written
+   there after approval (decision 0306), and writes `scripts/run_all.sh`, which runs them in
+   that order as one job and stops at the first failure (decision 0307).
    On a non-public project the plan is the user's to write: T7.
 4. Reply T2 and stop. The user reads the plan and its scripts, edits them if they wish, and
    answers.
@@ -153,12 +155,15 @@ refusal.
    report that it refused (exit 2), ask for its `blocked` reasons, reply T3 with them verbatim,
    fix the plan (that is a draft edit, allowed), and return to step 4. Never argue past the
    gate, and never run `approve` yourself.
-7. Execute the approved plan literally: submit **every script** it approved, from `scripts/`,
-   through `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <script>`
+7. Execute the approved plan literally: submit `scripts/run_all.sh` once, which runs **every
+   script** the plan lists, in its order (a plan with no Scripts section submits each approved
+   script from `scripts/` in turn), through
+   `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <script>`
    in the environment the plan names; each was written in step 3 to exit non-zero when any
    command fails (`set -euo pipefail`). Submit refuses a script written or changed after
-   approval, or one outside `scripts/`, and verify refuses a run of one: a changed script is a
-   new analysis (decision 0306).
+   approval, or one outside `scripts/`, or any script but the runner of an ordered plan, and
+   verify refuses a run of one, or an output older than the run: a changed script is a new
+   analysis (decisions 0306, 0307).
    Submit checks `PLAN.md` in the analysis directory even for scripts in subfolders, generates
    a launcher under `run/`, and records script and launcher hashes with the job id. The executor
    launcher clears the old marker, runs the script, and writes `run/.gars_run_complete` only
