@@ -361,6 +361,34 @@ class AuthoringTests(unittest.TestCase):
                 self.assertEqual(code, 1, payload)
                 self.assertIn('provenance', [f['check'] for f in payload['failures']])
 
+    def test_conform_pins_the_name_args_and_never_lets_args_or_ws_be_rebound(self):
+        """The fold of REVIEW-f3c7520, finding 1: the allow-list is keyed on the name args, so
+        cmd_collect takes exactly one plain parameter named args and binds neither args nor ws.
+        Each of the review's two reproductions passed at f3c7520, line 222 kept."""
+        line = '    model = ws.history_model(WORKSPACE, args.model)  # the harness\'s, never the flag (0303)\n'
+        head = 'def cmd_collect(args):\n    wl.require_collect_config(args.project, ASSAY, SUBSTAGE)\n'
+        for old, new in (
+                (head + '    project = Path(args.project)\n' + line,
+                 'def cmd_collect(ns):\n    args = ns\n'
+                 '    wl.require_collect_config(args.project, ASSAY, SUBSTAGE)\n'
+                 '    project = Path(args.project)\n' + line + '    model = ns.model or model\n'),
+                (line, '    ws = types.SimpleNamespace(history_model=lambda w, m: m)\n' + line)):
+            with self.subTest(line=new):
+                code, payload = self.conform_mutant(old, new)
+                self.assertEqual(code, 1, payload)
+                self.assertIn('provenance', [f['check'] for f in payload['failures']])
+
+    def test_conform_refuses_a_collect_that_reaches_the_namespace_without_naming_it(self):
+        """The fold of REVIEW-f3c7520, NIT 1: locals, globals, vars and sys._getframe reach args
+        without a load of the name; each of the review's two reproductions passed at f3c7520."""
+        anchor = '    result = {"command": "collect", "ok": False,'
+        for added in ('    model = locals()["args"].model or model\n',
+                      '    model = sys._getframe().f_locals["args"].model or model\n'):
+            with self.subTest(line=added):
+                code, payload = self.conform_mutant(anchor, added + anchor)
+                self.assertEqual(code, 1, payload)
+                self.assertIn('provenance', [f['check'] for f in payload['failures']])
+
     def test_every_shipped_wrapper_still_conforms(self):
         result = run([sys.executable, self.TOOL, 'conform', GARS / '_system/wrappers'])
         self.assertEqual(result.returncode, 0, result.stdout.decode())
