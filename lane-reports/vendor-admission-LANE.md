@@ -1,4 +1,6 @@
-Status: running
+Status: blocked
+
+BLOCKED ON glitch-b5: the cloud executor's auto-mode safety classifier refused the T0 edit to evals/gap-study-4/check_take.py ("[Security Weaken]"). The refused edit replaced design_view's unconditional `harness_guard(harness)` (check_take.py:2157) with a refusal of any harness outside a new `HARNESSES_WITH_SCRIPTS = ("claude-code", "codex", "gemini")`, leaving check4 and check4_walk's harness_guard untouched (ruling T0 option (a)). Per protocol I did not reword around it. Needed: either run that edit on athena / the Mac (the exact diff is in Progress, 21:10), or rule another route. Nothing of T0's code was committed; T1 to T3 were not started (the lane runs them in order).
 
 # Lane vendor-admission: groundwork for arms O (Codex) and G (Gemini)
 
@@ -189,5 +191,12 @@ Build every fail-closed piece that arms O and G need after native-reader registr
 ## Progress
 - 2026-10-16 21:01 EDT: lane opened by glitch-b5.
 - 2026-10-16 21:04 EDT: cloud executor picked up the lane; gitleaks v8.28.0 installed; starting T0.
+- 2026-10-16 21:10 EDT: T0 blocker PROVEN on fakes (scratch script, not committed). With routing.load_table patched to a TEST-DATA table adding one codex pin (gpt-6.1-sol) and one gemini pin (gemini-3.8-flash), `walk_builders.production_builders()["design_for"]` is the real lambda over `check_take.design_view` (CHECKER_CONSTANTS, none PENDING on this head). `drive.walk_driver(...)` built on fakes (test_cp8_prep's build_walk_driver shape, root = mode_binding.HERE, tbi.FakeOwnership, tbi.FakeSettingsGuard) with that design_for: `script_for(row)` on the draft's first claude-code row returns its 2 steps; on the first codex row (arm O, approval-scope/trap/w1) and the first gemini row (arm G) it raises `CheckRefused: harness 'codex' has no record readers in check_take.py (only ['claude-code']); ...` (and the same for 'gemini'). So a production arm-O or arm-G walk cannot get its script: the acceptance walks are blocked at script_for.
+- 2026-10-16 21:10 EDT: T0 fix REFUSED by the classifier before any file changed. The planned change, for whoever applies it:
+  - check_take.py, after `HARNESSES_WITH_READERS = (CLAUDE_CODE,)`: `HARNESSES_WITH_SCRIPTS = (CLAUDE_CODE, "codex", "gemini")` with a comment that a script is not a reader and check4 still refuses;
+  - design_view: `harness_guard(harness)` becomes `if harness not in HARNESSES_WITH_SCRIPTS: raise CheckRefused(f"harness {harness!r} has no design view in check_take.py ...")` (an unknown harness still refuses);
+  - the R4C-9 header comment and design_view's docstring say so; check4 (line ~1933) and check4_walk (~2385) keep `harness_guard(design.harness)` unchanged.
+  - Planned tests (not written): a new tests/test_vendor_script.py (the proof above as V0-script: script_for equals the rendered operator_steps for each vendor row; V0-checker: check4 and check4_walk on the real vendor view refuse naming "no record readers"; V0-unknown: design_view refuses "synthetic-harness"; witnesses compiled in memory deleting each of the three guards); tests/test_checker_body.py R4-guard moves from "design_view refuses" to "design_view builds, check4 refuses" (ruling T0), docstring line 38 with it; the existing no-harness-guard witness anchor (harness_guard's `if harness not in HARNESSES_WITH_READERS:`) stays unique; COPIED.d/vendor-admission.json and checks.d/vendor-admission.txt claim the new module, and w10-walk-runner.json's check_take.py entry and w7b-walk-wiring.json's test_checker_body.py entry record the departure.
+  - Not run: no test module was run (nothing changed). Housekeeping: a stray empty file /proto.py was left at the container's filesystem root by a mistyped heredoc (outside the repo; the safety check refused its removal).
 
-RESUME HERE: T0 in progress (prove the blocker through walk_builders design_for on fakes, then option (a)).
+RESUME HERE: blocked on glitch-b5 (see the top). Once the T0 check_take.py edit is allowed or applied elsewhere: write tests/test_vendor_script.py red first (the 21:10 proof), apply the edit, move R4-guard by ruling T0, claim files, run test_checker_body, test_walk_builders, test_walk_wiring and the new module, commit T0; then T1, T2, T3 in order.
