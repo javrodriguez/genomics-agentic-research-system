@@ -28,7 +28,7 @@ The review found three faults in record 0299's mechanism and one rough edge:
 - **Prose (finding 3).** The `--check` help said "write nothing" and the contract's exit-code row said "nothing is written", while a clean check writes the record; the contract's OUTPUT did not name it.
 - **Shape (NIT 2).** A hand-made record of the right top level but a wrong inner type raised `AttributeError`: exit 1, which the contract reads as a validation failure (T3), instead of a refusal.
 
-**Reproduction.** At 909b822b, `gars/tests/test_stage01_gates.py` fails four tests and errors one: the two replay cases exit 0 where 2 is expected, the guard does not refuse a Write to the record's path, the three-artifact listing lacks the record, and the wrong-shape record raises `AttributeError: 'str' object has no attribute 'get'`.
+**Reproduction.** At 909b822b, `gars/tests/test_stage01_gates.py` fails four tests and errors in a fifth (`FAILED (failures=4, errors=2)`, the errors two subtests): the two replay cases exit 0 where 2 is expected, the guard does not refuse a Write to the record's path, the three-artifact listing lacks the record, and the wrong-shape record raises `AttributeError: 'str' object has no attribute 'get'`.
 
 ## Decision
 
