@@ -250,7 +250,7 @@ its `00_data/dataset.tsv` reads exactly `public` in `data_class`; an absent or u
 counts as non-public, and the session's catch-up prints the label. On a non-public project the
 guard keeps the project out of the model's prompt: it refuses every Read of a file in it except
 that dataset row and the `STATUS` files, every write or append there (`HISTORY.md` included, whose
-append needs a Read first), and every typed call except the doors in `CLOSED_PROJECT_DOORS`
+append needs a Read first), and every typed call that names the project except the doors in `CLOSED_PROJECT_DOORS`
 (`_system/guard_hook.py`), which run only as `python3 _system/tool_call.py <door> '<json>'` from
 the workspace root, their output filtered. No stage 01 step is a door, so on a non-public project
 this stage is the user's: reply T10 and stop. Never work around a refusal.

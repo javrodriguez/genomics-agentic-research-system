@@ -113,9 +113,9 @@ attempted here; they belong to a downstream analysis sub-stage that runs under `
 
 **Non-public project (decisions 0107, 0141).** As stage 02's contract defines it: the guard
 refuses every Read of a file in the project except its `00_data/dataset.tsv` and the `STATUS`
-files, every append to `HISTORY.md`, and every typed call except the doors in
+files, every append to `HISTORY.md`, and every typed call that names the project except the doors in
 `CLOSED_PROJECT_DOORS` (`_system/guard_hook.py`). No verb of this sub-stage's wrapper is a door,
-so on a non-public project only step 2's STATUS read is yours: reply T7 and stop.
+so on a non-public project only step 2's STATUS read is the agent's: reply T7 and stop.
 
 ## Process
 1. Reply T1.

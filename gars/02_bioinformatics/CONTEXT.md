@@ -121,7 +121,7 @@ Report every refusal and stop; no override is available.
 its `00_data/dataset.tsv` reads exactly `public` in `data_class`; an absent or unreadable row
 counts as non-public, and the session's catch-up prints the label. On a non-public project the
 guard refuses every Read of a file in it except that dataset row and the `STATUS` files, every
-write or append there (`HISTORY.md` included), and every typed call except the doors in
+write or append there (`HISTORY.md` included), and every typed call that names the project except the doors in
 `CLOSED_PROJECT_DOORS` (`_system/guard_hook.py`): here `resolve_artifact`, and in the sub-stages
 `rnaseq_de.*` and `executor.*`. A door runs only as `python3 _system/tool_call.py <door> '<json>'`
 from the workspace root, its output filtered to a keep-list; while any non-public project exists

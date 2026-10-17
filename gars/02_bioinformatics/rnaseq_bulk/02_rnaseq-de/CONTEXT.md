@@ -98,7 +98,7 @@ case-normalized. The existing gene-identifier and artifact gates remain.
 
 **Non-public project (decisions 0107, 0141).** As stage 02's contract defines it: the guard
 refuses every Read of a file in the project except its `00_data/dataset.tsv` and the `STATUS`
-files, every append to `HISTORY.md`, and every typed call except the doors in
+files, every append to `HISTORY.md`, and every typed call that names the project except the doors in
 `CLOSED_PROJECT_DOORS` (`_system/guard_hook.py`). This sub-stage's verbs are doors:
 `resolve_artifact`, `rnaseq_de.check`, `rnaseq_de.prepare`, `rnaseq_de.collect`, `executor.submit`
 and `executor.status`, each run as `python3 _system/tool_call.py <door> '<json>'` from the
@@ -147,8 +147,9 @@ paths, and `collect`'s output keeps no `history_entry`, so the step 9 append is 
    path, stop. Exit 1 → the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures`
    verbatim, stop.
    On a non-public project: `python3 _system/tool_call.py rnaseq_de.collect '{"project":
-   "projects/<title>", "counts-from": "<sub-stage>", "model": "<model id>"}'`, and
-   `executor.status` as in step 7.
+   "projects/<title>", "counts-from": "<sub-stage>", "model": "<the exact model id you are
+   running as>"}'`, and `executor.status` as in step 7. There T4 gives the door's `failures` or
+   `state` and names the `logs/` directory for the user to read; you read no log.
 9. Exit 0 → `collect` has written `OUTPUTS.tsv` (`de_results` native, `counts_gene`
    **adapted**, `gene_id_map` native — the role marking is what stops a later consumer
    mistaking the reshaped matrix for 02.01's authoritative one) and `STATUS COMPLETE`.
@@ -201,7 +202,8 @@ Sub-stage 02.02 failed at <stage: run|exit gate>.
 <verbatim wrapper failures or scheduler error>
 
 STATUS set to FAILED. Nothing was retried, nothing was deleted.
-Log: 02_bioinformatics/rnaseq_bulk/02_rnaseq-de/logs/<log file>
+Log: 02_bioinformatics/rnaseq_bulk/02_rnaseq-de/logs/<log file | on a non-public project: the
+directory, yours to read>
 ```
 
 **T5 — Preconditions not met**
@@ -239,7 +241,7 @@ kept out of a hosted-model prompt (decision 0107).
 
 The entry is yours. From the workspace root, run
 
-  python3 _system/wrappers/rnaseq-de/rnaseq_de.py collect --project projects/<title> --counts-from <sub-stage> --model "<model id>"
+  python3 _system/wrappers/rnaseq-de/rnaseq_de.py collect --project projects/<title> --counts-from <sub-stage> --model "<my own model id, the exact one I am running as>"
 
 which re-runs the exit gate on the finished run and prints the history_entry; append it to
 projects/<title>/HISTORY.md verbatim, replacing <ISO-8601 date> with today's date.
