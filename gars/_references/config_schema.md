@@ -10,7 +10,7 @@ biology rather than an error, which is the one failure mode no downstream check 
 
 | File | Seeded by | Completed by | Read by |
 |---|---|---|---|
-| `<Assay ID>.yaml`, one per assay | stage 00, from `_templates/config/` | stage 02 menus (`_system/configure.py apply`), user confirms | stage 01 (assay-specific keys), the stage 02 wrapper |
+| `<Assay ID>.yaml`, one per assay | stage 00, from `_templates/config/` | stage 02 menus (`_system/configure.py apply`), written only as its dry run showed, on the reply `write` | stage 01 (assay-specific keys), the stage 02 wrapper |
 | `nextflow.slurm.config` | stage 00, verbatim copy | nothing — edit by hand only if your allocation differs | every wrapper's generated `submit.sh` |
 
 ## The common shape

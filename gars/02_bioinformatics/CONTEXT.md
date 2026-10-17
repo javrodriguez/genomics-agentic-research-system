@@ -167,9 +167,14 @@ config. Never work around a refusal.
    For a protocol assay pass `--aligner` as the config names it: left out, `apply` writes its
    own default aligner over the config's.
 
-   Reply T9 showing what it would write and **wait for confirmation**. On confirmation, re-run
-   without `--dry-run`. Exit 1 → report its `error` and return to T8; never retry with a value the
-   user did not choose.
+   The dry run records what it would write (`_config/.<Assay ID>.dry_run.json`, the text's
+   sha256 and the settings), and `apply` without `--dry-run` writes only those exact bytes.
+   Reply T9 showing what it would write and **wait for the reply `write`**. On `write`, re-run
+   the same command without `--dry-run`. Any other reply (a change, "yes but…") is not a write:
+   re-run the dry run with the settings the user now chose, or the same ones, and send T9 again.
+   Exit 1 → report its `error` and return to T8; never retry with a value the user did not
+   choose. A write refused as unlike the dry run shown goes back to the dry run and T9, never to
+   a second write.
 
    Skip 3a entirely when the config has no `<REQUIRED>` markers left — a completed config is not
    a question to re-ask.
@@ -294,7 +299,7 @@ This is what I will write to _config/<Assay ID>.yaml:
    with meanings, and for a peaks assay the genome-derived macs_gsize and mito_name being set
    with it>
 
-Nothing else in the file changes. Confirm to write it, or say what to change.
+Nothing else in the file changes. Reply `write` to write exactly this, or say what to change.
 ```
 
 **T5 — Preconditions not met**
@@ -343,7 +348,10 @@ That step is yours. From the workspace root, run the menus and choose from them:
 
   python3 _system/configure.py genomes --assay <Assay ID>
   <this assay's decision menu: configure.py contrasts --project projects/<title> --assay <Assay ID> | configure.py peaks | configure.py protocols --aligner <the config's aligner>>
-  python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula "<yours>"] [--peaks-type <n>] [--protocol <n> --aligner <the config's aligner>]
+  python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula "<yours>"] [--peaks-type <n>] [--protocol <n> --aligner <the config's aligner>] --dry-run
+
+Read what it would write; when it is what you want, run the same apply line without --dry-run
+(it writes only what the dry run showed).
 
 Tell me when the config is done; I then continue to the sub-stage table, which reads only the
 STATUS files.
