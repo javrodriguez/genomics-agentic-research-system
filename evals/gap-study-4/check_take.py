@@ -4052,7 +4052,9 @@ def _gemini_stream_records(text: str, where: str) -> list:
 
 def _gemini_snapshot_records(raw: bytes, where: str) -> list:
     """Source 2: every toolCalls entry (asked: args; returned: result and resultDisplay) of the snapshot
-    gemini_projection accepts."""
+    gemini_projection accepts, and every functionResponse part of each tool-response user turn (returned: the
+    CLI-written copy of the tool's result the model was sent; round 9 ruling 1, review 89ee5a8 MINOR 1), so every
+    copy of a tool result the session file holds is read, as C reads every tool_result."""
     try:
         _gemini_projection.project(raw)
         messages = _gemini_replay.replay(raw)["messages"]
@@ -4062,6 +4064,9 @@ def _gemini_snapshot_records(raw: bytes, where: str) -> list:
     for message in messages:
         for i, tool in enumerate(message.get("toolCalls") or [] if message.get("type") == "gemini" else []):
             out.append(_vendor_split(tool, "toolCalls", f"{where} message {message.get('id')!r} tool {i + 1}"))
+        if message.get("type") == "user" and _gemini_projection._tool_response_turn(message) is not None:
+            for i, part in enumerate(message["content"]):
+                out.append((f"{where} message {message.get('id')!r} response {i + 1}", {}, part))
     return out
 
 
