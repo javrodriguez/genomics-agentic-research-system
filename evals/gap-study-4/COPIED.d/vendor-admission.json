@@ -19,7 +19,7 @@
     {
       "path": "COPIED.d/vendor-admission.json",
       "status": "new",
-      "reason": "Lane vendor-admission (glitch-b5, 16 Oct 2026): this lane's copy record. Its edits to files other lanes own are recorded as departures in their owning fragments: run.py (w8a-walk-layout), walk_regrade.py and tests/test_walk_grade_seam.py (live-harness-foundation)."
+      "reason": "Lane vendor-admission (glitch-b5, 16 Oct 2026): this lane's copy record. Its edits to files other lanes own are recorded as departures in their owning fragments: run.py (w8a-walk-layout), walk_regrade.py and tests/test_walk_grade_seam.py (live-harness-foundation), harness_bookkeeping.py and tests/test_harness_bookkeeping.py (w2a-cp3-endstate)."
     }
   ]
 }
