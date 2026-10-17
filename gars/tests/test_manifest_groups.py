@@ -538,12 +538,23 @@ exit_file=stage/'fixture.exit';exit_file.write_text('0\\n')
             self.assertFalse(mc.group_present(11, candidate, mc.load_schema()))
 
     def test_model_sentinels_and_known_prefix(self):
+        # G-model (glitch-b5's ruling Q1, Sat 17 Oct 2026): the manifest names the model the
+        # fixture's session file records, or unknown when there is none, and the flag's value
+        # never appears; --model none alone is honoured (ruling Q2).
         self.prepare();self.fake_run();self.submit()
-        for model,applicable,present in (('unknown',True,False),('none',False,False),(MODEL,True,True)):
-            manifest=self.collect(model=model)
+        session=self.ws/'.gars_session_model'
+        for recorded,flag,model,applicable,present in ((None,MODEL,'unknown',True,False),
+                ('claude-session-1','none','none',False,False),
+                ('claude-session-1',MODEL,'claude-session-1',True,True)):
+            if recorded is None:
+                session.unlink()
+            else:
+                session.write_text(recorded+'\n')
+            manifest=self.collect(model=flag)
             group=mc.grade(manifest)['groups'][15]
             self.assertEqual((group['applicable'],group['present']),(applicable,present))
             self.assertEqual(manifest['agent_model'],model)
+            self.assertNotIn(MODEL,json.dumps(manifest))
             self.assertEqual(mc.grade(manifest)['ok'],model!='unknown')
         for field in ('model_id','model_version','provider','prompt_id'):
             candidate=copy.deepcopy(manifest);candidate['model_steps'][0][field]='unknown'

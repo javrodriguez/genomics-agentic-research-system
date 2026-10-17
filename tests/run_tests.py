@@ -60,6 +60,16 @@ for _module, _names in (("test_row05_backup", ("Row05OfflineTests", "Row05Databa
         globals()[_name] = getattr(_loaded, _name)
 
 
+# G-model (glitch-b5's ruling Q1, Sat 17 Oct 2026): a history entry names the model the
+# harness reported at session start, recorded in the workspace's .gars_session_model, never the
+# --model flag. Every --model below passes claude-test-1, so the two are told apart.
+SESSION_MODEL = "claude-session-1"
+
+
+def record_session_model(ws):
+    (ws / ".gars_session_model").write_text(SESSION_MODEL + "\n")
+
+
 def completed_fixture_submission(project, stage):
     """Synthetic completed job for content gates; production submit/writer stay active."""
     from unittest.mock import patch
@@ -149,6 +159,7 @@ class WorkspaceFixture(unittest.TestCase):
         for d in ("_system", "_references", "_templates"):
             shutil.copytree(str(GARS / d), str(cls.ws / d))
         (cls.ws / "projects").mkdir()
+        record_session_model(cls.ws)
         # raw data: 2 samples x 1 lane, paired-end, bcl2fastq names
         cls.src = cls.tmp / "seqrun"
         cls.src.mkdir()
@@ -290,14 +301,15 @@ class WorkspaceFixture(unittest.TestCase):
         code, _, raw = run(self.sheet, ["--project", "projects/tall-test", "--force"], self.ws)
         self.assertEqual(code, 0, raw)
 
-    def test_08_model_flag_lands_in_history(self):
+    def test_08_session_model_lands_in_history_not_the_flag(self):
         # --force clears T5 only against the --check the user was shown (S01-yes)
         code, _, raw = run(self.sheet, ["--project", "projects/tall-test", "--check"], self.ws)
         self.assertEqual(code, 0, raw)
         code, res, raw = run(self.sheet, ["--project", "projects/tall-test", "--force",
                                           "--model", "claude-test-1"], self.ws)
         self.assertEqual(code, 0, raw)
-        self.assertIn("Model: claude-test-1", res["history_entry"])
+        self.assertIn("Model: %s" % SESSION_MODEL, res["history_entry"])
+        self.assertNotIn("claude-test-1", res["history_entry"])
 
     # -- configure --------------------------------------------------------------------------
 
@@ -464,7 +476,8 @@ Login node; seconds; kilobytes.
                                   "--analysis", "01_pca-of-samples",
                                   "--model", "claude-test-1"], self.ws)
         self.assertEqual(code, 0, raw)
-        self.assertIn("Model: claude-test-1", res["history_entry"])
+        self.assertIn("Model: %s" % SESSION_MODEL, res["history_entry"])
+        self.assertNotIn("claude-test-1", res["history_entry"])
         self.assertIn("COMPLETE", (adir / "STATUS").read_text())
         outputs = (adir / "OUTPUTS.tsv").read_text()
         self.assertIn("table\tnative\tresults/pca.csv", outputs)
@@ -642,6 +655,7 @@ class AtacseqWrapperTests(unittest.TestCase):
         for d in ("_system", "_references", "_templates"):
             shutil.copytree(str(GARS / d), str(cls.ws / d))
         (cls.ws / "projects").mkdir()
+        record_session_model(cls.ws)
         # fixture genome: tiny readable fasta/gtf, temp cache root
         cls.refs = cls.tmp / "refs"
         (cls.refs / "derived").mkdir(parents=True)
@@ -854,7 +868,8 @@ class AtacseqWrapperTests(unittest.TestCase):
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/atac-test",
                                          "--model", "claude-test-1"], self.ws)
         self.assertEqual(code, 0, raw)
-        self.assertIn("Model: claude-test-1", res["history_entry"])
+        self.assertIn("Model: %s" % SESSION_MODEL, res["history_entry"])
+        self.assertNotIn("claude-test-1", res["history_entry"])
         self.assertEqual(res["derived_cache"]["action"], "populated")
         keyed = self.refs / "derived" / "nf-core-atacseq-2.1.2"
         self.assertTrue((keyed / "bwa" / "genome.amb").is_file())
@@ -879,6 +894,7 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
         for d in ("_system", "_references", "_templates"):
             shutil.copytree(str(GARS / d), str(cls.ws / d))
         (cls.ws / "projects").mkdir()
+        record_session_model(cls.ws)
         cls.project = cls.ws / "projects" / "rna-test"
         (cls.project / "_config").mkdir(parents=True)
         (cls.project / "01_samplesheets").mkdir()
@@ -995,7 +1011,8 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/rna-test",
                                          "--model", "claude-test-1"], self.ws)
         self.assertEqual(code, 0, raw)
-        self.assertIn("Model: claude-test-1", res["history_entry"])
+        self.assertIn("Model: %s" % SESSION_MODEL, res["history_entry"])
+        self.assertNotIn("claude-test-1", res["history_entry"])
         self.assertEqual(res["derived_cache"]["action"], "reused")
         self.assertIn("counts_gene\tnative\t",
                       (self.substage / "OUTPUTS.tsv").read_text())
@@ -1065,7 +1082,8 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
                                        "--model", "claude-test-1",
                                        "--counts-from", "01_nfcore-rnaseq-wrapper"], self.ws)
         self.assertEqual(code, 0, raw)
-        self.assertIn("Model: claude-test-1", res["history_entry"])
+        self.assertIn("Model: %s" % SESSION_MODEL, res["history_entry"])
+        self.assertNotIn("claude-test-1", res["history_entry"])
         self.assertIn("01_nfcore-rnaseq-wrapper", res["history_entry"])
         outputs = (self.de_substage / "OUTPUTS.tsv").read_text()
         self.assertIn("counts_gene\tadapted\t", outputs)
@@ -2399,6 +2417,7 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         for d in ("_system", "_references", "_templates"):
             shutil.copytree(str(GARS / d), str(cls.ws / d))
         (cls.ws / "projects").mkdir()
+        record_session_model(cls.ws)
         cls.refs = cls.tmp / "refs"
         (cls.refs / "derived").mkdir(parents=True)
         (cls.refs / "genome.fa.gz").write_bytes(gzip.compress(b">chr1\nACGT\n"))
@@ -2595,7 +2614,8 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         self.assertEqual(code, 0, raw)
         self.assertIn("h5ad\tnative\t", (substage / "OUTPUTS.tsv").read_text())
         self.assertIn("COMPLETE", (substage / "STATUS").read_text())
-        self.assertIn("claude-test-1", res["history_entry"])
+        self.assertIn("Model: %s" % SESSION_MODEL, res["history_entry"])
+        self.assertNotIn("claude-test-1", res["history_entry"])
 
     def test_06_the_raw_matrix_is_never_substituted_for_the_filtered_one(self):
         """The real tree carries BOTH combined_filtered_matrix.h5ad and
@@ -3223,6 +3243,7 @@ class SpatialClusterCountTests(unittest.TestCase):
         for d in ("_system", "_references", "_templates"):
             shutil.copytree(str(GARS / d), str(cls.ws / d))
         (cls.ws / "projects").mkdir()
+        record_session_model(cls.ws)
         cls.src = cls.tmp / "spaceranger_runs"
         cls.src_one = cls.tmp / "spaceranger_one"
         for root, names in ((cls.src, ("BrainA", "BrainB")), (cls.src_one, ("BrainA",))):
@@ -3493,10 +3514,11 @@ class SpatialClusterCountTests(unittest.TestCase):
         self.assertNotIn("h5ad", "\n".join(outputs), "an h5ad row would shadow 02.01's")
         self.assertTrue((substage / "STATUS").read_text().startswith("COMPLETE "))
         entry = res["history_entry"]
-        for line in ("Template version:", "Model: claude-test-1",
+        for line in ("Template version:", "Model: %s" % SESSION_MODEL,
                      "Matrix supplied by: 01_nfcore-spatialvi-wrapper",
                      "Obs column: clusters", "Method:"):
             self.assertIn(line, entry)
+        self.assertNotIn("claude-test-1", entry)
         self.assertNotIn("n_clusters", res, "two samples: no top-level total")
         for banned in ("n_cells_in", "n_cells_out", "marker_rows"):
             self.assertNotIn(banned, raw)
