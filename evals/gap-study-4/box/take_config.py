@@ -17,7 +17,8 @@ run_take.py (this lane's decision) so each file stays one owner and small.
   - R-6 (glitch-b5's ruling of Sat 17 Oct 2026, under Javier's delegation; lane vendor-admission T4 P2): neither vendor
     file configures an instruction-file name. D8's `project_doc_fallback_filenames = ["CLAUDE.md"]` and
     `context.fileName = ["CLAUDE.md"]` are removed: each CLI reads its native file (INSTRUCTION_FILES), which
-    walk_builders.build_run_tree places in the checkout as a byte-identical copy of the pinned tree's CLAUDE.md.
+    walk_builders.build_run_tree places in the checkout beside every CLAUDE.md (round 10 ruling 3, gars/CLAUDE.md
+    included) as a byte-identical copy of it.
 
 `write()` refuses (NotReady) while any value its harness needs is PENDING. No public function takes a PENDING value
 as a parameter; tests fill them only by patching this module in memory. No key ever enters a config file: no
@@ -60,8 +61,8 @@ GEMINI_SETTINGS = (("tools.exclude", ["google_web_search", "web_fetch"]), ("hook
                    ("experimental.adk.agentSessionNoninteractiveEnabled", False))
 GEMINI_MODEL_PATH = "model.name"
 # R-6: the instruction file each vendor CLI reads by its own default name, configured nowhere (no fallback name is used
-# or accepted): Codex's AGENTS.md, Gemini CLI's GEMINI.md. walk_builders.build_run_tree places each as a copy of the
-# pinned tree's CLAUDE.md, the file the claude-code arm reads.
+# or accepted): Codex's AGENTS.md, Gemini CLI's GEMINI.md. walk_builders.build_run_tree places each beside every
+# CLAUDE.md of the checkout (round 10 ruling 3) as a copy of it, the file the claude-code arm reads.
 INSTRUCTION_FILES = {CODEX: "AGENTS.md", GEMINI: "GEMINI.md"}
 # Each, once measured: {"path": "<dotted path>", "value": <JSON value>}.
 GEMINI_THINKING = PENDING

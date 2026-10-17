@@ -599,13 +599,15 @@ def build_run_tree(walk: str, *, repo, commit: str, exclude, harness=None) -> Pa
 # configured fallback name is used (take_config writes none). drive.clean_run_tree takes no edit (drive.py is in both
 # native-reader source lists), so the copy is placed here, after it, into the checkout's one commit (amended, so the
 # checkout keeps one commit, its neutral subject and a clean status), and drive.run_tree_problems is read again on the
-# built tree. The copy is of the root CLAUDE.md only: gars/CLAUDE.md, which Claude Code loads when the agent works under
-# gars/, has no copy (named for glitch-b5 in the lane's summary).
+# built tree. Round 10 ruling 3 (glitch-b5, Sat 17 Oct 2026): R-6 covers every CLAUDE.md of the checkout, gars/CLAUDE.md
+# included: each gets the native file beside it, its own bytes bound by sha256; each CLI loads nested files by its own
+# documented rules, so the loading scope and timing are NOT COMPARABLE and the content SAME (lane-reports'
+# vendor-T4-TABLE.md).
 def place_instruction_file(tree: Path, harness, *, repo, commit: str, session_id: str, exclude: list):
-    """R-6: the harness's native instruction file at the checkout's root, the pinned CLAUDE.md's bytes at `commit`,
-    committed into the checkout's one commit; its name, or None for a harness that reads CLAUDE.md itself. Refuses
-    (BuilderRefused) an origin with no root CLAUDE.md, a commit already carrying the name, or a copy whose sha256 is
-    not the pinned file's."""
+    """R-6: beside every CLAUDE.md of the checkout (round 10 ruling 3), the harness's native instruction file with that
+    CLAUDE.md's bytes at `commit`, committed into the checkout's one commit; its name, or None for a harness that reads
+    CLAUDE.md itself. Refuses (BuilderRefused) a checkout with no root CLAUDE.md, a commit already carrying the name
+    anywhere in the checkout, or a copy whose sha256 is not its CLAUDE.md's."""
     import hashlib
     import subprocess
     import drive
@@ -613,23 +615,36 @@ def place_instruction_file(tree: Path, harness, *, repo, commit: str, session_id
     name = take_config.INSTRUCTION_FILES.get(harness)
     if name is None:
         return None
-    got = subprocess.run(["git", "-C", str(repo), "show", f"{commit}:CLAUDE.md"], capture_output=True)
-    if got.returncode != 0:
+    listed = subprocess.run(["git", "-C", str(tree), "ls-tree", "-r", "-z", "--name-only", "HEAD"],
+                            capture_output=True, check=True).stdout.decode("utf-8").split("\0")
+    sources = sorted(p for p in listed if p == "CLAUDE.md" or p.endswith("/CLAUDE.md"))
+    if "CLAUDE.md" not in sources:
         raise BuilderRefused(f"the pinned tree carries no root CLAUDE.md, so {harness}'s {name} has nothing to copy")
-    pinned = got.stdout
-    target = Path(tree) / name
-    if os.path.lexists(target):
-        raise BuilderRefused(f"the pinned tree already carries {name}: {harness} would read instructions the other "
-                             f"arms are not given")
-    target.write_bytes(pinned)
-    for args in (("add", "--", name),
+    carried = [p for p in listed if p == name or p.endswith("/" + name)]
+    if carried:
+        raise BuilderRefused(f"the pinned tree already carries {name} ({', '.join(carried)}): {harness} would read "
+                             f"instructions the other arms are not given")
+    placed = []
+    for rel in sources:
+        got = subprocess.run(["git", "-C", str(repo), "show", f"{commit}:{rel}"], capture_output=True)
+        if got.returncode != 0:
+            raise BuilderRefused(f"the pinned commit carries no {rel}, so {harness}'s copy beside it has no source")
+        pinned = got.stdout
+        dest = rel[:-len("CLAUDE.md")] + name
+        target = Path(tree) / dest
+        if os.path.lexists(target):
+            raise BuilderRefused(f"the checkout already holds {dest}")
+        target.write_bytes(pinned)
+        placed.append((dest, hashlib.sha256(pinned).hexdigest()))
+    for args in (("add", "--", *[d for d, _ in placed]),
                  ("commit", "-q", "--amend", "--no-verify", "--no-edit"),
                  ):
         subprocess.run(["git", "-C", str(tree), *args], check=True, capture_output=True)
-    committed = subprocess.run(["git", "-C", str(tree), "show", f"HEAD:{name}"], capture_output=True).stdout
-    want = hashlib.sha256(pinned).hexdigest()
-    if hashlib.sha256(committed).hexdigest() != want or hashlib.sha256(target.read_bytes()).hexdigest() != want:
-        raise BuilderRefused(f"{name} in the checkout is not the pinned CLAUDE.md's bytes (sha256 {want[:12]})")
+    for dest, want in placed:
+        committed = subprocess.run(["git", "-C", str(tree), "show", f"HEAD:{dest}"], capture_output=True).stdout
+        if (hashlib.sha256(committed).hexdigest() != want
+                or hashlib.sha256((Path(tree) / dest).read_bytes()).hexdigest() != want):
+            raise BuilderRefused(f"{dest} in the checkout is not its CLAUDE.md's bytes (sha256 {want[:12]})")
     problems = drive.run_tree_problems(Path(tree), session_id, exclude)
     if problems:
         raise BuilderRefused(f"the checkout with {name} placed: {'; '.join(problems)}")
