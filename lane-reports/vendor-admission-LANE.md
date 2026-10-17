@@ -1,4 +1,6 @@
-Status: needs-review
+Status: running
+
+ROUND 4 (glitch-b5, Sat 17 Oct 10:25 EDT): T4 plan v2. Revise lane-reports/vendor-T4-PLAN.md only, folding REVIEW-vendor-T4-PLAN-52d653f (T4 PLAN: NOT READY; 5 MAJOR, 6 MINOR) under one PRINCIPLE: a GPT or Gemini take is checked at least as strictly as a Claude Code take on every check, and where the plan cannot match a check for a vendor it says so in one table and that check is NOT COMPARABLE for that arm, published as such; nothing is silently weaker. No code, test or fixture; no logins, walks, takes, Docker or model calls. Then needs-review.
 
 ROUND 3 SUMMARY FOR REVIEW (cloud executor, 2026-10-17 09:07 EDT): the T4 plan is written, read-only on code, as lane-reports/vendor-T4-PLAN.md (141 lines, committed alone at f05d012e), on Javier's typed word "vendor-t4: yes" (Sat 17 Oct, about 08:57 EDT) read at harness head fb830f31. It classifies every reason the round-3 check() body and the round-4 checks raise, one line each with its function and line, for codex and gemini (AS IS, VENDOR READER, BYTES or N/A; a BYTES item refuses under its existing reason id until its reader exists, never passes); recommends session-binding option (a), the driver's uuid5 as identity with the vendor-minted id a bound alias read only from bound bytes; and recommends meeting T0 by option (B), appended check4_vendor and check4_walk_vendor behind one dispatcher, which touches no R5 region and moves no assertion, at the cost of one drive.py edit (take_checker guard-first plus the dispatcher) that must be ruled and land before Javier's acceptance commit; option (A) and its three regions and moved assertions are named for comparison. It carries both T0-review items (the O/G pin_profiles KeyError at batch.py:418 via walk_builders.py:939-940, and take_checker reading the vendor envelope with Claude readers at drive.py:3603-3604 before harness_guard), the fixture plan (all DOCUMENTED) and what must be re-tested on recorded bytes, files, red-first tests, mutants and claims per piece, one new hazard (transcript_codex.py is in neither READER_SOURCES nor CODEX_SOURCES), sizes (about 3 h build and 1 h folds from this lane's measured rounds), and six rulings asked (R-1 to R-6). No code, test or fixture was changed; nothing was run beyond reads.
 
@@ -241,4 +243,6 @@ Build every fail-closed piece that arms O and G need after native-reader registr
 
 - 2026-10-17 09:07 EDT: lane-reports/vendor-T4-PLAN.md written and committed alone (f05d012e); cited line numbers re-checked against fb830f31. Status: needs-review. T4 builds nothing until glitch-b5 rules the plan's R-1 to R-6.
 
-RESUME HERE: NEEDS REVIEW. glitch-b5 rules lane-reports/vendor-T4-PLAN.md (R-1 to R-6); T4 builds only after that ruling, starting with P0 (drive.py, pre-acceptance) if R-3 is granted.
+- 2026-10-17 10:22 EDT: round 4 (T4 plan v2) picked up by the cloud executor (scheduled run); Status: running. Revising lane-reports/vendor-T4-PLAN.md only, at harness head fb830f31.
+
+RESUME HERE: RUNNING. Round 4 revises lane-reports/vendor-T4-PLAN.md to v2 (glitch-b5's rulings of Sat 17 Oct 10:25 EDT, above); then Status: needs-review.
