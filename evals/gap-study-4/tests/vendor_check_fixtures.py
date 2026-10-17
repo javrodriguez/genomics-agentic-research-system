@@ -3,17 +3,20 @@
 section 8; ruled READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word "vendor-t4: yes").
 
   F1  tests/fixtures/vendor-check-codex/   a two-turn codex take: transcript.jsonl (the host's turn envelopes),
-      driver-ledger.json, turn-<k>.jsonl (`codex exec --json` streams, each bound by its envelope's sha256) and
+      driver-ledger.json, turn-<k>.jsonl (`codex exec --json` streams, each bound by its envelope's sha256),
+      turn-<k>.jsonl.launch.json (the box's launch journal of turn k, its argv the adapter's own) and
       session/native-turn-<k>.jsonl (the rollout retained after turn k, response_item tool records included), from
       test_pending_codex_walk's generators.
   F2  tests/fixtures/vendor-check-gemini/  the same for gemini: `-o stream-json` streams and the retained native
       session snapshots, from test_pending_walk's accepted Gemini walk.
 
-They hold the files P1's readers read (the bound view and the raw records); the launch journals, session-store.json
-and environment.json land with the pieces whose readers read them (P4 and P5). Every file is SYNTHETIC, written by
-this module from the documented shapes, and its folder's README carries the label list. An F3 variant is these
-parts edited in a test and written by the same writer into a scratch folder, its digests recomputed, so a variant
-differs from F1 or F2 only where its edit says.
+They hold the files P1's and P2's readers read (the bound view, the raw records, the launch journals P2's
+inherited-context and run-tree legs read); session-store.json and environment.json land with the pieces whose
+readers read them (P4 and P5). Every file is SYNTHETIC, written by this module from the documented shapes, and its
+folder's README carries the label list. An F3 variant is these parts edited in a test and written by the same writer
+into a scratch folder, its digests recomputed, so a variant differs from F1 or F2 only where its edit says. P2's
+takes of a real draft row are the same parts built from that row's lines and replies (codex_parts and gemini_parts
+take them), with the row's ledger fields merged into the ledger (files' `ledger`).
 
     python3 tests/vendor_check_fixtures.py --write    rewrite both folders
     python3 tests/vendor_check_fixtures.py --check    exit 1 unless both folders are what this module writes
@@ -27,10 +30,14 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+if str(HERE.parent) not in sys.path:
+    sys.path.insert(0, str(HERE.parent))
 FIXTURES = HERE / "fixtures"
 F1, F2 = FIXTURES / "vendor-check-codex", FIXTURES / "vendor-check-gemini"
 SID = "5f0c1a2e-0000-5000-8000-0000000000f1"          # the driver's take identity (the ledger's session_id)
 TURNS = 2
+RUN_TREE = "/work/tree"                                # the take's run tree: the rollout's cwd and the journals'
+MODES = {"codex": "bypass", "gemini": "yolo"}          # the adapters' MODE_FLAGS keys a journal's argv is built with
 
 CODEX_TID = "00000000-0000-7000-8000-0000000000f1"    # the thread id codex mints at turn 1
 CODEX_CLI = "0.162.1"
@@ -52,16 +59,26 @@ def sent(k: int) -> str:
 
 
 # ---- the parts: plain data a test edits before writing ------------------------------------------------------------
-def codex_parts() -> dict:
-    """{"streams": {k: [exec records]}, "meta": session_meta payload, "rollout": {k: [(line type, payload)]}}."""
+def _lines_replies(lines, replies) -> tuple:
+    lines = [sent(k) for k in range(1, TURNS + 1)] if lines is None else list(lines)
+    replies = ["Done."] * len(lines) if replies is None else list(replies)
+    if len(replies) != len(lines) or not lines:
+        raise ValueError("one reply per line, and at least one line")
+    return lines, replies
+
+
+def codex_parts(lines=None, replies=None, *, cwd: str = RUN_TREE, model: str = CODEX_MODEL) -> dict:
+    """{"streams": {k: [exec records]}, "meta": session_meta payload, "rollout": {k: [(line type, payload)]},
+    "lines", "model", "cwd"}: one turn per line, its agent message the reply."""
+    lines, replies = _lines_replies(lines, replies)
     streams, rollout = {}, {}
-    for k in range(1, TURNS + 1):
+    for k, (line, reply) in enumerate(zip(lines, replies), 1):
         cmd = {"id": "item_0", "type": "command_execution", "command": "ls"}
         streams[k] = [{"type": "thread.started", "thread_id": CODEX_TID}, {"type": "turn.started"},
                       {"type": "item.started", "item": dict(cmd, status="in_progress")},
                       {"type": "item.completed", "item": dict(cmd, aggregated_output=f"out {k}", exit_code=0,
                                                               status="completed")},
-                      {"type": "item.completed", "item": {"id": "item_1", "type": "agent_message", "text": "Done."}},
+                      {"type": "item.completed", "item": {"id": "item_1", "type": "agent_message", "text": reply}},
                       {"type": "turn.completed", "usage": dict(CODEX_USAGE)}]
         tid = f"t{k}"
 
@@ -71,27 +88,27 @@ def codex_parts() -> dict:
         rollout[k] = [
             ("event_msg", {"type": "task_started", "turn_id": tid, "model_context_window": None,
                            "collaboration_mode_kind": "default"}),
-            ("turn_context", {"turn_id": tid, "cwd": "/work/tree", "approval_policy": "never",
-                              "sandbox_policy": {"type": "danger-full-access"}, "model": CODEX_MODEL}),
+            ("turn_context", {"turn_id": tid, "cwd": cwd, "approval_policy": "never",
+                              "sandbox_policy": {"type": "danger-full-access"}, "model": model}),
             ("response_item", {"type": "message", "role": "user", "content": [{"type": "input_text",
-                                                                               "text": sent(k)}]}),
-            done({"type": "UserMessage", "id": f"u{k}", "content": [{"type": "text", "text": sent(k),
+                                                                               "text": line}]}),
+            done({"type": "UserMessage", "id": f"u{k}", "content": [{"type": "text", "text": line,
                                                                      "text_elements": []}]}),
             ("response_item", {"type": "function_call", "name": "exec_command", "call_id": f"call_{k}",
-                               "arguments": json.dumps({"cmd": "ls", "workdir": "/work/tree"})}),
-            done({"type": "CommandExecution", "id": f"c{k}", "command": ["ls"], "cwd": "/work/tree", "parsed_cmd": [],
+                               "arguments": json.dumps({"cmd": "ls", "workdir": cwd})}),
+            done({"type": "CommandExecution", "id": f"c{k}", "command": ["ls"], "cwd": cwd, "parsed_cmd": [],
                   "source": "agent", "status": "completed", "aggregated_output": f"out {k}", "exit_code": 0}),
             ("response_item", {"type": "function_call_output", "call_id": f"call_{k}", "output": f"out {k}"}),
             ("response_item", {"type": "message", "role": "assistant", "content": [{"type": "output_text",
-                                                                                    "text": "Done."}]}),
-            done({"type": "AgentMessage", "id": f"m{k}", "content": [{"type": "Text", "text": "Done."}],
+                                                                                    "text": reply}]}),
+            done({"type": "AgentMessage", "id": f"m{k}", "content": [{"type": "Text", "text": reply}],
                   "phase": "final_answer"}),
-            ("event_msg", {"type": "task_complete", "turn_id": tid, "last_agent_message": "Done."}),
+            ("event_msg", {"type": "task_complete", "turn_id": tid, "last_agent_message": reply}),
         ]
-    meta = {"session_id": CODEX_TID, "id": CODEX_TID, "timestamp": "2026-10-14T05:00:00.000Z", "cwd": "/work/tree",
+    meta = {"session_id": CODEX_TID, "id": CODEX_TID, "timestamp": "2026-10-14T05:00:00.000Z", "cwd": cwd,
             "originator": "codex_exec", "cli_version": CODEX_CLI, "source": "exec", "model_provider": "openai",
             "base_instructions": {"text": "synthetic"}, "history_mode": "paginated"}
-    return {"streams": streams, "meta": meta, "rollout": rollout}
+    return {"streams": streams, "meta": meta, "rollout": rollout, "lines": lines, "model": model, "cwd": cwd}
 
 
 def gemini_tool_call(k: int) -> dict:
@@ -101,27 +118,31 @@ def gemini_tool_call(k: int) -> dict:
             "result": [{"functionResponse": {"id": cid, "name": "read_file", "response": {"output": "x"}}}]}
 
 
-def gemini_parts() -> dict:
-    """{"streams": {k: [stream records]}, "meta": the snapshot's metadata record, "native": {k: [messages]}}."""
+def gemini_parts(lines=None, replies=None, *, model: str = GEMINI_MODEL) -> dict:
+    """{"streams": {k: [stream records]}, "meta": the snapshot's metadata record, "native": {k: [messages]}, "lines",
+    "model"}: one interaction per line, its last response the reply."""
+    lines, replies = _lines_replies(lines, replies)
+    stats = copy.deepcopy(GEMINI_STATS)
+    stats["models"] = {model: stats["models"][GEMINI_MODEL]}
     streams, native = {}, {}
-    for k in range(1, TURNS + 1):
+    for k, (line, reply) in enumerate(zip(lines, replies), 1):
         def ev(t, **kw):
             return dict({"type": t, "timestamp": GEMINI_TS}, **kw)
-        streams[k] = [ev("init", session_id=GEMINI_SID, model=GEMINI_MODEL),
-                      ev("message", role="user", content=sent(k)),
+        streams[k] = [ev("init", session_id=GEMINI_SID, model=model),
+                      ev("message", role="user", content=line),
                       ev("message", role="assistant", content="I'll read it.", delta=True),
                       ev("tool_use", tool_name="read_file", tool_id=f"call-{k}", parameters={"file_path": "notes.txt"}),
                       ev("tool_result", tool_id=f"call-{k}", status="success", output="display text"),
-                      ev("message", role="assistant", content="Done.", delta=True),
-                      ev("result", status="success", stats=copy.deepcopy(GEMINI_STATS))]
-        native[k] = [{"id": f"u{k}", "type": "user", "content": [{"text": sent(k)}]},
-                     {"id": f"a{k}", "type": "gemini", "model": GEMINI_MODEL, "content": "I'll read it.",
+                      ev("message", role="assistant", content=reply, delta=True),
+                      ev("result", status="success", stats=copy.deepcopy(stats))]
+        native[k] = [{"id": f"u{k}", "type": "user", "content": [{"text": line}]},
+                     {"id": f"a{k}", "type": "gemini", "model": model, "content": "I'll read it.",
                       "toolCalls": [gemini_tool_call(k)]},
                      {"id": f"rt{k}", "type": "user", "content": [
                          {"functionResponse": {"id": f"call-{k}", "name": "read_file", "response": {"output": "x"}}}]},
-                     {"id": f"b{k}", "type": "gemini", "model": GEMINI_MODEL, "content": "Done."}]
+                     {"id": f"b{k}", "type": "gemini", "model": model, "content": reply}]
     meta = {"sessionId": GEMINI_SID, "projectHash": "project-1", "summary": "synthetic"}
-    return {"streams": streams, "meta": meta, "native": native}
+    return {"streams": streams, "meta": meta, "native": native, "lines": lines, "model": model}
 
 
 # ---- the writer ---------------------------------------------------------------------------------------------------
@@ -141,8 +162,23 @@ def _gemini_snapshot(parts: dict, upto: int) -> bytes:
     return _jl([parts["meta"]] + [m for k in range(1, upto + 1) for m in parts["native"][k]])
 
 
-def files(harness: str, parts: dict | None = None) -> dict:
-    """{relative path: bytes} of one take folder of `harness` built from `parts` (its default parts when None)."""
+def journal(harness: str, parts: dict, k: int, *, run_tree: str = RUN_TREE, mode: str | None = None) -> dict:
+    """Turn k's launch journal as box/run_take.run_turn writes it: its argv the adapter's own for the line, model and
+    mode (turn 1 resumes nothing; a later turn resumes the vendor id), its cwd the run tree, its stream turn k's."""
+    import codex_adapter
+    import gemini_adapter
+    adapter = codex_adapter if harness == "codex" else gemini_adapter
+    vendor_id = CODEX_TID if harness == "codex" else GEMINI_SID
+    argv = adapter.argv(parts["lines"][k - 1], model=parts["model"], mode=mode or MODES[harness],
+                        session_id=None if k == 1 else vendor_id, first=k == 1)
+    return {"schema": 1, "harness": harness, "container_id": "synthetic", "argv": argv, "cwd": run_tree,
+            "stream": f"/synthetic/take/turn-{k}.jsonl", "started_at": 0}
+
+
+def files(harness: str, parts: dict | None = None, *, sid: str = SID, ledger: dict | None = None,
+          run_tree: str = RUN_TREE, mode: str | None = None) -> dict:
+    """{relative path: bytes} of one take folder of `harness` built from `parts` (its default parts when None); the
+    driver's take identity `sid`, and `ledger`'s fields merged over the ledger's own (a test's draft-row fields)."""
     if harness == "codex":
         parts = codex_parts() if parts is None else parts
         vendor_id, version, snapshot = CODEX_TID, CODEX_CLI, _codex_snapshot
@@ -154,17 +190,20 @@ def files(harness: str, parts: dict | None = None) -> dict:
     for k in turns:
         name = f"turn-{k}.jsonl"
         out[name] = _jl(parts["streams"][k])
-        envelopes.append({"type": "harness-turn", "harness": harness, "session_id": SID,
-                          "vendor_session_id": vendor_id, "n": k, "sent": sent(k), "stream": name,
+        envelopes.append({"type": "harness-turn", "harness": harness, "session_id": sid,
+                          "vendor_session_id": vendor_id, "n": k, "sent": parts["lines"][k - 1], "stream": name,
                           "sha256": hashlib.sha256(out[name]).hexdigest()})
+        out[f"{name}.launch.json"] = (json.dumps(journal(harness, parts, k, run_tree=run_tree, mode=mode),
+                                                 separators=(",", ":")) + "\n").encode("utf-8")
         raw = snapshot(parts, k)
         out[f"session/native-turn-{k}.jsonl"] = raw
         snaps.append({"file": f"native-turn-{k}.jsonl", "sha256": hashlib.sha256(raw).hexdigest()})
     out["transcript.jsonl"] = _jl(envelopes)
-    ledger = {"kind": "take", "agent": {"harness": harness, "version": version}, "session_id": SID,
-              "turns": [{"n": k, "sent": sent(k)} for k in turns], "streams": [f"turn-{k}.jsonl" for k in turns],
-              "transcript": "transcript.jsonl", "native_snapshots": snaps}
-    out["driver-ledger.json"] = (json.dumps(ledger, indent=2) + "\n").encode("utf-8")
+    doc = {"kind": "take", "agent": {"harness": harness, "version": version}, "session_id": sid,
+           "turns": [{"n": k, "sent": parts["lines"][k - 1]} for k in turns],
+           "streams": [f"turn-{k}.jsonl" for k in turns], "transcript": "transcript.jsonl", "native_snapshots": snaps}
+    doc.update(copy.deepcopy(ledger or {}))
+    out["driver-ledger.json"] = (json.dumps(doc, indent=2) + "\n").encode("utf-8")
     title = {"codex": "F1, a synthetic codex take", "gemini": "F2, a synthetic gemini take"}[harness]
     readme = [f"# {title} (lane vendor-admission T4, plan v4 section 8)", "",
               "Written by tests/vendor_check_fixtures.py (`--write`; `--check` binds this folder to it). Labels:", ""]
@@ -173,10 +212,10 @@ def files(harness: str, parts: dict | None = None) -> dict:
     return out
 
 
-def write(folder: Path, harness: str, parts: dict | None = None) -> Path:
-    """Write one take folder; returns its transcript.jsonl."""
+def write(folder: Path, harness: str, parts: dict | None = None, **kw) -> Path:
+    """Write one take folder (files' keywords pass through); returns its transcript.jsonl."""
     folder = Path(folder)
-    for rel, data in files(harness, parts).items():
+    for rel, data in files(harness, parts, **kw).items():
         (folder / rel).parent.mkdir(parents=True, exist_ok=True)
         (folder / rel).write_bytes(data)
     return folder / "transcript.jsonl"

@@ -24,12 +24,12 @@
     {
       "path": "tests/test_vendor_check.py",
       "status": "new",
-      "reason": "Lane vendor-admission T4 (lane-reports/vendor-T4-PLAN.md v4, ruled READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word \"vendor-t4: yes\"). PF: VP-rows (check_take.VENDOR_PENDING_ROWS holds exactly the comparability table's PENDING keys with their reason ids, all PENDING; no event id), VP-helper (vendor_pending refuses a PENDING key under its reason id, raises KeyError for an unknown key, and calls a settled key's reader only when the call site hands in the very function the row names, else CheckRefused: review 36ce125 MINOR 2), VP-keys (vendor_pending's call sites read from the AST: literal keys of the map, the settled reader named, the refusal text only inside the helper; three synthetic-source mutants go red; the live key equality lands with P2's call sites), VP-fixtures (a SAME row names a fixture labelled RECORDED on its CLI; recorded shapes need every row settled) and the source-list checker's cases. Fakes and synthetic sources only. P1 (plan sections 4 and 9; review 36ce125 MINOR 1, ruling 1 of 12:35): P1-fixtures (F1 and F2 are what tests/vendor_check_fixtures.py writes, every file labelled SYNTHETIC), P1-view (vendor_take_view reads the bound view; a stream off its envelope's digest, or a view holding no event, is transcript-unreadable; a claude-code take refuses), P1-raw (vendor_raw_records reads every tool record of every source from the CLI-written bytes; the codex response_item partition equals codex_native.RESPONSE_ITEMS), P1-reach (F3 cases each firing study-materials-reached, read-outside-the-checkout's checkout leg or transcript-unreadable on one source, a study path only as an object key among them) and P1-witness (twelve in-memory check_take mutants go red). Round 8 ruling 2: a row's reader is a function defined in check_take."
+      "reason": "Lane vendor-admission T4 (lane-reports/vendor-T4-PLAN.md v4, ruled READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word \"vendor-t4: yes\"). PF: VP-rows (check_take.VENDOR_PENDING_ROWS holds exactly the comparability table's PENDING keys with their reason ids, all PENDING; no event id), VP-helper (vendor_pending refuses a PENDING key under its reason id, raises KeyError for an unknown key, and calls a settled key's reader only when the call site hands in the very function the row names, else CheckRefused: review 36ce125 MINOR 2), VP-keys (vendor_pending's call sites read from the AST: literal keys of the map, the settled reader named, the refusal text only inside the helper; three synthetic-source mutants go red; the live key equality lands with P2's call sites), VP-fixtures (a SAME row names a fixture labelled RECORDED on its CLI; recorded shapes need every row settled) and the source-list checker's cases. Fakes and synthetic sources only. P1 (plan sections 4 and 9; review 36ce125 MINOR 1, ruling 1 of 12:35): P1-fixtures (F1 and F2 are what tests/vendor_check_fixtures.py writes, every file labelled SYNTHETIC), P1-view (vendor_take_view reads the bound view; a stream off its envelope's digest, or a view holding no event, is transcript-unreadable; a claude-code take refuses), P1-raw (vendor_raw_records reads every tool record of every source from the CLI-written bytes; the codex response_item partition equals codex_native.RESPONSE_ITEMS), P1-reach (F3 cases each firing study-materials-reached, read-outside-the-checkout's checkout leg or transcript-unreadable on one source, a study path only as an object key among them) and P1-witness (twelve in-memory check_take mutants go red). Round 8 ruling 2: a row's reader is a function defined in check_take. T4 P2: VP-keys' live check is equality with P2's call sites, as P1's head said P2 makes it."
     },
     {
       "path": "tests/vendor_check_fixtures.py",
       "status": "new",
-      "reason": "Lane vendor-admission T4 P1 (plan v4 section 8): writes and checks F1 (tests/fixtures/vendor-check-codex/) and F2 (tests/fixtures/vendor-check-gemini/), the synthetic two-turn codex and gemini take folders P1's readers read (turn envelopes, driver ledger, digest-bound turn streams, retained native snapshots), from test_pending_codex_walk's and test_pending_walk's generators; tests/test_vendor_check.py builds its F3 variants from the same parts. Standard library only."
+      "reason": "Lane vendor-admission T4 P1 (plan v4 section 8): writes and checks F1 (tests/fixtures/vendor-check-codex/) and F2 (tests/fixtures/vendor-check-gemini/), the synthetic two-turn codex and gemini take folders P1's readers read (turn envelopes, driver ledger, digest-bound turn streams, retained native snapshots), from test_pending_codex_walk's and test_pending_walk's generators; tests/test_vendor_check.py builds its F3 variants from the same parts. Standard library only. T4 P2: codex_parts and gemini_parts take a row's own lines and replies, files() takes the driver's session id, ledger fields, run tree and mode, and every take folder gains each turn's launch journal (its argv the adapter's own), F1's and F2's included."
     },
     {
       "path": "tests/fixtures/vendor-check-codex/README.md",
@@ -100,6 +100,31 @@
       "path": "tests/fixtures/vendor-check-gemini/turn-2.jsonl",
       "status": "new",
       "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/turn-1.jsonl.launch.json",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P2 (the launch journals P2's inherited-context and run-tree legs read): fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/turn-2.jsonl.launch.json",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P2 (the launch journals P2's inherited-context and run-tree legs read): fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/turn-1.jsonl.launch.json",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P2 (the launch journals P2's inherited-context and run-tree legs read): fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/turn-2.jsonl.launch.json",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P2 (the launch journals P2's inherited-context and run-tree legs read): fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/test_vendor_body.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P2 (lane-reports/vendor-T4-PLAN.md v4 sections 1 and 9, ruled READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word \"vendor-t4: yes\"; round 9's rulings). check_take.vendor_check and vendor_round4_problems on synthetic codex and gemini takes of test_checker_body's draft row, written by tests/vendor_check_fixtures.py: P2-clean (a clean take or walk carries exactly its harness's PENDING refusals), P2-cases (one F3 case per reason, each adding exactly its reasons), P2-keys (VP-keys as equality) and P2-witness (each guard dropped, each PENDING call site deleted, a PENDING refusal under an event id: each red on its own case). Fakes only, inside test_checker_body's process guard; run by checks.d/vendor-admission.txt."
     },
     {
       "path": "tests/check_vendor_sources.py",

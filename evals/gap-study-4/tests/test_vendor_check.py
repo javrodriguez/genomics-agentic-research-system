@@ -16,8 +16,8 @@ PF, the freeze gate's half in check_take.py (plan section 7; review 36ce125 MINO
                ruling 2).
   VP-keys      read from check_take.py's AST: every vendor_pending call names its harness and key as literals and a
                key of the map; a settled key's call site passes, as its reader, the very function its row names; the
-               text "no vendor reader yet" occurs only inside vendor_pending's body. The call sites are P2's, so on this
-               head the live check asserts the calls are a subset of the map's keys; P2 makes it equality. Three
+               text "no vendor reader yet" occurs only inside vendor_pending's body. P2 wrote the call sites, so the
+               live check asserts the calls are the map's keys exactly (equality, as P1's head said P2 makes it). Three
                mutants on synthetic sources (a refusal written outside the helper, a key dropped from the map, a map key
                with no call site) go red here already.
   sources      tests/check_vendor_sources.py (checks.d's per-piece line, plan NIT 7) refuses a piece naming a
@@ -291,8 +291,9 @@ class VPHelper(unittest.TestCase):
 
 class VPKeys(unittest.TestCase):
     def test_vp_keys_the_live_source(self):
-        # P2 writes the call sites; until then the calls are a subset of the map's keys (P2 makes this equality)
-        self.assertEqual(vp_keys_problems(SOURCE, ct.VENDOR_PENDING_ROWS, equal=False), [])
+        # P2 wrote the call sites, so the calls are the map's keys exactly (plan section 7; group (a)'s summary said P2
+        # makes this equality)
+        self.assertEqual(vp_keys_problems(SOURCE, ct.VENDOR_PENDING_ROWS), [])
 
     def test_vp_keys_each_mutant_goes_red(self):
         rows = {"codex": {"T-5": {"reason": "unknown-harness-origin", "state": ct.PENDING},

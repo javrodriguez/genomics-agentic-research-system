@@ -18,3 +18,5 @@ python3 -B -W ignore evals/gap-study-4/tests/test_pin_for_vendor.py
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P0b batch.py tests/test_pin_for_vendor.py
 python3 -B evals/gap-study-4/tests/vendor_check_fixtures.py --check
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P1 check_take.py tests/test_vendor_check.py tests/vendor_check_fixtures.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_body.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 check_take.py tests/test_vendor_body.py tests/test_vendor_check.py tests/vendor_check_fixtures.py
