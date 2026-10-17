@@ -338,12 +338,14 @@ def unrecorded_shapes_problem(draft):
 
 
 def vendor_reader_problems(harness):
-    """Leg (ii): check_take's vendor readers were re-tested on a recorded walk and every PENDING row is settled."""
+    """Leg (ii): check_take's vendor readers were re-tested on a recorded walk (every READER item on a RECORDED
+    fixture; round 8 ruling 3, lane vendor-admission T4 P2) and every PENDING row is settled."""
     import check_take
     if harness not in check_take.VENDOR_PENDING_ROWS:
         return [f"check_take.py's VENDOR_PENDING_ROWS has no {harness} block"]
     source = check_take.VENDOR_CHECK_SHAPES_SOURCE.get(harness)
     out = [] if source == RECORDED_SHAPES else [f"check_take.py's VENDOR_CHECK_SHAPES_SOURCE is {source!r}"]
+    out += check_take.vendor_reader_items_problems(harness)
     return out + check_take.vendor_rows_problems(harness)
 
 

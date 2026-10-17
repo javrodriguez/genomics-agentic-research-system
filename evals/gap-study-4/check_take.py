@@ -3855,13 +3855,39 @@ def vendor_rows_problems(harness: str) -> list:
     return out
 
 
+# Round 8 ruling 3 (plan section 7's other half, P2): the table's rows a vendor reader reads, per harness (every row
+# but its PENDING ones, row 19's N/A and row 22's refusal-only NOT COMPARABLE; rows 15 for O and 16 for G are NOT
+# COMPARABLE rows whose partial check is a reader), each naming the RECORDED fixture its reader was re-tested on
+# (plan section 8: its reading equal to an independent expected value on a named recorded record), or None until then.
+VENDOR_READER_ITEMS = {
+    "codex": dict.fromkeys(("T-1", "T-2", "T-3", "T-4", "T-6", "T-7", "T-8", "T-9", "T-11", "T-15", "T-17", "T-20",
+                            "T-21", "T-23", "T-24")),
+    "gemini": dict.fromkeys(("T-1", "T-2", "T-3", "T-5", "T-6", "T-7", "T-8", "T-9", "T-15", "T-16", "T-17", "T-20",
+                             "T-21", "T-23", "T-24")),
+}
+
+
+def vendor_reader_items_problems(harness: str) -> list:
+    """Each READER item of the harness whose reader names no RECORDED fixture, or a fixture not labelled RECORDED at a
+    walk on its CLI. An unknown harness raises KeyError."""
+    out = []
+    for item, fixture in VENDOR_READER_ITEMS[harness].items():
+        if fixture is None:
+            out.append(f"{item} reader names no RECORDED fixture (plan section 8's re-test on recorded bytes)")
+        else:
+            problem = _vendor_recorded_fixture_problem(harness, fixture)
+            if problem:
+                out.append(f"{item} reader: {problem}")
+    return out
+
+
 def vendor_shapes_problems(harness: str) -> list:
     """VENDOR_CHECK_SHAPES_SOURCE[harness] is one of the two words, and reads "recorded" only with every row of the
-    harness settled."""
+    harness settled and every READER item of it on a RECORDED fixture (round 8 ruling 3)."""
     source = VENDOR_CHECK_SHAPES_SOURCE.get(harness)
     if source not in VENDOR_SHAPES_SOURCES:
         return [f"VENDOR_CHECK_SHAPES_SOURCE[{harness!r}] is {source!r}, off {list(VENDOR_SHAPES_SOURCES)}"]
-    return vendor_rows_problems(harness) if source == "recorded" else []
+    return vendor_rows_problems(harness) + vendor_reader_items_problems(harness) if source == "recorded" else []
 
 
 def vendor_pending(harness: str, key: str, reader, *args, **kwargs) -> list:
