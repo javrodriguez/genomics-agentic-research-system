@@ -131,11 +131,32 @@ class ConfigureConfirmTests(unittest.TestCase):
         self.assertEqual(code, 0, result)
         self.assertEqual(self.cfg.read_text(), shown['config_preview'])
         self.assertEqual(result['wrote'], '_config/rnaseq_bulk.yaml')
-        # Re-applying the same settings to the written file yields the same bytes, so the
-        # dry run the user saw still matches: the write is idempotent, not a replay of others.
+        # The record is single-use after a write (glitch-b5's ruling 2 on REVIEW-9eb28d9): the
+        # file the dry run read is gone, so a repeat needs a new dry run, as in record 0300.
+        before = self.cfg.read_bytes()
         code, again = self.de('--contrast', '02')
-        self.assertEqual(code, 0, again)
-        self.assertEqual(self.cfg.read_text(), shown['config_preview'])
+        self.assertRefusedUnchanged(code, again, self.cfg, before)
+        self.assertIn('changed since the dry run', again['error'])
+
+    def test_a_kept_record_never_writes_over_a_later_edit(self):
+        """REVIEW-9eb28d9 finding 2, the reviewer's reproduction: dry run, write, edit the
+        contrast by hand, apply the shown settings with no new dry run: refused, the edit kept."""
+        code, shown = self.de('--contrast', 'condition,x,y', '--dry-run')
+        self.assertEqual(code, 0, shown)
+        code, wrote = self.de('--contrast', 'condition,x,y')
+        self.assertEqual(code, 0, wrote)
+        self.cfg.write_text(self.cfg.read_text().replace('condition,x,y', 'condition,x,z'))
+        before = self.cfg.read_bytes()
+        code, result = self.de('--contrast', 'condition,x,y')
+        self.assertRefusedUnchanged(code, result, self.cfg, before)
+        self.assertIn('changed since the dry run', result['error'])
+        self.assertIn(b'condition,x,z', self.cfg.read_bytes())
+
+    def test_the_record_names_the_file_the_dry_run_read(self):
+        code, shown = self.de('--contrast', 'condition,x,y', '--dry-run')
+        self.assertEqual(code, 0, shown)
+        record = json.loads((self.project / configure.dry_run_record('rnaseq_bulk')).read_text())
+        self.assertEqual(record['read_sha256'], configure.sha256_text(DE_TEMPLATE))
 
 
 if __name__ == '__main__':
