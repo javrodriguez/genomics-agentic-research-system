@@ -372,7 +372,13 @@ class AuthoringTests(unittest.TestCase):
                  'def cmd_collect(ns):\n    args = ns\n'
                  '    wl.require_collect_config(args.project, ASSAY, SUBSTAGE)\n'
                  '    project = Path(args.project)\n' + line + '    model = ns.model or model\n'),
-                (line, '    ws = types.SimpleNamespace(history_model=lambda w, m: m)\n' + line)):
+                (line, '    ws = types.SimpleNamespace(history_model=lambda w, m: m)\n' + line),
+                # A witness for the signature clause the first row cannot reach: nothing is
+                # rebound, args is a defaulted second parameter and the namespace comes in as ns.
+                (head + '    project = Path(args.project)\n' + line,
+                 'def cmd_collect(ns, args=types.SimpleNamespace(project=".", model=None)):\n'
+                 '    wl.require_collect_config(args.project, ASSAY, SUBSTAGE)\n'
+                 '    project = Path(args.project)\n' + line + '    model = ns.model or model\n')):
             with self.subTest(line=new):
                 code, payload = self.conform_mutant(old, new)
                 self.assertEqual(code, 1, payload)
