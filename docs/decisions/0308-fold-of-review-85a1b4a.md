@@ -53,6 +53,8 @@ The fold of the fresh review of lane gars-t74's run 5 (`lanes/gars-t74/REVIEW-85
 - A directive approve does not know the meaning of is compared as text: `--mem=4G` against `--mem=4096M` is the largest of two, but two spellings of one partition list disagree.
 - A directory input (spatial-cluster-count) records no single sha256 in the manifest, so its producer is bound by path alone.
 - An explicit path still stands at prepare when nothing resolves; it is recorded honestly as supplied by `unknown`.
+- **0304's byte-for-byte revert (NIT 4).** After a write, a user who reverts the config byte for byte to the state the dry run read can have the shown apply written again with no new dry run.
+- **A helper outside `scripts/` (NIT 5, for 0306).** A script under `scripts/` can call a file outside it (for example `Rscript ../analysis.R`), which no approval binds.
 
 ## Test
 
