@@ -272,8 +272,10 @@ def main():
             closed = None
     else:
         root = ws / "projects"
-        projects = sorted(d for d in root.iterdir()
-                          if d.is_dir() and not d.name.startswith("_")) if root.is_dir() else []
+        # A dot name is never a project (titles cannot start with one): it is the sibling stage
+        # 00 builds a project in, skipped as the index's glob skips it (0295).
+        projects = sorted(d for d in root.iterdir() if d.is_dir() and
+                          not d.name.startswith(("_", "."))) if root.is_dir() else []
         if not projects:
             out.append("(no projects yet)")
         try:

@@ -356,6 +356,42 @@ def cmd_assays(args, workspace):
 
 # --- create -------------------------------------------------------------------------------------
 
+def _build_project(stamp, project, supported, workspace, title):
+    """The stamp, each assay's raw/ and the seeded _config/ at `project`; the seeded names."""
+    import shutil
+    shutil.copytree(str(stamp), str(project))
+    for aid in supported:
+        (project / "00_data" / aid / "raw").mkdir(parents=True, exist_ok=True)
+
+    # Seed _config/ so the user never authors a config from a blank file. Everything derivable is
+    # filled in; the scientific decisions are left marked <REQUIRED>, because no stage substitutes
+    # a value for them. Making those decisions is the user's; authoring YAML from a 91-line schema
+    # is not, and a user reasonably asked why they had to.
+    seeded = []
+    config_src = workspace / "_templates" / "config"
+    scratch = os.environ.get("GARS_SCRATCH",
+                             "/gpfs/scratch/%s/gars-work" % os.environ.get("USER", "USER"))
+    values = {"{{project_title}}": title, "{{work_dir}}": "%s/%s" % (scratch, title)}
+    for aid in supported:
+        src = config_src / (aid + ".yaml")
+        if src.is_file():
+            text = src.read_text(encoding="utf-8")
+            for k, v in values.items():
+                text = text.replace(k, v)
+            (project / "_config" / (aid + ".yaml")).write_text(text, encoding="utf-8")
+            seeded.append("_config/" + aid + ".yaml")
+    # The Nextflow executor config and the scheduler descriptor (decision 0039) are seeded
+    # together: one says how Nextflow submits each process, the other how GARS submits the
+    # job that runs Nextflow. A project that deletes the descriptor gets Slurm's built-in
+    # defaults, so the pair stays optional-by-deletion rather than fragile.
+    for name in ("nextflow.slurm.config", "executor.yaml"):
+        src = config_src / name
+        if src.is_file() and supported:
+            shutil.copy2(str(src), str(project / "_config" / name))
+            seeded.append("_config/" + name)
+    return seeded
+
+
 def cmd_create(args, workspace):
     result = {"command": "create", "ok": False}
     title = sanitize_title(args.title)
@@ -394,37 +430,21 @@ def cmd_create(args, workspace):
         result["error"] = "project stamp not found at %s" % stamp
         return emit(result, EXIT_USAGE)
 
+    # Built in a sibling no project scan reads as a project (a dot name: titles never start with
+    # one), then renamed into place, so a fault leaves no half project behind (0295).
     import shutil
-    shutil.copytree(str(stamp), str(project))
-    for aid in supported:
-        (project / "00_data" / aid / "raw").mkdir(parents=True, exist_ok=True)
-
-    # Seed _config/ so the user never authors a config from a blank file. Everything derivable is
-    # filled in; the scientific decisions are left marked <REQUIRED>, because no stage substitutes
-    # a value for them. Making those decisions is the user's; authoring YAML from a 91-line schema
-    # is not, and a user reasonably asked why they had to.
-    seeded = []
-    config_src = workspace / "_templates" / "config"
-    scratch = os.environ.get("GARS_SCRATCH",
-                             "/gpfs/scratch/%s/gars-work" % os.environ.get("USER", "USER"))
-    values = {"{{project_title}}": title, "{{work_dir}}": "%s/%s" % (scratch, title)}
-    for aid in supported:
-        src = config_src / (aid + ".yaml")
-        if src.is_file():
-            text = src.read_text(encoding="utf-8")
-            for k, v in values.items():
-                text = text.replace(k, v)
-            (project / "_config" / (aid + ".yaml")).write_text(text, encoding="utf-8")
-            seeded.append("_config/" + aid + ".yaml")
-    # The Nextflow executor config and the scheduler descriptor (decision 0039) are seeded
-    # together: one says how Nextflow submits each process, the other how GARS submits the
-    # job that runs Nextflow. A project that deletes the descriptor gets Slurm's built-in
-    # defaults, so the pair stays optional-by-deletion rather than fragile.
-    for name in ("nextflow.slurm.config", "executor.yaml"):
-        src = config_src / name
-        if src.is_file() and supported:
-            shutil.copy2(str(src), str(project / "_config" / name))
-            seeded.append("_config/" + name)
+    import tempfile
+    project.parent.mkdir(parents=True, exist_ok=True)    # as copytree made it before
+    building = Path(tempfile.mkdtemp(prefix="." + title + "-", dir=str(project.parent)))
+    try:
+        os.rmdir(str(building))     # the name is reserved; copytree makes it with the stamp's mode
+        seeded = _build_project(stamp, building, supported, workspace, title)
+        if project.exists():
+            raise FileExistsError("projects/%s/ appeared while it was being built" % title)
+        os.rename(str(building), str(project))
+    except BaseException:
+        shutil.rmtree(str(building), ignore_errors=True)
+        raise
     result["config_seeded"] = seeded
 
     result["created"] = supported
