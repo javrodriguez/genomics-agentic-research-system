@@ -531,6 +531,17 @@ def half_text(injector):
     return patch.object(Path, 'write_text', write_text)
 
 
+def mkdir_in_sibling(injector):
+    """A `Path.mkdir` refused inside the dot sibling a `create` builds in, once it exists."""
+    real = Path.mkdir
+
+    def mkdir(self, *args, **kwargs):
+        if self.parent.name.startswith('.'):
+            injector.fire('mkdir')
+        return real(self, *args, **kwargs)
+    return patch.object(Path, 'mkdir', mkdir)
+
+
 def stage01(test, tmp):
     case = recovery.CallSiteRecoveryTests('setUp')
     case.setUp()
@@ -664,6 +675,8 @@ def rows():
         Writer('stage03_analysis create allocated folders', analysis_plan,
                ['project/%s/01_fixture/PLAN.md' % s03.stage_root(Path('project')).name],
                success=0, prime=False, steps=('open', 'write', 'fsync', 'replace'),
+               extra={'project/%s/01_fixture/PLAN.md' % s03.stage_root(Path('project')).name:
+                      [('mkdir', mkdir_in_sibling)]},
                creates=['project/%s/' % s03.stage_root(Path('project')).name]),
         Writer('stage03_analysis approve', analysis_approve,
                ['gars/projects/p/03_custom_analysis/01_fixture/PLAN.md'], success=0, prime=False,
