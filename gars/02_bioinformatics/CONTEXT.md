@@ -127,7 +127,8 @@ write or append there (`HISTORY.md` included), and every typed call except the d
 from the workspace root, its output filtered to a keep-list; while any non-public project exists
 in the workspace, a door's direct spelling (`python3 _system/resolve_artifact.py ...`) is refused
 for every project, public ones included. A step no door covers is the user's on a non-public
-project: reply T10 and stop. Never work around a refusal.
+project: reply T10 and stop; step 3a first asks with T11 whether the user has completed the
+config. Never work around a refusal.
 
 ## Process
 1. Activated when the user asks to run bioinformatics, or names an assay to process. Reply T1.
@@ -166,8 +167,12 @@ project: reply T10 and stop. Never work around a refusal.
 
    Skip 3a entirely when the config has no `<REQUIRED>` markers left — a completed config is not
    a question to re-ask.
-   On a non-public project neither the menus nor `apply` is a door: reply T10 naming this step,
-   and stop.
+   On a non-public project the config is refused to a Read, so the skip rule cannot be tested,
+   and neither the menus nor `apply` is a door. Reply T11 and wait. Yes (or the user saying the
+   config is done after T10) → continue to step 4: the sub-stage's own `check` still refuses a
+   config left unfilled with `config_unfilled`, in the user's terminal or through the
+   `rnaseq_de.check` door, whose output keeps `failures`. No → reply T10 naming this step, and
+   stop.
 4. Read the Sub-stages column for this assay from `_references/assay_stage_skill_map.md`.
 5. Read each sub-stage's STATUS file, treating a missing file as `NOT_STARTED`. Reply T2 with
    the full sub-stage status table, including VALIDATING, ARTIFACT_MISSING and STALE.
@@ -322,16 +327,27 @@ type, then run stage 02 again.
 
 **T10 — Non-public project**
 ```
-<title> is a non-public project (data_class <label>), so I cannot <the step: complete
-_config/<Assay ID>.yaml | run <NN_name>> for it: that step reads files the guard keeps out of a
-hosted-model prompt (decision 0107), and no door covers it. Nothing was read or written.
+<title> is a non-public project (data_class <label>), so I cannot complete
+_config/<Assay ID>.yaml for it: the menus and apply read files the guard keeps out of a
+hosted-model prompt (decision 0107), and no door covers them. Nothing was read or written.
 
-That step is yours. From the workspace root, run
+That step is yours. From the workspace root, run the menus and choose from them:
 
-  <the step's command>
+  python3 _system/configure.py genomes --assay <Assay ID>
+  <this assay's decision menu: configure.py contrasts --project projects/<title> --assay <Assay ID> | configure.py peaks>
+  python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula "<yours>"] [--peaks-type <n>]
 
-and tell me when it is done. STATUS files stay readable to me, so I can route the next
-sub-stage.
+Tell me when the config is done; I then continue to the sub-stage table, which reads only the
+STATUS files.
+```
+
+**T11 — Non-public config**
+```
+<title> is a non-public project (data_class <label>), so I cannot read _config/<Assay ID>.yaml
+to see whether its decisions are made (decision 0107). If it is not complete, the sub-stage's
+own check refuses it.
+
+Have you completed _config/<Assay ID>.yaml with the configure.py menus and apply in your own terminal?
 ```
 
 ## OUTPUT

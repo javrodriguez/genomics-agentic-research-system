@@ -218,8 +218,9 @@ its verbs is a door. Nothing was read or written.
 
 <NN_name> is yours. From the workspace root, run its check, prepare, the executor submit and,
 once the job finishes, collect, as this sub-stage's contract lists them, and append the
-history_entry collect prints to projects/<title>/HISTORY.md verbatim. STATUS stays readable to
-me, so stage 02 can route the next sub-stage.
+history_entry collect prints to projects/<title>/HISTORY.md verbatim. STATUS stays readable
+to me: once <NN_name> is COMPLETE, run stage 02 again and confirm the config is done,
+and it reports cutandrun complete.
 ```
 
 ## OUTPUT
