@@ -316,6 +316,22 @@ class AuthoringTests(unittest.TestCase):
                          # REVIEW-85a1b4a finding 3: line 222 kept, the flag through a variable.
                          ('    result = {"command": "collect", "ok": False,',
                           '    model = args.model or model\n'
+                          '    result = {"command": "collect", "ok": False,'),
+                         # REVIEW-8f5ae09 finding 3: the same read without the text args.model.
+                         ('    result = {"command": "collect", "ok": False,',
+                          '    model = getattr(args, "model") or model\n'
+                          '    result = {"command": "collect", "ok": False,'),
+                         ('    result = {"command": "collect", "ok": False,',
+                          '    model = getattr(args, "model", None) or model\n'
+                          '    result = {"command": "collect", "ok": False,'),
+                         ('    result = {"command": "collect", "ok": False,',
+                          '    model = vars(args)["model"] or model\n'
+                          '    result = {"command": "collect", "ok": False,'),
+                         ('    result = {"command": "collect", "ok": False,',
+                          '    model = args.__dict__["model"] or model\n'
+                          '    result = {"command": "collect", "ok": False,'),
+                         ('    result = {"command": "collect", "ok": False,',
+                          '    model = args .model or model\n'
                           '    result = {"command": "collect", "ok": False,')):
             with self.subTest(line=new):
                 code, payload = self.conform_mutant(old, new)
