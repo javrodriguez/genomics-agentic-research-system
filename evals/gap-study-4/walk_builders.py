@@ -325,12 +325,15 @@ def account_emails(harness, path=None) -> tuple:
 
 
 def login_secrets(login_file: str, harness):
-    """The scan's secrets(): the login value read at scan time by scan_record.read_login (never held here)."""
+    """The scan's secrets(): the login value read at scan time by scan_record.read_login (never held here). A Gemini
+    take's refuses now without the account record (round 10 ruling 2), before its walk is built."""
     from box import run_take as rt
     from box import scan_record
     name = login_name(harness)
     if name == NO_LOGIN or login_file == NO_LOGIN:
         _no_login_file("login_secrets")
+    if harness == rt.GEMINI:                   # round 10 ruling 2: no account record, no Gemini take
+        account_emails(rt.GEMINI)
 
     def secrets():
         return [("token", scan_record.read_login(login_file, name, allowed=tuple(rt.LOGIN_VARIABLE.values())))]
@@ -344,8 +347,11 @@ def lease_secrets(auth_path: str):
     refreshed token is added when still present at scan time (a value refreshed and then replaced again before a scan
     is never read: the refresh residual, closed on the lease road by refreshing only on the host, between turns). A
     departure from login_secrets' "never held", named: the values read are kept for this take's scans, because a
-    refresh rewrites auth.json and the first values may already be in the records."""
+    refresh rewrites auth.json and the first values may already be in the records. Without the account record it
+    refuses before any token is read (round 10 ruling 2: no record, no Codex take)."""
+    from box import run_take as rt
     from box import scan_record
+    account_emails(rt.CODEX)                   # round 10 ruling 2: no record, no take
     seen = list(scan_record.read_lease_tokens(auth_path))
 
     def secrets():
@@ -382,6 +388,8 @@ class CodexLeaseRoad:
     def __init__(self, lease_src):
         if not isinstance(lease_src, str) or not os.path.isabs(lease_src):
             raise BuilderRefused(f"the Codex lease source is not an absolute path: {lease_src!r}")
+        from box import run_take as rt
+        account_emails(rt.CODEX)                # round 10 ruling 2: no record, no walk
         self.lease_src, self.placed, self._secrets = lease_src, None, None
 
     def place(self, config_dir: str) -> str:
