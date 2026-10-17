@@ -265,7 +265,9 @@ class RunnerDirectiveTests(unittest.TestCase):
             with self.subTest(value=value):
                 self.first.write_text('#SBATCH --mem=%s\n' % value + FIRST)
                 blocked = self.refused_with_nothing_written()
-                for word in ('--mem', 'scripts/01_first.sh', value, 'K, M, G or T', 'upper case'):
+                for word in ('--mem', 'scripts/01_first.sh', value, 'K, M, G or T', 'upper case',
+                             # The fold of REVIEW-de77fe0, NIT 1: the policy file it follows.
+                             '_system/venue_policy.py'):
                     self.assertIn(word, blocked)
 
 if __name__ == '__main__':
