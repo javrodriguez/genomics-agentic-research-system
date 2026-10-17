@@ -1468,7 +1468,10 @@ HARNESS_FURNITURE_RULING = {
     "walk_scope": "RULED 15 Oct 2026 (glitch-6b): the 25 pre-ruling walks are not rechecked under the steer and "
                   "isolation guards. They are rehearsal records of the earlier conditions and never cover CP6; replayed "
                   "under the isolation guard all 25 refuse, as expected (box lane). Every line reruns under the new ship "
-                  "head.",
+                  "head. glitch-b5's ruling 4 (17 Oct 2026, under Javier's delegation): the denial guard applies to "
+                  "takes after the isolation ruling; the 25 are recorded as its expected refusals and are not regraded "
+                  "as failures (tests/test_pre_ruling_walks.py replays the guard on each, from "
+                  "tests/fixtures/pre-ruling-walks-20261015.json, bound to walk records 197658fe).",
     "fail_closed": "RULED 15 Oct 2026 (glitch-6b): fail closed, every turn of a claude-code take must show in its "
                    "launch journal CLAUDE_CODE_THRIFTY_SONIC \"false\", the deny of RemoteTrigger, SendMessage and "
                    "ListAgents (--disallowedTools and permissions.deny) and crossSessionInbound \"refuse\", or the take "

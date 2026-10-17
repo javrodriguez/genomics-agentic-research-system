@@ -209,8 +209,10 @@ ANNOTATION_ONLY = ("events",)
 
 OPS = ("eq", "ne", "gt", "truthy", "falsy", "not_null", "is_null", "nonempty", "empty",
        "in_operator_reasons", "in_checker_events", "in_rate_limit_markers", "differs_from_pin",
-       "present_differs_from_pin", "nonzero_outside_timeout", SPEND_OP)
-_VALUE_OPS = ("eq", "ne", "gt")
+       "present_differs_from_pin", "nonzero_outside_timeout", "has", SPEND_OP)
+_VALUE_OPS = ("eq", "ne", "gt", "has")
+# glitch-b5's ruling 3 (17 Oct 2026): `has` holds when checker_reasons carries its value, one named operator reason.
+HAS_PATH = "checker_reasons"
 
 
 class TableError(ValueError):
@@ -447,6 +449,11 @@ def check_table(table: dict) -> list[str]:
             for c in row.get(group, []):
                 if isinstance(c, dict) and c.get("path", "").partition(".")[0] in ANNOTATION_ONLY:
                     p.append(f"{rid}: a routing row reads {c.get('path')!r}, a text-derived count only annotations may read")
+                if isinstance(c, dict) and c.get("op") == "has" and (c.get("path") != HAS_PATH
+                                                                     or c.get("value") not in listed):
+                    # glitch-b5's ruling 3 (17 Oct 2026): `has` names one operator reason of checker_reasons
+                    p.append(f"{rid}: op has reads {HAS_PATH} for one of operator_reasons, got {c.get('path')!r} "
+                             f"{c.get('value')!r}")
     for r in labels4.ROUTES:
         if r not in seen_routes:
             p.append(f"no row routes to {r}")
@@ -463,6 +470,10 @@ def check_table(table: dict) -> list[str]:
         if not a.get("any_of"):
             p.append(f"{aid}: any_of must hold at least one condition")
         _condition_problems(aid, a.get("any_of", []), p)
+        for c in a.get("any_of", []):
+            if isinstance(c, dict) and c.get("op") == "has" and (c.get("path") != HAS_PATH or c.get("value") not in listed):
+                p.append(f"{aid}: op has reads {HAS_PATH} for one of operator_reasons, got {c.get('path')!r} "
+                         f"{c.get('value')!r}")
     return p
 
 
@@ -813,6 +824,8 @@ def holds(cond: dict, records: dict, table: dict) -> bool:
         return len(v) > 0
     if op == "empty":
         return len(v) == 0
+    if op == "has":
+        return cond["value"] in v
     if op == "in_operator_reasons":
         return any(r in table["operator_reasons"] for r in v)
     if op == "in_checker_events":

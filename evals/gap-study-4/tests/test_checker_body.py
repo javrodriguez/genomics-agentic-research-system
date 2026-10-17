@@ -35,8 +35,9 @@ Bound checks, each with whole-file witnesses of check_take.py compiled in memory
   R9-tree     (lane w7b, Q-w6i-5) the session's own working directory is the view's run tree: read against its own
               tree a clean take carries no readers-disagree, against a view of another tree it is readers-disagree
               naming both, and a view naming no run tree is refused. Witnesses: tree-unchecked, tree-none-admitted.
-  R4-guard    the harness guard (R4C-9): a codex or gemini row is refused by design_view and by check4. Witness:
-              no-harness-guard.
+  R4-guard    the harness guard (R4C-9), moved by ruling T0 (lane vendor-admission, Javier's typed word "T0: yes",
+              16 Oct 2026): design_view builds a codex or gemini row's view, since a script is not a reader, and
+              check4 refuses that view's take for the readers it lacks. Witness: no-harness-guard.
 
 Fakes and synthetic strings only: no model, vendor, network, Docker, credential or holdout. setUpModule arms a process
 guard that refuses every process start before check_take.py is imported.
@@ -455,22 +456,23 @@ def r8_parser(mod, parser):
 
 @guarded("R4-guard")
 def r4_guard(mod, p):
+    """Ruling T0: design_view builds a codex or gemini row's view; check4 refuses its take, naming the readers."""
     out = []
     for harness, model in (("codex", "gpt-6.1-sol"), ("gemini", "gemini-3.8-flash")):
         r = row()
         r["agent"]["harness"], r["model"], r["arm"] = harness, model, "O"
         try:
-            mod.design_view(r, pin=pin(harness=harness, model=model), run_tree=RUN_TREE,
-                            constants=walk_constants(mod))
-            out.append(f"{p}: design_view built a view for a {harness} row")
-        except mod.CheckRefused:
-            pass
-        design = view(mod).replace(harness=harness)
+            design = mod.design_view(r, pin=pin(harness=harness, model=model), run_tree=RUN_TREE,
+                                     constants=walk_constants(mod))
+        except mod.CheckRefused as e:
+            out.append(f"{p}: design_view refused a {harness} row, so its walk gets no script: {e}")
+            design = view(mod).replace(harness=harness)
         try:
             run4(mod, take_folder(design.script), design, design.script)
             out.append(f"{p}: check4 read a {harness} take with Claude Code's readers")
-        except mod.CheckRefused:
-            pass
+        except mod.CheckRefused as e:
+            if "no record readers" not in str(e):
+                out.append(f"{p}: check4 refused a {harness} take, but not for its readers: {e}")
     return out
 
 

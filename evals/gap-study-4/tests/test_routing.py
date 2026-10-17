@@ -201,6 +201,8 @@ def apply_witness(rec: dict, cond: dict, table: dict) -> set:
         set_path(rec, path, ["data/staging/samples.csv"])
     elif op == "in_operator_reasons":
         set_path(rec, path, [any_phase_reason(table)])
+    elif op == "has":                                   # glitch-b5's ruling 3 (17 Oct 2026): one named reason
+        set_path(rec, path, [cond["value"]])
     elif op == "in_checker_events":
         set_path(rec, path, [table["checker_reasons_become_events"]["ids"][0]])
     elif op == "in_rate_limit_markers":
@@ -1138,6 +1140,7 @@ _CONDITION_MUTANT = {"eq": ("value", "__mutated__"), "ne": ("op", "eq"), "gt": (
                      "is_null": ("op", "not_null"), "nonempty": ("op", "empty"), "empty": ("op", "nonempty"),
                      "in_operator_reasons": ("op", "is_null"), "in_checker_events": ("op", "is_null"),
                      "in_rate_limit_markers": ("op", "is_null"),
+                     "has": ("value", "__mutated__"),            # glitch-b5's ruling 3 (17 Oct 2026)
                      "differs_from_pin": ("op", "is_null"), "nonzero_outside_timeout": ("op", "is_null"),
                      # glitch-f3's ruling (fold 3): the mutant is lane decision 5's old rule, a missing init a mismatch
                      "present_differs_from_pin": ("op", "differs_from_pin")}
@@ -3075,6 +3078,98 @@ class TestCP5Mutants(unittest.TestCase):
             if not cp5_problems(t, lock):
                 survivors.append(name)
         self.assertEqual(survivors, [])
+
+
+
+# ------------------------------------------------------- the harness-condition-violated routing ruling (17 Oct 2026)
+# glitch-b5's ruling 3 (Sat 17 Oct 2026, under Javier's delegation): a take that violates the harness's own study
+# conditions is a harness fault, not a model outcome. It is never graded as the model's result; it is voided with
+# the reason recorded and its cell is re-run; until routed it fails closed. Before this ruling a violated take that
+# also tripped the cgroup counters routed `aborted` (cgroup-kill outranks harness-error), a final model outcome
+# that is never re-run. The scenario below carries the case into the mutation sweep's oracle.
+HCV_RULED = "harness-condition-violated"
+HCV_NOT_THE_MODELS = (labels4.GRADED, labels4.ABORTED)
+
+
+def _hcv(r):
+    r["checker_reasons"] = [HCV_RULED]
+
+
+SCENARIOS.update({
+    "harness-condition-violated beside a cgroup kill is voided, never aborted (glitch-b5, 17 Oct 2026)":
+        Sc(_sc(A, [_hcv, _cgroup]), "harness-error", ["operator-reason-after-first-turn"]),
+})
+
+
+class TestHarnessConditionVoided(unittest.TestCase):
+    """glitch-b5's ruling 3 (17 Oct 2026): a take whose harness study conditions failed is never the model's result.
+    Whatever else its records show, it never routes graded or aborted: after the agent's first turn it routes
+    harness-error (voided, its reason recorded, re-run in its slot under the harness-error cap), before it a rehearsal,
+    a pause re-runs it after the window, and a spend cap or pin mismatch is refused for a human (fail closed)."""
+
+    def test_the_ruling_is_cited(self):
+        src = REAL["operator_reasons_round4"]["sources"][HCV_RULED]
+        for cite in ("glitch-b5", "17 Oct 2026", "never graded", "voided", "re-run", "aborted"):
+            self.assertIn(cite, src["ruling"])
+        row = next(r for r in REAL["rows"] if r["id"] == "cgroup-kill")
+        self.assertIn({"path": "checker_reasons", "op": "has", "value": HCV_RULED}, row.get("none_of", []))
+        self.assertIn("17 Oct 2026", row["source"])
+
+    def test_beside_every_terminal_state_it_is_never_the_models(self):
+        t = test_table()
+        for name, (edit, _) in TERMINAL_STATES.items():
+            rec = baseline(A)
+            edit(rec)
+            _hcv(rec)
+            got = try_route(rec, t)
+            if isinstance(got, Exception):
+                continue                      # refused for a human: fail closed, never graded
+            self.assertNotIn(got["route"], HCV_NOT_THE_MODELS, name)
+            if got["route"] != labels4.PAUSE:
+                self.assertEqual(got["route"], labels4.HARNESS_ERROR, name)
+                self.assertIn("operator-reason-after-first-turn", got["rows"], name)
+                self.assertGreater(got["cap"]["reruns_per_slot"], 0, name)   # its slot is re-run
+
+    def test_the_cgroup_kill_case(self):
+        rec = baseline(A)
+        _cgroup(rec)
+        _hcv(rec)
+        got = routing.route(rec, test_table())
+        self.assertEqual((got["route"], got["rows"]), (labels4.HARNESS_ERROR, ["operator-reason-after-first-turn"]))
+        self.assertNotIn("cgroup-kill", got["matched"])
+
+    def test_before_the_first_turn_it_is_a_rehearsal(self):
+        rec = baseline(B)
+        _hcv(rec)
+        got = routing.route(rec, test_table())
+        self.assertEqual((got["route"], got["rows"]), (labels4.REHEARSAL, ["operator-reason-before-first-turn"]))
+
+    def test_the_ruling_is_scoped_to_its_reason(self):
+        """Only harness-condition-violated is ruled: another operator reason beside a cgroup kill still routes
+        aborted, as the plan's precedence says."""
+        rec = baseline(A)
+        _cgroup(rec)
+        rec["checker_reasons"] = [any_phase_reason(REAL)]
+        self.assertNotEqual(rec["checker_reasons"], [HCV_RULED])
+        self.assertEqual(routing.route(rec, test_table())["route"], labels4.ABORTED)
+
+    def test_the_new_op_is_bound(self):
+        """`has` reads one named operator reason of checker_reasons; a value outside operator_reasons, or a path
+        other than checker_reasons, is a table problem."""
+        self.assertEqual(routing.check_table(REAL), [])
+        for name, cond in (("unlisted value", {"path": "checker_reasons", "op": "has", "value": "not-a-reason"}),
+                           ("other path", {"path": "exit.exec_codes", "op": "has", "value": HCV_RULED}),
+                           ("no value", {"path": "checker_reasons", "op": "has"})):
+            t = copy.deepcopy(REAL)
+            next(r for r in t["rows"] if r["id"] == "cgroup-kill")["none_of"] = [cond]
+            self.assertNotEqual(routing.check_table(t), [], name)
+
+    def test_the_sweep_kills_the_rulings_mutants(self):
+        described = {d: t for d, t in mutants(test_table()) if d.startswith("cgroup-kill: none_of")}
+        for what in ("cgroup-kill: none_of deleted", "cgroup-kill: none_of[0] has mutated",
+                     "cgroup-kill: none_of[0] has deleted"):
+            self.assertIn(what, described)
+            self.assertNotEqual(all_problems(described[what]), [], what)
 
 
 if __name__ == "__main__":

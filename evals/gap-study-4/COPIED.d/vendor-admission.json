@@ -17,6 +17,11 @@
       "reason": "Lane vendor-admission T3 (glitch-b5, 16 Oct 2026), ruling Q-3: freeze.main against a temporary folder with faked git, review, pins, prepare and writer refuses a fixture draft with an O row, a G row or both while that adapter's SHAPES_SOURCE is \"documented\", naming each arm and writing nothing, and passes once it is patched to \"recorded\"; a claude-code-only draft passes; on the committed draft unrecorded_shapes_problem names arms O and G; freeze.py --check is unchanged. Round-2 ruling 2: each adapter's SHAPES_SOURCE docstring paragraph names freeze.py's refusal of its arm, never a later slice. Two in-memory witnesses (the call deleted, the comparison disabled) go red."
     },
     {
+      "path": "tests/test_vendor_script.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T0 (glitch-b5, Fri 16 Oct 2026, applied on Javier's typed word \"T0: yes\", 22:25 EDT, after the cloud executor's and a local builder's tool use were refused without it). V0-script: check_take.design_view, the body of walk_builders' production design_for and of the walk driver's script_for, builds a codex row's (arm O) and a gemini row's (arm G) view with the wording's own steps (variants.operator_steps), and drive.script_from_design renders them; before T0 both rows raised CheckRefused before turn 1. V0-checker: check4 and check4_walk refuse that real vendor view's take naming \"no record readers\" (R4C-9). V0-unknown: design_view still refuses a harness with no script. Three in-memory witnesses (design_view's harness check, check4's harness_guard, check4_walk's harness_guard) go red. Runs inside tests/test_checker_body.py's process guard; fakes only."
+    },
+    {
       "path": "checks.d/vendor-admission.txt",
       "status": "new",
       "reason": "Lane vendor-admission: this lane's local checks (interface 2), one line per new test module."
@@ -24,7 +29,7 @@
     {
       "path": "COPIED.d/vendor-admission.json",
       "status": "new",
-      "reason": "Lane vendor-admission (glitch-b5, 16 Oct 2026): this lane's copy record. Its edits to files other lanes own are recorded as departures in their owning fragments: run.py (w8a-walk-layout), walk_regrade.py and tests/test_walk_grade_seam.py (live-harness-foundation), harness_bookkeeping.py and tests/test_harness_bookkeeping.py (w2a-cp3-endstate), freeze.py (w8b-holdout-digests), codex_adapter.py (w11a-codex-adapter) and gemini_adapter.py (w11b-gemini-adapter)."
+      "reason": "Lane vendor-admission (glitch-b5, 16 Oct 2026): this lane's copy record. Its edits to files other lanes own are recorded as departures in their owning fragments: run.py (w8a-walk-layout), walk_regrade.py and tests/test_walk_grade_seam.py (live-harness-foundation), harness_bookkeeping.py and tests/test_harness_bookkeeping.py (w2a-cp3-endstate), freeze.py (w8b-holdout-digests), codex_adapter.py (w11a-codex-adapter), gemini_adapter.py (w11b-gemini-adapter) and, for the vendor-t3b follow-up, tests/test_walk_runner.py (w10-walk-runner)."
     }
   ]
 }
