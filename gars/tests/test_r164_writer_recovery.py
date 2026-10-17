@@ -781,6 +781,16 @@ class CreationSiblingTests(unittest.TestCase):
         self.assertIn('(no projects yet)', sink.getvalue())
         self.assertNotIn('fixture', sink.getvalue())
 
+    def test_a_creation_sibling_is_no_analysis(self):
+        project = Path(tempfile.mkdtemp(prefix='gars-writer-')).resolve() / 'My_Proj'
+        self.addCleanup(shutil.rmtree, str(project.parent), True)
+        (project / '03_custom_analysis/01_fixture/scripts').mkdir(parents=True)
+        (project / '03_custom_analysis/.03_x-abcd1234/scripts').mkdir(parents=True)
+        state = module(GARS / '_system/project_state.py', 'r164_writer_project_state')
+        rendered = '\n'.join(state.render_project(project, 3))
+        self.assertIn('- 01_fixture: ', rendered)
+        self.assertNotIn('03_x', rendered)
+
 
 def _slug(name):
     return ''.join(c if c.isalnum() else '_' for c in name.lower()).strip('_')
