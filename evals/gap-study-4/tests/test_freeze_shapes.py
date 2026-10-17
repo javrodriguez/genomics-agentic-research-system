@@ -18,9 +18,10 @@ arm; nothing is written.
                VENDOR_CHECK_SHAPES_SOURCE is "recorded" and every VENDOR_PENDING_ROWS row of that harness is settled,
                (iii) native_reader_registration.production_readers() holds the harness. With both adapters recorded,
                main refuses while (ii) is absent or "documented", while any row is unsettled (naming it) and while
-               (iii) is empty or raises (by name, never a traceback); it passes only with all three, and a claude-code-
-               only draft passes unchanged. Witnesses deleting leg (ii)'s comparison, its settled condition and leg
-               (iii) each go red. FS-main's passing cases now settle all three legs (the PF ruling, named in the commit).
+               (iii) is empty or raises (by name, never a traceback; a missing git binary or any other OSError from
+               production_readers included, round 8 ruling 1); it passes only with all three, and a claude-code-
+               only draft passes unchanged. Witnesses deleting leg (ii)'s comparison, its settled condition, leg
+               (iii) and leg (iii)'s OSError refusal each go red. FS-main's passing cases now settle all three legs (the PF ruling, named in the commit).
 
 freeze.main runs against a temporary folder: git, the review, the pins, prepare and the writer are fakes (the shape of
 test_holdout_digests' FreezeHarness). No take, model, container or network; no freeze output is written.
@@ -227,6 +228,15 @@ def refused_registry(*a, **k):
     raise native_reader_registration.RegistrationRefused("synthetic: the acceptance record is uncommitted")
 
 
+def no_git_registry(*a, **k):
+    # round 8 ruling 1 (review e7496cf NIT 1): production_readers runs git; a missing binary raises FileNotFoundError
+    raise FileNotFoundError(2, "No such file or directory", "git")
+
+
+def unreadable_registry(*a, **k):
+    raise PermissionError(13, "Permission denied", "native-reader-acceptance.json")
+
+
 # (case, the legs settled, the registry, the words the refusal must carry for each vendor arm)
 CHECK_CASES = (
     ("leg ii absent", ("i", "rows", "iii"), None, "absent", ("leg ii", "VENDOR_CHECK_SHAPES_SOURCE")),
@@ -237,6 +247,10 @@ CHECK_CASES = (
      ("leg iii", "no native reader is registered")),
     ("leg iii raises", ("i", "ii", "rows"), refused_registry, None, ("leg iii", "the native-reader registry refuses",
                                                                      "synthetic: the acceptance record is uncommitted")),
+    ("leg iii without git", ("i", "ii", "rows"), no_git_registry, None,
+     ("leg iii", "the native-reader registry could not run", "FileNotFoundError")),
+    ("leg iii any OSError", ("i", "ii", "rows"), unreadable_registry, None,
+     ("leg iii", "the native-reader registry could not run", "PermissionError")),
 )
 
 
@@ -314,6 +328,8 @@ CHECK_WITNESSES = {
     "leg ii's settled condition deleted": ("    return out + check_take.vendor_rows_problems(harness)\n",
                                            "    return out\n"),
     "leg iii deleted": ('        legs += [f"leg iii: {p}" for p in registration_problems(harness)]\n', ""),
+    "leg iii's OSError refusal deleted": ("    except OSError as e:\n", "    except native_reader_registration."
+                                                                         "RegistrationRefused as e:\n"),
 }
 
 
