@@ -35,7 +35,9 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -175,11 +177,27 @@ def cmd_create(args, workspace):
     n = 1 + max([int(d[:2]) for d in existing] or [0])
     name = "%02d_%s" % (n, slug)
     adir = root / name
-    adir.mkdir()
-    (adir / "scripts").mkdir()
-    (adir / "results").mkdir()
-    with ws.atomic_open(adir / "PLAN.md", newline=None) as fh:
-        fh.write(PLAN_SKELETON.format(slug=slug))
+    # The folders are made in a sibling `existing` never counts (a dot name), renamed into place
+    # together, and removed again if PLAN.md cannot be published, so a fault leaves no analysis
+    # without a plan behind (0295). PLAN.md is published in its own folder, by atomic_open.
+    building = Path(tempfile.mkdtemp(prefix="." + name + "-", dir=str(root)))
+    try:
+        os.rmdir(str(building))     # the name is reserved; mkdir makes it with the usual mode
+        building.mkdir()
+        (building / "scripts").mkdir()
+        (building / "results").mkdir()
+        if adir.exists():
+            raise FileExistsError("%s appeared while it was being built" % name)
+        os.rename(str(building), str(adir))
+    except BaseException:
+        shutil.rmtree(str(building), ignore_errors=True)
+        raise
+    try:
+        with ws.atomic_open(adir / "PLAN.md", newline=None) as fh:
+            fh.write(PLAN_SKELETON.format(slug=slug))
+    except BaseException:
+        shutil.rmtree(str(adir), ignore_errors=True)
+        raise
 
     result.update({"ok": True, "analysis": name,
                    "dir": str(adir.relative_to(project)),

@@ -110,24 +110,42 @@ Group 11 records the prepare-time venue; submission records the executed venue.
 Login-node analysis records executor local and the pre-swap descriptor's venue.
 Report every refusal and stop; no override is available.
 
+**Non-public project (decisions 0107, 0141).** A project is non-public unless every data row of
+its `00_data/dataset.tsv` reads exactly `public` in `data_class`; an absent or unreadable row
+counts as non-public, and the session's catch-up prints the label. On a non-public project the
+guard refuses every Read of a file in it except that dataset row and the `STATUS` files, every
+write or append there (`PLAN.md`, `scripts/` and `HISTORY.md` included), and every typed call that names the project
+except the doors in `CLOSED_PROJECT_DOORS` (`_system/guard_hook.py`), which run only as
+`python3 _system/tool_call.py <door> '<json>'` from the workspace root, their output filtered;
+while any non-public project exists in the workspace, a door's direct spelling is refused for
+every project. Of this stage's steps only step 1's resolution is a door, so on a non-public
+project the analysis is the user's from step 2 on: reply T7 and stop. Never work around a
+refusal.
+
 ## Process
 1. Activated when the user asks for a custom or downstream analysis of an existing project.
    Identify the project; run
    `python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> --list`
    for the relevant assay. If nothing is resolvable — no completed sub-stage declares any
    artifact and stage 01 has emitted nothing — reply T1 and stop.
+   On a non-public project, or while any exists in the workspace, list through the door:
+   `python3 _system/tool_call.py resolve_artifact '{"project": "projects/<title>", "assay":
+   "<Assay ID>", "list": true}'`, whose output keeps only `ok`, `missing` and `resolved`.
 2. Run `python3 _system/stage03_analysis.py create --project projects/<title> --slug <slug>`,
    with a short kebab-case slug named after the goal.
+   On a non-public project `create` is not a door: reply T7 and stop.
 3. Draft the plan: replace every `<FILL: ...>` marker in the created `PLAN.md`. Inputs come
    from step 1's resolution; Outputs use the closed vocabulary, preferring a specific type
    (`counts_gene`, `de_results`, …) over a generic one (`table`, `figure`, `report`) wherever
    one fits; Execution keeps its `Runs: batch` line unless the user explicitly asked for the
    login node. This is the step where your judgment belongs — spend it here, not at the
    keyboard later.
+   On a non-public project the plan is the user's to write: T7.
 4. Reply T2 and stop. The user reads the plan, edits it if they wish, and answers.
 5. If the user asks for changes, apply them to `PLAN.md` (it is still DRAFT), then reply T2
    again with what changed. If they decline the analysis, stop; the DRAFT directory remains as
    the record that it was considered.
+   On a non-public project `PLAN.md` is the user's to edit: T7.
 6. The user approves by running the command T2 gave them, in their own terminal. If they
    report that it refused (exit 2), ask for its `blocked` reasons, reply T3 with them verbatim,
    fix the plan (that is a draft edit, allowed), and return to step 4. Never argue past the
@@ -145,6 +163,7 @@ Report every refusal and stop; no override is available.
    If approval is absent, changed or expired, reply T3 with the refusal and stop; a new
    approval is the user's. On submission reply T4 and monitor the job. Steps outside the
    approved plan do not happen.
+   On a non-public project the scripts are the user's to write and submit: T7.
 8. If execution fails, call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T5 with the actual error,
    and stop. Do not patch around the failure and re-run: diagnosis goes to the user, and a
    changed method is a new plan.
@@ -156,6 +175,7 @@ Report every refusal and stop; no override is available.
    refusal verbatim and stop as in step 8.
 10. Exit 0 → append the returned `history_entry` to the project's `HISTORY.md` **verbatim**,
     replacing `<ISO-8601 date>` with today's date, and reply T6.
+    On a non-public project this append is the user's: T7.
 
 ## Response Format
 Every message you send in this stage is one of the templates below, with placeholders filled.
@@ -231,6 +251,21 @@ Analysis <NN_slug> complete.
 
 Recorded in OUTPUTS.tsv and HISTORY.md. The plan that produced this is frozen at
 03_custom_analysis/<NN_slug>/PLAN.md.
+```
+
+**T7 — Non-public project**
+```
+<title> is a non-public project (data_class <label>), so I cannot draft, run or verify an
+analysis for it: PLAN.md, its scripts and HISTORY.md sit in a project the guard keeps out of a
+hosted-model prompt (decision 0107), and only artifact resolution is a door. Nothing was
+written.
+
+The analysis is yours. From the workspace root, run
+
+  python3 _system/stage03_analysis.py create --project projects/<title> --slug <slug>
+
+then write and approve its PLAN.md, submit its scripts through the executor, run verify, and
+append the history_entry it prints to projects/<title>/HISTORY.md verbatim.
 ```
 
 ## OUTPUT

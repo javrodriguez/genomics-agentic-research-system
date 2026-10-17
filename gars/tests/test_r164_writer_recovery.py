@@ -27,6 +27,7 @@ from test_approval_forgery import PLAN
 from test_lifecycle_executor import prepared
 import configure
 import executorlib as ex
+import stage00_register as s00
 import stage03_analysis as s03
 import wrapperlib as wl
 import test_r164_boundaries as bounds
@@ -187,6 +188,13 @@ def files(tree):
                   for p in tree.rglob('*'))
 
 
+def held(target):
+    """A destination's bytes, a folder destination's listing, or None when it is absent."""
+    if target.is_dir() and not target.is_symlink():
+        return files(target)
+    return target.read_bytes() if target.exists() else None
+
+
 def pinned(call):
     """`call` with the pipeline checkout's `git rev-parse` answered in-process: the commit
     value is not what these rows observe, and a subprocess per fault run costs seconds."""
@@ -315,6 +323,26 @@ def analysis_launcher(test, tmp):
             test.assertTrue(launcher.read_bytes().startswith(
                 b'#!/bin/bash\n#SBATCH --time=1\n#SBATCH --comment=\xff\n'))
             return 'written'
+    return tmp, call
+
+
+def analysis_submissions(test, tmp):
+    """Stage 03's submission history (0295): approval, venue, scheduler and the submit itself are
+    answered in-process, so the history line is the file under test; a prior submission exists
+    after the primed run, so every later run rewrites a file that already holds a line."""
+    adir = tmp / 'project/03_custom_analysis/01_fixture'
+    (adir / 'scripts').mkdir(parents=True)
+    (adir / 'PLAN.md').write_text('Runs: batch\n')
+    script = adir / 'scripts/run.sh'
+    script.write_text('#!/bin/bash\n#SBATCH --mem=1G\necho ok\n')
+
+    def call():
+        with patch.object(ex, '_analysis_approval', return_value=(True, '')), \
+                patch.object(ex, '_venue_refusal', return_value=None), \
+                patch.object(ex, '_submit_once', return_value=('42', None)), \
+                patch.object(ex, '_scheduler_status', return_value=('COMPLETED', None)), \
+                patch.object(ex.uuid, 'uuid4', return_value=_FixedUuid()):
+            return ex._submit_analysis(tmp / 'project', script, dict(ex.SLURM))
     return tmp, call
 
 
@@ -472,6 +500,48 @@ def analysis_verify(test, tmp):
     return Path(case.tmp.name).resolve(), lambda: s03.cmd_verify(case.args, case.workspace)
 
 
+def project_create(test, tmp):
+    """Stage 00's `create` (0295) in a workspace under the row's folder that borrows the real
+    stamp and assay map; the destination is the project folder, absent before every run."""
+    workspace = tmp / 'gars'
+    (workspace / 'projects').mkdir(parents=True)
+    for name in ('_references', '_templates'):
+        (workspace / name).symlink_to(GARS / name, target_is_directory=True)
+    return tmp, lambda: s00.main(['--workspace', str(workspace), 'create', '--title', 'fixture',
+                                  '--assays', 'rnaseq_bulk'])
+
+
+def half_tree(injector):
+    """A copy of the stamp that lands one file, then fails."""
+    def copytree(source, destination, *args, **kwargs):
+        os.makedirs(str(destination))
+        with open(os.path.join(str(destination), 'CONTEXT.md'), 'w') as fh:
+            fh.write('# half\n')
+        injector.fire('copytree')
+    return patch.object(shutil, 'copytree', copytree)
+
+
+def half_text(injector):
+    """A seeded config whose write lands half its text, then fails."""
+    real = Path.write_text
+
+    def write_text(self, data, *args, **kwargs):
+        real(self, data[:len(data) // 2], *args, **kwargs)
+        injector.fire('write_text')
+    return patch.object(Path, 'write_text', write_text)
+
+
+def mkdir_in_sibling(injector):
+    """A `Path.mkdir` refused inside the dot sibling a `create` builds in, once it exists."""
+    real = Path.mkdir
+
+    def mkdir(self, *args, **kwargs):
+        if self.parent.name.startswith('.'):
+            injector.fire('mkdir')
+        return real(self, *args, **kwargs)
+    return patch.object(Path, 'mkdir', mkdir)
+
+
 def stage01(test, tmp):
     case = recovery.CallSiteRecoveryTests('setUp')
     case.setUp()
@@ -568,6 +638,9 @@ def rows():
                success='4242'),
         Writer('executorlib._analysis_launcher', analysis_launcher,
                ['analysis/run/launch-' + 'f' * 32 + '.sh'], success='written'),
+        Writer('executorlib._submit_analysis submissions record', analysis_submissions,
+               ['project/03_custom_analysis/01_fixture/' + ex.ANALYSIS_SUBMISSIONS],
+               success=('42', None)),
         Writer('executorlib.record_failure', failure_record,
                ['stage/logs/failure-7.log', 'stage/logs/failure-7.class']),
         Writer('stage00_register.write_dataset_record', dataset_record, ['00_data/dataset.tsv'],
@@ -579,18 +652,32 @@ def rows():
                ['00_data/rnaseq_bulk/samples.csv'], success=0, prime=False,
                steps=('open', 'write', 'fsync', 'replace'),
                creates=['00_data/rnaseq_bulk/files.csv']),
+        # The project folder is the destination: it must stay absent, with no sibling left.
+        Writer('stage00_register create', project_create, ['gars/projects/fixture'], success=0,
+               prime=False, steps=('replace',),
+               extra={'gars/projects/fixture': [('copytree', half_tree),
+                                                ('write_text', half_text),
+                                                ('copy2', helper(shutil, 'copy2')),
+                                                ('mkdir', helper(Path, 'mkdir'))]}),
         Writer('stage01_samplesheet main', stage01,
                ['01_samplesheets/rnaseq_bulk_samplesheet.csv',
                 '01_samplesheets/rnaseq_bulk_design.csv',
                 '01_samplesheets/rnaseq_bulk_design_check.json'], success=0),
-        # The folders `create` allocates before PLAN.md stay behind when PLAN.md's write fails;
-        # that is an open owner question (change report, round 6), so they are not judged here.
+        # This row excuses the folders `create` allocates; the row after it judges them (0295).
         Writer('stage03_analysis create', analysis_plan,
                ['project/%s/01_fixture/PLAN.md' % s03.stage_root(Path('project')).name],
                success=0, prime=False, steps=('open', 'write', 'fsync', 'replace'),
                creates=['project/%s/%s' % (s03.stage_root(Path('project')).name, sub)
                         for sub in ('', '01_fixture/', '01_fixture/results/',
                                     '01_fixture/scripts/')]),
+        # The same call judged with nothing excused but the stage root, a container like
+        # projects/: a fault at PLAN.md leaves no allocated folder behind (0295).
+        Writer('stage03_analysis create allocated folders', analysis_plan,
+               ['project/%s/01_fixture/PLAN.md' % s03.stage_root(Path('project')).name],
+               success=0, prime=False, steps=('open', 'write', 'fsync', 'replace'),
+               extra={'project/%s/01_fixture/PLAN.md' % s03.stage_root(Path('project')).name:
+                      [('mkdir', mkdir_in_sibling)]},
+               creates=['project/%s/' % s03.stage_root(Path('project')).name]),
         Writer('stage03_analysis approve', analysis_approve,
                ['gars/projects/p/03_custom_analysis/01_fixture/PLAN.md'], success=0, prime=False,
                steps=('open', 'write', 'fsync', 'replace')),
@@ -649,7 +736,7 @@ class WriterRecoveryTests(unittest.TestCase):
         if step == 'first-write':
             kept = (target.read_bytes(), target.stat().st_mode)
             target.unlink()
-        before = target.read_bytes() if target.exists() else None
+        before = held(target)
         listing = [f for f in files(tree) if f not in writer.creates]
         injector = Injector(target, 'write' if step == 'first-write' else step)
         with contextlib.ExitStack() as stack:
@@ -659,7 +746,7 @@ class WriterRecoveryTests(unittest.TestCase):
         self.assertTrue(injector.fired, 'the fault was never reached')
         self.assertTrue(outcome is RAISED or outcome != writer.success,
                         'the fault did not surface: %r' % (outcome,))
-        self.assertEqual(target.read_bytes() if target.exists() else None, before)
+        self.assertEqual(held(target), before)
         self.assertEqual([f for f in files(tree) if f not in writer.creates], listing)
         if kept is not None:
             target.write_bytes(kept[0])
@@ -688,6 +775,34 @@ class WriterRecoveryTests(unittest.TestCase):
                 named = sorted(w.name.rsplit(' ', 1)[0] for w in WRITERS
                                if w.name.endswith(' ' + verb) and w.name.split(' ')[0] in on_disk)
                 self.assertEqual(named, expected)
+
+
+class CreationSiblingTests(unittest.TestCase):
+    """The sibling a `create` builds in is never read as a project or an analysis (0295)."""
+
+    def test_a_creation_sibling_is_no_project(self):
+        tmp = Path(tempfile.mkdtemp(prefix='gars-writer-')).resolve()
+        self.addCleanup(shutil.rmtree, str(tmp), True)
+        (tmp / '_references').symlink_to(GARS / '_references', target_is_directory=True)
+        (tmp / 'projects/.fixture-abcd1234/_config').mkdir(parents=True)
+        state = module(GARS / '_system/project_state.py', 'r164_writer_project_state')
+        sink = io.StringIO()
+        with patch.object(state.workspace, 'workspace_root', return_value=tmp), \
+                patch.object(state.sys, 'argv', ['project_state.py']), \
+                contextlib.redirect_stdout(sink):
+            self.assertEqual(state.main(), 0)
+        self.assertIn('(no projects yet)', sink.getvalue())
+        self.assertNotIn('fixture', sink.getvalue())
+
+    def test_a_creation_sibling_is_no_analysis(self):
+        project = Path(tempfile.mkdtemp(prefix='gars-writer-')).resolve() / 'My_Proj'
+        self.addCleanup(shutil.rmtree, str(project.parent), True)
+        (project / '03_custom_analysis/01_fixture/scripts').mkdir(parents=True)
+        (project / '03_custom_analysis/.03_x-abcd1234/scripts').mkdir(parents=True)
+        state = module(GARS / '_system/project_state.py', 'r164_writer_project_state')
+        rendered = '\n'.join(state.render_project(project, 3))
+        self.assertIn('- 01_fixture: ', rendered)
+        self.assertNotIn('03_x', rendered)
 
 
 def _slug(name):

@@ -80,10 +80,17 @@ Both this sub-stage and 02.01 produce `h5ad`; the resolver takes the first `nati
 reverse sub-stage order, so a later consumer gets the **processed** object, which is what it
 means.
 
+**Non-public project (decisions 0107, 0141).** As stage 02's contract defines it: the guard
+refuses every Read of a file in the project except its `00_data/dataset.tsv` and the `STATUS`
+files, every append to `HISTORY.md`, and every typed call that names the project except the doors in
+`CLOSED_PROJECT_DOORS` (`_system/guard_hook.py`). No verb of this sub-stage's wrapper is a door,
+so on a non-public project only step 2's STATUS read is the agent's: reply T7 and stop.
+
 ## Process
 1. Reply T1.
 2. Read the STATUS file. If it is `SUBMITTED`, `RUNNING`, or `COMPLETE`, stop — stage 02's
    router already handles those states and should not have routed here.
+   On a non-public project, reply T7 and stop here (Definitions).
 3. Run the wrapper's `check` with the resolved `--h5ad`. Exit 1 → reply T5 with its `failures`
    verbatim and stop. Do not fix causes yourself: a missing package is an environment change,
    a missing h5ad means 02.01 has not completed.
@@ -99,6 +106,7 @@ means.
    the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures` verbatim, stop.
 9. Exit 0 → append its `history_entry` to the project's `HISTORY.md` **verbatim**, replacing
    `<ISO-8601 date>` with today's date, and reply T6.
+   On a non-public project this append is the user's: T7.
 
 ## Response Format
 Every message you send in this sub-stage is one of the templates below, with placeholders
@@ -175,6 +183,19 @@ Sub-stage 02.02 complete.
 
 Per-sample cells retained are in the report. Read it before anything consumes these clusters —
 see Human check.
+```
+
+**T7 — Non-public project**
+```
+<title> is a non-public project (data_class <label>), so I cannot run <NN_name> for it: its
+wrapper reads files the guard keeps out of a hosted-model prompt (decision 0107), and none of
+its verbs is a door. Nothing was read or written.
+
+<NN_name> is yours. From the workspace root, run its check, prepare, the executor submit and,
+once the job finishes, collect, as this sub-stage's contract lists them, and append the
+history_entry collect prints to projects/<title>/HISTORY.md verbatim. STATUS stays readable
+to me: once <NN_name> is COMPLETE, run stage 02 again and confirm the config is done,
+and it reports scrnaseq complete.
 ```
 
 ## OUTPUT

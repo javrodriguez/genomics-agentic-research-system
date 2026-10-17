@@ -7,6 +7,7 @@ import csv
 import datetime
 import importlib.util
 import io
+import itertools
 import json
 import os
 import shutil
@@ -34,10 +35,27 @@ support = bio.load_row9('testing')
 BASE_HASHES = {'rna-a': 'be88dcba9955867adf823cb58b819b4a19c207b11e4bb533ffa160731e1389f1', 'rna-b': '5251e84915762f0c3485cd3a84f7f9c255a4cbc70734aa42245ca964c1e5bc89', 'atac-a': 'bdf4bf80ead09c3c510f8f3f3db060a8e0f8cdc02d33788029c4300c11ca533e'}
 
 
+def flagged(path):
+    return [part for part in path.parts if any(word in part.lower() for word in launcher.FORBIDDEN)]
+
+
 def temporary(test):
-    resource = tempfile.TemporaryDirectory(prefix='t-')
-    test.addCleanup(resource.cleanup)
-    return Path(resource.name).resolve()
+    """A fresh root no part of which the launcher refuses in a kits path (T73).
+
+    A random name holds a FORBIDDEN word about once in 7,700 draws, so a flagged one is removed and
+    drawn again; a flagged TMPDIR cannot be drawn around, so it fails, naming TMPDIR."""
+    base = Path(tempfile.gettempdir()).resolve()
+    if flagged(base):
+        raise RuntimeError('TMPDIR %s holds a word the science launcher refuses in a kits path (%s); '
+                           'point TMPDIR at a neutral directory' % (base, ', '.join(flagged(base))))
+    for unused in range(100):
+        resource = tempfile.TemporaryDirectory(prefix='t-')
+        root = Path(resource.name).resolve()
+        if not flagged(root):
+            test.addCleanup(resource.cleanup)
+            return root
+        resource.cleanup()
+    raise RuntimeError('no neutral temp name in 100 draws under TMPDIR %s' % base)
 
 
 def record(neutral='a' * 12, prompt_sha='b' * 64):
@@ -676,6 +694,25 @@ if not b and mode == 'made-report': Path('project/4-report').mkdir()
                 else:
                     with self.assertRaises(ValueError): launcher.run(args)
             self.assertEqual(len(list((root / 'r').glob('*.record.json'))), 2 if change == 'none' else 1)
+
+    def test_a_flagged_temp_name_never_reaches_the_launch(self):
+        """T73: the launcher refuses a kits path any part of which holds a FORBIDDEN word, and a
+        random temp name holds one about once in 7,700 runs; the helper must draw again."""
+        names = itertools.chain(['bio00000'], tempfile._get_candidate_names())
+        with patch.object(tempfile, '_get_candidate_names', return_value=names):
+            root, args, m = self.setup_launch()
+        args.only = m['cases'][0]
+        self.assertEqual(launcher.run(args), 0)
+        self.assertEqual(flagged(root), [])
+
+    def test_a_flagged_tmpdir_fails_naming_it(self):
+        """T73: no name drawn under a flagged TMPDIR is neutral, so the helper fails, naming it."""
+        flagged = temporary(self) / 'seal'
+        flagged.mkdir()
+        with patch.object(tempfile, 'tempdir', str(flagged)):
+            with self.assertRaisesRegex(RuntimeError, 'TMPDIR'):
+                temporary(self)
+        self.assertEqual(list(flagged.iterdir()), [])
 
     def test_two_phase_only_no_overwrite(self):
         root, args, m = self.setup_launch()

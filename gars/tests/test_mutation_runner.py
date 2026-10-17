@@ -28,6 +28,15 @@ class MutationRunnerTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(prefix='gars-mutation-test-')
         self.addCleanup(self.temporary.cleanup)
         self.base = Path(self.temporary.name)
+        if os.environ.get('TMPDIR'):
+            # measure() keeps its suite logs in TMPDIR by design; a scratch under this test's own
+            # base is removed with it, so a run leaves nothing in the caller's TMPDIR (0190).
+            # Unset, nothing is patched, so under CI measure() still refuses (0051).
+            scratch = self.base / 'scratch'
+            scratch.mkdir()
+            patch = mock.patch.dict(os.environ, {'TMPDIR': str(scratch)})
+            patch.start()
+            self.addCleanup(patch.stop)
         self.snapshot = self.base / 'snapshot'
         mini_tree(self.snapshot)
         self.target = self.base / 'tree'

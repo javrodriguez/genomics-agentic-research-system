@@ -1020,6 +1020,21 @@ def _publish_bytes(path, data):
         raise
 
 
+def _append_submission(path, entry):
+    """Add one history line by rewriting the whole file through `workspace.atomic_open`: a fault
+    leaves the previous history, or none, never a torn last line (0295). The caller holds the
+    submission lock; an existing file keeps its mode."""
+    import wrapperlib as wl
+    path = Path(path)
+    previous, mode = '', None
+    if path.exists():
+        # Bytes, not read_text: universal newlines would rewrite a CR the file holds.
+        previous = path.read_bytes().decode('utf-8')
+        mode = path.stat().st_mode & 0o7777
+    with wl.ws.atomic_open(path, mode=mode) as record:
+        record.write(previous + json.dumps(entry, sort_keys=True) + '\n')
+
+
 def _analysis_launcher(adir, script, descriptor):
     """Keep leading Slurm directives byte-for-byte; only this launcher owns success."""
     source = Path(script).read_bytes()
@@ -1093,10 +1108,7 @@ def _submit_analysis(root, script, descriptor):
             entry['job_id'] = job
             if detail:
                 entry['error'] = str(detail)
-            with (adir / ANALYSIS_SUBMISSIONS).open('a') as record:
-                record.write(json.dumps(entry, sort_keys=True) + '\n')
-                record.flush()
-                os.fsync(record.fileno())
+            _append_submission(adir / ANALYSIS_SUBMISSIONS, entry)
             return job, detail
         except (OSError, ValueError, KeyError, TypeError) as exc:
             return None, 'R-135: stage-03 submission refused: %s' % exc

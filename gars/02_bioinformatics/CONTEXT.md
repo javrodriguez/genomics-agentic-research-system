@@ -117,12 +117,28 @@ Group 11 records the prepare-time venue; submission records the executed venue.
 Login-node analysis records executor local and the pre-swap descriptor's venue.
 Report every refusal and stop; no override is available.
 
+**Non-public project (decisions 0107, 0141).** A project is non-public unless every data row of
+its `00_data/dataset.tsv` reads exactly `public` in `data_class`; an absent or unreadable row
+counts as non-public, and the session's catch-up prints the label. On a non-public project the
+guard refuses every Read of a file in it except that dataset row and the `STATUS` files, every
+write or append there (`HISTORY.md` included), and every typed call that names the project except the doors in
+`CLOSED_PROJECT_DOORS` (`_system/guard_hook.py`): here `resolve_artifact`, and in the sub-stages
+`rnaseq_de.*` and `executor.*`. A door runs only as `python3 _system/tool_call.py <door> '<json>'`
+from the workspace root, its output filtered to a keep-list; while any non-public project exists
+in the workspace, a door's direct spelling (`python3 _system/resolve_artifact.py ...`) is refused
+for every project, public ones included. A step no door covers is the user's on a non-public
+project: reply T10 and stop; step 3a first asks with T11 whether the user has completed the
+config. Never work around a refusal.
+
 ## Process
 1. Activated when the user asks to run bioinformatics, or names an assay to process. Reply T1.
 2. Resolve the project and the Assay ID. If the project does not exist, or the Assay ID is not
    in the assay map, reply T5 and stop.
 3. Check preconditions: `01_samplesheets/<Assay ID>_samplesheet.csv` and `_design.csv` exist and
    are non-empty. If not, reply T5 and stop — stage 01 has not run.
+   On a non-public project these files are refused to a Read; check them through the door instead:
+   `python3 _system/tool_call.py resolve_artifact '{"project": "projects/<title>", "assay":
+   "<Assay ID>", "consumes": ["samplesheet", "design"]}'`, and `ok: false` → T5.
 3a. **Complete the config before routing anything.** Stage 00 seeded
    `_config/<Assay ID>.yaml` with every derivable value filled and the scientific decisions marked
    `<REQUIRED>`. Resolve them by menu, never by asking the user to type a path or a level name:
@@ -151,9 +167,16 @@ Report every refusal and stop; no override is available.
 
    Skip 3a entirely when the config has no `<REQUIRED>` markers left — a completed config is not
    a question to re-ask.
+   On a non-public project the config is refused to a Read, so the skip rule cannot be tested,
+   and neither the menus nor `apply` is a door. Reply T11 and wait. Yes (or the user saying the
+   config is done after T10) → continue to step 4: the sub-stage's own `check` still refuses a
+   config left unfilled with `config_unfilled`, in the user's terminal or through the
+   `rnaseq_de.check` door, whose output keeps `failures`. No → reply T10 naming this step, and
+   stop.
 4. Read the Sub-stages column for this assay from `_references/assay_stage_skill_map.md`.
 5. Read each sub-stage's STATUS file, treating a missing file as `NOT_STARTED`. Reply T2 with
    the full sub-stage status table, including VALIDATING, ARTIFACT_MISSING and STALE.
+   STATUS files stay readable on a non-public project.
 6. Identify the first sub-stage that is not `COMPLETE`. If every sub-stage is `COMPLETE`, reply
    T4 and stop. VALIDATING, ARTIFACT_MISSING and STALE continue to step 10,
    where the sub-stage contract runs its collect step and reports its gate result.
@@ -176,6 +199,10 @@ Report every refusal and stop; no override is available.
    a matrix reshaped for someone else's parser. Exit 1 → reply T7 naming its `missing` and
    `declared_but_absent` entries and stop. **Never dispatch a sub-stage whose inputs are absent,
    and never regenerate a missing artifact.**
+   On a non-public project, or while any exists in the workspace, use the door's dispatcher
+   spelling instead: `python3 _system/tool_call.py resolve_artifact '{"project":
+   "projects/<title>", "assay": "<Assay ID>", "consumes": ["<type>", ...]}'`; its output keeps
+   only `ok`, `missing` and `resolved`, so name the `missing` entries in T7.
 10. Read `02_bioinformatics/<Assay ID>/<NN_name>/CONTEXT.md` and execute that contract. It owns
     everything from here, including its own response templates.
 
@@ -296,6 +323,31 @@ Cannot start <NN_name>: required artifacts are not available.
 
 Nothing was run and nothing was regenerated. Complete the sub-stage that produces the missing
 type, then run stage 02 again.
+```
+
+**T10 — Non-public project**
+```
+<title> is a non-public project (data_class <label>), so I cannot complete
+_config/<Assay ID>.yaml for it: the menus and apply read files the guard keeps out of a
+hosted-model prompt (decision 0107), and no door covers them. Nothing was read or written.
+
+That step is yours. From the workspace root, run the menus and choose from them:
+
+  python3 _system/configure.py genomes --assay <Assay ID>
+  <this assay's decision menu: configure.py contrasts --project projects/<title> --assay <Assay ID> | configure.py peaks>
+  python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula "<yours>"] [--peaks-type <n>]
+
+Tell me when the config is done; I then continue to the sub-stage table, which reads only the
+STATUS files.
+```
+
+**T11 — Non-public config**
+```
+<title> is a non-public project (data_class <label>), so I cannot read _config/<Assay ID>.yaml
+to see whether its decisions are made (decision 0107). If it is not complete, the sub-stage's
+own check refuses it.
+
+Have you completed _config/<Assay ID>.yaml with the configure.py menus and apply in your own terminal?
 ```
 
 ## OUTPUT

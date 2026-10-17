@@ -216,7 +216,9 @@ def render_project(project, last):
             out.append("- stage 02: not started")
 
     stage3 = project / "03_custom_analysis"
-    analyses = sorted(d for d in stage3.iterdir() if d.is_dir()) if stage3.is_dir() else []
+    # A dot name is never an analysis: it is the sibling stage 03 `create` builds one in (0295).
+    analyses = sorted(d for d in stage3.iterdir() if d.is_dir() and
+                      not d.name.startswith(".")) if stage3.is_dir() else []
     if analyses:
         out.append("### custom analyses")
         for a in analyses:
@@ -272,8 +274,10 @@ def main():
             closed = None
     else:
         root = ws / "projects"
-        projects = sorted(d for d in root.iterdir()
-                          if d.is_dir() and not d.name.startswith("_")) if root.is_dir() else []
+        # A dot name is never a project (titles cannot start with one): it is the sibling stage
+        # 00 builds a project in, skipped as the index's glob skips it (0295).
+        projects = sorted(d for d in root.iterdir() if d.is_dir() and
+                          not d.name.startswith(("_", "."))) if root.is_dir() else []
         if not projects:
             out.append("(no projects yet)")
         try:
