@@ -282,10 +282,16 @@ class ConfigureApplyMappingTests(unittest.TestCase):
 
     def apply(self, assay, template, *options):
         (self.project / '_config' / (assay + '.yaml')).write_text(template)
+        argv = ['--workspace', str(self.root), 'apply', '--project',
+                str(self.project), '--assay', assay] + list(options)
+        # apply writes only what the dry run showed, so the dry run comes first (R-confirm)
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            code = configure.main(['--workspace', str(self.root), 'apply', '--project',
-                                   str(self.project), '--assay', assay] + list(options))
+            code = configure.main(argv + ['--dry-run'])
+        self.assertEqual(code, 0, out.getvalue())
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = configure.main(argv)
         result = json.loads(out.getvalue())
         self.assertEqual(code, 0, result)
         return (self.project / '_config' / (assay + '.yaml')).read_text()

@@ -774,6 +774,11 @@ class AtacseqWrapperTests(unittest.TestCase):
         code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/atac-test",
                                            "--assay", "atacseq_bulk", "--genome", "01"], self.ws)
         self.assertEqual(code, 3, raw)
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/atac-test",
+                                           "--assay", "atacseq_bulk", "--genome", "01",
+                                           "--peaks-type", "narrow", "--dry-run"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/atac-test",
                                            "--assay", "atacseq_bulk", "--genome", "01",
                                            "--peaks-type", "narrow"], self.ws)
@@ -1200,6 +1205,11 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
     def test_01_chipseq_wrapper(self):
         wrap = self.ws / "_system" / "wrappers" / "nfcore-chipseq-wrapper" \
             / "nfcore_chipseq_wrapper.py"
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/chip-test",
+                                           "--assay", "chipseq_bulk", "--genome", "01",
+                                           "--peaks-type", "narrow", "--dry-run"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/chip-test",
                                            "--assay", "chipseq_bulk", "--genome", "01",
                                            "--peaks-type", "narrow"], self.ws)
@@ -1254,6 +1264,11 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
                  ).read_text().splitlines()
         self.assertEqual(sheet[0], "group,replicate,fastq_1,fastq_2,control",
                          "the cutandrun sheet is group-shaped")
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/cnr-test",
+                                           "--assay", "cutandrun", "--genome", "01",
+                                           "--dry-run"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/cnr-test",
                                            "--assay", "cutandrun", "--genome", "01"], self.ws)
         self.assertEqual(code, 0, raw)
@@ -1321,6 +1336,11 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
         self._fill_design(project, "methylseq", fill)
         code, res, raw = run(self.sheet_py, ["--project", "projects/meth-test",
                                              "--confirm-exclusions"], self.ws)
+        self.assertEqual(code, 0, raw)
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/meth-test",
+                                           "--assay", "methylseq", "--genome", "01",
+                                           "--dry-run"], self.ws)
         self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/meth-test",
                                            "--assay", "methylseq", "--genome", "01"], self.ws)
@@ -2472,6 +2492,13 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         """The wrapper's own gate, independent of the menu: the pipeline would pass an
         unrecognised protocol to the aligner verbatim and produce a wrong matrix."""
         project = self._project("sc-badproto")
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py,
+                             ["apply", "--project", "projects/sc-badproto",
+                              "--assay", "scrnaseq", "--genome", "01",
+                              "--protocol", "10XV3", "--aligner", "simpleaf",
+                              "--dry-run"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py,
                              ["apply", "--project", "projects/sc-badproto",
                               "--assay", "scrnaseq", "--genome", "01",
@@ -2524,6 +2551,13 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         """The content gate: a sample lost to a failed process must not vanish into a
         combined matrix built from fewer samples (decision 0010)."""
         project = self._project("sc-collect")
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py,
+                             ["apply", "--project", "projects/sc-collect",
+                              "--assay", "scrnaseq", "--genome", "01",
+                              "--protocol", "10XV3", "--aligner", "simpleaf",
+                              "--dry-run"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py,
                              ["apply", "--project", "projects/sc-collect",
                               "--assay", "scrnaseq", "--genome", "01",
@@ -2572,6 +2606,13 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         original offline test missed it because its faked tree had only one combined file.
         This fixture therefore mirrors the real shape."""
         project = self._project("sc-rawsub")
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py,
+                             ["apply", "--project", "projects/sc-rawsub",
+                              "--assay", "scrnaseq", "--genome", "01",
+                              "--protocol", "10XV3", "--aligner", "simpleaf",
+                              "--dry-run"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py,
                              ["apply", "--project", "projects/sc-rawsub",
                               "--assay", "scrnaseq", "--genome", "01",
@@ -2621,6 +2662,13 @@ class ScrnaseqWrapperTests(unittest.TestCase):
     def test_07_empty_combined_matrix_is_refused(self):
         """A zero-byte artifact is a failed run that looks like a successful one."""
         project = self._project("sc-empty")
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py,
+                             ["apply", "--project", "projects/sc-empty",
+                              "--assay", "scrnaseq", "--genome", "01",
+                              "--protocol", "10XV3", "--aligner", "simpleaf",
+                              "--dry-run"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py,
                              ["apply", "--project", "projects/sc-empty",
                               "--assay", "scrnaseq", "--genome", "01",
@@ -2950,6 +2998,13 @@ class ScrnaQcClusterTests(unittest.TestCase):
             csv.writer(fh).writerows(out)
         code, res, raw = run(self.sheet_py, ["--project", "projects/" + title,
                                              "--confirm-exclusions"], self.ws)
+        self.assertEqual(code, 0, raw)
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/" + title,
+                                           "--assay", "scrnaseq", "--genome", "01",
+                                           "--protocol", "10XV3", "--aligner", "simpleaf",
+                                           "--dry-run"],
+                             self.ws)
         self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/" + title,
                                            "--assay", "scrnaseq", "--genome", "01",

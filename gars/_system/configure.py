@@ -9,6 +9,10 @@ and level names:
     contrasts  the levels actually in the design     -> fills de.contrast, direction included
     apply      validate the selections and write     -> prints the resulting file
 
+`apply --dry-run` prints the would-be file and records its sha256 (`_config/.<assay>.dry_run.json`);
+`apply` without it writes only those exact bytes, so a write cannot carry a setting the user was
+not shown (R-confirm, decision 0302).
+
 The point is not convenience. A FASTA typed by hand can be paired with a mismatched GTF, and a
 contrast typed by hand can name a level that does not exist in the design -- both produce a
 confident wrong answer or a failure hours in. Selecting from a closed set makes those unreachable.
@@ -28,6 +32,7 @@ Exit codes: 0 ok / 1 refused or invalid / 3 usage.
 
 import argparse
 import csv
+import hashlib
 import json
 import os
 import re
@@ -310,6 +315,65 @@ ASSAY_DECISIONS = {
 }
 
 
+# --- the dry run the user saw (R-confirm) ----------------------------------------------------------
+
+SELECTION_KEYS = ("genome", "contrast", "formula", "peaks_type", "protocol", "aligner")
+
+
+def dry_run_record(assay):
+    """Project-relative path of the record `apply --dry-run` keeps for one assay."""
+    return Path("_config") / (".%s.dry_run.json" % assay)
+
+
+def sha256_text(text):
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def selections(result):
+    return dict((k, result[k]) for k in SELECTION_KEYS if k in result)
+
+
+def read_dry_run(record, assay):
+    """The record exactly as `apply --dry-run` writes it, or None: any other shape is no record."""
+    try:
+        data = json.loads(record.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict) or data.get("assay") != assay:
+        return None
+    sha, shown = data.get("sha256"), data.get("selections")
+    if not (isinstance(sha, str) and re.match(r"[0-9a-f]{64}\Z", sha)):
+        return None
+    if not (isinstance(shown, dict) and all(isinstance(k, str) and isinstance(v, str)
+                                            for k, v in shown.items())):
+        return None
+    return data
+
+
+def describe(shown):
+    return ", ".join("%s %s" % (k, shown[k]) for k in SELECTION_KEYS if k in shown) or "none"
+
+
+def unmatched_dry_run(record, assay, text, shown):
+    """Why this write is not the dry run the user was shown, or None when it is, byte for byte.
+
+    The record holds the sha256 of the text the dry run would have written, so a write with other
+    selections, or onto a config that changed since, cannot pass as the one confirmed in T9.
+    """
+    data = read_dry_run(record, assay)
+    if data is None:
+        return ("no dry run is recorded for %s: run this apply with --dry-run, show its "
+                "config_preview, and write only after the reply `write`" % assay)
+    if data["sha256"] == sha256_text(text):
+        return None
+    if data["selections"] != shown:
+        return ("this write differs from the dry run shown: the dry run had %s; this write has "
+                "%s. Run the dry run with the settings the user chose and show it again"
+                % (describe(data["selections"]), describe(shown)))
+    return ("_config/%s.yaml changed since the dry run was shown (same settings: %s); run the "
+            "dry run again and show it before writing" % (assay, describe(shown)))
+
+
 def cmd_apply(args, workspace):
     result = {"command": "apply", "ok": False, "assay": args.assay}
     shape = ASSAY_DECISIONS.get(args.assay)
@@ -463,11 +527,22 @@ def cmd_apply(args, workspace):
         result["error"] = "keys still marked <REQUIRED> after applying: %s" % ", ".join(remaining)
         return emit(result, EXIT_REFUSED)
 
+    shown = selections(result)
+    record = Path(args.project) / dry_run_record(args.assay)
     if args.dry_run:
+        with ws.atomic_open(record) as fh:
+            json.dump({"assay": args.assay, "sha256": sha256_text(text), "selections": shown},
+                      fh, indent=2, sort_keys=True)
+            fh.write("\n")
         result["ok"] = True
         result["dry_run"] = True
         result["config_preview"] = text
         return emit(result, EXIT_OK)
+
+    refusal = unmatched_dry_run(record, args.assay, text, shown)
+    if refusal:
+        result["error"] = refusal
+        return emit(result, EXIT_REFUSED)
 
     with ws.atomic_open(cfg, newline=None) as fh:
         fh.write(text)
@@ -515,7 +590,9 @@ def main(argv=None):
                    help="menu number, `narrow` or `broad` (assays with a peaks block)")
     a.add_argument("--formula", default=None, help="default: %s" % DEFAULT_FORMULA)
     a.add_argument("--factor", default="condition")
-    a.add_argument("--dry-run", action="store_true", help="show the result without writing")
+    a.add_argument("--dry-run", action="store_true",
+                   help="show the result and record it; the config is written only by a later "
+                        "apply whose result equals it")
 
     args = ap.parse_args(argv)
     if not args.cmd:
