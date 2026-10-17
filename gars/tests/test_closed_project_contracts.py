@@ -15,12 +15,16 @@ REFUSED = re.compile(r'_config/|samples\.csv|files\.csv|01_samplesheets/|_sample
                      r'_design\.csv|OUTPUTS\.tsv|HISTORY\.md|PLAN\.md|resolve_artifact')
 # 0107 item 11's list, held fixed so the detector above cannot quietly stop seeing it: stage 01's
 # design, samplesheet and config, stage 02's config and OUTPUTS routing, stage 03's inputs and
-# plan, and every HISTORY.md append.
+# plan, and every HISTORY.md append; and, by ruling 2 of round 2, the steps that carry the stop
+# or the door: each wrapper sub-stage's step 2, stage 03's step 2, the DE sub-stage's 4 to 8.
+DE = '02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md'
 NAMED = dict({'01_prepare_samplesheets/CONTEXT.md': ('2', '3', '13'),
               '02_bioinformatics/CONTEXT.md': ('3', '3a', '9'),
-              '03_custom_analysis/CONTEXT.md': ('1', '3', '5', '10')},
-             **{path: ('9',) for path in SUBSTAGES})
-DOOR = re.compile(r'tool_call\.py (%s) ' % '|'.join(
+              '03_custom_analysis/CONTEXT.md': ('1', '2', '3', '5', '10')},
+             **{path: ('2', '9') for path in SUBSTAGES if path != DE})
+NAMED[DE] = ('4', '5', '6', '7', '8', '9')
+# A spelling may wrap at either space, as steps 5 to 7 of the DE sub-stage do.
+DOOR = re.compile(r'tool_call\.py\s+(%s)\s' % '|'.join(
     re.escape(door) for door in guard_hook.CLOSED_PROJECT_DOORS))
 
 
@@ -80,7 +84,6 @@ def mutant(edits):
 
 
 NFCORE = tuple(path for path in SUBSTAGES if '/01_nfcore-' in path)
-DE = '02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md'
 STAGE03 = '03_custom_analysis/CONTEXT.md'
 # The review's in-memory mutants (REVIEW-d699112 finding 2, ruling 2): each removes or
 # misspells a stop or door step the detector must see.
