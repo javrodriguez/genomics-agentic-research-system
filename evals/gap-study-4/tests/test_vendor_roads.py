@@ -209,11 +209,14 @@ def account_folder(record=RECORD, *, raw=None, mode=0o600):
 
 
 def refusal(wb_mod, fn, *args) -> str | None:
-    """fn(*args)'s BuilderRefused message, or None when it was admitted."""
+    """fn(*args)'s BuilderRefused message, or None when it was admitted (any other exception is named, so a reader
+    that crashes reads as a wrong refusal, never as a pass)."""
     try:
         fn(*args)
     except wb_mod.BuilderRefused as e:
         return str(e)
+    except Exception as e:  # noqa: BLE001
+        return f"not a BuilderRefused: {type(e).__name__}"
     return None
 
 

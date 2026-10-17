@@ -221,6 +221,109 @@ def walk_login_path(account: str = WALK_ACCOUNT):
     return path
 
 
+# ------------------------------------------------------------------------------------------------ the account record
+# Round 10 ruling 1 (glitch-b5, 17 Oct 2026; the T4 plan's section 1a, account-email): the addresses a vendor take's
+# scan sweeps are the box's own record of them, ACCOUNT_EMAILS in the private folder that holds
+# run_take.WALK_LOGIN_FILES' account folders (outside every repository, never committed, mode 600, written on the walk
+# host by its operator): a JSON object with exactly ACCOUNT_EMAIL_KEYS, "operator" (the operator's own address),
+# "codex" (the ChatGPT account the Codex arm signs in with) and "gemini" (the Google account that owns the r4-g key).
+# Read by name at scan time, never written down; every refusal names the file and the rule, never a value.
+ACCOUNT_EMAILS = "account-emails.json"
+ACCOUNT_EMAIL_KEYS = ("operator", "codex", "gemini")
+ACCOUNT_EMAILS_MAX_BYTES = 4096
+_ADDRESS = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
+_KEY_NAME = re.compile(r"[a-z][a-z0-9_-]{0,31}")
+
+
+def _is_address(value) -> bool:
+    from box import scan_record
+    return (isinstance(value, str) and scan_record.MIN_LENGTH["email"] <= len(value) <= 254
+            and _ADDRESS.fullmatch(value) is not None)
+
+
+def account_emails_path() -> str:
+    """The account record's path: ACCOUNT_EMAILS in the one folder that holds every run_take.WALK_LOGIN_FILES
+    account folder (<folder>/<account>/<login file>). Refuses by name on a tree without that record, or when the
+    account folders sit under more than one folder."""
+    from box import run_take as rt
+    files = getattr(rt, "WALK_LOGIN_FILES", None)
+    if not isinstance(files, dict) or not files:
+        raise BuilderRefused(f"the account record ({ACCOUNT_EMAILS}): box/run_take.py records no WALK_LOGIN_FILES on "
+                             f"this tree, so the record's folder is unknown")
+    tops = {os.path.dirname(os.path.dirname(p)) if isinstance(p, str) and os.path.isabs(p) else None
+            for p in files.values()}
+    if len(tops) != 1 or None in tops:
+        raise BuilderRefused(f"the account record ({ACCOUNT_EMAILS}): run_take.WALK_LOGIN_FILES' account folders do "
+                             f"not sit in one private folder")
+    return os.path.join(tops.pop(), ACCOUNT_EMAILS)
+
+
+def _unique_keys(pairs):
+    keys = [k for k, _ in pairs]
+    if len(set(keys)) != len(keys):
+        raise ValueError("a key occurs twice")
+    return dict(pairs)
+
+
+def account_emails(harness, path=None) -> tuple:
+    """(the operator's address, the harness's account address) read now from the account record (ACCOUNT_EMAILS at
+    account_emails_path(), or `path`), for a codex or gemini take. Refuses (BuilderRefused, naming the file and the
+    rule, never a value): another harness, a missing file, a link, a mode other than 600, another owner, a file inside
+    a repository, a file that is not one JSON object, an extra key, a missing key for the take's harness, and a value
+    that is not an email address."""
+    from box import run_take as rt
+    what = f"the account record ({ACCOUNT_EMAILS})"
+    if harness not in (rt.CODEX, rt.GEMINI):
+        raise BuilderRefused(f"{what}: harness {harness!r} sweeps no account address (only codex and gemini takes do)")
+    path = account_emails_path() if path is None else path
+    if not isinstance(path, str) or not os.path.isabs(path):
+        raise BuilderRefused(f"{what} is named by an absolute path")
+    try:
+        st = os.lstat(path)
+    except OSError:
+        raise BuilderRefused(f"{path}: {what} does not exist; the walk host's operator writes it before the first "
+                             f"vendor walk, and until then every codex and gemini take refuses") from None
+    if not stat.S_ISREG(st.st_mode):
+        raise BuilderRefused(f"{path}: {what} must be a regular file, never a link")
+    if stat.S_IMODE(st.st_mode) != 0o600:
+        raise BuilderRefused(f"{path}: the account record's mode must be 600 ({ACCOUNT_EMAILS})")
+    if st.st_uid != os.getuid():
+        raise BuilderRefused(f"{path}: {what} must be owned by the reading user")
+    if not rt.outside_every_repository(path):
+        raise BuilderRefused(f"{path}: {what} must sit outside every repository")
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError:
+        raise BuilderRefused(f"{path}: {what} cannot be opened") from None
+    try:
+        opened = os.fstat(fd)                  # the file read is the file checked
+        if (opened.st_dev, opened.st_ino, opened.st_mode) != (st.st_dev, st.st_ino, st.st_mode):
+            raise BuilderRefused(f"{path}: {what} changed between its check and its read")
+        raw = os.read(fd, ACCOUNT_EMAILS_MAX_BYTES + 1)
+    finally:
+        os.close(fd)
+    if len(raw) > ACCOUNT_EMAILS_MAX_BYTES:
+        raise BuilderRefused(f"{path}: {what} is larger than {ACCOUNT_EMAILS_MAX_BYTES} bytes")
+    try:
+        doc = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_keys)
+    except (UnicodeError, ValueError):
+        raise BuilderRefused(f"{path}: {what} is not one JSON object with unique keys") from None
+    if not isinstance(doc, dict):
+        raise BuilderRefused(f"{path}: {what} is not one JSON object")
+    extra = [k for k in doc if k not in ACCOUNT_EMAIL_KEYS]
+    if extra:
+        named = ", ".join(json.dumps(k) if _KEY_NAME.fullmatch(k) else "a key that is not a name" for k in extra)
+        raise BuilderRefused(f"{path}: {what} holds keys other than {', '.join(map(json.dumps, ACCOUNT_EMAIL_KEYS))}: "
+                             f"{named}")
+    for key in ("operator", harness):
+        if key not in doc:
+            raise BuilderRefused(f'{path}: {what} holds no key "{key}" (a {harness} take sweeps it)')
+    for key, value in doc.items():
+        if not _is_address(value):
+            raise BuilderRefused(f'{path}: {what}\'s "{key}" value is not an email address')
+    return doc["operator"], doc[harness]
+
+
 def login_secrets(login_file: str, harness):
     """The scan's secrets(): the login value read at scan time by scan_record.read_login (never held here)."""
     from box import run_take as rt
