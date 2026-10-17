@@ -7,6 +7,7 @@ import csv
 import datetime
 import importlib.util
 import io
+import itertools
 import json
 import os
 import shutil
@@ -676,6 +677,26 @@ if not b and mode == 'made-report': Path('project/4-report').mkdir()
                 else:
                     with self.assertRaises(ValueError): launcher.run(args)
             self.assertEqual(len(list((root / 'r').glob('*.record.json'))), 2 if change == 'none' else 1)
+
+    def test_a_flagged_temp_name_never_reaches_the_launch(self):
+        """T73: the launcher refuses a kits path any part of which holds a FORBIDDEN word, and a
+        random temp name holds one about once in 7,700 runs; the helper must draw again."""
+        names = itertools.chain(['bio00000'], tempfile._get_candidate_names())
+        with patch.object(tempfile, '_get_candidate_names', return_value=names):
+            root, args, m = self.setup_launch()
+        args.only = m['cases'][0]
+        self.assertEqual(launcher.run(args), 0)
+        self.assertFalse([part for part in root.parts
+                          if any(word in part.lower() for word in launcher.FORBIDDEN)])
+
+    def test_a_flagged_tmpdir_fails_naming_it(self):
+        """T73: no name drawn under a flagged TMPDIR is neutral, so the helper fails, naming it."""
+        flagged = temporary(self) / 'seal'
+        flagged.mkdir()
+        with patch.object(tempfile, 'tempdir', str(flagged)):
+            with self.assertRaisesRegex(RuntimeError, 'TMPDIR'):
+                temporary(self)
+        self.assertEqual(list(flagged.iterdir()), [])
 
     def test_two_phase_only_no_overwrite(self):
         root, args, m = self.setup_launch()
