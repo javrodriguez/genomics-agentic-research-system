@@ -100,8 +100,8 @@ so on a non-public project only step 2's STATUS read is the agent's: reply T7 an
    `COMPLETED`, `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`. If `PENDING` or `RUNNING`, reply T3, stop; the status call has already refreshed STATUS.
 8. If status reports `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`, reply T4
    with that reason and the scheduler log path, stop. If the scheduler reports
-   `COMPLETED`, STATUS is `VALIDATING`; run `collect` with
-   `--model "<the exact model id you are running as>"` (decision 0024).
+   `COMPLETED`, STATUS is `VALIDATING`; run `collect`;
+   pass no `--model`: the entry names the model your harness reported at session start, or `unknown` (decisions 0024, 0303).
    Exit 2 → collection is refused: reply T4 with the wrapper's error and scheduler log path, stop.
    Exit 1 → the exit gate failed and collect wrote `FAILED:EXIT_1`: reply T4 with its
    `failures` verbatim, stop. Preserve the failure; do not poll to replace it.

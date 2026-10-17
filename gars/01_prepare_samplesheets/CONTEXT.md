@@ -303,12 +303,11 @@ this stage is the user's: reply T10 and stop. Never work around a refusal.
    `--verify-integrity full` only if step 8 was accepted:
 
    ```bash
-   python3 _system/stage01_samplesheet.py --project projects/<title> --model "<model id>" [--confirm-exclusions] [--force]
+   python3 _system/stage01_samplesheet.py --project projects/<title> [--confirm-exclusions] [--force]
    ```
 
-   `--model` is the exact model id you are running as; it lands in the `history_entry` beside
-   the template version. Omit it only if you cannot name your model — the script then records
-   `unknown`.
+   Never pass `--model`: the `history_entry` names, beside the template version, the model your
+   harness reported at session start, or `unknown` (decisions 0024, 0303).
 
 10. Exit 2 → a gate you believed cleared was not. When a `blocked` entry says a switch does not
    match the `--check` the user was shown, that no `--check` is recorded, or that the last write

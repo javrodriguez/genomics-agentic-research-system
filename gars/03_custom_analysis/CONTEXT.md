@@ -168,9 +168,9 @@ refusal.
    and stop. Do not patch around the failure and re-run: diagnosis goes to the user, and a
    changed method is a new plan.
 9. On execution success, run
-   `python3 _system/stage03_analysis.py verify --project projects/<title> --analysis <NN_slug> --model "<model id>"`.
-   `--model` is the exact model id you are running as (decision 0024); omit only if you cannot
-   name it. Exit 1 → declared outputs are missing or empty: reply
+   `python3 _system/stage03_analysis.py verify --project projects/<title> --analysis <NN_slug>`.
+   Never pass `--model`: the entry names the model your harness reported at session start, or
+   `unknown` (decisions 0024, 0303). Exit 1 → declared outputs are missing or empty: reply
    T5, stop. Exit 2 → approval or execution evidence is missing or invalid; report the
    refusal verbatim and stop as in step 8.
 10. Exit 0 → append the returned `history_entry` to the project's `HISTORY.md` **verbatim**,

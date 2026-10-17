@@ -66,8 +66,10 @@ broken, it was just no longer true.
 version the stage ran under **and** the model id of the agent that executed it (`Model: <id>`).
 The contracts are executed by a model, so the model is part of the toolchain that produced the
 result — a project that cannot name it is not fully reproducible by GARS's own standard. The
-stage 00/01 helpers take `--model` and write the line themselves; a contract whose entry the
-agent writes must require the line explicitly. `unknown` is an honest value; a guessed id is not.
+helpers write the line themselves, with the model the harness reported at session start
+(decision 0303), and a contract tells the agent never to pass `--model`; a contract whose entry
+the agent writes must require the line explicitly. `unknown` is an honest value; a self-reported
+id is not.
 
 **Response Format — the bounded voice.** Templates are the only messages a stage sends, with
 one standing exception: when the user asks a direct question, the agent answers it from the

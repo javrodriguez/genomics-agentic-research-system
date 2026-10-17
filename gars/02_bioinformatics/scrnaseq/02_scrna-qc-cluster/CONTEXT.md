@@ -100,8 +100,8 @@ so on a non-public project only step 2's STATUS read is the agent's: reply T7 an
 6. Call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` (submit has written `SUBMITTED`). Reply T2 and stop. Do not wait or poll.
 7. **On a later invocation** where STATUS is `SUBMITTED`, `RUNNING` or `VALIDATING`: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`.
    If still active, reply T3, stop; the status call has already refreshed STATUS.
-8. If the job has finished, run `collect` with `--model "<the exact model id you are running
-   as>"` and `--h5ad-from <the sub-stage that supplied the matrix>` (decision 0024). Exit 2 →
+8. If the job has finished, run `collect` with `--h5ad-from <the sub-stage that supplied the
+   matrix>`; pass no `--model`: the entry names the model your harness reported at session start, or `unknown` (decisions 0024, 0303). Exit 2 →
    the run did not complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4, stop. Exit 1 →
    the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures` verbatim, stop.
 9. Exit 0 → append its `history_entry` to the project's `HISTORY.md` **verbatim**, replacing

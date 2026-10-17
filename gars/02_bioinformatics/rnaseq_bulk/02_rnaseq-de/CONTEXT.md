@@ -54,8 +54,8 @@ python3 _system/wrappers/rnaseq-de/rnaseq_de.py <subcommand> --project projects/
     [--counts <resolved path> --design <resolved path>]
 ```
 
-`check` and `prepare` take the resolved `--counts` and `--design`; `collect` takes `--model`
-and `--counts-from` (the supplying sub-stage, from the resolver's answer). Exit codes are the
+`check` and `prepare` take the resolved `--counts` and `--design`; `collect` takes
+`--counts-from` (the supplying sub-stage, from the resolver's answer). Exit codes are the
 stage-helper standard: 0 ok, 1 failure, 2 refused, 3 usage.
 
 **Failure vocabulary.** `preconditions`, `config`, `config_unfilled`, `design` (contrast
@@ -141,14 +141,13 @@ paths, and `collect`'s output keeps no `history_entry`, so the step 9 append is 
    `COMPLETED`, `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`. Not yet terminal → reply T3, stop; the status call has already refreshed STATUS.
    On a non-public project: `python3 _system/tool_call.py executor.status
    '{"workspace": "<project dir>", "job-id": "<job_id>"}'`.
-8. If the job has finished, run `collect` with `--model "<the exact model id you are running
-   as>"` (decision 0024) and `--counts-from <the sub-stage the resolver named>`. Exit 2 → the
+8. If the job has finished, run `collect` with `--counts-from <the sub-stage the resolver
+   named>`; pass no `--model`: the entry names the model your harness reported at session start, or `unknown` (decisions 0024, 0303). Exit 2 → the
    run did not complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with the scheduler log
    path, stop. Exit 1 → the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures`
    verbatim, stop.
    On a non-public project: `python3 _system/tool_call.py rnaseq_de.collect '{"project":
-   "projects/<title>", "counts-from": "<sub-stage>", "model": "<the exact model id you are
-   running as>"}'`, and `executor.status` as in step 7. There T4 gives the door's `failures` or
+   "projects/<title>", "counts-from": "<sub-stage>"}'`, and `executor.status` as in step 7. There T4 gives the door's `failures` or
    `state` and names the `logs/` directory for the user to read; you read no log.
 9. Exit 0 → `collect` has written `OUTPUTS.tsv` (`de_results` native, `counts_gene`
    **adapted**, `gene_id_map` native — the role marking is what stops a later consumer
@@ -241,7 +240,7 @@ kept out of a hosted-model prompt (decision 0107).
 
 The entry is yours. From the workspace root, run
 
-  python3 _system/wrappers/rnaseq-de/rnaseq_de.py collect --project projects/<title> --counts-from <sub-stage> --model "<my own model id, the exact one I am running as>"
+  python3 _system/wrappers/rnaseq-de/rnaseq_de.py collect --project projects/<title> --counts-from <sub-stage>
 
 which re-runs the exit gate on the finished run and prints the history_entry; append it to
 projects/<title>/HISTORY.md verbatim, replacing <ISO-8601 date> with today's date.

@@ -47,6 +47,10 @@ project index and artifact resolution come from `_system/` scripts. A contract t
 telling you to run it and report what it returns — not to reproduce its work. The stage 00/01
 helpers and the resolver need no conda environment; stage 02's skills do.
 
+**The model a `HISTORY.md` entry or a run record names is your harness's, not yours.** The
+SessionStart hook records what the harness reported (or `unknown`), and every helper reads it;
+never pass `--model` (decision 0303).
+
 ## Using this workspace
 
 1. Clone the GARS repository; **this folder, `gars/`, is your workspace** — work here directly.

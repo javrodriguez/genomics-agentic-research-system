@@ -263,13 +263,13 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
     re-runnable: re-run it once in the foreground.
 
     ```bash
-    python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none --model "<model id>"
+    python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none
     ```
 
-    `--model` is the exact model id you are running as, exactly as your harness reports it —
-    the model is part of the toolchain, so `HISTORY.md` records it beside the template version.
-    If you cannot name it, omit the flag: the script records `unknown`, which is honest; a
-    guessed id is not. Add the same `--sample-id-pattern` if one was used at step 9. This writes `files.csv` and
+    Never pass `--model`: the model is part of the toolchain, so `HISTORY.md` records it beside
+    the template version, and the script takes it from what your harness reported at session
+    start, or records `unknown`, which is honest; a self-reported id is not (decision 0303).
+    Add the same `--sample-id-pattern` if one was used at step 9. This writes `files.csv` and
     `samples.csv`, substitutes the stamp's placeholders, and runs the exit gate. It is
     deterministic and re-runnable: on unchanged inputs it reproduces the four files byte for
     byte, so a killed run costs only time.
