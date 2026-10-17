@@ -1058,9 +1058,22 @@ BOOTSTRAP_SPANS = (
     ("r4c10-comment", "#           none (a context variable, so parallel takes never see each other's), else "
                       "prereg.load() as in round 3.\n", "#   R4C-11.",
      "4ec1ebccb7591883e7a87ccb70946669e240acb341205f62405e8e380cc1b3de"),
+    # Ruling T0 (lane vendor-admission, Javier's typed word "T0: yes", 16 Oct 2026; applied at 34b1df74, bound here by
+    # glitch-b5 on 17 Oct): the docstring gains its T0 sentence (re-pinned), design_view's guard becomes the
+    # HARNESSES_WITH_SCRIPTS check, HARNESSES_WITH_SCRIPTS is inserted after HARNESSES_WITH_READERS, and R4C-9's comment
+    # names the ruling; check4 and check4_walk keep harness_guard, outside every region.
     ("design-view-docstring", "    pin (D1) and the run tree the driver gave it. `constants` defaults to CHECKER_CONSTANTS",
      "    constants = CHECKER_CONSTANTS if constants is None else constants\n",
-     "83dbaff1086fe8dcf34be8b92c0189ad6e1410f5c0db089397f53ce72d182da4"),
+     "f6e271049c06f720af1aa6cffaea669f13d6e0d7a5f5ff48725b602d0bbc9626"),
+    ("design-view-guard", '    harness = (row.get("agent") or {}).get("harness")\n',
+     '    if not isinstance(pin, dict) or pin.get("harness") != harness or pin.get("model") != row.get("model"):\n',
+     "e6c5691e0f74c1bf5be6bf857615b911be5093ba9ec164d2a1b65b931d18c7f7"),
+    ("harnesses-with-scripts", "HARNESSES_WITH_READERS = (CLAUDE_CODE,)\n", 'PENDING = "PENDING"\n',
+     "42df7f710929cab488da1462c60eb2025f7131de53098cc0b55ed900cd99282d"),
+    ("r4c9-comment", "#   R4C-9. THE HARNESS GUARD (CP2-requirements item 10): only claude-code has record readers in this "
+                     "file, so a take\n",
+     "# " + "=" * 117 + "\n\nimport copy  # noqa: E402\n",
+     "e0e3c1a9c3ac414cf0d4ad56eeffe2153f2bc224c32fbfcfd132582f823ab7b1"),
     # glitch-6b's scheduled-wakeup ruling (15 Oct 2026, CP6 walk w006; the harness lane): user_text_records' `kinds`
     # line and its record-type line, edited in place to read the view's own predicate (check_take's appended
     # SCHEDULED WAKEUP section); no line moves.
