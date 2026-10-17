@@ -123,6 +123,47 @@ def resolve(project, assay, wanted, entries, prefer_adapted_from=None):
     return None, "no completed sub-stage declares an artifact of type %r" % wanted
 
 
+def upstream(project, assay, wanted, before):
+    """The artifact of type `wanted` the sub-stage `before` consumes, or None with a reason.
+
+    The rule above, among the completed sub-stages ordered before `before` only, so a sub-stage's
+    own outputs never answer for its input (D-input, decision 0305).
+    """
+    project = Path(project)
+    entries, _, _ = collect(project, assay)
+    hit, why = resolve(project, assay, wanted, [e for e in entries if e["substage"] < before])
+    if hit and not hit["exists"]:
+        return None, "%s declares %s at %s, which is absent" % (hit["substage"], wanted,
+                                                                hit["resolved"])
+    return hit, why
+
+
+def choose_input(project, assay, wanted, before, explicit, flag):
+    """A downstream wrapper's input: (path or None, refusal detail or None).
+
+    The resolver's artifact when it finds one; an explicit path other than that one is refused,
+    never used. When it finds none, an explicit path stands as given (a named residual of 0305).
+    """
+    hit, _ = upstream(project, assay, wanted, before)
+    if hit is None:
+        return (Path(explicit) if explicit else None), None
+    resolved = (Path(project) / hit["resolved"]).resolve()
+    if explicit and Path(explicit).resolve() != resolved:
+        return None, ("%s %s is not the %s the resolver found for this sub-stage (%s, from %s); "
+                      "pass no %s: the wrapper resolves its own input (decision 0305)"
+                      % (flag, explicit, wanted, resolved, hit["substage"], flag))
+    return resolved, None
+
+
+def supplier(project, assay, wanted, before, flag_value, flag):
+    """The sub-stage the resolver names as supplier, or `unknown`; the agent's flag is ignored."""
+    if flag_value:
+        sys.stderr.write("note: %s is ignored; the supplier comes from the resolver "
+                         "(decision 0305)\n" % flag)
+    hit, _ = upstream(project, assay, wanted, before)
+    return hit["substage"] if hit else "unknown"
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--project", required=True, type=Path)

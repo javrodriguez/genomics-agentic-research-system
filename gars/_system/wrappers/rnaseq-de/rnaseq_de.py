@@ -44,6 +44,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import workspace as ws          # noqa: E402
 import wrapperlib as wl         # noqa: E402
+import resolve_artifact as ra   # noqa: E402
 from wrapperlib import (EXIT_OK, EXIT_FAILURE, EXIT_REFUSED, EXIT_USAGE,   # noqa: E402
                         emit, fail)
 
@@ -469,7 +470,8 @@ def cmd_collect(args):
         "Template version: %s" % version,
         "Model: %s" % model,
         "Method: PyDESeq2 via the gars rnaseq-de wrapper",
-        "Counts supplied by: %s" % (args.counts_from or "unknown"),
+        "Counts supplied by: %s" % ra.supplier(project, ASSAY, "counts_gene", SUBSTAGE,
+                                               args.counts_from, "--counts-from"),
         "Genes tested: %s" % result.get("genes_tested", "unknown"),
         "Outputs: " + ", ".join("`%s` (%s)" % (t, r) for t, r, _ in outputs),
     ])
@@ -560,7 +562,8 @@ def main(argv=None):
                    help="ignored, kept so the pinned registry validates; the model comes "
                         "from the harness's session start, and `none` alone is honoured (0303)")
     c.add_argument("--counts-from", default=None,
-                   help="the sub-stage that supplied the counts, from the resolver")
+                   help="ignored, kept so the pinned registry validates; the supplier comes "
+                        "from the resolver (0305)")
     t = sub.add_parser("check-table")
     t.add_argument("--table", required=True)
     m = sub.add_parser("summary")

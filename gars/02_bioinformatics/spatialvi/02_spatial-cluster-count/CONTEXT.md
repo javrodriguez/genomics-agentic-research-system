@@ -12,8 +12,10 @@ later invocation reads `STATUS` and collects results.
 reporting of what they return.
 
 ## Inputs
-1. **The `h5ad` from 02.01** — resolved by artifact type by stage 02's router
-   (`_system/resolve_artifact.py`) and passed as `--h5ad`. Never located by hand. 02.01
+1. **The `h5ad` from 02.01** — resolved by artifact type by the wrapper itself
+   (`_system/resolve_artifact.py`, the router's rule), so no path is passed or carried between
+   sessions; a `--h5ad` other than the resolver's is refused (decision 0305). Never located by
+   hand. 02.01
    registers its results **directory**; see Definitions for the file-or-directory rule.
 2. **`_config/spatialvi.yaml`** — only its `compute.*` keys; this skill has no thresholds
 3. **`01_samplesheets/spatialvi_samplesheet.csv`** — the independent source the exit gate checks
@@ -59,21 +61,23 @@ environment arrives via `$GARS_PY` inside `submit.sh`:
 
 ```bash
 python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py check   \
-    --project projects/<title> --h5ad <resolved path>
+    --project projects/<title>
 python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py prepare \
-    --project projects/<title> --h5ad <resolved path>
+    --project projects/<title>
 python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py collect \
-    --project projects/<title> --h5ad-from <sub-stage>
+    --project projects/<title>
 ```
 
 `collect` takes no `--h5ad`: the object was resolved at `check`/`prepare` time, and the
-wrapper rejects the flag there rather than let it bind to `--h5ad-from`.
+wrapper rejects the flag there rather than let it bind to `--h5ad-from`, which it ignores: the
+entry names the supplier the resolver finds (decision 0305).
 
 Exit codes are the stage-helper standard: 0 ok, 1 failure (the JSON lists every failure),
 2 refused (a gate), 3 usage. Branch on them; never re-interpret a failure as something to fix
 silently.
 
-**Failure vocabulary.** `preconditions` (`--h5ad` absent or not resolving to one processed
+**Failure vocabulary.** `input_not_resolved` (a `--h5ad` other than the resolver's; pass
+none), `preconditions` (no `h5ad` resolved, or it not resolving to one processed
 object per sample, the samplesheet or config absent, or the analysis environment lacks
 `anndata`), `config` (a `compute.*` key is absent), `config_unfilled` (`<REQUIRED>` markers
 remain), `samplesheet` (wrong header, or no samples), `output_dir` (a populated `run/` with no
@@ -81,12 +85,13 @@ completion marker). `collect` uses `summary` (the sample-set and count checks ag
 `summary.json`), `table` (the artifact type name, for `clusters.tsv`), `report`.
 
 **The input is a file or a directory.** 02.01 registers its results **directory** as the
-`h5ad` artifact — the set is the artifact — so that is what the router resolves and what
-`--h5ad` normally receives; the per-sample object sits at `<dir>/<sample>/data/<sample>.h5ad`,
+`h5ad` artifact — the set is the artifact — so that is what the wrapper resolves; the
+per-sample object sits at `<dir>/<sample>/data/<sample>.h5ad`,
 the same name 02.01's own gate checks, and `<sample>-raw.h5ad` beside it is never substituted.
 With a directory, `check` resolves one file per samplesheet sample and refuses naming any that
-is missing. `--h5ad` may instead name a single `.h5ad` **file**; then the samplesheet must list
-exactly one sample, or `check` refuses rather than guess which sample the file is.
+is missing. Only when nothing resolves may `--h5ad` name a single `.h5ad` **file**; then the
+samplesheet must list exactly one sample, or `check` refuses rather than guess which sample the
+file is.
 
 **The column read.** `obs["clusters"]`, the name nf-core/spatialvi writes
 (`leiden_key_added = 'clusters'` in its workflow at the pin). There is no fallback list. The
@@ -134,7 +139,7 @@ so on a non-public project only step 2's STATUS read is the agent's: reply T7 an
 2. Read the STATUS file. If it is `SUBMITTED`, `RUNNING`, or `COMPLETE`, stop — stage 02's
    router already handles those states and should not have routed here.
    On a non-public project, reply T7 and stop here (Definitions).
-3. Run the wrapper's `check` with the resolved `--h5ad`. Exit 1 → reply T5 with its `failures`
+3. Run the wrapper's `check`, passing no `--h5ad`: it resolves its own input. Exit 1 → reply T5 with its `failures`
    verbatim and stop. Do not fix causes yourself: a missing package is an environment change,
    a missing per-sample object means 02.01 has not completed for that sample.
 4. Run `prepare`. Exit 1 → reply T5 (same rule). Exit 0 → it wrote the script, `submit.sh` and
@@ -143,8 +148,8 @@ so on a non-public project only step 2's STATUS read is the agent's: reply T7 an
 6. Call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` (submit has written `SUBMITTED`). Reply T2 and stop. Do not wait or poll.
 7. **On a later invocation** where STATUS is `SUBMITTED`, `RUNNING` or `VALIDATING`: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`.
    If still active, reply T3, stop; the status call has already refreshed STATUS.
-8. If the job has finished, run `collect` with `--h5ad-from <the sub-stage that supplied the
-   object>`; pass no `--model`: the entry names the model your harness reported at session start, or `unknown` (decisions 0024, 0303). Exit 2 →
+8. If the job has finished, run `collect`; pass no `--model` and no `--h5ad-from` (the
+   entry names the supplier the resolver finds, decision 0305): the entry names the model your harness reported at session start, or `unknown` (decisions 0024, 0303). Exit 2 →
    the run did not complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4, stop. If the
    analysis log says `obs has no 'clusters' column`, T4 carries that line verbatim and the
    columns it listed; choosing another column is not a retry. If it says `spot(s) carry no
@@ -254,7 +259,7 @@ Template version: <version>
 Model: <model id>
 Method: count of distinct values in obs['clusters'] as written by nf-core/spatialvi, read with anndata via the gars spatial-cluster-count wrapper; nothing re-clustered, nothing named, no gene read
 Obs column: clusters
-Matrix supplied by: <--h5ad-from>
+Matrix supplied by: <the sub-stage the resolver found, or unknown>
 Samples: <n> (<sample>: <n_clusters> clusters / <n_obs> spots, ...)
 Outputs: `table`, `report`
 ```

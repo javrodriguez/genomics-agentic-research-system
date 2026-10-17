@@ -70,6 +70,17 @@ def record_session_model(ws):
     (ws / ".gars_session_model").write_text(SESSION_MODEL + "\n")
 
 
+def completed_upstream(stage, artifact, rel):
+    """A completed producer sub-stage as the resolver reads it (STATUS and OUTPUTS.tsv), so a
+    downstream collect names its supplier from the resolver (D-supplier, decision 0305)."""
+    target = stage / rel
+    if not target.exists():
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("fixture\n")
+    (stage / "OUTPUTS.tsv").write_text("# type\trole\tpath\n%s\tnative\t%s\n" % (artifact, rel))
+    (stage / "STATUS").write_text("COMPLETE fixture\n")
+
+
 def completed_fixture_submission(project, stage):
     """Synthetic completed job for content gates; production submit/writer stay active."""
     from unittest.mock import patch
@@ -1078,6 +1089,9 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
         (run_dir / "tables" / "de_results.csv").write_text(
             "gene,baseMean,log2FoldChange,pvalue,padj\ng1,1,2,0.01,0.02\ng2,1,2,0.04,0.04\n")
         completed_fixture_submission(self.project, self.de_substage)
+        completed_upstream(self.project / "02_bioinformatics" / "rnaseq_bulk"
+                           / "01_nfcore-rnaseq-wrapper", "counts_gene",
+                           "run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv")
         code, res, raw = run(self.de, ["collect", "--project", "projects/rna-test",
                                        "--model", "claude-test-1",
                                        "--counts-from", "01_nfcore-rnaseq-wrapper"], self.ws)
@@ -3057,6 +3071,8 @@ class ScrnaQcClusterTests(unittest.TestCase):
         (run_dir / "summary.json").write_text(
             json.dumps(default if summary is None else summary, indent=2, sort_keys=True))
         (run_dir / ".gars_run_complete").write_text("now\n")
+        completed_upstream(project / "02_bioinformatics" / "scrnaseq" / "01_nfcore-scrnaseq-wrapper",
+                           "h5ad", "run/results/combined_filtered_matrix.h5ad")
         return substage
 
     def test_00_check_refuses_a_missing_analysis_package_by_name(self):
@@ -3328,6 +3344,8 @@ class SpatialClusterCountTests(unittest.TestCase):
             "BrainB\t0\t10\nBrainB\t1\t20\nBrainB\t2\t30\n")
         (run_dir / "report.md").write_text("# report\n")
         (run_dir / ".gars_run_complete").write_text("now\n")
+        completed_upstream(project / "02_bioinformatics" / "spatialvi" / "01_nfcore-spatialvi-wrapper",
+                           "h5ad", "run/results")
         return substage
 
     def test_00_conform_passes_for_the_new_wrapper(self):
