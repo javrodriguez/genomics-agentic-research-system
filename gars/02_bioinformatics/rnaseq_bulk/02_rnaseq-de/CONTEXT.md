@@ -54,13 +54,17 @@ python3 _system/wrappers/rnaseq-de/rnaseq_de.py <subcommand> --project projects/
     [--counts <resolved path> --design <resolved path>]
 ```
 
-`check` and `prepare` take the resolved `--counts` and `--design`; `collect` takes no
-`--counts-from`: the entry names the supplier the resolver finds (decision 0305). Exit codes are
+`check` and `prepare` take the resolved `--counts` and `--design`; once a completed sub-stage
+declares `counts_gene`, `prepare` refuses any other `--counts` (exit 2, `input_not_resolved`,
+nothing written). `collect` takes no `--counts-from`: the entry names the supplier the resolver
+finds when prepare read its artifact, else `unknown` (decisions 0305, 0308). Exit codes are
 the stage-helper standard: 0 ok, 1 failure, 2 refused, 3 usage.
 
 **Failure vocabulary.** `preconditions`, `config`, `config_unfilled`, `design` (contrast
 level missing or under-sampled), `counts` (a design sample absent from the matrix header);
 `collect` adds `de_results`, `figures`, `report`, `adaptation`.
+`input_not_resolved`: prepare refuses (exit 2) a `--counts` other than the resolver's, names
+the resolved path, and writes nothing; pass that path.
 `design_not_canonical`: prepare refuses (exit 2), writes nothing, and reports
 "design is not the canonical project design" when `--design` does not resolve to
 `01_samplesheets/rnaseq_bulk_design.csv` in the project.
@@ -128,7 +132,8 @@ paths, and `collect`'s output keeps no `history_entry`, so the step 9 append is 
    the user, `config_unfilled` means the stage 02 menus have not run.
    On a non-public project: `python3 _system/tool_call.py rnaseq_de.check '{"project":
    "projects/<title>", "counts": "<counts>", "design": "<design>"}'`.
-5. Run `prepare` with the same paths. Exit 1 → reply T5. Exit 0 → it wrote
+5. Run `prepare` with the same paths. Exit 1, or exit 2 (`input_not_resolved`, `--counts` is not
+   the resolver's) → reply T5 with its `failures` verbatim. Exit 0 → it wrote
    `scripts/run_de.py`, `submit.sh` and the reproducibility bundle.
    On a non-public project: the `rnaseq_de.prepare` door, `python3 _system/tool_call.py
    rnaseq_de.prepare '<the same JSON>'`.
@@ -142,7 +147,8 @@ paths, and `collect`'s output keeps no `history_entry`, so the step 9 append is 
    On a non-public project: `python3 _system/tool_call.py executor.status
    '{"workspace": "<project dir>", "job-id": "<job_id>"}'`.
 8. If the job has finished, run `collect`; pass no `--model` and no `--counts-from` (the
-   entry names the supplier the resolver finds, decision 0305): the entry names the model your harness reported at session start, or `unknown` (decisions 0024, 0303). Exit 2 → the
+   entry names the supplier the resolver finds when prepare read its artifact, else `unknown`;
+   decisions 0305, 0308): the entry names the model your harness reported at session start, or `unknown` (decisions 0024, 0303). Exit 2 → the
    run did not complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with the scheduler log
    path, stop. Exit 1 → the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures`
    verbatim, stop.

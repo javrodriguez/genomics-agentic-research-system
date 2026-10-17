@@ -597,7 +597,7 @@ def cmd_collect(args):
         "nothing named, no gene read" % OBS_COLUMN,
         "Obs column: %s" % OBS_COLUMN,
         "Matrix supplied by: %s" % ra.supplier(project, ASSAY, "h5ad", SUBSTAGE,
-                                               args.h5ad_from, "--h5ad-from"),
+                                               args.h5ad_from, "--h5ad-from", "h5ad"),
         "Samples: %d (%s)" % (len(per_sample), counts),
         "Outputs: " + ", ".join("`%s`" % t for t, _, _ in outputs),
     ])

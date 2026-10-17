@@ -279,6 +279,14 @@ def cmd_prepare(args):
                                    "design is not the canonical project design")]
         result["error"] = "prepare refused; nothing written. Use the canonical project design."
         return emit(result, EXIT_REFUSED)
+    # The resolver's counts once it finds them; any other path is refused, never used (0308).
+    counts, refusal = ra.choose_input(project, ASSAY, "counts_gene", SUBSTAGE, args.counts,
+                                      "--counts")
+    if refusal:
+        result["failures"] = [fail("input_not_resolved", refusal)]
+        result["error"] = "prepare refused; nothing written. " + refusal
+        return emit(result, EXIT_REFUSED)
+    args.counts = str(counts)
     fails, cfg, paths = run_checks(project, args.counts, args.design)
     if fails:
         result["failures"] = fails
@@ -471,7 +479,7 @@ def cmd_collect(args):
         "Model: %s" % model,
         "Method: PyDESeq2 via the gars rnaseq-de wrapper",
         "Counts supplied by: %s" % ra.supplier(project, ASSAY, "counts_gene", SUBSTAGE,
-                                               args.counts_from, "--counts-from"),
+                                               args.counts_from, "--counts-from", "counts"),
         "Genes tested: %s" % result.get("genes_tested", "unknown"),
         "Outputs: " + ", ".join("`%s` (%s)" % (t, r) for t, r, _ in outputs),
     ])

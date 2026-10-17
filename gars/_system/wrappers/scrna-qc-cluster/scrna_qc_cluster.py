@@ -542,7 +542,7 @@ def cmd_collect(args):
         "Method: scanpy (QC -> normalise -> HVG -> PCA -> neighbours -> Leiden -> Wilcoxon "
         "markers) via the gars scrna-qc-cluster wrapper",
         "Matrix supplied by: %s" % ra.supplier(project, ASSAY, "h5ad", SUBSTAGE,
-                                               args.h5ad_from, "--h5ad-from"),
+                                               args.h5ad_from, "--h5ad-from", "h5ad"),
         "Cells: %s in, %s after QC" % ((summary or {}).get("n_cells_in", "?"),
                                        (summary or {}).get("n_cells_out", "?")),
         "Clusters: %s (resolution %s)" % ((summary or {}).get("n_clusters", "?"),

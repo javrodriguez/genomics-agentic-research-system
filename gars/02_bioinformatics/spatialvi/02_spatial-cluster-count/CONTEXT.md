@@ -70,7 +70,8 @@ python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py collect 
 
 `collect` takes no `--h5ad`: the object was resolved at `check`/`prepare` time, and the
 wrapper rejects the flag there rather than let it bind to `--h5ad-from`, which it ignores: the
-entry names the supplier the resolver finds (decision 0305).
+entry names the supplier the resolver finds when prepare read its artifact, else `unknown`
+(decisions 0305, 0308).
 
 Exit codes are the stage-helper standard: 0 ok, 1 failure (the JSON lists every failure),
 2 refused (a gate), 3 usage. Branch on them; never re-interpret a failure as something to fix
@@ -149,7 +150,8 @@ so on a non-public project only step 2's STATUS read is the agent's: reply T7 an
 7. **On a later invocation** where STATUS is `SUBMITTED`, `RUNNING` or `VALIDATING`: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`.
    If still active, reply T3, stop; the status call has already refreshed STATUS.
 8. If the job has finished, run `collect`; pass no `--model` and no `--h5ad-from` (the
-   entry names the supplier the resolver finds, decision 0305): the entry names the model your harness reported at session start, or `unknown` (decisions 0024, 0303). Exit 2 →
+   entry names the supplier the resolver finds when prepare read its artifact, else `unknown`;
+   decisions 0305, 0308): the entry names the model your harness reported at session start, or `unknown` (decisions 0024, 0303). Exit 2 →
    the run did not complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4, stop. If the
    analysis log says `obs has no 'clusters' column`, T4 carries that line verbatim and the
    columns it listed; choosing another column is not a retry. If it says `spot(s) carry no

@@ -155,13 +155,31 @@ def choose_input(project, assay, wanted, before, explicit, flag):
     return resolved, None
 
 
-def supplier(project, assay, wanted, before, flag_value, flag):
-    """The sub-stage the resolver names as supplier, or `unknown`; the agent's flag is ignored."""
+def supplier(project, assay, wanted, before, flag_value, flag, label):
+    """The sub-stage the resolver names as supplier, or `unknown`; the agent's flag is ignored.
+
+    A producer is named only when the input prepare recorded under `label` in this sub-stage's
+    reproducibility/manifest.json is that producer's artifact: the same resolved path, and the
+    same sha256 where both are recorded (the fold of REVIEW-85a1b4a, decision 0308).
+    """
     if flag_value:
         sys.stderr.write("note: %s is ignored; the supplier comes from the resolver "
                          "(decision 0305)\n" % flag)
     hit, _ = upstream(project, assay, wanted, before)
-    return hit["substage"] if hit else "unknown"
+    if hit is None:
+        return "unknown"
+    manifest_path = Path(project) / "02_bioinformatics" / assay / before / "reproducibility/manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        read = (manifest.get("inputs") or {}).get(label) or (manifest.get("params") or {}).get(label)
+        if not read or Path(read).resolve() != (Path(project) / hit["resolved"]).resolve():
+            return "unknown"
+        recorded = manifest.get("%s_sha256" % label)
+        if recorded and hit.get("sha256") and recorded != hit["sha256"]:
+            return "unknown"
+    except (OSError, ValueError, TypeError, AttributeError):
+        return "unknown"
+    return hit["substage"]
 
 
 def main(argv=None):

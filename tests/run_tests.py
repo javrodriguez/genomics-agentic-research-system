@@ -1049,8 +1049,15 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
 
     def test_04_de_prepare_and_collect(self):
         design = self.project / "01_samplesheets" / "rnaseq_bulk_design.csv"
+        # The producer completes before prepare, which reads its counts: the supplier line
+        # names a producer only when prepare read its artifact (decision 0308).
+        producer = self.project / "02_bioinformatics" / "rnaseq_bulk" / "01_nfcore-rnaseq-wrapper"
+        rel = "run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv"
+        (producer / rel).parent.mkdir(parents=True, exist_ok=True)
+        (producer / rel).write_bytes(self.counts_native.read_bytes())
+        completed_upstream(producer, "counts_gene", rel)
         code, res, raw = run(self.de, ["prepare", "--project", "projects/rna-test",
-                                       "--counts", str(self.counts_native),
+                                       "--counts", str(producer / rel),
                                        "--design", str(design)], self.ws)
         self.assertEqual(code, 0, raw)
         script = self.de_substage / "scripts" / "run_de.py"
@@ -1090,9 +1097,6 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
         (run_dir / "tables" / "de_results.csv").write_text(
             "gene,baseMean,log2FoldChange,pvalue,padj\ng1,1,2,0.01,0.02\ng2,1,2,0.04,0.04\n")
         completed_fixture_submission(self.project, self.de_substage)
-        completed_upstream(self.project / "02_bioinformatics" / "rnaseq_bulk"
-                           / "01_nfcore-rnaseq-wrapper", "counts_gene",
-                           "run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv")
         code, res, raw = run(self.de, ["collect", "--project", "projects/rna-test",
                                        "--model", "claude-test-1",
                                        "--counts-from", "01_nfcore-rnaseq-wrapper"], self.ws)

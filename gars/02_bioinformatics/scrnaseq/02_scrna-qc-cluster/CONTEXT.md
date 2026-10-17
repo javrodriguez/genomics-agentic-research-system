@@ -104,7 +104,8 @@ so on a non-public project only step 2's STATUS read is the agent's: reply T7 an
 7. **On a later invocation** where STATUS is `SUBMITTED`, `RUNNING` or `VALIDATING`: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`.
    If still active, reply T3, stop; the status call has already refreshed STATUS.
 8. If the job has finished, run `collect`; pass no `--model` and no `--h5ad-from` (the
-   entry names the supplier the resolver finds, decision 0305): the entry names the model your harness reported at session start, or `unknown` (decisions 0024, 0303). Exit 2 →
+   entry names the supplier the resolver finds when prepare read its artifact, else `unknown`;
+   decisions 0305, 0308): the entry names the model your harness reported at session start, or `unknown` (decisions 0024, 0303). Exit 2 →
    the run did not complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4, stop. Exit 1 →
    the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures` verbatim, stop.
 9. Exit 0 → append its `history_entry` to the project's `HISTORY.md` **verbatim**, replacing
