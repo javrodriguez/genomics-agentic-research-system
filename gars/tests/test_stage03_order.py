@@ -242,5 +242,15 @@ class RunnerDirectiveTests(unittest.TestCase):
         for word in ('--mem ', '--mem-per-cpu', 'scripts/01_first.sh', 'scripts/02_second.sh'):
             self.assertIn(word, blocked)
 
+    def test_a_refused_memory_value_names_the_accepted_forms(self):
+        """The fold of REVIEW-8f5ae09, NIT 2: unitless megabytes stay refused, and the refusal
+        says which forms approve reads."""
+        for value in ('64000', '64g'):
+            with self.subTest(value=value):
+                self.first.write_text('#SBATCH --mem=%s\n' % value + FIRST)
+                blocked = self.refused_with_nothing_written()
+                for word in ('--mem', 'scripts/01_first.sh', value, 'K, M, G or T', 'upper case'):
+                    self.assertIn(word, blocked)
+
 if __name__ == '__main__':
     unittest.main()
