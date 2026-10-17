@@ -241,9 +241,11 @@ def own_mutants():
                                           "    if removal_error is None and drive_error is not None:"),
         "pending-grade-dropped": ("R12.pending", "run",
                                   "    if pending is not None:\n        return pending\n", ""),
-        "walk-checked-as-take": ("R2.walk-check", "drive",
-                                 "        if records == \"walks\":                    # D1: the round-4 walk road\n",
-                                 "        if False:                    # D1: the round-4 walk road\n"),
+        # re-anchored (lane vendor-admission round 10 ruling 5, drift from T4 P0's edit A, be9942ea: drive's walk-road
+        # branch moved into check_take's claude-code entry): the same guard, records "walks" read as the walk road
+        "walk-checked-as-take": ("R2.walk-check", "check_take",
+                                 "    if records == \"walks\":                # D1: the round-4 walk road\n",
+                                 "    if False:                # D1: the round-4 walk road\n", "_claude_code_entry"),
         "walk-session-unbound": ("R2.walk-check", "check_take",
                                  "    if sid != want:                                  # D2",
                                  "    if False:                                  # D2"),

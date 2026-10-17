@@ -4560,16 +4560,16 @@ def vendor_walk_binding_problems(path, task_id, half_name, walk_id, sid) -> list
     if sid != want:
         out.append("[session-binding] " + f"the session id does not match its walk: the envelopes say {sid}, and "
                    f"uuid5(namespace, {WALK_SESSION_PREFIX}{walk_id}) is {want}")
-    ledger = _ledger_beside(path)
-    if not isinstance(ledger, dict):
+    led = _ledger_beside(path)
+    if not isinstance(led, dict):
         return out + ["[session-binding] no driver ledger beside the walk's transcript, so nothing binds it to its walk"]
-    if (ledger.get("task"), ledger.get("half")) != (task_id, half_name):
-        out.append("[session-binding] " + f"the driver ledger is {ledger.get('task')}/{ledger.get('half')}, not "
+    if (led.get("task"), led.get("half")) != (task_id, half_name):
+        out.append("[session-binding] " + f"the driver ledger is {led.get('task')}/{led.get('half')}, not "
                    f"{task_id}/{half_name}")
-    if ledger.get("session_id") != want:
-        out.append("[session-binding] " + f"the driver ledger records session {ledger.get('session_id')}, not the "
+    if led.get("session_id") != want:
+        out.append("[session-binding] " + f"the driver ledger records session {led.get('session_id')}, not the "
                    f"walk's {want}")
-    if ledger.get("row") is not None or ledger.get("row_commit") is not None:
+    if led.get("row") is not None or led.get("row_commit") is not None:
         out.append("[session-binding] the driver ledger records a ledger row for a walk; a walk has none")
     return out
 
