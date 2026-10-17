@@ -23,7 +23,11 @@ PF, the freeze gate's half in check_take.py (plan section 7; review 36ce125 MINO
   sources      tests/check_vendor_sources.py (checks.d's per-piece line, plan NIT 7) refuses a piece naming a
                READER_SOURCES or CODEX_SOURCES file, drive.py excepted for P0 alone.
   VP-fixtures  a SAME row's fixture is a file labelled RECORDED (walk and CLI version) in its folder's README, and
-               VENDOR_CHECK_SHAPES_SOURCE reads "recorded" only while every row of that harness is settled.
+               VENDOR_CHECK_SHAPES_SOURCE reads "recorded" only while every row of that harness is settled and (round 8
+               ruling 3, plan section 7's other half, P2) every READER item of the harness (VENDOR_READER_ITEMS: the
+               table's rows a vendor reader reads, SAME or a NOT COMPARABLE row's partial check) names a RECORDED
+               fixture; and every SAME row has its firing case here (SAME_FIRES: the row's site run on its RECORDED
+               fixture carries the row's reason; review 36ce125 MINOR 2's other half), none on this head.
 
 P1, the vendor view and raw records (plan sections 4 and 9; review 36ce125 MINOR 1, folded by ruling 1), on F1 and F2
 (tests/vendor_check_fixtures.py writes them; F3 variants are their parts edited and written to a scratch folder):
@@ -95,6 +99,17 @@ TABLE_KEYS = {
                "T-18": "harness-condition-violated"},
 }
 NO_READER = "no vendor reader yet"
+# The table's rows a vendor reader reads, per harness (every row but the PENDING ones, row 19's N/A and row 22's
+# refusal-only NOT COMPARABLE; rows 15 for O and 16 for G are NOT COMPARABLE rows whose partial check is a reader).
+TABLE_READER_ITEMS = {
+    "codex": ("T-1", "T-2", "T-3", "T-4", "T-6", "T-7", "T-8", "T-9", "T-11", "T-15", "T-17", "T-20", "T-21", "T-23",
+              "T-24"),
+    "gemini": ("T-1", "T-2", "T-3", "T-5", "T-6", "T-7", "T-8", "T-9", "T-15", "T-16", "T-17", "T-20", "T-21", "T-23",
+               "T-24"),
+}
+# Each SAME row's firing case: (harness, key) -> fire(fixture path) -> the problems its site gives on the row's RECORDED
+# fixture. Empty on this head, where no row is SAME; whoever settles a row SAME writes its case here.
+SAME_FIRES: dict = {}
 SOURCE = Path(ct.__file__).read_text(encoding="utf-8")
 
 
@@ -364,9 +379,73 @@ class VPFixtures(unittest.TestCase):
         self.assertEqual(ct.vendor_shapes_problems("codex"), [])          # "documented": nothing to bind yet
         with mock.patch.dict(ct.VENDOR_CHECK_SHAPES_SOURCE, {"codex": "recorded"}):
             got = ct.vendor_shapes_problems("codex")
-            self.assertEqual(len(got), len(TABLE_KEYS["codex"]), got)
+            # round 8 ruling 3 (P2): every unsettled row, and now every READER item without its RECORDED fixture
+            self.assertEqual(len(got), len(TABLE_KEYS["codex"]) + len(TABLE_READER_ITEMS["codex"]), got)
         with mock.patch.dict(ct.VENDOR_CHECK_SHAPES_SOURCE, {"codex": "observed"}):
             self.assertNotEqual(ct.vendor_shapes_problems("codex"), [])
+
+
+class VPReaderItems(unittest.TestCase):
+    """Round 8 ruling 3: plan section 7's other half, with P2's READER items."""
+
+    def test_vp_reader_items_are_the_tables_reader_rows_unrecorded_here(self):
+        self.assertEqual({h: tuple(block) for h, block in ct.VENDOR_READER_ITEMS.items()}, TABLE_READER_ITEMS)
+        self.assertTrue(all(v is None for block in ct.VENDOR_READER_ITEMS.values() for v in block.values()))
+        for h in TABLE_READER_ITEMS:
+            self.assertEqual(len(ct.vendor_reader_items_problems(h)), len(TABLE_READER_ITEMS[h]))
+
+    def test_vp_reader_items_recorded_needs_every_item_on_a_recorded_fixture(self):
+        with settled("codex", "T-5") as rows:
+            for k in rows["codex"]:
+                rows["codex"][k] = dict(rows["codex"]["T-5"], reason=rows["codex"][k]["reason"])
+            items = {h: dict.fromkeys(block, "vendor-check/recorded-codex.jsonl")
+                     for h, block in ct.VENDOR_READER_ITEMS.items()}
+            with mock.patch.dict(ct.VENDOR_CHECK_SHAPES_SOURCE, {"codex": "recorded"}):
+                self.assertEqual(ct.vendor_rows_problems("codex"), [])
+                got = ct.vendor_shapes_problems("codex")
+                self.assertEqual(len(got), len(TABLE_READER_ITEMS["codex"]), got)       # rows settled, items not
+                with mock.patch.object(ct, "VENDOR_READER_ITEMS", items):
+                    self.assertEqual(ct.vendor_shapes_problems("codex"), [])
+                    items["codex"]["T-3"] = "vendor-check/absent.jsonl"
+                    self.assertEqual([p[:4] for p in ct.vendor_shapes_problems("codex")], ["T-3 "])
+                    items["codex"]["T-3"] = "vendor-check/recorded-gemini.jsonl"          # another CLI's label
+                    self.assertEqual([p[:4] for p in ct.vendor_shapes_problems("codex")], ["T-3 "])
+
+    def test_vp_reader_items_live_recorded_binding(self):
+        # the A7-source mirror: the live map reads "recorded" only with every row and READER item bound
+        for h, source in ct.VENDOR_CHECK_SHAPES_SOURCE.items():
+            if source == "recorded":
+                self.assertEqual(ct.vendor_shapes_problems(h), [], h)
+
+
+def same_fires_problems(rows: dict, fires: dict) -> list:
+    """Each SAME row without a firing case, or whose case on its RECORDED fixture does not carry the row's reason."""
+    out = []
+    for h, block in rows.items():
+        for k, row in block.items():
+            if row.get("state") != "SAME":
+                continue
+            fire = fires.get((h, k))
+            if fire is None:
+                out.append(f"{h} {k} is SAME and has no firing case on its RECORDED fixture")
+                continue
+            got = fire(ct.HERE / "tests" / "fixtures" / row["fixture"])
+            if not any(p.startswith(f"[{row['reason']}] ") for p in got):
+                out.append(f"{h} {k}'s RECORDED fixture does not fire [{row['reason']}] through its site: {got}")
+    return out
+
+
+class VPSameFires(unittest.TestCase):
+    def test_vp_same_fires_the_live_map(self):
+        self.assertEqual(same_fires_problems(ct.VENDOR_PENDING_ROWS, SAME_FIRES), [])
+
+    def test_vp_same_fires_a_settled_row_needs_its_case(self):
+        with settled("gemini", "T-4") as rows:
+            self.assertNotEqual(same_fires_problems(rows, {}), [])
+            self.assertEqual(same_fires_problems(rows, {("gemini", "T-4"): lambda f: [
+                f"[readers-disagree] fired on {f.name}"]}), [])
+            self.assertNotEqual(same_fires_problems(rows, {("gemini", "T-4"): lambda f: [
+                "[transcript-unreadable] another reason"]}), [])
 
 
 # ---- P1: the vendor view and raw records ----------------------------------------------------------------------------

@@ -120,10 +120,11 @@ synthetic_reader.__module__ = check_take.__name__  # TEST DATA: stands for a rea
 
 
 @contextlib.contextmanager
-def settled(*, legs=("i", "ii", "rows", "iii"), registry=None, **arms):
+def settled(*, legs=("i", "ii", "rows", "items", "iii"), registry=None, **arms):
     """TEST DATA: each named arm (O, G) with the named legs of the freeze gate settled: "i" its adapter recorded, "ii"
     check_take's VENDOR_CHECK_SHAPES_SOURCE recorded, "rows" every VENDOR_PENDING_ROWS row of its harness SAME with a
-    RECORDED fixture in a scratch fixtures folder and a reader defined in check_take, "iii" a registry holding it
+    RECORDED fixture in a scratch fixtures folder and a reader defined in check_take, "items" every
+    VENDOR_READER_ITEMS item of its harness on that fixture (round 8 ruling 3, P2), "iii" a registry holding it
     (or `registry`, a callable standing in for production_readers)."""
     harnesses = [HARNESS[a] for a in arms]
     with contextlib.ExitStack() as stack:
@@ -148,6 +149,11 @@ def settled(*, legs=("i", "ii", "rows", "iii"), registry=None, **arms):
                 rows[h] = {k: {"reason": r["reason"], "state": "SAME", "fixture": f"vendor-check/recorded-{h}.jsonl",
                                "reader": "synthetic_reader"} for k, r in rows[h].items()}
             stack.enter_context(mock.patch.object(check_take, "VENDOR_PENDING_ROWS", rows))
+        if "items" in legs:
+            items = copy.deepcopy(getattr(check_take, "VENDOR_READER_ITEMS", {}))
+            for h in harnesses:
+                items[h] = dict.fromkeys(items.get(h, {}), f"vendor-check/recorded-{h}.jsonl")
+            stack.enter_context(mock.patch.object(check_take, "VENDOR_READER_ITEMS", items, create=True))
         if registry is not None:
             stack.enter_context(mock.patch.object(native_reader_registration, "production_readers", registry))
         elif "iii" in legs:
@@ -168,7 +174,7 @@ def main_problems(mod) -> list:
             if f"arm {a} " not in text:
                 out.append(f"{arms} at documented: the refusal does not name arm {a}: {text[:200]!r}")
         # T4 PF: leg i alone, with legs ii and iii settled, still refuses (so T3's witnesses keep their meaning)
-        with settled(legs=("ii", "rows", "iii"), **{a: True for a in vendors}):
+        with settled(legs=("ii", "rows", "items", "iii"), **{a: True for a in vendors}):
             code, text, written = run_main(mod, draft(arms))
         if code != 1 or written or "REFUSE" not in text:
             out.append(f"{arms} at documented, legs ii and iii settled: not refused (exit {code})")
@@ -242,17 +248,20 @@ def unreadable_registry(*a, **k):
 
 # (case, the legs settled, the registry, the words the refusal must carry for each vendor arm)
 CHECK_CASES = (
-    ("leg ii absent", ("i", "rows", "iii"), None, "absent", ("leg ii", "VENDOR_CHECK_SHAPES_SOURCE")),
-    ("leg ii documented", ("i", "rows", "iii"), None, None, ("leg ii", "'documented'")),
-    ("a row unsettled", ("i", "ii", "iii"), None, "one", ("leg ii", "is PENDING")),
-    ("leg iii empty", ("i", "ii", "rows"), lambda *a, **k: {}, None, ("leg iii", "no native reader is registered")),
-    ("leg iii another vendor only", ("i", "ii", "rows"), lambda *a, **k: {"synthetic-harness": object()}, None,
+    ("leg ii absent", ("i", "rows", "items", "iii"), None, "absent", ("leg ii", "VENDOR_CHECK_SHAPES_SOURCE")),
+    ("leg ii documented", ("i", "rows", "items", "iii"), None, None, ("leg ii", "'documented'")),
+    ("a row unsettled", ("i", "ii", "items", "iii"), None, "one", ("leg ii", "is PENDING")),
+    # round 8 ruling 3 (P2): a READER item on no RECORDED fixture keeps leg ii closed
+    ("a reader item unrecorded", ("i", "ii", "rows", "iii"), None, None, ("leg ii", "names no RECORDED fixture")),
+    ("leg iii empty", ("i", "ii", "rows", "items"), lambda *a, **k: {}, None,
      ("leg iii", "no native reader is registered")),
-    ("leg iii raises", ("i", "ii", "rows"), refused_registry, None, ("leg iii", "the native-reader registry refuses",
-                                                                     "synthetic: the acceptance record is uncommitted")),
-    ("leg iii without git", ("i", "ii", "rows"), no_git_registry, None,
+    ("leg iii another vendor only", ("i", "ii", "rows", "items"), lambda *a, **k: {"synthetic-harness": object()},
+     None, ("leg iii", "no native reader is registered")),
+    ("leg iii raises", ("i", "ii", "rows", "items"), refused_registry, None,
+     ("leg iii", "the native-reader registry refuses", "synthetic: the acceptance record is uncommitted")),
+    ("leg iii without git", ("i", "ii", "rows", "items"), no_git_registry, None,
      ("leg iii", "the native-reader registry could not run", "FileNotFoundError")),
-    ("leg iii any OSError", ("i", "ii", "rows"), unreadable_registry, None,
+    ("leg iii any OSError", ("i", "ii", "rows", "items"), unreadable_registry, None,
      ("leg iii", "the native-reader registry could not run", "PermissionError")),
 )
 
@@ -331,6 +340,7 @@ CHECK_WITNESSES = {
     "leg ii's settled condition deleted": ("    return out + check_take.vendor_rows_problems(harness)\n",
                                            "    return out\n"),
     "leg iii deleted": ('        legs += [f"leg iii: {p}" for p in registration_problems(harness)]\n', ""),
+    "leg ii's reader items deleted": ("    out += check_take.vendor_reader_items_problems(harness)\n", ""),
     "leg iii's OSError refusal deleted": ("    except OSError as e:\n", "    except native_reader_registration."
                                                                          "RegistrationRefused as e:\n"),
 }
