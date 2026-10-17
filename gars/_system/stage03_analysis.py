@@ -331,6 +331,10 @@ def slurm_seconds(value):
     return (((days or 0) * 24 + hours) * 60 + minutes) * 60 + seconds
 
 
+MEMORY_FORMS = ("; memory is a number with a unit of K, M, G or T, upper case (e.g. 64G), the "
+                "venue policy's form")
+
+
 def runner_directives(adir, order):
     """The runner's `#SBATCH` lines from the listed scripts', one value per directive, since
     the scripts run one after another in one job: `--time` is the sum, memory and
@@ -368,8 +372,9 @@ def runner_directives(adir, order):
             try:
                 values = [(parse[name](value), value) for _, value in given]
             except (ValueError, TypeError):
-                blocked.append("%s: cannot read the value in %s" % (name, ", ".join(
-                    "%s (%s)" % (rel, value) for rel, value in given)))
+                forms = {"--mem": MEMORY_FORMS, "--mem-per-cpu": MEMORY_FORMS}.get(name, "")
+                blocked.append("%s: cannot read the value in %s%s" % (name, ", ".join(
+                    "%s (%s)" % (rel, value) for rel, value in given), forms))
                 continue
         if name == "--time":
             missing = [rel for _, rel in order if rel not in [r for r, _ in given]]
