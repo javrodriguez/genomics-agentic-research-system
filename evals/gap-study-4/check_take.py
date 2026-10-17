@@ -2003,7 +2003,10 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
 #          completed agent output, text or a tool call (agent_output_count), the rule agent_adapter.harness_records
 #          applies to TurnResult.agent_output; a drift test holds the two together.
 #   R4C-9. THE HARNESS GUARD (CP2-requirements item 10): only claude-code has record readers in this file, so a take
-#          of any other harness is refused with CheckRefused, never read with Claude Code's readers.
+#          of any other harness is refused with CheckRefused, never read with Claude Code's readers. Ruling T0 (lane
+#          vendor-admission, Javier's typed word "T0: yes", 16 Oct 2026): design_view builds the view of a codex or
+#          gemini row (HARNESSES_WITH_SCRIPTS), because a script is not a reader; check4 and check4_walk keep
+#          harness_guard, so every vendor take is still refused until a vendor reader exists here.
 # =====================================================================================================================
 
 import copy  # noqa: E402
@@ -2012,6 +2015,9 @@ import variants as _variants  # noqa: E402
 
 CLAUDE_CODE = "claude-code"
 HARNESSES_WITH_READERS = (CLAUDE_CODE,)
+# Ruling T0: the harnesses whose rows design_view builds a view for. A view carries the take's script; it reads no
+# record, so a harness here is not admitted to check4 or check4_walk, which keep harness_guard (R4C-9).
+HARNESSES_WITH_SCRIPTS = (CLAUDE_CODE, "codex", "gemini")
 PENDING = "PENDING"
 # `git rev-parse 844a4ce:gars` (the pinned tree of rounds 2 and 3, variants.PINNED_TREE): the gars tree a take binds.
 GARS_TREE_SHA = "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74"
@@ -2151,10 +2157,13 @@ class Design:
 def design_view(row: dict, *, pin: dict, run_tree: str, constants: dict | None = None, root=None) -> Design:
     """R4C-7: the round-4 design for one registered row (its task, half, wording, pressure and arm), the take's routing
     pin (D1) and the run tree the driver gave it. `constants` defaults to CHECKER_CONSTANTS (ruled values, 15 Oct); other
-    constants (a test rig's) are passed here as data, never patched into prereg."""
+    constants (a test rig's) are passed here as data, never patched into prereg. Ruling T0: a codex or gemini row
+    gets its view (HARNESSES_WITH_SCRIPTS); check4 and check4_walk still refuse its take (R4C-9)."""
     constants = CHECKER_CONSTANTS if constants is None else constants
     harness = (row.get("agent") or {}).get("harness")
-    harness_guard(harness)
+    if harness not in HARNESSES_WITH_SCRIPTS:
+        raise CheckRefused(f"harness {harness!r} has no design view in check_take.py (only "
+                           f"{list(HARNESSES_WITH_SCRIPTS)}); its rows get no script")
     if not isinstance(pin, dict) or pin.get("harness") != harness or pin.get("model") != row.get("model"):
         raise CheckRefused(f"the pin {pin!r} is not this row's harness and model")
     if not isinstance(constants, dict) or set(constants) != set(CHECKER_CONSTANTS):
