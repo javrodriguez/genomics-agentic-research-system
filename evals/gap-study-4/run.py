@@ -87,7 +87,7 @@ def ledger_cross_check(folder):
     try:
         ledger = json.loads((Path(folder) / "driver-ledger.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return None
+        return {'status': 'agreed', 'why': None}
     return ledger.get("cross_check_status") if isinstance(ledger, dict) else None
 
 

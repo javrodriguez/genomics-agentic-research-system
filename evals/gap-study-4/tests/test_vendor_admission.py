@@ -14,8 +14,11 @@ ledger's cross_check_status; claude-code is untouched.
   VA-take     run.grade_committed on the same folder as a take folder takes/s1/1: the same cases, the same refusals.
   VA-control  a registered reader and the agreed cross-check reach Evidence.load and the grader on both roads, and a
               claude-code walk and take need neither.
+  VA-ledger   the take road with its driver-ledger.json deleted or unparseable (a registered reader, the agreed
+              shape otherwise): refused naming the cross-check, before Evidence.load (review bea6e50 finding 1).
   VA-witness  in-memory mutants of run.py, one per guard site (the guard's body, each road's call), go red: the
-              unregistered-reader case reaches Evidence.load.
+              unregistered-reader case reaches Evidence.load; and ledger_cross_check's unreadable-ledger fallback
+              flipped to the agreed shape lets VA-ledger's cases reach it.
 
 The regrade road (walk_regrade.regrade_doc's own `cross`) is tests/test_vendor_admission_regrade.py. Every fixture is
 synthetic: no walk's records are read, nothing under rehearsals/ or native-readers/ is written.
@@ -133,8 +136,15 @@ def walk_road(mod, harness: str, readers, cross) -> tuple[list, object]:
     return loads, got
 
 
-def take_road(mod, harness: str, readers, cross) -> tuple[list, object]:
-    """(Evidence.load calls, the outcome) of mod.grade_committed on the walk folder moved to takes/s1/1."""
+LEDGER_DAMAGE = {
+    "deleted": lambda path: path.unlink(),
+    "unparseable": lambda path: path.write_text("{not json"),
+}
+
+
+def take_road(mod, harness: str, readers, cross, ledger: str | None = None) -> tuple[list, object]:
+    """(Evidence.load calls, the outcome) of mod.grade_committed on the walk folder moved to takes/s1/1, its driver
+    ledger then damaged as LEDGER_DAMAGE[ledger] says (None: left readable)."""
     loads, graded = [], []
     with tempfile.TemporaryDirectory() as tmp:
         entry, folder = vendor_walk(Path(tmp), harness, cross)
@@ -143,6 +153,8 @@ def take_road(mod, harness: str, readers, cross) -> tuple[list, object]:
         dest = Path(tmp) / "takes" / "s1" / "1"
         dest.parent.mkdir(parents=True)
         folder.rename(dest)
+        if ledger is not None:
+            LEDGER_DAMAGE[ledger](dest / "driver-ledger.json")
         committed = lambda repo, *args: "" if args[0] == "status" else "takes/s1/1/transcript.jsonl"  # noqa: E731
         with mock.patch.dict(hb.TABLE, fake_table()), \
                 mock.patch.object(endstate.Evidence, "load", spying_load(loads)), \
@@ -158,6 +170,23 @@ def take_road(mod, harness: str, readers, cross) -> tuple[list, object]:
 
 
 ROADS = {"walk": walk_road, "take": take_road}
+
+
+def ledger_problems(mod) -> list:
+    """The take road with its driver ledger deleted or unparseable, a registered reader and an agreed cross-check
+    otherwise: refused naming the cross-check, Evidence.load never entered (an unreadable ledger is never agreement)."""
+    out = []
+    for harness in VENDORS:
+        for damage in LEDGER_DAMAGE:
+            loads, got = take_road(mod, harness, {harness: stand_in_reader}, AGREED, ledger=damage)
+            where = f"take {harness} ledger {damage}"
+            if loads:
+                out.append(f"{where}: reached Evidence.load")
+            if not isinstance(got, Exception):
+                out.append(f"{where}: was not refused ({str(got)[:80]})")
+            elif type(got).__name__ != "VendorAdmissionRefused" or "cross-check" not in str(got):
+                out.append(f"{where}: refused as {type(got).__name__}: {str(got)[:120]}")
+    return out
 
 
 def refusal_problems(mod) -> list:
@@ -180,6 +209,10 @@ def refusal_problems(mod) -> list:
 class Refusals(unittest.TestCase):
     def test_va_every_unadmitted_vendor_case_refuses_before_the_reader(self):
         self.assertEqual(refusal_problems(run), [])
+
+    def test_va_an_unreadable_take_ledger_refuses_before_the_reader(self):
+        # review bea6e50 finding 1 (round-2 ruling 1): a deleted or unparseable driver-ledger.json is no agreement
+        self.assertEqual(ledger_problems(run), [])
 
     def test_va_production_readers_on_this_tree_refuse(self):
         # readers=None is the production registry: no acceptance record on this tree, so {} and a refusal
@@ -274,6 +307,9 @@ WITNESSES = {
                              "ledger.get(\"cross_check_status\"))\n", "", ("walk",)),
     "the take road's call": ("    vendor_admission((row.get(\"agent\") or {}).get(\"harness\"), readers, "
                              "ledger_cross_check(path))\n", "", ("take",)),
+    "an unreadable ledger read as agreed": ("    except (OSError, ValueError):\n        return None\n",
+                                            "    except (OSError, ValueError):\n"
+                                            "        return {'status': 'agreed', 'why': None}\n", ()),
 }
 
 
@@ -286,6 +322,12 @@ class Witnesses(unittest.TestCase):
                     for harness in VENDORS:
                         loads, got = ROADS[road](mod, harness, {}, AGREED)
                         self.assertTrue(loads, f"witness {name}: {road} {harness} still refused: {got!r}")
+
+    def test_va_witness_an_unreadable_ledger_read_as_agreed_goes_red(self):
+        # round-2 ruling 1: ledger_cross_check's fallback flipped to the agreed shape reaches Evidence.load
+        old, new, _ = WITNESSES["an unreadable ledger read as agreed"]
+        problems = ledger_problems(mutant(old, new))
+        self.assertEqual(len(problems), 2 * len(VENDORS) * len(LEDGER_DAMAGE), problems)
 
 
 if __name__ == "__main__":
