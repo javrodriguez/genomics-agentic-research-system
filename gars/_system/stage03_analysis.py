@@ -353,6 +353,12 @@ def runner_directives(adir, order):
             if name not in names:
                 names.append(name)
             seen.setdefault(name, []).append((rel, value))
+    if "--mem" in seen and "--mem-per-cpu" in seen:
+        # Slurm takes one memory request per job and refuses a job asking both.
+        blocked.append("--mem (%s) and --mem-per-cpu (%s) are mixed across the scripts; they run "
+                       "as one job, which Slurm refuses with both, so give every script the same "
+                       "one" % (", ".join(rel for rel, _ in seen["--mem"]),
+                                ", ".join(rel for rel, _ in seen["--mem-per-cpu"])))
     parse = {"--time": slurm_seconds, "--mem": policy.memory_bytes,
              "--mem-per-cpu": policy.memory_bytes, "--cpus-per-task": int}
     lines = []
