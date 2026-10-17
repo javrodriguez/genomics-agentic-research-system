@@ -1664,6 +1664,8 @@ class RenderMethodsTests(unittest.TestCase):
         case.prepare()
         case.fake_run()
         case.submit()
+        # The run record names the harness's session model, not the flag (decision 0303).
+        (case.ws / '.gars_session_model').write_text('claude-opus-5-5\n')
         case.collect()
         shutil.copyfile(str(case.manifest_path), str(self.path('live.json')))
         text = self.traced(('live.json',), stage03=False)
@@ -1678,6 +1680,8 @@ class RenderMethodsTests(unittest.TestCase):
         workspace = self.root / 'workspace'
         workspace.mkdir()
         (workspace / '_references').symlink_to(GARS / '_references', target_is_directory=True)
+        # The history names the harness's session model, not the flag (decision 0303).
+        (workspace / '.gars_session_model').write_text('claude-opus-5-5\n')
         project = workspace / 'projects/p'
         write_fixture_dataset(project)
         adir = project / '03_custom_analysis/01_methods'

@@ -400,6 +400,7 @@ def cmd_prepare(args):
 def cmd_collect(args):
     wl.require_collect_config(args.project, ASSAY, SUBSTAGE)
     project = Path(args.project)
+    model = ws.history_model(WORKSPACE, args.model)  # the harness's, never the flag (0303)
     result = {"command": "collect", "ok": False, "assay": ASSAY, "failures": []}
     if not project.is_dir():
         result["error"] = "no such project: %s" % project
@@ -505,7 +506,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return wl.collect_failure(substage, result, EXIT_FAILURE, args.model)
+        return wl.collect_failure(substage, result, EXIT_FAILURE, model)
 
     outputs = [("h5ad", "native", "run/data/processed.h5ad"),
                ("table", "native", "run/tables/cluster_markers.csv"),
@@ -517,11 +518,10 @@ def cmd_collect(args):
             fh.write("%s\t%s\t%s\n" % (typ, role, path))
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-    wl.complete_manifest(substage, args.model, "COMPLETE")
+    wl.complete_manifest(substage, model, "COMPLETE")
     wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)
-    model = args.model or "unknown"
     thresholds = (summary or {}).get("thresholds", {})
     entry = "\n".join([
         "## <ISO-8601 date> — 02_bioinformatics/%s/%s — QC and clustering complete"
@@ -557,9 +557,9 @@ def main(argv=None):
             p.add_argument("--h5ad", default=None,
                            help="path to the h5ad, resolved by artifact type by stage 02")
         if name == "collect":
-            p.add_argument("--model", default="unknown",
-                           help="the exact model id of the agent executing this sub-stage "
-                                "(decision 0024)")
+            p.add_argument("--model", default=None,
+                           help="ignored, kept so the pinned registry validates; the model comes "
+                                "from the harness's session start, and `none` alone is honoured (0303)")
             p.add_argument("--h5ad-from", default=None,
                            help="the sub-stage that supplied the matrix, for HISTORY.md")
     args = ap.parse_args(argv)

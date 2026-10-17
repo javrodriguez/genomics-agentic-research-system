@@ -1092,9 +1092,8 @@ def main(argv=None):
                     help="the user has confirmed overwriting existing samplesheets (T5)")
     ap.add_argument("--list-formats", action="store_true",
                     help="print the registered per-assay samplesheet formats and exit")
-    ap.add_argument("--model", default="unknown",
-                    help="the exact model id of the agent executing this stage; recorded in the "
-                         "HISTORY.md entry beside the template version (decision 0024)")
+    ap.add_argument("--model", default=None,
+                    help="ignored, kept so the pinned registry still validates: the model comes from the harness's session start (decision 0303); `none` alone is honoured, for a scripted run with no model-mediated step")
     ap.add_argument("--verify-integrity", choices=("none", "full"), default="none",
                     help="none (default): trust the files; stage 00 already checked that every "
                          "link resolves and carries gzip magic. full: decompress every INCLUDED "
@@ -1217,7 +1216,8 @@ def main(argv=None):
     result["ok"] = True
     result["history_entry"] = history_entry(assays, results, result["wrote"],
                                             args.verify_integrity,
-                                            result["template_version"], args.model)
+                                            result["template_version"],
+                                            ws.history_model(ws.workspace_root(__file__), args.model))
     return emit(result, EXIT_OK)
 
 

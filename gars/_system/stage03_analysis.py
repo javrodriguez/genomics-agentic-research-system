@@ -456,7 +456,7 @@ def cmd_verify(args, workspace):
     wl.write_status(adir, "COMPLETE")
 
     version = ws.template_version(workspace)
-    model = args.model or "unknown"
+    model = ws.history_model(workspace, args.model)
     goal = re.search(r"^## Goal\n(.*?)(?=^## |\Z)", text, re.S | re.M)
     goal_line = " ".join(goal.group(1).split()) if goal else ""
     if len(goal_line) > 200:
@@ -495,8 +495,8 @@ def main(argv=None):
     v = sub.add_parser("verify", help="exit gate: outputs exist -> OUTPUTS.tsv, STATUS, history")
     v.add_argument("--project", required=True)
     v.add_argument("--analysis", required=True)
-    v.add_argument("--model", default="unknown",
-                   help="the exact model id of the agent executing this stage (decision 0024)")
+    v.add_argument("--model", default=None,
+                   help="ignored, kept so the pinned registry still validates: the model comes from the harness's session start (decision 0303); `none` alone is honoured, for a scripted run with no model-mediated step")
 
     args = ap.parse_args(argv)
     if not args.cmd:

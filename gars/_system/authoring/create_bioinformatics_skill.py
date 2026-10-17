@@ -163,15 +163,16 @@ def conform_one(wrapper_dir):
     if "main" not in funcs:
         fails.append(fail("verbs", "%s has no main()" % module.name))
 
-    # collect carries the model id: the contracts are executed by a model, so the model is
-    # part of the toolchain that produced the result (decision 0024).
+    # collect records the model: the contracts are executed by a model, so the model is part
+    # of the toolchain that produced the result (decision 0024). The value is the harness's,
+    # read by ws.history_model; the flag stays declared so the pinned registry validates (0303).
     # Matched as a complete quoted argparse flag, not as a substring: an earlier version of
     # this rule tested `"--model" in src` and a mutation renaming the flag to `--modelx`
     # sailed through it, because the rename still contains the string it searched for.
     if not re.search(r'''["']--model["']''', src):
         fails.append(fail("provenance",
-                          "%s never declares a \"--model\" flag; collect must record the "
-                          "executing model in its history entry (decision 0024)"
+                          "%s never declares a \"--model\" flag; collect must accept it "
+                          "and record the harness's model in its history entry (0024, 0303)"
                           % module.name))
 
     # --- the exit gate -------------------------------------------------------------------
@@ -474,7 +475,7 @@ def module_source(spec):
     lines.append('    wl.write_status(substage, "COMPLETE")  # STATUS follows collect.')
     lines.append('')
     lines.append('    version = ws.template_version(WORKSPACE)')
-    lines.append('    model = args.model or "unknown"')
+    lines.append('    model = ws.history_model(WORKSPACE, args.model)  # the harness\'s (0303)')
     lines.append('    entry = "\\n".join([')
     lines.append('        "## <ISO-8601 date> — 02_bioinformatics/%s/%s — pipeline complete"')
     lines.append('        % (ASSAY, SUBSTAGE),')
@@ -501,9 +502,11 @@ def module_source(spec):
     lines.append('        p = sub.add_parser(name)')
     lines.append('        p.add_argument("--project", required=True)')
     lines.append('        if needs_model:')
-    lines.append('            p.add_argument("--model", default="unknown",')
-    lines.append('                           help="the exact model id of the agent executing "')
-    lines.append('                                "this sub-stage (decision 0024)")')
+    lines.append('            p.add_argument("--model", default=None,')
+    lines.append('                           help="ignored, kept so the pinned registry "')
+    lines.append('                                "validates; the model comes from the "')
+    lines.append('                                "harness\'s session start, and `none` alone "')
+    lines.append('                                "is honoured (0303)")')
     lines.append('    args = ap.parse_args(argv)')
     lines.append('    if not args.cmd:')
     lines.append('        ap.print_help(sys.stderr)')

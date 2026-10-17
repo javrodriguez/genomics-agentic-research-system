@@ -6,10 +6,17 @@ and the "or unknown" rule is a documented behaviour rather than a bare file read
 """
 
 import contextlib
+import json
 import os
+import re
+import sys
 from pathlib import Path
 
 VERSION_FILE = "_references/VERSION"
+# What the harness reported at session start (decision 0303); written only by record_session_model.
+SESSION_MODEL_FILE = ".gars_session_model"
+# The guard's model shape, character for character (guard_hook.MODEL_ID; test_history_model).
+MODEL_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:@-]{0,127}(\[[0-9]{1,4}[a-z]\])?\Z")
 
 
 def workspace_root(script_file):
@@ -32,6 +39,49 @@ def template_version(workspace):
         if text:
             return text
     return "unknown"
+
+
+def record_session_model(workspace, hook_input):
+    """Write the model the harness's SessionStart input names, or 'unknown' (decision 0303).
+
+    Claude Code carries the active model only in SessionStart's optional `model` key (the public
+    hooks reference), and omits it after /clear or a recovered conversation. An absent, unreadable
+    or off-shape value writes `unknown` rather than keeping the file, so a stale model never
+    carries over into a later session.
+    """
+    try:
+        model = json.loads(hook_input).get("model")
+    except (ValueError, AttributeError):
+        model = None
+    if not isinstance(model, str) or not MODEL_ID.match(model):
+        model = "unknown"
+    with atomic_open(Path(workspace) / SESSION_MODEL_FILE) as fh:
+        fh.write(model + "\n")
+    return model
+
+
+def session_model(workspace):
+    """The model this session's harness reported, or 'unknown' when there is no readable record."""
+    try:
+        text = (Path(workspace) / SESSION_MODEL_FILE).read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError):
+        return "unknown"
+    return text if MODEL_ID.match(text) else "unknown"
+
+
+def history_model(workspace, flag=None):
+    """The model a history entry or a run record names (decision 0303).
+
+    The harness's, never the agent's: an agent can name a model it is not running, or a stale
+    one. `--model none` alone is honoured, the one value that claims less (a script, not an
+    agent, ran the step: scripts/repro_exemplar_run.py); any other value is ignored with a note.
+    """
+    if flag == "none":
+        return "none"
+    if flag is not None:
+        sys.stderr.write("note: --model is ignored (decision 0303); the model comes from the "
+                         "harness's session start, recorded in %s\n" % SESSION_MODEL_FILE)
+    return session_model(workspace)
 
 
 # One pinned upstream pipeline per assay. Single source of truth: configure.py keys the

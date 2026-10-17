@@ -428,6 +428,7 @@ def count_of(entry, key, sample, fails):
 def cmd_collect(args):
     wl.require_collect_config(args.project, ASSAY, SUBSTAGE)
     project = Path(args.project)
+    model = ws.history_model(WORKSPACE, args.model)  # the harness's, never the flag (0303)
     result = {"command": "collect", "ok": False, "assay": ASSAY, "failures": []}
     if not project.is_dir():
         result["error"] = "no such project: %s" % project
@@ -556,7 +557,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return wl.collect_failure(substage, result, EXIT_FAILURE, args.model)
+        return wl.collect_failure(substage, result, EXIT_FAILURE, model)
 
     # Never an h5ad row: this sub-stage produces no object, and a row here would shadow
     # 02.01's for every later consumer (the resolver takes the newest native match).
@@ -568,11 +569,10 @@ def cmd_collect(args):
             fh.write("%s\t%s\t%s\n" % (typ, role, path))
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-    wl.complete_manifest(substage, args.model, "COMPLETE")
+    wl.complete_manifest(substage, model, "COMPLETE")
     wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)
-    model = args.model or "unknown"
     counts = ", ".join("%s: %s clusters / %s spots"
                        % (s, per_sample[s].get("n_clusters"), per_sample[s].get("n_obs"))
                        for s in sorted(per_sample))
@@ -615,9 +615,9 @@ def main(argv=None):
                            help="the h5ad artifact stage 02 resolved by type: 02.01's results "
                                 "directory, or one .h5ad file for a one-sample samplesheet")
         if name == "collect":
-            p.add_argument("--model", default="unknown",
-                           help="the exact model id of the agent executing this sub-stage "
-                                "(decision 0024)")
+            p.add_argument("--model", default=None,
+                           help="ignored, kept so the pinned registry validates; the model comes "
+                                "from the harness's session start, and `none` alone is honoured (0303)")
             p.add_argument("--h5ad-from", default=None,
                            help="the sub-stage that supplied the matrix, for HISTORY.md")
     args = ap.parse_args(argv)
