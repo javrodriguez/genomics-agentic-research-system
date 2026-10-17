@@ -45,7 +45,10 @@ class ApprovalForgeryTests(unittest.TestCase):
         (self.adir/'run').mkdir()
         (self.adir/'run/.gars_run_complete').write_text('synthetic successful execution\n')
         self.args=argparse.Namespace(project=str(self.project),analysis='01_policy',model='fixture',date=None)
-        script = self.adir / 'script.sh'; script.write_text('exit 0\n')
+        # Written before approval under scripts/, so `approve` binds it with the plan (0306).
+        (self.adir / 'scripts').mkdir()
+        script = self.adir / 'scripts/script.sh'; script.write_text('exit 0\n')
+        (self.adir / 'scripts/submit.sh').write_text('exit 0\n')
         launcher = self.adir / 'run/launcher.sh'; launcher.write_text('exit 0\n')
         (self.adir / ex.ANALYSIS_SUBMISSIONS).write_text(json.dumps({
             'script': str(script), 'script_sha256': ex._sha256(script),
@@ -145,7 +148,7 @@ class ApprovalForgeryTests(unittest.TestCase):
     def test_submit_uses_same_store_and_expiry_gate(self):
         import executorlib as ex
         path=self.approve()
-        script=self.adir/'submit.sh'; script.write_text('exit 0\n')
+        script=self.adir/'scripts/submit.sh'   # written in setUp, approved with the plan (0306)
         with patch.object(stage.ws,'workspace_root',return_value=self.workspace), \
                 patch.object(ex,'_local_submit',return_value='123') as launch:
             self.assertEqual(ex.submit(self.project,script,descriptor=ex.LOCAL),('123',None))

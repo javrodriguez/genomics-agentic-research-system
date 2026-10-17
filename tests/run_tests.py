@@ -454,7 +454,10 @@ Login node; seconds; kilobytes.
         self.assertEqual(code, 2, raw)
         self.assertTrue(any("not a recognised venue" in b for b in res["blocked"]))
 
-        # the explicit user request is the only accepted login-node form
+        # the explicit user request is the only accepted login-node form; the script is written
+        # first, so approval binds it with the plan (S03-scripts, decision 0306)
+        script = adir / "scripts/x.sh"
+        script.write_text("set -euo pipefail\nexit 0\n")
         plan.write_text(plan.read_text().replace("Runs: login-node",
                                                  "Runs: login-node (user-requested)"))
         code, res, raw = run(s3, ["approve", "--project", "projects/tall-test",
@@ -469,8 +472,6 @@ Login node; seconds; kilobytes.
         self.assertEqual(sorted(res["missing"]), ["results/pca.csv", "results/pca.png"])
 
         # Submit an actual local job through the approved login-node route.
-        script = adir / "scripts/x.sh"
-        script.write_text("set -euo pipefail\nexit 0\n")
         code, submitted, raw = run(self.ws / "_system/executorlib.py",
             ["submit", "--workspace", "projects/tall-test", str(script)], self.ws)
         self.assertEqual(code, 0, raw)

@@ -195,11 +195,11 @@ class StageWritersTests(unittest.TestCase):
         self.assertEqual(code, 0, raw)
         adir = self.project / '03_custom_analysis' / res['analysis']
         (adir / 'PLAN.md').write_text(PLAN)
+        script = adir / 'scripts/x.sh'   # written before approval, approved with the plan (0306)
+        script.write_text('set -euo pipefail\nexit 0\n')
         code, res, raw = LEGACY.run(s3, ['approve', '--project', 'projects/tall-test',
                                          '--analysis', adir.name], self.ws)
         self.assertEqual(code, 0, raw)
-        script = adir / 'scripts/x.sh'
-        script.write_text('set -euo pipefail\nexit 0\n')
         ex = self.ws / '_system/executorlib.py'
         code, submitted, raw = LEGACY.run(ex, ['submit', '--workspace', 'projects/tall-test',
                                                str(script)], self.ws)

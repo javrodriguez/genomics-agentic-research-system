@@ -13,13 +13,14 @@ Subcommands, in the order a run uses them:
   approve  the human gate, made durable. Refuses while the plan still carries skeleton
            markers, has no Outputs rows, or names an artifact type outside the closed
            vocabulary; otherwise stamps `Status: APPROVED <date>` into PLAN.md and writes
-           a record in the protected sibling .gars-approvals store, bound to the plan and
-           expiring after 24 hours. Actor identity comes from the process UID at launch.
+           a record in the protected sibling .gars-approvals store, bound to the plan and to
+           every file under scripts/ (decision 0306), expiring after 24 hours. Actor identity comes from the process UID at launch.
            Run it only after the user has said yes to the plan file -- the flag records the
            approval, it never substitutes for it.
   verify   the exit gate. Refuses unless the protected, unexpired store record exists and its sha256 matches
            PLAN.md -- a `Status: APPROVED` line alone is not an approval, and a plan edited
-           after approval is not the plan that was approved (decision 0042); checks every
+           after approval is not the plan that was approved (decision 0042), nor a run of a
+           script the approval did not bind (decision 0306); checks every
            output the plan declared exists and is non-empty; writes OUTPUTS.tsv (all rows
            `native`) and STATUS, and returns the history_entry to append verbatim.
 
@@ -272,6 +273,54 @@ def approval_holds(plan_path, record_path, workspace=None):
     return True, None
 
 
+def approved_scripts(adir):
+    """Every file under the analysis's scripts/, as {relative path: sha256}: what `approve`
+    binds beside the plan, so the user approves the plan and its scripts together (S03-scripts)."""
+    root = Path(adir) / "scripts"
+    found = {}
+    if root.is_dir():
+        for path in sorted(root.rglob("*")):
+            if path.is_file():
+                found[str(path.relative_to(adir))] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return found
+
+
+def script_refusal(adir, script, workspace):
+    """Why `script` may not run as this approved analysis, or None when it is an approved script,
+    byte for byte. The approval record is the human-owned one `approve` wrote (decision 0306)."""
+    adir = Path(adir).resolve()
+    try:
+        rel = str(Path(script).resolve().relative_to(adir))
+        record = json.loads(approval_record_path(adir / "PLAN.md", workspace).read_text(encoding="utf-8"))
+        if "scripts" not in record:
+            # An approval written before 0306 binds no scripts; it stays what it was. Records
+            # are written only by `approve` into the human-owned store, never by the agent.
+            return None
+        scripts = record["scripts"]
+        if not isinstance(scripts, dict):
+            raise ValueError("scripts is not a map")
+    except (OSError, ValueError, TypeError):
+        return "no approval record names this analysis's scripts"
+    if rel not in scripts:
+        return ("%s was not approved with the plan: every script is written before `approve` and "
+                "approved with it; a new script is a new analysis -- run `create` again" % rel)
+    actual = hashlib.sha256(Path(script).read_bytes()).hexdigest()
+    if actual != scripts[rel]:
+        return ("%s changed since the plan was approved (sha256 now %s, approved %s); a change of "
+                "mind is a new analysis -- run `create` again" % (rel, actual[:12], str(scripts[rel])[:12]))
+    return None
+
+
+def scripts_drift(adir, workspace):
+    """Why the analysis's scripts/ is not the set approved with the plan, or None: a script added
+    or changed since approval is named (decision 0306). A script removed since runs nothing."""
+    for rel, path in ((rel, Path(adir) / rel) for rel in approved_scripts(adir)):
+        why = script_refusal(adir, path, workspace)
+        if why:
+            return why
+    return None
+
+
 # --- approve -----------------------------------------------------------------------------------
 
 def plan_gates(text, workspace, adir):
@@ -377,6 +426,7 @@ def cmd_approve(args, workspace):
         'expiry': (now + APPROVAL_LIFETIME).strftime('%Y-%m-%dT%H:%M:%SZ'),
         'plan_sha256': hashlib.sha256(plan_path.read_bytes()).hexdigest(),
         'plan_path': str(plan_path.resolve()),
+        'scripts': approved_scripts(adir),
     }
     # Exclusive creation refuses overwrites; a crash leaves an invalid record, never approval.
     try:
@@ -388,7 +438,8 @@ def cmd_approve(args, workspace):
         result['error'] = 'R-073: cannot create approval record: %s' % exc
         return emit(result, EXIT_REFUSED)
     result.update({"ok": True, "outputs_declared": len(outputs), "status": stamp,
-                   "record": str(record_path), "plan_sha256": record["plan_sha256"]})
+                   "record": str(record_path), "plan_sha256": record["plan_sha256"],
+                   "scripts": sorted(record["scripts"])})
     return emit(result, EXIT_OK)
 
 
@@ -446,6 +497,13 @@ def cmd_verify(args, workspace):
     if problem:
         result['error'] = problem
         return emit(result, EXIT_REFUSED)
+    # The run is execution evidence; it is the approved analysis only when every script it ran
+    # was approved with the plan, byte for byte (S03-scripts, decision 0306).
+    for entry in ex._analysis_latest(ex._analysis_entries(adir)).values():
+        why = script_refusal(adir, entry["script"], workspace)
+        if why:
+            result["error"] = "the run is not the approved analysis: %s (decision 0306)" % why
+            return emit(result, EXIT_REFUSED)
 
     with ws.atomic_open(adir / "OUTPUTS.tsv") as fh:
         fh.write("# type\trole\tpath\n")

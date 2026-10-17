@@ -1692,7 +1692,8 @@ class RenderMethodsTests(unittest.TestCase):
         (adir / 'PLAN.md').write_text(PLAN_DRAFT)
         (adir / 'run').mkdir()
         (adir / 'run/.gars_run_complete').write_text('synthetic successful execution\n')
-        script, launcher = adir / 'script.sh', adir / 'run/launcher.sh'
+        (adir / 'scripts').mkdir()   # written before approval, approved with the plan (0306)
+        script, launcher = adir / 'scripts/script.sh', adir / 'run/launcher.sh'
         script.write_text('exit 0\n')
         launcher.write_text('exit 0\n')
         (adir / ex.ANALYSIS_SUBMISSIONS).write_text(json.dumps({

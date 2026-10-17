@@ -987,10 +987,22 @@ def _sha256(path):
 
 
 def _analysis_approval(adir):
+    """The plan's approval, and its scripts': every file under scripts/ approved with the plan,
+    byte for byte, none added since (S03-scripts, decision 0306)."""
     from stage03_analysis import approval_holds, approval_record_path, ws
     workspace = ws.workspace_root(__file__)
     plan = adir / 'PLAN.md'
-    return approval_holds(plan, approval_record_path(plan, workspace), workspace)
+    holds, why = approval_holds(plan, approval_record_path(plan, workspace), workspace)
+    if holds:
+        why = _analysis_script_refusal(adir)
+        holds = why is None
+    return holds, why
+
+
+def _analysis_script_refusal(adir):
+    """Why the analysis's scripts/ is not the one approved with the plan, or None (0306)."""
+    from stage03_analysis import scripts_drift, ws
+    return scripts_drift(adir, ws.workspace_root(__file__))
 
 
 def _analysis_descriptor(adir, descriptor):
@@ -1070,6 +1082,11 @@ def _submit_analysis(root, script, descriptor):
     holds, why = _analysis_approval(adir)
     if not holds:
         return None, 'R-073: ' + why
+    try:
+        script.relative_to(adir / 'scripts')
+    except ValueError:
+        return None, ('R-073: %s is not under scripts/: a stage 03 script is written there and '
+                      'approved with the plan (decision 0306)' % script.relative_to(adir))
     executed = descriptor
     problems = validate(executed)
     if problems:
