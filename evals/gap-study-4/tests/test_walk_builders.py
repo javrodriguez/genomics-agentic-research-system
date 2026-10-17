@@ -1978,6 +1978,9 @@ def fake_place_lease(placed: list):
 # DATA record, clearly fake addresses under the reserved .invalid domain, never a real account's.
 TEST_ACCOUNT_EMAILS = {"operator": "operator@example.invalid", "codex": "codex-account@example.invalid",
                        "gemini": "gemini-account@example.invalid"}
+# Round 10 ruling 4: a vendor take's secrets() end with these two pairs, the operator's address and its account's.
+CODEX_EMAIL_PAIRS = [("email", TEST_ACCOUNT_EMAILS["operator"]), ("email", TEST_ACCOUNT_EMAILS["codex"])]
+GEMINI_EMAIL_PAIRS = [("email", TEST_ACCOUNT_EMAILS["operator"]), ("email", TEST_ACCOUNT_EMAILS["gemini"])]
 
 
 def account_record_file(folder: Path, record=None) -> Path:
@@ -2000,7 +2003,8 @@ def account_boundary(mod, record=None):
 def fake_lease_secrets(reads: list, mod=None):
     """walk_builders.lease_secrets' contract (box b9f876b5): every access_token and refresh_token in auth.json read at
     take start (a missing file raises: no take), read again at each call, every value read kept; with `mod`, its
-    account record read first (round 10 ruling 2: no record, no Codex take)."""
+    account record read first (round 10 ruling 2: no record, no Codex take) and again at each call, its two
+    addresses the secrets' last pairs (ruling 4)."""
     def lease_secrets(auth_path):
         if mod is not None:
             mod.account_emails(rt.CODEX)
@@ -2015,7 +2019,8 @@ def fake_lease_secrets(reads: list, mod=None):
             for v in tokens():
                 if v not in seen:
                     seen.append(v)
-            return [("token", v) for v in seen]
+            emails = [("email", a) for a in mod.account_emails(rt.CODEX)] if mod is not None else []
+            return [("token", v) for v in seen] + emails
         return secrets
     return lease_secrets
 
@@ -2176,7 +2181,7 @@ def _b13_secrets_problems(mod, tmp: Path) -> list:
             out.append(f"B13.secrets: spec_for gave {spec!r} over {specs}")
         if placed != [(src, str(cfg), str(cfg / "auth.json"))] or reads != [str(cfg / "auth.json")]:
             out.append(f"B13.secrets: the lease was not placed then read at take start: {placed} {reads}")
-        if s_repo() != [("token", ACCESS), ("token", REFRESH)]:
+        if s_repo() != [("token", ACCESS), ("token", REFRESH)] + CODEX_EMAIL_PAIRS:     # round 10 ruling 4
             out.append(f"B13.secrets: WalkRepo's secrets are {s_repo()}")
         try:
             got["driver"]["spec_for"](row, str(cfg))
@@ -2193,7 +2198,7 @@ def _b13_secrets_problems(mod, tmp: Path) -> list:
                     out.append(f"B13.secrets: a closed gate reached place_lease or refused for another reason: {e}")
         os.chmod(cfg / "auth.json", 0o600)          # the refresh rule: the host rewrites auth.json between turns
         (cfg / "auth.json").write_text(json.dumps({"tokens": {"access_token": REFRESHED, "refresh_token": REFRESH}}))
-        if road.refreshed() != [("token", ACCESS), ("token", REFRESH), ("token", REFRESHED)]:
+        if road.refreshed() != [("token", ACCESS), ("token", REFRESH), ("token", REFRESHED)] + CODEX_EMAIL_PAIRS:
             out.append(f"B13.secrets: after a refresh the secrets are {road.secrets()}")
     claude = {"walk": "w-0001", "arm": "A", "agent": {"harness": rt.CLAUDE_CODE, "version": "2.1.296"}}
     got.clear()
@@ -2284,7 +2289,8 @@ REFRESHED_THREE = "synthetic-lease-five-" + "e" * 12
 @problems_by_assertion("B13.lease_secrets")
 def lease_secrets_contract_problems(fn, tmp: Path, refusal) -> list:
     """fn is a lease_secrets: fn(auth_path) reads now (a missing file raises `refusal`) and returns secrets(), which
-    re-reads auth.json and gives every value read so far, each once, in the order first read."""
+    re-reads auth.json and gives every value read so far, each once, in the order first read, then the account
+    record's two addresses (round 10 ruling 4; run on account_boundary's TEST DATA record)."""
     out = []
     try:
         fn(str(tmp / "no-lease" / "auth.json"))
@@ -2295,12 +2301,12 @@ def lease_secrets_contract_problems(fn, tmp: Path, refusal) -> list:
     secrets = fn(str(src))
     lease_file(tmp, REFRESHED, REFRESHED_TWO)         # both rewritten before the first scan: take start's values stay
     want = [("token", v) for v in (ACCESS, REFRESH, REFRESHED, REFRESHED_TWO)]
-    if not callable(secrets) or secrets() != want:
+    if not callable(secrets) or secrets() != want + CODEX_EMAIL_PAIRS:
         return out + [f"B13.lease_secrets: the first scan's secrets are not {want}"]
-    if secrets() != want:
+    if secrets() != want + CODEX_EMAIL_PAIRS:
         out.append("B13.lease_secrets: a second scan of the same file changed the secrets")
     lease_file(tmp, REFRESHED, REFRESHED_THREE)       # the host's refresh between turns: one value added
-    if secrets() != want + [("token", REFRESHED_THREE)]:
+    if secrets() != want + [("token", REFRESHED_THREE)] + CODEX_EMAIL_PAIRS:
         out.append("B13.lease_secrets: a refreshed value was not added after every value read before")
     return out
 
@@ -2470,7 +2476,8 @@ def _b14_secrets_problems(mod, tmp: Path) -> list:
         if s_driver is not s_repo or got["driver"]["login_file"] != good:
             out.append(f"B14.secrets: the driver got {s_driver!r} and WalkRepo {s_repo!r} over "
                        f"{got['driver']['login_file']!r}")
-        if s_repo() != [("token", GEMINI_KEY)] or [a[:2] for a in reads] != [(good, "GEMINI_API_KEY")]:
+        if s_repo() != [("token", GEMINI_KEY)] + GEMINI_EMAIL_PAIRS \
+                or [a[:2] for a in reads] != [(good, "GEMINI_API_KEY")]:                  # round 10 ruling 4
             out.append(f"B14.secrets: the scan's secrets read {[a[:2] for a in reads]}")
     return out
 

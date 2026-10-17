@@ -19,7 +19,7 @@
     {
       "path": "tests/test_scan_record.py",
       "status": "new",
-      "reason": "Tests for box/scan_record.py (interface 3) on planted fake values, a fake rules scanner and a fake holdout matcher over synthetic strings, with a mutant asserted red for every guard. Lane vendor-admission round 10 ruling 2 (glitch-b5, Sat 17 Oct 2026; the T4 plan's section 9: every codex and gemini take refuses before launch until the account record exists), an edit without transfer: TestLeaseTokens.account_record gives the two lease_secrets tests a TEST DATA account record (clearly fake .invalid addresses). No assertion moved by this ruling."
+      "reason": "Tests for box/scan_record.py (interface 3) on planted fake values, a fake rules scanner and a fake holdout matcher over synthetic strings, with a mutant asserted red for every guard. Lane vendor-admission round 10 ruling 2 (glitch-b5, Sat 17 Oct 2026; the T4 plan's section 9: every codex and gemini take refuses before launch until the account record exists), an edit without transfer: TestLeaseTokens.account_record gives the two lease_secrets tests a TEST DATA account record (clearly fake .invalid addresses). No assertion moved by this ruling. Lane vendor-admission round 10 ruling 4 (glitch-b5, Sat 17 Oct 2026; plan sections 1a and 9: a vendor take's secrets() carry the operator's and its account's address as email pairs), assertions moved by that ruling, named: the lease test's every-pair-is-a-token assertion now reads the token pairs and then exactly the record's two email pairs."
     },
     {
       "path": "COPIED.d/w4c-cp2-sidecar-scan.json",

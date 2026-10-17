@@ -45,6 +45,20 @@ launch by name, and none runs with a shorter list; Claude Code walks are untouch
               is admitted and reads only its token; with a TEST DATA record each vendor road is admitted. Three
               witnesses (each road's record read deleted) go red.
 
+Ruling 4: a codex or gemini take's secrets() carries ("email", the operator's address) and ("email", the take's
+account address) after its tokens, read from the record at each scan (plan section 1a, account-email).
+
+  AE-pairs    lease_secrets' and a Gemini login_secrets' secrets() on a TEST DATA record end with exactly the two
+              email pairs, read again at each call (a rewritten record is the next scan's); a Claude Code take's
+              carries none.
+  AE-scan     a vendor take folder (tests/vendor_check_fixtures.py) whose turn-1 reply names the take's account
+              address, scanned by box/scan_record.scan with that take's real secrets(): the address is masked with the
+              email marker in every file it was in and gone from every byte, and check_take.vendor_email_problems
+              counts 1; with the operator's address in turn 1 and the account's in turn 2, the hits sit in at least
+              two files and still count 1, never above the scan's masked email hits (drive.py's bound).
+  AE-pairs-witness  walk_builders.py compiled in memory with the operator's pair or the account's pair dropped from
+              the secrets goes red on AE-scan.
+
 Scratch repositories and fakes only, under test_walk_builders' module setup: no take, model, vendor, network,
 Docker, credential or holdout. Every address here is TEST DATA under the reserved .invalid domain.
 """
@@ -397,6 +411,77 @@ def walk_driver_world(wb_mod, tmp: Path, built: list):
         yield
 
 
+def pairs_problems(wb_mod, tmp: Path) -> list:
+    """AE-pairs on one walk_builders module: [] or each failure."""
+    out = []
+    src = str(twb.lease_file(tmp))
+    gemini_login = str(twb.login_file(f"GEMINI_API_KEY={twb.GEMINI_KEY}\n"))
+    claude_login = str(twb.login_file("CLAUDE_CODE_OAUTH_TOKEN=" + "synthetic-claude-token-" + "a" * 12 + "\n"))
+    with twb.account_boundary(wb_mod) as f:
+        roads = {"codex": (wb_mod.lease_secrets(src), [("token", twb.ACCESS), ("token", twb.REFRESH)], CODEX_ACCOUNT),
+                 "gemini": (wb_mod.login_secrets(gemini_login, "gemini"), [("token", twb.GEMINI_KEY)],
+                            GEMINI_ACCOUNT)}
+        for harness, (secrets, tokens, account) in roads.items():
+            want = tokens + [("email", OPERATOR), ("email", account)]
+            if secrets() != want:
+                out.append(f"AE-pairs: a {harness} take's secrets() are not its tokens and the two addresses")
+        os.chmod(f, 0o600)
+        f.write_text(json.dumps(dict(RECORD, operator="operator-two@example.invalid")))
+        for harness, (secrets, tokens, account) in roads.items():
+            if secrets()[-2:] != [("email", "operator-two@example.invalid"), ("email", account)]:
+                out.append(f"AE-pairs: a {harness} take's secrets() did not read the record again at the scan")
+        if [k for k, _ in wb_mod.login_secrets(claude_login, "claude-code")()] != ["token"]:
+            out.append("AE-pairs: a Claude Code take's secrets() carry more than its token")
+    return out
+
+
+def scan_problems(wb_mod, tmp: Path) -> list:
+    """AE-scan on one walk_builders module: [] or each failure."""
+    import check_take
+    import scrub
+    import vendor_check_fixtures as vcf
+    from box import scan_record
+    out = []
+    src = str(twb.lease_file(tmp))
+    gemini_login = str(twb.login_file(f"GEMINI_API_KEY={twb.GEMINI_KEY}\n"))
+    with twb.account_boundary(wb_mod):
+        for harness, account in (("codex", CODEX_ACCOUNT), ("gemini", GEMINI_ACCOUNT)):
+            secrets = (wb_mod.lease_secrets(src) if harness == "codex"
+                       else wb_mod.login_secrets(gemini_login, "gemini"))
+            for label, replies, files_with in (
+                    ("the account's address in one stream", [f"Synthetic reply naming {account}.", "Done."], 1),
+                    ("two addresses in two turns", [f"Synthetic reply naming {OPERATOR}.",
+                                                    f"Synthetic reply naming {account}."], 2)):
+                parts = (vcf.codex_parts if harness == "codex" else vcf.gemini_parts)(replies=replies)
+                folder = Path(tempfile.mkdtemp(dir=tmp))
+                path = vcf.write(folder, harness, parts)
+                kinds = {"transcript.jsonl": "transcript", "driver-ledger.json": "ledger"}
+                files = [(str(p), "session" if p.parent.name == "session" else
+                          "stream" if p.name.startswith("turn-") and p.suffix == ".jsonl" else kinds.get(p.name))
+                         for p in sorted(folder.rglob("*")) if p.is_file()]
+                files = [(p, k) for p, k in files if k]
+                try:
+                    result = scan_record.scan(files, secrets(), rules_scanner=lambda paths: [])
+                except Exception as e:  # noqa: BLE001
+                    out.append(f"AE-scan: {harness}, {label}: the scan raised {type(e).__name__}")
+                    continue
+                emails = [m for m in result["masked"] if m["kind"] == "email"]
+                hit_files = {m["path"] for m in emails}
+                if result["refused"] or len(hit_files) < files_with:
+                    out.append(f"AE-scan: {harness}, {label}: {len(emails)} masked email hits in {len(hit_files)} "
+                               f"files, {len(result['refused'])} refused")
+                for p in folder.rglob("*"):
+                    if p.is_file() and any(a.encode() in p.read_bytes() for a in (OPERATOR, account)):
+                        out.append(f"AE-scan: {harness}, {label}: an address survived in {p.name}")
+                if not any(scrub.NOTE.encode() in Path(p).read_bytes() for p in hit_files):
+                    out.append(f"AE-scan: {harness}, {label}: no file carries the email marker")
+                counted = check_take.vendor_email_problems(path)
+                if len(counted) != 1 or len(counted) > len(emails):
+                    out.append(f"AE-scan: {harness}, {label}: vendor_email_problems counts {len(counted)} over "
+                               f"{len(emails)} masked hits")
+    return out
+
+
 class R6Config(twb.Drafted):
     def test_r6_no_configured_fallback_name(self):
         from box import take_config
@@ -469,6 +554,29 @@ AE_CLOSED_WITNESSES = {
     "CodexLeaseRoad reads no record": ("        account_emails(rt.CODEX)                "
                                        "# round 10 ruling 2: no record, no walk\n"),
     "login_secrets reads no record": "        account_emails(rt.GEMINI)\n",
+}
+
+
+class AEPairs(twb.Drafted):
+    def test_ae_a_vendor_takes_secrets_carry_both_addresses(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(pairs_problems(twb.wb(), Path(t)), [])
+
+    def test_ae_a_swept_address_is_masked_and_counts_once(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(scan_problems(twb.wb(), Path(t)), [])
+
+    def test_ae_witness_a_secrets_without_either_address_goes_red(self):
+        for name, new in AE_PAIRS_WITNESSES.items():
+            with self.subTest(witness=name), tempfile.TemporaryDirectory() as t:
+                mod = compiled(HERE / "walk_builders.py", "walk_builders_ae_witness", ((PAIRS_SITE, new),))
+                self.assertNotEqual(scan_problems(mod, Path(t)), [], f"witness {name} stayed green")
+
+
+PAIRS_SITE = '    return [("email", operator), ("email", account)]\n'
+AE_PAIRS_WITNESSES = {
+    "the operator's pair dropped": '    return [("email", account)]\n',
+    "the account's pair dropped": '    return [("email", operator)]\n',
 }
 
 

@@ -1114,9 +1114,11 @@ class TestLeaseTokens(unittest.TestCase):
         lease_auth(d, body=_lease_body(access="FAKEACCESS-NEW-0123456789-PLANTED",
                                        refresh="FAKEREFRESH-NEW-0123456789-PLANTED"))
         got = secrets()                                           # a refresh in the take: both pairs are searched
-        self.assertTrue(all(k == "token" for k, _ in got))
-        self.assertEqual(sorted(v for _, v in got), sorted(LEASE_VALUES + ("FAKEACCESS-NEW-0123456789-PLANTED",
-                                                                           "FAKEREFRESH-NEW-0123456789-PLANTED")))
+        # round 10 ruling 4 (the T4 plan's section 9): the token pairs, then the account record's two addresses
+        self.assertTrue(all(k == "token" for k, _ in got[:-2]))
+        self.assertEqual(got[-2:], [("email", "operator@example.invalid"), ("email", "codex-account@example.invalid")])
+        self.assertEqual(sorted(v for _, v in got[:-2]), sorted(LEASE_VALUES + ("FAKEACCESS-NEW-0123456789-PLANTED",
+                                                                                "FAKEREFRESH-NEW-0123456789-PLANTED")))
         with self.assertRaises(sr.LoginError):                    # no lease file at take start: the take never starts
             _walk_builders().lease_secrets(os.path.join(d, "nope.json"))
 
