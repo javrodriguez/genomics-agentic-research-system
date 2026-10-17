@@ -69,6 +69,52 @@ ENTRY_OR_MANIFEST = ("Model:", "history_entry", "complete_manifest", "collect_fa
                      '"model"', "manifest")
 
 
+def _literal(node):
+    """A string literal's value, or None; ast.Str on 3.6, ast.Constant on 3.8+."""
+    if getattr(ast, "Str", None) and isinstance(node, ast.Str):
+        return node.s
+    value = getattr(node, "value", None) if isinstance(node, getattr(ast, "Constant", ())) else None
+    return value if isinstance(value, str) else None
+
+
+def flag_reads_outside_history_model(tree):
+    """Line numbers in cmd_collect that read `model` from args anywhere but inside the argument
+    list of a ws.history_model call: `args.model` in any spacing, getattr(args, ...) naming
+    model or __dict__ or a computed name, vars(args), and args.__dict__."""
+    collect = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "cmd_collect"]
+    if not collect:
+        return []
+    allowed = set()
+    for node in ast.walk(collect[0]):
+        func = getattr(node, "func", None)
+        if (isinstance(node, ast.Call) and isinstance(func, ast.Attribute)
+                and func.attr == "history_model" and isinstance(func.value, ast.Name)
+                and func.value.id == "ws"):
+            for arg in list(node.args) + [k.value for k in node.keywords]:
+                allowed.update(id(n) for n in ast.walk(arg))
+
+    def is_args(node):
+        return isinstance(node, ast.Name) and node.id == "args"
+
+    lines = []
+    for node in ast.walk(collect[0]):
+        if id(node) in allowed:
+            continue
+        read = False
+        if isinstance(node, ast.Attribute) and is_args(node.value):
+            read = node.attr in ("model", "__dict__")
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.args \
+                and is_args(node.args[0]):
+            if node.func.id == "vars":
+                read = True
+            elif node.func.id == "getattr":
+                name = _literal(node.args[1]) if len(node.args) > 1 else None
+                read = name is None or name in ("model", "__dict__")
+        if read:
+            lines.append(node.lineno)
+    return sorted(set(lines))
+
+
 def conform_one(wrapper_dir):
     """Every rule the standard makes checkable. Returns a list of failures (empty == passes).
 
@@ -189,14 +235,15 @@ def conform_one(wrapper_dir):
         fails.append(fail("provenance",
                           "%s: cmd_collect never calls ws.history_model; the model a history "
                           "entry names is the harness's, never the flag's (0303)" % module.name))
-    # The flag may appear only as ws.history_model's argument: a line-by-line match passed
-    # `model = args.model or model` after the call (lane gars-t74, REVIEW-85a1b4a finding 3).
-    inside = sum(call.count("args.model")
-                 for call in re.findall(r"ws\.history_model\(([^()]*)\)", body))
-    if body.count("args.model") > inside:
+    # The flag may be read only inside ws.history_model's argument list: an allow-list over the
+    # parsed tree, since two text matches in turn passed `model = args.model or model` after the
+    # call and then getattr, vars, __dict__ and `args .model` (lane gars-t74, REVIEW-85a1b4a and
+    # REVIEW-8f5ae09 finding 3).
+    for line in flag_reads_outside_history_model(tree):
         fails.append(fail("provenance",
-                          "%s: cmd_collect reads args.model outside its ws.history_model( call; "
-                          "the flag may only be that call's argument (0303, 0308)" % module.name))
+                          "%s: cmd_collect reads the model flag from args outside its "
+                          "ws.history_model( call (line %d); the flag may only be that call's "
+                          "argument (0303, 0308, 0309)" % (module.name, line)))
     for line in body.splitlines():
         if "args.model" in line and any(w in line for w in ENTRY_OR_MANIFEST):
             fails.append(fail("provenance",
