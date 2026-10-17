@@ -333,6 +333,7 @@ def slurm_seconds(value):
 
 MEMORY_FORMS = ("; memory is a number with a unit of K, M, G or T, upper case (e.g. 64G), the "
                 "venue policy's form")
+MEMORY_FAMILY = ("--mem", "--mem-per-cpu", "--mem-per-gpu")
 
 
 def runner_directives(adir, order):
@@ -357,12 +358,13 @@ def runner_directives(adir, order):
             if name not in names:
                 names.append(name)
             seen.setdefault(name, []).append((rel, value))
-    if "--mem" in seen and "--mem-per-cpu" in seen:
-        # Slurm takes one memory request per job and refuses a job asking both.
-        blocked.append("--mem (%s) and --mem-per-cpu (%s) are mixed across the scripts; they run "
-                       "as one job, which Slurm refuses with both, so give every script the same "
-                       "one" % (", ".join(rel for rel, _ in seen["--mem"]),
-                                ", ".join(rel for rel, _ in seen["--mem-per-cpu"])))
+    asked = [name for name in MEMORY_FAMILY if name in seen]
+    if len(asked) > 1:
+        # Slurm takes one memory request per job and refuses a job asking more than one (0310).
+        blocked.append("%s are mixed across the scripts; they run as one job, which Slurm refuses "
+                       "with more than one of %s, so give every script the same one" % (
+                           " and ".join("%s (%s)" % (name, ", ".join(rel for rel, _ in seen[name]))
+                                        for name in asked), ", ".join(MEMORY_FAMILY)))
     parse = {"--time": slurm_seconds, "--mem": policy.memory_bytes,
              "--mem-per-cpu": policy.memory_bytes, "--cpus-per-task": int}
     lines = []
