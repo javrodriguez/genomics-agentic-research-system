@@ -275,5 +275,189 @@ def typed_harness(src: str) -> list:
     return sorted(set(hits))
 
 
+
+# ---- lane vendor-admission T2 (glitch-b5, 16 Oct 2026): vendor bookkeeping candidates, beside TABLE, never in it ----
+CODEX_ADAPTER = os.path.join(HERE, "codex_adapter.py")
+NATIVE_SNAPSHOT = os.path.join(HERE, "native_snapshot.py")
+RUN_TAKE = os.path.join(HERE, "box", "run_take.py")
+CANDIDATE_NAMES = ("codex", "gemini")
+
+
+def source_line(path: str, n: int) -> str:
+    with open(path, encoding="utf-8") as fh:
+        return fh.read().splitlines()[n - 1]
+
+
+def derived_codex_pattern() -> str:
+    """codex_adapter.py:41: the rollout is `$CODEX_HOME/sessions/.../rollout-*.jsonl` (`...`: any folders); and
+    box/run_take.py:68, 160-162: CODEX_HOME is the config mount, which is also HOME, so the pattern is home-relative."""
+    m = re.fullmatch(r"\s*rollout\s+`\$CODEX_HOME/([^`]+)`, copied out host-side by the driver and handed over by",
+                     source_line(CODEX_ADAPTER, 41))
+    if not m:
+        raise AssertionError("codex_adapter.py:41 is not the rollout line this candidate is grounded in")
+    if source_line(RUN_TAKE, 68) != 'CONFIG_MOUNT = "/opt/cfg"':
+        raise AssertionError("box/run_take.py:68 is not CONFIG_MOUNT")
+    row = " ".join(source_line(RUN_TAKE, n) for n in (160, 161, 162))
+    if 'CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT' not in row or '"CODEX_HOME": CONFIG_MOUNT}' not in row:
+        raise AssertionError("box/run_take.py:160-162 no longer sets CODEX_HOME and HOME to the config mount")
+    return m.group(1).replace("/.../", "/**/")
+
+
+def derived_gemini_pattern() -> str:
+    """native_snapshot.py:20: under exactly <home>/.gemini/tmp/*/chats; :13: filename = session-<...>.jsonl; :9 and
+    box/run_take.py:163-165: <home> is $GEMINI_CLI_HOME, the config mount, which is also HOME."""
+    folder = re.fullmatch(r"gemini_session_file reads directory names only, under exactly <home>/(\S+), never a "
+                          r"file's content and", source_line(NATIVE_SNAPSHOT, 20))
+    name = re.fullmatch(r"\s*filename\s+= (session-)<.*>(\.jsonl),", source_line(NATIVE_SNAPSHOT, 13))
+    home = re.fullmatch(r"\s*homedir\(\)\s+= \$GEMINI_CLI_HOME when set", source_line(NATIVE_SNAPSHOT, 9))
+    if not (folder and name and home):
+        raise AssertionError("native_snapshot.py:9, 13, 20 are not the lines this candidate is grounded in")
+    row = " ".join(source_line(RUN_TAKE, n) for n in (163, 164, 165))
+    if 'GEMINI: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT' not in row or '"GEMINI_CLI_HOME": CONFIG_MOUNT' not in row:
+        raise AssertionError("box/run_take.py:163-165 no longer sets GEMINI_CLI_HOME and HOME to the config mount")
+    return f"{folder.group(1)}/{name.group(1)}*{name.group(2)}"
+
+
+def run_tree_tmp_name() -> str:
+    """box/run_take.py:93 and 152: TMPDIR, TMP and TEMP point at <run tree>/.tmp."""
+    m = re.fullmatch(r'RUN_TREE_TMPDIR = "([^"]+)"', source_line(RUN_TAKE, 93))
+    if not m or not source_line(RUN_TAKE, 152).startswith('RUN_TREE_TMP = "<run tree>/' + m.group(1) + '"'):
+        raise AssertionError("box/run_take.py:93 and 152 are not the run tree's temporary folder")
+    return m.group(1)
+
+
+# (path, excluded?) under each candidate: its native session file only, nothing else of the home or the run tree.
+CANDIDATE_PATHS = {
+    "codex": [("sessions/2026/10/14/rollout-2026-10-14T05-00-00-00000000-0000-7000-8000-0000000000c1.jsonl", True),
+              ("sessions/2026/10/14/notes.txt", False), ("sessions/2026/10/14/rollout-x.jsonl.zst", False),
+              ("auth.json", False), ("config.toml", False), ("history.jsonl", False), ("log/codex-tui.log", False),
+              (".tmp/x", False), ("rollout-x.jsonl", False), ("other/sessions/rollout-x.jsonl", False)],
+    "gemini": [(".gemini/tmp/abc/chats/session-2026-10-14T05-00-1a2b3c4d.jsonl", True),
+               (".gemini/tmp/abc/chats/1a2b3c4d/sub-1.jsonl", False), (".gemini/tmp/abc/logs.json", False),
+               (".gemini/settings.json", False), (".gemini/tmp/abc/chats/notes.txt", False),
+               (".gemini/tmp/chats/session-x.jsonl", False), (".tmp/x", False), ("session-x.jsonl", False)],
+}
+
+
+def candidate_problems(table: dict) -> list:
+    """Each candidate is exactly its derived pattern, its grounds quote what they rest on, its run tree is unmeasured
+    (empty), it names .tmp/ as kept in, and it excludes its native session file and nothing else listed."""
+    out = []
+    derived = {"codex": derived_codex_pattern(), "gemini": derived_gemini_pattern()}
+    tmp = run_tree_tmp_name()
+    if sorted(table) != sorted(CANDIDATE_NAMES):
+        out.append(f"the candidates are {sorted(table)}, not {sorted(CANDIDATE_NAMES)}")
+    for name in CANDIDATE_NAMES:
+        e = table.get(name)
+        if e is None:
+            continue
+        if e.home_paths != (derived[name],):
+            out.append(f"{name}: home_paths {e.home_paths} are not exactly the derived {derived[name]!r}")
+        if e.run_tree_paths != ():
+            out.append(f"{name}: run_tree_paths {e.run_tree_paths}: unmeasured until a real walk")
+        grounds = " ".join(e.grounds)
+        for need in ({"codex": ["codex_adapter.py:41", "`$CODEX_HOME/sessions/.../rollout-*.jsonl`",
+                                "box/run_take.py:68", '"CODEX_HOME": CONFIG_MOUNT'],
+                      "gemini": ["native_snapshot.py:20", "<home>/.gemini/tmp/*/chats", "native_snapshot.py:13",
+                                 "native_snapshot.py:16-18", "assumed, not source-shown", "box/run_take.py:68",
+                                 '"GEMINI_CLI_HOME": CONFIG_MOUNT']}[name] + ["unmeasured until a real walk"]):
+            if need not in grounds:
+                out.append(f"{name}: the grounds do not say {need!r}")
+        if not any(path == tmp + "/" for path, _ in e.not_excluded):
+            out.append(f"{name}: not_excluded does not name {tmp}/ (box/run_take.py:93, 152)")
+        for path, want in CANDIDATE_PATHS[name]:
+            if any(hb.matches(p, path) for p in e.home_paths) != want:
+                out.append(f"{name}: {path} is {'not ' if want else ''}excluded")
+    return out
+
+
+def candidate_conflicts(candidates: dict) -> list:
+    """endstate.exclusion_conflicts for every task under each candidate, through check_task's check 8."""
+    sys.path.insert(0, os.path.join(HERE, "tasks"))
+    try:
+        import check_task as ct
+    finally:
+        sys.path.remove(os.path.join(HERE, "tasks"))
+    out = []
+    table = dict(hb.TABLE, **candidates)
+    for task_id in ct.task_ids():
+        bad, task, doc = ct.check_1_schema(task_id)
+        if bad:
+            out.append(f"{task_id}: {bad}")
+            continue
+        out += [f"{task_id}: {x}" for x in ct.check_8_exclusions(task, doc, table=table)]
+    return out
+
+
+class VendorCandidates(unittest.TestCase):
+    """Lane vendor-admission T2: hb.VENDOR_CANDIDATES holds Codex's and Gemini's bookkeeping candidates, grounded and
+    checked, and never promoted: TABLE stays claude-code alone, so production Evidence.load still refuses both."""
+
+    def test_candidates_are_beside_the_table_never_in_it(self):
+        self.assertEqual(sorted(hb.VENDOR_CANDIDATES), sorted(CANDIDATE_NAMES))
+        self.assertEqual(sorted(hb.TABLE), [ADAPTER_NAME])
+        for name in CANDIDATE_NAMES:
+            with self.assertRaises(hb.UnknownHarness):
+                hb.entry(name)
+
+    def test_production_evidence_still_refuses_a_vendor_take(self):
+        from graders import endstate
+        for name in CANDIDATE_NAMES:
+            take = {"kind": "take", "model": "synthetic-model", "agent": {"harness": name, "version": "0.0.1"},
+                    "run_tree": "", "home": None}
+            with self.assertRaises(endstate.EvidenceError) as cm:
+                endstate.agent_of(take)
+            self.assertIn("has no bookkeeping entry", str(cm.exception))
+
+    def test_each_candidate_passes_check_table(self):
+        self.assertEqual(hb.check_table(dict(hb.TABLE, **hb.VENDOR_CANDIDATES)), [])
+        for name, e in hb.VENDOR_CANDIDATES.items():
+            self.assertEqual(hb.check_table({ADAPTER_NAME: hb.TABLE[ADAPTER_NAME], name: e}), [], name)
+
+    def test_each_candidate_is_grounded_in_its_source_lines(self):
+        self.assertEqual(derived_codex_pattern(), "sessions/**/rollout-*.jsonl")
+        self.assertEqual(derived_gemini_pattern(), ".gemini/tmp/*/chats/session-*.jsonl")
+        self.assertEqual(run_tree_tmp_name(), ".tmp")
+        self.assertEqual(candidate_problems(hb.VENDOR_CANDIDATES), [])
+
+    def test_a_widened_or_moved_candidate_goes_red(self):
+        widened = {"codex": ("sessions/**", "**/rollout-*.jsonl", "sessions/**/*.jsonl", "sessions/**/rollout-*",
+                             "*/**/rollout-*.jsonl", "sessions/**/rollout-*.jsonl*"),
+                   "gemini": (".gemini/**", ".gemini/tmp/**/session-*.jsonl", ".gemini/tmp/*/chats/*.jsonl",
+                              ".gemini/tmp/*/*/session-*.jsonl", ".gemini/tmp/*/chats/**", ".gemini/*/*/chats/session-*")}
+        for name, patterns in widened.items():
+            for pattern in patterns:
+                for home in ((pattern,), (hb.VENDOR_CANDIDATES[name].home_paths[0], pattern)):
+                    with self.subTest(name=name, home=home):
+                        e = dataclasses.replace(hb.VENDOR_CANDIDATES[name], home_paths=home)
+                        self.assertNotEqual(candidate_problems(dict(hb.VENDOR_CANDIDATES, **{name: e})), [])
+        for name in CANDIDATE_NAMES:
+            base = hb.VENDOR_CANDIDATES[name]
+            for what, e in {"a guessed run tree": dataclasses.replace(base, run_tree_paths=(".tmp/**",)),
+                            "no grounds": dataclasses.replace(base, grounds=("TEST DATA",)),
+                            ".tmp/ dropped": dataclasses.replace(base, not_excluded=())}.items():
+                with self.subTest(name=name, what=what):
+                    self.assertNotEqual(candidate_problems(dict(hb.VENDOR_CANDIDATES, **{name: e})), [])
+        self.assertNotEqual(candidate_problems({"codex": hb.VENDOR_CANDIDATES["codex"]}), [])
+
+    def test_no_task_path_is_hidden_under_a_candidate(self):
+        self.assertEqual(candidate_conflicts(hb.VENDOR_CANDIDATES), [])
+        e = dataclasses.replace(hb.VENDOR_CANDIDATES["codex"], run_tree_paths=("data/**",))   # mutant: a guess
+        self.assertNotEqual(candidate_conflicts(dict(hb.VENDOR_CANDIDATES, codex=e)), [])
+
+    def test_no_grader_types_a_candidate(self):
+        graders = os.path.join(HERE, "graders")
+        found = {}
+        with mock.patch.dict(TABLE, hb.VENDOR_CANDIDATES):
+            for name in sorted(os.listdir(graders)):
+                if name.endswith(".py"):
+                    with open(os.path.join(graders, name), encoding="utf-8") as fh:
+                        hits = typed_harness(fh.read())
+                    if hits:
+                        found[name] = hits
+            for typed in ('X = "codex"', 'X = "gemini"', 'X = "sessions/"', 'X = ".gemini/"'):
+                self.assertNotEqual(typed_harness(typed), [], typed)   # the scan fires on each known positive
+        self.assertEqual(found, {})
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

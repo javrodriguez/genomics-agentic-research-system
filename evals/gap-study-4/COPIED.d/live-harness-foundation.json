@@ -149,7 +149,7 @@
     {
       "path": "walk_regrade.py",
       "status": "new",
-      "reason": "Registration review finding 2: after a reader is registered, re-derive a pending walk's cross-check (the one shared join) and grade from its committed bytes into rehearsals/<walk>/regrade.json, a new superseding record committed alone under its own subject through the commit scan; --check re-derives every committed regrade to its bytes. Batch-8 review finding 4: wired into checks.d (--check); a registration refusal met while reading the readers is a regrade refusal. Codex slice 3: a Codex walk regrades through drive.codex_cross_check."
+      "reason": "Registration review finding 2: after a reader is registered, re-derive a pending walk's cross-check (the one shared join) and grade from its committed bytes into rehearsals/<walk>/regrade.json, a new superseding record committed alone under its own subject through the commit scan; --check re-derives every committed regrade to its bytes. Batch-8 review finding 4: wired into checks.d (--check); a registration refusal met while reading the readers is a regrade refusal. Codex slice 3: a Codex walk regrades through drive.codex_cross_check. Lane vendor-admission T1 (glitch-b5, 16 Oct 2026), an edit without transfer: regrade_doc calls admitted (run.vendor_admission on the regrade's own re-derived cross-check and the registry it holds) before any grader, RegradeRefused naming why. Bound by tests/test_vendor_admission_regrade.py."
     },
     {
       "path": "tests/test_pending_walk.py",
@@ -204,7 +204,7 @@
     {
       "path": "tests/test_walk_grade_seam.py",
       "status": "new",
-      "reason": "Item E: the REAL production grading entry (run.write_walk_grade) on a synthetic committed-walk-shaped folder for each of the nine tasks reaches the task's grader and grades or refuses by design, never TypeError, AttributeError, KeyError, IndexError or NameError; the take road's grade_committed hands the grader lines."
+      "reason": "Item E: the REAL production grading entry (run.write_walk_grade) on a synthetic committed-walk-shaped folder for each of the nine tasks reaches the task's grader and grades or refuses by design, never TypeError, AttributeError, KeyError, IndexError or NameError; the take road's grade_committed hands the grader lines. Lane vendor-admission T1 (glitch-b5, 16 Oct 2026), an edit without transfer: E-vendor's walk folders carry the agreed cross_check_status and the seam hands write_walk_grade an injected registry holding the walk's harness (TEST DATA); its asserts are unchanged."
     },
     {
       "path": "tests/test_auto_mode.py",

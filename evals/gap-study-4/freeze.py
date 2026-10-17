@@ -303,6 +303,32 @@ def holdout_fields(source, task_ids, *, rehearsal: bool = False) -> dict:
     return {"holdout_salted_digests": data[HOLDOUT_SOURCE_KEY], "holdout_wordings_per_task_version": count}
 
 
+# Lane vendor-admission T3 (glitch-b5, 16 Oct 2026), ruling Q-3 (glitch-2f, 12 Oct 2026; codex_adapter.py:9-14,
+# gemini_adapter.py:9-14): arms O and G are built on DOCUMENTED stream shapes, and the freeze refuses any arm whose
+# adapter has not been re-tested on a stream recorded at its first real walk. Each vendor harness's adapter module
+# says which it is (SHAPES_SOURCE); it is imported only when the draft has a row of that harness.
+SHAPES_ADAPTERS = {"codex": "codex_adapter", "gemini": "gemini_adapter"}
+RECORDED_SHAPES = "recorded"
+
+
+def unrecorded_shapes_problem(draft):
+    """Why the freeze refuses the draft's vendor arms (each arm named), or None: a row whose harness is codex or gemini
+    while that adapter's SHAPES_SOURCE is not "recorded"."""
+    import importlib
+    rows = draft.get("rows") or []
+    bad = []
+    for harness in sorted({(r.get("agent") or {}).get("harness") for r in rows} & set(SHAPES_ADAPTERS)):
+        module = SHAPES_ADAPTERS[harness]
+        source = importlib.import_module(module).SHAPES_SOURCE
+        if source != RECORDED_SHAPES:
+            arms = sorted({r.get("arm") for r in rows if (r.get("agent") or {}).get("harness") == harness}, key=str)
+            bad += [f"arm {arm} ({harness}): {module}.py's SHAPES_SOURCE is {source!r}" for arm in arms]
+    if not bad:
+        return None
+    return ("the freeze refuses " + "; ".join(bad) + f", not {RECORDED_SHAPES!r}: an arm whose adapter was never "
+            "re-tested on a stream recorded at its first real walk is never frozen (ruling Q-3)")
+
+
 def draft_holdout_problem(draft):
     """A pre-freeze draft carrying a freeze-only holdout field is refused, here as in the writer."""
     import build_draft
@@ -409,6 +435,9 @@ def main(argv=None) -> int:
             raise ValueError("; ".join(bad))
         draft = json.loads(DRAFT.read_text())
         problem = draft_holdout_problem(draft)
+        if problem:
+            raise ValueError(problem)
+        problem = unrecorded_shapes_problem(draft)
         if problem:
             raise ValueError(problem)
         holdout = ({} if args.holdout_digests is None else

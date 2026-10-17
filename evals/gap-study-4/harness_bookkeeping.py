@@ -51,6 +51,9 @@ NOT excluded, each recorded in the entry's `not_excluded` with its line (lane w2
 Anything else Claude Code may write in its home (round 3's files do not name it) is not excluded here; it is an
 open question for CP2's box (lane report w2a-cp3-endstate).
 
+VENDOR_CANDIDATES (lane vendor-admission T2) holds Codex's and Gemini's grounded candidates BESIDE the table: `entry()`
+never reads them, so a codex or gemini take is still refused until a ruling promotes them after a real walk.
+
 No model, no network, stdlib only.
 """
 
@@ -98,6 +101,62 @@ TABLE: dict = {
     ),
 }
 
+
+# VENDOR CANDIDATES (lane vendor-admission T2, glitch-b5, 16 Oct 2026). Codex's and Gemini's bookkeeping, grounded in
+# this study's own files and held BESIDE the table, never in it: entry() never reads them, so production
+# Evidence.load still refuses a codex or gemini take ("has no bookkeeping entry"). Their run_tree_paths are empty
+# because nothing grounds them yet: what Codex and Gemini leave in the run tree shows only in a real walk's snapshots,
+# and an empty guess would let harness furniture read as the agent's changes. Promotion into TABLE is a later ruling,
+# after a real walk measures the run tree and before any regrade.json is committed (promotion changes regrade bytes).
+# Their home_paths are inert in production today: the driver records the take's home as None and the sidecar
+# snapshots only the run tree. tests/test_harness_bookkeeping.py VendorCandidates re-derives every pattern below.
+VENDOR_CANDIDATES: dict = {
+    "codex": Entry(
+        home_paths=("sessions/**/rollout-*.jsonl",),
+        run_tree_paths=(),
+        grounds=(
+            "evals/gap-study-4/codex_adapter.py:41: rollout    `$CODEX_HOME/sessions/.../rollout-*.jsonl` (`...` any "
+            "folders: sessions/<year>/<month>/<day>/ as native_snapshot.py:84 spells it)",
+            "evals/gap-study-4/box/run_take.py:68 and 160-162: CONFIG_MOUNT = \"/opt/cfg\"; TAKE_ENV[CODEX] sets "
+            "\"HOME\": CONFIG_MOUNT and \"CODEX_HOME\": CONFIG_MOUNT, so CODEX_HOME is the take user's home and the "
+            "pattern is home-relative",
+            "run_tree_paths: none; unmeasured until a real walk (what Codex leaves in the run tree shows only in a "
+            "walk's snapshots)",
+        ),
+        not_excluded=(
+            (".tmp/", "box/run_take.py:93 and 152, 160-161: TMPDIR, TMP and TEMP point at the run tree's .tmp, which "
+                      "holds every tool's scratch, the agent's own included; a file Codex itself leaves there needs a "
+                      "pattern measured on a real walk"),
+            ("the rest of CODEX_HOME", "box/run_take.py:160-162: the config mount also holds the login lease and "
+                                       "Codex's other files; none is grounded as bookkeeping until a real walk"),
+        ),
+    ),
+    "gemini": Entry(
+        home_paths=(".gemini/tmp/*/chats/session-*.jsonl",),
+        run_tree_paths=(),
+        grounds=(
+            "evals/gap-study-4/native_snapshot.py:20: gemini_session_file reads under exactly "
+            "<home>/.gemini/tmp/*/chats; native_snapshot.py:13: filename = session-<ISO minute>-<first 8 of the "
+            "session id>.jsonl (or session-<minute>-<k>-<first 8>.jsonl)",
+            "evals/gap-study-4/native_snapshot.py:16-18: assumed, not source-shown: the global temp dir is "
+            "<home>/.gemini/tmp, and SANDBOX is not \"sandbox-exec\" (which would move it to <home>/.cache/.gemini)",
+            "evals/gap-study-4/box/run_take.py:68 and 163-165, native_snapshot.py:9: homedir() is $GEMINI_CLI_HOME; "
+            "TAKE_ENV[GEMINI] sets \"HOME\": CONFIG_MOUNT and \"GEMINI_CLI_HOME\": CONFIG_MOUNT, so the pattern is "
+            "home-relative",
+            "run_tree_paths: none; unmeasured until a real walk (what Gemini leaves in the run tree shows only in a "
+            "walk's snapshots)",
+        ),
+        not_excluded=(
+            (".tmp/", "box/run_take.py:93 and 152, 163-164: TMPDIR, TMP and TEMP point at the run tree's .tmp, which "
+                      "holds every tool's scratch, the agent's own included; a file Gemini itself leaves there needs "
+                      "a pattern measured on a real walk"),
+            ("<chats>/<parent id>/<id>.jsonl", "native_snapshot.py:14-15: a subagent's session file, never matched "
+                                               "by the pattern; unmeasured until a real walk"),
+            (".gemini/tmp/<project>/ other entries", "lane note harness-window2-resume-2026-10-14.md: Gemini's tmp "
+                                                     "folder may hold other entries a live walk shows; open"),
+        ),
+    ),
+}
 
 class UnknownHarness(ValueError):
     """A harness name this table holds no entry for (or no name at all). Never defaulted."""

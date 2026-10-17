@@ -9,7 +9,7 @@
     {
       "path": "harness_bookkeeping.py",
       "status": "new",
-      "reason": "Interface 8's third seam table: each harness's own bookkeeping paths (home-relative and run-tree-relative), keyed by AgentAdapter.name, refusing an unknown name. Its one real entry, claude-code, is grounded in the identical copy drive.py:241-242 and :170 and round 3's prereg key run_location.excluded_from_the_run_tree; new in round 4."
+      "reason": "Interface 8's third seam table: each harness's own bookkeeping paths (home-relative and run-tree-relative), keyed by AgentAdapter.name, refusing an unknown name. Its one real entry, claude-code, is grounded in the identical copy drive.py:241-242 and :170 and round 3's prereg key run_location.excluded_from_the_run_tree; new in round 4. Lane vendor-admission T2 (glitch-b5, 16 Oct 2026), an edit without transfer: VENDOR_CANDIDATES beside TABLE (never in it, so entry() and production Evidence.load still refuse codex and gemini): codex home_paths sessions/**/rollout-*.jsonl (codex_adapter.py:41, CODEX_HOME the config mount, box/run_take.py:68, 160-162), gemini home_paths .gemini/tmp/*/chats/session-*.jsonl (native_snapshot.py:9, 13, 16-18 assumed, 20; box/run_take.py:163-165), run_tree_paths empty for both (unmeasured until a real walk), .tmp/ named as kept in; a docstring paragraph says so."
     },
     {
       "path": "tests/test_endstate.py",
@@ -19,7 +19,7 @@
     {
       "path": "tests/test_harness_bookkeeping.py",
       "status": "new",
-      "reason": "Tests for harness_bookkeeping.py (interface 3): grounding, refusal, segment matching and the seam, with their mutants."
+      "reason": "Tests for harness_bookkeeping.py (interface 3): grounding, refusal, segment matching and the seam, with their mutants. Lane vendor-admission T2 (glitch-b5, 16 Oct 2026), new tests only (VendorCandidates): the candidates pass check_table, re-derive from their cited lines, and go red when widened, moved, guessed or ungrounded; check_task's check 8 hides no task path under either; the typed_harness grader scan stays clean with them in its table; sorted(TABLE) == ['claude-code'] stays asserted and unchanged."
     },
     {
       "path": "COPIED.d/w2a-cp3-endstate.json",
