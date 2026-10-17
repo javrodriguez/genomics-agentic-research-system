@@ -10,6 +10,8 @@ arm; nothing is written.
   FS-draft     on the committed draft (arms O and G, both adapters "documented") the check names both arms.
   FS-main      freeze.main on a fixture draft with an O row, a G row, or both refuses at "documented" naming each arm,
                and passes once that adapter's SHAPES_SOURCE is patched to "recorded"; a claude-code-only draft passes.
+  FS-docs      each adapter's SHAPES_SOURCE paragraph says freeze.py now refuses its arm, never that the refusal is
+               owed to a later slice (round-2 ruling 2).
   FS-witness   freeze.py compiled in memory without the check's call, or with its comparison disabled, goes red.
 
 freeze.main runs against a temporary folder: git, the review, the pins, prepare and the writer are fakes (the shape of
@@ -139,6 +141,17 @@ class TheFreezeRefusesDocumentedShapes(unittest.TestCase):
 
     def test_fs_main_refuses_at_documented_and_passes_at_recorded(self):
         self.assertEqual(main_problems(freeze), [])
+
+    def test_fs_docs_the_adapters_name_the_refusal_this_lane_built(self):
+        # round-2 ruling 2 (glitch-b5): the SHAPES_SOURCE paragraph of each adapter's docstring names freeze.py's
+        # refusal (T3) and no longer says it is owed to a later slice
+        for mod, arm in ((codex_adapter, "arm O"), (gemini_adapter, "arm G")):
+            doc = " ".join(mod.__doc__.split())
+            with self.subTest(adapter=mod.__name__):
+                self.assertNotIn("owed to a later slice", doc)
+                for words in ("freeze.py now refuses a design row of this harness", f"({arm})",
+                              'while SHAPES_SOURCE is not "recorded"', "freeze.unrecorded_shapes_problem"):
+                    self.assertIn(words, doc)
 
     def test_fs_check_mode_is_unchanged(self):
         # freeze.py --check (a checks.d gate) checks the copy record and the draft's holdout fields only
