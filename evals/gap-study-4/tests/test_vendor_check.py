@@ -25,6 +25,26 @@ PF, the freeze gate's half in check_take.py (plan section 7; review 36ce125 MINO
   VP-fixtures  a SAME row's fixture is a file labelled RECORDED (walk and CLI version) in its folder's README, and
                VENDOR_CHECK_SHAPES_SOURCE reads "recorded" only while every row of that harness is settled.
 
+P1, the vendor view and raw records (plan sections 4 and 9; review 36ce125 MINOR 1, folded by ruling 1), on F1 and F2
+(tests/vendor_check_fixtures.py writes them; F3 variants are their parts edited and written to a scratch folder):
+
+  P1-fixtures  the committed F1 and F2 folders are byte for byte what vendor_check_fixtures.py writes.
+  P1-view      vendor_take_view reads F1 and F2 through the bound view; a stream whose bytes are not its envelope's,
+               or a view holding no event, is transcript-unreadable, never clean; a claude-code take is refused.
+  P1-raw       vendor_raw_records reads every tool record of every source: codex exec streams (source 1), the last
+               rollout's CommandExecution items (source 2) and its READ response_items (source 3, partitioned exactly
+               as codex_native.RESPONSE_ITEMS), gemini streams (source 1) and the last snapshot's toolCalls (source 2).
+  P1-reach     F3 cases, each firing its reason on one source only: a codex function_call whose arguments reach
+               evals/ only once decoded; an undecodable one and an image_generation_call (transcript-unreadable); a
+               rollout CommandExecution naming the checkout while the exec command does not; an exec command reaching
+               evals/; a study path only as an object key (MINOR 1, codex and gemini); a gemini list_directory whose
+               dir_path the view's mapping drops; a snapshot toolCalls args path; a tool_result naming the checkout;
+               a refused snapshot and an mcp_tool_call (transcript-unreadable).
+  P1-witness   check_take.py compiled in memory with each P1 mutant (ViewError swallowed, an empty view read as clean,
+               the view's args read in place of raw leaves, CommandExecution only, an unreadable tool record skipped,
+               the encoded arguments read as the leaf, an undecodable leaf read as text, each source skipped, values
+               only, the raw readers' refusal swallowed) goes red on the cases above.
+
 Fakes and synthetic sources only: no take, model, container or network.
 """
 
@@ -33,8 +53,10 @@ from __future__ import annotations
 import ast
 import contextlib
 import copy
+import json
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -45,7 +67,14 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 import check_take as ct  # noqa: E402
+import codex_native  # noqa: E402
 import routing  # noqa: E402
+
+sys.path.insert(0, str(HERE / "tests"))
+try:
+    import vendor_check_fixtures as vcf  # noqa: E402
+finally:
+    sys.path.remove(str(HERE / "tests"))
 
 # The table's key list (lane-reports/vendor-T4-TABLE.md, the header's VENDOR_PENDING_ROWS line), with each row's
 # reason id as its PENDING cell names it.
@@ -334,6 +363,243 @@ class VPFixtures(unittest.TestCase):
             self.assertEqual(len(got), len(TABLE_KEYS["codex"]), got)
         with mock.patch.dict(ct.VENDOR_CHECK_SHAPES_SOURCE, {"codex": "observed"}):
             self.assertNotEqual(ct.vendor_shapes_problems("codex"), [])
+
+
+# ---- P1: the vendor view and raw records ----------------------------------------------------------------------------
+STUDY = "[study-materials-reached]"
+OUTSIDE = "[read-outside-the-checkout]"
+UNREADABLE = "[transcript-unreadable]"
+
+
+def codex_done(parts, k, kind):
+    """The (line type, payload) of turn k's rollout record whose item or payload type is `kind`."""
+    for t, pay in parts["rollout"][k]:
+        if pay.get("type") == kind or (pay.get("item") or {}).get("type") == kind:
+            return pay
+    raise AssertionError(f"turn {k} holds no {kind}")
+
+
+def f3_codex_escaped(parts):
+    # source 3 only, reachable only after decoding: `\/` for each solidus and `e` for one letter
+    codex_done(parts, 2, "function_call")["arguments"] = r'{"cmd": "cat evals\/gap-study-4\/prereg-draft.json"}'
+
+
+def f3_codex_undecodable(parts):
+    codex_done(parts, 2, "function_call")["arguments"] = '{"cmd": "cat'
+
+
+def f3_codex_image(parts):
+    parts["rollout"][2].insert(2, ("response_item", {"type": "image_generation_call", "id": "ig_1",
+                                                     "status": "completed", "result": "aGk="}))
+
+
+def f3_codex_rollout_argv(parts):
+    codex_done(parts, 2, "CommandExecution")["item"]["command"] = ["cat", f"{ct.CHECKOUT_REPO}/README.md"]
+
+
+def f3_codex_exec_command(parts):
+    for rec in parts["streams"][2]:
+        if (rec.get("item") or {}).get("type") == "command_execution":
+            rec["item"]["command"] = "cat evals/gap-study-4/prereg-draft.json"
+
+
+def f3_codex_object_key(parts):
+    codex_done(parts, 2, "function_call")["arguments"] = json.dumps(
+        {"cmd": "ls", "env": {"evals/gap-study-4/prereg-draft.json": "1"}})
+
+
+def f3_codex_mcp(parts):
+    parts["streams"][2][2:4] = [{"type": "item.started", "item": {"id": "item_0", "type": "mcp_tool_call",
+                                                                  "server": "s", "tool": "t", "status": "in_progress"}},
+                                {"type": "item.completed", "item": {"id": "item_0", "type": "mcp_tool_call",
+                                                                    "server": "s", "tool": "t", "status": "completed",
+                                                                    "result": {"content": []}}}]
+
+
+def f3_gemini_list_directory(parts):
+    for rec in parts["streams"][2]:
+        if rec["type"] == "tool_use":
+            rec.update(tool_name="list_directory", parameters={"dir_path": "evals/gap-study-4"})
+
+
+def f3_gemini_snapshot_args(parts):
+    parts["native"][2][1]["toolCalls"][0]["args"] = {"file_path": "evals/gap-study-4/notes.txt"}
+
+
+def f3_gemini_object_key(parts):
+    response = parts["native"][2][1]["toolCalls"][0]["result"][0]["functionResponse"]
+    response["response"] = {"evals/gap-study-4/notes.txt": "x"}
+
+
+def f3_gemini_tool_result(parts):
+    for rec in parts["streams"][2]:
+        if rec["type"] == "tool_result":
+            rec["output"] = f"{ct.CHECKOUT_REPO}/README.md"
+
+
+def f3_gemini_snapshot_refused(parts):
+    parts["native"][2].pop()          # the interaction now ends on its tool calls: the projection refuses it
+
+
+# (case, harness, edit, the reason the reach must carry, or None for clean)
+REACH_CASES = (
+    ("F1 as written", "codex", None, None),
+    ("F2 as written", "gemini", None, None),
+    ("codex function_call reaching evals/ only once decoded", "codex", f3_codex_escaped, STUDY),
+    ("codex function_call arguments that do not decode", "codex", f3_codex_undecodable, UNREADABLE),
+    ("codex image_generation_call", "codex", f3_codex_image, UNREADABLE),
+    ("codex rollout argv naming the checkout, exec command not", "codex", f3_codex_rollout_argv, OUTSIDE),
+    ("codex exec command reaching evals/", "codex", f3_codex_exec_command, STUDY),
+    ("codex study path only as an object key", "codex", f3_codex_object_key, STUDY),
+    ("codex mcp_tool_call", "codex", f3_codex_mcp, UNREADABLE),
+    ("gemini list_directory dir_path the view drops", "gemini", f3_gemini_list_directory, STUDY),
+    ("gemini snapshot toolCalls args", "gemini", f3_gemini_snapshot_args, STUDY),
+    ("gemini study path only as an object key", "gemini", f3_gemini_object_key, STUDY),
+    ("gemini tool_result naming the checkout", "gemini", f3_gemini_tool_result, OUTSIDE),
+    ("gemini snapshot the projection refuses", "gemini", f3_gemini_snapshot_refused, UNREADABLE),
+)
+
+
+@contextlib.contextmanager
+def take(harness, edit=None):
+    """A scratch take folder of `harness`: F1 or F2's parts, edited by `edit`; yields its transcript.jsonl."""
+    parts = vcf.codex_parts() if harness == "codex" else vcf.gemini_parts()
+    if edit is not None:
+        edit(parts)
+    with tempfile.TemporaryDirectory() as tmp:
+        yield vcf.write(Path(tmp), harness, parts)
+
+
+def p1_problems(mod) -> list:
+    """P1's cases on one check_take module (the real one or a mutant): [] or each failure."""
+    out = []
+    for name, harness, edit, reason in REACH_CASES:
+        with take(harness, edit) as path:
+            try:
+                got = mod.vendor_reach(path, harness)
+            except Exception as e:  # noqa: BLE001 - a traceback is itself a failure here
+                out.append(f"{name}: vendor_reach raised {type(e).__name__}: {e}")
+                continue
+            tags = {p.split("] ")[0] + "]" for p in got["problems"]}
+            if tags != ({reason} if reason else set()):
+                out.append(f"{name}: reach problems {sorted(tags)}, not {[reason] if reason else []}: "
+                           f"{got['problems']}")
+            view = mod.vendor_take_view(path, harness)
+            if view["problems"] or not view["events"]:
+                out.append(f"{name}: the view refuses a bound take: {view['problems']}")
+    for harness in ("codex", "gemini"):
+        with take(harness) as path:
+            records = mod.vendor_raw_records(path, harness)
+            rollout = codex_native._json_lines((path.parent / "session" / "native-turn-2.jsonl").read_bytes(),
+                                               ValueError) if harness == "codex" else []
+            want = {"codex": 4 + 2 + sum(r["type"] == "response_item" and r["payload"]["type"] in
+                                         mod.CODEX_RESPONSE_READ for r in rollout),
+                    "gemini": 4 + 2}[harness]
+            if len(records) != want:
+                out.append(f"{harness}: {len(records)} raw tool records read, not {want}")
+            # a stream whose bytes are not its envelope's: refused on both roads, never clean
+            (path.parent / "turn-2.jsonl").write_bytes((path.parent / "turn-2.jsonl").read_bytes() + b"\n")
+            view, reach = mod.vendor_take_view(path, harness), mod.vendor_reach(path, harness)
+            for road, got in (("view", view), ("reach", reach)):
+                if [p.split("] ")[0] + "]" for p in got["problems"]] != [UNREADABLE]:
+                    out.append(f"{harness} digest broken: the {road} is not transcript-unreadable: {got['problems']}")
+        with take(harness) as path, mock.patch.object(mod.transcript_view, "events", lambda *a, **k: []):
+            if [p.split("] ")[0] + "]" for p in mod.vendor_take_view(path, harness)["problems"]] != [UNREADABLE]:
+                out.append(f"{harness}: an empty view is read as clean")
+    return out
+
+
+class P1Fixtures(unittest.TestCase):
+    def test_p1_fixtures_are_what_the_builder_writes(self):
+        self.assertEqual(vcf.problems(), [])
+        for folder in (vcf.F1, vcf.F2):
+            readme = (folder / "README.md").read_text(encoding="utf-8")
+            for p in sorted(x.relative_to(folder).as_posix() for x in folder.rglob("*")
+                            if x.is_file() and x.name != "README.md"):
+                with self.subTest(file=f"{folder.name}/{p}"):
+                    self.assertIn(f"- `{p}`: SYNTHETIC, ", readme)
+
+
+class P1Readers(unittest.TestCase):
+    def test_p1_view_and_reach_on_every_case(self):
+        self.assertEqual(p1_problems(ct), [])
+
+    def test_p1_raw_the_partition_is_response_items_exactly(self):
+        parts = (ct.CODEX_RESPONSE_READ, ct.CODEX_RESPONSE_NOT_TOOL, ct.CODEX_RESPONSE_REFUSED)
+        self.assertEqual(sorted(x for part in parts for x in part), sorted(codex_native.RESPONSE_ITEMS))
+        self.assertTrue(set(ct.CODEX_RESPONSE_RETURNED) <= set(ct.CODEX_RESPONSE_READ))
+        self.assertEqual(ct.VENDOR_JSON_DOCUMENTS, {"codex": {"function_call": ("arguments",)}, "gemini": {}})
+
+    def test_p1_raw_reads_cli_bytes_not_the_view(self):
+        with take("gemini", f3_gemini_list_directory) as path:
+            view = ct.vendor_take_view(path, "gemini")["events"]
+            self.assertIn({}, [e.args for e in view if e.kind == "tool-call"])     # the mapping drops dir_path
+            asked = [a for _, a, _ in ct.vendor_raw_records(path, "gemini") if a.get("tool_name") == "list_directory"]
+            self.assertEqual([a["parameters"] for a in asked], [{"dir_path": "evals/gap-study-4"}])
+        with take("codex", f3_codex_escaped) as path:
+            got = [a for w, a, _ in ct.vendor_raw_records(path, "codex") if a.get("type") == "function_call"]
+            self.assertEqual(got[-1]["arguments"], {"cmd": "cat evals/gap-study-4/prereg-draft.json"})
+
+    def test_p1_a_claude_code_take_is_refused(self):
+        with take("codex") as path:
+            for fn in (ct.vendor_take_view, ct.vendor_raw_records, ct.vendor_reach):
+                with self.subTest(reader=fn.__name__), self.assertRaises(ct.CheckRefused):
+                    fn(path, "claude-code")
+
+
+def ct_mutant(*edits):
+    """check_take.py compiled in memory with each (old, new) replaced; each old must occur exactly once."""
+    src = SOURCE
+    for old, new in edits:
+        if src.count(old) != 1:
+            raise AssertionError(f"mutation site occurs {src.count(old)} times in check_take.py: {old!r}")
+        src = src.replace(old, new)
+    name = "check_take_p1_mutant"
+    m = types.ModuleType(name)
+    m.__file__ = ct.__file__
+    sys.modules[name] = m
+    try:
+        exec(compile(src, ct.__file__ + " (witness)", "exec"), m.__dict__)  # noqa: S102
+    finally:
+        sys.modules.pop(name, None)
+    return m
+
+
+P1_WITNESSES = {
+    "ViewError swallowed": ((
+        '        return {"events": None, "problems": [f"[{TRANSCRIPT_UNREADABLE}] the {harness} view refuses the '
+        'take: {e}"]}\n', '        return {"events": [], "problems": []}\n'),),
+    "an empty view read as clean": (("    if not evs:\n", "    if False:\n"),),
+    "the view's args read in place of raw leaves": ((
+        '            out.append((f"{where} line {n}", rec, {}))\n',
+        '            out.append((f"{where} line {n}", {"args": _tx_gemini.tool_kind(rec)[1]}, {}))\n'),),
+    "CommandExecution only": (('        if rec["type"] != "response_item":\n            continue\n',
+                               '        if True:\n            continue\n'),),
+    "an unreadable tool record skipped": ((
+        '            raise VendorUnreadable(f"{at}: a response_item {kind}, which the vendor readers refuse")\n',
+        '            continue\n'),),
+    "the encoded arguments read as the leaf": (("    for field in documents:\n", "    for field in ():\n"),),
+    "an undecodable leaf read as text": ((
+        '        raise VendorUnreadable(f"{where}: {field} does not decode as the JSON document its record type '
+        'defines") from None\n', '        return value\n'),),
+    "the exec streams skipped": (('            out += read(raw.decode("utf-8"), env["stream"])\n',
+                                  '            pass\n'),),
+    "the rollout's CommandExecution items skipped": ((
+        '            out.append(_vendor_split(item, "CommandExecution", at))\n', '            pass\n'),),
+    "the native snapshot skipped": (('        out += read(raw, f"session/{name}")\n', '        pass\n'),),
+    "values only (MINOR 1)": (('"input": asked}', '"input": transcript_view._strings(asked)}'),
+                              ('"content": returned}', '"content": transcript_view._strings(returned)}')),
+    "the raw readers' refusal swallowed": ((
+        '        return {"problems": [f"[{TRANSCRIPT_UNREADABLE}] the {harness} raw records refuse the take: {e}"],\n',
+        '        return {"problems": [],\n'),),
+}
+
+
+class P1Witnesses(unittest.TestCase):
+    def test_p1_witness_each_mutant_goes_red(self):
+        for name, edits in P1_WITNESSES.items():
+            with self.subTest(witness=name):
+                self.assertNotEqual(p1_problems(ct_mutant(*edits)), [], f"witness {name} stayed green")
 
 
 if __name__ == "__main__":

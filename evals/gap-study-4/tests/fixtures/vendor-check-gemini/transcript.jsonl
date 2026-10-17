@@ -1,0 +1,2 @@
+{"type": "harness-turn", "harness": "gemini", "session_id": "5f0c1a2e-0000-5000-8000-0000000000f1", "vendor_session_id": "1a2b3c4d-0000-4000-8000-0000000000f2", "n": 1, "sent": "sent 1", "stream": "turn-1.jsonl", "sha256": "666c730d5eba3b4d391204097be472613ffc102aeaa6de7296e9422eb3cae45c"}
+{"type": "harness-turn", "harness": "gemini", "session_id": "5f0c1a2e-0000-5000-8000-0000000000f1", "vendor_session_id": "1a2b3c4d-0000-4000-8000-0000000000f2", "n": 2, "sent": "sent 2", "stream": "turn-2.jsonl", "sha256": "d4854a9edc3777507a9a1386e95f909b912031348bc2bb9983c655157221acae"}

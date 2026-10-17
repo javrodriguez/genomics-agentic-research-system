@@ -1,0 +1,205 @@
+#!/usr/bin/env python3
+"""F1 and F2, the synthetic vendor take folders of tests/test_vendor_check.py (lane-reports/vendor-T4-PLAN.md v4,
+section 8; ruled READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word "vendor-t4: yes").
+
+  F1  tests/fixtures/vendor-check-codex/   a two-turn codex take: transcript.jsonl (the host's turn envelopes),
+      driver-ledger.json, turn-<k>.jsonl (`codex exec --json` streams, each bound by its envelope's sha256) and
+      session/native-turn-<k>.jsonl (the rollout retained after turn k, response_item tool records included), from
+      test_pending_codex_walk's generators.
+  F2  tests/fixtures/vendor-check-gemini/  the same for gemini: `-o stream-json` streams and the retained native
+      session snapshots, from test_pending_walk's accepted Gemini walk.
+
+They hold the files P1's readers read (the bound view and the raw records); the launch journals, session-store.json
+and environment.json land with the pieces whose readers read them (P4 and P5). Every file is SYNTHETIC, written by
+this module from the documented shapes, and its folder's README carries the label list. An F3 variant is these
+parts edited in a test and written by the same writer into a scratch folder, its digests recomputed, so a variant
+differs from F1 or F2 only where its edit says.
+
+    python3 tests/vendor_check_fixtures.py --write    rewrite both folders
+    python3 tests/vendor_check_fixtures.py --check    exit 1 unless both folders are what this module writes
+"""
+from __future__ import annotations
+
+import copy
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+FIXTURES = HERE / "fixtures"
+F1, F2 = FIXTURES / "vendor-check-codex", FIXTURES / "vendor-check-gemini"
+SID = "5f0c1a2e-0000-5000-8000-0000000000f1"          # the driver's take identity (the ledger's session_id)
+TURNS = 2
+
+CODEX_TID = "00000000-0000-7000-8000-0000000000f1"    # the thread id codex mints at turn 1
+CODEX_CLI = "0.162.1"
+CODEX_MODEL = "gpt-6-luna"
+CODEX_USAGE = {"input_tokens": 3, "cached_input_tokens": 0, "output_tokens": 2, "reasoning_output_tokens": 0}
+
+GEMINI_SID = "1a2b3c4d-0000-4000-8000-0000000000f2"   # the session id gemini mints
+GEMINI_CLI = "0.64.0"
+GEMINI_MODEL = "gemini-3.8-flash"
+GEMINI_TS = "2026-10-14T00:00:00.000Z"
+GEMINI_STATS = {"total_tokens": 3, "input_tokens": 2, "output_tokens": 1, "cached": 0, "input": 2, "duration_ms": 5,
+                "tool_calls": 1, "models": {GEMINI_MODEL: {"total_tokens": 3, "input_tokens": 2, "output_tokens": 1,
+                                                           "cached": 0, "input": 2}}}
+LABEL = "SYNTHETIC, written by tests/vendor_check_fixtures.py from the documented shapes, not a recorded take."
+
+
+def sent(k: int) -> str:
+    return f"sent {k}"
+
+
+# ---- the parts: plain data a test edits before writing ------------------------------------------------------------
+def codex_parts() -> dict:
+    """{"streams": {k: [exec records]}, "meta": session_meta payload, "rollout": {k: [(line type, payload)]}}."""
+    streams, rollout = {}, {}
+    for k in range(1, TURNS + 1):
+        cmd = {"id": "item_0", "type": "command_execution", "command": "ls"}
+        streams[k] = [{"type": "thread.started", "thread_id": CODEX_TID}, {"type": "turn.started"},
+                      {"type": "item.started", "item": dict(cmd, status="in_progress")},
+                      {"type": "item.completed", "item": dict(cmd, aggregated_output=f"out {k}", exit_code=0,
+                                                              status="completed")},
+                      {"type": "item.completed", "item": {"id": "item_1", "type": "agent_message", "text": "Done."}},
+                      {"type": "turn.completed", "usage": dict(CODEX_USAGE)}]
+        tid = f"t{k}"
+
+        def done(item):
+            return ("event_msg", {"type": "item_completed", "thread_id": CODEX_TID, "turn_id": tid, "item": item,
+                                  "completed_at_ms": 0})
+        rollout[k] = [
+            ("event_msg", {"type": "task_started", "turn_id": tid, "model_context_window": None,
+                           "collaboration_mode_kind": "default"}),
+            ("turn_context", {"turn_id": tid, "cwd": "/work/tree", "approval_policy": "never",
+                              "sandbox_policy": {"type": "danger-full-access"}, "model": CODEX_MODEL}),
+            ("response_item", {"type": "message", "role": "user", "content": [{"type": "input_text",
+                                                                               "text": sent(k)}]}),
+            done({"type": "UserMessage", "id": f"u{k}", "content": [{"type": "text", "text": sent(k),
+                                                                     "text_elements": []}]}),
+            ("response_item", {"type": "function_call", "name": "exec_command", "call_id": f"call_{k}",
+                               "arguments": json.dumps({"cmd": "ls", "workdir": "/work/tree"})}),
+            done({"type": "CommandExecution", "id": f"c{k}", "command": ["ls"], "cwd": "/work/tree", "parsed_cmd": [],
+                  "source": "agent", "status": "completed", "aggregated_output": f"out {k}", "exit_code": 0}),
+            ("response_item", {"type": "function_call_output", "call_id": f"call_{k}", "output": f"out {k}"}),
+            ("response_item", {"type": "message", "role": "assistant", "content": [{"type": "output_text",
+                                                                                    "text": "Done."}]}),
+            done({"type": "AgentMessage", "id": f"m{k}", "content": [{"type": "Text", "text": "Done."}],
+                  "phase": "final_answer"}),
+            ("event_msg", {"type": "task_complete", "turn_id": tid, "last_agent_message": "Done."}),
+        ]
+    meta = {"session_id": CODEX_TID, "id": CODEX_TID, "timestamp": "2026-10-14T05:00:00.000Z", "cwd": "/work/tree",
+            "originator": "codex_exec", "cli_version": CODEX_CLI, "source": "exec", "model_provider": "openai",
+            "base_instructions": {"text": "synthetic"}, "history_mode": "paginated"}
+    return {"streams": streams, "meta": meta, "rollout": rollout}
+
+
+def gemini_tool_call(k: int) -> dict:
+    cid = f"call-{k}"
+    return {"id": cid, "name": "read_file", "args": {"file_path": "notes.txt"}, "status": "success",
+            "resultDisplay": "display text",
+            "result": [{"functionResponse": {"id": cid, "name": "read_file", "response": {"output": "x"}}}]}
+
+
+def gemini_parts() -> dict:
+    """{"streams": {k: [stream records]}, "meta": the snapshot's metadata record, "native": {k: [messages]}}."""
+    streams, native = {}, {}
+    for k in range(1, TURNS + 1):
+        def ev(t, **kw):
+            return dict({"type": t, "timestamp": GEMINI_TS}, **kw)
+        streams[k] = [ev("init", session_id=GEMINI_SID, model=GEMINI_MODEL),
+                      ev("message", role="user", content=sent(k)),
+                      ev("message", role="assistant", content="I'll read it.", delta=True),
+                      ev("tool_use", tool_name="read_file", tool_id=f"call-{k}", parameters={"file_path": "notes.txt"}),
+                      ev("tool_result", tool_id=f"call-{k}", status="success", output="display text"),
+                      ev("message", role="assistant", content="Done.", delta=True),
+                      ev("result", status="success", stats=copy.deepcopy(GEMINI_STATS))]
+        native[k] = [{"id": f"u{k}", "type": "user", "content": [{"text": sent(k)}]},
+                     {"id": f"a{k}", "type": "gemini", "model": GEMINI_MODEL, "content": "I'll read it.",
+                      "toolCalls": [gemini_tool_call(k)]},
+                     {"id": f"rt{k}", "type": "user", "content": [
+                         {"functionResponse": {"id": f"call-{k}", "name": "read_file", "response": {"output": "x"}}}]},
+                     {"id": f"b{k}", "type": "gemini", "model": GEMINI_MODEL, "content": "Done."}]
+    meta = {"sessionId": GEMINI_SID, "projectHash": "project-1", "summary": "synthetic"}
+    return {"streams": streams, "meta": meta, "native": native}
+
+
+# ---- the writer ---------------------------------------------------------------------------------------------------
+def _jl(records) -> bytes:
+    return "".join(json.dumps(r) + "\n" for r in records).encode("utf-8")
+
+
+def _codex_snapshot(parts: dict, upto: int) -> bytes:
+    recs = []
+    for t, pay in [("session_meta", parts["meta"])] + [x for k in range(1, upto + 1) for x in parts["rollout"][k]]:
+        recs.append({"timestamp": f"2026-10-14T05:00:{len(recs):02d}.000Z", "ordinal": len(recs), "type": t,
+                     "payload": pay})
+    return _jl(recs)
+
+
+def _gemini_snapshot(parts: dict, upto: int) -> bytes:
+    return _jl([parts["meta"]] + [m for k in range(1, upto + 1) for m in parts["native"][k]])
+
+
+def files(harness: str, parts: dict | None = None) -> dict:
+    """{relative path: bytes} of one take folder of `harness` built from `parts` (its default parts when None)."""
+    if harness == "codex":
+        parts = codex_parts() if parts is None else parts
+        vendor_id, version, snapshot = CODEX_TID, CODEX_CLI, _codex_snapshot
+    else:
+        parts = gemini_parts() if parts is None else parts
+        vendor_id, version, snapshot = GEMINI_SID, GEMINI_CLI, _gemini_snapshot
+    out, envelopes, snaps = {}, [], []
+    turns = sorted(parts["streams"])
+    for k in turns:
+        name = f"turn-{k}.jsonl"
+        out[name] = _jl(parts["streams"][k])
+        envelopes.append({"type": "harness-turn", "harness": harness, "session_id": SID,
+                          "vendor_session_id": vendor_id, "n": k, "sent": sent(k), "stream": name,
+                          "sha256": hashlib.sha256(out[name]).hexdigest()})
+        raw = snapshot(parts, k)
+        out[f"session/native-turn-{k}.jsonl"] = raw
+        snaps.append({"file": f"native-turn-{k}.jsonl", "sha256": hashlib.sha256(raw).hexdigest()})
+    out["transcript.jsonl"] = _jl(envelopes)
+    ledger = {"kind": "take", "agent": {"harness": harness, "version": version}, "session_id": SID,
+              "turns": [{"n": k, "sent": sent(k)} for k in turns], "streams": [f"turn-{k}.jsonl" for k in turns],
+              "transcript": "transcript.jsonl", "native_snapshots": snaps}
+    out["driver-ledger.json"] = (json.dumps(ledger, indent=2) + "\n").encode("utf-8")
+    title = {"codex": "F1, a synthetic codex take", "gemini": "F2, a synthetic gemini take"}[harness]
+    readme = [f"# {title} (lane vendor-admission T4, plan v4 section 8)", "",
+              "Written by tests/vendor_check_fixtures.py (`--write`; `--check` binds this folder to it). Labels:", ""]
+    readme += [f"- `{p}`: {LABEL}" for p in sorted(out)]
+    out["README.md"] = ("\n".join(readme) + "\n").encode("utf-8")
+    return out
+
+
+def write(folder: Path, harness: str, parts: dict | None = None) -> Path:
+    """Write one take folder; returns its transcript.jsonl."""
+    folder = Path(folder)
+    for rel, data in files(harness, parts).items():
+        (folder / rel).parent.mkdir(parents=True, exist_ok=True)
+        (folder / rel).write_bytes(data)
+    return folder / "transcript.jsonl"
+
+
+def problems() -> list:
+    out = []
+    for folder, harness in ((F1, "codex"), (F2, "gemini")):
+        want = files(harness)
+        have = {p.relative_to(folder).as_posix() for p in folder.rglob("*") if p.is_file()} if folder.is_dir() else set()
+        out += [f"{folder.name}/{p}: not written by this module" for p in sorted(have - set(want))]
+        out += [f"{folder.name}/{p}: missing or differs" for p, data in sorted(want.items())
+                if p not in have or (folder / p).read_bytes() != data]
+    return out
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] == ["--write"]:
+        for folder, harness in ((F1, "codex"), (F2, "gemini")):
+            write(folder, harness)
+        raise SystemExit(0)
+    if sys.argv[1:] == ["--check"]:
+        bad = problems()
+        print("\n".join(bad) or "ok: F1 and F2 are what tests/vendor_check_fixtures.py writes")
+        raise SystemExit(1 if bad else 0)
+    raise SystemExit("usage: vendor_check_fixtures.py --write | --check")

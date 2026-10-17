@@ -14,7 +14,7 @@
     {
       "path": "tests/test_freeze_shapes.py",
       "status": "new",
-      "reason": "Lane vendor-admission T3 (glitch-b5, 16 Oct 2026), ruling Q-3: freeze.main against a temporary folder with faked git, review, pins, prepare and writer refuses a fixture draft with an O row, a G row or both while that adapter's SHAPES_SOURCE is \"documented\", naming each arm and writing nothing, and passes once it is patched to \"recorded\"; a claude-code-only draft passes; on the committed draft unrecorded_shapes_problem names arms O and G; freeze.py --check is unchanged. Round-2 ruling 2: each adapter's SHAPES_SOURCE docstring paragraph names freeze.py's refusal of its arm, never a later slice. Two in-memory witnesses (the call deleted, the comparison disabled) go red. Lane vendor-admission T4 PF (glitch-b5's ruling of the v4 plan, Sat 17 Oct 2026): FS-check, the freeze gate's three legs per vendor harness (i the adapter's SHAPES_SOURCE, ii check_take.VENDOR_CHECK_SHAPES_SOURCE recorded with every VENDOR_PENDING_ROWS row settled, iii production_readers holding the harness): each leg refuses alone, naming the arm, the leg and for ii the row, a refusing registry by name; all three pass; three more witnesses (leg ii's comparison, its settled condition, leg iii) go red. FS-main's passing cases settle all three legs, and a case with legs ii and iii settled keeps leg i's witnesses meaningful."
+      "reason": "Lane vendor-admission T3 (glitch-b5, 16 Oct 2026), ruling Q-3: freeze.main against a temporary folder with faked git, review, pins, prepare and writer refuses a fixture draft with an O row, a G row or both while that adapter's SHAPES_SOURCE is \"documented\", naming each arm and writing nothing, and passes once it is patched to \"recorded\"; a claude-code-only draft passes; on the committed draft unrecorded_shapes_problem names arms O and G; freeze.py --check is unchanged. Round-2 ruling 2: each adapter's SHAPES_SOURCE docstring paragraph names freeze.py's refusal of its arm, never a later slice. Two in-memory witnesses (the call deleted, the comparison disabled) go red. Lane vendor-admission T4 PF (glitch-b5's ruling of the v4 plan, Sat 17 Oct 2026): FS-check, the freeze gate's three legs per vendor harness (i the adapter's SHAPES_SOURCE, ii check_take.VENDOR_CHECK_SHAPES_SOURCE recorded with every VENDOR_PENDING_ROWS row settled, iii production_readers holding the harness): each leg refuses alone, naming the arm, the leg and for ii the row, a refusing registry by name; all three pass; three more witnesses (leg ii's comparison, its settled condition, leg iii) go red. FS-main's passing cases settle all three legs, and a case with legs ii and iii settled keeps leg i's witnesses meaningful. Round 8 ruling 1 (review e7496cf NIT 1): a registry that cannot run (FileNotFoundError for a missing git, any OSError) refuses naming the arm and leg iii, and a witness deleting that refusal goes red."
     },
     {
       "path": "tests/test_vendor_script.py",
@@ -24,7 +24,82 @@
     {
       "path": "tests/test_vendor_check.py",
       "status": "new",
-      "reason": "Lane vendor-admission T4 (lane-reports/vendor-T4-PLAN.md v4, ruled READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word \"vendor-t4: yes\"). PF: VP-rows (check_take.VENDOR_PENDING_ROWS holds exactly the comparability table's PENDING keys with their reason ids, all PENDING; no event id), VP-helper (vendor_pending refuses a PENDING key under its reason id, raises KeyError for an unknown key, and calls a settled key's reader only when the call site hands in the very function the row names, else CheckRefused: review 36ce125 MINOR 2), VP-keys (vendor_pending's call sites read from the AST: literal keys of the map, the settled reader named, the refusal text only inside the helper; three synthetic-source mutants go red; the live key equality lands with P2's call sites), VP-fixtures (a SAME row names a fixture labelled RECORDED on its CLI; recorded shapes need every row settled) and the source-list checker's cases. Fakes and synthetic sources only."
+      "reason": "Lane vendor-admission T4 (lane-reports/vendor-T4-PLAN.md v4, ruled READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word \"vendor-t4: yes\"). PF: VP-rows (check_take.VENDOR_PENDING_ROWS holds exactly the comparability table's PENDING keys with their reason ids, all PENDING; no event id), VP-helper (vendor_pending refuses a PENDING key under its reason id, raises KeyError for an unknown key, and calls a settled key's reader only when the call site hands in the very function the row names, else CheckRefused: review 36ce125 MINOR 2), VP-keys (vendor_pending's call sites read from the AST: literal keys of the map, the settled reader named, the refusal text only inside the helper; three synthetic-source mutants go red; the live key equality lands with P2's call sites), VP-fixtures (a SAME row names a fixture labelled RECORDED on its CLI; recorded shapes need every row settled) and the source-list checker's cases. Fakes and synthetic sources only. P1 (plan sections 4 and 9; review 36ce125 MINOR 1, ruling 1 of 12:35): P1-fixtures (F1 and F2 are what tests/vendor_check_fixtures.py writes, every file labelled SYNTHETIC), P1-view (vendor_take_view reads the bound view; a stream off its envelope's digest, or a view holding no event, is transcript-unreadable; a claude-code take refuses), P1-raw (vendor_raw_records reads every tool record of every source from the CLI-written bytes; the codex response_item partition equals codex_native.RESPONSE_ITEMS), P1-reach (F3 cases each firing study-materials-reached, read-outside-the-checkout's checkout leg or transcript-unreadable on one source, a study path only as an object key among them) and P1-witness (twelve in-memory check_take mutants go red). Round 8 ruling 2: a row's reader is a function defined in check_take."
+    },
+    {
+      "path": "tests/vendor_check_fixtures.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1 (plan v4 section 8): writes and checks F1 (tests/fixtures/vendor-check-codex/) and F2 (tests/fixtures/vendor-check-gemini/), the synthetic two-turn codex and gemini take folders P1's readers read (turn envelopes, driver ledger, digest-bound turn streams, retained native snapshots), from test_pending_codex_walk's and test_pending_walk's generators; tests/test_vendor_check.py builds its F3 variants from the same parts. Standard library only."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/README.md",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/driver-ledger.json",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/session/native-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/session/native-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/transcript.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/README.md",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/driver-ledger.json",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/session/native-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/session/native-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/transcript.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
     },
     {
       "path": "tests/check_vendor_sources.py",
