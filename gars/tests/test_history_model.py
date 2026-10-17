@@ -312,7 +312,11 @@ class AuthoringTests(unittest.TestCase):
                          ('wl.complete_manifest(substage, model, "COMPLETE")',
                           'wl.complete_manifest(substage, args.model, "COMPLETE")'),
                          ('wl.collect_failure(substage, result, EXIT_FAILURE, model)',
-                          'wl.collect_failure(substage, result, EXIT_FAILURE, args.model)')):
+                          'wl.collect_failure(substage, result, EXIT_FAILURE, args.model)'),
+                         # REVIEW-85a1b4a finding 3: line 222 kept, the flag through a variable.
+                         ('    result = {"command": "collect", "ok": False,',
+                          '    model = args.model or model\n'
+                          '    result = {"command": "collect", "ok": False,')):
             with self.subTest(line=new):
                 code, payload = self.conform_mutant(old, new)
                 self.assertEqual(code, 1, payload)
