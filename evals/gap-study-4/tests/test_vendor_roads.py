@@ -18,8 +18,22 @@ take's checkout, P2 writes it with its own red test; lane-reports/vendor-T4-PLAN
   R6-witness  walk_builders.py and box/take_config.py compiled in memory with the copy skipped, its bytes altered,
               the other CLI's name placed, the commit not amended, and a fallback name configured: each goes red.
 
+Round 10 (glitch-b5, Sat 17 Oct 2026, confirmed to the cloud session the same day), ruling 1: the account record
+is account-emails.json in the private folder that holds run_take.WALK_LOGIN_FILES' account folders, outside every
+repository, mode 600: a JSON object with exactly the keys "operator", "codex" and "gemini", each value an email
+address, read by name at scan time; the reader and its refusals live in walk_builders.
+
+  AE-record   walk_builders.account_emails_path names that file (WALK_LOGIN_FILES absent, or its account folders
+              under two parents, refuses by name); account_emails(harness) on a TEST DATA record reads the operator's
+              address and the harness's account address, in that order; a missing file, a missing key for the take's
+              harness (the other vendor's key may be absent), an extra key, a value that is not an address, a file
+              that is not a JSON object, a mode other than 600, a link, a file inside a repository, and a harness
+              that is neither codex nor gemini each refuse by name, and no refusal carries an address.
+  AE-witness  walk_builders.py compiled in memory with each of the extra-key, address, missing-key and mode checks
+              deleted goes red.
+
 Scratch repositories and fakes only, under test_walk_builders' module setup: no take, model, vendor, network,
-Docker, credential or holdout.
+Docker, credential or holdout. Every address here is TEST DATA under the reserved .invalid domain.
 """
 
 from __future__ import annotations
@@ -27,6 +41,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import json
+import os
 import sys
 import tempfile
 import tomllib
@@ -165,6 +180,114 @@ def compiled(path: Path, name: str, edits=()) -> types.ModuleType:
     return mod
 
 
+# ------------------------------------------------------------------------------------------- the account record
+# TEST DATA only: clearly fake addresses under the reserved .invalid domain, never a real account's.
+OPERATOR = "operator@example.invalid"
+CODEX_ACCOUNT = "codex-account@example.invalid"
+GEMINI_ACCOUNT = "gemini-account@example.invalid"
+RECORD = {"operator": OPERATOR, "codex": CODEX_ACCOUNT, "gemini": GEMINI_ACCOUNT}
+ADDRESSES = (OPERATOR, CODEX_ACCOUNT, GEMINI_ACCOUNT)
+
+
+@contextlib.contextmanager
+def account_folder(record=RECORD, *, raw=None, mode=0o600):
+    """A private folder laid out as the box's: one folder per run_take.WALK_LOGIN_FILES account (patched to it), and
+    account-emails.json beside them holding `record` as JSON (or `raw` text; neither: no file). Yields the file."""
+    with tempfile.TemporaryDirectory() as t:
+        top = Path(t) / "secrets"
+        top.mkdir(mode=0o700)
+        files = {}
+        for account in ("claude1", "r4-g"):
+            (top / account).mkdir(mode=0o700)
+            files[account] = str(top / account / "login")
+        f = top / "account-emails.json"
+        if record is not None or raw is not None:
+            f.write_text(raw if raw is not None else json.dumps(record))
+            os.chmod(f, mode)
+        with mock.patch.object(twb.rt, "WALK_LOGIN_FILES", files, create=True):
+            yield f
+
+
+def refusal(wb_mod, fn, *args) -> str | None:
+    """fn(*args)'s BuilderRefused message, or None when it was admitted."""
+    try:
+        fn(*args)
+    except wb_mod.BuilderRefused as e:
+        return str(e)
+    return None
+
+
+def record_problems(wb_mod) -> list:
+    """AE-record on one walk_builders module (the real one or a witness): [] or each failure."""
+    out = []
+    if not callable(getattr(wb_mod, "account_emails", None)) or not callable(
+            getattr(wb_mod, "account_emails_path", None)):
+        return ["AE-record: walk_builders has no account_emails reader (round 10 ruling 1)"]
+    said = []
+
+    def refused(label, fn, *args, naming=()):
+        why = refusal(wb_mod, fn, *args)
+        if why is None:
+            out.append(f"AE-record: {label} was admitted")
+            return
+        said.append(why)
+        for name in ("account-emails.json",) + tuple(naming):
+            if name not in why:
+                out.append(f"AE-record: {label} refused without naming {name}: {why}")
+
+    with account_folder() as f:
+        if wb_mod.account_emails_path() != str(f):
+            out.append(f"AE-record: the record's path is {wb_mod.account_emails_path()!r}, not {str(f)!r}")
+        for harness, want in (("codex", (OPERATOR, CODEX_ACCOUNT)), ("gemini", (OPERATOR, GEMINI_ACCOUNT))):
+            try:
+                got = tuple(wb_mod.account_emails(harness))
+            except wb_mod.BuilderRefused as e:
+                out.append(f"AE-record: a complete record refused {harness}: {e}")
+                continue
+            if got != want:
+                out.append(f"AE-record: {harness} read {got!r}, not the operator's and its account's addresses")
+        for harness in ("claude-code", "synthetic-harness"):
+            refused(f"a {harness} take", wb_mod.account_emails, harness, naming=(harness,))
+        os.chmod(f, 0o644)
+        refused("a record of mode 644", wb_mod.account_emails, "codex", naming=("600",))
+        os.chmod(f, 0o600)
+        link = f.parent / "account-emails-link.json"
+        link.symlink_to(f)
+        refused("a link to the record", wb_mod.account_emails, "codex", str(link), naming=("link",))
+        (f.parent / ".git").mkdir()
+        refused("a record inside a repository", wb_mod.account_emails, "codex", naming=("repository",))
+    with mock.patch.object(twb.rt, "WALK_LOGIN_FILES", None, create=True):
+        refused("a tree without WALK_LOGIN_FILES", wb_mod.account_emails_path, naming=("WALK_LOGIN_FILES",))
+    with account_folder() as f:
+        twb.rt.WALK_LOGIN_FILES["r4-g"] = str(f.parent.parent / "elsewhere" / "r4-g" / "login")
+        refused("account folders under two parents", wb_mod.account_emails_path, naming=("WALK_LOGIN_FILES",))
+    with account_folder(None):
+        for harness in ("codex", "gemini"):
+            refused(f"no record ({harness})", wb_mod.account_emails, harness)
+    with account_folder({"operator": OPERATOR, "codex": CODEX_ACCOUNT}):
+        if refusal(wb_mod, wb_mod.account_emails, "codex") is not None:
+            out.append("AE-record: a codex take refused for the gemini key's absence")
+        refused("a gemini take with no gemini key", wb_mod.account_emails, "gemini", naming=('"gemini"',))
+    with account_folder({"codex": CODEX_ACCOUNT, "gemini": GEMINI_ACCOUNT}):
+        for harness in ("codex", "gemini"):
+            refused(f"no operator key ({harness})", wb_mod.account_emails, harness, naming=('"operator"',))
+    with account_folder(dict(RECORD, claude="claude-account@example.invalid")):
+        for harness in ("codex", "gemini"):
+            refused(f"an extra key ({harness})", wb_mod.account_emails, harness, naming=('"claude"',))
+    for value in ("not-an-address", "two@example", "a b@example.invalid", "x@example.invalid\n", "@example.invalid",
+                  "", 42, None, ["codex-account@example.invalid"]):
+        with account_folder(dict(RECORD, codex=value)):
+            refused(f"a codex value {value!r}", wb_mod.account_emails, "codex", naming=('"codex"',))
+    for label, raw in (("a JSON list", json.dumps([RECORD])), ("text that is not JSON", "{operator"),
+                       ("an empty file", "")):
+        with account_folder(raw=raw):
+            refused(label, wb_mod.account_emails, "codex")
+    for why in said:
+        if any(a in why for a in ADDRESSES + ("claude-account@example.invalid",)):
+            out.append(f"AE-record: a refusal carries an address: {why}")
+    return out
+
+
 class R6Config(twb.Drafted):
     def test_r6_no_configured_fallback_name(self):
         from box import take_config
@@ -213,6 +336,28 @@ class R6Witnesses(twb.Drafted):
                             ("GEMINI_SETTINGS", take_config.GEMINI_SETTINGS + (("context.fileName", ["CLAUDE.md"]),))):
             with self.subTest(witness=attr), mock.patch.object(take_config, attr, value):
                 self.assertNotEqual(config_problems(take_config), [], f"a fallback in {attr} stayed green")
+
+
+class AERecord(twb.Drafted):
+    def test_ae_the_account_record_is_read_and_refused_by_name(self):
+        self.assertEqual(record_problems(twb.wb()), [])
+
+
+AE_WITNESSES = {
+    "the extra-key check deleted": "    if extra:\n",
+    "the address check deleted": "        if not _is_address(value):\n",
+    "the missing-key check deleted": "        if key not in doc:\n",
+    "the mode check deleted": "    if stat.S_IMODE(st.st_mode) != 0o600:\n        raise BuilderRefused(f\"{path}: the account record",
+}
+
+
+class AEWitnesses(twb.Drafted):
+    def test_ae_witness_each_record_mutant_goes_red(self):
+        for name, site in AE_WITNESSES.items():
+            with self.subTest(witness=name):
+                new = site.replace("    if ", "    if False and ", 1)
+                mod = compiled(HERE / "walk_builders.py", "walk_builders_ae_witness", ((site, new),))
+                self.assertNotEqual(record_problems(mod), [], f"witness {name} stayed green")
 
 
 if __name__ == "__main__":
