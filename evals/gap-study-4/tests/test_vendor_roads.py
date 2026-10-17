@@ -12,11 +12,14 @@ take's checkout, P2 writes it with its own red test; lane-reports/vendor-T4-PLAN
   R6-road     walk_builders.build_run_tree(..., harness=) on a scratch origin whose commit carries CLAUDE.md: a codex
               checkout carries AGENTS.md and a gemini one GEMINI.md, each byte-identical to the commit's CLAUDE.md
               (sha256 equal), in the checkout's one commit (its neutral subject, a clean status, run_tree_problems
-              empty); neither carries the other's name, and a claude-code checkout carries neither. An origin with no
+              empty); neither carries the other's name, and a claude-code checkout carries neither. Round 10 ruling 3:
+              every CLAUDE.md of the checkout gets the copy, so gars/ carries the same native file with gars/CLAUDE.md's
+              bytes, in the same one commit, and an origin already carrying gars/AGENTS.md refuses. An origin with no
               root CLAUDE.md, or one whose commit already carries the native name, refuses and leaves nothing.
               walk_builders.prepare hands build_run_tree the row's harness.
   R6-witness  walk_builders.py and box/take_config.py compiled in memory with the copy skipped, its bytes altered,
-              the other CLI's name placed, the commit not amended, and a fallback name configured: each goes red.
+              the other CLI's name placed, the commit not amended, a fallback name configured, and (round 10
+              ruling 3) the nested copies skipped: each goes red.
 
 Round 10 (glitch-b5, Sat 17 Oct 2026, confirmed to the cloud session the same day), ruling 1: the account record
 is account-emails.json in the private folder that holds run_take.WALK_LOGIN_FILES' account folders, outside every
@@ -70,6 +73,7 @@ import test_walk_builders as twb  # noqa: E402
 
 tbi = twb.tbi
 PINNED_TEXT = "# Synthetic instructions\n\nRead the project's README first.\n"
+NESTED_TEXT = "# Synthetic workspace instructions\n"
 NATIVE = {"codex": "AGENTS.md", "gemini": "GEMINI.md"}
 
 
@@ -88,7 +92,7 @@ def origin(claude_md=PINNED_TEXT, extra=None):
         (repo / "src").mkdir()
         (repo / "src" / "a.txt").write_text("synthetic source\n")
         (repo / "gars").mkdir()
-        (repo / "gars" / "CLAUDE.md").write_text("# Synthetic workspace instructions\n")
+        (repo / "gars" / "CLAUDE.md").write_text(NESTED_TEXT)
         (repo / "evals").mkdir()
         (repo / "evals" / "hidden.txt").write_text("synthetic study file\n")
         if claude_md is not None:
@@ -132,8 +136,21 @@ def road_problems(wb_mod) -> list:
                 out.append(f"{harness}: the checkout is not one commit, its neutral subject and a clean status")
             if drive.run_tree_problems(tree, twb.walk_sid("w-0001"), ["evals"]):
                 out.append(f"{harness}: run_tree_problems on the built checkout")
+            # round 10 ruling 3: every CLAUDE.md of the checkout, gars/CLAUDE.md included, gets the copy beside it
+            nested = (tree / "gars" / "CLAUDE.md").read_bytes()
+            for name in NATIVE.values():
+                present = (tree / "gars" / name).exists()
+                if present != (name == want):
+                    out.append(f"{harness}: gars/ {'carries' if present else 'lacks'} {name}")
+            if want and (tree / "gars" / want).is_file():
+                placed = (tree / "gars" / want).read_bytes()
+                if placed != nested or hashlib.sha256(placed).digest() != hashlib.sha256(NESTED_TEXT.encode()).digest():
+                    out.append(f"{harness}: gars/{want} is not gars/CLAUDE.md's bytes")
+                if tbi.git_bytes(tree, "show", f"HEAD:gars/{want}") != placed:
+                    out.append(f"{harness}: gars/{want} is not in the checkout's one commit")
     for label, kw in (("an origin with no root CLAUDE.md", {"claude_md": None}),
-                      ("an origin already carrying AGENTS.md", {"extra": {"AGENTS.md": "# other\n"}})):
+                      ("an origin already carrying AGENTS.md", {"extra": {"AGENTS.md": "# other\n"}}),
+                      ("an origin already carrying gars/AGENTS.md", {"extra": {"gars/AGENTS.md": "# other\n"}})):
         with origin(**kw) as (repo, sha), twb.temp_root() as tmp:
             try:
                 wb_mod.build_run_tree("w-0001", repo=repo, commit=sha, exclude=["evals"], harness="codex")
@@ -412,6 +429,9 @@ WB_WITNESSES = {
     "the other CLI's name": ('    name = take_config.INSTRUCTION_FILES.get(harness)\n',
                              '    name = {"codex": "GEMINI.md", "gemini": "AGENTS.md"}.get(harness)\n'),
     "the commit not amended": ('        ("commit", "-q", "--amend", "--no-verify", "--no-edit"),\n', ""),
+    "the nested copies skipped (round 10 ruling 3)": (
+        '    sources = sorted(p for p in listed if p == "CLAUDE.md" or p.endswith("/CLAUDE.md"))\n',
+        '    sources = ["CLAUDE.md"]\n'),
 }
 
 
