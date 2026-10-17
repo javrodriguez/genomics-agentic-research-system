@@ -267,5 +267,26 @@ class WrapperCollectTests(unittest.TestCase):
                          ['unknown'])
 
 
+
+class ContractWordingTests(unittest.TestCase):
+    """The contracts and gars/CLAUDE.md never ask an agent to name its own model (ruling Q2)."""
+
+    def test_no_contract_passes_model_and_each_writer_step_says_never(self):
+        readers = sorted(GARS.rglob('CONTEXT.md')) + [GARS / 'CLAUDE.md',
+                                                      GARS / '_references/contract_standard.md']
+        for path in readers:
+            if 'projects' in path.relative_to(GARS).parts:
+                continue
+            text = path.read_text(encoding='utf-8')
+            with self.subTest(path=str(path.relative_to(GARS))):
+                asked = [w for w in ('--model "', '"model":') if w in text]
+                asked += re.findall(r'model id (?:that )?you are running as', text)
+                self.assertEqual(asked, [], 'asks the agent for its own model')
+                if re.search(r'\b(finalize|verify|collect)\b.*--project', text) or \
+                        path.name == 'CLAUDE.md':
+                    self.assertTrue(re.search(r'(?i)(never pass|pass no) `--model`', text),
+                                    'never says not to pass --model')
+
+
 if __name__ == '__main__':
     unittest.main()
