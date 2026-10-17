@@ -83,6 +83,22 @@ def mutant(edits):
     return read
 
 
+def templates(text):
+    """{template id: its fenced block} from the Response Format section."""
+    return dict(re.findall(r'^\*\*(T\d+) — [^*]+\*\*\n```\n(.*?)```',
+                           section(text, 'Response Format'), re.M | re.S))
+
+
+def last_in_assay():
+    """The sub-stage contracts that come last in their assay's row of the assay map."""
+    last = {}
+    for line in (GARS / '_references/assay_stage_skill_map.md').read_text().splitlines():
+        cells = [cell.strip() for cell in line.strip('|').split('|')]
+        if len(cells) > 3 and cells[2] == '02_bioinformatics':
+            last[cells[1]] = '02_bioinformatics/%s/%s/CONTEXT.md' % (cells[1], cells[3])
+    return set(last.values())
+
+
 NFCORE = tuple(path for path in SUBSTAGES if '/01_nfcore-' in path)
 STAGE03 = '03_custom_analysis/CONTEXT.md'
 # The review's in-memory mutants (REVIEW-d699112 finding 2, ruling 2): each removes or
@@ -111,6 +127,32 @@ class ClosedProjectContractTests(unittest.TestCase):
         for name, edits in sorted(MUTANTS.items()):
             with self.subTest(mutant=name):
                 self.assertNotEqual(silent_steps(mutant(edits))[1], [], name)
+
+    def test_stage02_passes_3a_on_a_nonpublic_project_once_the_config_is_done(self):
+        # Walk stage 02's Process as the agent on a non-public project, who cannot Read
+        # _config/<Assay ID>.yaml (ruling 1 of round 2): step 3a's non-public branch must ask
+        # the user (a template ending in a question), go on to step 4 on yes and reply T10 on
+        # no; T10 must promise no routing; a sub-stage's T7 promises routing only after the
+        # config is confirmed, and the last sub-stage of an assay none to a next sub-stage.
+        text = contract('02_bioinformatics/CONTEXT.md')
+        found, blocks = steps(text), templates(text)
+        branch = found['3a'][found['3a'].find('On a non-public project'):]
+        self.assertIn('On a non-public project', found['3a'])
+        asked = [name for name in re.findall(r'\b(T\d+)\b', branch)
+                 if blocks.get(name, '').strip().endswith('?')]
+        self.assertEqual(len(asked), 1, branch)
+        self.assertIn('_config/<Assay ID>.yaml', blocks[asked[0]])
+        self.assertRegex(branch, r'[Yy]es[^.]*step 4')
+        self.assertRegex(branch, r'[Nn]o[^.]*T10')
+        self.assertNotIn('route', blocks['T10'])
+        self.assertIn('done', blocks['T10'])
+        for path in SUBSTAGES:
+            block = templates(contract(path)).get(nonpublic_templates(contract(path))[0], '')
+            with self.subTest(path=path):
+                if 'stage 02' in block:
+                    self.assertIn('config', block)
+                if path in last_in_assay():
+                    self.assertNotIn('next sub-stage', block)
 
 
 if __name__ == '__main__':
