@@ -234,5 +234,13 @@ class RunnerDirectiveTests(unittest.TestCase):
             self.assertIn(word, blocked)
 
 
+    def test_mem_and_mem_per_cpu_across_the_scripts_are_refused(self):
+        """The fold of REVIEW-8f5ae09, finding 2: Slurm refuses a job asking both."""
+        self.first.write_text('#SBATCH --mem=8G\n' + FIRST)
+        self.second.write_text('#SBATCH --mem-per-cpu=4G\n#SBATCH --cpus-per-task=4\n' + SECOND)
+        blocked = self.refused_with_nothing_written()
+        for word in ('--mem ', '--mem-per-cpu', 'scripts/01_first.sh', 'scripts/02_second.sh'):
+            self.assertIn(word, blocked)
+
 if __name__ == '__main__':
     unittest.main()
