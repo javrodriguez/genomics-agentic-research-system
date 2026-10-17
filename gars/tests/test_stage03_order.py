@@ -172,13 +172,14 @@ class RunnerDirectiveTests(unittest.TestCase):
     def test_the_slurm_launcher_carries_the_scripts_directives(self):
         """The reviewer's reproduction: the launcher's header was `#!/bin/bash` and nothing else."""
         self.first.write_text('#SBATCH --mem=64G\n#SBATCH --time=12:00:00\n' + FIRST)
+        self.second.write_text('#SBATCH --time=00:30:00\n' + SECOND)
         self.assertEqual(self.approve()[0], 0)
         with patch.object(ex, '_submit_once', return_value=('J', None)) as backend:
             job, why = ex.submit(self.root, self.runner, ex.SLURM)
         self.assertEqual((job, why), ('J', None))
         header = Path(backend.call_args[0][1]).read_text().split('cd ', 1)[0]
         self.assertIn('#SBATCH --mem=64G\n', header)
-        self.assertIn('#SBATCH --time=12:00:00\n', header)
+        self.assertIn('#SBATCH --time=12:30:00\n', header)
 
     def test_the_local_venue_refuses_the_runner_as_it_refuses_the_script(self):
         alone = self.root / '03_custom_analysis/02_alone'

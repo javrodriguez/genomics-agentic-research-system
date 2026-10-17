@@ -143,7 +143,10 @@ refusal.
    any failed command as step 7 says, and list them in run order in the plan's Scripts section.
    `approve` binds the plan and these scripts together, byte for byte, so nothing is written
    there after approval (decision 0306), and writes `scripts/run_all.sh`, which runs them in
-   that order as one job and stops at the first failure (decision 0307).
+   that order as one job and stops at the first failure (decision 0307). Give each script its
+   resources in its leading `#SBATCH` lines; the runner carries them as the one job's: the times
+   add up, memory and `--cpus-per-task` take the largest, any other directive must agree, and
+   `approve` refuses a disagreement or a value it cannot read (decision 0308).
    On a non-public project the plan is the user's to write: T7.
 4. Reply T2 and stop. The user reads the plan and its scripts, edits them if they wish, and
    answers.
