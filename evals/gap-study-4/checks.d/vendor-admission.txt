@@ -20,3 +20,5 @@ python3 -B evals/gap-study-4/tests/vendor_check_fixtures.py --check
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P1 check_take.py tests/test_vendor_check.py tests/vendor_check_fixtures.py
 python3 -B -W ignore evals/gap-study-4/tests/test_vendor_body.py
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 check_take.py tests/test_vendor_body.py tests/test_vendor_check.py tests/vendor_check_fixtures.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_roads.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 walk_builders.py box/take_config.py build_draft.py prereg-draft.json tests/test_take_config.py tests/test_build_draft.py tests/test_vendor_roads.py
