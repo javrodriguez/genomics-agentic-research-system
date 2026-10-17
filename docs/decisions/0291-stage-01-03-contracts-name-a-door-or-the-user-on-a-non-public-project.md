@@ -20,6 +20,7 @@ touches:
 symptoms:
   - on a non-public project a stage 01-03 step tells the agent to Read a file the guard refuses, and the contract says nothing about what to do next
   - the agent appends to HISTORY.md on a non-public project and the guard refuses the Read the append needs
+  - stage 02 stops at step 3a on every non-public project run, even after the user has completed the config
 ---
 # Stage 01-03 contracts name a door or the user's message on a non-public project
 
@@ -44,20 +45,25 @@ An agent following them hit a guard refusal mid-stage, and the contract gave it 
 4. The DE door's output keeps no `history_entry`, so its template has the user re-run `collect` in their own terminal, which re-runs the exit gate on the finished run and prints the entry.
 5. Prose only: no code, guard rule, registry entry or door changes.
 
-In-spec choices (the lane's): the detector is lexical (a step naming an in-project file the guard refuses, or `resolve_artifact`) and is backed by a fixed list of the steps 0107 item 11 names, so a rewording cannot silently drop one; the doors' direct-spelling refusal while any non-public project exists, which reaches public projects too, is stated in the Definitions paragraphs; steps the detector does not reach (the nf-core wrappers' `check` to `collect`) are covered by stopping at step 2 rather than by a sentence each.
+6. **Round 2 (ruled by glitch-b5 under the owner's standing delegation, answering the review of `d699112`).** On a non-public project the agent cannot Read `_config/<Assay ID>.yaml`, so stage 02 step 3a cannot test its skip rule; it now asks the user with a new T11 whether they completed the config with the menus and `apply` in their own terminal. Yes continues to step 4, and the sub-stage's own `check` stays the backstop that refuses an unfilled config (`config_unfilled`; the `rnaseq_de.check` door's output keeps `failures`); no replies T10 and stops. T10 says what the user runs and that the agent continues when told the config is done, and promises no routing; each sub-stage's T7 promises routing only once the user confirms the config, and the last sub-stage of an assay promises the assay complete instead.
+
+In-spec choices (the lane's; round 2 ruled that all three stand): the detector is lexical (a step naming an in-project file the guard refuses, or `resolve_artifact`) and is backed by a fixed list of the steps 0107 item 11 names, extended in round 2 to the steps that carry the stop or the door (each wrapper sub-stage's step 2, stage 03's step 2, the DE sub-stage's steps 4 to 8), so a rewording cannot silently drop one; the doors' direct-spelling refusal while any non-public project exists, which reaches public projects too, is stated in the Definitions paragraphs; steps the detector does not reach (the nf-core wrappers' `check` to `collect`) are covered by stopping at step 2 rather than by a sentence each; the DE template has the user re-run `collect`, which is idempotent on a finished run, with the agent's own model id.
 
 Rejected alternatives: a new contract section (the standard would require it in every contract); composing the DE history entry from the door's filtered fields (the contracts require the entry verbatim); widening the detector to every executor spelling (outside 0107 item 11's list; recorded below).
 
 ## What this does not close
 
 - **R1** Outside the DE sub-stage, the executor steps still give the direct `executorlib.py submit` and `status` spellings, which the guard refuses for every project while any non-public project exists; the Definitions paragraphs say so, but those steps do not each name the `executor.*` door.
-- **R2** The detector is lexical: a future step that reads a refused file without naming one of its listed names is caught only if it is one of 0107 item 11's listed steps.
+- **R2** The detector is lexical: a future step that reads a refused file without naming one of its listed names is caught only if it is one of the fixed list's steps.
 - **R3** No live session has walked a non-public project through stages 01-03 under the guard; the prose is checked by the test, not by a run.
+- **R4** Past step 3a on a non-public project, stage 02 rests on the user's word that the config is complete; a wrong yes is caught by the sub-stage's `check`, not by stage 02.
 
 ## Test
 
 `gars/tests/test_closed_project_contracts.py` splits each of the 13 contracts' Process sections into numbered steps, selects every step that names an in-project file the guard refuses on a non-public project (`_config/`, `samples.csv`, `files.csv`, `01_samplesheets/`, the samplesheet and design, `OUTPUTS.tsv`, `HISTORY.md`, `PLAN.md`) or `resolve_artifact`, adds 0107 item 11's steps from a fixed list, and requires each to name `tool_call.py <door>` for a door in `CLOSED_PROJECT_DOORS` or the contract's `Non-public project` template.
-It prints how many steps it checked, so a detector that sees nothing cannot pass; renaming stage 02's template heading turns it red with one silent step.
+It prints how many steps it checked (38 after round 2), so a detector that sees nothing cannot pass; renaming stage 02's template heading turns it red with one silent step.
+`test_the_reviews_mutants_turn_the_detector_red` binds the extended list: it applies the review's three mutants in memory (the step 2 stop deleted from the seven nf-core wrapper contracts, `executor.status` misspelled in the DE sub-stage's step 7, stage 03's step 2 stop deleted) and requires each to leave a silent step.
+`test_stage02_passes_3a_on_a_nonpublic_project_once_the_config_is_done` binds item 6: step 3a's non-public branch names a template ending in a question about the config, continues to step 4 on yes and replies T10 on no; T10 says nothing of routing; and a sub-stage template that names stage 02 names the config, and the last sub-stage of an assay names no next one. It went red on `d699112`'s prose.
 `tests/check_contracts.py`, `gars/tests/test_lifecycle_contracts.py` and `gars/tests/test_wrapper_contract.py` stay green.
 
 ## Status
