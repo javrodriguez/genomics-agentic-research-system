@@ -40,9 +40,10 @@ This stage performs the steps in Process and nothing else.
   `replicate`) is a
   validation failure, not something to guess from sample names.
 - Never create, re-link, move, or delete anything under `00_data/`. Stage 00 owns it.
-- **Never pass `--confirm-exclusions` or `--force` without an explicit user confirmation in this
-  conversation.** They are the two human gates; supplying either on the user's behalf is the one
-  way this stage can destroy work irreversibly.
+- **Never pass `--confirm-exclusions` without the user's reply `exclude` to T7, or `--force`
+  without their reply `overwrite` to T5, in this conversation.** They are the two human gates;
+  supplying either on the user's behalf is the one way this stage can destroy work irreversibly.
+  The writer also refuses either switch unless it matches the latest `--check` (step 10).
 - Never run a bioinformatics workflow, aligner, or QC tool, and never read FASTQ contents. That
   is stage 02's work.
 - Filesystem reads are limited to: this workspace's own files, and inside the named project its
@@ -210,7 +211,7 @@ differential-expression sub-stage of 02_bioinformatics.
 | 0 | the read-only `--check` run (step 3) is clean; nothing is written, so the stage is not done | steps 6, 7 and 8 in that order (T7, T5, T8 as each applies), then the writer at step 9; only the writer completes the stage |
 | 0 | the writer (step 9) wrote every samplesheet and its exit gate passed | T2 then T4 |
 | 1 | validation failed; nothing written | T3 |
-| 2 | a human gate is uncleared; nothing written | T7 and/or T5 |
+| 2 | a human gate is uncleared, or a switch does not match the latest `--check`; nothing written | step 10: T7 and/or T5, or back to the check |
 | 3 | preconditions not met | T6 |
 
 
@@ -287,8 +288,12 @@ this stage is the user's: reply T10 and stop. Never work around a refusal.
    for other failures, stop and await the user’s correction. Never repair design rows.
 6. Exit 0 with `exclusions_pending: true` → reply T7 listing every assay's `exclusions`, and wait.
    Never proceed on a silent exclusion, and never infer that a missing row was an oversight.
-   On `cancel`, stop.
-7. Exit 0 with a non-empty `existing_outputs` → reply T5 listing them, and wait. On `cancel`, stop.
+   Only the reply `exclude`, that word alone, clears this gate. On `cancel`, stop. Any other
+   reply, an "ok" or an "ok, but keep sample 4" included → send T7 again and wait; never read it
+   as `exclude`. If the user changes the design instead, return to step 3.
+7. Exit 0 with a non-empty `existing_outputs` → reply T5 listing them, and wait. Only the reply
+   `overwrite`, that word alone, clears this gate. On `cancel`, stop. Any other reply → send T5
+   again and wait; never read it as `overwrite`.
 8. Reply T8 offering the optional deep integrity check, quoting `included_gb` and
    `full_check_estimate_min` from step 3, and wait. Ask even when the cohort is small; the answer
    is recorded, so it must be the user's. If they accept and `full_check_needs_scheduling` is
@@ -305,8 +310,11 @@ this stage is the user's: reply T10 and stop. Never work around a refusal.
    the template version. Omit it only if you cannot name your model — the script then records
    `unknown`.
 
-10. Exit 2 → a gate you believed cleared was not. Reply T5 or T7 as its `blocked` array indicates
-   and return to step 6. Never re-run adding a flag the user did not confirm.
+10. Exit 2 → a gate you believed cleared was not. When a `blocked` entry says a switch does not
+   match the `--check` the user was shown, or that no `--check` is recorded, return to step 3:
+   re-run the check and show its T7 or T5 again, since what the user agreed to has changed.
+   Otherwise reply T5 or T7 as its `blocked` array indicates and return to step 6. Never re-run
+   adding a flag the user did not confirm.
 11. Exit 1 at this point means the **exit gate** failed: the artifacts were written and then found
     wrong on re-read. Reply T3 with the `exit_gate` failures and stop. Do not repair them.
 12. Exit 0 → reply T2 using each assay's `counts`.
@@ -397,7 +405,7 @@ are ready to start stage 02 on their word.
 01_samplesheets/ already contains files for <Assay ID>:
 <existing_outputs>
 
-Confirm to overwrite, or reply `cancel` to stop.
+Reply `overwrite` to overwrite them, or reply `cancel` to stop.
 ```
 
 **T6 — Preconditions not met**
@@ -436,7 +444,7 @@ Reply `verify` to run it, or `skip` to trust the files.
 Proceeding with <samples_included> of <samples_total> samples. Raw data and files.csv are left
 untouched, so this is reversible: add the rows back to samples.csv and run stage 01 again.
 
-Confirm to proceed with the reduced set, or reply `cancel`.
+Reply `exclude` to proceed with the reduced set, or reply `cancel`.
 ```
 
 **T10 — Non-public project**
