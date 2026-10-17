@@ -349,12 +349,14 @@ def vendor_reader_problems(harness):
 
 def registration_problems(harness):
     """Leg (iii): Javier's committed acceptance registers the harness's native reader; a refusing registry is named,
-    never a traceback."""
+    never a traceback, and so is one that cannot run (no git binary, or any other OSError; round 8 ruling 1)."""
     import native_reader_registration
     try:
         readers = native_reader_registration.production_readers()
     except native_reader_registration.RegistrationRefused as e:
         return [f"the native-reader registry refuses: {e}"]
+    except OSError as e:
+        return [f"the native-reader registry could not run ({type(e).__name__}: {e})"]
     return [] if harness in readers else [f"no native reader is registered for {harness} (no committed acceptance)"]
 
 
