@@ -122,12 +122,14 @@ class Stage03ExecutionTests(unittest.TestCase):
                 backend.assert_not_called()
                 self.assertEqual(poll.call_args[0][2], ex.LOCAL)
                 self.assertEqual(self.record.read_bytes(), original)
+        self.record.chmod(0o640)    # a tightened history keeps its mode across the rewrite (0295)
         for state in ('COMPLETED', 'FAILED:EXIT_7', 'CANCELLED'):
             before = self.record.read_bytes()
             with patch.object(ex, '_scheduler_status', return_value=(state, None)), \
                     patch.object(ex, '_submit_once', return_value=('99', None)):
                 self.assertEqual(self.submit(), ('99', None))
             self.assertTrue(self.record.read_bytes().startswith(before))
+        self.assertEqual(self.record.stat().st_mode & 0o7777, 0o640)
         self.assertEqual(len(ex._analysis_entries(self.adir)), 4)
         unresolved = ex._analysis_entries(self.adir)[-1]; unresolved['job_id'] = None
         with self.record.open('a') as record:
