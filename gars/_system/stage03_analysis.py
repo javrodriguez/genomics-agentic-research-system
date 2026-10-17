@@ -65,9 +65,9 @@ mind means a new analysis, not a quiet edit.
 Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
 below are what they resolve to today.
 
-| Artifact type | Resolved from | Path |
-|---|---|---|
-<FILL: one row per input, from _system/resolve_artifact.py>
+| Artifact type | Assay | Resolved from | Path |
+|---|---|---|---|
+<FILL: one row per input, from _system/resolve_artifact.py; Assay is the --assay it resolved under>
 
 ## Method
 <FILL: numbered steps. Name every tool and parameter; name the conda environment
@@ -162,6 +162,58 @@ def parse_outputs_table(plan_text):
         if len(cells) >= 2 and cells[0] not in ("File", ""):
             rows.append((cells[0], cells[1], cells[2] if len(cells) > 2 else ""))
     return rows
+
+
+def parse_inputs_table(plan_text):
+    """The ## Inputs table as (header, rows), each a list of cells. Skips FILL markers."""
+    header, rows = None, []
+    section = re.search(r"^## Inputs[ \t]*\n(.*?)(?=^## |\Z)", plan_text, re.S | re.M)
+    if not section:
+        return header, rows
+    for line in section.group(1).splitlines():
+        line = line.strip()
+        if not line.startswith("|") or line.startswith("|---") or FILL in line:
+            continue
+        cells = [c.strip().strip("`") for c in line.strip("|").split("|")]
+        if header is None:
+            header = cells
+        else:
+            rows.append(cells)
+    return header, rows
+
+
+def project_assays(project):
+    data = Path(project) / "00_data"
+    return sorted(d.name for d in data.iterdir() if d.is_dir()) if data.is_dir() else []
+
+
+def assay_gates(text, project):
+    """Each input names its assay, and only an assay the project has (S03-assay, 0312). A
+    one-assay project's input may leave it implied, so its plans are unchanged."""
+    header, rows = parse_inputs_table(text)
+    if not rows:
+        return []
+    assays = project_assays(project)
+    several = len(assays) > 1
+    have = ", ".join(assays) or "none"
+    if "Assay" not in header:
+        if several:
+            return ["the Inputs table has no Assay column; this project has more than one assay "
+                    "(%s), so each input names the assay it resolved under" % have]
+        return []
+    at = header.index("Assay")
+    blocked = []
+    for cells in rows:
+        what = cells[0] if cells else ""
+        assay = cells[at] if at < len(cells) else ""
+        if not assay:
+            if several:
+                blocked.append("input %r names no assay; this project has more than one (%s), "
+                               "so each input names the assay it resolved under" % (what, have))
+        elif assay not in assays:
+            blocked.append("input %r names assay %r, which this project does not have (its "
+                           "assays: %s)" % (what, assay, have))
+    return blocked
 
 
 # --- create ------------------------------------------------------------------------------------
@@ -573,6 +625,7 @@ def cmd_approve(args, workspace):
 
     result["blocked"].extend(plan_gates(text, workspace, adir))
     result["blocked"].extend(order_gates(text, adir))
+    result["blocked"].extend(assay_gates(text, project))
     order = ordered_scripts(text)
     directives = []
     if order and not result["blocked"]:
