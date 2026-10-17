@@ -3819,7 +3819,7 @@ def _vendor_recorded_fixture_problem(harness: str, fixture) -> str | None:
 def vendor_row_problem(harness: str, key: str, row) -> str | None:
     """Why one VENDOR_PENDING_ROWS row is off its shape, or None. A PENDING row holds its reason and state only; a
     SAME row also names its RECORDED fixture and its reader, a NOT COMPARABLE row its ruling and its reader; a reader
-    is a function of this module."""
+    is a function defined in this module, never a class or an imported name."""
     if not isinstance(row, dict) or row.get("state") not in VENDOR_ROW_STATES:
         return f"its state is not one of {list(VENDOR_ROW_STATES)}"
     state = row["state"]
@@ -3831,7 +3831,8 @@ def vendor_row_problem(harness: str, key: str, row) -> str | None:
     if state == PENDING:
         return None
     reader = row["reader"]
-    if not (isinstance(reader, str) and callable(globals().get(reader))):
+    found = globals().get(reader) if isinstance(reader, str) else None
+    if not (type(found) is type(vendor_row_problem) and found.__module__ == __name__):   # round 8 ruling 2
         return f"it is {state} with reader {reader!r}, which is no function of check_take.py"
     if state == "SAME":
         return _vendor_recorded_fixture_problem(harness, row["fixture"])
