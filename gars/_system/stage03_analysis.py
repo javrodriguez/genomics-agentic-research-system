@@ -332,7 +332,7 @@ def slurm_seconds(value):
 
 
 MEMORY_FORMS = ("; memory is a number with a unit of K, M, G or T, upper case (e.g. 64G), the "
-                "venue policy's form")
+                "form of _system/venue_policy.py")
 MEMORY_FAMILY = ("--mem", "--mem-per-cpu", "--mem-per-gpu")
 
 
