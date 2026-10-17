@@ -335,6 +335,11 @@ def own_mutants():
         "cli-runs": ("R6.cli", "walk_runner", "    return walk_builders.cli(argv, builders, refusal=CLI_REFUSAL)",
                      "    return 0"),
         "slot-unchecked": ("R7.slot", "walk_runner", "    if row.get(\"slot\") != walk:", "    if False:"),
+        # battery 388e7476 shard 5's survivor run.grade_walk:delete:L17:C4 (lane vendor-t3b): grade_walk's vendor
+        # admission call deleted
+        "walk-vendor-admission-skipped": ("R11.units", "run",
+                                          '    vendor_admission(row["agent"].get("harness"), readers, '
+                                          'ledger.get("cross_check_status"))\n', "    pass\n", "grade_walk"),
     }
 
 
@@ -1994,6 +1999,47 @@ class R11Units(Case):
                                                        "turn (the routing table's first row): synthetic-outcome"},
                          "R11.units")
 
+    def test_grade_walk_refuses_a_vendor_walk_not_cross_checked(self):
+        """Battery 388e7476 shard 5's survivor run.grade_walk:delete:L17:C4 (the vendor_admission call deleted):
+        grade_walk on a codex or a gemini walk whose driver ledger records no agreeing native cross-check, or whose
+        readers hold no reader for its harness, is refused by vendor admission's own refusal (its type and words),
+        and the grade stand-in is never called; the agreed cross-check with a registered reader, and a claude-code
+        walk with neither, are graded. No subTest: --witnesses' rule B needs the one failure the first case makes."""
+        run = MODS["run"]
+        agreed = {"status": "agreed", "why": None}
+
+        def reader(raw, ordinal):
+            raise AssertionError("R11.units: grading called the stand-in reader")
+        for harness in ("codex", "gemini"):
+            registered = {harness: reader}
+            for why, readers, cross, words in (
+                    ("no cross-check recorded", registered, None, "the native cross-check is None"),
+                    ("a refused cross-check", registered, {"status": "refused", "why": "a synthetic refusal"},
+                     "the native cross-check is {'status': 'refused'"),
+                    ("no reader for its harness", {}, agreed, f"no registered {harness} native reader")):
+                folder = self.scratch()
+                ledger = dict(self.LEDGER, agent={"name": "synthetic", "harness": harness})
+                if cross is not None:
+                    ledger["cross_check_status"] = cross
+                (folder / "driver-ledger.json").write_text(json.dumps(ledger))
+                graded = []
+                e = self.raising(run.VendorAdmissionRefused, words, run.grade_walk, dict(self.ENTRY), folder,
+                                 grade=lambda row, f: graded.append(row) or {"g": 1}, readers=readers)
+                self.assertIn(f"harness {harness!r}", str(e), f"R11.units: {e}")
+                self.assertEqual(graded, [], f"R11.units: the grade ran for a {harness} walk with {why}")
+            folder = self.scratch()
+            (folder / "driver-ledger.json").write_text(json.dumps(dict(
+                self.LEDGER, agent={"name": "synthetic", "harness": harness}, cross_check_status=agreed)))
+            got = self.must("R11.units", run.grade_walk, dict(self.ENTRY), folder, grade=lambda row, f: {"g": 1},
+                            readers=registered)
+            self.assertEqual((got.get("graded"), got.get("grade")), (True, {"g": 1}), f"R11.units: {got}")
+        folder = self.scratch()
+        (folder / "driver-ledger.json").write_text(json.dumps(dict(
+            self.LEDGER, agent={"name": "synthetic", "harness": "claude-code"})))
+        got = self.must("R11.units", run.grade_walk, dict(self.ENTRY), folder, grade=lambda row, f: {"g": 1},
+                        readers={})
+        self.assertEqual((got.get("graded"), got.get("grade")), (True, {"g": 1}), f"R11.units: {got}")
+
     # ---- run.died_before_turn_one
     def dead(self, files: dict) -> Path:
         folder = self.scratch()
@@ -2314,7 +2360,8 @@ METHOD = {"walk-checked-as-take": "R2WalkCheck.test_a_walk_is_read_as_a_walk",
           "pending-walk-held": "R12Pending.test_a_pending_walk_is_committed_ungraded_and_the_runner_moves_on",
           "pending-grade-dropped": "R12Pending.test_a_pending_walk_is_committed_ungraded_and_the_runner_moves_on",
           "pending-removal-unchecked": "R12Pending.test_a_pending_walk_whose_container_stays_is_held",
-          "pending-other-errors-admitted": "R12Pending.test_any_other_drive_error_is_held_as_before"}
+          "pending-other-errors-admitted": "R12Pending.test_any_other_drive_error_is_held_as_before",
+          "walk-vendor-admission-skipped": "R11Units.test_grade_walk_refuses_a_vendor_walk_not_cross_checked"}
 METHOD.update(REVIEWER_BOUND)
 METHOD.update(REVIEWER3_BOUND)
 WITNESSES = {name: (METHOD.get(name, BOUND[m[0]]), m[0]) for name, m in mutants().items()}
