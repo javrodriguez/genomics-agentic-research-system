@@ -157,6 +157,11 @@
       "reason": "Lane vendor-admission T4 P0b (plan v4 section 9, R-4, ruled by glitch-b5 on Sat 17 Oct 2026): walk_builders.production_builders pin_for on the committed draft's first codex and gemini rows, and batch.expected_pin on a table with no block for the harness and on one without the model, raise batch.PinProfileMissing naming the harness, the model and that CP5 registers it, still a KeyError; the first claude-code row's pin is unchanged; batch.py compiled in memory with the bare lookup restored goes red."
     },
     {
+      "path": "tests/test_vendor_pins.py",
+      "status": "new",
+      "reason": "Lane vendor-admission round 17 B7 (R4 of the Codex2 sign-in road rulings; glitch-b5's B7 rulings of 18 Oct 2026, claimed by ruling B7-F2): the O and G pin profiles in routing.json, each mode a key of its adapter's MODE_FLAGS and each version its take lock's, the codex and gemini rate-limit entries with their static-read sources, codex's empty spend-cap list in EMPTY_SPEND_LIST_HARNESSES and never NO_MONEY_HARNESSES, gemini's 402 and payment required with its documentation source, the two RULED 18 Oct statuses quoting the ones they supersede, and pin_for and agent_versions on the committed draft; seven mutants, each red."
+    },
+    {
       "path": "checks.d/vendor-admission.txt",
       "status": "new",
       "reason": "Lane vendor-admission: this lane's local checks (interface 2), one line per new test module."

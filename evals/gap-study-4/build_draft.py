@@ -1126,8 +1126,10 @@ OWNER_SLOTS = {
        ("furniture", "list")) for h in HARNESSES.values()},
     **{f"/{key}/{h}/{m}": kind for key, kind in (("config_templates", "template"),
        ("effort", "setting")) for a,h in HARNESSES.items() for m in MODELS[a]},
-    **{f"/routing_marker_inputs/{h}/{k}": "list" for h in (CODEX, GEMINI)
-       for k in ("rate_limit_markers", "spend_cap_markers")},
+    # B7-F1 (glitch-b5, 18 Oct 2026): the four /routing_marker_inputs/<codex|gemini>/<kind> slots are dropped, since
+    # routing.json carries both vendors' rate-limit and spend-cap entries (round 17 B7, R4), so R15's inputs are closed;
+    # build() still writes a PENDING input for any vendor routing.json lacks, which pending()'s scan reads, and
+    # tests/test_build_draft.py MarkerInputSlots holds the slots to exactly the inputs routing.json lacks.
     **{f"/image_locks/{i}/lock/{key}": "text"
        for i, keys in enumerate((("base", "harness/version", "image_id", "python"),
                                 ("base", "image_id", "squid"),
