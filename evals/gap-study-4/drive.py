@@ -2604,6 +2604,35 @@ class TakeDriver:
         if vendor:
             take.cross_check = ([status["why"]] if status["status"] == "refused"
                                 else [] if status["status"] == "agreed" else None)
+            # T4 edit B (glitch-b5 rounds 14 and 15, review e-71a2b94 finding 1): the host turn envelopes
+            # vendor_record_binding reads, schema 1: one harness-turn per ledger turn row, recovery rows included, its
+            # sent the row's, its stream that turn's by basename and sha256, and the CLI's own session id read from
+            # that stream (codex thread.started, gemini init). src stays None, so the ledger's transcript stays None
+            # for a vendor take (round 15 ruling 1): C3 reads the file, bound_items the envelopes; edit C rebinds
+            # each sha256 to the masked bytes after the drive's scan
+            envelopes = []
+            for k, r in enumerate(rows, 1):
+                stream = getattr(turns[k - 1], "stream_path", None) if k <= len(turns) else None
+                raw = b""
+                if stream and os.path.isfile(stream):
+                    with open(stream, "rb") as fh:
+                        raw = fh.read()
+                first, key = ("thread.started", "thread_id") if harness == "codex" else ("init", "session_id")
+                vid = None
+                for line in raw.decode("utf-8", errors="replace").split("\n"):
+                    try:
+                        rec = json.loads(line)
+                    except ValueError:
+                        continue
+                    if isinstance(rec, dict) and rec.get("type") == first:
+                        vid = rec.get(key)
+                        break
+                envelopes.append({"type": "harness-turn", "harness": harness, "session_id": ident["session_id"],
+                                  "vendor_session_id": vid, "n": k, "sent": r.get("sent"),
+                                  "stream": os.path.basename(stream) if stream else None,
+                                  "sha256": hashlib.sha256(raw).hexdigest() if stream else None})
+            (Path(take.folder) / "transcript.jsonl").write_text("".join(json.dumps(e) + "\n" for e in envelopes),
+                                                                encoding="utf-8")
         elif src is not None:
             try:
                 published = publish_transcript(Path(src), Path(take.folder))
