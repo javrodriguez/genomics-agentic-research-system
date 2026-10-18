@@ -42,7 +42,8 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py P5 check_take.py pend
 # Round 14 (glitch-b5, Sun 18 Oct 2026): review e-71a2b94 finding 3 and NITs 1, 2 and 4; the files they edit, against
 # the same source lists.
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P5 check_take.py pending_walk.py walk_regrade.py tests/test_vendor_body.py tests/test_vendor_entries.py tests/test_vendor_constants.py tests/test_vendor_walk_road.py
-# Round 15 (glitch-b5, Sun 18 Oct 2026): T4 edit B (review e-71a2b94 finding 1), the vendor take's host turn
-# envelopes; piece EB admits drive.py only with every line outside edit B's span equal to drive.py before it.
+# Round 15 (glitch-b5, Sun 18 Oct 2026): T4 edits B and C (review e-71a2b94 findings 1 and 2), the vendor take's host
+# turn envelopes and their and the snapshots' sha256 rebound to the scan's masked bytes; piece EB admits drive.py only
+# with both edits present and every line outside their spans equal to drive.py before edit B.
 python3 -B -W ignore evals/gap-study-4/tests/test_vendor_envelopes.py
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py EB drive.py tests/check_vendor_sources.py tests/test_vendor_envelopes.py tests/test_vendor_walk_road.py

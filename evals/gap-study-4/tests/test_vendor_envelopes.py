@@ -13,20 +13,31 @@ readers-disagree before checker_for.
               by basename and sha256 and the CLI's own session id, and take_checker reaches checker_for and the vendor
               entry (its body stood in) with C3 adding no readers-disagree.
   EB-claude   a claude-code take through test_drive_loop's road (the real Claude Code adapter on ClaudeBox), with a
-              session file and without one: driver-ledger.json, transcript.jsonl and the take folder's listing are
-              byte-identical under drive.py and under drive.py before edit B (check_vendor_sources.without_edit_b),
-              P0's equal-before-and-after shape.
+              session file, without one, and with the account address in its replies masked by the drive's scan:
+              driver-ledger.json, transcript.jsonl, the take folder's listing and the records TakeDriver.drive returns
+              are byte-identical under drive.py and under drive.py before edits B and C
+              (check_vendor_sources.without_edits), P0's equal-before-and-after shape.
+  EC-mask     edit C (glitch-b5 round 15 ruling 2; review e-71a2b94 finding 2, option (a)): the account address in a
+              codex take's turn streams and rollout, and in a gemini take's turn streams and session, driven through
+              the walk driver, masked in place by the real drive scan (box/scan_record.scan, the address handed to it
+              as an email secret), then checked by drive.take_checker with the vendor entry's body stood in by the
+              vendor readers' own event counts (check_take.vendor_event_counts, which reads the envelopes' streams
+              and the ledger-named last snapshot by their sha256): account-email counts 1, the take is not held, and
+              every envelope's and every ledger-named snapshot's sha256 is that of the masked bytes on disk.
   EB-witness  drive.py compiled in memory with the writer gated off (edit B taken out), the writer also run for
               claude-code, an envelope's sent taken from another row, and an envelope's sha256 taken from another
-              stream: each goes red.
+              stream; and for edit C, the rebinding taken out (the review's masked-address mutant), the envelopes
+              left on the unmasked bytes, the snapshots left on the unmasked bytes, and the rebinding also run for
+              claude-code: each goes red.
 
-The masked-address case (review finding 2) is not here: option (a) needs a drive.py change beyond edit B, asked of
-glitch-b5 in the lane file. Fakes and synthetic strings only, inside test_box_integration's process guard with
-test_drive_loop's checker world, in scratch folders: no take, model, vendor, network, Docker or credential.
+Fakes and synthetic strings only (the address is test_box_integration's synthetic .invalid one), inside
+test_box_integration's process guard with test_drive_loop's checker world, in scratch folders: no take, model,
+vendor, network, Docker or credential.
 """
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -48,6 +59,10 @@ import test_drive_loop as tdl  # noqa: E402
 import test_vendor_walk_road as tvw  # noqa: E402
 
 READERS_DISAGREE = "readers-disagree"
+ADDRESS = tbi.EMAIL          # test_box_integration's synthetic account address, never a real one
+# the claude-code case's address: ClaudeBox's session context already carries ADDRESS, which scrub.py removes there and
+# refuses anywhere else, so the replies carry another synthetic one
+OTHER_ADDRESS = "synthetic.operator@example.invalid"
 
 
 def setUpModule():
@@ -75,14 +90,47 @@ def drive_source() -> str:
 
 
 # ---- EB-road --------------------------------------------------------------------------------------------------------
-def vendor_road(test, drive, harness):
+def addressed(test, harness) -> None:
+    """The fake box's agent text "Done." carries ADDRESS in every turn stream and in the native session alike, so the
+    native cross-check still agrees on the unmasked bytes: patches started now and stopped with the test's cleanups."""
+    import test_pending_codex_walk as tpcw
+    import test_pending_walk as tpw
+    said = f"Done. Mail {ADDRESS} for the notes."
+    mod, stream, native = (tpcw, "exec_stream", "rollout") if harness == "codex" else (tpw, "stream", "native")
+    real_stream, real_native = getattr(mod, stream), getattr(mod, native)
+    for patch in (mock.patch.object(mod, stream, lambda *a, **k: real_stream(*a, **k).replace("Done.", said)),
+                  mock.patch.object(mod, native, lambda *a, **k: real_native(*a, **k).replace(
+                      b"Done.", said.encode("utf-8")))):
+        patch.start()
+        test.addCleanup(patch.stop)
+
+
+@contextlib.contextmanager
+def counting_entry(ct, seen):
+    """check4_walk_vendor's body stood in by the vendor readers' own event counts on the bytes the drive left
+    (check_take.vendor_event_counts: the reach through the envelopes' streams and the ledger-named last snapshot, each
+    by its sha256, and the account-email marker); a count those readers cannot read raises CheckRefused, which holds
+    the take. checker_for, _vendor_entry, _vendor_side and drive.take_checker stay real."""
+    def stand_in(path, task, half, walk, *, wording_script, arm, design, table=None):
+        seen.append(ct.vendor_design_constants_sha256(design))
+        events = ct.vendor_event_counts(path, design.harness)
+        return {"reasons": [], "problems": [], "events": events,
+                "outside_reach": sum(v for k, v in events.items() if k != ct.EVENT_EMAIL)}
+    with mock.patch.object(ct, "check4_walk_vendor", stand_in):
+        yield
+
+
+def vendor_road(test, drive, harness, address=False):
     """One vendor take through `drive`'s WalkDriver on its fake box, its reader registered (the cross-check agrees)
     and drive.take_checker its checker: (the take folder, the checker's record, the vendor entry's calls, the files
-    and scan kinds the take's commit scan stages)."""
+    and scan kinds the take's commit scan stages). With `address`, the agent's text carries ADDRESS, the scan is
+    handed it as an email secret, and the vendor entry's body counts with the vendor readers (counting_entry)."""
     import native_reader_registration as nrr
     import test_codex_adapter as tca
     import test_pending_codex_walk as tpcw
     import test_pending_walk as tpw
+    if address:
+        addressed(test, harness)
     if harness == "codex":
         road = tpw.Road(test, harness="codex", box=tpcw.CodexBox(), run_turn=tca.stub_run_turn,
                         row={"arm": "O", "model": tpcw.MODEL, "agent": {"harness": "codex", "version": tpcw.CLI}})
@@ -95,9 +143,12 @@ def vendor_road(test, drive, harness):
     checker = drive.take_checker(design_for=lambda row, take: tvw.vendor_design_for(ct)(row, take.spec.run_tree),
                                  records="walks")
     road.driver.checker = lambda row, take, turns: records.append(checker(row, take, turns)) or records[-1]
+    if address:
+        login = road.driver.secrets
+        road.driver.secrets = road.repo.secrets = lambda: list(login()) + [(drive.EMAIL_SECRET, ADDRESS)]
     row = dict(road.row)
-    with mock.patch.object(nrr, "production_readers", lambda study=None: readers), tbi.spying(road.rig.spy), \
-            tvw.vendor_entry(ct, [], seen):
+    entry = counting_entry(ct, seen) if address else tvw.vendor_entry(ct, [], seen)
+    with mock.patch.object(nrr, "production_readers", lambda study=None: readers), tbi.spying(road.rig.spy), entry:
         cid = road.driver.launch(row)
         try:
             road.driver.drive(row, cid)
@@ -147,14 +198,73 @@ def road_problems(test, drive, harness) -> list:
     return out
 
 
-# ---- EB-claude ------------------------------------------------------------------------------------------------------
-def claude_bytes(drive) -> list:
-    """A claude-code take's driver-ledger.json, transcript.jsonl and folder listing, with a session file and
-    without one."""
+# ---- EC-mask (edit C; glitch-b5 round 15 ruling 2) ------------------------------------------------------------------
+def mask_problems(test, drive, harness) -> list:
     out = []
-    for kw in ({}, {"no_session": True}):
-        take, _, _ = tdl.drive_claude(drive, tdl.TWO, tdl.TWO_REPLIES, **kw)
-        got = {"listing": sorted(os.listdir(take.folder))}
+    try:
+        folder, records, seen, _ = vendor_road(test, drive, harness, address=True)
+    except Exception as e:  # noqa: BLE001 - a held take is the finding
+        return [f"{harness}: the masked take is held: {type(e).__name__}: {str(e)[:300]}"]
+    led = json.loads((folder / "driver-ledger.json").read_text())
+    snaps = [f"session/{s['file']}" for s in led.get("native_snapshots") or []]
+    named = list(led.get("streams") or []) + snaps
+    left = [n for n in named if ADDRESS.encode("utf-8") in (folder / n).read_bytes()]
+    if left or not named:
+        return [f"{harness}: the drive scan left the address unmasked in {left} (named {named})"]
+    if not any(b"Mail " in (folder / n).read_bytes() for n in led["streams"]) or not any(
+            b"Mail " in (folder / n).read_bytes() for n in snaps):
+        return [f"{harness}: the address was never in both a turn stream and a snapshot, so nothing was masked there"]
+    envs = [json.loads(x) for x in (folder / "transcript.jsonl").read_text().splitlines()]
+    for e in envs:
+        if e["sha256"] != hashlib.sha256((folder / e["stream"]).read_bytes()).hexdigest():
+            out.append(f"{harness}: envelope {e['n']}'s sha256 is not that of {e['stream']}'s masked bytes")
+    for s in led.get("native_snapshots") or []:
+        if s["sha256"] != hashlib.sha256((folder / "session" / s["file"]).read_bytes()).hexdigest():
+            out.append(f"{harness}: the ledger's sha256 of session/{s['file']} is not that of its masked bytes")
+    if len(records) != 1 or len(seen) != 1:
+        out.append(f"{harness}: the checker read {len(records)} record(s) through {len(seen)} vendor entry call(s)")
+    elif records[0]["checker_events"].get("account-email") != 1:
+        out.append(f"{harness}: the checker counts {records[0]['checker_events']}, not one account-email event")
+    return out
+
+
+# ---- EB-claude ------------------------------------------------------------------------------------------------------
+def claude_masked(drive):
+    """test_drive_loop.drive_claude's take with an account address in its replies and handed to the drive's scan
+    as an email secret, so the scan masks the published transcript and the turn streams: (its _Take, the records
+    drive() returned)."""
+    replies = [dict(r, text=f"{r['text']} Mail {OTHER_ADDRESS}.") for r in tdl.TWO_REPLIES]
+    pairs = lambda: [("token", tbi.TOKEN), (drive.EMAIL_SECRET, OTHER_ADDRESS)]  # noqa: E731
+    with tbi.scratch_repo() as root:
+        box = tdl.ClaudeBox(replies)
+        rig = tbi.Rig(drive, root, box=box, turns=[{}] * len(replies), secrets=pairs)
+        login = tbi.SCRATCH / f"login-{root.name}"
+        login.write_text(f"CLAUDE_CODE_OAUTH_TOKEN={tbi.TOKEN}\n")
+        os.chmod(login, 0o600)
+        rig.driver.adapter_for = drive.claude_code_adapter_for(
+            runtime=box, login_file=str(login), counters_for=lambda take: {"oom_kill": 0, "pids_max": 0},
+            pin_for=rig.driver.pin_for, clock=rig.clock)
+        rig.driver.script_for = lambda r: [dict(x) for x in tdl.TWO]
+        r = tbi.row(1)
+        with tbi.spying(rig.spy):
+            cid = rig.driver.launch(r)
+            records = rig.driver.drive(r, cid)
+            rig.driver.remove(cid)
+        return rig.driver._by_slot[r["slot"]], records
+
+
+def claude_bytes(drive) -> list:
+    """A claude-code take's driver-ledger.json, transcript.jsonl, folder listing and the records TakeDriver.drive
+    returns, with a session file, without one, and with the account address masked by the drive's scan."""
+    out = []
+    for kw in ({}, {"no_session": True}, None):
+        if kw is None:
+            take, records = claude_masked(drive)
+            if OTHER_ADDRESS.encode("utf-8") in (Path(take.folder) / "transcript.jsonl").read_bytes():
+                raise AssertionError("the masked claude-code case: the drive scan left the address in transcript.jsonl")
+        else:
+            take, records, _ = tdl.drive_claude(drive, tdl.TWO, tdl.TWO_REPLIES, **kw)
+        got = {"listing": sorted(os.listdir(take.folder)), "records": json.dumps(records, sort_keys=True, default=repr)}
         for name in ("driver-ledger.json", "transcript.jsonl"):
             p = Path(take.folder) / name
             got[name] = p.read_bytes() if p.is_file() else None
@@ -165,10 +275,10 @@ def claude_bytes(drive) -> list:
 def claude_problems(drive, before) -> list:
     out = []
     got, want = claude_bytes(drive), claude_bytes(before)
-    for case, g, w in zip(("with a session file", "with no session file"), got, want):
+    for case, g, w in zip(("with a session file", "with no session file", "with the address masked"), got, want):
         for key in w:
             if g[key] != w[key]:
-                out.append(f"claude-code {case}: {key} differs from drive.py before edit B")
+                out.append(f"claude-code {case}: {key} differs from drive.py before edits B and C")
     return out
 
 
@@ -201,6 +311,14 @@ WITNESSES = {
     "an envelope's sha256 of another stream": ("road", lambda src: edited(
         src, "\"sha256\": hashlib.sha256(raw).hexdigest() if stream else None})",
         "\"sha256\": hashlib.sha256(Path(turns[0].stream_path).read_bytes()).hexdigest() if stream else None})")),
+    # edit C (glitch-b5 round 15 ruling 2): the review's masked-address mutant first
+    "the rebinding taken out": ("mask", lambda src: cvs.without_edit_c(src)),
+    "the envelopes left on the unmasked bytes": ("mask", lambda src: edited(
+        src, "                    e[\"sha256\"] = after[e[\"stream\"]]\n", "                    pass\n")),
+    "the snapshots left on the unmasked bytes": ("mask", lambda src: edited(
+        src, "                self._write(take, LEDGER_FILE, led)\n", "                pass\n")),
+    "the rebinding run for claude-code": ("claude", lambda src: edited(
+        src, "if row[\"agent\"][\"harness\"] in VENDOR_HARNESSES and os.path.isfile(", "if os.path.isfile(")),
 }
 
 
@@ -214,28 +332,39 @@ class EditBRoad(unittest.TestCase):
                     self.doCleanups()             # each road's patches (run_turn among them) end with its road
 
 
+class EditCMask(unittest.TestCase):
+    def test_ec_a_masked_vendor_take_counts_one_account_email_and_is_not_held(self):
+        for harness in ("codex", "gemini"):
+            with self.subTest(harness=harness), tvw.world():
+                try:
+                    self.assertEqual(mask_problems(self, tbi.drive, harness), [])
+                finally:
+                    self.doCleanups()
+
+
 class EditBClaude(unittest.TestCase):
     def test_eb_a_claude_code_take_is_byte_identical(self):
-        before = compiled(cvs.without_edit_b(drive_source()), "drive_before_edit_b")
+        before = compiled(cvs.without_edits(drive_source()), "drive_before_edit_b")
         self.assertEqual(claude_problems(tbi.drive, before), [])
 
 
 class EditBWitnesses(unittest.TestCase):
     def test_eb_witness_each_mutant_goes_red(self):
         src = drive_source()
-        if cvs.edit_b_span(src) is None:
-            self.fail("drive.py holds no edit B, so no witness can be performed")
-        before = compiled(cvs.without_edit_b(src), "drive_before_edit_b")
+        if cvs.edit_b_span(src) is None or cvs.edit_c_span(src) is None:
+            self.fail("drive.py holds no edit B or no edit C, so no witness can be performed")
+        before = compiled(cvs.without_edits(src), "drive_before_edit_b")
         for name, (road, edit) in WITNESSES.items():
             with self.subTest(witness=name):
                 mutant = compiled(edit(src), "drive_edit_b_witness")
                 if road == "claude":
                     self.assertNotEqual(claude_problems(mutant, before), [], f"witness {name} stayed green")
                     continue
+                check = road_problems if road == "road" else mask_problems
                 for harness in ("codex", "gemini"):
                     with tvw.world(), mock.patch.dict(sys.modules, {"drive": mutant}):
                         try:
-                            self.assertNotEqual(road_problems(self, mutant, harness), [],
+                            self.assertNotEqual(check(self, mutant, harness), [],
                                                 f"witness {name} stayed green on {harness}")
                         finally:
                             self.doCleanups()

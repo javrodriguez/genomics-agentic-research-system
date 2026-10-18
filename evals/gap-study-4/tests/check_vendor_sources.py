@@ -2,12 +2,14 @@
 """Lane vendor-admission T4 (plan v4 section 9, NIT 7): a piece's edited files are disjoint from the native readers'
 source lists. Usage: check_vendor_sources.py <piece> <file> ...; each file is a path under evals/gap-study-4/. Exit 1
 when a file is in native_reader_registration.READER_SOURCES or CODEX_SOURCES, except drive.py for piece P0, whose
-edit A is the drive.py edit the plan rules (section 6), and for piece EB, edit B (glitch-b5 round 14, review
-e-71a2b94 finding 1: the vendor turn envelopes). Piece EB naming drive.py also checks edit B's whole diff: drive.py with
-edit B's lines (TakeDriver._take_records' first `if vendor:` branch after its first statement) taken out must be,
-byte for byte, drive.py before edit B (PRE_EDIT_B_DRIVE_SHA256, its text at f628e9d8), so no other drive.py line
-moves. Any such edit after Javier's acceptance commit makes production_readers refuse, so a piece naming one is a red
-check, never a note."""
+edit A is the drive.py edit the plan rules (section 6), and for piece EB, edits B and C (glitch-b5 rounds 14 and 15,
+review e-71a2b94 findings 1 and 2: the vendor turn envelopes, and their and the snapshots' sha256 rebound to the
+scan's masked bytes). Piece EB naming drive.py also checks both edits' whole diff: each edit must be present, and
+drive.py with edit B's lines (TakeDriver._take_records' first `if vendor:` branch after its first statement) and edit
+C's lines (the one statement of TakeDriver.drive right after the drive scan's `if not _scan_record.passed(scan):`,
+an `if` naming VENDOR_HARNESSES) taken out must be, byte for byte, drive.py before edit B (PRE_EDIT_B_DRIVE_SHA256,
+its text at f628e9d8), so no other drive.py line moves. Any such edit after Javier's acceptance commit makes
+production_readers refuse, so a piece naming one is a red check, never a note."""
 
 from __future__ import annotations
 
@@ -45,22 +47,69 @@ def edit_b_span(src: str):
 
 def without_edit_b(src: str) -> str:
     """drive.py's text with edit B's lines taken out (before edit B, the text itself)."""
-    span = edit_b_span(src)
+    return _cut(src, edit_b_span(src))
+
+
+def _scan_check(node) -> bool:
+    """Whether `node` is the drive scan's `if not _scan_record.passed(scan):`."""
+    t = node.test if isinstance(node, ast.If) else None
+    return (isinstance(t, ast.UnaryOp) and isinstance(t.op, ast.Not) and isinstance(t.operand, ast.Call)
+            and isinstance(t.operand.func, ast.Attribute) and t.operand.func.attr == "passed"
+            and isinstance(t.operand.func.value, ast.Name) and t.operand.func.value.id == "_scan_record")
+
+
+def edit_c_span(src: str):
+    """(first, last), the 1-based lines of edit C in drive.py's text: the one statement of TakeDriver.drive right after
+    the drive scan's `if not _scan_record.passed(scan):`, when it is an `if` whose test names VENDOR_HARNESSES, or None
+    when it is not; raises ValueError when TakeDriver.drive holds no such scan check."""
+    for cls in ast.parse(src).body:
+        if isinstance(cls, ast.ClassDef) and cls.name == "TakeDriver":
+            for fn in cls.body:
+                if isinstance(fn, ast.FunctionDef) and fn.name == "drive":
+                    for k, node in enumerate(fn.body):
+                        if _scan_check(node):
+                            nxt = fn.body[k + 1] if k + 1 < len(fn.body) else None
+                            if isinstance(nxt, ast.If) and any(isinstance(n, ast.Name) and n.id == "VENDOR_HARNESSES"
+                                                               for n in ast.walk(nxt.test)):
+                                return (nxt.lineno, nxt.end_lineno)
+                            return None
+    raise ValueError("drive.py has no TakeDriver.drive `if not _scan_record.passed(scan):`")
+
+
+def _cut(src: str, span) -> str:
     if span is None:
         return src
     lines = src.splitlines(keepends=True)
     return "".join(lines[:span[0] - 1] + lines[span[1]:])
 
 
+def without_edit_c(src: str) -> str:
+    """drive.py's text with edit C's lines taken out (before edit C, the text itself)."""
+    return _cut(src, edit_c_span(src))
+
+
+def without_edits(src: str) -> str:
+    """drive.py's text with edits C and B taken out: C first, as it lies below B, so B's lines do not move."""
+    return without_edit_b(without_edit_c(src))
+
+
 def edit_b_problems(src: str) -> list:
+    """Edits B and C, each present, and drive.py outside both their spans drive.py before edit B."""
     try:
-        span = edit_b_span(src)
+        span, span_c = edit_b_span(src), edit_c_span(src)
     except (SyntaxError, ValueError) as e:
-        return [f"edit B: {e}"]
+        return [f"edit B or C: {e}"]
+    out = []
     if span is None:
-        return ["edit B: TakeDriver._take_records' vendor branch writes no turn envelopes (its one statement only)"]
-    if hashlib.sha256(without_edit_b(src).encode("utf-8")).hexdigest() != PRE_EDIT_B_DRIVE_SHA256:
-        return [f"edit B: drive.py outside lines {span[0]}-{span[1]} (the vendor branch) is not drive.py before edit B"]
+        out.append("edit B: TakeDriver._take_records' vendor branch writes no turn envelopes (its one statement only)")
+    if span_c is None:
+        out.append("edit C: TakeDriver.drive rebinds nothing to the masked bytes right after the drive scan (no `if` "
+                   "naming VENDOR_HARNESSES there)")
+    if out:
+        return out
+    if hashlib.sha256(without_edits(src).encode("utf-8")).hexdigest() != PRE_EDIT_B_DRIVE_SHA256:
+        return [f"edits B and C: drive.py outside lines {span[0]}-{span[1]} (the vendor branch) and "
+                f"{span_c[0]}-{span_c[1]} (after the drive scan) is not drive.py before edit B"]
     return []
 
 
