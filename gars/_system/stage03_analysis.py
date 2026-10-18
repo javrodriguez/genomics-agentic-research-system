@@ -13,13 +13,14 @@ Subcommands, in the order a run uses them:
   approve  the human gate, made durable. Refuses while the plan still carries skeleton
            markers, has no Outputs rows, or names an artifact type outside the closed
            vocabulary; otherwise stamps `Status: APPROVED <date>` into PLAN.md and writes
-           a record in the protected sibling .gars-approvals store, bound to the plan and
-           expiring after 24 hours. Actor identity comes from the process UID at launch.
+           a record in the protected sibling .gars-approvals store, bound to the plan and to
+           every file under scripts/ (decision 0306), expiring after 24 hours. Actor identity comes from the process UID at launch.
            Run it only after the user has said yes to the plan file -- the flag records the
            approval, it never substitutes for it.
   verify   the exit gate. Refuses unless the protected, unexpired store record exists and its sha256 matches
            PLAN.md -- a `Status: APPROVED` line alone is not an approval, and a plan edited
-           after approval is not the plan that was approved (decision 0042); checks every
+           after approval is not the plan that was approved (decision 0042), nor a run of a
+           script the approval did not bind (decision 0306); checks every
            output the plan declared exists and is non-empty; writes OUTPUTS.tsv (all rows
            `native`) and STATUS, and returns the history_entry to append verbatim.
 
@@ -71,6 +72,13 @@ below are what they resolve to today.
 ## Method
 <FILL: numbered steps. Name every tool and parameter; name the conda environment
 (gars-bio unless stated); say which steps run where. No step may modify an input in place.>
+
+## Scripts
+In run order. `approve` writes scripts/run_all.sh, which runs them in this order as one job and
+stops at the first failure; it is the one script submitted.
+
+<FILL: a numbered list, one script per line in run order, e.g. `1. scripts/01_counts.sh`. Name
+every file under scripts/ and nothing else; write the scripts before approval.>
 
 ## Outputs
 Types come from the closed vocabulary in _references/artifact_types.md.
@@ -272,6 +280,215 @@ def approval_holds(plan_path, record_path, workspace=None):
     return True, None
 
 
+RUNNER = "scripts/run_all.sh"
+
+
+def ordered_scripts(text):
+    """The plan's `## Scripts` list in run order, or None when the plan has no such section
+    (a plan written before decision 0307 keeps single submissions)."""
+    section = re.search(r"^## Scripts[ \t]*\n(.*?)(?=^## |\Z)", text, re.S | re.M)
+    if section is None:
+        return None
+    return [(int(n), path) for n, path in
+            re.findall(r"^\s*(\d+)\.\s+`?(\S+?)`?\s*$", section.group(1), re.M)]
+
+
+#: Slurm's short spellings of the directives a stage 03 script commonly names, so `-t` and
+#: `--time` in two scripts are one directive.
+SBATCH_ALIASES = {"-t": "--time", "-c": "--cpus-per-task", "-J": "--job-name",
+                  "-p": "--partition", "-A": "--account", "-q": "--qos", "-N": "--nodes",
+                  "-n": "--ntasks", "-o": "--output", "-e": "--error"}
+
+
+def leading_directives(path):
+    """A script's leading `#SBATCH` lines as [(directive, value or None)], read as the launcher
+    reads them: up to the first line that is neither blank nor a comment. ValueError names a
+    line approve cannot parse."""
+    found = []
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        if line.strip() and not line.lstrip().startswith("#"):
+            break
+        if not line.startswith("#SBATCH"):
+            continue
+        m = (re.fullmatch(r"#SBATCH\s+(--[A-Za-z][\w-]*)(?:(?:=|\s+)(\S+))?\s*", line) or
+             re.fullmatch(r"#SBATCH\s+(-[A-Za-z])\s*(\S+)\s*", line))
+        if m is None:
+            raise ValueError("cannot read the directive line %r" % line)
+        found.append((SBATCH_ALIASES.get(m.group(1), m.group(1)), m.group(2)))
+    return found
+
+
+def slurm_seconds(value):
+    """Slurm's time forms (M, M:S, H:M:S, D-H, D-H:M, D-H:M:S) as seconds."""
+    m = re.fullmatch(r"(?:(\d+)-)?(\d+)(?::(\d+))?(?::(\d+))?", value or "")
+    if m is None:
+        raise ValueError("not a Slurm time")
+    days, a, b, c = (int(g) if g is not None else None for g in m.groups())
+    if days is None:
+        hours, minutes, seconds = (a, b, c) if c is not None else (0, a, b or 0)
+    else:
+        hours, minutes, seconds = a, b or 0, c or 0
+    return (((days or 0) * 24 + hours) * 60 + minutes) * 60 + seconds
+
+
+MEMORY_FORMS = ("; memory is a number with a unit of K, M, G or T, upper case (e.g. 64G), the "
+                "form of _system/venue_policy.py")
+MEMORY_FAMILY = ("--mem", "--mem-per-cpu", "--mem-per-gpu")
+
+
+def runner_directives(adir, order):
+    """The runner's `#SBATCH` lines from the listed scripts', one value per directive, since
+    the scripts run one after another in one job: `--time` is the sum, memory and
+    `--cpus-per-task` the largest, every other directive the same in each script naming it.
+    Returns (lines, blocked); anything blocked means approve writes nothing."""
+    import venue_policy as policy
+    blocked, seen, names = [], {}, []
+    for _, rel in order:
+        try:
+            pairs = leading_directives(Path(adir) / rel)
+        except (OSError, ValueError) as exc:
+            blocked.append("%s: %s" % (rel, exc))
+            continue
+        own = {}
+        for name, value in pairs:
+            if name in own and own[name] != value:
+                blocked.append("%s names %s twice, with different values" % (rel, name))
+            own[name] = value
+        for name, value in own.items():
+            if name not in names:
+                names.append(name)
+            seen.setdefault(name, []).append((rel, value))
+    asked = [name for name in MEMORY_FAMILY if name in seen]
+    if len(asked) > 1:
+        # Slurm takes one memory request per job and refuses a job asking more than one (0310).
+        blocked.append("%s are mixed across the scripts; they run as one job, which Slurm refuses "
+                       "with more than one of %s, so give every script the same one" % (
+                           " and ".join("%s (%s)" % (name, ", ".join(rel for rel, _ in seen[name]))
+                                        for name in asked), ", ".join(MEMORY_FAMILY)))
+    parse = {"--time": slurm_seconds, "--mem": policy.memory_bytes,
+             "--mem-per-cpu": policy.memory_bytes, "--cpus-per-task": int}
+    lines = []
+    for name in names:
+        given = seen[name]
+        if name in parse:
+            try:
+                values = [(parse[name](value), value) for _, value in given]
+            except (ValueError, TypeError):
+                forms = {"--mem": MEMORY_FORMS, "--mem-per-cpu": MEMORY_FORMS}.get(name, "")
+                blocked.append("%s: cannot read the value in %s%s" % (name, ", ".join(
+                    "%s (%s)" % (rel, value) for rel, value in given), forms))
+                continue
+        if name == "--time":
+            missing = [rel for _, rel in order if rel not in [r for r, _ in given]]
+            if missing:
+                blocked.append("--time is given by %s but not by %s; the runner's time is the sum "
+                               "of every script's, so give each script a time, or none" % (
+                                   ", ".join(r for r, _ in given), ", ".join(missing)))
+                continue
+            total = sum(v for v, _ in values)
+            value = "%02d:%02d:%02d" % (total // 3600, total % 3600 // 60, total % 60)
+        elif name in parse:
+            value = max(values, key=lambda pair: pair[0])[1]
+        elif len(set(value for _, value in given)) > 1:
+            blocked.append("%s disagrees across the scripts (%s); the scripts run as one job, so "
+                           "give it one value" % (name, ", ".join(
+                               "%s: %s" % (rel, value) for rel, value in given)))
+            continue
+        else:
+            value = given[0][1]
+        lines.append("#SBATCH %s" % name if value is None else "#SBATCH %s=%s" % (name, value))
+    return lines, blocked
+
+
+def runner_text(order, directives=()):
+    lines = ["#!/bin/bash"] + list(directives) + [
+             "# Generated by stage03_analysis.py approve from PLAN.md's Scripts list (0307).",
+             "# Runs the approved scripts in plan order, as one job; stops at the first failure.",
+             "set -euo pipefail",
+             'cd "$(dirname "$0")/.."']
+    return "\n".join(lines + ["bash %s" % path for _, path in order]) + "\n"
+
+
+def order_gates(text, adir):
+    """A Scripts list numbers 1..n and names exactly the files under scripts/ (0307)."""
+    order = ordered_scripts(text)
+    if order is None or FILL in text:
+        return []
+    blocked = []
+    if not order:
+        blocked.append("the Scripts section lists no script; list each script under scripts/ "
+                       "in run order, e.g. `1. scripts/01_counts.sh`")
+        return blocked
+    if [n for n, _ in order] != list(range(1, len(order) + 1)):
+        blocked.append("the Scripts list must be numbered 1 to %d in run order" % len(order))
+    listed = [path for _, path in order]
+    present = sorted(set(approved_scripts(adir)) - {RUNNER})
+    for path in sorted(set(listed) - set(present)):
+        blocked.append("the Scripts list names %s, which is not a file under scripts/" % path)
+    for path in sorted(set(present) - set(listed)):
+        blocked.append("%s is under scripts/ but not in the Scripts list; list every script in "
+                       "run order, or remove it" % path)
+    if RUNNER in listed or len(set(listed)) != len(listed):
+        blocked.append("the Scripts list names a script twice, or names %s, which approve "
+                       "writes" % RUNNER)
+    return blocked
+
+
+def stale_outputs(adir, outputs, started):
+    """Declared outputs older than the run that should have produced them (0307). A second of
+    tolerance covers a coarse file-system clock."""
+    return [f for f, _, _ in outputs
+            if (Path(adir) / f).is_file() and (Path(adir) / f).stat().st_mtime + 1.0 < started]
+
+
+def approved_scripts(adir):
+    """Every file under the analysis's scripts/, as {relative path: sha256}: what `approve`
+    binds beside the plan, so the user approves the plan and its scripts together (S03-scripts)."""
+    root = Path(adir) / "scripts"
+    found = {}
+    if root.is_dir():
+        for path in sorted(root.rglob("*")):
+            if path.is_file():
+                found[str(path.relative_to(adir))] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return found
+
+
+def script_refusal(adir, script, workspace):
+    """Why `script` may not run as this approved analysis, or None when it is an approved script,
+    byte for byte. The approval record is the human-owned one `approve` wrote (decision 0306)."""
+    adir = Path(adir).resolve()
+    try:
+        rel = str(Path(script).resolve().relative_to(adir))
+        record = json.loads(approval_record_path(adir / "PLAN.md", workspace).read_text(encoding="utf-8"))
+        if "scripts" not in record:
+            # An approval written before 0306 binds no scripts; it stays what it was. Records
+            # are written only by `approve` into the human-owned store, never by the agent.
+            return None
+        scripts = record["scripts"]
+        if not isinstance(scripts, dict):
+            raise ValueError("scripts is not a map")
+    except (OSError, ValueError, TypeError):
+        return "no approval record names this analysis's scripts"
+    if rel not in scripts:
+        return ("%s was not approved with the plan: every script is written before `approve` and "
+                "approved with it; a new script is a new analysis -- run `create` again" % rel)
+    actual = hashlib.sha256(Path(script).read_bytes()).hexdigest()
+    if actual != scripts[rel]:
+        return ("%s changed since the plan was approved (sha256 now %s, approved %s); a change of "
+                "mind is a new analysis -- run `create` again" % (rel, actual[:12], str(scripts[rel])[:12]))
+    return None
+
+
+def scripts_drift(adir, workspace):
+    """Why the analysis's scripts/ is not the set approved with the plan, or None: a script added
+    or changed since approval is named (decision 0306). A script removed since runs nothing."""
+    for rel, path in ((rel, Path(adir) / rel) for rel in approved_scripts(adir)):
+        why = script_refusal(adir, path, workspace)
+        if why:
+            return why
+    return None
+
+
 # --- approve -----------------------------------------------------------------------------------
 
 def plan_gates(text, workspace, adir):
@@ -355,6 +572,12 @@ def cmd_approve(args, workspace):
         return emit(result, EXIT_REFUSED)
 
     result["blocked"].extend(plan_gates(text, workspace, adir))
+    result["blocked"].extend(order_gates(text, adir))
+    order = ordered_scripts(text)
+    directives = []
+    if order and not result["blocked"]:
+        directives, why = runner_directives(adir, order)
+        result["blocked"].extend(why)
     outputs = parse_outputs_table(text)
     if "Status: DRAFT" not in text:
         result["blocked"].append("PLAN.md has no `Status: DRAFT` line to promote")
@@ -367,6 +590,12 @@ def cmd_approve(args, workspace):
     except (OSError, ValueError) as exc:
         result['error'] = str(exc)
         return emit(result, EXIT_REFUSED)
+    if order:
+        # The runner is generated, never written by the agent, and bound with the scripts. Its
+        # directives are the scripts', so the launcher and the venue policy read them (0308).
+        with ws.atomic_open(adir / RUNNER) as fh:
+            fh.write(runner_text(order, directives))
+        result["runner"] = RUNNER
     now = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0)
     stamp = "Status: APPROVED %s" % (args.date or now.date().isoformat())
     with ws.atomic_open(plan_path, newline=None) as fh:
@@ -377,6 +606,7 @@ def cmd_approve(args, workspace):
         'expiry': (now + APPROVAL_LIFETIME).strftime('%Y-%m-%dT%H:%M:%SZ'),
         'plan_sha256': hashlib.sha256(plan_path.read_bytes()).hexdigest(),
         'plan_path': str(plan_path.resolve()),
+        'scripts': approved_scripts(adir),
     }
     # Exclusive creation refuses overwrites; a crash leaves an invalid record, never approval.
     try:
@@ -388,7 +618,8 @@ def cmd_approve(args, workspace):
         result['error'] = 'R-073: cannot create approval record: %s' % exc
         return emit(result, EXIT_REFUSED)
     result.update({"ok": True, "outputs_declared": len(outputs), "status": stamp,
-                   "record": str(record_path), "plan_sha256": record["plan_sha256"]})
+                   "record": str(record_path), "plan_sha256": record["plan_sha256"],
+                   "scripts": sorted(record["scripts"])})
     return emit(result, EXIT_OK)
 
 
@@ -446,6 +677,25 @@ def cmd_verify(args, workspace):
     if problem:
         result['error'] = problem
         return emit(result, EXIT_REFUSED)
+    # The run is execution evidence; it is the approved analysis only when every script it ran
+    # was approved with the plan, byte for byte (S03-scripts, decision 0306).
+    latest = ex._analysis_latest(ex._analysis_entries(adir))
+    for entry in latest.values():
+        why = script_refusal(adir, entry["script"], workspace)
+        if why:
+            result["error"] = "the run is not the approved analysis: %s (decision 0306)" % why
+            return emit(result, EXIT_REFUSED)
+    if ordered_scripts(text):
+        run = latest.get(str((adir / RUNNER).resolve()))
+        if run is None:
+            result["error"] = ("the plan orders its scripts, and %s never ran; it is the one "
+                               "script submitted (decision 0307)" % RUNNER)
+            return emit(result, EXIT_REFUSED)
+        stale = stale_outputs(adir, outputs, run["submitted_at"])
+        if stale:
+            result["error"] = ("%s older than the run that should have produced it; a stale copy "
+                               "is not this run's result (decision 0307)" % ", ".join(stale))
+            return emit(result, EXIT_REFUSED)
 
     with ws.atomic_open(adir / "OUTPUTS.tsv") as fh:
         fh.write("# type\trole\tpath\n")
@@ -456,7 +706,7 @@ def cmd_verify(args, workspace):
     wl.write_status(adir, "COMPLETE")
 
     version = ws.template_version(workspace)
-    model = args.model or "unknown"
+    model = ws.history_model(workspace, args.model)
     goal = re.search(r"^## Goal\n(.*?)(?=^## |\Z)", text, re.S | re.M)
     goal_line = " ".join(goal.group(1).split()) if goal else ""
     if len(goal_line) > 200:
@@ -495,8 +745,8 @@ def main(argv=None):
     v = sub.add_parser("verify", help="exit gate: outputs exist -> OUTPUTS.tsv, STATUS, history")
     v.add_argument("--project", required=True)
     v.add_argument("--analysis", required=True)
-    v.add_argument("--model", default="unknown",
-                   help="the exact model id of the agent executing this stage (decision 0024)")
+    v.add_argument("--model", default=None,
+                   help="ignored, kept so the pinned registry still validates: the model comes from the harness's session start (decision 0303); `none` alone is honoured, for a scripted run with no model-mediated step")
 
     args = ap.parse_args(argv)
     if not args.cmd:

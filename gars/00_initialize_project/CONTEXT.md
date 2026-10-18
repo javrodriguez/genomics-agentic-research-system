@@ -241,9 +241,11 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
    names unmatched filenames, show them, ask the user how sample IDs should be read, and re-run
    `inspect` with `--sample-id-pattern '<their answer as a regex with named groups sample, read
    and optionally lane>'`. Never compose that pattern from your own reading of the filenames.
-11. Exit 0 → reply T4a with its counts and `sample_ids`, and **ask the user to confirm before
-    anything is written**. Do not link yet.
-12. On confirmation, link:
+11. Exit 0 → reply T4a with its counts and `sample_ids`, and **wait for the reply `link`
+    before anything is written**. Do not link yet.
+12. Only on the reply `link`, that word alone, link. A different path → step 9 with it. Any other
+    reply, a "yes", an "ok" or a "looks fine, but…" included → send T4a again and wait; never
+    read it as `link`.
 
     ```bash
     python3 _system/stage00_register.py link --project projects/<title> --assay <Assay ID> --source <path>
@@ -261,13 +263,13 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
     re-runnable: re-run it once in the foreground.
 
     ```bash
-    python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none --model "<model id>"
+    python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none
     ```
 
-    `--model` is the exact model id you are running as, exactly as your harness reports it —
-    the model is part of the toolchain, so `HISTORY.md` records it beside the template version.
-    If you cannot name it, omit the flag: the script records `unknown`, which is honest; a
-    guessed id is not. Add the same `--sample-id-pattern` if one was used at step 9. This writes `files.csv` and
+    Never pass `--model`: the model is part of the toolchain, so `HISTORY.md` records it beside
+    the template version, and the script takes it from what your harness reported at session
+    start, or records `unknown`, which is honest; a self-reported id is not (decision 0303).
+    Add the same `--sample-id-pattern` if one was used at step 9. This writes `files.csv` and
     `samples.csv`, substitutes the stamp's placeholders, and runs the exit gate. It is
     deterministic and re-runnable: on unchanged inputs it reproduces the four files byte for
     byte, so a killed run costs only time.
@@ -340,7 +342,7 @@ Excluded (not raw NGS): <list or "none">
 Samples: <n>
 <sample id list>
 
-Confirm to create symlinks under 00_data/<Assay ID>/raw/, or provide a different path.
+Reply `link` to create symlinks under 00_data/<Assay ID>/raw/, or provide a different path.
 ```
 
 **T4b — Symlinks created**

@@ -5,8 +5,13 @@ The deterministic core of `01_prepare_samplesheets`. The contract orchestrates; 
 See docs/decisions/0011-deterministic-artifacts-in-stages-00-01.md for why.
 
 This script decides what is TRUE. It never prompts, never proceeds past a gate on its own, and
-never writes unless told which gate the user cleared. The agent decides what to say and when to
-stop.
+never writes an artifact unless told which gate the user cleared. The agent decides what to say
+and when to stop. A clean `--check` writes one thing, its own record of what the user is about to
+be shown (`01_samplesheets/.stage01_check.json`: the excluded samples, the existing files'
+sha256); `--confirm-exclusions` and `--force` clear a gate only when that record still matches
+(S01-yes). A write consumes it: the writer leaves its own record, which clears no gate, so every
+later switch needs a new `--check` (record 0300). The record is a dotfile beside the artifacts,
+where the guard refuses the agent's Write; a check with nothing to gate keeps none.
 
 Stdlib only, on purpose: stages 00 and 01 must run with no conda environment (unlike stage 02).
 The consequence is that `_config/<assay>.yaml` is read by a narrow top-level regex for the top-level
@@ -22,13 +27,15 @@ Emits a single JSON object on stdout. Exit codes:
     0  ok            checked clean, or written
     1  failures      validation failed; nothing written
     2  needs_confirm exclusions present without --confirm-exclusions, or existing
-                     samplesheets without --force. Nothing written.
+                     samplesheets without --force, or either switch with no matching
+                     --check record. Nothing written.
     3  preconditions project or required inputs missing
 """
 
 import argparse
 import csv
 import gzip
+import hashlib
 from collections import Counter
 from statistics import median
 import json
@@ -849,6 +856,101 @@ def validate_assay(project, assay):
 
 # --- writing -----------------------------------------------------------------------------------
 
+CHECK_RECORD = ".stage01_check.json"
+
+
+def check_record_path(project):
+    """The stage's own record, beside its artifacts: inside 01_samplesheets/ the guard already
+    refuses the agent's Write, and the three-artifact listing names it nowhere (record 0300)."""
+    return project / "01_samplesheets" / CHECK_RECORD
+
+
+def gate_subjects(project, exclusions, existing):
+    """What the two gates are about, as the check records it and the writer compares it."""
+    return {"exclusions": {a: sorted(e["sample_id"] for e in excl)
+                           for a, excl in sorted(exclusions.items())},
+            "existing": {name: hashlib.sha256((project / "01_samplesheets" / name)
+                                              .read_bytes()).hexdigest()
+                         for name in sorted(existing)}}
+
+
+def write_check_record(project, subjects, written_by):
+    """`written_by` is "check" for what the user was shown, "writer" once a write consumed it:
+    a writer's record clears no gate, so every later switch needs a new --check."""
+    path = check_record_path(project)
+    path.parent.mkdir(exist_ok=True)
+    with ws.atomic_open(path) as fh:
+        json.dump(dict(subjects, written_by=written_by), fh, indent=2, sort_keys=True)
+        fh.write("\n")
+
+
+def well_formed(record):
+    """The shape write_check_record writes; anything else is no record (review NIT 2)."""
+    def strings(values):
+        return isinstance(values, list) and all(isinstance(v, str) for v in values)
+    return (isinstance(record, dict)
+            and record.get("written_by") in ("check", "writer")
+            and isinstance(record.get("exclusions"), dict)
+            and all(isinstance(k, str) and strings(v) for k, v in record["exclusions"].items())
+            and isinstance(record.get("existing"), dict)
+            and all(isinstance(k, str) and isinstance(v, str)
+                    for k, v in record["existing"].items()))
+
+
+def read_check_record(project):
+    try:
+        with check_record_path(project).open() as fh:
+            record = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    return record if well_formed(record) else None
+
+
+def unmatched_switches(project, subjects, confirm_exclusions, force):
+    """Why each switch the agent passed does not match the check the user saw (S01-yes).
+
+    A switch is judged only when it clears a gate that is present: --confirm-exclusions with
+    exclusions, --force with existing samplesheets. Each needs the record the last clean --check
+    wrote, and that record's subject must equal today's, byte for byte for the files.
+    """
+    clearing = []
+    if confirm_exclusions and subjects["exclusions"]:
+        clearing.append(("exclusions", "--confirm-exclusions", "T7"))
+    if force and subjects["existing"]:
+        clearing.append(("existing", "--force", "T5"))
+    if not clearing:
+        return []
+    record = read_check_record(project)
+    why = []
+    for key, flag, template in clearing:
+        if record is None:
+            why.append("%s clears template %s only against the --check the user was shown, and "
+                       "no --check is recorded; run --check and show %s again" % (flag, template,
+                                                                                  template))
+            continue
+        if record["written_by"] != "check":
+            why.append("%s clears template %s only against a --check the user was shown since "
+                       "the last write, and the last write consumed it; run --check and show %s "
+                       "again" % (flag, template, template))
+            continue
+        seen, now = record.get(key), subjects[key]
+        if seen == now:
+            continue
+        if key == "exclusions":
+            detail = "; ".join("%s now excludes %s, the check showed %s"
+                               % (a, ", ".join(now.get(a, [])) or "none",
+                                  ", ".join((seen or {}).get(a, [])) or "none")
+                               for a in sorted(set(now) | set(seen or {}))
+                               if now.get(a) != (seen or {}).get(a))
+        else:
+            detail = "changed since the check: " + ", ".join(
+                n for n in sorted(set(now) | set(seen or {}))
+                if now.get(n) != (seen or {}).get(n))
+        why.append("%s does not match the --check the user was shown (%s); run --check and "
+                   "show %s again" % (flag, detail, template))
+    return why
+
+
 def write_assay(project, assay, res):
     """Write the samplesheet and design table. Returns (paths, gate_failures)."""
     sheet_dir = project / "01_samplesheets"
@@ -981,16 +1083,17 @@ def main(argv=None):
     ap.add_argument("--project", type=Path,
                     help="path to projects/<project_title>/ (not needed with --list-formats)")
     ap.add_argument("--check", action="store_true",
-                    help="validate only; write nothing")
+                    help="validate only; write nothing but the check record "
+                         "(01_samplesheets/.stage01_check.json) the two switches are judged "
+                         "against, kept only when there is a gate to record")
     ap.add_argument("--confirm-exclusions", action="store_true",
                     help="the user has confirmed the excluded samples (contract template T7)")
     ap.add_argument("--force", action="store_true",
                     help="the user has confirmed overwriting existing samplesheets (T5)")
     ap.add_argument("--list-formats", action="store_true",
                     help="print the registered per-assay samplesheet formats and exit")
-    ap.add_argument("--model", default="unknown",
-                    help="the exact model id of the agent executing this stage; recorded in the "
-                         "HISTORY.md entry beside the template version (decision 0024)")
+    ap.add_argument("--model", default=None,
+                    help="ignored, kept so the pinned registry still validates: the model comes from the harness's session start (decision 0303); `none` alone is honoured, for a scripted run with no model-mediated step")
     ap.add_argument("--verify-integrity", choices=("none", "full"), default="none",
                     help="none (default): trust the files; stage 00 already checked that every "
                          "link resolves and carries gzip magic. full: decompress every INCLUDED "
@@ -1066,13 +1169,23 @@ def main(argv=None):
         if any(r["failures"] for r in results.values()):
             return emit(result, EXIT_FAILURES)
 
+    subjects = gate_subjects(project, exclusions, existing)
     if args.check:
+        if subjects["exclusions"] or subjects["existing"]:
+            write_check_record(project, subjects, "check")
+        else:
+            # Nothing to gate: an empty record refuses every switch exactly as no record does,
+            # so none is kept, and a fresh project's check still creates no folder.
+            try:
+                check_record_path(project).unlink()
+            except FileNotFoundError:
+                pass
         result["ok"] = True
         result["exclusions_pending"] = bool(exclusions)
         result["existing_outputs"] = existing
         return emit(result, EXIT_OK)
 
-    blocked = []
+    blocked = unmatched_switches(project, subjects, args.confirm_exclusions, args.force)
     if exclusions and not args.confirm_exclusions:
         blocked.append("exclusions present; re-run with --confirm-exclusions once the user has "
                        "confirmed (template T7)")
@@ -1091,6 +1204,11 @@ def main(argv=None):
         if gate:
             result["assays"][assay]["failures"].extend(gate)
             gate_failures.extend(gate)
+    # The write consumed the check: the record now holds what is on disk, marked as the
+    # writer's, so no later switch replays the consent the user gave (review finding 1).
+    written = [Path(p).name for p in result["wrote"]
+               if (project / p).is_file() and Path(p).parent.name == "01_samplesheets"]
+    write_check_record(project, gate_subjects(project, {}, written), "writer")
 
     if gate_failures:
         return emit(result, EXIT_FAILURES)
@@ -1098,7 +1216,8 @@ def main(argv=None):
     result["ok"] = True
     result["history_entry"] = history_entry(assays, results, result["wrote"],
                                             args.verify_integrity,
-                                            result["template_version"], args.model)
+                                            result["template_version"],
+                                            ws.history_model(ws.workspace_root(__file__), args.model))
     return emit(result, EXIT_OK)
 
 

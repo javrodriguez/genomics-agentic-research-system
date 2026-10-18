@@ -44,6 +44,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import workspace as ws          # noqa: E402
 import wrapperlib as wl         # noqa: E402
+import resolve_artifact as ra   # noqa: E402
 from wrapperlib import (EXIT_OK, EXIT_FAILURE, EXIT_REFUSED, EXIT_USAGE,   # noqa: E402
                         emit, fail)
 
@@ -278,6 +279,14 @@ def cmd_prepare(args):
                                    "design is not the canonical project design")]
         result["error"] = "prepare refused; nothing written. Use the canonical project design."
         return emit(result, EXIT_REFUSED)
+    # The resolver's counts once it finds them; any other path is refused, never used (0308).
+    counts, refusal = ra.choose_input(project, ASSAY, "counts_gene", SUBSTAGE, args.counts,
+                                      "--counts")
+    if refusal:
+        result["failures"] = [fail("input_not_resolved", refusal)]
+        result["error"] = "prepare refused; nothing written. " + refusal
+        return emit(result, EXIT_REFUSED)
+    args.counts = str(counts)
     fails, cfg, paths = run_checks(project, args.counts, args.design)
     if fails:
         result["failures"] = fails
@@ -386,6 +395,7 @@ def cmd_check_table(args):
 def cmd_collect(args):
     wl.require_collect_config(args.project, ASSAY, SUBSTAGE)
     project = Path(args.project)
+    model = ws.history_model(WORKSPACE, args.model)  # the harness's, never the flag (0303)
     result = {"command": "collect", "ok": False, "assay": ASSAY, "failures": []}
     if not project.is_dir():
         result["error"] = "no such project: %s" % project
@@ -446,7 +456,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return wl.collect_failure(substage, result, EXIT_FAILURE, args.model)
+        return wl.collect_failure(substage, result, EXIT_FAILURE, model)
 
     outputs = [("de_results", "native", "run/tables/de_results.csv"),
                ("counts_gene", "adapted", "adapted/counts_gene.tsv"),
@@ -457,11 +467,10 @@ def cmd_collect(args):
             fh.write("%s\t%s\t%s\n" % (typ, role, path))
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-    wl.complete_manifest(substage, args.model, "COMPLETE")
+    wl.complete_manifest(substage, model, "COMPLETE")
     wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)
-    model = args.model or "unknown"
     entry = "\n".join([
         "## <ISO-8601 date> — 02_bioinformatics/%s/%s — differential expression complete"
         % (ASSAY, SUBSTAGE),
@@ -469,7 +478,8 @@ def cmd_collect(args):
         "Template version: %s" % version,
         "Model: %s" % model,
         "Method: PyDESeq2 via the gars rnaseq-de wrapper",
-        "Counts supplied by: %s" % (args.counts_from or "unknown"),
+        "Counts supplied by: %s" % ra.supplier(project, ASSAY, "counts_gene", SUBSTAGE,
+                                               args.counts_from, "--counts-from", "counts"),
         "Genes tested: %s" % result.get("genes_tested", "unknown"),
         "Outputs: " + ", ".join("`%s` (%s)" % (t, r) for t, r, _ in outputs),
     ])
@@ -556,10 +566,12 @@ def main(argv=None):
                        help="the design path resolve_artifact.py returned")
     c = sub.add_parser("collect")
     c.add_argument("--project", required=True)
-    c.add_argument("--model", default="unknown",
-                   help="the exact model id of the agent executing this sub-stage (0024)")
+    c.add_argument("--model", default=None,
+                   help="ignored, kept so the pinned registry validates; the model comes "
+                        "from the harness's session start, and `none` alone is honoured (0303)")
     c.add_argument("--counts-from", default=None,
-                   help="the sub-stage that supplied the counts, from the resolver")
+                   help="ignored, kept so the pinned registry validates; the supplier comes "
+                        "from the resolver (0305)")
     t = sub.add_parser("check-table")
     t.add_argument("--table", required=True)
     m = sub.add_parser("summary")

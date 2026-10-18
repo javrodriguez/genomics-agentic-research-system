@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 # SessionStart hook (decision 0033): rebuild the generated index, then print the per-project
-# catch-up so a session boots knowing where every project stands. The only write is
-# projects/_index.md — a generated file whose authority is elsewhere. Pin failures refuse session initialization (R-099).
+# catch-up so a session boots knowing where every project stands. The writes are
+# projects/_index.md — a generated file whose authority is elsewhere — and .gars_session_model,
+# the model the harness's SessionStart input names, or unknown (decision 0303); every history
+# writer reads it, never an agent's --model. Pin failures refuse session initialization (R-099).
 WS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# A terminal is a person running this by hand, not a harness starting a session: no record.
+[ -t 0 ] || python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import workspace
+workspace.record_session_model(sys.argv[2], sys.stdin.read())' "$WS/_system" "$WS" >/dev/null 2>&1 || true
 python3 "$WS/_system/tools/pins.py" || exit 2
 bash "$WS/_system/build_projects_index.sh" "$WS" >/dev/null 2>&1 || true
 python3 "$WS/_system/project_state.py" 2>/dev/null || true

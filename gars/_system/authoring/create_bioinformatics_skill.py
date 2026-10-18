@@ -64,6 +64,114 @@ def _frontmatter(text):
     return text[3:end] if end != -1 else None
 
 
+# The words of a line that builds a history entry or a run record, for the provenance rule.
+ENTRY_OR_MANIFEST = ("Model:", "history_entry", "complete_manifest", "collect_failure",
+                     '"model"', "manifest")
+
+
+def _literal(node):
+    """A string literal's value, or None; ast.Str on 3.6, ast.Constant on 3.8+."""
+    if getattr(ast, "Str", None) and isinstance(node, ast.Str):
+        return node.s
+    value = getattr(node, "value", None) if isinstance(node, getattr(ast, "Constant", ())) else None
+    return value if isinstance(value, str) else None
+
+
+def flag_reads_outside_history_model(tree):
+    """Line numbers in cmd_collect where the name `args` is used other than as the allow-list
+    permits (0310): every load of `args` is the receiver of an attribute whose name is not
+    `model` and does not start with `_`, except `args.model` as a whole argument of a
+    ws.history_model call with no assignment expression anywhere in that call. Anything else,
+    bare, passed, aliased, subscripted, starred or a dunder, is a line."""
+    collect = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "cmd_collect"]
+    if not collect:
+        return []
+
+    def is_args(node):
+        return isinstance(node, ast.Name) and node.id == "args"
+
+    named = getattr(ast, "NamedExpr", ())
+    allowed, parent = set(), {}
+    for node in ast.walk(collect[0]):
+        for child in ast.iter_child_nodes(node):
+            parent[id(child)] = node
+        func = getattr(node, "func", None)
+        if (isinstance(node, ast.Call) and isinstance(func, ast.Attribute)
+                and func.attr == "history_model" and isinstance(func.value, ast.Name)
+                and func.value.id == "ws"
+                and not any(isinstance(n, named) for n in ast.walk(node))):
+            for arg in list(node.args) + [k.value for k in node.keywords]:
+                if isinstance(arg, ast.Attribute) and arg.attr == "model" and is_args(arg.value):
+                    allowed.add(id(arg.value))
+
+    lines = []
+    for node in ast.walk(collect[0]):
+        if not is_args(node) or not isinstance(node.ctx, ast.Load) or id(node) in allowed:
+            continue
+        up = parent.get(id(node))
+        if not (isinstance(up, ast.Attribute) and up.value is node and up.attr != "model"
+                and not up.attr.startswith("_")):
+            lines.append(node.lineno)
+    return sorted(set(lines))
+
+
+NAMESPACE_READERS = ("locals", "globals", "vars", "_getframe")
+
+
+def args_unpinned_in_collect(tree):
+    """(line, what) pairs in cmd_collect that loosen the allow-list's hold on the name `args`
+    (0311): a signature other than one plain parameter named `args`, or any binding of `args`
+    or `ws` inside the function (a store or delete, a for, with or comprehension target, a
+    walrus, a nested def's or lambda's parameter, a nested def or class of that name, an import
+    as, an except as, a global or nonlocal), or any use of locals, globals, vars or
+    sys._getframe, which reach it without naming it. The allow-list reads loads of the name;
+    it holds only while the name is the namespace and ws is the module."""
+    collect = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "cmd_collect"]
+    if not collect:
+        return []
+    fn, pinned, found = collect[0], ("args", "ws"), []
+    sig = fn.args
+    if (len(sig.args) != 1 or sig.args[0].arg != "args" or getattr(sig, "posonlyargs", [])
+            or sig.kwonlyargs or sig.vararg or sig.kwarg or sig.defaults or sig.kw_defaults):
+        found.append((fn.lineno, "the signature is not def cmd_collect(args)"))
+    for node in ast.walk(fn):
+        if isinstance(node, ast.Name) and node.id in pinned and not isinstance(node.ctx, ast.Load):
+            found.append((node.lineno, "%s is rebound" % node.id))
+        elif isinstance(node, (ast.FunctionDef, getattr(ast, "AsyncFunctionDef", ()), ast.Lambda)):
+            if node is not fn:
+                a = node.args
+                params = (list(getattr(a, "posonlyargs", [])) + a.args + a.kwonlyargs
+                          + [x for x in (a.vararg, a.kwarg) if x])
+                for p in params:
+                    if p.arg in pinned:
+                        found.append((node.lineno, "%s is a nested parameter" % p.arg))
+                if getattr(node, "name", None) in pinned:
+                    found.append((node.lineno, "%s is rebound" % node.name))
+        elif isinstance(node, ast.ClassDef) and node.name in pinned:
+            found.append((node.lineno, "%s is rebound" % node.name))
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            for alias in node.names:
+                if (alias.asname or alias.name.split(".")[0]) in pinned:
+                    found.append((node.lineno, "%s is rebound by an import" % (alias.asname or alias.name)))
+        elif isinstance(node, ast.ExceptHandler) and node.name in pinned:
+            found.append((node.lineno, "%s is rebound" % node.name))
+        elif isinstance(node, (ast.Global, ast.Nonlocal)):
+            for n in node.names:
+                if n in pinned:
+                    found.append((node.lineno, "%s is declared %s" % (n, type(node).__name__.lower())))
+        elif type(node).__name__ in ("MatchAs", "MatchStar") and getattr(node, "name", None) in pinned:
+            found.append((node.lineno, "%s is rebound" % node.name))
+        elif type(node).__name__ == "MatchMapping" and getattr(node, "rest", None) in pinned:
+            found.append((node.lineno, "%s is rebound" % node.rest))
+        # locals, globals, vars and sys._getframe reach the namespace without naming it
+        # (REVIEW-f3c7520 NIT 1); any reference fails, called or not, so an alias cannot hide one.
+        if isinstance(node, ast.Name) and node.id in NAMESPACE_READERS:
+            found.append((node.lineno, "%s reaches the namespace without naming args" % node.id))
+        elif isinstance(node, ast.Attribute) and node.attr == "_getframe":
+            found.append((node.lineno, "_getframe reaches the namespace without naming args"))
+    return sorted(set(found))
+
+
 def conform_one(wrapper_dir):
     """Every rule the standard makes checkable. Returns a list of failures (empty == passes).
 
@@ -163,16 +271,50 @@ def conform_one(wrapper_dir):
     if "main" not in funcs:
         fails.append(fail("verbs", "%s has no main()" % module.name))
 
-    # collect carries the model id: the contracts are executed by a model, so the model is
-    # part of the toolchain that produced the result (decision 0024).
+    # collect records the model: the contracts are executed by a model, so the model is part
+    # of the toolchain that produced the result (decision 0024). The value is the harness's,
+    # read by ws.history_model; the flag stays declared so the pinned registry validates (0303).
     # Matched as a complete quoted argparse flag, not as a substring: an earlier version of
     # this rule tested `"--model" in src` and a mutation renaming the flag to `--modelx`
     # sailed through it, because the rename still contains the string it searched for.
     if not re.search(r'''["']--model["']''', src):
         fails.append(fail("provenance",
-                          "%s never declares a \"--model\" flag; collect must record the "
-                          "executing model in its history entry (decision 0024)"
+                          "%s never declares a \"--model\" flag; collect must accept it "
+                          "and record the harness's model in its history entry (0024, 0303)"
                           % module.name))
+    # Declaring the flag is not reading the harness: collect must take its model from
+    # ws.history_model, and the flag's value must never reach a line that builds the history
+    # entry or the run record (lane gars-t74, ruling 1 on REVIEW-9eb28d9). A wrapper written
+    # to the old checklist (`model = args.model or "unknown"`) passed every rule above.
+    collect = re.search(r"^def cmd_collect\(.*?(?=^def |\Z)", src, re.M | re.S)
+    body = collect.group(0) if collect else ""
+    if collect and "ws.history_model(" not in body:
+        fails.append(fail("provenance",
+                          "%s: cmd_collect never calls ws.history_model; the model a history "
+                          "entry names is the harness's, never the flag's (0303)" % module.name))
+    # The flag may be read only inside ws.history_model's argument list: an allow-list over the
+    # parsed tree, since two text matches in turn passed `model = args.model or model` after the
+    # call and then getattr, vars, __dict__ and `args .model` (lane gars-t74, REVIEW-85a1b4a and
+    # REVIEW-8f5ae09 finding 3).
+    for line in flag_reads_outside_history_model(tree):
+        fails.append(fail("provenance",
+                          "%s: cmd_collect reads the model flag from args outside its "
+                          "ws.history_model( call (line %d); args may only be read as "
+                          "args.<field>, and the flag only as a whole argument of that call "
+                          "(0303, 0308, 0309, 0310)" % (module.name, line)))
+    # The allow-list above holds only while args is the namespace and ws the module (lane
+    # gars-t74, REVIEW-f3c7520 finding 1: a renamed parameter or a rebound ws read the flag).
+    for line, what in args_unpinned_in_collect(tree):
+        fails.append(fail("provenance",
+                          "%s: cmd_collect line %d: %s; it takes exactly one plain parameter "
+                          "named args, binds neither args nor ws and never calls locals, "
+                          "globals, vars or sys._getframe (0311)"
+                          % (module.name, line, what)))
+    for line in body.splitlines():
+        if "args.model" in line and any(w in line for w in ENTRY_OR_MANIFEST):
+            fails.append(fail("provenance",
+                              "%s: the flag's value reaches the history entry or the run "
+                              "record: %s (0303)" % (module.name, line.strip())))
 
     # --- the exit gate -------------------------------------------------------------------
     if "OUTPUTS.tsv" not in src:
@@ -449,6 +591,7 @@ def module_source(spec):
     lines.append('    results = substage / "run" / "results"')
     lines.append('    samples = wl.samplesheet_samples(paths["samplesheet"])')
     lines.append('    fails = []')
+    lines.append('    model = ws.history_model(WORKSPACE, args.model)  # the harness\'s (0303)')
     lines.append('')
     lines.append('    # The exit gate. CONTENT, not existence (decision 0010): the gate below')
     lines.append('    # must prove every sample survived the pipeline, because a sample lost to')
@@ -463,7 +606,7 @@ def module_source(spec):
     lines.append('')
     lines.append('    if fails:')
     lines.append('        result["failures"] = fails')
-    lines.append('        return wl.collect_failure(substage, result, EXIT_FAILURE)')
+    lines.append('        return wl.collect_failure(substage, result, EXIT_FAILURE, model)')
     lines.append('')
     lines.append('    with ws.atomic_open(substage / "OUTPUTS.tsv") as fh:')
     lines.append('        fh.write("# type\\trole\\tpath\\n")')
@@ -474,7 +617,6 @@ def module_source(spec):
     lines.append('    wl.write_status(substage, "COMPLETE")  # STATUS follows collect.')
     lines.append('')
     lines.append('    version = ws.template_version(WORKSPACE)')
-    lines.append('    model = args.model or "unknown"')
     lines.append('    entry = "\\n".join([')
     lines.append('        "## <ISO-8601 date> — 02_bioinformatics/%s/%s — pipeline complete"')
     lines.append('        % (ASSAY, SUBSTAGE),')
@@ -501,9 +643,11 @@ def module_source(spec):
     lines.append('        p = sub.add_parser(name)')
     lines.append('        p.add_argument("--project", required=True)')
     lines.append('        if needs_model:')
-    lines.append('            p.add_argument("--model", default="unknown",')
-    lines.append('                           help="the exact model id of the agent executing "')
-    lines.append('                                "this sub-stage (decision 0024)")')
+    lines.append('            p.add_argument("--model", default=None,')
+    lines.append('                           help="ignored, kept so the pinned registry "')
+    lines.append('                                "validates; the model comes from the "')
+    lines.append('                                "harness\'s session start, and `none` alone "')
+    lines.append('                                "is honoured (0303)")')
     lines.append('    args = ap.parse_args(argv)')
     lines.append('    if not args.cmd:')
     lines.append('        ap.print_help(sys.stderr)')
@@ -555,7 +699,7 @@ def skill_md_source(spec):
         "python3 %s.py prepare --project projects/<title>"
         % spec["wrapper_name"].replace("-", "_"),
         "sbatch <substage>/submit.sh                       # written by prepare",
-        "python3 %s.py collect --project projects/<title> --model \"<model id>\""
+        "python3 %s.py collect --project projects/<title>"
         % spec["wrapper_name"].replace("-", "_"),
         "```",
         "",

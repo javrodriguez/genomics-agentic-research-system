@@ -26,8 +26,9 @@ python; the analysis itself is a GENERATED script (`scripts/run_scrna.py`) execu
            defect class), every samplesheet sample present in summary.json with cells > 0,
            cluster count > 0, the processed object and figures real.
 
-Input `--h5ad` is the PATH the router resolved by artifact type
-(`_system/resolve_artifact.py`); this wrapper never searches for it.
+The input `h5ad` is resolved here, by artifact type from the completed sub-stages before this
+one (`_system/resolve_artifact.py`), so no session carries a path over; a `--h5ad` other than the
+resolver's is refused, never used (D-input, decision 0305).
 
 Runs on stock python 3.6.8, stdlib only.
 """
@@ -43,6 +44,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import workspace as ws          # noqa: E402
 import wrapperlib as wl         # noqa: E402
+import resolve_artifact as ra   # noqa: E402
 from wrapperlib import (EXIT_OK, EXIT_FAILURE, EXIT_REFUSED, EXIT_USAGE,   # noqa: E402
                         emit, fail)
 
@@ -309,8 +311,8 @@ def run_checks(project, h5ad_path):
 
     if not h5ad_path:
         fails.append(fail("preconditions",
-                          "--h5ad was not supplied; stage 02's router resolves it by artifact "
-                          "type from 02.01's OUTPUTS.tsv"))
+                          "--h5ad was not supplied and the resolver found no h5ad among the "
+                          "completed sub-stages before this one (02.01's OUTPUTS.tsv)"))
     else:
         p = Path(h5ad_path)
         if not p.is_file():
@@ -335,7 +337,10 @@ def cmd_check(args):
     if not project.is_dir():
         result["error"] = "no such project: %s" % project
         return emit(result, EXIT_USAGE)
-    fails, cfg, paths = run_checks(project, args.h5ad)
+    h5ad, refusal = ra.choose_input(project, ASSAY, "h5ad", SUBSTAGE, args.h5ad, "--h5ad")
+    fails, cfg, paths = run_checks(project, h5ad)
+    if refusal:
+        fails.insert(0, fail("input_not_resolved", refusal))
     result["failures"] = fails
     result["ok"] = not fails
     preflight = paths["substage"] / "preflight"
@@ -353,7 +358,12 @@ def cmd_prepare(args):
     if not project.is_dir():
         result["error"] = "no such project: %s" % project
         return emit(result, EXIT_USAGE)
-    fails, cfg, paths = run_checks(project, args.h5ad)
+    h5ad, refusal = ra.choose_input(project, ASSAY, "h5ad", SUBSTAGE, args.h5ad, "--h5ad")
+    if refusal:
+        result["failures"] = [fail("input_not_resolved", refusal)]
+        result["error"] = "prepare refused; nothing written. " + refusal
+        return emit(result, EXIT_REFUSED)
+    fails, cfg, paths = run_checks(project, h5ad)
     if fails:
         result["failures"] = fails
         result["error"] = "checks failed; nothing written. Run `check` for the same detail."
@@ -367,7 +377,7 @@ def cmd_prepare(args):
     # here resolves against the wrong directory (the lesson recorded in 0029's validation).
     script = RUN_SCRNA_TEMPLATE.format(
         project=project.resolve().name, assay=ASSAY,
-        h5ad=str(Path(args.h5ad).resolve()),
+        h5ad=str(Path(h5ad).resolve()),
         out=str((substage / "run").resolve()),
         min_genes=cfg["qc.min_genes"], min_cells=cfg["qc.min_cells"],
         max_mito=cfg["qc.max_mito_pct"], n_hvg=cfg["n_hvg"],
@@ -381,9 +391,9 @@ def cmd_prepare(args):
     wl.write_submit_sh(substage, WORKSPACE, cfg, project.resolve().name,
                        "%s-qc" % ASSAY, body)
     wl.write_reproducibility(substage, "scrna-qc-cluster", WORKSPACE,
-                             {"h5ad": Path(args.h5ad), "config": paths["config"],
+                             {"h5ad": Path(h5ad), "config": paths["config"],
                               "samplesheet": paths["samplesheet"]},
-                             [("h5ad", str(Path(args.h5ad).resolve())),
+                             [("h5ad", str(Path(h5ad).resolve())),
                               ("min_genes", cfg["qc.min_genes"]),
                               ("min_cells", cfg["qc.min_cells"]),
                               ("max_mito_pct", cfg["qc.max_mito_pct"]),
@@ -400,6 +410,7 @@ def cmd_prepare(args):
 def cmd_collect(args):
     wl.require_collect_config(args.project, ASSAY, SUBSTAGE)
     project = Path(args.project)
+    model = ws.history_model(WORKSPACE, args.model)  # the harness's, never the flag (0303)
     result = {"command": "collect", "ok": False, "assay": ASSAY, "failures": []}
     if not project.is_dir():
         result["error"] = "no such project: %s" % project
@@ -505,7 +516,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return wl.collect_failure(substage, result, EXIT_FAILURE, args.model)
+        return wl.collect_failure(substage, result, EXIT_FAILURE, model)
 
     outputs = [("h5ad", "native", "run/data/processed.h5ad"),
                ("table", "native", "run/tables/cluster_markers.csv"),
@@ -517,11 +528,10 @@ def cmd_collect(args):
             fh.write("%s\t%s\t%s\n" % (typ, role, path))
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-    wl.complete_manifest(substage, args.model, "COMPLETE")
+    wl.complete_manifest(substage, model, "COMPLETE")
     wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)
-    model = args.model or "unknown"
     thresholds = (summary or {}).get("thresholds", {})
     entry = "\n".join([
         "## <ISO-8601 date> — 02_bioinformatics/%s/%s — QC and clustering complete"
@@ -531,7 +541,8 @@ def cmd_collect(args):
         "Model: %s" % model,
         "Method: scanpy (QC -> normalise -> HVG -> PCA -> neighbours -> Leiden -> Wilcoxon "
         "markers) via the gars scrna-qc-cluster wrapper",
-        "Matrix supplied by: %s" % (args.h5ad_from or "unknown"),
+        "Matrix supplied by: %s" % ra.supplier(project, ASSAY, "h5ad", SUBSTAGE,
+                                               args.h5ad_from, "--h5ad-from", "h5ad"),
         "Cells: %s in, %s after QC" % ((summary or {}).get("n_cells_in", "?"),
                                        (summary or {}).get("n_cells_out", "?")),
         "Clusters: %s (resolution %s)" % ((summary or {}).get("n_clusters", "?"),
@@ -555,13 +566,15 @@ def main(argv=None):
         p.add_argument("--project", required=True)
         if name in ("check", "prepare"):
             p.add_argument("--h5ad", default=None,
-                           help="path to the h5ad, resolved by artifact type by stage 02")
+                           help="optional: the wrapper resolves the h5ad itself; any other "
+                                "path is refused (0305)")
         if name == "collect":
-            p.add_argument("--model", default="unknown",
-                           help="the exact model id of the agent executing this sub-stage "
-                                "(decision 0024)")
+            p.add_argument("--model", default=None,
+                           help="ignored, kept so the pinned registry validates; the model comes "
+                                "from the harness's session start, and `none` alone is honoured (0303)")
             p.add_argument("--h5ad-from", default=None,
-                           help="the sub-stage that supplied the matrix, for HISTORY.md")
+                           help="ignored, kept so the pinned registry validates; the supplier "
+                                "comes from the resolver (0305)")
     args = ap.parse_args(argv)
     if not args.cmd:
         ap.print_help(sys.stderr)

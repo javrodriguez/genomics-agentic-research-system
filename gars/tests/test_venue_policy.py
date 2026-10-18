@@ -257,7 +257,8 @@ class SubmissionOrderingTests(PolicyFixture):
         write_row(self.root, candidate)
         adir = self.root / '03_custom_analysis/01_fixture'; adir.mkdir(parents=True)
         (adir / 'PLAN.md').write_text('Runs: login-node (user-requested)\n')
-        script = adir / 'script.sh'; script.write_text('#!' + os.path.join(os.sep, 'bin', 'bash') + '\nexit 0\n')
+        (adir / 'scripts').mkdir(exist_ok=True)   # stage 03 scripts live under scripts/ (0306)
+        script = adir / 'scripts/script.sh'; script.write_text('#!' + os.path.join(os.sep, 'bin', 'bash') + '\nexit 0\n')
         return adir, script
 
     def test_login_node_grades_slurm_and_records_local_executor(self):

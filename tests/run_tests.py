@@ -60,6 +60,27 @@ for _module, _names in (("test_row05_backup", ("Row05OfflineTests", "Row05Databa
         globals()[_name] = getattr(_loaded, _name)
 
 
+# G-model (glitch-b5's ruling Q1, Sat 17 Oct 2026): a history entry names the model the
+# harness reported at session start, recorded in the workspace's .gars_session_model, never the
+# --model flag. Every --model below passes claude-test-1, so the two are told apart.
+SESSION_MODEL = "claude-session-1"
+
+
+def record_session_model(ws):
+    (ws / ".gars_session_model").write_text(SESSION_MODEL + "\n")
+
+
+def completed_upstream(stage, artifact, rel):
+    """A completed producer sub-stage as the resolver reads it (STATUS and OUTPUTS.tsv), so a
+    downstream collect names its supplier from the resolver (D-supplier, decision 0305)."""
+    target = stage / rel
+    if not target.exists():
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("fixture\n")
+    (stage / "OUTPUTS.tsv").write_text("# type\trole\tpath\n%s\tnative\t%s\n" % (artifact, rel))
+    (stage / "STATUS").write_text("COMPLETE fixture\n")
+
+
 def completed_fixture_submission(project, stage):
     """Synthetic completed job for content gates; production submit/writer stay active."""
     from unittest.mock import patch
@@ -149,6 +170,7 @@ class WorkspaceFixture(unittest.TestCase):
         for d in ("_system", "_references", "_templates"):
             shutil.copytree(str(GARS / d), str(cls.ws / d))
         (cls.ws / "projects").mkdir()
+        record_session_model(cls.ws)
         # raw data: 2 samples x 1 lane, paired-end, bcl2fastq names
         cls.src = cls.tmp / "seqrun"
         cls.src.mkdir()
@@ -262,6 +284,9 @@ class WorkspaceFixture(unittest.TestCase):
         sheet = self.project / "01_samplesheets" / "rnaseq_bulk_samplesheet.csv"
         design = self.project / "01_samplesheets" / "rnaseq_bulk_design.csv"
         a = sheet.read_bytes(), design.read_bytes()
+        # --force clears T5 only against the --check the user was shown (S01-yes)
+        code, _, raw = run(self.sheet, ["--project", "projects/tall-test", "--check"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, _, raw = run(self.sheet, ["--project", "projects/tall-test", "--force"], self.ws)
         self.assertEqual(code, 0, raw)
         b = sheet.read_bytes(), design.read_bytes()
@@ -281,14 +306,21 @@ class WorkspaceFixture(unittest.TestCase):
         # restore
         code, _, raw = run(self.reg, ["finalize", "--data-class", "public", "--purpose", "fixture", "--project", "projects/tall-test"], self.ws)
         self.assertEqual(code, 0, raw)
+        # --force clears T5 only against the --check the user was shown (S01-yes)
+        code, _, raw = run(self.sheet, ["--project", "projects/tall-test", "--check"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, _, raw = run(self.sheet, ["--project", "projects/tall-test", "--force"], self.ws)
         self.assertEqual(code, 0, raw)
 
-    def test_08_model_flag_lands_in_history(self):
+    def test_08_session_model_lands_in_history_not_the_flag(self):
+        # --force clears T5 only against the --check the user was shown (S01-yes)
+        code, _, raw = run(self.sheet, ["--project", "projects/tall-test", "--check"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.sheet, ["--project", "projects/tall-test", "--force",
                                           "--model", "claude-test-1"], self.ws)
         self.assertEqual(code, 0, raw)
-        self.assertIn("Model: claude-test-1", res["history_entry"])
+        self.assertIn("Model: %s" % SESSION_MODEL, res["history_entry"])
+        self.assertNotIn("claude-test-1", res["history_entry"])
 
     # -- configure --------------------------------------------------------------------------
 
@@ -422,7 +454,10 @@ Login node; seconds; kilobytes.
         self.assertEqual(code, 2, raw)
         self.assertTrue(any("not a recognised venue" in b for b in res["blocked"]))
 
-        # the explicit user request is the only accepted login-node form
+        # the explicit user request is the only accepted login-node form; the script is written
+        # first, so approval binds it with the plan (S03-scripts, decision 0306)
+        script = adir / "scripts/x.sh"
+        script.write_text("set -euo pipefail\nexit 0\n")
         plan.write_text(plan.read_text().replace("Runs: login-node",
                                                  "Runs: login-node (user-requested)"))
         code, res, raw = run(s3, ["approve", "--project", "projects/tall-test",
@@ -437,8 +472,6 @@ Login node; seconds; kilobytes.
         self.assertEqual(sorted(res["missing"]), ["results/pca.csv", "results/pca.png"])
 
         # Submit an actual local job through the approved login-node route.
-        script = adir / "scripts/x.sh"
-        script.write_text("set -euo pipefail\nexit 0\n")
         code, submitted, raw = run(self.ws / "_system/executorlib.py",
             ["submit", "--workspace", "projects/tall-test", str(script)], self.ws)
         self.assertEqual(code, 0, raw)
@@ -455,7 +488,8 @@ Login node; seconds; kilobytes.
                                   "--analysis", "01_pca-of-samples",
                                   "--model", "claude-test-1"], self.ws)
         self.assertEqual(code, 0, raw)
-        self.assertIn("Model: claude-test-1", res["history_entry"])
+        self.assertIn("Model: %s" % SESSION_MODEL, res["history_entry"])
+        self.assertNotIn("claude-test-1", res["history_entry"])
         self.assertIn("COMPLETE", (adir / "STATUS").read_text())
         outputs = (adir / "OUTPUTS.tsv").read_text()
         self.assertIn("table\tnative\tresults/pca.csv", outputs)
@@ -633,6 +667,7 @@ class AtacseqWrapperTests(unittest.TestCase):
         for d in ("_system", "_references", "_templates"):
             shutil.copytree(str(GARS / d), str(cls.ws / d))
         (cls.ws / "projects").mkdir()
+        record_session_model(cls.ws)
         # fixture genome: tiny readable fasta/gtf, temp cache root
         cls.refs = cls.tmp / "refs"
         (cls.refs / "derived").mkdir(parents=True)
@@ -739,6 +774,10 @@ class AtacseqWrapperTests(unittest.TestCase):
             r[head.index("replicate")] = str((i - 1) % 2 + 1)
         with samples_csv.open("w", newline="") as fh:
             csv.writer(fh).writerows(rows)
+        # --force clears T5 only against the --check the user was shown (S01-yes)
+        code, _, raw = run(self.sheet_py, ["--project", "projects/atac-test", "--check"],
+                           self.ws)
+        self.assertEqual(code, 0, raw)
         code, _, raw = run(self.sheet_py, ["--project", "projects/atac-test", "--force"],
                            self.ws)
         self.assertEqual(code, 0, raw)
@@ -761,6 +800,11 @@ class AtacseqWrapperTests(unittest.TestCase):
         code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/atac-test",
                                            "--assay", "atacseq_bulk", "--genome", "01"], self.ws)
         self.assertEqual(code, 3, raw)
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/atac-test",
+                                           "--assay", "atacseq_bulk", "--genome", "01",
+                                           "--peaks-type", "narrow", "--dry-run"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/atac-test",
                                            "--assay", "atacseq_bulk", "--genome", "01",
                                            "--peaks-type", "narrow"], self.ws)
@@ -836,7 +880,8 @@ class AtacseqWrapperTests(unittest.TestCase):
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/atac-test",
                                          "--model", "claude-test-1"], self.ws)
         self.assertEqual(code, 0, raw)
-        self.assertIn("Model: claude-test-1", res["history_entry"])
+        self.assertIn("Model: %s" % SESSION_MODEL, res["history_entry"])
+        self.assertNotIn("claude-test-1", res["history_entry"])
         self.assertEqual(res["derived_cache"]["action"], "populated")
         keyed = self.refs / "derived" / "nf-core-atacseq-2.1.2"
         self.assertTrue((keyed / "bwa" / "genome.amb").is_file())
@@ -861,6 +906,7 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
         for d in ("_system", "_references", "_templates"):
             shutil.copytree(str(GARS / d), str(cls.ws / d))
         (cls.ws / "projects").mkdir()
+        record_session_model(cls.ws)
         cls.project = cls.ws / "projects" / "rna-test"
         (cls.project / "_config").mkdir(parents=True)
         (cls.project / "01_samplesheets").mkdir()
@@ -977,7 +1023,8 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/rna-test",
                                          "--model", "claude-test-1"], self.ws)
         self.assertEqual(code, 0, raw)
-        self.assertIn("Model: claude-test-1", res["history_entry"])
+        self.assertIn("Model: %s" % SESSION_MODEL, res["history_entry"])
+        self.assertNotIn("claude-test-1", res["history_entry"])
         self.assertEqual(res["derived_cache"]["action"], "reused")
         self.assertIn("counts_gene\tnative\t",
                       (self.substage / "OUTPUTS.tsv").read_text())
@@ -1002,8 +1049,15 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
 
     def test_04_de_prepare_and_collect(self):
         design = self.project / "01_samplesheets" / "rnaseq_bulk_design.csv"
+        # The producer completes before prepare, which reads its counts: the supplier line
+        # names a producer only when prepare read its artifact (decision 0308).
+        producer = self.project / "02_bioinformatics" / "rnaseq_bulk" / "01_nfcore-rnaseq-wrapper"
+        rel = "run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv"
+        (producer / rel).parent.mkdir(parents=True, exist_ok=True)
+        (producer / rel).write_bytes(self.counts_native.read_bytes())
+        completed_upstream(producer, "counts_gene", rel)
         code, res, raw = run(self.de, ["prepare", "--project", "projects/rna-test",
-                                       "--counts", str(self.counts_native),
+                                       "--counts", str(producer / rel),
                                        "--design", str(design)], self.ws)
         self.assertEqual(code, 0, raw)
         script = self.de_substage / "scripts" / "run_de.py"
@@ -1047,7 +1101,8 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
                                        "--model", "claude-test-1",
                                        "--counts-from", "01_nfcore-rnaseq-wrapper"], self.ws)
         self.assertEqual(code, 0, raw)
-        self.assertIn("Model: claude-test-1", res["history_entry"])
+        self.assertIn("Model: %s" % SESSION_MODEL, res["history_entry"])
+        self.assertNotIn("claude-test-1", res["history_entry"])
         self.assertIn("01_nfcore-rnaseq-wrapper", res["history_entry"])
         outputs = (self.de_substage / "OUTPUTS.tsv").read_text()
         self.assertIn("counts_gene\tadapted\t", outputs)
@@ -1144,6 +1199,10 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
         # fix the dangling control, emit, and check the derived control_replicate
         fill["CHIP2"]["control"] = "INPUT1"
         self._fill_design(project, "chipseq_bulk", fill)
+        # --confirm-exclusions clears T7 only against the --check the user was shown (S01-yes)
+        code, _, raw = run(self.sheet_py, ["--project", "projects/chip-test", "--check"],
+                           self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.sheet_py, ["--project", "projects/chip-test",
                                              "--confirm-exclusions"], self.ws)
         self.assertEqual(code, 0, raw)
@@ -1171,6 +1230,10 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
         self.assertIn("antibody", msgs)
         fill["CHIP1"]["group"] = "IP_KO"
         self._fill_design(project, "chipseq_bulk", fill)
+        # --force clears T5 only against the --check the user was shown (S01-yes)
+        code, _, raw = run(self.sheet_py, ["--project", "projects/chip-test", "--check"],
+                           self.ws)
+        self.assertEqual(code, 0, raw)
         code, _, raw = run(self.sheet_py, ["--project", "projects/chip-test",
                                            "--confirm-exclusions", "--force"], self.ws)
         self.assertEqual(code, 0, raw)
@@ -1179,6 +1242,11 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
     def test_01_chipseq_wrapper(self):
         wrap = self.ws / "_system" / "wrappers" / "nfcore-chipseq-wrapper" \
             / "nfcore_chipseq_wrapper.py"
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/chip-test",
+                                           "--assay", "chipseq_bulk", "--genome", "01",
+                                           "--peaks-type", "narrow", "--dry-run"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/chip-test",
                                            "--assay", "chipseq_bulk", "--genome", "01",
                                            "--peaks-type", "narrow"], self.ws)
@@ -1233,6 +1301,11 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
                  ).read_text().splitlines()
         self.assertEqual(sheet[0], "group,replicate,fastq_1,fastq_2,control",
                          "the cutandrun sheet is group-shaped")
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/cnr-test",
+                                           "--assay", "cutandrun", "--genome", "01",
+                                           "--dry-run"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/cnr-test",
                                            "--assay", "cutandrun", "--genome", "01"], self.ws)
         self.assertEqual(code, 0, raw)
@@ -1300,6 +1373,11 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
         self._fill_design(project, "methylseq", fill)
         code, res, raw = run(self.sheet_py, ["--project", "projects/meth-test",
                                              "--confirm-exclusions"], self.ws)
+        self.assertEqual(code, 0, raw)
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/meth-test",
+                                           "--assay", "methylseq", "--genome", "01",
+                                           "--dry-run"], self.ws)
         self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/meth-test",
                                            "--assay", "methylseq", "--genome", "01"], self.ws)
@@ -2358,6 +2436,7 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         for d in ("_system", "_references", "_templates"):
             shutil.copytree(str(GARS / d), str(cls.ws / d))
         (cls.ws / "projects").mkdir()
+        record_session_model(cls.ws)
         cls.refs = cls.tmp / "refs"
         (cls.refs / "derived").mkdir(parents=True)
         (cls.refs / "genome.fa.gz").write_bytes(gzip.compress(b">chr1\nACGT\n"))
@@ -2451,6 +2530,13 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         """The wrapper's own gate, independent of the menu: the pipeline would pass an
         unrecognised protocol to the aligner verbatim and produce a wrong matrix."""
         project = self._project("sc-badproto")
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py,
+                             ["apply", "--project", "projects/sc-badproto",
+                              "--assay", "scrnaseq", "--genome", "01",
+                              "--protocol", "10XV3", "--aligner", "simpleaf",
+                              "--dry-run"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py,
                              ["apply", "--project", "projects/sc-badproto",
                               "--assay", "scrnaseq", "--genome", "01",
@@ -2503,6 +2589,13 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         """The content gate: a sample lost to a failed process must not vanish into a
         combined matrix built from fewer samples (decision 0010)."""
         project = self._project("sc-collect")
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py,
+                             ["apply", "--project", "projects/sc-collect",
+                              "--assay", "scrnaseq", "--genome", "01",
+                              "--protocol", "10XV3", "--aligner", "simpleaf",
+                              "--dry-run"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py,
                              ["apply", "--project", "projects/sc-collect",
                               "--assay", "scrnaseq", "--genome", "01",
@@ -2540,7 +2633,8 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         self.assertEqual(code, 0, raw)
         self.assertIn("h5ad\tnative\t", (substage / "OUTPUTS.tsv").read_text())
         self.assertIn("COMPLETE", (substage / "STATUS").read_text())
-        self.assertIn("claude-test-1", res["history_entry"])
+        self.assertIn("Model: %s" % SESSION_MODEL, res["history_entry"])
+        self.assertNotIn("claude-test-1", res["history_entry"])
 
     def test_06_the_raw_matrix_is_never_substituted_for_the_filtered_one(self):
         """The real tree carries BOTH combined_filtered_matrix.h5ad and
@@ -2551,6 +2645,13 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         original offline test missed it because its faked tree had only one combined file.
         This fixture therefore mirrors the real shape."""
         project = self._project("sc-rawsub")
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py,
+                             ["apply", "--project", "projects/sc-rawsub",
+                              "--assay", "scrnaseq", "--genome", "01",
+                              "--protocol", "10XV3", "--aligner", "simpleaf",
+                              "--dry-run"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py,
                              ["apply", "--project", "projects/sc-rawsub",
                               "--assay", "scrnaseq", "--genome", "01",
@@ -2600,6 +2701,13 @@ class ScrnaseqWrapperTests(unittest.TestCase):
     def test_07_empty_combined_matrix_is_refused(self):
         """A zero-byte artifact is a failed run that looks like a successful one."""
         project = self._project("sc-empty")
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py,
+                             ["apply", "--project", "projects/sc-empty",
+                              "--assay", "scrnaseq", "--genome", "01",
+                              "--protocol", "10XV3", "--aligner", "simpleaf",
+                              "--dry-run"], self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py,
                              ["apply", "--project", "projects/sc-empty",
                               "--assay", "scrnaseq", "--genome", "01",
@@ -2930,6 +3038,13 @@ class ScrnaQcClusterTests(unittest.TestCase):
         code, res, raw = run(self.sheet_py, ["--project", "projects/" + title,
                                              "--confirm-exclusions"], self.ws)
         self.assertEqual(code, 0, raw)
+        # apply writes only what the dry run showed (R-confirm)
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/" + title,
+                                           "--assay", "scrnaseq", "--genome", "01",
+                                           "--protocol", "10XV3", "--aligner", "simpleaf",
+                                           "--dry-run"],
+                             self.ws)
+        self.assertEqual(code, 0, raw)
         code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/" + title,
                                            "--assay", "scrnaseq", "--genome", "01",
                                            "--protocol", "10XV3", "--aligner", "simpleaf"],
@@ -2961,6 +3076,8 @@ class ScrnaQcClusterTests(unittest.TestCase):
         (run_dir / "summary.json").write_text(
             json.dumps(default if summary is None else summary, indent=2, sort_keys=True))
         (run_dir / ".gars_run_complete").write_text("now\n")
+        completed_upstream(project / "02_bioinformatics" / "scrnaseq" / "01_nfcore-scrnaseq-wrapper",
+                           "h5ad", "run/results/combined_filtered_matrix.h5ad")
         return substage
 
     def test_00_check_refuses_a_missing_analysis_package_by_name(self):
@@ -3147,6 +3264,7 @@ class SpatialClusterCountTests(unittest.TestCase):
         for d in ("_system", "_references", "_templates"):
             shutil.copytree(str(GARS / d), str(cls.ws / d))
         (cls.ws / "projects").mkdir()
+        record_session_model(cls.ws)
         cls.src = cls.tmp / "spaceranger_runs"
         cls.src_one = cls.tmp / "spaceranger_one"
         for root, names in ((cls.src, ("BrainA", "BrainB")), (cls.src_one, ("BrainA",))):
@@ -3231,6 +3349,8 @@ class SpatialClusterCountTests(unittest.TestCase):
             "BrainB\t0\t10\nBrainB\t1\t20\nBrainB\t2\t30\n")
         (run_dir / "report.md").write_text("# report\n")
         (run_dir / ".gars_run_complete").write_text("now\n")
+        completed_upstream(project / "02_bioinformatics" / "spatialvi" / "01_nfcore-spatialvi-wrapper",
+                           "h5ad", "run/results")
         return substage
 
     def test_00_conform_passes_for_the_new_wrapper(self):
@@ -3417,10 +3537,11 @@ class SpatialClusterCountTests(unittest.TestCase):
         self.assertNotIn("h5ad", "\n".join(outputs), "an h5ad row would shadow 02.01's")
         self.assertTrue((substage / "STATUS").read_text().startswith("COMPLETE "))
         entry = res["history_entry"]
-        for line in ("Template version:", "Model: claude-test-1",
+        for line in ("Template version:", "Model: %s" % SESSION_MODEL,
                      "Matrix supplied by: 01_nfcore-spatialvi-wrapper",
                      "Obs column: clusters", "Method:"):
             self.assertIn(line, entry)
+        self.assertNotIn("claude-test-1", entry)
         self.assertNotIn("n_clusters", res, "two samples: no top-level total")
         for banned in ("n_cells_in", "n_cells_out", "marker_rows"):
             self.assertNotIn(banned, raw)

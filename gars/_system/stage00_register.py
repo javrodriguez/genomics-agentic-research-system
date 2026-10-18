@@ -670,6 +670,7 @@ def cmd_finalize(args, workspace):
         return emit(result, EXIT_USAGE)
 
     version = template_version(workspace)
+    model = ws.history_model(workspace, args.model)
     created = args.date or datetime.date.today().isoformat()
     per_assay = {}
 
@@ -745,7 +746,7 @@ def cmd_finalize(args, workspace):
               "{{template_version}}": version, "{{assay_table}}": "\n".join(assay_table),
               "{{source_paths}}": "\n".join(source_rows),
               "{{integrity}}": args.integrity,
-              "{{model}}": args.model or "unknown"}
+              "{{model}}": model}
     for fname in ("CONTEXT.md", "HISTORY.md"):
         p = project / fname
         if not p.is_file():
@@ -818,7 +819,7 @@ def cmd_finalize(args, workspace):
     write_dataset_record(project, dataset)
 
     result["template_version"] = version
-    result["model"] = args.model or "unknown"
+    result["model"] = model
     result["created"] = created
     result["integrity"] = {"mode": args.integrity,
                            "files_checked": checked}
@@ -865,11 +866,8 @@ def main(argv=None):
     f.add_argument("--expiry", default=None)
     f.add_argument("--date", default=None, help="creation date; defaults to today")
     f.add_argument("--sample-id-pattern", default=None)
-    f.add_argument("--model",  default="unknown",
-                   help="the exact model id of the agent executing this stage. The model is part "
-                        "of the toolchain that produced the project, so HISTORY.md records it "
-                        "beside the template version; `unknown` is an honest value, a fabricated "
-                        "one is not (decision 0024).")
+    f.add_argument("--model", default=None,
+                   help="ignored, kept so the pinned registry still validates: the model comes from the harness's session start (decision 0303); `none` alone is honoured, for a scripted run with no model-mediated step")
     f.add_argument("--integrity", choices=("full", "quick", "skip"), default="quick",
                    help="quick (default): resolves, non-empty, gzip magic. full: additionally "
                         "decompress every .gz -- O(data), and at this stage it would verify every "

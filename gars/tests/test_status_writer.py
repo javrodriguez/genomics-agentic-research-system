@@ -138,7 +138,7 @@ class StatusWriterTests(unittest.TestCase):
             self.assertFalse(inline_status_writes(generated))
             self.assertFalse(unowned_status_mentions(generated))
             self.assertIn('wl.write_status(substage, "COMPLETE")', generated.read_text())
-            self.assertIn('wl.collect_failure(substage, result, EXIT_FAILURE)', generated.read_text())
+            self.assertIn('wl.collect_failure(substage, result, EXIT_FAILURE, model)', generated.read_text())
 
     def test_sweep_detects_alias_and_direct_write(self):
         with tempfile.TemporaryDirectory() as tmp:

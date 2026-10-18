@@ -27,10 +27,11 @@ python; the analysis itself is a GENERATED script (`scripts/count_clusters.py`) 
            clusters.tsv agrees with summary.json (internal consistency), the report is real.
            Writes OUTPUTS.tsv (table, report -- never an h5ad row) and the lifecycle state file.
 
-Input `--h5ad` is the PATH the router resolved by artifact type (resolve_artifact.py):
-either the results DIRECTORY 02.01 registered (per-sample file at
-<dir>/<sample>/data/<sample>.h5ad) or a single .h5ad file for a one-sample samplesheet. This
-wrapper never searches for it.
+The input `h5ad` is resolved here, by artifact type from the completed sub-stages before this
+one (resolve_artifact.py): the results DIRECTORY 02.01 registered (per-sample file at
+<dir>/<sample>/data/<sample>.h5ad). A `--h5ad` other than the resolver's is refused, never used
+(D-input, decision 0305); with nothing resolved, a single .h5ad file still serves a one-sample
+samplesheet.
 
 Runs on stock python 3.6.8, stdlib only.
 """
@@ -46,6 +47,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import workspace as ws          # noqa: E402
 import wrapperlib as wl         # noqa: E402
+import resolve_artifact as ra   # noqa: E402
 from wrapperlib import (EXIT_OK, EXIT_FAILURE, EXIT_REFUSED, EXIT_USAGE,   # noqa: E402
                         emit, fail)
 
@@ -277,8 +279,8 @@ def resolve_inputs(h5ad_arg, samples, fails):
     """
     if not h5ad_arg:
         fails.append(fail("preconditions",
-                          "--h5ad was not supplied; stage 02's router resolves it by artifact "
-                          "type from 02.01's OUTPUTS.tsv"))
+                          "--h5ad was not supplied and the resolver found no h5ad among the "
+                          "completed sub-stages before this one (02.01's OUTPUTS.tsv)"))
         return []
     if not samples:
         return []                               # the samplesheet failure is already reported
@@ -351,7 +353,10 @@ def cmd_check(args):
     if not project.is_dir():
         result["error"] = "no such project: %s" % project
         return emit(result, EXIT_USAGE)
-    fails, cfg, paths = run_checks(project, args.h5ad)
+    h5ad, refusal = ra.choose_input(project, ASSAY, "h5ad", SUBSTAGE, args.h5ad, "--h5ad")
+    fails, cfg, paths = run_checks(project, h5ad)
+    if refusal:
+        fails.insert(0, fail("input_not_resolved", refusal))
     result["failures"] = fails
     result["ok"] = not fails
     result["inputs"] = [{"sample": s, "h5ad": str(p)} for s, p in paths["inputs"]]
@@ -370,7 +375,12 @@ def cmd_prepare(args):
     if not project.is_dir():
         result["error"] = "no such project: %s" % project
         return emit(result, EXIT_USAGE)
-    fails, cfg, paths = run_checks(project, args.h5ad)
+    h5ad, refusal = ra.choose_input(project, ASSAY, "h5ad", SUBSTAGE, args.h5ad, "--h5ad")
+    if refusal:
+        result["failures"] = [fail("input_not_resolved", refusal)]
+        result["error"] = "prepare refused; nothing written. " + refusal
+        return emit(result, EXIT_REFUSED)
+    fails, cfg, paths = run_checks(project, h5ad)
     if fails:
         result["failures"] = fails
         result["error"] = "checks failed; nothing written. Run `check` for the same detail."
@@ -398,7 +408,7 @@ def cmd_prepare(args):
     for s, p in paths["inputs"]:
         repro_inputs["h5ad_%s" % s] = p
     wl.write_reproducibility(substage, "spatial-cluster-count", WORKSPACE, repro_inputs,
-                             [("h5ad", str(Path(args.h5ad).resolve())),
+                             [("h5ad", str(Path(h5ad).resolve())),
                               ("obs_column", OBS_COLUMN),
                               ("samples", ",".join(s for s, _ in inputs))])
 
@@ -428,6 +438,7 @@ def count_of(entry, key, sample, fails):
 def cmd_collect(args):
     wl.require_collect_config(args.project, ASSAY, SUBSTAGE)
     project = Path(args.project)
+    model = ws.history_model(WORKSPACE, args.model)  # the harness's, never the flag (0303)
     result = {"command": "collect", "ok": False, "assay": ASSAY, "failures": []}
     if not project.is_dir():
         result["error"] = "no such project: %s" % project
@@ -556,7 +567,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return wl.collect_failure(substage, result, EXIT_FAILURE, args.model)
+        return wl.collect_failure(substage, result, EXIT_FAILURE, model)
 
     # Never an h5ad row: this sub-stage produces no object, and a row here would shadow
     # 02.01's for every later consumer (the resolver takes the newest native match).
@@ -568,11 +579,10 @@ def cmd_collect(args):
             fh.write("%s\t%s\t%s\n" % (typ, role, path))
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-    wl.complete_manifest(substage, args.model, "COMPLETE")
+    wl.complete_manifest(substage, model, "COMPLETE")
     wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)
-    model = args.model or "unknown"
     counts = ", ".join("%s: %s clusters / %s spots"
                        % (s, per_sample[s].get("n_clusters"), per_sample[s].get("n_obs"))
                        for s in sorted(per_sample))
@@ -586,7 +596,8 @@ def cmd_collect(args):
         "with anndata via the gars spatial-cluster-count wrapper; nothing re-clustered, "
         "nothing named, no gene read" % OBS_COLUMN,
         "Obs column: %s" % OBS_COLUMN,
-        "Matrix supplied by: %s" % (args.h5ad_from or "unknown"),
+        "Matrix supplied by: %s" % ra.supplier(project, ASSAY, "h5ad", SUBSTAGE,
+                                               args.h5ad_from, "--h5ad-from", "h5ad"),
         "Samples: %d (%s)" % (len(per_sample), counts),
         "Outputs: " + ", ".join("`%s`" % t for t, _, _ in outputs),
     ])
@@ -612,14 +623,15 @@ def main(argv=None):
         p.add_argument("--project", required=True)
         if name in ("check", "prepare"):
             p.add_argument("--h5ad", default=None,
-                           help="the h5ad artifact stage 02 resolved by type: 02.01's results "
-                                "directory, or one .h5ad file for a one-sample samplesheet")
+                           help="optional: the wrapper resolves 02.01's results directory "
+                                "itself; any other path is refused (0305)")
         if name == "collect":
-            p.add_argument("--model", default="unknown",
-                           help="the exact model id of the agent executing this sub-stage "
-                                "(decision 0024)")
+            p.add_argument("--model", default=None,
+                           help="ignored, kept so the pinned registry validates; the model comes "
+                                "from the harness's session start, and `none` alone is honoured (0303)")
             p.add_argument("--h5ad-from", default=None,
-                           help="the sub-stage that supplied the matrix, for HISTORY.md")
+                           help="ignored, kept so the pinned registry validates; the supplier "
+                                "comes from the resolver (0305)")
     args = ap.parse_args(argv)
     if not args.cmd:
         ap.print_help(sys.stderr)

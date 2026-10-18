@@ -4,6 +4,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import shlex
 import tempfile
 import time
@@ -33,13 +34,23 @@ class Stage03ExecutionTests(unittest.TestCase):
         (self.adir / 'results/table.tsv').write_text('fixture\n')
         (self.adir / 'PLAN.md').write_text(PLAN.replace('Status: APPROVED 2026-09-21', 'Status: DRAFT'))
         self.args = argparse.Namespace(project=str(self.root), analysis='01_fixture', model='fixture', date=None)
+        # The script is written before approval and approved with the plan (S03-scripts, 0306).
+        self.script = self.adir / 'scripts/x.sh'; self.script.write_text('set -euo pipefail\nexit 0\n')
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(analysis.cmd_approve(self.args, self.workspace), 0)
-        self.script = self.adir / 'scripts/x.sh'; self.script.write_text('set -euo pipefail\nexit 0\n')
         self.marker = self.adir / 'run/.gars_run_complete'
         self.record = self.adir / ex.ANALYSIS_SUBMISSIONS
         self.addCleanup(patch.stopall)
         patch.object(analysis.ws, 'workspace_root', return_value=self.workspace).start()
+
+    def reapprove(self):
+        """Scripts a test writes are approved with the plan, as a new analysis's would be: the
+        record and the stamp go, and `approve` binds the plan and its scripts again (0306)."""
+        plan = self.adir / 'PLAN.md'
+        analysis.approval_record_path(plan, self.workspace).unlink()
+        plan.write_text(re.sub(r'^Status: APPROVED.*$', 'Status: DRAFT', plan.read_text(), flags=re.M))
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(analysis.cmd_approve(self.args, self.workspace), 0)
 
     def submit(self, script=None, descriptor=None):
         return ex.submit(self.root, script or self.script, descriptor or ex.LOCAL)
@@ -91,6 +102,7 @@ class Stage03ExecutionTests(unittest.TestCase):
         self.marker.write_text('stale\n')
         self.script.write_text('set -euo pipefail\n[ ! -e run/.gars_run_complete ]\n'
                                'echo forged > run/.gars_run_complete\nexit 7\n')
+        self.reapprove()
         self.assertEqual(self.finish()[1], 'FAILED:EXIT_7')
         self.assertFalse(self.marker.exists(), 'launcher retained a failed script marker')
         self.assertEqual(self.verify()[0], 2)
@@ -98,6 +110,7 @@ class Stage03ExecutionTests(unittest.TestCase):
     def test_slurm_directives_and_launcher_are_handed_to_backend(self):
         directives = b'#SBATCH --cpus-per-task=3\r\n#SBATCH --mem=2G\n'
         self.script.write_bytes(b'#!/bin/bash\n' + directives + b'set -euo pipefail\nexit 0\n')
+        self.reapprove()
         with patch.object(ex.subprocess, 'run') as backend:
             backend.return_value.returncode = 0
             backend.return_value.stdout = b'Submitted batch job 42\n'
@@ -160,6 +173,8 @@ class Stage03ExecutionTests(unittest.TestCase):
         self.assertEqual(len(ex._analysis_entries(self.adir)), 2)
 
     def test_ambiguous_rejection_still_blocks_resubmit_and_verify(self):
+        second = self.adir / 'scripts/y.sh'; second.write_text('exit 0\n')
+        self.reapprove()
         with patch.object(ex.subprocess, 'run') as backend:
             backend.return_value.returncode = 0
             backend.return_value.stdout = b'connection lost after acceptance\n'
@@ -176,7 +191,6 @@ class Stage03ExecutionTests(unittest.TestCase):
             self.assertIsNone(job); self.assertIn('R-077', why)
             backend.assert_not_called()
         self.assertEqual(self.record.read_bytes(), original)
-        second = self.adir / 'scripts/y.sh'; second.write_text('exit 0\n')
         self.assertEqual(self.finish(second)[1], 'COMPLETED')
         code, result = self.verify()
         self.assertEqual(code, 2)
@@ -353,8 +367,9 @@ class Stage03ExecutionTests(unittest.TestCase):
         self.assertFalse((self.adir / 'STATUS').exists())
 
     def test_verify_binds_paths_hashes_and_scheduler_for_every_latest_script(self):
-        job, _ = self.finish()
         second = self.adir / 'scripts/y.sh'; second.write_text('exit 0\n')
+        self.reapprove()
+        job, _ = self.finish()
         second_job, _ = self.finish(second)
         original = self.record.read_bytes()
         entries = ex._analysis_entries(self.adir)
@@ -390,6 +405,7 @@ class Stage03ExecutionTests(unittest.TestCase):
     def test_login_node_uses_local_executor_and_status(self):
         # Recreate the approved fixture plan with its explicitly requested venue.
         plan = self.adir / 'PLAN.md'
+        other = self.adir / 'scripts/cli.sh'; other.write_text('exit 0\n')   # approved with the plan (0306)
         approval = analysis.approval_record_path(plan, self.workspace); approval.unlink()
         plan.write_text(PLAN.replace('Status: APPROVED 2026-09-21', 'Status: DRAFT').replace('Runs: batch', 'Runs: login-node (user-requested)'))
         with contextlib.redirect_stdout(io.StringIO()):
@@ -408,7 +424,6 @@ class Stage03ExecutionTests(unittest.TestCase):
         stage, _, _ = prepared(self.root)
         with patch.object(ex, '_submit_once', return_value=('124', None)):
             self.assertEqual(ex.submit(self.root, stage / 'submit.sh', ex.SLURM), ('124', None))
-        other = self.adir / 'scripts/cli.sh'; other.write_text('exit 0\n')
         output = io.StringIO()
         with patch.object(ex, '_local_submit',
                           side_effect=lambda root, launcher: local_record(root, launcher, '124')), contextlib.redirect_stdout(output):

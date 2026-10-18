@@ -32,14 +32,16 @@ The sub-stage contract at `02_bioinformatics/spatialvi/02_spatial-cluster-count/
 orchestrates it; nothing here is invoked directly by a user.
 
 ```
-python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py check   --project projects/<title> --h5ad <path>
-python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py prepare --project projects/<title> --h5ad <path>
+python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py check   --project projects/<title>
+python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py prepare --project projects/<title>
 python3 _system/executorlib.py submit --workspace projects/<title> <substage>/submit.sh
-python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py collect --project projects/<title> --model "<model id>" --h5ad-from 01_nfcore-spatialvi-wrapper
+python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py collect --project projects/<title>
 ```
 
-`--h5ad` is the path stage 02's router resolved **by artifact type** from 02.01's
-`OUTPUTS.tsv` (`_system/resolve_artifact.py`). This wrapper never searches for its input.
+The `h5ad` is resolved by the wrapper itself, **by artifact type** from the completed
+sub-stages before it (`_system/resolve_artifact.py`, decision 0305); a `--h5ad` other than the
+resolver's is refused, and collect names the resolver's supplier only when prepare read
+its artifact, else `unknown` (decision 0308), never `--h5ad-from`.
 
 ## What it does, and only this
 
@@ -59,11 +61,11 @@ counts only what the pipeline assigned and does not guess which spots to leave o
 ## The input: a file or a directory
 
 02.01 registers its results **directory** as the `h5ad` artifact (the set is the artifact), so
-that is what the router hands over; the per-sample object sits at
+that is what the wrapper resolves; the per-sample object sits at
 `<dir>/<sample>/data/<sample>.h5ad`, the same name 02.01's own gate checks, and
 `<sample>-raw.h5ad` beside it is never substituted. With a directory, `check` resolves one file
-per samplesheet sample and refuses naming any that is missing. A single-sample driver may hand
-over one `.h5ad` file instead; then the samplesheet must list exactly one sample, or `check`
+per samplesheet sample and refuses naming any that is missing. When nothing resolves, a single-sample
+driver may hand over one `.h5ad` file instead; then the samplesheet must list exactly one sample, or `check`
 refuses rather than guess which sample the file is.
 
 ## The analysis
@@ -108,8 +110,8 @@ for every later consumer, because the resolver takes the newest `native` match.
   pipeline's clustering and is not an independent check.
 
 Then `OUTPUTS.tsv` (the two rows above), `STATUS COMPLETE`, and a history entry naming the
-template version, `--model`, the method, the obs column, and `Matrix supplied by:
-<--h5ad-from>`.
+template version, the session's model, the method, the obs column, and `Matrix supplied by:
+<the sub-stage the resolver found, when prepare read its artifact; else unknown>`.
 
 ## Validation status
 

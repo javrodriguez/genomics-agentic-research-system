@@ -10,7 +10,8 @@ walks from, and runs it with one mode argument (decision 0266):
                     {command}, edits as `apply_patch` {command: <raw patch>}. Each is
                     translated into the guard's own {tool_name, tool_input, cwd} shape and
                     judged by `decide`, with the root fixed to this file's own `gars/` folder.
-    session-start   runs `_system/session_state.sh`, as Claude Code's SessionStart hook does.
+    session-start   runs `_system/session_state.sh` with Codex's input on stdin, as Claude Code's
+                    SessionStart hook does, so a `model` it carries is recorded (decision 0303).
 
 Codex blocks a call on exit 2 with a non-empty stderr, the convention the guard already uses.
 Everything else fails OPEN under Codex (an empty stderr, a crash, any other exit), so the only
@@ -432,12 +433,15 @@ def run(payload, root):
 
 def session_start():
     """Claude Code's SessionStart hook, in Codex's shape: the state render passes through as
-    context; a pin failure (session_state.sh exits 2) stops the first turn with its reason."""
+    context; a pin failure (session_state.sh exits 2) stops the first turn with its reason.
+    Codex's own input goes through on stdin, so its `model`, when it carries one, is recorded as
+    Claude Code's is (decision 0303); without one the record is `unknown`."""
     try:
+        hook_input = b"" if sys.stdin is None or sys.stdin.isatty() else sys.stdin.buffer.read()
         proc = subprocess.Popen(["bash", os.path.join(GARS_ROOT, "_system", "session_state.sh")],
-                                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, cwd=GARS_ROOT)
-        out, err = proc.communicate()
+        out, err = proc.communicate(hook_input)
         if proc.returncode == 2:
             print(json.dumps({"continue": False,
                               "stopReason": err.decode("utf-8", "replace").strip()}))

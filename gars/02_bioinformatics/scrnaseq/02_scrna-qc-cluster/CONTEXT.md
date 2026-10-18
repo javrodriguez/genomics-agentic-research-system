@@ -12,8 +12,10 @@ and collects results.
 reporting of what they return.
 
 ## Inputs
-1. **The `h5ad` from 02.01** — resolved by artifact type by stage 02's router
-   (`_system/resolve_artifact.py`) and passed as `--h5ad`. Never located by hand.
+1. **The `h5ad` from 02.01** — resolved by artifact type by the wrapper itself
+   (`_system/resolve_artifact.py`, the router's rule), so no path is passed or carried between
+   sessions; a `--h5ad` other than the resolver's is refused (decision 0305). Never located by
+   hand.
 2. **`_config/scrnaseq.yaml`** — the QC thresholds, HVG count and clustering resolution
 3. **`01_samplesheets/scrnaseq_samplesheet.csv`** — the independent source the exit gate checks
    the analysis's per-sample cell counts against
@@ -51,12 +53,13 @@ environment arrives via `$GARS_PY` inside `submit.sh`:
 
 ```bash
 python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py <subcommand> \
-    --project projects/<title> --h5ad <resolved path>
+    --project projects/<title>
 ```
 
 Exit codes are the stage-helper standard: 0 ok, 1 failure, 2 refused (a gate), 3 usage.
 
-**Failure vocabulary.** `preconditions` (the h5ad is missing, the samplesheet is absent, or the
+**Failure vocabulary.** `input_not_resolved` (a `--h5ad` other than the resolver's; pass
+none), `preconditions` (the h5ad is missing, the samplesheet is absent, or the
 analysis environment lacks a named package), `config` (a threshold is absent or not a number),
 `config_unfilled`, `output_dir`. `collect` reuses the artifact type names — `table`, `h5ad`,
 `figure`, `report` — plus `summary`, for the cross-check described below.
@@ -91,7 +94,7 @@ so on a non-public project only step 2's STATUS read is the agent's: reply T7 an
 2. Read the STATUS file. If it is `SUBMITTED`, `RUNNING`, or `COMPLETE`, stop — stage 02's
    router already handles those states and should not have routed here.
    On a non-public project, reply T7 and stop here (Definitions).
-3. Run the wrapper's `check` with the resolved `--h5ad`. Exit 1 → reply T5 with its `failures`
+3. Run the wrapper's `check`, passing no `--h5ad`: it resolves its own input. Exit 1 → reply T5 with its `failures`
    verbatim and stop. Do not fix causes yourself: a missing package is an environment change,
    a missing h5ad means 02.01 has not completed.
 4. Run `prepare`. Exit 1 → reply T5 (same rule). Exit 0 → it wrote the script, `submit.sh` and
@@ -100,8 +103,9 @@ so on a non-public project only step 2's STATUS read is the agent's: reply T7 an
 6. Call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` (submit has written `SUBMITTED`). Reply T2 and stop. Do not wait or poll.
 7. **On a later invocation** where STATUS is `SUBMITTED`, `RUNNING` or `VALIDATING`: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`.
    If still active, reply T3, stop; the status call has already refreshed STATUS.
-8. If the job has finished, run `collect` with `--model "<the exact model id you are running
-   as>"` and `--h5ad-from <the sub-stage that supplied the matrix>` (decision 0024). Exit 2 →
+8. If the job has finished, run `collect`; pass no `--model` and no `--h5ad-from` (the
+   entry names the supplier the resolver finds when prepare read its artifact, else `unknown`;
+   decisions 0305, 0308): the entry names the model your harness reported at session start, or `unknown` (decisions 0024, 0303). Exit 2 →
    the run did not complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4, stop. Exit 1 →
    the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures` verbatim, stop.
 9. Exit 0 → append its `history_entry` to the project's `HISTORY.md` **verbatim**, replacing

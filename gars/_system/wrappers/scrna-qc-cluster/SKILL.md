@@ -36,14 +36,16 @@ The sub-stage contract at `02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEX
 orchestrates it; nothing here is invoked directly by a user.
 
 ```
-python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py check   --project projects/<title> --h5ad <path>
-python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py prepare --project projects/<title> --h5ad <path>
+python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py check   --project projects/<title>
+python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py prepare --project projects/<title>
 python3 _system/executorlib.py submit --workspace projects/<title> <substage>/submit.sh
-python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py collect --project projects/<title> --model "<model id>" --h5ad-from 01_nfcore-scrnaseq-wrapper
+python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py collect --project projects/<title>
 ```
 
-`--h5ad` is the path stage 02's router resolved **by artifact type** from 02.01's
-`OUTPUTS.tsv` (`_system/resolve_artifact.py`). This wrapper never searches for its input.
+The `h5ad` is resolved by the wrapper itself, **by artifact type** from the completed
+sub-stages before it (`_system/resolve_artifact.py`, decision 0305); a `--h5ad` other than the
+resolver's is refused, and collect names the resolver's supplier only when prepare read
+its artifact, else `unknown` (decision 0308), never `--h5ad-from`.
 
 ## Why this sub-stage exists
 

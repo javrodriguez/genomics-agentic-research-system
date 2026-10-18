@@ -353,9 +353,11 @@ class KeyedTablePrincipleTests(unittest.TestCase):
         case.setUp()
         self.addCleanup(case.doCleanups)
         scripts = {}
+        for name in ('a.sh', 'b.sh'):
+            (case.adir / 'scripts' / name).write_text('set -euo pipefail\nexit 0\n')
+        case.reapprove()   # the scripts are approved with the plan (S03-scripts, 0306)
         for name, backend, job in (('a.sh', 'slurm', '42'), ('b.sh', 'local', '43')):
             script = case.adir / 'scripts' / name
-            script.write_text('set -euo pipefail\nexit 0\n')
             with patch.object(ex, '_submit_once', return_value=(job, None)):
                 self.assertEqual(ex.submit(case.root, script, dict(ex.BUILTINS[backend])),
                                  (job, None))

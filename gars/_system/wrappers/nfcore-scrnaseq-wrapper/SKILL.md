@@ -29,7 +29,7 @@ nothing here is invoked directly by a user.
 python3 _system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py check   --project projects/<title>
 python3 _system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py prepare --project projects/<title>
 python3 _system/executorlib.py submit --workspace projects/<title> <substage>/submit.sh
-python3 _system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py collect --project projects/<title> --model "<model id>"
+python3 _system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py collect --project projects/<title>
 ```
 
 - `check` — preflight: config complete and sane, samplesheet header and paths,

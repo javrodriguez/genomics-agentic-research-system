@@ -1664,7 +1664,10 @@ class RenderMethodsTests(unittest.TestCase):
         case.prepare()
         case.fake_run()
         case.submit()
-        case.collect()
+        # The run record names the harness's session model, not the flag (decision 0303); the
+        # flag passes another value, so the render tells the two apart (NIT 3, decision 0304).
+        (case.ws / '.gars_session_model').write_text('claude-opus-5-5\n')
+        case.collect('claude-fake-9')
         shutil.copyfile(str(case.manifest_path), str(self.path('live.json')))
         text = self.traced(('live.json',), stage03=False)
         self.assertNotIn(str(case.fixture.tmp), text)
@@ -1678,6 +1681,9 @@ class RenderMethodsTests(unittest.TestCase):
         workspace = self.root / 'workspace'
         workspace.mkdir()
         (workspace / '_references').symlink_to(GARS / '_references', target_is_directory=True)
+        # The history names the harness's session model, not the flag (decision 0303); the
+        # flag below passes another value, so the render tells the two apart (decision 0304).
+        (workspace / '.gars_session_model').write_text('claude-opus-5-5\n')
         project = workspace / 'projects/p'
         write_fixture_dataset(project)
         adir = project / '03_custom_analysis/01_methods'
@@ -1686,7 +1692,8 @@ class RenderMethodsTests(unittest.TestCase):
         (adir / 'PLAN.md').write_text(PLAN_DRAFT)
         (adir / 'run').mkdir()
         (adir / 'run/.gars_run_complete').write_text('synthetic successful execution\n')
-        script, launcher = adir / 'script.sh', adir / 'run/launcher.sh'
+        (adir / 'scripts').mkdir()   # written before approval, approved with the plan (0306)
+        script, launcher = adir / 'scripts/script.sh', adir / 'run/launcher.sh'
         script.write_text('exit 0\n')
         launcher.write_text('exit 0\n')
         (adir / ex.ANALYSIS_SUBMISSIONS).write_text(json.dumps({
@@ -1698,7 +1705,7 @@ class RenderMethodsTests(unittest.TestCase):
         exit_file = adir / 'run/launcher.sh.local.exit'
         exit_file.write_text('0')
         (jobs / 'fixture.json').write_text(json.dumps({'script': str(launcher), 'exit_file': str(exit_file)}))
-        args = argparse.Namespace(project=str(project), analysis='01_methods', model='claude-opus-5-5', date=None)
+        args = argparse.Namespace(project=str(project), analysis='01_methods', model='claude-fake-9', date=None)
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(stage.cmd_approve(args, workspace), 0)
         verified = io.StringIO()

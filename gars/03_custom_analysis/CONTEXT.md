@@ -139,21 +139,36 @@ refusal.
    (`counts_gene`, `de_results`, …) over a generic one (`table`, `figure`, `report`) wherever
    one fits; Execution keeps its `Runs: batch` line unless the user explicitly asked for the
    login node. This is the step where your judgment belongs — spend it here, not at the
-   keyboard later.
+   keyboard later. Then write every script the Method runs under `scripts/`, each failing on
+   any failed command as step 7 says, and list them in run order in the plan's Scripts section.
+   `approve` binds the plan and these scripts together, byte for byte, so nothing is written
+   there after approval (decision 0306), and writes `scripts/run_all.sh`, which runs them in
+   that order as one job and stops at the first failure (decision 0307). Give each script its
+   resources in its leading `#SBATCH` lines; the runner carries them as the one job's: the times
+   add up, memory and `--cpus-per-task` take the largest, any other directive must agree, and
+   `approve` refuses a disagreement or a value it cannot read (decision 0308). Ask memory one
+   way in every script, `--mem`, `--mem-per-cpu` or `--mem-per-gpu`: Slurm refuses a job asking
+   more than one, so `approve` refuses scripts that mix them (decisions 0309, 0310).
    On a non-public project the plan is the user's to write: T7.
-4. Reply T2 and stop. The user reads the plan, edits it if they wish, and answers.
-5. If the user asks for changes, apply them to `PLAN.md` (it is still DRAFT), then reply T2
-   again with what changed. If they decline the analysis, stop; the DRAFT directory remains as
+4. Reply T2 and stop. The user reads the plan and its scripts, edits them if they wish, and
+   answers.
+5. If the user asks for changes, apply them to `PLAN.md` or `scripts/` (still DRAFT), then reply
+   T2 again with what changed. If they decline the analysis, stop; the DRAFT directory remains as
    the record that it was considered.
    On a non-public project `PLAN.md` is the user's to edit: T7.
 6. The user approves by running the command T2 gave them, in their own terminal. If they
    report that it refused (exit 2), ask for its `blocked` reasons, reply T3 with them verbatim,
    fix the plan (that is a draft edit, allowed), and return to step 4. Never argue past the
    gate, and never run `approve` yourself.
-7. Execute the approved plan literally: write its scripts under `scripts/`. Each script must
-   exit non-zero when any command fails; use `set -euo pipefail`. Submit **every script** through
+7. Execute the approved plan literally: submit `scripts/run_all.sh` once, which runs **every
+   script** the plan lists, in its order (a plan with no Scripts section submits each approved
+   script from `scripts/` in turn), through
    `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <script>`
-   in the environment the plan names.
+   in the environment the plan names; each was written in step 3 to exit non-zero when any
+   command fails (`set -euo pipefail`). Submit refuses a script written or changed after
+   approval, or one outside `scripts/`, or any script but the runner of an ordered plan, and
+   verify refuses a run of one, or an output older than the run: a changed script is a new
+   analysis (decisions 0306, 0307).
    Submit checks `PLAN.md` in the analysis directory even for scripts in subfolders, generates
    a launcher under `run/`, and records script and launcher hashes with the job id. The executor
    launcher clears the old marker, runs the script, and writes `run/.gars_run_complete` only
@@ -168,9 +183,9 @@ refusal.
    and stop. Do not patch around the failure and re-run: diagnosis goes to the user, and a
    changed method is a new plan.
 9. On execution success, run
-   `python3 _system/stage03_analysis.py verify --project projects/<title> --analysis <NN_slug> --model "<model id>"`.
-   `--model` is the exact model id you are running as (decision 0024); omit only if you cannot
-   name it. Exit 1 → declared outputs are missing or empty: reply
+   `python3 _system/stage03_analysis.py verify --project projects/<title> --analysis <NN_slug>`.
+   Never pass `--model`: the entry names the model your harness reported at session start, or
+   `unknown` (decisions 0024, 0303). Exit 1 → declared outputs are missing or empty: reply
    T5, stop. Exit 2 → approval or execution evidence is missing or invalid; report the
    refusal verbatim and stop as in step 8.
 10. Exit 0 → append the returned `history_entry` to the project's `HISTORY.md` **verbatim**,
@@ -205,9 +220,10 @@ Goal: <the Goal section's first sentence>
 Inputs: <n> artifact(s) — <types, comma-separated>
 Outputs: <n> declared — <types, comma-separated>
 Execution: <login node | batch>, per the plan.
+Scripts: <n> under scripts/ — <names, comma-separated>
 
-Read the plan file — Goal, Method, Outputs. Edit anything directly, or tell me the changes.
-Nothing runs until you approve it. To approve it as written, run this in your own terminal,
+Read the plan file — Goal, Method, Outputs — and its scripts. Edit anything directly, or tell me
+the changes. Nothing runs until you approve it; approval covers the plan and these scripts. To approve it as written, run this in your own terminal,
 outside this session, from the workspace root:
 
     python3 _system/stage03_analysis.py approve --project projects/<project_title> --analysis <NN_slug>
