@@ -188,7 +188,7 @@ REGISTRY = json.loads((GARS / '_system/tools/registry.json').read_text())['tools
 DOORS = {tool['name']: tool for tool in REGISTRY
          if tool['name'] in guard_hook.CLOSED_PROJECT_DOORS}
 # The house phrase of 0141's ruling D-vii b: the direct spelling is refused for every project.
-WORKSPACE_WIDE = re.compile(r'while any (non-public project )?exists in the workspace')
+WORKSPACE_WIDE = re.compile(r'while any (non-public project )?exists in the workspace', re.I)
 
 
 def direct(tool):
@@ -262,7 +262,7 @@ STATUS_LINE = ("   While any non-public project exists in the workspace, the dir
                "   JSON of its `stdout`.\n")
 # Each removes, misspells or breaks one dispatcher spelling the detector must see.
 DOOR_MUTANTS = {
-    'scrna-qc-cluster step 6 dispatcher line deleted': {CLUSTER[0]: ((STATUS_LINE, ''),)},
+    'scrna-qc-cluster status dispatcher lines deleted': {CLUSTER[0]: ((STATUS_LINE, ''),)},
     'executor.submit misspelled in 02_rnaseq-de step 6': {
         DE: (('tool_call.py executor.submit\n', 'tool_call.py executor.submits\n'),)},
     'job_id for job-id in stage 03 step 8': {

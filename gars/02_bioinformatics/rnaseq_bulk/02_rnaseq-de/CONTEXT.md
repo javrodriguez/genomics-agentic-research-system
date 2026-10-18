@@ -124,8 +124,9 @@ paths, and `collect`'s output keeps no `history_entry`, so the step 9 append is 
 
    Exit non-zero → reply T5 naming its `missing` entries and stop. Never dispatch without
    resolved inputs, and never regenerate a missing artifact.
-   On a non-public project: `python3 _system/tool_call.py resolve_artifact '{"project":
-   "projects/<title>", "assay": "rnaseq_bulk", "consumes": ["counts_gene", "design"]}'`
+   On a non-public project, or while any exists in the workspace: `python3 _system/tool_call.py
+   resolve_artifact '{"project": "projects/<title>", "assay": "rnaseq_bulk", "consumes":
+   ["counts_gene", "design"]}'`
    (Definitions).
 4. Run the wrapper's `check` with the resolved `--counts` and `--design`. Exit 1 → reply T5
    with its `failures` verbatim and stop: `design` failures mean the design or contrast needs
@@ -139,12 +140,14 @@ paths, and `collect`'s output keeps no `history_entry`, so the step 9 append is 
    rnaseq_de.prepare '<the same JSON>'`.
 6. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir>
    <sub-stage dir>/submit.sh`; capture `job_id` from the JSON. Submit has written `SUBMITTED`; no status call is needed yet. Reply T2 and stop.
-   On a non-public project: `python3 _system/tool_call.py executor.submit
+   On a non-public project, or while any exists in the workspace: `python3
+   _system/tool_call.py executor.submit
    '{"workspace": "<project dir>", "script": "<sub-stage dir>/submit.sh"}'`.
 7. **On a later invocation** where STATUS is `SUBMITTED`, `RUNNING` or `VALIDATING`: ask `python3 <workspace>/_system/executorlib.py
    status --workspace <project dir> <job_id>` — it answers `PENDING`, `RUNNING`,
    `COMPLETED`, `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`. Not yet terminal → reply T3, stop; the status call has already refreshed STATUS.
-   On a non-public project: `python3 _system/tool_call.py executor.status
+   On a non-public project, or while any exists in the workspace: `python3
+   _system/tool_call.py executor.status
    '{"workspace": "<project dir>", "job-id": "<job_id>"}'`.
 8. If the job has finished, run `collect`; pass no `--model` and no `--counts-from` (the
    entry names the supplier the resolver finds when prepare read its artifact, else `unknown`;
@@ -152,8 +155,10 @@ paths, and `collect`'s output keeps no `history_entry`, so the step 9 append is 
    run did not complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with the scheduler log
    path, stop. Exit 1 → the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures`
    verbatim, stop.
-   On a non-public project: `python3 _system/tool_call.py rnaseq_de.collect '{"project":
-   "projects/<title>"}'`, and `executor.status` as in step 7. There T4 gives the door's `failures` or
+   On a non-public project, or while any exists in the workspace: `python3 _system/tool_call.py
+   rnaseq_de.collect '{"project": "projects/<title>"}'`, and `python3 _system/tool_call.py
+   executor.status '{"workspace": "<project dir>", "job-id": "<job_id>"}'` for each status
+   call. There T4 gives the door's `failures` or
    `state` and names the `logs/` directory for the user to read; you read no log.
 9. Exit 0 → `collect` has written `OUTPUTS.tsv` (`de_results` native, `counts_gene`
    **adapted**, `gene_id_map` native — the role marking is what stops a later consumer

@@ -98,6 +98,10 @@ refuses every Read of a file in the project except its `00_data/dataset.tsv` and
 files, every append to `HISTORY.md`, and every typed call that names the project except the doors in
 `CLOSED_PROJECT_DOORS` (`_system/guard_hook.py`). No verb of this sub-stage's wrapper is a door,
 so on a non-public project only step 2's STATUS read is the agent's: reply T7 and stop.
+While any non-public project exists in the workspace, a door's direct spelling is refused
+for every project, public ones included (0141 ruling D-vii b), so steps 5 to 7 also give the
+`executor.*` door's dispatcher spelling (decision 0323); on a public project its output is
+unfiltered.
 
 ## Process
 1. Reply T1.
@@ -109,9 +113,21 @@ so on a non-public project only step 2's STATUS read is the agent's: reply T7 an
    the Space Ranger tree, which is stage 00's business to re-link.
 4. Run `prepare`. Exit 1 → reply T5 (same rule). Exit 0 → report nothing yet.
 5. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh`. Capture its `job_id`.
+   While any non-public project exists in the workspace, the direct submit call is
+   refused (decision 0141): `python3 _system/tool_call.py executor.submit
+   '{"workspace": "<project dir>", "script": "<sub-stage dir>/submit.sh"}'`; `job_id` is in
+   the JSON of its `stdout`.
 6. Call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` (submit has written `SUBMITTED`). Reply T2 and stop. Do not wait or poll.
+   While any non-public project exists in the workspace, the direct status call is
+   refused (decision 0141): `python3 _system/tool_call.py executor.status
+   '{"workspace": "<project dir>", "job-id": "<job_id>"}'`; its state is in the
+   JSON of its `stdout`.
 7. **On a later invocation** where STATUS is `SUBMITTED`, `RUNNING` or `VALIDATING`: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`.
    If still active, reply T3, stop; the status call has already refreshed STATUS.
+   While any non-public project exists in the workspace, the direct status call is
+   refused (decision 0141): `python3 _system/tool_call.py executor.status
+   '{"workspace": "<project dir>", "job-id": "<job_id>"}'`; its state is in the
+   JSON of its `stdout`.
 8. If status reports `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`, reply T4
    with that reason and the scheduler log path, stop. If the scheduler reports
    `COMPLETED`, STATUS is `VALIDATING`; run `collect`;
