@@ -25,13 +25,17 @@ check_take.vendor_round4_problems (section 1b).
               row off the script (outcome-binding); reach into evals/, the home folder and the temp folder, and a path
               under the session's own run tree admitted; the project name; the ledger row, the commit-derived and the
               walk session id; the turn budget; a turn stream line no parser read; a nested-agent switch; codex's
-              session working directory and run tree (T-11, T-4) and a file_change item (T-8, PENDING).
+              session working directory and run tree (T-11, T-4) and a file_change item (T-8, PENDING); P5's
+              model-binding (T-15: a rollout turn on another model and a reroute for codex, a stream's init and a
+              stats.models key on another model for gemini, no requested model) and environment record (T-17: none,
+              and one edited after the take), every take carrying the drive's environment.json.
   P2-keys     VP-keys holds as equality on the live source (test_vendor_check), and vendor_pending is called with
               literal harness and key only.
   P2-witness  check_take.py compiled in memory with each guard dropped, each PENDING refusal deleted (one mutant per
               call site, read from the AST), a PENDING refusal moved under an event id, the envelope read twice, the
-              view run before the readers, the run tree not handed to the reach, the home and temp legs dropped and the
-              email counted per instance: each goes red on its own case.
+              view run before the readers, the run tree not handed to the reach, the home and temp legs dropped, the
+              email counted per instance, a model mismatch admitted, the codex reroute unread, the model reading
+              dropped and the environment record unread: each goes red on its own case.
 
 Fakes and synthetic strings only, inside test_checker_body's process guard (only the pinned tree's read-only git
 starts): no take, model, vendor, network, Docker, credential or holdout.
@@ -43,6 +47,7 @@ import ast
 import collections
 import contextlib
 import copy
+import hashlib
 import json
 import sys
 import tempfile
@@ -89,6 +94,30 @@ def design_for(mod, harness, run_tree=tcb.RUN_TREE):
     return mod.vendor_view(plain_design_for(mod, harness, run_tree))
 
 
+# T4 P5: the version drive._environment and the ledger record for the take (TEST DATA, the fixtures' CLI versions)
+VERSIONS = {"codex": vcf.CODEX_CLI, "gemini": vcf.GEMINI_CLI}
+
+
+def environment_record(t, turns) -> dict:
+    """environment.json as drive._environment writes it for a vendor take (drive.environment_record, round 3's schema)
+    under the design's environment_record block: no name of the block's vocabulary in the vendor's child
+    environment, every listed name absent, and no credential source reported on any turn; the walk road's record
+    names no row."""
+    spec = t.design.pre["environment_record"]
+    walk = t.call["walk_id"] is not None
+    return {"record": "environment", "schema": spec["schema"], "session_id": t.sid, "row": None if walk else 0,
+            "row_commit": None if walk else tcb.COMMIT, "task": TASK, "half": HALF, "model_requested": t.model,
+            "claude_version": VERSIONS[t.harness], "written_before_first_turn": True,
+            "name_patterns": spec["name_patterns"], "names_present": [], "stripped_names": [],
+            "api_key_variables": dict.fromkeys(spec["api_key_variables"], "absent"), "api_key_set": False,
+            "billing_route_variables": dict.fromkeys(spec["billing_route_variables"], "absent"),
+            "billing_route_set": False,
+            "subscription_token_variables": dict.fromkeys(spec["subscription_token_variables"], "absent"),
+            "credential_source": {"key": spec["credential_source_key"], "reported": None,
+                                  "per_turn": [{"n": r["n"], "recovery": False, "exit": 0, "apiKeySource": None}
+                                               for r in turns]}}
+
+
 class Take:
     """One synthetic vendor take of the row, before it is written: a case edits these fields, then its parts, then
     its folder. `call` holds vendor_check's keywords a case may change (row_index, walk_id, wording_script)."""
@@ -123,7 +152,12 @@ class Take:
             {"n": s["n"], "recovery": False, "exit": 0, "then": None, "sent": line}
             for s, line in zip(self.design.script, self.parts["lines"])]
         ledger = dict(self.ledger, turns=turns)
+        env = environment_record(self, turns)                     # T4 P5: the drive's record, read by the checker
+        raw = json.dumps(env).encode("utf-8")
+        ledger.update(claude_version=VERSIONS[self.harness],
+                      environment={"file": "environment.json", "sha256": hashlib.sha256(raw).hexdigest()})
         folder = Path(tempfile.mkdtemp(dir=tcb.SCRATCH))
+        (folder / "environment.json").write_bytes(raw)
         path = vcf.write(folder, self.harness, self.parts, sid=self.sid, ledger=ledger, run_tree=self.journal_cwd,
                          mode=self.mode)
         if folder_edit:
@@ -395,6 +429,45 @@ def named_snapshot_missing(path):
     (path.parent / "session" / "native-turn-1.jsonl").unlink()
 
 
+# ---- T4 P5: model-binding (T-15) and the environment record (T-17) ---------------------------------------------------
+OTHER_MODEL = "synthetic-other-model"                     # TEST DATA
+
+
+def rollout_model(parts):
+    for _, pay in parts["rollout"][2]:
+        if "cwd" in pay and "approval_policy" in pay:
+            pay["model"] = OTHER_MODEL
+
+
+def rerouted(parts):
+    """Turn 2's stream gains codex's reroute item away from the requested model (codex_native.REROUTE's sentence)."""
+    item = {"id": "item_9", "type": "error",
+            "message": f"model rerouted: {parts['model']} -> {OTHER_MODEL} (HighRiskCyberActivity)"}
+    parts["streams"][2].insert(-1, {"type": "item.completed", "item": item})
+
+
+def init_model(parts):
+    for r in parts["streams"][2]:
+        if r["type"] == "init":
+            r["model"] = OTHER_MODEL
+
+
+def stats_model(parts):
+    for r in parts["streams"][2]:
+        if r["type"] == "result":
+            r["stats"]["models"][OTHER_MODEL] = dict(next(iter(r["stats"]["models"].values())))
+
+
+def case_no_requested_model(t):
+    t.ledger.pop("model_requested")
+    return None, None
+
+
+def environment_edited(path):
+    f = path.parent / "environment.json"
+    f.write_bytes(f.read_bytes() + b"\n")
+
+
 def edits(*pair):
     return lambda t: pair
 
@@ -451,6 +524,18 @@ CASES = {
     # round 13, review d-7c774ad finding 1: a ledger-named session file that cannot be read refuses by name
     "a ledger-named snapshot missing": (("codex", "gemini"), edits(None, named_snapshot_missing),
                                         {"transcript-unreadable": 1}, None),
+    # T4 P5 (glitch-b5 round 13): model-binding (T-15) and the environment record (T-17)
+    "a rollout turn on another model": (("codex",), edits(rollout_model, None), {"model-binding": 1}, None),
+    # the view and the stream parser refuse the error item as off their tables; the model reading names the reroute
+    "a rerouted model": (("codex",), edits(rerouted, None), {"model-binding": 1, "transcript-unreadable": 2}, None),
+    "a stream's init on another model": (("gemini",), edits(init_model, None), {"model-binding": 1}, None),
+    "a stats.models key of another model": (("gemini",), edits(stats_model, None), {"model-binding": 1}, None),
+    "no requested model in the ledger": (("codex", "gemini"), case_no_requested_model,
+                                         {"model-binding": 1, "environment-record": 1}, None),
+    "no environment record": (("codex", "gemini"), edits(None, lambda path: (path.parent / "environment.json").unlink()),
+                              {"environment-record": 1}, None),
+    "an environment record edited after the take": (("codex", "gemini"), edits(None, environment_edited),
+                                                    {"environment-record": 1}, None),
     # outcome-binding (T-24)
     "a turn that did not end": (("codex", "gemini"), edits(turn_not_ended, None), {"outcome-binding": 1}, None),
     "an outcome off the driver's shapes": (("codex", "gemini"), case_outcome_off_shapes, {"outcome-binding": 1},
@@ -662,6 +747,14 @@ P2_WITNESSES = {
         '            return [f"[{TRANSCRIPT_UNREADABLE}] {name} is a published file of this take that cannot be read "\n'
         '                    f"({e}), so its bytes cannot be counted"]\n', "            continue\n"),
         "a ledger-named snapshot missing"),
+    "model mismatch admitted": (("    others = [(where, m) for where, m in seen if m != want]\n", "    others = []\n"),
+                                "a rollout turn on another model"),
+    "the codex reroute unread": (("                if to is not None:\n", "                if False:\n"),
+                                 "a rerouted model"),
+    "the model reading dropped": (("    problems += vendor_model_problems(path, harness, ledger)\n", ""),
+                                  "a stream's init on another model"),
+    "the environment record unread": (("        out = environment_problems(Path(path), ledger, pre, row_commit)\n",
+                                       "        out = []\n"), "no environment record"),
     "the turn end unread": (("        if not ended:\n", "        if False:\n"), "a turn that did not end"),
     "the completion legs dropped": (("    problems += completion_problems(path, ledger, pre)\n", ""),
                                     "an outcome off the driver's shapes"),

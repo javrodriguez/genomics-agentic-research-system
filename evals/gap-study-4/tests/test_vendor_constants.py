@@ -21,12 +21,14 @@
               CheckRefused before any reading.
   P5-road     checker_view hands a vendor row's design through vendor_view and a claude-code design back as it is;
               walk_builders' production design_for and walk_regrade.production_design both build that view.
+  P5-env      a vendor walk whose environment record names a ledger row routes environment-record (check_walk's leg;
+              the take road's record and model legs are test_vendor_body's P2-cases).
   P5-drive    drive.take_checker on a clean vendor take with its vendor view records the merged digest, 0 nudges and
               the vendor Agent summary, and routes exactly the take's PENDING refusals.
   P5-witness  check_take.py compiled in memory with a vendor key shadowing CHECKER_CONSTANTS admitted, the block's
               PENDING paths dropped (a PENDING billing-route variable defaulted), the side reading a plain view, the
-              entries reading a plain view, checker_view handing a vendor design back unviewed and the side's nested
-              count dropped: each goes red.
+              entries reading a plain view, checker_view handing a vendor design back unviewed, the side's nested
+              count dropped and the walk's environment row admitted: each goes red.
 
 Fakes and synthetic strings only, inside test_box_integration's process guard with test_drive_loop's checker world:
 no take, model, vendor, network, Docker, credential or holdout.
@@ -304,6 +306,32 @@ def drive_problems(mod) -> list:
     return out
 
 
+# ---- P5-env (the walk road's environment record) ---------------------------------------------------------------------
+def env_row(path):
+    """The walk's environment.json made to name ledger row 0, its ledger binding rewritten to the new bytes, so only
+    the walk's own leg can refuse it."""
+    f = path.parent / "environment.json"
+    rec = json.loads(f.read_text())
+    rec.update(row=0)
+    raw = json.dumps(rec).encode("utf-8")
+    f.write_bytes(raw)
+    led = path.parent / "driver-ledger.json"
+    doc = json.loads(led.read_text())
+    doc["environment"]["sha256"] = hashlib.sha256(raw).hexdigest()
+    led.write_text(json.dumps(doc))
+
+
+def env_walk_problems(mod) -> list:
+    out = []
+    for harness in HARNESSES:
+        t = tve.take_for(mod, harness, "walk")
+        got = outcome(tve.entry_call, mod, t, t.build(None, env_row), "walk")
+        want = sorted([p.split("] ")[0][1:] for p in tvb.pending_lines(mod, harness)] + ["environment-record"])
+        if got[0] != "ok" or sorted(got[1]["reasons"]) != want:
+            out.append(f"{harness}: a walk whose environment record names a row routed {str(got)[:300]}, not {want}")
+    return out
+
+
 class P5Constants(unittest.TestCase):
     def test_p5_the_vendor_blocks_are_their_sources(self):
         with world() as ct:
@@ -328,6 +356,10 @@ class P5Constants(unittest.TestCase):
     def test_p5_the_production_roads_build_the_vendor_view(self):
         with world() as ct:
             self.assertEqual(road_problems(ct), [])
+
+    def test_p5_a_walks_environment_record_names_no_row(self):
+        with world() as ct:
+            self.assertEqual(env_walk_problems(ct), [])
 
     def test_p5_take_checker_records_the_vendor_side(self):
         with world() as ct:
@@ -356,6 +388,10 @@ P5_WITNESSES = {
     "the side's nested count dropped": ((
         "            \"nested_cli_calls\": sum(len(nested_cli_mentions(c)) for c in cmds)}\n",
         "            \"nested_cli_calls\": 0}\n"), side_problems),
+    "the walk's environment row admitted": ((
+        "        if isinstance(rec, dict) and (rec.get(\"row\") is not None or rec.get(\"row_commit\") is not None):\n"
+        "            out.append(\"[environment-record] the vendor walk's",
+        "        if False:\n            out.append(\"[environment-record] the vendor walk's"), env_walk_problems),
 }
 
 
