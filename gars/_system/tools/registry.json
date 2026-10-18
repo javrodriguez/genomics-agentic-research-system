@@ -232,6 +232,10 @@
           "flag": "--project",
           "nargs": null
         },
+        "sample-id-pattern": {
+          "flag": "--sample-id-pattern",
+          "nargs": null
+        },
         "source": {
           "flag": "--source",
           "nargs": null
@@ -259,6 +263,10 @@
             "type": "boolean"
           },
           "project": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "sample-id-pattern": {
             "minLength": 1,
             "type": "string"
           },
