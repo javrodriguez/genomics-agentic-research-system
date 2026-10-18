@@ -3,14 +3,16 @@
 17 Oct 2026): a codex or gemini row whose model has no routing pin refuses by name, never with a bare KeyError.
 
   PV-named    walk_builders.production_builders()["pin_for"] (walk_builders.py:939-940, batch.expected_pin over the
-              committed routing.json) on the committed draft's first codex row (arm O) and first gemini row (arm G)
-              raises batch.PinProfileMissing naming the harness and the model and that CP5 registers it; its first
-              claude-code row still gets its pin. A table with no block for the harness at all, and one whose block
-              lacks the model, refuse the same way.
+              committed routing.json) on the committed draft's first claude-code row gets its pin. A table with no
+              block for the harness at all, and one whose block lacks the model, raise batch.PinProfileMissing for
+              the first codex row (arm O) and first gemini row (arm G), naming the harness and the model and that CP5
+              registers it. Round 17 B7 (R4 of RULINGS-codex2-signin-road-2026-10-18.md, which moves this
+              assertion): on the committed table, which now holds R4's profiles, the first codex and gemini rows get
+              exactly R4's profile as their pin (codex bypass 0.162.1, gemini yolo 0.64.0).
   PV-witness  batch.py compiled in memory with expected_pin's bare lookup restored goes red.
 
-CP5 registers the O and G pin_profiles under its rate-limit and spend-cap rules (R-4); nothing here adds one. No take,
-model, container or network.
+CP5 registers the O and G pin_profiles under its rate-limit and spend-cap rules (R-4); round 17 B7 added them (R4);
+nothing here adds one. No take, model, container or network.
 """
 
 from __future__ import annotations
@@ -31,6 +33,9 @@ import routing  # noqa: E402
 import walk_builders  # noqa: E402
 
 ROWS = json.loads((HERE / "prereg-draft.json").read_text())["rows"]
+# R4 (round 17 B7): the profile each vendor row's pin must be on the committed table, typed once from the ruling.
+R4 = {"codex": {"permission_mode": "bypass", "version": "0.162.1"},
+      "gemini": {"permission_mode": "yolo", "version": "0.64.0"}}
 
 
 def first(harness: str) -> dict:
@@ -57,8 +62,15 @@ def named_problems(mod) -> list:
             call = pin_for if name == "the committed table" else (lambda row, t=t: mod.expected_pin(row, t))
             try:
                 got = call(r)
-                out.append(f"{harness} on {name}: a pin was returned: {got}")
+                if name == "the committed table":   # R4 (round 17 B7): the registered profile, exactly
+                    if got != dict(R4[harness], model=r["model"], harness=harness):
+                        out.append(f"{harness} on {name}: the pin is {got}, not R4's profile")
+                else:
+                    out.append(f"{harness} on {name}: a pin was returned: {got}")
             except getattr(mod, "PinProfileMissing", ()) as e:
+                if name == "the committed table":
+                    out.append(f"{harness} on {name}: R4's profile is refused: {e}")
+                    continue
                 want = (f"routing.json's pin_profiles hold no {harness}/{r['model']} profile; CP5 registers it")
                 if str(e) != want:
                     out.append(f"{harness} on {name}: the refusal reads {str(e)!r}, not {want!r}")

@@ -32,6 +32,8 @@ MODELS = {"A": ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5-202510
           "O": ["gpt-6.1-sol", "gpt-6-luna"],
           "G": ["gemini-3.8-flash", "gemini-3.5-flash-lite"]}
 HARNESSES = {"A": CLAUDE, "O": CODEX, "G": GEMINI}
+# Round 17 B7 (R4; glitch-b5's ruling M2, 18 Oct 2026): each arm's take lock, whose harness.version its rows carry.
+TAKE_LOCK = {"A": "take-a", "O": "take-o", "G": "take-g"}
 
 
 def digest(path):
@@ -97,15 +99,18 @@ def core_problems(d):
          and all(item["sha256"] == digest(HERE / item["path"]) and
                  item["lock"] == image_lock.load(str(HERE / item["path"])) for item in locks), "R6.locks")
     # R6.unpinned, converted for CP5 (Javier, 14 Oct 2026, the integration lane's rule mirrored here): an arm A row
-    # carries its pin's version, which is take-a's harness.version; O and G rows stay null. While take-a's lock is
-    # PENDING (this branch), the pins' agent_version and the arm A rows stay null too (TakeALock names that skip).
-    take_a = next(item["lock"] for item in locks if item["lock"]["image"] == "take-a")["harness"]["version"]
-    a_version = None if take_a == image_lock.PENDING else take_a
-    a_pins = d["version_pins"].get(CLAUDE) or {}
-    need(all(r["agent"]["version"] == (a_version if r["arm"] == "A" else None) for r in rows)
-         and set(a_pins) == set(MODELS["A"])
-         and all(p.get("agent_version") == a_version and (a_version is None or p.get("version") == a_version)
-                 for p in a_pins.values()), "R6.unpinned")
+    # carries its pin's version, which is take-a's harness.version. Round 17 B7 (R4; moved by glitch-b5's ruling M2,
+    # 18 Oct 2026): arms O and G likewise, each from its own take lock (take-o, take-g), where O and G rows stayed null
+    # before. While an arm's lock is PENDING, its pins' agent_version and its rows stay null (TakeALock names that).
+    def arm_pinned(arm):
+        lock = next(item["lock"] for item in locks if item["lock"]["image"] == TAKE_LOCK[arm])["harness"]["version"]
+        version = None if lock == image_lock.PENDING else lock
+        pins = d["version_pins"].get(HARNESSES[arm]) or {}
+        return (all(r["agent"]["version"] == version for r in rows if r["arm"] == arm)
+                and set(pins) == set(MODELS[arm])
+                and all(p.get("agent_version") == version and (version is None or p.get("version") == version)
+                        for p in pins.values()))
+    need(all(arm_pinned(arm) for arm in MODELS), "R6.unpinned")
     need(set(d["version_pins"]) == set(HARNESSES.values()) and all(set(d["version_pins"][h]) == set(MODELS[a])
          for a, h in HARNESSES.items()), "R14.pins")
     return bad
@@ -192,10 +197,20 @@ class Assembly(unittest.TestCase):
         self.assertEqual(prereg.SEED_SHAPE.pattern, "[0-9a-f]{40}", "R3.carry")
         self.assertEqual(prereg.SEED_SHAPE.flags, _re.compile("[0-9a-f]{40}").flags, "R3.carry")
         self.assertEqual(prereg.ORDER_FUNCTION, d["take_order_function"], "R3.carry")
+        # Round 17 B7 (glitch-b5's ruling M, 18 Oct 2026): the committed draft now pins every agent version (R4), so the
+        # door orders it, and the refusal is read through test_prereg_order's O5.pending on a copy of it with one null
+        # version (the door's own CLI, in process).
         got = subprocess.run([sys.executable, "-B", str(HERE / "prereg.py"), "--order", "f" * 40],
                              capture_output=True, text=True, timeout=120)
-        self.assertEqual(got.returncode, 1, "R3.carry")
-        self.assertIn("take order: freeze.planned_order refuses the design in force (prereg-draft.json)", got.stdout,
+        self.assertEqual(got.returncode, 0, "R3.carry")
+        self.assertIn(f"take order: freeze.planned_order, one permutation of {len(d['rows'])} whole planned rows",
+                      got.stdout, "R3.carry")
+        one_null = copy.deepcopy(order_tests.REAL_LOAD())
+        one_null["rows"][0]["agent"]["version"] = None
+        with mock.patch.object(order_tests.prereg, "load", lambda: one_null):
+            code, text = order_tests.cli("--order", "f" * 40)
+        self.assertEqual(code, 1, "R3.carry")
+        self.assertIn("take order: freeze.planned_order refuses the design in force (prereg-draft.json)", text,
                       "R3.carry")
         self.assertEqual(study.ARMS, ("A", "C", "O", "G"))
 
@@ -562,31 +577,41 @@ def setUpModule():
         CORE_SETUP()
 
 
+def lock_versions(d):
+    """Each arm's take-lock harness.version in the draft, None where the lock is PENDING."""
+    out = {}
+    for arm, image in TAKE_LOCK.items():
+        version = next(i["lock"] for i in d["image_locks"] if i["lock"]["image"] == image)["harness"]["version"]
+        out[arm] = None if version == image_lock.PENDING else version
+    return out
+
+
 class TakeALock(unittest.TestCase):
-    """R6.unpinned on the live draft: arm A's rows carry take-a's harness.version once its lock is filled."""
+    """R6.unpinned on the live draft: arm A's rows carry take-a's harness.version once its lock is filled; since round
+    17 B7 (R4; moved by glitch-b5's ruling M2, 18 Oct 2026) arm O's carry take-o's and arm G's take-g's, the same way."""
 
     def test_arm_a_rows_carry_take_a_version(self):
         d = b.build()
-        take_a = next(i["lock"] for i in d["image_locks"] if i["lock"]["image"] == "take-a")["harness"]["version"]
-        if take_a == image_lock.PENDING:
-            # test_round4 allows no skip (SKIP_ALLOWED is empty; athena run of 1f032586): with the lock PENDING no row
-            # carries a version yet. The box lane's committed lock (6221c297, 2.1.296) binds arm A where it is merged.
-            self.assertEqual({r["agent"]["version"] for r in d["rows"]}, {None},
-                             "a row carries a version while take-a's lock is PENDING")
-            return
-        self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] == "A"}, {take_a})
-        self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] != "A"}, {None})
+        want = lock_versions(d)
+        # test_round4 allows no skip (SKIP_ALLOWED is empty; athena run of 1f032586): an arm whose lock is PENDING has
+        # no row carrying a version yet. The committed locks (take-a 2.1.296 from 6221c297; take-o 0.162.1 and take-g
+        # 0.64.0, R4's versions) bind each arm where they are merged.
+        for arm, version in (("A", "2.1.296"), ("O", "0.162.1"), ("G", "0.64.0")):
+            self.assertIn(want[arm], (None, version), f"arm {arm}'s take lock")
+        for arm in MODELS:
+            self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] == arm}, {want[arm]}, arm)
 
 
     def test_arm_a_follows_take_a_lock_both_ways(self):
-        """The binding on every tree, whatever its lock holds: take-a's lock read through image_lock.load with only its
-        harness.version changed (the version routing.json's arm A profiles carry, then PENDING); arm A's rows carry
-        exactly that version, every other row None, and with PENDING no row carries one. A version the profiles do not
-        carry is refused by build itself."""
+        """The binding on every tree, whatever its lock holds: each take lock (take-a, and since round 17 B7, ruling
+        M2, take-o and take-g) read through image_lock.load with only its harness.version changed (the version
+        routing.json's profiles for that arm carry, then PENDING); that arm's rows carry exactly that version, every
+        other arm's rows its own lock's version, and with PENDING no row of that arm carries one. A version the
+        profiles do not carry is refused by build itself."""
         import routing
         real = image_lock.load
-        carried = {p["version"] for p in routing.load_table()["pin_profiles"]["claude-code"].values()}
-        self.assertEqual(len(carried), 1, f"arm A's profiles carry {carried}")
+        profiles = routing.load_table()["pin_profiles"]
+        real_versions = lock_versions(b.build())
 
         def take_a_with(lock, version):
             """take-a's lock with harness.version set, still a lock image_lock accepts (review MINOR 2 of
@@ -606,20 +631,26 @@ class TakeALock(unittest.TestCase):
             lock.update(harness=dict(lock["harness"], version=version), pending=pending)
             return image_lock.validate(lock)
 
-        def with_version(version):
+        def with_version(image, version):
             def load(path):
                 lock = real(path)
-                return lock if lock["image"] != "take-a" else take_a_with(lock, version)
+                return lock if lock["image"] != image else take_a_with(lock, version)
             return load
-        with mock.patch.object(image_lock, "load", with_version("7.7.7")), \
-                self.assertRaisesRegex(ValueError, "routing and image versions disagree"):
-            b.build()
-        for version in (*carried, image_lock.PENDING):
-            with self.subTest(version=version), mock.patch.object(image_lock, "load", with_version(version)):
-                d = b.build()
-                want = None if version == image_lock.PENDING else version
-                self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] == "A"}, {want})
-                self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] != "A"}, {None})
+        for arm, image in TAKE_LOCK.items():
+            carried = {p["version"] for p in profiles[HARNESSES[arm]].values()}
+            self.assertEqual(len(carried), 1, f"arm {arm}'s profiles carry {carried}")
+            with self.subTest(image=image, version="7.7.7"), \
+                    mock.patch.object(image_lock, "load", with_version(image, "7.7.7")), \
+                    self.assertRaisesRegex(ValueError, "routing and image versions disagree"):
+                b.build()
+            for version in (*carried, image_lock.PENDING):
+                with self.subTest(image=image, version=version), \
+                        mock.patch.object(image_lock, "load", with_version(image, version)):
+                    d = b.build()
+                    want = dict(real_versions, **{arm: None if version == image_lock.PENDING else version})
+                    for other in MODELS:
+                        self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] == other},
+                                         {want[other]}, (image, other))
 
 
 class Description(unittest.TestCase):
@@ -776,7 +807,9 @@ def ready_problems(d):
                          GEMINI: {m: take_config.GEMINI_THINKING for m in MODELS["G"]}}, "R15.config")
     table = json.loads((HERE / "routing.json").read_text())
     need(d["routing_markers"] == {key: table[key] for key in ("rate_limit_markers", "rate_limit_markers_status", "spend_cap_markers", "spend_cap_markers_status")} and
-         d["routing_marker_inputs"] == {h: {k: "PENDING" for k in ("rate_limit_markers", "spend_cap_markers")} for h in (CODEX,GEMINI)}, "R15.markers")
+         # round 17 B7 (glitch-b5's ruling M2): routing.json carries codex's and gemini's markers, so no input is open
+         all(h in table[k] for h in (CODEX, GEMINI) for k in ("rate_limit_markers", "spend_cap_markers")) and
+         d["routing_marker_inputs"] == {}, "R15.markers")
     return bad
 
 
@@ -1526,7 +1559,9 @@ OWNER_PATHS = [("pause_questions", 0, "answer"), ("limitations", 0, "round_4_rea
                ("checked_against", "status"), ("furniture", CODEX),
                ("config_templates", CODEX, MODELS["O"][0]),
                ("effort", CODEX, MODELS["O"][0]),
-               ("routing_marker_inputs", CODEX, "rate_limit_markers")]
+               # round 17 B7 (glitch-b5's ruling M): routing_marker_inputs left the draft when routing.json took the
+               # codex and gemini markers; the list-kind case moves to another list slot still open, gemini's furniture
+               ("furniture", GEMINI)]
 OWNER_SETUP = setUpModule
 OWNER_MUTANTS = tuple("owner-" + name for name in OWNER_BAD) + ("owner-absent", "owner-list", "owner-typed")
 
@@ -1608,7 +1643,7 @@ class OwnerSlots(unittest.TestCase):
         quote = {"source": "fake source", "source_sentence_sha256": "a"*64,
                  "commitment": {"arrived": True, "mode": "fake", "count": 0}}
         cases = [(OWNER_PATHS[0], quote), (("furniture", CODEX), []),
-                 (("routing_marker_inputs", CODEX, "rate_limit_markers"), ["fake marker"]),
+                 (("furniture", GEMINI), ["fake marker"]),   # round 17 B7 (ruling M): was routing_marker_inputs
                  (("effort", GEMINI, MODELS["G"][0]), {"path": "fake.level", "value": 0}),
                  (("config_templates", CODEX, MODELS["O"][0]),
                   {"files": [{"path": "fake.json", "sha256": "b"*64}], "sha256": "c"*64})]

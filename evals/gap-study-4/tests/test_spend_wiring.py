@@ -14,19 +14,25 @@ batch.py called them; and routing.py accepted an empty spend-cap list for any ha
   G5-order    the gate runs per block, before the block is registered: a refused block's claude-code rows wait too
               (the frozen order is kept), and each block reads the ledger afresh
   R1-nonempty routing refuses (check_table, load_table, routing.py --check) a spend-cap list that names no marker for
-              any harness but the no-money one; claude-code's may stay empty
+              any harness but those in routing.EMPTY_SPEND_LIST_HARNESSES; claude-code's may stay empty, and since
+              round 17 B7 (glitch-b5's ruling (1) of CONTINUED (3), 18 Oct 2026; moved by ruling M) codex's too (a
+              ChatGPT subscription sign-in), while gemini's and any other paid harness's are still refused
   B1-names    routing's paid harnesses are the seam's names (box/run_take.py), their arms the draft's
               (build_draft.HARNESSES), their vendors costs.CAPS's; the no-money harness is the seam's claude-code
   G6-clock    the hold reads batch's OWN clock (UTC, at check time), never the ledger's `now` (glitch-1b, Q-w7c-1): a
               ledger saying "before the hold" while the clock is inside it is refused, and the converse runs
-  P3-ruled    (lane w8c, ruling W8C-gap4-1; was P3-pending) spend_cap_markers_status reads RULED by Javier ("spend
-              markers: 1A 2A 3A", 12 Oct 2026); since CP5 (Javier, "CP5: all as recommended", 14 Oct 2026)
-              pin_profiles_status reads RULED too, with arm A's profiles alone, so batch.py --check is ready (exit 0)
-              and the Batch loop starts; the spend-status gate stays armed (a PENDING spend status gives its one line,
-              and the base's table, pins and statuses PENDING, still gives the base's three lines)
+  P3-ruled    (lane w8c, ruling W8C-gap4-1; was P3-pending) spend_cap_markers_status reads RULED: since round 17 B7
+              (moved by glitch-b5's ruling M, 18 Oct 2026) it is glitch-b5's RULED 18 Oct 2026 line, which quotes
+              Javier's RULED 12 Oct line ("spend markers: 1A 2A 3A") word for word; since CP5 (Javier, "CP5: all as
+              recommended", 14 Oct 2026) pin_profiles_status reads RULED too, and the pin-profile and spend-cap
+              harnesses are exactly claude-code, codex and gemini (arm A's profiles, then R4's O and G), so
+              batch.py --check is ready (exit 0) and the Batch loop starts; the spend-status gate stays armed (a
+              PENDING spend status gives its one line, and the base's table, pins and statuses PENDING, still gives
+              the base's three lines)
 
-R1-nonempty also holds after the ruling (lane w8c): on routing.json as it now stands, status RULED, an OpenAI (codex)
-or Google (gemini) entry with an empty spend-cap list is still refused, and the same entry with one marker is sound.
+R1-nonempty also holds after the ruling (lane w8c): on routing.json as it now stands, status RULED, a Google (gemini)
+entry with an empty spend-cap list is still refused, and the same entry with one marker is sound; since round 17 B7
+an OpenAI (codex) entry with an empty list is admitted (ruling M), and with one marker is sound.
 
 Each check is a function returning problems, each line prefixed by its clause (or ERROR when the check itself raised).
 Every witness (WITNESSES) edits batch.py or routing.py in memory and must be killed by its bound check's own line, the
@@ -92,6 +98,17 @@ CP5_STATUS = ("RULED 14 Oct by Javier (\"CP5: all as recommended\"): arm A profi
               "their rate-limit and spend-cap rules are set")
 BASE_SPEND_STATUS = ("PENDING (glitch-f3): claude-code's spend-cap types. Its list is empty (see "
                      "spend_cap_markers.claude-code.source) until glitch-f3 rules it.")
+# Round 17 B7 (glitch-b5's ruling M, 18 Oct 2026): the spend status is glitch-b5's RULED 18 Oct line, which must quote
+# Javier's RULED 12 Oct line, typed here once as it stood at 6d1b69db, word for word.
+B7_SPEND_PREFIX = "RULED 18 Oct 2026 by glitch-b5 under the owner's delegation"
+OWNER_SPEND_STATUS = (
+    "RULED 2026-10-12 by Javier (\"spend markers: 1A 2A 3A\", typed Mon 12 Oct 2026 08:52 EDT in glitch-1b's window, "
+    "on plans/gap-study-round-4/spend-markers-proposal-2026-10-11.md): claude-code's spend-cap list is empty on "
+    "purpose; arm A runs on his subscription login (D4 A), which bills no money per call, and a usage or weekly limit "
+    "pauses under rate_limit_markers. The OpenAI and Google entries are added with their adapters, each with a "
+    "non-empty list (OpenAI: project_spend_limit_exceeded, organization_spend_limit_exceeded, "
+    "credit_balance_exhausted, insufficient_quota; Google: status 402 and its spend-cap error read at a walk), and "
+    "this status is ruled again then.")
 
 
 def walk(harness, tries=10, cost="1.34"):
@@ -446,12 +463,35 @@ def _r1(mod) -> list[str]:
     real = mod.load_table()
     if mod.check_table(real) != []:
         p.append(f"R1-nonempty: routing.json itself is refused: {mod.check_table(real)}")
-    elif any(real["spend_cap_markers"][CLAUDE][k] for k in ("status", "type", "text")):
-        p.append("R1-nonempty: claude-code's spend-cap list is not the empty one this check holds sound")
+    elif any(real["spend_cap_markers"][h][k] for h in (CLAUDE, CODEX) for k in ("status", "type", "text")):
+        p.append("R1-nonempty: claude-code's or codex's spend-cap list is not the empty one this check holds sound")
     t = paid_table()
     if mod.check_table(t) != []:
         p.append(f"R1-nonempty: the test table with non-empty paid lists is refused: {mod.check_table(t)}")
-    for h in PAID + ("fake-paid",):
+    # Round 17 B7 (glitch-b5's ruling (1) of CONTINUED (3), moved by ruling M): codex's empty list is admitted on every
+    # road (a ChatGPT subscription sign-in names no spend-cap error), while it stays a paid harness for the money gate
+    # (B1-names holds NO_MONEY_HARNESSES at claude-code alone).
+    t = paid_table()
+    t["spend_cap_markers"][CODEX].update(status=[], type=[], text=[])
+    if mod.check_table(t) != []:
+        p.append(f"R1-nonempty: the empty codex spend-cap list is refused by check_table: {mod.check_table(t)}")
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "routing.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(t, fh)
+        try:
+            mod.load_table(path)
+        except mod.TableError as e:
+            p.append(f"R1-nonempty: load_table refuses the empty codex list: {e}")
+        with mock.patch.object(mod, "TABLE_PATH", path), redirect_stdout(io.StringIO()), \
+                redirect_stderr(io.StringIO()):
+            try:
+                rc = mod.main(["--check"])
+            except mod.TableError:
+                rc = "refused"
+        if rc != 0:
+            p.append(f"R1-nonempty: routing.py --check refuses the empty codex list: {rc}")
+    for h in (GEMINI, "fake-paid"):
         t = paid_table()
         t["spend_cap_markers"][h].update(status=[], type=[], text=[])
         found = mod.check_table(t)
@@ -476,8 +516,9 @@ def _r1(mod) -> list[str]:
                     rc = "refused"
             if rc == 0:
                 p.append(f"R1-nonempty: routing.py --check passes an empty spend-cap list for {h}")
-    # Lane w8c: the refusal outlives the ruling. On routing.json as it stands (status RULED by Javier), a codex or
-    # gemini entry added with an empty list is refused; with one marker it is sound (the control).
+    # Lane w8c: the refusal outlives the ruling. On routing.json as it stands (status RULED), a gemini entry with an
+    # empty list is refused; with one marker it is sound (the control). Round 17 B7 (ruling M): a codex entry with an
+    # empty list is admitted, and with one marker is sound.
     if batch.is_pending(real.get("spend_cap_markers_status", batch.PENDING)):
         p.append("R1-nonempty: spend_cap_markers_status is not ruled, so the after-the-ruling refusal is unproven")
     for h in PAID:
@@ -488,6 +529,10 @@ def _r1(mod) -> list[str]:
             t["spend_cap_markers"][h] = {"status": [], "type": list(markers), "text": [], "source": "test-only"}
             found = mod.check_table(t)
             refused = any(h in x and "names no spend-cap marker" in x for x in found)
+            if h == CODEX:   # round 17 B7 (ruling M): admitted empty and with one marker alike
+                if found:
+                    p.append(f"R1-nonempty: after the ruling, a codex list of {len(markers)} markers is refused: {found}")
+                continue
             if want_refused and not refused:
                 p.append(f"R1-nonempty: after the ruling, an empty spend-cap list for {h} is admitted: {found}")
             if not want_refused and found:
@@ -526,13 +571,14 @@ def _p3(mod) -> list[str]:
     p = []
     table = routing.load_table()
     spend = table["spend_cap_markers_status"]
-    if not (spend.startswith("RULED 2026-10-12 by Javier") and '"spend markers: 1A 2A 3A"' in spend
-            and not batch.is_pending(spend)):
-        p.append(f"P3-ruled: spend_cap_markers_status is not Javier's RULED line: {spend[:80]!r}")
+    # Round 17 B7 (glitch-b5's ruling M): glitch-b5's RULED 18 Oct line, quoting Javier's RULED 12 Oct line word for word
+    if not (spend.startswith(B7_SPEND_PREFIX) and f'This supersedes, word for word: "{OWNER_SPEND_STATUS}"' in spend
+            and '"spend markers: 1A 2A 3A"' in spend and not batch.is_pending(spend)):
+        p.append(f"P3-ruled: spend_cap_markers_status is not the RULED 18 Oct line quoting Javier's: {spend[:80]!r}")
     if table["pin_profiles_status"] != CP5_STATUS or batch.is_pending(table["pin_profiles_status"]):
         p.append(f"P3-ruled: pin_profiles_status is not the CP5 ruling: {table['pin_profiles_status'][:80]!r}")
-    if set(table["pin_profiles"]) != {CLAUDE} or set(table["spend_cap_markers"]) != {CLAUDE}:
-        p.append("P3-ruled: routing.json's pin-profile or spend-cap harnesses are not arm A's alone")
+    if set(table["pin_profiles"]) != {CLAUDE, CODEX, GEMINI} or set(table["spend_cap_markers"]) != {CLAUDE, CODEX, GEMINI}:
+        p.append("P3-ruled: routing.json's pin-profile or spend-cap harnesses are not exactly claude-code, codex and gemini")
     if mod.start_problems(table) != []:
         p.append(f"P3-ruled: start_problems is not empty: {mod.start_problems(table)}")
     out = io.StringIO()
@@ -625,7 +671,8 @@ WITNESSES = {
                               "                return self.outcomes\n"
                               "            if self._money_gate(block):                     # W7C: before the block is "
                               "registered\n                return self.outcomes\n"),), "batch", "G5-order"),
-    "empty-paid-list-admitted": ((("        if key == \"spend_cap_markers\" and harness not in NO_MONEY_HARNESSES",
+    # re-anchored to round 17 B7's check line (ruling M): the same mutation, the empty-list refusal switched off
+    "empty-paid-list-admitted": ((("        if key == \"spend_cap_markers\" and harness not in EMPTY_SPEND_LIST_HARNESSES",
                                    "        if False"),), "routing", "R1-nonempty"),
     "spend-status-ungated": ((("    if is_pending(table.get(\"spend_cap_markers_status\", PENDING)):",
                                "    if False:"),), "batch", "P3-ruled"),

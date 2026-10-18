@@ -2478,10 +2478,12 @@ class TestNextTouchAgentPin(unittest.TestCase):
 
     def test_the_ruled_profiles_have_the_new_shape(self):
         """CP5 (Javier, 14 Oct 2026) replaced the PENDING status that described this shape; the real profiles are
-        keyed by harness, then model (TestCP5ArmAProfiles holds their values)."""
-        self.assertEqual(set(REAL["pin_profiles"]), {CP5_HARNESS})
-        for model, prof in REAL["pin_profiles"][CP5_HARNESS].items():
-            self.assertEqual(set(prof), set(NT_INIT_FIELDS) - {"model"}, model)
+        keyed by harness, then model (TestCP5ArmAProfiles holds their values). Round 17 B7 (R4; moved by glitch-b5's
+        ruling M, 18 Oct 2026): the harnesses are exactly arm A's and R4's codex and gemini, each of the same shape."""
+        self.assertEqual(set(REAL["pin_profiles"]), {CP5_HARNESS, R4_CODEX, R4_GEMINI})
+        for harness, models in REAL["pin_profiles"].items():
+            for model, prof in models.items():
+                self.assertEqual(set(prof), set(NT_INIT_FIELDS) - {"model"}, (harness, model))
         self.assertTrue(REAL["pin_profiles_status"].startswith('RULED 14 Oct by Javier ("CP5: all as recommended")'))
         self.assertEqual(tuple(routing.PIN_KEYS), ("harness",) + NT_INIT_FIELDS)
 
@@ -2526,6 +2528,8 @@ SPEND_STATUS_RULED = (
     'under rate_limit_markers. The OpenAI and Google entries are added with their adapters, each with a non-empty list '
     '(OpenAI: project_spend_limit_exceeded, organization_spend_limit_exceeded, credit_balance_exhausted, '
     'insufficient_quota; Google: status 402 and its spend-cap error read at a walk), and this status is ruled again then.')
+# Round 17 B7 (glitch-b5's ruling M, 18 Oct 2026): the status is glitch-b5's line, which quotes Javier's above.
+SPEND_STATUS_B7 = "RULED 18 Oct 2026 by glitch-b5 under the owner's delegation"
 FAKE_RATE = {"status": [429], "type": ["fake2_slow_down"], "text": ["fake2 throttled"], "reset_wait": 60,
              "source": "test-only: a made-up second harness"}
 FAKE_SPEND = {"status": [402], "type": ["fake2_budget_spent", "fake2_org_budget_spent"],
@@ -2607,7 +2611,10 @@ def harness_name_problems(table: dict, registered) -> list[str]:
     return [f"{n!r} is no harness the seam registers" for n in sorted(names) if n not in registered]
 
 
-SEAM_NAMES = set(hb.TABLE) & set(transcript_view.PARSERS)
+# Round 17 B7, glitch-b5's ruling S (18 Oct 2026): the seam is the parser table alone (claude-code, codex, gemini);
+# harness_bookkeeping.TABLE stays claude-code alone where T2 asserts it, so Evidence.load still refuses a vendor take.
+SEAM_NAMES = set(transcript_view.PARSERS)
+UNPARSED = "synthetic-unparsed"   # a harness name no parser registers (ruling S moved the codex case here)
 
 
 class TestNextTouchSpendCap(unittest.TestCase):
@@ -2618,9 +2625,12 @@ class TestNextTouchSpendCap(unittest.TestCase):
 
     def test_markers_and_reset_wait_are_keyed_by_harness(self):
         self.assertEqual(routing.check_table(spend_table()), [])
+        # round 17 B7 (glitch-b5's ruling M, 18 Oct 2026): claude-code's entries, then codex's and gemini's with R4
         for key in ("rate_limit_markers", "spend_cap_markers"):
-            self.assertEqual(set(REAL[key]), {TEST_HARNESS}, key)
-        self.assertEqual(set(REAL["rate_limit_markers"][TEST_HARNESS]), {"status", "type", "text", "reset_wait", "source"})
+            self.assertEqual(set(REAL[key]), {TEST_HARNESS, "codex", "gemini"}, key)
+        for harness in REAL["rate_limit_markers"]:
+            self.assertEqual(set(REAL["rate_limit_markers"][harness]), {"status", "type", "text", "reset_wait", "source"},
+                             harness)
 
     def test_the_rekeyed_claude_code_values_are_the_old_flat_ones(self):
         """Ruling 3 of 17:42: the re-keyed Claude Code entry equals the base's flat one (W4BR-w4h-5), less the new
@@ -2638,8 +2648,10 @@ class TestNextTouchSpendCap(unittest.TestCase):
     def test_claude_code_spend_list_is_empty_and_ruled(self):
         """Lane w8c (ruling W8C-gap4-1): Javier ruled the status, "spend markers: 1A 2A 3A" (Mon 12 Oct 2026 08:52
         EDT, glitch-1b's window, on plans/gap-study-round-4/spend-markers-proposal-2026-10-11.md): 1A, claude-code's
-        list stays empty on purpose. The status is the proposal's section-5 line with the date and his words filled
-        in, word for word; it was PENDING (glitch-f3) before."""
+        list stays empty on purpose. The status was the proposal's section-5 line with the date and his words filled
+        in, word for word; it was PENDING (glitch-f3) before. Round 17 B7 (moved by glitch-b5's ruling M, 18 Oct
+        2026): the status is glitch-b5's RULED 18 Oct 2026 line, which quotes Javier's line word for word, and the
+        spend-cap harnesses are exactly claude-code, codex and gemini; claude-code's entry is unchanged."""
         entry = REAL["spend_cap_markers"][TEST_HARNESS]
         self.assertEqual({k: entry[k] for k in ("status", "type", "text")}, {"status": [], "type": [], "text": []})
         for cite in ("subscription login", "D4 A", "glitch-f3", '"spend markers: 1A 2A 3A"', "RULED"):
@@ -2647,11 +2659,11 @@ class TestNextTouchSpendCap(unittest.TestCase):
         self.assertTrue(entry["source"].startswith("Empty on purpose, ruled by Javier on 12 Oct 2026"), entry["source"])
         self.assertNotIn("PENDING status", entry["source"])
         status = REAL["spend_cap_markers_status"]
-        self.assertEqual(status, SPEND_STATUS_RULED)
-        self.assertTrue(status.startswith("RULED 2026-10-12 by Javier"), status)
+        self.assertTrue(status.startswith(SPEND_STATUS_B7), status[:90])
+        self.assertIn(f'This supersedes, word for word: "{SPEND_STATUS_RULED}"', status)
         self.assertIn('"spend markers: 1A 2A 3A"', status)
         self.assertNotIn("PENDING", status.upper())
-        self.assertEqual(set(REAL["spend_cap_markers"]), {TEST_HARNESS})   # OpenAI and Google come with their adapters
+        self.assertEqual(set(REAL["spend_cap_markers"]), {TEST_HARNESS, "codex", "gemini"})   # added with their adapters
 
     def test_the_refusal_is_a_closed_rule(self):
         rule = REAL["spend_cap_refusal"]
@@ -2726,9 +2738,10 @@ class TestNextTouchSpendCap(unittest.TestCase):
         self.assertEqual(harness_name_problems(REAL, SEAM_NAMES), [])
         self.assertEqual(harness_name_problems(spend_table(), SEAM_NAMES | {NT_FAKE}), [])   # the test-only table
         self.assertEqual(harness_name_problems(spend_table(), SEAM_NAMES), [f"{NT_FAKE!r} is no harness the seam registers"])
+        self.assertNotIn(UNPARSED, transcript_view.PARSERS)
         t = copy.deepcopy(REAL)
-        t["rate_limit_markers"]["codex"] = copy.deepcopy(FAKE_RATE)
-        self.assertEqual(harness_name_problems(t, SEAM_NAMES), ["'codex' is no harness the seam registers"])
+        t["rate_limit_markers"][UNPARSED] = copy.deepcopy(FAKE_RATE)
+        self.assertEqual(harness_name_problems(t, SEAM_NAMES), [f"{UNPARSED!r} is no harness the seam registers"])
 
     def test_spend_check_can_fail(self):
         def paused(found):
@@ -2976,6 +2989,12 @@ CP5_MODE = "bypassPermissions"   # item 2: Claude Code's --permission-mode word,
 CP5_VERSION = "2.1.296"          # take-a image.lock harness.version, as the box lane committed it (6221c297)
 CP5_STATUS = ("RULED 14 Oct by Javier (\"CP5: all as recommended\"): arm A profiles registered; O and G follow when "
               "their rate-limit and spend-cap rules are set")
+# Round 17 B7 (R4 of RULINGS-codex2-signin-road-2026-10-18.md; moved by glitch-b5's ruling M, 18 Oct 2026): the O
+# and G profiles, typed here once from R4: each arm O model (plan; build_draft.MODELS) codex bypass 0.162.1, each arm G
+# model gemini yolo 0.64.0. Arm A's three stay exactly CP5's.
+R4_CODEX, R4_GEMINI = "codex", "gemini"
+R4_PROFILES = {R4_CODEX: (("gpt-6.1-sol", "gpt-6-luna"), {"permission_mode": "bypass", "version": "0.162.1"}),
+               R4_GEMINI: (("gemini-3.8-flash", "gemini-3.5-flash-lite"), {"permission_mode": "yolo", "version": "0.64.0"})}
 TAKE_A_LOCK = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "box", "image.lock")
 
 
@@ -2993,9 +3012,17 @@ def cp5_problems(table: dict, lock_version: str) -> list[str]:
     exactly the ruled version, and every profile's version must equal it."""
     p = []
     profiles = table.get("pin_profiles")
-    if not isinstance(profiles, dict) or set(profiles) != {CP5_HARNESS}:
-        p.append(f"CP5: pin_profiles must hold arm A's harness alone (O and G wait for their markers), got "
+    if not isinstance(profiles, dict) or set(profiles) != {CP5_HARNESS, *R4_PROFILES}:
+        p.append(f"CP5: pin_profiles must hold arm A's harness and R4's codex and gemini, got "
                  f"{sorted(profiles) if isinstance(profiles, dict) else profiles!r}")
+    for harness, (want_models, want) in R4_PROFILES.items():   # round 17 B7: R4's O and G profiles, exactly
+        got = profiles.get(harness) if isinstance(profiles, dict) else None
+        got = got if isinstance(got, dict) else {}
+        if tuple(got) != want_models:
+            p.append(f"CP5: {harness}'s models must be exactly R4's {list(want_models)}, got {list(got)}")
+        for model, prof in got.items():
+            if prof != want:
+                p.append(f"CP5: {harness} {model}'s profile is not R4's: {prof!r}")
     models = profiles.get(CP5_HARNESS) if isinstance(profiles, dict) else None
     models = models if isinstance(models, dict) else {}
     if tuple(models) != CP5_MODELS:
@@ -3014,7 +3041,8 @@ def cp5_problems(table: dict, lock_version: str) -> list[str]:
 
 
 class TestCP5ArmAProfiles(unittest.TestCase):
-    """CP5 (Javier, 14 Oct 2026): routing.json carries arm A's three profiles, exactly as drafted, and nothing else."""
+    """CP5 (Javier, 14 Oct 2026): routing.json carries arm A's three profiles, exactly as drafted; since round 17 B7
+    (R4; moved by glitch-b5's ruling M, 18 Oct 2026) R4's O and G profiles beside them, and nothing else."""
 
     def test_the_real_table_is_the_ruling(self):
         self.assertEqual(cp5_problems(REAL, take_a_version()), [])
@@ -3035,14 +3063,24 @@ class TestCP5ArmAProfiles(unittest.TestCase):
         self.assertTrue(cp5_problems(REAL, "7.7.7"), "a take-a version the profiles do not carry passed")
 
     def test_o_and_g_takes_are_still_refused(self):
-        for harness, model in (("codex", "gpt-6.1-sol"), ("gemini", "gemini-3.8-flash")):
-            t = copy.deepcopy(REAL)
-            t["rate_limit_markers"][harness] = copy.deepcopy(t["rate_limit_markers"][CP5_HARNESS])
-            t["spend_cap_markers"][harness] = {"status": [402], "type": [], "text": [], "source": "TEST-ONLY"}
+        """Round 17 B7 (R4; moved by glitch-b5's ruling M, 18 Oct 2026): an O or G take is still refused unless its
+        pin is R4's profile: a pin off the profile is refused as not the model's pre-registered profile, and a model
+        with no profile under the harness as having none; R4's own pin passes the records check (T2 and the vendor
+        admission still refuse to grade the take)."""
+        for harness, (models, prof) in R4_PROFILES.items():
+            model = models[0]
             rec = baseline(A)
             rec["pin"] = {"harness": harness, "model": model, "permission_mode": "x", "version": "0"}
+            with self.assertRaisesRegex(routing.RoutingRefused, f"the pin is not {model!r}'s pre-registered profile"):
+                routing.route(rec, REAL)
+            rec = baseline(A)
+            rec["pin"] = {"harness": harness, "model": "synthetic-unprofiled", "permission_mode": prof["permission_mode"],
+                          "version": prof["version"]}
             with self.assertRaisesRegex(routing.RoutingRefused, "no pre-registered profile"):
-                routing.route(rec, t)
+                routing.route(rec, REAL)
+            for model in models:
+                pin = dict(prof, harness=harness, model=model)
+                self.assertEqual(routing.check_records(baseline(A, pin), REAL), [], model)
 
     def test_an_arm_a_pin_routes(self):
         for model in CP5_MODELS:
@@ -3062,13 +3100,28 @@ class TestCP5Mutants(unittest.TestCase):
             t["pin_profiles"]["codex"] = {"gpt-6.1-sol": {"permission_mode": "bypass", "version": "0.162.1"}}
         def gemini(t):
             t["pin_profiles"]["gemini"] = {"gemini-3.8-flash": {"permission_mode": "yolo", "version": "0.64.0"}}
+        # round 17 B7 (ruling M): R4's profiles drifted; the O and G profile mutants above are kept as they were (each
+        # now drops one model from R4's registration)
+        def codex_mode(t):
+            t["pin_profiles"]["codex"]["gpt-6.1-sol"]["permission_mode"] = "yolo"
+        def codex_version(t):
+            t["pin_profiles"]["codex"]["gpt-6-luna"]["version"] = "0.162.0"
+        def gemini_mode(t):
+            t["pin_profiles"]["gemini"]["gemini-3.5-flash-lite"]["permission_mode"] = "bypass"
+        def gemini_extra(t):
+            t["pin_profiles"]["gemini"]["gemini-synthetic"] = {"permission_mode": "yolo", "version": "0.64.0"}
+        def vendor_gone(t):
+            del t["pin_profiles"]["gemini"]
         def pending(t):
             t["pin_profiles_status"] = CP5_STATUS + "; codex and gemini PENDING"
         def dropped(t):
             del t["pin_profiles"][CP5_HARNESS]["claude-opus-5-5"]
         return {"version drift": (drift, CP5_VERSION), "wrong mode": (mode, CP5_VERSION), "O profile": (codex, CP5_VERSION),
                 "G profile": (gemini, CP5_VERSION), "status PENDING": (pending, CP5_VERSION),
-                "model dropped": (dropped, CP5_VERSION), "lock drift": (lambda t: None, "2.1.297")}
+                "model dropped": (dropped, CP5_VERSION), "lock drift": (lambda t: None, "2.1.297"),
+                "O mode yolo": (codex_mode, CP5_VERSION), "O version drift": (codex_version, CP5_VERSION),
+                "G mode bypass": (gemini_mode, CP5_VERSION), "G model added": (gemini_extra, CP5_VERSION),
+                "G profiles gone": (vendor_gone, CP5_VERSION)}
 
     def test_every_mutant_is_refused(self):
         survivors = []

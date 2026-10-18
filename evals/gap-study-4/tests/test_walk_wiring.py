@@ -22,8 +22,9 @@ and the end-to-end take S6c covered only in halves (D7 the records, D8 the check
   W5-one-road W7B-R1-1: by AST, no non-test module under evals/gap-study-4 calls TakeDriver( or derives from it
              except WalkDriver. Witnesses: added-construction, added-subclass (one module's source extended).
   W6-pending W7B-R1-6: every walk-measured checker constant is PENDING (the two known values aside) and routing.json's
-             pin_profiles are exactly CP5's registration (arm A's three, Javier 14 Oct 2026). Witnesses:
-             constant-filled, pin-filled.
+             pin_profiles are exactly CP5's registration (arm A's three, Javier 14 Oct 2026) and, since round 17 B7
+             (moved by glitch-b5's ruling M, 18 Oct 2026), R4's O and G profiles. Witnesses: constant-filled,
+             pin-filled, vendor-pin-drift.
   E1-take    the end-to-end take: batch.Batch drives the walk driver (TakeDriver through walk_driver, the REAL Claude
              Code adapter on a fake box that answers in the recorded stream shape and writes a session file, the
              REAL check4 on round 4's REAL design through take_checker), routing labels it, TakeRepo commits it into
@@ -589,15 +590,20 @@ KNOWN_VALUES = ("budgets", "driver_constants", "driver_outcome_shapes", "environ
 # CP5's registration, typed once from plans/gap-study-round-4/cp5-values-draft-2026-10-14.md (Javier: "CP5: all as
 # recommended", 14 Oct 2026); test_routing's TestCP5ArmAProfiles binds the same values to the take-a lock.
 CP5_PROFILES = {"claude-code": {m: {"permission_mode": "bypassPermissions", "version": "2.1.296"}
-                                for m in ("claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5-20251001")}}
+                                for m in ("claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5-20251001")},
+                # round 17 B7 (R4 of RULINGS-codex2-signin-road-2026-10-18.md; moved by glitch-b5's ruling M)
+                "codex": {m: {"permission_mode": "bypass", "version": "0.162.1"} for m in ("gpt-6.1-sol", "gpt-6-luna")},
+                "gemini": {m: {"permission_mode": "yolo", "version": "0.64.0"}
+                           for m in ("gemini-3.8-flash", "gemini-3.5-flash-lite")}}
 
 
 @guarded("W6-pending")
 def w6_pending(world_, p):
     """W7B-R1-6, superseded by the bootstrap ruling (15 Oct 2026): no checker constant is PENDING in production and
     the block holds exactly KNOWN_VALUES (each bound to its source by tests/test_checker_constants.py), and
-    routing.json's pin_profiles are exactly CP5's registration (Javier, 14 Oct 2026: arm A's three profiles, nothing
-    else): the end-to-end take's values are test data only."""
+    routing.json's pin_profiles are exactly CP5's registration (Javier, 14 Oct 2026: arm A's three profiles) and R4's
+    O and G profiles (round 17 B7, glitch-b5's ruling M), nothing else: the end-to-end take's values are test data
+    only."""
     ct, table = world_
     out = []
     got = sorted(x for k, v in ct.CHECKER_CONSTANTS.items() for x in ct._pending_paths(v, k))
@@ -607,7 +613,7 @@ def w6_pending(world_, p):
     if others:
         out.append(f"{p}: checker constants {others} are outside the ruled block")
     if table.get("pin_profiles") != CP5_PROFILES:
-        out.append(f"{p}: routing.json's pin_profiles are {table.get('pin_profiles')!r}, not CP5's registration")
+        out.append(f"{p}: routing.json's pin_profiles are {table.get('pin_profiles')!r}, not CP5's and R4's registration")
     return out
 
 
@@ -666,7 +672,11 @@ class TestTheEndToEndTake(unittest.TestCase):
         cases = (("constant-pending", types.SimpleNamespace(CHECKER_CONSTANTS=filled, _pending_paths=ct._pending_paths),
                   table),
                  ("pin-filled", ct, dict(table, pin_profiles={"claude-code": {"m": {"permission_mode": "x",
-                                                                                     "version": "0"}}})))
+                                                                                     "version": "0"}}})),
+                 # round 17 B7 (ruling M): one of R4's vendor profiles drifted, the rest of the table as committed
+                 ("vendor-pin-drift", ct, dict(table, pin_profiles=dict(table["pin_profiles"], codex=dict(
+                     table["pin_profiles"]["codex"], **{"gpt-6-luna": {"permission_mode": "bypass",
+                                                                         "version": "0.162.0"}})))))
         for name, mod, t in cases:
             got = w6_pending((mod, t))
             own = [x for x in got if x.startswith("W6-pending:")]

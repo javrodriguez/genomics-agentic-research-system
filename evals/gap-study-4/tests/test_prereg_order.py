@@ -178,8 +178,14 @@ class OrderIsPlannedOrder(unittest.TestCase):
         self.assertEqual(listed, [r["slot"] for r in got[:8]], "O3.cli")
 
     def test_committed_draft_refuses_until_versions_are_pinned(self):
-        self.assertTrue(any(r["agent"]["version"] is None for r in REAL_LOAD()["rows"]), "O5.pending")
-        with mock.patch.object(prereg, "load", REAL_LOAD):
+        # Round 17 B7 (glitch-b5's ruling M, 18 Oct 2026): the committed draft now pins every agent version (R4), so
+        # the refusal is read on a copy of it with one version set back to null; the door still refuses, by the
+        # freeze's own ledger check, and the versions-defaulted witness still fills it in.
+        import copy
+        one_null = copy.deepcopy(REAL_LOAD())
+        one_null["rows"][0]["agent"]["version"] = None
+        self.assertEqual(sum(r["agent"]["version"] is None for r in one_null["rows"]), 1, "O5.pending")
+        with mock.patch.object(prereg, "load", lambda: one_null):
             with self.assertRaisesRegex(ValueError, "agent must be exactly", msg="O5.pending"):
                 prereg.order(SEED)
             code, text = cli("--order", SEED)
