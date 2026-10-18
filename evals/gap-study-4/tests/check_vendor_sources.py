@@ -6,10 +6,10 @@ edit A is the drive.py edit the plan rules (section 6), and for piece EB, edits 
 review e-71a2b94 findings 1 and 2: the vendor turn envelopes, and their and the snapshots' sha256 rebound to the
 scan's masked bytes). Piece EB naming drive.py also checks both edits' whole diff: each edit must be present, and
 drive.py with edit B's lines (TakeDriver._take_records' first `if vendor:` branch after its first statement) and edit
-C's lines (the one statement of TakeDriver.drive right after the drive scan's `if not _scan_record.passed(scan):`,
-an `if` naming VENDOR_HARNESSES) taken out must be, byte for byte, drive.py before edit B (PRE_EDIT_B_DRIVE_SHA256,
-its text at f628e9d8), so no other drive.py line moves. Any such edit after Javier's acceptance commit makes
-production_readers refuse, so a piece naming one is a red check, never a note."""
+C's lines (the one statement of TakeDriver.drive right after the drive scan's `if not _scan_record.passed(scan):`, an
+`if` whose test requires the row's harness in VENDOR_HARNESSES, round 16) taken out must be, byte for byte, drive.py
+before edit B (PRE_EDIT_B_DRIVE_SHA256, its text at f628e9d8), so no other drive.py line moves. Any such edit after
+Javier's acceptance commit makes production_readers refuse, so a piece naming one is a red check, never a note."""
 
 from __future__ import annotations
 
@@ -58,10 +58,27 @@ def _scan_check(node) -> bool:
             and isinstance(t.operand.func.value, ast.Name) and t.operand.func.value.id == "_scan_record")
 
 
+ROW_HARNESS = ast.dump(ast.parse('row["agent"]["harness"]', mode="eval").body)
+
+
+def _requires_vendor(test) -> bool:
+    """Whether an `if` test requires the row's harness to be in VENDOR_HARNESSES (glitch-b5 round 16, review f-981e871
+    NIT 4): the test is `row["agent"]["harness"] in VENDOR_HARNESSES` itself or an `and` holding it as one operand, so
+    every other operand only narrows it; a `not in`, a negation, an `or`, a widened set or another left side is not."""
+    def member(t) -> bool:
+        return (isinstance(t, ast.Compare) and len(t.ops) == 1 and isinstance(t.ops[0], ast.In)
+                and ast.dump(t.left) == ROW_HARNESS
+                and isinstance(t.comparators[0], ast.Name) and t.comparators[0].id == "VENDOR_HARNESSES")
+    if isinstance(test, ast.BoolOp) and isinstance(test.op, ast.And):
+        return any(member(v) for v in test.values)
+    return member(test)
+
+
 def edit_c_span(src: str):
     """(first, last), the 1-based lines of edit C in drive.py's text: the one statement of TakeDriver.drive right after
-    the drive scan's `if not _scan_record.passed(scan):`, when it is an `if` whose test names VENDOR_HARNESSES, or None
-    when it is not; raises ValueError when TakeDriver.drive holds no such scan check."""
+    the drive scan's `if not _scan_record.passed(scan):`, when it is an `if` whose test requires the row's harness to be
+    in VENDOR_HARNESSES (_requires_vendor), or None when it is not; raises ValueError when TakeDriver.drive holds no
+    such scan check."""
     for cls in ast.parse(src).body:
         if isinstance(cls, ast.ClassDef) and cls.name == "TakeDriver":
             for fn in cls.body:
@@ -69,8 +86,7 @@ def edit_c_span(src: str):
                     for k, node in enumerate(fn.body):
                         if _scan_check(node):
                             nxt = fn.body[k + 1] if k + 1 < len(fn.body) else None
-                            if isinstance(nxt, ast.If) and any(isinstance(n, ast.Name) and n.id == "VENDOR_HARNESSES"
-                                                               for n in ast.walk(nxt.test)):
+                            if isinstance(nxt, ast.If) and _requires_vendor(nxt.test):
                                 return (nxt.lineno, nxt.end_lineno)
                             return None
     raise ValueError("drive.py has no TakeDriver.drive `if not _scan_record.passed(scan):`")
@@ -104,7 +120,7 @@ def edit_b_problems(src: str) -> list:
         out.append("edit B: TakeDriver._take_records' vendor branch writes no turn envelopes (its one statement only)")
     if span_c is None:
         out.append("edit C: TakeDriver.drive rebinds nothing to the masked bytes right after the drive scan (no `if` "
-                   "naming VENDOR_HARNESSES there)")
+                   "there whose test requires the row's harness in VENDOR_HARNESSES)")
     if out:
         return out
     if hashlib.sha256(without_edits(src).encode("utf-8")).hexdigest() != PRE_EDIT_B_DRIVE_SHA256:
