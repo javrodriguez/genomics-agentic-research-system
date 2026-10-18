@@ -352,5 +352,64 @@ class DeclarationContractTests(unittest.TestCase):
         self.assertIn('any other reply → send T4c again', flat)
 
 
+def stage00_contract():
+    text = (GARS / '00_initialize_project/CONTEXT.md').read_text()
+    definitions = text.split('## Definitions', 1)[1].split('\n## ', 1)[0]
+    formats = text.split('## Response Format', 1)[1].split('## OUTPUT', 1)[0]
+    templates = {}
+    for block in formats.split('\n**T')[1:]:
+        templates['T' + block.split(' ', 1)[0]] = block
+    return definitions, templates
+
+
+class TermsTests(Workspace):
+    """3a: terms of use for public data are never asked; `none` means no agreement is named."""
+
+    def test_the_definitions_name_two_purposes_and_none_as_not_named(self):
+        definitions, _ = stage00_contract()
+        flat = ' '.join(definitions.split())
+        self.assertIn('a new registration writes `fixture` (shown as test) or `internal` '
+                      '(shown as analysis)', flat)
+        self.assertIn('`pilot_internal`, `pilot_external` and `commercial` are legacy', flat)
+        self.assertIn('`none` means no agreement is named, never that every use is allowed', flat)
+        self.assertNotIn('`--purpose` (`fixture`, `internal`, `pilot_internal`', flat)
+
+    def test_no_template_asks_about_terms_of_use(self):
+        _, templates = stage00_contract()
+        self.assertTrue(templates)
+        for name, block in templates.items():
+            if name == 'T5r':           # the restricted branch's own command, for the person
+                continue
+            with self.subTest(template=name):
+                lower = block.lower()
+                for word in ('agreement', 'terms', 'licen', 'internal', 'pilot', 'commercial'):
+                    self.assertNotIn(word, lower)
+
+    def test_no_registration_writes_a_value_meaning_every_use_is_allowed(self):
+        """Every public registration writes agreement_ref none unless the person named terms."""
+        seq = self.source()
+        (self.ws / 'data_sources.tsv').write_text(
+            'source\tdata_class\tdeclared_by\tuse\n%s\tpublic\tlane\tanalysis\n' % seq)
+        self.linked(seq)
+        code, result = self.finalize('--data-class', 'public')
+        self.assertEqual(code, 0, result)
+        with self.dataset.open(newline='') as fh:
+            row = next(csv.DictReader(fh, delimiter='\t'))
+        self.assertEqual((row['purpose'], row['agreement_ref']), ('internal', 'none'))
+        words = set(venue_policy.PURPOSES) | set(venue_policy.routes())
+        for token in venue_policy.routes()['public']['permitted_backends'].split('|'):
+            words.update(token.split(':'))
+        self.assertFalse(words & {'any', 'all', 'unrestricted', 'every', '*'}, words)
+
+    def test_none_grants_no_use_that_needs_an_agreement(self):
+        """`none` is "not named": the cluster's legacy agreement rule still refuses it."""
+        row = {'data_class': 'public', 'purpose': 'pilot_internal', 'agreement_ref': 'none',
+               'permitted_backends': venue_policy.routes()['public']['permitted_backends'],
+               'expiry': 'none'}
+        failures = venue_policy.check(row, 'slurm', 'pilot_internal', None, [])
+        self.assertIn('venue slurm pilot_internal requires agreement_ref',
+                      [f['detail'] for f in failures])
+
+
 if __name__ == '__main__':
     unittest.main()
