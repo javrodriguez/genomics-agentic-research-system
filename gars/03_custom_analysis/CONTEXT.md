@@ -126,8 +126,10 @@ refusal.
 1. Activated when the user asks for a custom or downstream analysis of an existing project.
    Identify the project; run
    `python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> --list`
-   for the relevant assay. If nothing is resolvable — no completed sub-stage declares any
-   artifact and stage 01 has emitted nothing — reply T1 and stop.
+   for every assay of the project (each directory under `00_data/`), so a multi-assay project's
+   results are all in view, not one assay's. If nothing is resolvable for any of them — no
+   completed sub-stage declares any artifact and stage 01 has emitted nothing — reply T1 and
+   stop.
    On a non-public project, or while any exists in the workspace, list through the door:
    `python3 _system/tool_call.py resolve_artifact '{"project": "projects/<title>", "assay":
    "<Assay ID>", "list": true}'`, whose output keeps only `ok`, `missing` and `resolved`.
@@ -135,7 +137,9 @@ refusal.
    with a short kebab-case slug named after the goal.
    On a non-public project `create` is not a door: reply T7 and stop.
 3. Draft the plan: replace every `<FILL: ...>` marker in the created `PLAN.md`. Inputs come
-   from step 1's resolution; Outputs use the closed vocabulary, preferring a specific type
+   from step 1's resolution, and each Inputs row names its assay, the `--assay` it resolved
+   under: `approve` refuses a row naming none in a project with more than one assay, or naming
+   an assay the project lacks (decision 0312); Outputs use the closed vocabulary, preferring a specific type
    (`counts_gene`, `de_results`, …) over a generic one (`table`, `figure`, `report`) wherever
    one fits; Execution keeps its `Runs: batch` line unless the user explicitly asked for the
    login node. This is the step where your judgment belongs — spend it here, not at the
@@ -217,7 +221,7 @@ Complete the stage named above first; its artifacts will then resolve here by ty
 Analysis plan drafted: projects/<project_title>/03_custom_analysis/<NN_slug>/PLAN.md
 
 Goal: <the Goal section's first sentence>
-Inputs: <n> artifact(s) — <types, comma-separated>
+Inputs: <n> artifact(s) — <assay: type, comma-separated>
 Outputs: <n> declared — <types, comma-separated>
 Execution: <login node | batch>, per the plan.
 Scripts: <n> under scripts/ — <names, comma-separated>
