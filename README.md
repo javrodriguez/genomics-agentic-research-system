@@ -397,7 +397,7 @@ artifact each stage produces.
 
 ## Status
 
-- **1538 tests** in `tests/run_tests.py`, with the landings that moved the total since the Gap Study token correction in, newest first: GARS fixes 1-9 (0320), on Landings A and C (0292 and 0296), on the reproduction package (0281-0283); CI was green on main at `faeb99d` ([run 39087133107](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/39087133107)), with Landings A and C in.
+- **1540 tests** in `tests/run_tests.py`, with the landings that moved the total since the Gap Study token correction in, newest first: GARS fixes 1-9 (0320), on Landings A and C (0292 and 0296), on the reproduction package (0281-0283); CI was green on main at `faeb99d` ([run 39087133107](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/39087133107)), with Landings A and C in.
 - **Seven assays are wired; most are proven live** — the table below.
 - **Build log:** the row-by-row status and its dated evidence are in
   [DEVELOPMENT.md](DEVELOPMENT.md#status-moved-from-the-readme-30-sep-2026); the definition-of-done

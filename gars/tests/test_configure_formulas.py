@@ -119,11 +119,57 @@ class FormulaMenuTests(unittest.TestCase):
                 self.assertNotIn('formula_warning', result)
 
     def test_a_typed_formula_is_written_with_a_warning(self):
-        code, result = self.apply('--formula', '~ batch + condition', '--dry-run')
+        # Run 11 ruling 4: a typed formula equal to a menu entry is that entry, so the typed
+        # formula here is one the menu does not offer (two covariates).
+        code, result = self.apply('--formula', '~ batch + subject + condition', '--dry-run')
         self.assertEqual(code, 0, result)
-        self.assertEqual(result['formula'], '~ batch + condition')
+        self.assertEqual(result['formula'], '~ batch + subject + condition')
         self.assertIn('configure.py formulas', result['formula_warning'])
         code, result = self.apply('--formula', '~ donor + condition', '--dry-run')
+        self.assertEqual(code, configure.EXIT_REFUSED, result)
+
+    def test_a_typed_formula_checks_every_column_it_names(self):
+        """Run 11 ruling 4 (REVIEW-a745042 NIT 2): a column with one value, a column blank for
+        any sample, and a design column nested in the condition are refused when typed, though
+        the menu never offers them; nothing is written."""
+        cases = (
+            ('one value', 'sample_id,condition,group,replicate,batch\n'
+             'A1,x,x,1,b1\nA2,x,x,2,b1\nB1,y,y,1,b1\nB2,y,y,2,b1\n',
+             '~ batch + condition', 'one value'),
+            ('one value and blanks', 'sample_id,condition,group,replicate,batch\n'
+             'A1,x,x,1,b1\nA2,x,x,2,\nB1,y,y,1,b1\nB2,y,y,2,\n',
+             '~ batch + condition', 'blank for A2, B2'),
+            ('blanks in a varying column', 'sample_id,condition,group,replicate,batch\n'
+             'A1,x,x,1,b1\nA2,x,x,2,\nB1,y,y,1,b2\nB2,y,y,2,b1\n',
+             '~ batch + condition', 'blank for A2'),
+            ('a design column nested in the condition', DESIGN,
+             '~ group + condition', 'cannot be separated'),
+        )
+        before = self.cfg.read_bytes()
+        for label, design, formula, reason in cases:
+            with self.subTest(label):
+                self.design(design)
+                code, result = self.apply('--formula', formula, '--dry-run')
+                self.assertEqual(code, configure.EXIT_REFUSED, result)
+                self.assertIn('not estimable', result.get('error', ''))
+                self.assertIn(reason, result.get('error', ''))
+                self.assertNotIn('config_preview', result)
+                self.assertEqual(self.cfg.read_bytes(), before)
+
+    def test_a_typed_formula_equal_to_a_menu_entry_is_that_entry(self):
+        """Run 11 ruling 4: typed as the menu shows it (spacing aside), it is written as that
+        entry with no formula_warning."""
+        for typed, entry in (('~ condition', '~ condition'),
+                             ('~ batch + condition', '~ batch + condition'),
+                             ('~subject+condition', '~ subject + condition')):
+            with self.subTest(typed=typed):
+                code, result = self.apply('--formula', typed, '--dry-run')
+                self.assertEqual(code, 0, result)
+                self.assertEqual(result['formula'], entry)
+                self.assertIn('formula: "%s"' % entry, result['config_preview'])
+                self.assertNotIn('formula_warning', result)
+        self.design(NESTED)
+        code, result = self.apply('--formula', '~ batch + condition', '--dry-run')
         self.assertEqual(code, configure.EXIT_REFUSED, result)
 
     def test_the_guard_admits_the_formulas_command(self):
