@@ -2003,10 +2003,13 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
 #          completed agent output, text or a tool call (agent_output_count), the rule agent_adapter.harness_records
 #          applies to TurnResult.agent_output; a drift test holds the two together.
 #   R4C-9. THE HARNESS GUARD (CP2-requirements item 10): only claude-code has record readers in this file, so a take
-#          of any other harness is refused with CheckRefused, never read with Claude Code's readers. Ruling T0 (lane
-#          vendor-admission, Javier's typed word "T0: yes", 16 Oct 2026): design_view builds the view of a codex or
-#          gemini row (HARNESSES_WITH_SCRIPTS), because a script is not a reader; check4 and check4_walk keep
-#          harness_guard, so every vendor take is still refused until a vendor reader exists here.
+#          of any other harness is refused by check4 and check4_walk with CheckRefused, never read with Claude Code's
+#          readers. Ruling T0 (lane vendor-admission, Javier's typed word "T0: yes", 16 Oct 2026): design_view builds
+#          the view of a codex or gemini row (HARNESSES_WITH_SCRIPTS), because a script is not a reader; check4 and
+#          check4_walk keep harness_guard. T4 (R-1, plan v4 section 5; P3, glitch-b5's round 12, 17 Oct 2026): vendor
+#          takes are read by the appended vendor entries, check4_vendor and check4_walk_vendor, through checker_for,
+#          so the first sentence holds for check4's own readers only, and HARNESSES_WITH_READERS names check4's
+#          harnesses, not every harness with readers in this file.
 # =====================================================================================================================
 
 import copy  # noqa: E402
@@ -2115,10 +2118,11 @@ CHECKER_CONSTANTS = {
 
 
 def harness_guard(harness) -> None:
-    """R4C-9: refuse a harness this file has no record readers for."""
+    """R4C-9: check4 and check4_walk refuse any harness but their own (HARNESSES_WITH_READERS); vendor takes are read
+    by the vendor entries through checker_for (T4, R-1)."""
     if harness not in HARNESSES_WITH_READERS:
-        raise CheckRefused(f"harness {harness!r} has no record readers in check_take.py (only "
-                           f"{list(HARNESSES_WITH_READERS)}); its takes are not read with Claude Code's")
+        raise CheckRefused(f"harness {harness!r}: check4 reads claude-code only ({list(HARNESSES_WITH_READERS)}); "
+                           "vendor takes go through checker_for, never Claude Code's readers")
 
 
 def _pending_paths(value, at: str) -> list:
