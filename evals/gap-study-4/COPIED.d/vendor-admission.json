@@ -164,7 +164,7 @@
     {
       "path": "tests/test_codex_spend_texts.py",
       "status": "new",
-      "reason": "Lane vendor-admission round 17, glitch-b5's ruling B7-F4 (18 Oct 2026): the error texts the pinned Codex CLI (rust-v0.162.1, commit 092d3acd) prints, each quoted with its file and line; every usage-limit and rate-limit text matches a codex rate-limit marker and no spend-cap marker, every out-of-credits, spend-cap and quota-exceeded text matches a codex spend-cap marker, codex's spend list is text only and codex is out of EMPTY_SPEND_LIST_HARNESSES; its two named mutants go red."
+      "reason": "Lane vendor-admission round 17, glitch-b5's ruling B7-F4 (18 Oct 2026): the error texts the pinned Codex CLI (rust-v0.162.1, commit 092d3acd) prints, each quoted with its file and line; every usage-limit and rate-limit text matches a codex rate-limit marker and no spend-cap marker, every credits-depleted, spend-cap and quota-exceeded text matches a codex spend-cap marker, codex's spend list is text only and codex is not in EMPTY_SPEND_LIST_HARNESSES; its two named mutants go red."
     },
     {
       "path": "checks.d/vendor-admission.txt",

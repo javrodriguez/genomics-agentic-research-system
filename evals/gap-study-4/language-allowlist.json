@@ -161,6 +161,20 @@
       "line_text": "    \"note\": \"review round 3, free from\"",
       "ruled": "2026-10-12",
       "why": "The lane's own note naming the shape a fixture case tests: it names the 'free from' negation the confounded_design grader handles (W3C3-1, review round 3), a quotation of the reply's phrase, not a claim about cost. (lane w8e-lint-reds, W8D-lint triage; at tests/fixtures_confounded_design.json:1110 on 98424794)"
+    },
+    {
+      "file": "evals/gap-study-4/routing.json",
+      "pattern": "out-of",
+      "line_text": "      \"text\": [\"out of credits\", \"spend cap\", \"quota exceeded\"],",
+      "ruled": "2026-10-18",
+      "why": "The codex spend-cap text marker, the phrase the pinned Codex CLI prints when a workspace has no credits left (openai/codex rust-v0.162.1, commit 092d3acd, codex-rs/protocol/src/error.rs:726 and :732), set as a marker by glitch-b5's ruling B7-F4 (vendor-admission round 17, 18 Oct 2026); it is a vendor's error text matched in an API-error record, not a rate in words, and rewording it would stop the marker matching. The prose around it avoids the phrase. (lane vendor-admission, round 17 B7-F4)"
+    },
+    {
+      "file": "evals/gap-study-4/prereg-draft.json",
+      "pattern": "out-of",
+      "line_text": "          \"out of credits\",",
+      "ruled": "2026-10-18",
+      "why": "The codex spend-cap text marker, the phrase the pinned Codex CLI prints when a workspace has no credits left (openai/codex rust-v0.162.1, commit 092d3acd, codex-rs/protocol/src/error.rs:726 and :732), set as a marker by glitch-b5's ruling B7-F4 (vendor-admission round 17, 18 Oct 2026); it is a vendor's error text matched in an API-error record, not a rate in words, and rewording it would stop the marker matching. The prose around it avoids the phrase. (lane vendor-admission, round 17 B7-F4)"
     }
   ]
 }
