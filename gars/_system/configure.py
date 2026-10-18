@@ -503,6 +503,12 @@ def cmd_apply(args, workspace):
                 picked["n"], picked["formula"], picked["reason"])
             result["formulas"] = formulas
             return emit(result, EXIT_REFUSED)
+        if picked is None and re.fullmatch(r"[0-9]+", token):
+            # A mistyped menu number is answered with the menu, never written as the formula.
+            result["error"] = ("%r is not a number on the formula menu; reply with a menu number "
+                               "(1-%d)" % (token, len(formulas)))
+            result["formulas"] = formulas
+            return emit(result, EXIT_REFUSED)
         formula = picked["formula"] if picked else token
         for term in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", formula):
             if term not in design[0]:

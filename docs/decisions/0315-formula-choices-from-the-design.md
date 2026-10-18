@@ -10,6 +10,7 @@ touches:
 symptoms:
   - "formula NN (...) is not estimable" from configure.py apply
   - "formula term ... is not estimable" from configure.py apply
+  - "... is not a number on the formula menu" from configure.py apply
   - formula_warning "was typed, not chosen from configure.py formulas"
   - "this helper, interpreter or executable is not registered" for configure.py formulas (registry hunk not applied)
 ---
@@ -27,7 +28,7 @@ Stage 02 offered the contrast as a menu but took `de.formula` as free text ("`~ 
 
 1. `configure.py formulas --project P --assay A [--factor condition]` reads `01_samplesheets/<A>_design.csv` and numbers `~ <factor>` ("<factor> only"), then `~ <column> + <factor>` for each column that is not one of the assay's design columns or the factor and that has at least two values, in design order ("adjusted for <column>"; "paired by subject" for `subject`).
 2. A column nested in the factor (every value under one factor level) or blank for any sample is listed `estimable: false` with the reason, never as a choice.
-3. `apply --formula <n>` writes that menu formula and refuses one not estimable. A formula typed instead is still checked term by term, refused when a term is a non-estimable column, and written with `formula_warning` that it was not chosen from the menu; T9 shows the warning verbatim. With no `--formula` the presented default `~ condition` is unchanged. This takes the plan's "accepted with a printed warning" branch; refusing typed formulas outright is left to a ruling.
+3. `apply --formula <n>` writes that menu formula and refuses one not estimable. A token of digits only that is not a menu number is refused with the numbered menu and nothing written, never taken as a formula (run 11 ruling 2, REVIEW-a745042 finding 2). A formula typed instead is still checked term by term, refused when a term is a non-estimable column, and written with `formula_warning` that it was not chosen from the menu; T9 shows the warning verbatim. With no `--formula` the presented default `~ condition` is unchanged. This takes the plan's "accepted with a printed warning" branch; refusing typed formulas outright is left to a ruling.
 4. The router contract: step 3a runs `formulas` beside `contrasts` and passes `--formula <n>`; T8 renders both menus; Scope says never to compose a formula; T9 and T5 follow. `config_schema.md`'s decision table says the formula comes from the menu.
 5. Registry hunk: `configure.formulas`, the same shape and roles as `configure.contrasts`. `apply`'s entry is unchanged (its `--formula` flag exists).
 
@@ -38,7 +39,7 @@ Stage 02 offered the contrast as a menu but took `de.formula` as free text ("`~ 
 
 ## Test
 
-`gars/tests/test_configure_formulas.py` (7 tests): the menu from the design's columns, numbered with meanings; a nested column not a choice and refused by apply; a one-value column not offered; a menu number writes that formula; a typed formula written with a warning and a non-column term refused; the guard admits the command (green only with the registry hunk); the router contract.
+`gars/tests/test_configure_formulas.py` (8 tests): the menu from the design's columns, numbered with meanings; a nested column not a choice and refused by apply; a one-value column not offered; a menu number writes that formula; a number off the menu refused with the menu (red at 90044abe); a typed formula written with a warning and a non-column term refused; the guard admits the command (green only with the registry hunk); the router contract.
 Mutation: apply ignores menu numbers `FAILED (failures=2, errors=1)` (the errors row is the guard's, waiting on the hunk).
 
 ## Status
