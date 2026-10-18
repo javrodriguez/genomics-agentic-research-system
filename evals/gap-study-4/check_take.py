@@ -5142,8 +5142,10 @@ def vendor_session_problems(path, harness) -> list:
 # its PENDING paths to pending. Each value is derived from the code that decides it, never typed: the harness, its
 # session store root (SESSION_STORE_ROOTS, P4), its resume token (the adapters' RESUME and RESUME_FLAG, P2), the
 # outcomes read as cut (VENDOR_CUT_OUTCOMES, P2), its model reading (vendor-T4-TABLE row 15: codex's requested model,
-# gemini's served one) and every VENDOR_PENDING_ROWS row as "<reason>: <state>" (so settling a row moves the digest
-# and a walk checked while it was PENDING reads stale, as a walk checked under other CHECKER_CONSTANTS does). The
+# gemini's served one) and every VENDOR_PENDING_ROWS row whole, as its canonical JSON text (vendor_rows_block; review
+# e-71a2b94 NIT 2: any field of a row, its reason, state, reader, fixture or ruling, moves the digest, and no block
+# value is PENDING itself; so settling a row moves the digest and a walk checked while it was PENDING reads stale, as
+# a walk checked under other CHECKER_CONSTANTS does). The
 # merged digest is checker_constants_sha256 of the merged block (vendor_checker_constants_sha256), recovered from a
 # vendor view's pre by vendor_design_constants_sha256 as design_constants_sha256 recovers CHECKER_CONSTANTS'; the
 # vendor side (plan section 6's fixed contract) reads it, no_output_nudges 0 (readers-disagree refuses any
@@ -5151,6 +5153,13 @@ def vendor_session_problems(path, harness) -> list:
 # CLI count. check4_vendor and check4_walk_vendor read only a vendor view (R4C-7): the production design_for
 # (walk_builders) and walk_regrade.production_design hand one through checker_view.
 VENDOR_MODEL_READINGS = {"codex": "requested", "gemini": "served"}
+
+
+def vendor_rows_block(rows) -> dict:
+    """The block's rows: each VENDOR_PENDING_ROWS row of one harness whole, as its canonical JSON text."""
+    return {key: json.dumps(row, sort_keys=True, separators=(",", ":")) for key, row in rows.items()}
+
+
 VENDOR_CHECKER_CONSTANTS = {
     h: {"vendor_check": {
         "harness": h,
@@ -5158,7 +5167,7 @@ VENDOR_CHECKER_CONSTANTS = {
         "resume_token": VENDOR_RESUME_TOKENS[h],
         "cut_outcomes": list(VENDOR_CUT_OUTCOMES),
         "model_reading": VENDOR_MODEL_READINGS[h],
-        "rows": {key: f"{row['reason']}: {row['state']}" for key, row in VENDOR_PENDING_ROWS[h].items()},
+        "rows": vendor_rows_block(VENDOR_PENDING_ROWS[h]),
     }} for h in VENDOR_HARNESSES}
 
 
