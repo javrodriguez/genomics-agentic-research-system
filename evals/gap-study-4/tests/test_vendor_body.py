@@ -3,7 +3,7 @@
 READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word "vendor-t4: yes"; round 9's rulings).
 
 Every case is a synthetic take of test_checker_body's draft row (scope-read/trap/w3) made a codex row (arm O) or a
-gemini row (arm G), its view built by the production check_take.design_view, its folder written by
+gemini row (arm G), its view built by the production check_take.design_view and vendor_view (P5), its folder written by
 tests/vendor_check_fixtures.py from that row's own lines and replies (envelopes, ledger, turn streams, launch
 journals, retained native snapshots), and read by check_take.vendor_check (plan section 1a) and
 check_take.vendor_round4_problems (section 1b).
@@ -75,12 +75,18 @@ def tearDownModule():
     tcb.tearDownModule()
 
 
-def design_for(mod, harness, run_tree=tcb.RUN_TREE):
-    """The production design view of the draft row made a `harness` row (test_vendor_script's road)."""
+def plain_design_for(mod, harness, run_tree=tcb.RUN_TREE):
+    """design_view's Design of the draft row made a `harness` row (test_vendor_script's road)."""
     model, arm, mode = VENDORS[harness]
     r = tcb.row()
     r["agent"]["harness"], r["model"], r["arm"] = harness, model, arm
     return mod.design_view(r, pin=tcb.pin(mode, harness, model), run_tree=run_tree, constants=tcb.walk_constants(mod))
+
+
+def design_for(mod, harness, run_tree=tcb.RUN_TREE):
+    """The production design a vendor take is read through: design_view's Design in its vendor view (T4 P5, glitch-b5
+    round 13: check4_vendor reads only a vendor view; checker_view builds it in production)."""
+    return mod.vendor_view(plain_design_for(mod, harness, run_tree))
 
 
 class Take:

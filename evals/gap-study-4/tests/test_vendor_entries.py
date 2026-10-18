@@ -24,7 +24,8 @@ vendor entries check4_vendor and check4_walk_vendor, and checker_for admitting t
               take whose stream carries the email marker counts 1, and the drive (test_box_integration's Rig) refuses
               it when the scan masked no email; with the scan's masked hit it passes the bound.
   P3-for      checker_for admits codex and gemini with the vendor entry, whose take road is check4_vendor and walk road
-              check4_walk_vendor; the vendor side (P5's merged constants digest) refuses until P5, naming the harness.
+              check4_walk_vendor; the vendor side reads a vendor view's merged constants digest (P5) and refuses a
+              plain design_view Design, naming the harness.
   P3-witness  check_take.py compiled in memory with the vendor guard dropped, the invariant dropped, the arm binding
               dropped, the lift dropped, the reach not read for the counts, an unread reach read as zero, an unread
               email count read as zero, the entry's roads swapped and the side reading values: each goes red.
@@ -147,6 +148,9 @@ def pre_cases(mod, t):
     }
 
 
+HARNESS_CASES = ("a claude-code view", "a harness with no reader")
+
+
 def pre_problems(mod) -> list:
     out = []
     for harness in HARNESSES:
@@ -168,6 +172,10 @@ def pre_problems(mod) -> list:
                     got = outcome(entry_call, mod, t, path, road, **copy.deepcopy(over))
                 if got[:2] != ("raised", "CheckRefused") or called:
                     out.append(f"{harness} {road} {name}: {got[:3]}, readers called {called}")
+                elif name in HARNESS_CASES and "is not a vendor harness" not in got[2]:
+                    # P5 (glitch-b5 round 13): the entries also refuse a design that is no vendor view; the harness
+                    # guard is still the refusal a claude-code or unknown harness meets
+                    out.append(f"{harness} {road} {name}: refused, but not by the vendor guard: {got[2][:160]}")
     return out
 
 
@@ -306,9 +314,14 @@ def for_problems(mod) -> list:
         if got[0] != "ok" or got[1] != (mod._vendor_entry, mod._vendor_side):
             out.append(f"{harness}: checker_for handed {got}")
             continue
-        side = outcome(mod._vendor_side, Path("transcript.jsonl"), design)
+        # P5 (glitch-b5 round 13): the side reads a vendor view (tests/test_vendor_constants.py P5-side); a plain
+        # design_view Design still refuses, naming the harness
+        side = outcome(mod._vendor_side, Path("transcript.jsonl"), tvb.plain_design_for(mod, harness))
         if side[:2] != ("raised", "CheckRefused") or harness not in side[2]:
             out.append(f"{harness}: the side read {side}")
+        side = outcome(mod._vendor_side, Path("transcript.jsonl"), design)
+        if side[0] != "ok" or side[1][:2] != (mod.vendor_design_constants_sha256(design), 0) or side[1][0] is None:
+            out.append(f"{harness}: the side of the vendor view read {side}")
         calls = []
         stub = lambda name: lambda *a, **k: calls.append((name, a[3])) or {"reasons": []}  # noqa: E731
         with mock.patch.object(mod, "check4_vendor", stub("check4_vendor")), \
@@ -379,9 +392,11 @@ P3_WITNESSES = {
     "the entry's roads swapped": (("    if records == \"walks\":                # the walk road (check4_walk_vendor)\n",
                                    "    if records != \"walks\":                # the walk road (check4_walk_vendor)\n"),
                                   for_problems),
-    "the side reading values": (("    raise CheckRefused(f\"harness {getattr(design, 'harness', None)!r}: the vendor side",
-                                 "    return design_constants_sha256(design), 0, None\n    raise CheckRefused(f\"harness "
-                                 "{getattr(design, 'harness', None)!r}: the vendor side"), for_problems),
+    # re-anchored by P5 (glitch-b5 round 13): the side reads values for a vendor view only; a plain view refuses
+    "the side reading values": (("    if digest is None:\n        raise CheckRefused(f\"harness {getattr(design, "
+                                 "'harness', None)!r}: the vendor side",
+                                 "    if False:\n        raise CheckRefused(f\"harness {getattr(design, 'harness', "
+                                 "None)!r}: the vendor side"), for_problems),
 }
 
 

@@ -154,7 +154,7 @@ class Dispatch(unittest.TestCase):
 
     def test_p0_checker_for_admits_claude_code_and_the_vendor_entries(self):
         # moved by T4 P3 (plan v4 section 9, "checker_for admits them"; glitch-b5 round 12): codex and gemini map to
-        # the vendor entry and its side, which refuses until P5 (tests/test_vendor_entries.py P3-for)
+        # the vendor entry and its side, which reads a vendor view only since P5 (tests/test_vendor_constants.py)
         with tdl.checker_world() as ct:
             self.assertEqual(sorted(ct.CHECKER_ENTRIES), ["claude-code", "codex", "gemini"])
             entry, side = ct.checker_for(tcb.view(ct))
