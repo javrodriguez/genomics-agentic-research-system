@@ -623,11 +623,13 @@ class FixtureWalkCoverage(unittest.TestCase):
         grade = road.folder / "grade.json"
         grade.write_text(json.dumps({"graded": True, "row": {}, "grade": {}}))
         # BOOTSTRAP B5 (15 Oct 2026): a graded walk counts only with a checked check.json under the constants in force.
+        # Moved by lane vendor-admission T4 P5 (plan v4 section 6; glitch-b5 round 13): this gemini walk's constants in
+        # force are the merged ones (its ledger's harness), so the Claude-only digest reads it stale
         import check_take
         (road.folder / "check.json").write_text(json.dumps({"walk": WALK, "checked": True, "checker_reasons": [],
                                                             "events": {"outside_reach": 0}, "route": "graded", "route_refused": None,
                                                             "checker_constants_sha256":
-                                                                check_take.checker_constants_sha256(),
+                                                                check_take.vendor_checker_constants_sha256("gemini"),
                                                             "no_output_nudges": 0,     # review r6 MINOR 2
                                                             "agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0}, "nested_cli_calls": 0}))   # Agent parity, part 6
         self.assertEqual(fixture_walk.walk_coverage(road.study)[task]["walks_committed"], 1, "the control counts")

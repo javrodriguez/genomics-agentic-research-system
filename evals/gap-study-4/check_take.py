@@ -4920,6 +4920,13 @@ def check4_walk_vendor(path, task_id: str, half_name: str, walk_id: str, *, word
                         what="walk", row_index=None, walk_id=walk_id)
 
 
+def vendor_side_readings(path, harness) -> tuple:
+    """(no_output_nudges, agent_summary) of a vendor take or walk folder, the vendor side's two readings that need no
+    design (plan section 6's fixed contract): 0, and vendor_agent_summary; walk_regrade re-derives a vendor walk's
+    committed counts with them."""
+    return 0, vendor_agent_summary(path, _vendor_harness(harness))
+
+
 def _vendor_side(path, design) -> tuple:
     """(checker_constants_sha256, no_output_nudges, agent_summary) of a vendor take: the merged digest of its vendor
     view, 0, and vendor_agent_summary; a design that is not a vendor view refuses, so no vendor take is checked under
@@ -4928,7 +4935,7 @@ def _vendor_side(path, design) -> tuple:
     if digest is None:
         raise CheckRefused(f"harness {getattr(design, 'harness', None)!r}: the vendor side reads only a vendor view "
                            "(vendor_view's merged constants); a design without them has no digest of its own")
-    return digest, 0, vendor_agent_summary(path, design.harness)
+    return (digest, *vendor_side_readings(path, design.harness))
 
 
 def _vendor_entry(path, row, design, *, take, records) -> dict:

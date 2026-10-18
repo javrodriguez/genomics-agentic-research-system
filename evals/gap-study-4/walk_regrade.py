@@ -234,27 +234,37 @@ def _commit_one(walk: str, name: str, subject: str, study: Path, *, secrets, rul
     return nrr._git(root, "rev-parse", "HEAD")
 
 
-def nudge_count_problems(check: dict, transcript: Path) -> list:
+def _vendor(harness) -> bool:
+    """Lane vendor-admission T4 P5: a harness whose walks the vendor side reads (check_take.checker_for's vendor
+    entries); every other harness, None included, is read by Claude Code's readers, as before."""
+    import check_take as ct
+    return harness in ct.VENDOR_CHECKER_CONSTANTS and harness in ct.CHECKER_ENTRIES
+
+
+def nudge_count_problems(check: dict, transcript: Path, harness=None) -> list:
     """Review r6 MINOR 2 (glitch-b5, 16 Oct 2026): check.json's no_output_nudges, where it is a count, is check_take's
-    count of the committed transcript; a mismatch is named. A null (an older check.json) is not re-derived."""
+    count of the committed transcript; a mismatch is named. A null (an older check.json) is not re-derived. A vendor
+    walk's count (`harness`, its ledger's agent.harness; T4 P5) is the vendor side's reading of its folder."""
     import check_take as ct
     want = check.get("no_output_nudges") if isinstance(check, dict) else None
     if not pending_walk.valid_nudge_count(want):          # null (or a shape check_keys_ok refuses) is not re-derived
         return []
-    got = ct.no_output_nudges(Path(transcript))
+    got = ct.vendor_side_readings(Path(transcript), harness)[0] if _vendor(harness) else \
+        ct.no_output_nudges(Path(transcript))
     if got != want:
         return [f"check.json's no_output_nudges is {want} and the committed transcript carries {got}"]
     return []
 
 
-def agent_summary_problems(check: dict, transcript: Path) -> list:
+def agent_summary_problems(check: dict, transcript: Path, harness=None) -> list:
     """The Agent parity ruling, part 6: check.json's agent_calls and subagents, where present, are check_take's reading
     of the committed transcript and the turn streams beside it; a mismatch is named. A check.json without them (written
-    before the ruling) is not re-derived."""
+    before the ruling) is not re-derived. A vendor walk's (`harness`; T4 P5) is the vendor side's reading."""
     import check_take as ct
     if not isinstance(check, dict) or check.get("agent_calls") is None:
         return []
-    derived = ct.agent_summary(Path(transcript))
+    derived = ct.vendor_side_readings(Path(transcript), harness)[1] if _vendor(harness) else \
+        ct.agent_summary(Path(transcript))
     recorded = {"agent_calls": check.get("agent_calls"), "subagents": check.get("subagents"),
                 "nested_cli_calls": check.get("nested_cli_calls")}
     if derived != recorded:
@@ -324,8 +334,9 @@ def regrade_problems(study: Path = HERE, *, readers=None, grade=None) -> list:
                 out.append(f"walk {parts[0]!r}: its nudge count cannot be re-derived: the committed walk has no "
                            f"transcript.jsonl")
                 continue
-            out += [f"walk {parts[0]!r}: {p}" for p in nudge_count_problems(check, path)]
-            out += [f"walk {parts[0]!r}: {p}" for p in agent_summary_problems(check, path)]
+            harness = pending_walk.walk_harness(Path(tmp), parts[0])      # T4 P5: the vendor side's reading
+            out += [f"walk {parts[0]!r}: {p}" for p in nudge_count_problems(check, path, harness)]
+            out += [f"walk {parts[0]!r}: {p}" for p in agent_summary_problems(check, path, harness)]
     return out
 
 

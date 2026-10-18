@@ -192,7 +192,7 @@ def checker_standing(base, walk: str):
     if bound:
         return f"constant-bound checker reason: {', '.join(bound)}"
     try:
-        now = check_take.checker_constants_sha256()
+        now = constants_in_force(base, walk)
     except check_take.CheckRefused:
         return "the checker constants in force are PENDING"
     # review r6 MINOR 2 (glitch-b5, 16 Oct 2026): a walk checked under the constants in force carries its nudge count;
@@ -206,6 +206,32 @@ def checker_standing(base, walk: str):
     if check.get("checker_constants_sha256") != now:
         return "stale: checked under other checker constants; regrade it"
     return None
+
+
+def walk_harness(base, walk: str):
+    """The walk's harness as its driver ledger records it (agent.harness, as walk_regrade reads it); None when the
+    ledger is missing or unreadable (check.json carries no harness)."""
+    import json
+    from pathlib import Path
+    try:
+        ledger = json.loads((Path(base) / walk / "driver-ledger.json").read_bytes())
+    except (OSError, ValueError):
+        return None
+    agent = ledger.get("agent") if isinstance(ledger, dict) else None
+    return agent.get("harness") if isinstance(agent, dict) else None
+
+
+def constants_in_force(base, walk: str) -> str:
+    """Lane vendor-admission T4 P5 (plan v4 section 6, NIT 4): the digest a walk must have been checked under. A walk
+    whose readable driver ledger names a vendor harness of check_take.checker_for is checked under CHECKER_CONSTANTS
+    merged with that harness's block (vendor_checker_constants_sha256); every other walk (no ledger, an unreadable
+    one, claude-code or any other harness, the bare check.json folders included) under checker_constants_sha256(), as
+    before. A vendor walk misread on that fallback reads stale, never current: its digest is the merged one."""
+    import check_take
+    harness = walk_harness(base, walk)
+    if harness in check_take.VENDOR_CHECKER_CONSTANTS and harness in check_take.CHECKER_ENTRIES:
+        return check_take.vendor_checker_constants_sha256(harness)
+    return check_take.checker_constants_sha256()
 
 
 def latest_recheck(base, walk: str):

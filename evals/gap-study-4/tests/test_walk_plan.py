@@ -672,9 +672,12 @@ class P7RegisterOnly(Base):
         self.assertTrue(under, "P7.register-only: the recorder saw the register (the instrument is armed)")
         grade = (base / "walk-a" / "grade.json").resolve()      # batch-8 ruling: each registered walk's grade
         check = (base / "walk-a" / "check.json").resolve()      # BOOTSTRAP B5: and its check.json
-        self.assertEqual({Path(p).resolve() for _, p in under}, {register, grade, check},
-                         f"P7.register-only: only the register and each registered walk's grade.json and check.json "
-                         f"are opened or "
+        # moved by lane vendor-admission T4 P5 (plan v4 section 6, NIT 4; glitch-b5 round 13): and its driver ledger,
+        # read only to pick the digest in force for its harness (pending_walk.constants_in_force)
+        ledger = (base / "walk-a" / "driver-ledger.json").resolve()
+        self.assertEqual({Path(p).resolve() for _, p in under}, {register, grade, check, ledger},
+                         f"P7.register-only: only the register and each registered walk's grade.json, check.json and "
+                         f"driver ledger are opened or "
                          f"looked up under rehearsals/, and nothing is listed: {sorted(set(under))}")
         self.assertNotIn("list", {kind for kind, _ in under}, "P7.register-only")
         self.assertRegex(out, r"(?m)^covered  .* by walk-a$", "P7.register-only")
