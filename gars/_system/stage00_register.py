@@ -509,6 +509,28 @@ def cmd_inspect(args, workspace):
     return emit(result, EXIT_OK)
 
 
+# --- the sample-name pattern each assay was linked with (S00-onepattern, 0314) ------------------
+
+#: Project-relative; empty for the bcl2fastq convention. Absent for an assay linked before 0314.
+PATTERN_RECORD = "00_data/%s/sample_id_pattern.txt"
+
+
+def pattern_record(project, assay):
+    return Path(project) / (PATTERN_RECORD % assay)
+
+
+def recorded_pattern(project, assay):
+    """(True, pattern or None) from the assay's record; (False, None) when it has none."""
+    path = pattern_record(project, assay)
+    if not path.is_file():
+        return False, None
+    return True, path.read_text(encoding="utf-8").rstrip("\n") or None
+
+
+def describe_pattern(pattern):
+    return "the pattern %r" % pattern if pattern else "the bcl2fastq convention"
+
+
 # --- link ---------------------------------------------------------------------------------------
 
 def cmd_link(args, workspace):
@@ -527,6 +549,28 @@ def cmd_link(args, workspace):
         result["error"] = ("no per-sample directories at the top level of %s" % source
                            if kind == "sample_dir"
                            else "no raw NGS files at the top level of %s" % source)
+        return emit(result, EXIT_REFUSED)
+
+    # The pattern this assay's inspect used is read again here, before any link exists, and
+    # recorded beside raw/ so finalize derives this assay's names with it and never another
+    # assay's (S00-onepattern, 0314).
+    pattern = getattr(args, "sample_id_pattern", None)
+    try:
+        units, layout, problems = derive_units(raw, pattern, kind)
+    except re.error as exc:
+        result["error"] = "--sample-id-pattern is not a valid regex: %s" % exc
+        return emit(result, EXIT_USAGE)
+    if problems:
+        result["template"] = "T5"
+        result["error"] = ("cannot derive sample IDs: %d entr%s do not match %s; link with the "
+                           "pattern this assay's inspect used"
+                           % (len(problems), "y" if len(problems) == 1 else "ies",
+                              describe_pattern(pattern)))
+        result["unmatched_examples"] = problems[:5]
+        return emit(result, EXIT_REFUSED)
+    if layout == "mixed":
+        result["template"] = "T5"
+        result["error"] = "mixed/incomplete pairing: some sample-lane units have no R2"
         return emit(result, EXIT_REFUSED)
 
     existing = list(raw_dir.iterdir())
@@ -550,6 +594,9 @@ def cmd_link(args, workspace):
     if broken:
         result["error"] = "%d symlink(s) do not resolve" % len(broken)
         return emit(result, EXIT_FAILURE)
+    with ws.atomic_open(pattern_record(project, args.assay), mode=ws.MACHINE_OWNED_MODE) as fh:
+        fh.write(pattern + "\n" if pattern else "")
+    result["pattern_record"] = str(PATTERN_RECORD % args.assay)
     result["ok"] = True
     return emit(result, EXIT_OK)
 
@@ -669,6 +716,21 @@ def cmd_finalize(args, workspace):
         result["failures"].append("no assay directories under 00_data/")
         return emit(result, EXIT_USAGE)
 
+    # Each assay's names come from the pattern its own link recorded; a finalize flag that
+    # disagrees with a record is refused before anything is written. An assay with no record
+    # (linked before 0314) takes the flag, as it always did.
+    patterns = {}
+    for aid in assays:
+        has, recorded = recorded_pattern(project, aid)
+        if has and args.sample_id_pattern is not None and args.sample_id_pattern != recorded:
+            result["failures"].append(
+                "%s: --sample-id-pattern %r disagrees with %s, which its link recorded in %s; "
+                "finalize reads each assay's own record, so leave the flag out"
+                % (aid, args.sample_id_pattern, describe_pattern(recorded), PATTERN_RECORD % aid))
+        patterns[aid] = recorded if has else args.sample_id_pattern
+    if result["failures"]:
+        return emit(result, EXIT_REFUSED)
+
     version = template_version(workspace)
     model = ws.history_model(workspace, args.model)
     created = args.date or datetime.date.today().isoformat()
@@ -682,7 +744,7 @@ def cmd_finalize(args, workspace):
             continue
 
         kind = ws.input_kind(aid)
-        units, layout, problems = derive_units(names, args.sample_id_pattern, kind)
+        units, layout, problems = derive_units(names, patterns[aid], kind)
         if problems:
             result["failures"].append("%s: %d linked entr%s do not match the convention"
                                       % (aid, len(problems),
@@ -856,6 +918,9 @@ def main(argv=None):
     l.add_argument("--assay", required=True)
     l.add_argument("--source", required=True)
     l.add_argument("--force", action="store_true", help="re-link a populated raw/ (never routine)")
+    l.add_argument("--sample-id-pattern", default=None,
+                   help="the pattern this assay's inspect used; recorded beside raw/ for "
+                        "finalize (0314)")
 
     f = sub.add_parser("finalize", help="metadata, placeholders, exit gate")
     f.add_argument("--project", required=True)
@@ -865,7 +930,9 @@ def main(argv=None):
     f.add_argument("--permitted-backends", default=None)
     f.add_argument("--expiry", default=None)
     f.add_argument("--date", default=None, help="creation date; defaults to today")
-    f.add_argument("--sample-id-pattern", default=None)
+    f.add_argument("--sample-id-pattern", default=None,
+                   help="only for an assay linked before 0314; any other assay uses the "
+                        "pattern its link recorded, and a different value is refused")
     f.add_argument("--model", default=None,
                    help="ignored, kept so the pinned registry still validates: the model comes from the harness's session start (decision 0303); `none` alone is honoured, for a scripted run with no model-mediated step")
     f.add_argument("--integrity", choices=("full", "quick", "skip"), default="quick",
