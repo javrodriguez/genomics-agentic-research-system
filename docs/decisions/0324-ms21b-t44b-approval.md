@@ -66,7 +66,18 @@ The suite totals move from 1603 to 1606 tests.
 
 ## Test
 
-- The landing's own checks (the merge, the full suite, the gates and the outgoing range's scans) are recorded in the landing's evidence commit, the merge's child.
+- The landing's own checks, on 18 October 2026, recorded in the landing's evidence commit, the merge's child:
+
+Glitch verified the landing merge `6aece02dc904784637256dc2d30a4d5f60cd70c3` (first parent public main `e88de225`, second parent the build branch's head `0618379e`), a true merge whose tree equals its second parent's.
+The build branch is the four commits re-created as named above (0323 rides the T44b fix), this record, and the suite-total sentences.
+
+- Full suite at the merge itself on a separate test machine (Linux): run `gars-ms21b-land-6aece02-20261018T133936Z`, `PASS kind=gars commit=6aece02dc904 state=done rc=0 ran=1606 passed=1524 failures=0 errors=0 skipped=82`.
+- At the merge: `tests/check_counts.py` is clean, `tests/check_contracts.py` has 14 contracts clean, `test_decision_links_resolve` passes (684 of 684 citations resolve), `build_refusal_corpus --check` passes (its decision pin: 1999 refused, 607 allowed) and `gars/tests/test_protected_paths.py` passes; the README's skip bar (fresh-clone.yml's own gate script, run on that run's log against the merge's README) prints `ok: 82 skips, at most 124 documented` and exits 0.
+- The outgoing range `e88de225..6aece02d` (7 commits): no gitleaks finding under either ruleset (gitleaks 8.30.0, its default rules and the build machine's push rules, 6 non-merge commits); no home path, user name, private e-mail address or internal machine or project name appears in any added line (427 read) or message; the identities are `Claude <noreply@anthropic.com>` (4) and the owner's GitHub noreply address (3).
+- No path under `gars/_system/` is touched, so row 14's smoke ceremony does not apply; `python3 gars/_system/hooks/audit_trailers.py --rev` at the merge, from the landing worktree's root: `trailers audit: 18/18 _system first-parent commits since activation f3abe50 verified; graded 18 of 18 seen`.
+- A fresh-context review of the landing merge (Claude Code, Opus 5.5, read-only on the landing worktree, never shown the producer's transcript; it checked the merge's parents and tree, every lane commit against main by patch, the re-created commits' bytes, the counts, this record's claims, the protected paths, the trailer audit, the range's scans and the private names): PASS, no MAJOR or MINOR finding.
+  Its NIT 1 (the merge's message does not say the re-created commits dropped their signatures) is not folded: this record's Context says it, and the merge is not rewritten.
+  Its NIT 2 (the test's comment counts 27 unpaired steps where round 2's red printed 30 without) needs no change: the comment counts the steps that lacked the dispatcher spelling, and the red's 30 adds the DE sub-stage's steps 3, 6 and 7, which named only a non-public project.
 
 ## Status
 
