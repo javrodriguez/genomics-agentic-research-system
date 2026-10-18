@@ -5,8 +5,9 @@ and spend-cap text markers against the error texts the pinned Codex CLI prints.
 Source: openai/codex tag rust-v0.162.1, commit 092d3acd6bec3e3a14bdc7e7a2810ab628ab759d, read statically (no model
 call). The codex adapter records an error with status None and the stream record's own type (codex_adapter.py 150 and
 152), so on this road only the text markers can match. Each text below is quoted as the source states it, with its file
-and line; a format placeholder is filled with a sample value (named beside it), and the retry suffix is error.rs's
-retry_suffix with no reset time, " Try again later." (error.rs:813).
+and line; a format placeholder is filled with a sample value (named beside it), and each retry suffix is the one the
+source line appends, with no reset time: retry_suffix's " Try again later." (error.rs:813) after :795 and :799, and
+retry_suffix_after_or's " or try again later." (error.rs:822) after :716, :756, :763, :776, :782 and :788 (B7-F9).
 
   F4.pause   every usage-limit and rate-limit text matches a codex rate-limit text marker and no codex spend-cap
              marker: these pause (the plan usage-limit texts that mention purchasing credits among them)
@@ -32,22 +33,23 @@ if HERE not in sys.path:
 import routing  # noqa: E402
 
 CODEX, CLAUDE = "codex", "claude-code"
-AGAIN = " Try again later."      # error.rs:813, retry_suffix with no reset time
+AGAIN = " Try again later."            # error.rs:813, retry_suffix with no reset time (after :795 and :799)
+OR_AGAIN = " or try again later."      # error.rs:822, retry_suffix_after_or with no reset time (B7-F9)
 ERR = "codex-rs/protocol/src/error.rs"
 
 # Texts that pause (rate limits and plan usage limits). (file:line, the text as printed)
 PAUSE_TEXTS = (
     (f"{ERR}:109", "rate limit exceeded: Rate limit reached for requests"),           # {0}: a sample stream message
     (f"{ERR}:680", "exceeded retry limit, last status: 429 Too Many Requests"),      # {}: the 429 status, no request id
-    (f"{ERR}:716", "You’ve hit your usage limit for gpt-6.1-sol. Switch to another model now," + AGAIN),
-    (f"{ERR}:756", "You’ve hit your usage limit. Sample promo message," + AGAIN),  # {promo_message}: a sample
+    (f"{ERR}:716", "You’ve hit your usage limit for gpt-6.1-sol. Switch to another model now," + OR_AGAIN),
+    (f"{ERR}:756", "You’ve hit your usage limit. Sample promo message," + OR_AGAIN),  # {promo_message}: a sample
     (f"{ERR}:763", "You’ve hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit "
-                   "https://chatgpt.com/settings/usage to purchase more credits" + AGAIN),
-    (f"{ERR}:776", "You’ve hit your usage limit. To get more access now, send a request to your admin" + AGAIN),
+                   "https://chatgpt.com/settings/usage to purchase more credits" + OR_AGAIN),
+    (f"{ERR}:776", "You’ve hit your usage limit. To get more access now, send a request to your admin" + OR_AGAIN),
     (f"{ERR}:782", "You’ve hit your usage limit. Upgrade to Plus to continue using Codex "
-                   "(https://chatgpt.com/explore/plus)," + AGAIN),
+                   "(https://chatgpt.com/explore/plus)," + OR_AGAIN),
     (f"{ERR}:788", "You’ve hit your usage limit. Visit https://chatgpt.com/settings/usage to purchase more credits"
-                   + AGAIN),
+                   + OR_AGAIN),
     (f"{ERR}:795", "You’ve hit your usage limit." + AGAIN),
     (f"{ERR}:799", "You’ve hit your usage limit." + AGAIN),
 )
