@@ -1,5 +1,7 @@
 """Stage 01-03 steps that read a file the guard refuses on a non-public project name a door or
-what to tell the user (0107 item 11, 0141 item 12; change record 0291)."""
+what to tell the user (0107 item 11, 0141 item 12; change record 0291); a step that spells a
+door directly also gives its dispatcher spelling (change record 0323)."""
+import json
 import re
 import unittest
 from support import GARS
@@ -179,6 +181,98 @@ MEMORY_MUTANTS = {
 }
 
 
+# 0323: every contract with a Process section, the stage map's and the templates' included.
+CONTRACTS = tuple(sorted(str(p.relative_to(GARS)) for p in GARS.glob('**/CONTEXT.md')
+                         if p.relative_to(GARS).parts[0] != 'projects'))
+REGISTRY = json.loads((GARS / '_system/tools/registry.json').read_text())['tools']
+DOORS = {tool['name']: tool for tool in REGISTRY
+         if tool['name'] in guard_hook.CLOSED_PROJECT_DOORS}
+# The house phrase of 0141's ruling D-vii b: the direct spelling is refused for every project.
+WORKSPACE_WIDE = re.compile(r'while any (non-public project )?exists in the workspace')
+
+
+def direct(tool):
+    """A door's direct spelling: its script's basename and verb, either wrapped; a verbless
+    script counts only when an option follows it, so a mention of the file is not a call."""
+    script = re.escape(tool['argv'][1].rsplit('/', 1)[-1])
+    if len(tool['argv']) > 2:
+        return re.compile(r'%s\s+%s\b' % (script, re.escape(tool['argv'][2])))
+    return re.compile(r'%s\s+--' % script)
+
+
+def dispatcher_problem(step, name):
+    """'' when the step spells tool_call.py <name> with a JSON literal whose keys the door's
+    input schema admits and which holds every required key, under the workspace-wide
+    condition; else what is wrong."""
+    schema = DOORS[name]['input_schema']
+    calls = re.findall(r"tool_call\.py\s+%s\s+'(\{.*?\})'" % re.escape(name), step, re.S)
+    if not calls:
+        return 'no dispatcher spelling'
+    for literal in calls:
+        try:
+            keys = set(json.loads(literal.replace(', ...]', ']')))
+        except ValueError:
+            return 'JSON literal does not parse'
+        if not keys <= set(schema['properties']):
+            return 'keys outside the schema: %s' % sorted(keys - set(schema['properties']))
+        if not set(schema.get('required', ())) <= keys:
+            return 'required keys missing: %s' % sorted(set(schema['required']) - keys)
+    if not WORKSPACE_WIDE.search(' '.join(step.split())):
+        return 'condition not workspace-wide'
+    return ''
+
+
+def door_steps(read):
+    """(the step-door pairs that spell a door directly, those whose step lacks a valid
+    dispatcher spelling, with the reason), each contract's text from read(path)."""
+    checked, without = [], []
+    for path in CONTRACTS:
+        for number, step in sorted(steps(read(path)).items()):
+            for name, tool in sorted(DOORS.items()):
+                if not direct(tool).search(step):
+                    continue
+                checked.append('%s step %s %s' % (path, number, name))
+                problem = dispatcher_problem(step, name)
+                if problem:
+                    without.append('%s step %s %s: %s' % (path, number, name, problem))
+    return checked, without
+
+
+WRAPPERS = tuple(path for path in SUBSTAGES if '/01_nfcore-' in path)
+CLUSTER = ('02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md',
+           '02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md')
+SIX_STATUS = ('02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md',
+              '02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md')
+# The pairs PLAN.md's sweep found on f047180c, held fixed so the detector cannot quietly stop
+# seeing them: 27 unpaired, and the DE sub-stage's steps 6 and 7 and the three resolve_artifact
+# steps, paired already.
+DOOR_STEPS = sorted(
+    ['02_bioinformatics/CONTEXT.md step 9 resolve_artifact', '%s step 3 resolve_artifact' % DE,
+     '%s step 1 resolve_artifact' % STAGE03]
+    + ['%s step 5 executor.submit' % path for path in WRAPPERS + CLUSTER]
+    + ['%s step 7 executor.status' % path for path in WRAPPERS]
+    + ['%s step 6 executor.status' % path for path in SIX_STATUS]
+    + ['%s step %s executor.status' % (path, n) for path in CLUSTER for n in '678']
+    + ['%s step 6 executor.submit' % DE, '%s step 7 executor.status' % DE,
+       '%s step 8 executor.status' % DE,
+       '%s step 7 executor.submit' % STAGE03, '%s step 8 executor.status' % STAGE03])
+STATUS_LINE = ("   While any non-public project exists in the workspace, the direct status call is\n"
+               "   refused (decision 0141): `python3 _system/tool_call.py executor.status\n"
+               "   '{\"workspace\": \"<project dir>\", \"job-id\": \"<job_id>\"}'`; its state is in the\n"
+               "   JSON of its `stdout`.\n")
+# Each removes, misspells or breaks one dispatcher spelling the detector must see.
+DOOR_MUTANTS = {
+    'scrna-qc-cluster step 6 dispatcher line deleted': {CLUSTER[0]: ((STATUS_LINE, ''),)},
+    'executor.submit misspelled in 02_rnaseq-de step 6': {
+        DE: (('tool_call.py executor.submit\n', 'tool_call.py executor.submits\n'),)},
+    'job_id for job-id in stage 03 step 8': {
+        STAGE03: (('"job-id": "<job_id>"', '"job_id": "<job_id>"'),)},
+    'script dropped from an nf-core submit': {WRAPPERS[0]: (
+        ('"workspace": "<project dir>", "script": "<sub-stage dir>/submit.sh"',
+         '"workspace": "<project dir>"'),)},
+}
+
+
 class ClosedProjectContractTests(unittest.TestCase):
     def test_stage02_fits_memory_in_its_own_step_and_confirmation(self):
         self.assertEqual(memory_step_problems(contract), [])
@@ -223,6 +317,19 @@ class ClosedProjectContractTests(unittest.TestCase):
                     self.assertIn('config', block)
                 if path in last_in_assay():
                     self.assertNotIn('next sub-stage', block)
+
+
+    def test_every_door_step_names_its_dispatcher_spelling(self):
+        checked, without = door_steps(contract)
+        print('door steps: %d checked, %d without the dispatcher spelling'
+              % (len(checked), len(without)), flush=True)
+        self.assertEqual(without, [])
+        self.assertEqual(checked, DOOR_STEPS)
+
+    def test_the_door_step_mutants_turn_the_detector_red(self):
+        for name, edits in sorted(DOOR_MUTANTS.items()):
+            with self.subTest(mutant=name):
+                self.assertNotEqual(door_steps(mutant(edits))[1], [], name)
 
 
 if __name__ == '__main__':
