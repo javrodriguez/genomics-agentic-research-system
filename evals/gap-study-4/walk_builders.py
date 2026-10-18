@@ -59,6 +59,8 @@ spend here; the walk itself is walk_runner's.
 from __future__ import annotations
 
 import argparse
+import base64
+import calendar
 import json
 import os
 import re
@@ -409,20 +411,100 @@ def codex_gate_problem():
     return f"the Codex lease gate is closed: {getattr(rt, 'CODEX_SUBSCRIPTION_NOT_READY', 'not ready')}"
 
 
+# Round 17 B5 (plan codex2-signin-road section 2): the walk-start token check, not a refresh. Inside a take the token
+# refresh endpoint is not in egress, and the pinned Codex refreshes by itself when the access token's JWT exp is within
+# 5 minutes, or, with no readable exp, when last_refresh is older than 8 days (codex-rs/login/src/auth/manager.rs,
+# should_refresh_proactively, at rust-v0.162.1). So a walk starts only on a lease whose access token outlives the
+# walk's budget by LEASE_START_MARGIN_S and whose last_refresh is at most LEASE_REFRESH_MAX_AGE_S old; a refused walk
+# asks for a fresh `codex login --device-auth`, never a hand refresh.
+LEASE_START_MARGIN_S = 15 * 60
+LEASE_REFRESH_MAX_AGE_S = 7 * 24 * 3600
+_RFC3339 = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(\.[0-9]{1,9})?"
+                      r"(Z|[+-][0-9]{2}:[0-9]{2})")
+
+
+def walk_budget_s(script, budgets) -> int:
+    """A walk's longest run in seconds: every turn its script can send (each step, and its recovery when it has one),
+    each at the turn budget plus the quiescence cap (budgets: drive.walk_driver's budget_s, finalize_wait_s, poll_s)."""
+    turn_s, finalize_s = budgets[0], budgets[1]
+    return sum(1 + bool(step.get("recovery")) for step in script) * (turn_s + finalize_s)
+
+
+def _jwt_exp(token):
+    """The `exp` claim of a JWT-shaped token, as Codex's parse_jwt_expiration reads it, or None."""
+    parts = token.split(".") if isinstance(token, str) else []
+    if len(parts) != 3:
+        return None
+    try:
+        claims = json.loads(base64.urlsafe_b64decode(parts[1] + "=" * (-len(parts[1]) % 4)))
+    except ValueError:
+        return None
+    exp = claims.get("exp") if isinstance(claims, dict) else None
+    return exp if isinstance(exp, (int, float)) and not isinstance(exp, bool) else None
+
+
+def _rfc3339_s(text):
+    """An RFC 3339 time (chrono's, nanoseconds and an offset admitted) as seconds since the epoch, or None."""
+    m = _RFC3339.fullmatch(text) if isinstance(text, str) else None
+    if m is None:
+        return None
+    y, mo, d, h, mi, s = (int(g) for g in m.groups()[:6])
+    try:
+        t = calendar.timegm((y, mo, d, h, mi, s, 0, 0, 0))
+    except (ValueError, OverflowError):
+        return None
+    tz = m.group(8)
+    off = 0 if tz == "Z" else (1 if tz[0] == "+" else -1) * (int(tz[1:3]) * 3600 + int(tz[4:6]) * 60)
+    return t + float(m.group(7) or 0) - off
+
+
+def lease_freshness_problem(path: str, *, now: float, walk_s) -> str | None:
+    """Why the lease at `path` cannot start a walk of `walk_s` seconds at `now`, or None: its access token's exp
+    leaves less than walk_s plus LEASE_START_MARGIN_S, its last_refresh is older than LEASE_REFRESH_MAX_AGE_S, or
+    either is unreadable. Read from the host-owned source before anything is placed; the text names the rule and the
+    minutes, never a token."""
+    if not isinstance(walk_s, int) or isinstance(walk_s, bool) or walk_s <= 0:
+        return f"no walk budget to check the lease's time left against: {walk_s!r}"
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        with os.fdopen(fd, "rb") as fh:
+            doc = json.loads(fh.read(1024 * 1024 + 1).decode("utf-8"))
+    except (OSError, ValueError):
+        return "the lease cannot be read as auth.json"
+    tokens = doc.get("tokens") if isinstance(doc, dict) else None
+    exp = _jwt_exp(tokens.get("access_token") if isinstance(tokens, dict) else None)
+    if exp is None:
+        return "the lease's access token carries no readable exp claim: a fresh codex login --device-auth is needed"
+    left, need = exp - now, walk_s + LEASE_START_MARGIN_S
+    if left < need:
+        return (f"the lease's access token has {int(left // 60)} minutes left, under the walk's {walk_s // 60} "
+                f"minutes plus {LEASE_START_MARGIN_S // 60}: a fresh codex login --device-auth is needed")
+    refreshed = _rfc3339_s(doc.get("last_refresh"))
+    if refreshed is None:
+        return "the lease's last_refresh is missing or not an RFC 3339 time: a fresh codex login --device-auth is needed"
+    if now - refreshed > LEASE_REFRESH_MAX_AGE_S:
+        return (f"the lease's last_refresh is {int((now - refreshed) // 86400)} days old, past "
+                f"{LEASE_REFRESH_MAX_AGE_S // 86400}: a fresh codex login --device-auth is needed")
+    return None
+
+
 class CodexLeaseRoad:
     """One Codex take's lease: placed into the take's config folder by run_take.place_lease (place, the driver's
     spec_for hook, after make_config_dir and before the settings baseline, the grant and the launch), then read at
     once by lease_secrets. secrets() is that read's secrets(), handed to the driver and to WalkRepo alike; before a
     lease is placed it refuses, so no scan ever runs without the lease's values. uid_map(take) is the walk's run-time
     uid map reader (production: run_time_readers', uid_map_of_pid over the take container's /proc entry): the login
-    file of a take is place_lease's placement record bound to it (round 17 B3), and with no reader there is none."""
+    file of a take is place_lease's placement record bound to it (round 17 B3), and with no reader there is none.
+    walk_s and clock are the walk's budget (walk_budget_s) and the builders' clock: place checks the lease's time left
+    against them before anything is written (round 17 B5), and without them nothing is placed."""
 
-    def __init__(self, lease_src, uid_map=None):
+    def __init__(self, lease_src, uid_map=None, walk_s=None, clock=None):
         if not isinstance(lease_src, str) or not os.path.isabs(lease_src):
             raise BuilderRefused(f"the Codex lease source is not an absolute path: {lease_src!r}")
         from box import run_take as rt
         account_emails(rt.CODEX)                # round 10 ruling 2: no record, no walk
         self.lease_src, self.placed, self._secrets, self.uid_map = lease_src, None, None, uid_map
+        self.walk_s, self.clock = walk_s, clock
 
     def place(self, config_dir: str) -> str:
         from box import run_take as rt
@@ -436,6 +518,11 @@ class CodexLeaseRoad:
                                  "this tree")
         if self.placed is not None:
             raise BuilderRefused(f"a lease is already placed for this walk: {self.placed.path}")
+        if not callable(self.clock):
+            raise BuilderRefused("the Codex lease is not placed: no clock to check its time left by")
+        stale = lease_freshness_problem(self.lease_src, now=self.clock(), walk_s=self.walk_s)
+        if stale:
+            raise BuilderRefused(f"the Codex lease is not placed: {stale}")
         placement = place(self.lease_src, config_dir)
         self._secrets = read(placement.path)            # the take-start read: no lease file, no take
         self.placed = placement
@@ -1248,7 +1335,9 @@ def walk_driver_for(builders: dict, row: dict, login: str, tree: Path, *, real: 
     root = Path(drive._mode_binding.HERE)
     from box import run_take as rt
     if row["agent"]["harness"] == rt.CODEX:         # the lease road: placed after make_config_dir, before launch
-        lease = CodexLeaseRoad(builders["lease_path"], uid_map=builders["uid_map"])
+        lease = CodexLeaseRoad(builders["lease_path"], uid_map=builders["uid_map"], clock=builders["clock"])
+        # round 17 B5: the walk's budget, from its own script, once the account record has admitted the road
+        lease.walk_s = walk_budget_s(builders["design_for"](row, None).script, builders["budgets"])
         secrets, login = lease.secrets, lease.login_file_for       # the take's placed cfg/auth.json, never "-"
 
         def spec_for(r, cfg):

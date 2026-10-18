@@ -55,3 +55,5 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py EB drive.py walk_regr
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/run_take.py walk_builders.py tests/test_run_take.py tests/test_walk_builders.py
 # B4 (R1): arm O's egress host, chatgpt.com, from the pinned Codex's CHATGPT_CODEX_BASE_URL, and its named residual.
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/egress/proxy_conf.py build_draft.py prereg-draft.json tests/test_egress.py tests/test_build_draft.py
+# B5: the walk-start token check on the Codex lease road (the lease's time left and its last_refresh).
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 walk_builders.py tests/test_walk_builders.py tests/test_pending_walk.py tests/test_vendor_walk_road.py
