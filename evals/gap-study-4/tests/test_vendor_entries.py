@@ -38,6 +38,7 @@ from __future__ import annotations
 import contextlib
 import copy
 import sys
+import tempfile
 import types
 import unittest
 from pathlib import Path
@@ -348,7 +349,9 @@ class P3Entries(unittest.TestCase):
     def test_p3_the_drives_bound_refuses_a_marker_the_scan_did_not_mask(self):
         with world() as ct:
             record = vendor_email_record(ct)
-        self.assertEqual(bound_problems(record), [])
+        # the fake box's tmpfs folders land in test_box_integration's scratch, which its teardown removes
+        with mock.patch.object(tempfile, "tempdir", str(tbi.SCRATCH)):
+            self.assertEqual(bound_problems(record), [])
 
     def test_p3_checker_for_admits_the_vendor_entries(self):
         with world() as ct:
