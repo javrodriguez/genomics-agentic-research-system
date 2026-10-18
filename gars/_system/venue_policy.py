@@ -15,6 +15,10 @@ ASSAY_IDS = ('atacseq_bulk', 'chipseq_bulk', 'cutandrun', 'methylseq', 'rnaseq_b
 # compares the same number, and a test holds the two equal.
 MEM_CEILING = {'local': 8 * 1024 ** 3}
 ACCEPTED_MEM = {'local': '8G'}
+# 0293 part 3: the summed input bytes a venue can hold, per venue. Empty on purpose: homelab's
+# number waits on a measured host size, and no number is invented for it (round 9 item 3);
+# local already refuses every input outside public/fixture, and Slurm's limit is the cluster's.
+INPUT_BUDGET = {}
 # What stage 00 seeds into compute.mem: on a venue with a ceiling its accepted value, elsewhere
 # the value the templates carried before 0293, byte for byte.
 _CLUSTER_MEM = {'atacseq_bulk': '64G', 'chipseq_bulk': '64G', 'cutandrun': '64G',
@@ -86,7 +90,7 @@ def lowered_mem(venue, assay_id, requested):
     return seeded_mem(venue, assay_id)
 
 
-def check(dataset_row, venue, purpose, mem_bytes, fastq_inputs):
+def check(dataset_row, venue, purpose, mem_bytes, fastq_inputs, input_bytes=None):
     """Accumulate independent refusals; values are exact, never normalized."""
     failures = []
     row = dataset_row or {}
@@ -128,4 +132,10 @@ def check(dataset_row, venue, purpose, mem_bytes, fastq_inputs):
     for path in fastq_inputs:
         if not Path(path).is_file():
             failures.append(fail("input_missing", 'listed FASTQ input does not exist'))
+    budget = INPUT_BUDGET.get(venue)
+    if budget is not None and input_bytes is not None and input_bytes > budget:
+        failures.append(fail("venue_too_small", "inputs %d bytes (%.1f GiB) exceed venue %s's budget "
+                             "of %d bytes (%.1f GiB); this dataset needs a bigger venue (slurm)"
+                             % (input_bytes, input_bytes / 1024.0 ** 3, venue, budget,
+                                budget / 1024.0 ** 3)))
     return failures

@@ -358,7 +358,9 @@ class InputBudgetTests(PolicyFixture):
 
     def stage(self, rows, column='fastq_1'):
         write_row(self.root, row('public', 'internal'))
-        stage = prepare(self.root)
+        stage = self.root / '02_bioinformatics/rnaseq_bulk/99_fixture'
+        if not stage.is_dir():
+            stage = prepare(self.root)
         sheet = self.root / 'sheet.csv'
         sheet.write_text('sample,%s\n' % column + ''.join('s%d,%s\n' % (n, p) for n, p in enumerate(rows)))
         wl.write_reproducibility(stage, 'rnaseq_bulk', self.root,
@@ -400,6 +402,8 @@ class InputBudgetTests(PolicyFixture):
         # Slurm gains no budget check, whatever the table says about homelab.
         with patch.object(vp, 'INPUT_BUDGET', {'homelab': 1}):
             self.assertIsNone(ex._venue_refusal(self.root, ex.SLURM, '02', stage, stage / 'submit.sh'))
+            self.assertFalse(vp.check(row('public', 'internal'), 'slurm', 'internal', None, [],
+                                      input_bytes=10 ** 12))
 
     def test_input_columns_come_from_the_registered_formats(self):
         import stage01_samplesheet as s01
