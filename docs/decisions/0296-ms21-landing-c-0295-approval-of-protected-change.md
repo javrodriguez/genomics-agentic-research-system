@@ -53,7 +53,7 @@ Outside the protected prefix, recorded for completeness: the suite totals in REA
 ## Test
 
 - Full suite at the lane head `2d819179` (whose tree equals the landing's outside `lanes/` and the landing's records) on a separate test machine (Linux): run `gars-ms21-land-ac-2d819179-2d81917-20261017T041958Z`, `PASS kind=gars commit=2d819179add8 state=done rc=0 ran=1415 passed=1333 failures=0 errors=0 skipped=82`.
-- The landing's own checks (the merge, the smoke delta, the trailer audit) are recorded in the landing's evidence commit.
+- The landing's own checks (the merge, the outgoing range's scans, the smoke delta, the landing reviews and the trailer audit), for Landings A and C together, are recorded in [0292](0292-ms21-landing-a-approval.md)'s Test section, in the landing's evidence commit.
 
 ## Status
 
