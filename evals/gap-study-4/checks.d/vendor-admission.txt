@@ -59,3 +59,16 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/egress/proxy_c
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 walk_builders.py tests/test_walk_builders.py tests/test_pending_walk.py tests/test_vendor_walk_road.py
 # B6 (R3): the vendor config written on the walk road, with the three values sourced from the pinned packages.
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 walk_builders.py box/take_config.py build_draft.py prereg-draft.json tests/test_walk_builders.py tests/test_take_config.py tests/test_live_box.py tests/test_vendor_roads.py tests/test_build_draft.py
+# B7 (R4) and glitch-b5's follow-up rulings B7-F1 to B7-F7 (Sun 18 Oct 2026): the O and G pin profiles, the codex spend
+# texts, the moved modules and the draft, freeze and manifest checks; the files they edit, against the same source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_pins.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_spend_texts.py
+python3 -B -W ignore evals/gap-study-4/tests/test_spend_wiring.py
+python3 -B -W ignore evals/gap-study-4/tests/test_routing.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_wiring.py
+python3 -B -W ignore evals/gap-study-4/tests/test_prereg_order.py
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py
+python3 -B -W ignore evals/gap-study-4/build_draft.py --check
+python3 -B -W ignore evals/gap-study-4/freeze.py --check
+python3 -B -W ignore evals/gap-study-4/copy_manifest.py --check
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 routing.py routing.json build_draft.py prereg-draft.json COPIED.d/vendor-admission.json tests/test_vendor_pins.py tests/test_codex_spend_texts.py tests/test_routing.py tests/test_spend_wiring.py tests/test_pin_for_vendor.py tests/test_walk_wiring.py tests/test_prereg_order.py tests/test_build_draft.py tests/test_walk_builders.py
