@@ -461,6 +461,22 @@ def configure_apply(test, tmp):
     return case.root, lambda: configure.main(argv)
 
 
+def configure_lower(test, tmp):
+    """`configure.py lower` (0293) on a local project at 64G: it writes the one compute.mem line.
+    Unprimed, because a clean run lowers the request and the next run then writes nothing."""
+    marker = patch.object(ex, 'HOMELAB_MARKER', str(tmp / 'operator-marker'))
+    marker.start()
+    test.addCleanup(marker.stop)
+    project = tmp / 'project'
+    (project / '_config').mkdir(parents=True)
+    (project / '_config/executor.yaml').write_text('name: local\n')
+    (project / '_config/rnaseq_bulk.yaml').write_text(
+        'compute:\n  cpus: 8\n  mem: 64G\n  work_dir: /scratch/fixture\n')
+    write_fixture_dataset(project)
+    argv = ['lower', '--project', str(project), '--assay', 'rnaseq_bulk']
+    return tmp, lambda: configure.main(argv)
+
+
 def adapt_counts(test, tmp):
     adapter = module(GARS / '_system/adapt_counts.py', 'r164_writer_adapt_counts')
     counts = tmp / 'native.tsv'
@@ -685,6 +701,8 @@ def rows():
                ['gars/projects/p/03_custom_analysis/01_fixture/OUTPUTS.tsv'], success=0),
         Writer('configure.py apply', configure_apply, ['project/_config/scrnaseq.yaml'],
                success=0, reads=['project/_config/scrnaseq.yaml']),
+        Writer('configure.py lower', configure_lower, ['project/_config/rnaseq_bulk.yaml'],
+               success=0, prime=False, steps=('open', 'write', 'fsync', 'replace')),
         Writer('adapt_counts.py main', adapt_counts,
                ['adapted/counts_gene.tsv', 'adapted/gene_id_to_name.tsv'], success=0),
         Writer('hooks/install.py install_hook', hooks, ['hooks/pre-push'], prime=False,
