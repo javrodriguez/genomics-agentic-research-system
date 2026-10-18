@@ -41,4 +41,4 @@ python3 -B -W ignore evals/gap-study-4/tests/test_vendor_walk_road.py
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P5 check_take.py pending_walk.py walk_regrade.py walk_plan.py tests/test_vendor_walk_road.py tests/test_walk_plan.py tests/test_pending_walk.py
 # Round 14 (glitch-b5, Sun 18 Oct 2026): review e-71a2b94 finding 3 and NITs 1, 2 and 4; the files they edit, against
 # the same source lists.
-python3 -B evals/gap-study-4/tests/check_vendor_sources.py P5 check_take.py tests/test_vendor_body.py tests/test_vendor_entries.py tests/test_vendor_constants.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P5 check_take.py pending_walk.py tests/test_vendor_body.py tests/test_vendor_entries.py tests/test_vendor_constants.py tests/test_vendor_walk_road.py

@@ -259,7 +259,8 @@ def pending_standing(base, walk: str, check):
 
 def walk_harness(base, walk: str):
     """The walk's harness as its driver ledger records it (agent.harness, as walk_regrade reads it); None when the
-    ledger is missing or unreadable (check.json carries no harness)."""
+    ledger is missing or unreadable (check.json carries no harness), or its harness is not a string (review
+    e-71a2b94 NIT 1: a malformed ledger reads as no harness, never a TypeError)."""
     import json
     from pathlib import Path
     try:
@@ -267,7 +268,8 @@ def walk_harness(base, walk: str):
     except (OSError, ValueError):
         return None
     agent = ledger.get("agent") if isinstance(ledger, dict) else None
-    return agent.get("harness") if isinstance(agent, dict) else None
+    harness = agent.get("harness") if isinstance(agent, dict) else None
+    return harness if isinstance(harness, str) else None
 
 
 def constants_in_force(base, walk: str) -> str:
