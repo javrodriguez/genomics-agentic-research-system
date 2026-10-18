@@ -202,8 +202,8 @@ python3 create_bioinformatics_skill.py conform ../wrappers/my-new-wrapper
 
 `conform` mechanically enforces what Part 2 can only ask for: one module, stdlib-only, py3.6
 syntax, `wrapperlib` used, the four exit codes, `ASSAY`/`SUBSTAGE` declared, the pin **derived**
-rather than restated, all three verbs present, `--model` accepted, `OUTPUTS.tsv` and `STATUS`
-written, writes atomic, `SKILL.md` frontmatter complete.
+rather than restated, all three verbs present, the model read from `ws.history_model` (never
+the flag), `OUTPUTS.tsv` and `STATUS` written, writes atomic, `SKILL.md` frontmatter complete.
 
 The rules are trustworthy because they are run against wrappers already known good — **every
 existing GARS wrapper passes** — and because each rule is mutation-tested: break it deliberately
@@ -235,7 +235,7 @@ A skill is done when every line is true.
 - [ ] Exit gate checks **content** — every sample provably present
 - [ ] `OUTPUTS.tsv` and `STATUS` written; state is never inferred from output files
 - [ ] Structured failures: check, detail, fix
-- [ ] `--model` recorded in the history entry
+- [ ] The model from `ws.history_model` recorded in the history entry, never the flag
 - [ ] Offline test passes, and proves determinism
 - [ ] A real run on real (possibly small, public) data completed
 - [ ] `conform` passes

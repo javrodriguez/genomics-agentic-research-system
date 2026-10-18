@@ -6,13 +6,13 @@
     {
       "kind": "skill",
       "path": "_system/authoring/SKILL.md",
-      "sha256": "4e4ab32beda16223540bbcbd1ab5482f8b43d452e4ad19cba6c2e4dd27ab284d",
+      "sha256": "9eb93a75a4d1abc0875641f044151063ed896086330710c525e11120ab210298",
       "review_status": "reviewed"
     },
     {
       "kind": "skill",
       "path": "_system/wrappers/nfcore-atacseq-wrapper/SKILL.md",
-      "sha256": "2e21249e40fdeb39a6e27b1413d6ddd7390ad35f60796306e1ee8534aebd389c",
+      "sha256": "31c5313538d3cab65677844459bfaa792aea84b0979d71b3a902f9605dff872e",
       "review_status": "reviewed"
     },
     {
@@ -42,13 +42,13 @@
     {
       "kind": "skill",
       "path": "_system/wrappers/nfcore-scrnaseq-wrapper/SKILL.md",
-      "sha256": "c381b5519b350a119a0d5d044e6511bbfe0e16f91f5c43918cd4b4a9bdb1e01f",
+      "sha256": "247b6499ba5e31fe9082b719f06215eee59702df44f138c200d0266312408812",
       "review_status": "reviewed"
     },
     {
       "kind": "skill",
       "path": "_system/wrappers/nfcore-spatialvi-wrapper/SKILL.md",
-      "sha256": "5ba63dc14178e0e33eff6475c08e151f8c2251cbf40833f49b7b718869664923",
+      "sha256": "67182118f7e3bd96ad48a033f9dc051215173b5ab33fe871475a2d35463e3794",
       "review_status": "reviewed"
     },
     {
@@ -60,13 +60,13 @@
     {
       "kind": "skill",
       "path": "_system/wrappers/scrna-qc-cluster/SKILL.md",
-      "sha256": "405e20ff769c49e29501911d3f0a615d132a408d8ce3eee5cf24357ae91a2feb",
+      "sha256": "3a8001f525d0e36a9e8f815e16e70682155de4cb7f26d4e53aef013a87ba9177",
       "review_status": "reviewed"
     },
     {
       "kind": "skill",
       "path": "_system/wrappers/spatial-cluster-count/SKILL.md",
-      "sha256": "133cc026cceb678e39612adaa7669cc5ef4a0befa45a9a06906acc76e0ce5a2a",
+      "sha256": "7a9b24a15f8441f9a1ea22f316484a04015e6dfbf4e2f8a772783da0b9d839b9",
       "review_status": "reviewed"
     },
     {
