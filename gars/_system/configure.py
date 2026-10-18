@@ -7,6 +7,7 @@ and level names:
 
     genomes    the registered references            -> fills fasta + gtf + derived_dir together
     contrasts  the levels actually in the design     -> fills de.contrast, direction included
+    formulas   formulas from the design's own columns -> fills de.formula (apply --formula <n>)
     apply      validate the selections and write     -> prints the resulting file
     declare    stage 01's declarations, as menus      -> writes one top-level key + HISTORY line
 
@@ -167,6 +168,53 @@ def contrast_menu(rows, factor="condition"):
                 "testable": testable,
             })
     return levels, {k: len(v) for k, v in counts.items() if k}, pairs
+
+
+def formula_menu(rows, assay, factor="condition"):
+    """The condition alone, then the condition adjusted for each other design column that varies
+    (R-formula, 0315). A column nested in the factor cannot be separated from it, so it is
+    shown `estimable: false` with the reason, never as a choice."""
+    fixed = set(ws.design_columns(assay)) | {factor}
+    menu = [{"formula": "~ %s" % factor, "meaning": "%s only" % factor, "terms": [factor],
+             "estimable": True}]
+    for column in [c for c in rows[0] if c not in fixed]:
+        values = [r.get(column, "") for r in rows]
+        if len({v for v in values if v}) < 2:
+            continue                    # one value (or none) adjusts for nothing
+        meaning = ("%s, paired by %s" if column == "subject" else "%s, adjusted for %s") % (
+            factor, column)
+        entry = {"formula": "~ %s + %s" % (column, factor), "meaning": meaning,
+                 "terms": [column, factor], "estimable": True}
+        blank = [r["sample_id"] for r in rows if not r.get(column, "")]
+        levels = {}
+        for r in rows:
+            levels.setdefault(r.get(column, ""), set()).add(r.get(factor, ""))
+        if blank:
+            entry.update(estimable=False, reason="%s is blank for %s" % (column, ", ".join(blank)))
+        elif all(len(f) < 2 for f in levels.values()):
+            entry.update(estimable=False,
+                         reason="every %s value occurs under one %s only, so %s cannot be "
+                                "separated from %s" % (column, factor, column, factor))
+        menu.append(entry)
+    for n, entry in enumerate(menu, start=1):
+        entry["n"] = "%02d" % n
+    return menu
+
+
+def cmd_formulas(args, workspace):
+    result = {"command": "formulas", "ok": False, "assay": args.assay, "factor": args.factor}
+    if ASSAY_DECISIONS.get(args.assay) != "de":
+        result["error"] = "assay %s has no de block, so no design formula" % args.assay
+        return emit(result, EXIT_USAGE)
+    rows, err = read_design(args.project, args.assay)
+    if err:
+        result["error"] = err
+        return emit(result, EXIT_USAGE)
+    result.update({"ok": True, "formulas": formula_menu(rows, args.assay, args.factor),
+                   "default_formula": DEFAULT_FORMULA,
+                   "other": "a formula typed instead is checked term by term and written with "
+                            "a warning that it was not chosen from this menu"})
+    return emit(result, EXIT_OK)
 
 
 # --- writing --------------------------------------------------------------------------------------
@@ -445,12 +493,31 @@ def cmd_apply(args, workspace):
                                   chosen["n_denominator"], MIN_SAMPLES_PER_LEVEL, args.assay))
             return emit(result, EXIT_REFUSED)
 
-        formula = args.formula or DEFAULT_FORMULA
+        # A menu number selects a formula built from the design (0315); anything else typed
+        # is checked term by term and carries a warning that it was not chosen.
+        formulas = formula_menu(design, args.assay, args.factor)
+        token = (args.formula or DEFAULT_FORMULA).strip()
+        picked = next((f for f in formulas if token in (f["n"], f["n"].lstrip("0"))), None)
+        if picked is not None and not picked["estimable"]:
+            result["error"] = "formula %s (%s) is not estimable: %s" % (
+                picked["n"], picked["formula"], picked["reason"])
+            result["formulas"] = formulas
+            return emit(result, EXIT_REFUSED)
+        formula = picked["formula"] if picked else token
         for term in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", formula):
             if term not in design[0]:
                 result["error"] = ("formula term %r is not a column of the design table (%s)"
                                    % (term, ", ".join(design[0])))
                 return emit(result, EXIT_REFUSED)
+            stuck = next((f for f in formulas if not f["estimable"] and term in f["terms"]
+                          and term != args.factor), None)
+            if stuck is not None:
+                result["error"] = "formula term %r is not estimable: %s" % (term, stuck["reason"])
+                result["formulas"] = formulas
+                return emit(result, EXIT_REFUSED)
+        if args.formula is not None and picked is None:
+            result["formula_warning"] = ("formula %r was typed, not chosen from `configure.py "
+                                         "formulas`; T9 shows it as typed" % formula)
         updates += [("formula", '"%s"' % formula, "  "),
                     ("contrast", '"%s"' % chosen["spec"], "  ")]
         result.update({"contrast": chosen["spec"], "contrast_meaning": chosen["meaning"],
@@ -731,6 +798,11 @@ def main(argv=None):
     c.add_argument("--assay", required=True)
     c.add_argument("--factor", default="condition")
 
+    fm = sub.add_parser("formulas", help="design formulas built from the design's own columns")
+    fm.add_argument("--project", required=True)
+    fm.add_argument("--assay", required=True)
+    fm.add_argument("--factor", default="condition")
+
     a = sub.add_parser("apply", help="validate the selections and write the config")
     a.add_argument("--project", required=True)
     a.add_argument("--assay", required=True)
@@ -744,7 +816,9 @@ def main(argv=None):
                    help="menu number or factor,num,denom (assays with a de block)")
     a.add_argument("--peaks-type", default=None,
                    help="menu number, `narrow` or `broad` (assays with a peaks block)")
-    a.add_argument("--formula", default=None, help="default: %s" % DEFAULT_FORMULA)
+    a.add_argument("--formula", default=None,
+                   help="menu number from `formulas`, or a typed formula (written with a "
+                        "warning); default: %s" % DEFAULT_FORMULA)
     a.add_argument("--factor", default="condition")
     a.add_argument("--dry-run", action="store_true",
                    help="show the result and record it; the config is written only by a later "
@@ -764,7 +838,7 @@ def main(argv=None):
         return EXIT_USAGE
     workspace = args.workspace or ws.workspace_root(__file__)
     return {"genomes": cmd_genomes, "contrasts": cmd_contrasts, "peaks": cmd_peaks,
-            "protocols": cmd_protocols, "declare": cmd_declare,
+            "protocols": cmd_protocols, "declare": cmd_declare, "formulas": cmd_formulas,
             "apply": cmd_apply}[args.cmd](args, workspace)
 
 
