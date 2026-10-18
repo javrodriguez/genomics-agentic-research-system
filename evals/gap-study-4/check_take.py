@@ -4913,8 +4913,9 @@ def vendor_session_store_problems(path, harness) -> list:
     session-store.json beside the envelopes is of the vendor's closed shape (VENDOR_STORE_KEYS: the harness and its
     store root, a listing after every turn, post-1 to post-n for the ledger's n retained snapshots, then one at publish;
     one sweep per turn's listing; the drive's two counts), the take's own session derived from the publish listing for
-    the CLI's session id is in every listing, every listing holds only it, every sweep finds no session but it, and the
-    record's nested CLI call and unread stream line counts are the checker's own."""
+    the CLI's session id is in every listing, every listing holds only it, every sweep finds no session but it (its own
+    path admitted only with the harness's shape and the CLI's session id), and the record's nested CLI call and unread
+    stream line counts are the checker's own."""
     path = Path(path)
     ledger = _ledger_beside(path) or {}
     snaps = ledger.get("native_snapshots") if isinstance(ledger.get("native_snapshots"), list) else []
@@ -4958,8 +4959,10 @@ def vendor_session_store_problems(path, harness) -> list:
         try:
             if "refused" in x or set(x) != VENDOR_SWEEP_KEYS:
                 raise ValueError(str(x.get("refused", "off its shape"))[:200])
-            seen = sweep_violations(dict(x, files=[f for f in x["files"] if f[0] != own_path]), set(), None,
-                                    _take_run_tree(path))
+            # only the take's own record is admitted: its path, the harness's shape and the CLI's session id, as
+            # Claude Code's sweep admits its own path (review d-7c774ad finding 2); any other record there is a finding
+            seen = sweep_violations(dict(x, files=[f for f in x["files"] if f != [own_path, harness, vid]]), set(),
+                                    None, _take_run_tree(path))
         except (TypeError, ValueError, IndexError, KeyError) as e:
             out.append(f"[{NESTED_AGENT}] the take container could not be swept at {x['at']}: {e}")
             continue
