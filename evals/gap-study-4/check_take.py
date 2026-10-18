@@ -4746,5 +4746,123 @@ def vendor_round4_problems(path, design) -> list:
             + vendor_nested_flag_problems(path, harness) + vendor_file_change_problems(path, harness))
 
 
+# ---- P3. THE VENDOR ENTRIES (plan sections 1b, 6 and 9; glitch-b5 round 12, with review c-6302fd3 NIT 6) ------------
+# check4_vendor and check4_walk_vendor are check4's and check4_walk's roads for a codex or gemini take or walk: check4's
+# CheckRefused preamble with the vendor guard in place of harness_guard (which still holds check4 to claude-code),
+# vendor_check and vendor_round4_problems in place of check() and section 1b's Claude Code readings, the driver
+# ledger's arm and budgets bound as check4 binds them, and the event-count invariant: the event lines are lifted out of
+# the routable reasons, and each must agree with its own count, read by vendor_event_counts from vendor_reach and
+# vendor_email_problems. A count is a reading, never a default (NIT 6): the reach is read on the raw records whatever
+# the view did, so a reach vendor_check skipped still counts and disagrees, and a reach or an email count that cannot
+# be read refuses the take with CheckRefused, never counts 0. checker_for admits both harnesses with _vendor_entry;
+# their side readings (plan section 6's merged constants digest, nudges 0, no Agent call) are P5's, so _vendor_side
+# refuses until P5 and drive.take_checker reads no vendor take before then.
+def vendor_event_counts(path, harness) -> dict:
+    """{event id: count} of a vendor take, from the vendor readers: study-materials-reached and
+    read-outside-the-checkout from vendor_reach (one per instance, as C's event_counts), account-email from
+    vendor_email_problems (0 or 1 per take); CheckRefused when either cannot be read."""
+    harness = _vendor_harness(harness)
+    reach = vendor_reach(path, harness, run_tree=vendor_session_cwd(path, harness))
+    if reach["records"] is None:
+        raise CheckRefused(f"the {harness} reach could not be read ({reach['problems'][0][:160]}), so the take's event "
+                           "counts cannot be shown; an unread reach is never counted as zero")
+    email = vendor_email_problems(path)
+    unread = [p for p in email if reason_ids([p])[:1] != [EVENT_EMAIL]]
+    if unread:
+        raise CheckRefused(f"the account-email count could not be read ({unread[0][:160]}); an unread count is never "
+                           "counted as zero")
+    return {EVENT_STUDY: len(reach["study"]), EVENT_EMAIL: len(email), EVENT_OUTSIDE: len(reach["outside"])}
+
+
+def _vendor_preamble(task_id, half_name, wording_script, design, what: str) -> str:
+    """check4's CheckRefused preamble for a vendor take or walk (`what`); the design's vendor harness."""
+    if not isinstance(wording_script, list) or not wording_script:
+        raise CheckRefused(f"a round-4 {what} is checked against its own wording's script (a non-empty list)")
+    if not isinstance(design, Design):
+        raise CheckRefused(f"a round-4 {what} is checked against its design view (check_take.design_view)")
+    if not (design.half and design.script):
+        raise CheckRefused(f"the design view names no half or no wording script; both are the {what}'s own")
+    harness = _vendor_harness(design.harness)
+    waiting = list(design.pending)
+    if waiting:
+        raise CheckRefused(f"the design view's constants {waiting} are still PENDING; a constant without its ruled "
+                           "value is never defaulted")
+    if [design.task_id, design.half] != [task_id, half_name]:
+        raise CheckRefused(f"the design view is {design.task_id}/{design.half}, not {task_id}/{half_name}")
+    if list(wording_script) != design.script:
+        raise CheckRefused(f"the script handed in is not the one the {what}'s own wording renders")
+    if not (isinstance(design.run_tree, str) and design.run_tree):
+        raise CheckRefused(f"the design view names no run tree; a {what} is read against the tree the driver gave it")
+    return harness
+
+
+def _vendor_road(path, task_id, half_name, *, wording_script, arm, design, table, what, row_index, walk_id) -> dict:
+    harness = _vendor_preamble(task_id, half_name, wording_script, design, what)
+    ids = event_ids(table)
+    token = _PRE_IN_FORCE.set(design.pre)                 # R4C-10, as check4: the readers that take no pre read the view's
+    try:
+        counts = vendor_event_counts(path, harness)
+        if set(ids) != set(counts):
+            raise CheckRefused(f"routing.json's event ids {sorted(ids)} are not the ones this checker counts "
+                               f"{sorted(counts)}")
+        problems = vendor_check(path, task_id, half_name, row_index, wording_script=wording_script, design=design,
+                                arm=arm, walk_id=walk_id)
+        problems += vendor_round4_problems(path, design)
+    finally:
+        _PRE_IN_FORCE.reset(token)
+    led = _ledger_beside(path)
+    if isinstance(led, dict) and led.get("arm") != arm:
+        problems.append(f"[constant-binding] the driver ledger records arm {led.get('arm')!r}; this vendor {what} is "
+                        f"read as arm {arm!r}")
+    problems += ledger_budget_problems(led, design.pre)
+    routed, lines, lifted = [], [], set()
+    for line in problems:
+        rid = reason_ids([line])
+        if not rid:
+            raise CheckRefused(f"a vendor {what}'s refusal carries no reason id, so it cannot be routed: {line[:80]!r}")
+        if rid[0] in ids:                    # an event line: counted, never routed
+            lifted |= {rid[0]}
+        else:
+            routed.append(rid[0])
+            lines.append(line)
+    for eid in ids:
+        if (counts[eid] > 0) != (eid in lifted):
+            raise CheckRefused(f"{eid}: check() and its reader disagree (vendor {what}, {counts[eid]} counted)")
+    return {"reasons": routed, "problems": lines, "events": counts, "outside_reach": sum(counts.values())}
+
+
+def check4_vendor(path, task_id: str, half_name: str, row_index, *, wording_script: list, arm: str, design: "Design",
+                  table: dict | None = None) -> dict:
+    """check4's road for a codex or gemini take (its ledger row `row_index`): {"reasons", "problems", "events",
+    "outside_reach"}, check4's shape; raises CheckRefused rather than guess."""
+    return _vendor_road(path, task_id, half_name, wording_script=wording_script, arm=arm, design=design, table=table,
+                        what="take", row_index=row_index, walk_id=None)
+
+
+def check4_walk_vendor(path, task_id: str, half_name: str, walk_id: str, *, wording_script: list, arm: str,
+                       design: "Design", table: dict | None = None) -> dict:
+    """check4_walk's road for a codex or gemini round-4 walk: check4_vendor with the walk's own binding."""
+    return _vendor_road(path, task_id, half_name, wording_script=wording_script, arm=arm, design=design, table=table,
+                        what="walk", row_index=None, walk_id=walk_id)
+
+
+def _vendor_side(path, design) -> tuple:
+    """A vendor take's side readings are plan section 6's fixed contract on P5's merged constants; until P5 they
+    refuse, so no vendor take is checked under a digest that is not its own."""
+    raise CheckRefused(f"harness {getattr(design, 'harness', None)!r}: the vendor side readings (the merged constants "
+                       "digest, nudges and Agent summary, P5) are not built yet; a vendor take is not checked before them")
+
+
+def _vendor_entry(path, row, design, *, take, records) -> dict:
+    if records == "walks":                # the walk road (check4_walk_vendor)
+        return check4_walk_vendor(path, row["task"], row["half"], row["walk"], wording_script=design.script,
+                                  arm=row["arm"], design=design)
+    return check4_vendor(path, row["task"], row["half"], take.identity["row"], wording_script=design.script,
+                         arm=row["arm"], design=design)
+
+
+CHECKER_ENTRIES.update({h: (_vendor_entry, _vendor_side) for h in VENDOR_HARNESSES})
+
+
 if __name__ == "__main__":
     raise SystemExit(main())

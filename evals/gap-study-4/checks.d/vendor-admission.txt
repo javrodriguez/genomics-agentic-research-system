@@ -25,3 +25,7 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 walk_builders.py b
 # Round 10 (glitch-b5, 17 Oct 2026): the account record, fail-closed vendor roads, R-6 for every CLAUDE.md, the
 # secrets() email pairs and the witness re-anchors; the files they edited, against the same source lists.
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 walk_builders.py check_take.py box/take_config.py tests/test_vendor_roads.py tests/test_walk_builders.py tests/test_scan_record.py tests/test_pending_walk.py tests/test_walk_runner.py
+# Round 12 (glitch-b5, 17 Oct 2026): review c-6302fd3's NITs 2, 5 and 7, and T4 P3 (the vendor entries, the event-count
+# invariant on the vendor readers, NIT 6); the files they edit, against the same source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_entries.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P3 check_take.py walk_builders.py tests/test_vendor_entries.py tests/test_take_checker_dispatch.py tests/test_vendor_body.py tests/test_walk_builders.py

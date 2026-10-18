@@ -357,12 +357,12 @@ class P3Entries(unittest.TestCase):
 
 # ---- the witnesses --------------------------------------------------------------------------------------------------
 P3_WITNESSES = {
-    "the vendor guard dropped": (("    harness = _vendor_harness(design.harness)\n    if design.pending:\n",
-                                  "    harness = design.harness\n    if design.pending:\n"), pre_problems),
-    "the invariant dropped": (("        if (eid in lifted) != (counts[eid] > 0):\n            raise CheckRefused(f\"{eid}: "
-                               "check() and its reader disagree (vendor take",
+    "the vendor guard dropped": (("    harness = _vendor_harness(design.harness)\n    waiting = list(design.pending)\n",
+                                  "    harness = design.harness\n    waiting = list(design.pending)\n"), pre_problems),
+    "the invariant dropped": (("        if (counts[eid] > 0) != (eid in lifted):\n            raise CheckRefused(f\"{eid}: "
+                               "check() and its reader disagree (vendor {what}",
                                "        if False:\n            raise CheckRefused(f\"{eid}: check() and its reader "
-                               "disagree (vendor take"), unread_problems),
+                               "disagree (vendor {what}"), unread_problems),
     "the arm binding dropped": (("    if isinstance(led, dict) and led.get(\"arm\") != arm:\n",
                                  "    if False:\n"), arm_problems),
     "the lift dropped": (("        if rid[0] in ids:                    # an event line: counted, never routed\n",
