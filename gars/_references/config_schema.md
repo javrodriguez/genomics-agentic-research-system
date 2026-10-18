@@ -31,11 +31,21 @@ inside the project**: `work/` retains every process output so `-resume` can reus
 single run accumulates hundreds of GB there. `results/` is published with mode `copy`, so
 `work/` is disposable once a run succeeds.
 
+**`compute.mem` is seeded from the venue, never typed** (decision 0293). Stage 00 fills it from
+`_system/venue_policy.py`'s table for the venue that the workspace's
+`_templates/config/executor.yaml` names: on Slurm (and homelab) the template's own value
+(32G-96G, by assay); on `local`, the 8G that venue accepts. The shipped descriptor names Slurm,
+so a laptop project is seeded at the Slurm value and fitted later: `configure.py lower --project
+<p> --assay <a>` lowers the one `compute.mem` line to what the project's venue accepts, never
+raises it, changes nothing else, and prints a `history_entry`. Stage 02 runs it in its own step
+with its own confirmation. The ceiling itself is enforced at submit, by `venue_policy.py`; the
+value in this file is a request.
+
 ## Per-assay decision blocks
 
 | Assay | Beyond `reference` + `compute` | Decision menu at stage 02 |
 |---|---|---|
-| `rnaseq_bulk` | `strandedness` (stage 01 reads it into the samplesheet); `de.formula`, `de.contrast` | genome + contrast (+ formula, default `~ condition`) |
+| `rnaseq_bulk` | `strandedness` (stage 01 reads it into the samplesheet); `de.formula`, `de.contrast` | genome + contrast + formula (from `formulas`, built from the design's columns; first entry `~ condition`) |
 | `atacseq_bulk` | `peaks.type` (narrow\|broad), `peaks.macs_gsize`, `reference.mito_name`, optional `reference.blacklist` | genome + peak type |
 | `chipseq_bulk` | `peaks.type`, `peaks.macs_gsize`, optional `reference.blacklist` (no `mito_name` — the pipeline has no such parameter) | genome + peak type |
 | `cutandrun` | `reference.mito_name`; `spikein.fasta` (seeded with the local E. coli K12 mirror path); `peaks.peakcaller` (seacr\|macs2), `peaks.normalisation`, `peaks.use_control` — presented defaults, confirmed not chosen | genome only |

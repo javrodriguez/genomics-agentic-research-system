@@ -371,10 +371,21 @@ def _build_project(stamp, project, supported, workspace, title):
     config_src = workspace / "_templates" / "config"
     scratch = os.environ.get("GARS_SCRATCH",
                              "/gpfs/scratch/%s/gars-work" % os.environ.get("USER", "USER"))
-    values = {"{{project_title}}": title, "{{work_dir}}": "%s/%s" % (scratch, title)}
+    # compute.mem comes from the venue's own table (0293), for the venue the descriptor this
+    # project is seeded with names; absent, that is Slurm, as `load` treats an absent descriptor.
+    import executorlib as ex
+    import venue_policy as policy
+    descriptor = config_src / "executor.yaml"
+    name = (ex.parse_descriptor(descriptor.read_text(encoding="utf-8")).get("name")
+            if descriptor.is_file() else None) or "slurm"
+    venue = ex.venue_of({"name": name})
     for aid in supported:
         src = config_src / (aid + ".yaml")
         if src.is_file():
+            # One dict per assay: the seeded memory differs by assay.
+            values = {"{{project_title}}": title, "{{work_dir}}": "%s/%s" % (scratch, title)}
+            if policy.seeded_mem(venue, aid):
+                values["{{mem}}"] = policy.seeded_mem(venue, aid)
             text = src.read_text(encoding="utf-8")
             for k, v in values.items():
                 text = text.replace(k, v)
@@ -509,6 +520,28 @@ def cmd_inspect(args, workspace):
     return emit(result, EXIT_OK)
 
 
+# --- the sample-name pattern each assay was linked with (S00-onepattern, 0314) ------------------
+
+#: Project-relative; empty for the bcl2fastq convention. Absent for an assay linked before 0314.
+PATTERN_RECORD = "00_data/%s/sample_id_pattern.txt"
+
+
+def pattern_record(project, assay):
+    return Path(project) / (PATTERN_RECORD % assay)
+
+
+def recorded_pattern(project, assay):
+    """(True, pattern or None) from the assay's record; (False, None) when it has none."""
+    path = pattern_record(project, assay)
+    if not path.is_file():
+        return False, None
+    return True, path.read_text(encoding="utf-8").rstrip("\n") or None
+
+
+def describe_pattern(pattern):
+    return "the pattern %r" % pattern if pattern else "the bcl2fastq convention"
+
+
 # --- link ---------------------------------------------------------------------------------------
 
 def cmd_link(args, workspace):
@@ -527,6 +560,28 @@ def cmd_link(args, workspace):
         result["error"] = ("no per-sample directories at the top level of %s" % source
                            if kind == "sample_dir"
                            else "no raw NGS files at the top level of %s" % source)
+        return emit(result, EXIT_REFUSED)
+
+    # The pattern this assay's inspect used is read again here, before any link exists, and
+    # recorded beside raw/ so finalize derives this assay's names with it and never another
+    # assay's (S00-onepattern, 0314).
+    pattern = getattr(args, "sample_id_pattern", None)
+    try:
+        units, layout, problems = derive_units(raw, pattern, kind)
+    except re.error as exc:
+        result["error"] = "--sample-id-pattern is not a valid regex: %s" % exc
+        return emit(result, EXIT_USAGE)
+    if problems:
+        result["template"] = "T5"
+        result["error"] = ("cannot derive sample IDs: %d entr%s do not match %s; link with the "
+                           "pattern this assay's inspect used"
+                           % (len(problems), "y" if len(problems) == 1 else "ies",
+                              describe_pattern(pattern)))
+        result["unmatched_examples"] = problems[:5]
+        return emit(result, EXIT_REFUSED)
+    if layout == "mixed":
+        result["template"] = "T5"
+        result["error"] = "mixed/incomplete pairing: some sample-lane units have no R2"
         return emit(result, EXIT_REFUSED)
 
     existing = list(raw_dir.iterdir())
@@ -550,6 +605,9 @@ def cmd_link(args, workspace):
     if broken:
         result["error"] = "%d symlink(s) do not resolve" % len(broken)
         return emit(result, EXIT_FAILURE)
+    with ws.atomic_open(pattern_record(project, args.assay), mode=ws.MACHINE_OWNED_MODE) as fh:
+        fh.write(pattern + "\n" if pattern else "")
+    result["pattern_record"] = str(PATTERN_RECORD % args.assay)
     result["ok"] = True
     return emit(result, EXIT_OK)
 
@@ -629,7 +687,66 @@ def write_dataset_record(project, row):
         writer.writeheader(); writer.writerow(row)
 
 
+def registered_purpose(path):
+    """The purpose of an existing one-row dataset record, or None."""
+    try:
+        with Path(path).open(encoding='utf-8', newline='') as handle:
+            rows = list(csv.DictReader(handle, delimiter='\t'))
+    except (OSError, ValueError, UnicodeError):
+        return None
+    return rows[0].get('purpose') if len(rows) == 1 else None
+
+
+def declared_purpose(workspace, project):
+    """fixture or internal when data_sources.tsv settles it, else None (2a, 0321).
+
+    Settled only when the file reads cleanly (header source, data_class, declared_by and an
+    optional fourth column use; every row three cells, or four under that header; each use
+    cell test, analysis or empty), every linked raw entry lies inside a declared source, and all those sources carry
+    the same non-empty use. Finalize checks the header, the cell counts and the use cell only,
+    not the guard's row rules (hunk G1 is the guard's reading of the file); the agent's finalize
+    passes the guard first, the person's own does not.
+    """
+    import venue_policy as policy
+    header = ["source", "data_class", "declared_by"]
+    try:
+        text = (Path(workspace) / "data_sources.tsv").read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return None
+    if "\r" in text:
+        return None
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    if not lines or lines[0].split("\t") not in (header, header + ["use"]):
+        return None
+    width = len(lines[0].split("\t"))
+    sources = []
+    for line in lines[1:]:
+        cells = line.split("\t")
+        if len(cells) not in (3, width):
+            return None
+        use = cells[3] if len(cells) == 4 else ""
+        if use not in ("", "test", "analysis"):
+            return None
+        sources.append((os.path.realpath(cells[0]), use))
+    uses = set()
+    entries = sorted((Path(project) / "00_data").glob("*/raw/*"))
+    for entry in entries:
+        real = os.path.realpath(str(entry))
+        inside = [use for source, use in sources
+                  if real == source or real.startswith(source.rstrip(os.sep) + os.sep)]
+        if not inside:
+            return None
+        uses.update(inside)
+    if not entries or len(uses) != 1 or "" in uses:
+        return None
+    use = uses.pop()
+    return [p for p, u in policy.USE_OF_PURPOSE.items() if u == use][0]
+
+
 def cmd_finalize(args, workspace):
+    import venue_policy as policy
     result = {"command": "finalize", "ok": False, "assays": {}, "failures": []}
     project = Path(args.project)
     if not project.is_dir():
@@ -639,13 +756,35 @@ def cmd_finalize(args, workspace):
     if args.data_class not in ("public", "deidentified_under_agreement", "identifiable"):
         result["failures"].append("data_class_required: --data-class must name a registered class")
         return emit(result, EXIT_REFUSED)
-    if args.purpose not in ("fixture", "internal", "pilot_internal", "pilot_external", "commercial"):
+    # 2a (0321): the person's own data_sources.tsv may settle test or analysis; else T4c asks.
+    declared = declared_purpose(workspace, project) if args.data_class == "public" else None
+    if args.purpose is None and declared is not None:
+        args.purpose = declared
+    elif args.purpose in policy.REGISTRABLE_PURPOSES and declared not in (None, args.purpose):
+        result["failures"].append(
+            "purpose_disagrees: data_sources.tsv declares this data %s (--purpose %s); leave "
+            "--purpose out" % (policy.USE_OF_PURPOSE[declared], declared))
+        return emit(result, EXIT_REFUSED)
+    if args.purpose is None:
+        result["failures"].append(
+            "purpose_required: data_sources.tsv does not settle test or analysis for this data; "
+            "ask the person (T4c)")
+        result["template"] = "T4c"
+        return emit(result, EXIT_REFUSED)
+    if args.purpose not in policy.PURPOSES:
         result["failures"].append("purpose_required: --purpose must name a registered purpose")
         return emit(result, EXIT_REFUSED)
     if not args.agreement_ref or args.agreement_ref.strip().lower() in ("", "unknown", "todo", "null"):
         result["failures"].append("agreement_ref_required: name an agreement or use none")
         return emit(result, EXIT_REFUSED)
     dataset_path = project / "00_data/dataset.tsv"
+    # 1c (0321): a legacy purpose is read only in a row that already carries it.
+    if args.purpose in policy.LEGACY_PURPOSES and \
+            registered_purpose(dataset_path) != args.purpose:
+        result["failures"].append(
+            "purpose_legacy: %s is read only in a row that already carries it; a new "
+            "registration is fixture (test) or internal (analysis)" % args.purpose)
+        return emit(result, EXIT_REFUSED)
     dataset = {"data_class": args.data_class, "purpose": args.purpose,
                "agreement_ref": args.agreement_ref,
                "input_data_location": json.dumps(sorted({str(p.resolve()) for p in
@@ -656,6 +795,7 @@ def cmd_finalize(args, workspace):
     except ValueError as exc:
         result["failures"].append(str(exc))
         return emit(result, EXIT_REFUSED)
+    result["data"] = policy.data_line(dataset["data_class"], dataset["purpose"])
 
     catalog, err = read_assay_map(workspace)
     if err:
@@ -668,6 +808,21 @@ def cmd_finalize(args, workspace):
     if not assays:
         result["failures"].append("no assay directories under 00_data/")
         return emit(result, EXIT_USAGE)
+
+    # Each assay's names come from the pattern its own link recorded; a finalize flag that
+    # disagrees with a record is refused before anything is written. An assay with no record
+    # (linked before 0314) takes the flag, as it always did.
+    patterns = {}
+    for aid in assays:
+        has, recorded = recorded_pattern(project, aid)
+        if has and args.sample_id_pattern is not None and args.sample_id_pattern != recorded:
+            result["failures"].append(
+                "%s: --sample-id-pattern %r disagrees with %s, which its link recorded in %s; "
+                "finalize reads each assay's own record, so leave the flag out"
+                % (aid, args.sample_id_pattern, describe_pattern(recorded), PATTERN_RECORD % aid))
+        patterns[aid] = recorded if has else args.sample_id_pattern
+    if result["failures"]:
+        return emit(result, EXIT_REFUSED)
 
     version = template_version(workspace)
     model = ws.history_model(workspace, args.model)
@@ -682,7 +837,7 @@ def cmd_finalize(args, workspace):
             continue
 
         kind = ws.input_kind(aid)
-        units, layout, problems = derive_units(names, args.sample_id_pattern, kind)
+        units, layout, problems = derive_units(names, patterns[aid], kind)
         if problems:
             result["failures"].append("%s: %d linked entr%s do not match the convention"
                                       % (aid, len(problems),
@@ -856,6 +1011,9 @@ def main(argv=None):
     l.add_argument("--assay", required=True)
     l.add_argument("--source", required=True)
     l.add_argument("--force", action="store_true", help="re-link a populated raw/ (never routine)")
+    l.add_argument("--sample-id-pattern", default=None,
+                   help="the pattern this assay's inspect used; recorded beside raw/ for "
+                        "finalize (0314)")
 
     f = sub.add_parser("finalize", help="metadata, placeholders, exit gate")
     f.add_argument("--project", required=True)
@@ -865,7 +1023,9 @@ def main(argv=None):
     f.add_argument("--permitted-backends", default=None)
     f.add_argument("--expiry", default=None)
     f.add_argument("--date", default=None, help="creation date; defaults to today")
-    f.add_argument("--sample-id-pattern", default=None)
+    f.add_argument("--sample-id-pattern", default=None,
+                   help="only for an assay linked before 0314; any other assay uses the "
+                        "pattern its link recorded, and a different value is refused")
     f.add_argument("--model", default=None,
                    help="ignored, kept so the pinned registry still validates: the model comes from the harness's session start (decision 0303); `none` alone is honoured, for a scripted run with no model-mediated step")
     f.add_argument("--integrity", choices=("full", "quick", "skip"), default="quick",

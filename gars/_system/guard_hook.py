@@ -87,6 +87,7 @@ READ_ONLY = [
     "projects/*/.STATUS.lock",
     "projects/*/STATUS",  # R-151: only code writes lifecycle state (the owner, 13A).
     "projects/*/00_data/*/files.csv",
+    "projects/*/00_data/*/sample_id_pattern.txt",  # link's record of its pattern (0314)
     "projects/*/pilot/*",  # the pilot log and its sidecar: only pilot_log.py writes them (0141)
     "projects/*/00_data/dataset.tsv",
     "projects/*/01_samplesheets/*",
@@ -126,6 +127,9 @@ DATASET_ROW = "00_data/dataset.tsv"
 # then register through stage 00 (decision 0107). Machine-local; never committed.
 DECLARATIONS = "data_sources.tsv"
 DECLARATIONS_HEADER = ["source", "data_class", "declared_by"]
+# S00-class (decision 0321, hunk G1): an optional fourth column says whether the folder is test
+# data or data for an analysis; finalize reads it, and a row of three cells stays valid.
+DECLARATIONS_USE, DECLARED_USES = "use", ("", "test", "analysis")
 OPEN_IN_CLOSED_EXACT = (DATASET_ROW,)
 OPEN_IN_CLOSED_BASENAME = ("STATUS",)
 CLOSED_PROJECT_DOORS = ("resolve_artifact", "rnaseq_de.check", "rnaseq_de.prepare", "rnaseq_de.collect", "rnaseq_de.summary", "executor.submit", "executor.status", "pilot_log.begin", "pilot_log.end", "pilot_log.abort", "pilot_log.check")  # row 13, dispatcher spelling only, output filtered (0141)
@@ -145,6 +149,16 @@ INSPECT, LINK, FINALIZE = ("stage00_register.inspect", "stage00_register.link",
                            "stage00_register.finalize")
 CLOSED_WHY = ("Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; "
               "R-061/R-074; decision 0107).")
+# S00-class (decision 0321, hunk G2): a guarded agent's finalize registers public data only. Any
+# --data-class but exactly `public`, or none, is the person's, from stage 00's T5r.
+T5R_COMMAND = ("python3 _system/stage00_register.py finalize --project projects/<title> "
+               "--data-class <class> --purpose internal --agreement-ref <reference> "
+               "--expiry <YYYY-MM-DD>")
+# The one Next line of any --data-class refusal (decision 0321): it stands in for the
+# registry enum's generic alternative, never beside it.
+T5R_NEXT = ("Next: pass --data-class public if the data is public; otherwise send stage 00's "
+            "T5r: the person links, then registers data that is not public in their own "
+            "terminal, with `" + T5R_COMMAND + "`.")
 
 
 def workspace_root():
@@ -527,8 +541,9 @@ def declared_sources(root):
     lines = text.split("\n")
     if lines[-1] == "":
         lines.pop()
-    if not lines or lines[0].split("\t") != DECLARATIONS_HEADER:
-        return (), "the data_sources.tsv header is not source, data_class, declared_by"
+    header = lines[0].split("\t") if lines else None
+    if header not in (DECLARATIONS_HEADER, DECLARATIONS_HEADER + [DECLARATIONS_USE]):
+        return (), "the data_sources.tsv header is not source, data_class, declared_by[, use]"
     store = os.path.join(os.path.dirname(os.path.realpath(root)), ".gars-approvals")
     places = [os.path.join(root, d) for d in
               ("projects", "_system", "_references", "_templates", ".claude")] + [store]
@@ -541,9 +556,11 @@ def declared_sources(root):
     seen, found = [], []
     for line in lines[1:]:
         cells = line.split("\t")
-        if len(cells) != 3:
-            return (), "a data_sources.tsv row does not have three cells"
-        source, data_class, declared_by = cells
+        if len(cells) not in (3, len(header)):
+            return (), "a data_sources.tsv row does not have three cells, or four under use"
+        if len(cells) == 4 and cells[3] not in DECLARED_USES:
+            return (), "a declared use is not test, analysis or empty"
+        source, data_class, declared_by = cells[:3]
         if source.startswith("~") or SHELL_GLOB & set(source):
             return (), "a source holds ~ or a shell-glob character"
         if not os.path.isabs(source):
@@ -596,6 +613,8 @@ def registrable(project_dir):
         allowed.update([entry.replace("{assay}", a) for a in assays] if "{assay}" in entry
                        else [entry])
     raw_dirs = set("00_data/%s/raw" % a for a in assays)
+    # link records the pattern it read the folder with beside raw/ (decision 0314).
+    allowed.update("00_data/%s/sample_id_pattern.txt" % a for a in assays)
 
     def fail(exc):
         raise exc
@@ -702,6 +721,16 @@ def declared_registration(tool, args, root, bases, closed, sources):
     except OSError:
         return None
     return (project[0],)
+
+
+def restricted_classification(tool, args):
+    """G2 (decision 0321): the refusal for an agent's finalize whose --data-class is not exactly
+    `public` (no case folding, no stripping), or that gives none; else None."""
+    if tool.get("name") != FINALIZE or args.get("data-class") == "public":
+        return None
+    return ("Blocked: a guarded agent registers public data only; a --data-class other than "
+            "exactly public, or none, is the person's to supply (R-074; decisions 0107, 0321). "
+            + T5R_NEXT)
 
 
 def first_public_classification(tool, args, root, bases, closed, sources):
@@ -843,7 +872,8 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
     recursive = _recursive(name, [w for _, w in words])
     closed = closed_projects(root)
     sources, failed = declared_sources(root)
-    message = first_public_classification(tool, args, root, bases, closed, sources)
+    message = restricted_classification(tool, args) or \
+        first_public_classification(tool, args, root, bases, closed, sources)
     if message:
         deny(message)
     declared = declared_registration(tool, args, root, bases, closed, sources)
@@ -935,7 +965,13 @@ def check_bash(tool_input, root, cwd, depth=0):
         authorize(tool, args, 'producer', root, cwd or root)
         closed_bash_refusal(tool, args, tokens, root, cwd or root)
     except Refusal as exc:
-        deny("Blocked: " + json.dumps(exc.record(), sort_keys=True))
+        # G2 (decision 0321): only finalize takes --data-class; Public, PUBLIC or ' public'
+        # fall to the registry's enum before the rule above, and are told T5r all the same,
+        # in place of the enum's generic alternative so the refusal keeps one Next line.
+        record = exc.record()
+        if exc.field == "args.data-class":
+            record["alternative"] = T5R_NEXT
+        deny("Blocked: " + json.dumps(record, sort_keys=True))
 
 
 def guard_failed(exc):

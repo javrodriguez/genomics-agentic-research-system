@@ -33,13 +33,20 @@ This stage performs the steps in Process and nothing else.
   `configure.py` builds — the genome registry and the levels present in the design table. A path
   typed by hand can pair a FASTA with a mismatched annotation; a contrast typed by hand can name a
   level the design does not contain. Selection from a closed set makes both unreachable.
+- **Never edit `compute.mem` yourself to make a venue accept a run.** Step 3b's
+  `configure.py lower` fits it to the venue's own table and can only lower it; a run the venue
+  still refuses needs another venue, not a smaller number typed in (decision 0293).
 - **Never add a genome to `_references/genomes.md`** to satisfy a request. Registering a reference
   is a change to the workspace, verified separately; if the one the user wants is absent, say so
   and stop.
 - **Never accept a contrast the script marks `testable: false`.** A level with one sample cannot
   be tested, and running anyway produces a result that looks like an answer.
-- `de.formula` defaults to `~ condition`. It is a *presented* default: T9 shows it before anything
-  is written. Change it only to a formula the user gave you.
+- `de.formula` is chosen from `configure.py formulas`, built from the design's own columns;
+  `~ condition` (its first entry) is the presented default T9 shows. Never compose a formula
+  yourself: a formula the user types instead is passed as typed; `apply` refuses it when any
+  column it names is not estimable, writes it as the menu entry it equals, and otherwise writes
+  it with a `formula_warning` that T9 shows (decision 0315). Never offer one marked
+  `estimable: false`.
 
 ## Definitions
 
@@ -110,8 +117,13 @@ FASTQ rule. Local permits exactly public/fixture FASTQ inputs, at most 8 GiB
 of declared memory, and no declaration only for public/fixture.
 `resource_undeclared` names other absent local memory declarations;
 `resource_unparseable` names an invalid K/M/G/T declaration; `input_missing`
-names an unreadable policy input or a missing listed FASTQ. Samplesheet inputs
-use only fastq_1/fastq_2; analysis inputs are artifacts. The machine-owned
+names an unreadable policy input or a missing listed input. The FASTQ rule
+reads fastq_1/fastq_2; analysis inputs are artifacts. A memory refusal names
+the value the venue accepts; on this stage it is fixed by step 3b's
+`configure.py lower`, never by a hand edit of `compute.mem` (decision 0293).
+`venue_too_small` names a dataset whose summed inputs exceed the venue's byte
+budget: it needs a bigger venue (no venue has a budget until its host size is
+measured). The machine-owned
 homelab marker changes the local descriptor's venue without adding a backend.
 Group 11 records the prepare-time venue; submission records the executed venue.
 Login-node analysis records executor local and the pre-swap descriptor's venue.
@@ -144,13 +156,14 @@ config. Never work around a refusal.
    `<REQUIRED>`. Resolve them by menu, never by asking the user to type a path or a level name:
 
    The decisions are per-assay (`ASSAY_DECISIONS` in `_system/configure.py`): every assay
-   chooses a genome; an assay with a `de` block additionally chooses a contrast (and may give a
-   formula); an assay with a `peaks` block chooses a peak type; a `protocol` assay (scrnaseq)
+   chooses a genome; an assay with a `de` block additionally chooses a contrast and a formula, from
+   menus built from its design table; an assay with a `peaks` block chooses a peak type; a `protocol` assay (scrnaseq)
    chooses a library chemistry, from the menu filtered to the `aligner` its config names.
 
    ```bash
    python3 _system/configure.py genomes --assay <Assay ID>
    python3 _system/configure.py contrasts --project projects/<title> --assay <Assay ID>   # de assays
+   python3 _system/configure.py formulas --project projects/<title> --assay <Assay ID>    # de assays
    python3 _system/configure.py peaks                                                     # peaks assays
    python3 _system/configure.py protocols --aligner <the config's aligner>                # protocol assays
    ```
@@ -160,7 +173,7 @@ config. Never work around a refusal.
 
    ```bash
    python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> \
-       --genome <n> [--contrast <n>] [--formula "<theirs>"] [--peaks-type <n>] \
+       --genome <n> [--contrast <n> --formula <n>] [--peaks-type <n>] \
        [--protocol <n> --aligner <the config's aligner>] --dry-run
    ```
 
@@ -182,10 +195,29 @@ config. Never work around a refusal.
    a question to re-ask.
    On a non-public project the config is refused to a Read, so the skip rule cannot be tested,
    and neither the menus nor `apply` is a door. Reply T11 and wait. Yes (or the user saying the
-   config is done after T10) → continue to step 4: the sub-stage's own `check` still refuses a
+   config is done after T10) → continue to step 3b and then step 4: the sub-stage's own `check` still refuses a
    config left unfilled with `config_unfilled`, in the user's terminal or through the
    `rnaseq_de.check` door, whose output keeps `failures`. No → reply T10 naming this step, and
    stop.
+3b. **Fit the memory request to the venue** (decision 0293), whether or not 3a ran, and after
+   3a's write when it ran: a separate question, never merged into T9. `compute.mem` is
+   infrastructure; this step changes nothing else and decides no science.
+
+   ```bash
+   python3 _system/configure.py lower --project projects/<title> --assay <Assay ID> --dry-run
+   ```
+
+   `lowered: null` (the venue has no ceiling, or the request is within it) → continue to step 4
+   silently. A `lowered` object → Reply T12 and **wait**. On confirmation re-run without
+   `--dry-run`, append its `history_entry` to `HISTORY.md` verbatim (with `<ISO-8601 date>`
+   replaced by today's date), and continue to step 4. Declined → stop: nothing was written, and
+   the submit will refuse this request on this venue. Exit 1 with `needs_venue` → report its
+   `error` and `needs_venue` verbatim and stop: this venue refuses the run whatever its memory.
+   Any other non-zero exit → report its `error` and stop. Never edit `compute.mem` by hand
+   instead.
+   On a non-public project neither the config nor `_config/executor.yaml` can be read, and
+   `lower` is not a door. Reply T13 and wait. Yes → continue to step 4. No → reply T10 naming
+   this step and its one command, and stop.
 4. Read the Sub-stages column for this assay from `_references/assay_stage_skill_map.md`.
 5. Read each sub-stage's STATUS file, treating a missing file as `NOT_STARTED`. Reply T2 with
    the full sub-stage status table, including VALIDATING, ARTIFACT_MISSING and STALE.
@@ -276,14 +308,15 @@ together, so they cannot be mismatched:
 
   01  GRCh38  Homo sapiens, Ensembl release 116   [indices cached: yes]
 
-<the assay's second decision menu>
+<the assay's decision menus>
 
-Reply with one genome number and one number from the second menu, e.g. `01, 02`.
+Reply with one genome number and one number from each further menu, e.g. `01, 02`.
 ```
 
 Render the genome block from `configure.py genomes --assay <Assay ID>` and the second block
-from this assay's decision menu — `contrasts` for a de assay (every ordered level pair with
-its meaning, plus the formula default), `peaks` for a peaks assay (narrow | broad with their
+from this assay's decision menus — `contrasts` and `formulas` for a de assay (every ordered
+level pair with its meaning; every formula the design's columns support, with its meaning, a
+formula marked `estimable: false` shown with its reason and never as a choice), `peaks` for a peaks assay (narrow | broad with their
 meanings), `protocols` for a protocol assay (each chemistry the config's aligner supports,
 with its meaning) — **all verbatim from their JSON**. Do not add a reference that is not in the
 registry, and do not offer a contrast the design does not support. A contrast marked
@@ -297,7 +330,8 @@ This is what I will write to _config/<Assay ID>.yaml:
     fasta:       <path>
     gtf:         <path>
     derived_dir: <path or "none — indices will be built, ~40 min and 43 GB">
-  <this assay's decision lines: de.formula + de.contrast, peaks.type, or protocol + aligner —
+  <this assay's decision lines: de.formula + de.contrast (and apply's formula_warning,
+   verbatim, when it printed one), peaks.type, or protocol + aligner —
    with meanings, and for a peaks assay the genome-derived macs_gsize and mito_name being set
    with it>
 
@@ -343,19 +377,26 @@ type, then run stage 02 again.
 **T10 — Non-public project**
 ```
 <title> is a non-public project (data_class <label>), so I cannot complete
-_config/<Assay ID>.yaml for it: the menus and apply read files the guard keeps out of a
+_config/<Assay ID>.yaml for it: the configure.py commands read files the guard keeps out of a
 hosted-model prompt (decision 0107), and no door covers them. Nothing was read or written.
 
-That step is yours. From the workspace root, run the menus and choose from them:
+That step is yours. From the workspace root, run the commands that step names.
+
+For step 3a, run the menus and choose from them:
 
   python3 _system/configure.py genomes --assay <Assay ID>
-  <this assay's decision menu: configure.py contrasts --project projects/<title> --assay <Assay ID> | configure.py peaks | configure.py protocols --aligner <the config's aligner>>
-  python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula "<yours>"] [--peaks-type <n>] [--protocol <n> --aligner <the config's aligner>] --dry-run
+  <this assay's decision menus: configure.py contrasts and configure.py formulas --project projects/<title> --assay <Assay ID> | configure.py peaks | configure.py protocols --aligner <the config's aligner>>
+  python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n> --formula <n>] [--peaks-type <n>] [--protocol <n> --aligner <the config's aligner>] --dry-run
 
 Read what it would write; when it is what you want, run the same apply line without --dry-run
 (it writes only what the dry run showed).
 
-Tell me when the config is done; I then continue to the sub-stage table, which reads only the
+For step 3b, run only this; it lowers compute.mem to what this venue accepts, or changes
+nothing, and if it prints a history_entry, append that to HISTORY.md:
+
+  python3 _system/configure.py lower --project projects/<title> --assay <Assay ID>
+
+Tell me when that step is done; I then continue to the sub-stage table, which reads only the
 STATUS files.
 ```
 
@@ -366,6 +407,27 @@ to see whether its decisions are made (decision 0107). If it is not complete, th
 own check refuses it.
 
 Have you completed _config/<Assay ID>.yaml with the configure.py menus and apply in your own terminal?
+```
+
+**T12 — Memory to lower**
+```
+This venue (<venue>) accepts at most <accepts_up_to> of memory per job, and
+_config/<Assay ID>.yaml asks for <from>. I will change one line:
+
+  compute.mem: <from>  ->  <to>
+
+Nothing else in the file changes, and no scientific setting is touched. Confirm to write it,
+or say no and I stop here: the submit refuses a request above <accepts_up_to> on this venue.
+```
+
+**T13 — Non-public memory request**
+```
+<title> is a non-public project (data_class <label>), so I cannot read _config/<Assay ID>.yaml
+or _config/executor.yaml to see whether this venue accepts its memory request (decision 0107).
+The command below lowers compute.mem to what this venue accepts, or changes nothing; it never
+raises it and touches nothing else. If it prints a history_entry, append that to HISTORY.md.
+
+Have you run python3 _system/configure.py lower --project projects/<title> --assay <Assay ID> in your own terminal?
 ```
 
 ## OUTPUT

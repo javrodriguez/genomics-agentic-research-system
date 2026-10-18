@@ -3,7 +3,7 @@
 ## Purpose
 Validate the experimental design the user completed in each assay's `samples.csv`, join it to
 that assay's `files.csv`, and emit a workflow-ready samplesheet and design table per assay.
-This stage writes no raw data; user-supplied declarations may be written to config; it is the gate between raw data registration
+This stage writes no raw data; declarations the user picks from a menu are written to config by `_system/configure.py declare`; it is the gate between raw data registration
 (stage 00) and processing (stage 02).
 
 **The computation is not yours.** `_system/stage01_samplesheet.py` performs every check and
@@ -23,6 +23,7 @@ its own, and report what it found. See
      `reference_release`, and optional `paired` declarations (see Definitions)
 - Reference (every run):
   - `_system/stage01_samplesheet.py` — the validator and emitter
+  - `_system/configure.py declare` — the declaration menus, and their writer (decision 0313)
 
 ## Scope Boundaries
 This stage performs the steps in Process and nothing else.
@@ -261,17 +262,19 @@ this stage is the user's: reply T10 and stop. Never work around a refusal.
 1. Activated when the user asks to prepare samplesheets or to proceed past stage 00. Reply T1.
 2. Resolve the project directory from the title and read its `00_data/dataset.tsv`. On a
    non-public project (Definitions) reply T10 and stop: every later step reads or writes a file
-   the guard refuses there. Otherwise read each assay config for the declarations above. For
-   each undeclared RNA strandedness or RNA/ATAC replication unit or reference
-   release, send T9 listing only missing keys and wait for the user's values. Write exactly
-   their supplied values into the existing `_config/<Assay ID>.yaml` path (0019), adding
-   missing top-level keys and preserving other settings. Never invent values or use
-   `configure.py apply` to supply these: its stage-02 menus do not write them. If the user
-   declares experimental pairing, record `paired: paired` (or explicit `unpaired`).
-   Whenever the agent writes unit_of_replication, reference_release or paired, append
-   a HISTORY.md entry quoting the user's answer verbatim and naming each key and value
-   using the declaration-line format in Definitions, one key per line. This applies
-   to T9 and unsolicited pairing declarations.
+   the guard refuses there. Otherwise, for each RNA/ATAC assay, run
+   `python3 _system/configure.py declare --project projects/<title> --assay <Assay ID>`; for
+   each key in its `undeclared` list, run the same command with `--key <key>` and send T9
+   with those menus, numbers and meanings as printed, then wait. On a reply giving a menu
+   number for each listed key, run
+   `python3 _system/configure.py declare --project projects/<title> --assay <Assay ID> --key <key> --select <n>`
+   once per key: it writes exactly that menu value into `_config/<Assay ID>.yaml` (0019),
+   keeping every other setting, and appends the HISTORY.md declaration line itself
+   (decision 0313). Any other reply, a value in the user's own words such as "the libraries
+   are dUTP" or a number not on the menu, gets T9 again with the same menus. A pairing the
+   user volunteers is answered the same way, with the `--key paired` menu. Never write a
+   declaration into the config or HISTORY.md yourself, never invent one, and never use
+   `configure.py apply` for these: its stage-02 menus do not write them.
    Reference paths and the genome menu remain stage 02's responsibility. Then validate.
 3. Run the validator, from the workspace root:
 
@@ -338,11 +341,13 @@ One standing exception, from `_references/contract_standard.md` ("the bounded vo
 **T9 — Missing declarations**
 ```
 Stage 01 needs your declarations in _config/<Assay ID>.yaml:
-<missing keys, with allowed values: strandedness auto/forward/reverse/unstranded;
-unit_of_replication sample/subject/cell_pseudobulk; reference_release nonblank release name>
 
-Provide each listed value and I will write it to the project config, append a HISTORY.md
-entry quoting your answer verbatim and naming each key and value, then validate.
+<for each undeclared key: the key, then one line per option of its configure.py declare menu>
+<key>
+<n>. <value> — <meaning>
+
+Reply with the number you choose for each key, as `<key> <n>`. The script writes each value
+to the project config and records it in HISTORY.md, then I validate.
 ```
 
 **T1 — Start**

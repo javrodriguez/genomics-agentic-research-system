@@ -7,7 +7,10 @@ and level names:
 
     genomes    the registered references            -> fills fasta + gtf + derived_dir together
     contrasts  the levels actually in the design     -> fills de.contrast, direction included
+    formulas   formulas from the design's own columns -> fills de.formula (apply --formula <n>)
     apply      validate the selections and write     -> prints the resulting file
+    declare    stage 01's declarations, as menus      -> writes one top-level key + HISTORY line
+    lower      fit compute.mem to the venue (0293)   -> lowers one line, never raises it
 
 `apply --dry-run` prints the would-be file and records its sha256 (`_config/.<assay>.dry_run.json`);
 `apply` without it writes only those exact bytes, so a write cannot carry a setting the user was
@@ -33,6 +36,7 @@ Exit codes: 0 ok / 1 refused or invalid / 3 usage.
 
 import argparse
 import csv
+import datetime
 import hashlib
 import json
 import os
@@ -165,6 +169,65 @@ def contrast_menu(rows, factor="condition"):
                 "testable": testable,
             })
     return levels, {k: len(v) for k, v in counts.items() if k}, pairs
+
+
+def column_estimability(rows, column, factor="condition"):
+    """None when `column` can be adjusted for beside `factor`, else the reason it cannot: blank
+    for any sample, one value for every sample, or nested in the factor (0315)."""
+    blank = [r["sample_id"] for r in rows if not r.get(column, "")]
+    if blank:
+        return "%s is blank for %s" % (column, ", ".join(blank))
+    values = {r.get(column, "") for r in rows}
+    if len(values) < 2:
+        return "%s has one value (%s) for every sample, so it adjusts for nothing" % (
+            column, ", ".join(sorted(values)))
+    levels = {}
+    for r in rows:
+        levels.setdefault(r.get(column, ""), set()).add(r.get(factor, ""))
+    if all(len(f) < 2 for f in levels.values()):
+        return ("every %s value occurs under one %s only, so %s cannot be separated from %s"
+                % (column, factor, column, factor))
+    return None
+
+
+def formula_menu(rows, assay, factor="condition"):
+    """The condition alone, then the condition adjusted for each other design column that varies
+    (R-formula, 0315). A column nested in the factor cannot be separated from it, so it is
+    shown `estimable: false` with the reason, never as a choice."""
+    fixed = set(ws.design_columns(assay)) | {factor}
+    menu = [{"formula": "~ %s" % factor, "meaning": "%s only" % factor, "terms": [factor],
+             "estimable": True}]
+    for column in [c for c in rows[0] if c not in fixed]:
+        values = [r.get(column, "") for r in rows]
+        if len({v for v in values if v}) < 2:
+            continue                    # one value (or none) adjusts for nothing
+        meaning = ("%s, paired by %s" if column == "subject" else "%s, adjusted for %s") % (
+            factor, column)
+        entry = {"formula": "~ %s + %s" % (column, factor), "meaning": meaning,
+                 "terms": [column, factor], "estimable": True}
+        reason = column_estimability(rows, column, factor)
+        if reason:
+            entry.update(estimable=False, reason=reason)
+        menu.append(entry)
+    for n, entry in enumerate(menu, start=1):
+        entry["n"] = "%02d" % n
+    return menu
+
+
+def cmd_formulas(args, workspace):
+    result = {"command": "formulas", "ok": False, "assay": args.assay, "factor": args.factor}
+    if ASSAY_DECISIONS.get(args.assay) != "de":
+        result["error"] = "assay %s has no de block, so no design formula" % args.assay
+        return emit(result, EXIT_USAGE)
+    rows, err = read_design(args.project, args.assay)
+    if err:
+        result["error"] = err
+        return emit(result, EXIT_USAGE)
+    result.update({"ok": True, "formulas": formula_menu(rows, args.assay, args.factor),
+                   "default_formula": DEFAULT_FORMULA,
+                   "other": "a formula typed instead is checked term by term and written with "
+                            "a warning that it was not chosen from this menu"})
+    return emit(result, EXIT_OK)
 
 
 # --- writing --------------------------------------------------------------------------------------
@@ -443,12 +506,42 @@ def cmd_apply(args, workspace):
                                   chosen["n_denominator"], MIN_SAMPLES_PER_LEVEL, args.assay))
             return emit(result, EXIT_REFUSED)
 
-        formula = args.formula or DEFAULT_FORMULA
+        # A menu number selects a formula built from the design (0315); anything else typed
+        # is checked term by term and carries a warning that it was not chosen.
+        formulas = formula_menu(design, args.assay, args.factor)
+        token = (args.formula or DEFAULT_FORMULA).strip()
+        typed = re.sub(r"\s+", "", token)
+        picked = next((f for f in formulas if token in (f["n"], f["n"].lstrip("0"))), None)
+        if picked is None:
+            # Typed as a menu entry shows it (spacing aside): that entry, with no warning.
+            picked = next((f for f in formulas
+                           if re.sub(r"\s+", "", f["formula"]) == typed), None)
+        if picked is not None and not picked["estimable"]:
+            result["error"] = "formula %s (%s) is not estimable: %s" % (
+                picked["n"], picked["formula"], picked["reason"])
+            result["formulas"] = formulas
+            return emit(result, EXIT_REFUSED)
+        if picked is None and re.fullmatch(r"[0-9]+", token):
+            # A mistyped menu number is answered with the menu, never written as the formula.
+            result["error"] = ("%r is not a number on the formula menu; reply with a menu number "
+                               "(1-%d)" % (token, len(formulas)))
+            result["formulas"] = formulas
+            return emit(result, EXIT_REFUSED)
+        formula = picked["formula"] if picked else token
         for term in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", formula):
             if term not in design[0]:
                 result["error"] = ("formula term %r is not a column of the design table (%s)"
                                    % (term, ", ".join(design[0])))
                 return emit(result, EXIT_REFUSED)
+            # Every column named, offered on the menu or not (one value, blanks, nesting).
+            reason = None if term == args.factor else column_estimability(design, term, args.factor)
+            if reason is not None:
+                result["error"] = "formula term %r is not estimable: %s" % (term, reason)
+                result["formulas"] = formulas
+                return emit(result, EXIT_REFUSED)
+        if args.formula is not None and picked is None:
+            result["formula_warning"] = ("formula %r was typed, not chosen from `configure.py "
+                                         "formulas`; T9 shows it as typed" % formula)
         updates += [("formula", '"%s"' % formula, "  "),
                     ("contrast", '"%s"' % chosen["spec"], "  ")]
         result.update({"contrast": chosen["spec"], "contrast_meaning": chosen["meaning"],
@@ -561,6 +654,235 @@ def cmd_apply(args, workspace):
     return emit(result, EXIT_OK)
 
 
+# --- stage 01's declarations: closed menus, written by this script (S01-declare, 0313) ----------
+
+# What each value means, in the order offered. The values are stage 01's own (CONFIG_RULES in
+# stage01_samplesheet.py), and a test keeps the two sets equal. A declaration the user volunteers
+# in their own words ("the libraries are dUTP") is answered with this menu, never written as typed:
+# a strandedness or replication unit that is merely wrong runs and gives a confident wrong answer.
+DECLARATION_MENUS = {
+    "strandedness": [
+        ("reverse", "read 1 is antisense to the transcript -- dUTP-based kits such as Illumina "
+                    "TruSeq Stranded and NEBNext Ultra II Directional"),
+        ("forward", "read 1 is sense to the transcript -- e.g. ligation-based kits"),
+        ("unstranded", "the strand is not kept -- e.g. TruSeq non-stranded"),
+        ("auto", "let nf-core infer it from the reads; an unstranded library then reads as a "
+                 "strandedness warning (pending D-24)"),
+    ],
+    "unit_of_replication": [
+        ("sample", "each sample is an independent biological replicate"),
+        ("subject", "samples from one donor, patient or model are not independent; the "
+                    "subject column is the unit (it must be filled)"),
+        ("cell_pseudobulk", "cells aggregated per sample into pseudobulk profiles"),
+    ],
+    "paired": [
+        ("paired", "the same subject appears in more than one condition (e.g. before and after) "
+                   "and the model pairs them"),
+        ("unpaired", "no subject appears in more than one condition"),
+    ],
+}
+#: The keys stage 01 checks, per assay, in the order T9 shows them.
+DECLARATION_KEYS = {
+    "rnaseq_bulk": ["strandedness", "unit_of_replication", "reference_release", "paired"],
+    "atacseq_bulk": ["unit_of_replication", "reference_release", "paired"],
+}
+#: `paired` may stay undeclared (no pairing); the others stop stage 01 until declared.
+OPTIONAL_DECLARATIONS = ("paired",)
+
+
+def declaration_menu(key, workspace):
+    """[(value, meaning)] for one key, or (None, error). The release comes from the registry."""
+    if key != "reference_release":
+        return DECLARATION_MENUS[key], None
+    rows, err = read_genomes(workspace)
+    if err:
+        return None, err
+    menu = []
+    for r in sorted(rows, key=lambda x: x["id"]):
+        release = r.get("annotation_release") or r["source"]
+        menu.append(("%s %s" % (r["id"], release) if release else r["id"],
+                     "%s %s, %s" % (r["species"], r["build"], r["source"])))
+    return menu, None
+
+
+def numbered(menu):
+    return [{"n": "%02d" % i, "value": v, "meaning": m} for i, (v, m) in enumerate(menu, start=1)]
+
+
+def declared_value(text, key):
+    """The last zero-indent `key:` scalar, as stage 01 reads it; '' when undeclared."""
+    found = None
+    for line in text.splitlines():
+        m = re.match(r"^%s:\s*(.*)$" % re.escape(key), line)
+        if m:
+            found = m.group(1)
+    value = (found or "").split("#", 1)[0].strip().strip("\"'")
+    if not value or value.lower() in ("null", "~") or value.startswith("<REQUIRED"):
+        return ""
+    return value
+
+
+def set_declaration(text, key, value):
+    """Every zero-indent `key:` line becomes `key: value`; a missing key is added after the
+    stage 01 block (the reference_release line), else at the end. Other lines are kept."""
+    line = "%s: %s" % (key, value)
+    pattern = re.compile(r"^%s:.*$" % re.escape(key), re.M)
+    if pattern.search(text):
+        return pattern.sub(lambda _: line, text)
+    anchor = re.search(r"^reference_release:.*$", text, re.M)
+    if anchor:
+        return text[:anchor.end()] + "\n" + line + text[anchor.end():]
+    return text + ("" if text.endswith("\n") or not text else "\n") + line + "\n"
+
+
+def cmd_declare(args, workspace):
+    result = {"command": "declare", "ok": False, "assay": args.assay}
+    keys = DECLARATION_KEYS.get(args.assay)
+    if keys is None:
+        result["error"] = ("stage 01 takes no declarations for assay %r; it does for %s"
+                           % (args.assay, ", ".join(sorted(DECLARATION_KEYS))))
+        return emit(result, EXIT_USAGE)
+    project = Path(args.project)
+    cfg = project / "_config" / ("%s.yaml" % args.assay)
+    if not cfg.is_file():
+        result["error"] = "no config at _config/%s.yaml; stage 00 seeds it at project creation" % args.assay
+        return emit(result, EXIT_USAGE)
+    text = cfg.read_text(encoding="utf-8")
+
+    if args.key is None:
+        if args.select is not None:
+            result["error"] = "--select needs --key: one declaration at a time"
+            return emit(result, EXIT_USAGE)
+        listed = [{"key": k, "value": declared_value(text, k),
+                   "optional": k in OPTIONAL_DECLARATIONS} for k in keys]
+        result.update({"ok": True, "keys": listed,
+                       "undeclared": [e["key"] for e in listed
+                                      if not e["value"] and not e["optional"]]})
+        return emit(result, EXIT_OK)
+
+    result["key"] = args.key
+    if args.key not in keys:
+        result["error"] = ("assay %s does not declare %s; its declarations: %s"
+                           % (args.assay, args.key, ", ".join(keys)))
+        return emit(result, EXIT_USAGE)
+    menu, err = declaration_menu(args.key, workspace)
+    if err:
+        result["error"] = err
+        return emit(result, EXIT_USAGE)
+    result["options"] = numbered(menu)
+    result["current"] = declared_value(text, args.key)
+    if args.select is None:
+        result["ok"] = True
+        return emit(result, EXIT_OK)
+
+    token = args.select.strip()
+    chosen = next((o for o in result["options"]
+                   if token in (o["n"], o["n"].lstrip("0"), o["value"])), None)
+    if chosen is None:
+        result["error"] = ("%r is not on the %s menu; reply with a menu number (1-%d). A value in "
+                           "other words is answered with this menu, never written as typed."
+                           % (args.select, args.key, len(result["options"])))
+        return emit(result, EXIT_REFUSED)
+
+    updated = set_declaration(text, args.key, chosen["value"])
+    entry = "%s %s %s: %s; chosen from the configure.py declare menu, option %s" % (
+        datetime.date.today().isoformat(), args.assay, args.key, chosen["value"], chosen["n"])
+    history = project / "HISTORY.md"
+    before = history.read_text(encoding="utf-8") if history.is_file() else ""
+    with ws.atomic_open(cfg, newline=None) as fh:
+        fh.write(updated)
+    with ws.atomic_open(history, newline=None) as fh:
+        fh.write(before + ("" if before.endswith("\n") or not before else "\n") + entry + "\n")
+    result.update({"ok": True, "value": chosen["value"], "meaning": chosen["meaning"],
+                   "selected": chosen["n"], "wrote": "_config/%s.yaml" % args.assay,
+                   "history_entry": entry})
+    return emit(result, EXIT_OK)
+
+
+def cmd_lower(args, workspace):
+    """Lower `compute.mem` to what the project's venue accepts (0293). Never raises it.
+
+    Infrastructure, not science: it reads and writes no reference, contrast, formula or other
+    decision, takes no value, and changes the one `compute.mem` line, every other byte kept. It
+    acts only on a venue with a memory ceiling in `venue_policy`, only on a request above it (or
+    one the submit could not parse), and not at all when that venue would refuse the run anyway.
+    """
+    import executorlib as ex
+    import venue_policy as policy
+    import wrapperlib as wl
+    result = {"command": "lower", "ok": False, "assay": args.assay}
+    if args.assay not in policy.ASSAY_IDS:
+        result["error"] = "unknown assay %r; known: %s" % (args.assay, ", ".join(policy.ASSAY_IDS))
+        return emit(result, EXIT_USAGE)
+    cfg = Path(args.project) / "_config" / ("%s.yaml" % args.assay)
+    if not cfg.is_file():
+        result["error"] = "no config at _config/%s.yaml; stage 00 seeds it at project creation" % args.assay
+        return emit(result, EXIT_USAGE)
+    try:
+        venue = ex.venue_of(ex.load(args.project))
+    except (OSError, UnicodeError):
+        # Unknown venue: the failure direction is "not lowered", never "raised".
+        result["error"] = "_config/executor.yaml cannot be read; nothing was lowered"
+        return emit(result, EXIT_REFUSED)
+    result["venue"] = venue
+    try:
+        with cfg.open(encoding="utf-8", newline="") as fh:
+            text = fh.read()
+        requested = wl.read_config(cfg).get("compute.mem")
+    except (OSError, UnicodeError):
+        result["error"] = "_config/%s.yaml cannot be read; nothing was lowered" % args.assay
+        return emit(result, EXIT_REFUSED)
+    new = policy.lowered_mem(venue, args.assay, requested)
+    if new is None:
+        result.update({"ok": True, "lowered": None})
+        return emit(result, EXIT_OK)
+    # Futile on a venue that refuses this dataset whatever its memory: say so, change nothing.
+    row = wl.dataset_record(args.project)
+    remaining = policy.check(row, venue, row.get("purpose"), policy.memory_bytes(new), [])
+    if remaining:
+        result["lowered"] = None
+        result["needs_venue"] = "; ".join(f["check"] + ": " + f["detail"] for f in remaining)
+        result["error"] = ("venue %s refuses this run whatever its memory, so compute.mem was not "
+                           "lowered; this dataset needs another venue" % venue)
+        return emit(result, EXIT_REFUSED)
+    lines = text.splitlines(True)
+    found, section = [], None
+    for number, line in enumerate(lines):
+        top = re.match(r"^([A-Za-z_][A-Za-z0-9_]*):", line)
+        if top:
+            section = top.group(1)
+        if re.match(r"^  mem:", line):
+            found.append((number, section))
+    if [s for _, s in found] != ["compute"]:
+        result["error"] = ("_config/%s.yaml must hold exactly one `  mem:` line, under compute:; "
+                           "nothing was lowered" % args.assay)
+        return emit(result, EXIT_REFUSED)
+    number = found[0][0]
+    body = lines[number].rstrip("\r\n")
+    comment = re.search(r"\s+#.*$", body)
+    lines[number] = ("  mem: " + new + (comment.group(0) if comment else "")
+                     + lines[number][len(body):])
+    old = requested
+    result["lowered"] = {"from": old, "to": new, "venue": venue,
+                         "accepts_up_to": policy.ACCEPTED_MEM[venue]}
+    if args.dry_run:
+        result.update({"ok": True, "dry_run": True})
+        return emit(result, EXIT_OK)
+    mode = os.stat(str(cfg)).st_mode & 0o7777
+    with ws.atomic_open(cfg, newline="", mode=mode) as fh:
+        fh.write("".join(lines))
+    version = ws.template_version(workspace)
+    result.update({"ok": True, "wrote": "_config/%s.yaml" % args.assay,
+                   "template_version": version,
+                   "history_entry": "\n".join([
+                       "## <ISO-8601 date> — 02_bioinformatics — compute.mem lowered", "",
+                       "Template version: %s" % version, "",
+                       "- **%s**: compute.mem %s -> %s; venue %s accepts up to %s. Nothing else "
+                       "in _config/%s.yaml changed." % (args.assay, old, new, venue,
+                                                        policy.ACCEPTED_MEM[venue], args.assay)])})
+    return emit(result, EXIT_OK)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--workspace", type=Path, default=None)
@@ -584,6 +906,11 @@ def main(argv=None):
     c.add_argument("--assay", required=True)
     c.add_argument("--factor", default="condition")
 
+    fm = sub.add_parser("formulas", help="design formulas built from the design's own columns")
+    fm.add_argument("--project", required=True)
+    fm.add_argument("--assay", required=True)
+    fm.add_argument("--factor", default="condition")
+
     a = sub.add_parser("apply", help="validate the selections and write the config")
     a.add_argument("--project", required=True)
     a.add_argument("--assay", required=True)
@@ -597,11 +924,26 @@ def main(argv=None):
                    help="menu number or factor,num,denom (assays with a de block)")
     a.add_argument("--peaks-type", default=None,
                    help="menu number, `narrow` or `broad` (assays with a peaks block)")
-    a.add_argument("--formula", default=None, help="default: %s" % DEFAULT_FORMULA)
+    a.add_argument("--formula", default=None,
+                   help="menu number from `formulas`, or a typed formula (written with a "
+                        "warning); default: %s" % DEFAULT_FORMULA)
     a.add_argument("--factor", default="condition")
     a.add_argument("--dry-run", action="store_true",
                    help="show the result and record it; the config is written only by a later "
                         "apply whose result equals it")
+
+    d = sub.add_parser("declare", help="stage 01's declarations as numbered menus; write one")
+    d.add_argument("--project", required=True)
+    d.add_argument("--assay", required=True)
+    d.add_argument("--key", default=None,
+                   choices=sorted({k for keys in DECLARATION_KEYS.values() for k in keys}),
+                   help="the declaration to show or write; omit to list them")
+    d.add_argument("--select", default=None, help="menu number of the value to write")
+
+    lw = sub.add_parser("lower", help="lower compute.mem to what this project's venue accepts")
+    lw.add_argument("--project", required=True)
+    lw.add_argument("--assay", required=True)
+    lw.add_argument("--dry-run", action="store_true", help="show the change without writing")
 
     args = ap.parse_args(argv)
     if not args.cmd:
@@ -609,8 +951,8 @@ def main(argv=None):
         return EXIT_USAGE
     workspace = args.workspace or ws.workspace_root(__file__)
     return {"genomes": cmd_genomes, "contrasts": cmd_contrasts, "peaks": cmd_peaks,
-            "protocols": cmd_protocols,
-            "apply": cmd_apply}[args.cmd](args, workspace)
+            "protocols": cmd_protocols, "declare": cmd_declare, "formulas": cmd_formulas,
+            "apply": cmd_apply, "lower": cmd_lower}[args.cmd](args, workspace)
 
 
 if __name__ == "__main__":

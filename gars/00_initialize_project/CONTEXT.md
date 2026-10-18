@@ -56,10 +56,18 @@ This stage performs the steps in Process and nothing else.
 ## Definitions
 
 Finalize requires `--data-class` (`public`, `deidentified_under_agreement`, or
-`identifiable`) and `--purpose` (`fixture`, `internal`, `pilot_internal`,
-`pilot_external`, or `commercial`). `--agreement-ref` defaults to `none`.
+`identifiable`) and a purpose: a new registration writes `fixture` (shown as test) or
+`internal` (shown as analysis), and nothing else: the folder's declaration in
+`data_sources.tsv` settles which when its `use` column says `test` or `analysis` for every
+linked file; otherwise T4c asks the person, and their word is passed as `--purpose`.
+`pilot_internal`, `pilot_external` and `commercial` are legacy: read and enforced exactly as
+before in a row that already carries one, never written by a new registration
+(`purpose_legacy`); a re-run of such a row is the person's own. `--agreement-ref` defaults to
+`none`, and `none` means no agreement is named, never that every use is allowed; record a
+reference only when the person names one unprompted, and never ask about terms of use.
 `data_class_required`, `purpose_required`, and `agreement_ref_required` refuse
-missing or unknown values. `dataset_classification_locked` refuses a re-finalize
+missing or unknown values; `purpose_disagrees` refuses a purpose the declaration contradicts
+(decision 0321). `dataset_classification_locked` refuses a re-finalize
 whose values differ from the existing machine-owned `00_data/dataset.tsv`.
 Re-finalize with the same values leaves that row unchanged, except that a
 row-6-only row gains the four route columns while retaining its existing field
@@ -101,7 +109,10 @@ given directory. Everything else is reported as excluded. The script never desce
 **Sample ID and sample-lane unit.** Sample IDs come from the Illumina bcl2fastq convention; a
 sample-lane unit is one `(sample_id, lane)` pair, the grain of `files.csv`. **Filenames matching
 no convention are refused, never guessed** — the script reports the ones it could not read, and
-only a pattern the *user* supplies via `--sample-id-pattern` resolves them.
+only a pattern the *user* supplies via `--sample-id-pattern` resolves them. Each assay keeps its
+own: `link` re-reads the folder with the pattern its `inspect` used and records it in
+`00_data/<Assay ID>/sample_id_pattern.txt`, and `finalize` derives that assay's names with that
+record alone, so one assay's pattern never reaches another (decision 0314).
 
 **Read pairing.** Wholly paired-end or wholly single-end. A mixed set is refused.
 
@@ -168,7 +179,7 @@ between each:
 | `create` | sanitize title, copy the stamp, make `raw/` dirs | T3b |
 | `inspect` | read-only scan of one source directory | T4a |
 | `link` | symlink one assay's raw files | T4b |
-| `finalize` | `files.csv`, `samples.csv`, placeholders, exit gate | T6, T9 |
+| `finalize` | `files.csv`, `samples.csv`, placeholders, exit gate | T4c, T6, T9 |
 
 **The script's exit codes.** These, and not your reading of its output, determine the branch:
 
@@ -176,7 +187,7 @@ between each:
 |---|---|---|
 | 0 | ok | continue |
 | 1 | failure; report and stop | T9 |
-| 2 | refused; its `template` field names the reply | T5 / T7 / T8 |
+| 2 | refused; its `template` field names the reply | T4c / T5 / T7 / T8 |
 | 3 | usage or precondition error | T9 |
 
 
@@ -237,6 +248,11 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
    python3 _system/stage00_register.py inspect --assay <Assay ID> --source <path>
    ```
 
+   If the user says this data is restricted, or the guard refuses this call because the folder
+   is not declared public in `data_sources.tsv`, the data is not declared public → reply T5r and stop.
+   Registering it is the person's, in their own terminal; never retry with another class, and
+   never supply a class, an agreement or an expiry yourself (decision 0321).
+
 10. Exit 2 → reply T5 with its `error`. Accept either a replacement path or `skip`. If the error
    names unmatched filenames, show them, ask the user how sample IDs should be read, and re-run
    `inspect` with `--sample-id-pattern '<their answer as a regex with named groups sample, read
@@ -251,6 +267,9 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
     python3 _system/stage00_register.py link --project projects/<title> --assay <Assay ID> --source <path>
     ```
 
+    If this assay's `inspect` at step 10 used `--sample-id-pattern`, add the same
+    `--sample-id-pattern '<that pattern>'` to `link`, and only for this assay; `link` refuses a
+    pattern that does not read the folder (exit 2 → step 10) and records the one it used.
     Never add `--force`. Exit 1 → report its `error` and stop; the raw directory is already
     populated and narrowing an existing project is not this stage's to do.
 13. Exit 0 → reply T4b with its `linked` count.
@@ -263,13 +282,25 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
     re-runnable: re-run it once in the foreground.
 
     ```bash
-    python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none
+    python3 _system/stage00_register.py finalize --project projects/<title> --data-class public --agreement-ref none
     ```
+
+    Pass `--data-class public` and nothing else: a guarded agent registers public data only,
+    and the guard refuses any other class, or none, naming T5r's command (decision 0321).
+
+    Exit 2 with `template: T4c` → nothing was written: the folder's declaration in
+    `data_sources.tsv` does not say whether this is test data or data for an analysis. Reply
+    T4c and wait. On `test` → re-run it with `--purpose fixture`; on `analysis` → with
+    `--purpose internal`; any other reply → send T4c again and wait, never reading it as
+    either word. Pass `--purpose` only so; when the declaration settles it, finalize records
+    that (decision 0321).
 
     Never pass `--model`: the model is part of the toolchain, so `HISTORY.md` records it beside
     the template version, and the script takes it from what your harness reported at session
     start, or records `unknown`, which is honest; a self-reported id is not (decision 0303).
-    Add the same `--sample-id-pattern` if one was used at step 9. This writes `files.csv` and
+    Never pass `--sample-id-pattern` to finalize: it reads each assay's pattern from the
+    `sample_id_pattern.txt` its link recorded, and refuses a flag that disagrees with one
+    (decision 0314). This writes `files.csv` and
     `samples.csv`, substitutes the stamp's placeholders, and runs the exit gate. It is
     deterministic and re-runnable: on unchanged inputs it reproduces the four files byte for
     byte, so a killed run costs only time.
@@ -279,7 +310,7 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
 16. Exit 1 or 3 → reply T9 listing every entry of its `failures` array. Do not claim completion,
     do not repair anything, and do not delete what was created — the user decides whether to fix
     or discard.
-17. Exit 0 → reply T6 using its `assays` map and `template_version`.
+17. Exit 0 → reply T6 using its `assays` map, `template_version` and its `data` line.
 
 ## Response Format
 Every message you send in this stage is one of the templates below, with placeholders filled.
@@ -351,6 +382,17 @@ Linked <n> files into 00_data/<Assay ID>/raw/. Broken links: <n>.
 <next prompt, or proceed to T6 if this was the last assay>
 ```
 
+**T4c — Test or analysis**
+
+Sent only when finalize answers `template: T4c`, once per reply, until the reply is one of the
+two words.
+```
+Data: <each Source path of this project>
+
+Is this test data, for trying GARS out, or data for an analysis whose results will be used?
+Reply `test` or `analysis`.
+```
+
 **T5 — Path rejected**
 ```
 Path: <path>
@@ -362,6 +404,27 @@ Nothing was created or linked.
 Provide a different path for <Assay ID>, or reply `skip` to omit this assay.
 ```
 
+**T5r — Not declared public: the person registers it**
+
+Sent from step 9, and then nothing more for this project. Render one `Classes` line per row of
+`_references/data_policy.tsv` other than `public`: its `data_class` and its `permitted_backends`
+(`none` for no route).
+```
+Path: <path>
+This folder is not declared public, so I do not read or register its data.
+
+To register it, run these in your own terminal, in this workspace (skip the link if
+00_data/<Assay ID>/raw/ already holds the files):
+
+  python3 _system/stage00_register.py link --project projects/<title> --assay <Assay ID> --source <path>
+  python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose internal --agreement-ref <reference> --expiry <YYYY-MM-DD>
+
+Classes, from _references/data_policy.tsv:
+  <data_class>: <permitted_backends>
+
+If the data is in fact public, declare its folder in data_sources.tsv and send me the path again.
+```
+
 **T6 — Stage complete**
 ```
 Stage 00 complete. Project <title> initialized at projects/<title>/.
@@ -371,6 +434,7 @@ Stage 00 complete. Project <title> initialized at projects/<title>/.
 | <Assay ID> | <n> | <n> | <path> |
 
 File integrity: <integrity.files_checked> files checked, mode <integrity.mode>.
+<data>
 
 Written: CONTEXT.md, HISTORY.md, and per assay files.csv + samples.csv.
 

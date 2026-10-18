@@ -114,8 +114,78 @@ MUTANTS = {
         STAGE03: (('\n   On a non-public project `create` is not a door: reply T7 and stop.', ''),)},
 }
 
+STAGE02 = '02_bioinformatics/CONTEXT.md'
+LOWER = 'configure.py lower --project projects/<title> --assay <Assay ID>'
+
+
+def memory_step_problems(read):
+    """T57 (0293): stage 02 fits compute.mem to the venue in its own step 3b, with its own
+    confirmation T12 that names only that line, and on a non-public project its own question
+    T13 naming only `lower` (REVIEW-4d631ae finding 4); the preflight names the remedy."""
+    problems = []
+    text = read(STAGE02)
+    found, blocks = steps(text), templates(text)
+    step = found.get('3b', '')
+    public, _, closed = step.partition('On a non-public project')
+    if not step:
+        return ['no step 3b']
+    if LOWER + ' --dry-run' not in public:
+        problems.append('3b does not dry-run lower first')
+    if not re.search(r'Reply T12 and \*\*wait', public):
+        problems.append('3b does not wait on T12')
+    if 'history_entry' not in public or 'HISTORY.md' not in public:
+        problems.append('3b does not append the history_entry')
+    if not re.search(r'lowered: null[^.]*step 4', public):
+        problems.append('3b does not pass a null lowering to step 4')
+    if 'needs_venue' not in public:
+        problems.append('3b does not stop on needs_venue')
+    t12 = blocks.get('T12', '')
+    if 'compute.mem' not in t12:
+        problems.append('T12 does not name compute.mem')
+    for word in ('reference:', 'fasta', 'contrast:', 'formula:', 'peaks', 'apply'):
+        if word in t12:
+            problems.append('T12 renders a decision line: %s' % word)
+    t13 = blocks.get('T13', '')
+    if not closed or 'Reply T13 and wait' not in closed:
+        problems.append('3b does not ask T13 on a non-public project')
+    if not t13.strip().endswith('?') or LOWER not in t13 or 'apply' in t13:
+        problems.append('T13 is not one question naming only lower')
+    if LOWER in blocks.get('T11', '') or re.search(r'\bT11\b', closed):
+        problems.append('T13 is merged into T11')
+    if not re.search(r'[Yy]es[^.]*step 4', closed) or not re.search(r'[Nn]o[^.]*T10', closed):
+        problems.append('3b non-public branch does not route yes to step 4 and no to T10')
+    if LOWER not in blocks.get('T10', ''):
+        problems.append('T10 does not name lower for step 3b')
+    closed3a = found.get('3a', '')[found.get('3a', '').find('On a non-public project'):]
+    if not re.search(r'[Yy]es[^.]*step 3b', closed3a):
+        problems.append('3a non-public yes skips step 3b')
+    preflight = text[text.find('**Venue preflight'):text.find('**Non-public project')]
+    for word in ('configure.py lower', 'venue_too_small', 'never by a hand edit'):
+        if word not in preflight:
+            problems.append('preflight does not name %s' % word)
+    if 'venue_too_small' not in read(STAGE03):
+        problems.append('stage 03 vocabulary does not name venue_too_small')
+    return problems
+
+
+MEMORY_MUTANTS = {
+    'T12 wait dropped': {STAGE02: (('Reply T12 and **wait**', 'Reply T12'),)},
+    'decision line in T12': {STAGE02: (('  compute.mem: <from>  ->  <to>\n',
+                                        '  compute.mem: <from>  ->  <to>\n  reference: <genome id>\n'),)},
+    'T13 names apply': {STAGE02: (('Have you run python3 _system/' + LOWER,
+                                   'Have you run python3 _system/configure.py apply and python3 _system/' + LOWER),)},
+    'T13 merged back into T11': {STAGE02: (('Reply T13 and wait', 'Reply T11 and wait'),)},
+    'lower without a dry run first': {STAGE02: ((LOWER + ' --dry-run\n', LOWER + '\n'),)},
+}
+
 
 class ClosedProjectContractTests(unittest.TestCase):
+    def test_stage02_fits_memory_in_its_own_step_and_confirmation(self):
+        self.assertEqual(memory_step_problems(contract), [])
+        for name, edits in sorted(MEMORY_MUTANTS.items()):
+            with self.subTest(mutant=name):
+                self.assertNotEqual(memory_step_problems(mutant(edits)), [], name)
+
     def test_every_refused_read_names_a_door_or_the_users_message(self):
         self.assertEqual(len(SUBSTAGES), 10)
         seen, silent = silent_steps(contract)

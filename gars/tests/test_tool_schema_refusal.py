@@ -33,6 +33,26 @@ class ToolSchemaRefusalTests(unittest.TestCase):
         with self.assertRaises(policy.Refusal):
             policy.parse_argv(['python3','_system/stage00_register.py','assays','--unknown'])
 
+    def test_configure_lower_takes_no_value(self):
+        """0293, R6: the agent may run `configure.py lower`, whose only arguments are the project,
+        the assay and --dry-run; no argument names a value, a venue or a decision."""
+        tool = policy.named('configure.lower')
+        self.assertEqual(tool['argv'], ['python3', '_system/configure.py', 'lower'])
+        self.assertEqual(set(tool['input_schema']['properties']), {'project', 'assay', 'dry-run'})
+        self.assertEqual(tool['input_schema']['required'], ['project', 'assay'])
+        self.assertEqual(tool['input_schema']['properties']['assay']['enum'],
+                         policy.named('configure.apply')['input_schema']['properties']['assay']['enum'])
+        self.assertEqual(tool['roles'], policy.named('configure.apply')['roles'])
+        policy.validate_args(tool, {'project': 'projects/p', 'assay': 'spatialvi', 'dry-run': True})
+        for extra in ({'mem': '4G'}, {'venue': 'local'}, {'genome': 'GRCh38'}, {'formula': '~ x'}):
+            with self.subTest(extra=extra), self.assertRaises(policy.Refusal):
+                policy.validate_args(tool, dict({'project': 'projects/p', 'assay': 'rnaseq_bulk'}, **extra))
+        base = ['python3', '_system/configure.py', 'lower', '--project', 'projects/p', '--assay', 'rnaseq_bulk']
+        self.assertEqual(policy.parse_argv(base + ['--dry-run'])[0]['name'], 'configure.lower')
+        for extra in (['--mem', '4G'], ['--venue', 'local'], ['--genome', 'GRCh38']):
+            with self.subTest(extra=extra), self.assertRaises(policy.Refusal):
+                policy.parse_argv(base + extra)
+
     def test_registry_complete_metadata(self):
         expected = {'name','description','input_schema','output_schema','roles',
                     'timeout_seconds','side_effects','network_required','version'}
