@@ -221,6 +221,25 @@ def walk_login_path(account: str = WALK_ACCOUNT):
     return path
 
 
+# Round 17 B2 (plan codex2-signin-road section 1): the Codex walks' lease is the box's record of it,
+# run_take.LEASE_SOURCES (Javier's Codex2 login), never typed here; place_lease reads it behind the closed gate.
+LEASE_ACCOUNT = "codex2"
+
+
+def lease_source_path(account: str = LEASE_ACCOUNT):
+    """The Codex lease source as the box records it (run_take.LEASE_SOURCES[account]), or Missing while this tree's
+    run_take has no such record. Only the path: place_lease checks the file."""
+    from box import run_take as rt
+    sources = getattr(rt, "LEASE_SOURCES", None)
+    if not isinstance(sources, dict) or account not in sources:
+        return Missing(f"the Codex lease source: box/run_take.py records no LEASE_SOURCES[{account!r}] on this tree; "
+                       f"run_take.CODEX_SUBSCRIPTION_READY stays closed until Javier's Codex2 login (a Codex row only)")
+    path = sources[account]
+    if not isinstance(path, str) or not os.path.isabs(path):
+        raise BuilderRefused(f"run_take.LEASE_SOURCES[{account!r}] is not an absolute path: {path!r}")
+    return path
+
+
 # ------------------------------------------------------------------------------------------------ the account record
 # Round 10 ruling 1 (glitch-b5, 17 Oct 2026; the T4 plan's section 1a, account-email): the addresses a vendor take's
 # scan sweeps are the box's own record of them, ACCOUNT_EMAILS in the private folder that holds
@@ -1113,8 +1132,7 @@ def production_builders() -> dict:
         "hosts": dict(proxy_conf.HOSTS),
         "login_path": walk_login_path(),
         "gemini_login_path": walk_login_path(GEMINI_WALK_ACCOUNT),
-        "lease_path": Missing("the Codex lease source: Javier's Codex2 login, registered by the box lane; until then "
-                              "run_take.CODEX_SUBSCRIPTION_READY stays closed (a Codex row only)"),
+        "lease_path": lease_source_path(),
         "agent_version": versions if any(not isinstance(v, Missing) for v in versions.values.values()) else
         Missing("the agent version: no harness's pin is one measured version in both prereg and routing: " +
                 "; ".join(v.why for v in versions.values.values())),

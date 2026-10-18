@@ -274,6 +274,12 @@ CLAUDE_SETTINGS_FLAG = "--settings"
 # the same two scripts.
 WALK_LOGIN_FILES = {"claude1": "/home/javier/gap4-secrets/claude1/claude-walk-token",
                     "r4-g": "/home/javier/gap4-secrets/r4-g/gemini-walk-login"}
+# The Codex lease source (lane vendor-admission round 17 B2; plan codex2-signin-road section 1): account alias codex2,
+# Javier's Codex2 ChatGPT login, the auth.json Codex writes under CODEX_HOME when cli_auth_credentials_store is "file",
+# in its own mode-700 account folder beside WALK_LOGIN_FILES' (so walk_builders.account_emails_path still finds one
+# private folder). Never a WALK_LOGIN_FILES entry: that map holds one-line NAME=value files read by read_login. Read only
+# by place_lease, behind codex_lease_gate; the value is never read by any session.
+LEASE_SOURCES = {"codex2": "/home/javier/gap4-secrets/codex2/auth.json"}
 
 # The bypass acceptance: RULED not required in -p (glitch-06, 14 Oct 2026, on the docs read in Addendum E of
 # gap4-codex-rollout-audit-20261014/codex-0.162.1-rollout-audit.md). The study sends NO bypass acceptance key.
