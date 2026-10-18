@@ -37,7 +37,7 @@ Lane `gars-t74`'s runs 10-16 (the next fixes of the step map's fix list, after G
 **Same-model cost.** Producers and reviewers are Claude Code sessions; a same-model reviewer shares the producer's blind spots more than a different model would (the 0009/0013/0014 precedent).
 The reviews were kept independent by fresh contexts, separate checkouts and no access to the producer's transcript.
 
-The landed commits, red first, re-created from the lane's commits after the GARS fixes 1-9 landing, each with its tree change, message, author, committer and dates kept, and named here by its re-created id (the lane's own working files under `lanes/` do not land):
+The landed commits, red first, re-created from the lane's commits after the GARS fixes 1-9 landing, each with its tree change, message, author, committer and dates kept, except that a commit that moves the suite total carries it in the new base's suite-total sentences of README.md and DEVELOPMENT.md, and a commit that adds an index row adds it at its place in the new base's generated decision index `docs/decisions/CONTEXT.md` (the row's text unchanged), and named here by its re-created id (the lane's own working files under `lanes/` do not land):
 
 - Run 10, S03-assay (0312): red `aeb9119c`, fix `04c8a5eb`, contract and record `6eb96267`; stage 03 lists every assay's results, and approve refuses an input that names no assay or one the project lacks.
 - Run 10, S01-declare (0313): red `1cdc7091`, fix `14693a93`, contract and record `33f71e8e`; `configure.py declare` asks stage 01's declarations as numbered menus and writes them.
@@ -87,7 +87,19 @@ With T57, the suite totals move from 1507 to 1603 tests.
 
 ## Test
 
-- The landing's own checks (the merge, the full suite, the outgoing range's scans, the smoke delta and the trailer audit) are recorded in the landing's evidence commit, the merge's child.
+- The landing's own checks, on 18 October 2026, for T57 and lane gars-t74's runs 10-16 together (one merge carries both, and [0294](0294-ms21-t57-approval.md) points here), recorded in the landing's evidence commit, the merge's child:
+
+Glitch verified the landing merge `ae35f2c7ce685911ad99681dcb280f092117d959` (first parent public main `d0b42319`, second parent the build branch's head `44884b96`), a true merge.
+The build branch is lane gars-t74's 38 build and record commits since its run 9 head, its merge of T57 and lane gars-ms21's 10 T57 commits, re-created as named above and in 0294, then the nine commits applied at the landing, the approval records and the suite-total sentences.
+
+- Full suite at the merge itself on a separate test machine (Linux): run `gars-combined-land-ae35f2c-20261018T121440Z`, `PASS kind=gars commit=ae35f2c7ce68 state=done rc=0 ran=1603 passed=1521 failures=0 errors=0 skipped=82`.
+- At the merge: `tests/check_counts.py` is clean, `tests/check_contracts.py` has 14 contracts clean, `test_decision_links_resolve` passes (647 of 647 citations resolve), `build_refusal_corpus --check` passes (its decision pin: 1999 refused, 607 allowed) and `gars/tests/test_protected_paths.py` passes; the README's skip bar (fresh-clone.yml's own gate script, run on that run's log against the merge's README) prints `ok: 82 skips, at most 124 documented` and exits 0.
+- The outgoing range `d0b42319..ae35f2c7` (61 commits): no gitleaks finding under either ruleset (gitleaks 8.30.0, its default rules and the build machine's push rules, 59 non-merge commits); no home path, user name, private e-mail address or internal machine or project name appears in any added line (4088 read) or message, beyond the coordinating session's name and the plan's name, which are already public; the identities are `Claude <noreply@anthropic.com>` (49) and the owner's GitHub noreply address (12).
+- The smoke delta (row 14's ceremony), with the build Mac booked exclusively for it (a timed booking from 08:39:46 to 08:42:00 EDT, in the machine scheduler's log): one run of three `claude-opus-5-5` sessions at the merge's tree (18 October 2026, 08:40-08:42 EDT), prompt and suite hashes equal to the previous record's (`prompt_sha256` `cf32c619…`, `suite_sha256` `ea2f1cde…`); run-1 3/3; `delta` `0/1`, `no change` against `evals/runs/smoke/smoke-20261017-t74-fixes.json`, floor `0/1` from `evals/runs/smoke/smoke-20260926-row-14-activation.json`; the evaluator found nothing (15 outputs hashed, 15 tasks regraded).
+  An earlier attempt under this run id, at 08:39 EDT, ran no model turn and was not scored: the driver refused all three sessions before any started (its source checkout was in the wrong place).
+- A fresh-context review of the landing merge (Claude Code, Opus 5.5, read-only on the landing worktree, never shown the producer's transcript; threat model: the landing carries more than the reviewed lane and landing commits, a cited fact is false, a private value leaks, or the merge differs from its rehearsal or has the wrong shape; it did not re-run the full suite): PASS (no MAJOR or MINOR, two NIT), review_sha256 `adcfdec8fd8d9074f17d08363d131920215d4b9ea1035dd69bc0dc8a72c3d97c`.
+  Its NIT 1 (this record said each re-created commit kept its tree change, where the merge's message names the suite-total and decision-index exception) is folded in this evidence commit; its NIT 2 (a lane record names the private plan's milestone) is not folded, because that word is already public and lane records land verbatim.
+- `python3 gars/_system/hooks/audit_trailers.py`, from the landing worktree's root at this records commit: `verified ae35f2c7ce685911ad99681dcb280f092117d959 (Bench previous: evals/runs/smoke/smoke-20261017-t74-fixes.json)` and `trailers audit: 18/18 _system first-parent commits since activation f3abe50 verified; graded 18 of 18 seen`, exit 0 (re-run after each amendment of this commit, with the same output).
 
 ## Status
 

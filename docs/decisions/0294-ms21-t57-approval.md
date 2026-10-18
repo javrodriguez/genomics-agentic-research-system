@@ -80,7 +80,7 @@ T57 adds 19 tests to the suite; the combined landing's totals are in 0322.
 
 ## Test
 
-- The landing's own checks (the merge, the full suite, the outgoing range's scans, the smoke delta and the trailer audit) are recorded in the landing's evidence commit, the merge's child.
+- The landing's own checks (the merge, the full suite, the outgoing range's scans, the smoke delta, the landing review and the trailer audit), for T57 and lane gars-t74's runs 10-16 together, are recorded in [0322](0322-t74-runs-10-16-approval.md)'s Test section, in the landing's evidence commit.
 
 ## Status
 
