@@ -1986,6 +1986,8 @@ class B12Scanner(Case):
 ACCESS = "synthetic-lease-one-" + "a" * 12
 REFRESH = "synthetic-lease-two-" + "b" * 12
 REFRESHED = "synthetic-lease-three-" + "c" * 12
+# Round 17 B3: a take's uid map, TEST DATA in athena's measured shape (the agent, 10001, maps to host 110000).
+TAKE_UID_MAP = ((0, 1000, 1), (1, 100000, 65536))
 
 
 def lease_file(tmp: Path, access=ACCESS, refresh=REFRESH) -> Path:
@@ -1998,7 +2000,8 @@ def lease_file(tmp: Path, access=ACCESS, refresh=REFRESH) -> Path:
 
 def fake_place_lease(placed: list):
     """run_take.place_lease's contract: the source copied into the config folder as auth.json (mode 600, never over an
-    existing one), its path returned; refused (NotReady) while the gate is closed."""
+    existing one), its placement record returned (round 17 B3: the path, the folder's device and inode and the file's
+    read-back facts, unbound to any uid map); refused (NotReady) while the gate is closed."""
     def place(src, config_dir):
         if rt.__dict__.get("CODEX_SUBSCRIPTION_READY") is not True:
             raise rt.NotReady("synthetic: CODEX_SUBSCRIPTION_NOT_READY")
@@ -2007,7 +2010,9 @@ def fake_place_lease(placed: list):
         with os.fdopen(fd, "wb") as fh:
             fh.write(Path(src).read_bytes())
         placed.append((src, config_dir, dst))
-        return dst
+        st, cst = os.lstat(dst), os.lstat(config_dir)
+        return rt.LeasePlacement(path=dst, folder_dev=cst.st_dev, folder_ino=cst.st_ino, dev=st.st_dev, ino=st.st_ino,
+                                 mode=st.st_mode, nlink=st.st_nlink, uid=st.st_uid, size=st.st_size)
     return place
 
 
@@ -2182,10 +2187,13 @@ def _b13_secrets_problems(mod, tmp: Path) -> list:
     cfg = tmp / "cfg"
     cfg.mkdir(mode=0o700)
     specs = []
+    take, maps = types.SimpleNamespace(launched="synthetic"), []
+    # round 17 B3: the walk's uid map reader (production: run_time_readers' uid_map_of_pid), TEST DATA here
+    uid_map = lambda t: maps.append(t) or TAKE_UID_MAP  # noqa: E731
     builders = {"lease_path": src, "rules_scanner": lambda paths: [], "runtime": "rt", "config_parent": str(tmp),
                 "budgets": (600, 5, 1), "take_spec": lambda r, c, t: specs.append((r["arm"], c, t)) or "spec",
                 "sidecar_for": None, "proxy": None, "lock_path": None, "hosts": None, "cgroup_dir_for": lambda t: "",
-                "pin_for": None, "design_for": None, "uid_map": None, "clock": None, "sleep": None,
+                "pin_for": None, "design_for": None, "uid_map": uid_map, "clock": None, "sleep": None,
                 "ownership": None, "settings_guard": None, "machine_gate": None}
     row = {"walk": "w-0001", "arm": "O", "agent": {"harness": rt.CODEX, "version": "0.162.1"}}
     with lease_boundary(mod) as (placed, reads), \
@@ -2206,15 +2214,18 @@ def _b13_secrets_problems(mod, tmp: Path) -> list:
         login_for = got["driver"]["login_file"]       # review MINOR 1: the take's placed lease, never "-"
         if not callable(login_for) or getattr(login_for, "__self__", None) is not road:
             out.append(f"B13.secrets: the driver's login_file is {login_for!r}, not the lease road's per-take path")
-        for what, fn in (("the secrets", s_driver), ("the login file", lambda: login_for(None))):
+        for what, fn in (("the secrets", s_driver), ("the login file", lambda: login_for(take))):
             try:
                 fn()
                 out.append(f"B13.secrets: {what} read before any lease was placed")
             except mod.BuilderRefused:
                 pass
         spec = got["driver"]["spec_for"](row, str(cfg))
-        if callable(login_for) and login_for(None) != str(cfg / "auth.json"):
-            out.append(f"B13.secrets: the driver's login file after placement is {login_for(None)!r}")
+        lease = login_for(take) if callable(login_for) else None      # round 17 B3: the placement record, bound
+        if getattr(lease, "path", lease) != str(cfg / "auth.json") or getattr(lease, "uid_map", None) != TAKE_UID_MAP \
+                or maps[-1:] != [take]:
+            out.append(f"B13.secrets: the driver's login file after placement is {lease!r}, not the placement record "
+                       f"bound to the take's uid map")
         if spec != "spec" or specs != [("O", str(cfg), str(tmp / "tree"))]:
             out.append(f"B13.secrets: spec_for gave {spec!r} over {specs}")
         if placed != [(src, str(cfg), str(cfg / "auth.json"))] or reads != [str(cfg / "auth.json")]:
@@ -2234,6 +2245,23 @@ def _b13_secrets_problems(mod, tmp: Path) -> list:
             except mod.BuilderRefused as e:
                 if "gate is closed" not in str(e) or len(placed) != 1 or again.placed is not None:
                     out.append(f"B13.secrets: a closed gate reached place_lease or refused for another reason: {e}")
+
+        def refusing_map(t):
+            raise mod.BuilderRefused("synthetic: the uid map cannot be read")
+        for n, (label, road_) in enumerate((("a lease road with no uid map reader", mod.CodexLeaseRoad(src)),
+                                            ("a uid map reader that refuses",
+                                             mod.CodexLeaseRoad(src, uid_map=refusing_map)))):
+            c = tmp / f"cfg-b3-{n}"                   # round 17 B3: no uid map, no login file
+            c.mkdir(mode=0o700)
+            try:
+                road_.place(str(c))
+                road_.login_file_for(take)
+                out.append(f"B13.secrets: {label} gave a login file")
+            except mod.BuilderRefused as e:
+                if "uid map" not in str(e):
+                    out.append(f"B13.secrets: {label} refused for another reason: {e}")
+            except Exception as e:  # noqa: BLE001
+                out.append(f"B13.secrets: {label} raised {type(e).__name__}: {e}")
         os.chmod(cfg / "auth.json", 0o600)          # the refresh rule: the host rewrites auth.json between turns
         (cfg / "auth.json").write_text(json.dumps({"tokens": {"access_token": REFRESHED, "refresh_token": REFRESH}}))
         if road.refreshed() != [("token", ACCESS), ("token", REFRESH), ("token", REFRESHED)] + CODEX_EMAIL_PAIRS:

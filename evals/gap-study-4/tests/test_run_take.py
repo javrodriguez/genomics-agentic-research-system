@@ -12,10 +12,12 @@ from __future__ import annotations
 
 import ast
 import contextlib
+import dataclasses
 import json
 import hashlib
 import os
 import re
+import stat
 import subprocess
 import sys
 import tempfile
@@ -1954,7 +1956,11 @@ class TestLeasePlacement(MutantCase):
     def check(self):
         out = []
         src, cfg = self.src(), self.cfg()
-        dst = rt.place_lease(src, cfg)
+        placement = rt.place_lease(src, cfg)
+        # round 17 B3: place_lease returns its placement record, the read-back facts the host trusts after the grant
+        if not isinstance(placement, getattr(rt, "LeasePlacement", ())):
+            out.append(f"place_lease returned no placement record: {type(placement).__name__}")
+        dst = getattr(placement, "path", placement)
         if dst != os.path.join(cfg, "auth.json"):
             out.append(f"the lease was placed at {dst!r}, not the config folder's auth.json")
         else:
@@ -1964,6 +1970,14 @@ class TestLeasePlacement(MutantCase):
             if not same or not stat_reg(st) or (st.st_mode & 0o7777) != 0o600 or st.st_uid != os.getuid() \
                     or st.st_nlink != 1:
                 out.append("the placed lease is not the same bytes, a regular file, mode 600, ours, one link")
+            cst = os.lstat(cfg)
+            want = (dst, cst.st_dev, cst.st_ino, st.st_dev, st.st_ino, st.st_mode, st.st_nlink, st.st_uid, len(self.FAKE))
+            got = tuple(getattr(placement, k, None) for k in ("path", "folder_dev", "folder_ino", "dev", "ino", "mode",
+                                                               "nlink", "uid", "size"))
+            if got != want:
+                out.append(f"the placement record is not place_lease's read-back: {got} != {want}")
+            if getattr(placement, "uid_map", None) != ():
+                out.append("a fresh placement record is already bound to a uid map")
         # the source
         self.refused(out, "a relative source", "codex2-auth.json", self.cfg(), "absolute path")
         self.refused(out, "a missing source", os.path.join(tempfile.mkdtemp(prefix="w-"), "none.json"), self.cfg(),
@@ -2556,20 +2570,27 @@ class TestCodexExec(MutantCase):
     """glitch-06 (14 Oct 2026): run_take's Codex exec branch, behind the closed CODEX_SUBSCRIPTION_READY gate. A turn
     is the no-login launcher over the Codex row (CODEX_HOME the config mount, where place_lease put auth.json), running
     exactly the shapes the pinned 0.162.1 help shows for `codex exec` and `codex exec resume`, with the arm's pinned
-    model; anything else refuses. The lease file passed is checked in place, never read."""
+    model; anything else refuses. The lease passed is place_lease's placement record, bound to the take's uid map, its
+    folder checked in place after a TEST DATA grant (round 17 B3, host_view), never read."""
 
     MODEL = "gpt-6.1-sol"
     BYPASS = "--dangerously-bypass-approvals-and-sandbox"
 
-    def lease(self, mode=0o600, folder_mode=0o700, name="auth.json"):
-        d = tempfile.mkdtemp(prefix="w-")
-        os.chmod(d, folder_mode)
-        p = os.path.join(d, name)
-        fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        os.write(fd, b'{"tokens": {}}\n')
-        os.close(fd)
-        os.chmod(p, mode)
-        return p
+    def lease(self, mode=0o600, folder_mode=0o700, name="auth.json", parent=None):
+        """A TEST DATA lease placed by place_lease and bound to UID_MAP, its folder granted to the agent in
+        self.grants (host_view, at folder_mode); a mode or a name other than the placed ones is the record's (round 17
+        B3: after the grant the host reads the file's own facts from the placement record only)."""
+        cfg = rt.make_config_dir(parent or tempfile.mkdtemp(prefix="w-"))
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True):
+            placement = rt.place_lease(lease_src(), cfg)
+        self.grants[cfg] = (AGENT_HOST_UID, folder_mode)
+        lease = for_take(rt)(placement, UID_MAP)
+        if not isinstance(lease, getattr(rt, "LeasePlacement", ())):
+            return lease                               # before B3: the bare placed path
+        kw = {"path": os.path.join(cfg, name)} if name != "auth.json" else {}
+        if mode != 0o600:
+            kw["mode"] = stat.S_IFREG | mode
+        return dataclasses.replace(lease, **kw)
 
     def first(self, model=None):
         return ["codex", "exec", "--json", "-m", model or self.MODEL, self.BYPASS, "fix the failing check"]
@@ -2591,6 +2612,7 @@ class TestCodexExec(MutantCase):
 
     def check(self):
         out = []
+        self.grants = {}
         if tuple(rt.CODEX_MODELS) != ("gpt-6.1-sol", "gpt-6-luna"):
             out.append(f"CODEX_MODELS is {rt.CODEX_MODELS!r}")
         if tuple(rt.CODEX_HELP_COMMANDS) != ("resume", "fork", "review", "help"):
@@ -2616,7 +2638,7 @@ class TestCodexExec(MutantCase):
                         out.append(f"the closed gate refused with another message ({label}): {e}")
                 except Exception as e:  # noqa: BLE001
                     out.append(f"the closed gate let {label} through to {type(e).__name__}")
-        with mock.patch.dict(os.environ, {}, clear=True), filled(), \
+        with mock.patch.dict(os.environ, {}, clear=True), filled(), host_view(self.grants), \
                 mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True):
             for inner in (self.first(), self.first("gpt-6-luna"),
                           ["codex", "exec", "--json", "-m", self.MODEL, self.BYPASS, "resume",
@@ -2706,36 +2728,32 @@ class TestCodexExec(MutantCase):
                                      {"caller": dict(CALLER, CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_X="1")},
                                      "BROKERED_VALUE_X")):
                 self.refused(out, label, word=word, **kw)
-            # the lease, checked in place and never read
+            # the lease: its folder checked in place after the grant, its file's facts from the placement record
             run_tree = tempfile.mkdtemp(prefix="w-")
-            inside = os.path.join(run_tree, "cfg")
-            os.mkdir(inside, 0o700)
-            in_tree = os.path.join(inside, "auth.json")
-            fd = os.open(in_tree, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            os.close(fd)
             good = self.lease()
-            link = os.path.join(os.path.dirname(good), "link")
-            os.symlink(good, link)
-            two = self.lease()
-            os.link(two, two + ".2")
+            rec = isinstance(good, getattr(rt, "LeasePlacement", ()))
+            link = dataclasses.replace(good, mode=stat.S_IFLNK | 0o600) if rec else good
+            two = dataclasses.replace(good, nlink=2) if rec else good
             for label, lf, word, kw in (
                     ("a lease file of another name", self.lease(name="lease.json"), "auth.json", {}),
                     ("a lease at mode 644", self.lease(mode=0o644), "600", {}),
                     ("a lease folder at mode 755", self.lease(folder_mode=0o755), "700", {}),
-                    ("a link as the lease", link, "auth.json", {}),
+                    ("a link as the lease", link, "regular file", {}),
                     ("a lease with two links", two, "one link", {}),
-                    ("a lease inside the run tree", in_tree, "run tree", {"run_tree": run_tree})):
+                    ("a lease inside the run tree", self.lease(parent=run_tree), "run tree", {"run_tree": run_tree})):
                 self.refused(out, label, lf=lf, word=word, **kw)
+            other = self.lease()
             with mock.patch.object(rt.os, "getuid", lambda me=os.getuid(): me + 1):
-                self.refused(out, "a lease of another owner", lf=self.lease(), word="owned")
+                self.refused(out, "a lease of another owner", lf=other, word="owned")
             repo = tempfile.mkdtemp(prefix="w-")
             os.mkdir(os.path.join(repo, ".git"))
             in_repo = os.path.join(repo, "cfg")
             os.mkdir(in_repo, 0o700)
-            fd = os.open(os.path.join(in_repo, "auth.json"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            os.close(fd)
-            self.refused(out, "a lease inside a repository", lf=os.path.join(in_repo, "auth.json"),
-                         word="repository")
+            self.grants[in_repo] = (AGENT_HOST_UID, 0o700)
+            ist = os.lstat(in_repo)
+            in_repo_lease = dataclasses.replace(good, path=os.path.join(in_repo, "auth.json"), folder_dev=ist.st_dev,
+                                                folder_ino=ist.st_ino, dev=ist.st_dev) if rec else good
+            self.refused(out, "a lease inside a repository", lf=in_repo_lease, word="repository")
             with mock.patch.object(rt, "read_login", side_effect=AssertionError("read")), \
                     mock.patch("builtins.open", side_effect=AssertionError("a file was opened")):
                 try:
@@ -2746,6 +2764,220 @@ class TestCodexExec(MutantCase):
 
     def test_codex_exec(self):
         self.assertEqual(problems_of(self.check), [])
+
+
+# ------------------------------------------- the placed lease after the grant (lane vendor-admission round 17, B3)
+# glitch-b5's ruling (a), Sun 18 Oct 2026: after the grant the config folder is mode 700 and owned by the agent's mapped
+# host uid, so the host user cannot stat anything inside it (measured on athena: lane-reports/live-box-2026-10-13.md,
+# postflight reads "unreadable: ."). The host checks only what it can read: the folder by lstat (the folder
+# place_lease wrote into, by device and inode; never a link; mode 700; owned by the agent's host uid, derived from the
+# take's uid map) and the path (exactly that folder's auth.json). The file's own facts are place_lease's read-back,
+# carried in its placement record; a missing or mismatched record refuses.
+AGENT_HOST_UID = 110000          # TEST DATA: container uid 10001 through UID_MAP, athena's measured shape
+
+
+@contextlib.contextmanager
+def host_view(grants: dict):
+    """A TEST DATA grant as the host user sees it: for each folder in `grants` ({folder: (owner, mode)}, read live),
+    its lstat shows that owner and mode, and every path beneath it raises PermissionError on lstat and open, so
+    nothing inside can be stat'd or read host-side. Every other path is the real one."""
+    real_lstat, real_open = os.lstat, os.open
+
+    def under(p):
+        p = os.path.normpath(os.fspath(p))
+        return next((f for f in list(grants) if p.startswith(f + os.sep)), None)
+
+    def lstat(p, *a, **k):
+        if under(p):
+            raise PermissionError(13, "Permission denied", os.fspath(p))
+        st = real_lstat(p, *a, **k)
+        got = grants.get(os.path.normpath(os.fspath(p)))
+        if got is None:
+            return st
+        f = list(st)
+        f[0], f[4] = stat.S_IFDIR | got[1], got[0]
+        return os.stat_result(f)
+
+    def open_(p, *a, **k):
+        if under(p):
+            raise PermissionError(13, "Permission denied", os.fspath(p))
+        return real_open(p, *a, **k)
+    with mock.patch.object(rt.os, "lstat", lstat), mock.patch.object(rt.os, "open", open_):
+        yield
+
+
+def lease_src(body=b'{"tokens": {}}\n') -> str:
+    """A TEST DATA lease source, mode 600 in a mode 700 folder of its own, outside every repository."""
+    d = tempfile.mkdtemp(prefix="lease-src-")
+    os.chmod(d, 0o700)
+    p = os.path.join(d, "auth.json")
+    fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.write(fd, body)
+    os.close(fd)
+    return p
+
+
+def for_take(m):
+    """m.lease_for_take, the placement record bound to the take's uid map; absent before B3, where the road handed
+    _codex_exec_argv the bare placed path, today's road."""
+    return getattr(m, "lease_for_take", lambda placement, uid_map: placement)
+
+
+class TestPlacedLeaseAfterGrant(MutantCase):
+    """Round 17 B3: _codex_exec_argv on a lease place_lease placed, after a TEST DATA grant that makes the file
+    unreadable host-side, builds the turn; every way the record or the folder can be wrong refuses by name, and the
+    exec reads no file."""
+
+    MODEL = "gpt-6.1-sol"
+    FIRST = ["codex", "exec", "--json", "-m", "gpt-6.1-sol", "--dangerously-bypass-approvals-and-sandbox", "go on"]
+
+    def place(self, m, parent=None):
+        """(the config folder, place_lease's placement) for a fresh TEST DATA lease, the gate open for the copy."""
+        cfg = m.make_config_dir(parent or tempfile.mkdtemp(prefix="w-"))
+        with mock.patch.object(m, "CODEX_SUBSCRIPTION_READY", True):
+            return cfg, m.place_lease(lease_src(), cfg)
+
+    def exec_(self, m, lease, run_tree="/srv/w/t1/tree"):
+        with mock.patch.object(m, "CODEX_SUBSCRIPTION_READY", True), \
+                mock.patch.object(m, "VENDOR_BILLING_ROUTE_VARIABLES", {m.CODEX: (), m.GEMINI: ()}), \
+                mock.patch.dict(os.environ, {}, clear=True):
+            return m.exec_argv(ID["take"], list(self.FIRST), user=m.AGENT_USER, workdir="/srv/w/t1/tree",
+                               harness=m.CODEX, run_tree=run_tree, login_file=lease, caller_env=dict(CALLER))
+
+    def refused(self, out, m, label, lease, word, grants, run_tree="/srv/w/t1/tree"):
+        try:
+            with host_view(grants):
+                self.exec_(m, lease, run_tree=run_tree)
+            out.append(f"{label}: admitted")
+        except m.Refused as e:
+            if word not in str(e):
+                out.append(f"{label}: refused for another reason: {e}")
+        except Exception as e:  # noqa: BLE001 - any other exception is a crash, not a refusal
+            out.append(f"{label}: raised {type(e).__name__}, not a refusal: {str(e)[:160]}")
+
+    def check(self, m=None):
+        m = m or rt
+        out = []
+        cfg, placement = self.place(m)
+        if not isinstance(placement, getattr(m, "LeasePlacement", ())):
+            out.append(f"place_lease returned no placement record: {type(placement).__name__}")
+        path = getattr(placement, "path", placement)
+        if path != os.path.join(cfg, "auth.json"):
+            out.append(f"the placement names {path!r}, not the config folder's auth.json")
+        lease = for_take(m)(placement, UID_MAP)
+        grants = {cfg: (AGENT_HOST_UID, 0o700)}
+        with host_view(grants):
+            try:
+                os.lstat(path)
+                out.append("the TEST DATA grant left the placed file readable host-side")
+            except PermissionError:
+                pass
+            try:
+                with mock.patch.object(m, "read_login", side_effect=AssertionError("read_login")), \
+                        mock.patch("builtins.open", side_effect=AssertionError("a file was opened")):
+                    argv, env = self.exec_(m, lease)
+                vals = m.exec_values(m.CODEX, "/srv/w/t1/tree")
+                pairs = [f"{k}={vals[k]}" for k in sorted(vals)]
+                want = [m.RUNTIME_CLIENT, "exec", "--user", m.AGENT_USER, "--workdir", "/srv/w/t1/tree", ID["take"],
+                        *m.LAUNCHER, m.NO_LOGIN, str(len(pairs)), *pairs, *self.FIRST]
+                if argv != want or env != m.runtime_env(dict(CALLER)):
+                    out.append("the Codex exec on the placed lease is not the no-login launcher over the row")
+            except Exception as e:  # noqa: BLE001 - reported: the road refuses what it must admit
+                out.append(f"a placed lease after the grant was refused: {type(e).__name__}: {str(e)[:200]}")
+        if not isinstance(placement, getattr(m, "LeasePlacement", ())):
+            return out
+        rep = dataclasses.replace
+        # the record: missing, unbound, or not place_lease's read-back of a lease it could place
+        self.refused(out, m, "the bare path, no placement record", path, "placement record", grants)
+        self.refused(out, m, "a record not bound to the take's uid map", placement, "uid map", grants)
+        for label, kw, word in (
+                ("a record of another file name", {"path": os.path.join(cfg, "lease.json")}, "auth.json"),
+                ("a record of a relative path", {"path": "cfg/auth.json"}, "absolute"),
+                ("a record of a path not normalised", {"path": cfg + "/./auth.json"}, "absolute"),
+                ("a record of a file at mode 644", {"mode": stat.S_IFREG | 0o644}, "600"),
+                ("a record of a link", {"mode": stat.S_IFLNK | 0o600}, "regular file"),
+                ("a record of a file with two links", {"nlink": 2}, "one link"),
+                ("a record of a file another user owned", {"uid": os.getuid() + 1}, "owned by the reading user"),
+                ("a record of an empty file", {"size": 0}, "size"),
+                ("a record of an oversize file", {"size": m.LEASE_MAX_BYTES + 1}, "size"),
+                ("a record of another folder inode", {"folder_ino": lease.folder_ino + 1}, "wrote into"),
+                ("a record of another folder device", {"folder_dev": lease.folder_dev + 1}, "wrote into"),
+                ("a record of a file on another device", {"dev": lease.dev + 1}, "wrote into")):
+            self.refused(out, m, label, rep(lease, **kw), word, grants)
+        for label, uid_map in (("a uid map that does not map the agent", ((0, 1000, 1),)),
+                               ("a uid map that maps the agent twice", UID_MAP + ((10001, 200000, 1),)),
+                               ("an empty uid map", ()), ("a uid map of another shape", ((0, 1000),))):
+            try:
+                self.refused(out, m, f"{label} (bound)", for_take(m)(placement, uid_map), "mapped", grants)
+            except m.Refused:
+                pass
+        # the folder, as the host reads it after the grant
+        for label, grant, word in (("the folder owned by another uid", (AGENT_HOST_UID + 1, 0o700), "agent"),
+                                   ("the folder still the host user's (no grant)", (os.getuid(), 0o700), "agent"),
+                                   ("the folder at mode 755", (AGENT_HOST_UID, 0o755), "mode 700"),
+                                   ("the folder at mode 770", (AGENT_HOST_UID, 0o770), "mode 700")):
+            c, p = self.place(m)
+            self.refused(out, m, label, for_take(m)(p, UID_MAP), word, {c: grant})
+        c, p = self.place(m)                            # the folder replaced after placement: another inode
+        os.rename(c, c + ".placed")
+        os.mkdir(c, 0o700)
+        self.refused(out, m, "the folder replaced after placement", for_take(m)(p, UID_MAP), "wrote into",
+                     {c: (AGENT_HOST_UID, 0o700)})
+        c, p = self.place(m)                            # the path reached through a linked folder
+        os.symlink(c, c + "-link")
+        self.refused(out, m, "the lease reached through a linked folder",
+                     rep(for_take(m)(p, UID_MAP), path=os.path.join(c + "-link", "auth.json")), "never a link",
+                     {c: (AGENT_HOST_UID, 0o700)})
+        tree = tempfile.mkdtemp(prefix="w-")            # the lease inside the run tree
+        c, p = self.place(m, parent=tree)
+        self.refused(out, m, "the lease inside the run tree", for_take(m)(p, UID_MAP), "run tree",
+                     {c: (AGENT_HOST_UID, 0o700)}, run_tree=tree)
+        repo = tempfile.mkdtemp(prefix="w-")            # the lease's folder inside a repository
+        os.mkdir(os.path.join(repo, ".git"))
+        rc = os.path.join(repo, "cfg")
+        os.mkdir(rc, 0o700)
+        rst = os.lstat(rc)
+        self.refused(out, m, "the lease inside a repository",
+                     rep(lease, path=os.path.join(rc, "auth.json"), folder_dev=rst.st_dev, folder_ino=rst.st_ino,
+                         dev=rst.st_dev), "repository", {rc: (AGENT_HOST_UID, 0o700)})
+        with mock.patch.object(m, "CODEX_SUBSCRIPTION_READY", False):   # the closed gate still refuses first
+            try:
+                with host_view(grants):
+                    m.exec_argv(ID["take"], list(self.FIRST), user=m.AGENT_USER, workdir="/srv/w/t1/tree",
+                                harness=m.CODEX, run_tree="/srv/w/t1/tree", login_file=lease,
+                                caller_env=dict(CALLER))
+                out.append("the closed gate built a Codex exec on a placed lease")
+            except m.NotReady:
+                pass
+        return out
+
+    def test_the_placed_lease_after_the_grant(self):
+        self.assertEqual(problems_of(self.check), [])
+
+    def test_mutants(self):
+        with open(rt.__file__, encoding="utf-8") as fh:
+            src = fh.read()
+
+        def variant(old, new):
+            def ctx():
+                if src.count(old) != 1:
+                    raise AssertionError(f"the mutant's anchor is not in run_take.py exactly once: {old!r}")
+                m = _run_take_variant(src.replace(old, new))
+                return mock.patch.object(self, "check", lambda m=m, real=self.check: real(m))
+            return ctx
+        self.assert_green_then_red(lambda: self.check(), (
+            ("the folder's inode unchecked",
+             variant("    if (fst.st_dev, fst.st_ino) != (lease.folder_dev, lease.folder_ino):",
+                     "    if False:")),
+            ("the owner check accepting any uid", variant("    if fst.st_uid != agent:", "    if False:")),
+            ("the owner still the host uid (the old bug)",
+             variant("    if fst.st_uid != agent:", "    if fst.st_uid != os.getuid():")),
+            ("the folder mode unchecked", variant("    if stat.S_IMODE(fst.st_mode) != 0o700:", "    if False:")),
+            ("the placement record not required",
+             variant("    if not isinstance(lease, LeasePlacement):\n        raise",
+                     "    if not isinstance(lease, LeasePlacement):\n        return\n        raise")),
+            ("the record's link count unchecked", variant("    if lease.nlink != 1:", "    if False:")),
+        ))
 
 
 class TestCodexRow(MutantCase):
