@@ -4615,16 +4615,38 @@ def vendor_environment_problems(path, harness, ledger, pre, row_index, walk_id) 
                   else vendor_pending("gemini", "T-17:billing-route", None))
 
 
-def vendor_model_problems(path, harness, ledger) -> list:
-    """model-binding (T-15; P5), against the model the driver ledger requested (model_requested; none refuses):
-    codex, every rollout turn's turn_context.model in the last retained snapshot (the requested model, the table's
-    NOT COMPARABLE reading) and no reroute item in any turn stream (codex_native.reroute_of, the one reroute parser);
-    gemini, every stream's init.model and every key of its result's stats.models (the served models). Records that
-    cannot be read are left to the view and the readers that refuse them (transcript-unreadable), never read as clean
-    here: an unread record adds no model it could bind."""
-    want = (ledger or {}).get("model_requested")
-    if not (isinstance(want, str) and want):
+def _vendor_row_model(row_index):
+    """The pre-registered ledger row's model (check():1772's row["model"]), or None when the row cannot be read; the
+    row's own refusals are vendor_take_binding_problems'."""
+    rows = takes_mod.load_rows()
+    if not (isinstance(row_index, int) and 0 <= row_index < len(rows)):
+        return None
+    model = rows[row_index].get("model")
+    return model if isinstance(model, str) and model else None
+
+
+def vendor_model_problems(path, harness, ledger, row_index, walk_id) -> list:
+    """model-binding (T-15; P5), against the model the take must be on: on the take road the pre-registered row's
+    (rows[row_index]["model"], as check() binds it; review e-71a2b94 finding 3), and a ledger whose model_requested
+    differs from it refuses; on the walk road, which has no row, the ledger's model_requested (none refuses on either
+    road; a take whose row cannot be read is refused by its row binding, and its records are bound to the requested
+    model). codex, every rollout turn's turn_context.model in the last retained snapshot (the requested model, the
+    table's NOT COMPARABLE reading) and no reroute item in any turn stream (codex_native.reroute_of, the one reroute
+    parser); gemini, every stream's init.model and every key of its result's stats.models (the served models).
+    Records that cannot be read are left to the view and the readers that refuse them (transcript-unreadable), never
+    read as clean here: an unread record adds no model it could bind."""
+    requested = (ledger or {}).get("model_requested")
+    if not (isinstance(requested, str) and requested):
         return ["[model-binding] the driver ledger names no requested model, so the take's model cannot be bound"]
+    out, want = [], requested
+    if walk_id is None:
+        want = _vendor_row_model(row_index)
+        if want is None:
+            want = requested
+        elif requested != want:
+            out.append(f"[model-binding] the driver ledger requested {requested!r}, and the pre-registered row "
+                       f"{row_index} names {want!r}. The counts are published per model, so a take sent to another "
+                       "model is not this cell's take.")
     seen = []
     try:
         envelopes = _vendor_envelopes(path)
@@ -4655,10 +4677,10 @@ def vendor_model_problems(path, harness, ledger) -> list:
                 seen += [(f"turn {k}'s stats.models", m) for m in rec["stats"]["models"]]
     others = [(where, m) for where, m in seen if m != want]
     if others:
-        return [f"[model-binding] the take's own records carry {sorted({str(m) for _, m in others})} (first: "
-                f"{others[0][0]}), and the driver requested {want!r}. The counts are published per model, so a "
-                "session on another model is not this cell's take."]
-    return []
+        return out + [f"[model-binding] the take's own records carry {sorted({str(m) for _, m in others})} (first: "
+                      f"{others[0][0]}), and the take must be on {want!r}. The counts are published per model, so "
+                      "a session on another model is not this cell's take."]
+    return out
 
 
 def vendor_checkout_problems(harness) -> list:
@@ -4729,7 +4751,7 @@ def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_scrip
     else:
         problems += vendor_walk_binding_problems(path, task_id, half_name, walk_id, sid)
     problems += vendor_environment_problems(path, harness, ledger, pre, row_index, walk_id)
-    problems += vendor_model_problems(path, harness, ledger)
+    problems += vendor_model_problems(path, harness, ledger, row_index, walk_id)
     problems += constant_problems(ledger, pre)              # the ledger's budget, mode and gars tree (T-24)
     problems += vendor_checkout_problems(harness)
     problems += vendor_prompt_problems(harness)

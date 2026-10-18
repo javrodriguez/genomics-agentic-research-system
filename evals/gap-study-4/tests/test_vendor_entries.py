@@ -83,7 +83,7 @@ def entry_call(mod, t, path, road, **over):
     kw = dict(wording_script=t.call["wording_script"], arm=t.arm, design=t.design)
     kw.update(over.pop("kw", {}))
     task, half = over.pop("task", tvb.TASK), over.pop("half", tvb.HALF)
-    with mock.patch.object(mod, "CHECK_HOME", Path(tvb.HOME)):
+    with mock.patch.object(mod, "CHECK_HOME", Path(tvb.HOME)), t.own_rows():     # the take's own vendor row
         if road == "walk":
             return mod.check4_walk_vendor(path, task, half, WALK_ID, **kw)
         return mod.check4_vendor(path, task, half, t.call["row_index"], **kw)

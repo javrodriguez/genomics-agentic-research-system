@@ -294,7 +294,7 @@ def drive_problems(mod) -> list:
                 take = types.SimpleNamespace(folder=str(path.parent), identity={"row": t.call["row_index"]},
                                              cross_check=[])
             with mock.patch.dict(sys.modules, {"check_take": mod}), \
-                    mock.patch.object(mod, "CHECK_HOME", Path(tvb.HOME)):
+                    mock.patch.object(mod, "CHECK_HOME", Path(tvb.HOME)), t.own_rows():
                 got = outcome(drive.take_checker(design_for=lambda r, tk, d=t.design: d, records=records), row, take, [])
             want = sorted(p.split("] ")[0][1:] for p in tvb.pending_lines(mod, harness))
             if got[0] != "ok" or sorted(got[1]["checker_reasons"]) != want:

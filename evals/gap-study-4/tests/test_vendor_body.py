@@ -175,9 +175,12 @@ class Take:
         r["agent"]["harness"], r["model"], r["arm"] = self.harness, self.row_model, self.arm
         return r
 
+    def own_rows(self):
+        """takes.load_rows read as this take's ledger: its own vendor row alone, as row 0."""
+        return mock.patch.object(self.mod.takes_mod, "load_rows", lambda **kw: [self.vendor_row()])
+
     def problems(self, path):
-        with mock.patch.object(self.mod, "CHECK_HOME", Path(HOME)), \
-                mock.patch.object(self.mod.takes_mod, "load_rows", lambda **kw: [self.vendor_row()]):
+        with mock.patch.object(self.mod, "CHECK_HOME", Path(HOME)), self.own_rows():
             got = self.mod.vendor_check(path, TASK, HALF, self.call["row_index"],
                                         wording_script=self.call["wording_script"], design=self.design, arm=self.arm,
                                         walk_id=self.call["walk_id"])
