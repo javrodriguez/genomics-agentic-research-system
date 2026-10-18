@@ -2882,6 +2882,38 @@ class TakeDriver:
         if not _scan_record.passed(scan):
             why = "; ".join(f"{r['path']}:{r['line']} ({r['kind']}): {r['why']}" for r in scan["refused"])
             raise DriveRefused(f"the drive scan refused the take: {why}")
+        if row["agent"]["harness"] in VENDOR_HARNESSES and Path(take.folder, "transcript.jsonl").is_file():
+            # T4 edit C (glitch-b5 round 15 ruling 2; review e-71a2b94 finding 2, option (a)): the scan masks turn
+            # streams and session/ snapshots in place, so each sha256 edit B's envelopes and the ledger's
+            # native_snapshots bind is moved along the scan's own record, from its sha256_before to its sha256_after,
+            # the bytes the checker reads; a binding the scan's before does not match is left, and refuses. The record
+            # is the driver ledger's own native_snapshots sha256, where _vendor_last_snapshot, vendor_raw_records, the
+            # registration and the regrade read it (its closed keys and each entry's file and sha256 stay;
+            # native_history keeps its pre-scan basis); with nothing masked no byte changes
+            moved = {os.path.relpath(f["path"], take.folder): (f["sha256_before"], f["sha256_after"])
+                     for f in scan["files"]}
+            path = os.path.join(take.folder, "transcript.jsonl")
+            with open(path, encoding="utf-8") as fh:
+                envs = [json.loads(x) for x in fh.read().splitlines() if x]
+            rebound = False
+            for env in envs:
+                was, now = moved.get(env.get("stream"), (None, None))
+                if was is not None and env.get("sha256") == was and now != was:
+                    env["sha256"], rebound = now, True
+            if rebound:
+                with open(path, "w", encoding="utf-8") as fh:
+                    fh.write("".join(json.dumps(env) + "\n" for env in envs))
+            path = os.path.join(take.folder, LEDGER_FILE)
+            with open(path, encoding="utf-8") as fh:
+                led = json.load(fh)
+            rebound = False
+            for snap in led.get("native_snapshots") or []:
+                was, now = moved.get(f"session/{snap.get('file')}", (None, None))
+                if was is not None and snap.get("sha256") == was and now != was:
+                    snap["sha256"], rebound = now, True
+            if rebound:                       # replaced whole, in the ledger writer's own form
+                _run_take._write_json(path + ".partial", led)
+                os.replace(path + ".partial", path)
         if take.settings_stop is not None:        # the settings guard after turn 1: cleaned, recorded and scanned
             raise DriveRefused(f"{take.settings_stop}: no further turn is sent; the take is kept for a human ruling "
                                f"(no registered harness-error row reads it), never a re-run")

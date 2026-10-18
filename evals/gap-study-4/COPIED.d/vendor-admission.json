@@ -164,7 +164,7 @@
     {
       "path": "COPIED.d/vendor-admission.json",
       "status": "new",
-      "reason": "Lane vendor-admission (glitch-b5, 16 Oct 2026): this lane's copy record. Its edits to files other lanes own are recorded as departures in their owning fragments: run.py (w8a-walk-layout), walk_regrade.py and tests/test_walk_grade_seam.py (live-harness-foundation), batch.py (w7c-spend-wiring), harness_bookkeeping.py and tests/test_harness_bookkeeping.py (w2a-cp3-endstate), freeze.py (w8b-holdout-digests), check_take.py's T4 VENDOR READERS section and drive.py's edits A and B (w10-walk-runner), codex_adapter.py (w11a-codex-adapter), gemini_adapter.py (w11b-gemini-adapter) and, for the vendor-t3b follow-up, tests/test_walk_runner.py (w10-walk-runner)."
+      "reason": "Lane vendor-admission (glitch-b5, 16 Oct 2026): this lane's copy record. Its edits to files other lanes own are recorded as departures in their owning fragments: run.py (w8a-walk-layout), walk_regrade.py and tests/test_walk_grade_seam.py (live-harness-foundation), batch.py (w7c-spend-wiring), harness_bookkeeping.py and tests/test_harness_bookkeeping.py (w2a-cp3-endstate), freeze.py (w8b-holdout-digests), check_take.py's T4 VENDOR READERS section and drive.py's edits A, B and C (w10-walk-runner), codex_adapter.py (w11a-codex-adapter), gemini_adapter.py (w11b-gemini-adapter) and, for the vendor-t3b follow-up, tests/test_walk_runner.py (w10-walk-runner)."
     },
     {
       "path": "tests/test_vendor_constants.py",

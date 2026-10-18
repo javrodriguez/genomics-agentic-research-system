@@ -28,7 +28,7 @@ readers-disagree before checker_for.
               claude-code, an envelope's sent taken from another row, and an envelope's sha256 taken from another
               stream; and for edit C, the rebinding taken out (the review's masked-address mutant), the envelopes
               left on the unmasked bytes, the snapshots left on the unmasked bytes, and the rebinding also run for
-              claude-code: each goes red.
+              claude-code with its envelope write unguarded: each goes red.
 
 Fakes and synthetic strings only (the address is test_box_integration's synthetic .invalid one), inside
 test_box_integration's process guard with test_drive_loop's checker world, in scratch folders: no take, model,
@@ -314,11 +314,14 @@ WITNESSES = {
     # edit C (glitch-b5 round 15 ruling 2): the review's masked-address mutant first
     "the rebinding taken out": ("mask", lambda src: cvs.without_edit_c(src)),
     "the envelopes left on the unmasked bytes": ("mask", lambda src: edited(
-        src, "                    e[\"sha256\"] = after[e[\"stream\"]]\n", "                    pass\n")),
+        src, "                    env[\"sha256\"], rebound = now, True\n", "                    pass\n")),
     "the snapshots left on the unmasked bytes": ("mask", lambda src: edited(
-        src, "                self._write(take, LEDGER_FILE, led)\n", "                pass\n")),
-    "the rebinding run for claude-code": ("claude", lambda src: edited(
-        src, "if row[\"agent\"][\"harness\"] in VENDOR_HARNESSES and os.path.isfile(", "if os.path.isfile(")),
+        src, "                    snap[\"sha256\"], rebound = now, True\n", "                    pass\n")),
+    # ungated alone, edit C moves no claude-code byte (its transcript lines name no stream and its ledger no
+    # native_snapshots, so nothing is rebound or written); the witness also runs the envelope write unguarded
+    "the rebinding run for claude-code, writing what it read": ("claude", lambda src: edited(edited(
+        src, "if row[\"agent\"][\"harness\"] in VENDOR_HARNESSES and Path(", "if Path("),
+        "            if rebound:\n                with open(path, \"w\"", "            if True:\n                with open(path, \"w\"")),
 }
 
 
