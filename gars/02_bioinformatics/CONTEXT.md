@@ -38,8 +38,10 @@ This stage performs the steps in Process and nothing else.
   and stop.
 - **Never accept a contrast the script marks `testable: false`.** A level with one sample cannot
   be tested, and running anyway produces a result that looks like an answer.
-- `de.formula` defaults to `~ condition`. It is a *presented* default: T9 shows it before anything
-  is written. Change it only to a formula the user gave you.
+- `de.formula` is chosen from `configure.py formulas`, built from the design's own columns;
+  `~ condition` (its first entry) is the presented default T9 shows. Never compose a formula
+  yourself: a formula the user types instead is passed as typed, and `apply` writes it with a
+  `formula_warning` that T9 shows (decision 0315). Never offer one marked `estimable: false`.
 
 ## Definitions
 
@@ -144,13 +146,14 @@ config. Never work around a refusal.
    `<REQUIRED>`. Resolve them by menu, never by asking the user to type a path or a level name:
 
    The decisions are per-assay (`ASSAY_DECISIONS` in `_system/configure.py`): every assay
-   chooses a genome; an assay with a `de` block additionally chooses a contrast (and may give a
-   formula); an assay with a `peaks` block chooses a peak type; a `protocol` assay (scrnaseq)
+   chooses a genome; an assay with a `de` block additionally chooses a contrast and a formula, from
+   menus built from its design table; an assay with a `peaks` block chooses a peak type; a `protocol` assay (scrnaseq)
    chooses a library chemistry, from the menu filtered to the `aligner` its config names.
 
    ```bash
    python3 _system/configure.py genomes --assay <Assay ID>
    python3 _system/configure.py contrasts --project projects/<title> --assay <Assay ID>   # de assays
+   python3 _system/configure.py formulas --project projects/<title> --assay <Assay ID>    # de assays
    python3 _system/configure.py peaks                                                     # peaks assays
    python3 _system/configure.py protocols --aligner <the config's aligner>                # protocol assays
    ```
@@ -160,7 +163,7 @@ config. Never work around a refusal.
 
    ```bash
    python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> \
-       --genome <n> [--contrast <n>] [--formula "<theirs>"] [--peaks-type <n>] \
+       --genome <n> [--contrast <n> --formula <n>] [--peaks-type <n>] \
        [--protocol <n> --aligner <the config's aligner>] --dry-run
    ```
 
@@ -276,14 +279,15 @@ together, so they cannot be mismatched:
 
   01  GRCh38  Homo sapiens, Ensembl release 116   [indices cached: yes]
 
-<the assay's second decision menu>
+<the assay's decision menus>
 
-Reply with one genome number and one number from the second menu, e.g. `01, 02`.
+Reply with one genome number and one number from each further menu, e.g. `01, 02`.
 ```
 
 Render the genome block from `configure.py genomes --assay <Assay ID>` and the second block
-from this assay's decision menu — `contrasts` for a de assay (every ordered level pair with
-its meaning, plus the formula default), `peaks` for a peaks assay (narrow | broad with their
+from this assay's decision menus — `contrasts` and `formulas` for a de assay (every ordered
+level pair with its meaning; every formula the design's columns support, with its meaning, a
+formula marked `estimable: false` shown with its reason and never as a choice), `peaks` for a peaks assay (narrow | broad with their
 meanings), `protocols` for a protocol assay (each chemistry the config's aligner supports,
 with its meaning) — **all verbatim from their JSON**. Do not add a reference that is not in the
 registry, and do not offer a contrast the design does not support. A contrast marked
@@ -297,7 +301,8 @@ This is what I will write to _config/<Assay ID>.yaml:
     fasta:       <path>
     gtf:         <path>
     derived_dir: <path or "none — indices will be built, ~40 min and 43 GB">
-  <this assay's decision lines: de.formula + de.contrast, peaks.type, or protocol + aligner —
+  <this assay's decision lines: de.formula + de.contrast (and apply's formula_warning,
+   verbatim, when it printed one), peaks.type, or protocol + aligner —
    with meanings, and for a peaks assay the genome-derived macs_gsize and mito_name being set
    with it>
 
@@ -349,8 +354,8 @@ hosted-model prompt (decision 0107), and no door covers them. Nothing was read o
 That step is yours. From the workspace root, run the menus and choose from them:
 
   python3 _system/configure.py genomes --assay <Assay ID>
-  <this assay's decision menu: configure.py contrasts --project projects/<title> --assay <Assay ID> | configure.py peaks | configure.py protocols --aligner <the config's aligner>>
-  python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula "<yours>"] [--peaks-type <n>] [--protocol <n> --aligner <the config's aligner>] --dry-run
+  <this assay's decision menus: configure.py contrasts and configure.py formulas --project projects/<title> --assay <Assay ID> | configure.py peaks | configure.py protocols --aligner <the config's aligner>>
+  python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n> --formula <n>] [--peaks-type <n>] [--protocol <n> --aligner <the config's aligner>] --dry-run
 
 Read what it would write; when it is what you want, run the same apply line without --dry-run
 (it writes only what the dry run showed).

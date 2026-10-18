@@ -35,7 +35,7 @@ single run accumulates hundreds of GB there. `results/` is published with mode `
 
 | Assay | Beyond `reference` + `compute` | Decision menu at stage 02 |
 |---|---|---|
-| `rnaseq_bulk` | `strandedness` (stage 01 reads it into the samplesheet); `de.formula`, `de.contrast` | genome + contrast (+ formula, default `~ condition`) |
+| `rnaseq_bulk` | `strandedness` (stage 01 reads it into the samplesheet); `de.formula`, `de.contrast` | genome + contrast + formula (from `formulas`, built from the design's columns; first entry `~ condition`) |
 | `atacseq_bulk` | `peaks.type` (narrow\|broad), `peaks.macs_gsize`, `reference.mito_name`, optional `reference.blacklist` | genome + peak type |
 | `chipseq_bulk` | `peaks.type`, `peaks.macs_gsize`, optional `reference.blacklist` (no `mito_name` — the pipeline has no such parameter) | genome + peak type |
 | `cutandrun` | `reference.mito_name`; `spikein.fasta` (seeded with the local E. coli K12 mirror path); `peaks.peakcaller` (seacr\|macs2), `peaks.normalisation`, `peaks.use_control` — presented defaults, confirmed not chosen | genome only |
