@@ -152,12 +152,17 @@ class Dispatch(unittest.TestCase):
         with tdl.checker_world() as ct:
             self.assertEqual(claude_problems(tbi.drive, ct), [])
 
-    def test_p0_checker_for_admits_claude_code_only_on_this_head(self):
+    def test_p0_checker_for_admits_claude_code_and_the_vendor_entries(self):
+        # moved by T4 P3 (plan v4 section 9, "checker_for admits them"; glitch-b5 round 12): codex and gemini map to
+        # the vendor entry and its side, which refuses until P5 (tests/test_vendor_entries.py P3-for)
         with tdl.checker_world() as ct:
-            self.assertEqual(sorted(ct.CHECKER_ENTRIES), ["claude-code"])
+            self.assertEqual(sorted(ct.CHECKER_ENTRIES), ["claude-code", "codex", "gemini"])
             entry, side = ct.checker_for(tcb.view(ct))
             self.assertEqual((entry, side), ct.CHECKER_ENTRIES["claude-code"])
-            for harness in ("codex", "gemini", "synthetic-harness", None):
+            self.assertEqual((entry, side), (ct._claude_code_entry, ct._claude_code_side))
+            for harness in ("codex", "gemini"):
+                self.assertEqual(ct.CHECKER_ENTRIES[harness], (ct._vendor_entry, ct._vendor_side))
+            for harness in ("synthetic-harness", None):
                 with self.subTest(harness=harness), self.assertRaises(ct.CheckRefused):
                     ct.checker_for(types.SimpleNamespace(harness=harness))
 
