@@ -28,6 +28,7 @@ Stage 00's finalize took `--purpose` from five values (`fixture`, `internal`, `p
 
 1. **Choice 1c: `purpose` keeps today's spellings; a new registration writes only `fixture` or `internal`.** People read them as test and analysis, through one helper, `venue_policy.data_line` (`Data: public, test`), which finalize's result carries as `data`. `pilot_internal`, `pilot_external` and `commercial` are legacy: still read and enforced exactly as before in the rows that carry them (`check()`, `data_policy.tsv`, the route tokens, every run record unchanged), and finalize refuses them (`purpose_legacy`, exit 2, nothing written) unless the project's existing row already carries that purpose, so a person's re-run of a legacy row keeps it byte for byte. Hunk R1 narrows the registry's finalize `purpose` enum to `fixture` and `internal`, so an agent can register neither a legacy purpose nor re-run a legacy row; that re-run is the person's own, in their own terminal.
 2. **Choice 2a: the person's own declaration settles test or analysis.** `data_sources.tsv`, which only a human writes, gains an optional fourth column `use` (`test`, `analysis` or empty; a row of three cells stays valid). With no `--purpose`, finalize records `fixture` when every linked raw entry lies inside declared sources that all say `test`, `internal` when all say `analysis`. Anything else (an empty or mixed use, three cells, an entry outside every declared source, a cell outside the two words, no file) is unsettled: exit 2, `purpose_required`, `template: T4c`, nothing written, and the contract's T4c asks once, "Reply `test` or `analysis`", re-sent on any other reply; `test` is `--purpose fixture`, `analysis` is `--purpose internal`. A `--purpose` that disagrees with a settled declaration is refused (`purpose_disagrees`). Finalize reads the file with its own reader, under the same rules as the guard's; hunk G1 makes the guard accept the fourth column (without it, a four-column file declares nothing and the agent's registration is refused, fail-closed).
+3. **Choice 3a: terms of use for public data are never asked.** A public row keeps `agreement_ref` as today, and `none` means no agreement is named, never that every use is allowed (the stage 00 Definitions say so). If the person volunteers that the data comes with terms, their reference is recorded with `--agreement-ref`; no template asks. No agreement flag is added for new public projects: the cluster's agreement rule stays keyed on the legacy `pilot_internal` value (`venue_policy.check`), binding the rows that carry it and no new row; `none` still fails it.
 
 ## What this does not close
 
@@ -35,7 +36,7 @@ Stage 00's finalize took `--purpose` from five values (`fixture`, `internal`, `p
 
 ## Test
 
-`gars/tests/test_s00_class.py`: PurposeTests (1c), DeclarationTests and DeclarationContractTests (2a). `test_the_agent_cannot_register_a_legacy_purpose` is green only with R1 applied, `test_the_guard_reads_a_four_column_declaration` only with G1.
+`gars/tests/test_s00_class.py`: PurposeTests (1c), DeclarationTests and DeclarationContractTests (2a), TermsTests (3a). `test_the_agent_cannot_register_a_legacy_purpose` is green only with R1 applied, `test_the_guard_reads_a_four_column_declaration` only with G1.
 
 ## Status
 

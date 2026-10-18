@@ -56,10 +56,18 @@ This stage performs the steps in Process and nothing else.
 ## Definitions
 
 Finalize requires `--data-class` (`public`, `deidentified_under_agreement`, or
-`identifiable`) and `--purpose` (`fixture`, `internal`, `pilot_internal`,
-`pilot_external`, or `commercial`). `--agreement-ref` defaults to `none`.
+`identifiable`) and a purpose: a new registration writes `fixture` (shown as test) or
+`internal` (shown as analysis), and nothing else: the folder's declaration in
+`data_sources.tsv` settles which when its `use` column says `test` or `analysis` for every
+linked file; otherwise T4c asks the person, and their word is passed as `--purpose`.
+`pilot_internal`, `pilot_external` and `commercial` are legacy: read and enforced exactly as
+before in a row that already carries one, never written by a new registration
+(`purpose_legacy`); a re-run of such a row is the person's own. `--agreement-ref` defaults to
+`none`, and `none` means no agreement is named, never that every use is allowed; record a
+reference only when the person names one unprompted, and never ask about terms of use.
 `data_class_required`, `purpose_required`, and `agreement_ref_required` refuse
-missing or unknown values. `dataset_classification_locked` refuses a re-finalize
+missing or unknown values; `purpose_disagrees` refuses a purpose the declaration contradicts
+(decision 0321). `dataset_classification_locked` refuses a re-finalize
 whose values differ from the existing machine-owned `00_data/dataset.tsv`.
 Re-finalize with the same values leaves that row unchanged, except that a
 row-6-only row gains the four route columns while retaining its existing field
