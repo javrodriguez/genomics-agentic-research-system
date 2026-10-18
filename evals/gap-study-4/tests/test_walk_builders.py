@@ -997,13 +997,29 @@ class B7Production(Drafted):
         else:
             self.assertIn("box/settings_guard.py", why["settings_guard"], "B7.production: the guard does not say why")
         self.assertEqual(sorted(got), sorted(wb().NAMES + wb().ROW_NAMES), "B7.production: the set is not NAMES")
-        self.assertIsInstance(got["lease_path"], wb().Missing, "B7.production: a Codex lease source is filled")
+        # round 17 B2: the lease source is the box's record, run_take.LEASE_SOURCES["codex2"], never typed here
+        self.assertEqual(got["lease_path"], getattr(rt, "LEASE_SOURCES", {}).get("codex2", "unregistered"),
+                         "B7.production: lease_path is not run_take.LEASE_SOURCES['codex2']")
         self.assertEqual(b7_bringup_problems(wb(), got), [])
-        self.assertIn("CODEX_SUBSCRIPTION_READY", got["lease_path"].why, "B7.production: lease_path does not say why")
         if WALK_GEMINI_ON_TREE:
             self.assertEqual(got["gemini_login_path"], rt.WALK_LOGIN_FILES["r4-g"], "B7.production: not the r4-g record")
         else:
             self.assertIsInstance(got["gemini_login_path"], wb().Missing, "B7.production: a Gemini key path is filled")
+
+    def test_lease_path_reads_the_box_record(self):
+        """round 17 B2: production_builders' lease_path follows run_take.LEASE_SOURCES (moved, it moves); a relative
+        record refuses by name; a tree without the record leaves lease_path Missing, by name."""
+        moved = "/synthetic/secrets/codex2/auth.json"
+        with mock.patch.object(rt, "LEASE_SOURCES", {"codex2": moved}, create=True):
+            self.assertEqual(wb().production_builders()["lease_path"], moved, "B2: lease_path is not read from the record")
+        with mock.patch.object(rt, "LEASE_SOURCES", {"codex2": "codex2/auth.json"}, create=True):
+            with self.assertRaises(wb().BuilderRefused) as cm:
+                wb().production_builders()
+            self.assertIn("LEASE_SOURCES['codex2']", str(cm.exception))
+        with mock.patch.object(rt, "LEASE_SOURCES", {}, create=True):
+            got = wb().production_builders()["lease_path"]
+            self.assertIsInstance(got, wb().Missing, "B2: an unregistered lease source is filled")
+            self.assertIn("LEASE_SOURCES['codex2']", got.why, "B2: lease_path does not say why")
 
     def test_main_refuses_by_name_before_anything(self):
         for argv in ([], ARGV, ["--no-such-flag"]):

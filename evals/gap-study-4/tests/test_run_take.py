@@ -2060,6 +2060,56 @@ class TestLeasePlacement(MutantCase):
             self.assertEqual(problems_of(self.check), [])
 
 
+# ------------------------------------------------- the registered lease source (lane vendor-admission round 17, B2)
+class TestLeaseSource(MutantCase):
+    """run_take.LEASE_SOURCES registers the Codex lease file by account (plan codex2-signin-road section 1): an absolute
+    path whose account folder sits in the one private folder that holds every WALK_LOGIN_FILES account folder, so
+    walk_builders.account_emails_path() still finds one folder; never a WALK_LOGIN_FILES entry (that map is for one-line
+    NAME=value files read by read_login, and a JSON lease there would break the walk-login scripts)."""
+
+    REGISTERED = {"codex2": "/home/javier/gap4-secrets/codex2/auth.json"}
+
+    def check(self):
+        out = []
+        leases, walks = getattr(rt, "LEASE_SOURCES", None), rt.WALK_LOGIN_FILES
+        if not isinstance(leases, dict) or "codex2" not in leases:
+            return [f"LEASE_SOURCES records no codex2 lease: {leases!r}"]
+        tops = {os.path.dirname(os.path.dirname(p)) for p in walks.values()}
+        for account, path in leases.items():
+            if not isinstance(path, str) or not os.path.isabs(path) or os.path.normpath(path) != path:
+                out.append(f"LEASE_SOURCES[{account!r}] is not an absolute path: {path!r}")
+                continue
+            if os.path.basename(os.path.dirname(path)) != account:
+                out.append(f"LEASE_SOURCES[{account!r}] is not in its own account folder: {path!r}")
+            if tops != {os.path.dirname(os.path.dirname(path))}:
+                out.append(f"LEASE_SOURCES[{account!r}] is outside the one private folder {sorted(tops)}: {path!r}")
+            if account in walks or path in walks.values():
+                out.append(f"LEASE_SOURCES[{account!r}] is also a WALK_LOGIN_FILES entry")
+        if os.path.basename(leases["codex2"]) != "auth.json":
+            out.append("the codex2 lease is not the auth.json Codex writes under CODEX_HOME")
+        from walk_builders import account_emails_path
+        if account_emails_path() != "/home/javier/gap4-secrets/account-emails.json":
+            out.append(f"account_emails_path() moved: {account_emails_path()!r}")
+        return out
+
+    def test_the_lease_source_is_registered(self):
+        self.assertEqual(getattr(rt, "LEASE_SOURCES", None), self.REGISTERED, "not the registered lease source")
+        self.assertEqual(problems_of(self.check), [])
+
+    def test_mutants(self):
+        here = self.REGISTERED["codex2"]
+        self.assert_green_then_red(self.check, (
+            ("path relative", patched(rt, "LEASE_SOURCES", {"codex2": "gap4-secrets/codex2/auth.json"})),
+            ("path outside the shared folder", patched(rt, "LEASE_SOURCES",
+                                                       {"codex2": "/home/javier/other-secrets/codex2/auth.json"})),
+            ("codex2 added to WALK_LOGIN_FILES", lambda: mock.patch.dict(rt.WALK_LOGIN_FILES, {"codex2": here})),
+            ("another account's folder", patched(rt, "LEASE_SOURCES",
+                                                 {"codex2": "/home/javier/gap4-secrets/r4-g/auth.json"})),
+            ("not normalised", patched(rt, "LEASE_SOURCES",
+                                       {"codex2": "/home/javier/gap4-secrets/x/../codex2/auth.json"})),
+        ))
+
+
 # ------------------------------------------------------------- the no-login launcher variant (glitch-06, 14 Oct)
 class TestNoLoginLauncher(MutantCase):
     """glitch-06's ruling 2: LAUNCHER_SOURCE is supplied at run time (docker exec ... python3 -I -S -c SOURCE), never
