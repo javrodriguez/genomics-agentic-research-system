@@ -2,11 +2,17 @@
 """Lane vendor-admission T4 (plan v4 section 9, NIT 7): a piece's edited files are disjoint from the native readers'
 source lists. Usage: check_vendor_sources.py <piece> <file> ...; each file is a path under evals/gap-study-4/. Exit 1
 when a file is in native_reader_registration.READER_SOURCES or CODEX_SOURCES, except drive.py for piece P0, whose
-edit A is the one drive.py edit the plan rules (section 6). Any such edit after Javier's acceptance commit makes
-production_readers refuse, so a piece naming one is a red check, never a note."""
+edit A is the drive.py edit the plan rules (section 6), and for piece EB, edit B (glitch-b5 round 14, review
+e-71a2b94 finding 1: the vendor turn envelopes). Piece EB naming drive.py also checks edit B's whole diff: drive.py with
+edit B's lines (TakeDriver._take_records' first `if vendor:` branch after its first statement) taken out must be,
+byte for byte, drive.py before edit B (PRE_EDIT_B_DRIVE_SHA256, its text at f628e9d8), so no other drive.py line
+moves. Any such edit after Javier's acceptance commit makes production_readers refuse, so a piece naming one is a red
+check, never a note."""
 
 from __future__ import annotations
 
+import ast
+import hashlib
 import sys
 from pathlib import Path
 
@@ -17,8 +23,45 @@ if str(HERE) not in sys.path:
 
 import native_reader_registration as nrr  # noqa: E402
 
-PIECES = ("PF", "P0", "P0b", "P1", "P2", "P3", "P4", "P5")
-ALLOWED = {"P0": {"drive.py"}}
+PIECES = ("PF", "P0", "P0b", "P1", "P2", "P3", "P4", "P5", "EB")
+ALLOWED = {"P0": {"drive.py"}, "EB": {"drive.py"}}
+PRE_EDIT_B_DRIVE_SHA256 = "ea3917d4e4c1acc2078b1779bab0c6c47304aee920c8d2f2dc3423ec33934906"
+
+
+def edit_b_span(src: str):
+    """(first, last), the 1-based lines of edit B in drive.py's text: every line of TakeDriver._take_records' first
+    `if vendor:` branch after the branch's first statement (its cross_check), or None when the branch holds that
+    statement alone; raises ValueError when there is no such branch."""
+    for cls in ast.parse(src).body:
+        if isinstance(cls, ast.ClassDef) and cls.name == "TakeDriver":
+            for fn in cls.body:
+                if isinstance(fn, ast.FunctionDef) and fn.name == "_take_records":
+                    for node in fn.body:
+                        if isinstance(node, ast.If) and isinstance(node.test, ast.Name) and node.test.id == "vendor":
+                            body = node.body
+                            return (body[0].end_lineno + 1, body[-1].end_lineno) if len(body) > 1 else None
+    raise ValueError("drive.py has no TakeDriver._take_records `if vendor:` branch")
+
+
+def without_edit_b(src: str) -> str:
+    """drive.py's text with edit B's lines taken out (before edit B, the text itself)."""
+    span = edit_b_span(src)
+    if span is None:
+        return src
+    lines = src.splitlines(keepends=True)
+    return "".join(lines[:span[0] - 1] + lines[span[1]:])
+
+
+def edit_b_problems(src: str) -> list:
+    try:
+        span = edit_b_span(src)
+    except (SyntaxError, ValueError) as e:
+        return [f"edit B: {e}"]
+    if span is None:
+        return ["edit B: TakeDriver._take_records' vendor branch writes no turn envelopes (its one statement only)"]
+    if hashlib.sha256(without_edit_b(src).encode("utf-8")).hexdigest() != PRE_EDIT_B_DRIVE_SHA256:
+        return [f"edit B: drive.py outside lines {span[0]}-{span[1]} (the vendor branch) is not drive.py before edit B"]
+    return []
 
 
 def problems(piece: str, files: list) -> list:
@@ -31,6 +74,8 @@ def problems(piece: str, files: list) -> list:
            if f in listed and f not in ALLOWED.get(piece, set())]
     out += [f"piece {piece} names {f}, which is not a file under evals/gap-study-4/" for f in files
             if not (HERE / f).is_file()]
+    if piece == "EB" and "drive.py" in files and (HERE / "drive.py").is_file():
+        out += edit_b_problems((HERE / "drive.py").read_text(encoding="utf-8"))
     return out
 
 

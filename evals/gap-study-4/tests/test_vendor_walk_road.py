@@ -254,32 +254,27 @@ def vendor_entry(ct, reasons, seen):
 
 
 def enveloped_pending_walk(test):
-    """test_pending_codex_walk's committed pending codex walk, copied by hand into walk-g2 with the host's turn
-    envelopes (transcript.jsonl, vendor_record_binding's schema 1: one harness-turn per turn stream, its sent line the
-    ledger's and its sha256 the stream's) and committed under WalkRepo's subject with its register entry; walk-g1, the
-    road's own, is the acceptance walk. The drive writes no envelopes for a vendor take today (C3: a take with no
-    transcript.jsonl reads readers-disagree, and recheck_doc refuses a walk without one), so the recheck road is
-    exercised on this copy (named in the lane file for glitch-b5)."""
-    import shutil
+    """test_pending_codex_walk's road with its reader registered on walk-g1, the acceptance walk, and a second pending
+    codex walk, walk-g2, driven and committed by the same road (WalkDriver, walk_runner.run_walks, WalkRepo): since T4
+    edit B (glitch-b5 round 14; review e-71a2b94 finding 1) the drive writes its host turn envelopes
+    (transcript.jsonl, vendor_record_binding's schema 1), so the recheck road reads walk-g2 as the drive left it, never
+    a hand copy with envelopes added. The recheck is not made on walk-g1: a later commit touching the acceptance walk's
+    folder that is not its regrade refuses the registration."""
     import test_pending_codex_walk as tpcw
     import test_pending_walk as tpw
+    import walk_runner
     road = tpcw.codex_road(test)
-    dst = road.study / "rehearsals" / "walk-g2"
-    shutil.copytree(road.folder, dst)
-    check = json.loads((dst / "check.json").read_text())
-    (dst / "check.json").write_text(json.dumps(dict(check, walk="walk-g2"), indent=2, sort_keys=True) + "\n")
-    led = json.loads((dst / "driver-ledger.json").read_text())
-    envs = [{"type": "harness-turn", "harness": "codex", "session_id": led["session_id"],
-             "vendor_session_id": tpcw.TID, "n": k, "sent": turn["sent"], "stream": name,
-             "sha256": hashlib.sha256((dst / name).read_bytes()).hexdigest()}
-            for k, (name, turn) in enumerate(zip(led["streams"], led["turns"]), 1)]
-    (dst / "transcript.jsonl").write_text("".join(json.dumps(e) + "\n" for e in envs))
-    reg = road.study / "rehearsals" / "register.json"
-    doc = json.loads(reg.read_text())
-    doc["walks"].append(dict(doc["walks"][0], walk="walk-g2"))
-    reg.write_text(json.dumps(doc, indent=2) + "\n")
-    tpw.git(road.root, "add", "-A")
-    tpw.git(road.root, "commit", "-q", "-m", road.drive.WALK_SUBJECT)
+    if road.lease is not None:                # one lease per walk, as walk_builders places it: a fresh one for walk-g2
+        import test_walk_builders as twb
+        import walk_builders
+        home = tbi.SCRATCH / f"lease-{road.root.name}-g2"
+        home.mkdir(mode=0o700)
+        road.lease = walk_builders.CodexLeaseRoad(str(twb.lease_file(home)))
+    road.rig.box.turn_n = 0                   # walk-g2's own session: its rollout grows from its first turn
+    with tbi.spying(road.rig.spy):
+        got = walk_runner.run_walks(road.driver, road.repo, [{"row": dict(road.row, walk="walk-g2", slot="walk-g2"),
+                                                              "reason": road.reason}])
+    test.assertEqual(got[0]["state"], "pending-native-reader", got)
     road.accept()
     return road, "walk-g2"
 
