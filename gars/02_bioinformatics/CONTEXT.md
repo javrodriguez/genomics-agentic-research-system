@@ -40,8 +40,10 @@ This stage performs the steps in Process and nothing else.
   be tested, and running anyway produces a result that looks like an answer.
 - `de.formula` is chosen from `configure.py formulas`, built from the design's own columns;
   `~ condition` (its first entry) is the presented default T9 shows. Never compose a formula
-  yourself: a formula the user types instead is passed as typed, and `apply` writes it with a
-  `formula_warning` that T9 shows (decision 0315). Never offer one marked `estimable: false`.
+  yourself: a formula the user types instead is passed as typed; `apply` refuses it when any
+  column it names is not estimable, writes it as the menu entry it equals, and otherwise writes
+  it with a `formula_warning` that T9 shows (decision 0315). Never offer one marked
+  `estimable: false`.
 
 ## Definitions
 

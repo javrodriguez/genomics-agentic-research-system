@@ -170,6 +170,25 @@ def contrast_menu(rows, factor="condition"):
     return levels, {k: len(v) for k, v in counts.items() if k}, pairs
 
 
+def column_estimability(rows, column, factor="condition"):
+    """None when `column` can be adjusted for beside `factor`, else the reason it cannot: blank
+    for any sample, one value for every sample, or nested in the factor (0315)."""
+    blank = [r["sample_id"] for r in rows if not r.get(column, "")]
+    if blank:
+        return "%s is blank for %s" % (column, ", ".join(blank))
+    values = {r.get(column, "") for r in rows}
+    if len(values) < 2:
+        return "%s has one value (%s) for every sample, so it adjusts for nothing" % (
+            column, ", ".join(sorted(values)))
+    levels = {}
+    for r in rows:
+        levels.setdefault(r.get(column, ""), set()).add(r.get(factor, ""))
+    if all(len(f) < 2 for f in levels.values()):
+        return ("every %s value occurs under one %s only, so %s cannot be separated from %s"
+                % (column, factor, column, factor))
+    return None
+
+
 def formula_menu(rows, assay, factor="condition"):
     """The condition alone, then the condition adjusted for each other design column that varies
     (R-formula, 0315). A column nested in the factor cannot be separated from it, so it is
@@ -185,16 +204,9 @@ def formula_menu(rows, assay, factor="condition"):
             factor, column)
         entry = {"formula": "~ %s + %s" % (column, factor), "meaning": meaning,
                  "terms": [column, factor], "estimable": True}
-        blank = [r["sample_id"] for r in rows if not r.get(column, "")]
-        levels = {}
-        for r in rows:
-            levels.setdefault(r.get(column, ""), set()).add(r.get(factor, ""))
-        if blank:
-            entry.update(estimable=False, reason="%s is blank for %s" % (column, ", ".join(blank)))
-        elif all(len(f) < 2 for f in levels.values()):
-            entry.update(estimable=False,
-                         reason="every %s value occurs under one %s only, so %s cannot be "
-                                "separated from %s" % (column, factor, column, factor))
+        reason = column_estimability(rows, column, factor)
+        if reason:
+            entry.update(estimable=False, reason=reason)
         menu.append(entry)
     for n, entry in enumerate(menu, start=1):
         entry["n"] = "%02d" % n
@@ -497,7 +509,12 @@ def cmd_apply(args, workspace):
         # is checked term by term and carries a warning that it was not chosen.
         formulas = formula_menu(design, args.assay, args.factor)
         token = (args.formula or DEFAULT_FORMULA).strip()
+        typed = re.sub(r"\s+", "", token)
         picked = next((f for f in formulas if token in (f["n"], f["n"].lstrip("0"))), None)
+        if picked is None:
+            # Typed as a menu entry shows it (spacing aside): that entry, with no warning.
+            picked = next((f for f in formulas
+                           if re.sub(r"\s+", "", f["formula"]) == typed), None)
         if picked is not None and not picked["estimable"]:
             result["error"] = "formula %s (%s) is not estimable: %s" % (
                 picked["n"], picked["formula"], picked["reason"])
@@ -515,10 +532,10 @@ def cmd_apply(args, workspace):
                 result["error"] = ("formula term %r is not a column of the design table (%s)"
                                    % (term, ", ".join(design[0])))
                 return emit(result, EXIT_REFUSED)
-            stuck = next((f for f in formulas if not f["estimable"] and term in f["terms"]
-                          and term != args.factor), None)
-            if stuck is not None:
-                result["error"] = "formula term %r is not estimable: %s" % (term, stuck["reason"])
+            # Every column named, offered on the menu or not (one value, blanks, nesting).
+            reason = None if term == args.factor else column_estimability(design, term, args.factor)
+            if reason is not None:
+                result["error"] = "formula term %r is not estimable: %s" % (term, reason)
                 result["formulas"] = formulas
                 return emit(result, EXIT_REFUSED)
         if args.formula is not None and picked is None:
