@@ -12,6 +12,7 @@ import csv
 import gzip
 import json
 import os
+import shlex
 import shutil
 import stat
 import subprocess
@@ -409,6 +410,100 @@ class TermsTests(Workspace):
         failures = venue_policy.check(row, 'slurm', 'pilot_internal', None, [])
         self.assertIn('venue slurm pilot_internal requires agreement_ref',
                       [f['detail'] for f in failures])
+
+
+T5R_COMMAND = ('python3 _system/stage00_register.py finalize --project projects/<title> '
+               '--data-class <class> --purpose internal --agreement-ref <reference> '
+               '--expiry <YYYY-MM-DD>')
+
+
+class RestrictedContractTests(unittest.TestCase):
+    """5a: restricted data stops at T5r, the existing finalize run by the person."""
+
+    def setUp(self):
+        text = (GARS / '00_initialize_project/CONTEXT.md').read_text()
+        self.process = text.split('## Process', 1)[1].split('## Response Format', 1)[0]
+        _, self.templates = stage00_contract()
+
+    def test_t5r_gives_the_person_the_command(self):
+        self.assertIn('T5r', self.templates)
+        t5r = self.templates['T5r']
+        self.assertIn(T5R_COMMAND, t5r)
+        self.assertIn('own terminal', t5r)
+        self.assertIn('_references/data_policy.tsv', t5r)
+
+    def test_the_agents_finalize_registers_public_only(self):
+        lines = [' '.join(l.split()) for l in self.process.splitlines()
+                 if 'stage00_register.py finalize' in l]
+        self.assertTrue(lines)
+        for line in lines:
+            self.assertIn('--data-class public', line)
+            self.assertNotIn('<class>', line)
+        flat = ' '.join(self.process.split())
+        self.assertIn('not declared public → reply T5r and stop', flat)
+
+    def test_t6_carries_the_data_line(self):
+        t6 = self.templates['T6']
+        self.assertIn('<data>', t6)
+        flat = ' '.join(self.process.split())
+        self.assertIn('its `data` line', flat)
+
+
+class RestrictedGuardTests(Workspace):
+    """5a, hunk G2: an agent's finalize whose --data-class is not exactly public is refused."""
+
+    def hook(self, command):
+        done = subprocess.run(
+            [sys.executable, str(GARS / '_system/guard_hook.py')],
+            input=json.dumps({'tool_name': 'Bash', 'tool_input': {'command': command},
+                              'cwd': str(self.ws)}),
+            env=dict(os.environ, CLAUDE_PROJECT_DIR=str(self.ws), PYTHONDONTWRITEBYTECODE='1'),
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, timeout=120)
+        return done.returncode, done.stderr
+
+    def finalize_command(self, data_class):
+        words = ['python3', '_system/stage00_register.py', 'finalize', '--project', 'projects/p',
+                 '--agreement-ref', 'none']
+        if data_class is not None:
+            words += ['--data-class', data_class]
+        return ' '.join(shlex.quote(w) for w in words)
+
+    def test_an_agents_restricted_finalize_names_t5r(self):
+        """Fails until glitch-b5 applies lanes/gars-t74/S00-class-G2-guard.patch (hunk G2)."""
+        seq = self.source()
+        (self.ws / 'data_sources.tsv').write_text(
+            'source\tdata_class\tdeclared_by\n%s\tpublic\tlane\n' % seq)
+        self.linked(seq)
+        for value in ('Public', ' public', 'PUBLIC', 'deidentified_under_agreement',
+                      'identifiable', None):
+            for spelling in ('bare', 'dispatch'):
+                with self.subTest(value=value, spelling=spelling):
+                    if spelling == 'bare':
+                        command = self.finalize_command(value)
+                    else:
+                        args = {'project': 'projects/p', 'agreement-ref': 'none'}
+                        if value is not None:
+                            args['data-class'] = value
+                        command = 'python3 _system/tool_call.py stage00_register.finalize %s' \
+                            % shlex.quote(json.dumps(args))
+                    code, err = self.hook(command)
+                    self.assertEqual(code, 2, err)
+                    self.assertIn('Blocked:', err)
+                    self.assertIn("T5r", err)
+                    self.assertIn(T5R_COMMAND, err)
+
+    def test_an_agents_public_finalize_keeps_todays_decisions(self):
+        """Exactly public: a declared registration is allowed, an undeclared one refused (Q8)."""
+        seq = self.source()
+        self.linked(seq)
+        code, err = self.hook(self.finalize_command('public'))
+        self.assertEqual(code, 2, err)
+        self.assertIn("classifying data is the owner's", err)
+        self.assertNotIn(T5R_COMMAND, err)
+        (self.ws / 'data_sources.tsv').write_text(
+            'source\tdata_class\tdeclared_by\n%s\tpublic\tlane\n' % seq)
+        code, err = self.hook(self.finalize_command('public'))
+        self.assertEqual(code, 0, err)
 
 
 if __name__ == '__main__':
