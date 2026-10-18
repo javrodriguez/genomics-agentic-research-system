@@ -45,9 +45,11 @@ empty one. The temporary folder is the only thing this file writes, and it is re
 
 ONLY A GRADED WALK IS COVERAGE (batch-8 review finding 1 and the batch-8 fix ruling, glitch-06, 14 Oct 2026; CP6:
 "Every walk is graded but never counted"). A walk covers its spec only when its grade.json is graded true, or when it is
-a pending vendor walk (pending_walk.py) that a verified graded-true regrade supersedes. Every other registered walk is
-reported with why and never counted: "pending", "regrade refused", "not graded" (a walk refused or failed before its
-first agent turn) and "grade unreadable" (missing or not JSON: fail closed). pending_walk.uncounted_walks decides.
+a pending vendor walk (pending_walk.py) that a verified graded-true regrade supersedes and a vendor recheck under the
+constants in force reads (lane vendor-admission T4 P5, R-9). Every other registered walk is reported with why and
+never counted: "pending", "regrade refused", "pending: regraded, no checker reading under the constants in force",
+"not graded" (a walk refused or failed before its first agent turn) and "grade unreadable" (missing or not JSON: fail
+closed). pending_walk.uncounted_walks decides.
 
 WHAT THIS DOES NOT DO. It is not wired into freeze_rehearsal.py or walk_register.py (lanes w8b and w8d own them; a
 later slice adopts --require-complete), it never runs a walk, and it says nothing about what a walk showed. Every

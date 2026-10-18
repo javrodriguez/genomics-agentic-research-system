@@ -23,11 +23,15 @@ drive.codex_cross_check. The document:
 A grader that raises refuses the regrade: no partial record is written. Before any grader, run.vendor_admission (lane
 vendor-admission T1) is handed the regrade's own cross-check and registry: anything but exactly the agreed shape, or a
 registry without the walk's harness, refuses. The checker's reading and route are not
-re-derived here (they need the design view and its constants); check.json keeps saying the checker never ran.
+re-derived here (they need the design view and its constants); check.json keeps saying the checker never ran, and the
+walk counts only once a recheck (below) reads it (lane vendor-admission T4 P5, R-9).
 
 THE RECHECK (glitch-6b's scheduled-wakeup ruling, 15 Oct 2026; freeze-gate ruling line 51, required before that
 amendment counts). A Claude Code walk whose checker DID run, checked under constants since superseded, is re-checked
-from its COMMITTED records, with no live take, no container and no model:
+from its COMMITTED records, with no live take, no container and no model. Lane vendor-admission T4 P5, R-9: so is a
+codex or gemini walk, through check_take.checker_for's entry and side on its vendor view; a pending vendor walk's first
+recheck runs the checker for the first time, admitted only on a verified graded-true regrade whose cross-check it
+takes, and supersedes the pending check.json with `was` carrying no reasons and no digest:
 
     python3 evals/gap-study-4/walk_regrade.py --recheck <id> --home H --temp-root T --checkout C
                             write rehearsals/<id>/recheck-<n>.json, n one past the walk's committed rechecks
@@ -35,10 +39,11 @@ from its COMMITTED records, with no live take, no container and no model:
 
 recheck_doc(walk, n, machine=...) reads the walk folder at HEAD, refuses unless every file the walk commit added is
 byte-identical at HEAD (a record edited after its walk commit is a tamper, refused) and its check.json is
-walk_runner.check_record's document with the checker run, then runs the same checker the driver ran
-(drive.take_checker, records="walks": check4_walk on the committed transcript, readers-disagree on a non-empty
-cross-check) against the design view built now (check_take.design_view with the constants in force, the routing pin
-and the walk's run tree). The machine the walk ran on is named, never guessed: `machine` is exactly {home,
+walk_runner.check_record's document with the checker run (or, for a vendor walk, the pending document with a verified
+graded-true regrade), then runs the same checker the driver ran (drive.take_checker, records="walks": checker_for's
+entry on the committed transcript, check4_walk or the vendor entries' check4_walk_vendor, readers-disagree on a
+non-empty cross-check) against the design view built now (check_take.design_view with the constants in force, the
+routing pin and the walk's run tree; a vendor row's vendor view). The machine the walk ran on is named, never guessed: `machine` is exactly {home,
 temp_root, checkout}, the checker's CHECK_HOME, CHECK_TEMP and CHECKOUT_REPO while it reads, and the run tree is
 temp_root/neutral_name(walk_session_id(walk)), as drive.run_tree_path builds it on that machine. The document
 {"schema": 1, "walk", "n", "walk_commit", "supersedes" (check.json, or recheck-<n-1>.json), "machine", "run_tree",
@@ -82,7 +87,9 @@ REGRADE_SUBJECT = walk_register.REGRADE_SUBJECT     # one spelling: walk_registe
 REGRADE_HARNESSES = ("gemini", "codex")      # Codex since Codex slice 3
 RECHECK_PREFIX = "recheck-"
 RECHECK_SUBJECT = walk_register.RECHECK_SUBJECT     # one spelling: walk_register's history check admits it
-RECHECK_HARNESSES = ("claude-code",)        # check_take.HARNESSES_WITH_READERS
+# Lane vendor-admission T4 P5, R-9 (a): the harnesses check_take.checker_for admits (claude-code's check4_walk, the
+# vendor entries' check4_walk_vendor through their vendor view)
+RECHECK_HARNESSES = ("claude-code", "codex", "gemini")
 MACHINE_KEYS = ("checkout", "home", "temp_root")
 
 
@@ -310,7 +317,7 @@ def regrade_problems(study: Path = HERE, *, readers=None, grade=None) -> list:
         if len(parts) == 2 and parts[1].startswith(RECHECK_PREFIX):
             by_walk.setdefault(parts[0], []).append(parts[1])
     for walk, names in sorted(by_walk.items()):
-        out += recheck_chain_problems(root, prefix, walk, names, study)
+        out += recheck_chain_problems(root, prefix, walk, names, study, readers=readers, grade=grade)
     out += register_recheck_problems(root, prefix, by_walk)
     for rel in listed:                    # review r6 MINOR 2: every committed count re-derived from its transcript
         parts = rel[len(walks) + 1:].split("/")
@@ -372,7 +379,7 @@ def register_recheck_problems(root, prefix, by_walk: dict) -> list:
     return out
 
 
-def recheck_chain_problems(root, prefix, walk: str, names, study) -> list:
+def recheck_chain_problems(root, prefix, walk: str, names, study, *, readers=None, grade=None) -> list:
     """One walk's rechecks: named 1..k; each earlier one's shape and supersedes link (its walk, its ordinal, the file
     before it); the latest re-derived to its exact bytes under the constants in force."""
     try:
@@ -391,7 +398,8 @@ def recheck_chain_problems(root, prefix, walk: str, names, study) -> list:
                 out.append(f"walk {walk!r}: {recheck_name(n)} is not a recheck of ordinal {n} superseding {want}")
                 continue
             if n == have[-1]:
-                again = regrade_bytes(recheck_doc(walk, n, study, machine=doc["machine"]))
+                again = regrade_bytes(recheck_doc(walk, n, study, machine=doc["machine"], readers=readers,
+                                                  grade=grade))
                 if again != raw:
                     out.append(f"walk {walk!r}: {recheck_name(n)} differs from re-deriving it")
         except (RegradeRefused, ValueError, KeyError, TypeError, AttributeError, nrr.RegistrationRefused) as e:
@@ -486,9 +494,36 @@ def production_checker(row, design, base: Path, ledger: dict) -> dict:
     return drive.take_checker(design_for=lambda r, t: design, records="walks")(row, take, [])
 
 
-def recheck_doc(walk: str, n: int, study: Path = HERE, *, machine, design_for=None, checker=None) -> dict:
+def _verified_regrade_cross(walk: str, study: Path, root, walk_rel: str, harness, *, readers, grade) -> list:
+    """Lane vendor-admission T4 P5, R-9 (b): a pending vendor walk is re-checked only when its committed regrade.json
+    re-derives to its exact bytes (regrade_doc from the committed walk) and grades it true; the cross-check the
+    checker is handed is that regrade's, as drive.TakeDriver maps an agreed status ([]), never the ledger's pending
+    one, after run.vendor_admission admits it (as regrade_doc does)."""
+    rel = f"{walk_rel}/{REGRADE_FILE}"
+    if not nrr._in_head(root, rel):
+        raise RegradeRefused("the pending walk has no committed regrade.json: its checker never ran on a registered "
+                             "reader's cross-check")
+    doc = regrade_doc(walk, study, readers=readers, grade=grade)
+    if regrade_bytes(doc) != nrr._show(root, rel):
+        raise RegradeRefused("the pending walk's committed regrade.json does not re-derive to its bytes")
+    if doc.get("graded") is not True or (doc.get("cross_check") or {}).get("status") != "agreed":
+        raise RegradeRefused("the pending walk's verified regrade does not grade it: its native cross-check refused")
+    try:
+        readers = nrr.production_readers(study) if readers is None else readers
+    except nrr.RegistrationRefused as e:
+        raise RegradeRefused(f"the reader registration refuses: {e}") from None
+    admitted(harness, readers, doc["cross_check"])
+    return []
+
+
+def recheck_doc(walk: str, n: int, study: Path = HERE, *, machine, design_for=None, checker=None, readers=None,
+                grade=None) -> dict:
     """The recheck document of ordinal `n` for `walk` (module docstring). `design_for(row, run_tree)` defaults to
-    check_take.design_view with routing's pin; `checker(row, design, folder, ledger)` to production_checker."""
+    check_take.design_view with routing's pin (a vendor row's vendor view); `checker(row, design, folder, ledger)` to
+    production_checker. Lane vendor-admission T4 P5, R-9: a codex or gemini walk is re-checked through checker_for's
+    entry and side; a pending vendor walk's first recheck admits its pending check.json only on a verified graded-true
+    regrade, whose cross-check it takes (`readers` and `grade` are regrade_doc's), and supersedes check.json with
+    `was` carrying no reasons and no digest."""
     import check_take as ct
     import drive
     import run as run_mod
@@ -523,26 +558,42 @@ def recheck_doc(walk: str, n: int, study: Path = HERE, *, machine, design_for=No
             old = json.loads((base / "check.json").read_bytes())
         except (OSError, ValueError) as e:
             raise RegradeRefused(f"the committed walk's ledger or check.json cannot be read: {e}") from None
-        _check_fields(old, "check.json")
-        prev_name = "check.json" if n == 1 else recheck_name(n - 1)
+        harness = (ledger.get("agent") or {}).get("harness") if isinstance(ledger, dict) else None
+        vendor = harness != "claude-code" and _vendor(harness)
         try:
-            prev = _check_fields(json.loads((base / prev_name).read_bytes()), prev_name)
-        except (OSError, ValueError) as e:
-            raise RegradeRefused(f"{prev_name} cannot be read: {e}") from None
-        harness = (ledger.get("agent") or {}).get("harness")
+            pending = vendor and old == pending_walk.check_doc(walk, ledger)
+        except ValueError:
+            pending = False
+        check_ledger = ledger
+        if pending:                                   # R-9 (b): the regrade's cross-check, never the ledger's
+            check_ledger = dict(ledger, cross_check=_verified_regrade_cross(walk, Path(study), root, walk_rel, harness,
+                                                                            readers=readers, grade=grade))
+        else:
+            _check_fields(old, "check.json")
+        prev_name = "check.json" if n == 1 else recheck_name(n - 1)
+        if pending and n == 1:                        # the checker never ran: no reasons, no digest
+            prev = {"file": "check.json", "checker_constants_sha256": None, "checker_reasons": []}
+        else:
+            try:
+                prev = _check_fields(json.loads((base / prev_name).read_bytes()), prev_name)
+            except (OSError, ValueError) as e:
+                raise RegradeRefused(f"{prev_name} cannot be read: {e}") from None
         if harness not in RECHECK_HARNESSES:
-            raise RegradeRefused(f"no recheck road for harness {harness!r}: only Claude Code walks have record "
-                                 f"readers in check_take.py")
+            raise RegradeRefused(f"no recheck road for harness {harness!r}: only the harnesses check_take.checker_for "
+                                 f"admits have record readers in check_take.py")
         if not (base / "transcript.jsonl").is_file():
             raise RegradeRefused("the committed walk has no transcript.jsonl")
-        forged = nudge_count_problems(old, base / "transcript.jsonl")      # review r6 MINOR 2
+        side = harness if vendor else None            # R-9 (b): a vendor walk's counts are the vendor side's
+        forged = nudge_count_problems(old, base / "transcript.jsonl", side)      # review r6 MINOR 2
         if forged:
             raise RegradeRefused(forged[0])
-        nudges = ct.no_output_nudges(base / "transcript.jsonl")           # review r7 MINOR 2: the recheck's own count
-        forged = agent_summary_problems(old, base / "transcript.jsonl")    # the Agent parity ruling, part 6
+        nudges = (ct.vendor_side_readings(base / "transcript.jsonl", harness)[0] if vendor
+                  else ct.no_output_nudges(base / "transcript.jsonl"))  # review r7 MINOR 2: the recheck's own count
+        forged = agent_summary_problems(old, base / "transcript.jsonl", side)    # the Agent parity ruling, part 6
         if forged:
             raise RegradeRefused(forged[0])
-        agents = ct.agent_summary(base / "transcript.jsonl")
+        agents = (ct.vendor_side_readings(base / "transcript.jsonl", harness)[1] if vendor
+                  else ct.agent_summary(base / "transcript.jsonl"))
         try:
             row = dict(run_mod.walk_row(entries[0], ledger), walk=walk, slot=walk)
         except ValueError as e:
@@ -554,10 +605,10 @@ def recheck_doc(walk: str, n: int, study: Path = HERE, *, machine, design_for=No
                                                           Path(machine["checkout"]))
         try:
             design = design_for(row, run_tree)
-            digest = ct.design_constants_sha256(design)
+            digest = ct.vendor_design_constants_sha256(design) if vendor else ct.design_constants_sha256(design)
             if digest is None:
                 raise RegradeRefused("the design view's constants have no digest (PENDING or incomplete)")
-            got = (production_checker if checker is None else checker)(row, design, base, ledger)
+            got = (production_checker if checker is None else checker)(row, design, base, check_ledger)
         except (ct.CheckRefused, KeyError) as e:
             raise RegradeRefused(f"the checker refused the walk: {type(e).__name__}: {e}") from None
         finally:

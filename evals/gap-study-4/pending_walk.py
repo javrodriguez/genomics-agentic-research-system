@@ -12,7 +12,9 @@ be reached by real evidence. Now such a walk is committed through WalkRepo with 
                to the same bytes.
 
 A pending walk is never graded, never counted as rehearsal coverage (walk_plan's and fixture_walk's coverage count a
-walk only when it is graded true or superseded by a verified graded-true regrade: coverage_status), and never re-run (its id is registered; a retry is a new walk id). After a reader is registered,
+walk only when it is graded true or superseded by a verified graded-true regrade and re-checked by the vendor checker
+under the constants in force: coverage_status; lane vendor-admission T4 P5, R-9), and never re-run (its id is
+registered; a retry is a new walk id). After a reader is registered,
 walk_regrade.py re-derives its cross-check and grade from the committed bytes into rehearsals/<walk>/regrade.json, a
 new superseding record; the walk's own commit and records are never touched.
 
@@ -71,8 +73,11 @@ def coverage_status(base, walk: str):
     """Batch-8 fix ruling (glitch-06, 14 Oct 2026; CP6: "Every walk is graded but never counted"): None when the walk
     counts as coverage, else why not. A walk covers its spec only when its grade.json is graded true and its check.json
     passes checker_standing (BOOTSTRAP B5: no constant-bound checker reason, checked under the constants in force), or
-    when it is a pending walk that a verified graded-true regrade supersedes (the checker never ran on it). Fail closed: a missing or unreadable grade.json, an
-    ungraded walk, a pending walk, and a pending walk whose verified regrade refused are each reported, never counted."""
+    when it is a pending walk that a verified graded-true regrade supersedes and whose latest recheck passes
+    checker_standing's pending road (T4 P5, R-9: the checker never ran on it, so the regrade alone never counts it).
+    Fail closed: a missing or unreadable grade.json, an ungraded walk, a pending walk, a pending walk whose verified
+    regrade refused and one regraded with no checker reading under the constants in force are each reported, never
+    counted."""
     import json
     from pathlib import Path
     try:
@@ -85,7 +90,10 @@ def coverage_status(base, walk: str):
         return checker_standing(base, walk)
     if grade.get("status") == PENDING:
         state = _regrade_state(base, walk)
-        return None if state == "graded" else "regrade refused" if state == "refused" else "pending"
+        # lane vendor-admission T4 P5, R-9 (c): a verified graded-true regrade counts the walk only through a checker
+        # reading under the constants in force (checker_standing's pending road), never on the regrade alone
+        return checker_standing(base, walk, pending=True) if state == "graded" else "regrade refused" \
+            if state == "refused" else "pending"
     return "not graded"
 
 
@@ -147,7 +155,7 @@ def check_keys_ok(check) -> bool:
             and ((a is None and s is None and c is None) or valid_agent_summary(a, s, c)))
 
 
-def checker_standing(base, walk: str):
+def checker_standing(base, walk: str, *, pending: bool = False):
     """BOOTSTRAP B5 (glitch-6b's first-walk bootstrap ruling, 15 Oct 2026; required, or the falsifier argument fails):
     None when a graded walk's check.json lets it count, else why not. A walk is graded whenever its first agent turn
     ran, whatever its checker reasons; a walk whose checker named a reason a CHECKER_CONSTANTS value decides
@@ -163,6 +171,8 @@ def checker_standing(base, walk: str):
         check = json.loads((Path(base) / walk / "check.json").read_bytes())
     except (OSError, ValueError):
         return "check unreadable"
+    if pending:
+        return pending_standing(base, walk, check)
     if not check_keys_ok(check) or check.get("checked") is not True \
             or check.get("route_refused") is not None or not isinstance(check.get("route"), str) \
             or not isinstance(check.get("checker_reasons"), list):
@@ -205,6 +215,45 @@ def checker_standing(base, walk: str):
         return "check unreadable: no Agent call count under the checker constants in force"
     if check.get("checker_constants_sha256") != now:
         return "stale: checked under other checker constants; regrade it"
+    return None
+
+
+PENDING_UNCHECKED = "pending: regraded, no checker reading under the constants in force"
+
+
+def pending_standing(base, walk: str, check):
+    """Lane vendor-admission T4 P5, R-9 (c) (plan v4 section 6): the standing of a pending walk whose verified regrade
+    grades it true. Its check.json is the pending document (the checker never ran); the effective reading is its
+    latest recheck (latest_recheck), judged by the rules a checked walk's is: every reason a string of routing.json's
+    operator_reasons, none in CONSTANT_BOUND_REASONS, checked under the constants in force for its harness, with a
+    nudge count and an Agent summary. No recheck reads PENDING_UNCHECKED; anything else not exactly so is named."""
+    import check_take
+    import routing
+    if not (isinstance(check, dict) and check.get("walk") == walk and set(check) == {"walk", *PENDING_STATUS_KEYS}
+            and check["status"] == PENDING):
+        return "check unreadable"
+    latest = latest_recheck(base, walk)
+    if latest is None:
+        return PENDING_UNCHECKED
+    if isinstance(latest, str):
+        return latest
+    reasons = latest.get("checker_reasons")
+    vocabulary = routing.load_table()["operator_reasons"]
+    if not isinstance(reasons, list) or not all(isinstance(r, str) and r in vocabulary for r in reasons):
+        return "check unreadable"
+    bound = [r for r in reasons if r in check_take.CONSTANT_BOUND_REASONS]
+    if bound:
+        return f"constant-bound checker reason: {', '.join(bound)}"
+    try:
+        now = constants_in_force(base, walk)
+    except check_take.CheckRefused:
+        return "the checker constants in force are PENDING"
+    if latest.get("checker_constants_sha256") != now:
+        return "stale: checked under other checker constants; regrade it"
+    if not valid_nudge_count(latest.get(CHECK_NUDGE_KEY)):
+        return "check unreadable: no no-visible-output nudge count under the checker constants in force"
+    if not valid_agent_summary(latest.get("agent_calls"), latest.get("subagents"), latest.get("nested_cli_calls")):
+        return "check unreadable: no Agent call count under the checker constants in force"
     return None
 
 
