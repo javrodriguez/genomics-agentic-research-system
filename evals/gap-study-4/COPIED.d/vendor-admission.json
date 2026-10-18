@@ -29,22 +29,17 @@
     {
       "path": "tests/vendor_check_fixtures.py",
       "status": "new",
-      "reason": "Lane vendor-admission T4 P1 (plan v4 section 8): writes and checks F1 (tests/fixtures/vendor-check-codex/) and F2 (tests/fixtures/vendor-check-gemini/), the synthetic two-turn codex and gemini take folders P1's readers read (turn envelopes, driver ledger, digest-bound turn streams, retained native snapshots), from test_pending_codex_walk's and test_pending_walk's generators; tests/test_vendor_check.py builds its F3 variants from the same parts. Standard library only. T4 P2: codex_parts and gemini_parts take a row's own lines and replies, files() takes the driver's session id, ledger fields, run tree and mode, and every take folder gains each turn's launch journal (its argv the adapter's own), F1's and F2's included. T4 P4 (glitch-b5 round 12): every take folder gains session-store.json, the drive's vendor store record (the store listed after every turn and at publish holding only the take's own session at NATIVE_REL, one sweep per turn finding only it, the nested CLI and unread stream line counts 0), F1's and F2's included, with their README label lists."
+      "reason": "Lane vendor-admission T4 P1 (plan v4 section 8): writes and checks F1 (tests/fixtures/vendor-check-codex/) and F2 (tests/fixtures/vendor-check-gemini/), the synthetic two-turn codex and gemini take folders P1's readers read (turn envelopes, driver ledger, digest-bound turn streams, retained native snapshots), from test_pending_codex_walk's and test_pending_walk's generators; tests/test_vendor_check.py builds its F3 variants from the same parts. Standard library only. T4 P2: codex_parts and gemini_parts take a row's own lines and replies, files() takes the driver's session id, ledger fields, run tree and mode, and every take folder gains each turn's launch journal (its argv the adapter's own), F1's and F2's included. T4 P4 (glitch-b5 round 12): every take folder a test builds gains session-store.json, the drive's vendor store record (the store listed after every turn and at publish holding only the take's own session at NATIVE_REL, one sweep per turn finding only it, the nested CLI and unread stream line counts 0); F1 and F2 are written without it (files' store), since the codex store's date folders read as lint_language's ratio-slash shape and an excusal is a ruling."
     },
     {
       "path": "tests/fixtures/vendor-check-codex/README.md",
       "status": "new",
-      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take. T4 P4: its label list names session-store.json."
+      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
     },
     {
       "path": "tests/fixtures/vendor-check-codex/driver-ledger.json",
       "status": "new",
       "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
-    },
-    {
-      "path": "tests/fixtures/vendor-check-codex/session-store.json",
-      "status": "new",
-      "reason": "Lane vendor-admission T4 P4: fixture F1's session-store.json (the drive's vendor store record), SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
     },
     {
       "path": "tests/fixtures/vendor-check-codex/session/native-turn-1.jsonl",
@@ -74,17 +69,12 @@
     {
       "path": "tests/fixtures/vendor-check-gemini/README.md",
       "status": "new",
-      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take. T4 P4: its label list names session-store.json."
+      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
     },
     {
       "path": "tests/fixtures/vendor-check-gemini/driver-ledger.json",
       "status": "new",
       "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
-    },
-    {
-      "path": "tests/fixtures/vendor-check-gemini/session-store.json",
-      "status": "new",
-      "reason": "Lane vendor-admission T4 P4: fixture F2's session-store.json (the drive's vendor store record), SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
     },
     {
       "path": "tests/fixtures/vendor-check-gemini/session/native-turn-1.jsonl",

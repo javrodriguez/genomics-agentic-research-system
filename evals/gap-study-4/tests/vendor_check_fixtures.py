@@ -5,15 +5,17 @@ section 8; ruled READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word "
   F1  tests/fixtures/vendor-check-codex/   a two-turn codex take: transcript.jsonl (the host's turn envelopes),
       driver-ledger.json, turn-<k>.jsonl (`codex exec --json` streams, each bound by its envelope's sha256),
       turn-<k>.jsonl.launch.json (the box's launch journal of turn k, its argv the adapter's own) and
-      session/native-turn-<k>.jsonl (the rollout retained after turn k, response_item tool records included) and
-      session-store.json (the drive's vendor store record: the store listed after every turn and at publish, one
-      sweep per turn, the nested CLI and unread stream line counts), from test_pending_codex_walk's generators.
+      session/native-turn-<k>.jsonl (the rollout retained after turn k, response_item tool records included), from
+      test_pending_codex_walk's generators.
   F2  tests/fixtures/vendor-check-gemini/  the same for gemini: `-o stream-json` streams and the retained native
       session snapshots, from test_pending_walk's accepted Gemini walk.
 
-They hold the files P1's to P4's readers read (the bound view, the raw records, the launch journals P2's
-inherited-context and run-tree legs read, and P4's session-store.json); environment.json lands with P5, whose
-readers read it. Every file is SYNTHETIC, written by this module from the documented shapes, and its
+They hold the files P1's and P2's readers read (the bound view, the raw records, the launch journals P2's
+inherited-context and run-tree legs read); environment.json lands with P5, whose readers read it. Every take folder a
+test builds also carries P4's session-store.json (the drive's vendor store record: the store listed after every turn
+and at publish, one sweep per turn, the nested CLI and unread stream line counts); F1 and F2 do not (files'
+`store`): the codex store's date folders, the CLI's own <year>/<month>/<day> layout, read as lint_language's
+ratio-slash shape, and an excusal of a committed line is a ruling, not this writer's (lane vendor-admission round 12). Every file is SYNTHETIC, written by this module from the documented shapes, and its
 folder's README carries the label list. An F3 variant is these parts edited in a test and written by the same writer
 into a scratch folder, its digests recomputed, so a variant differs from F1 or F2 only where its edit says. P2's
 takes of a real draft row are the same parts built from that row's lines and replies (codex_parts and gemini_parts
@@ -208,9 +210,10 @@ def journal(harness: str, parts: dict, k: int, *, run_tree: str = RUN_TREE, mode
 
 
 def files(harness: str, parts: dict | None = None, *, sid: str = SID, ledger: dict | None = None,
-          run_tree: str = RUN_TREE, mode: str | None = None) -> dict:
+          run_tree: str = RUN_TREE, mode: str | None = None, store: bool = True) -> dict:
     """{relative path: bytes} of one take folder of `harness` built from `parts` (its default parts when None); the
-    driver's take identity `sid`, and `ledger`'s fields merged over the ledger's own (a test's draft-row fields)."""
+    driver's take identity `sid`, and `ledger`'s fields merged over the ledger's own (a test's draft-row fields); with
+    `store`, the drive's session-store.json (F1 and F2 are written without it)."""
     if harness == "codex":
         parts = codex_parts() if parts is None else parts
         vendor_id, version, snapshot = CODEX_TID, CODEX_CLI, _codex_snapshot
@@ -231,7 +234,9 @@ def files(harness: str, parts: dict | None = None, *, sid: str = SID, ledger: di
         out[f"session/native-turn-{k}.jsonl"] = raw
         snaps.append({"file": f"native-turn-{k}.jsonl", "sha256": hashlib.sha256(raw).hexdigest()})
     out["transcript.jsonl"] = _jl(envelopes)
-    out["session-store.json"] = (json.dumps(session_store(harness, turns, run_tree=run_tree), indent=2) + "\n").encode()
+    if store:
+        out["session-store.json"] = (json.dumps(session_store(harness, turns, run_tree=run_tree), indent=2)
+                                     + "\n").encode("utf-8")
     doc = {"kind": "take", "agent": {"harness": harness, "version": version}, "session_id": sid,
            "turns": [{"n": k, "sent": parts["lines"][k - 1]} for k in turns],
            "streams": [f"turn-{k}.jsonl" for k in turns], "transcript": "transcript.jsonl", "native_snapshots": snaps}
@@ -257,7 +262,7 @@ def write(folder: Path, harness: str, parts: dict | None = None, **kw) -> Path:
 def problems() -> list:
     out = []
     for folder, harness in ((F1, "codex"), (F2, "gemini")):
-        want = files(harness)
+        want = files(harness, store=False)
         have = {p.relative_to(folder).as_posix() for p in folder.rglob("*") if p.is_file()} if folder.is_dir() else set()
         out += [f"{folder.name}/{p}: not written by this module" for p in sorted(have - set(want))]
         out += [f"{folder.name}/{p}: missing or differs" for p, data in sorted(want.items())
@@ -268,7 +273,7 @@ def problems() -> list:
 if __name__ == "__main__":
     if sys.argv[1:] == ["--write"]:
         for folder, harness in ((F1, "codex"), (F2, "gemini")):
-            write(folder, harness)
+            write(folder, harness, store=False)
         raise SystemExit(0)
     if sys.argv[1:] == ["--check"]:
         bad = problems()
