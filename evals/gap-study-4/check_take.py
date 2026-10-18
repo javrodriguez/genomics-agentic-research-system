@@ -4470,7 +4470,10 @@ def vendor_email_problems(path) -> list:
     (scrub.NOTE, box/scan_record's MARKERS), else none; any number of hits counts one, as C's one field does. The
     drive's bound (its count not above the scan's masked email hits, drive.py) refuses a marker the scan did not
     write. Only the session files the ledger names are read: any other entry under session/ refuses by name
-    (transcript-unreadable), so a file no reader binds never counts 0 (review c-6302fd3 NIT 2)."""
+    (transcript-unreadable), so a file no reader binds never counts 0 (review c-6302fd3 NIT 2). A named file that
+    cannot be read (missing, a link, not a regular file) refuses by name too, so no count is 0 on bytes never read
+    (review d-7c774ad finding 1); every file is read through _binding._regular_bytes, as the other vendor readers
+    read (NIT 1)."""
     path = Path(path)
     names = [path.name]
     try:
@@ -4493,11 +4496,13 @@ def vendor_email_problems(path) -> list:
     marker = _scrub.NOTE.encode("utf-8")
     for name in names:
         try:
-            if marker in (path.parent / name).read_bytes():
-                return [f"[{EVENT_EMAIL}] a published file of this take ({name}) carries the email marker: an account "
-                        "address was in the take's records and the scan masked it"]
-        except OSError:
-            continue
+            raw = _binding._regular_bytes(path.parent / name)
+        except transcript_view.ViewError as e:
+            return [f"[{TRANSCRIPT_UNREADABLE}] {name} is a published file of this take that cannot be read "
+                    f"({e}), so its bytes cannot be counted"]
+        if marker in raw:
+            return [f"[{EVENT_EMAIL}] a published file of this take ({name}) carries the email marker: an account "
+                    "address was in the take's records and the scan masked it"]
     return []
 
 
