@@ -842,6 +842,84 @@
       "argv": [
         "python3",
         "_system/configure.py",
+        "formulas"
+      ],
+      "cli": {
+        "assay": {
+          "flag": "--assay",
+          "nargs": null
+        },
+        "factor": {
+          "flag": "--factor",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "closed_output": [],
+      "description": "Run configure formulas",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "assay": {
+            "enum": [
+              "rnaseq_bulk"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "factor": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "assay"
+        ],
+        "type": "object"
+      },
+      "name": "configure.formulas",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/configure.py",
         "apply"
       ],
       "cli": {
