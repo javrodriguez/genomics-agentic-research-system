@@ -3619,9 +3619,9 @@ def b18_place_problems(mod) -> list:
         if got != want:
             out.append(f"B18.place: {label}: handed back {got!r}, not {want!r}")
 
-    def refused(label, words, repo, sha, tree):
+    def refused(label, words, repo, sha, tree, harness="codex"):
         try:
-            mod.place_instruction_file(tree, "codex", repo=repo, commit=sha, session_id=sid, exclude=["evals"])
+            mod.place_instruction_file(tree, harness, repo=repo, commit=sha, session_id=sid, exclude=["evals"])
         except mod.BuilderRefused as e:
             if words not in str(e):
                 out.append(f"B18.place: {label}: refused for another reason: {e}")
@@ -3676,6 +3676,19 @@ def b18_place_problems(mod) -> list:
     with bare_tree() as (repo, sha, tree), \
             mock.patch.object(sys.modules["drive"], "run_tree_problems", lambda *a: ["synthetic: a planted problem"]):
         refused("a checkout run_tree_problems refuses", "synthetic: a planted problem", repo, sha, tree)
+    # round 12 (review c-6302fd3 NIT 7): every instruction-file name a vendor CLI reads, above the checkout, refuses
+    # by name; drive.run_tree_problems (CLAUDE.md alone) is patched clean so the vendor names stand alone
+    for harness in ("codex", "gemini"):
+        for above in ("AGENTS.md", "GEMINI.md"):
+            with bare_tree() as (repo, sha, tree), \
+                    mock.patch.object(sys.modules["drive"], "run_tree_problems", lambda *a: []):
+                planted = tree.parent / above
+                planted.write_text("# synthetic: an instruction file above the checkout\n")
+                try:
+                    refused(f"{harness}: {above} above the checkout",
+                            f"an instruction file above the checkout ({planted.resolve()})", repo, sha, tree, harness)
+                finally:
+                    planted.unlink()
     return out
 
 
