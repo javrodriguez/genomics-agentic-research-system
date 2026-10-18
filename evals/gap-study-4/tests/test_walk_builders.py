@@ -1418,7 +1418,7 @@ class B9Cli(Case):
             self.nothing_built(w)
 
     def test_a_refused_row_or_login_builds_nothing(self):
-        with fake_world() as w:
+        with fake_world() as w, mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", False, create=True):   # B8-1
             for argv, words in ((w.argv(walk="a/b"), "not one path segment"),
                                 (w.argv(walk="../w-0001"), "not one path segment"),
                                 (w.argv(wording="w99"), "not a row of the design"),

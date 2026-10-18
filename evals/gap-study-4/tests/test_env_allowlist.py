@@ -369,7 +369,8 @@ class E2Allowlist(Case):
 
     def test_codex_turn_is_refused_until_its_subscription_binding(self):
         m = rt()
-        with mock.patch.object(m, "read_login", side_effect=AssertionError("E2.codex: the login was read")):
+        with mock.patch.object(m, "read_login", side_effect=AssertionError("E2.codex: the login was read")), \
+                mock.patch.object(m, "CODEX_SUBSCRIPTION_READY", False):   # the closed gate, pinned (B8-1)
             with self.assertRaises(m.NotReady, msg="E2.codex: a Codex turn was built") as cm:
                 self.turn(m.CODEX)
         self.assertIn("subscription", str(cm.exception), "E2.codex: refused for another reason")
@@ -682,8 +683,9 @@ class E5Units(Case):
         m = rt()
         vals = m.exec_values(m.CODEX, "/srv/w/t1/tree")
         inner = ["codex", "exec"]
-        self.not_ready("E5.nologin", "Codex subscription binding not ready", m.launcher_argv, m.NO_LOGIN, vals, inner,
-                       harness=m.CODEX)
+        with mock.patch.object(m, "CODEX_SUBSCRIPTION_READY", False):   # the closed gate refuses first (B8-1)
+            self.not_ready("E5.nologin", "Codex subscription binding not ready", m.launcher_argv, m.NO_LOGIN, vals,
+                           inner, harness=m.CODEX)
         with mock.patch.object(m, "CODEX_SUBSCRIPTION_READY", True):
             got = self.must("E5.nologin", m.launcher_argv, m.NO_LOGIN, vals, inner, harness=m.CODEX)
             self.assertEqual(got[:len(m.LAUNCHER) + 1], [*m.LAUNCHER, "-"], "E5.nologin: the launcher is off")

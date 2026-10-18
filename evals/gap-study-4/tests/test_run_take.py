@@ -729,7 +729,8 @@ class TestExecArgv(MutantCase):
             try:
                 # Gemini's list was FILLED 14 Oct 2026 (its package sweep); the PENDING clause stays red-tested with
                 # the entry put back. Codex is refused by its subscription gate whatever its list holds.
-                with mock.patch.dict(rt.VENDOR_BILLING_ROUTE_VARIABLES, {rt.GEMINI: rt.PENDING}):
+                with mock.patch.dict(rt.VENDOR_BILLING_ROUTE_VARIABLES, {rt.GEMINI: rt.PENDING}), \
+                        mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", False):   # Codex's gate pinned closed (B8-1)
                     rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=h,
                                  run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
                 out.append(f"a {h} exec was built while its billing-route list is PENDING")
@@ -737,7 +738,7 @@ class TestExecArgv(MutantCase):
                 pass
             if h == rt.CODEX:
                 try:
-                    with filled():
+                    with filled(), mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", False):   # pinned closed (B8-1)
                         rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=h,
                                      run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
                     out.append("Codex legacy API exec was admitted during subscription transition")
@@ -3037,8 +3038,9 @@ class TestCodexRow(MutantCase):
         except Exception as e:  # noqa: BLE001
             out.append(f"read_login crashed on a Codex row: {type(e).__name__}")
         try:
-            rt.exec_argv("a" * 64, ["codex", "exec"], user=rt.AGENT_USER, workdir="/", harness=rt.CODEX,
-                         run_tree=d, login_file=p, caller_env={"PATH": "/bin"})
+            with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", False):   # the closed gate, pinned (B8-1)
+                rt.exec_argv("a" * 64, ["codex", "exec"], user=rt.AGENT_USER, workdir="/", harness=rt.CODEX,
+                             run_tree=d, login_file=p, caller_env={"PATH": "/bin"})
             out.append("exec_argv admitted a Codex row")
         except rt.NotReady:
             pass
