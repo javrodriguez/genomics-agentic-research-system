@@ -8,6 +8,7 @@ and level names:
     genomes    the registered references            -> fills fasta + gtf + derived_dir together
     contrasts  the levels actually in the design     -> fills de.contrast, direction included
     apply      validate the selections and write     -> prints the resulting file
+    declare    stage 01's declarations, as menus      -> writes one top-level key + HISTORY line
 
 `apply --dry-run` prints the would-be file and records its sha256 (`_config/.<assay>.dry_run.json`);
 `apply` without it writes only those exact bytes, so a write cannot carry a setting the user was
@@ -33,6 +34,7 @@ Exit codes: 0 ok / 1 refused or invalid / 3 usage.
 
 import argparse
 import csv
+import datetime
 import hashlib
 import json
 import os
@@ -561,6 +563,151 @@ def cmd_apply(args, workspace):
     return emit(result, EXIT_OK)
 
 
+# --- stage 01's declarations: closed menus, written by this script (S01-declare, 0313) ----------
+
+# What each value means, in the order offered. The values are stage 01's own (CONFIG_RULES in
+# stage01_samplesheet.py), and a test keeps the two sets equal. A declaration the user volunteers
+# in their own words ("the libraries are dUTP") is answered with this menu, never written as typed:
+# a strandedness or replication unit that is merely wrong runs and gives a confident wrong answer.
+DECLARATION_MENUS = {
+    "strandedness": [
+        ("reverse", "read 1 is antisense to the transcript -- dUTP-based kits such as Illumina "
+                    "TruSeq Stranded and NEBNext Ultra II Directional"),
+        ("forward", "read 1 is sense to the transcript -- e.g. ligation-based kits"),
+        ("unstranded", "the strand is not kept -- e.g. TruSeq non-stranded"),
+        ("auto", "let nf-core infer it from the reads; an unstranded library then reads as a "
+                 "strandedness warning (pending D-24)"),
+    ],
+    "unit_of_replication": [
+        ("sample", "each sample is an independent biological replicate"),
+        ("subject", "samples from one donor, patient or model are not independent; the "
+                    "subject column is the unit (it must be filled)"),
+        ("cell_pseudobulk", "cells aggregated per sample into pseudobulk profiles"),
+    ],
+    "paired": [
+        ("paired", "the same subject appears in more than one condition (e.g. before and after) "
+                   "and the model pairs them"),
+        ("unpaired", "no subject appears in more than one condition"),
+    ],
+}
+#: The keys stage 01 checks, per assay, in the order T9 shows them.
+DECLARATION_KEYS = {
+    "rnaseq_bulk": ["strandedness", "unit_of_replication", "reference_release", "paired"],
+    "atacseq_bulk": ["unit_of_replication", "reference_release", "paired"],
+}
+#: `paired` may stay undeclared (no pairing); the others stop stage 01 until declared.
+OPTIONAL_DECLARATIONS = ("paired",)
+
+
+def declaration_menu(key, workspace):
+    """[(value, meaning)] for one key, or (None, error). The release comes from the registry."""
+    if key != "reference_release":
+        return DECLARATION_MENUS[key], None
+    rows, err = read_genomes(workspace)
+    if err:
+        return None, err
+    menu = []
+    for r in sorted(rows, key=lambda x: x["id"]):
+        release = r.get("annotation_release") or r["source"]
+        menu.append(("%s %s" % (r["id"], release) if release else r["id"],
+                     "%s %s, %s" % (r["species"], r["build"], r["source"])))
+    return menu, None
+
+
+def numbered(menu):
+    return [{"n": "%02d" % i, "value": v, "meaning": m} for i, (v, m) in enumerate(menu, start=1)]
+
+
+def declared_value(text, key):
+    """The last zero-indent `key:` scalar, as stage 01 reads it; '' when undeclared."""
+    found = None
+    for line in text.splitlines():
+        m = re.match(r"^%s:\s*(.*)$" % re.escape(key), line)
+        if m:
+            found = m.group(1)
+    value = (found or "").split("#", 1)[0].strip().strip("\"'")
+    if not value or value.lower() in ("null", "~") or value.startswith("<REQUIRED"):
+        return ""
+    return value
+
+
+def set_declaration(text, key, value):
+    """Every zero-indent `key:` line becomes `key: value`; a missing key is added after the
+    stage 01 block (the reference_release line), else at the end. Other lines are kept."""
+    line = "%s: %s" % (key, value)
+    pattern = re.compile(r"^%s:.*$" % re.escape(key), re.M)
+    if pattern.search(text):
+        return pattern.sub(lambda _: line, text)
+    anchor = re.search(r"^reference_release:.*$", text, re.M)
+    if anchor:
+        return text[:anchor.end()] + "\n" + line + text[anchor.end():]
+    return text + ("" if text.endswith("\n") or not text else "\n") + line + "\n"
+
+
+def cmd_declare(args, workspace):
+    result = {"command": "declare", "ok": False, "assay": args.assay}
+    keys = DECLARATION_KEYS.get(args.assay)
+    if keys is None:
+        result["error"] = ("stage 01 takes no declarations for assay %r; it does for %s"
+                           % (args.assay, ", ".join(sorted(DECLARATION_KEYS))))
+        return emit(result, EXIT_USAGE)
+    project = Path(args.project)
+    cfg = project / "_config" / ("%s.yaml" % args.assay)
+    if not cfg.is_file():
+        result["error"] = "no config at _config/%s.yaml; stage 00 seeds it at project creation" % args.assay
+        return emit(result, EXIT_USAGE)
+    text = cfg.read_text(encoding="utf-8")
+
+    if args.key is None:
+        if args.select is not None:
+            result["error"] = "--select needs --key: one declaration at a time"
+            return emit(result, EXIT_USAGE)
+        listed = [{"key": k, "value": declared_value(text, k),
+                   "optional": k in OPTIONAL_DECLARATIONS} for k in keys]
+        result.update({"ok": True, "keys": listed,
+                       "undeclared": [e["key"] for e in listed
+                                      if not e["value"] and not e["optional"]]})
+        return emit(result, EXIT_OK)
+
+    result["key"] = args.key
+    if args.key not in keys:
+        result["error"] = ("assay %s does not declare %s; its declarations: %s"
+                           % (args.assay, args.key, ", ".join(keys)))
+        return emit(result, EXIT_USAGE)
+    menu, err = declaration_menu(args.key, workspace)
+    if err:
+        result["error"] = err
+        return emit(result, EXIT_USAGE)
+    result["options"] = numbered(menu)
+    result["current"] = declared_value(text, args.key)
+    if args.select is None:
+        result["ok"] = True
+        return emit(result, EXIT_OK)
+
+    token = args.select.strip()
+    chosen = next((o for o in result["options"]
+                   if token in (o["n"], o["n"].lstrip("0"), o["value"])), None)
+    if chosen is None:
+        result["error"] = ("%r is not on the %s menu; reply with a menu number (1-%d). A value in "
+                           "other words is answered with this menu, never written as typed."
+                           % (args.select, args.key, len(result["options"])))
+        return emit(result, EXIT_REFUSED)
+
+    updated = set_declaration(text, args.key, chosen["value"])
+    entry = "%s %s %s: %s; chosen from the configure.py declare menu, option %s" % (
+        datetime.date.today().isoformat(), args.assay, args.key, chosen["value"], chosen["n"])
+    history = project / "HISTORY.md"
+    before = history.read_text(encoding="utf-8") if history.is_file() else ""
+    with ws.atomic_open(cfg, newline=None) as fh:
+        fh.write(updated)
+    with ws.atomic_open(history, newline=None) as fh:
+        fh.write(before + ("" if before.endswith("\n") or not before else "\n") + entry + "\n")
+    result.update({"ok": True, "value": chosen["value"], "meaning": chosen["meaning"],
+                   "selected": chosen["n"], "wrote": "_config/%s.yaml" % args.assay,
+                   "history_entry": entry})
+    return emit(result, EXIT_OK)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--workspace", type=Path, default=None)
@@ -603,13 +750,21 @@ def main(argv=None):
                    help="show the result and record it; the config is written only by a later "
                         "apply whose result equals it")
 
+    d = sub.add_parser("declare", help="stage 01's declarations as numbered menus; write one")
+    d.add_argument("--project", required=True)
+    d.add_argument("--assay", required=True)
+    d.add_argument("--key", default=None,
+                   choices=sorted({k for keys in DECLARATION_KEYS.values() for k in keys}),
+                   help="the declaration to show or write; omit to list them")
+    d.add_argument("--select", default=None, help="menu number of the value to write")
+
     args = ap.parse_args(argv)
     if not args.cmd:
         ap.print_help(sys.stderr)
         return EXIT_USAGE
     workspace = args.workspace or ws.workspace_root(__file__)
     return {"genomes": cmd_genomes, "contrasts": cmd_contrasts, "peaks": cmd_peaks,
-            "protocols": cmd_protocols,
+            "protocols": cmd_protocols, "declare": cmd_declare,
             "apply": cmd_apply}[args.cmd](args, workspace)
 
 
