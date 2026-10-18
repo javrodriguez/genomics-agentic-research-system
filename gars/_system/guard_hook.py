@@ -87,6 +87,7 @@ READ_ONLY = [
     "projects/*/.STATUS.lock",
     "projects/*/STATUS",  # R-151: only code writes lifecycle state (the owner, 13A).
     "projects/*/00_data/*/files.csv",
+    "projects/*/00_data/*/sample_id_pattern.txt",  # link's record of its pattern (0314)
     "projects/*/pilot/*",  # the pilot log and its sidecar: only pilot_log.py writes them (0141)
     "projects/*/00_data/dataset.tsv",
     "projects/*/01_samplesheets/*",
@@ -596,6 +597,8 @@ def registrable(project_dir):
         allowed.update([entry.replace("{assay}", a) for a in assays] if "{assay}" in entry
                        else [entry])
     raw_dirs = set("00_data/%s/raw" % a for a in assays)
+    # link records the pattern it read the folder with beside raw/ (decision 0314).
+    allowed.update("00_data/%s/sample_id_pattern.txt" % a for a in assays)
 
     def fail(exc):
         raise exc
