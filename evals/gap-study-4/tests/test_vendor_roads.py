@@ -183,7 +183,7 @@ def config_problems(tc) -> list:
     out = []
     if getattr(tc, "INSTRUCTION_FILES", None) != {tc.CODEX: "AGENTS.md", tc.GEMINI: "GEMINI.md"}:
         out.append(f"INSTRUCTION_FILES is {getattr(tc, 'INSTRUCTION_FILES', None)!r}")
-    with mock.patch.object(tc, "CODEX_REASONING_EFFORT", "medium"), \
+    with mock.patch.object(tc, "CODEX_REASONING_EFFORT", {"gpt-6.1-sol": "medium"}), \
             mock.patch.object(tc, "GEMINI_THINKING", {"path": "model.thinkingLevel", "value": "default"}), \
             mock.patch.object(tc, "GEMINI_AUTH_SETTING", {"path": "security.auth.selectedType", "value": "x"}):
         codex = tomllib.loads(tc.files_for(tc.CODEX, model="gpt-6.1-sol")[tc.CODEX_CONFIG].decode())

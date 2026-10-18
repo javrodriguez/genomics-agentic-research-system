@@ -147,7 +147,7 @@ class SubscriptionTransitionRegression(unittest.TestCase):
 
 class PublicConfigRegression(unittest.TestCase):
     def test_full_gemini_renderer_preserves_constraints_and_legacy_path(self):
-        # Synthetic values exercise the renderer only; production pins stay PENDING.
+        # Synthetic values exercise the renderer only (the pinned values, sourced by R3, are test_take_config's).
         with mock.patch.object(take_config, "GEMINI_THINKING", {"path": "model.thinking", "value": "minimal"}), \
                 mock.patch.object(take_config, "GEMINI_AUTH_SETTING", {"path": "security.auth.selectedType", "value": "gemini-api-key"}), \
                 tempfile.TemporaryDirectory() as folder:
@@ -168,7 +168,7 @@ class PublicConfigRegression(unittest.TestCase):
 
     def test_subscription_full_config_preserves_other_constraints_and_readiness(self):
         import tomllib
-        with mock.patch.object(take_config, "CODEX_REASONING_EFFORT", "medium"):
+        with mock.patch.object(take_config, "CODEX_REASONING_EFFORT", {"gpt-5.4": "medium"}):
             record = take_config.public_record(rt.CODEX, model="gpt-5.4")
         config = tomllib.loads(record["files"][0]["text"])
         self.assertEqual(config["forced_login_method"], "chatgpt")
@@ -176,10 +176,17 @@ class PublicConfigRegression(unittest.TestCase):
         self.assertEqual(config["web_search"], "disabled")
         self.assertIs(config["features"]["hooks"], False)
         self.assertIs(config["check_for_update_on_startup"], False)
-        with self.assertRaises(rt.NotReady):
+        # Round 17 B6 (glitch-b5's ruling R3): the three values are sourced, so readiness is read by putting each back
+        # to PENDING (this moved by that ruling from the unpatched module's NotReady); a model with no sourced effort
+        # is refused.
+        with mock.patch.object(take_config, "CODEX_REASONING_EFFORT", take_config.PENDING), \
+                self.assertRaises(rt.NotReady):
+            take_config.public_record(rt.CODEX, model="gpt-6.1-sol")
+        for name in ("GEMINI_THINKING", "GEMINI_AUTH_SETTING"):
+            with mock.patch.object(take_config, name, take_config.PENDING), self.assertRaises(rt.NotReady):
+                take_config.public_record(rt.GEMINI, model="gemini-3.8-flash")
+        with self.assertRaises(rt.Refused):
             take_config.public_record(rt.CODEX, model="gpt-5.4")
-        with self.assertRaises(rt.NotReady):
-            take_config.public_record(rt.GEMINI, model="gemini-3.8-flash")
 
     def test_image_environment_cannot_switch_gemini_path(self):
         with mock.patch.object(rt, "INSPECT_STATUS", {}), \

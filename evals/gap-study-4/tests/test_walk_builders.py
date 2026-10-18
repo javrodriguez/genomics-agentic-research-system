@@ -297,6 +297,18 @@ def mutants() -> dict:
                                  "        if gate:\n            raise BuilderRefused(f\"the Codex lease is not placed",
                                  "        if False:\n            raise BuilderRefused(f\"the Codex lease is not placed"),
         # round 17 B5: the walk-start token check (the plan's four mutants, the refresh rule's two halves)
+        # round 17 B6: the vendor config on the walk road
+        "vendor-config-skipped-codex": ("B19.config", "walk_builders",
+                                        "            vendor_config(r, cfg)          # round 17 B6: codex",
+                                        "            pass                           # round 17 B6: codex"),
+        "vendor-config-skipped-gemini": ("B19.config", "walk_builders",
+                                         "            vendor_config(r, cfg)          # round 17 B6: gemini",
+                                         "            pass                           # round 17 B6: gemini"),
+        "vendor-config-after-the-lease": ("B19.config", "walk_builders",
+                                          "            vendor_config(r, cfg)          # round 17 B6: codex, into the "
+                                          "empty folder\n            lease.place(cfg)\n",
+                                          "            lease.place(cfg)\n            vendor_config(r, cfg)          "
+                                          "# round 17 B6: codex, into the empty folder\n"),
         "lease-margin-zero": ("B13.freshness", "walk_builders",
                               "    left, need = exp - now, walk_s + LEASE_START_MARGIN_S\n",
                               "    left, need = exp - now, walk_s\n"),
@@ -448,6 +460,9 @@ METHOD = {
     "scanner-class-by-name": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
     "lease-login-before-place": "B13Lease.test_the_driver_and_walkrepo_get_the_lease_secrets",
     "lease-gate-unchecked": "B13Lease.test_the_driver_and_walkrepo_get_the_lease_secrets",
+    "vendor-config-skipped-codex": "B19VendorConfig.test_the_vendor_config_is_written_on_the_walk_road",
+    "vendor-config-skipped-gemini": "B19VendorConfig.test_the_vendor_config_is_written_on_the_walk_road",
+    "vendor-config-after-the-lease": "B19VendorConfig.test_the_vendor_config_is_written_on_the_walk_road",
     "lease-margin-zero": "B13Lease.test_the_walk_start_token_check",
     "lease-exp-ignored": "B13Lease.test_the_walk_start_token_check",
     "lease-refresh-age-ignored": "B13Lease.test_the_walk_start_token_check",
@@ -1519,7 +1534,8 @@ class TestSysPath(unittest.TestCase):
 
 # Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can.
 GENERATED_ORDER = ("B17Account", "B18Native", "B1Identity", "B6Row", "B2Login", "B3Counters", "B11Derived",
-                   "B10Resources", "B7Production", "B8Present", "B13Lease", "B14Gemini", "B15Bringup", "B16Watch",
+                   "B10Resources", "B7Production", "B8Present", "B13Lease", "B19VendorConfig", "B14Gemini",
+                   "B15Bringup", "B16Watch",
                    "B5Fixture", "B4RunTree", "G1Generated", "B12Scanner", "B9Cli", "TestSysPath")
 
 
@@ -2246,7 +2262,8 @@ def _b13_secrets_problems(mod, tmp: Path) -> list:
                 # round 17 B5: the walk's script, TEST DATA (two steps, one with a recovery: three turns)
                 "design_for": lambda r, t: types.SimpleNamespace(script=[
                     {"n": 1, "line": "one"}, {"n": 2, "line": "two", "recovery": {"send": "again"}}])}
-    row = {"walk": "w-0001", "arm": "O", "agent": {"harness": rt.CODEX, "version": "0.162.1"}}
+    row = {"walk": "w-0001", "arm": "O", "model": "gpt-6.1-sol",            # round 17 B6: spec_for writes its config
+           "agent": {"harness": rt.CODEX, "version": "0.162.1"}}
     with lease_boundary(mod) as (placed, reads), \
             mock.patch.object(drive, "walk_driver", lambda **kw: got.setdefault("driver", kw) and "driver"), \
             mock.patch.object(drive, "WalkRepo", lambda **kw: got.setdefault("repo", kw) and "repo"), \
@@ -2289,8 +2306,10 @@ def _b13_secrets_problems(mod, tmp: Path) -> list:
         try:
             got["driver"]["spec_for"](row, str(cfg))
             out.append("B13.secrets: a second lease was placed for one walk")
-        except mod.BuilderRefused:
+        except (mod.BuilderRefused, rt.Refused):    # round 17 B6: the config write into the used folder refuses first
             pass
+        if len(placed) != 1:
+            out.append(f"B13.secrets: a second spec_for placed a lease: {placed}")
         with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", False):     # review NIT 4: the gate first
             again = mod.CodexLeaseRoad(src)
             try:
@@ -3898,6 +3917,100 @@ class B18Native(Drafted):
 
     def test_place_instruction_file_refuses_by_name(self):
         self.assertEqual(b18_place_problems(wb()), [])
+
+
+# ------------------------------------------------------------------------------------------------- B19
+# Round 17 B6 (plan codex2-signin-road section 5; glitch-b5's ruling R3): a codex or gemini walk's per-take config is
+# written on the walk road, by walk_driver_for's spec_for (box/take_config.write over the row's model), into the empty
+# config folder before the lease, the settings baseline and the grant. drive.TakeDriver calls spec_for before
+# _grant_ownership (drive.py, read here and never edited), so a config spec_for leaves is there at the grant.
+def drive_spec_before_grant(text: str) -> bool:
+    """Whether drive.py's take start calls spec_for before the ownership grant (one statement each, in order)."""
+    spec, grant = "        spec = self.spec_for(row, cfg)", "        self._grant_ownership(take)"
+    return text.count(spec) == 1 and text.count(grant) == 1 and text.index(spec) < text.index(grant)
+
+
+@problems_by_assertion("B19.config")
+def b19_config_problems(mod, tmp: Path) -> list:
+    """Through the real walk_driver_for on fakes: spec_for writes a codex walk's config.toml (web_search disabled,
+    the ChatGPT login method, the row's model and its sourced effort) before it places the lease, a gemini walk's
+    .gemini/settings.json (tools.exclude, the row's model, the sourced thinking and auth settings), and nothing for a
+    Claude Code walk; and drive.py's take start runs spec_for before the grant. On a TEST DATA account record."""
+    with account_boundary(mod):
+        return _b19_config_problems(mod, tmp)
+
+
+def _b19_config_problems(mod, tmp: Path) -> list:
+    import tomllib
+    out = []
+    drive = MODS["drive"]
+    drive_text = (HERE / "drive.py").read_text()
+    if not drive_spec_before_grant(drive_text):
+        out.append("B19.config: drive.py's take start does not run spec_for before the ownership grant")
+    spec, grant = "        spec = self.spec_for(row, cfg)", "        self._grant_ownership(take)"
+    swapped = drive_text.replace(spec, "\0").replace(grant, spec).replace("\0", grant)   # written after the grant
+    if drive_spec_before_grant(swapped):
+        out.append("B19.config: the order check reads a take start that grants before spec_for as in order")
+    src = str(lease_file(tmp))
+    builders = {"lease_path": src, "rules_scanner": lambda paths: [], "runtime": "rt", "config_parent": str(tmp),
+                "budgets": (600, 5, 1), "take_spec": lambda r, c, t: "spec", "sidecar_for": None, "proxy": None,
+                "lock_path": None, "hosts": None, "cgroup_dir_for": lambda t: "", "pin_for": None,
+                "uid_map": lambda t: TAKE_UID_MAP, "clock": time.time, "sleep": None, "ownership": None,
+                "settings_guard": None, "machine_gate": None,
+                "design_for": lambda r, t: types.SimpleNamespace(script=[{"n": 1, "line": "one"}])}
+    gemini_login = str(login_file(f"GEMINI_API_KEY={GEMINI_KEY}\n"))
+    rows = (({"walk": "w-0001", "arm": "O", "model": "gpt-6.1-sol", "agent": {"harness": rt.CODEX,
+                                                                              "version": "0.162.1"}}, "-"),
+            ({"walk": "w-0001", "arm": "G", "model": "gemini-3.8-flash", "agent": {"harness": rt.GEMINI,
+                                                                                   "version": "0.64.0"}}, gemini_login),
+            ({"walk": "w-0001", "arm": "A", "model": "claude-sonnet-5-5", "agent": {"harness": rt.CLAUDE_CODE,
+                                                                                    "version": "2.1.296"}},
+             "/synthetic/login"))
+    for n, (row, login) in enumerate(rows):
+        harness, got = row["agent"]["harness"], {}
+        cfg = tmp / f"cfg-b19-{n}"
+        cfg.mkdir(mode=0o700)
+        with lease_boundary(mod), \
+                mock.patch.object(drive, "walk_driver", lambda **kw: got.setdefault("driver", kw) and "driver"), \
+                mock.patch.object(drive, "WalkRepo", lambda **kw: got.setdefault("repo", kw) and "repo"), \
+                mock.patch.object(drive, "records_repo", lambda root: "/synthetic/repo"), \
+                mock.patch.object(mod, "build_walk_fixture", lambda r, t, p: ({"sha256": "0" * 64}, "/synthetic/src")), \
+                mock.patch.object(mod, "walk_identity", lambda *a, **k: {"walk": "w-0001"}), \
+                mock.patch.object(mod, "login_secrets", lambda login, harness: (lambda: [])):
+            try:
+                mod.walk_driver_for(builders, row, login, tmp / "tree")
+                got["driver"]["spec_for"](row, str(cfg))
+            except Exception as e:  # noqa: BLE001
+                out.append(f"B19.config: a {harness} walk's spec_for raised {type(e).__name__}: {str(e)[:200]}")
+                continue
+        names = sorted(str(p.relative_to(cfg)) for p in cfg.rglob("*") if p.is_file())
+        if harness == rt.CODEX:
+            if names != ["auth.json", "config.toml"]:
+                out.append(f"B19.config: a codex walk's config folder holds {names}, not config.toml and the lease")
+                continue
+            doc = tomllib.loads((cfg / "config.toml").read_text())
+            want = {"model": "gpt-6.1-sol", "model_reasoning_effort": "low", "web_search": "disabled",
+                    "forced_login_method": "chatgpt", "cli_auth_credentials_store": "file"}
+            if {k: doc.get(k) for k in want} != want:
+                out.append(f"B19.config: a codex walk's config.toml reads {doc}")
+        elif harness == rt.GEMINI:
+            if names != [".gemini/settings.json"]:
+                out.append(f"B19.config: a gemini walk's config folder holds {names}, not .gemini/settings.json")
+                continue
+            doc = json.loads((cfg / ".gemini" / "settings.json").read_text())
+            if doc.get("tools") != {"exclude": ["google_web_search", "web_fetch"]} or \
+                    doc.get("model") != {"name": "gemini-3.8-flash"} or \
+                    doc.get("security") != {"auth": {"selectedType": "gemini-api-key"}} or "modelConfigs" not in doc:
+                out.append(f"B19.config: a gemini walk's settings.json reads {doc}")
+        elif names:
+            out.append(f"B19.config: a Claude Code walk's spec_for wrote {names} into its config folder")
+    return out
+
+
+class B19VendorConfig(Drafted):
+    def test_the_vendor_config_is_written_on_the_walk_road(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(b19_config_problems(wb(), Path(t)), [])
 
 
 if __name__ == "__main__":

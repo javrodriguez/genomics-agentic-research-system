@@ -765,10 +765,15 @@ def ready_problems(d):
          all(v == "PENDING" for h, v in d["served_model_rule"].items() if h != CODEX) and
          all(v == "PENDING" for v in d["furniture"].values()), "R15.values")
     # claude-code's per-take config is ready since the bypass acceptance was RULED not required in -p (glitch-06,
-    # 14 Oct 2026; box lane): its templates are the rendered ones; codex's and gemini's stay PENDING.
-    need(all(v == "PENDING" for h, models in d["config_templates"].items() if h != CLAUDE for v in models.values()) and
-         d["config_templates"].get(CLAUDE) == b.config_templates()[CLAUDE] and
-         all(v == "PENDING" for models in d["effort"].values() for v in models.values()), "R15.config")
+    # 14 Oct 2026; box lane). Round 17 B6 (glitch-b5's ruling R3, Sun 18 Oct 2026; this assertion moved by it from
+    # "codex's and gemini's stay PENDING"): codex's effort and gemini's thinking and auth settings are sourced from the
+    # pinned packages, so every template is the rendered one and the effort is take_config's for each model;
+    # claude-code's effort stays PENDING (the walk records the harness default).
+    need(all(isinstance(v, dict) for models in d["config_templates"].values() for v in models.values()) and
+         d["config_templates"] == b.config_templates() and
+         d["effort"] == {CLAUDE: {m: "PENDING" for m in MODELS["A"]},
+                         CODEX: {m: take_config.CODEX_REASONING_EFFORT[m] for m in MODELS["O"]},
+                         GEMINI: {m: take_config.GEMINI_THINKING for m in MODELS["G"]}}, "R15.config")
     table = json.loads((HERE / "routing.json").read_text())
     need(d["routing_markers"] == {key: table[key] for key in ("rate_limit_markers", "rate_limit_markers_status", "spend_cap_markers", "spend_cap_markers_status")} and
          d["routing_marker_inputs"] == {h: {k: "PENDING" for k in ("rate_limit_markers", "spend_cap_markers")} for h in (CODEX,GEMINI)}, "R15.markers")
@@ -992,7 +997,7 @@ class Readiness(unittest.TestCase):
         self.assertTrue(all(p['agent_version']=='0.0.0-fake' for ps in pins.values() for p in ps.values()), "R6.profile-mismatch")
         table['pin_profiles'][CODEX][MODELS['O'][0]]['version']='0.0.1-fake'
         with self.assertRaises(ValueError, msg="R6.profile-mismatch"): b.version_pins(locks,table)
-        fake_settings={'CODEX_REASONING_EFFORT':'fake-effort',
+        fake_settings={'CODEX_REASONING_EFFORT':{m:'fake-effort' for m in MODELS['O']},
                        'GEMINI_THINKING':{'path':'fake.thinking','value':'fake-default'},
                        'GEMINI_AUTH_SETTING':{'path':'fake.auth','value':'fake-kind'},'GEMINI_SETTINGS_PATH':'fake/settings.json'}
         with mock.patch.multiple(take_config,**fake_settings):

@@ -100,8 +100,11 @@ FAKE_VALUE = "FAKEVALUE-0123456789abcdef-PLANTED"
 
 @contextlib.contextmanager
 def filled():
-    """Every PENDING value, filled in memory only (interface 15), with test-only stand-ins."""
-    with mock.patch.object(tc, "CODEX_REASONING_EFFORT", "medium"), \
+    """Every once-PENDING value, replaced in memory only (interface 15) by test-only stand-ins, so the renderer is read
+    on values no source gives (round 17 B6: the real ones, sourced by R3, are bound by TestR3Values). The effort is
+    per model; "m" is the stand-in model of the refusal tests, so their refusal is the folder's, never the model's."""
+    with mock.patch.object(tc, "CODEX_REASONING_EFFORT", {"gpt-6.1-sol": "medium", "gpt-6-luna": "medium",
+                                                          "m": "medium"}), \
             mock.patch.object(tc, "GEMINI_THINKING", {"path": "model.thinkingLevel", "value": "default"}), \
             mock.patch.object(tc, "GEMINI_AUTH_SETTING", {"path": "security.auth.selectedType",
                                                           "value": "api-key-stand-in"}), \
@@ -156,6 +159,101 @@ class TestGuard(unittest.TestCase):
 
     def test_module_is_this_rounds(self):
         self.assertTrue(os.path.abspath(tc.__file__).startswith(os.path.join(HERE, "box") + os.sep))
+
+
+# Round 17 B6 (glitch-b5's ruling R3, Sun 18 Oct 2026): the three once-PENDING values, each the harness's default for
+# that model at the pinned version, read statically from the pinned package (no model call, no network); the record
+# take_config keeps beside them (VALUE_SOURCES), as the executor read it.
+GEMINI_PKG = {"package": "@google/gemini-cli", "version": "0.64.0",
+              "tarball_sha256": "891a794e55c8319b6b78f6f8f13d6b8b2782a4709dfd2fcabf3a1f63ae8365e6"}
+R3_SOURCES = {
+    "CODEX_REASONING_EFFORT": {
+        "package": "openai/codex", "tag": "rust-v0.162.1", "commit": "092d3acd6bec3e3a14bdc7e7a2810ab628ab759d",
+        "file": "codex-rs/models-manager/models.json", "lines": {"gpt-6.1-sol": 213, "gpt-6-luna": 560},
+        "read": "each model entry's default_reasoning_level; the file is the bundled catalog "
+                "(include_str!, codex-rs/models-manager/src/lib.rs line 15)"},
+    "GEMINI_THINKING": dict(GEMINI_PKG, file="bundle/chunk-NR7L3FXV.js",
+                            file_sha256="d566e81b1df8d4d44a91bf7aeea96a58ec0e6c8934fa424315ef060507dcbb8c",
+                            lines={"chat-base-3": 362280, "gemini-3.5-flash-lite": 362349, "gemini-3.8-flash": 362361,
+                                   "ThinkingLevel.HIGH": 258475, "customAliases kept": 380852},
+                            setting_file="bundle/chunk-FLKY6NH5.js",
+                            setting_file_sha256="f6a4ddd46350dad40515218069d369aaa0025f194c552400b69925b941098bc8",
+                            setting_line=13409,
+                            read="both arm G models extend the built-in alias chat-base-3, whose thinkingLevel is "
+                                 "HIGH (packages/core/src/config/defaultModelConfigs.ts); settings.json's "
+                                 "modelConfigs.customAliases replaces an alias by name, so the built-in chat-base-3 is "
+                                 "restated as it is"),
+    "GEMINI_AUTH_SETTING": dict(GEMINI_PKG, file="bundle/chunk-FLKY6NH5.js",
+                                file_sha256="f6a4ddd46350dad40515218069d369aaa0025f194c552400b69925b941098bc8",
+                                line=14183, value_file="bundle/chunk-NR7L3FXV.js", value_line=312750,
+                                read="security.auth.selectedType (packages/cli/src/config/settingsSchema.ts), set to "
+                                     "AuthType.USE_GEMINI, the API-key auth type"),
+}
+R3_VALUES = {
+    "CODEX_REASONING_EFFORT": {"gpt-6.1-sol": "low", "gpt-6-luna": "medium"},
+    "GEMINI_THINKING": {"path": "modelConfigs.customAliases", "value": {"chat-base-3": {
+        "extends": "chat-base", "modelConfig": {"generateContentConfig": {"thinkingConfig": {"thinkingLevel": "HIGH"}}}}}},
+    "GEMINI_AUTH_SETTING": {"path": "security.auth.selectedType", "value": "gemini-api-key"},
+}
+
+
+class TestR3Values(MutantCase):
+    """R3: each once-PENDING value is the statically sourced one, recorded with its package, file and line, and the
+    configs written with them carry it (and D8's other values, tools.exclude among them)."""
+
+    def check(self):
+        out = []
+        for name, want in R3_VALUES.items():
+            if getattr(tc, name) != want:
+                out.append(f"{name} is {getattr(tc, name)!r}, not the sourced {want!r}")
+        if getattr(tc, "VALUE_SOURCES", None) != R3_SOURCES:
+            out.append("take_config.VALUE_SOURCES is not the record of R3's static reads")
+        if tc.pending():
+            out.append(f"still pending: {sorted(tc.pending())}")
+        with open(os.path.join(HERE, "prereg-draft.json"), encoding="utf-8") as fh:
+            models = json.load(fh)["models"]
+        if sorted(tc.CODEX_REASONING_EFFORT) != sorted(models["O"]):
+            out.append("the efforts are not for exactly arm O's models")
+        for m in models["O"]:
+            d = tempfile.mkdtemp(prefix="w-")
+            tc.write(d, tc.CODEX, model=m)
+            with open(os.path.join(d, "config.toml"), "rb") as fh:
+                doc = tomllib.load(fh)
+            if doc.get("model_reasoning_effort") != R3_VALUES["CODEX_REASONING_EFFORT"][m] or doc.get("model") != m:
+                out.append(f"{m}'s config.toml reads effort {doc.get('model_reasoning_effort')!r}")
+        try:
+            tc.files_for(tc.CODEX, model="gpt-5.4")
+            out.append("a codex config was written for a model with no sourced effort")
+        except tc.Refused:
+            pass
+        for m in models["G"]:
+            d = tempfile.mkdtemp(prefix="w-")
+            tc.write(d, tc.GEMINI, model=m)
+            with open(os.path.join(d, ".gemini", "settings.json")) as fh:
+                doc = json.load(fh)
+            if doc.get("modelConfigs") != {"customAliases": R3_VALUES["GEMINI_THINKING"]["value"]} or \
+                    doc.get("security") != {"auth": {"selectedType": "gemini-api-key"}} or \
+                    doc.get("tools") != {"exclude": ["google_web_search", "web_fetch"]} or \
+                    doc.get("model") != {"name": m}:
+                out.append(f"{m}'s settings.json reads {doc}")
+        return out
+
+    def test_r3_values(self):
+        self.assert_green_then_red(self.check, [
+            ("efforts swapped", patched(tc, "CODEX_REASONING_EFFORT", {"gpt-6.1-sol": "medium", "gpt-6-luna": "low"})),
+            ("one model's effort dropped", patched(tc, "CODEX_REASONING_EFFORT", {"gpt-6.1-sol": "low"})),
+            ("thinking LOW", patched(tc, "GEMINI_THINKING", {"path": "modelConfigs.customAliases", "value": {
+                "chat-base-3": {"extends": "chat-base", "modelConfig": {"generateContentConfig": {
+                    "thinkingConfig": {"thinkingLevel": "LOW"}}}}}})),
+            ("thinking at another path", patched(tc, "GEMINI_THINKING", {"path": "model.thinkingLevel",
+                                                                         "value": "HIGH"})),
+            ("auth by OAuth", patched(tc, "GEMINI_AUTH_SETTING", {"path": "security.auth.selectedType",
+                                                                  "value": "oauth-personal"})),
+            ("sources dropped", patched(tc, "VALUE_SOURCES", {})),
+            ("a source's line moved", lambda: mock.patch.dict(tc.VALUE_SOURCES, {"GEMINI_AUTH_SETTING": dict(
+                R3_SOURCES["GEMINI_AUTH_SETTING"], line=14184)})),
+            ("tools.exclude dropped", patched(tc, "GEMINI_SETTINGS", tc.GEMINI_SETTINGS[1:])),
+        ])
 
 
 class TestContents(MutantCase):
@@ -249,7 +347,11 @@ def _leaves(doc):
 class TestPending(MutantCase):
     # GEMINI_SETTINGS_PATH is measured at the pinned 0.64.0 (Storage.getGlobalSettingsPath; the renderer fold).
     # CLAUDE_BYPASS_KEY RULED not required in -p (glitch-06, 14 Oct 2026): Claude Code's config is ready.
-    EXPECT = {"CODEX_REASONING_EFFORT", "GEMINI_THINKING", "GEMINI_AUTH_SETTING"}
+    # Round 17 B6 (glitch-b5's ruling R3, Sun 18 Oct 2026): CODEX_REASONING_EFFORT, GEMINI_THINKING and
+    # GEMINI_AUTH_SETTING are sourced statically from the pinned packages, so nothing is pending; this assertion moves
+    # by that ruling (it read the three as pending), and the refusal while any is PENDING is read by putting each back.
+    EXPECT = set()
+    ONCE_PENDING = ("CODEX_REASONING_EFFORT", "GEMINI_THINKING", "GEMINI_AUTH_SETTING")
 
     def check(self):
         out = []
@@ -275,13 +377,17 @@ class TestPending(MutantCase):
                 out.append("claude-code config written while the bypass ruling is PENDING")
             except tc.NotReady:
                 pass
-        for h, m in ((tc.CODEX, "gpt-6-luna"), (tc.GEMINI, "gemini-3.5-flash-lite")):
+        for name in self.ONCE_PENDING:
+            h, m = (tc.CODEX, "gpt-6-luna") if name.startswith("CODEX") else (tc.GEMINI, "gemini-3.5-flash-lite")
             d = tempfile.mkdtemp(prefix="w-")
-            try:
-                tc.write(d, h, model=m)
-                out.append(f"{h} config written while PENDING")
-            except tc.NotReady:
-                pass
+            with mock.patch.object(tc, name, tc.PENDING):
+                if name not in tc.pending():
+                    out.append(f"{name} put back to PENDING is not pending")
+                try:
+                    tc.write(d, h, model=m)
+                    out.append(f"{h} config written while {name} is PENDING")
+                except tc.NotReady:
+                    pass
             if os.listdir(d):
                 out.append(f"{h}: a refused write left a file")
         return out
