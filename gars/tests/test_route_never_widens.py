@@ -26,7 +26,10 @@ from support import GARS, REPO
 import manifest_check
 import venue_policy
 
-BASE = '132137af'           # lane gars-t74 before S00-class: the T57 merge and its ruled test
+# The base by content (lane gars-t74 before S00-class: the T57 merge and its ruled test), never by
+# a commit id, which the landing changes; both blobs are in the landed history.
+BASE_BLOBS = {'gars/_system/venue_policy.py': '8dc4f08acaac122f2fcf8aff32eb4f9d9fa0b5b3',
+              'gars/_references/data_policy.tsv': '19ae1f098ece04990ccb54f405d1c465c62efc98'}
 CLASSES = ('public', 'deidentified_under_agreement', 'identifiable')
 PURPOSES = ('fixture', 'internal', 'pilot_internal', 'pilot_external', 'commercial')
 VENUES = ('local', 'homelab', 'slurm')
@@ -42,7 +45,7 @@ def base_policy(tmp):
     refs.mkdir(parents=True)
     for rel, dest in (('gars/_system/venue_policy.py', system / 'venue_policy.py'),
                       ('gars/_references/data_policy.tsv', refs / 'data_policy.tsv')):
-        dest.write_bytes(subprocess.run(['git', 'show', '%s:%s' % (BASE, rel)], cwd=str(REPO),
+        dest.write_bytes(subprocess.run(['git', 'cat-file', 'blob', BASE_BLOBS[rel]], cwd=str(REPO),
                                         stdout=subprocess.PIPE, check=True).stdout)
     spec = importlib.util.spec_from_file_location('venue_policy_base', str(system / 'venue_policy.py'))
     module = importlib.util.module_from_spec(spec)
