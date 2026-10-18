@@ -4465,7 +4465,8 @@ def vendor_email_problems(path) -> list:
     every turn stream, every retained native snapshot the ledger names) carries the email marker the scan writes
     (scrub.NOTE, box/scan_record's MARKERS), else none; any number of hits counts one, as C's one field does. The
     drive's bound (its count not above the scan's masked email hits, drive.py) refuses a marker the scan did not
-    write."""
+    write. Only the session files the ledger names are read: any other entry under session/ refuses by name
+    (transcript-unreadable), so a file no reader binds never counts 0 (review c-6302fd3 NIT 2)."""
     path = Path(path)
     names = [path.name]
     try:
@@ -4474,7 +4475,17 @@ def vendor_email_problems(path) -> list:
         pass
     ledger = _ledger_beside(path) or {}
     snaps = ledger.get("native_snapshots") if isinstance(ledger.get("native_snapshots"), list) else []
-    names += [f"session/{s['file']}" for s in snaps if isinstance(s, dict) and isinstance(s.get("file"), str)]
+    named = {f"session/{s['file']}" for s in snaps if isinstance(s, dict) and isinstance(s.get("file"), str)}
+    names += sorted(named)
+    out = []
+    session = path.parent / "session"
+    for entry in sorted(session.rglob("*")) if session.is_dir() else []:
+        rel = entry.relative_to(path.parent).as_posix()
+        if rel not in named:
+            out.append(f"[{TRANSCRIPT_UNREADABLE}] {rel} is a session file the ledger does not name, so no reader "
+                       "binds it and its bytes cannot be counted")
+    if out:
+        return out
     marker = _scrub.NOTE.encode("utf-8")
     for name in names:
         try:
