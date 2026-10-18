@@ -102,12 +102,13 @@ row; it never re-runs and never waits. No route is added to labels4.ROUTES.
 NO EMPTY LIST WHERE MONEY IS BILLED (lane w7c, ruling W7C-gap4-1, glitch-1b under Javier's standing delegation,
 12 Oct 2026). An empty spend-cap list would let a spent cap arrive as a bare 429 and pause, waiting for a window that
 never resets. So `check_table` (and with it `load_table` and `--check`) refuses a spend-cap entry that names no marker
-in any field, for every harness except those in EMPTY_SPEND_LIST_HARNESSES (claude-code: a subscription login, D4 A,
-and codex: a ChatGPT subscription sign-in since the owner's 13 Oct amendment, round 17 B7; neither bills money per
-call, so either list may stay empty). That tuple is apart from NO_MONEY_HARNESSES, which batch.py's money gate
-reads, so arm O keeps the money gate. PAID_HARNESSES names the harnesses that bill money (Codex CLI and
-Gemini CLI, D8 B2) with the arm each runs and the vendor whose cap it spends; batch.py's money gate reads it. This
-check holds whatever spend_cap_markers_status says: it is no ruling of that status, which stays the owner's.
+in any field, for every harness except those in EMPTY_SPEND_LIST_HARNESSES (claude-code alone: a subscription login,
+D4 A, that bills no money per call, whose list may stay empty). Since round 17 B7-F4 (glitch-b5, 18 Oct 2026) codex's
+list holds the pinned CLI's out-of-credits, spend-cap and quota-exceeded texts, so codex is not in that tuple. The
+tuple is apart from NO_MONEY_HARNESSES, which batch.py's money gate reads. PAID_HARNESSES names the harnesses that
+bill money (Codex CLI and Gemini CLI, D8 B2) with the arm each runs and the vendor whose cap it spends; batch.py's
+money gate reads it. This check holds whatever spend_cap_markers_status says and is no ruling of that status: the
+status is ruled by the owner or under his delegation, and its line says which (B7-F5).
 
 ANNOTATING. `annotate()` decides the table's annotations (an outside reach: an event, and the
 text masked before commit; a quiescence kill: an event; an event id arriving as a checker reason:
@@ -194,14 +195,12 @@ SPEND_OP = "in_spend_cap_markers"
 # build_draft.HARNESSES's arms and costs.CAPS's vendors; tests/test_spend_wiring.py binds all three).
 NO_MONEY_HARNESSES = ("claude-code",)
 # Round 17 B7 (glitch-b5's ruling (1) of CONTINUED (3), 18 Oct 2026): the harnesses whose spend-cap list alone may
-# be empty, each with its reason. check_table reads this tuple, never NO_MONEY_HARNESSES, so codex's empty list is
-# admitted while arm O stays in batch.py's money gate (bills_money reads NO_MONEY_HARNESSES, unchanged).
-EMPTY_SPEND_LIST_HARNESSES = ("claude-code", "codex")
+# be empty, each with its reason. check_table reads this tuple, never NO_MONEY_HARNESSES (bills_money reads that one,
+# unchanged). Round 17 B7-F4 (glitch-b5, 18 Oct 2026): codex left it; its list holds the pinned CLI's spend texts.
+EMPTY_SPEND_LIST_HARNESSES = ("claude-code",)
 EMPTY_SPEND_LIST_REASONS = {
     "claude-code": "a subscription login (D4 A) bills no money per call and names no spend-cap error; a usage or "
                    "weekly limit pauses under rate_limit_markers (the owner's 12 Oct 2026 ruling, choice 1A)",
-    "codex": "a ChatGPT subscription sign-in (arm O since the owner's 13 Oct 2026 amendment) bills no money per call "
-             "and names no spend-cap error; a usage limit pauses under rate_limit_markers (round 17 B7)",
 }
 PAID_HARNESSES = {
     "codex": {"arm": "O", "vendor": "openai"},

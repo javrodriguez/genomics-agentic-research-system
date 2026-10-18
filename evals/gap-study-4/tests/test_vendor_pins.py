@@ -8,16 +8,19 @@ the O and G pin profiles, registered in routing.json with their rate-limit and s
                "yolo", "version": "0.64.0"} (R4): each mode a key of its adapter's MODE_FLAGS, each version its take
                lock's harness.version, the models exactly the draft's arm O and arm G models.
   B7.markers   the codex and gemini rate-limit entries are the values sourced by the static read of the pinned
-               packages (CONTINUED (2) item 3), each with its source; codex's spend-cap list is empty and codex is in
-               routing.EMPTY_SPEND_LIST_HARNESSES with its reason, never in NO_MONEY_HARNESSES (arm O keeps batch's
-               money gate, CONTINUED (3) item 1); gemini's is status 402 and the text payment required, its source
-               holding both documentation URLs, the quote and the read date (item 2).
+               packages (CONTINUED (2) item 3), each with its source; codex's spend-cap list is the pinned CLI's
+               texts out of credits, spend cap and quota exceeded (moved by glitch-b5's ruling B7-F4, 18 Oct 2026,
+               from the empty list of CONTINUED (3) item 1), codex is out of routing.EMPTY_SPEND_LIST_HARNESSES, which
+               is claude-code alone with its reason, and never in NO_MONEY_HARNESSES (arm O keeps batch's money gate);
+               gemini's is status 402 and the text payment required, its source holding both documentation URLs, the
+               quote and the read date (item 2).
   B7.status    rate_limit_markers_status and spend_cap_markers_status are glitch-b5's RULED 18 Oct 2026 lines, each
                quoting the status it supersedes, word for word, and neither pending by batch.is_pending (item 4).
   B7.pin       production_builders' pin_for returns the profile on the committed draft's first codex and first gemini
                row, and walk_builders.agent_versions() gives 0.162.1 and 0.64.0; the draft's version_pins carry them.
 
-Mutants (each must turn the check red): codex out of EMPTY_SPEND_LIST_HARNESSES with its empty list; codex put in
+Mutants (each must turn the check red): codex's spend list emptied (refused by check_table, B7-F4); a usage-limit
+text added to codex's spend list (B7-F4; also red in tests/test_codex_spend_texts.py); codex put in
 NO_MONEY_HARNESSES (arm O out of the money gate); gemini's spend list empty; a rate-limit entry with no source;
 codex's pin with permission mode yolo; codex at version 0.162.0; one arm G model missing. No take, model, container
 or network.
@@ -61,7 +64,7 @@ RATE_CITES = {CODEX: ("rust-v0.162.1", "092d3acd6bec3e3a14bdc7e7a2810ab628ab759d
                       "codex-rs/codex-api/src/api_bridge.rs", "codex_adapter.py 150 and 152"),
               GEMINI: ("@google/gemini-cli 0.64.0", "891a794e55c8319b6b78f6f8f13d6b8b2782a4709dfd2fcabf3a1f63ae8365e6",
                        "bundle/chunk-NR7L3FXV.js", "bundle/gemini-Q2GRYIAK.js", "gemini_adapter.py 157 and 184")}
-SPEND = {CODEX: {"status": [], "type": [], "text": []},
+SPEND = {CODEX: {"status": [], "type": [], "text": ["out of credits", "spend cap", "quota exceeded"]},   # B7-F4
          GEMINI: {"status": [402], "type": [], "text": ["payment required"]}}
 GEMINI_SPEND_CITES = ("https://ai.google.dev/gemini-api/docs/billing",
                       "\"Requests then fail with an HTTP 402 Payment Required error until you add credits.\"",
@@ -135,10 +138,10 @@ def table_problems(table: dict) -> list[str]:
         p.append(f"B7.markers: gemini's spend-cap source does not hold {missing}")
     empty = getattr(routing, "EMPTY_SPEND_LIST_HARNESSES", None)
     reasons = getattr(routing, "EMPTY_SPEND_LIST_REASONS", None)
-    if empty != (CLAUDE, CODEX) or not isinstance(reasons, dict) or tuple(reasons) != empty \
+    if empty != (CLAUDE,) or not isinstance(reasons, dict) or tuple(reasons) != empty \
             or not all(isinstance(v, str) and "names no spend-cap error" in v for v in reasons.values()):
         p.append(f"B7.markers: routing.EMPTY_SPEND_LIST_HARNESSES is {empty!r} with reasons {reasons!r}, not "
-                 f"(claude-code, codex) each with its reason")
+                 f"(claude-code,) with its reason (B7-F4)")
     if tuple(routing.NO_MONEY_HARNESSES) != (CLAUDE,):
         p.append(f"B7.markers: routing.NO_MONEY_HARNESSES is {routing.NO_MONEY_HARNESSES!r}: arm O leaves the money gate")
     for h in PROFILES:
@@ -207,14 +210,23 @@ def _gemini_spend_empty(t):
     t["spend_cap_markers"][GEMINI].update(status=[], type=[], text=[])
 
 
+def _codex_spend_emptied(t):
+    t["spend_cap_markers"][CODEX].update(status=[], type=[], text=[])
+
+
+def _codex_spend_usage_text(t):
+    t["spend_cap_markers"][CODEX]["text"].append("purchase more credits")
+
+
 def _rate_source_dropped(t):
     t["rate_limit_markers"][CODEX]["source"] = ""
 
 
 # name: (a routing.py patch or None, a table edit or None)
 MUTANTS = {
-    "codex out of EMPTY_SPEND_LIST_HARNESSES with its empty list": (
-        lambda: mock.patch.object(routing, "EMPTY_SPEND_LIST_HARNESSES", (CLAUDE,)), None),
+    # B7-F4 (glitch-b5, 18 Oct 2026) replaced "codex out of EMPTY_SPEND_LIST_HARNESSES with its empty list"
+    "codex's spend list emptied": (None, _codex_spend_emptied),
+    "a usage-limit text added to codex's spend list": (None, _codex_spend_usage_text),
     "codex in NO_MONEY_HARNESSES (arm O out of the money gate)": (
         lambda: mock.patch.object(routing, "NO_MONEY_HARNESSES", (CLAUDE, CODEX)), None),
     "gemini's spend list empty": (None, _gemini_spend_empty),

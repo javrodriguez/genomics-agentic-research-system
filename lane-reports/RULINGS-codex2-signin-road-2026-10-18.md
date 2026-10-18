@@ -39,6 +39,9 @@ The rate-limit and spend-cap markers follow the T4 plan's R-4 as written; if R-4
 
 B8 is not built before step 1.
 
+Added 18 Oct 2026 by glitch-b5's ruling B7-F4 (vendor-admission round 17, review r17 MINOR 1), an addition to this order, not a rewrite of it: before step 3, Javier confirms that the Codex2 account holds no purchased credits and no automatic top-up.
+The reason: a ChatGPT sign-in bills no money per call unless the account holds purchased credits, and a take could draw on them with no error at all; routing.json's codex spend-cap texts refuse only once credits run out.
+
 ## R6. Where each piece is built
 
 B1 (the login wrapper, the prepare and verify scripts, their tests and mutants) is built by a local builder on this Mac, because it is deployed to athena and checked against the pinned image there; its files sit only under `lane-reports/codex-login/`, on its own branch from 7f0ae461.
