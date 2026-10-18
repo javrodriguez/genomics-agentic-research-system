@@ -29,3 +29,7 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 walk_builders.py c
 # invariant on the vendor readers, NIT 6); the files they edit, against the same source lists.
 python3 -B -W ignore evals/gap-study-4/tests/test_vendor_entries.py
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P3 check_take.py walk_builders.py tests/test_vendor_entries.py tests/test_take_checker_dispatch.py tests/test_vendor_body.py tests/test_walk_builders.py
+# T4 P4 (glitch-b5 round 12): the vendor session store and the session binding's legs; the files P4 edits, against the
+# same source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_session.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P4 check_take.py tests/test_vendor_session.py tests/vendor_check_fixtures.py

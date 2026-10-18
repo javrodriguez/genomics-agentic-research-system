@@ -4812,6 +4812,7 @@ def _vendor_road(path, task_id, half_name, *, wording_script, arm, design, table
         problems = vendor_check(path, task_id, half_name, row_index, wording_script=wording_script, design=design,
                                 arm=arm, walk_id=walk_id)
         problems += vendor_round4_problems(path, design)
+        problems += vendor_session_problems(path, harness)
     finally:
         _PRE_IN_FORCE.reset(token)
     led = _ledger_beside(path)
@@ -4866,6 +4867,166 @@ def _vendor_entry(path, row, design, *, take, records) -> dict:
 
 
 CHECKER_ENTRIES.update({h: (_vendor_entry, _vendor_side) for h in VENDOR_HARNESSES})
+
+
+# ---- P4. THE VENDOR SESSION STORE AND BINDING (plan sections 1b, 2 and 6; R-2; glitch-b5 round 12) -------------------
+# vendor_session_store_problems is session_store_problems for a vendor take: session-store.json of the vendor's closed
+# shape (the drive's _take_records writes it with the nested CLI and unread stream line counts), the take's own native
+# session derived here from the publish listing by the drive's own locator and the CLI's own session id (native_rel,
+# plan section 6: codex's rollout names the whole thread id, gemini's session file its first 8 characters), and every
+# listing and sweep re-derived with vendor_store_violations and sweep_violations, never the drive's verdict.
+# vendor_session_binding_problems reads section 2's legs 1 to 3 from the CLI's own bytes; leg 4 is the store's derived
+# session, leg 5 the project name and take binding vendor_check already reads. Both run in the entries' road.
+import native_snapshot as _native_snapshot  # noqa: E402
+
+VENDOR_STORE_KEYS = {"harness", "root", "listings", "sweeps", "nested_cli_calls", "unread_stream_lines"}
+VENDOR_SWEEP_KEYS = {"at", "files", "unreadable", "escapes", "mounts", "scanned", "truncated", "expected"}
+VENDOR_SESSION_LOCATORS = {"codex": _native_snapshot.codex_rollout_rel, "gemini": _native_snapshot.gemini_session_rel}
+
+
+def vendor_native_rel(entries, harness, vendor_id) -> str:
+    """The take's own native session in one recorded store listing (paths relative to the config folder), located by
+    the drive's own rule (native_snapshot.codex_rollout_rel or gemini_session_rel) over that listing for the CLI's
+    session id; the folders above the store root read as folders. Raises SnapshotRefused."""
+    root = SESSION_STORE_ROOTS[harness].split("/")
+    if not (isinstance(entries, list) and all(isinstance(e, list) and len(e) == 2 and all(isinstance(x, str) for x in e)
+                                              for e in entries)):
+        raise _native_snapshot.SnapshotRefused("the listing is not [path, kind] pairs")
+
+    def lister(rel_dir):
+        here = rel_dir.split("/") if rel_dir else []
+        if len(here) < len(root) and root[:len(here)] == here:
+            return [(root[len(here)], "dir")]
+        prefix = rel_dir + "/"
+        return [(rel[len(prefix):], kind) for rel, kind in entries
+                if rel.startswith(prefix) and "/" not in rel[len(prefix):]]
+    return VENDOR_SESSION_LOCATORS[harness](lister, vendor_id)
+
+
+def vendor_session_store_problems(path, harness) -> list:
+    """nested-agent (T-21; plan section 1b's session_store_problems line and section 2's leg 4): unless
+    session-store.json beside the envelopes is of the vendor's closed shape (VENDOR_STORE_KEYS: the harness and its
+    store root, a listing after every turn, post-1 to post-n for the ledger's n retained snapshots, then one at publish;
+    one sweep per turn's listing; the drive's two counts), the take's own session derived from the publish listing for
+    the CLI's session id is in every listing, every listing holds only it, every sweep finds no session but it, and the
+    record's nested CLI call and unread stream line counts are the checker's own."""
+    path = Path(path)
+    ledger = _ledger_beside(path) or {}
+    snaps = ledger.get("native_snapshots") if isinstance(ledger.get("native_snapshots"), list) else []
+    try:
+        doc = json.loads((path.parent / SESSION_STORE_RECORD).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return [f"[{NESTED_AGENT}] the take carries no readable {SESSION_STORE_RECORD}: its session store was never "
+                "shown to hold only its own session"]
+    listings = doc.get("listings") if isinstance(doc, dict) else None
+    sweeps = doc.get("sweeps") if isinstance(doc, dict) else None
+    posts = [f"post-{k}" for k in range(1, len(snaps) + 1)]
+    if not (isinstance(doc, dict) and set(doc) == VENDOR_STORE_KEYS and doc["harness"] == harness
+            and doc["root"] == SESSION_STORE_ROOTS[harness] and posts
+            and isinstance(listings, list) and isinstance(sweeps, list)
+            and all(isinstance(x, dict) and set(x) in ({"at", "entries"}, {"at", "refused"}) for x in listings)
+            and [x["at"] for x in listings] == posts + ["publish"]
+            and all(isinstance(x, dict) and "at" in x for x in sweeps) and [x["at"] for x in sweeps] == posts
+            and all(type(doc[k]) is int and doc[k] >= 0 for k in ("nested_cli_calls", "unread_stream_lines"))):
+        return [f"[{NESTED_AGENT}] {SESSION_STORE_RECORD} is not of the vendor's closed shape (its harness and store "
+                "root; a listing after every retained turn and one at publish, each at and entries or refused; one "
+                "sweep per turn's listing; the nested CLI call and unread stream line counts)"]
+    vid = vendor_session_id(path, harness)
+    try:
+        if "refused" in listings[-1]:
+            raise _native_snapshot.SnapshotRefused(f"the publish listing was refused: {str(listings[-1]['refused'])[:120]}")
+        own = vendor_native_rel(listings[-1]["entries"], harness, vid)
+    except (_native_snapshot.SnapshotRefused, TypeError, ValueError) as e:
+        return [f"[{NESTED_AGENT}] the take's own native session cannot be derived from its publish listing for the "
+                f"session id the CLI wrote ({vid!r}): {e}"]
+    out = []
+    for x in listings:
+        if "refused" in x:
+            out.append(f"[{NESTED_AGENT}] the session store could not be listed at {x['at']}: {str(x['refused'])[:200]}")
+            continue
+        bad = vendor_store_violations(x["entries"], harness, own)
+        if [own, "file"] not in x["entries"]:
+            bad = bad + [f"{own} is not in the listing, so the session the take resumed is not shown"]
+        out += [f"[{NESTED_AGENT}] at {x['at']}: {v}" for v in bad][:5]
+    own_path = f"{SWEEP_CONFIG_MOUNT}/{own}"
+    for x in sweeps:
+        try:
+            if "refused" in x or set(x) != VENDOR_SWEEP_KEYS:
+                raise ValueError(str(x.get("refused", "off its shape"))[:200])
+            seen = sweep_violations(dict(x, files=[f for f in x["files"] if f[0] != own_path]), set(), None,
+                                    _take_run_tree(path))
+        except (TypeError, ValueError, IndexError, KeyError) as e:
+            out.append(f"[{NESTED_AGENT}] the take container could not be swept at {x['at']}: {e}")
+            continue
+        out += [f"[{NESTED_AGENT}] the sweep at {x['at']}: {v}" for v in seen][:5]
+    cmds, unread = vendor_shell_commands(path.parent, harness)
+    calls = sum(len(nested_cli_mentions(c)) for c in cmds)
+    if (doc["nested_cli_calls"], doc["unread_stream_lines"]) != (calls, len(unread)):
+        out.append(f"[{NESTED_AGENT}] {SESSION_STORE_RECORD} records {doc['nested_cli_calls']} nested CLI call(s) and "
+                   f"{doc['unread_stream_lines']} unread stream line(s); the take's own streams hold {calls} and "
+                   f"{len(unread)}")
+    return out
+
+
+def vendor_session_binding_problems(path, harness) -> list:
+    """session-binding, plan section 2's option (a) on the CLI's own bytes (T-20; R-2): the vendor id is a bound alias
+    of the driver's take identity only when leg 1, turn 1's launch journal resumes nothing and every later turn's
+    resumes exactly the session id the CLI wrote; leg 2, every envelope and the last retained snapshot name that one
+    id (bound_items binds the turn streams to it); leg 3, the snapshot holds exactly one interaction per turn stream,
+    so a resumed earlier session refuses."""
+    path = Path(path)
+    vid = vendor_session_id(path, harness)
+    if not vid:
+        return ["[session-binding] the CLI's own stream records no session id, so its session cannot be bound to the "
+                "take"]
+    try:
+        envelopes = _vendor_envelopes(path)
+    except transcript_view.ViewError as e:
+        return [f"[session-binding] the envelopes cannot be read, so the session they name cannot be bound ({e})"]
+    out = []
+    token = VENDOR_RESUME_TOKENS[harness]
+    for k in range(1, len(envelopes) + 1):
+        doc = _vendor_journal(path, k)
+        argv = doc.get("argv") if doc else None
+        if not (isinstance(argv, list) and all(isinstance(a, str) for a in argv)):
+            out.append(f"[session-binding] turn {k} has no launch journal argv, so the session it resumed cannot be "
+                       "shown")
+            continue
+        resumed = _vendor_after(argv, token)
+        if k == 1 and token in argv:
+            out.append(f"[session-binding] turn 1's launch resumes a session ({resumed!r}); a take's first turn starts "
+                       "a fresh one")
+        if k > 1 and resumed != vid:
+            out.append(f"[session-binding] turn {k}'s launch resumes {resumed!r}, not the session {vid!r} the CLI wrote "
+                       "at turn 1")
+    ids = {env.get("vendor_session_id") if isinstance(env, dict) else None for env in envelopes}
+    if ids != {vid}:
+        out.append(f"[session-binding] the envelopes name the vendor session(s) {sorted(map(str, ids))}, not the one "
+                   f"the CLI wrote ({vid!r})")
+    try:
+        ledger = _binding._json(_binding._regular_bytes(path.parent / "driver-ledger.json").decode("utf-8"))
+        raw = _vendor_last_snapshot(path, ledger)
+        if harness == "codex":
+            got = _codex_native.read_rollout(raw)
+            snap_ids, n = {got["session_id"]}, len(got["turns"])
+        else:
+            got = _gemini_projection.project(raw)
+            snap_ids, n = {i["session_id"] for i in got}, len(got)
+    except _VENDOR_READ_ERRORS as e:
+        return out + [f"[session-binding] the last retained snapshot cannot be read, so the session it holds cannot be "
+                      f"bound ({type(e).__name__}: {str(e)[:160]})"]
+    if snap_ids != {vid}:
+        out.append(f"[session-binding] the last retained snapshot holds session(s) {sorted(map(str, snap_ids))}, not "
+                   f"the one the CLI wrote ({vid!r})")
+    if n != len(envelopes):
+        out.append(f"[session-binding] the last retained snapshot holds {n} interaction(s) for {len(envelopes)} turn "
+                   "stream(s): a session resumed from earlier work, or turns it never recorded")
+    return out
+
+
+def vendor_session_problems(path, harness) -> list:
+    """P4's readings for a vendor take or walk: the session store, then the session binding's legs."""
+    return vendor_session_store_problems(path, harness) + vendor_session_binding_problems(path, harness)
 
 
 if __name__ == "__main__":
