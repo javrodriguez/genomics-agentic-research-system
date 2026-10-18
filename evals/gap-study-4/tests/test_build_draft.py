@@ -593,11 +593,10 @@ class TakeALock(unittest.TestCase):
     def test_arm_a_rows_carry_take_a_version(self):
         d = b.build()
         want = lock_versions(d)
-        # test_round4 allows no skip (SKIP_ALLOWED is empty; athena run of 1f032586): an arm whose lock is PENDING has
-        # no row carrying a version yet. The committed locks (take-a 2.1.296 from 6221c297; take-o 0.162.1 and take-g
-        # 0.64.0, R4's versions) bind each arm where they are merged.
-        for arm, version in (("A", "2.1.296"), ("O", "0.162.1"), ("G", "0.64.0")):
-            self.assertIn(want[arm], (None, version), f"arm {arm}'s take lock")
+        # B7-F7 (glitch-b5, 18 Oct 2026; review r17 NIT 3): the committed take locks are all filled on this tree
+        # (take-a 2.1.296 from 6221c297; take-o 0.162.1 and take-g 0.64.0, R4's versions), so their state is pinned
+        # exactly; a PENDING lock is read only in the synthetic both-ways test below.
+        self.assertEqual(want, {"A": "2.1.296", "O": "0.162.1", "G": "0.64.0"}, "the committed take locks")
         for arm in MODELS:
             self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] == arm}, {want[arm]}, arm)
 

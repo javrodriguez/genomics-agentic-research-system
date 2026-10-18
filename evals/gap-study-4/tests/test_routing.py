@@ -3062,8 +3062,9 @@ class TestCP5ArmAProfiles(unittest.TestCase):
         # and a lock holding another version is caught, on every tree (the skip-free form of the binding)
         self.assertTrue(cp5_problems(REAL, "7.7.7"), "a take-a version the profiles do not carry passed")
 
-    def test_o_and_g_takes_are_still_refused(self):
-        """Round 17 B7 (R4; moved by glitch-b5's ruling M, 18 Oct 2026): an O or G take is still refused unless its
+    def test_o_and_g_pins_pass_only_as_r4s_profiles(self):
+        """Renamed by B7-F7 (glitch-b5, 18 Oct 2026; review r17 NIT 4) from test_o_and_g_takes_are_still_refused.
+        Round 17 B7 (R4; moved by glitch-b5's ruling M, 18 Oct 2026): an O or G take is still refused unless its
         pin is R4's profile: a pin off the profile is refused as not the model's pre-registered profile, and a model
         with no profile under the harness as having none; R4's own pin passes the records check (T2 and the vendor
         admission still refuse to grade the take)."""
