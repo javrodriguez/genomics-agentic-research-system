@@ -1072,10 +1072,16 @@ BOOTSTRAP_SPANS = (
      "e6c5691e0f74c1bf5be6bf857615b911be5093ba9ec164d2a1b65b931d18c7f7"),
     ("harnesses-with-scripts", "HARNESSES_WITH_READERS = (CLAUDE_CODE,)\n", 'PENDING = "PENDING"\n',
      "42df7f710929cab488da1462c60eb2025f7131de53098cc0b55ed900cd99282d"),
+    # T4 R-1 (lane vendor-admission, plan v4 section 5, ruled by glitch-b5 on 17 Oct; built with P3 in round 12):
+    # r4c9-comment is re-pinned with its sentence that vendor takes are read by the appended vendor entries through
+    # checker_for and that HARNESSES_WITH_READERS names check4's harnesses, and harness_guard's docstring and refusal
+    # are reworded ("check4 reads claude-code only; vendor takes go through checker_for") in the new region below.
     ("r4c9-comment", "#   R4C-9. THE HARNESS GUARD (CP2-requirements item 10): only claude-code has record readers in this "
                      "file, so a take\n",
      "# " + "=" * 117 + "\n\nimport copy  # noqa: E402\n",
-     "e0e3c1a9c3ac414cf0d4ad56eeffe2153f2bc224c32fbfcfd132582f823ab7b1"),
+     "09398effd2392f2e7a74236ab0638ee62a45b80f88bea44aea51bec4e3601bed"),
+    ("harness-guard-message", "def harness_guard(harness) -> None:\n", "\n\ndef _pending_paths(",
+     "83ffc7370a818aed74823cc73bf62b009b2bc1e6c5342a44dc5212c3a656b579"),
     # glitch-6b's scheduled-wakeup ruling (15 Oct 2026, CP6 walk w006; the harness lane): user_text_records' `kinds`
     # line and its record-type line, edited in place to read the view's own predicate (check_take's appended
     # SCHEDULED WAKEUP section); no line moves.
@@ -1362,7 +1368,9 @@ class R8WalkRoad(Case):
             ("checked against its design view", w.row["half"], dict(args, design=object())),
             ("names no half or no wording script", w.row["half"], dict(args, design=design.replace(half=None))),
             ("names no half or no wording script", w.row["half"], dict(args, design=design.replace(script=None))),
-            ("has no record readers", w.row["half"], dict(args, design=design.replace(harness="synthetic-harness"))),
+            # moved by T4 R-1 (plan v4 section 5): harness_guard's refusal is reworded
+            ("check4 reads claude-code only", w.row["half"],
+             dict(args, design=design.replace(harness="synthetic-harness"))),
             ("still PENDING", w.row["half"], dict(args, design=design.replace(pending=("synthetic",)))),
             ("the design view is", other, args),
             ("the design view is", w.row["half"], dict(args, design=design.replace(task_id="synthetic-other-task"))),

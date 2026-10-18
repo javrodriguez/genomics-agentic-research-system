@@ -471,7 +471,7 @@ def r4_guard(mod, p):
             run4(mod, take_folder(design.script), design, design.script)
             out.append(f"{p}: check4 read a {harness} take with Claude Code's readers")
         except mod.CheckRefused as e:
-            if "no record readers" not in str(e):
+            if "check4 reads claude-code only" not in str(e):       # T4 R-1: harness_guard's refusal reworded
                 out.append(f"{p}: check4 refused a {harness} take, but not for its readers: {e}")
     return out
 
