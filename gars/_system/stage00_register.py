@@ -703,8 +703,9 @@ def declared_purpose(workspace, project):
     Settled only when the file reads cleanly (header source, data_class, declared_by and an
     optional fourth column use; every row three cells, or four under that header; each use
     cell test, analysis or empty), every linked raw entry lies inside a declared source, and all those sources carry
-    the same non-empty use. The guard reads the same file (hunk G1); a file it would not
-    accept settles nothing here either.
+    the same non-empty use. Finalize checks the header, the cell counts and the use cell only,
+    not the guard's row rules (hunk G1 is the guard's reading of the file); the agent's finalize
+    passes the guard first, the person's own does not.
     """
     import venue_policy as policy
     header = ["source", "data_class", "declared_by"]
