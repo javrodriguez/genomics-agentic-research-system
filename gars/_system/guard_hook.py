@@ -90,6 +90,7 @@ READ_ONLY = [
     "projects/*/pilot/*",  # the pilot log and its sidecar: only pilot_log.py writes them (0141)
     "projects/*/00_data/dataset.tsv",
     "projects/*/01_samplesheets/*",
+    "projects/*/_config/.*.dry_run.json",  # configure.py apply --dry-run's record (0302)
     # The stage 03 approval record: written only by `stage03_analysis.py approve` (0042).
     "projects/*/03_custom_analysis/*/PLAN.md.approved",
     "data_sources.tsv",
