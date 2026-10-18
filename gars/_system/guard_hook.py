@@ -127,6 +127,9 @@ DATASET_ROW = "00_data/dataset.tsv"
 # then register through stage 00 (decision 0107). Machine-local; never committed.
 DECLARATIONS = "data_sources.tsv"
 DECLARATIONS_HEADER = ["source", "data_class", "declared_by"]
+# S00-class (decision 0321, hunk G1): an optional fourth column says whether the folder is test
+# data or data for an analysis; finalize reads it, and a row of three cells stays valid.
+DECLARATIONS_USE, DECLARED_USES = "use", ("", "test", "analysis")
 OPEN_IN_CLOSED_EXACT = (DATASET_ROW,)
 OPEN_IN_CLOSED_BASENAME = ("STATUS",)
 CLOSED_PROJECT_DOORS = ("resolve_artifact", "rnaseq_de.check", "rnaseq_de.prepare", "rnaseq_de.collect", "rnaseq_de.summary", "executor.submit", "executor.status", "pilot_log.begin", "pilot_log.end", "pilot_log.abort", "pilot_log.check")  # row 13, dispatcher spelling only, output filtered (0141)
@@ -528,8 +531,9 @@ def declared_sources(root):
     lines = text.split("\n")
     if lines[-1] == "":
         lines.pop()
-    if not lines or lines[0].split("\t") != DECLARATIONS_HEADER:
-        return (), "the data_sources.tsv header is not source, data_class, declared_by"
+    header = lines[0].split("\t") if lines else None
+    if header not in (DECLARATIONS_HEADER, DECLARATIONS_HEADER + [DECLARATIONS_USE]):
+        return (), "the data_sources.tsv header is not source, data_class, declared_by[, use]"
     store = os.path.join(os.path.dirname(os.path.realpath(root)), ".gars-approvals")
     places = [os.path.join(root, d) for d in
               ("projects", "_system", "_references", "_templates", ".claude")] + [store]
@@ -542,9 +546,11 @@ def declared_sources(root):
     seen, found = [], []
     for line in lines[1:]:
         cells = line.split("\t")
-        if len(cells) != 3:
-            return (), "a data_sources.tsv row does not have three cells"
-        source, data_class, declared_by = cells
+        if len(cells) not in (3, len(header)):
+            return (), "a data_sources.tsv row does not have three cells, or four under use"
+        if len(cells) == 4 and cells[3] not in DECLARED_USES:
+            return (), "a declared use is not test, analysis or empty"
+        source, data_class, declared_by = cells[:3]
         if source.startswith("~") or SHELL_GLOB & set(source):
             return (), "a source holds ~ or a shell-glob character"
         if not os.path.isabs(source):
