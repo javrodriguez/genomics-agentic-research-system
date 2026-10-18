@@ -464,6 +464,9 @@ class EveryToolTests(HookCase):
                         err = self.refused(ours, 'Blocked:', root)    # ruling D-vii (b)
                         if reference.returncode == 0:
                             self.assertIn('0141', err)
+                    elif tool['name'] == 'stage00_register.finalize':
+                        # G2 (0321): an agent's finalize with no --data-class is the person's.
+                        self.assertIn('T5r', self.refused(ours, '0321', root))
                     else:
                         self.assertEqual(ours.returncode, reference.returncode, ours.stderr)
                         if ours.returncode:
@@ -868,10 +871,12 @@ class Q8Tests(HookCase):
         self.assertIn('§21 Q4', err)
         self.assertIn("classifying data is the owner's", err)
         self.assertIn('data_sources.tsv', err)
-        self.allowed(call(root, 'Bash', {'command': dispatch(
+        # G2 (0321): a class other than public is the person's, so the agent's call is refused.
+        err = self.refused(call(root, 'Bash', {'command': dispatch(
             'stage00_register.finalize', {'project': 'projects/fresh',
                                           'data-class': 'deidentified_under_agreement',
-                                          'purpose': 'fixture'})}, hook=hook))
+                                          'purpose': 'fixture'})}, hook=hook), '0321', root)
+        self.assertIn('T5r', err)
 
 
 class ControlAndDriftTests(HookCase):

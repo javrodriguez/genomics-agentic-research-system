@@ -149,6 +149,16 @@ INSPECT, LINK, FINALIZE = ("stage00_register.inspect", "stage00_register.link",
                            "stage00_register.finalize")
 CLOSED_WHY = ("Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; "
               "R-061/R-074; decision 0107).")
+# S00-class (decision 0321, hunk G2): a guarded agent's finalize registers public data only. Any
+# --data-class but exactly `public`, or none, is the person's, from stage 00's T5r.
+T5R_COMMAND = ("python3 _system/stage00_register.py finalize --project projects/<title> "
+               "--data-class <class> --purpose internal --agreement-ref <reference> "
+               "--expiry <YYYY-MM-DD>")
+# The one Next line of any --data-class refusal (decision 0321): it stands in for the
+# registry enum's generic alternative, never beside it.
+T5R_NEXT = ("Next: pass --data-class public if the data is public; otherwise send stage 00's "
+            "T5r: the person links, then registers data that is not public in their own "
+            "terminal, with `" + T5R_COMMAND + "`.")
 
 
 def workspace_root():
@@ -713,6 +723,16 @@ def declared_registration(tool, args, root, bases, closed, sources):
     return (project[0],)
 
 
+def restricted_classification(tool, args):
+    """G2 (decision 0321): the refusal for an agent's finalize whose --data-class is not exactly
+    `public` (no case folding, no stripping), or that gives none; else None."""
+    if tool.get("name") != FINALIZE or args.get("data-class") == "public":
+        return None
+    return ("Blocked: a guarded agent registers public data only; a --data-class other than "
+            "exactly public, or none, is the person's to supply (R-074; decisions 0107, 0321). "
+            + T5R_NEXT)
+
+
 def first_public_classification(tool, args, root, bases, closed, sources):
     """Q8 (decision 0107): only a human, or a protected declaration, supplies class public.
     The refusal for an agent's finalize that would supply it, or None."""
@@ -852,7 +872,8 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
     recursive = _recursive(name, [w for _, w in words])
     closed = closed_projects(root)
     sources, failed = declared_sources(root)
-    message = first_public_classification(tool, args, root, bases, closed, sources)
+    message = restricted_classification(tool, args) or \
+        first_public_classification(tool, args, root, bases, closed, sources)
     if message:
         deny(message)
     declared = declared_registration(tool, args, root, bases, closed, sources)
@@ -944,7 +965,13 @@ def check_bash(tool_input, root, cwd, depth=0):
         authorize(tool, args, 'producer', root, cwd or root)
         closed_bash_refusal(tool, args, tokens, root, cwd or root)
     except Refusal as exc:
-        deny("Blocked: " + json.dumps(exc.record(), sort_keys=True))
+        # G2 (decision 0321): only finalize takes --data-class; Public, PUBLIC or ' public'
+        # fall to the registry's enum before the rule above, and are told T5r all the same,
+        # in place of the enum's generic alternative so the refusal keeps one Next line.
+        record = exc.record()
+        if exc.field == "args.data-class":
+            record["alternative"] = T5R_NEXT
+        deny("Blocked: " + json.dumps(record, sort_keys=True))
 
 
 def guard_failed(exc):
