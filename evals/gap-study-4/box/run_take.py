@@ -176,9 +176,13 @@ LOGIN_VARIABLE = {h: next(k for k, v in row.items() if v == CREDENTIAL) for h, r
 # The historical API row above is not an admissible route. All execution and
 # builder login entry points refuse until the reviewed subscription lease exists.
 CODEX_SUBSCRIPTION_NOT_READY = "Codex subscription binding not ready; API-key login is not permitted"
-# The Codex lease road's gate (glitch-06, 14 Oct 2026): CLOSED. It opens only after Javier's Codex2 login and the first
-# real walk; every lease step (place_lease today) refuses with NotReady(CODEX_SUBSCRIPTION_NOT_READY) while it is.
-CODEX_SUBSCRIPTION_READY = False
+# The Codex lease road's gate (glitch-06, 14 Oct 2026): OPEN since B8 (18 Oct 2026), by ruling R5 of
+# lane-reports/RULINGS-codex2-signin-road-2026-10-18.md, in this order: Javier signed in to Codex2 and
+# verify_codex_lease.py printed RESULT: OK; B2 to B7 were reviewed and athena's battery was green; Javier confirmed
+# Codex2 holds no purchased credits and no automatic top-up; this commit opened it; the first real Codex walk is its
+# first use and commits pending-native-reader. Set back to False, every lease step (place_lease, the Codex exec road)
+# refuses with NotReady(CODEX_SUBSCRIPTION_NOT_READY).
+CODEX_SUBSCRIPTION_READY = True
 # Each harness's own non-secret values (its switches, proxy and config home): the row less the base, the run tree's
 # temporary folder and the credential. config_home_names() and preflight read this view.
 HARNESS_ENV = {h: {k: v for k, v in row.items() if k not in BASE_NAMES and v not in (RUN_TREE_TMP, CREDENTIAL)}
