@@ -101,7 +101,10 @@ given directory. Everything else is reported as excluded. The script never desce
 **Sample ID and sample-lane unit.** Sample IDs come from the Illumina bcl2fastq convention; a
 sample-lane unit is one `(sample_id, lane)` pair, the grain of `files.csv`. **Filenames matching
 no convention are refused, never guessed** — the script reports the ones it could not read, and
-only a pattern the *user* supplies via `--sample-id-pattern` resolves them.
+only a pattern the *user* supplies via `--sample-id-pattern` resolves them. Each assay keeps its
+own: `link` re-reads the folder with the pattern its `inspect` used and records it in
+`00_data/<Assay ID>/sample_id_pattern.txt`, and `finalize` derives that assay's names with that
+record alone, so one assay's pattern never reaches another (decision 0314).
 
 **Read pairing.** Wholly paired-end or wholly single-end. A mixed set is refused.
 
@@ -251,6 +254,9 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
     python3 _system/stage00_register.py link --project projects/<title> --assay <Assay ID> --source <path>
     ```
 
+    If this assay's `inspect` at step 10 used `--sample-id-pattern`, add the same
+    `--sample-id-pattern '<that pattern>'` to `link`, and only for this assay; `link` refuses a
+    pattern that does not read the folder (exit 2 → step 10) and records the one it used.
     Never add `--force`. Exit 1 → report its `error` and stop; the raw directory is already
     populated and narrowing an existing project is not this stage's to do.
 13. Exit 0 → reply T4b with its `linked` count.
@@ -269,7 +275,9 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
     Never pass `--model`: the model is part of the toolchain, so `HISTORY.md` records it beside
     the template version, and the script takes it from what your harness reported at session
     start, or records `unknown`, which is honest; a self-reported id is not (decision 0303).
-    Add the same `--sample-id-pattern` if one was used at step 9. This writes `files.csv` and
+    Never pass `--sample-id-pattern` to finalize: it reads each assay's pattern from the
+    `sample_id_pattern.txt` its link recorded, and refuses a flag that disagrees with one
+    (decision 0314). This writes `files.csv` and
     `samples.csv`, substitutes the stamp's placeholders, and runs the exit gate. It is
     deterministic and re-runnable: on unchanged inputs it reproduces the four files byte for
     byte, so a killed run costs only time.
