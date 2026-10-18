@@ -44,6 +44,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import time
 import types
 import unittest
 from pathlib import Path
@@ -269,7 +270,8 @@ def enveloped_pending_walk(test):
         import walk_builders
         home = tbi.SCRATCH / f"lease-{road.root.name}-g2"
         home.mkdir(mode=0o700)
-        road.lease = walk_builders.CodexLeaseRoad(str(twb.lease_file(home)))
+        road.lease = walk_builders.CodexLeaseRoad(str(twb.lease_file(home)), walk_s=twb.RIG_WALK_S,
+                                                  clock=time.time)
     road.rig.box.turn_n = 0                   # walk-g2's own session: its rollout grows from its first turn
     with tbi.spying(road.rig.spy):
         got = walk_runner.run_walks(road.driver, road.repo, [{"row": dict(road.row, walk="walk-g2", slot="walk-g2"),

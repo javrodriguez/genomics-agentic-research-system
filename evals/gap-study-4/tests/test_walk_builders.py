@@ -70,6 +70,7 @@ EQUIVALENT, a listed one killed, or an inconclusive run.
 from __future__ import annotations
 
 import ast
+import base64
 import contextlib
 import io
 import json
@@ -80,6 +81,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import types
 import unittest
 import uuid
@@ -294,6 +296,20 @@ def mutants() -> dict:
         "lease-gate-unchecked": ("B13.secrets", "walk_builders",
                                  "        if gate:\n            raise BuilderRefused(f\"the Codex lease is not placed",
                                  "        if False:\n            raise BuilderRefused(f\"the Codex lease is not placed"),
+        # round 17 B5: the walk-start token check (the plan's four mutants, the refresh rule's two halves)
+        "lease-margin-zero": ("B13.freshness", "walk_builders",
+                              "    left, need = exp - now, walk_s + LEASE_START_MARGIN_S\n",
+                              "    left, need = exp - now, walk_s\n"),
+        "lease-exp-ignored": ("B13.freshness", "walk_builders", "    if left < need:\n", "    if False:\n"),
+        "lease-refresh-age-ignored": ("B13.freshness", "walk_builders",
+                                      "    if now - refreshed > LEASE_REFRESH_MAX_AGE_S:\n", "    if False:\n"),
+        "lease-refresh-missing-admitted": ("B13.freshness", "walk_builders",
+                                           "    if refreshed is None:\n        return",
+                                           "    if refreshed is None:\n        return None\n        return"),
+        "lease-refusal-carries-token": ("B13.freshness", "walk_builders",
+                                        "            raise BuilderRefused(f\"the Codex lease is not placed: {stale}\")",
+                                        "            raise BuilderRefused(f\"the Codex lease is not placed: {stale} \""
+                                        " + open(self.lease_src).read())"),
         "scanner-real-unchecked": ("B12.scanner", "walk_builders",
                                    "        if type(scanner) is not pinned:", "        if False:"),     # 0f1aa5ea's line
         "scanner-raw-to-driver": ("B12.scanner", "walk_builders",
@@ -432,6 +448,11 @@ METHOD = {
     "scanner-class-by-name": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
     "lease-login-before-place": "B13Lease.test_the_driver_and_walkrepo_get_the_lease_secrets",
     "lease-gate-unchecked": "B13Lease.test_the_driver_and_walkrepo_get_the_lease_secrets",
+    "lease-margin-zero": "B13Lease.test_the_walk_start_token_check",
+    "lease-exp-ignored": "B13Lease.test_the_walk_start_token_check",
+    "lease-refresh-age-ignored": "B13Lease.test_the_walk_start_token_check",
+    "lease-refresh-missing-admitted": "B13Lease.test_the_walk_start_token_check",
+    "lease-refusal-carries-token": "B13Lease.test_the_walk_start_token_check",
     "place-inherited-unchecked": "B18Native.test_place_instruction_file_refuses_by_name",
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
@@ -442,6 +463,9 @@ WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 EQUIVALENT: dict = {
     # athena run gap4-w12b-bc66fdf-20261013T101052Z, shard 16:
     "walk_builders.remove_run_tree:delete:L6:C4:e3e767f5":
+        "the function's last statement `return None`; deleted, the function falls off its end and returns None",
+    # round 17 B5, run in this sandbox over --gen-mutant: the same shape
+    "walk_builders.lease_freshness_problem:delete:L27:C4:e3e767f5":
         "the function's last statement `return None`; deleted, the function falls off its end and returns None",
 }
 
@@ -1983,17 +2007,41 @@ class B12Scanner(Case):
 # the integration merge must prove the real ones meet it (the lane report names what).
 # Synthetic lease values, at least 20 characters, low entropy on purpose (never real, never key-shaped), and with no
 # word preflight's CREDENTIAL_LIKE reads, so a folder named with one passes the name rule (NIT 5's point).
-ACCESS = "synthetic-lease-one-" + "a" * 12
 REFRESH = "synthetic-lease-two-" + "b" * 12
 REFRESHED = "synthetic-lease-three-" + "c" * 12
+
+
+def test_jwt(exp, label="synthetic-lease-one") -> str:
+    """Round 17 B5: a TEST DATA access token of a JWT's shape (built at run time, never a literal: an unsigned
+    header, a payload of `exp` and a test-data label, a fixed low-entropy signature), so the walk-start check can read
+    its `exp` as Codex's parse_jwt_expiration does. `exp` None leaves the claim out."""
+    def part(doc):
+        return base64.urlsafe_b64encode(json.dumps(doc, separators=(",", ":")).encode()).rstrip(b"=").decode()
+    claims = {"test_data": label} if exp is None else {"exp": exp, "test_data": label}
+    return ".".join((part({"alg": "none", "typ": "JWT"}), part(claims), "synthetic-signature"))
+
+
+ACCESS = test_jwt(4102444800)          # 2100-01-01T00:00:00Z: a lease far from expiry, for every road but B5's own
+
+
+def iso_utc(t: float) -> str:
+    """`t` as auth.json's last_refresh: RFC 3339 in UTC, with Codex's (chrono's) nanosecond fraction."""
+    return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(int(t))) + f".{int((t % 1) * 1e9):09d}Z"
+# Round 17 B5: the walk budget a lease road's rig hands CodexLeaseRoad (TEST DATA: one turn of the pre-registered
+# budgets, 900 s plus 180 s); its leases (ACCESS) are far from expiry.
+RIG_WALK_S = 900 + 180
 # Round 17 B3: a take's uid map, TEST DATA in athena's measured shape (the agent, 10001, maps to host 110000).
 TAKE_UID_MAP = ((0, 1000, 1), (1, 100000, 65536))
 
 
-def lease_file(tmp: Path, access=ACCESS, refresh=REFRESH) -> Path:
+def lease_file(tmp: Path, access=ACCESS, refresh=REFRESH, last_refresh="now") -> Path:
+    """A TEST DATA lease in auth.json's shape (round 17 B5: with last_refresh, now by default; None leaves it out)."""
     f = tmp / "lease-src" / "auth.json"
     f.parent.mkdir(mode=0o700, exist_ok=True)
-    f.write_text(json.dumps({"tokens": {"access_token": access, "refresh_token": refresh}}))
+    doc = {"tokens": {"access_token": access, "refresh_token": refresh}}
+    if last_refresh is not None:
+        doc["last_refresh"] = iso_utc(time.time()) if last_refresh == "now" else last_refresh
+    f.write_text(json.dumps(doc))
     os.chmod(f, 0o600)
     return f
 
@@ -2193,8 +2241,11 @@ def _b13_secrets_problems(mod, tmp: Path) -> list:
     builders = {"lease_path": src, "rules_scanner": lambda paths: [], "runtime": "rt", "config_parent": str(tmp),
                 "budgets": (600, 5, 1), "take_spec": lambda r, c, t: specs.append((r["arm"], c, t)) or "spec",
                 "sidecar_for": None, "proxy": None, "lock_path": None, "hosts": None, "cgroup_dir_for": lambda t: "",
-                "pin_for": None, "design_for": None, "uid_map": uid_map, "clock": None, "sleep": None,
-                "ownership": None, "settings_guard": None, "machine_gate": None}
+                "pin_for": None, "uid_map": uid_map, "clock": time.time, "sleep": None,
+                "ownership": None, "settings_guard": None, "machine_gate": None,
+                # round 17 B5: the walk's script, TEST DATA (two steps, one with a recovery: three turns)
+                "design_for": lambda r, t: types.SimpleNamespace(script=[
+                    {"n": 1, "line": "one"}, {"n": 2, "line": "two", "recovery": {"send": "again"}}])}
     row = {"walk": "w-0001", "arm": "O", "agent": {"harness": rt.CODEX, "version": "0.162.1"}}
     with lease_boundary(mod) as (placed, reads), \
             mock.patch.object(drive, "walk_driver", lambda **kw: got.setdefault("driver", kw) and "driver"), \
@@ -2211,6 +2262,9 @@ def _b13_secrets_problems(mod, tmp: Path) -> list:
         road = getattr(s_driver, "__self__", None)
         if s_driver is not s_repo or not isinstance(road, mod.CodexLeaseRoad):
             out.append(f"B13.secrets: the driver got {s_driver!r} and WalkRepo {s_repo!r}, not one lease road's")
+        if (getattr(road, "walk_s", None), getattr(road, "clock", None)) != (3 * (600 + 5), builders["clock"]):
+            out.append(f"B13.secrets: the lease road's walk budget and clock are {getattr(road, 'walk_s', None)!r}, "
+                       f"{getattr(road, 'clock', None)!r}, not three turns of the walk's budgets and its clock")
         login_for = got["driver"]["login_file"]       # review MINOR 1: the take's placed lease, never "-"
         if not callable(login_for) or getattr(login_for, "__self__", None) is not road:
             out.append(f"B13.secrets: the driver's login_file is {login_for!r}, not the lease road's per-take path")
@@ -2248,9 +2302,10 @@ def _b13_secrets_problems(mod, tmp: Path) -> list:
 
         def refusing_map(t):
             raise mod.BuilderRefused("synthetic: the uid map cannot be read")
-        for n, (label, road_) in enumerate((("a lease road with no uid map reader", mod.CodexLeaseRoad(src)),
+        timed = dict(walk_s=3 * 605, clock=time.time)
+        for n, (label, road_) in enumerate((("a lease road with no uid map reader", mod.CodexLeaseRoad(src, **timed)),
                                             ("a uid map reader that refuses",
-                                             mod.CodexLeaseRoad(src, uid_map=refusing_map)))):
+                                             mod.CodexLeaseRoad(src, uid_map=refusing_map, **timed)))):
             c = tmp / f"cfg-b3-{n}"                   # round 17 B3: no uid map, no login file
             c.mkdir(mode=0o700)
             try:
@@ -2280,6 +2335,99 @@ def _b13_secrets_problems(mod, tmp: Path) -> list:
         got["driver"]["spec_for"](claude, str(tmp / "cfg2"))
         if got["driver"]["secrets"] is not marker or got["repo"]["secrets"] is not marker or placed:
             out.append("B13.secrets: a Claude walk's secrets are not its login file's, or it placed a lease")
+    return out
+
+
+@problems_by_assertion("B13.freshness")
+def b13_freshness_problems(mod, tmp: Path) -> list:
+    """Round 17 B5 (plan codex2-signin-road section 2): CodexLeaseRoad.place refuses by name, before anything is
+    written, a lease whose access token's JWT exp leaves less than the walk's budget plus LEASE_START_MARGIN_S, or
+    whose last_refresh is past LEASE_REFRESH_MAX_AGE_S, or either unreadable; no refusal carries a token. On TEST DATA
+    leases and a fixed clock."""
+    with account_boundary(mod):
+        return _b13_freshness_problems(mod, tmp)
+
+
+def _b13_freshness_problems(mod, tmp: Path) -> list:
+    out = []
+    now, walk_s = 2.0e9 + 0.25, 3 * (900 + 180)
+    margin = getattr(mod, "LEASE_START_MARGIN_S", None)
+    max_age = getattr(mod, "LEASE_REFRESH_MAX_AGE_S", None)
+    if (margin, max_age) != (15 * 60, 7 * 24 * 3600):
+        out.append(f"B13.freshness: the margin and the refresh age are {margin!r} and {max_age!r}, not 15 minutes "
+                   f"and 7 days")
+    day = 24 * 3600
+    cases = (  # (label, exp, last_refresh, walk budget, clock, the refusal's words or None for admitted)
+        ("a fresh lease", now + walk_s + 900 + 3600, iso_utc(now - day), walk_s, True, None),
+        ("Codex's nanosecond last_refresh at an offset", now + walk_s + 901, iso_utc(now - day).replace(
+            "Z", "+00:00"), walk_s, True, None),
+        ("an access token 10 minutes from expiry", now + 600, iso_utc(now - day), walk_s, True, "minutes left"),
+        ("an access token inside the margin", now + walk_s + 900 - 60, iso_utc(now - day), walk_s, True,
+         "minutes left"),
+        ("an access token past the walk alone", now + walk_s + 60, iso_utc(now - day), walk_s, True, "minutes left"),
+        ("an expired access token", now - 60, iso_utc(now - day), walk_s, True, "minutes left"),
+        ("an access token with no exp", None, iso_utc(now - day), walk_s, True, "exp"),
+        ("an access token not a JWT", "plain", iso_utc(now - day), walk_s, True, "exp"),
+        ("an exp that is not a number", "text", iso_utc(now - day), walk_s, True, "exp"),
+        ("an exp that is a boolean", "bool", iso_utc(now - day), walk_s, True, "exp"),
+        ("an access token whose payload is not JSON", "garbled", iso_utc(now - day), walk_s, True, "exp"),
+        ("a last_refresh 8 days ago", now + 30 * day, iso_utc(now - 8 * day), walk_s, True, "last_refresh"),
+        ("a last_refresh 7 days and a minute ago", now + 30 * day, iso_utc(now - 7 * day - 60), walk_s, True,
+         "last_refresh"),
+        ("no last_refresh", now + 30 * day, None, walk_s, True, "last_refresh"),
+        ("a last_refresh not a time", now + 30 * day, "yesterday", walk_s, True, "last_refresh"),
+        ("a last_refresh of month 13", now + 30 * day, "2033-13-01T00:00:00Z", walk_s, True, "last_refresh"),
+        ("a last_refresh 7 days and 3 hours ago, written at +05:00", now + 30 * day,
+         iso_utc(now - 7 * day - 3 * 3600 + 5 * 3600).replace("Z", "+05:00"), walk_s, True, "last_refresh"),
+        ("a last_refresh 7 days and 3 hours ago, written at -05:00", now + 30 * day,
+         iso_utc(now - 7 * day - 3 * 3600 - 5 * 3600).replace("Z", "-05:00"), walk_s, True, "last_refresh"),
+        ("a last_refresh with no fraction", now + 30 * day, iso_utc(now - day).split(".")[0] + "Z", walk_s, True,
+         None),
+        ("a last_refresh inside 7 days by its fraction alone", now + 30 * day,
+         iso_utc(int(now) - 7 * day + 0.5), walk_s, True, None),
+        ("a lease that is not JSON", "not-json", iso_utc(now - day), walk_s, True, "cannot be read"),
+        ("no walk budget", now + 30 * day, iso_utc(now - day), None, True, "walk budget"),
+        ("a walk budget of zero", now + 30 * day, iso_utc(now - day), 0, True, "walk budget"),
+        ("a walk budget that is a boolean", now + 30 * day, iso_utc(now - day), True, True, "walk budget"),
+        ("no clock", now + 30 * day, iso_utc(now - day), walk_s, False, "clock"))
+    with lease_boundary(mod) as (placed, reads):
+        for n, (label, exp, refreshed, budget, clocked, words) in enumerate(cases):
+            home = tmp / f"fresh-{n}"
+            home.mkdir()
+            if exp == "plain":
+                access = "synthetic-lease-plain-" + "d" * 12
+            elif exp == "text":
+                access = test_jwt("soon")
+            elif exp == "bool":
+                access = test_jwt(True)
+            elif exp == "garbled":
+                access = "synthetic-header.not-a-json-payload.synthetic-signature"
+            else:
+                access = test_jwt(exp)
+            src = str(lease_file(home, access=access, last_refresh=refreshed))
+            if exp == "not-json":
+                Path(src).write_text("{not json")
+            cfg = home / "cfg"
+            cfg.mkdir(mode=0o700)
+            before = len(placed)
+            try:
+                road_ = mod.CodexLeaseRoad(src, walk_s=budget, clock=(lambda: now) if clocked else None)
+                road_.place(str(cfg))
+                if words is not None:
+                    out.append(f"B13.freshness: {label} was placed")
+            except mod.BuilderRefused as e:
+                msg = str(e)
+                if words is None:
+                    out.append(f"B13.freshness: {label} was refused: {msg}")
+                elif words not in msg:
+                    out.append(f"B13.freshness: {label} refused for another reason: {msg}")
+                for secret in (access, REFRESH, access.split(".")[1] if "." in access else access):
+                    if secret in msg:
+                        out.append(f"B13.freshness: the refusal of {label} carries a token")
+                if len(placed) != before or (cfg / "auth.json").exists():
+                    out.append(f"B13.freshness: {label} was refused after the lease was written")
+            except Exception as e:  # noqa: BLE001
+                out.append(f"B13.freshness: {label} raised {type(e).__name__}: {str(e)[:200]}")
     return out
 
 
@@ -2391,6 +2539,10 @@ class B13Lease(Drafted):
 
     def test_the_adapter_gets_the_takes_own_login_file(self):
         self.assertEqual(b13_adapter_problems(wb()), [])
+
+    def test_the_walk_start_token_check(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(b13_freshness_problems(wb(), Path(t)), [])
 
     def test_the_environment_record_sets_no_codex_login(self):
         self.assertEqual(b13_environment_problems(wb()), [])

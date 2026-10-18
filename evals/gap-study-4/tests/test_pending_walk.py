@@ -18,6 +18,7 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -233,7 +234,8 @@ class Road:
             self.test.addCleanup(patch.stop)
         home = tbi.SCRATCH / f"lease-{self.root.name}"
         home.mkdir(mode=0o700)
-        self.lease = walk_builders.CodexLeaseRoad(str(twb.lease_file(home)))
+        self.lease = walk_builders.CodexLeaseRoad(str(twb.lease_file(home)), walk_s=twb.RIG_WALK_S,
+                                                  clock=time.time)
         spec_for, login = self.driver.spec_for, self.driver.secrets
         self.driver.spec_for = lambda row, cfg: (self.lease.place(cfg), spec_for(row, cfg))[1]
         self.driver.secrets = self.repo.secrets = lambda: list(login()) + list(self.lease.secrets())
