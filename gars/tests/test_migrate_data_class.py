@@ -105,5 +105,17 @@ class MigrationDryRunTests(unittest.TestCase):
                          ['unreadable'])
 
 
+    def test_an_unknown_purpose_is_listed_for_a_person_never_called_legacy(self):
+        odd = self.ws / 'projects/p00/00_data/dataset.tsv'
+        row = ['public', 'bogus', 'none', '[]', 'slurm:internal', 'no', 'x', '2027-12-31']
+        odd.write_text('\t'.join(HEADER) + '\n' + '\t'.join(row) + '\n')
+        code, result = self.run_script('--dry-run')
+        self.assertEqual(code, 0, result)
+        means = [r['means'] for r in result['rows'] if r['project'] == 'p00']
+        self.assertEqual(means, ['public, unknown purpose bogus, no route'])
+        self.assertNotIn('legacy', means[0])
+        self.assertIn('p00', [r['project'] for r in result['for_a_person']])
+
+
 if __name__ == '__main__':
     unittest.main()
