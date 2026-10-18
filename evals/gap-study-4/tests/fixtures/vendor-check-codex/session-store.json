@@ -1,0 +1,141 @@
+{
+  "harness": "codex",
+  "root": "sessions",
+  "listings": [
+    {
+      "at": "post-1",
+      "entries": [
+        [
+          "sessions/2026",
+          "dir"
+        ],
+        [
+          "sessions/2026/10",
+          "dir"
+        ],
+        [
+          "sessions/2026/10/14",
+          "dir"
+        ],
+        [
+          "sessions/2026/10/14/rollout-2026-10-14T05-00-00-00000000-0000-7000-8000-0000000000f1.jsonl",
+          "file"
+        ]
+      ]
+    },
+    {
+      "at": "post-2",
+      "entries": [
+        [
+          "sessions/2026",
+          "dir"
+        ],
+        [
+          "sessions/2026/10",
+          "dir"
+        ],
+        [
+          "sessions/2026/10/14",
+          "dir"
+        ],
+        [
+          "sessions/2026/10/14/rollout-2026-10-14T05-00-00-00000000-0000-7000-8000-0000000000f1.jsonl",
+          "file"
+        ]
+      ]
+    },
+    {
+      "at": "publish",
+      "entries": [
+        [
+          "sessions/2026",
+          "dir"
+        ],
+        [
+          "sessions/2026/10",
+          "dir"
+        ],
+        [
+          "sessions/2026/10/14",
+          "dir"
+        ],
+        [
+          "sessions/2026/10/14/rollout-2026-10-14T05-00-00-00000000-0000-7000-8000-0000000000f1.jsonl",
+          "file"
+        ]
+      ]
+    }
+  ],
+  "sweeps": [
+    {
+      "at": "post-1",
+      "files": [
+        [
+          "/opt/cfg/sessions/2026/10/14/rollout-2026-10-14T05-00-00-00000000-0000-7000-8000-0000000000f1.jsonl",
+          "codex",
+          "00000000-0000-7000-8000-0000000000f1"
+        ]
+      ],
+      "unreadable": [],
+      "escapes": [],
+      "mounts": [
+        "/work/tree",
+        "/opt/cfg",
+        "/tmp",
+        "/var/tmp",
+        "/dev/shm",
+        "/etc/hosts",
+        "/etc/hostname",
+        "/etc/resolv.conf"
+      ],
+      "scanned": 1,
+      "truncated": false,
+      "expected": [
+        "/work/tree",
+        "/opt/cfg",
+        "/tmp",
+        "/var/tmp",
+        "/dev/shm",
+        "/etc/hosts",
+        "/etc/hostname",
+        "/etc/resolv.conf"
+      ]
+    },
+    {
+      "at": "post-2",
+      "files": [
+        [
+          "/opt/cfg/sessions/2026/10/14/rollout-2026-10-14T05-00-00-00000000-0000-7000-8000-0000000000f1.jsonl",
+          "codex",
+          "00000000-0000-7000-8000-0000000000f1"
+        ]
+      ],
+      "unreadable": [],
+      "escapes": [],
+      "mounts": [
+        "/work/tree",
+        "/opt/cfg",
+        "/tmp",
+        "/var/tmp",
+        "/dev/shm",
+        "/etc/hosts",
+        "/etc/hostname",
+        "/etc/resolv.conf"
+      ],
+      "scanned": 1,
+      "truncated": false,
+      "expected": [
+        "/work/tree",
+        "/opt/cfg",
+        "/tmp",
+        "/var/tmp",
+        "/dev/shm",
+        "/etc/hosts",
+        "/etc/hostname",
+        "/etc/resolv.conf"
+      ]
+    }
+  ],
+  "nested_cli_calls": 0,
+  "unread_stream_lines": 0
+}

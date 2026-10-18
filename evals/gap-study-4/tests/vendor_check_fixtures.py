@@ -5,14 +5,15 @@ section 8; ruled READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word "
   F1  tests/fixtures/vendor-check-codex/   a two-turn codex take: transcript.jsonl (the host's turn envelopes),
       driver-ledger.json, turn-<k>.jsonl (`codex exec --json` streams, each bound by its envelope's sha256),
       turn-<k>.jsonl.launch.json (the box's launch journal of turn k, its argv the adapter's own) and
-      session/native-turn-<k>.jsonl (the rollout retained after turn k, response_item tool records included), from
-      test_pending_codex_walk's generators.
+      session/native-turn-<k>.jsonl (the rollout retained after turn k, response_item tool records included) and
+      session-store.json (the drive's vendor store record: the store listed after every turn and at publish, one
+      sweep per turn, the nested CLI and unread stream line counts), from test_pending_codex_walk's generators.
   F2  tests/fixtures/vendor-check-gemini/  the same for gemini: `-o stream-json` streams and the retained native
       session snapshots, from test_pending_walk's accepted Gemini walk.
 
-They hold the files P1's and P2's readers read (the bound view, the raw records, the launch journals P2's
-inherited-context and run-tree legs read); session-store.json and environment.json land with the pieces whose
-readers read them (P4 and P5). Every file is SYNTHETIC, written by this module from the documented shapes, and its
+They hold the files P1's to P4's readers read (the bound view, the raw records, the launch journals P2's
+inherited-context and run-tree legs read, and P4's session-store.json); environment.json lands with P5, whose
+readers read it. Every file is SYNTHETIC, written by this module from the documented shapes, and its
 folder's README carries the label list. An F3 variant is these parts edited in a test and written by the same writer
 into a scratch folder, its digests recomputed, so a variant differs from F1 or F2 only where its edit says. P2's
 takes of a real draft row are the same parts built from that row's lines and replies (codex_parts and gemini_parts
@@ -52,6 +53,14 @@ GEMINI_STATS = {"total_tokens": 3, "input_tokens": 2, "output_tokens": 1, "cache
                 "tool_calls": 1, "models": {GEMINI_MODEL: {"total_tokens": 3, "input_tokens": 2, "output_tokens": 1,
                                                            "cached": 0, "input": 2}}}
 LABEL = "SYNTHETIC, written by tests/vendor_check_fixtures.py from the documented shapes, not a recorded take."
+# T4 P4: where each CLI's own session sits in the take's config folder (native_snapshot's codex_rollout_rel and
+# gemini_session_rel name it), the store root the drive lists (check_take.SESSION_STORE_ROOTS), and the read-write
+# mounts a take container has (box/run_take.sweep_roots, which check_take.sweep_expected recomputes).
+NATIVE_REL = {"codex": f"sessions/2026/10/14/rollout-2026-10-14T05-00-00-{CODEX_TID}.jsonl",
+              "gemini": f".gemini/tmp/project-1/chats/session-2026-10-14T00-00-{GEMINI_SID[:8]}.jsonl"}
+STORE_ROOTS = {"codex": "sessions", "gemini": ".gemini/tmp"}
+CONFIG_MOUNT = "/opt/cfg"
+SWEEP_FIXED = ("/tmp", "/var/tmp", "/dev/shm", "/etc/hosts", "/etc/hostname", "/etc/resolv.conf")
 
 
 def sent(k: int) -> str:
@@ -162,6 +171,29 @@ def _gemini_snapshot(parts: dict, upto: int) -> bytes:
     return _jl([parts["meta"]] + [m for k in range(1, upto + 1) for m in parts["native"][k]])
 
 
+def store_entries(harness: str) -> list:
+    """The store listing drive.store_listing records for a take holding only its own session: every folder under the
+    store root on the way to the session file, then the file, as [path, kind] pairs."""
+    parts = NATIVE_REL[harness].split("/")
+    depth = len(STORE_ROOTS[harness].split("/"))
+    return [["/".join(parts[:i]), "dir"] for i in range(depth + 1, len(parts))] + [[NATIVE_REL[harness], "file"]]
+
+
+def session_store(harness: str, turns: list, *, run_tree: str = RUN_TREE) -> dict:
+    """The drive's session-store.json of a vendor take (drive.py _take_records): the store listed after every turn
+    (post-<k>) and at publish, one sweep of the take container per turn finding only the take's own session, and the
+    shell-command counts of a take whose commands start no nested CLI and whose stream lines were all read."""
+    vendor_id = CODEX_TID if harness == "codex" else GEMINI_SID
+    mounts = [run_tree, CONFIG_MOUNT, *SWEEP_FIXED]
+    listings = [{"at": f"post-{k}", "entries": store_entries(harness)} for k in turns]
+    sweeps = [{"at": f"post-{k}", "files": [[f"{CONFIG_MOUNT}/{NATIVE_REL[harness]}", harness, vendor_id]],
+               "unreadable": [], "escapes": [], "mounts": list(mounts), "scanned": 1, "truncated": False,
+               "expected": list(mounts)} for k in turns]
+    return {"harness": harness, "root": STORE_ROOTS[harness],
+            "listings": listings + [{"at": "publish", "entries": store_entries(harness)}], "sweeps": sweeps,
+            "nested_cli_calls": 0, "unread_stream_lines": 0}
+
+
 def journal(harness: str, parts: dict, k: int, *, run_tree: str = RUN_TREE, mode: str | None = None) -> dict:
     """Turn k's launch journal as box/run_take.run_turn writes it: its argv the adapter's own for the line, model and
     mode (turn 1 resumes nothing; a later turn resumes the vendor id), its cwd the run tree, its stream turn k's."""
@@ -199,6 +231,7 @@ def files(harness: str, parts: dict | None = None, *, sid: str = SID, ledger: di
         out[f"session/native-turn-{k}.jsonl"] = raw
         snaps.append({"file": f"native-turn-{k}.jsonl", "sha256": hashlib.sha256(raw).hexdigest()})
     out["transcript.jsonl"] = _jl(envelopes)
+    out["session-store.json"] = (json.dumps(session_store(harness, turns, run_tree=run_tree), indent=2) + "\n").encode()
     doc = {"kind": "take", "agent": {"harness": harness, "version": version}, "session_id": sid,
            "turns": [{"n": k, "sent": parts["lines"][k - 1]} for k in turns],
            "streams": [f"turn-{k}.jsonl" for k in turns], "transcript": "transcript.jsonl", "native_snapshots": snaps}
