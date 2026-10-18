@@ -413,10 +413,7 @@
           "purpose": {
             "enum": [
               "fixture",
-              "internal",
-              "pilot_internal",
-              "pilot_external",
-              "commercial"
+              "internal"
             ],
             "minLength": 1,
             "type": "string"
