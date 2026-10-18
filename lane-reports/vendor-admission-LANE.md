@@ -1,4 +1,92 @@
-Status: running
+Status: needs-review
+
+GROUP (f) SUMMARY FOR REVIEW (cloud executor, 2026-10-18 03:58 EDT): review e-71a2b94's findings and NITs are folded under rounds 14 and 15, each piece red then green, and pushed. Review range: f628e9d8..HEAD (2db9d249, 6a41caa5 and 69b0043b are lane-file only; lane-reports/vendor-T4-editB-draft-2026-10-18.patch is the round 14 draft, kept as a record; the committed edit B is the draft with ruling 1's change).
+- Finding 3 (red bb56bc61: test_vendor_body failures=3; green 2310edb7): on the take road the CLI's model records bind to the pre-registered row's model and a model_requested that differs from it refuses; the walk road keeps model_requested. NIT 1 (red 221b1da4: test_vendor_walk_road errors=2; green 3b352595), NIT 2 (red ccc5d598: test_vendor_constants failures=1 errors=2; green 633a5605), NIT 3 (3f2ee19d), NIT 4 (977929b4), as the round 14 progress paragraph below gives them.
+- Edit B (red 3069c042: test_vendor_envelopes failures=3, test_vendor_walk_road failures=1, check_vendor_sources EB drive.py exit 1; green bf2da43e), round 15 ruling 1 option (b): inside TakeDriver._take_records' vendor branch the drive writes transcript.jsonl, one schema-1 harness-turn envelope per ledger turn row; the ledger's transcript stays None for a vendor take, so native_reader_registration is unchanged. EB-road's ledger leg reads that the file exists, its envelopes bind (bound_items, and each envelope against its row, its stream and the CLI's id) and the take's commit scan covers it (drive.take_files lists it with kind transcript); take_checker reaches checker_for and the vendor entry with C3 adding nothing. R-9's recheck runs on walk-g2 driven and committed by the same road (ruling 3).
+- Edit C (red 1a6ad553: test_vendor_envelopes failures=3, check_vendor_sources EB drive.py exit 1; green d6392be0), round 15 ruling 2: the one statement right after the drive scan's passed check in TakeDriver.drive, for a vendor take with a transcript.jsonl, moves each sha256 that edit B's envelopes and the driver ledger's native_snapshots bind from the scan's sha256_before to its sha256_after. THE RECORD CHOSEN: the driver ledger's own native_snapshots sha256 (each entry's sha256 value replaced, the ledger replaced whole in its writer's form only when a snapshot was masked). _vendor_last_snapshot, vendor_raw_records, native_reader_registration's native ref and snapshot-history join and walk_regrade's cross-check already read that value, the ledger's closed key set (native_reader_registration.LEDGER_KEYS) and each entry's {file, sha256} shape (vendor_provenance.referenced_bytes) stay, so no READER_SOURCES or CODEX_SOURCES file changes beyond drive.py's edits B and C. A new ledger key, a new per-entry key or a new record file would each have needed a READER_SOURCES edit or a TAKE_FILE_KINDS line outside edits B and C. EC-mask: the synthetic address in a codex take's streams and rollout and a gemini take's streams and session, masked by the real scan, checked through take_checker: account-email 1, not held, every envelope's and snapshot's sha256 that of the masked bytes. Before edit C both vendors are held exactly as the review reproduced (CheckRefused: the reach could not be read, native stream digest differs).
+- Claude Code byte for byte: EB-claude compares driver-ledger.json, transcript.jsonl, the take folder's listing and the records TakeDriver.drive returns, for a claude-code take with a session file, without one and with an address the scan masks, under drive.py and under drive.py with edits B and C taken out (check_vendor_sources.without_edits): identical.
+- Witnesses (tests/test_vendor_envelopes.py, each printed red for its own reason): the writer gated off (no transcript.jsonl); the writer run for claude-code (claude transcript.jsonl differs); an envelope's sent from another row (turn envelope differs from ledger); an envelope's sha256 of another stream (native stream digest differs); the rebinding taken out, the review's masked-address mutant (held: native stream digest differs); the envelopes left on the unmasked bytes (held: native stream digest differs); the snapshots left on the unmasked bytes (held: session/native-turn-2.jsonl: its bytes are not the ones the ledger binds); the rebinding run for claude-code with its envelope write unguarded (claude transcript.jsonl differs).
+- check_vendor_sources piece EB names edits B and C: each must be present (B: TakeDriver._take_records' first `if vendor:` branch after its first statement; C: the statement right after the drive scan's passed check, an `if` naming VENDOR_HARNESSES), and drive.py with both spans taken out must hash to drive.py at f628e9d8 (ea3917d4...). The plan (sections 6 and 9), the table (the envelopes line, and row 9 on the drive road) and w10-walk-runner's drive.py departure name both edits.
+- Edits B and C, drive.py's whole diff from f628e9d8:
+
+    @@ -2604,6 +2604,35 @@ class TakeDriver:
+             if vendor:
+                 take.cross_check = ([status["why"]] if status["status"] == "refused"
+                                     else [] if status["status"] == "agreed" else None)
+    +            # T4 edit B (glitch-b5 rounds 14 and 15, review e-71a2b94 finding 1): the host turn envelopes
+    +            # vendor_record_binding reads, schema 1: one harness-turn per ledger turn row, recovery rows included, its
+    +            # sent the row's, its stream that turn's by basename and sha256, and the CLI's own session id read from
+    +            # that stream (codex thread.started, gemini init). src stays None, so the ledger's transcript stays None
+    +            # for a vendor take (round 15 ruling 1): C3 reads the file, bound_items the envelopes; edit C rebinds
+    +            # each sha256 to the masked bytes after the drive's scan
+    +            envelopes = []
+    +            for k, r in enumerate(rows, 1):
+    +                stream = getattr(turns[k - 1], "stream_path", None) if k <= len(turns) else None
+    +                raw = b""
+    +                if stream and os.path.isfile(stream):
+    +                    with open(stream, "rb") as fh:
+    +                        raw = fh.read()
+    +                first, key = ("thread.started", "thread_id") if harness == "codex" else ("init", "session_id")
+    +                vid = None
+    +                for line in raw.decode("utf-8", errors="replace").split("\n"):
+    +                    try:
+    +                        rec = json.loads(line)
+    +                    except ValueError:
+    +                        continue
+    +                    if isinstance(rec, dict) and rec.get("type") == first:
+    +                        vid = rec.get(key)
+    +                        break
+    +                envelopes.append({"type": "harness-turn", "harness": harness, "session_id": ident["session_id"],
+    +                                  "vendor_session_id": vid, "n": k, "sent": r.get("sent"),
+    +                                  "stream": os.path.basename(stream) if stream else None,
+    +                                  "sha256": hashlib.sha256(raw).hexdigest() if stream else None})
+    +            (Path(take.folder) / "transcript.jsonl").write_text("".join(json.dumps(e) + "\n" for e in envelopes),
+    +                                                                encoding="utf-8")
+             elif src is not None:
+                 try:
+                     published = publish_transcript(Path(src), Path(take.folder))
+    @@ -2853,6 +2882,38 @@ class TakeDriver:
+             if not _scan_record.passed(scan):
+                 why = "; ".join(f"{r['path']}:{r['line']} ({r['kind']}): {r['why']}" for r in scan["refused"])
+                 raise DriveRefused(f"the drive scan refused the take: {why}")
+    +        if row["agent"]["harness"] in VENDOR_HARNESSES and Path(take.folder, "transcript.jsonl").is_file():
+    +            # T4 edit C (glitch-b5 round 15 ruling 2; review e-71a2b94 finding 2, option (a)): the scan masks turn
+    +            # streams and session/ snapshots in place, so each sha256 edit B's envelopes and the ledger's
+    +            # native_snapshots bind is moved along the scan's own record, from its sha256_before to its sha256_after,
+    +            # the bytes the checker reads; a binding the scan's before does not match is left, and refuses. The record
+    +            # is the driver ledger's own native_snapshots sha256, where _vendor_last_snapshot, vendor_raw_records, the
+    +            # registration and the regrade read it (its closed keys and each entry's file and sha256 stay;
+    +            # native_history keeps its pre-scan basis); with nothing masked no byte changes
+    +            moved = {os.path.relpath(f["path"], take.folder): (f["sha256_before"], f["sha256_after"])
+    +                     for f in scan["files"]}
+    +            path = os.path.join(take.folder, "transcript.jsonl")
+    +            with open(path, encoding="utf-8") as fh:
+    +                envs = [json.loads(x) for x in fh.read().splitlines() if x]
+    +            rebound = False
+    +            for env in envs:
+    +                was, now = moved.get(env.get("stream"), (None, None))
+    +                if was is not None and env.get("sha256") == was and now != was:
+    +                    env["sha256"], rebound = now, True
+    +            if rebound:
+    +                with open(path, "w", encoding="utf-8") as fh:
+    +                    fh.write("".join(json.dumps(env) + "\n" for env in envs))
+    +            path = os.path.join(take.folder, LEDGER_FILE)
+    +            with open(path, encoding="utf-8") as fh:
+    +                led = json.load(fh)
+    +            rebound = False
+    +            for snap in led.get("native_snapshots") or []:
+    +                was, now = moved.get(f"session/{snap.get('file')}", (None, None))
+    +                if was is not None and snap.get("sha256") == was and now != was:
+    +                    snap["sha256"], rebound = now, True
+    +            if rebound:                       # replaced whole, in the ledger writer's own form
+    +                _run_take._write_json(path + ".partial", led)
+    +                os.replace(path + ".partial", path)
+             if take.settings_stop is not None:        # the settings guard after turn 1: cleaned, recorded and scanned
+                 raise DriveRefused(f"{take.settings_stop}: no further turn is sent; the take is kept for a human ruling "
+                                    f"(no registered harness-error row reads it), never a re-run")
+
+- FOR THE REVIEWER: (1) The record choice above: the ledger's native_snapshots sha256 names the published bytes once a snapshot is masked; native_history, computed before the scan, keeps its basis (NATIVE_HISTORY_BASIS: the unmasked originals). native_history_record's docstring (drive.py, outside edits B and C, so left) says a re-join over published bytes refuses; for a masked take the registration and the regrade now re-join over the published bytes the ledger binds, as they already do for an unmasked one. FOR glitch-b5, whether that prose wants a third drive.py line before Javier's acceptance commit. (2) Edit C moves a binding only along the scan's own record (a sha256 equal to the scan's sha256_before): a binding edit B wrote wrong stays wrong and refuses, so the witness of an envelope's sha256 from another stream stays red with edit C present; rewriting every sha256 from the bytes on disk would have hidden it (it went green on the first draft of edit C, which did). (3) Edit C ungated moves no claude-code byte (claude-code's transcript lines name no stream and its ledger no native_snapshots), so the vendor gate is defence in depth and its witness also unguards the envelope write; named in the green commit with the two re-anchored edit C witnesses. (4) EC-mask stands the vendor entry's body in with check_take.vendor_event_counts, the readers that held the take (the reach through bound_items, each stream's and the last snapshot's sha256, and the email marker), not the whole check4_walk_vendor: the fake-box takes do not satisfy the rest of the vendor check (its script and design legs), and the drive's own bound (the count not above the scan's masked email hits) runs for real. (5) Residual, not built: a swept secret in a turn's sent line would be masked in transcript.jsonl (kind transcript) and not in the ledger's turns (kind ledger is not maskable), so bound_items refuses (turn envelope differs from ledger) and the take is held, the same direction as before. (6) Not run here: the whole battery, the --witnesses sweeps and the generated sweeps (glitch-b5's, on the home server); test_nested_agent was not run (the range touches neither it nor the sweep code).
+- Green here (python3, TMPDIR outside the clone): every checks.d/vendor-admission.txt line (28) exits 0, among them test_vendor_envelopes 4, test_vendor_walk_road 6, test_vendor_body 11, test_vendor_entries 8, test_vendor_session 5, test_vendor_constants 10, test_vendor_check 26, test_vendor_roads 13 and every check_vendor_sources line (EB among them); named modules: test_pending_walk 23, test_pending_codex_walk 11, test_vendor_take_records 4, test_native_reader_registration 7, test_drive_loop 27, test_take_checker_dispatch 5, test_vendor_checker_road 5, test_walk_grade_seam 3, test_checker_body 30, test_check_take 15, test_walk_recheck 17, test_recheck_coverage 5, test_checker_constants 27, test_box_integration 61, test_walk_wiring 20, test_walk_runner 89, test_walk_builders 88, test_walk_plan 18, test_scan_record 101, test_scaffold 49; lint_language clean (115 inputs, 23 excused), lint_pooling clean, copy_manifest --check ok (480 files), gitleaks before every push.
 
 ROUND 15 (glitch-b5, Sun 18 Oct 2026, read at 03:31 EDT by the cloud executor): the home-server battery on 71a2b948 PASSED (run gap4-t4e-r13: 1303 tests, 0 failures, 82 skips, battery 319 of 319, every check holds). The round 14 block is answered: (1) question (1), option (b): edit B writes transcript.jsonl and leaves the driver ledger's transcript None for a vendor take; no reader reads that key for a vendor take (C3 reads the file; bound_items binds the envelopes to the ledger's turn rows and the native bytes), and native_reader_registration stays as it is; EB-road's ledger leg becomes: the file exists, its envelopes bind, and the take's commit scan covers it; commit edit B from the draft with that change, red first as the draft's tests show. (2) Question (2), option (a), as EDIT C: right after the drive's scan in TakeDriver.drive, for vendor harnesses only, rewrite transcript.jsonl's envelopes from the masked stream bytes (their sha256 those of the bytes the checker reads) and record the scan's sha256_after for the ledger-named session snapshots where _vendor_last_snapshot and the other vendor readers read it; choose that record so that no READER_SOURCES or CODEX_SOURCES file changes beyond drive.py's edits B and C, and name the choice; if no record can, stop BLOCKED ON glitch-b5 naming the smallest further edit. Claude Code's road stays byte for byte: EB-claude's golden covers TakeDriver.drive with edit C as well. Edit C is named beside edit B in the plan, the table and the check_vendor_sources piece. Tests red first: the drive-road case (an address in a codex stream and in a gemini stream, masked by the real scan, then checked: account-email counts 1 and the take is not held), and the review's masked-address mutant red. (3) R-9 moves to walk-g2 driven and committed by the same road, as the draft proposes, never a hand copy: accepted. Then Status: needs-review with a GROUP (f) SUMMARY FOR REVIEW at the top of this file and RESUME HERE naming review stop (f); blocked on a real question: Status: blocked with one BLOCKED ON glitch-b5 line.
 
@@ -405,4 +493,8 @@ Build every fail-closed piece that arms O and G need after native-reader registr
 - 2026-10-18 02:05 EDT: R-9's road done (red 33e8a0da, green f13f5220). Group (e) summary at the top of this file; found for glitch-b5: the drive writes no vendor turn envelopes (FOR THE REVIEWER (1)). Status: needs-review, review stop (e).
 - 2026-10-18 02:40 EDT: round 14 (review e-71a2b94 CHANGES, one MAJOR, two MINOR, four NITs; battery gap4-t4e-r13 on 71a2b948 running) picked up by the cloud executor (scheduled run); Status: running; rulings recorded at the top of this file.
 - 2026-10-18 03:12 EDT: finding 3 (red bb56bc61, green 2310edb7), NIT 1 (221b1da4, 3b352595), NIT 2 (ccc5d598, 633a5605), NIT 3 (3f2ee19d), NIT 4 (977929b4) done; edit B drafted (lane-reports/vendor-T4-editB-draft-2026-10-18.patch), not committed to code. Status: blocked (BLOCKED ON line at the top of this file).
-RESUME HERE: the BLOCKED ON glitch-b5 line at the top of this file. On its ruling: apply lane-reports/vendor-T4-editB-draft-2026-10-18.patch as edit B's red (tests and check) and green (drive.py) commits, adjusted to the ruling on question (1); then finding 2 as ruled on question (2), red first, with the masked-address case and mutant; then the GROUP (f) SUMMARY FOR REVIEW and review stop (f).
+- 2026-10-18 03:31 EDT: round 15 (battery gap4-t4e-r13 on 71a2b948 PASSED; question (1) option (b), question (2) option (a) as edit C, R-9 on walk-g2 accepted) picked up by the cloud executor (scheduled run); Status: running; rulings recorded at the top of this file.
+- 2026-10-18 03:41 EDT: edit B done (red 3069c042, green bf2da43e).
+- 2026-10-18 03:56 EDT: edit C done (red 1a6ad553, green d6392be0); record: the driver ledger's native_snapshots sha256.
+- 2026-10-18 03:58 EDT: group (f) summary at the top of this file. Status: needs-review, review stop (f).
+RESUME HERE: review stop (f). Group (f) (review e-71a2b94's finding 3 and NITs, edit B and edit C) waits for its review and for glitch-b5's battery on its head; its summary is at the top of this file. On the review's verdict, fold its findings as glitch-b5 rules, red first.
