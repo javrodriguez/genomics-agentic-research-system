@@ -171,7 +171,7 @@ between each:
 | `create` | sanitize title, copy the stamp, make `raw/` dirs | T3b |
 | `inspect` | read-only scan of one source directory | T4a |
 | `link` | symlink one assay's raw files | T4b |
-| `finalize` | `files.csv`, `samples.csv`, placeholders, exit gate | T6, T9 |
+| `finalize` | `files.csv`, `samples.csv`, placeholders, exit gate | T4c, T6, T9 |
 
 **The script's exit codes.** These, and not your reading of its output, determine the branch:
 
@@ -179,7 +179,7 @@ between each:
 |---|---|---|
 | 0 | ok | continue |
 | 1 | failure; report and stop | T9 |
-| 2 | refused; its `template` field names the reply | T5 / T7 / T8 |
+| 2 | refused; its `template` field names the reply | T4c / T5 / T7 / T8 |
 | 3 | usage or precondition error | T9 |
 
 
@@ -269,8 +269,15 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
     re-runnable: re-run it once in the foreground.
 
     ```bash
-    python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none
+    python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --agreement-ref none
     ```
+
+    Exit 2 with `template: T4c` → nothing was written: the folder's declaration in
+    `data_sources.tsv` does not say whether this is test data or data for an analysis. Reply
+    T4c and wait. On `test` → re-run it with `--purpose fixture`; on `analysis` → with
+    `--purpose internal`; any other reply → send T4c again and wait, never reading it as
+    either word. Pass `--purpose` only so; when the declaration settles it, finalize records
+    that (decision 0321).
 
     Never pass `--model`: the model is part of the toolchain, so `HISTORY.md` records it beside
     the template version, and the script takes it from what your harness reported at session
@@ -357,6 +364,17 @@ Reply `link` to create symlinks under 00_data/<Assay ID>/raw/, or provide a diff
 ```
 Linked <n> files into 00_data/<Assay ID>/raw/. Broken links: <n>.
 <next prompt, or proceed to T6 if this was the last assay>
+```
+
+**T4c — Test or analysis**
+
+Sent only when finalize answers `template: T4c`, once per reply, until the reply is one of the
+two words.
+```
+Data: <each Source path of this project>
+
+Is this test data, for trying GARS out, or data for an analysis whose results will be used?
+Reply `test` or `analysis`.
 ```
 
 **T5 — Path rejected**

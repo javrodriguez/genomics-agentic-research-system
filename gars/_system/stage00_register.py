@@ -697,6 +697,53 @@ def registered_purpose(path):
     return rows[0].get('purpose') if len(rows) == 1 else None
 
 
+def declared_purpose(workspace, project):
+    """fixture or internal when data_sources.tsv settles it, else None (2a, 0321).
+
+    Settled only when the file reads cleanly (header source, data_class, declared_by and an
+    optional fourth column use; every row three cells, or four under that header; each use
+    cell test, analysis or empty), every linked raw entry lies inside a declared source, and all those sources carry
+    the same non-empty use. The guard reads the same file (hunk G1); a file it would not
+    accept settles nothing here either.
+    """
+    import venue_policy as policy
+    header = ["source", "data_class", "declared_by"]
+    try:
+        text = (Path(workspace) / "data_sources.tsv").read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return None
+    if "\r" in text:
+        return None
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    if not lines or lines[0].split("\t") not in (header, header + ["use"]):
+        return None
+    width = len(lines[0].split("\t"))
+    sources = []
+    for line in lines[1:]:
+        cells = line.split("\t")
+        if len(cells) not in (3, width):
+            return None
+        use = cells[3] if len(cells) == 4 else ""
+        if use not in ("", "test", "analysis"):
+            return None
+        sources.append((os.path.realpath(cells[0]), use))
+    uses = set()
+    entries = sorted((Path(project) / "00_data").glob("*/raw/*"))
+    for entry in entries:
+        real = os.path.realpath(str(entry))
+        inside = [use for source, use in sources
+                  if real == source or real.startswith(source.rstrip(os.sep) + os.sep)]
+        if not inside:
+            return None
+        uses.update(inside)
+    if not entries or len(uses) != 1 or "" in uses:
+        return None
+    use = uses.pop()
+    return [p for p, u in policy.USE_OF_PURPOSE.items() if u == use][0]
+
+
 def cmd_finalize(args, workspace):
     import venue_policy as policy
     result = {"command": "finalize", "ok": False, "assays": {}, "failures": []}
@@ -708,7 +755,22 @@ def cmd_finalize(args, workspace):
     if args.data_class not in ("public", "deidentified_under_agreement", "identifiable"):
         result["failures"].append("data_class_required: --data-class must name a registered class")
         return emit(result, EXIT_REFUSED)
-    if args.purpose not in ("fixture", "internal", "pilot_internal", "pilot_external", "commercial"):
+    # 2a (0321): the person's own data_sources.tsv may settle test or analysis; else T4c asks.
+    declared = declared_purpose(workspace, project) if args.data_class == "public" else None
+    if args.purpose is None and declared is not None:
+        args.purpose = declared
+    elif args.purpose in policy.REGISTRABLE_PURPOSES and declared not in (None, args.purpose):
+        result["failures"].append(
+            "purpose_disagrees: data_sources.tsv declares this data %s (--purpose %s); leave "
+            "--purpose out" % (policy.USE_OF_PURPOSE[declared], declared))
+        return emit(result, EXIT_REFUSED)
+    if args.purpose is None:
+        result["failures"].append(
+            "purpose_required: data_sources.tsv does not settle test or analysis for this data; "
+            "ask the person (T4c)")
+        result["template"] = "T4c"
+        return emit(result, EXIT_REFUSED)
+    if args.purpose not in policy.PURPOSES:
         result["failures"].append("purpose_required: --purpose must name a registered purpose")
         return emit(result, EXIT_REFUSED)
     if not args.agreement_ref or args.agreement_ref.strip().lower() in ("", "unknown", "todo", "null"):
