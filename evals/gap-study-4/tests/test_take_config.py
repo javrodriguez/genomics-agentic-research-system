@@ -188,12 +188,26 @@ R3_SOURCES = {
                                 line=14183, value_file="bundle/chunk-NR7L3FXV.js", value_line=312750,
                                 read="security.auth.selectedType (packages/cli/src/config/settingsSchema.ts), set to "
                                      "AuthType.USE_GEMINI, the API-key auth type"),
+    # Round 18 B9 (glitch-26's ruling B9, Sun 18 Oct 2026, from the held walk w-g1's exit 55): folder trust defaults on
+    # at the pinned version, so a headless take in a folder Gemini CLI does not trust stops before any model call.
+    "GEMINI_TRUST_SETTING": dict(GEMINI_PKG, file="bundle/chunk-FLKY6NH5.js",
+                                 file_sha256="f6a4ddd46350dad40515218069d369aaa0025f194c552400b69925b941098bc8",
+                                 line=9599, check_file="bundle/gemini-6ESINPDZ.js",
+                                 check_file_sha256="19950cab8f7bd8b48ea89c4ede22418b2e5d836d9c1554baed62c9019d74810b",
+                                 check_lines={"folder trust off: the check returns": 11129,
+                                              "headless and untrusted: FatalUntrustedWorkspaceError (exit 55)": 11137},
+                                 read="security.folderTrust.enabled defaults to true (settings.security?.folderTrust"
+                                      "?.enabled ?? true), although docs/cli/trusted-folders.md calls the feature off "
+                                      "by default; with it on, a headless run in an untrusted folder throws "
+                                      "FatalUntrustedWorkspaceError, exit 55 (gemini-cli-core dist/src/utils/errors.js); "
+                                      "set to false, the startup check returns before any trust lookup"),
 }
 R3_VALUES = {
     "CODEX_REASONING_EFFORT": {"gpt-6.1-sol": "low", "gpt-6-luna": "medium"},
     "GEMINI_THINKING": {"path": "modelConfigs.customAliases", "value": {"chat-base-3": {
         "extends": "chat-base", "modelConfig": {"generateContentConfig": {"thinkingConfig": {"thinkingLevel": "HIGH"}}}}}},
     "GEMINI_AUTH_SETTING": {"path": "security.auth.selectedType", "value": "gemini-api-key"},
+    "GEMINI_TRUST_SETTING": {"path": "security.folderTrust.enabled", "value": False},
 }
 
 
@@ -204,8 +218,8 @@ class TestR3Values(MutantCase):
     def check(self):
         out = []
         for name, want in R3_VALUES.items():
-            if getattr(tc, name) != want:
-                out.append(f"{name} is {getattr(tc, name)!r}, not the sourced {want!r}")
+            if getattr(tc, name, None) != want:
+                out.append(f"{name} is {getattr(tc, name, None)!r}, not the sourced {want!r}")
         if getattr(tc, "VALUE_SOURCES", None) != R3_SOURCES:
             out.append("take_config.VALUE_SOURCES is not the record of R3's static reads")
         if tc.pending():
@@ -232,7 +246,8 @@ class TestR3Values(MutantCase):
             with open(os.path.join(d, ".gemini", "settings.json")) as fh:
                 doc = json.load(fh)
             if doc.get("modelConfigs") != {"customAliases": R3_VALUES["GEMINI_THINKING"]["value"]} or \
-                    doc.get("security") != {"auth": {"selectedType": "gemini-api-key"}} or \
+                    doc.get("security") != {"auth": {"selectedType": "gemini-api-key"},
+                                            "folderTrust": {"enabled": False}} or \
                     doc.get("tools") != {"exclude": ["google_web_search", "web_fetch"]} or \
                     doc.get("model") != {"name": m}:
                 out.append(f"{m}'s settings.json reads {doc}")
@@ -249,6 +264,8 @@ class TestR3Values(MutantCase):
                                                                          "value": "HIGH"})),
             ("auth by OAuth", patched(tc, "GEMINI_AUTH_SETTING", {"path": "security.auth.selectedType",
                                                                   "value": "oauth-personal"})),
+            ("folder trust left on", lambda: mock.patch.object(tc, "GEMINI_TRUST_SETTING", {
+                "path": "security.folderTrust.enabled", "value": True}, create=True)),
             ("sources dropped", patched(tc, "VALUE_SOURCES", {})),
             ("a source's line moved", lambda: mock.patch.dict(tc.VALUE_SOURCES, {"GEMINI_AUTH_SETTING": dict(
                 R3_SOURCES["GEMINI_AUTH_SETTING"], line=14184)})),
