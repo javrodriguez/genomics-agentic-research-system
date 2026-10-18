@@ -6,7 +6,9 @@ row is rewritten, and there is no live mode. The dry run walks `projects/*/00_da
 and prints, per row, its class, its purpose and what it now means, in the words people read
 (`venue_policy.data_line`): a purpose no route of its class serves is marked `no route`, and the
 legacy `pilot_internal` is marked as needing its agreement on the cluster. Every
-`pilot_external` or `commercial` row, and every row it cannot read, is listed for a person.
+`pilot_external` or `commercial` row, every row whose purpose is none of the five finalize can
+write (an unknown purpose, never called legacy), and every row it cannot read, is listed for a
+person.
 
     python3 _system/migrate_data_class.py --dry-run [--workspace <gars/>]
 
@@ -42,6 +44,9 @@ def served(data_class):
 
 
 def meaning(data_class, purpose):
+    if purpose not in policy.PURPOSES:            # a hand edit: the class words alone
+        words = policy.data_line(data_class, 'fixture')[len('Data: '):].rsplit(', ', 1)[0]
+        return words + ', unknown purpose %s, no route' % purpose
     words = policy.data_line(data_class, purpose)[len('Data: '):]
     if purpose not in served(data_class):
         return words + ', no route'
@@ -83,7 +88,7 @@ def main(argv=None):
                      'purpose': row['purpose'],
                      'means': meaning(row['data_class'], row['purpose'])}
         rows.append(entry)
-        if row is None or row['purpose'] in FOR_A_PERSON:
+        if row is None or row['purpose'] in FOR_A_PERSON or row['purpose'] not in policy.PURPOSES:
             person.append(entry)
     result.update(rows=rows, for_a_person=person)
     return emit(result, EXIT_OK)
