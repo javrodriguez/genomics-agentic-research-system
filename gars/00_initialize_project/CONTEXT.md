@@ -248,6 +248,11 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
    python3 _system/stage00_register.py inspect --assay <Assay ID> --source <path>
    ```
 
+   If the user says this data is restricted, or the guard refuses this call because the folder
+   is not declared public in `data_sources.tsv`, the data is not declared public → reply T5r and stop.
+   Registering it is the person's, in their own terminal; never retry with another class, and
+   never supply a class, an agreement or an expiry yourself (decision 0321).
+
 10. Exit 2 → reply T5 with its `error`. Accept either a replacement path or `skip`. If the error
    names unmatched filenames, show them, ask the user how sample IDs should be read, and re-run
    `inspect` with `--sample-id-pattern '<their answer as a regex with named groups sample, read
@@ -277,8 +282,11 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
     re-runnable: re-run it once in the foreground.
 
     ```bash
-    python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --agreement-ref none
+    python3 _system/stage00_register.py finalize --project projects/<title> --data-class public --agreement-ref none
     ```
+
+    Pass `--data-class public` and nothing else: a guarded agent registers public data only,
+    and the guard refuses any other class, or none, naming T5r's command (decision 0321).
 
     Exit 2 with `template: T4c` → nothing was written: the folder's declaration in
     `data_sources.tsv` does not say whether this is test data or data for an analysis. Reply
@@ -302,7 +310,7 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
 16. Exit 1 or 3 → reply T9 listing every entry of its `failures` array. Do not claim completion,
     do not repair anything, and do not delete what was created — the user decides whether to fix
     or discard.
-17. Exit 0 → reply T6 using its `assays` map and `template_version`.
+17. Exit 0 → reply T6 using its `assays` map, `template_version` and its `data` line.
 
 ## Response Format
 Every message you send in this stage is one of the templates below, with placeholders filled.
@@ -396,6 +404,27 @@ Nothing was created or linked.
 Provide a different path for <Assay ID>, or reply `skip` to omit this assay.
 ```
 
+**T5r — Not declared public: the person registers it**
+
+Sent from step 9, and then nothing more for this project. Render one `Classes` line per row of
+`_references/data_policy.tsv` other than `public`: its `data_class` and its `permitted_backends`
+(`none` for no route).
+```
+Path: <path>
+This folder is not declared public, so I do not read or register its data.
+
+To register it, run these in your own terminal, in this workspace (skip the link if
+00_data/<Assay ID>/raw/ already holds the files):
+
+  python3 _system/stage00_register.py link --project projects/<title> --assay <Assay ID> --source <path>
+  python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose internal --agreement-ref <reference> --expiry <YYYY-MM-DD>
+
+Classes, from _references/data_policy.tsv:
+  <data_class>: <permitted_backends>
+
+If the data is in fact public, declare its folder in data_sources.tsv and send me the path again.
+```
+
 **T6 — Stage complete**
 ```
 Stage 00 complete. Project <title> initialized at projects/<title>/.
@@ -405,6 +434,7 @@ Stage 00 complete. Project <title> initialized at projects/<title>/.
 | <Assay ID> | <n> | <n> | <path> |
 
 File integrity: <integrity.files_checked> files checked, mode <integrity.mode>.
+<data>
 
 Written: CONTEXT.md, HISTORY.md, and per assay files.csv + samples.csv.
 
