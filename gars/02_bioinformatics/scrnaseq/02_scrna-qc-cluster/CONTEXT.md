@@ -88,6 +88,10 @@ refuses every Read of a file in the project except its `00_data/dataset.tsv` and
 files, every append to `HISTORY.md`, and every typed call that names the project except the doors in
 `CLOSED_PROJECT_DOORS` (`_system/guard_hook.py`). No verb of this sub-stage's wrapper is a door,
 so on a non-public project only step 2's STATUS read is the agent's: reply T7 and stop.
+While any non-public project exists in the workspace, a door's direct spelling is refused
+for every project, public ones included (0141 ruling D-vii b), so steps 5 to 8 also give the
+`executor.*` door's dispatcher spelling (decision 0323); on a public project its output is
+unfiltered.
 
 ## Process
 1. Reply T1.
@@ -100,14 +104,30 @@ so on a non-public project only step 2's STATUS read is the agent's: reply T7 an
 4. Run `prepare`. Exit 1 → reply T5 (same rule). Exit 0 → it wrote the script, `submit.sh` and
    the reproducibility bundle; report nothing yet.
 5. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh`. Capture its `job_id`.
+   While any non-public project exists in the workspace, the direct submit call is
+   refused (decision 0141): `python3 _system/tool_call.py executor.submit
+   '{"workspace": "<project dir>", "script": "<sub-stage dir>/submit.sh"}'`; `job_id` is in
+   the JSON of its `stdout`.
 6. Call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` (submit has written `SUBMITTED`). Reply T2 and stop. Do not wait or poll.
+   While any non-public project exists in the workspace, the direct status call is
+   refused (decision 0141): `python3 _system/tool_call.py executor.status
+   '{"workspace": "<project dir>", "job-id": "<job_id>"}'`; its state is in the
+   JSON of its `stdout`.
 7. **On a later invocation** where STATUS is `SUBMITTED`, `RUNNING` or `VALIDATING`: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`.
    If still active, reply T3, stop; the status call has already refreshed STATUS.
+   While any non-public project exists in the workspace, the direct status call is
+   refused (decision 0141): `python3 _system/tool_call.py executor.status
+   '{"workspace": "<project dir>", "job-id": "<job_id>"}'`; its state is in the
+   JSON of its `stdout`.
 8. If the job has finished, run `collect`; pass no `--model` and no `--h5ad-from` (the
    entry names the supplier the resolver finds when prepare read its artifact, else `unknown`;
    decisions 0305, 0308): the entry names the model your harness reported at session start, or `unknown` (decisions 0024, 0303). Exit 2 →
    the run did not complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4, stop. Exit 1 →
    the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures` verbatim, stop.
+   While any non-public project exists in the workspace, the direct status call is
+   refused (decision 0141): `python3 _system/tool_call.py executor.status
+   '{"workspace": "<project dir>", "job-id": "<job_id>"}'`; its state is in the
+   JSON of its `stdout`.
 9. Exit 0 → append its `history_entry` to the project's `HISTORY.md` **verbatim**, replacing
    `<ISO-8601 date>` with today's date, and reply T6.
    On a non-public project this append is the user's: T7.

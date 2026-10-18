@@ -121,9 +121,10 @@ write or append there (`PLAN.md`, `scripts/` and `HISTORY.md` included), and eve
 except the doors in `CLOSED_PROJECT_DOORS` (`_system/guard_hook.py`), which run only as
 `python3 _system/tool_call.py <door> '<json>'` from the workspace root, their output filtered;
 while any non-public project exists in the workspace, a door's direct spelling is refused for
-every project. Of this stage's steps only step 1's resolution is a door, so on a non-public
-project the analysis is the user's from step 2 on: reply T7 and stop. Never work around a
-refusal.
+every project, so steps 7 and 8 also give the `executor.*` door's dispatcher spelling
+(decision 0323); on a public project its output is unfiltered. Of this stage's steps only
+step 1's resolution is a door, so on a non-public project the analysis is the user's from
+step 2 on: reply T7 and stop. Never work around a refusal.
 
 ## Process
 1. Activated when the user asks for a custom or downstream analysis of an existing project.
@@ -185,10 +186,18 @@ refusal.
    If approval is absent, changed or expired, reply T3 with the refusal and stop; a new
    approval is the user's. On submission reply T4 and monitor the job. Steps outside the
    approved plan do not happen.
+   While any non-public project exists in the workspace, the direct submit call is
+   refused (decision 0141): `python3 _system/tool_call.py executor.submit
+   '{"workspace": "<project dir>", "script": "<script>"}'`, `<script>` as above;
+   `job_id` is in the JSON of its `stdout`.
    On a non-public project the scripts are the user's to write and submit: T7.
 8. If execution fails, call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T5 with the actual error,
    and stop. Do not patch around the failure and re-run: diagnosis goes to the user, and a
    changed method is a new plan.
+   While any non-public project exists in the workspace, the direct status call is
+   refused (decision 0141): `python3 _system/tool_call.py executor.status
+   '{"workspace": "<project dir>", "job-id": "<job_id>"}'`; its state is in the
+   JSON of its `stdout`.
 9. On execution success, run
    `python3 _system/stage03_analysis.py verify --project projects/<title> --analysis <NN_slug>`.
    Never pass `--model`: the entry names the model your harness reported at session start, or
