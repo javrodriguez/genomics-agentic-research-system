@@ -7,6 +7,12 @@ from pathlib import Path
 
 POLICY = Path(__file__).resolve().parents[1] / '_references/data_policy.tsv'
 PURPOSES = ('fixture', 'internal', 'pilot_internal', 'pilot_external', 'commercial')
+# S00-class (0321, choice 1c): a new registration writes only these two, which people read as
+# test and analysis; the legacy three are still read and enforced in the rows that carry them,
+# exactly as before, and never written by a new registration.
+REGISTRABLE_PURPOSES = ('fixture', 'internal')
+LEGACY_PURPOSES = ('pilot_internal', 'pilot_external', 'commercial')
+USE_OF_PURPOSE = {'fixture': 'test', 'internal': 'analysis'}
 VENUES = ('local', 'homelab', 'slurm')
 ASSAY_IDS = ('atacseq_bulk', 'chipseq_bulk', 'cutandrun', 'methylseq', 'rnaseq_bulk', 'scrnaseq',
              'spatialvi')
@@ -34,6 +40,14 @@ def fail(code, detail):
 def routes():
     with POLICY.open(encoding='utf-8', newline='') as handle:
         return {row['data_class']: row for row in csv.DictReader(handle, delimiter='\t')}
+
+
+def data_line(data_class, purpose):
+    """The one line people read for a registration: `Data: public, test` (0321)."""
+    use = USE_OF_PURPOSE.get(purpose) or 'legacy %s' % purpose
+    if data_class == 'public':
+        return 'Data: public, %s' % use
+    return 'Data: restricted (%s), %s' % (data_class, use)
 
 
 def permissions(value):

@@ -187,11 +187,13 @@ class PurposeTests(Workspace):
                 '--data-class', 'public', '--agreement-ref', 'none', '--purpose']
         for purpose in venue_policy.REGISTRABLE_PURPOSES:
             tool, args = policy.parse_argv(argv + [purpose], root=GARS)
+            policy.validate_args(tool, args, root=GARS)
             self.assertEqual(args['purpose'], purpose)
         for purpose in LEGACY:
             with self.subTest(purpose=purpose):
+                tool, args = policy.parse_argv(argv + [purpose], root=GARS)
                 with self.assertRaises(policy.Refusal) as caught:
-                    policy.parse_argv(argv + [purpose], root=GARS)
+                    policy.validate_args(tool, args, root=GARS)
                 self.assertEqual(caught.exception.field, 'args.purpose')
 
 

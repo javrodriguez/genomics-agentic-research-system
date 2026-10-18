@@ -687,7 +687,18 @@ def write_dataset_record(project, row):
         writer.writeheader(); writer.writerow(row)
 
 
+def registered_purpose(path):
+    """The purpose of an existing one-row dataset record, or None."""
+    try:
+        with Path(path).open(encoding='utf-8', newline='') as handle:
+            rows = list(csv.DictReader(handle, delimiter='\t'))
+    except (OSError, ValueError, UnicodeError):
+        return None
+    return rows[0].get('purpose') if len(rows) == 1 else None
+
+
 def cmd_finalize(args, workspace):
+    import venue_policy as policy
     result = {"command": "finalize", "ok": False, "assays": {}, "failures": []}
     project = Path(args.project)
     if not project.is_dir():
@@ -704,6 +715,13 @@ def cmd_finalize(args, workspace):
         result["failures"].append("agreement_ref_required: name an agreement or use none")
         return emit(result, EXIT_REFUSED)
     dataset_path = project / "00_data/dataset.tsv"
+    # 1c (0321): a legacy purpose is read only in a row that already carries it.
+    if args.purpose in policy.LEGACY_PURPOSES and \
+            registered_purpose(dataset_path) != args.purpose:
+        result["failures"].append(
+            "purpose_legacy: %s is read only in a row that already carries it; a new "
+            "registration is fixture (test) or internal (analysis)" % args.purpose)
+        return emit(result, EXIT_REFUSED)
     dataset = {"data_class": args.data_class, "purpose": args.purpose,
                "agreement_ref": args.agreement_ref,
                "input_data_location": json.dumps(sorted({str(p.resolve()) for p in
@@ -714,6 +732,7 @@ def cmd_finalize(args, workspace):
     except ValueError as exc:
         result["failures"].append(str(exc))
         return emit(result, EXIT_REFUSED)
+    result["data"] = policy.data_line(dataset["data_class"], dataset["purpose"])
 
     catalog, err = read_assay_map(workspace)
     if err:
