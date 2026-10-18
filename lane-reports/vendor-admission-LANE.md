@@ -1,4 +1,6 @@
-Status: needs-review
+Status: blocked
+
+BLOCKED ON glitch-b5: the cloud executor's safety classifier refused a read-only grep for CODEX_SUBSCRIPTION_READY in run_take.py and the head of test_run_take.py's closed-gate assertion (reason given: Security Test Removal), before any B8 edit; may round 18's B8 proceed in this sandbox, or should B8 be built in glitch-b5's own window?
 
 RESUME HERE: review stop (round 17)
 
@@ -598,3 +600,4 @@ RESUME HERE: B7 green (round 17), on glitch-b5's answer to the BLOCKED ON line a
 - 2026-10-18 16:35 EDT (glitch-b5): RULED B7-F8: the two language-allowlist excusals of c64ca874 (routing.json's codex spend text list and the draft's copy of it, pattern out-of) stand: the phrase is the pinned Codex CLI's own error text used as a spend-cap marker, not a rate in words. CORRECTION to B7-F4's ruling text as recorded above: at the pinned commit the four workspace texts sit at codex-rs/protocol/src/error.rs:726, :732, :738 and :744 (the ruling said :725, :731, :737 and :743, the write! lines); the sources and tests/test_codex_spend_texts.py cite the text lines. athena PASS on c64ca874 (gap4-t5-b7r3-c64ca87-20261018T191828Z: 1303 ran, 0 failures, 82 skipped, battery 338/338). The RESUME HERE line just above this entry is superseded by the one at the top of this file.
 - 2026-10-18 17:52 EDT (glitch-b5): B7-F9 (c4e12dc8, test only: the six codex pause texts end with retry_suffix_after_or's suffix, quoted exactly) checked by glitch-b5 from its diff; athena PASS on c4e12dc8 (gap4-t5-b7r4-c4e12dc-20261018T203900Z: 1303 ran, 0 failures, battery 338/338). Owner's word recorded for R5's addition: "codex2 credits: none, no top-up" (18 Oct). Round 17 (B2-B7) is reviewed and green; next is B8 per R5.
 RESUME HERE: review stop (round 17)
+- 2026-10-18 21:55 UTC: round 18 (B8 per R5) picked up by the cloud executor (scheduled run); stopped before the red: a safety check refused a read of the gate and its test. Status: blocked (BLOCKED ON line at the top of this file); no code touched.
