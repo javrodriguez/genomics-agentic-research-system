@@ -1533,7 +1533,7 @@ class TestSysPath(unittest.TestCase):
 
 
 # Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can.
-GENERATED_ORDER = ("B17Account", "B18Native", "B1Identity", "B6Row", "B2Login", "B3Counters", "B11Derived",
+GENERATED_ORDER = ("B17Account", "B20LeaseSource", "B18Native", "B1Identity", "B6Row", "B2Login", "B3Counters", "B11Derived",
                    "B10Resources", "B7Production", "B8Present", "B13Lease", "B19VendorConfig", "B14Gemini",
                    "B15Bringup", "B16Watch",
                    "B5Fixture", "B4RunTree", "G1Generated", "B12Scanner", "B9Cli", "TestSysPath")
@@ -4011,6 +4011,45 @@ class B19VendorConfig(Drafted):
     def test_the_vendor_config_is_written_on_the_walk_road(self):
         with tempfile.TemporaryDirectory() as t:
             self.assertEqual(b19_config_problems(wb(), Path(t)), [])
+
+
+class B20LeaseSource(Case):
+    """B7-F3 (glitch-b5, 18 Oct 2026; B2's lease_source_path, round 17, whose guards the athena sweep of 68caad62 left
+    with six unlisted survivors): the Codex lease source is read from box/run_take.LEASE_SOURCES by account. A tree
+    whose run_take has no such record (the attribute absent, not a mapping, or without the account) reads as Missing,
+    naming the account, never a crash; a recorded path that is not an absolute string is refused by name."""
+
+    @contextlib.contextmanager
+    def sources(self, value=None, absent=False):
+        """run_take.LEASE_SOURCES set to `value` (or absent) for the block, restored after."""
+        from box import run_take as rt
+        with mock.patch.object(rt, "LEASE_SOURCES", value):
+            if absent:
+                delattr(rt, "LEASE_SOURCES")
+            yield
+
+    def source(self, value=None, absent=False):
+        """lease_source_path() under sources(value, absent), its outcome read by assertion (a raise is a red)."""
+        with self.sources(value, absent):
+            return self.must("B20.source", wb().lease_source_path)
+
+    def test_no_record_reads_missing_by_account(self):
+        account = wb().LEASE_ACCOUNT
+        for name, kwargs in (("absent", {"absent": True}), ("a list naming the account", {"value": [account]}),
+                             ("the account as a string", {"value": account}), ("an empty mapping", {"value": {}}),
+                             ("another account only", {"value": {"codex9": "/srv/other/auth.json"}})):
+            with self.subTest(name=name):
+                got = self.source(**kwargs)
+                self.assertIsInstance(got, wb().Missing, f"B20.source: {name} gave {got!r}")
+                self.assertIn(repr(account), got.why, f"B20.source: {name}'s Missing names no account")
+
+    def test_a_recorded_path_must_be_an_absolute_string(self):
+        account = wb().LEASE_ACCOUNT
+        for value in (None, 7, ["/srv/a/auth.json"], "relative/auth.json", ""):
+            with self.subTest(value=value):
+                with self.sources({account: value}):
+                    self.refuses("B20.source", "is not an absolute path", wb().lease_source_path)
+        self.assertEqual(self.source({account: "/srv/codex2/auth.json"}), "/srv/codex2/auth.json", "B20.source")
 
 
 if __name__ == "__main__":
