@@ -98,6 +98,26 @@ class FormulaMenuTests(unittest.TestCase):
         self.assertIn('formula: "~ batch + condition"', result['config_preview'])
         self.assertNotIn('formula_warning', result)
 
+    def test_a_number_off_the_menu_is_refused_with_the_menu(self):
+        """Run 11 ruling 2: an all-digit token that is not a menu number is answered with the
+        numbered menu, never written as the formula "4" (REVIEW-a745042 finding 2)."""
+        before = self.cfg.read_bytes()
+        for token in ('4', '0', '00', '004', '12'):
+            with self.subTest(token=token):
+                code, result = self.apply('--formula', token, '--dry-run')
+                self.assertEqual(code, configure.EXIT_REFUSED, result)
+                self.assertIn('not a number on the formula menu', result.get('error', ''))
+                self.assertEqual([f['n'] for f in result.get('formulas', [])],
+                                 ['01', '02', '03'])
+                self.assertNotIn('config_preview', result)
+                self.assertEqual(self.cfg.read_bytes(), before)
+        for token in ('3', '03', ' 3 '):
+            with self.subTest(token=token):
+                code, result = self.apply('--formula', token, '--dry-run')
+                self.assertEqual(code, 0, result)
+                self.assertEqual(result['formula'], '~ subject + condition')
+                self.assertNotIn('formula_warning', result)
+
     def test_a_typed_formula_is_written_with_a_warning(self):
         code, result = self.apply('--formula', '~ batch + condition', '--dry-run')
         self.assertEqual(code, 0, result)
