@@ -27,15 +27,18 @@ check_take.vendor_round4_problems (section 1b).
               walk session id; the turn budget; a turn stream line no parser read; a nested-agent switch; codex's
               session working directory and run tree (T-11, T-4) and a file_change item (T-8, PENDING); P5's
               model-binding (T-15: a rollout turn on another model and a reroute for codex, a stream's init and a
-              stats.models key on another model for gemini, no requested model) and environment record (T-17: none,
-              and one edited after the take), every take carrying the drive's environment.json.
+              stats.models key on another model for gemini, no requested model; review e-71a2b94 finding 3, the take
+              road binding the pre-registered row's model: the row on one model and the ledger and the CLI on another,
+              while a walk never reads the row) and environment record (T-17: none, and one edited after the take),
+              every take carrying the drive's environment.json, and the rig's ledger row the take's own vendor row.
   P2-keys     VP-keys holds as equality on the live source (test_vendor_check), and vendor_pending is called with
               literal harness and key only.
   P2-witness  check_take.py compiled in memory with each guard dropped, each PENDING refusal deleted (one mutant per
               call site, read from the AST), a PENDING refusal moved under an event id, the envelope read twice, the
               view run before the readers, the run tree not handed to the reach, the home and temp legs dropped, the
               email counted per instance, a model mismatch admitted, the codex reroute unread, the model reading
-              dropped and the environment record unread: each goes red on its own case.
+              dropped, the ledger-only model binding restored on the take road and the environment record unread:
+              each goes red on its own case.
 
 Fakes and synthetic strings only, inside test_checker_body's process guard (only the pinned tree's read-only git
 starts): no take, model, vendor, network, Docker, credential or holdout.
@@ -140,6 +143,7 @@ class Take:
         self.turns = None                  # None: one ledger row per line, numbered by the script's steps
         self.call = {"row_index": 0, "walk_id": None, "wording_script": design.script}
         self.parts = None
+        self.row_model = self.model        # the pre-registered row's model (review e-71a2b94 finding 3)
 
     def build(self, parts_edit=None, folder_edit=None):
         if self.harness == "codex":
@@ -164,8 +168,16 @@ class Take:
             folder_edit(path)
         return path
 
+    def vendor_row(self) -> dict:
+        """The rig's ledger row 0 made this take's own vendor row (review e-71a2b94 finding 3: the rig's rows were
+        Claude Code's): test_checker_body's draft row with the take's harness, arm and the row's model."""
+        r = tcb.row()
+        r["agent"]["harness"], r["model"], r["arm"] = self.harness, self.row_model, self.arm
+        return r
+
     def problems(self, path):
-        with mock.patch.object(self.mod, "CHECK_HOME", Path(HOME)):
+        with mock.patch.object(self.mod, "CHECK_HOME", Path(HOME)), \
+                mock.patch.object(self.mod.takes_mod, "load_rows", lambda **kw: [self.vendor_row()]):
             got = self.mod.vendor_check(path, TASK, HALF, self.call["row_index"],
                                         wording_script=self.call["wording_script"], design=self.design, arm=self.arm,
                                         walk_id=self.call["walk_id"])
@@ -458,6 +470,13 @@ def stats_model(parts):
             r["stats"]["models"][OTHER_MODEL] = dict(next(iter(r["stats"]["models"].values())))
 
 
+def case_row_on_another_model(t):
+    """The pre-registered row names another model; the ledger's requested model and every CLI record are the take's
+    (review e-71a2b94 finding 3): the requested model differs from the row's, and the records are not the row's."""
+    t.row_model = OTHER_MODEL
+    return None, None
+
+
 def case_no_requested_model(t):
     t.ledger.pop("model_requested")
     return None, None
@@ -530,6 +549,9 @@ CASES = {
     "a rerouted model": (("codex",), edits(rerouted, None), {"model-binding": 1, "transcript-unreadable": 2}, None),
     "a stream's init on another model": (("gemini",), edits(init_model, None), {"model-binding": 1}, None),
     "a stats.models key of another model": (("gemini",), edits(stats_model, None), {"model-binding": 1}, None),
+    # round 14, review e-71a2b94 finding 3: the take road binds the pre-registered row's model, never the ledger's alone
+    "the pre-registered row on another model": (("codex", "gemini"), case_row_on_another_model, {"model-binding": 2},
+                                                None),
     "no requested model in the ledger": (("codex", "gemini"), case_no_requested_model,
                                          {"model-binding": 1, "environment-record": 1}, None),
     "no environment record": (("codex", "gemini"), edits(None, lambda path: (path.parent / "environment.json").unlink()),
@@ -633,6 +655,21 @@ def walk_problems(mod) -> list:
     return out
 
 
+def walk_row_problems(mod) -> list:
+    """A clean walk whose ledger row 0 names another model carries the PENDING refusals only: the walk road binds the
+    ledger's requested model and never reads a row (review e-71a2b94 finding 3)."""
+    out = []
+    for harness in VENDORS:
+        t = Take(mod, harness, design_for(mod, harness), sid=mod.walk_session_id(WALK_ID))
+        t.ledger.update(row=None, row_commit=None)
+        t.call.update(row_index=None, walk_id=WALK_ID)
+        t.row_model = OTHER_MODEL
+        got = sorted(t.problems(t.build()))
+        if got != pending_lines(mod, harness):
+            out.append(f"{harness} clean walk beside a row on another model: {got}")
+    return out
+
+
 def tree_admitted_problems(mod) -> list:
     """codex: a path under the session's own run tree, the tree under the home folder, is admitted by the home leg."""
     tree = f"{HOME}/run-tree"
@@ -660,6 +697,9 @@ class P2Clean(unittest.TestCase):
 
     def test_p2_clean_walk_carries_exactly_its_pending_refusals(self):
         self.assertEqual(walk_problems(tcb.ct), [])
+
+    def test_p2_a_walk_never_reads_the_rows_model(self):
+        self.assertEqual(walk_row_problems(tcb.ct), [])
 
     def test_p2_a_claude_code_design_is_refused(self):
         with self.assertRaises(tcb.ct.CheckRefused):
@@ -751,8 +791,11 @@ P2_WITNESSES = {
                                 "a rollout turn on another model"),
     "the codex reroute unread": (("                if to is not None:\n", "                if False:\n"),
                                  "a rerouted model"),
-    "the model reading dropped": (("    problems += vendor_model_problems(path, harness, ledger)\n", ""),
-                                  "a stream's init on another model"),
+    "the model reading dropped": (("    problems += vendor_model_problems(path, harness, ledger, row_index, walk_id)\n",
+                                   ""), "a stream's init on another model"),
+    "the ledger-only model binding restored on the take road": ((
+        "        want = _vendor_row_model(row_index)\n", "        want = requested\n"),
+        "the pre-registered row on another model"),
     "the environment record unread": (("        out = environment_problems(Path(path), ledger, pre, row_commit)\n",
                                        "        out = []\n"), "no environment record"),
     "the turn end unread": (("        if not ended:\n", "        if False:\n"), "a turn that did not end"),
