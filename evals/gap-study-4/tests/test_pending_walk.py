@@ -671,8 +671,12 @@ class Regrade(unittest.TestCase):
         import pending_walk
         with mock.patch.object(run, "grade_walk_folder", stand_in_grade):
             self.assertEqual(walk_regrade.regrade_problems(road.study, grade=stand_in_grade), [])
-            self.assertEqual(pending_walk.uncounted_walks(road.study / "rehearsals", [WALK]), {},
-                             "a verified graded regrade supersedes the pending grade (batch-8 finding 1)")
+            # moved by lane vendor-admission T4 P5, R-9 (plan v4 section 6 (c); glitch-b5 round 13): a verified graded
+            # regrade supersedes the pending grade (batch-8 finding 1), and the walk counts only through a checker
+            # reading under the constants in force (tests/test_vendor_walk_road.py R-9); it has none
+            self.assertEqual(pending_walk.uncounted_walks(road.study / "rehearsals", [WALK]),
+                             {WALK: pending_walk.PENDING_UNCHECKED},
+                             "a verified graded regrade alone never counts the walk (R-9)")
         stored = json.loads((road.folder / "grade.json").read_text())
         self.assertEqual(stored["status"], "pending-native-reader")                  # the walk's own record stays
         refusing = {"gemini": lambda raw, n: (_ for _ in ()).throw(road.nrr.vp.ProvenanceRefused("a stand-in"))}

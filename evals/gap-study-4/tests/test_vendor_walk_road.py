@@ -13,6 +13,19 @@ glitch-b5 round 13, Sun 18 Oct 2026).
   P5-check    walk_regrade's --check road (regrade_problems) on a committed vendor walk hands each check.json's
               re-derivation the walk's own harness: a vendor walk whose check.json records the nested CLI call its
               CLI ran passes, and one that records none is named.
+  R-9         review 10ac86f MAJOR 1, plan section 6 (a)-(d), on test_pending_codex_walk's committed pending codex walk
+              with its reader registered and a verified graded-true regrade: with no checker reading it is not
+              counted ("pending: regraded, no checker reading under the constants in force"); a vendor recheck
+              through checker_for (its entry's body stood in, the vendor rows being PENDING) under the merged
+              constants, superseding the pending check.json with no reasons and no digest, and carrying the vendor
+              side's counts, does not count with a constant-bound reason and counts with none; walk_regrade's --check
+              re-derives it and names one the checker no longer reads; a recheck under the Claude-only digest reads
+              stale. Its three mutants (the pending branch counting on "graded" alone, RECHECK_HARNESSES left
+              Claude-only, the recheck reading the ledger's pending cross-check) and two of the pending road's rules
+              (constant-bound reasons admitted, the digest unchecked) each go red. The claude-code coverage witness is
+              every existing coverage suite unchanged (test_walk_plan, test_walk_recheck, test_recheck_coverage,
+              test_checker_constants, test_no_output_nudge, test_nested_agent) and test_pending_walk's, whose
+              Gemini pending walk moves by R-9.
   P5-witness  pending_walk.py and walk_regrade.py compiled in memory with a vendor walk read as current under the
               Claude-only digest, the counts read with Claude Code's readers, and the --check road dropping the
               harness: each goes red.
@@ -23,6 +36,9 @@ in scratch folders and one scratch git repository: no take, model, vendor, netwo
 
 from __future__ import annotations
 
+import contextlib
+import copy
+import hashlib
 import json
 import subprocess
 import sys
@@ -201,6 +217,146 @@ def check_problems(wr, ct) -> list:
     return out
 
 
+# ---- R-9's road (plan v4 section 6 (a)-(d); review 10ac86f MAJOR 1) --------------------------------------------------
+MACHINE = {"home": "/synthetic-home", "checkout": "/synthetic-checkout", "temp_root": "/synthetic-tmp"}   # TEST DATA
+
+
+def vendor_design_for(ct):
+    """A vendor view for the recheck (the routing table pins no codex profile until CP5 registers one): CHECKER_CONSTANTS
+    with no pinned mode, the row's harness, and its harness's block through check_take.vendor_view."""
+    def design_for(row, run_tree):
+        pre = copy.deepcopy(ct.CHECKER_CONSTANTS)
+        pre["driver_constants"]["permission_mode_by_arm"] = {}
+        return ct.vendor_view(ct.Design(task_id=row["task"], spec={"id": row["task"]}, pre=pre,
+                                        harness=row["agent"]["harness"], half=row["half"],
+                                        script=[{"n": 1, "line": "synthetic"}], run_tree=run_tree))
+    return design_for
+
+
+@contextlib.contextmanager
+def vendor_entry(ct, reasons, seen):
+    """check4_walk_vendor's body stood in by `reasons` (the vendor rows are PENDING, so a real reading always carries
+    constant-bound reasons); checker_for, _vendor_entry, _vendor_side and drive.take_checker stay real. `seen` collects
+    each call's design digest."""
+    import routing
+    ids = routing.load_table()["checker_reasons_become_events"]["ids"]
+
+    def stand_in(path, task, half, walk, *, wording_script, arm, design, table=None):
+        seen.append(ct.vendor_design_constants_sha256(design))
+        return {"reasons": list(reasons), "problems": [], "events": dict.fromkeys(ids, 0), "outside_reach": 0}
+    with mock.patch.object(ct, "check4_walk_vendor", stand_in):
+        yield
+
+
+def enveloped_pending_walk(test):
+    """test_pending_codex_walk's committed pending codex walk, copied by hand into walk-g2 with the host's turn
+    envelopes (transcript.jsonl, vendor_record_binding's schema 1: one harness-turn per turn stream, its sent line the
+    ledger's and its sha256 the stream's) and committed under WalkRepo's subject with its register entry; walk-g1, the
+    road's own, is the acceptance walk. The drive writes no envelopes for a vendor take today (C3: a take with no
+    transcript.jsonl reads readers-disagree, and recheck_doc refuses a walk without one), so the recheck road is
+    exercised on this copy (named in the lane file for glitch-b5)."""
+    import shutil
+    import test_pending_codex_walk as tpcw
+    import test_pending_walk as tpw
+    road = tpcw.codex_road(test)
+    dst = road.study / "rehearsals" / "walk-g2"
+    shutil.copytree(road.folder, dst)
+    check = json.loads((dst / "check.json").read_text())
+    (dst / "check.json").write_text(json.dumps(dict(check, walk="walk-g2"), indent=2, sort_keys=True) + "\n")
+    led = json.loads((dst / "driver-ledger.json").read_text())
+    envs = [{"type": "harness-turn", "harness": "codex", "session_id": led["session_id"],
+             "vendor_session_id": tpcw.TID, "n": k, "sent": turn["sent"], "stream": name,
+             "sha256": hashlib.sha256((dst / name).read_bytes()).hexdigest()}
+            for k, (name, turn) in enumerate(zip(led["streams"], led["turns"]), 1)]
+    (dst / "transcript.jsonl").write_text("".join(json.dumps(e) + "\n" for e in envs))
+    reg = road.study / "rehearsals" / "register.json"
+    doc = json.loads(reg.read_text())
+    doc["walks"].append(dict(doc["walks"][0], walk="walk-g2"))
+    reg.write_text(json.dumps(doc, indent=2) + "\n")
+    tpw.git(road.root, "add", "-A")
+    tpw.git(road.root, "commit", "-q", "-m", road.drive.WALK_SUBJECT)
+    road.accept()
+    return road, "walk-g2"
+
+
+def r9_problems(test, pw, wr, ct) -> list:
+    """R-9's red-first test on one committed pending codex walk (test_pending_codex_walk's road), its reader
+    registered and its regrade verified and committed."""
+    import run
+    import test_pending_codex_walk as tpcw
+    import test_pending_walk as tpw
+    out = []
+    road, walk = enveloped_pending_walk(test)
+    base, study = road.study / "rehearsals", road.study
+    secrets = dict(secrets=lambda: [("token", tbi.TOKEN)], rules_scanner=lambda paths: [])
+    merged = ct.vendor_checker_constants_sha256("codex")
+    with mock.patch.object(run, "grade_walk_folder", tpw.stand_in_grade), \
+            mock.patch.object(wr, "production_design", vendor_design_for(ct)):
+        wr.write_regrade(walk, study)
+        wr.commit_regrade(walk, study, **secrets)
+        got = pw.coverage_status(base, walk)
+        if got != "pending: regraded, no checker reading under the constants in force":
+            out.append(f"a verified graded-true regrade and no checker reading: coverage {got!r}")
+        for n, reasons, want in ((1, ["constant-binding"], "constant-bound checker reason: constant-binding"),
+                                 (2, [], None)):
+            seen = []
+            try:
+                with vendor_entry(ct, reasons, seen):
+                    path = wr.write_recheck(walk, study, machine=MACHINE)
+                    wr.commit_recheck(walk, n, study, **secrets)
+            except Exception as e:  # noqa: BLE001 - a refused recheck is this test's failure, named
+                out.append(f"recheck {n} ({reasons}) refused: {type(e).__name__}: {e}")
+                return out
+            doc = json.loads(path.read_text())
+            want_was = ({"file": "check.json", "checker_constants_sha256": None, "checker_reasons": []} if n == 1
+                        else {"file": "recheck-1.json", "checker_constants_sha256": merged,
+                              "checker_reasons": ["constant-binding"]})
+            if (doc["supersedes"], doc["was"], doc["checker_constants_sha256"], doc["checker_reasons"], seen) != \
+                    (want_was["file"], want_was, merged, reasons, [merged]):
+                out.append(f"recheck {n}: {doc['supersedes']}, {doc['was']}, {doc['checker_constants_sha256']}, "
+                           f"{doc['checker_reasons']}, entry digests {seen}")
+            if (doc["no_output_nudges"], doc["agent_calls"], doc["nested_cli_calls"]) != (0, 0, 0):
+                out.append(f"recheck {n}: the vendor side's counts are not in it: {doc}")
+            got = pw.coverage_status(base, walk)
+            if got != want:
+                out.append(f"recheck {n} with reasons {reasons}: coverage {got!r}, not {want!r}")
+        # (d): walk_regrade --check re-derives the vendor recheck, and names one the checker no longer reads
+        with vendor_entry(ct, [], []):
+            got = wr.regrade_problems(study)
+            if got:
+                out.append(f"an honest vendor recheck does not re-derive: {got}")
+        with vendor_entry(ct, ["readers-disagree"], []):
+            got = wr.regrade_problems(study)
+            if not any("recheck-2.json differs from re-deriving it" in g for g in got):
+                out.append(f"a vendor recheck the checker no longer reads is not named: {got}")
+        # a recheck under the Claude-only digest (written by hand: the vendor side never records it) never counts
+        import walk_register
+        folder = base / walk
+        doc = dict(json.loads((folder / "recheck-2.json").read_text()), n=3, supersedes="recheck-2.json",
+                   checker_constants_sha256=ct.checker_constants_sha256())
+        raw = wr.regrade_bytes(doc)
+        (folder / "recheck-3.json").write_bytes(raw)
+        reg = json.loads((base / walk_register.REGISTER_NAME).read_text())
+        reg["rechecks"].append({"walk": walk, "file": "recheck-3.json", "n": 3,
+                                "checker_constants_sha256": doc["checker_constants_sha256"],
+                                "sha256": hashlib.sha256(raw).hexdigest()})
+        (base / walk_register.REGISTER_NAME).write_text(json.dumps(reg, indent=2) + "\n")
+        tpw.git(road.root, "add", "-A")                       # committed, so the registration reads a clean tree
+        tpw.git(road.root, "commit", "-q", "-m", wr.RECHECK_SUBJECT)
+        got = pw.coverage_status(base, walk)
+        if not (isinstance(got, str) and got.startswith("stale")):
+            out.append(f"a recheck under the Claude-only digest: coverage {got!r}")
+    return out
+
+
+class R9Road(unittest.TestCase):
+    def test_r9_a_pending_vendor_walk_counts_only_through_a_vendor_recheck(self):
+        import pending_walk
+        import walk_regrade
+        with world() as ct:
+            self.assertEqual(r9_problems(self, pending_walk, walk_regrade, ct), [])
+
+
 class P5WalkRoad(unittest.TestCase):
     def test_p5_the_digest_in_force_is_the_walks_harnesss(self):
         import pending_walk
@@ -233,6 +389,35 @@ P5_WALK_WITNESSES = {
         "            out += [f\"walk {parts[0]!r}: {p}\" for p in agent_summary_problems(check, path)]"),
         check_problems),
 }
+# R-9's three mutants (plan v4 section 6) and two of the pending road's rules
+R9_WITNESSES = {
+    "the pending branch counting on graded alone": ("pending_walk", (
+        "        return checker_standing(base, walk, pending=True) if state == \"graded\" else \"regrade refused\" \\\n",
+        "        return None if state == \"graded\" else \"regrade refused\" \\\n")),
+    "RECHECK_HARNESSES left Claude-only": ("walk_regrade", (
+        "RECHECK_HARNESSES = (\"claude-code\", \"codex\", \"gemini\")", "RECHECK_HARNESSES = (\"claude-code\",)")),
+    "the recheck reading the ledger's pending cross_check": ("walk_regrade", (
+        "            check_ledger = dict(ledger, cross_check=_verified_regrade_cross(",
+        "            check_ledger = dict(ledger, synthetic=_verified_regrade_cross(")),
+    "the pending road's constant-bound reasons admitted": ("pending_walk", (
+        "    bound = [r for r in reasons if r in check_take.CONSTANT_BOUND_REASONS]\n",
+        "    bound = []\n")),
+    "the pending road's digest unchecked": ("pending_walk", (
+        "    if latest.get(\"checker_constants_sha256\") != now:\n", "    if False:\n")),
+}
+
+
+class R9Witnesses(unittest.TestCase):
+    def test_r9_witness_each_mutant_goes_red(self):
+        import importlib
+        for name, (module, edit) in R9_WITNESSES.items():
+            with self.subTest(witness=name), world() as ct:
+                mutant = module_with(module, (edit,))
+                mods = {m: importlib.import_module(m) for m in ("pending_walk", "walk_regrade")}
+                mods[module] = mutant
+                with mock.patch.dict(sys.modules, {module: mutant}):
+                    got = r9_problems(self, mods["pending_walk"], mods["walk_regrade"], ct)
+                self.assertNotEqual(got, [], f"witness {name} stayed green")
 
 
 class P5WalkWitnesses(unittest.TestCase):
