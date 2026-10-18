@@ -9,6 +9,7 @@ touches:
   - gars/_system/migrate_data_class.py
   - gars/tests/test_s00_class.py
   - gars/tests/test_migrate_data_class.py
+  - gars/tests/test_route_never_widens.py
 symptoms:
   - "purpose_legacy: ... is read only in a row that already carries it" from stage 00 finalize
   - "purpose_required: data_sources.tsv does not settle test or analysis" from stage 00 finalize (template T4c)
@@ -43,7 +44,7 @@ Stage 00's finalize took `--purpose` from five values (`fixture`, `internal`, `p
 
 ## Test
 
-`gars/tests/test_s00_class.py`: PurposeTests (1c), DeclarationTests and DeclarationContractTests (2a), TermsTests (3a), RestrictedContractTests and RestrictedGuardTests (5a); `gars/tests/test_migrate_data_class.py` (the migration). `test_the_agent_cannot_register_a_legacy_purpose` is green only with R1 applied, `test_the_guard_reads_a_four_column_declaration` only with G1, `test_an_agents_restricted_finalize_names_t5r` only with G2 (and with G2 the refusal corpus and `test_nonpublic_read_block` are green only with its witnesses patch).
+`gars/tests/test_s00_class.py`: PurposeTests (1c), DeclarationTests and DeclarationContractTests (2a), TermsTests (3a), RestrictedContractTests and RestrictedGuardTests (5a); `gars/tests/test_migrate_data_class.py` (the migration); `gars/tests/test_route_never_widens.py`, the design's section 5 table: every class x purpose x venue, with and without an agreement and an expiry, decides as `check` did before S00-class (at 132137af), never a new allow; the route facts; old run records through manifest_check's group 11; and the registration path, the only place a decision changes. A widening mutation (public gains `local:internal`) fails the table. `test_the_agent_cannot_register_a_legacy_purpose` is green only with R1 applied, `test_the_guard_reads_a_four_column_declaration` only with G1, `test_an_agents_restricted_finalize_names_t5r` only with G2, `test_route_never_widens` RegistrationPathTests' two agent rows only with R1 (and G2) (and with G2 the refusal corpus and `test_nonpublic_read_block` are green only with its witnesses patch).
 
 ## Status
 
