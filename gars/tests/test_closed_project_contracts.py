@@ -1,6 +1,7 @@
 """Stage 01-03 steps that read a file the guard refuses on a non-public project name a door or
 what to tell the user (0107 item 11, 0141 item 12; change record 0291); a step that spells a
-door directly also gives its dispatcher spelling (change record 0323)."""
+door directly, or a step its Definitions lists as taking the dispatcher spelling, also gives
+that spelling under the workspace-wide condition (change record 0323)."""
 import json
 import re
 import unittest
@@ -238,6 +239,34 @@ def door_steps(read):
     return checked, without
 
 
+def listed_door_steps(read):
+    """(the step-door pairs of the steps a contract's Definitions lists as taking the dispatcher
+    spelling, "use that spelling at steps N to M", where the step names the door only through
+    tool_call.py and describes the direct call in prose; those whose step lacks the
+    workspace-wide condition, or names no door at all), each contract's text from read(path)."""
+    checked, without = [], []
+    for path in CONTRACTS:
+        text = read(path)
+        listed = re.search(r'use that spelling at steps (\d+) to (\d+)',
+                           ' '.join(section(text, 'Definitions').split()))
+        if not listed:
+            continue
+        found = steps(text)
+        for number in range(int(listed.group(1)), int(listed.group(2)) + 1):
+            step = found.get(str(number), '')
+            names = sorted(set(DOOR.findall(step)))
+            if not names:
+                without.append('%s step %d: names no door' % (path, number))
+            for name in names:
+                if direct(DOORS[name]).search(step):
+                    continue
+                checked.append('%s step %d %s' % (path, number, name))
+                if not WORKSPACE_WIDE.search(' '.join(step.split())):
+                    without.append('%s step %d %s: condition not workspace-wide'
+                                   % (path, number, name))
+    return checked, without
+
+
 WRAPPERS = tuple(path for path in SUBSTAGES if '/01_nfcore-' in path)
 CLUSTER = ('02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md',
            '02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md')
@@ -256,6 +285,10 @@ DOOR_STEPS = sorted(
     + ['%s step 6 executor.submit' % DE, '%s step 7 executor.status' % DE,
        '%s step 8 executor.status' % DE,
        '%s step 7 executor.submit' % STAGE03, '%s step 8 executor.status' % STAGE03])
+# The prose door steps of the one contract that lists its door steps (the DE sub-stage's
+# Definitions, steps 3 to 8), held fixed so the listed-step check cannot quietly stop seeing them.
+LISTED_DOOR_STEPS = ['%s step 4 rnaseq_de.check' % DE, '%s step 5 rnaseq_de.prepare' % DE,
+                     '%s step 8 rnaseq_de.collect' % DE]
 STATUS_LINE = ("   While any non-public project exists in the workspace, the direct status call is\n"
                "   refused (decision 0141): `python3 _system/tool_call.py executor.status\n"
                "   '{\"workspace\": \"<project dir>\", \"job-id\": \"<job_id>\"}'`; its state is in the\n"
@@ -270,6 +303,14 @@ DOOR_MUTANTS = {
     'script dropped from an nf-core submit': {WRAPPERS[0]: (
         ('"workspace": "<project dir>", "script": "<sub-stage dir>/submit.sh"',
          '"workspace": "<project dir>"'),)},
+}
+
+# Each puts one listed prose door step back under the non-public-only condition.
+LISTED_MUTANTS = {
+    'collect under the non-public-only condition in 02_rnaseq-de step 8': {DE: ((
+        '   On a non-public project, or while any exists in the workspace: `python3 _system/tool_call.py\n'
+        '   rnaseq_de.collect',
+        '   On a non-public project: `python3 _system/tool_call.py\n   rnaseq_de.collect'),)},
 }
 
 
@@ -331,6 +372,16 @@ class ClosedProjectContractTests(unittest.TestCase):
             with self.subTest(mutant=name):
                 self.assertNotEqual(door_steps(mutant(edits))[1], [], name)
 
+
+    def test_every_listed_door_step_gives_the_workspace_wide_condition(self):
+        checked, without = listed_door_steps(contract)
+        print('listed door steps: %d checked, %d without the workspace-wide condition'
+              % (len(checked), len(without)), flush=True)
+        self.assertEqual(without, [])
+        self.assertEqual(checked, LISTED_DOOR_STEPS)
+        for name, edits in sorted(LISTED_MUTANTS.items()):
+            with self.subTest(mutant=name):
+                self.assertNotEqual(listed_door_steps(mutant(edits))[1], [], name)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
