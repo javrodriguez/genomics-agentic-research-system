@@ -97,6 +97,11 @@ class Workspace(unittest.TestCase):
 class SeedTests(Workspace):
     def test_every_local_seed_is_within_the_ceiling(self):
         self.assertEqual(vp.MEM_CEILING, {'local': 8 * 1024 ** 3})
+        self.assertEqual(vp.memory_bytes(vp.ACCEPTED_MEM['local']), vp.MEM_CEILING['local'])
+        # check() refuses exactly above the table's ceiling, so the two cannot drift apart.
+        fixture = {'data_class': 'public', 'purpose': 'fixture', 'expiry': 'none'}
+        self.assertEqual(vp.check(fixture, 'local', 'fixture', vp.MEM_CEILING['local'], []), [])
+        self.assertIn('memory rule', str(vp.check(fixture, 'local', 'fixture', vp.MEM_CEILING['local'] + 1, [])))
         for venue in vp.VENUES:
             for aid in ASSAYS:
                 with self.subTest(venue=venue, assay=aid):
@@ -205,15 +210,12 @@ class LowerTests(Workspace):
             ('two mem lines', lambda: cfg.write_text(original + 'other:\n  mem: 2G\n', encoding='utf-8'), 1),
             ('a second mem line outside compute', lambda: cfg.write_text(
                 original.replace('\naligner:', '\nlimits:\n  mem: 2G\naligner:'), encoding='utf-8'), 1),
-            ('descriptor unreadable', lambda: (descriptor.unlink(), descriptor.mkdir()), 1),
             ('descriptor not text', lambda: descriptor.write_bytes(b'name: local\n\xff\xfe\n'), 1),
             ('config absent', lambda: cfg.unlink(), 3),
         )
         for label, plant, expected in cases:
             with self.subTest(case=label):
                 cfg.write_text(original, encoding='utf-8')
-                if descriptor.is_dir():
-                    descriptor.rmdir()
                 descriptor.write_bytes(held)
                 plant()
                 before = cfg.read_bytes() if cfg.exists() else None
@@ -225,6 +227,14 @@ class LowerTests(Workspace):
                 self.assertEqual(sorted(p.name for p in cfg.parent.iterdir() if p.name.endswith('.tmp')), [])
         code, out = self.lower(project, 'not_an_assay')
         self.assertEqual(code, 3, out)
+        # A descriptor that is not a file is read as the submit reads it (Slurm): a no-op.
+        cfg.write_text(original, encoding='utf-8')
+        descriptor.unlink(); descriptor.mkdir()
+        before = cfg.read_bytes()
+        code, out = self.lower(project, 'rnaseq_bulk')
+        self.assertEqual((code, out['lowered'], out['venue']), (0, None, ex.venue_of(ex.load(project))))
+        self.assertEqual(cfg.read_bytes(), before)
+        descriptor.rmdir(); descriptor.write_bytes(held)
         # A `mem:` line that is not compute.mem is not the request the submit compares: with no
         # compute.mem there is nothing to lower, and that other line is never touched.
         cfg.write_text(original.replace('\n  mem: 64G\n', '\n').replace(

@@ -48,6 +48,6 @@ compute:
   partition: cpu_medium
   time: "2-00:00:00"
   cpus: 8
-  mem: 64G
+  mem: {{mem}}
   # Nextflow's scratch. NEVER inside the project: work/ retains every process output.
   work_dir: {{work_dir}}

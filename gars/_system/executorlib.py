@@ -132,11 +132,12 @@ def _venue_refusal(config_root, executed, stage_kind, stage_dir, script):
     import venue_policy as policy
     row = wl.dataset_record(config_root)
     failures, fastqs = [], []
-    memory = None
+    memory = assay = None
     try:
         if stage_kind == '02':
             parts = Path(stage_dir).relative_to(Path(config_root).resolve()).parts
-            cfg = wl.read_config(Path(config_root) / '_config' / (parts[1] + '.yaml'))
+            assay = parts[1]
+            cfg = wl.read_config(Path(config_root) / '_config' / (assay + '.yaml'))
             memory = cfg.get('compute.mem')
             manifest = json.loads((Path(stage_dir) / 'reproducibility/manifest.json').read_text())
             for value in manifest.get('inputs', {}).values():
@@ -165,6 +166,15 @@ def _venue_refusal(config_root, executed, stage_kind, stage_dir, script):
         mem_bytes = None
         failures.append(policy.fail("resource_unparseable", 'declared memory is not K/M/G/T'))
     failures.extend(policy.check(row, venue_of(executed), row.get('purpose'), mem_bytes, fastqs))
+    venue = venue_of(executed)
+    if stage_kind == '02' and assay and venue in policy.MEM_CEILING:
+        # 0293: the stage-02 memory request is compute.mem, which `configure.py lower` fits to
+        # the venue; stage 03's is the script's own #SBATCH --mem, so it names the value only.
+        for item in failures:
+            if item['check'] == 'resource_unparseable' or 'memory rule' in item['detail']:
+                item['detail'] += ('; configure.py lower --project %s --assay %s lowers compute.mem '
+                                   'to the %s this venue accepts'
+                                   % (config_root, assay, policy.ACCEPTED_MEM[venue]))
     return '; '.join(item['check'] + ': ' + item['detail'] for item in failures) or None
 
 

@@ -82,7 +82,7 @@ compute:
   partition: cpu_medium
   time: "1-00:00:00"
   cpus: 12
-  mem: 96G
+  mem: {{mem}}
   # Nextflow's scratch. NEVER inside the project: work/ retains every process output so
   # -resume can reuse it, and a run accumulates hundreds of GB there. results/ is published
   # with mode 'copy', so work/ is disposable once a run succeeds.

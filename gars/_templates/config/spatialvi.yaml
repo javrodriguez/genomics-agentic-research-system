@@ -54,7 +54,7 @@ compute:
   partition: cpu_short
   time: "04:00:00"
   cpus: 4
-  mem: 32G
+  mem: {{mem}}
   # Nextflow's scratch. NEVER inside the project: work/ retains every process output so
   # -resume can reuse it. results/ is published with mode 'copy', so work/ is disposable
   # once a run succeeds.

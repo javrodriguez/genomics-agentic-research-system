@@ -48,7 +48,7 @@ compute:
   partition: cpu_long
   time: "5-00:00:00"
   cpus: 8
-  mem: 64G
+  mem: {{mem}}
   # Nextflow's scratch. NEVER inside the project: a single 10-sample run accumulates 250-350 GB
   # here, because work/ retains every process output so -resume can reuse it. results/ is
   # published with mode 'copy', so work/ is disposable once a run succeeds.
