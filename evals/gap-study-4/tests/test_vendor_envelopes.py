@@ -24,6 +24,10 @@ readers-disagree before checker_for.
               vendor readers' own event counts (check_take.vendor_event_counts, which reads the envelopes' streams
               and the ledger-named last snapshot by their sha256): account-email counts 1, the take is not held, and
               every envelope's and every ledger-named snapshot's sha256 is that of the masked bytes on disk.
+  EC-gate     check_vendor_sources piece EB holds edit C's gate direction (glitch-b5 round 16, review f-981e871 NIT 4):
+              drive.py with edit C's `if` test turned to `not in VENDOR_HARNESSES`, negated, widened by an `or`,
+              widened in its set, or asked of a constant harness instead of the row's fails piece EB, and drive.py as
+              it stands passes.
   EB-witness  drive.py compiled in memory with the writer gated off (edit B taken out), the writer also run for
               claude-code, an envelope's sent taken from another row, and an envelope's sha256 taken from another
               stream; and for edit C, the rebinding taken out (the review's masked-address mutant), the envelopes
@@ -349,6 +353,32 @@ class EditBClaude(unittest.TestCase):
     def test_eb_a_claude_code_take_is_byte_identical(self):
         before = compiled(cvs.without_edits(drive_source()), "drive_before_edit_b")
         self.assertEqual(claude_problems(tbi.drive, before), [])
+
+
+EDIT_C_TEST = ('if row["agent"]["harness"] in VENDOR_HARNESSES and '
+               'Path(take.folder, "transcript.jsonl").is_file():')
+EDIT_C_GATE_MUTANTS = {
+    "not in": 'if row["agent"]["harness"] not in VENDOR_HARNESSES and '
+              'Path(take.folder, "transcript.jsonl").is_file():',
+    "negated": 'if not (row["agent"]["harness"] in VENDOR_HARNESSES and '
+               'Path(take.folder, "transcript.jsonl").is_file()):',
+    "widened by or": 'if row["agent"]["harness"] in VENDOR_HARNESSES or '
+                     'Path(take.folder, "transcript.jsonl").is_file():',
+    "widened set": 'if row["agent"]["harness"] in VENDOR_HARNESSES | {"claude-code"} and '
+                   'Path(take.folder, "transcript.jsonl").is_file():',
+    "a constant harness": 'if "codex" in VENDOR_HARNESSES and Path(take.folder, "transcript.jsonl").is_file():',
+}
+
+
+class EditCGate(unittest.TestCase):
+    def test_ec_gate_piece_eb_admits_only_a_membership_test(self):
+        src = drive_source()
+        self.assertEqual(src.count(EDIT_C_TEST), 1, "drive.py's edit C test is not where EC-gate looks")
+        self.assertEqual(cvs.edit_b_problems(src), [])
+        for name, test in EDIT_C_GATE_MUTANTS.items():
+            with self.subTest(mutant=name):
+                self.assertNotEqual(cvs.edit_b_problems(src.replace(EDIT_C_TEST, test)), [],
+                                    f"piece EB admitted edit C's gate {name}")
 
 
 class EditBWitnesses(unittest.TestCase):
