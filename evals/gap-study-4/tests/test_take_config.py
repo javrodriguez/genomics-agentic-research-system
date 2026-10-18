@@ -296,6 +296,7 @@ class TestContents(MutantCase):
                 "general.enableAutoUpdateNotification": False, "privacy.usageStatisticsEnabled": False,
                 "telemetry.enabled": False, "model.name": "gemini-3.8-flash", "model.thinkingLevel": "default",
                 "security.auth.selectedType": "api-key-stand-in",
+                "security.folderTrust.enabled": False,         # round 18 B9: folder trust off (glitch-26's ruling B9)
                 # The frozen legacy noninteractive path (pinned 0.64.0 evidence; the renderer fold).
                 "experimental.adk.agentSessionNoninteractiveEnabled": False}
         for k, v in want.items():

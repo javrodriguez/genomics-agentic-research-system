@@ -23598,19 +23598,19 @@
         "files": [
           {
             "path": ".gemini/settings.json",
-            "sha256": "9ee8f8edd3bcb35ee062c77785512d7b67dc44ecf2198d2abaa75eac865bce91"
+            "sha256": "c6da878a2263fc7471953313f6cfc6ad262112619bf068355809b9cc3f1a0aee"
           }
         ],
-        "sha256": "67bc49b7077ddb1d73b50d4bf03c6268bcdfd20129988da97344240dc4156fa9"
+        "sha256": "93b8ea29e90b159ae016056cd18670173b56bf02d60c6928ff61361a14d9bc77"
       },
       "gemini-3.5-flash-lite": {
         "files": [
           {
             "path": ".gemini/settings.json",
-            "sha256": "ff7db3f3f44c0d777ce0f77efcfdfcdf74fe711dea030b925e7535ca64832514"
+            "sha256": "0a573600d1f0b331b60c9f05af403c99a309e3bf80778b23f7e7e7ede81dbe85"
           }
         ],
-        "sha256": "405b90d17e80d40771f76e0eae6c47939606a647d9cb226b6081e98f26435437"
+        "sha256": "cb1517acf7060d11b8660272b35b7a649c9ccfc307c69e0ea8405b18e07c1674"
       }
     }
   },
