@@ -105,6 +105,30 @@ class VenuePolicyTests(PolicyFixture):
         self.assertFalse(vp.check(row('public', 'internal'), 'slurm', 'internal', None, []))
         self.assertFalse(vp.check(row('public', 'internal'), 'homelab', 'internal', None, []))
 
+    def test_raising_seeded_memory_is_refused_naming_the_accepted_value(self):
+        """T57 (0293): a stage 02 memory refusal on local names the accepted value and
+        `configure.py lower`; Slurm gains no remedy; stage 03 (see SubmissionOrderingTests) names
+        the value only, because its memory is the script's, which `lower` never touches."""
+        for memory, code in (('9G', 'venue_not_permitted'), ('lots', 'resource_unparseable')):
+            root = self.root / ('local-' + memory); root.mkdir()
+            stage = prepare(root, row(), memory)
+            with patch.object(ex, '_submit_once') as backend:
+                job, why = ex.submit(root, stage / 'submit.sh', ex.LOCAL)
+                self.assertIsNone(job)
+                self.assertIn(code, why)
+                self.assertIn('configure.py lower --project %s --assay rnaseq_bulk' % root, why)
+                self.no_effects(root, backend)
+            if code == 'venue_not_permitted':
+                self.assertIn('memory rule: above 8 GiB; this venue accepts up to 8G', why)
+        root = self.root / 'slurm-9G'; root.mkdir()
+        stage = prepare(root, row('public', 'internal'), '9G')
+        self.assertEqual(ex._venue_refusal(root, ex.SLURM, '02', stage, stage / 'submit.sh'), None)
+        root = self.root / 'slurm-lots'; root.mkdir()
+        stage = prepare(root, row('public', 'internal'), 'lots')
+        why = ex._venue_refusal(root, ex.SLURM, '02', stage, stage / 'submit.sh')
+        self.assertIn('resource_unparseable', why)
+        self.assertNotIn('configure.py', why)
+
     def test_expiry_unclassified_narrowing_and_widening(self):
         for expiry in (None, '', 'none', '2000-01-01', 'not-a-date'):
             candidate = row('deidentified_under_agreement', 'internal'); candidate['expiry'] = expiry
@@ -298,6 +322,9 @@ class SubmissionOrderingTests(PolicyFixture):
                     else:
                         self.assertIsNone(job)
                         self.assertIn(reason, why)
+                        self.assertNotIn('configure.py', why)
+                        if 'memory rule' in reason:
+                            self.assertIn('this venue accepts up to 8G', why)
                         self.no_effects(self.root, backend)
 
     def test_existing_analysis_refusals_first(self):
