@@ -175,7 +175,7 @@ MEMORY_MUTANTS = {
     'T13 names apply': {STAGE02: (('Have you run python3 _system/' + LOWER,
                                    'Have you run python3 _system/configure.py apply and python3 _system/' + LOWER),)},
     'T13 merged back into T11': {STAGE02: (('Reply T13 and wait', 'Reply T11 and wait'),)},
-    'lower without a dry run first': {STAGE02: ((LOWER + ' --dry-run`', LOWER + '`'),)},
+    'lower without a dry run first': {STAGE02: ((LOWER + ' --dry-run\n', LOWER + '\n'),)},
 }
 
 
