@@ -9,9 +9,9 @@ readers-disagree before checker_for.
               each with its reader registered so the native cross-check agrees, driven through the driver with
               drive.take_checker as its checker: the take folder holds transcript.jsonl, the take's commit scan
               covers it as a transcript, its ledger's transcript stays None (round 15 ruling 1: no reader reads that
-              key for a vendor take), vendor_record_binding.bound_items reads it, each envelope carries the row's n and sent, its turn's stream
-              by basename and sha256 and the CLI's own session id, and take_checker reaches checker_for and the vendor
-              entry (its body stood in) with C3 adding no readers-disagree.
+              key for a vendor take), vendor_record_binding.bound_items reads it, each envelope carries the row's n and
+              sent, its turn's stream by basename and sha256 and the CLI's own session id, and take_checker reaches
+              checker_for and the vendor entry (its body stood in) with C3 adding no readers-disagree.
   EB-claude   a claude-code take through test_drive_loop's road (the real Claude Code adapter on ClaudeBox), with a
               session file, without one, and with the account address in its replies masked by the drive's scan:
               driver-ledger.json, transcript.jsonl, the take folder's listing and the records TakeDriver.drive returns
@@ -295,7 +295,8 @@ def edit_b_text(src: str) -> str:
 def claude_too(src: str) -> str:
     """drive.py with edit B's writer also run on the claude-code branch, right after the published transcript's
     cross-check."""
-    anchor = "            take.cross_check = _cc.cross_check(recs, text, session_id=ident[\"session_id\"]) if cc else []\n"
+    anchor = ("            take.cross_check = _cc.cross_check(recs, text, session_id=ident[\"session_id\"]) "
+              "if cc else []\n")
     if src.count(anchor) != 1:
         raise tbi.WitnessNotPerformed("the claude-code branch's anchor moved")
     return src.replace(anchor, anchor + edit_b_text(src))
@@ -325,7 +326,8 @@ WITNESSES = {
     # native_snapshots, so nothing is rebound or written); the witness also runs the envelope write unguarded
     "the rebinding run for claude-code, writing what it read": ("claude", lambda src: edited(edited(
         src, "if row[\"agent\"][\"harness\"] in VENDOR_HARNESSES and Path(", "if Path("),
-        "            if rebound:\n                with open(path, \"w\"", "            if True:\n                with open(path, \"w\"")),
+        "            if rebound:\n                with open(path, \"w\"",
+        "            if True:\n                with open(path, \"w\"")),
 }
 
 
