@@ -131,13 +131,14 @@ paths, and `collect`'s output keeps no `history_entry`, so the step 9 append is 
 4. Run the wrapper's `check` with the resolved `--counts` and `--design`. Exit 1 → reply T5
    with its `failures` verbatim and stop: `design` failures mean the design or contrast needs
    the user, `config_unfilled` means the stage 02 menus have not run.
-   On a non-public project: `python3 _system/tool_call.py rnaseq_de.check '{"project":
-   "projects/<title>", "counts": "<counts>", "design": "<design>"}'`.
+   On a non-public project, or while any exists in the workspace: `python3 _system/tool_call.py
+   rnaseq_de.check '{"project": "projects/<title>", "counts": "<counts>", "design":
+   "<design>"}'`.
 5. Run `prepare` with the same paths. Exit 1, or exit 2 (`input_not_resolved`, `--counts` is not
    the resolver's) → reply T5 with its `failures` verbatim. Exit 0 → it wrote
    `scripts/run_de.py`, `submit.sh` and the reproducibility bundle.
-   On a non-public project: the `rnaseq_de.prepare` door, `python3 _system/tool_call.py
-   rnaseq_de.prepare '<the same JSON>'`.
+   On a non-public project, or while any exists in the workspace: the `rnaseq_de.prepare` door,
+   `python3 _system/tool_call.py rnaseq_de.prepare '<the same JSON>'`.
 6. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir>
    <sub-stage dir>/submit.sh`; capture `job_id` from the JSON. Submit has written `SUBMITTED`; no status call is needed yet. Reply T2 and stop.
    On a non-public project, or while any exists in the workspace: `python3
