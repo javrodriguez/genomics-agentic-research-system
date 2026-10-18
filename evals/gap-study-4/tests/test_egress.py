@@ -71,9 +71,17 @@ import harness_bookkeeping as hb  # noqa: E402
 from box import image_lock as il  # noqa: E402
 from box.egress import proxy_conf as pc  # noqa: E402
 
-# The allowed hosts as D8 B2 item 8 states them, keyed by the module's own harness constants.
-HOSTS = {hb.CLAUDE_CODE: "api.anthropic.com", pc.CODEX: "api.openai.com",
+# The allowed hosts as D8 B2 item 8 states them, keyed by the module's own harness constants; arm O's is chatgpt.com by
+# glitch-b5's ruling R1 (Sun 18 Oct 2026, lane vendor-admission round 17, B4), the host of the pinned Codex's
+# CHATGPT_CODEX_BASE_URL (CODEX_SOURCE below).
+HOSTS = {hb.CLAUDE_CODE: "api.anthropic.com", pc.CODEX: "chatgpt.com",
          pc.GEMINI: "generativelanguage.googleapis.com"}
+# R1's source, read statically at the pinned tag (the executor's read of rust-v0.162.1, commit 092d3acd, line 80:
+# pub const CHATGPT_CODEX_BASE_URL: &str = "https://chatgpt.com/backend-api/codex";).
+CODEX_SOURCE = {"constant": "CHATGPT_CODEX_BASE_URL", "value": "https://chatgpt.com/backend-api/codex",
+                "tag": "rust-v0.162.1", "commit": "092d3acd6bec3e3a14bdc7e7a2810ab628ab759d",
+                "file": "codex-rs/model-provider-info/src/lib.rs", "line": 80,
+                "url": "https://github.com/openai/codex/blob/rust-v0.162.1/codex-rs/model-provider-info/src/lib.rs#L80"}
 CC = hb.CLAUDE_CODE
 
 
@@ -109,10 +117,15 @@ MUTANT_CONFS = {
     "a port range": (CC, "acl tls_port port 443", "acl tls_port port 1-65535"),
     "a second port acl": (CC, "http_access deny !tunnel", "acl web port 80\nhttp_access deny !tunnel"),
     "a second method": (CC, "acl tunnel method CONNECT", "acl tunnel method CONNECT GET"),
-    "the codex render carrying the Anthropic host": (pc.CODEX, "dstdomain -n api.openai.com",
+    "the codex render carrying the Anthropic host": (pc.CODEX, "dstdomain -n chatgpt.com",
                                                     "dstdomain -n api.anthropic.com"),
     "the gemini render carrying the OpenAI host": (pc.GEMINI, "dstdomain -n generativelanguage.googleapis.com",
-                                                  "dstdomain -n api.openai.com"),
+                                                  "dstdomain -n chatgpt.com"),
+    # round 17 B4 (R1): arm O's host exactly, never its subdomains, never the sign-in host, never the old API host
+    "the codex host with a leading dot": (pc.CODEX, "dstdomain -n chatgpt.com", "dstdomain -n .chatgpt.com"),
+    "the codex render adding the sign-in host": (pc.CODEX, "dstdomain -n chatgpt.com",
+                                                 "dstdomain -n chatgpt.com auth.openai.com"),
+    "the codex render back on the API host": (pc.CODEX, "dstdomain -n chatgpt.com", "dstdomain -n api.openai.com"),
     "an unrendered slot": (CC, "dstdomain -n api.anthropic.com", "dstdomain -n " + "@ALLOWED_HOST@"),
     "an unknown directive": (CC, "cache deny all", "cache deny all\nalways_direct allow all"),
     "an unknown acl type": (CC, "acl tls_port port 443", "acl tls_port dst 0.0.0.0/0"),
@@ -224,6 +237,55 @@ class ConstantsTest(unittest.TestCase):
         self.assertEqual(list(pyinspect.signature(pc.render).parameters), ["harness"])
         self.assertEqual(list(pyinspect.signature(pc.check).parameters), ["text", "harness"])
         self.assertEqual(list(pyinspect.signature(pc.allowed_hosts).parameters), ["text"])
+
+
+def codex_host_problems() -> list:
+    """Round 17 B4 (glitch-b5's ruling R1): arm O's one host is exactly the host of the pinned Codex's
+    CHATGPT_CODEX_BASE_URL, recorded in proxy_conf with its tag, commit, file, line and URL, and a codex take's
+    rendered configuration allows that host alone (no subdomain, no sign-in host, no API host)."""
+    from urllib.parse import urlsplit
+    import codex_native
+    out = []
+    src = getattr(pc, "CODEX_HOST_SOURCE", None)
+    if src != CODEX_SOURCE:
+        out.append(f"proxy_conf records no or another source for arm O's host: {src!r}")
+    if CODEX_SOURCE["tag"] != "rust-v" + codex_native.PINNED_CLI:
+        out.append(f"the source's tag is not the pinned Codex's ({codex_native.PINNED_CLI})")
+    if not CODEX_SOURCE["url"].endswith(f"/{CODEX_SOURCE['tag']}/{CODEX_SOURCE['file']}#L{CODEX_SOURCE['line']}"):
+        out.append("the source's URL does not name its tag, file and line")
+    want = urlsplit(CODEX_SOURCE["value"]).hostname
+    if pc.HOSTS.get(pc.CODEX) != want:
+        out.append(f"arm O's host is {pc.HOSTS.get(pc.CODEX)!r}, not the pinned base URL's host {want!r}")
+    try:
+        text = pc.render(pc.CODEX)
+        if pc.allowed_hosts(text) != [want] or pc.check(text, pc.CODEX):
+            out.append(f"a codex take's configuration allows {pc.allowed_hosts(text)}: {pc.check(text, pc.CODEX)}")
+    except pc.ProxyConfError as e:
+        out.append(f"a codex take's configuration is refused: {e}")
+    return out
+
+
+class CodexHostTest(unittest.TestCase):
+    def test_arm_o_reaches_the_pinned_base_urls_host_alone(self):
+        self.assertEqual(codex_host_problems(), [])
+
+    def test_mutants(self):
+        """Each mutant red (round 17 B4): the API host restored, the host with a leading dot (subdomains admitted),
+        the sign-in host added to a take, the source record gone or its tag moved."""
+        self.assertEqual(codex_host_problems(), [])
+        loose = lambda extra: (lambda: pc._template_text().replace(pc.SLOT, "chatgpt.com" + extra))  # noqa: E731
+        for name, ctx in (
+                ("api.openai.com restored", lambda: mock.patch.dict(pc.HOSTS, {pc.CODEX: "api.openai.com"})),
+                ("chatgpt.com with a leading dot", lambda: mock.patch.dict(pc.HOSTS, {pc.CODEX: ".chatgpt.com"})),
+                ("auth.openai.com added to a take",
+                 lambda: mock.patch.object(pc, "render", lambda h, _t=loose(" auth.openai.com"): _t())),
+                ("the source record dropped", lambda: mock.patch.object(pc, "CODEX_HOST_SOURCE", None, create=True)),
+                ("the source at another tag", lambda: mock.patch.object(
+                    pc, "CODEX_HOST_SOURCE", dict(CODEX_SOURCE, tag="rust-v0.162.0"), create=True))):
+            with self.subTest(name), ctx():
+                got = codex_host_problems()
+                print(f"  mutant {name}: {'red' if got else 'GREEN (survived)'}")
+                self.assertTrue(got, f"mutant {name} survived")
 
 
 class RenderTest(unittest.TestCase):
