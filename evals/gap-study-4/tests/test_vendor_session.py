@@ -8,8 +8,9 @@ vendor session store and the session binding's legs, read by the checker from th
               own native session derived by the checker from the publish listing with the drive's own locator and the
               CLI's session id (codex: the whole thread id in rollout-<time>-<id>.jsonl; gemini: its first 8
               characters in session-<minute>-<8>.jsonl), and found in every listing; every listing holding only it and
-              every sweep finding no session but it, re-derived, never the drive's verdict; the counts the checker's
-              own. Each F3 case adds exactly its nested-agent lines.
+              every sweep finding no session but it, re-derived, never the drive's verdict (the own path admitted only
+              with the harness's own shape and the CLI's session id, as Claude Code's sweep admits it; review d-7c774ad
+              finding 2); the counts the checker's own. Each F3 case adds exactly its nested-agent lines.
   P4-binding  check_take.vendor_session_binding_problems, plan section 2's legs on the CLI's own bytes: leg 1 (turn
               1's launch resumes nothing, every later turn's exactly the CLI's id), leg 2 (that one id in every
               envelope and the last retained snapshot), leg 3 (the snapshot holds one interaction per turn stream).
@@ -21,7 +22,8 @@ vendor session store and the session binding's legs, read by the checker from th
   P4-witness  check_take.py compiled in memory with an extra listing entry admitted, a turn-2 argv resuming another
               id admitted, an extra native interaction admitted, a project name from another commit admitted, the
               store unread, the derived session not bound to the CLI's id, the snapshot's id unread, the envelopes'
-              ids unread, the turn-1 resume admitted, the sweeps unread and the counts trusted: each goes red.
+              ids unread, the turn-1 resume admitted, the sweeps unread, the counts trusted and the own path admitted
+              on its path alone: each goes red.
 
 Fakes and synthetic strings only, inside test_box_integration's process guard with test_drive_loop's checker world:
 no take, model, vendor, network, Docker, credential or holdout.
@@ -107,6 +109,13 @@ STORE_CASES = {
     "a turn's listing without the session": (store_edit(lambda d, h: d["listings"][0].update(entries=[])), 1),
     "a sweep finding another session": (store_edit(lambda d, h: d["sweeps"][0]["files"].append(
         [f"{vcf.CONFIG_MOUNT}/{other_session(h)}", h, OTHER])), 1),
+    # round 13, review d-7c774ad finding 2: the own path is admitted only as [path, the harness's shape, the CLI's id]
+    "the own path swept with another shape": (store_edit(lambda d, h: d["sweeps"][0]["files"][0].__setitem__(
+        1, "gemini" if h == "codex" else "codex")), 1),
+    "the own path swept as a claude session": (store_edit(lambda d, h: d["sweeps"][0]["files"][0].__setitem__(
+        1, "claude")), 1),
+    "the own path swept with another session id": (store_edit(lambda d, h: d["sweeps"][1]["files"][0].__setitem__(
+        2, OTHER)), 1),
     "a sweep's mounts widened": (store_edit(lambda d, h: d["sweeps"][0]["mounts"].append("/srv")), 1),
     "a sweep refused": (store_edit(lambda d, h: d["sweeps"].__setitem__(0, {"at": "post-1", "refused": "x"})), 1),
     "the record's nested CLI count": (store_edit(lambda d, h: d.update(nested_cli_calls=1)), 1),
@@ -274,6 +283,8 @@ P4_WITNESSES = {
                           store_problems),
     "the counts trusted": (("    if (doc[\"nested_cli_calls\"], doc[\"unread_stream_lines\"]) != (calls, len(unread)):\n",
                             "    if False:\n"), store_problems),
+    "the own path admitted on its path alone": (("if f != [own_path, harness, vid]]", "if f[0] != own_path]"),
+                                                store_problems),
 }
 
 
