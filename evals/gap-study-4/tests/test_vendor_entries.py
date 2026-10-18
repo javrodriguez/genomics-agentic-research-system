@@ -16,8 +16,8 @@ vendor entries check4_vendor and check4_walk_vendor, and checker_for admitting t
               per take); the counts equal vendor_reach's and vendor_email_problems' own readings.
   P3-arm      the driver ledger's arm against the arm the take is checked as (constant-binding), as check4 binds it.
   P3-unread   review c-6302fd3 NIT 6: the counts are a reading, never a default. Raw records the reach readers refuse
-              (codex image_generation_call, a gemini snapshot the projection refuses) and a session file the ledger
-              does not name each refuse the take with CheckRefused, never count 0; a take whose operator records
+              (codex image_generation_call, a gemini snapshot the projection refuses), a session file the ledger
+              does not name and a ledger-named snapshot missing (review d-7c774ad finding 1) each refuse the take with CheckRefused, never count 0; a take whose operator records
               disagree (vendor_check skips its reach) still has its reach read for the counts, so a reach there makes
               check() and its reader disagree (CheckRefused), and none reads 0 with readers-disagree routed.
   P3-bound    review c-6302fd3 NIT 6 and plan section 9's third account-email case: the codex entry's real record of a
@@ -231,7 +231,8 @@ def unread_problems(mod) -> list:
     for harness in HARNESSES:
         for road in ("take", "walk"):
             for name, edits in (("raw records the reach refuses", (refused[harness], None)),
-                                ("a session file the ledger does not name", (None, tvb.unnamed_session_file(True)))):
+                                ("a session file the ledger does not name", (None, tvb.unnamed_session_file(True))),
+                                ("a ledger-named snapshot missing", (None, tvb.named_snapshot_missing))):
                 t = take_for(mod, harness, road)
                 got = outcome(entry_call, mod, t, t.build(*edits), road)
                 if got[:2] != ("raised", "CheckRefused") or NEVER_ZERO not in got[2]:

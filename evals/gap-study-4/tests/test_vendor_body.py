@@ -19,7 +19,9 @@ check_take.vendor_round4_problems (section 1b).
               writes, a missing launch journal and one naming another turn's stream (inherited-context); the ledger's
               sent line differing, and a last snapshot the ledger does not bind; the email marker in a published file (one
               event for any number of hits), and a session file the ledger does not name, with the marker or without
-              (transcript-unreadable by name, never a count of 0; review c-6302fd3 NIT 2); a turn that did not end, an outcome off the driver's shapes and a ledger
+              (transcript-unreadable by name, never a count of 0; review c-6302fd3 NIT 2), and a ledger-named snapshot
+              missing (transcript-unreadable by name, never a count of 0; review d-7c774ad finding 1); a turn that did
+              not end, an outcome off the driver's shapes and a ledger
               row off the script (outcome-binding); reach into evals/, the home folder and the temp folder, and a path
               under the session's own run tree admitted; the project name; the ledger row, the commit-derived and the
               walk session id; the turn budget; a turn stream line no parser read; a nested-agent switch; codex's
@@ -381,6 +383,12 @@ def unnamed_session_file(marker: bool):
     return lambda path: (path.parent / "session" / "native-turn-9.jsonl").write_text(body)
 
 
+def named_snapshot_missing(path):
+    """A retained snapshot the ledger's native_snapshots names, deleted (review d-7c774ad finding 1): its bytes cannot
+    be read, so the account-email count cannot be either."""
+    (path.parent / "session" / "native-turn-1.jsonl").unlink()
+
+
 def edits(*pair):
     return lambda t: pair
 
@@ -434,6 +442,9 @@ CASES = {
         None, unnamed_session_file(True)), {"transcript-unreadable": 1}, None),
     "a session file the ledger does not name": (("codex", "gemini"), edits(None, unnamed_session_file(False)),
                                                 {"transcript-unreadable": 1}, None),
+    # round 13, review d-7c774ad finding 1: a ledger-named session file that cannot be read refuses by name
+    "a ledger-named snapshot missing": (("codex", "gemini"), edits(None, named_snapshot_missing),
+                                        {"transcript-unreadable": 1}, None),
     # outcome-binding (T-24)
     "a turn that did not end": (("codex", "gemini"), edits(turn_not_ended, None), {"outcome-binding": 1}, None),
     "an outcome off the driver's shapes": (("codex", "gemini"), case_outcome_off_shapes, {"outcome-binding": 1},
@@ -632,8 +643,8 @@ P2_WITNESSES = {
         '        if not (doc and doc.get("harness") == harness and isinstance(doc.get("stream"), str)\n',
         '        if False and not (doc and doc.get("harness") == harness and isinstance(doc.get("stream"), str)\n'),
         "a launch journal naming another turn's stream"),
-    "the email marker unread": (("            if marker in (path.parent / name).read_bytes():\n",
-                                 "            if False:\n"), "the email marker in a turn stream"),
+    # the anchor moved with review d-7c774ad finding 1 (the bytes read through _binding._regular_bytes, NIT 1)
+    "the email marker unread": (("        if marker in raw:\n", "        if False:\n"), "the email marker in a turn stream"),
     "the email counted per instance": ((
         "    for name in names:\n",
         "    hits = [n for n in names if (path.parent / n).is_file() and marker in (path.parent / n).read_bytes()]\n"
@@ -641,6 +652,10 @@ P2_WITNESSES = {
         "the email marker in two published files"),
     "an unnamed session file admitted": (("        if rel not in named:\n", "        if False:\n"),
                                          "a session file the ledger does not name, carrying the marker"),
+    "a ledger-named file skipped unread": ((
+        '            return [f"[{TRANSCRIPT_UNREADABLE}] {name} is a published file of this take that cannot be read "\n'
+        '                    f"({e}), so its bytes cannot be counted"]\n', "            continue\n"),
+        "a ledger-named snapshot missing"),
     "the turn end unread": (("        if not ended:\n", "        if False:\n"), "a turn that did not end"),
     "the completion legs dropped": (("    problems += completion_problems(path, ledger, pre)\n", ""),
                                     "an outcome off the driver's shapes"),
