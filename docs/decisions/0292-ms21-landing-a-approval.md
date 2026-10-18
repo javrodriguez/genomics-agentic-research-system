@@ -35,7 +35,7 @@ Two things approve it, and they are kept apart here:
   No sentence in this record is the owner's.
 - **The owner's own word, on the push.** Landing on public main waits for the owner's own typed push word; it is recorded on the line below when he gives it, and nothing else here records it.
 
-Javier's word: PENDING
+Javier's word: "push GARS to public main now", typed in the coordinating session's window after its push card named this landing, recorded at 21:34 EDT on 17 October 2026.
 
 ## Context
 
@@ -86,7 +86,7 @@ The build branch is the lane's 22 commits outside `lanes/`, re-created in lane o
 
 ## Status
 
-Standing. Approval of Landing A's landing; the public push waits for the owner's typed word.
+Standing. Approval of Landing A's landing; the owner's typed push word is recorded above.
 
 ## Date
 
