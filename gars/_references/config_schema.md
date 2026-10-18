@@ -31,6 +31,16 @@ inside the project**: `work/` retains every process output so `-resume` can reus
 single run accumulates hundreds of GB there. `results/` is published with mode `copy`, so
 `work/` is disposable once a run succeeds.
 
+**`compute.mem` is seeded from the venue, never typed** (decision 0293). Stage 00 fills it from
+`_system/venue_policy.py`'s table for the venue that the workspace's
+`_templates/config/executor.yaml` names: on Slurm (and homelab) the template's own value
+(32G-96G, by assay); on `local`, the 8G that venue accepts. The shipped descriptor names Slurm,
+so a laptop project is seeded at the Slurm value and fitted later: `configure.py lower --project
+<p> --assay <a>` lowers the one `compute.mem` line to what the project's venue accepts, never
+raises it, changes nothing else, and prints a `history_entry`. Stage 02 runs it in its own step
+with its own confirmation. The ceiling itself is enforced at submit, by `venue_policy.py`; the
+value in this file is a request.
+
 ## Per-assay decision blocks
 
 | Assay | Beyond `reference` + `compute` | Decision menu at stage 02 |

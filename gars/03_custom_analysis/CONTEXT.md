@@ -104,7 +104,10 @@ of declared memory, and no declaration only for public/fixture.
 `resource_undeclared` names other absent local memory declarations;
 `resource_unparseable` names an invalid K/M/G/T declaration; `input_missing`
 names an unreadable policy input or a missing listed FASTQ. Samplesheet inputs
-use only fastq_1/fastq_2; analysis inputs are artifacts. The machine-owned
+use only fastq_1/fastq_2; analysis inputs are artifacts. A local memory refusal
+names the value the venue accepts; here the request is the script's own
+`#SBATCH --mem`. `venue_too_small` (summed inputs above a venue's byte budget,
+decision 0293) is a stage 02 refusal only: an analysis is never sized by it. The machine-owned
 homelab marker changes the local descriptor's venue without adding a backend.
 Group 11 records the prepare-time venue; submission records the executed venue.
 Login-node analysis records executor local and the pre-swap descriptor's venue.

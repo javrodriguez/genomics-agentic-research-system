@@ -10,6 +10,7 @@ and level names:
     formulas   formulas from the design's own columns -> fills de.formula (apply --formula <n>)
     apply      validate the selections and write     -> prints the resulting file
     declare    stage 01's declarations, as menus      -> writes one top-level key + HISTORY line
+    lower      fit compute.mem to the venue (0293)   -> lowers one line, never raises it
 
 `apply --dry-run` prints the would-be file and records its sha256 (`_config/.<assay>.dry_run.json`);
 `apply` without it writes only those exact bytes, so a write cannot carry a setting the user was
@@ -798,6 +799,90 @@ def cmd_declare(args, workspace):
     return emit(result, EXIT_OK)
 
 
+def cmd_lower(args, workspace):
+    """Lower `compute.mem` to what the project's venue accepts (0293). Never raises it.
+
+    Infrastructure, not science: it reads and writes no reference, contrast, formula or other
+    decision, takes no value, and changes the one `compute.mem` line, every other byte kept. It
+    acts only on a venue with a memory ceiling in `venue_policy`, only on a request above it (or
+    one the submit could not parse), and not at all when that venue would refuse the run anyway.
+    """
+    import executorlib as ex
+    import venue_policy as policy
+    import wrapperlib as wl
+    result = {"command": "lower", "ok": False, "assay": args.assay}
+    if args.assay not in policy.ASSAY_IDS:
+        result["error"] = "unknown assay %r; known: %s" % (args.assay, ", ".join(policy.ASSAY_IDS))
+        return emit(result, EXIT_USAGE)
+    cfg = Path(args.project) / "_config" / ("%s.yaml" % args.assay)
+    if not cfg.is_file():
+        result["error"] = "no config at _config/%s.yaml; stage 00 seeds it at project creation" % args.assay
+        return emit(result, EXIT_USAGE)
+    try:
+        venue = ex.venue_of(ex.load(args.project))
+    except (OSError, UnicodeError):
+        # Unknown venue: the failure direction is "not lowered", never "raised".
+        result["error"] = "_config/executor.yaml cannot be read; nothing was lowered"
+        return emit(result, EXIT_REFUSED)
+    result["venue"] = venue
+    try:
+        with cfg.open(encoding="utf-8", newline="") as fh:
+            text = fh.read()
+        requested = wl.read_config(cfg).get("compute.mem")
+    except (OSError, UnicodeError):
+        result["error"] = "_config/%s.yaml cannot be read; nothing was lowered" % args.assay
+        return emit(result, EXIT_REFUSED)
+    new = policy.lowered_mem(venue, args.assay, requested)
+    if new is None:
+        result.update({"ok": True, "lowered": None})
+        return emit(result, EXIT_OK)
+    # Futile on a venue that refuses this dataset whatever its memory: say so, change nothing.
+    row = wl.dataset_record(args.project)
+    remaining = policy.check(row, venue, row.get("purpose"), policy.memory_bytes(new), [])
+    if remaining:
+        result["lowered"] = None
+        result["needs_venue"] = "; ".join(f["check"] + ": " + f["detail"] for f in remaining)
+        result["error"] = ("venue %s refuses this run whatever its memory, so compute.mem was not "
+                           "lowered; this dataset needs another venue" % venue)
+        return emit(result, EXIT_REFUSED)
+    lines = text.splitlines(True)
+    found, section = [], None
+    for number, line in enumerate(lines):
+        top = re.match(r"^([A-Za-z_][A-Za-z0-9_]*):", line)
+        if top:
+            section = top.group(1)
+        if re.match(r"^  mem:", line):
+            found.append((number, section))
+    if [s for _, s in found] != ["compute"]:
+        result["error"] = ("_config/%s.yaml must hold exactly one `  mem:` line, under compute:; "
+                           "nothing was lowered" % args.assay)
+        return emit(result, EXIT_REFUSED)
+    number = found[0][0]
+    body = lines[number].rstrip("\r\n")
+    comment = re.search(r"\s+#.*$", body)
+    lines[number] = ("  mem: " + new + (comment.group(0) if comment else "")
+                     + lines[number][len(body):])
+    old = requested
+    result["lowered"] = {"from": old, "to": new, "venue": venue,
+                         "accepts_up_to": policy.ACCEPTED_MEM[venue]}
+    if args.dry_run:
+        result.update({"ok": True, "dry_run": True})
+        return emit(result, EXIT_OK)
+    mode = os.stat(str(cfg)).st_mode & 0o7777
+    with ws.atomic_open(cfg, newline="", mode=mode) as fh:
+        fh.write("".join(lines))
+    version = ws.template_version(workspace)
+    result.update({"ok": True, "wrote": "_config/%s.yaml" % args.assay,
+                   "template_version": version,
+                   "history_entry": "\n".join([
+                       "## <ISO-8601 date> — 02_bioinformatics — compute.mem lowered", "",
+                       "Template version: %s" % version, "",
+                       "- **%s**: compute.mem %s -> %s; venue %s accepts up to %s. Nothing else "
+                       "in _config/%s.yaml changed." % (args.assay, old, new, venue,
+                                                        policy.ACCEPTED_MEM[venue], args.assay)])})
+    return emit(result, EXIT_OK)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--workspace", type=Path, default=None)
@@ -855,6 +940,11 @@ def main(argv=None):
                    help="the declaration to show or write; omit to list them")
     d.add_argument("--select", default=None, help="menu number of the value to write")
 
+    lw = sub.add_parser("lower", help="lower compute.mem to what this project's venue accepts")
+    lw.add_argument("--project", required=True)
+    lw.add_argument("--assay", required=True)
+    lw.add_argument("--dry-run", action="store_true", help="show the change without writing")
+
     args = ap.parse_args(argv)
     if not args.cmd:
         ap.print_help(sys.stderr)
@@ -862,7 +952,7 @@ def main(argv=None):
     workspace = args.workspace or ws.workspace_root(__file__)
     return {"genomes": cmd_genomes, "contrasts": cmd_contrasts, "peaks": cmd_peaks,
             "protocols": cmd_protocols, "declare": cmd_declare, "formulas": cmd_formulas,
-            "apply": cmd_apply}[args.cmd](args, workspace)
+            "apply": cmd_apply, "lower": cmd_lower}[args.cmd](args, workspace)
 
 
 if __name__ == "__main__":

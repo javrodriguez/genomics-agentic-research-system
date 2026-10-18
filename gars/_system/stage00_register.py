@@ -371,10 +371,21 @@ def _build_project(stamp, project, supported, workspace, title):
     config_src = workspace / "_templates" / "config"
     scratch = os.environ.get("GARS_SCRATCH",
                              "/gpfs/scratch/%s/gars-work" % os.environ.get("USER", "USER"))
-    values = {"{{project_title}}": title, "{{work_dir}}": "%s/%s" % (scratch, title)}
+    # compute.mem comes from the venue's own table (0293), for the venue the descriptor this
+    # project is seeded with names; absent, that is Slurm, as `load` treats an absent descriptor.
+    import executorlib as ex
+    import venue_policy as policy
+    descriptor = config_src / "executor.yaml"
+    name = (ex.parse_descriptor(descriptor.read_text(encoding="utf-8")).get("name")
+            if descriptor.is_file() else None) or "slurm"
+    venue = ex.venue_of({"name": name})
     for aid in supported:
         src = config_src / (aid + ".yaml")
         if src.is_file():
+            # One dict per assay: the seeded memory differs by assay.
+            values = {"{{project_title}}": title, "{{work_dir}}": "%s/%s" % (scratch, title)}
+            if policy.seeded_mem(venue, aid):
+                values["{{mem}}"] = policy.seeded_mem(venue, aid)
             text = src.read_text(encoding="utf-8")
             for k, v in values.items():
                 text = text.replace(k, v)

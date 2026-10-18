@@ -125,6 +125,46 @@ def venue_of(descriptor):
     return 'homelab' if Path(HOMELAB_MARKER).exists() else 'local'
 
 
+def input_columns():
+    """The samplesheet columns that hold data paths (0293 part 3): every column a registered
+    format fills from a files.csv path column, so a new format cannot escape the sum."""
+    import stage01_samplesheet as s01
+    import workspace
+    paths = set(c for header in workspace.FILES_HEADERS.values() for c in header) - {'sample_id', 'lane'}
+    return set(out for fmt in s01.FORMATS.values() for out, source in fmt['columns'] if source in paths)
+
+
+def _input_bytes(stage_dir):
+    """Summed bytes of the data paths the stage's manifest-listed samplesheets name, or None
+    when one is neither a file nor a directory. A directory counts the regular files it holds
+    (linked files by their target; linked directories inside it are not followed)."""
+    import csv
+    columns, total = input_columns(), 0
+    manifest = json.loads((Path(stage_dir) / 'reproducibility/manifest.json').read_text())
+    for value in manifest.get('inputs', {}).values():
+        sheet = Path(value)
+        if sheet.suffix.lower() != '.csv':
+            continue
+        with sheet.open(encoding='utf-8', newline='') as handle:
+            for sample in csv.DictReader(handle):
+                for column in columns:
+                    if not sample.get(column):
+                        continue
+                    path = Path(sample[column])
+                    path = path if path.is_absolute() else sheet.parent / path
+                    if path.is_file():
+                        total += path.stat().st_size
+                    elif path.is_dir():
+                        for top, _, files in os.walk(str(path.resolve()), followlinks=False):
+                            for name in files:
+                                entry = os.path.join(top, name)
+                                if os.path.isfile(entry):
+                                    total += os.stat(entry).st_size
+                    else:
+                        return None
+    return total
+
+
 def _venue_refusal(config_root, executed, stage_kind, stage_dir, script):
     """Read the executed request before reservation or analysis launcher creation."""
     import csv
@@ -132,11 +172,12 @@ def _venue_refusal(config_root, executed, stage_kind, stage_dir, script):
     import venue_policy as policy
     row = wl.dataset_record(config_root)
     failures, fastqs = [], []
-    memory = None
+    memory = assay = None
     try:
         if stage_kind == '02':
             parts = Path(stage_dir).relative_to(Path(config_root).resolve()).parts
-            cfg = wl.read_config(Path(config_root) / '_config' / (parts[1] + '.yaml'))
+            assay = parts[1]
+            cfg = wl.read_config(Path(config_root) / '_config' / (assay + '.yaml'))
             memory = cfg.get('compute.mem')
             manifest = json.loads((Path(stage_dir) / 'reproducibility/manifest.json').read_text())
             for value in manifest.get('inputs', {}).values():
@@ -164,7 +205,24 @@ def _venue_refusal(config_root, executed, stage_kind, stage_dir, script):
     except ValueError:
         mem_bytes = None
         failures.append(policy.fail("resource_unparseable", 'declared memory is not K/M/G/T'))
-    failures.extend(policy.check(row, venue_of(executed), row.get('purpose'), mem_bytes, fastqs))
+    venue = venue_of(executed)
+    sized = None
+    if stage_kind == '02' and venue in policy.INPUT_BUDGET:
+        try:
+            sized = _input_bytes(stage_dir)
+        except (OSError, ValueError, TypeError, KeyError, csv.Error):
+            sized = None
+        if sized is None:
+            failures.append(policy.fail("input_missing", 'a listed input is neither a file nor a directory'))
+    failures.extend(policy.check(row, venue_of(executed), row.get('purpose'), mem_bytes, fastqs, sized))
+    if stage_kind == '02' and assay and venue in policy.MEM_CEILING:
+        # 0293: the stage-02 memory request is compute.mem, which `configure.py lower` fits to
+        # the venue; stage 03's is the script's own #SBATCH --mem, so it names the value only.
+        for item in failures:
+            if item['check'] == 'resource_unparseable' or 'memory rule' in item['detail']:
+                item['detail'] += ('; configure.py lower --project %s --assay %s lowers compute.mem '
+                                   'to the %s this venue accepts'
+                                   % (config_root, assay, policy.ACCEPTED_MEM[venue]))
     return '; '.join(item['check'] + ': ' + item['detail'] for item in failures) or None
 
 
