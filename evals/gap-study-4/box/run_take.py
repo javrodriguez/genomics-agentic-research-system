@@ -1270,23 +1270,58 @@ def check_codex_turn(inner) -> str:
     return model
 
 
-def check_codex_lease_place(path: str, run_tree: str) -> None:
-    """A Codex turn's login file is the lease place_lease put in the per-take config folder: named LEASE_FILE, a
-    regular file (never a link) with one link, mode 600, owned by the reading user, in that user's own mode-700 folder
-    (never a link), outside the run tree and every repository. Checked in place; its bytes are never read here."""
-    if not isinstance(path, str) or not os.path.isabs(path):
-        raise LoginRefused("the lease file is named by an absolute path")
+def check_codex_lease_place(lease, run_tree: str) -> None:
+    """A Codex turn's login is the lease place_lease put in the per-take config folder, checked after the grant (lane
+    vendor-admission round 17, B3; glitch-b5's ruling (a)). The grant makes the folder the agent's (mode 700, its
+    mapped host uid), so the host can no longer stat the file inside it: the host checks only what it can read. The
+    path: exactly the placed folder's LEASE_FILE, outside the run tree. The folder, by lstat: the folder place_lease
+    wrote into (its device and inode), never a link, mode 700, owned by the agent's host uid (derived from the take's
+    uid map, which lease_for_take bound; never typed in), outside every repository. The file's own facts (a regular
+    file, one link, mode 600, the reading user's, 1 to LEASE_MAX_BYTES bytes) are place_lease's read-back before the
+    grant, carried in the placement record; a missing or mismatched record refuses. Named residual: once granted, the
+    file is the agent's to change, and the host trusts its placement-time facts until the ownership restore, after
+    which postflight admits exactly LEASE_FILE and read_lease_tokens' rules read it again. Nothing is read here."""
+    if not isinstance(lease, LeasePlacement):
+        raise LoginRefused("no placement record: a Codex turn's login is the record place_lease returned, bound to the "
+                           "take's uid map (lease_for_take)")
+    path = lease.path
+    if not isinstance(path, str) or not os.path.isabs(path) or os.path.normpath(path) != path:
+        raise LoginRefused("the lease file is named by a normalised absolute path")
     if os.path.basename(path) != LEASE_FILE:
         raise LoginRefused(f"{path}: a Codex turn's login is the placed lease, {LEASE_FILE}")
-    check_login_place(path, run_tree)
-    st = os.lstat(path)
-    if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
-        raise LoginRefused(f"{path}: the lease must be a regular file, never a link")
-    if stat.S_IMODE(st.st_mode) != 0o600:
-        raise LoginRefused(f"{path}: the lease's mode must be 600")
-    if st.st_uid != os.getuid():
-        raise LoginRefused(f"{path}: the lease must be owned by the reading user")
-    if not outside_every_repository(path):
+    # the file's own facts, as place_lease read them back before the grant
+    if stat.S_ISLNK(lease.mode) or not stat.S_ISREG(lease.mode):
+        raise LoginRefused(f"{path}: the placed lease must be a regular file, never a link")
+    if lease.nlink != 1:
+        raise LoginRefused(f"{path}: the placed lease must have exactly one link")
+    if stat.S_IMODE(lease.mode) != 0o600:
+        raise LoginRefused(f"{path}: the placed lease's mode must be 600")
+    if lease.uid != os.getuid():
+        raise LoginRefused(f"{path}: the placed lease must have been owned by the reading user when placed")
+    if not (isinstance(lease.size, int) and 0 < lease.size <= LEASE_MAX_BYTES):
+        raise LoginRefused(f"{path}: the placed lease's size must be 1 to {LEASE_MAX_BYTES} bytes")
+    if not lease.uid_map:
+        raise LoginRefused(f"{path}: the placement record is not bound to the take's uid map (lease_for_take)")
+    agent = host_uid(_uid_of(AGENT_USER), lease.uid_map)
+    if _inside(path, _abs_path(run_tree, "run_tree")):
+        raise LoginRefused(f"{path}: the lease must sit outside the run tree")
+    # the folder, as the host reads it after the grant
+    folder = os.path.dirname(path)
+    try:
+        fst = os.lstat(folder)
+    except OSError:
+        raise LoginRefused(f"{folder}: the lease's folder does not exist or cannot be read") from None
+    if stat.S_ISLNK(fst.st_mode) or not os.path.isdir(folder):
+        raise LoginRefused(f"{folder}: the lease's folder must be a folder, never a link")
+    if (fst.st_dev, fst.st_ino) != (lease.folder_dev, lease.folder_ino):
+        raise LoginRefused(f"{folder}: the lease's folder is not the folder place_lease wrote into")
+    if lease.dev != lease.folder_dev:
+        raise LoginRefused(f"{path}: the placed lease is not on the device of the folder place_lease wrote into")
+    if stat.S_IMODE(fst.st_mode) != 0o700:
+        raise LoginRefused(f"{folder}: the lease's folder must be mode 700")
+    if fst.st_uid != agent:
+        raise LoginRefused(f"{folder}: the lease's folder must be owned by the agent's mapped host uid {agent}")
+    if not outside_every_repository(folder):
         raise LoginRefused(f"{path}: the lease must sit outside every repository")
 
 
@@ -1294,8 +1329,9 @@ def _codex_exec_argv(container_id: str, inner, *, user: str, workdir: str, run_t
                      caller_env=None) -> tuple:
     """exec_argv for a Codex row (glitch-06, 14 Oct 2026). The closed lease gate first (NotReady before anything is
     checked or read); then the user, the ids, the turn's shape and model, the refused names over the row's values and
-    this process's and the caller's environments, and the placed lease. The turn runs under the no-login launcher over exactly the Codex row (CODEX_HOME the config mount,
-    which holds the placed auth.json); no credential rides in argv or in the client environment."""
+    this process's and the caller's environments, and the placed lease (its placement record, round 17 B3). The turn
+    runs under the no-login launcher over exactly the Codex row (CODEX_HOME the config mount, which holds the placed
+    auth.json); no credential rides in argv or in the client environment."""
     codex_lease_gate()
     src = os.environ if caller_env is None else caller_env
     if user != AGENT_USER:
@@ -1443,14 +1479,45 @@ LEASE_FILE = "auth.json"
 LEASE_MAX_BYTES = 1024 * 1024
 
 
+@dataclass(frozen=True)
+class LeasePlacement:
+    """place_lease's placement record (lane vendor-admission round 17, B3): the placed path, the device and inode of
+    the folder it was written into, and the file's own lstat facts as place_lease read them back before the grant
+    (device, inode, st_mode, links, owner, size). uid_map is empty until lease_for_take binds the take's runtime uid map
+    (read at run time from the take container's /proc entry by walk_builders.uid_map_of_pid). After the grant
+    check_codex_lease_place reads the file's facts from here; the host can no longer stat the file itself."""
+    path: str
+    folder_dev: int
+    folder_ino: int
+    dev: int
+    ino: int
+    mode: int
+    nlink: int
+    uid: int
+    size: int
+    uid_map: tuple = ()
+
+
+def lease_for_take(placement, uid_map) -> LeasePlacement:
+    """The placement record bound to the take's uid map, the lines (container start, host start, length) of the take
+    container's /proc uid_map (walk_builders.uid_map_of_pid, never typed in), in which the agent maps exactly once."""
+    if not isinstance(placement, LeasePlacement):
+        raise LoginRefused("no placement record: a Codex take's lease is the record place_lease returned")
+    if not isinstance(uid_map, (list, tuple)) or not uid_map:
+        raise LoginRefused("the take's uid map is empty or not a list of (start, host start, length) lines")
+    host_uid(_uid_of(AGENT_USER), uid_map)          # each line's shape, and the agent mapped exactly once
+    return dataclasses.replace(placement, uid_map=tuple(tuple(row) for row in uid_map))
+
+
 def codex_lease_gate() -> None:
     """Refuses (NotReady, CODEX_SUBSCRIPTION_NOT_READY) while the Codex lease road's gate is closed."""
     if CODEX_SUBSCRIPTION_READY is not True:
         raise NotReady(CODEX_SUBSCRIPTION_NOT_READY)
 
 
-def place_lease(lease_src: str, config_dir: str) -> str:
-    """Copy the registered Codex lease file into the per-take config folder as LEASE_FILE; the placed path. Behind the
+def place_lease(lease_src: str, config_dir: str) -> LeasePlacement:
+    """Copy the registered Codex lease file into the per-take config folder as LEASE_FILE; its placement record
+    (LeasePlacement: the placed path, the folder's device and inode, the read-back facts below). Behind the
     closed gate (codex_lease_gate). The source: an absolute regular file (never a link), one link, mode 600, owned by
     the reading user, outside every repository, 1 to LEASE_MAX_BYTES bytes. The folder: an absolute folder (never a
     link), mode 700, owned by the reading user, outside every repository, not already holding LEASE_FILE. The copy is
@@ -1520,7 +1587,8 @@ def place_lease(lease_src: str, config_dir: str) -> str:
         raise LoginRefused(f"{dst}: the placed lease must be owned by the reading user")
     if pst.st_size != len(data):
         raise LoginRefused(f"{dst}: the placed lease is not the whole lease file")
-    return dst
+    return LeasePlacement(path=dst, folder_dev=cst.st_dev, folder_ino=cst.st_ino, dev=pst.st_dev, ino=pst.st_ino,
+                          mode=pst.st_mode, nlink=pst.st_nlink, uid=pst.st_uid, size=pst.st_size)
 
 
 def remove_config_dir(launched: "Launched", *, published: bool) -> str:

@@ -259,6 +259,12 @@ Whether Codex2 was used since (for example by a Codex builder) is not recorded t
 Practice walks are few: two Codex walks (an acceptance candidate and a recheck walk, by analogy with walk-g1 and walk-g2), each a handful of turns, at least 2 interactions and 1 command round trip (CODEX_FLOOR, native_reader_registration.py:162).
 That plausibly fits in what is left before Tuesday's reset; the measured run's arm O takes do not belong in this estimate and are measured at the first walk, as the night log already says.
 
+### Named residuals of the first-walk road (vendor-admission round 17, under glitch-b5's rulings)
+
+| Piece | Residual | Why it stays | What bounds it |
+|---|---|---|---|
+| B3 (ruling (a)) | Once the grant makes the config folder the agent's, `auth.json` inside it is the agent's to change, and the host trusts the file's placement-time facts (regular, one link, mode 600, host-owned, its size, carried in place_lease's placement record) until the ownership restore. | The host cannot stat inside the agent's mode-700 folder; option (b), a stat-only container per turn, would widen box/ownership.py's operator roads for no gain in what a take can reach. | Before every turn the host checks the folder by lstat (the folder place_lease wrote into, by device and inode; never a link; mode 700; owned by the agent's host uid from the take's uid map) and the path (exactly that folder's `auth.json`); after the restore, postflight admits exactly `auth.json` and read_lease_tokens' rules read it again. |
+
 ## 7. Open questions
 
 **For Javier:**

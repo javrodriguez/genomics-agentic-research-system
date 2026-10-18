@@ -413,14 +413,16 @@ class CodexLeaseRoad:
     """One Codex take's lease: placed into the take's config folder by run_take.place_lease (place, the driver's
     spec_for hook, after make_config_dir and before the settings baseline, the grant and the launch), then read at
     once by lease_secrets. secrets() is that read's secrets(), handed to the driver and to WalkRepo alike; before a
-    lease is placed it refuses, so no scan ever runs without the lease's values."""
+    lease is placed it refuses, so no scan ever runs without the lease's values. uid_map(take) is the walk's run-time
+    uid map reader (production: run_time_readers', uid_map_of_pid over the take container's /proc entry): the login
+    file of a take is place_lease's placement record bound to it (round 17 B3), and with no reader there is none."""
 
-    def __init__(self, lease_src):
+    def __init__(self, lease_src, uid_map=None):
         if not isinstance(lease_src, str) or not os.path.isabs(lease_src):
             raise BuilderRefused(f"the Codex lease source is not an absolute path: {lease_src!r}")
         from box import run_take as rt
         account_emails(rt.CODEX)                # round 10 ruling 2: no record, no walk
-        self.lease_src, self.placed, self._secrets = lease_src, None, None
+        self.lease_src, self.placed, self._secrets, self.uid_map = lease_src, None, None, uid_map
 
     def place(self, config_dir: str) -> str:
         from box import run_take as rt
@@ -433,18 +435,23 @@ class CodexLeaseRoad:
             raise BuilderRefused("the box's lease road (run_take.place_lease, walk_builders.lease_secrets) is not on "
                                  "this tree")
         if self.placed is not None:
-            raise BuilderRefused(f"a lease is already placed for this walk: {self.placed}")
-        dst = place(self.lease_src, config_dir)
-        self._secrets = read(dst)                       # the take-start read: no lease file, no take
-        self.placed = dst
-        return dst
+            raise BuilderRefused(f"a lease is already placed for this walk: {self.placed.path}")
+        placement = place(self.lease_src, config_dir)
+        self._secrets = read(placement.path)            # the take-start read: no lease file, no take
+        self.placed = placement
+        return placement.path
 
-    def login_file_for(self, take) -> str:
-        """The take's login file for the Codex exec (box 1e10e320's exec branch reads the placed cfg/auth.json): the
-        lease placed for this walk, refused before placement (review MINOR 1 of 1f032586..27ade10a)."""
+    def login_file_for(self, take):
+        """The take's login file for the Codex exec (box 1e10e320's exec branch checks the placed cfg/auth.json): the
+        placement record of the lease placed for this walk, refused before placement (review MINOR 1 of
+        1f032586..27ade10a), bound to the take's uid map as the walk's reader reads it at run time (round 17 B3: after
+        the grant the host checks the folder's owner against the agent's mapped uid, never a typed one)."""
         if self.placed is None:
             raise BuilderRefused("no lease placed: a Codex take's login file exists only after run_take.place_lease")
-        return self.placed
+        from box import run_take as rt
+        if not callable(self.uid_map):
+            raise BuilderRefused("no uid map reader: a Codex take's login file is bound to the take's uid map")
+        return rt.lease_for_take(self.placed, self.uid_map(take))
 
     def secrets(self) -> list:
         if self._secrets is None:
@@ -1241,7 +1248,7 @@ def walk_driver_for(builders: dict, row: dict, login: str, tree: Path, *, real: 
     root = Path(drive._mode_binding.HERE)
     from box import run_take as rt
     if row["agent"]["harness"] == rt.CODEX:         # the lease road: placed after make_config_dir, before launch
-        lease = CodexLeaseRoad(builders["lease_path"])
+        lease = CodexLeaseRoad(builders["lease_path"], uid_map=builders["uid_map"])
         secrets, login = lease.secrets, lease.login_file_for       # the take's placed cfg/auth.json, never "-"
 
         def spec_for(r, cfg):

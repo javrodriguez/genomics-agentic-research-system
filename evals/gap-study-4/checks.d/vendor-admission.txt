@@ -50,3 +50,6 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py EB drive.py tests/che
 # Round 16 (glitch-b5, Sun 18 Oct 2026): review f-981e871 NITs 1, 4 and 5; piece EB admits edit C only when its gate
 # requires the row's harness in VENDOR_HARNESSES; the files they edit, against the same source lists.
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py EB drive.py walk_regrade.py tests/check_vendor_sources.py tests/test_vendor_envelopes.py
+# Round 17 (glitch-b5, Sun 18 Oct 2026): T5, the first-walk road for arms O and G; the files each piece edits, against
+# the same source lists. B2 and B3: the lease source, and the placed lease checked as the agent's after the grant.
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/run_take.py walk_builders.py tests/test_run_take.py tests/test_walk_builders.py
