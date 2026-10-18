@@ -78,6 +78,7 @@
       "Edit(projects/*/.STATUS.lock)",
       "Edit(projects/*/STATUS)",
       "Edit(projects/*/00_data/*/files.csv)",
+      "Edit(projects/*/00_data/*/sample_id_pattern.txt)",
       "Edit(projects/*/pilot/*)",
       "Edit(projects/*/00_data/dataset.tsv)",
       "Edit(data_sources.tsv)",
