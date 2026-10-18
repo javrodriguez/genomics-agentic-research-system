@@ -1897,7 +1897,7 @@ ORIG_REMOVE = rt.remove_config_dir
 # ------------------------------------------------------------------- the Codex lease's placement (glitch-06, 14 Oct)
 class TestLeasePlacement(MutantCase):
     """place_lease copies the registered Codex lease file into the per-take config folder as auth.json, behind the
-    closed CODEX_SUBSCRIPTION_NOT_READY gate (opened only after Javier's Codex2 login and the first real walk). It uses
+    CODEX_SUBSCRIPTION_READY gate (opened by B8 under ruling R5, 18 Oct 2026; closed, it refuses). It uses
     no os name beyond OS_ATTRS: an exclusive no-follow create at mode 600, then the existing lstat verifies mode and
     owner; a mode other than 600 (a umask, say) refuses, failing closed. Every refusal names the file and the rule,
     never the contents. The planted value is a fake."""
@@ -1936,21 +1936,24 @@ class TestLeasePlacement(MutantCase):
             out.append(f"{label}: the refusal carries the lease's contents")
 
     def check_gate(self):
+        # B8 (ruling R5, 18 Oct 2026): the committed gate is open. The closed gate's refusal is still checked here,
+        # with the gate pinned closed: no lease is placed and nothing reaches the config folder while it is closed.
         out = []
+        if rt.CODEX_SUBSCRIPTION_READY is not True:
+            out.append("the Codex gate is not open in the committed module")
         src, cfg = self.src(), self.cfg()
-        try:
-            rt.place_lease(src, cfg)
-            out.append("the closed gate placed a lease")
-        except rt.NotReady as e:
-            if str(e) != rt.CODEX_SUBSCRIPTION_NOT_READY:
-                out.append(f"the closed gate refused with another message: {e}")
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", False):
+            try:
+                rt.place_lease(src, cfg)
+                out.append("the closed gate placed a lease")
+            except rt.NotReady as e:
+                if str(e) != rt.CODEX_SUBSCRIPTION_NOT_READY:
+                    out.append(f"the closed gate refused with another message: {e}")
         if os.path.lexists(os.path.join(cfg, "auth.json")):
             out.append("the closed gate left a file in the config folder")
-        if rt.CODEX_SUBSCRIPTION_READY is not False:
-            out.append("the Codex gate is not closed in the committed module")
         return out
 
-    def test_the_gate_stays_closed(self):
+    def test_the_gate_is_open_and_the_closed_gate_refuses(self):
         self.assertEqual(problems_of(self.check_gate), [])
 
     def check(self):
@@ -2173,13 +2176,14 @@ class TestNoLoginLauncher(MutantCase):
             out.append(f"the no-login launcher copied something or failed: {type(got).__name__}")
         if rt.NO_LOGIN != "-" or rt._NAME.fullmatch(rt.NO_LOGIN):
             out.append("NO_LOGIN is not the reserved '-' (a name no variable can have)")
-        # launcher_argv: the reserved name only for a Codex row, only behind the open gate
-        try:
-            rt.launcher_argv(rt.NO_LOGIN, {"A": "1"}, ["codex", "exec"], harness=rt.CODEX)
-            out.append("the closed gate admitted the no-login launcher")
-        except rt.NotReady as e:
-            if str(e) != rt.CODEX_SUBSCRIPTION_NOT_READY:
-                out.append(f"the closed gate refused with another message: {e}")
+        # launcher_argv: the reserved name only for a Codex row, only behind the open gate (closed here, by B8-1)
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", False):
+            try:
+                rt.launcher_argv(rt.NO_LOGIN, {"A": "1"}, ["codex", "exec"], harness=rt.CODEX)
+                out.append("the closed gate admitted the no-login launcher")
+            except rt.NotReady as e:
+                if str(e) != rt.CODEX_SUBSCRIPTION_NOT_READY:
+                    out.append(f"the closed gate refused with another message: {e}")
         with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True):
             vals = rt.exec_values(rt.CODEX, "/srv/w/t1/tree")   # the review's MINOR 2: exactly the Codex row's names
             argv = rt.launcher_argv(rt.NO_LOGIN, vals, ["codex", "exec"], harness=rt.CODEX)
@@ -2626,8 +2630,10 @@ class TestCodexExec(MutantCase):
         with open(os.path.join(HERE, "prereg-draft.json"), encoding="utf-8") as fh:
             if tuple(json.load(fh)["models"]["O"]) != tuple(rt.CODEX_MODELS):
                 out.append("CODEX_MODELS is not prereg-draft.json's arm O models")
-        # the closed gate: NotReady before anything is checked or read (a bad lease, user or turn never shows first)
-        with mock.patch.dict(os.environ, {}, clear=True), filled():
+        # the closed gate: NotReady before anything is checked or read (a bad lease, user or turn never shows first);
+        # pinned closed here (B8-1), since the committed gate is open
+        with mock.patch.dict(os.environ, {}, clear=True), filled(), \
+                mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", False):
             for label, kw in (("a good turn", {}), ("a bad lease", {"lf": self.lease(name="lease.json")}),
                               ("another user", {"user": "0:0"}), ("a bad turn", {"inner": ["codex", "review"]})):
                 try:
@@ -3803,6 +3809,7 @@ def codex_key_problems(m) -> list:
     with contextlib.ExitStack() as stack:
         for n in names:
             stack.enter_context(mock.patch.object(m, n, trip(n)))
+        stack.enter_context(mock.patch.object(m, "CODEX_SUBSCRIPTION_READY", False))   # pinned closed (B8-1)
         try:
             m.exec_argv(ID["take"], ["codex", "exec", "x"], user=m.AGENT_USER, workdir="/", harness=m.CODEX,
                         run_tree="/srv/w0/t1/tree", login_file="/nonexistent/login", caller_env={"PATH": "/bin"})
