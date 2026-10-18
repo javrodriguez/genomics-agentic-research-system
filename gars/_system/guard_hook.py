@@ -69,6 +69,7 @@ READ_ONLY = [
     "repo:benchmarks/holdout/*",
     "tests/fixtures/*",
     "projects/_index.md",
+    ".gars_session_model",  # the model the harness reported at session start (0303)
     "projects/*/.gars_submissions",
     "projects/*/.gars_submissions/*",
     "projects/*/.gars_local_jobs",
