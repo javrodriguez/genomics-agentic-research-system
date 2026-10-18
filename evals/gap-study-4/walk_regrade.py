@@ -459,11 +459,12 @@ def _check_fields(doc, name) -> dict:
 
 def production_design(row, run_tree):
     """The design view a walk is re-checked against: check_take.design_view with the constants in force, routing's pin
-    for the row and the walk's run tree."""
+    for the row and the walk's run tree; a vendor row's in its vendor view (check_take.checker_view, T4 P5), which
+    the vendor entries read."""
     import batch
     import check_take as ct
     import routing
-    return ct.design_view(row, pin=batch.expected_pin(row, routing.load_table()), run_tree=run_tree)
+    return ct.checker_view(ct.design_view(row, pin=batch.expected_pin(row, routing.load_table()), run_tree=run_tree))
 
 
 def production_checker(row, design, base: Path, ledger: dict) -> dict:

@@ -1146,8 +1146,8 @@ def production_builders() -> dict:
     out["design_for"] = (Missing(f"the checker's design view: its constants {held} are PENDING on this tree (the "
                                  f"first-walk bootstrap ruling sources them: carried from round 3 or derived from "
                                  f"code)") if held else
-                         (lambda row, run_tree: check_take.design_view(row, pin=out["pin_for"](row),
-                                                                       run_tree=run_tree)))
+                         (lambda row, run_tree: check_take.checker_view(check_take.design_view(  # T4 P5: a vendor
+                             row, pin=out["pin_for"](row), run_tree=run_tree))))                    # row's vendor view
     return out
 
 

@@ -33,3 +33,7 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py P3 check_take.py walk
 # same source lists.
 python3 -B -W ignore evals/gap-study-4/tests/test_vendor_session.py
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P4 check_take.py tests/test_vendor_session.py tests/vendor_check_fixtures.py
+# T4 P5 (glitch-b5 round 13): the vendor constants, the vendor view, the merged digest and the vendor side; the files
+# P5 edits, against the native readers' source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_constants.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P5 check_take.py walk_builders.py walk_regrade.py tests/test_vendor_constants.py tests/test_vendor_body.py tests/test_vendor_entries.py tests/test_vendor_session.py tests/test_take_checker_dispatch.py

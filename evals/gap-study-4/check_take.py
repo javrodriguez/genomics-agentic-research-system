@@ -4764,8 +4764,8 @@ def vendor_round4_problems(path, design) -> list:
 # vendor_email_problems. A count is a reading, never a default (NIT 6): the reach is read on the raw records whatever
 # the view did, so a reach vendor_check skipped still counts and disagrees, and a reach or an email count that cannot
 # be read refuses the take with CheckRefused, never counts 0. checker_for admits both harnesses with _vendor_entry;
-# their side readings (plan section 6's merged constants digest, nudges 0, no Agent call) are P5's, so _vendor_side
-# refuses until P5 and drive.take_checker reads no vendor take before then.
+# their side readings (plan section 6's merged constants digest, nudges 0, no Agent call) are P5's: _vendor_side
+# reads them from a vendor view (below), and the entries read only a vendor view.
 def vendor_event_counts(path, harness) -> dict:
     """{event id: count} of a vendor take, from the vendor readers: study-materials-reached and
     read-outside-the-checkout from vendor_reach (one per instance, as C's event_counts), account-email from
@@ -4796,6 +4796,9 @@ def _vendor_preamble(task_id, half_name, wording_script, design, what: str) -> s
     if waiting:
         raise CheckRefused(f"the design view's constants {waiting} are still PENDING; a constant without its ruled "
                            "value is never defaulted")
+    if vendor_design_constants_sha256(design) is None:
+        raise CheckRefused(f"a vendor {what} is read only through its vendor view (check_take.vendor_view: "
+                           f"CHECKER_CONSTANTS merged with VENDOR_CHECKER_CONSTANTS[{harness!r}], P5)")
     if [design.task_id, design.half] != [task_id, half_name]:
         raise CheckRefused(f"the design view is {design.task_id}/{design.half}, not {task_id}/{half_name}")
     if list(wording_script) != design.script:
@@ -4857,10 +4860,14 @@ def check4_walk_vendor(path, task_id: str, half_name: str, walk_id: str, *, word
 
 
 def _vendor_side(path, design) -> tuple:
-    """A vendor take's side readings are plan section 6's fixed contract on P5's merged constants; until P5 they
-    refuse, so no vendor take is checked under a digest that is not its own."""
-    raise CheckRefused(f"harness {getattr(design, 'harness', None)!r}: the vendor side readings (the merged constants "
-                       "digest, nudges and Agent summary, P5) are not built yet; a vendor take is not checked before them")
+    """(checker_constants_sha256, no_output_nudges, agent_summary) of a vendor take: the merged digest of its vendor
+    view, 0, and vendor_agent_summary; a design that is not a vendor view refuses, so no vendor take is checked under
+    a digest that is not its own."""
+    digest = vendor_design_constants_sha256(design)
+    if digest is None:
+        raise CheckRefused(f"harness {getattr(design, 'harness', None)!r}: the vendor side reads only a vendor view "
+                           "(vendor_view's merged constants); a design without them has no digest of its own")
+    return digest, 0, vendor_agent_summary(path, design.harness)
 
 
 def _vendor_entry(path, row, design, *, take, records) -> dict:
@@ -5035,6 +5042,104 @@ def vendor_session_binding_problems(path, harness) -> list:
 def vendor_session_problems(path, harness) -> list:
     """P4's readings for a vendor take or walk: the session store, then the session binding's legs."""
     return vendor_session_store_problems(path, harness) + vendor_session_binding_problems(path, harness)
+
+
+# ---- P5. THE VENDOR CONSTANTS, VIEW AND SIDE (plan sections 6 and 9; glitch-b5 round 13) -----------------------------
+# A vendor take is read under CHECKER_CONSTANTS merged with its harness's block here, never CHECKER_CONSTANTS alone.
+# design_view refuses any constants block not exactly CHECKER_CONSTANTS' keys, so the block enters through
+# vendor_view, which takes design_view's Design: it refuses a harness with no block, an empty block and a key that
+# CHECKER_CONSTANTS or the design's pre already holds (design_view's own shadow rule), and adds the block to pre and
+# its PENDING paths to pending. Each value is derived from the code that decides it, never typed: the harness, its
+# session store root (SESSION_STORE_ROOTS, P4), its resume token (the adapters' RESUME and RESUME_FLAG, P2), the
+# outcomes read as cut (VENDOR_CUT_OUTCOMES, P2), its model reading (vendor-T4-TABLE row 15: codex's requested model,
+# gemini's served one) and every VENDOR_PENDING_ROWS row as "<reason>: <state>" (so settling a row moves the digest
+# and a walk checked while it was PENDING reads stale, as a walk checked under other CHECKER_CONSTANTS does). The
+# merged digest is checker_constants_sha256 of the merged block (vendor_checker_constants_sha256), recovered from a
+# vendor view's pre by vendor_design_constants_sha256 as design_constants_sha256 recovers CHECKER_CONSTANTS'; the
+# vendor side (plan section 6's fixed contract) reads it, no_output_nudges 0 (readers-disagree refuses any
+# non-operator user record) and an Agent summary of no Agent call (any delegation refuses) with the drive's nested
+# CLI count. check4_vendor and check4_walk_vendor read only a vendor view (R4C-7): the production design_for
+# (walk_builders) and walk_regrade.production_design hand one through checker_view.
+VENDOR_MODEL_READINGS = {"codex": "requested", "gemini": "served"}
+VENDOR_CHECKER_CONSTANTS = {
+    h: {"vendor_check": {
+        "harness": h,
+        "session_store_root": SESSION_STORE_ROOTS[h],
+        "resume_token": VENDOR_RESUME_TOKENS[h],
+        "cut_outcomes": list(VENDOR_CUT_OUTCOMES),
+        "model_reading": VENDOR_MODEL_READINGS[h],
+        "rows": {key: f"{row['reason']}: {row['state']}" for key, row in VENDOR_PENDING_ROWS[h].items()},
+    }} for h in VENDOR_HARNESSES}
+
+
+def vendor_view(design, block=None) -> "Design":
+    """design_view's Design for a codex or gemini row with its harness's VENDOR_CHECKER_CONSTANTS block (`block`, a
+    test rig's, passed as data) merged into pre and the block's PENDING paths added to pending; CheckRefused for
+    anything else."""
+    if not isinstance(design, Design):
+        raise CheckRefused("a vendor view is built from design_view's Design")
+    harness = design.harness
+    block = VENDOR_CHECKER_CONSTANTS.get(harness) if block is None else block
+    if harness not in VENDOR_CHECKER_CONSTANTS or not isinstance(block, dict) or not block:
+        raise CheckRefused(f"harness {harness!r} has no vendor constants block (VENDOR_CHECKER_CONSTANTS holds "
+                           f"{sorted(VENDOR_CHECKER_CONSTANTS)}); an empty block is none")
+    if set(block) != set(VENDOR_CHECKER_CONSTANTS[harness]):
+        raise CheckRefused(f"the vendor constants are not exactly {sorted(VENDOR_CHECKER_CONSTANTS[harness])}")
+    shadowed = sorted(set(block) & (set(CHECKER_CONSTANTS) | set(design.pre)))
+    if shadowed:
+        raise CheckRefused(f"the vendor constants {shadowed} are already in the checker constants or the design's "
+                           "pre-registration; a vendor constant never shadows one")
+    pre = copy.deepcopy(design.pre)
+    for k, v in block.items():
+        pre[k] = copy.deepcopy(v)
+    return design.replace(pre=pre, pending=tuple(design.pending) + tuple(
+        p for k, v in block.items() for p in _pending_paths(v, k)))
+
+
+def vendor_constants(harness, constants=None, block=None) -> dict:
+    """CHECKER_CONSTANTS (or `constants`) merged with the harness's vendor block (or `block`); a shadowing key refuses."""
+    constants = CHECKER_CONSTANTS if constants is None else constants
+    block = VENDOR_CHECKER_CONSTANTS[_vendor_harness(harness)] if block is None else block
+    shadowed = sorted(set(block) & set(constants))
+    if shadowed:
+        raise CheckRefused(f"the vendor constants {shadowed} would shadow the checker constants")
+    return {**copy.deepcopy(constants), **copy.deepcopy(block)}
+
+
+def vendor_checker_constants_sha256(harness, constants=None, block=None) -> str:
+    """Plan section 6: the digest a vendor take is checked under, checker_constants_sha256 of the merged constants;
+    refuses while any merged value is PENDING."""
+    return checker_constants_sha256(vendor_constants(harness, constants, block))
+
+
+def vendor_design_constants_sha256(design):
+    """The merged digest a vendor view was built from, recovered from its pre exactly as design_view and vendor_view
+    merged it (each CHECKER_CONSTANTS key and each key of the harness's block, less the permission_mode_by_arm entry
+    design_view writes); None when the design is not a vendor view of a vendor harness, lacks a key, or holds a
+    PENDING value."""
+    if not isinstance(design, Design) or design.harness not in VENDOR_CHECKER_CONSTANTS:
+        return None
+    try:
+        got = {k: copy.deepcopy(design.pre[k]) for k in (*CHECKER_CONSTANTS, *VENDOR_CHECKER_CONSTANTS[design.harness])}
+        got["driver_constants"].pop("permission_mode_by_arm", None)
+        return checker_constants_sha256(got)
+    except (KeyError, TypeError, AttributeError, CheckRefused):
+        return None
+
+
+def checker_view(design):
+    """The design the checker reads: a vendor harness's vendor view, claude-code's design_view Design as it is."""
+    if isinstance(design, Design) and design.harness in VENDOR_CHECKER_CONSTANTS:
+        return vendor_view(design)
+    return design
+
+
+def vendor_agent_summary(path, harness) -> dict:
+    """The vendor side's Agent summary (plan section 6): no Agent call (a vendor sub-agent refuses as delegation, T-22)
+    and the nested CLI calls of the CLI's own shell commands, the drive's count."""
+    cmds, _ = vendor_shell_commands(Path(path).parent, _vendor_harness(harness))
+    return {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0},
+            "nested_cli_calls": sum(len(nested_cli_mentions(c)) for c in cmds)}
 
 
 if __name__ == "__main__":
