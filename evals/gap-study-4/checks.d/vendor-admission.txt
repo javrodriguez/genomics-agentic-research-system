@@ -47,3 +47,6 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py P5 check_take.py pend
 # with both edits present and every line outside their spans equal to drive.py before edit B.
 python3 -B -W ignore evals/gap-study-4/tests/test_vendor_envelopes.py
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py EB drive.py tests/check_vendor_sources.py tests/test_vendor_envelopes.py tests/test_vendor_walk_road.py
+# Round 16 (glitch-b5, Sun 18 Oct 2026): review f-981e871 NITs 1, 4 and 5; piece EB admits edit C only when its gate
+# requires the row's harness in VENDOR_HARNESSES; the files they edit, against the same source lists.
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py EB drive.py walk_regrade.py tests/check_vendor_sources.py tests/test_vendor_envelopes.py
