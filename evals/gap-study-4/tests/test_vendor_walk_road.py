@@ -5,8 +5,9 @@ glitch-b5 round 13, Sun 18 Oct 2026).
   P5-now      pending_walk.checker_standing judges a walk against the digest in force for its harness, read from its
               driver ledger's agent.harness: a codex or gemini walk checked under its merged digest counts, and one
               checked under the Claude-only digest reads stale; a claude-code walk, a bare folder with no ledger, an
-              unreadable ledger and a harness checker_for does not admit all read checker_constants_sha256(), as
-              before (arm C byte for byte), so a vendor walk misread on that fallback reads stale, never current.
+              unreadable ledger, a harness checker_for does not admit and one that is not a string (review e-71a2b94
+              NIT 1: never a TypeError) all read checker_constants_sha256(), as before (arm C byte for byte), so a
+              vendor walk misread on that fallback reads stale, never current.
   P5-counts   walk_regrade.nudge_count_problems and agent_summary_problems read a vendor walk's committed counts with
               the vendor side's readings (0 nudges; no Agent call and the CLI's own nested CLI calls), never Claude
               Code's readers; a forged count is named; with no harness they read as before.
@@ -121,7 +122,11 @@ def now_problems(pw, ct) -> list:
               ("a bare folder with no ledger", None, claude, None),
               ("an unreadable ledger", "{not json", claude, None),
               ("a ledger with no agent", {"walk": WALK}, claude, None),
-              ("a harness checker_for does not admit", {"agent": {"harness": "synthetic-harness"}}, claude, None)]
+              ("a harness checker_for does not admit", {"agent": {"harness": "synthetic-harness"}}, claude, None),
+              # round 14, review e-71a2b94 NIT 1: a harness that is not a string reads as no harness, never TypeError
+              ("a harness that is a list", {"agent": {"harness": ["codex"]}}, claude, None),
+              ("a harness that is a list under the codex digest", {"agent": {"harness": ["codex"]}},
+               ct.vendor_checker_constants_sha256("codex"), "stale")]
     for name, ledger, digest, want in cases:
         with tempfile.TemporaryDirectory(dir=tcb.SCRATCH) as tmp:
             walk_folder(Path(tmp), ledger, digest)
