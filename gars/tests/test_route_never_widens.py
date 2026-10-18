@@ -13,6 +13,7 @@ frozen-file hunks R1 and G2 (patch files in lanes/gars-t74/); each such test say
 import importlib.util
 import json
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -252,6 +253,28 @@ class RegistrationPathTests(unittest.TestCase):
                                    '--agreement-ref', 'none')
         self.assertEqual(code, 0, result)
         self.assertEqual(row.read_bytes(), before)
+
+
+class BasePinTests(unittest.TestCase):
+    """The base is pinned by content, never by a commit id: the landing gives every commit a new id."""
+
+    def test_each_pin_is_a_blob(self):
+        pins = globals().get('BASE_BLOBS')
+        self.assertIsInstance(pins, dict, 'BASE_BLOBS names no blob')
+        self.assertEqual(set(pins), {'gars/_system/venue_policy.py', 'gars/_references/data_policy.tsv'})
+        for rel, blob in pins.items():
+            with self.subTest(path=rel):
+                kind = subprocess.run(['git', 'cat-file', '-t', blob], cwd=str(REPO),
+                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                self.assertEqual(kind.stdout.decode().strip(), 'blob', blob)
+
+    def test_the_module_names_no_commit_id(self):
+        text = Path(__file__).read_text()
+        for token in sorted(set(re.findall(r'\b[0-9a-f]{7,40}\b', text))):
+            kind = subprocess.run(['git', 'cat-file', '-t', token], cwd=str(REPO),
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            with self.subTest(token=token):
+                self.assertNotEqual(kind.stdout.decode().strip(), 'commit', token)
 
 
 if __name__ == '__main__':
