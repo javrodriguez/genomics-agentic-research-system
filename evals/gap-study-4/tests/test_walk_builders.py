@@ -384,6 +384,9 @@ def mutants() -> dict:
         "held-exits-zero": ("B9.cli", "walk_builders", "    return 0 if state == COMMITTED else 1", "    return 0"),
         "refused-tree-left": ("B9.cli", "walk_builders", "        left = remove_run_tree(tree)\n",
                               "        left = None\n"),
+        # lane vendor-admission round 12 (review c-6302fd3 NIT 7): the vendor names above the checkout unchecked
+        "place-inherited-unchecked": ("B18.place", "walk_builders", "    above = inherited_instruction_files(tree)\n",
+                                      "    above = []\n"),
     }
 
 
@@ -429,6 +432,7 @@ METHOD = {
     "scanner-class-by-name": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
     "lease-login-before-place": "B13Lease.test_the_driver_and_walkrepo_get_the_lease_secrets",
     "lease-gate-unchecked": "B13Lease.test_the_driver_and_walkrepo_get_the_lease_secrets",
+    "place-inherited-unchecked": "B18Native.test_place_instruction_file_refuses_by_name",
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 
@@ -3679,13 +3683,13 @@ def b18_place_problems(mod) -> list:
     # round 12 (review c-6302fd3 NIT 7): every instruction-file name a vendor CLI reads, above the checkout, refuses
     # by name; drive.run_tree_problems (CLAUDE.md alone) is patched clean so the vendor names stand alone
     for harness in ("codex", "gemini"):
-        for above in ("AGENTS.md", "GEMINI.md"):
+        for above, up in (("AGENTS.md", 1), ("GEMINI.md", 1), ("CLAUDE.md", 1), ("AGENTS.md", 2)):
             with bare_tree() as (repo, sha, tree), \
                     mock.patch.object(sys.modules["drive"], "run_tree_problems", lambda *a: []):
-                planted = tree.parent / above
+                planted = tree.parents[up - 1] / above
                 planted.write_text("# synthetic: an instruction file above the checkout\n")
                 try:
-                    refused(f"{harness}: {above} above the checkout",
+                    refused(f"{harness}: {above} {up} folder(s) above the checkout",
                             f"an instruction file above the checkout ({planted.resolve()})", repo, sha, tree, harness)
                 finally:
                     planted.unlink()

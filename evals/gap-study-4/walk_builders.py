@@ -659,7 +659,22 @@ def place_instruction_file(tree: Path, harness, *, repo, commit: str, session_id
     problems = drive.run_tree_problems(Path(tree), session_id, exclude)
     if problems:
         raise BuilderRefused(f"the checkout with {name} placed: {'; '.join(problems)}")
+    above = inherited_instruction_files(tree)
+    if above:
+        raise BuilderRefused(f"an instruction file above the checkout ({', '.join(above)}): {harness} could read "
+                             "instructions the other arms are not given")
     return name
+
+
+# Every instruction-file name a CLI of the study reads (Claude Code's, and R-6's native names in take_config).
+INSTRUCTION_FILE_NAMES = ("CLAUDE.md", "AGENTS.md", "GEMINI.md")
+
+
+def inherited_instruction_files(tree) -> list:
+    """Every file or link named in INSTRUCTION_FILE_NAMES in a folder above the checkout (review c-6302fd3 NIT 7):
+    drive.no_inherited_instructions, which run_tree_problems runs, reads CLAUDE.md alone, and drive.py is in the native
+    readers' source lists, so a vendor checkout's other names are checked here."""
+    return [str(p / n) for p in Path(tree).resolve().parents for n in INSTRUCTION_FILE_NAMES if os.path.lexists(p / n)]
 
 
 def remove_run_tree(tree) -> str | None:
