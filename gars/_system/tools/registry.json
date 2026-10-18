@@ -758,6 +758,101 @@
       "argv": [
         "python3",
         "_system/configure.py",
+        "declare"
+      ],
+      "cli": {
+        "assay": {
+          "flag": "--assay",
+          "nargs": null
+        },
+        "key": {
+          "flag": "--key",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        },
+        "select": {
+          "flag": "--select",
+          "nargs": null
+        }
+      },
+      "closed_output": [],
+      "description": "Run configure declare",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "assay": {
+            "enum": [
+              "rnaseq_bulk",
+              "atacseq_bulk"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "key": {
+            "enum": [
+              "paired",
+              "reference_release",
+              "strandedness",
+              "unit_of_replication"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "select": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "assay"
+        ],
+        "type": "object"
+      },
+      "name": "configure.declare",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/configure.py",
         "contrasts"
       ],
       "cli": {
