@@ -57,3 +57,5 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/run_take.py wa
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/egress/proxy_conf.py build_draft.py prereg-draft.json tests/test_egress.py tests/test_build_draft.py
 # B5: the walk-start token check on the Codex lease road (the lease's time left and its last_refresh).
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 walk_builders.py tests/test_walk_builders.py tests/test_pending_walk.py tests/test_vendor_walk_road.py
+# B6 (R3): the vendor config written on the walk road, with the three values sourced from the pinned packages.
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 walk_builders.py box/take_config.py build_draft.py prereg-draft.json tests/test_walk_builders.py tests/test_take_config.py tests/test_live_box.py tests/test_vendor_roads.py tests/test_build_draft.py

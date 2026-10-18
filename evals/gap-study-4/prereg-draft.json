@@ -23574,12 +23574,44 @@
       }
     },
     "codex": {
-      "gpt-6.1-sol": "PENDING",
-      "gpt-6-luna": "PENDING"
+      "gpt-6.1-sol": {
+        "files": [
+          {
+            "path": "config.toml",
+            "sha256": "27af50c215938bff9ab2a3d6f6541188cfa68e1e44be41103834690ce7fffab5"
+          }
+        ],
+        "sha256": "cf72b71b11f0684e7a5406879f1c896d82a31cea7606a7e937fd1d3d5ea01a71"
+      },
+      "gpt-6-luna": {
+        "files": [
+          {
+            "path": "config.toml",
+            "sha256": "c55a0699ad05f1b6ee61533e28b133dfaa38ac0058469f307d7af247ea8ef28a"
+          }
+        ],
+        "sha256": "594815fd3266d9d9e21a92609cab074b061a6db08734fe979917110a45df9940"
+      }
     },
     "gemini": {
-      "gemini-3.8-flash": "PENDING",
-      "gemini-3.5-flash-lite": "PENDING"
+      "gemini-3.8-flash": {
+        "files": [
+          {
+            "path": ".gemini/settings.json",
+            "sha256": "9ee8f8edd3bcb35ee062c77785512d7b67dc44ecf2198d2abaa75eac865bce91"
+          }
+        ],
+        "sha256": "67bc49b7077ddb1d73b50d4bf03c6268bcdfd20129988da97344240dc4156fa9"
+      },
+      "gemini-3.5-flash-lite": {
+        "files": [
+          {
+            "path": ".gemini/settings.json",
+            "sha256": "ff7db3f3f44c0d777ce0f77efcfdfcdf74fe711dea030b925e7535ca64832514"
+          }
+        ],
+        "sha256": "405b90d17e80d40771f76e0eae6c47939606a647d9cb226b6081e98f26435437"
+      }
     }
   },
   "effort": {
@@ -23589,12 +23621,40 @@
       "claude-haiku-4-5-20251001": "PENDING"
     },
     "codex": {
-      "gpt-6.1-sol": "PENDING",
-      "gpt-6-luna": "PENDING"
+      "gpt-6.1-sol": "low",
+      "gpt-6-luna": "medium"
     },
     "gemini": {
-      "gemini-3.8-flash": "PENDING",
-      "gemini-3.5-flash-lite": "PENDING"
+      "gemini-3.8-flash": {
+        "path": "modelConfigs.customAliases",
+        "value": {
+          "chat-base-3": {
+            "extends": "chat-base",
+            "modelConfig": {
+              "generateContentConfig": {
+                "thinkingConfig": {
+                  "thinkingLevel": "HIGH"
+                }
+              }
+            }
+          }
+        }
+      },
+      "gemini-3.5-flash-lite": {
+        "path": "modelConfigs.customAliases",
+        "value": {
+          "chat-base-3": {
+            "extends": "chat-base",
+            "modelConfig": {
+              "generateContentConfig": {
+                "thinkingConfig": {
+                  "thinkingLevel": "HIGH"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "instruction_files": {
@@ -23803,17 +23863,9 @@
   "pending": {
     "/box_residuals/0/finding": "R8 plan 830: the real box supplies the conditional preflight finding.",
     "/checked_against/status": "R9 plan 831, PL-4: the first committed walk supplies the session check.",
-    "/config_templates/codex/gpt-6-luna": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
-    "/config_templates/codex/gpt-6.1-sol": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
-    "/config_templates/gemini/gemini-3.5-flash-lite": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
-    "/config_templates/gemini/gemini-3.8-flash": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
     "/effort/claude-code/claude-haiku-4-5-20251001": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
     "/effort/claude-code/claude-opus-5-5": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
     "/effort/claude-code/claude-sonnet-5-5": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
-    "/effort/codex/gpt-6-luna": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
-    "/effort/codex/gpt-6.1-sol": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
-    "/effort/gemini/gemini-3.5-flash-lite": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
-    "/effort/gemini/gemini-3.8-flash": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
     "/floor_evidence": "V5, R17: the published probes table exposes no floor field; the table owner must supply one.",
     "/furniture/claude-code": "R15 CP5-req 56: CP6 walks supply each harness's list.",
     "/furniture/codex": "R15 CP5-req 56: CP6 walks supply each harness's list.",
@@ -23848,17 +23900,9 @@
     "PENDING": [
       "/box_residuals/0/finding",
       "/checked_against/status",
-      "/config_templates/codex/gpt-6-luna",
-      "/config_templates/codex/gpt-6.1-sol",
-      "/config_templates/gemini/gemini-3.5-flash-lite",
-      "/config_templates/gemini/gemini-3.8-flash",
       "/effort/claude-code/claude-haiku-4-5-20251001",
       "/effort/claude-code/claude-opus-5-5",
       "/effort/claude-code/claude-sonnet-5-5",
-      "/effort/codex/gpt-6-luna",
-      "/effort/codex/gpt-6.1-sol",
-      "/effort/gemini/gemini-3.5-flash-lite",
-      "/effort/gemini/gemini-3.8-flash",
       "/floor_evidence",
       "/furniture/claude-code",
       "/furniture/codex",

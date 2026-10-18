@@ -1320,6 +1320,18 @@ def prepare(builders: dict, args) -> tuple[dict, str, Path]:
                                       harness=harness)
 
 
+def vendor_config(row: dict, cfg: str):
+    """Round 17 B6 (plan codex2-signin-road section 5, glitch-b5's ruling R3): a codex or gemini walk's per-take
+    config, box/take_config.write over the row's model, into the take's empty config folder, from the walk driver's
+    spec_for: before the lease is placed, the settings baseline and the grant (drive.py calls spec_for before
+    _grant_ownership). Its record, or None for a Claude Code walk, whose per-take settings are not written here."""
+    from box import take_config
+    harness = row["agent"]["harness"]
+    if harness not in (take_config.CODEX, take_config.GEMINI):
+        return None
+    return take_config.write(cfg, harness, model=row["model"])
+
+
 def walk_driver_for(builders: dict, row: dict, login: str, tree: Path, *, real: bool = False):
     """(the identity, drive.walk_driver(records='walks') over the study folder mode_binding reads, its WalkRepo):
     the fixture built in the walk's checkout, the identity from it, every other collaborator from the builder set.
@@ -1341,12 +1353,14 @@ def walk_driver_for(builders: dict, row: dict, login: str, tree: Path, *, real: 
         secrets, login = lease.secrets, lease.login_file_for       # the take's placed cfg/auth.json, never "-"
 
         def spec_for(r, cfg):
+            vendor_config(r, cfg)          # round 17 B6: codex, into the empty folder
             lease.place(cfg)
             return builders["take_spec"](r, cfg, str(tree))
     else:
         secrets = login_secrets(login, row["agent"]["harness"])
 
         def spec_for(r, cfg):
+            vendor_config(r, cfg)          # round 17 B6: gemini (nothing for claude-code)
             return builders["take_spec"](r, cfg, str(tree))
     budget_s, finalize_wait_s, poll_s = builders["budgets"]
     proxy = for_row(builders["proxy"], harness)              # ProxyRoad: the walk's configuration written now

@@ -9,11 +9,14 @@ run_take.py (this lane's decision) so each file stays one owner and small.
     acceptance"; that is departed from: the acceptance is RULED not required in -p runs (glitch-06, 14 Oct 2026;
     CLAUDE_BYPASS_RULING in run_take), so the study sends no bypass key anywhere. The host's user settings never exist
     in the box, and every turn runs --setting-sources project,local, so this user scope never loads anyway.
-  - codex: `config.toml` with D8's values and the owner's subscription amendment, `model` from the caller, `model_reasoning_effort` PENDING (the
-    harness's default for that model at the pinned version).
-  - gemini: `settings.json` with D8's values verbatim, `model.name` from the caller; the thinking level, the API-key
-    auth-type setting (name and value) are PENDING. The installed0.64.0 source establishes the file location
-    under GEMINI_CLI_HOME and the explicitly frozen legacy noninteractive path.
+  - codex: `config.toml` with D8's values and the owner's subscription amendment, `model` from the caller,
+    `model_reasoning_effort` the harness's default for that model at the pinned version (R3, below).
+  - gemini: `settings.json` with D8's values verbatim, `model.name` from the caller; the thinking level and the API-key
+    auth-type setting (name and value) are the pinned version's (R3, below). The installed0.64.0 source establishes
+    the file location under GEMINI_CLI_HOME and the explicitly frozen legacy noninteractive path.
+  - R3 (glitch-b5's ruling, Sun 18 Oct 2026; lane vendor-admission round 17, B6): CODEX_REASONING_EFFORT,
+    GEMINI_THINKING and GEMINI_AUTH_SETTING, once PENDING, are each read statically from the pinned package (no model
+    call, no network), the file and line beside each value and in VALUE_SOURCES.
   - R-6 (glitch-b5's ruling of Sat 17 Oct 2026, under Javier's delegation; lane vendor-admission T4 P2): neither vendor
     file configures an instruction-file name. D8's `project_doc_fallback_filenames = ["CLAUDE.md"]` and
     `context.fileName = ["CLAUDE.md"]` are removed: each CLI reads its native file (INSTRUCTION_FILES), which
@@ -49,7 +52,12 @@ CLAUDE_SETTINGS = "settings.json"
 
 # Codex: D8 section 3 plus owner's 13 Oct subscription-only amendment.
 CODEX_CONFIG = "config.toml"
-CODEX_REASONING_EFFORT = PENDING
+# R3: the harness's default for that model at the pinned Codex, per model: each model entry's default_reasoning_level in
+# the bundled catalog codex-rs/models-manager/models.json at rust-v0.162.1 (VALUE_SOURCES).
+CODEX_REASONING_EFFORT = {
+    "gpt-6.1-sol": "low",       # models.json line 213
+    "gpt-6-luna": "medium",     # models.json line 560
+}
 CODEX_TOP = (("web_search", "disabled"), ("check_for_update_on_startup", False), ("forced_login_method", "chatgpt"),
              ("cli_auth_credentials_store", "file"))
 CODEX_FEATURES = (("hooks", False),)
@@ -64,9 +72,43 @@ GEMINI_MODEL_PATH = "model.name"
 # or accepted): Codex's AGENTS.md, Gemini CLI's GEMINI.md. walk_builders.build_run_tree places each beside every
 # CLAUDE.md of the checkout (round 10 ruling 3) as a copy of it, the file the claude-code arm reads.
 INSTRUCTION_FILES = {CODEX: "AGENTS.md", GEMINI: "GEMINI.md"}
-# Each, once measured: {"path": "<dotted path>", "value": <JSON value>}.
-GEMINI_THINKING = PENDING
-GEMINI_AUTH_SETTING = PENDING
+# Each {"path": "<dotted path>", "value": <JSON value>}, read statically at the pinned 0.64.0 (R3, VALUE_SOURCES).
+# The thinking level: both arm G models extend the built-in alias chat-base-3 (bundle/chunk-NR7L3FXV.js lines 362349
+# and 362361), whose thinkingLevel is HIGH (line 362280; ThinkingLevel.HIGH, line 258475); settings.json's
+# modelConfigs.customAliases replaces an alias by name (bundle/chunk-FLKY6NH5.js line 13409; kept beside the built-in
+# aliases, chunk-NR7L3FXV.js line 380852), so chat-base-3 is restated as it is: the default, pinned in the file.
+GEMINI_THINKING = {"path": "modelConfigs.customAliases", "value": {"chat-base-3": {
+    "extends": "chat-base", "modelConfig": {"generateContentConfig": {"thinkingConfig": {"thinkingLevel": "HIGH"}}}}}}
+# The API-key auth type: security.auth.selectedType (bundle/chunk-FLKY6NH5.js line 14183) set to AuthType.USE_GEMINI,
+# "gemini-api-key" (bundle/chunk-NR7L3FXV.js line 312750).
+GEMINI_AUTH_SETTING = {"path": "security.auth.selectedType", "value": "gemini-api-key"}
+# R3's record of each static read: the pinned package, the file (with its sha256 for the Gemini bundle files, equal to
+# the box lane's installed-package evidence of 14 Oct), the line or lines, and what was read there.
+_GEMINI_PKG = {"package": "@google/gemini-cli", "version": "0.64.0",
+               "tarball_sha256": "891a794e55c8319b6b78f6f8f13d6b8b2782a4709dfd2fcabf3a1f63ae8365e6"}
+VALUE_SOURCES = {
+    "CODEX_REASONING_EFFORT": {
+        "package": "openai/codex", "tag": "rust-v0.162.1", "commit": "092d3acd6bec3e3a14bdc7e7a2810ab628ab759d",
+        "file": "codex-rs/models-manager/models.json", "lines": {"gpt-6.1-sol": 213, "gpt-6-luna": 560},
+        "read": "each model entry's default_reasoning_level; the file is the bundled catalog "
+                "(include_str!, codex-rs/models-manager/src/lib.rs line 15)"},
+    "GEMINI_THINKING": dict(_GEMINI_PKG, file="bundle/chunk-NR7L3FXV.js",
+                            file_sha256="d566e81b1df8d4d44a91bf7aeea96a58ec0e6c8934fa424315ef060507dcbb8c",
+                            lines={"chat-base-3": 362280, "gemini-3.5-flash-lite": 362349, "gemini-3.8-flash": 362361,
+                                   "ThinkingLevel.HIGH": 258475, "customAliases kept": 380852},
+                            setting_file="bundle/chunk-FLKY6NH5.js",
+                            setting_file_sha256="f6a4ddd46350dad40515218069d369aaa0025f194c552400b69925b941098bc8",
+                            setting_line=13409,
+                            read="both arm G models extend the built-in alias chat-base-3, whose thinkingLevel is "
+                                 "HIGH (packages/core/src/config/defaultModelConfigs.ts); settings.json's "
+                                 "modelConfigs.customAliases replaces an alias by name, so the built-in chat-base-3 is "
+                                 "restated as it is"),
+    "GEMINI_AUTH_SETTING": dict(_GEMINI_PKG, file="bundle/chunk-FLKY6NH5.js",
+                                file_sha256="f6a4ddd46350dad40515218069d369aaa0025f194c552400b69925b941098bc8",
+                                line=14183, value_file="bundle/chunk-NR7L3FXV.js", value_line=312750,
+                                read="security.auth.selectedType (packages/cli/src/config/settingsSchema.ts), set to "
+                                     "AuthType.USE_GEMINI, the API-key auth type"),
+}
 # The settings file's path relative to GEMINI_CLI_HOME (for example ".gemini/settings.json"), once measured.
 # Installed0.64.0 Storage.getGlobalSettingsPath: GEMINI_CLI_HOME/.gemini/settings.json.
 # Exact installed path/hash/offset retained in gemini-storage-source.json.
@@ -151,8 +193,13 @@ def _claude(model) -> dict:
 
 
 def _codex(model) -> dict:
-    lines = [f"model = {_toml_value(_model(model))}",
-             f"model_reasoning_effort = {_toml_value(CODEX_REASONING_EFFORT)}"]
+    model = _model(model)
+    effort = CODEX_REASONING_EFFORT.get(model) if isinstance(CODEX_REASONING_EFFORT, dict) else None
+    if not isinstance(effort, str):
+        raise Refused(f"no reasoning effort is sourced for model {model!r} at the pinned Codex "
+                      f"(CODEX_REASONING_EFFORT)")
+    lines = [f"model = {_toml_value(model)}",
+             f"model_reasoning_effort = {_toml_value(effort)}"]
     lines += [f"{k} = {_toml_value(v)}" for k, v in CODEX_TOP]
     lines += ["", "[features]"] + [f"{k} = {_toml_value(v)}" for k, v in CODEX_FEATURES]
     return {CODEX_CONFIG: ("\n".join(lines) + "\n").encode("ascii")}

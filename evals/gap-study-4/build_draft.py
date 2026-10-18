@@ -1017,6 +1017,17 @@ def config_templates():
     return result
 
 
+def effort_for(harness, model):
+    """R15 CP5-req 51, one model's effort setting as take_config writes it: codex's per model, gemini's one thinking
+    setting (both sourced by R3, round 17 B6), claude-code's PENDING (the walk records the harness default)."""
+    if harness == CODEX:
+        effort = take_config.CODEX_REASONING_EFFORT
+        return copy.deepcopy(effort.get(model, PENDING) if isinstance(effort, dict) else effort)
+    if harness == GEMINI:
+        return copy.deepcopy(take_config.GEMINI_THINKING)
+    return PENDING
+
+
 def design_inputs(rows, tasks):
     hm = {}
     for row in rows:
@@ -1498,9 +1509,7 @@ def build(root=None):
     d["stats_design_inputs"] = design_inputs(d["rows"], d["tasks"])
     d["floor_evidence"] = PENDING
     d["config_templates"] = config_templates()
-    d["effort"] = {h: {m: copy.deepcopy(take_config.CODEX_REASONING_EFFORT if h == CODEX else
-                      take_config.GEMINI_THINKING if h == GEMINI else PENDING) for m in MODELS[a]}
-                   for a, h in HARNESSES.items()}
+    d["effort"] = {h: {m: effort_for(h, m) for m in MODELS[a]} for a, h in HARNESSES.items()}
     # R-6 (glitch-b5, 17 Oct 2026; lane vendor-admission T4 P2): each vendor CLI's native file, configured nowhere
     d["instruction_files"] = {CODEX: [take_config.INSTRUCTION_FILES[CODEX]],
                                GEMINI: [take_config.INSTRUCTION_FILES[GEMINI]]}
