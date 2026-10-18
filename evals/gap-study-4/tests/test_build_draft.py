@@ -1664,6 +1664,25 @@ class OwnerSlots(unittest.TestCase):
         self.assertTrue(set(b.OWNER_SLOTS) <= set(b.pending({})))
 
 
+# B7-F1 (glitch-b5, 18 Oct 2026, round 17 B7): a vendor's marker input is an owner slot exactly while routing.json
+# lacks that vendor's rate-limit or spend-cap entry, and build() emits routing_marker_inputs for exactly those inputs;
+# with both vendors' entries in routing.json (round 17 B7, R4) there is none on either side, so the draft can close.
+MARKER_KINDS = ("rate_limit_markers", "spend_cap_markers")
+
+
+class MarkerInputSlots(unittest.TestCase):
+    def test_marker_input_slots_are_the_vendors_routing_lacks(self):
+        table = json.loads((HERE / "routing.json").read_text())
+        open_inputs = {(h, k) for h in (CODEX, GEMINI) for k in MARKER_KINDS if h not in table[k]}
+        slots = {p for p in b.OWNER_SLOTS if p.startswith("/routing_marker_inputs/")}
+        self.assertEqual(slots, {f"/routing_marker_inputs/{h}/{k}" for h, k in open_inputs}, "F1.slots")
+        emitted = b.build()["routing_marker_inputs"]
+        want = {}
+        for h, k in sorted(open_inputs):
+            want.setdefault(h, {})[k] = "PENDING"
+        self.assertEqual(emitted, want, "F1.emitted")
+
+
 
 EXPECTED_VALUES = {'V6-i': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V6-i',
           'source_sentence_sha256': '915c99f2563df59adbd67750bab78f5b05ca41054d33f0aaca074c391a11a9d8',
