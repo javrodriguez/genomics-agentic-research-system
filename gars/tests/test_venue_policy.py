@@ -351,5 +351,87 @@ class SubmissionOrderingTests(PolicyFixture):
         self.assertIn('R-076', ex.submit(self.root, stage / 'submit.sh')[1])
 
 
+
+class InputBudgetTests(PolicyFixture):
+    """T57 part 3 (0293): summed inputs against a venue's byte budget, held in code. No venue has
+    a budget until a host size is measured (round 9 item 3), so the cases patch one in."""
+
+    def stage(self, rows, column='fastq_1'):
+        write_row(self.root, row('public', 'internal'))
+        stage = prepare(self.root)
+        sheet = self.root / 'sheet.csv'
+        sheet.write_text('sample,%s\n' % column + ''.join('s%d,%s\n' % (n, p) for n, p in enumerate(rows)))
+        wl.write_reproducibility(stage, 'rnaseq_bulk', self.root,
+                                 {'config': self.root / '_config/rnaseq_bulk.yaml', 'samplesheet': sheet}, [])
+        Path(ex.HOMELAB_MARKER).touch()
+        self.assertEqual(ex.venue_of(ex.LOCAL), 'homelab')
+        return stage
+
+    def blob(self, name, size):
+        path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b'x' * size)
+        return path
+
+    def refusal(self, stage):
+        return ex._venue_refusal(self.root, ex.LOCAL, '02', stage, stage / 'submit.sh')
+
+    def test_no_venue_has_an_input_budget_until_one_is_measured(self):
+        self.assertEqual(vp.INPUT_BUDGET, {})
+        stage = self.stage([self.blob('in/a.fq.gz', 5000)])
+        self.assertIsNone(self.refusal(stage))
+        for venue in vp.VENUES:
+            self.assertFalse(vp.check(row('public', 'fixture'), venue, 'fixture', None, [], input_bytes=10 ** 15))
+
+    def test_inputs_above_the_homelab_budget_name_a_bigger_venue(self):
+        stage = self.stage([self.blob('in/a.fq.gz', 1000), self.blob('in/b.fq.gz', 1000)])
+        with patch.object(vp, 'INPUT_BUDGET', {'homelab': 1999}):
+            why = self.refusal(stage)
+            self.assertIn('venue_too_small', why)
+            self.assertIn('inputs 2000 bytes', why)
+            self.assertIn("exceed venue homelab's budget of 1999 bytes", why)
+            self.assertIn('this dataset needs a bigger venue (slurm)', why)
+            with patch.object(ex, '_submit_once') as backend:
+                job, submitted = ex.submit(self.root, stage / 'submit.sh', ex.LOCAL)
+                self.assertIsNone(job); self.assertIn('venue_too_small', submitted)
+                self.no_effects(self.root, backend)
+        with patch.object(vp, 'INPUT_BUDGET', {'homelab': 2000}):
+            self.assertIsNone(self.refusal(stage))
+        # Slurm gains no budget check, whatever the table says about homelab.
+        with patch.object(vp, 'INPUT_BUDGET', {'homelab': 1}):
+            self.assertIsNone(ex._venue_refusal(self.root, ex.SLURM, '02', stage, stage / 'submit.sh'))
+
+    def test_input_columns_come_from_the_registered_formats(self):
+        import stage01_samplesheet as s01
+        import workspace
+        self.assertEqual(ex.input_columns(), {'fastq_1', 'fastq_2', 'spaceranger_dir'})
+        formats = dict(s01.FORMATS, bam_assay={'status': 'active', 'source': 'test',
+                                               'columns': [('sample', 'sample_id'), ('reads', 'bam')]})
+        headers = dict(workspace.FILES_HEADERS, bam=['sample_id', 'bam'])
+        with patch.object(s01, 'FORMATS', formats), patch.object(workspace, 'FILES_HEADERS', headers):
+            self.assertIn('reads', ex.input_columns())
+            stage = self.stage([self.blob('in/a.bam', 3000)], column='reads')
+            with patch.object(vp, 'INPUT_BUDGET', {'homelab': 2999}):
+                self.assertIn('inputs 3000 bytes', self.refusal(stage))
+
+    def test_a_directory_input_counts_what_it_holds(self):
+        outs = self.root / 'spaceranger/s1/outs'
+        for n in range(3):
+            self.blob('spaceranger/s1/outs/part%d.bin' % n, 1000)
+        target = self.blob('elsewhere/linked.bin', 500)
+        (outs / 'linked.bin').symlink_to(target)                       # a linked file: its target
+        (outs / 'loop').symlink_to(self.root / 'spaceranger', target_is_directory=True)  # not followed
+        top = self.root / 'top-link'
+        top.symlink_to(self.root / 'spaceranger/s1', target_is_directory=True)  # resolved once
+        stage = self.stage([str(top)], column='spaceranger_dir')
+        with patch.object(vp, 'INPUT_BUDGET', {'homelab': 3499}):
+            self.assertIn('inputs 3500 bytes', self.refusal(stage))
+        with patch.object(vp, 'INPUT_BUDGET', {'homelab': 3500}):
+            self.assertIsNone(self.refusal(stage))
+        missing = self.stage([str(self.root / 'absent-dir')], column='spaceranger_dir')
+        with patch.object(vp, 'INPUT_BUDGET', {'homelab': 10 ** 12}):
+            self.assertIn('input_missing', self.refusal(missing))
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
