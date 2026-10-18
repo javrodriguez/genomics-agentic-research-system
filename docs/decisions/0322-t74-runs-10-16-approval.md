@@ -29,7 +29,7 @@ Two things approve it, and they are kept apart here:
   No sentence in this record is the owner's.
 - **The owner's own word, on the push.** Landing on public main waits for the owner's own typed push word; it is recorded on the line below when he gives it, and nothing else here records it.
 
-Javier's word: PENDING
+Javier's word: "push GARS to public main now", typed in the coordinating session's window after its push card named this landing, recorded at 09:01 EDT on 18 October 2026.
 
 ## Context
 
@@ -103,7 +103,7 @@ The build branch is lane gars-t74's 38 build and record commits since its run 9 
 
 ## Status
 
-Standing. Approval of lane gars-t74 runs 10-16's landing and of its protected change; the owner's typed push word is recorded above when he gives it.
+Standing. Approval of lane gars-t74 runs 10-16's landing and of its protected change; the owner's typed push word is recorded above.
 
 ## Date
 
