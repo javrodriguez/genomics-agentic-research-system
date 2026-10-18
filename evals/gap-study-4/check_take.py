@@ -4594,11 +4594,71 @@ def vendor_walk_binding_problems(path, task_id, half_name, walk_id, sid) -> list
     return out
 
 
-def vendor_environment_problems(harness) -> list:
-    """environment-record (T-17): the billing-route leg PENDING for both (codex_adapter and gemini_adapter's PENDING
-    billing-route variables); the record itself is read against the ruled vendor block in P5."""
-    return (vendor_pending("codex", "T-17:billing-route", None) if harness == "codex"
-            else vendor_pending("gemini", "T-17:billing-route", None))
+def vendor_environment_problems(path, harness, ledger, pre, row_index, walk_id) -> list:
+    """environment-record (T-17): the driver's environment.json, which drive._environment writes for every harness in
+    round 3's schema, read by environment_problems as for a Claude Code take (P5: the take's row commit on the take
+    road; on the walk road none, and a record naming a ledger row refuses, as check_walk's); then the billing-route
+    leg, PENDING for both (the record carries Claude Code's billing-route names, never the vendor's)."""
+    if walk_id is None:
+        row_commit = takes_mod.row_commits().get(row_index) if row_index is not None else None
+        out = environment_problems(Path(path), ledger, pre, row_commit)
+    else:
+        out = environment_problems(Path(path), ledger, pre, None)
+        try:
+            rec = json.loads((Path(path).parent / (pre.get("environment_record") or {}).get(
+                "file", "environment.json")).read_text())
+        except (OSError, ValueError, AttributeError):
+            rec = None
+        if isinstance(rec, dict) and any(rec.get(k) is not None for k in ("row", "row_commit")):
+            out.append("[environment-record] the vendor walk's environment record names a ledger row; a walk has none")
+    return out + (vendor_pending("codex", "T-17:billing-route", None) if harness == "codex"
+                  else vendor_pending("gemini", "T-17:billing-route", None))
+
+
+def vendor_model_problems(path, harness, ledger) -> list:
+    """model-binding (T-15; P5), against the model the driver ledger requested (model_requested; none refuses):
+    codex, every rollout turn's turn_context.model in the last retained snapshot (the requested model, the table's
+    NOT COMPARABLE reading) and no reroute item in any turn stream (codex_native.reroute_of, the one reroute parser);
+    gemini, every stream's init.model and every key of its result's stats.models (the served models). Records that
+    cannot be read are left to the view and the readers that refuse them (transcript-unreadable), never read as clean
+    here: an unread record adds no model it could bind."""
+    want = (ledger or {}).get("model_requested")
+    if not (isinstance(want, str) and want):
+        return ["[model-binding] the driver ledger names no requested model, so the take's model cannot be bound"]
+    seen = []
+    try:
+        envelopes = _vendor_envelopes(path)
+    except _VENDOR_READ_ERRORS:
+        envelopes = []
+    if harness == "codex":
+        try:
+            turns = _codex_native.read_rollout(_vendor_last_snapshot(path, ledger))["turns"]
+        except _VENDOR_READ_ERRORS:
+            turns = []
+        seen += [(f"rollout turn {k}'s turn_context.model", t.get("requested_model")) for k, t in enumerate(turns, 1)]
+    for k, env in enumerate(envelopes, 1):
+        try:
+            recs = [_binding._json(x) for x in transcript_view.jsonl_lines(_vendor_stream(path, env))]
+        except _VENDOR_READ_ERRORS:
+            continue
+        for rec in recs:
+            if not isinstance(rec, dict):
+                continue
+            if harness == "codex":
+                to = _codex_native.reroute_of(rec, want)
+                if to is not None:
+                    seen.append((f"turn {k}'s stream reroute", to))
+            elif rec.get("type") == "init":
+                seen.append((f"turn {k}'s init.model", rec.get("model")))
+            elif rec.get("type") == "result" and isinstance(rec.get("stats"), dict) \
+                    and isinstance(rec["stats"].get("models"), dict):
+                seen += [(f"turn {k}'s stats.models", m) for m in rec["stats"]["models"]]
+    others = [(where, m) for where, m in seen if m != want]
+    if others:
+        return [f"[model-binding] the take's own records carry {sorted({str(m) for _, m in others})} (first: "
+                f"{others[0][0]}), and the driver requested {want!r}. The counts are published per model, so a "
+                "session on another model is not this cell's take."]
+    return []
 
 
 def vendor_checkout_problems(harness) -> list:
@@ -4668,7 +4728,8 @@ def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_scrip
         problems += vendor_take_binding_problems(task_id, half_name, row_index, sid)
     else:
         problems += vendor_walk_binding_problems(path, task_id, half_name, walk_id, sid)
-    problems += vendor_environment_problems(harness)
+    problems += vendor_environment_problems(path, harness, ledger, pre, row_index, walk_id)
+    problems += vendor_model_problems(path, harness, ledger)
     problems += constant_problems(ledger, pre)              # the ledger's budget, mode and gars tree (T-24)
     problems += vendor_checkout_problems(harness)
     problems += vendor_prompt_problems(harness)

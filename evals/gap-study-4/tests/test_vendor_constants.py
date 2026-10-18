@@ -389,7 +389,7 @@ P5_WITNESSES = {
         "            \"nested_cli_calls\": sum(len(nested_cli_mentions(c)) for c in cmds)}\n",
         "            \"nested_cli_calls\": 0}\n"), side_problems),
     "the walk's environment row admitted": ((
-        "        if isinstance(rec, dict) and (rec.get(\"row\") is not None or rec.get(\"row_commit\") is not None):\n"
+        "        if isinstance(rec, dict) and any(rec.get(k) is not None for k in (\"row\", \"row_commit\")):\n"
         "            out.append(\"[environment-record] the vendor walk's",
         "        if False:\n            out.append(\"[environment-record] the vendor walk's"), env_walk_problems),
 }
