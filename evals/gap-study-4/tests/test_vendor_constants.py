@@ -5,7 +5,9 @@
   P5-block    check_take.VENDOR_CHECKER_CONSTANTS holds one non-empty block per vendor harness, codex and gemini; no key
               of it is a CHECKER_CONSTANTS key and no value is PENDING; each value is the one its code holds (the
               harness, SESSION_STORE_ROOTS, VENDOR_RESUME_TOKENS, VENDOR_CUT_OUTCOMES, the table's model reading and
-              every VENDOR_PENDING_ROWS row as "<reason>: <state>").
+              every VENDOR_PENDING_ROWS row whole, as its canonical JSON text: review e-71a2b94 NIT 2, round 14).
+  P5-rows     vendor_rows_block enters each row whole: a row's reason, state, reader, fixture or ruling changed, or a
+              field added, moves the merged digest.
   P5-view     vendor_view takes design_view's Design and returns it with the block in pre and the block's PENDING
               paths in pending, the rest untouched; it refuses a design that is not a Design, a claude-code design, an
               empty block, a block of other keys, a block key that CHECKER_CONSTANTS holds and a design already viewed
@@ -28,7 +30,8 @@
   P5-witness  check_take.py compiled in memory with a vendor key shadowing CHECKER_CONSTANTS admitted, the block's
               PENDING paths dropped (a PENDING billing-route variable defaulted), the side reading a plain view, the
               entries reading a plain view, checker_view handing a vendor design back unviewed, the side's nested
-              count dropped and the walk's environment row admitted: each goes red.
+              count dropped, a row entering as its reason and state alone and the walk's environment row admitted:
+              each goes red.
 
 Fakes and synthetic strings only, inside test_box_integration's process guard with test_drive_loop's checker world:
 no take, model, vendor, network, Docker, credential or holdout.
@@ -103,9 +106,35 @@ def block_problems(mod) -> list:
             "harness": harness, "session_store_root": mod.SESSION_STORE_ROOTS[harness],
             "resume_token": mod.VENDOR_RESUME_TOKENS[harness], "cut_outcomes": list(mod.VENDOR_CUT_OUTCOMES),
             "model_reading": {"codex": "requested", "gemini": "served"}[harness],
-            "rows": {k: f"{r['reason']}: {r['state']}" for k, r in mod.VENDOR_PENDING_ROWS[harness].items()}}}
+            "rows": {k: json.dumps(r, sort_keys=True, separators=(",", ":"))
+                     for k, r in mod.VENDOR_PENDING_ROWS[harness].items()}}}
         if block != want:
             out.append(f"{harness}: the block is {block}, not its sources' {want}")
+    return out
+
+
+# ---- P5-rows (review e-71a2b94 NIT 2) -------------------------------------------------------------------------------
+def rows_problems(mod) -> list:
+    """Each VENDOR_PENDING_ROWS row's every field moves the merged digest: the block rebuilt by vendor_rows_block from
+    rows with one field of one row changed (or one field added) digests apart from the production block."""
+    out = []
+    for harness in HARNESSES:
+        base = mod.vendor_checker_constants_sha256(harness)
+        rows = mod.VENDOR_PENDING_ROWS[harness]
+        key = sorted(rows)[0]
+        changes = {"the reason": {"reason": "synthetic-other-reason"}, "the state": {"state": "SAME"},
+                   "a reader": {"reader": "vendor_check"}, "a fixture": {"fixture": "synthetic-fixture"},
+                   "a ruling": {"ruling": "synthetic ruling"}}
+        for name, change in changes.items():
+            moved = copy.deepcopy(rows)
+            moved[key] = dict(moved[key], **change)
+            block = copy.deepcopy(mod.VENDOR_CHECKER_CONSTANTS[harness])
+            block["vendor_check"]["rows"] = mod.vendor_rows_block(moved)
+            got = outcome(mod.vendor_checker_constants_sha256, harness, None, block)
+            if got[0] != "ok" or got[1] == base:
+                out.append(f"{harness} {key}: {name} changed does not move the merged digest ({got[:2]})")
+        if mod.vendor_rows_block(rows) != mod.VENDOR_CHECKER_CONSTANTS[harness]["vendor_check"]["rows"]:
+            out.append(f"{harness}: the production block's rows are not vendor_rows_block of VENDOR_PENDING_ROWS")
     return out
 
 
@@ -337,6 +366,10 @@ class P5Constants(unittest.TestCase):
         with world() as ct:
             self.assertEqual(block_problems(ct), [])
 
+    def test_p5_every_row_field_moves_the_merged_digest(self):
+        with world() as ct:
+            self.assertEqual(rows_problems(ct), [])
+
     def test_p5_the_vendor_view_merges_the_block_and_its_pending(self):
         with world() as ct:
             self.assertEqual(view_problems(ct), [])
@@ -388,6 +421,9 @@ P5_WITNESSES = {
     "the side's nested count dropped": ((
         "            \"nested_cli_calls\": sum(len(nested_cli_mentions(c)) for c in cmds)}\n",
         "            \"nested_cli_calls\": 0}\n"), side_problems),
+    "a row entering as its reason and state alone": ((
+        "    return {key: json.dumps(row, sort_keys=True, separators=(\",\", \":\")) for key, row in rows.items()}\n",
+        "    return {key: f\"{row['reason']}: {row['state']}\" for key, row in rows.items()}\n"), rows_problems),
     "the walk's environment row admitted": ((
         "        if isinstance(rec, dict) and any(rec.get(k) is not None for k in (\"row\", \"row_commit\")):\n"
         "            out.append(\"[environment-record] the vendor walk's",
