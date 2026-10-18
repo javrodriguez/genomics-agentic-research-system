@@ -43,8 +43,8 @@ walk_runner.check_record's document with the checker run (or, for a vendor walk,
 graded-true regrade), then runs the same checker the driver ran (drive.take_checker, records="walks": checker_for's
 entry on the committed transcript, check4_walk or the vendor entries' check4_walk_vendor, readers-disagree on a
 non-empty cross-check) against the design view built now (check_take.design_view with the constants in force, the
-routing pin and the walk's run tree; a vendor row's vendor view). The machine the walk ran on is named, never guessed: `machine` is exactly {home,
-temp_root, checkout}, the checker's CHECK_HOME, CHECK_TEMP and CHECKOUT_REPO while it reads, and the run tree is
+routing pin and the walk's run tree; a vendor row's vendor view). The machine the walk ran on is named, never
+guessed: `machine` is exactly {home, temp_root, checkout}, the checker's CHECK_HOME, CHECK_TEMP and CHECKOUT_REPO while it reads, and the run tree is
 temp_root/neutral_name(walk_session_id(walk)), as drive.run_tree_path builds it on that machine. The document
 {"schema": 1, "walk", "n", "walk_commit", "supersedes" (check.json, or recheck-<n-1>.json), "machine", "run_tree",
 "checker_constants_sha256", "checker_reasons", "was" (the superseded file's digest and reasons),

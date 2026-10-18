@@ -5196,7 +5196,8 @@ def vendor_view(design, block=None) -> "Design":
 
 
 def vendor_constants(harness, constants=None, block=None) -> dict:
-    """CHECKER_CONSTANTS (or `constants`) merged with the harness's vendor block (or `block`); a shadowing key refuses."""
+    """CHECKER_CONSTANTS (or `constants`) merged with the harness's vendor block (or `block`); a shadowing key
+    refuses."""
     constants = CHECKER_CONSTANTS if constants is None else constants
     block = VENDOR_CHECKER_CONSTANTS[_vendor_harness(harness)] if block is None else block
     shadowed = sorted(set(block) & set(constants))
