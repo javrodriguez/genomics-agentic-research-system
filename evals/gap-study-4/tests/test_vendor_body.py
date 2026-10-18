@@ -18,7 +18,8 @@ check_take.vendor_round4_problems (section 1b).
               a reply missing its marker; the fixture hash and the source; a leak word; a launch argv the adapter never
               writes, a missing launch journal and one naming another turn's stream (inherited-context); the ledger's
               sent line differing, and a last snapshot the ledger does not bind; the email marker in a published file (one
-              event for any number of hits); a turn that did not end, an outcome off the driver's shapes and a ledger
+              event for any number of hits), and a session file the ledger does not name, with the marker or without
+              (transcript-unreadable by name, never a count of 0; review c-6302fd3 NIT 2); a turn that did not end, an outcome off the driver's shapes and a ledger
               row off the script (outcome-binding); reach into evals/, the home folder and the temp folder, and a path
               under the session's own run tree admitted; the project name; the ledger row, the commit-derived and the
               walk session id; the turn budget; a turn stream line no parser read; a nested-agent switch; codex's
@@ -373,6 +374,13 @@ def case_journal_cwd(t):
     return None, None
 
 
+def unnamed_session_file(marker: bool):
+    """A file under session/ the ledger's native_snapshots does not name (review c-6302fd3 NIT 2): with the email
+    marker in it, or without."""
+    body = f'{{"note": "{__import__("scrub").NOTE}"}}\n' if marker else '{"note": "synthetic"}\n'
+    return lambda path: (path.parent / "session" / "native-turn-9.jsonl").write_text(body)
+
+
 def edits(*pair):
     return lambda t: pair
 
@@ -421,6 +429,11 @@ CASES = {
                                           {"account-email": 1}, None),
     "the email marker in two published files": (("codex", "gemini"), edits(marker_in("stream snapshot"), None),
                                                 {"account-email": 1}, None),
+    # round 12, review c-6302fd3 NIT 2: only the session files the ledger names are read; any other refuses by name
+    "a session file the ledger does not name, carrying the marker": (("codex", "gemini"), edits(
+        None, unnamed_session_file(True)), {"transcript-unreadable": 1}, None),
+    "a session file the ledger does not name": (("codex", "gemini"), edits(None, unnamed_session_file(False)),
+                                                {"transcript-unreadable": 1}, None),
     # outcome-binding (T-24)
     "a turn that did not end": (("codex", "gemini"), edits(turn_not_ended, None), {"outcome-binding": 1}, None),
     "an outcome off the driver's shapes": (("codex", "gemini"), case_outcome_off_shapes, {"outcome-binding": 1},
@@ -626,6 +639,8 @@ P2_WITNESSES = {
         "    hits = [n for n in names if (path.parent / n).is_file() and marker in (path.parent / n).read_bytes()]\n"
         "    if hits:\n        return [f'[{EVENT_EMAIL}] {n}' for n in hits]\n    for name in names:\n"),
         "the email marker in two published files"),
+    "an unnamed session file admitted": (("        if rel not in named:\n", "        if False:\n"),
+                                         "a session file the ledger does not name, carrying the marker"),
     "the turn end unread": (("        if not ended:\n", "        if False:\n"), "a turn that did not end"),
     "the completion legs dropped": (("    problems += completion_problems(path, ledger, pre)\n", ""),
                                     "an outcome off the driver's shapes"),
