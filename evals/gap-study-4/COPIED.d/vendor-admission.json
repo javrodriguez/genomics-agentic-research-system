@@ -162,6 +162,11 @@
       "reason": "Lane vendor-admission round 17 B7 (R4 of the Codex2 sign-in road rulings; glitch-b5's B7 rulings of 18 Oct 2026, claimed by ruling B7-F2): the O and G pin profiles in routing.json, each mode a key of its adapter's MODE_FLAGS and each version its take lock's, the codex and gemini rate-limit entries with their static-read sources, codex's empty spend-cap list in EMPTY_SPEND_LIST_HARNESSES and never NO_MONEY_HARNESSES, gemini's 402 and payment required with its documentation source, the two RULED 18 Oct statuses quoting the ones they supersede, and pin_for and agent_versions on the committed draft; seven mutants, each red."
     },
     {
+      "path": "tests/test_codex_spend_texts.py",
+      "status": "new",
+      "reason": "Lane vendor-admission round 17, glitch-b5's ruling B7-F4 (18 Oct 2026): the error texts the pinned Codex CLI (rust-v0.162.1, commit 092d3acd) prints, each quoted with its file and line; every usage-limit and rate-limit text matches a codex rate-limit marker and no spend-cap marker, every out-of-credits, spend-cap and quota-exceeded text matches a codex spend-cap marker, codex's spend list is text only and codex is out of EMPTY_SPEND_LIST_HARNESSES; its two named mutants go red."
+    },
+    {
       "path": "checks.d/vendor-admission.txt",
       "status": "new",
       "reason": "Lane vendor-admission: this lane's local checks (interface 2), one line per new test module."
