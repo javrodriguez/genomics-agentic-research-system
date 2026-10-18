@@ -37,6 +37,22 @@ delegation, Tue 13 Oct 2026).
       cell the design lacks, a row of another harness, or a login of another name: exit 2 and nothing built. A
       fixture refused: exit 2 and its run tree removed. A walk id already registered: launch-refused, exit 1. A
       held walk (a scan refusal): exit 1, its run tree kept for a human.
+  B17 round 11 (glitch-b5, 17 Oct 2026), the account record bound in this module's generated sweep: account_emails_path
+      is ACCOUNT_EMAILS in the one folder holding WALK_LOGIN_FILES' account folders (absent, empty, not a dict, two
+      parents, a relative or non-text login path: refused by name); account_emails reads (operator, account) for a
+      codex or gemini take and refuses by name another harness, a path that is not absolute text, a missing file, a
+      link, a mode other than 600, another owner, an unopenable file, a file replaced between check and read (its
+      descriptor closed either way), a file inside a repository, more than 4096 bytes, bytes that are not one JSON
+      object with unique keys, a value that is not an object, an extra key (a key that is not a name is never
+      echoed), a missing key for the take's harness, and a value that is not an address (too short, too long, not
+      text); no refusal carries an address. With no record lease_secrets refuses before any lease token is read and
+      a Gemini login_secrets when made; a Claude Code take never reads it.
+  B18 round 11, R-6 and round 10 ruling 3's road bound in the same sweep: build_run_tree(harness=) places the native
+      file beside every CLAUDE.md with its bytes, in the one commit, for codex and gemini, and neither for Claude Code;
+      no root CLAUDE.md or a commit already carrying the name refuses and leaves nothing; place_instruction_file
+      hands back the name, and refuses by name an untracked copy already in the checkout, a commit without one of the
+      checkout's CLAUDE.md files, a copy altered in the commit or in the checkout, and a checkout run_tree_problems
+      refuses.
   G1  the generated mutants (tests/walk_mutation.py's generator over every top-level function of walk_builders.py and
       walk_runner.main): EQUIVALENT names only generated ids, each with a reason.
 
@@ -1458,9 +1474,9 @@ class TestSysPath(unittest.TestCase):
 
 
 # Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can.
-GENERATED_ORDER = ("B1Identity", "B6Row", "B2Login", "B3Counters", "B11Derived", "B10Resources", "B7Production",
-                   "B8Present", "B13Lease", "B14Gemini", "B15Bringup", "B16Watch", "B5Fixture", "B4RunTree", "G1Generated",
-                   "B12Scanner", "B9Cli", "TestSysPath")
+GENERATED_ORDER = ("B17Account", "B18Native", "B1Identity", "B6Row", "B2Login", "B3Counters", "B11Derived",
+                   "B10Resources", "B7Production", "B8Present", "B13Lease", "B14Gemini", "B15Bringup", "B16Watch",
+                   "B5Fixture", "B4RunTree", "G1Generated", "B12Scanner", "B9Cli", "TestSysPath")
 
 
 def run_witnesses(names) -> int:
@@ -3243,6 +3259,432 @@ def b16_project_problems(mod, tmp: Path) -> list:
     if launched != "launch" or calls != [(row, "/synthetic/ev", str(tmp / "tree"), project)]:
         out.append(f"B16.project: the sidecar got {calls}, not the walk's row, evidence, tree and project {project}")
     return out
+
+
+# ------------------------------------------------------------------------------------------------- B17
+# Round 11 (glitch-b5, Sat 17 Oct 2026): the round 10 battery's generated sweep of this module left the account record's
+# reader (round 10 rulings 1, 2 and 4) without a binding here: its rules were bound only in test_vendor_roads, which the
+# sweep does not run. B17 binds each rule in this module, every value TEST DATA under the reserved .invalid domain.
+B17_OTHER = "claude-account@example.invalid"
+
+
+@contextlib.contextmanager
+def b17_folder(record=None, *, raw=None):
+    """A private folder laid out as the box's: claude1/ and r4-g/ account folders, run_take.WALK_LOGIN_FILES patched to
+    them, and the account record beside them holding `record` (default TEST_ACCOUNT_EMAILS) as JSON, or `raw` bytes,
+    mode 600. Yields the record's path."""
+    with tempfile.TemporaryDirectory() as t:
+        top = Path(t).resolve() / "secrets"
+        top.mkdir(mode=0o700)
+        files = {}
+        for account in ("claude1", "r4-g"):
+            (top / account).mkdir(mode=0o700)
+            files[account] = str(top / account / "login")
+        f = top / "account-emails.json"
+        if raw is not None:
+            f.write_bytes(raw)
+            os.chmod(f, 0o600)
+        else:
+            account_record_file(top, record)
+        with mock.patch.object(rt, "WALK_LOGIN_FILES", files, create=True):
+            yield f
+
+
+@problems_by_assertion("B17.record")
+def b17_path_problems(mod) -> list:
+    """account_emails_path: the one folder holding WALK_LOGIN_FILES' account folders, or a refusal by name."""
+    out = []
+
+    def refused(label, words, files):
+        with mock.patch.object(rt, "WALK_LOGIN_FILES", files, create=True):
+            try:
+                got = mod.account_emails_path()
+            except mod.BuilderRefused as e:
+                if words not in str(e) or "account-emails.json" not in str(e):
+                    out.append(f"B17.record: {label} refused for another reason: {e}")
+                return
+            except Exception as e:  # noqa: BLE001
+                out.append(f"B17.record: {label} raised {type(e).__name__}, not BuilderRefused: {e}")
+                return
+            out.append(f"B17.record: {label} was admitted ({got!r})")
+
+    with b17_folder() as f:
+        got = mod.account_emails_path()
+        if got != str(f):
+            out.append(f"B17.record: the record's path is {got!r}, not {str(f)!r}")
+        top = str(f.parent)
+    for label, files in (("no WALK_LOGIN_FILES", None), ("an empty WALK_LOGIN_FILES", {}),
+                         ("a WALK_LOGIN_FILES that is a list", [top + "/claude1/login"])):
+        refused(label, "records no WALK_LOGIN_FILES", files)
+    one = "do not sit in one private folder"
+    for label, files in (("account folders under two parents",
+                          {"claude1": top + "/claude1/login", "r4-g": top + "/elsewhere/r4-g/login"}),
+                         ("a relative login path", {"claude1": "claude1/login"}),
+                         ("a login path that is not text", {"claude1": 7}),
+                         ("one absolute and one relative login path",
+                          {"claude1": top + "/claude1/login", "r4-g": "r4-g/login"})):
+        refused(label, one, files)
+    return out
+
+
+@problems_by_assertion("B17.record")
+def b17_record_problems(mod) -> list:
+    """account_emails on TEST DATA records: the two addresses read for a vendor take, every rule refusing by name."""
+    out, said = [], []
+    want = {"codex": (TEST_ACCOUNT_EMAILS["operator"], TEST_ACCOUNT_EMAILS["codex"]),
+            "gemini": (TEST_ACCOUNT_EMAILS["operator"], TEST_ACCOUNT_EMAILS["gemini"])}
+
+    def refused(label, words, harness="codex", path=None):
+        try:
+            got = mod.account_emails(harness) if path is None else mod.account_emails(harness, path)
+        except mod.BuilderRefused as e:
+            said.append(str(e))
+            for w in (words if isinstance(words, tuple) else (words,)) + ("account-emails.json",):
+                if w not in str(e):
+                    out.append(f"B17.record: {label} refused without naming {w!r}: {e}")
+            return
+        except Exception as e:  # noqa: BLE001
+            out.append(f"B17.record: {label} raised {type(e).__name__}, not BuilderRefused: {e}")
+            return
+        out.append(f"B17.record: {label} was admitted ({got!r})")
+
+    def admitted(label, harness, path=None):
+        try:
+            got = tuple(mod.account_emails(harness) if path is None else mod.account_emails(harness, path))
+        except Exception as e:  # noqa: BLE001
+            out.append(f"B17.record: {label} refused: {type(e).__name__}: {e}")
+            return
+        if got != want[harness]:
+            out.append(f"B17.record: {label} read {got!r}, not the operator's and its account's addresses")
+
+    with b17_folder() as f:
+        for harness in ("codex", "gemini"):
+            admitted(f"a complete record ({harness}, by its path)", harness)
+            admitted(f"a complete record ({harness}, named)", harness, str(f))
+        for harness in ("claude-code", "synthetic-harness"):
+            refused(f"a {harness} take", ("sweeps no account address", repr(harness)), harness)
+        refused("a relative path", "is named by an absolute path", path="account-emails.json")
+        refused("a path that is not text", "is named by an absolute path", path=7)
+        refused("no record", "does not exist", path=str(f.parent / "absent" / "account-emails.json"))
+        link = f.parent / "account-emails-link.json"
+        link.symlink_to(f)
+        refused("a link to the record", "regular file, never a link", path=str(link))
+        for mode in (0o644, 0o640, 0o700, 0o400):
+            os.chmod(f, mode)
+            refused(f"a record of mode {mode:o}", "mode must be 600")
+        os.chmod(f, 0o600)
+        real_uid = os.getuid()
+        with mock.patch.object(os, "getuid", lambda: real_uid + 1):
+            refused("a record another user owns", "owned by the reading user")
+        real_open, real_close, real_lstat = os.open, os.close, os.lstat
+        opened, closed = [], []
+
+        def spy_open(p, *a, **k):
+            fd = real_open(p, *a, **k)
+            if os.fspath(p) == str(f):
+                opened.append(fd)
+            return fd
+
+        def spy_close(fd):
+            closed.append(fd)
+            return real_close(fd)
+        with mock.patch.object(os, "open", spy_open), mock.patch.object(os, "close", spy_close):
+            admitted("a complete record (its descriptor watched)", "codex")
+        if not opened or [fd for fd in opened if fd not in closed]:
+            out.append(f"B17.record: the record's descriptor was not closed (opened {opened}, closed {closed})")
+
+        def refuse_open(p, *a, **k):
+            if os.fspath(p) == str(f):
+                raise PermissionError("synthetic: the record cannot be opened")
+            return real_open(p, *a, **k)
+        with mock.patch.object(os, "open", refuse_open):
+            refused("a record that cannot be opened", "cannot be opened")
+        sibling = f.parent / "sibling.json"
+        sibling.write_text("{}")
+        os.chmod(sibling, 0o600)
+
+        def swapped_lstat(p, *a, **k):
+            return real_lstat(sibling if os.fspath(p) == str(f) else p, *a, **k)
+        opened.clear()
+        closed.clear()
+        with mock.patch.object(os, "lstat", swapped_lstat), mock.patch.object(os, "open", spy_open), \
+                mock.patch.object(os, "close", spy_close):
+            refused("a record replaced between its check and its read", "changed between its check and its read")
+        if not opened or [fd for fd in opened if fd not in closed]:
+            out.append(f"B17.record: a refused read left its descriptor open (opened {opened}, closed {closed})")
+        (f.parent / ".git").mkdir()
+        refused("a record inside a repository", "outside every repository")
+    padded = json.dumps(TEST_ACCOUNT_EMAILS).encode() + b" " * 5000
+    record = json.dumps(TEST_ACCOUNT_EMAILS).encode()
+    for label, raw, words in (
+            ("a record larger than 4096 bytes", padded, "larger than 4096 bytes"),
+            ("text that is not JSON", b"{operator", "is not one JSON object with unique keys"),
+            ("bytes that are not UTF-8", b"\xff\xfe" + record, "is not one JSON object with unique keys"),
+            ("a key that occurs twice", record[:-1] + b', "operator": "' + B17_OTHER.encode() + b'"}',
+             "is not one JSON object with unique keys"),
+            ("a key that occurs twice (another vendor's)", record[:-1] + b', "gemini": "' + B17_OTHER.encode()
+             + b'"}', "is not one JSON object with unique keys")):
+        with b17_folder(raw=raw):
+            refused(label, words)
+    for label, raw in (("a JSON list of the keys", b'["operator", "codex"]'), ("a JSON list", b"[" + record + b"]"),
+                       ("a JSON string", b'"operator"')):
+        with b17_folder(raw=raw):
+            refused(label, "is not one JSON object")
+            if said and said[-1].endswith("with unique keys"):
+                out.append(f"B17.record: {label} refused as unparseable, not as a value that is not an object")
+    with b17_folder(dict(TEST_ACCOUNT_EMAILS, claude=B17_OTHER)):
+        for harness in ("codex", "gemini"):
+            refused(f"an extra key ({harness})", ("holds keys other than", '"claude"'), harness)
+    with b17_folder(dict(TEST_ACCOUNT_EMAILS, **{"Not A Name!": B17_OTHER})):
+        refused("an extra key that is not a name", ("holds keys other than", "a key that is not a name"))
+        if said and "Not A Name!" in said[-1]:
+            out.append(f"B17.record: a refusal carries the extra key itself: {said[-1]}")
+    with b17_folder({"codex": TEST_ACCOUNT_EMAILS["codex"], "gemini": TEST_ACCOUNT_EMAILS["gemini"]}):
+        for harness in ("codex", "gemini"):
+            refused(f"no operator key ({harness})", 'holds no key "operator"', harness)
+    with b17_folder({"operator": TEST_ACCOUNT_EMAILS["operator"], "codex": TEST_ACCOUNT_EMAILS["codex"]}):
+        admitted("a codex take without the gemini key", "codex")
+        refused("a gemini take without the gemini key", 'holds no key "gemini"', "gemini")
+    with b17_folder({"operator": TEST_ACCOUNT_EMAILS["operator"], "gemini": TEST_ACCOUNT_EMAILS["gemini"]}):
+        admitted("a gemini take without the codex key", "gemini")
+        refused("a codex take without the codex key", 'holds no key "codex"', "codex")
+    for key in ("operator", "codex", "gemini"):
+        for value in ("not-an-address", "a@b.c", "a" * 243 + "@example.invalid", "x@example.invalid\n",
+                      "@example.invalid", "two@example", "", 42, None, [TEST_ACCOUNT_EMAILS["codex"]]):
+            with b17_folder(dict(TEST_ACCOUNT_EMAILS, **{key: value})):
+                refused(f"a {key} value {value!r:.40}", f'"{key}" value is not an email address')
+    for value in ("op@a.bc", "a" * 238 + "@example.invalid"):         # the shortest and the longest lengths admitted
+        with b17_folder(dict(TEST_ACCOUNT_EMAILS, operator=value)):
+            try:
+                got = mod.account_emails("codex")
+                if tuple(got) != (value, TEST_ACCOUNT_EMAILS["codex"]):
+                    out.append(f"B17.record: an operator address of length {len(value)} read as {got!r}")
+            except Exception as e:  # noqa: BLE001
+                out.append(f"B17.record: an operator address of length {len(value)} refused: {e}")
+    for why in said:
+        if any(a in why for a in tuple(TEST_ACCOUNT_EMAILS.values()) + (B17_OTHER,)):
+            out.append(f"B17.record: a refusal carries an address: {why}")
+    return out
+
+
+@problems_by_assertion("B17.closed")
+def b17_closed_problems(mod, tmp: Path) -> list:
+    """No record, no vendor take: lease_secrets refuses at take start before any lease token is read, and a Gemini
+    take's login_secrets when its secrets() is made; a Claude Code take's login_secrets never reads the record."""
+    from box import scan_record
+    out = []
+    absent = str(tmp / "absent" / "account-emails.json")
+    lease = str(lease_file(tmp))
+    gemini_login = str(login_file(f"GEMINI_API_KEY={GEMINI_KEY}\n"))
+    claude_login = str(login_file(LOGIN + "=" + "synthetic-claude-token-" + "a" * 12 + "\n"))
+    reads = []
+    real_lease = scan_record.read_lease_tokens
+
+    def refused(label, fn, *args):
+        try:
+            fn(*args)
+        except mod.BuilderRefused as e:
+            if "account-emails.json" not in str(e):
+                out.append(f"B17.closed: {label} refused for another reason: {e}")
+            return
+        except Exception as e:  # noqa: BLE001
+            out.append(f"B17.closed: {label} raised {type(e).__name__}, not BuilderRefused: {e}")
+            return
+        out.append(f"B17.closed: {label} was admitted with no account record")
+
+    with mock.patch.object(mod, "account_emails_path", lambda: absent), \
+            mock.patch.object(scan_record, "read_lease_tokens", lambda *a, **k: reads.append(a) or real_lease(*a, **k)):
+        refused("lease_secrets", mod.lease_secrets, lease)
+        if reads:
+            out.append("B17.closed: lease_secrets read the lease's tokens before refusing")
+        refused("login_secrets for a gemini take", mod.login_secrets, gemini_login, rt.GEMINI)
+    with mock.patch.object(mod, "account_emails_path", side_effect=AssertionError("B17.closed: the record was read")):
+        try:
+            secrets = mod.login_secrets(claude_login, rt.CLAUDE_CODE)
+            if [k for k, _ in secrets()] != ["token"]:
+                out.append("B17.closed: a Claude Code take's secrets are not its token alone")
+        except AssertionError as e:
+            out.append(str(e))
+    with account_boundary(mod):
+        for label, fn, args in (("lease_secrets", mod.lease_secrets, (lease,)),
+                                ("login_secrets for a gemini take", mod.login_secrets, (gemini_login, rt.GEMINI))):
+            try:
+                secrets = fn(*args)
+                pairs = [p for p in secrets() if p[0] == "email"]
+                if pairs != (CODEX_EMAIL_PAIRS if fn is mod.lease_secrets else GEMINI_EMAIL_PAIRS):
+                    out.append(f"B17.closed: {label}'s email pairs on a TEST DATA record are {len(pairs)} pairs")
+            except Exception as e:  # noqa: BLE001
+                out.append(f"B17.closed: {label} refused on a TEST DATA record: {type(e).__name__}: {e}")
+    return out
+
+
+class B17Account(Case):
+    def test_the_account_record_s_folder(self):
+        self.assertEqual(b17_path_problems(wb()), [])
+
+    def test_the_account_record_s_rules(self):
+        self.assertEqual(b17_record_problems(wb()), [])
+
+    def test_no_record_no_vendor_take(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(b17_closed_problems(wb(), Path(t)), [])
+
+
+# ------------------------------------------------------------------------------------------------- B18
+# Round 11 (glitch-b5, Sat 17 Oct 2026): R-6 and round 10 ruling 3's road (build_run_tree with a harness, and
+# place_instruction_file) bound in this module's generated sweep, as B17 binds the account record.
+B18_TEXT = "# Synthetic instructions\n\nRead the project's README first.\n"
+B18_NESTED = "# Synthetic workspace instructions\n"
+B18_NATIVE = {"codex": "AGENTS.md", "gemini": "GEMINI.md"}
+
+
+@contextlib.contextmanager
+def b18_origin(claude_md=B18_TEXT, nested=B18_NESTED, extra=None):
+    """A scratch origin: one commit holding CLAUDE.md and gars/CLAUDE.md (either None: absent), src/, evals/ and
+    `extra` files."""
+    with tbi.scratch_repo() as repo:
+        (repo / "src").mkdir()
+        (repo / "src" / "a.txt").write_text("synthetic source\n")
+        (repo / "gars").mkdir()
+        (repo / "gars" / "README.md").write_text("synthetic workspace\n")
+        (repo / "evals").mkdir()
+        (repo / "evals" / "hidden.txt").write_text("synthetic study file\n")
+        for rel, text in (("CLAUDE.md", claude_md), ("gars/CLAUDE.md", nested)) + tuple((extra or {}).items()):
+            if text is not None:
+                (repo / rel).write_text(text)
+        tbi.git(repo, "add", "-A")
+        tbi.git(repo, "commit", "-q", "-m", "A synthetic origin")
+        yield repo, tbi.git(repo, "rev-parse", "HEAD")
+
+
+@problems_by_assertion("B18.native")
+def b18_road_problems(mod) -> list:
+    """build_run_tree with each harness: the native file beside every CLAUDE.md, its bytes, in the one commit."""
+    out = []
+    drive = MODS["drive"]
+    for harness in ("codex", "gemini", rt.CLAUDE_CODE):
+        with b18_origin() as (repo, sha), temp_root():
+            try:
+                tree = Path(mod.build_run_tree("w-0001", repo=repo, commit=sha, exclude=["evals"], harness=harness))
+            except Exception as e:  # noqa: BLE001
+                out.append(f"B18.native: {harness}: build_run_tree raised {type(e).__name__}: {e}")
+                continue
+            want = B18_NATIVE.get(harness)
+            for folder, text in (("", B18_TEXT), ("gars/", B18_NESTED)):
+                for name in B18_NATIVE.values():
+                    if (tree / folder / name).exists() != (name == want):
+                        verb = "lacks" if name == want else "carries"
+                        out.append(f"B18.native: {harness}: {folder or 'the root'} {verb} {name}")
+                if want and (tree / folder / want).is_file():
+                    if (tree / folder / want).read_bytes() != text.encode():
+                        out.append(f"B18.native: {harness}: {folder}{want} is not its CLAUDE.md's bytes")
+                    if tbi.git_bytes(tree, "show", f"HEAD:{folder}{want}") != text.encode():
+                        out.append(f"B18.native: {harness}: {folder}{want} is not in the checkout's one commit")
+            if (tbi.git(tree, "rev-list", "--all", "--count"), tbi.git(tree, "log", "-1", "--format=%s"),
+                    tbi.git(tree, "status", "--porcelain")) != ("1", drive.TREE_SUBJECT, ""):
+                out.append(f"B18.native: {harness}: not one commit, its neutral subject and a clean status")
+            if drive.run_tree_problems(tree, walk_sid("w-0001"), ["evals"]):
+                out.append(f"B18.native: {harness}: run_tree_problems on the built checkout")
+    for label, kw, words in (("no root CLAUDE.md", {"claude_md": None}, "carries no root CLAUDE.md"),
+                             ("AGENTS.md already in the commit", {"extra": {"AGENTS.md": "# other\n"}},
+                              "the pinned tree already carries AGENTS.md"),
+                             ("gars/AGENTS.md already in the commit", {"extra": {"gars/AGENTS.md": "# other\n"}},
+                              "the pinned tree already carries AGENTS.md (gars/AGENTS.md)")):
+        with b18_origin(**kw) as (repo, sha), temp_root() as tmp:
+            try:
+                mod.build_run_tree("w-0001", repo=repo, commit=sha, exclude=["evals"], harness="codex")
+                out.append(f"B18.native: {label}: a codex checkout was built")
+            except mod.BuilderRefused as e:
+                if words not in str(e):
+                    out.append(f"B18.native: {label}: refused for another reason: {e}")
+            except Exception as e:  # noqa: BLE001
+                out.append(f"B18.native: {label}: raised {type(e).__name__}, not BuilderRefused: {e}")
+            if list(Path(tmp).iterdir()):
+                out.append(f"B18.native: {label}: a refused build left its checkout")
+    return out
+
+
+@problems_by_assertion("B18.place")
+def b18_place_problems(mod) -> list:
+    """place_instruction_file on a checkout built without it: its name handed back, and each refusal by name."""
+    out = []
+    sid = walk_sid("w-0001")
+
+    def placed(label, repo, sha, tree, harness="codex", want="AGENTS.md"):
+        try:
+            got = mod.place_instruction_file(tree, harness, repo=repo, commit=sha, session_id=sid, exclude=["evals"])
+        except Exception as e:  # noqa: BLE001
+            out.append(f"B18.place: {label}: raised {type(e).__name__}: {e}")
+            return
+        if got != want:
+            out.append(f"B18.place: {label}: handed back {got!r}, not {want!r}")
+
+    def refused(label, words, repo, sha, tree):
+        try:
+            mod.place_instruction_file(tree, "codex", repo=repo, commit=sha, session_id=sid, exclude=["evals"])
+        except mod.BuilderRefused as e:
+            if words not in str(e):
+                out.append(f"B18.place: {label}: refused for another reason: {e}")
+            return
+        except Exception as e:  # noqa: BLE001
+            out.append(f"B18.place: {label}: raised {type(e).__name__}, not BuilderRefused: {e}")
+            return
+        out.append(f"B18.place: {label}: placed")
+
+    @contextlib.contextmanager
+    def bare_tree(**kw):
+        with b18_origin(**kw) as (repo, sha), temp_root():
+            yield repo, sha, Path(mod.build_run_tree("w-0001", repo=repo, commit=sha, exclude=["evals"],
+                                                     harness=rt.CLAUDE_CODE))
+
+    with bare_tree() as (repo, sha, tree):
+        placed("a codex checkout", repo, sha, tree)
+        if (tree / "AGENTS.md").read_bytes() != B18_TEXT.encode() \
+                or (tree / "gars" / "AGENTS.md").read_bytes() != B18_NESTED.encode():
+            out.append("B18.place: the placed copies are not their CLAUDE.md's bytes")
+    with bare_tree() as (repo, sha, tree):
+        placed("a claude-code checkout", repo, sha, tree, rt.CLAUDE_CODE, None)
+        if [p for p in ("AGENTS.md", "GEMINI.md") if (tree / p).exists()]:
+            out.append("B18.place: a claude-code checkout was given a native file")
+    for dest in ("AGENTS.md", "gars/AGENTS.md"):
+        with bare_tree() as (repo, sha, tree):
+            (tree / dest).write_text("# untracked\n")
+            refused(f"an untracked {dest}", f"the checkout already holds {dest}", repo, sha, tree)
+    with bare_tree() as (repo, sha, tree), b18_origin(nested=None) as (other, other_sha):
+        refused("a commit without gars/CLAUDE.md", "the pinned commit carries no gars/CLAUDE.md", other, other_sha,
+                tree)
+    gate = subprocess.run
+
+    def altering(when):
+        """subprocess.run with the placed AGENTS.md altered around `when` ("add": in the commit only; "commit": in the
+        checkout only), never its CLAUDE.md."""
+        def run(args, *a, **kw):
+            argv = [str(x) for x in args] if isinstance(args, (list, tuple)) else []
+            step = argv[3] if len(argv) > 3 and argv[:2] == ["git", "-C"] else None
+            target = Path(argv[2]) / "AGENTS.md" if step == when else None
+            kept = target.read_bytes() if target is not None and target.is_file() else None
+            if kept is not None and when == "add":
+                target.write_bytes(kept + b"altered\n")
+            got = gate(args, *a, **kw)
+            if kept is not None:
+                target.write_bytes(kept if when == "add" else kept + b"altered\n")
+            return got
+        return run
+    for when, label in (("add", "a copy altered in the commit"), ("commit", "a copy altered in the checkout")):
+        with bare_tree() as (repo, sha, tree), mock.patch.object(subprocess, "run", altering(when)):
+            refused(label, "AGENTS.md in the checkout is not its CLAUDE.md's bytes", repo, sha, tree)
+    with bare_tree() as (repo, sha, tree), \
+            mock.patch.object(sys.modules["drive"], "run_tree_problems", lambda *a: ["synthetic: a planted problem"]):
+        refused("a checkout run_tree_problems refuses", "synthetic: a planted problem", repo, sha, tree)
+    return out
+
+
+class B18Native(Drafted):
+    def test_the_native_file_beside_every_claude_md(self):
+        self.assertEqual(b18_road_problems(wb()), [])
+
+    def test_place_instruction_file_refuses_by_name(self):
+        self.assertEqual(b18_place_problems(wb()), [])
 
 
 if __name__ == "__main__":
