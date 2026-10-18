@@ -313,10 +313,13 @@ class LowerTests(Workspace):
         """`apply` gains no lowering: T9's "Nothing else in the file changes" stays true."""
         project = self.local_project('applied', ('cutandrun',))
         cfg = project / '_config/cutandrun.yaml'
+        argv = ['--workspace', str(project.parents[1]), 'apply',
+                '--project', str(project), '--assay', 'cutandrun', '--genome', 'R64-1-1']
         with patch.object(configure.os, 'access', return_value=True):
-            code, out = quiet(configure.main, ['--workspace', str(project.parents[1]), 'apply',
-                                               '--project', str(project), '--assay', 'cutandrun',
-                                               '--genome', 'R64-1-1'])
+            # R-confirm (0302): every apply writes only what a dry run showed.
+            code, out = quiet(configure.main, argv + ['--dry-run'])
+            self.assertEqual(code, 0, out)
+            code, out = quiet(configure.main, argv)
         self.assertEqual(code, 0, out)
         self.assertEqual(wl.read_config(cfg)['compute.mem'], '64G')
         self.assertFalse([key for key in out if 'lower' in key or 'mem' in key], out)
