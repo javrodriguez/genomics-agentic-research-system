@@ -121,7 +121,8 @@ VALUE_SOURCES = {
                                  read="security.folderTrust.enabled defaults to true (settings.security?.folderTrust"
                                       "?.enabled ?? true), although docs/cli/trusted-folders.md calls the feature off "
                                       "by default; with it on, a headless run in an untrusted folder throws "
-                                      "FatalUntrustedWorkspaceError, exit 55 (gemini-cli-core dist/src/utils/errors.js); "
+                                      "FatalUntrustedWorkspaceError, exit 55 "
+                                      "(gemini-cli-core dist/src/utils/errors.js); "
                                       "set to false, the startup check returns before any trust lookup"),
 }
 # The settings file's path relative to GEMINI_CLI_HOME (for example ".gemini/settings.json"), once measured.
