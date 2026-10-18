@@ -53,3 +53,5 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py EB drive.py walk_regr
 # Round 17 (glitch-b5, Sun 18 Oct 2026): T5, the first-walk road for arms O and G; the files each piece edits, against
 # the same source lists. B2 and B3: the lease source, and the placed lease checked as the agent's after the grant.
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/run_take.py walk_builders.py tests/test_run_take.py tests/test_walk_builders.py
+# B4 (R1): arm O's egress host, chatgpt.com, from the pinned Codex's CHATGPT_CODEX_BASE_URL, and its named residual.
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/egress/proxy_conf.py build_draft.py prereg-draft.json tests/test_egress.py tests/test_build_draft.py

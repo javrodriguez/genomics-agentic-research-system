@@ -920,7 +920,20 @@ def describe(root=None):
          "ruling": "glitch-b5's pre-freeze ruling, Fri 16 Oct 2026 (review r13's fact 2), under Javier's delegation; "
                    "its readers rebuilt on reviews r14 and r15 the same day",
          "closed_check": "tests/test_nested_agent.py (the store's allow-list, the count, the human sample, the "
-                         "persistence flag); tests/test_routing.py TestRound4Additions (nested-agent)"}]
+                         "persistence flag); tests/test_routing.py TestRound4Additions (nested-agent)"},
+        # glitch-b5's ruling R1 (Sun 18 Oct 2026; lane vendor-admission round 17, B4): arm O's one host.
+        {"name": "arm O egress host",
+         "text": "arm O's one egress host is chatgpt.com, exactly (no subdomain): the 13 Oct owner amendment requires "
+                 "subscription sign-in, and at the pinned Codex 0.162.1 a ChatGPT login sends its model requests "
+                 "to CHATGPT_CODEX_BASE_URL, https://chatgpt.com/backend-api/codex (read statically at the tag "
+                 "rust-v0.162.1, codex-rs/model-provider-info/src/lib.rs line 80; proxy_conf.CODEX_HOST_SOURCE). "
+                 "chatgpt.com is also where the Codex2 account's own ChatGPT data lives, and a take holds a copy of "
+                 "the lease; the proxy sees hosts, not paths, and the study does not intercept TLS, so a Codex take "
+                 "can reach that account's data through its one allowed host. The operator confirms the account "
+                 "holds nothing a test agent should not reach.",
+         "ruling": "glitch-b5's ruling R1, Sun 18 Oct 2026, under Javier's delegation",
+         "closed_check": "tests/test_egress.py CodexHostTest (the host is the pinned base URL's host alone; the API "
+                         "host, a leading dot and the sign-in host each red)"}]
     # Q-w7a-1 (ruling W7A-close-1): S7-D4 ruled (A), the watcher's final stop, pre-registered with its check.
     d["final_stop"] = {
         "text": "the watcher's last recorded interval must close strictly after post-N's snapshot; a take whose last "

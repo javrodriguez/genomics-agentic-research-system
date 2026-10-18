@@ -19,6 +19,7 @@ import re
 import subprocess
 import sys
 import unittest
+from pathlib import Path
 from unittest import mock
 
 sys.dont_write_bytecode = True
@@ -286,6 +287,19 @@ class CodexHostTest(unittest.TestCase):
                 got = codex_host_problems()
                 print(f"  mutant {name}: {'red' if got else 'GREEN (survived)'}")
                 self.assertTrue(got, f"mutant {name} survived")
+
+
+class CodexHostResidualTest(unittest.TestCase):
+    def test_r1s_residual_is_in_the_drafts_box_residuals(self):
+        """R1's named residual is pre-registered with the study's box limitations (prereg-draft's box_residuals)."""
+        draft = json.loads((Path(HERE) / "prereg-draft.json").read_text(encoding="utf-8"))
+        rows = [r for r in draft["box_residuals"] if r.get("name") == "arm O egress host"]
+        self.assertEqual(len(rows), 1)
+        for words in ("chatgpt.com", "CHATGPT_CODEX_BASE_URL", "rust-v0.162.1", "lib.rs line 80", "hosts, not paths",
+                      "does not intercept TLS", "a copy of the lease", "Codex2"):
+            self.assertIn(words, rows[0]["text"])
+        self.assertIn("R1", rows[0]["ruling"])
+        self.assertIn("tests/test_egress.py CodexHostTest", rows[0]["closed_check"])
 
 
 class RenderTest(unittest.TestCase):

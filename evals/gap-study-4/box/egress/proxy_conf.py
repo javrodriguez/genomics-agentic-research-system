@@ -2,8 +2,9 @@
 
 Each take gets its own proxy container and its own internal network (ruling C7). The proxy is squid, because one
 file carries the whole policy: a CONNECT to exactly one host, on port 443, chosen by the take's harness (D8 B2
-item 8: arm A `api.anthropic.com`, arm O `api.openai.com`, arm G `generativelanguage.googleapis.com`), and
-everything else denied. The template `proxy.conf` beside this file holds the one slot @ALLOWED_HOST@.
+item 8: arm A `api.anthropic.com`, arm G `generativelanguage.googleapis.com`; arm O `chatgpt.com` by glitch-b5's
+ruling R1, 18 Oct 2026, the host of the pinned Codex's CHATGPT_CODEX_BASE_URL, CODEX_HOST_SOURCE), and everything
+else denied. The template `proxy.conf` beside this file holds the one slot @ALLOWED_HOST@.
 
     render(harness)        the rendered configuration (refuses an unknown harness; never defaults)
     allowed_hosts(text)    every host an `http_access allow` line lets through, over a closed directive grammar
@@ -28,10 +29,26 @@ PENDING = "PENDING"
 
 CODEX = "codex"
 GEMINI = "gemini"
+# Arm O's one host (lane vendor-admission round 17, B4; glitch-b5's ruling R1, Sun 18 Oct 2026): exactly chatgpt.com,
+# no subdomain. The 13 Oct owner amendment requires subscription sign-in, and at the pinned Codex 0.162.1 a ChatGPT
+# login sends its model requests to CHATGPT_CODEX_BASE_URL (ModelProviderInfo::to_api_provider's default base URL for
+# the ChatGPT auth modes, the same file, lines 425-441), so api.openai.com would refuse every turn. Read statically
+# at the pinned tag; no model call, no network from the box. Named residual (R1): chatgpt.com is also where the
+# Codex2 account's own ChatGPT data lives, and a take holds a copy of the lease; the proxy sees hosts, not paths, and
+# the study does not intercept TLS.
+CODEX_HOST_SOURCE = {
+    "constant": "CHATGPT_CODEX_BASE_URL",
+    "value": "https://chatgpt.com/backend-api/codex",
+    "tag": "rust-v0.162.1",
+    "commit": "092d3acd6bec3e3a14bdc7e7a2810ab628ab759d",
+    "file": "codex-rs/model-provider-info/src/lib.rs",
+    "line": 80,
+    "url": "https://github.com/openai/codex/blob/rust-v0.162.1/codex-rs/model-provider-info/src/lib.rs#L80",
+}
 # The one allowed host, by harness (interface 11; the take's harness, never its arm letter).
 HOSTS = {
     harness_bookkeeping.CLAUDE_CODE: "api.anthropic.com",
-    CODEX: "api.openai.com",
+    CODEX: "chatgpt.com",
     GEMINI: "generativelanguage.googleapis.com",
 }
 
