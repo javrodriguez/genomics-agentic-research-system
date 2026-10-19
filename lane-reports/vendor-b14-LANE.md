@@ -1,4 +1,4 @@
-Status: needs-review
+Status: running
 
 ROUND 1 SUMMARY FOR REVIEW (cloud executor, 2026-10-19 03:14 EDT):
 - B15 (ruling B15, arm O, walk w-o3): red 31e1305b, test_codex_usage_source failures=3, first failure line "U1: read_stream refuses the pinned struct's turn.completed: turn.completed.usage carries key(s) with no entry: ['cache_write_input_tokens']". Green aa8c9ecf.
@@ -11,7 +11,7 @@ ROUND 1 SUMMARY FOR REVIEW (cloud executor, 2026-10-19 03:14 EDT):
 - B14 (ruling B14, arm G, walk w-g5): lane-reports/B14-DESIGN-NOTE.md, read from the verified 0.64.0 tarball. The main conversation always requests the row's id. The other ids come from helper aliases (loop detection, compression, the codebase_investigator subagent, a pro-model helper that resolves to customtools), and stats.models is keyed by the server-reported modelVersion, so no setting can make it name only the row's id.
 - B14 recommendation: option C. Pin helpers by settings (disableLoopDetection, invoke_agent excluded, helper aliases repointed) and keep the identity check strict. Before any measured arm G walk, glitch-26 reads the held w-g5 record for the main turns' reported version; only if it is not the row's id, admit that one named server alias as a named difference in plan section 6.
 
-RESUME HERE: review stop (round 1)
+RESUME HERE: round 2 in progress (rulings R-B14-1, R-B14-2, R-B14-3)
 
 Clock: 2026-10-19 02:48 EDT (lane vendor-b14, cloud executor, branch from lane/vendor-admission at 00942460).
 
@@ -24,3 +24,4 @@ Progress:
 - 03:00 EDT: B14 (ruling B14) started: the pinned Gemini CLI tarball, read only.
 - 03:06 EDT: checks on the B15 green tree under env -i (PATH, HOME, LANG, TMPDIR only, TMPDIR outside the clone), all OK: test_codex_usage_source 3 (--witnesses 9/9), test_codex_adapter 55, test_codex_native 15, test_pending_codex_walk 11, test_codex_executed_refusal 5, test_codex_identity 5, test_codex_spend_texts 3, test_vendor_pins 5, test_vendor_record_binding 12, test_vendor_envelopes 5, test_vendor_session 5, test_vendor_check 26, test_vendor_body 11, test_vendor_walk_road 6, test_harness_bookkeeping 21, test_labelling 109, test_freeze_shapes 9, test_take_config 10, test_run_take 68, test_walk_builders 94, test_vendor_roads 13, test_env_allowlist 29, test_build_draft 49; build_draft, freeze, copy_manifest and vendor_check_fixtures --check ok. The lane's witness run, every line of checks.d/vendor-admission.txt (50 commands): 50 of 50 exit 0.
 - 2026-10-19 03:14 EDT: B14 note written (lane-reports/B14-DESIGN-NOTE.md), each claim with file and line, the load-bearing lines re-read; status needs-review.
+- 2026-10-19 03:22 EDT: round 2 opened under glitch-26's rulings R-B14-1 (helper aliases pinned to the row model, loop detection on), R-B14-2 (invoke_agent excluded) and R-B14-3 (identity check strict); branch at 95a11582; status running.
