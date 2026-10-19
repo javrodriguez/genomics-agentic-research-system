@@ -1013,7 +1013,6 @@ class Batch:
         if not wave:
             return
         self._front = max(0, self._front - len(wave))
-        self._block_last = (wave[-1][0]["slot"], wave[-1][1])   # THE NIGHTLY STOP: carried by the last open take
         if self._money_gate(wave):                         # W7C: before the wave is registered
             return
         if not self._register(wave):                        # serial: one commit each
@@ -1021,6 +1020,8 @@ class Batch:
         launched = [(row, attempt) + self._launch_paid_checked(row, attempt) for row, attempt in wave]   # ids
         for row, attempt, cid, err in launched:
             self.open.append((row, attempt, cid, pool.submit(self._drive_step, row, attempt, cid, err)))
+        self._block_last = (wave[-1][0]["slot"], wave[-1][1])   # THE NIGHTLY STOP: carried by the last take launched,
+        # set once the wave is launched, so a refused or unregistered wave never names a row that is not committed
 
     def _drain(self) -> None:
         """Every open take's drive waited for and committed, in row order (a stop's open takes finish first)."""
