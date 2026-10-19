@@ -1,4 +1,16 @@
-Status: running
+Status: needs-review
+
+ROUND 6 SUMMARY FOR REVIEW (cloud executor, Mon 19 Oct 2026, 08:59 to about 09:04 UTC; glitch-26's rulings R6-1 and R6-2 on the review of round 5, lane-reports/REVIEW-vendor-b11-2b609ff.md). Nothing was run against a vendor, container, login or walk; no login, token, lease or account file was opened. drive.py, box/run_take.py, the Codex gate and its tests are untouched; only tests/test_config_folder.py and this file moved.
+- R6-1, the device check's directory case (red eac14157, green 103229b4).
+  - Red: the reviewer's mutant 2 (box/run_take.py's device check narrowed to skip directories) registered in test_config_folder's --witnesses registry as device-unchecked-dirs, clause C13.device, bound to C13Guards.test_an_entry_on_another_device_refuses. Failure line: "witness device-unchecked-dirs -> C13Guards.test_an_entry_on_another_device_refuses C13.device: FAIL" (the bound test stayed OK: 1 run, 0 failures).
+  - Green: that test gains two directory entries on another device, .gemini before turn 1 for gemini and tmp after a codex turn 1; each refuses naming "another device". The module docstring's C13 names the directory case. The witness is red alone.
+- R6-2: no change, as ruled. The round 5 slip (a session link in commit 676b10e5's message) stays named in the Log below, as it is. No commit of this round carries a link.
+- Witnesses: test_config_folder 37 of 37 red, registry 37 (36 before this round).
+- Checks at 103229b4, each in the foreground under env -i (PATH, HOME, LANG, TMPDIR outside the clone), all OK: test_config_folder 25, test_config_folder --witnesses 37 of 37 red, test_run_take 68, test_take_config 13, test_env_allowlist 37, test_drive_ownership 48, test_box_integration 61, test_pending_walk 23. gitleaks before every push: no leaks.
+- R5-5 (merging the integration head into this lane) waits for glitch-26, on Javier's word; that answers the round 5 BLOCKED line below, which stays as the record.
+
+RESUME HERE: review stop (round 6); R5-5 waits for glitch-26
+
 
 BLOCKED ON glitch-26: R5-5's merge of origin/lane/vendor-admission (50a986bf) conflicts in COPIED.d/vendor-admission.json, box/take_config.py, tests/test_take_config.py and tests/test_gemini_adapter.py, and the session's safety check refused the tool call that resolved box/take_config.py's two B9 hunks to lane/vendor-admission's version (reason given: security test removal); per the rules I did not reword or route around it, so may I resolve the merge by hand-editing each conflict hunk (take_config.py both hunks to vendor-admission's side, the other three files keeping both sides), or will you resolve it?
 
@@ -126,3 +138,7 @@ ROUND 1 SUMMARY FOR REVIEW (cloud executor, Mon 19 Oct 2026, about 03:50 UTC): l
 - Round 5, R5-2: the plan's section 6 row B11 R4-2 (306be95d). R5-3: the two stale comments name R4-1's routing (f8136f1c). R5-4: red 5fb85434, green b1f0a588 (config_sha256's arg0 links for codex alone).
 - Round 5, R5-5: merging origin/lane/vendor-admission started 08:25 UTC.
 - Round 5, R5-5: the merge (no-ff, uncommitted) stopped at the refused tool call; git merge --abort, so the branch is at the R5-1 to R5-4 work, unmerged. The post-merge checks were not run. Status blocked. Named: the round's first commit (676b10e5, status running) carried a session link in its message against the rules; it is not amended (append-only), and no later commit carries one.
+- Round 6 (glitch-26's rulings R6-1 and R6-2 on the review of round 5) started Mon 19 Oct 2026 08:59 UTC on lane/vendor-b11 at 39585e27 (status running, 0298195f).
+- Round 6, R6-1: the reviewer's mutant 2 registered as witness device-unchecked-dirs (red eac14157: the witness run reports FAIL); the directory cases .gemini (gemini, before turn 1) and tmp (codex, after turn 1) added (green 103229b4): test_config_folder 25 OK, --witnesses 37 of 37 red.
+- Round 6, R6-2: no change; the round 5 slip stays named above.
+- Round 6 done Mon 19 Oct 2026 about 09:04 UTC at 103229b4 (code) plus this file; status needs-review. R5-5 waits for glitch-26.
