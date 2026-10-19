@@ -45,7 +45,8 @@ MODES = {"codex": "bypass", "gemini": "yolo"}          # the adapters' MODE_FLAG
 CODEX_TID = "00000000-0000-7000-8000-0000000000f1"    # the thread id codex mints at turn 1
 CODEX_CLI = "0.162.1"
 CODEX_MODEL = "gpt-6-luna"
-CODEX_USAGE = {"input_tokens": 3, "cached_input_tokens": 0, "output_tokens": 2, "reasoning_output_tokens": 0}
+CODEX_USAGE = {"input_tokens": 3, "cached_input_tokens": 0, "cache_write_input_tokens": 0, "output_tokens": 2,
+               "reasoning_output_tokens": 0}
 
 GEMINI_SID = "1a2b3c4d-0000-4000-8000-0000000000f2"   # the session id gemini mints
 GEMINI_CLI = "0.64.0"

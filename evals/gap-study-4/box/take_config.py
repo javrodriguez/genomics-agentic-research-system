@@ -97,10 +97,24 @@ GEMINI_THINKING = {"path": "modelConfigs.customAliases", "value": {"chat-base-3"
 GEMINI_AUTH_SETTING = {"path": "security.auth.selectedType", "value": "gemini-api-key"}
 # Folder trust off (round 18 B9, glitch-26's ruling B9): it defaults on at the pinned version (bundle/chunk-FLKY6NH5.js
 # line 9599), and a headless run in a folder it does not trust stops at startup with FatalUntrustedWorkspaceError, exit
-# 55 (bundle/gemini-Q2GRYIAK.js line 11153), before any model call; off, that check returns first (line 11145). R-B9
-# (glitch-26, Mon 19 Oct 2026): that file is the running chain's main bundle (the bin, bundle/gemini.js line 110,
-# imports it); the orphan build gemini-6ESINPDZ.js, cited before, is imported by no file of the package.
+# 55 (bundle/gemini-Q2GRYIAK.js line 11153; the class at bundle/chunk-NR7L3FXV.js line 252702), before any model
+# call; off, that check returns first (line 11145). Reviews r18-b9 NIT 2 and r18-b10 NIT 1 (B10): these are the files
+# the bundle runs; gemini-6ESINPDZ.js, which B9 first cited, is a copy no bundle file imports (VALUE_SOURCES,
+# unreached_).
 GEMINI_TRUST_SETTING = {"path": "security.folderTrust.enabled", "value": False}
+# R-B14-1 (glitch-26's ruling, Mon 19 Oct 2026; lane vendor-b14 round 2, from the held walk w-g5's stats naming helper
+# models): every helper alias the pinned 0.64.0 reaches under these settings names the row's model. Each is an entry of
+# modelConfigs.customAliases, which replaces the built-in alias of that name (bundle/chunk-NR7L3FXV.js line 342156),
+# so each restates its built-in entry's other fields (only "extends") with modelConfig.model the row's. Loop detection
+# stays on: its first check, "loop-detection", extends gemini-3-flash-base and so follows it (line 362486). Per-row
+# aliases are those whose use depends on the row's model: chat compression picks its alias from the chat's model
+# (line 337037). A Gemini model with no entry in GEMINI_ROW_ALIASES is refused: its helper aliases were not read.
+GEMINI_HELPER_ALIASES = {"gemini-3-flash-base": {"extends": "base"}, "loop-detection-double-check": {"extends": "base"},
+                         "chat-compression-3-flash": {}, "chat-compression-default": {},
+                         "agent-history-provider-summarizer": {}}
+GEMINI_ROW_ALIASES = {"gemini-3.8-flash": {}, "gemini-3.5-flash-lite": {"chat-compression-3.1-flash-lite": {}}}
+# R-B14-2: tools.exclude gains the subagent tool, beside D8's two web tools (VALUE_SOURCES).
+GEMINI_AGENT_EXCLUSION = ("invoke_agent",)
 # R3's record of each static read: the pinned package, the file (with its sha256 for the Gemini bundle files, equal to
 # the box lane's installed-package evidence of 14 Oct), the line or lines, and what was read there.
 _GEMINI_PKG = {"package": "@google/gemini-cli", "version": "0.64.0",
@@ -133,12 +147,70 @@ VALUE_SOURCES = {
                                  check_file_sha256="7702da31cf099ca3e1d64fd195f15b7726b2c2829ec21e955558eb9dbfba47da",
                                  check_lines={"folder trust off: the check returns": 11145,
                                               "headless and untrusted: FatalUntrustedWorkspaceError (exit 55)": 11153},
+                                 exit55_file="bundle/chunk-NR7L3FXV.js",
+                                 exit55_file_sha256="d566e81b1df8d4d44a91bf7aeea96a58ec0e6c8934fa424315ef060507dcbb8c",
+                                 exit55_line=252702, unreached_check_file="bundle/gemini-6ESINPDZ.js",
+                                 unreached_check_file_sha256=("19950cab8f7bd8b48ea89c4ede22418b2e5d836d9c1554baed6"
+                                                              "2c9019d74810b"),
+                                 unreached_check_lines={
+                                     "folder trust off: the check returns": 11129,
+                                     "headless and untrusted: FatalUntrustedWorkspaceError (exit 55)": 11137},
+                                 unreached_exit55={"file": "bundle/chunk-J7SXW2FI.js", "line": 252715, "file_sha256":
+                                                   "e2aca15290b02dc9845704f3fed44c577919652508624f340974f0ff588f206e"},
                                  read="security.folderTrust.enabled defaults to true (settings.security?.folderTrust"
                                       "?.enabled ?? true), although docs/cli/trusted-folders.md calls the feature off "
                                       "by default; with it on, a headless run in an untrusted folder throws "
-                                      "FatalUntrustedWorkspaceError, exit 55 "
-                                      "(gemini-cli-core dist/src/utils/errors.js); "
+                                      "FatalUntrustedWorkspaceError, exit 55 (super(message, 55) at exit55_file "
+                                      "exit55_line, in the running bundle: bundle/gemini.js line 110 loads "
+                                      "gemini-Q2GRYIAK.js, which imports chunk-NR7L3FXV.js; unreached_check_file "
+                                      "and unreached_exit55 are a second copy no bundle file imports); "
                                       "set to false, the startup check returns before any trust lookup"),
+    "GEMINI_HELPER_ALIASES": dict(_GEMINI_PKG, file="bundle/chunk-NR7L3FXV.js",
+                                  file_sha256="d566e81b1df8d4d44a91bf7aeea96a58ec0e6c8934fa424315ef060507dcbb8c",
+                                  lines={"gemini-3-flash-base": 362386, "loop-detection-double-check": 362490,
+                                         "chat-compression-3-flash": 362522, "chat-compression-3.1-flash-lite": 362527,
+                                         "chat-compression-default": 362547,
+                                         "agent-history-provider-summarizer": 362552},
+                                  model_lines={"gemini-3-flash-base": 362389, "loop-detection-double-check": 362493,
+                                               "chat-compression-3-flash": 362524,
+                                               "chat-compression-3.1-flash-lite": 362529,
+                                               "chat-compression-default": 362549,
+                                               "agent-history-provider-summarizer": 362554},
+                                  use_lines={"gemini-3-flash-base": 345269, "loop-detection extends it": 362487,
+                                             "loop-detection called": 344226,
+                                             "loop-detection-double-check": 343867,
+                                             "compression alias by the chat's model": 337195,
+                                             "chat-compression-3-flash for gemini-3.8-flash": 337044,
+                                             "chat-compression-3.1-flash-lite for gemini-3.5-flash-lite": 337051,
+                                             "chat-compression-default for any other model": 337060,
+                                             "agent-history-provider-summarizer": 344635,
+                                             "agent-history-provider-summarizer, tool output": 348760},
+                                  layer_lines={"customAliases over the built-in aliases": 342156,
+                                               "customAliases kept": 380852, "the alias's model wins": 342295},
+                                  setting_file="bundle/chunk-FLKY6NH5.js",
+                                  setting_file_sha256="f6a4ddd46350dad40515218069d369aaa0025f194c552400b69925b941098bc8",
+                                  setting_line=13409, loop_detection_setting_line=13371,
+                                  read="each built-in helper alias the run can reach, its model, and where it is "
+                                       "used; settings.json's modelConfigs.customAliases replaces a built-in alias "
+                                       "by name, so each entry restates the built-in's extends (gemini-3-flash-base "
+                                       "and loop-detection-double-check extend base, the compression and summarizer "
+                                       "aliases extend nothing) with the row's model; loop-detection, llm-edit-fixer "
+                                       "and next-speaker-checker extend gemini-3-flash-base and follow it; "
+                                       "model.disableLoopDetection (default false) is not written"),
+    "GEMINI_AGENT_EXCLUSION": dict(_GEMINI_PKG, file="bundle/chunk-NR7L3FXV.js",
+                                   file_sha256="d566e81b1df8d4d44a91bf7aeea96a58ec0e6c8934fa424315ef060507dcbb8c",
+                                   lines={'var AGENT_TOOL_NAME = "invoke_agent";': 283421,
+                                          "maybeRegister(AgentTool,": 382849,
+                                          "getActiveTools leaves out the excluded tools": 313466},
+                                   setting_file="bundle/chunk-FLKY6NH5.js",
+                                   setting_file_sha256=("f6a4ddd46350dad40515218069d369aaa0025f194c552400b69925b"
+                                                        "941098bc8"),
+                                   setting_line=13925, cli_file="bundle/gemini-Q2GRYIAK.js",
+                                   cli_file_sha256="7702da31cf099ca3e1d64fd195f15b7726b2c2829ec21e955558eb9dbfba47da",
+                                   cli_line=8674,
+                                   read="tools.exclude (a list of tool names, merged into the CLI's excluded tools) "
+                                        "with invoke_agent, the subagent tool's name, so the registry never offers "
+                                        "it; the plan's vendor side counts zero Agent calls by construction"),
 }
 # The settings file's path relative to GEMINI_CLI_HOME (for example ".gemini/settings.json"), once measured.
 # Installed0.64.0 Storage.getGlobalSettingsPath: GEMINI_CLI_HOME/.gemini/settings.json.
@@ -257,10 +329,24 @@ def _gemini(model) -> dict:
     for path, value in GEMINI_SETTINGS:
         _set(doc, path, value)
     _set(doc, GEMINI_MODEL_PATH, _model(model))
+    if model not in GEMINI_ROW_ALIASES:
+        raise Refused(f"no helper aliases are read for model {model!r} at the pinned Gemini CLI (GEMINI_ROW_ALIASES)")
     for measured in (GEMINI_THINKING, GEMINI_AUTH_SETTING, GEMINI_TRUST_SETTING):
         if not (isinstance(measured, dict) and set(measured) == {"path", "value"}):
             raise Refused("a measured setting is {'path', 'value'}")
         _set(doc, measured["path"], measured["value"])
+    # R-B14-2: the subagent tool joins D8's excluded tools.
+    tools = doc.setdefault("tools", {})
+    tools["exclude"] = list(tools.get("exclude", [])) + list(GEMINI_AGENT_EXCLUSION)
+    # R-B14-1: every helper alias repointed at the row's model, beside R3's restated chat-base-3.
+    # A new mapping: the restated chat-base-3 is GEMINI_THINKING's own value, never changed in place.
+    configs = doc.setdefault("modelConfigs", {})
+    aliases = dict(configs.get("customAliases", {}))
+    for alias, rest in dict(GEMINI_HELPER_ALIASES, **GEMINI_ROW_ALIASES[model]).items():
+        if alias in aliases:
+            raise Refused(f"helper alias {alias!r} is set twice")
+        aliases[alias] = dict(rest, modelConfig={"model": model})
+    configs["customAliases"] = aliases
     rel = GEMINI_SETTINGS_PATH
     if not isinstance(rel, str) or rel.startswith("/") or ".." in rel.split("/") or not rel.endswith(".json"):
         raise Refused("the settings path is a relative .json path under GEMINI_CLI_HOME")
