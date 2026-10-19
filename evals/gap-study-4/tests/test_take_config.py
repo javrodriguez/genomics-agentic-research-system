@@ -139,10 +139,14 @@ def get(doc, dotted):
     return doc
 
 
-def written(harness, model):
+# R-H1 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): a codex take's config.toml names its run tree.
+RUN_TREE = "/srv/w/run-0a1b2c3d"
+
+
+def written(harness, model, run_tree=RUN_TREE):
     d = tempfile.mkdtemp(prefix="w-")
     with filled():
-        rec = tc.write(d, harness, model=model)
+        rec = tc.write(d, harness, model=model, run_tree=run_tree)
     return d, rec
 
 
@@ -286,7 +290,9 @@ class TestContents(MutantCase):
                 # The renderer fold (owner amendment, 13 Oct): Codex reads a ChatGPT subscription login from a
                 # file store; no API-key route.
                 "forced_login_method": "chatgpt", "cli_auth_credentials_store": "file",
-                "features": {"hooks": False}}
+                "features": {"hooks": False},
+                # R-H1: the run tree trusted up front, so Codex never rewrites the file
+                "projects": {RUN_TREE: {"trust_level": "trusted"}}}
         if doc != want:
             out.append(f"codex config.toml reads {doc}")
         d, rec = written(tc.GEMINI, "gemini-3.8-flash")
@@ -361,6 +367,81 @@ def _leaves(doc):
             yield from _leaves(v)
     else:
         yield doc
+
+
+class TestCodexTrustTable(MutantCase):
+    """R-H1 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026). At the pinned Codex 0.162.1 a thread start
+    whose project has no trust_level, in a git checkout, with the bypass flag's full access, writes
+    [projects."<run tree>"] trust_level = "trusted" into config.toml (app-server/src/request_processors/
+    thread_processor.rs 1362-1378; core/src/config/mod.rs 2359-2441). take_config places that table up front, keyed by
+    the run tree as project_trust_key spells it (config/src/loader/mod.rs 1381-1412: dunce::canonicalize, imported as
+    normalize_path at line 61; lowercased on Windows only), so Codex finds trust_level set on turn 1, never rewrites
+    the file, and its bytes stay take_config's on every turn."""
+
+    TABLE = f'\n[projects."{RUN_TREE}"]\ntrust_level = "trusted"\n'
+
+    def check(self):
+        out = []
+        with filled():
+            plain = tc.files_for(tc.CODEX, model="gpt-6.1-sol")[tc.CODEX_CONFIG]
+            files = tc.files_for(tc.CODEX, model="gpt-6.1-sol", run_tree=RUN_TREE)
+        if sorted(files) != [tc.CODEX_CONFIG]:
+            out.append(f"R-H1.table: a codex take writes {sorted(files)}")
+            return out
+        data = files[tc.CODEX_CONFIG]
+        if data != plain + self.TABLE.encode("ascii"):
+            out.append(f"R-H1.table: config.toml does not end in the one trust table: {data[-120:]!r}")
+        doc = tomllib.loads(data.decode("ascii"))
+        if doc.get("projects") != {RUN_TREE: {"trust_level": "trusted"}}:
+            out.append(f"R-H1.table: the projects table reads {doc.get('projects')!r}")
+        d, rec = written(tc.CODEX, "gpt-6.1-sol")
+        with open(os.path.join(d, tc.CODEX_CONFIG), "rb") as fh:
+            if fh.read() != data:
+                out.append("R-H1.write: write placed other bytes than files_for with the run tree")
+        if rec["files"] != [tc.CODEX_CONFIG]:
+            out.append(f"R-H1.write: the record lists {rec['files']}")
+        # the other harnesses' files do not depend on the run tree
+        for h, m in ((tc.GEMINI, "gemini-3.8-flash"), (tc.CLAUDE_CODE, None)):
+            with filled():
+                if tc.files_for(h, model=m, run_tree=RUN_TREE) != tc.files_for(h, model=m):
+                    out.append(f"R-H1.table: {h}'s files changed with the run tree")
+        # a codex write without its run tree would leave Codex to rewrite config.toml on turn 1: refused
+        try:
+            with filled():
+                tc.write(tempfile.mkdtemp(prefix="w-"), tc.CODEX, model="gpt-6.1-sol")
+            out.append("R-H1.write: a codex config was written without its run tree")
+        except tc.Refused as e:
+            if "run tree" not in str(e):
+                out.append(f"R-H1.write: refused without naming the run tree: {e}")
+        # the key is the canonical spelling, or Codex's lookup misses it and writes its own table
+        link_parent = tempfile.mkdtemp(prefix="w-")
+        os.makedirs(os.path.join(link_parent, "real", "run-0a1b2c3d"))
+        os.symlink(os.path.join(link_parent, "real"), os.path.join(link_parent, "via"))
+        for bad in ("srv/w/run-0a1b2c3d", "/srv/w/run-0a1b2c3d/", "/srv/w/../w/run-0a1b2c3d", "/srv//w/run-0a",
+                    "//srv/w/run-0a1b2c3d", "/", '/srv/w/t"]\n[x', "/srv/w/t\nx", "/srv/w/r\u00e9", None, 7,
+                    os.path.join(link_parent, "via", "run-0a1b2c3d")):
+            try:
+                with filled():
+                    tc.files_for(tc.CODEX, model="gpt-6.1-sol", run_tree=bad)
+                out.append(f"R-H1.key: run tree {bad!r} was admitted")
+            except tc.Refused:
+                pass
+        with filled():
+            real = os.path.join(link_parent, "real", "run-0a1b2c3d")
+            if os.path.realpath(real) == real:
+                got = tomllib.loads(tc.files_for(tc.CODEX, model="gpt-6.1-sol", run_tree=real)[tc.CODEX_CONFIG]
+                                    .decode("ascii"))
+                if got.get("projects") != {real: {"trust_level": "trusted"}}:
+                    out.append("R-H1.key: a canonical run tree was keyed otherwise")
+        return out
+
+    def test_the_trust_table(self):
+        self.assert_green_then_red(self.check, [
+            ("table-dropped", patched(tc, "_codex_trust_table", lambda run_tree: b"")),
+            ("untrusted", patched(tc, "CODEX_TRUST_LEVEL", "untrusted")),
+            ("key-not-canonical", patched(tc, "codex_project_key", lambda run_tree: run_tree)),
+            ("write-without-run-tree", patched(tc, "CODEX_NEEDS_RUN_TREE", False)),
+        ])
 
 
 class TestPending(MutantCase):

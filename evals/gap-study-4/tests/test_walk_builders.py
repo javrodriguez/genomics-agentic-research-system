@@ -3990,7 +3990,9 @@ def _b19_config_problems(mod, tmp: Path) -> list:
                 continue
             doc = tomllib.loads((cfg / "config.toml").read_text())
             want = {"model": "gpt-6.1-sol", "model_reasoning_effort": "low", "web_search": "disabled",
-                    "forced_login_method": "chatgpt", "cli_auth_credentials_store": "file"}
+                    "forced_login_method": "chatgpt", "cli_auth_credentials_store": "file",
+                    # R-H1 (glitch-26, 19 Oct 2026): the walk's run tree trusted up front, keyed by its own path
+                    "projects": {str(tmp / "tree"): {"trust_level": "trusted"}}}
             if {k: doc.get(k) for k in want} != want:
                 out.append(f"B19.config: a codex walk's config.toml reads {doc}")
         elif harness == rt.GEMINI:
