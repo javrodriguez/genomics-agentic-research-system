@@ -25,7 +25,8 @@ and load-bearing assignment has a whole-file witness of gemini_adapter.py or tra
   S4-stats   result.stats: a missing count, an extra key, a value that is a string, a bool, a float or negative, a
              stats or models value that is not an object, and a model entry off its keys or counts are refused.
   S5-tools   a tool name with no entry (web_fetch, read_many_files) and an argument key with no entry are refused by
-             the record check and the parser; the table's view kinds are pinned.
+             the record check and the parser; the table's view kinds are pinned (round 18 B12: the table read from the
+             pinned 0.64.0 registry, tests/test_gemini_tool_registry.py).
   P1-view    through transcript_view.events (the parser put in a COPY of PARSERS for the test only, never
              registered): user -> operator, assistant -> agent-text, tool_use -> tool-call of its kind, tool_result
              -> its tool-result, init, error and result -> harness.
@@ -463,22 +464,63 @@ def s4_stats(mod, p):
 def s5_tools(mod, p):
     out = []
     kinds = {name: entry[0] for name, entry in mod.GEMINI_TOOLS.items()}
+    # Round 18 B12 (glitch-26, 18 Oct 2026): the table read from the pinned 0.64.0 registry (test_gemini_tool_registry
+    # holds the full spec and each entry's source); read_file's start_line and end_line, replace's allow_multiple,
+    # run_shell_command's delay_ms and grep's include_pattern replace the documented guesses.
     want = {"run_shell_command": tv.SHELL, "read_file": tv.READ, "write_file": tv.WRITE, "replace": tv.EDIT,
-            "glob": tv.SEARCH, "search_file_content": tv.SEARCH, "list_directory": tv.OTHER, "write_todos": tv.OTHER}
+            "glob": tv.SEARCH, "grep_search": tv.SEARCH, "search_file_content": tv.SEARCH, "list_directory": tv.OTHER,
+            "write_todos": tv.OTHER, "update_topic": tv.OTHER, "activate_skill": tv.OTHER, "enter_plan_mode": tv.OTHER,
+            "exit_plan_mode": tv.OTHER, "list_background_processes": tv.OTHER, "read_background_output": tv.OTHER,
+            "invoke_agent": tv.DELEGATE}
     if kinds != want:
         out.append(f"{p}: the tool table's kinds are {kinds}")
-    full = {"run_shell_command": ({"command": "ls", "description": "d", "dir_path": "src", "is_background": True},
-                                  tv.SHELL, {"command": "ls", "background": True}),
-            "read_file": ({"file_path": "a.txt", "offset": 1, "limit": 5}, tv.READ, {"path": "a.txt"}),
+    grep = ("after", "before", "case_sensitive", "context", "dir_path", "exclude_pattern", "fixed_strings",
+            "include_pattern", "max_matches_per_file", "names_only", "no_ignore", "pattern", "total_max_matches")
+    keys = {name: tuple(sorted(entry[2])) for name, entry in mod.GEMINI_TOOLS.items()}
+    want_keys = {"run_shell_command": ("command", "delay_ms", "description", "dir_path", "is_background"),
+                 "read_file": ("end_line", "file_path", "start_line"), "write_file": ("content", "file_path"),
+                 "replace": ("allow_multiple", "file_path", "instruction", "new_string", "old_string"),
+                 "glob": ("case_sensitive", "dir_path", "pattern", "respect_gemini_ignore", "respect_git_ignore"),
+                 "grep_search": grep, "search_file_content": grep,
+                 "list_directory": ("dir_path", "file_filtering_options", "ignore"), "write_todos": ("todos",),
+                 "update_topic": ("strategic_intent", "summary", "title", "wait_for_previous"),
+                 "activate_skill": ("name",), "enter_plan_mode": ("reason",), "exit_plan_mode": ("plan_filename",),
+                 "list_background_processes": ("wait_for_previous",),
+                 "read_background_output": ("delay_ms", "lines", "pid", "wait_for_previous"),
+                 "invoke_agent": ("agent_name", "prompt", "wait_for_previous")}
+    if keys != want_keys:
+        out.append(f"{p}: the tool table's allowed keys are {keys}")
+    for name, allowed in want_keys.items():
+        if name not in mod.GEMINI_TOOLS:
+            continue
+        for key in allowed:
+            base = {"command": "ls"} if name == "run_shell_command" else (
+                {"file_path": "a"} if name in ("read_file", "write_file", "replace") else (
+                    {"pattern": "p"} if name in ("glob", "grep_search", "search_file_content") else {}))
+            line = json.dumps(ev("tool_use", tool_name=name, tool_id="t1", parameters=dict(base, **{key: True if key == "is_background" else "x"})))
+            if accepted(lambda: mod.check_record(json.loads(line))):
+                out.append(f"{p}: {name} with its key {key} is refused")
+    full = {"run_shell_command": ({"command": "ls", "description": "d", "dir_path": "src", "is_background": True,
+                                   "delay_ms": 10}, tv.SHELL, {"command": "ls", "background": True}),
+            "read_file": ({"file_path": "a.txt", "start_line": 1, "end_line": 5}, tv.READ, {"path": "a.txt"}),
             "write_file": ({"file_path": "a.txt", "content": "x"}, tv.WRITE, {"path": "a.txt"}),
-            "replace": ({"file_path": "b.py", "old_string": "a", "new_string": "b", "expected_replacements": 1,
+            "replace": ({"file_path": "b.py", "old_string": "a", "new_string": "b", "allow_multiple": False,
                          "instruction": "i"}, tv.EDIT, {"path": "b.py"}),
             "glob": ({"pattern": "*.py", "dir_path": "src", "case_sensitive": False, "respect_git_ignore": True,
                       "respect_gemini_ignore": True}, tv.SEARCH, {"pattern": "*.py", "path": "src"}),
-            "search_file_content": ({"pattern": "def", "dir_path": "src", "include": "*.py"}, tv.SEARCH,
+            "grep_search": ({"pattern": "def", "dir_path": "src", "include_pattern": "*.py"}, tv.SEARCH,
+                            {"pattern": "def", "path": "src"}),
+            "search_file_content": ({"pattern": "def", "dir_path": "src", "include_pattern": "*.py"}, tv.SEARCH,
                                     {"pattern": "def", "path": "src"}),
             "list_directory": ({"dir_path": ".", "ignore": ["x"], "file_filtering_options": {}}, tv.OTHER, {}),
-            "write_todos": ({"todos": []}, tv.OTHER, {})}
+            "write_todos": ({"todos": []}, tv.OTHER, {}),
+            "update_topic": ({"title": "t", "summary": "s", "strategic_intent": "i"}, tv.OTHER, {}),
+            "activate_skill": ({"name": "n"}, tv.OTHER, {}),
+            "enter_plan_mode": ({"reason": "r"}, tv.OTHER, {}),
+            "exit_plan_mode": ({"plan_filename": "p.md"}, tv.OTHER, {}),
+            "list_background_processes": ({}, tv.OTHER, {}),
+            "read_background_output": ({"pid": 1, "lines": 5}, tv.OTHER, {}),
+            "invoke_agent": ({"agent_name": "a", "prompt": "p"}, tv.DELEGATE, {})}
     for name, (params, kind, args) in full.items():
         line = json.dumps(ev("tool_use", tool_name=name, tool_id="t1", parameters=params))
         got = accepted(lambda: mod.GeminiParser().items(line))
@@ -1386,9 +1428,11 @@ WITNESSES = {
         "    return [tv.RawItem(t, tv.HARNESS, text=None)]")),
     "tool-table-unchecked": _w("tg", s5_tools, "S5-tools", (
         "    if t == TOOL_USE:\n        tool_kind(rec)\n", "")),
+    # round 18 B12 (glitch-26): re-anchored on the table's last entry, the table now read from the pinned package
     "web-tool-admitted": _w("tg", s5_tools, "S5-tools", (
-        "    \"write_todos\": (tv.OTHER, {}, (\"todos\",)),\n}",
-        "    \"write_todos\": (tv.OTHER, {}, (\"todos\",)),\n    \"web_fetch\": (tv.OTHER, {}, (\"prompt\",)),\n}")),
+        "    \"invoke_agent\": (tv.DELEGATE, {}, (\"agent_name\", \"prompt\", \"wait_for_previous\")),\n}",
+        "    \"invoke_agent\": (tv.DELEGATE, {}, (\"agent_name\", \"prompt\", \"wait_for_previous\")),\n"
+        "    \"web_fetch\": (tv.OTHER, {}, (\"prompt\",)),\n}")),
     "edit-as-write": _w("tg", p1_view, "P1-view", ("    \"replace\": (tv.EDIT,", "    \"replace\": (tv.WRITE,")),
     "user-as-agent-text": _w("tg", p1_view, "P1-view", (
         "            kind = tv.OPERATOR if rec[\"role\"] == USER else tv.AGENT_TEXT\n",
@@ -1680,24 +1724,24 @@ EQUIVALENT = {
     'gemini_adapter: unwrap L336 95ba8661 list(VERSION_ARGV)': ('sequence-alike', 'agent_exec_argv takes the tuple as it takes the list', 'list(VERSION_ARGV)'),
     'gemini_adapter: return-none L408 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
     'gemini_adapter: stmt-delete L408 9f730a1a return None': ('identical-mutant', "a method's last `return None` deleted still returns None", 'None'),
-    'transcript_gemini: stmt-delete L45 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's __future__ import", '__future__'),
-    'transcript_gemini: assign-empty L51 e8a221d3 _HERE = os.path.dirname(os.path.abspath(__file__))': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
-    'transcript_gemini: cmp-negate#0 L52 7c3b80fa _HERE not in sys.path': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
-    'transcript_gemini: if-false L52 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
-    'transcript_gemini: if-true L52 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
-    'transcript_gemini: stmt-delete L52 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
-    'transcript_gemini: int-change L53 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
-    'transcript_gemini: stmt-delete L53 7baa5234 sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
-    'transcript_gemini: unwrap L125 90ac4953 sorted(set(rec) - set(allowed))': ('message-order', "the sorted names go only into a refusal's message", 'sorted('),
-    "transcript_gemini: str-change L136 b2437d2e '.error'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", '.error'),
-    "transcript_gemini: str-change L137 b2437d2e '.error'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", '.error'),
-    "transcript_gemini: str-change L143 934526e8 'result.stats'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'result.stats'),
-    "transcript_gemini: str-change L153 10c989f3 'result.stats.models['": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'result.stats.models['),
-    "transcript_gemini: str-change L153 cb8092dd ']'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", ']'),
-    "transcript_gemini: str-change L179 e8f80b17 'event '": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'event '),
-    "transcript_gemini: str-change L180 e8f80b17 'event '": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'event '),
-    'transcript_gemini: return-none L220 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
-    'transcript_gemini: stmt-delete L220 9f730a1a return None': ('identical-mutant', "a method's last `return None` deleted still returns None", 'None'),
+    'transcript_gemini: stmt-delete L48 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's __future__ import", '__future__'),
+    'transcript_gemini: assign-empty L54 e8a221d3 _HERE = os.path.dirname(os.path.abspath(__file__))': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'transcript_gemini: cmp-negate#0 L55 7c3b80fa _HERE not in sys.path': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'transcript_gemini: if-false L55 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'transcript_gemini: if-true L55 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'transcript_gemini: stmt-delete L55 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'transcript_gemini: int-change L56 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'transcript_gemini: stmt-delete L56 7baa5234 sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'transcript_gemini: unwrap L146 90ac4953 sorted(set(rec) - set(allowed))': ('message-order', "the sorted names go only into a refusal's message", 'sorted('),
+    "transcript_gemini: str-change L157 b2437d2e '.error'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", '.error'),
+    "transcript_gemini: str-change L158 b2437d2e '.error'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", '.error'),
+    "transcript_gemini: str-change L164 934526e8 'result.stats'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'result.stats'),
+    "transcript_gemini: str-change L174 10c989f3 'result.stats.models['": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'result.stats.models['),
+    "transcript_gemini: str-change L174 cb8092dd ']'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", ']'),
+    "transcript_gemini: str-change L200 e8f80b17 'event '": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'event '),
+    "transcript_gemini: str-change L201 e8f80b17 'event '": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'event '),
+    'transcript_gemini: return-none L241 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'transcript_gemini: stmt-delete L241 9f730a1a return None': ('identical-mutant', "a method's last `return None` deleted still returns None", 'None'),
 }
 MUTANT_FILES = (("tg", "transcript_gemini.py"), ("ga", "gemini_adapter.py"))
 

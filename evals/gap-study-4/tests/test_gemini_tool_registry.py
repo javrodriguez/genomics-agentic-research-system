@@ -6,14 +6,14 @@ Practice walk w-g3 on ship head 779097fc executed turn 1 (exit 0) and the drive 
 record off the pre-registered tables: tool_use: tool name with no entry in the parser's table: 'update_topic'". The
 table (transcript_gemini.GEMINI_TOOLS) was the documented guess of lane w11b, never read against the pinned package.
 B12 completes it from the package's registry (Config.createToolRegistry, bundle/chunk-NR7L3FXV.js), each entry with
-its source lines and file sha256 (transcript_gemini.GEMINI_TOOL_SOURCES), its class one of the view's existing kinds.
+its source lines and file sha256 (gemini_tool_sources.SOURCES), its class one of the view's existing kinds.
 
   R1  update_topic: a SYNTHETIC tool_use line built from the tool's own schema (title, summary, strategic_intent and
       the wait_for_previous key every tool without its own getSchema carries) passes check_record, GeminiParser maps
       it to an `other` call, and gemini_adapter.read_stream reads a synthetic stream that carries it.
   R2  the table is the registry: exactly REGISTRY's names, each with its view kind, its key map and its allowed keys;
       a call with every allowed key maps to its kind and its view args, and a call with each key alone is accepted.
-  R3  every entry carries its source: GEMINI_TOOL_SOURCES names exactly the table's tools, each with the pinned package
+  R3  every entry carries its source: gemini_tool_sources.SOURCES names exactly the table's tools, each with the pinned package
       and tarball sha256, a pinned bundle file and its sha256, the lines read (each a positive line and a non-empty
       text), the package's own Kind word and the view kind, which is the table's.
   R4  still refused, by the record check and the parser: D8's excluded web tools (google_web_search, web_fetch), the
@@ -46,6 +46,7 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 import gemini_adapter as ga  # noqa: E402
+import gemini_tool_sources as gts  # noqa: E402
 import transcript_gemini as tg  # noqa: E402
 import transcript_view as tv  # noqa: E402
 
@@ -55,7 +56,7 @@ TARBALL_SHA256 = "891a794e55c8319b6b78f6f8f13d6b8b2782a4709dfd2fcabf3a1f63ae8365
 FILE_SHA256 = {"bundle/chunk-NR7L3FXV.js": "d566e81b1df8d4d44a91bf7aeea96a58ec0e6c8934fa424315ef060507dcbb8c",
                "bundle/gemini-Q2GRYIAK.js": "7702da31cf099ca3e1d64fd195f15b7726b2c2829ec21e955558eb9dbfba47da"}
 
-# The spec, read from the pinned package by this lane (each entry's source lines are in GEMINI_TOOL_SOURCES):
+# The spec, read from the pinned package by this lane (each entry's source lines are in gemini_tool_sources.SOURCES):
 # name -> (view kind, {raw key: view arg}, allowed raw keys, one synthetic value per allowed key).
 GREP_KEYS = ("pattern", "dir_path", "include_pattern", "exclude_pattern", "names_only", "case_sensitive",
              "fixed_strings", "context", "after", "before", "no_ignore", "max_matches_per_file", "total_max_matches")
@@ -182,9 +183,9 @@ def r2_problems() -> list:
 
 def r3_problems() -> list:
     out = []
-    sources = getattr(tg, "GEMINI_TOOL_SOURCES", None)
+    sources = getattr(gts, "SOURCES", None)
     if not isinstance(sources, dict):
-        return ["R3: transcript_gemini carries no GEMINI_TOOL_SOURCES"]
+        return ["R3: gemini_tool_sources carries no SOURCES"]
     if sorted(sources) != sorted(tg.GEMINI_TOOLS):
         out.append(f"R3: the sources name {sorted(sources)}, not the table's {sorted(tg.GEMINI_TOOLS)}")
     for name, src in sources.items():
@@ -231,7 +232,7 @@ def r4_problems() -> list:
 
 
 def source_problems(bundle: Path) -> list:
-    """R5: every cited line of GEMINI_TOOL_SOURCES, read from the unpacked package's files (never run or imported)."""
+    """R5: every cited line of gemini_tool_sources.SOURCES, read from the unpacked package's files (never run or imported)."""
     out = []
     texts = {}
     for rel, want in FILE_SHA256.items():
@@ -239,7 +240,7 @@ def source_problems(bundle: Path) -> list:
         if hashlib.sha256(data).hexdigest() != want:
             out.append(f"R5: {rel} is not sha256 {want[:12]}")
         texts[rel] = data.decode("utf-8").split("\n")
-    for name, src in getattr(tg, "GEMINI_TOOL_SOURCES", {}).items():
+    for name, src in getattr(gts, "SOURCES", {}).items():
         for rel, n, text in src["lines"]:
             got = texts[rel][n - 1] if 0 < n <= len(texts[rel]) else ""
             if text not in got:
@@ -301,7 +302,7 @@ if __name__ == "__main__":
         for p in found:
             print(p)
         print(f"test_gemini_tool_registry sources: {len(found)} problems over "
-              f"{sum(len(s['lines']) for s in getattr(tg, 'GEMINI_TOOL_SOURCES', {}).values())} cited lines")
+              f"{sum(len(s['lines']) for s in getattr(gts, 'SOURCES', {}).values())} cited lines")
         raise SystemExit(1 if found else 0)
     result = unittest.main(verbosity=2, exit=False).result
     print(f"test_gemini_tool_registry: {result.testsRun} run, {len(result.failures)} failures, "

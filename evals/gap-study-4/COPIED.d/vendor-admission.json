@@ -195,6 +195,11 @@
       "path": "tests/test_gemini_tool_registry.py",
       "status": "new",
       "reason": "Lane vendor-admission round 18 B12 (glitch-26, 18 Oct 2026, under Javier's standing delegation; practice walk w-g3 on 779097fc held on \"tool name with no entry in the parser's table: 'update_topic'\"). Arm G's tool table read from the pinned Gemini CLI 0.64.0's own registry: a synthetic update_topic call built from its schema passes check_record, GeminiParser and read_stream (R1); the table is exactly the registry's names, kinds, key maps and allowed keys (R2); every entry carries its source lines and the pinned files' sha256 (R3); D8's excluded web tools, the tools a headless run never offers, names absent from the package and keys off the schema still refuse (R4); --sources re-reads each cited line in the unpacked package on demand (R5); --witnesses turns R1, R2 or R4 red for every entry removed, re-kinded or missing a key, and every refused name added."
+    },
+    {
+      "path": "gemini_tool_sources.py",
+      "status": "new",
+      "reason": "Lane vendor-admission round 18 B12 (glitch-26, 18 Oct 2026, under Javier's standing delegation). Where each entry of transcript_gemini.GEMINI_TOOLS was read in the pinned Gemini CLI 0.64.0 (tarball sha256 891a794e...): for every tool, the bundle file and its sha256, the lines read with the text each holds, the package's own Kind and the view kind, and a sentence on what the tool does in the pinned code; the tools the package defines but never offers a headless arm G run are named with their lines. Read statically, never run or imported; kept apart from transcript_gemini.py so the reader's generated sweep mutates the table, not its documentation. Bound by tests/test_gemini_tool_registry.py (R3; --sources re-reads every cited line)."
     }
   ]
 }

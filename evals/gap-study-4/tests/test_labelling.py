@@ -897,13 +897,18 @@ def k4_content(sm, sh, ag):
                                                     "WebSearch", "ExitPlanMode", "BashOutput", "KillShell", "CLAUDE.md"),
               "codex": ("apply_patch", "update_plan", "exec_command", "command_execution", "file_change", "mcp_tool_call",
                         "AGENTS.md"),
-              "gemini": ("run_shell_command", "read_file", "write_file", "replace", "glob", "search_file_content",
-                         "list_directory", "write_todos", "GEMINI.md")}
+              # round 18 B12 (glitch-26): Gemini's table read from the pinned 0.64.0 registry, so its words follow
+              "gemini": ("run_shell_command", "read_file", "write_file", "replace", "glob", "grep_search",
+                         "search_file_content", "list_directory", "write_todos", "update_topic", "activate_skill",
+                         "enter_plan_mode", "exit_plan_mode", "list_background_processes", "read_background_output",
+                         "invoke_agent", "GEMINI.md")}
     if sh.TEXT_HARNESS_WORDS != (
             "AGENTS.md", "BashOutput", "CLAUDE.md", "ExitPlanMode", "GEMINI.md", "KillShell", "MultiEdit", "NotebookEdit",
-            "ScheduleWakeup", "TodoWrite", "ToolSearch", "WebFetch", "WebSearch", "apply_patch", "command_execution",
-            "exec_command", "file_change", "list_directory", "mcp_tool_call", "read_file", "run_shell_command",
-            "search_file_content", "update_plan", "write_file", "write_todos"):
+            "ScheduleWakeup", "TodoWrite", "ToolSearch", "WebFetch", "WebSearch", "activate_skill", "apply_patch",
+            "command_execution", "enter_plan_mode", "exec_command", "exit_plan_mode", "file_change", "grep_search",
+            "invoke_agent", "list_background_processes", "list_directory", "mcp_tool_call", "read_background_output",
+            "read_file", "run_shell_command", "search_file_content", "update_plan", "update_topic", "write_file",
+            "write_todos"):
         out.append("K4: the words refused in free text are not the distinctive ones")
     if sh.HARNESS_WORDS != pinned:
         out.append("K4: the harness words are not the pinned lists (every name of each table, as the loop above refuses)")
