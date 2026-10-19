@@ -146,21 +146,30 @@ CLAUDE_DENY_FLAGS = ("--disallowedTools", "--disallowed-tools")
 # caller's). Each arm's row is the whole of what may reach the agent: PATH, HOME, LANG, the run tree's temporary
 # folder, the proxy, the harness's own switches and config home, and the arm's ONE credential, by NAME only (its value
 # is read from the login file at exec time and never rides in any argv). A name not in its row never reaches the agent.
-# HOME is the per-take config mount, so a `.env` there can be read host-side before launch (refuse_env_files).
+# Arm A's HOME is the per-take config mount; arm O's and arm G's is the run tree's own RUN_TREE_HOMEDIR (R-H5, below).
+# Either way a `.env` there can be read host-side before launch (refuse_env_files).
 TAKE_PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 TAKE_LANG = "C.UTF-8"
 RUN_TREE_TMP = "<run tree>/.tmp"            # a marker: filled with f"{run_tree}/{RUN_TREE_TMPDIR}" per take
 CREDENTIAL = "<credential, by name only>"   # a marker: the arm's one login variable
+# R-H5 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): arm O's and arm G's HOME is a separate folder the
+# agent writes, beside the run tree's temporary folder and granted with the run tree (it is in it, git-excluded like
+# .tmp: walk_builders.place_agent_home), so the agent's own tools (git, conda, R, Nextflow, pip and their caches) write
+# `~` there, never into the config mount, while CODEX_HOME and GEMINI_CLI_HOME stay on the mount. Arm A's row is
+# byte-unchanged (round-3 parity): its HOME stays the mount. A named difference from arm A (prereg-draft box_residuals,
+# "arm O and G HOME"; the codex2 sign-in plan's section 6).
+RUN_TREE_HOMEDIR = ".home"
+RUN_TREE_HOME = "<run tree>/.home"          # a marker: filled with f"{run_tree}/{RUN_TREE_HOMEDIR}" per take
 TAKE_ENV = {
     CLAUDE_CODE: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
                   "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
                   "DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", **ISOLATION_ENV,
                   **BASH_FIRST_STEER_ENV, **SILENT_TURN_REMINDER_ENV, "CLAUDE_CONFIG_DIR": CONFIG_MOUNT,
                   "CLAUDE_CODE_OAUTH_TOKEN": CREDENTIAL},
-    CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
+    CODEX: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME, "LANG": TAKE_LANG,
             "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
             "CODEX_HOME": CONFIG_MOUNT},     # no credential: subscriptions only (glitch-06, 14 Oct; the 13 Oct amendment)
-    GEMINI: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
+    GEMINI: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME, "LANG": TAKE_LANG,
              "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
              "GEMINI_CLI_HOME": CONFIG_MOUNT, "GEMINI_API_KEY": CREDENTIAL},
 }
@@ -185,11 +194,13 @@ CODEX_SUBSCRIPTION_NOT_READY = "Codex subscription binding not ready; API-key lo
 CODEX_SUBSCRIPTION_READY = True
 # Each harness's own non-secret values (its switches, proxy and config home): the row less the base, the run tree's
 # temporary folder and the credential. config_home_names() and preflight read this view.
-HARNESS_ENV = {h: {k: v for k, v in row.items() if k not in BASE_NAMES and v not in (RUN_TREE_TMP, CREDENTIAL)}
+HARNESS_ENV = {h: {k: v for k, v in row.items()
+                   if k not in BASE_NAMES and v not in (RUN_TREE_TMP, RUN_TREE_HOME, CREDENTIAL)}
                for h, row in TAKE_ENV.items()}
 # The turn's launcher inside the take container: the image's own python3, isolated (-I -S), reads the credential by
 # its name from the exec's environment and execs the harness with exactly the row (os.execvpe: PATH from the row).
-# Before each harness exec it checks .env names in the actual container cwd, ALL its ancestors and HOME.
+# Before each harness exec it checks .env names in the actual container cwd, ALL its ancestors, HOME and the row's
+# config home (R-H5: for arms O and G, HOME is the run tree's home and the config home the mount).
 # The host-side check below is an early refusal only: a mounted run tree is not the container filesystem root.
 # Its arguments: the credential's name, the count of NAME=VALUE pairs, the pairs, then the harness's argv.
 # R-H1 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): a codex take's run tree is trusted from turn 1
@@ -208,19 +219,20 @@ LAUNCHER_SOURCE = ("import os,sys\n"
                    "k,n=a[0],int(a[1])\n"
                    "e=dict(x.split('=',1) for x in a[2:2+n])\n"
                    "if k!='-':e[k]=os.environ[k]\n"
-                   "dirs=[e['HOME']]\n"
+                   "up=[]\n"
                    "d=os.getcwd()\n"
                    "while True:\n"
-                   " dirs.append(d)\n"
+                   " up.append(d)\n"
                    " parent=os.path.dirname(d)\n"
                    " if parent==d: break\n"
                    " d=parent\n"
+                   "dirs=[e['HOME']]+[e[v] for v in ('CLAUDE_CONFIG_DIR','CODEX_HOME','GEMINI_CLI_HOME') if v in e]+up\n"
                    "for d in dirs:\n"
                    " for name in ('.env',os.path.join('.gemini','.env')):\n"
                    "  p=os.path.join(d,name)\n"
                    "  if os.path.lexists(p): raise SystemExit('refusing .env file: '+p)\n"
                    "if 'CODEX_HOME' in e:\n"
-                   " found=[p for d in dirs[1:] for p in (os.path.join(d,'.codex','config.toml'),"
+                   " found=[p for d in up for p in (os.path.join(d,'.codex','config.toml'),"
                    "os.path.join(d,'.codex','rules'),os.path.join(d,'.codex','skills'),"
                    "os.path.join(d,'.agents','skills')) if os.path.lexists(p)]\n"
                    " if found: raise SystemExit('refusing codex project config: '+found[0])\n"
@@ -908,9 +920,10 @@ def take_environment(harness: str, run_tree: str) -> dict:
     tree = _abs_path(run_tree, "run_tree")
     if sorted(k for k, v in TAKE_ENV[harness].items() if v == RUN_TREE_TMP) != sorted(RUN_TREE_TMPDIR_VARIABLES):
         raise Refused(f"the {harness} row's temporary-folder names are not {list(RUN_TREE_TMPDIR_VARIABLES)}")
+    markers = {RUN_TREE_TMP: f"{tree}/{RUN_TREE_TMPDIR}", RUN_TREE_HOME: f"{tree}/{RUN_TREE_HOMEDIR}"}
     out = {}
     for name, value in TAKE_ENV[harness].items():
-        out[name] = f"{tree}/{RUN_TREE_TMPDIR}" if value == RUN_TREE_TMP else value
+        out[name] = markers.get(value, value)
     if harness == CLAUDE_CODE:
         if _is_pending(FALLBACK_ENV):
             raise NotReady(f"FALLBACK_ENV is PENDING: {PENDING_WHY['FALLBACK_ENV']}")
@@ -1119,20 +1132,26 @@ def env_file_dirs(workdir: str, run_tree: str) -> list:
 
 def refuse_env_files(*, workdir: str, run_tree: str, config_dir: str | None = None) -> None:
     """Refuse, naming each file, when a `.env` a harness would read exists: in the working folder, any parent up to
-    the box root, and (given the per-take config folder, HOME's host side) in HOME. Read host-side, a link counted."""
+    the box root, arms O's and G's HOME (the run tree's home, R-H5), and (given the per-take config folder, arm A's
+    HOME and every arm's config home, host side) in the config folder. Read host-side, a link counted."""
     found = []
     for d in env_file_dirs(workdir, run_tree):
         for name in ENV_FILE_NAMES:
             if os.path.lexists(os.path.join(d, name)):
                 found.append(os.path.join(d, name))
+    home = os.path.join(_abs_path(run_tree, "run_tree"), RUN_TREE_HOMEDIR)
+    for name in ENV_FILE_NAMES:
+        if os.path.lexists(os.path.join(home, name)):
+            found.append(f"HOME ({RUN_TREE_HOME}) {os.path.join(home, name)}")
     if config_dir is not None:
         cfg = _abs_path(config_dir, "config_dir")
         for h, row in TAKE_ENV.items():
-            if row.get("HOME") != CONFIG_MOUNT:
-                raise Refused(f"the {h} row's HOME is not the config mount: its .env cannot be read")
+            if row.get("HOME") not in (CONFIG_MOUNT, RUN_TREE_HOME):
+                raise Refused(f"the {h} row's HOME is neither the config mount nor the run tree's home: its .env "
+                              f"cannot be read")
         for name in ENV_FILE_NAMES:
             if os.path.lexists(os.path.join(cfg, name)):
-                found.append(f"HOME ({CONFIG_MOUNT}) {os.path.join(cfg, name)}")
+                found.append(f"HOME or config home ({CONFIG_MOUNT}) {os.path.join(cfg, name)}")
     if found:
         raise Refused("a .env file a harness would read is present, so the take is refused: " + "; ".join(found))
 

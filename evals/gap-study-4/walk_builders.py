@@ -710,6 +710,7 @@ def build_run_tree(walk: str, *, repo, commit: str, exclude, harness=None) -> Pa
         raise BuilderRefused(f"the run tree was not built: {type(e).__name__}: {e}") from None
     try:
         place_instruction_file(tree, harness, repo=repo, commit=commit, session_id=sid, exclude=list(exclude))
+        place_agent_home(tree, harness, session_id=sid, exclude=list(exclude))
     except BaseException:
         shutil.rmtree(tree, ignore_errors=True)
         raise
@@ -776,6 +777,36 @@ def place_instruction_file(tree: Path, harness, *, repo, commit: str, session_id
     if above:
         raise BuilderRefused(f"an instruction file above the checkout ({', '.join(above)}): {harness} could read "
                              "instructions the other arms are not given")
+    return name
+
+
+def place_agent_home(tree: Path, harness, *, session_id: str, exclude: list):
+    """R-H5 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): for a codex or gemini checkout, the agent's
+    own HOME, box/run_take.RUN_TREE_HOMEDIR, beside the take's temp folder: an empty folder of mode 700, git-excluded
+    like .tmp (so what the agent's tools write there never reaches the status it is shown), and the run tree's, so the
+    ownership grant gives it to the agent with the run tree. Its name, or None for a Claude Code checkout, whose HOME
+    is the config mount (arm A's row is byte-unchanged). drive.py is in the native readers' source lists, so the folder
+    is made here, after drive.clean_run_tree, and drive.run_tree_problems is read again on the built tree."""
+    import subprocess
+    import drive
+    from box import run_take as rt
+    if harness not in (rt.CODEX, rt.GEMINI):
+        return None
+    name = rt.RUN_TREE_HOMEDIR
+    home = Path(tree) / name
+    if os.path.lexists(home):
+        raise BuilderRefused(f"the checkout already holds {name}, the agent's HOME")
+    with (Path(tree) / ".git" / "info" / "exclude").open("a") as fh:
+        fh.write(f"{name}/\n")
+    home.mkdir(mode=0o700)
+    os.chmod(home, 0o700)                   # whatever the builder's umask
+    if subprocess.run(["git", "-C", str(tree), "check-ignore", "-q", f"{name}/probe"],
+                      capture_output=True).returncode != 0:
+        raise BuilderRefused(f"the agent's HOME {name}/ is not git-excluded, so what its tools write would show in "
+                             f"the git status the agent is shown")
+    problems = drive.run_tree_problems(Path(tree), session_id, exclude)
+    if problems:
+        raise BuilderRefused(f"the checkout with the agent's HOME {name}/ made: {'; '.join(problems)}")
     return name
 
 

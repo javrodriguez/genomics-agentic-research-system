@@ -310,6 +310,16 @@ def mutants() -> dict:
                                           "            lease.place(cfg)\n            vendor_config(r, cfg, tree)    "
                                           "# round 17 B6: codex, into the empty folder\n"),
         # round 2 of lane vendor-b11, R-H1 (glitch-26, 19 Oct 2026): the walk's run tree reaches the config writer
+        # round 2 of lane vendor-b11, R-H5 (glitch-26, 19 Oct 2026): the agent's own HOME in a vendor checkout
+        "agent-home-not-made": ("R-H5.home", "walk_builders",
+                                "        place_agent_home(tree, harness, session_id=sid, exclude=list(exclude))\n",
+                                ""),
+        "agent-home-not-excluded": ("R-H5.home", "walk_builders", "        fh.write(f\"{name}/\\n\")\n",
+                                    "        pass\n"),
+        "agent-home-every-arm": ("R-H5.home", "walk_builders",
+                                 "    if harness not in (rt.CODEX, rt.GEMINI):\n        return None\n    name = ",
+                                 "    name = "),
+        "agent-home-open": ("R-H5.home", "walk_builders", "    os.chmod(home, 0o700)", "    os.chmod(home, 0o755)"),
         "vendor-config-without-tree": ("B19.config", "walk_builders",
                                        "    return take_config.write(cfg, harness, model=row[\"model\"], "
                                        "run_tree=str(tree))",
@@ -470,6 +480,8 @@ METHOD = {
     "vendor-config-skipped-gemini": "B19VendorConfig.test_the_vendor_config_is_written_on_the_walk_road",
     "vendor-config-after-the-lease": "B19VendorConfig.test_the_vendor_config_is_written_on_the_walk_road",
     "vendor-config-without-tree": "B19VendorConfig.test_the_vendor_config_is_written_on_the_walk_road",
+    **{name: "B21AgentHome.test_a_vendor_checkout_carries_the_agent_home" for name in (
+        "agent-home-not-made", "agent-home-not-excluded", "agent-home-every-arm", "agent-home-open")},
     "lease-margin-zero": "B13Lease.test_the_walk_start_token_check",
     "lease-exp-ignored": "B13Lease.test_the_walk_start_token_check",
     "lease-refresh-age-ignored": "B13Lease.test_the_walk_start_token_check",
@@ -3966,7 +3978,7 @@ def b21_home_problems(mod) -> list:
     return out
 
 
-class B21AgentHome(Case):
+class B21AgentHome(Drafted):
     def test_a_vendor_checkout_carries_the_agent_home(self):
         self.assertEqual(b21_home_problems(wb()), [])
 

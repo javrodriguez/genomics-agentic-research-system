@@ -5,7 +5,9 @@ delegation).
 
   E1  the ONE table: box/run_take.TAKE_ENV names, per arm, everything the agent may start with: PATH, HOME, LANG, the
       run tree's TMPDIR, TMP and TEMP, the proxy, the harness's own switches and config home, and exactly one
-      credential, by NAME only (the CREDENTIAL marker). HOME is the config mount. No row names a refused variable.
+      credential, by NAME only (the CREDENTIAL marker). Arm A's HOME is the config mount; arm O's and arm G's is the
+      run tree's .home (R-H5, glitch-26, 19 Oct 2026), and arm A's row is pinned by its bytes. No row names a refused
+      variable.
       LOGIN_VARIABLE and HARNESS_ENV are views derived from it (by AST: comprehensions over TAKE_ENV, never literals).
   E2  nothing else reaches the agent: with every billing and route variable the docs read found (Codex's
       OPENAI_PROJECT, OPENAI_ORGANIZATION and the AWS chain; Gemini CLI's GOOGLE_GENAI_USE_VERTEXAI,
@@ -16,7 +18,8 @@ delegation).
       and the image's own ENV in its starting environment, execs the harness with exactly the row and the credential.
       A name the old closed refusal also names is still refused at exec (refused, never passed).
   E3  a `.env` the CLI would read refuses, by its path: the working folder, a parent between it and the box root (the
-      run tree), the box root itself, and HOME (the config folder), each alone, under both loader names (`.env`,
+      run tree), the box root itself, HOME and the config home (the config folder; arm O's and G's HOME is the run
+      tree's .home, R-H5), each alone, under both loader names (`.env`,
       `.gemini/.env`), a dangling link included; launch refuses before any runtime call; run_turn refuses before its
       exec and writes no stream; no take Dockerfile writes a `.env`.
   E4  arm G's model: a short alias (auto, pro, flash, flash-lite) is refused by its name, with what it resolves to
@@ -835,10 +838,26 @@ def mutants() -> dict:
         "env-from-caller": ("E2.built", "    out = {}\n    for name, value in TAKE_ENV[harness].items():",
                             "    out = {k: v for k, v in os.environ.items() if k.startswith('OPENAI_')}\n"
                             "    for name, value in TAKE_ENV[harness].items():"),
-        "row-base-dropped": ("E1.table", '    CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,\n',
-                             '    CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT,\n'),
-        "home-elsewhere": ("E1.table", '    GEMINI: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT,',
+        "row-base-dropped": ("E1.table", '    CODEX: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME, "LANG": TAKE_LANG,\n',
+                             '    CODEX: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME,\n'),
+        "home-elsewhere": ("E1.table", '    GEMINI: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME,',
                            '    GEMINI: {"PATH": TAKE_PATH, "HOME": "/home/dana",'),
+        # R-H5 (lane vendor-b11 round 2): the agent's own HOME for arms O and G, arm A's row by its bytes
+        "agent-home-on-mount": ("E1.table", '    CODEX: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME,',
+                                '    CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT,'),
+        "claude-home-moved": ("R-H5.parity", '    CLAUDE_CODE: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT,',
+                              '    CLAUDE_CODE: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME,'),
+        "claude-row-respaced": ("R-H5.parity", '"CLAUDE_CODE_OAUTH_TOKEN": CREDENTIAL},',
+                                '"CLAUDE_CODE_OAUTH_TOKEN":  CREDENTIAL},'),
+        "home-marker-unfilled": ("E2.built", ', RUN_TREE_HOME: f"{tree}/{RUN_TREE_HOMEDIR}"}', "}"),
+        "env-agent-home-unchecked": ("R-H5.launcher", "dirs=[e['HOME']]+", "dirs="),
+        "env-config-home-unchecked": ("R-H5.launcher",
+                                      "+[e[v] for v in ('CLAUDE_CONFIG_DIR','CODEX_HOME','GEMINI_CLI_HOME') if v in e]",
+                                      ""),
+        "host-agent-home-unchecked": ("R-H5.home", "        if os.path.lexists(os.path.join(home, name)):",
+                                      "        if False:"),
+        "home-check-widened": ("E5.home", "            if row.get(\"HOME\") not in (CONFIG_MOUNT, RUN_TREE_HOME):",
+                               "            if row.get(\"HOME\") not in (CONFIG_MOUNT, RUN_TREE_HOME, \"/home/dana\"):"),
         "values-in-client-env": ("E2.turn", "    env[login] = value\n", "    env[login] = value\n"
                                  "    env.update(values)\n"),
         "no-launcher": ("E2.turn", "            container_id, *launcher_argv(login, values, inner, harness=harness)]",
@@ -847,7 +866,7 @@ def mutants() -> dict:
                                "                   \"e=dict(os.environ,**dict(x.split('=',1) for x in a[2:2+n]))\\n\""),
         # R-H1 (lane vendor-b11 round 2): the codex launcher's project-config refusal, one guard at a time
         "codex-project-unchecked": ("R-H1.launcher", " if found: raise SystemExit(", " if False: raise SystemExit("),
-        "codex-project-cwd-only": ("R-H1.launcher", "for d in dirs[1:] for p in", "for d in dirs[1:2] for p in"),
+        "codex-project-cwd-only": ("R-H1.launcher", "for d in up for p in", "for d in up[:1] for p in"),
         "codex-project-config-dropped": ("R-H1.launcher", "(os.path.join(d,'.codex','config.toml'),", "("),
         "codex-project-rules-dropped": ("R-H1.launcher", "os.path.join(d,'.codex','rules'),", ""),
         "codex-project-skills-dropped": ("R-H1.launcher", "os.path.join(d,'.codex','skills'),", ""),
@@ -878,6 +897,14 @@ METHOD = {
     "no-launcher": "E2Allowlist.test_the_turn_hands_the_harness_the_row_alone",
     "launcher-keeps-env": "E2Allowlist.test_the_turn_hands_the_harness_the_row_alone",
     "container-env-unchecked": "E2Allowlist.test_launcher_refuses_container_ancestors_and_current_home",
+    "agent-home-on-mount": "E1Table.test_each_row_is_the_ruling_s_set",
+    "claude-home-moved": "E1Table.test_arm_a_row_is_byte_unchanged",
+    "claude-row-respaced": "E1Table.test_arm_a_row_is_byte_unchanged",
+    "home-marker-unfilled": "E2Allowlist.test_take_environment_is_the_row_alone",
+    "env-agent-home-unchecked": "E2Allowlist.test_launcher_refuses_env_in_the_agent_home_and_the_config_home",
+    "env-config-home-unchecked": "E2Allowlist.test_launcher_refuses_env_in_the_agent_home_and_the_config_home",
+    "host-agent-home-unchecked": "E3EnvFiles.test_the_agent_home",
+    "home-check-widened": "E5Units.test_home_must_be_the_config_mount",
     **{name: "E2Allowlist.test_codex_launcher_refuses_project_config" for name in (
         "codex-project-unchecked", "codex-project-cwd-only", "codex-project-config-dropped",
         "codex-project-rules-dropped", "codex-project-skills-dropped", "codex-project-agents-dropped",

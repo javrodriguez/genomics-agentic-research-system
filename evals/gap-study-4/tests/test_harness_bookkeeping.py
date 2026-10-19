@@ -290,39 +290,42 @@ def source_line(path: str, n: int) -> str:
 
 def derived_codex_pattern() -> str:
     """codex_adapter.py:41: the rollout is `$CODEX_HOME/sessions/.../rollout-*.jsonl` (`...`: any folders); and
-    box/run_take.py:68, 160-162: CODEX_HOME is the config mount, which is also HOME, so the pattern is home-relative."""
+    box/run_take.py:68, 169-171: CODEX_HOME is the config mount (HOME is the run tree's .home since R-H5), so the
+    pattern is relative to the config mount."""
     m = re.fullmatch(r"\s*rollout\s+`\$CODEX_HOME/([^`]+)`, copied out host-side by the driver and handed over by",
                      source_line(CODEX_ADAPTER, 41))
     if not m:
         raise AssertionError("codex_adapter.py:41 is not the rollout line this candidate is grounded in")
     if source_line(RUN_TAKE, 68) != 'CONFIG_MOUNT = "/opt/cfg"':
         raise AssertionError("box/run_take.py:68 is not CONFIG_MOUNT")
-    row = " ".join(source_line(RUN_TAKE, n) for n in (160, 161, 162))
-    if 'CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT' not in row or '"CODEX_HOME": CONFIG_MOUNT}' not in row:
-        raise AssertionError("box/run_take.py:160-162 no longer sets CODEX_HOME and HOME to the config mount")
+    row = " ".join(source_line(RUN_TAKE, n) for n in (169, 170, 171))
+    if 'CODEX: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME' not in row or '"CODEX_HOME": CONFIG_MOUNT}' not in row:
+        raise AssertionError("box/run_take.py:169-171 no longer sets CODEX_HOME to the config mount and HOME to the "
+                             "run tree's home")
     return m.group(1).replace("/.../", "/**/")
 
 
 def derived_gemini_pattern() -> str:
     """native_snapshot.py:20: under exactly <home>/.gemini/tmp/*/chats; :13: filename = session-<...>.jsonl; :9 and
-    box/run_take.py:163-165: <home> is $GEMINI_CLI_HOME, the config mount, which is also HOME."""
+    box/run_take.py:172-174: <home> is $GEMINI_CLI_HOME, the config mount (HOME is the run tree's .home since R-H5)."""
     folder = re.fullmatch(r"gemini_session_file reads directory names only, under exactly <home>/(\S+), never a "
                           r"file's content and", source_line(NATIVE_SNAPSHOT, 20))
     name = re.fullmatch(r"\s*filename\s+= (session-)<.*>(\.jsonl),", source_line(NATIVE_SNAPSHOT, 13))
     home = re.fullmatch(r"\s*homedir\(\)\s+= \$GEMINI_CLI_HOME when set", source_line(NATIVE_SNAPSHOT, 9))
     if not (folder and name and home):
         raise AssertionError("native_snapshot.py:9, 13, 20 are not the lines this candidate is grounded in")
-    row = " ".join(source_line(RUN_TAKE, n) for n in (163, 164, 165))
-    if 'GEMINI: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT' not in row or '"GEMINI_CLI_HOME": CONFIG_MOUNT' not in row:
-        raise AssertionError("box/run_take.py:163-165 no longer sets GEMINI_CLI_HOME and HOME to the config mount")
+    row = " ".join(source_line(RUN_TAKE, n) for n in (172, 173, 174))
+    if 'GEMINI: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME' not in row or '"GEMINI_CLI_HOME": CONFIG_MOUNT' not in row:
+        raise AssertionError("box/run_take.py:172-174 no longer sets GEMINI_CLI_HOME to the config mount and HOME to "
+                             "the run tree's home")
     return f"{folder.group(1)}/{name.group(1)}*{name.group(2)}"
 
 
 def run_tree_tmp_name() -> str:
-    """box/run_take.py:93 and 152: TMPDIR, TMP and TEMP point at <run tree>/.tmp."""
+    """box/run_take.py:93 and 153: TMPDIR, TMP and TEMP point at <run tree>/.tmp."""
     m = re.fullmatch(r'RUN_TREE_TMPDIR = "([^"]+)"', source_line(RUN_TAKE, 93))
-    if not m or not source_line(RUN_TAKE, 152).startswith('RUN_TREE_TMP = "<run tree>/' + m.group(1) + '"'):
-        raise AssertionError("box/run_take.py:93 and 152 are not the run tree's temporary folder")
+    if not m or not source_line(RUN_TAKE, 153).startswith('RUN_TREE_TMP = "<run tree>/' + m.group(1) + '"'):
+        raise AssertionError("box/run_take.py:93 and 153 are not the run tree's temporary folder")
     return m.group(1)
 
 
@@ -342,11 +345,13 @@ CANDIDATE_PATHS = {
     "codex": [("sessions/2026/10/14/rollout-2026-10-14T05-00-00-00000000-0000-7000-8000-0000000000c1.jsonl", True),
               ("sessions/2026/10/14/notes.txt", False), ("sessions/2026/10/14/rollout-x.jsonl.zst", False),
               ("auth.json", False), ("config.toml", False), ("history.jsonl", False), ("log/codex-tui.log", False),
-              (".tmp/x", False), ("rollout-x.jsonl", False), ("other/sessions/rollout-x.jsonl", False)],
+              (".tmp/x", False), (".home/.cache/x", False), ("rollout-x.jsonl", False),
+              ("other/sessions/rollout-x.jsonl", False)],
     "gemini": [(".gemini/tmp/abc/chats/session-2026-10-14T05-00-1a2b3c4d.jsonl", True),
                (".gemini/tmp/abc/chats/1a2b3c4d/sub-1.jsonl", False), (".gemini/tmp/abc/logs.json", False),
                (".gemini/settings.json", False), (".gemini/tmp/abc/chats/notes.txt", False),
-               (".gemini/tmp/chats/session-x.jsonl", False), (".tmp/x", False), ("session-x.jsonl", False)],
+               (".gemini/tmp/chats/session-x.jsonl", False), (".tmp/x", False), (".home/.cache/x", False),
+               ("session-x.jsonl", False)],
 }
 
 
@@ -375,7 +380,7 @@ def candidate_problems(table: dict) -> list:
             if need not in grounds:
                 out.append(f"{name}: the grounds do not say {need!r}")
         if not any(path == tmp + "/" for path, _ in e.not_excluded):
-            out.append(f"{name}: not_excluded does not name {tmp}/ (box/run_take.py:93, 152)")
+            out.append(f"{name}: not_excluded does not name {tmp}/ (box/run_take.py:93, 153)")
         # R-H5 (glitch-26, 19 Oct 2026): the agent's HOME is the run tree's .home, whose tool files are the agent's
         if not any(path == run_tree_home_name() + "/" for path, _ in e.not_excluded):
             out.append(f"{name}: not_excluded does not name {run_tree_home_name()}/ (the agent's HOME, R-H5)")
@@ -449,7 +454,10 @@ class VendorCandidates(unittest.TestCase):
             base = hb.VENDOR_CANDIDATES[name]
             for what, e in {"a guessed run tree": dataclasses.replace(base, run_tree_paths=(".tmp/**",)),
                             "no grounds": dataclasses.replace(base, grounds=("TEST DATA",)),
-                            ".tmp/ dropped": dataclasses.replace(base, not_excluded=())}.items():
+                            ".tmp/ dropped": dataclasses.replace(base, not_excluded=()),
+                            # R-H5: the agent's HOME (.home/) named as kept in, alone dropped
+                            ".home/ dropped": dataclasses.replace(base, not_excluded=tuple(
+                                x for x in base.not_excluded if x[0] != ".home/"))}.items():
                 with self.subTest(name=name, what=what):
                     self.assertNotEqual(candidate_problems(dict(hb.VENDOR_CANDIDATES, **{name: e})), [])
         self.assertNotEqual(candidate_problems({"codex": hb.VENDOR_CANDIDATES["codex"]}), [])
