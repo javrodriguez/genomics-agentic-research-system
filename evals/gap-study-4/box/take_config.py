@@ -60,7 +60,15 @@ CODEX_REASONING_EFFORT = {
 }
 CODEX_TOP = (("web_search", "disabled"), ("check_for_update_on_startup", False), ("forced_login_method", "chatgpt"),
              ("cli_auth_credentials_store", "file"))
-CODEX_FEATURES = (("hooks", False),)
+# Lane vendor-b18 (glitch-26's ruling B18-1, Mon 19 Oct 2026; the GPT practice walk w-o7's egress log): the pinned
+# CLI's plugins off (features.plugins, on by default), so no plugin startup sync or bundle download runs and no plugin
+# list fetched from the backend reaches the developer message; and its metrics export at exit off (otel.metrics_exporter
+# "none"; it defaults to Statsig, sent to ab.chatgpt.com when the process exits). analytics.enabled is not used: it
+# also turns off the analytics events queue and changes every model request's metadata (VALUE_SOURCES).
+CODEX_PLUGINS = ("plugins", False)
+CODEX_FEATURES = (("hooks", False), CODEX_PLUGINS)
+CODEX_METRICS_EXPORTER = ("metrics_exporter", "none")
+CODEX_OTEL = (CODEX_METRICS_EXPORTER,)
 # R-H1 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): the run tree trusted up front. At the pinned Codex
 # (rust-v0.162.1, commit 092d3acd) a thread start whose project has no trust_level, in a git checkout (the run tree's
 # .git, config/src/project_root_markers.rs), with the full access the bypass flag gives, persists
@@ -119,6 +127,7 @@ GEMINI_AGENT_EXCLUSION = ("invoke_agent",)
 # the box lane's installed-package evidence of 14 Oct), the line or lines, and what was read there.
 _GEMINI_PKG = {"package": "@google/gemini-cli", "version": "0.64.0",
                "tarball_sha256": "891a794e55c8319b6b78f6f8f13d6b8b2782a4709dfd2fcabf3a1f63ae8365e6"}
+_CODEX_PKG = {"package": "openai/codex", "tag": "rust-v0.162.1", "commit": "092d3acd6bec3e3a14bdc7e7a2810ab628ab759d"}
 VALUE_SOURCES = {
     "CODEX_REASONING_EFFORT": {
         "package": "openai/codex", "tag": "rust-v0.162.1", "commit": "092d3acd6bec3e3a14bdc7e7a2810ab628ab759d",
@@ -211,6 +220,70 @@ VALUE_SOURCES = {
                                    read="tools.exclude (a list of tool names, merged into the CLI's excluded tools) "
                                         "with invoke_agent, the subagent tool's name, so the registry never offers "
                                         "it; the plan's vendor side counts zero Agent calls by construction"),
+    # Lane vendor-b18 (ruling B18-1): read at the pinned commit, the file and line of each gate the switch reaches.
+    "CODEX_PLUGINS": dict(_CODEX_PKG, file="codex-rs/features/src/lib.rs",
+                          lines={'key: "plugins"': 1560, "default_enabled: true": 1562,
+                                 "plugin_recommendations_enabled needs it": 577},
+                          uses={"codex-rs/app-server/src/message_processor.rs": {
+                                    "the plugin startup tasks, started at process start": 558},
+                                "codex-rs/core-plugins/src/manager.rs": {
+                                    "the startup tasks run only with plugins on": 2820,
+                                    "the curated-plugins sync, gated on plugins": 754,
+                                    "the remote plugin bundle sync, gated on plugins": 1599,
+                                    "plugins_for_config loads nothing with plugins off": 814,
+                                    "the recommended plugins mode is Legacy with plugins off": 1908},
+                                "codex-rs/core-plugins/src/startup_sync.rs": {
+                                    "the curated sync's source, https://github.com/openai/plugins.git": 30},
+                                "codex-rs/core-plugins/src/remote_bundle.rs": {
+                                    "a bundle's download URL, from the remote listing": 192},
+                                "codex-rs/core/src/session/mod.rs": {
+                                    "recommended plugin candidates only if plugin_recommendations_enabled": 4248,
+                                    "the recommended_plugins section pushed into the developer message": 4414},
+                                "codex-rs/core/src/context/recommended_plugins_instructions.rs": {
+                                    "the section's markers": 43, "the section's body, one line per plugin": 53},
+                                "codex-rs/core/src/context/available_plugins_instructions.rs": {
+                                    "the Plugins usage section, only when a plugin is loaded": 32},
+                                "codex-rs/core/src/session/world_state.rs": {
+                                    "the usage section needs a loaded plugin": 304},
+                                "codex-rs/core/src/tools/spec_plan.rs": {
+                                    "tool_suggest_enabled needs plugins": 712,
+                                    "request_plugin_install registered only then": 1328}},
+                          read="features.plugins (a Stable feature, on by default) gates the plugin startup tasks "
+                               "(the curated-plugins git sync and the remote installed-plugin bundle sync), the "
+                               "plugin load, and the plugin recommendations fetched from the backend, which the "
+                               "developer message carries as its recommended_plugins section and the tool list as "
+                               "request_plugin_install; set to false, none of them runs"),
+    "CODEX_METRICS_EXPORTER": dict(_CODEX_PKG, file="codex-rs/core/src/config/otel.rs",
+                                   lines={"otel.metrics_exporter defaults to Statsig": 21},
+                                   uses={"codex-rs/config/src/config_toml.rs": {"the otel table": 547},
+                                         "codex-rs/config/src/types.rs": {
+                                             "OtelExporterKind is kebab-case, so None reads none": 596,
+                                             "metrics_exporter": 643},
+                                         "codex-rs/otel/src/config.rs": {
+                                             "Statsig's endpoint, https://ab.chatgpt.com/otlp/v1/metrics": 9,
+                                             "Statsig resolved to that endpoint": 24},
+                                         "codex-rs/otel/src/provider.rs": {
+                                             "no metrics with the None exporter": 218,
+                                             "shutdown flushes the metrics": 104, "Drop runs shutdown at exit": 359},
+                                         "codex-rs/core/src/otel_init.rs": {
+                                             "the metrics exporter is otel.metrics_exporter's": 74},
+                                         "codex-rs/exec/src/lib.rs": {
+                                             "codex exec builds the provider, analytics on by default": 668},
+                                         "codex-rs/app-server/src/turn_cost_worker.rs": {
+                                             "the turn cost worker reads only an explicit OTLP exporter": 106}},
+                                   not_used={"analytics.enabled": {
+                                       "codex-rs/core/src/otel_init.rs": 71,
+                                       "codex-rs/app-server/src/analytics_utils.rs": 14,
+                                       "codex-rs/analytics/src/client.rs": 321,
+                                       "codex-rs/core/src/session/session.rs": 746}},
+                                   read="otel.metrics_exporter defaults to Statsig, which resolves to an OTLP HTTP "
+                                        "exporter at ab.chatgpt.com, flushed when the provider shuts down at exit; "
+                                        "none builds no metrics exporter; the key's one other reader, the turn cost "
+                                        "worker, starts only for an explicit OTLP exporter, so Statsig and none "
+                                        "leave it off alike. "
+                                        "analytics.enabled = false also drops the exporter, but it also turns off "
+                                        "the analytics events queue and sets analytics_enabled in every model "
+                                        "request's metadata, so it is not used"),
 }
 # The settings file's path relative to GEMINI_CLI_HOME (for example ".gemini/settings.json"), once measured.
 # Installed0.64.0 Storage.getGlobalSettingsPath: GEMINI_CLI_HOME/.gemini/settings.json.
@@ -305,6 +378,8 @@ def _codex(model) -> dict:
              f"model_reasoning_effort = {_toml_value(effort)}"]
     lines += [f"{k} = {_toml_value(v)}" for k, v in CODEX_TOP]
     lines += ["", "[features]"] + [f"{k} = {_toml_value(v)}" for k, v in CODEX_FEATURES]
+    if CODEX_OTEL:
+        lines += ["", "[otel]"] + [f"{k} = {_toml_value(v)}" for k, v in CODEX_OTEL]
     return {CODEX_CONFIG: ("\n".join(lines) + "\n").encode("ascii")}
 
 

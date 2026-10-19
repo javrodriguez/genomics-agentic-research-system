@@ -242,7 +242,7 @@ class TestR3Values(MutantCase):
             if getattr(tc, name, None) != want:
                 out.append(f"{name} is {getattr(tc, name, None)!r}, not the sourced {want!r}")
         # Lane vendor-b14 round 2 (R-B14-1, R-B14-2): the record gains the helper aliases' and the exclusion's reads.
-        if getattr(tc, "VALUE_SOURCES", None) != dict(R3_SOURCES, **B14_SOURCES):
+        if getattr(tc, "VALUE_SOURCES", None) != dict(R3_SOURCES, **B14_SOURCES, **B18_SOURCES):
             out.append("take_config.VALUE_SOURCES is not the record of R3's static reads")
         if tc.pending():
             out.append(f"still pending: {sorted(tc.pending())}")
@@ -478,6 +478,127 @@ class TestB14HelperPins(MutantCase):
         self.assert_green_then_red(self.check, mutants)
 
 
+# Lane vendor-b18 (glitch-26's ruling B18-1, Mon 19 Oct 2026; the GPT practice walk w-o7's egress log): every Codex
+# row's config.toml also switches off the pinned CLI's plugins (the features table's plugins key) and its metrics
+# export at exit (the otel table's metrics_exporter, "none"; analytics.enabled is not used: it also turns off the
+# analytics events queue and changes the analytics_enabled field of every model request's metadata). Each is cited
+# from the pinned source at rust-v0.162.1, as the executor read it (VALUE_SOURCES).
+CODEX_PKG = {"package": "openai/codex", "tag": "rust-v0.162.1", "commit": "092d3acd6bec3e3a14bdc7e7a2810ab628ab759d"}
+B18_SOURCES = {
+    "CODEX_PLUGINS": dict(CODEX_PKG, file="codex-rs/features/src/lib.rs",
+                          lines={'key: "plugins"': 1560, "default_enabled: true": 1562,
+                                 "plugin_recommendations_enabled needs it": 577},
+                          uses={"codex-rs/app-server/src/message_processor.rs": {
+                                    "the plugin startup tasks, started at process start": 558},
+                                "codex-rs/core-plugins/src/manager.rs": {
+                                    "the startup tasks run only with plugins on": 2820,
+                                    "the curated-plugins sync, gated on plugins": 754,
+                                    "the remote plugin bundle sync, gated on plugins": 1599,
+                                    "plugins_for_config loads nothing with plugins off": 814,
+                                    "the recommended plugins mode is Legacy with plugins off": 1908},
+                                "codex-rs/core-plugins/src/startup_sync.rs": {
+                                    "the curated sync's source, https://github.com/openai/plugins.git": 30},
+                                "codex-rs/core-plugins/src/remote_bundle.rs": {
+                                    "a bundle's download URL, from the remote listing": 192},
+                                "codex-rs/core/src/session/mod.rs": {
+                                    "recommended plugin candidates only if plugin_recommendations_enabled": 4248,
+                                    "the recommended_plugins section pushed into the developer message": 4414},
+                                "codex-rs/core/src/context/recommended_plugins_instructions.rs": {
+                                    "the section's markers": 43, "the section's body, one line per plugin": 53},
+                                "codex-rs/core/src/context/available_plugins_instructions.rs": {
+                                    "the Plugins usage section, only when a plugin is loaded": 32},
+                                "codex-rs/core/src/session/world_state.rs": {
+                                    "the usage section needs a loaded plugin": 304},
+                                "codex-rs/core/src/tools/spec_plan.rs": {
+                                    "tool_suggest_enabled needs plugins": 712,
+                                    "request_plugin_install registered only then": 1328}},
+                          read="features.plugins (a Stable feature, on by default) gates the plugin startup tasks "
+                               "(the curated-plugins git sync and the remote installed-plugin bundle sync), the "
+                               "plugin load, and the plugin recommendations fetched from the backend, which the "
+                               "developer message carries as its recommended_plugins section and the tool list as "
+                               "request_plugin_install; set to false, none of them runs"),
+    "CODEX_METRICS_EXPORTER": dict(CODEX_PKG, file="codex-rs/core/src/config/otel.rs",
+                                   lines={"otel.metrics_exporter defaults to Statsig": 21},
+                                   uses={"codex-rs/config/src/config_toml.rs": {"the otel table": 547},
+                                         "codex-rs/config/src/types.rs": {
+                                             "OtelExporterKind is kebab-case, so None reads none": 596,
+                                             "metrics_exporter": 643},
+                                         "codex-rs/otel/src/config.rs": {
+                                             "Statsig's endpoint, https://ab.chatgpt.com/otlp/v1/metrics": 9,
+                                             "Statsig resolved to that endpoint": 24},
+                                         "codex-rs/otel/src/provider.rs": {
+                                             "no metrics with the None exporter": 218,
+                                             "shutdown flushes the metrics": 104, "Drop runs shutdown at exit": 359},
+                                         "codex-rs/core/src/otel_init.rs": {
+                                             "the metrics exporter is otel.metrics_exporter's": 74},
+                                         "codex-rs/exec/src/lib.rs": {
+                                             "codex exec builds the provider, analytics on by default": 668},
+                                         "codex-rs/app-server/src/turn_cost_worker.rs": {
+                                             "the turn cost worker reads only an explicit OTLP exporter": 106}},
+                                   not_used={"analytics.enabled": {
+                                       "codex-rs/core/src/otel_init.rs": 71,
+                                       "codex-rs/app-server/src/analytics_utils.rs": 14,
+                                       "codex-rs/analytics/src/client.rs": 321,
+                                       "codex-rs/core/src/session/session.rs": 746}},
+                                   read="otel.metrics_exporter defaults to Statsig, which resolves to an OTLP HTTP "
+                                        "exporter at ab.chatgpt.com, flushed when the provider shuts down at exit; "
+                                        "none builds no metrics exporter; the key's one other reader, the turn cost "
+                                        "worker, starts only for an explicit OTLP exporter, so Statsig and none "
+                                        "leave it off alike. "
+                                        "analytics.enabled = false also drops the exporter, but it also turns off "
+                                        "the analytics events queue and sets analytics_enabled in every model "
+                                        "request's metadata, so it is not used"),
+}
+# A Codex row's config.toml before B18: what every other key must still read.
+B18_BEFORE = {"web_search": "disabled", "check_for_update_on_startup": False, "forced_login_method": "chatgpt",
+              "cli_auth_credentials_store": "file", "features": {"hooks": False}}
+
+
+class TestB18CodexSwitches(MutantCase):
+    """B18-1, per arm O row, on the config.toml take_config places (its real, sourced values)."""
+
+    def check(self):
+        out = []
+        with open(os.path.join(HERE, "prereg-draft.json"), encoding="utf-8") as fh:
+            rows = json.load(fh)["models"]["O"]
+        for row in rows:
+            d = tempfile.mkdtemp(prefix="w-")
+            try:
+                tc.write(d, tc.CODEX, model=row)
+                with open(os.path.join(d, "config.toml"), "rb") as fh:
+                    doc = tomllib.load(fh)
+            except Exception as exc:
+                out.append(f"{row}: no config placed ({type(exc).__name__}: {exc})")
+                continue
+            if doc.get("features", {}).get("plugins") is not False:
+                out.append(f"{row}: features.plugins is {doc.get('features', {}).get('plugins')!r}, not false")
+            if doc.get("otel") != {"metrics_exporter": "none"}:
+                out.append(f"{row}: otel is {doc.get('otel')!r}, not metrics_exporter none")
+            rest = copy.deepcopy(doc)
+            rest.get("features", {}).pop("plugins", None)
+            rest.pop("otel", None)
+            want = dict(B18_BEFORE, model=row, model_reasoning_effort=R3_VALUES["CODEX_REASONING_EFFORT"][row])
+            if rest != want:
+                out.append(f"{row}: the config's other keys read {rest}, not {want}")
+        sources = getattr(tc, "VALUE_SOURCES", {})
+        for name in B18_SOURCES:
+            if sources.get(name) != B18_SOURCES[name]:
+                out.append(f"VALUE_SOURCES[{name!r}] is not the record of the B18 read")
+        return out
+
+    def test_b18_codex_switches(self):
+        self.assert_green_then_red(self.check, [
+            ("plugins key dropped", patched(tc, "CODEX_FEATURES", (("hooks", False),))),
+            ("plugins left on", patched(tc, "CODEX_FEATURES", (("hooks", False), ("plugins", True)))),
+            ("metrics switch dropped", patched(tc, "CODEX_OTEL", ())),
+            ("metrics left on Statsig", patched(tc, "CODEX_OTEL", (("metrics_exporter", "statsig"),))),
+            ("another key changed", patched(tc, "CODEX_TOP", (("web_search", "live"),) + tc.CODEX_TOP[1:])),
+            ("plugins source dropped", lambda: mock.patch.dict(tc.VALUE_SOURCES, {"CODEX_PLUGINS": {}})),
+            ("metrics source's line moved", lambda: mock.patch.dict(tc.VALUE_SOURCES, {"CODEX_METRICS_EXPORTER": dict(
+                B18_SOURCES["CODEX_METRICS_EXPORTER"], lines={"otel.metrics_exporter defaults to Statsig": 22})})),
+        ])
+
+
 class TestContents(MutantCase):
     def check(self):
         out = []
@@ -490,7 +611,8 @@ class TestContents(MutantCase):
                 # The renderer fold (owner amendment, 13 Oct): Codex reads a ChatGPT subscription login from a
                 # file store; no API-key route.
                 "forced_login_method": "chatgpt", "cli_auth_credentials_store": "file",
-                "features": {"hooks": False},
+                # Lane vendor-b18 (glitch-26's ruling B18-1): the CLI's plugins and its metrics export at exit off.
+                "features": {"hooks": False, "plugins": False}, "otel": {"metrics_exporter": "none"},
                 # R-H1: the run tree trusted up front, so Codex never rewrites the file
                 "projects": {RUN_TREE: {"trust_level": "trusted"}}}
         if doc != want:
