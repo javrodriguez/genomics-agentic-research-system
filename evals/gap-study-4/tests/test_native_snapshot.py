@@ -314,5 +314,69 @@ class CodexRollout(unittest.TestCase):
             ns().codex_rollout_file(home, self.TID)
 
 
+
+# ---- B16-1 (glitch-26's ruling, Mon 19 Oct 2026; the GPT practice walk held on SnapshotRefused) ----------------------
+# Each locator walks the config folder through the box's operator_list, which names the folder's root "." (box/ownership
+# _rel_dir) and refuses any other path that _rel refuses, the empty one included. The lister here puts the real
+# _rel_dir and _no_credential_path in front of a fake listing (no container), and turns a failure into the
+# SnapshotRefused TakeDriver.config_view raises, so a locator that names the root any other way fails as the walk did.
+def ownership():
+    from box import ownership as ow
+    return ow
+
+
+def box_rules_lister(listing: dict, asked: list):
+    """lister(rel_dir) -> [(name, kind)] or None, from `listing` (rel_dir -> entries) behind ownership's own path rules
+    for the config root; every rel_dir the locator asked is appended to `asked`."""
+    ow = ownership()
+
+    def lister(rel_dir):
+        asked.append(rel_dir)
+        try:
+            rel = ow._rel_dir(rel_dir)
+            ow._no_credential_path("config", rel)
+        except Exception as e:  # noqa: BLE001 - as config_view: the box step's failure, named
+            raise ns().SnapshotRefused(f"the box's operator_list of the config folder failed "
+                                       f"({type(e).__name__}: {str(e)[:200]})") from None
+        return listing.get(rel)
+    return lister
+
+
+class BoxRootNaming(unittest.TestCase):
+    """B16-1: the Codex and Gemini locators name the config folder's root as the box's contract does (".")."""
+    TID = "00000000-0000-7000-8000-0000000000c1"
+    ROLLOUT = f"rollout-2026-10-14T05-00-00-{TID}.jsonl"
+    SESSION = f"session-2026-10-14T04-20-{SID[:8]}.jsonl"
+
+    def codex(self, mod=None):
+        asked = []
+        lister = box_rules_lister({".": [("config.toml", "file"), ("sessions", "dir")], "sessions": [("2026", "dir")],
+                                   "sessions/2026": [("10", "dir")], "sessions/2026/10": [("14", "dir")],
+                                   "sessions/2026/10/14": [(self.ROLLOUT, "file")]}, asked)
+        return (mod or ns()).codex_rollout_rel(lister, self.TID), asked
+
+    def gemini(self, mod=None):
+        asked = []
+        lister = box_rules_lister({".": [(".gemini", "dir")], ".gemini": [("settings.json", "file"), ("tmp", "dir")],
+                                   ".gemini/tmp": [("synthetic-project", "dir")],
+                                   ".gemini/tmp/synthetic-project": [("chats", "dir")],
+                                   ".gemini/tmp/synthetic-project/chats": [(self.SESSION, "file")]}, asked)
+        return (mod or ns()).gemini_session_rel(lister, SID), asked
+
+    def test_codex_locator_through_the_box_rules(self):
+        rel, asked = self.codex()
+        self.assertEqual(rel, f"sessions/2026/10/14/{self.ROLLOUT}")
+        self.assertEqual(asked[0], ".")
+
+    def test_gemini_locator_through_the_box_rules(self):
+        rel, asked = self.gemini()
+        self.assertEqual(rel, f".gemini/tmp/synthetic-project/chats/{self.SESSION}")
+        self.assertEqual(asked[0], ".")
+
+    def test_the_box_rules_refuse_the_empty_root(self):
+        with self.assertRaisesRegex(ns().SnapshotRefused, "never leaving it"):
+            box_rules_lister({}, [])("")
+
+
 if __name__ == "__main__":
     unittest.main()
