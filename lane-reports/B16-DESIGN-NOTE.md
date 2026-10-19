@@ -71,3 +71,40 @@ Option B, for arm G only, and only per tool where the pinned package shows the k
 The CLI ran the call. The stream records both what the model asked and what ran. A reader that holds the take is reporting the agent's slip as a reader failure. Naming the undeclared key on the view keeps the slip visible without guessing what the model meant: the view shows the search that actually ran.
 
 Arm A's reader refuses under the same rule. Whether to change it should be ruled separately, after reading Claude Code's own validation of tool input: if Claude Code refuses the call itself, its record carries an error result and the reader's rule should match that. Arm O needs nothing, because no Codex reader reads tool-call argument keys.
+
+## 6. The review of rounds 1 and 2: the whole-argument readers, and where the undeclared key goes (rulings R-B16-5 and R-B16-6, Mon 19 Oct 2026)
+
+The review of 0aa493c0..7e5b5f75 (lane-reports/REVIEW-vendor-b16-7e5b5f7.md, finding 1) found two places in the pinned Gemini CLI 0.64.0 that read a tool call's whole argument object, undeclared keys included, outside the invocation.
+The citation now names both (gemini_tool_sources.py, OPEN_INPUT's lines and read text), and `tests/test_gemini_undeclared_args.py --sources` re-reads every cited line (0 problems over 135).
+
+- **The loop detector.**
+  - LoopDetectionService.getToolCallKey hashes the tool name with JSON.stringify of the whole args (bundle/chunk-NR7L3FXV.js 343947-343950), and checkToolCallLoop runs it on every tool call request (343973, 344041-344069).
+  - A first detection starts the CLI's loop recovery; a second ends the turn with LoopDetected, or with MaxSessionTurns when one turn is left (348323-348336).
+  - It is on in the takes: box/take_config.py does not write model.disableLoopDetection, which the CLI reads at bundle/gemini-Q2GRYIAK.js 8614 and defaults to false (chunk 380818).
+  - So two calls that differ only in an undeclared key's value count as different calls for loop detection, while the view shows the same search twice.
+  - glitch-26's ruling R-B16-5: the reader does not model loop detection; a turn the loop detector ends is read from the record as its own event; this is a named behaviour of the pinned CLI, and R-B16-2's rule, whose condition is about the invocation, stands.
+- **The policy engine.**
+  - PolicyEngine.check stringifies the whole args only while a loaded rule or checker carries an argsPattern (364401-364404), and ruleMatches tests a rule's modes (364076-364080) and tool name (364095-364119) before its argsPattern (364130-364136).
+  - No loaded rule with an argsPattern applies to grep_search in a take.
+    The takes run with --approval-mode yolo (policies/yolo.toml lines 51-55 allow every tool).
+    Every argsPattern rule in policies/plan.toml (lines 97-195) names invoke_agent, write_file or replace and carries modes = ["plan"].
+    The rules table in policies/sandbox-default.toml (lines 21-26, a deny on any tool whose arguments name a gha-creds file) is never a policy rule: SandboxPolicyManager reads that file as sandbox config (SandboxTomlSchema, chunk 257739-257753, modes and commands only), and the policy file schema reads the key rule, not rules (366840-366843).
+    Conseca's safety checker (policies/conseca.toml) carries no argsPattern and is off unless security.enableConseca is set (gemini-Q2GRYIAK.js 8669; chunk 380958, 368888).
+    The takes set hooksConfig.enabled false (box/take_config.py GEMINI_SETTINGS; read at gemini-Q2GRYIAK.js 8656, default true at chunk 380944).
+  - Had such a rule applied (the sandbox file's gha-creds deny has the shape), an undeclared key's value could change the policy decision; the reader's rule therefore stays tied to these citations, and a change of the pinned CLI re-opens it.
+- **The checks (ruling R-B16-6, the review's finding 2).** Round 2's test, its three witnesses and its source-list line are now registered in checks.d/vendor-admission.txt.
+- **Where the undeclared key goes today (the review's finding 3).** Its name is kept on the parser's item (undeclared_args, transcript_gemini.py 311 and 319) and does not reach the view's events: transcript_view.events (767) builds each event from the tool and its args only. So graders and the labelling sheet do not see it yet, and section 4's reason for keeping it is not yet what the code does. Carrying it into the events is a follow-up for glitch-26.
+- **The review's finding 4 (a NIT, recorded as a follow-up).** U2's case for wait_for_previous is refused by the GEMINI_TOOLS entry before the read-key guard; the guard itself stays covered by the patched-entry case and by the review's own mutant.
+
+## 7. Arm A: our reader's rule and what the study's committed records show (on Javier's word b16-arm-a, Mon 19 Oct 2026)
+
+Only the study's own sources were read; no Claude Code package or binary was read.
+
+- **Arm A's reader.** ClaudeCodeParser maps each tool_use block through map_tool(CC_TOOLS, name, input) (transcript_view.py 557). map_tool refuses any raw key outside the entry's allowed keys with "argument keys with no entry" (206-217). CC_TOOLS (253-273) lists each tool's allowed keys; its Agent entry records glitch-b5's reading of 16 Oct that the 2.1.296 Agent schema is closed (267-270).
+- **What the committed records show** (read as data; no record's text is quoted).
+  - The repository holds 293 committed Claude Code transcripts: evals/gap-study, gap-study-2 and gap-study-3, transcripts and walks, recorded with Claude Code 2.1.263 to 2.1.280.
+  - Among their 3,687 calls to tools in CC_TOOLS, none carries a key outside its entry.
+  - Five tool results are marked as an input-validation error: four on Artifact (a tool outside CC_TOOLS) in the first study, and one on Monitor in the third. None of the five is on a call with an undeclared key.
+  - So no committed take was held on an undeclared key, and no committed record shows what Claude Code does with one.
+- **What is missing.** Round 4's own Claude arm records (Claude Code 2.1.296) are not in this tree, and what Claude Code does with an undeclared key (refuse the call, or pass the key through) is not read here.
+- **Where that leaves parity.** If a Claude take carries an undeclared key, arm A's reader holds the take where arm G's reader reads the call (R-B16-2); the committed records never exercise that case. Arm A's rule stands as it is until glitch-26 rules on it separately.

@@ -209,6 +209,29 @@ _GREP_OPEN_LINES = (
     [_C, 343497, "if (decision === PolicyDecision.ASK_USER) {"], [_C, 343498, "if (!config2.isInteractive()) {"],
     # the stream records the model's own parameters on tool_use
     [_Q, 12228, "parameters: event.value.args"],
+    # two readers outside the invocation take the whole args, undeclared keys included (ruling R-B16-5). The loop
+    # detector hashes the tool name with the whole args on every tool call request; a detected loop ends the turn, an
+    # event the record carries; it is on in the takes (model.disableLoopDetection is not written, so it is false)
+    [_C, 343947, "getToolCallKey(toolCall) {"], [_C, 343948, "const argsString = JSON.stringify(toolCall.args);"],
+    [_C, 343949, "const keyString = `${toolCall.name}:${argsString}`;"],
+    [_C, 343973, "isLoop = this.checkToolCallLoop(event.value);"],
+    [_C, 344042, "const key = this.getToolCallKey(toolCall);"],
+    [_C, 348323, "const loopResult2 = this.loopDetector.addAndCheck(event);"],
+    [_C, 348325, "yield { type: GeminiEventType.LoopDetected };"],
+    [_Q, 8614, "disableLoopDetection: settings.model?.disableLoopDetection,"],
+    [_C, 380818, "this.disableLoopDetection = params.disableLoopDetection ?? false;"],
+    # the policy engine stringifies the whole args only while a loaded rule or checker carries an argsPattern, and
+    # tests a rule's modes and tool name before its argsPattern; Conseca is off unless security.enableConseca is set;
+    # the takes turn hooks off (hooksConfig.enabled false in box/take_config.py GEMINI_SETTINGS)
+    [_C, 364402, "if (toolCall.args && (this.rules.some((rule) => rule.argsPattern)"],
+    [_C, 364403, "stringifiedArgs = stableStringify(toolCall.args);"],
+    [_C, 364076, "if (rule.modes && rule.modes.length > 0) {"], [_C, 364095, "if (rule.toolName !== void 0) {"],
+    [_C, 364130, "if (rule.argsPattern) {"],
+    [_C, 366841, "rule: external_exports.array(PolicyRuleSchema).optional(),"],
+    [_Q, 8669, "enableConseca: settings.security?.enableConseca"],
+    [_C, 380958, "this.enableConseca = params.enableConseca ?? false;"],
+    [_C, 368888, "if (!this.context.config.enableConseca) {"],
+    [_Q, 8656, "enableHooks: settings.hooksConfig.enabled,"],
 )
 _GREP_OPEN_READ = (
     "both grep schemas, in both families, leave their properties open, so Ajv passes an undeclared key; GrepTool's "
@@ -216,7 +239,15 @@ _GREP_OPEN_READ = (
     "scheduler reads wait_for_previous off every call; the base invocation's file_path read (extractFilePathFromArgs) "
     "runs only on an ask-user decision, which a headless --approval-mode yolo run never reaches (policies/yolo.toml "
     "lines 51-55 allow every tool, and checkPolicy refuses ask-user when not interactive), so an undeclared key such "
-    "as file_path changes nothing the call does")
+    "as file_path changes nothing the call does; the invocation reads only declared keys, and the two readers outside "
+    "it that take the whole args change nothing the call does either: the loop detector hashes the tool name with the "
+    "whole args, so two calls that differ only in an undeclared key's value count as different calls, and a detected "
+    "loop ends the turn as its own event in the record (the reader does not model loop detection); the policy engine "
+    "stringifies the whole args only for a loaded rule or checker with an argsPattern and tests each rule's modes and "
+    "tool name first, and no loaded rule with an argsPattern applies to grep_search in a yolo take (policies/plan.toml's "
+    "argsPattern rules name invoke_agent, write_file and replace in plan mode only; policies/sandbox-default.toml's "
+    "rules table is no policy rule, the policy file schema reading the key rule; Conseca's checker carries no "
+    "argsPattern and is off; the takes turn hooks off)")
 _ALIAS = [_C, 283434, "search_file_content: GREP_TOOL_NAME"]
 OPEN_INPUT = {
     "grep_search": dict(_PKG, file=_C, file_sha256=_C_SHA256, closes_properties=False, reads=list(_GREP_READS),
