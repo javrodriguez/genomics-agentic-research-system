@@ -14,7 +14,8 @@ Javier's acceptance commit makes production_readers refuse, so a piece naming on
 Piece B17 (glitch-26's ruling B17-5, lane vendor-b17 round 2, Mon 19 Oct 2026: OD57's read shapes reach the drive
 scan) admits drive.py only with its exact edit: the module function scan_read_shapes (B17_HELPER_SHA256 pins its text
 from its `def` line to its last line) after two blank lines, and in each of the drive's three `_scan_record.scan(...)`
-calls one line holding only `read_shapes=scan_read_shapes(row),` (or `(entry),`). Every other drive.py line is then
+calls one line holding only `read_shapes=scan_read_shapes(row),` in TakeRepo._commit_step and TakeDriver.drive, and
+`read_shapes=scan_read_shapes(entry),` in WalkRepo._commit_walk (B17_SITES, round 3). Every other drive.py line is then
 bound by piece EB's check as before: edit_b_problems and without_edits read drive.py with B17's lines taken out, and
 report any trace of B17 that is off its exact form."""
 
@@ -39,13 +40,25 @@ PRE_EDIT_B_DRIVE_SHA256 = "ea3917d4e4c1acc2078b1779bab0c6c47304aee920c8d2f2dc342
 B17_HELPER = "scan_read_shapes"
 B17_HELPER_SHA256 = "f2ad5a5fae8467f8545fd55bb7295a1647d3af7568e8ec1c4a32ec9f992bd713"
 B17_CALLS = 3
-B17_KEYWORD = re.compile(r" +read_shapes=scan_read_shapes\((?:row|entry)\),\n")
+# Round 3 (glitch-26's B17-14, review a051f6e3 NIT 4): each call site's argument name, by its enclosing function:
+# TakeRepo._commit_step and TakeDriver.drive pass the row, WalkRepo._commit_walk its register entry.
+B17_SITES = {"_commit_step": "row", "drive": "row", "_commit_walk": "entry"}
 
 
 def _scan_calls(tree) -> list:
     return [n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
             and n.func.attr in ("scan", "scan_with_witness") and isinstance(n.func.value, ast.Name)
             and n.func.value.id == "_scan_record"]
+
+
+def _call_sites(tree) -> dict:
+    """{id(scan call): the name of the innermost function holding it}."""
+    out = {}
+    for fn in ast.walk(tree):
+        if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for c in _scan_calls(fn):
+                out[id(c)] = fn.name                # ast.walk visits outer functions first, so the inner one wins
+    return out
 
 
 def b17_spans(src: str) -> tuple:
@@ -75,11 +88,17 @@ def b17_spans(src: str) -> tuple:
     if len(calls) != B17_CALLS or len(keywords) != B17_CALLS or {id(c) for c, _ in keywords} != {id(c) for c in calls}:
         out.append(f"piece B17: drive.py's {len(calls)} scan calls carry {len(keywords)} read_shapes keywords, not one "
                    f"in each of {B17_CALLS}")
-    for _, k in keywords:
+    sites = _call_sites(tree)
+    if sorted(sites.get(id(c)) or "" for c in calls) != sorted(B17_SITES):
+        out.append(f"piece B17: drive.py's scan calls sit in {sorted(sites.get(id(c)) or '?' for c in calls)}, not "
+                   f"{sorted(B17_SITES)}")
+    for c, k in keywords:
+        name = B17_SITES.get(sites.get(id(c)), "?")
         line = lines[k.value.lineno - 1]
-        if k.value.lineno != k.value.end_lineno or not B17_KEYWORD.fullmatch(line):
+        if k.value.lineno != k.value.end_lineno or not re.fullmatch(
+                r" +read_shapes=scan_read_shapes\(" + re.escape(name) + r"\),\n", line):
             out.append(f"piece B17: drive.py line {k.value.lineno} is not one line holding only "
-                       f"read_shapes=scan_read_shapes(row or entry),")
+                       f"read_shapes=scan_read_shapes({name}),")
         spans.append((k.value.lineno, k.value.lineno))
     return sorted(spans), out
 

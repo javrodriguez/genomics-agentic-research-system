@@ -108,29 +108,39 @@ LAUNCH_DISAGREES = "launch-differs-from-registered-invocation"
 # offers unified exec or none (protocol/src/openai_models.rs:316-320), exec_command {cmd, ...}
 # (core/src/tools/handlers/shell_spec.rs:24-114), run as exactly [<shell>, -lc | -c, <script>] (core/src/shell.rs:24-33).
 # write_stdin's output is not a read (glitch-26's B17-7), nor is a PTY's CRLF line (81 bytes, never the ruled 80).
-_O_WRAPPED = {"shell": {"kind": "wrapped", "arg": None, "prefix": None, "opener": None}}
+# Round 3 (glitch-26's B17-10, B17-12 to B17-14, on review a051f6e3): every node at its fixed record position (a stream
+# line's top-level `item`; a rollout line's `payload`, or its `payload.item`), never at any depth; the one shell is the
+# arm O image's, /bin/bash (box/codex/Dockerfile:18, `useradd ... --shell /bin/bash dana`: the agent user's login shell,
+# which Codex runs as [shell, -lc | -c, script], core/src/shell.rs:24-33), both as a wrapper's argv[0] and as
+# exec_command's `shell` argument (shell_spec.rs:65-72); and a call with `tty: true` (shell_spec.rs:47-53) is no read,
+# whatever its output's line ending.
+_O_SHELLS = ("/bin/bash",)
+_O_TOOL = {"prefix": None, "opener": None, "refuse": {}}
+_O_WRAP = dict(_O_TOOL, kind="wrapped", arg=None, shells=_O_SHELLS, shell_arg=None)
+_O_EXEC = {"exec_command": dict(_O_TOOL, kind="script", arg="cmd", shells=_O_SHELLS, shell_arg="shell",
+                                refuse={"tty": True})}
+_O_CALL = {"match": {"type": "function_call"}, "at": (("payload",),), "id": "call_id", "name": {"key": "name"},
+           "args": "arguments", "args_json": True, "text": ()}
 READ_SHAPES = (
     # the turn stream: a command_execution item, the call and its output in one object; `command` is
     # redact_secrets(shlex_join(argv)) (app-server-protocol/src/protocol/item_builders.rs:54-61, 96-143); item.started
     # and item.completed carry the same synthetic id (exec/src/event_processor_with_jsonl_output.rs:100-102, 162-181,
     # 327-341), so every copy of an id must be the same call
-    {"shape": "stream command_execution", "copies": "same", "tools": _O_WRAPPED, "result": None,
-     "call": {"match": {"type": "command_execution"}, "under": "item", "id": "id", "name": {"value": "shell"},
+    {"shape": "stream command_execution", "copies": "same", "tools": {"shell": _O_WRAP}, "result": None,
+     "call": {"match": {"type": "command_execution"}, "at": (("item",),), "id": "id", "name": {"value": "shell"},
               "args": "command", "args_json": False, "text": (("aggregated_output",),)}},
     # the rollout: function_call {name, arguments (a JSON string), call_id} (protocol/src/models.rs:1076-1095) and
     # function_call_output {call_id, output: a string or input_text items} (:1111-1135, 2096-2104, 2187-2265), the output
     # exec_command's header then `Output:` then the output's lines (core/src/tools/context.rs:524-575)
-    {"shape": "rollout function_call_output", "copies": "one",
-     "tools": {"exec_command": {"kind": "script", "arg": "cmd", "prefix": None, "opener": None}},
-     "call": {"match": {"type": "function_call"}, "under": "payload", "id": "call_id", "name": {"key": "name"},
-              "args": "arguments", "args_json": True, "text": ()},
-     "result": {"match": {"type": "function_call_output"}, "under": "payload", "id": "call_id", "name": None,
-                "text": (("output",), ("output", "*", "text"))}},
+    {"shape": "rollout function_call_output", "copies": "one", "tools": _O_EXEC, "call": _O_CALL,
+     "result": {"match": {"type": "function_call_output"}, "at": (("payload",),), "id": "call_id", "name": None,
+                "text": (("output",), ("output", "*", "text")), "own": None}},
     # the rollout: event_msg item_completed's CommandExecution item {id: call_id, command: argv, aggregated_output}
-    # (protocol/src/items.rs:243-281; core/src/tools/events.rs:561-589)
-    {"shape": "rollout CommandExecution", "copies": "same", "tools": _O_WRAPPED, "result": None,
-     "call": {"match": {"type": "CommandExecution"}, "under": "item", "id": "id", "name": {"value": "shell"},
-              "args": "command", "args_json": False, "text": (("aggregated_output",),)}},
+    # (protocol/src/items.rs:243-281; core/src/tools/events.rs:561-589), its call the function_call of that id, and its
+    # own argv a wrapper of the image's shell around the same read
+    {"shape": "rollout CommandExecution", "copies": "one", "tools": _O_EXEC, "call": _O_CALL,
+     "result": {"match": {"type": "CommandExecution"}, "at": (("payload", "item"),), "id": "id", "name": None,
+                "text": (("aggregated_output",),), "own": dict(_O_WRAP, arg="command")}},
 )
 
 

@@ -429,32 +429,43 @@ class GeminiAdapter(aa.AgentAdapter):
 # 274616-274620; its display the raw stdout, :326232-326233) and read_file (its output the file's lines, :254074-254084;
 # its display never the text, :254085-254093). grep_search is not a read here (glitch-26's B17-7, as Claude's Grep).
 # tests/test_gemini_adapter.py's a15_read_shapes pins these records' bytes; their behaviour is test_scan_record's.
-_G_SHELL = {"kind": "script", "arg": "command", "prefix": None, "opener": None}
-_G_SHELL_OUT = {"kind": "script", "arg": "command", "prefix": "Output: ", "opener": "<untrusted_context>"}
-_G_READ = {"kind": "path", "arg": "file_path", "prefix": None, "opener": None}
-# A toolCalls entry, the session's call: {id, name, args, result, ..., resultDisplay} (recordCompletedToolCalls
-# chunk-NR7L3FXV.js:334058-334073); the recorder re-appends a whole message on each update (:286885-286897), so every
-# copy of an id must be the same call (copies "same", B17-6); a $patch entry {id, result} names no tool and is no copy.
-_G_SESSION_CALL = {"match": {}, "under": "toolCalls", "id": "id", "name": {"key": "name"}, "args": "args",
+_G_TOOL = {"prefix": None, "opener": None, "shells": None, "shell_arg": None, "refuse": {}}
+_G_SHELL = dict(_G_TOOL, kind="script", arg="command")
+_G_SHELL_OUT = dict(_G_SHELL, prefix="Output: ", opener="<untrusted_context>")
+_G_READ = dict(_G_TOOL, kind="path", arg="file_path")
+# Round 3 (glitch-26's B17-10, on review a051f6e3's finding 1): every node at its fixed record position, never at any
+# depth. A session line is one message ({id, type, content, toolCalls, ...}) or one control record ({"$patch": ...}),
+# each at the line's top level (chunk-NR7L3FXV.js:286808-286816; harness gemini_session_replay.py:80-120).
+# A toolCalls entry, the session's call: {id, name, args, result, ..., resultDisplay} at a message's toolCalls
+# (recordCompletedToolCalls chunk-NR7L3FXV.js:334058-334073); the recorder re-appends a whole message on each update
+# (:286885-286897), so every copy of an id must be the same call (copies "same", B17-6); a $patch entry {id, result}
+# names no tool and is no copy.
+_G_SESSION_CALL = {"match": {}, "at": (("toolCalls", "*"),), "id": "id", "name": {"key": "name"}, "args": "args",
                    "args_json": False, "text": ()}
+# A functionResponse part's positions: a message's toolCalls entry's result, a function-response user turn's content,
+# and the same two under a $patch, directly or in its updates (gemini_session_replay.py:97-108).
+_G_PARTS = ("toolCalls", "*", "result", "*", "functionResponse"), ("content", "*", "functionResponse")
+_G_RESPONSE_AT = _G_PARTS + tuple(("$patch",) + p for p in _G_PARTS) + tuple(("$patch", "updates", "*") + p
+                                                                            for p in _G_PARTS)
 READ_SHAPES = (
-    # the turn stream: tool_use {tool_name, tool_id, parameters} and tool_result {tool_id, status, output}, its output the
-    # display string only (gemini-Q2GRYIAK.js:12223-12229, 12351-12361; 11830-11836, 11846-11856), so only a shell read
-    # carries the doc's text there
+    # the turn stream: tool_use {tool_name, tool_id, parameters} and tool_result {tool_id, status, output}, each a whole
+    # line, its output the display string only (gemini-Q2GRYIAK.js:12223-12229, 12351-12361; 11830-11836,
+    # 11846-11856), so only a shell read carries the doc's text there
     {"shape": "stream tool_result", "copies": "one", "tools": {"run_shell_command": _G_SHELL},
-     "call": {"match": {"type": "tool_use"}, "under": None, "id": "tool_id", "name": {"key": "tool_name"},
+     "call": {"match": {"type": "tool_use"}, "at": ((),), "id": "tool_id", "name": {"key": "tool_name"},
               "args": "parameters", "args_json": False, "text": ()},
-     "result": {"match": {"type": "tool_result"}, "under": None, "id": "tool_id", "name": None,
-                "text": (("output",),)}},
+     "result": {"match": {"type": "tool_result"}, "at": ((),), "id": "tool_id", "name": None,
+                "text": (("output",),), "own": None}},
     # the session file: every functionResponse part {id, name, response: {output}} (createFunctionResponsePart
     # :289967-289975), in a toolCalls entry's result, a function-response user turn (:333244-333252, 333285) or a
     # $patch (:287199-287265, 287167-287182), found by its own id, its name the call's
     {"shape": "session functionResponse", "copies": "same",
      "tools": {"run_shell_command": _G_SHELL_OUT, "read_file": _G_READ}, "call": _G_SESSION_CALL,
-     "result": {"match": {}, "under": "functionResponse", "id": "id", "name": "name",
-                "text": (("response", "output"),)}},
-    # the session file: a toolCalls entry's own resultDisplay (:334060-334061, 334070)
-    {"shape": "session resultDisplay", "copies": "same",
-     "tools": {"run_shell_command": _G_SHELL, "read_file": _G_READ},
+     "result": {"match": {}, "at": _G_RESPONSE_AT, "id": "id", "name": "name",
+                "text": (("response", "output"),), "own": None}},
+    # the session file: a run_shell_command entry's own resultDisplay, the raw stdout (:334060-334061, 334070;
+    # :326232-326233); read_file's display never carries the file's text (:254085-254093), so it is not read here
+    # (B17-14)
+    {"shape": "session resultDisplay", "copies": "same", "tools": {"run_shell_command": _G_SHELL},
      "call": dict(_G_SESSION_CALL, text=(("resultDisplay",),)), "result": None},
 )
