@@ -1,4 +1,36 @@
-Status: running
+Status: needs-review
+
+ROUND 1 SUMMARY FOR REVIEW (cloud executor, 2026-10-19 06:43 EDT; glitch-26's rulings B16-1 and B16-2):
+- B16-1 reading verified (ruling B16-1): native_snapshot.codex_rollout_rel (line 191) and gemini_session_rel (line 163) listed the config root as rel_dir ""; box/ownership.py _rel_dir (456) admits "." only and hands "" to _rel (347), which refuses it with the GPT walk's line.
+- B16-1 red 7aca6336: tests/test_native_snapshot.py BoxRootNaming drives each locator through a lister with ownership's real _rel_dir and _no_credential_path in front of a fake listing (no container), wrapped as TakeDriver.config_view wraps a failure. errors=2, one per locator: "SnapshotRefused: the box's operator_list of the config folder failed (Refused: an operator path is a normalised path relative to the run tree, never leaving it)".
+- B16-1 green 8ad7007c: both locators name the root "." (native_snapshot.py 166 and 194). The box's path check is unchanged, and so is drive.py. Named exception (ruling B16-1): native_snapshot.py is a CODEX_SOURCES file. No native reader acceptance record exists (copy_manifest: 0 under native-readers/), so no accepted bytes move. It is recorded as B12's was: a comment above the locators, this file and the commit message. check_vendor_sources P2 naming native_snapshot.py exits 1 (control).
+- Sweep, every caller of a config-folder or run-tree lister or reader and how it names the root:
+  - native_snapshot codex_rollout_rel 194 and gemini_session_rel 166: "" before, "." now.
+  - check_take.vendor_native_rel's synthetic lister (4998-5004): read "" as the root, now "." (moved in the green). "" now lists nothing, so a locator naming it refuses, as the box would.
+  - codex_adapter.native_session_rel 419 and gemini_adapter.native_session_rel 420: pass the lister through and name no root.
+  - drive.TakeDriver.config_view (2567-2583): hands rel_dir and rel_path to operator_list and operator_read unchanged; names no root.
+  - drive._retain_native (2514-2516) and harness_adapter_for's live_rollout (3634-3635): through the locators, then read the located file path.
+  - drive._list_session_store and store_listing (2524-2535, 3404-3425): start at the store root (sessions, .gemini/tmp, projects), never at the folder's root.
+  - drive.host_lister (3428-3445): host-side Path(config)/rel, where "." is the root. Unchanged.
+  - drive._operator_read (2400-2406): run-tree file paths only (relpath of a target, the design table), never the root.
+  - box/ownership operator_list, _rel_dir, operator_read and _rel: the contract. Unchanged.
+  - Test fakes: test_box_integration FakeBox.operator_list now lists the root for "." only, so "" refuses through _parent as the box refuses it. test_drive_ownership's stub adapter now asks ".". The host-side box_view stand-ins (test_codex_adapter 1182, test_gemini_adapter 1168, test_vendor_record_binding 41) take "." as the root and are unchanged. test_drive_box_seams 111 and test_ownership 488 and 506 already name ".". test_nested_agent 743 lists projects only.
+- B16-1 witnesses: test_native_snapshot --witnesses 2/2 red, each alone (codex-root-empty, gemini-root-empty: one locator's root put back to "", with the other locator still passing). Registered in checks.d/vendor-admission.txt with test_native_snapshot and a check_vendor_sources P2 line for the round's other files.
+- Checks, each under env -i (PATH, HOME, LANG, TMPDIR outside the clone):
+  - All OK: test_native_snapshot 15, test_box_integration 61, test_ci_job 23, test_drive_box_seams 6, test_drive_ownership 44, test_native_history_record 3, test_native_reader_registration 7, test_vendor_record_binding 12, test_vendor_take_records 4, test_run_take 68, test_walk_builders 95, test_codex_adapter 55, test_gemini_adapter 143.
+  - test_ownership: 1 of 38 fails (RestoreGuards.test_the_verify_reports_an_unreadable_folder). It fails the same on the unchanged base: this sandbox's root user can read the unreadable fixture, as with test_nested_agent in vendor-b14.
+  - build_draft --check ok (the draft does not move); freeze --check ok; copy_manifest --check ok.
+  - Witness run, every line of checks.d/vendor-admission.txt: 56 of 56 exit 0.
+  - Not run: box/stub_take.py (it imports ownership but drives real containers).
+- B16-2 (ruling B16-2): lane-reports/B16-DESIGN-NOTE.md (5bfa806a), read from the verified 0.64.0 tarball (sha256 891a794e...; chunk-NR7L3FXV.js d566e81b..., gemini-Q2GRYIAK.js 7702da31...), unpacked outside the clone and never run.
+  - file_path is in neither grep_search schema, in either family: gemini-3 grep 282751-282789, ripgrep 282791-282856; legacy 282158 and 282198.
+  - Ajv validates without additionalProperties (273788-273822, 274396-274401), so the call passes and runs.
+  - The call searches the working directory: both invocations read only dir_path (321746, 322258).
+  - The stream records the model's parameters verbatim (tool_use, gemini-Q2GRYIAK.js 12221-12229) and a success tool_result (12350-12361).
+  - Readers: transcript_gemini refuses through map_tool (transcript_view.py 214-217; gemini_adapter.py 152). The Gemini native readers keep args opaque and join them by exact JSON. The Codex readers never read a model's argument keys (transcript_codex 203-206; codex_native 230-233). The Claude Code reader refuses through the same map_tool (transcript_view.py 557).
+- B16-2 recommendation: option B, for arm G only. A key outside a known tool's declared keys is read as named, ignored input, and only where the pinned package shows the schema leaves properties open and the invocation never reads the key, cited per tool. The view's args stay what ran (path None), and the undeclared key is kept by name on the view item. Unknown tools, off-type values and closed schemas still refuse. It needs a named exception for transcript_gemini.py. Arm A is ruled separately, after Claude Code's own input validation is read; arm O needs nothing. No reader changed.
+
+RESUME HERE: review stop (round 1)
 
 Clock: 2026-10-19 06:22 EDT (lane vendor-b16, cloud executor, branch from lane/vendor-admission at 0aa493c0).
 
