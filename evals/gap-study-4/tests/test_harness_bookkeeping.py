@@ -268,10 +268,16 @@ class Seam(unittest.TestCase):
 
 
 def typed_harness(src: str) -> list:
-    """Every harness name or home folder of the table (test entry included) typed in `src`."""
+    """Every harness name or home folder of the table (test entry included) typed in `src`. A folder spelled with a
+    leading dot is not a hit where it reads as an attribute (an identifier, `)` or `]` right before it): R4-4's
+    `.home/**` is otherwise found in endstate's `self.home` and `take.home`, which type no folder."""
     hits = [n for n in TABLE if n in src]
-    hits += [p.split("/")[0] for e in TABLE.values() for p in e.home_paths + e.run_tree_paths
-             if p.split("/")[0] in src]
+    for folder in {p.split("/")[0] for e in TABLE.values() for p in e.home_paths + e.run_tree_paths}:
+        if folder.startswith("."):
+            if re.search(r"(?<![A-Za-z0-9_)\]])" + re.escape(folder), src):
+                hits.append(folder)
+        elif folder in src:
+            hits.append(folder)
     return sorted(set(hits))
 
 
@@ -522,6 +528,9 @@ class VendorCandidates(unittest.TestCase):
                         hits = typed_harness(fh.read())
                     if hits:
                         found[name] = hits
+            # R4-4: the agent HOME typed as a path is found; an attribute named home is not
+            self.assertEqual(typed_harness('X = "/srv/w/t/.home/x"'), [".home"])
+            self.assertEqual(typed_harness("X = take.home or self.home or f(a).home or b[0].home"), [])
             for typed in ('X = "codex"', 'X = "gemini"', 'X = "sessions/"', 'X = ".gemini/"'):
                 self.assertNotEqual(typed_harness(typed), [], typed)   # the scan fires on each known positive
         self.assertEqual(found, {})

@@ -104,16 +104,18 @@ TABLE: dict = {
 
 # VENDOR CANDIDATES (lane vendor-admission T2, glitch-b5, 16 Oct 2026). Codex's and Gemini's bookkeeping, grounded in
 # this study's own files and held BESIDE the table, never in it: entry() never reads them, so production
-# Evidence.load still refuses a codex or gemini take ("has no bookkeeping entry"). Their run_tree_paths are empty
-# because nothing grounds them yet: what Codex and Gemini leave in the run tree shows only in a real walk's snapshots,
-# and an empty guess would let harness furniture read as the agent's changes. Promotion into TABLE is a later ruling,
-# after a real walk measures the run tree and before any regrade.json is committed (promotion changes regrade bytes).
+# Evidence.load still refuses a codex or gemini take ("has no bookkeeping entry"). Their run_tree_paths hold the agent
+# HOME alone (R4-4, glitch-26, lane vendor-b11 round 4: <run tree>/.home is snapshotted but not graded; arm A's HOME is
+# outside the run tree). Nothing else in the run tree is grounded yet: what Codex and Gemini leave there shows only in
+# a real walk's snapshots, and a guess would let harness furniture read as the agent's changes. Promotion into TABLE is
+# a later ruling, after a real walk measures the run tree and before any regrade.json is committed (promotion changes
+# regrade bytes).
 # Their home_paths are inert in production today: the driver records the take's home as None and the sidecar
 # snapshots only the run tree. tests/test_harness_bookkeeping.py VendorCandidates re-derives every pattern below.
 VENDOR_CANDIDATES: dict = {
     "codex": Entry(
         home_paths=("sessions/**/rollout-*.jsonl",),
-        run_tree_paths=(),
+        run_tree_paths=(".home/**",),
         grounds=(
             "evals/gap-study-4/codex_adapter.py:41: rollout    `$CODEX_HOME/sessions/.../rollout-*.jsonl` (`...` any "
             "folders: sessions/<year>/<month>/<day>/ as native_snapshot.py:84 spells it)",
@@ -121,23 +123,24 @@ VENDOR_CANDIDATES: dict = {
             "\"CODEX_HOME\": CONFIG_MOUNT, so the pattern is relative to CODEX_HOME, the config mount; since R-H5 "
             "(glitch-26, 19 Oct 2026) the row's \"HOME\" is RUN_TREE_HOME, the run tree's .home, so the home a "
             "codex take's evidence places these paths under is the config mount, not HOME",
-            "run_tree_paths: none; unmeasured until a real walk (what Codex leaves in the run tree shows only in a "
+            "run_tree_paths: .home/** (R4-4, glitch-26, lane vendor-b11 round 4): the agent HOME (R-H5's <run "
+            "tree>/.home, box/run_take.py RUN_TREE_HOMEDIR) is inside the run tree, so the snapshots walk it "
+            "(box/sidecar.py and the sidecar image stay byte-unchanged) but the end-state grader does not grade it; "
+            "arm A's HOME is outside the run tree and its entry is untouched",
+            "the rest of the run tree: unmeasured until a real walk (what Codex leaves there shows only in a "
             "walk's snapshots)",
         ),
         not_excluded=(
             (".tmp/", "box/run_take.py:93 and 153, 169-170: TMPDIR, TMP and TEMP point at the run tree's .tmp, which "
                       "holds every tool's scratch, the agent's own included; a file Codex itself leaves there needs a "
                       "pattern measured on a real walk"),
-            (".home/", "box/run_take.py:161-162 and 169 (R-H5): HOME is the run tree's .home, where the agent's own "
-                       "tools (git, conda, R, Nextflow, pip) and Codex's HOME reads (~/.agents/skills, the shell start "
-                       "files) live; what is there is the agent's, until a real walk measures what Codex itself leaves"),
             ("the rest of CODEX_HOME", "box/run_take.py:169-171: the config mount also holds the login lease and "
                                        "Codex's other files; none is grounded as bookkeeping until a real walk"),
         ),
     ),
     "gemini": Entry(
         home_paths=(".gemini/tmp/*/chats/session-*.jsonl",),
-        run_tree_paths=(),
+        run_tree_paths=(".home/**",),
         grounds=(
             "evals/gap-study-4/native_snapshot.py:20: gemini_session_file reads under exactly "
             "<home>/.gemini/tmp/*/chats; native_snapshot.py:13: filename = session-<ISO minute>-<first 8 of the "
@@ -149,16 +152,17 @@ VENDOR_CANDIDATES: dict = {
             "the config mount; since R-H5 (glitch-26, 19 Oct 2026) the row's \"HOME\" is RUN_TREE_HOME, the run "
             "tree's .home, so the home a gemini take's evidence places these paths under is the config mount, not "
             "HOME",
-            "run_tree_paths: none; unmeasured until a real walk (what Gemini leaves in the run tree shows only in a "
+            "run_tree_paths: .home/** (R4-4, glitch-26, lane vendor-b11 round 4): the agent HOME (R-H5's <run "
+            "tree>/.home, box/run_take.py RUN_TREE_HOMEDIR) is inside the run tree, so the snapshots walk it "
+            "(box/sidecar.py and the sidecar image stay byte-unchanged) but the end-state grader does not grade it; "
+            "arm A's HOME is outside the run tree and its entry is untouched",
+            "the rest of the run tree: unmeasured until a real walk (what Gemini leaves there shows only in a "
             "walk's snapshots)",
         ),
         not_excluded=(
             (".tmp/", "box/run_take.py:93 and 153, 172-173: TMPDIR, TMP and TEMP point at the run tree's .tmp, which "
                       "holds every tool's scratch, the agent's own included; a file Gemini itself leaves there needs "
                       "a pattern measured on a real walk"),
-            (".home/", "box/run_take.py:161-162 and 172 (R-H5): HOME is the run tree's .home, where the agent's own "
-                       "tools (git, conda, R, Nextflow, pip) write ~; what is there is the agent's, until a real walk "
-                       "measures what Gemini itself leaves"),
             ("<chats>/<parent id>/<id>.jsonl", "native_snapshot.py:14-15: a subagent's session file, never matched "
                                                "by the pattern; unmeasured until a real walk"),
             (".gemini/tmp/<project>/ other entries", "lane note harness-window2-resume-2026-10-14.md: Gemini's tmp "
