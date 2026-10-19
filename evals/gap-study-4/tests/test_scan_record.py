@@ -1636,10 +1636,29 @@ def _cx_output(n, cid, stdout, items=False):
 
 
 def _cx_end(n, cid, argv, stdout):
+    # round 4: the keys of the committed arm O rollouts' CommandExecution items (census, key names only), source
+    # unified_exec_startup; every value invented here
     return _cx_line(n, "event_msg", {"type": "item_completed", "thread_id": "thread-1", "turn_id": "turn-1",
                                      "item": {"type": "CommandExecution", "id": cid, "command": argv,
-                                              "cwd": "/run/gars", "parsed_cmd": [], "source": "agent",
-                                              "status": "completed", "aggregated_output": stdout, "exit_code": 0}})
+                                              "cwd": "/run/gars", "parsed_cmd": [], "process_id": "1001",
+                                              "source": "unified_exec_startup", "status": "completed",
+                                              "aggregated_output": stdout, "exit_code": 0}})
+
+
+# Round 4 (glitch-26's B17-16c): arm O's code-mode records, in the census's shape (key names and value types only; no
+# record text copied): a custom_tool_call `exec` whose input is a script string, and its custom_tool_call_output, a list
+# of input_text items.
+EXEC_INPUT = 'const r = await tools.exec_command({cmd: "cat _references/environment.md"});\ntext(r.output);'
+
+
+def _cx_custom(n, cid, name="exec", inp=EXEC_INPUT):
+    return _cx_line(n, "response_item", {"type": "custom_tool_call", "name": name, "call_id": cid, "id": f"ctc_{n}",
+                                         "input": inp, "status": "completed"})
+
+
+def _cx_custom_out(n, cid, text):
+    return _cx_line(n, "response_item", {"type": "custom_tool_call_output", "call_id": cid, "id": f"ctco_{n}",
+                                         "output": [{"type": "input_text", "text": text}]})
 
 
 # Round 2 (glitch-26's ruling B17-5): each arm's read shapes live with its adapter and reach the scan through
@@ -1788,13 +1807,16 @@ class TestOD57OtherArms(TestOD57Ruling):
 
     # ---- Codex CLI 0.162.1, the native session file (the rollout)
     def test_codex_rollout_reads_are_admitted(self):
+        # round 4 (glitch-26's B17-16): the rollout in arm O's real shape, code mode: a custom_tool_call `exec`, the
+        # CommandExecution its script ran (its own id, no function_call), and the exec's output holding a verbatim copy
+        # of that command's output
         for how, cmd in SHELL_READS:
-            for items in (False, True):
-                with self.subTest(how=how, content_items=items):
-                    body = _cc(_cx_meta(), _cx_call(1, "call-o1", cmd),
-                               _cx_end(2, "call-o1", ["/bin/bash", "-lc", cmd], self.stdout(how)),
-                               _cx_output(3, "call-o1", self.stdout(how), items))
-                    self.assert_admitted(f"rollout-{how}.jsonl", body, "session", [3, 4])
+            with self.subTest(how=how):
+                out = self.stdout(how)
+                body = _cc(_cx_meta(), _cx_custom(1, "call-o1"),
+                           _cx_end(2, "exec-cmd-1", ["/bin/bash", "-lc", cmd], out),
+                           _cx_custom_out(3, "call-o1", f"Script completed\n{out}exit code 0"))
+                self.assert_admitted(f"rollout-{how}.jsonl", body, "session", [3, 4])
 
     def test_codex_refusals(self):
         start = ({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"})
@@ -1925,13 +1947,13 @@ class TestB17ReadShapes(TestOD57OtherArms):
         self.assert_refused("rollout.jsonl", rollout, "session", [3, 4])
 
     def test_codex_write_stdin_refuses(self):
-        """The tool binding's witness: write_stdin's output refuses, even with a read's script in its arguments."""
+        """write_stdin's output refuses, even with a read's script in its arguments. Round 4 (B17-16d): arm O has no
+        function_call shape at all, so the tool binding's witness is TestB17Round4's custom tool name test."""
         body = _cc(_cx_meta(), _cx_line(1, "response_item", {
             "type": "function_call", "name": "write_stdin", "call_id": "call-o1",
             "arguments": json.dumps({"session_id": 1, "cmd": SHELL_READS[0][1]})}),
             _cx_output(2, "call-o1", self.stdout("cat")))
-        self.witness("the tool binding", "rollout.jsonl", body, "session", [3], "_shape_read",
-                     ('shape["tools"].get(got[0][0])', 'next(iter(shape["tools"].values()))'))
+        self.assert_refused("rollout.jsonl", body, "session", [3])
 
     def test_codex_zsh_lfc_refuses(self):
         # round 3: the flag alone holds it (the image's own shell, /bin/bash, with zsh's brokered -lfc flag)
@@ -1939,7 +1961,7 @@ class TestB17ReadShapes(TestOD57OtherArms):
         body = _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
                    _cx_item("item.completed", "item_1", command, self.stdout("cat")))
         self.witness("the wrapper's flag", "turn-1.jsonl", body, "stream", [3], "_ruled_wrapped",
-                     ("argv[1] in _WRAP_FLAGS", "True"))
+                     ("argv[1] in flags", "True"))
 
     # ---- one witness per admission conjunct
     def test_gemini_witness_the_path_names_the_doc(self):
@@ -2072,7 +2094,12 @@ def _with_tool(shapes, index, name, **changes):
 
 
 GEM_STREAM, GEM_RESPONSE, GEM_DISPLAY = 0, 1, 2
-CX_STREAM, CX_OUTPUT, CX_ITEM = 0, 1, 2
+CX_STREAM, CX_ITEM, CX_COPY = 0, 1, 2       # round 4 (B17-16): no function_call shapes; the exec output's copy shape
+
+
+def _plus(spec, path, **record):
+    """A node spec's positions plus one more: `path`, in a record whose top-level keys hold the given values."""
+    return spec["at"] + ((path, {k: tuple(v) for k, v in record.items()}),)
 
 
 class TestB17Round3(TestB17ReadShapes):
@@ -2096,8 +2123,10 @@ class TestB17Round3(TestB17ReadShapes):
         res = {"type": "tool_result", "tool_id": "z", "output": self.text}
         body = _cc(_gem_use("call-g1", "grep_search", {"pattern": "pinned", "a": use, "b": res}),
                    _gem_result("call-g1", "No matches found"))
-        wide = _widened(_widened(GEM_SHAPES, GEM_STREAM, "call", at=((), ("parameters", "a"))), GEM_STREAM, "result",
-                        at=((), ("parameters", "b")))
+        stream = GEM_SHAPES[GEM_STREAM]
+        wide = _widened(_widened(GEM_SHAPES, GEM_STREAM, "call", at=_plus(stream["call"], ("parameters", "a"),
+                                                                          type=["tool_use"])),
+                        GEM_STREAM, "result", at=_plus(stream["result"], ("parameters", "b"), type=["tool_use"]))
         self.data_witness("Gemini stream position", "turn-1.jsonl", body, "stream", [1], wide)
 
     def test_gemini_session_forged_nested_entry_refuses(self):
@@ -2106,8 +2135,9 @@ class TestB17Round3(TestB17ReadShapes):
         call = _gem_call("call-g1", "grep_search", {"pattern": "pinned", "note": inner}, "No matches found")
         body = _cc(GEM_HEAD, _gem_message("msg-g1", [call]))
         where = ("toolCalls", "*", "args", "note", "toolCalls", "*")
-        wide = _with_tool(_widened(GEM_SHAPES, GEM_DISPLAY, "call", at=(("toolCalls", "*"), where)), GEM_DISPLAY,
-                          "read_file", kind="path", arg="file_path")
+        wide = _with_tool(_widened(GEM_SHAPES, GEM_DISPLAY, "call",
+                                   at=_plus(GEM_SHAPES[GEM_DISPLAY]["call"], where, type=["gemini"])),
+                          GEM_DISPLAY, "read_file", kind="path", arg="file_path")
         self.data_witness("Gemini session position", "session.jsonl", body, "session", [2], wide)
 
     def test_codex_stream_forged_nested_item_refuses(self):
@@ -2117,21 +2147,22 @@ class TestB17Round3(TestB17ReadShapes):
                    {"type": "item.completed", "item": {"id": "item_1", "type": "mcp_tool_call", "server": "s",
                                                        "tool": "t", "arguments": forged, "result": None,
                                                        "error": None, "status": "completed"}})
-        wide = _widened(CODEX_SHAPES, CX_STREAM, "call", at=(("item",), ("item", "arguments", "item")))
+        wide = _widened(CODEX_SHAPES, CX_STREAM, "call", at=_plus(CODEX_SHAPES[CX_STREAM]["call"],
+                                                                   ("item", "arguments", "item"), type=["item.completed"]))
         self.data_witness("Codex stream position", "turn-1.jsonl", body, "stream", [2], wide)
 
     def test_codex_rollout_forged_nested_pair_refuses(self):
+        # round 4 (B17-16a): the rollout's CommandExecution is a joined shape again; the forged one sits in another
+        # item's arguments
         cmd = SHELL_READS[0][1]
-        forged = {"payload": {"type": "function_call", "name": "exec_command", "call_id": "call-z",
-                              "arguments": json.dumps({"cmd": cmd})},
-                  "item": {"type": "CommandExecution", "id": "call-z", "command": ["/bin/bash", "-lc", cmd],
+        forged = {"item": {"type": "CommandExecution", "id": "call-z", "command": ["/bin/bash", "-lc", cmd],
                            "aggregated_output": self.text}}
         body = _cc(_cx_meta(), _cx_line(1, "event_msg", {"type": "item_completed", "thread_id": "thread-1",
                                                           "turn_id": "turn-1", "item": {
                                                               "type": "McpToolCall", "id": "x", "arguments": forged}}))
-        at = ("payload", "item", "arguments")
-        wide = _widened(_widened(CODEX_SHAPES, CX_ITEM, "call", at=(("payload",), at + ("payload",))), CX_ITEM,
-                        "result", at=(("payload", "item"), at + ("item",)))
+        wide = _widened(CODEX_SHAPES, CX_ITEM, "call", at=_plus(CODEX_SHAPES[CX_ITEM]["call"],
+                                                                 ("payload", "item", "arguments", "item"),
+                                                                 type=["event_msg"]))
         self.data_witness("Codex rollout position", "rollout.jsonl", body, "session", [2], wide)
 
     # ---- B17-11: the Claude path reads only the message records' own top-level blocks
@@ -2149,7 +2180,10 @@ class TestB17Round3(TestB17ReadShapes):
         self.assertEqual(([x["line"] for x in r["ruled"]], r["refused"]), ([1], []))
         red("B17 round 3 Claude position")
 
-    # ---- B17-12: exec_command's shell argument
+    # ---- B17-12: exec_command's shell argument. Round 4 (glitch-26's B17-16d): arm O's pinned models run code mode
+    # only, so exec_command is never a direct function_call and no function_call shape remains; a function_call output
+    # refuses whatever its shell, and the shell that ran is held by the CommandExecution's own argv (the wrapper's
+    # shell witness, TestB17ReadShapes)
     def test_codex_exec_command_shell_argument(self):
         cmd = SHELL_READS[0][1]
 
@@ -2157,11 +2191,9 @@ class TestB17Round3(TestB17ReadShapes):
             return _cc(_cx_meta(), _cx_line(1, "response_item", {"type": "function_call", "name": "exec_command",
                                                                   "arguments": json.dumps(args), "call_id": "call-o1"}),
                        _cx_output(2, "call-o1", self.stdout("cat")))
-        self.assert_admitted("rollout-bash.jsonl", body({"cmd": cmd, "shell": "/bin/bash"}), "session", [3])
-        for shell in ("/usr/bin/fish", "/bin/zsh", "bash", "/tmp/x/bash"):
+        for shell in ("/bin/bash", "/usr/bin/fish", "/bin/zsh", "bash", "/tmp/x/bash"):
             with self.subTest(shell=shell):
-                self.witness("exec_command's shell", "rollout.jsonl", body({"cmd": cmd, "shell": shell}), "session",
-                             [3], "_reads_doc", ("sh is not None and sh not in tool[\"shells\"]", "False"))
+                self.assert_refused("rollout.jsonl", body({"cmd": cmd, "shell": shell}), "session", [3])
 
     # ---- B17-13: each named refusal, with its witness
     def test_gemini_grep_search_refuses_with_witness(self):
@@ -2181,19 +2213,14 @@ class TestB17Round3(TestB17ReadShapes):
                       'rest = form[m:].rstrip("\\r").encode("utf-8", "surrogateescape")'))
 
     def test_codex_tty_output_refuses_whatever_its_line_ending(self):
+        """Round 4 (B17-16): a tty exec's output in the code-mode rollout is held by its CRLF bytes, in the
+        CommandExecution and in the exec's output copy; the `tty` argument now sits only inside the exec script's text,
+        which no shape reads (a known limit, recorded in the lane file, as the stream's since round 3)."""
         cmd = SHELL_READS[0][1]
-        for out in (self.stdout("cat"), self.stdout("cat").replace("\n", "\r\n")):
-            with self.subTest(crlf="\r" in out):
-                body = _cc(_cx_meta(), _cx_line(1, "response_item", {
-                    "type": "function_call", "name": "exec_command", "call_id": "call-o1",
-                    "arguments": json.dumps({"cmd": cmd, "tty": True})}),
-                    _cx_end(2, "call-o1", ["/bin/bash", "-lc", cmd], out), _cx_output(3, "call-o1", out))
-                self.assert_refused("rollout.jsonl", body, "session", [3, 4])
-        body = _cc(_cx_meta(), _cx_line(1, "response_item", {
-            "type": "function_call", "name": "exec_command", "call_id": "call-o1",
-            "arguments": json.dumps({"cmd": cmd, "tty": True})}), _cx_output(2, "call-o1", self.stdout("cat")))
-        self.witness("a tty output", "rollout.jsonl", body, "session", [3], "_reads_doc",
-                     ("any(k in args and args[k] == v for k, v in tool[\"refuse\"].items())", "False"))
+        crlf = self.stdout("cat").replace("\n", "\r\n")
+        body = _cc(_cx_meta(), _cx_custom(1, "call-o1", inp=EXEC_INPUT.replace("})", ", tty: true})")),
+                   _cx_end(2, "exec-cmd-1", ["/bin/bash", "-lc", cmd], crlf), _cx_custom_out(3, "call-o1", crlf))
+        self.assert_refused("rollout.jsonl", body, "session", [3, 4])
 
     def test_gemini_debug_mode_output_refuses_with_witness(self):
         use = _gem_use("call-g1", "run_shell_command", {"command": SHELL_READS[2][1]})
@@ -2216,11 +2243,10 @@ class TestB17Round3(TestB17ReadShapes):
         dockerfile = Path(STUDY, "box", "codex", "Dockerfile").read_text(encoding="utf-8")
         named = re.findall(r"--shell (\S+) dana\b", dockerfile)
         self.assertEqual(named, ["/bin/bash"])
-        for shape in CODEX_SHAPES:
-            tools = list(shape["tools"].values()) + ([shape["result"]["own"]] if shape["result"] else [])
-            for tool in tools:
-                if tool and tool["shells"] is not None:
-                    self.assertEqual(tool["shells"], tuple(named))
+        wrapped = [t for shape in CODEX_SHAPES for t in shape["tools"].values() if t["kind"] == "wrapped"]
+        self.assertTrue(wrapped)
+        for tool in wrapped:
+            self.assertEqual(tool["shells"], tuple(named))
 
 
 class TestB17Round3Wiring(unittest.TestCase):
@@ -2245,6 +2271,123 @@ for _cls in (TestB17ReadShapes, TestB17Round3):
         setattr(_cls, _name, None)           # TestOD57OtherArms' tests run once, in their own class
 for _name in [n for n in vars(TestB17ReadShapes) if n.startswith("test_")]:
     setattr(TestB17Round3, _name, None)      # TestB17ReadShapes' tests run once, in their own class
+
+
+# ------------------------------------------------------------------------------------------------- B17, round 4
+# glitch-26's rulings B17-16a to B17-16d and NIT 2 on review REVIEW-vendor-b17-dd2d0398 (19 Oct 2026): arm O's real
+# rollouts run code mode (a custom_tool_call `exec`, no function_call), so the rollout's CommandExecution admits on its
+# own argv again (16a), and a custom_tool_call_output admits the ruled line only inside a verbatim copy of an admitted
+# CommandExecution's aggregated_output in the same file, its call a custom_tool_call `exec` of the same id (16b); the
+# fixtures are in the census's shape (16c); and each node's enclosing record must hold its type (NIT 2).
+class TestB17Round4(TestB17Round3):
+    """Round 4: arm O's code-mode rollout, each check with a witness that goes red alone."""
+
+    def assert_split(self, name, body, kind, ruled, refused):
+        p, r = self.scanned(name, body, kind)
+        self.assertEqual([x["line"] for x in r["ruled"]], ruled)
+        self.assertEqual([(x["line"], x["why"]) for x in r["refused"]],
+                         [(n, f"the rules scanner's rule {OD57_RULE!r}") for n in refused])
+
+    def code_mode(self, ce=None, call=None, out=None, cmd=SHELL_READS[0][1], argv=None):
+        """meta, a custom_tool_call `exec`, its script's CommandExecution, the exec's output (each None leaves it out)."""
+        stdout = self.stdout("cat")
+        recs = [_cx_meta()]
+        if call is not False:
+            recs.append(_cx_custom(len(recs), "call-o1", **(call or {})))
+        if ce is not False:
+            recs.append(_cx_end(len(recs), "exec-cmd-1", argv or ["/bin/bash", "-lc", cmd], stdout))
+        if out is not False:
+            text = f"Script completed\n{stdout}exit code 0" if out is None else out
+            recs.append(_cx_custom_out(len(recs), "call-o1", text))
+        return _cc(*recs)
+
+    # ---- B17-16a: the CommandExecution alone
+    def test_codex_command_execution_alone_is_admitted(self):
+        self.assert_admitted("rollout.jsonl", self.code_mode(call=False, out=False), "session", [2])
+
+    def test_codex_off_shape_command_execution_refuses(self):
+        cmd = SHELL_READS[0][1]
+        self.witness("16a the CommandExecution's -lc", "rollout.jsonl",
+                     self.code_mode(call=False, out=False, argv=["/bin/bash", "-c", cmd]), "session", [2],
+                     "_ruled_wrapped", ("argv[1] in flags", "True"))
+        for argv in (["/bin/bash", "-lc", OTHER], ["/bin/bash", "-lc", "sh -c '" + cmd + "'"]):
+            with self.subTest(argv=argv[2]):
+                self.assert_refused("rollout.jsonl", self.code_mode(call=False, out=False, argv=argv), "session", [2])
+
+    # ---- B17-16b and 16c: the exec output's verbatim copy of an admitted read
+    def test_codex_exec_output_copy_is_admitted(self):
+        stdout = self.stdout("cat")
+        for text in (stdout, f"Script completed\n{stdout}exit code 0", f"x{stdout}"):
+            with self.subTest(text=text[:8]):
+                self.assert_admitted("rollout.jsonl", self.code_mode(out=text), "session", [3, 4])
+
+    def test_codex_exec_output_needs_an_admitted_read(self):
+        self.witness("16b an admitted read in the file", "rollout.jsonl", self.code_mode(ce=False), "session", [3],
+                     "_shape_strings", ("for a in sources:", "for a in sources + [s]:"))
+        self.assert_refused("rollout.jsonl", self.code_mode(cmd=OTHER), "session", [3, 4])
+
+    def test_codex_exec_output_span_must_be_a_copy(self):
+        stdout = self.stdout("cat")
+        changed = stdout.replace("line after", "LINE AFTER")
+        body = self.code_mode(out=f"Script completed\n{changed}exit code 0")
+        self.assert_split("rollout.jsonl", body, "session", [3], [4])
+        with _mutant("_shape_strings", ("s.count(a)", "1")):
+            self.assert_split("rollout.jsonl", body, "session", [3, 4], [])
+        red("B17 16b the span is a verbatim copy")
+
+    def test_codex_exec_output_needs_the_exec_tool(self):
+        body = self.code_mode(call={"name": "wait"})
+        self.assert_split("rollout.jsonl", body, "session", [3], [4])
+        with _mutant("_shape_read", ('shape["tools"].get(got[0][0])', 'next(iter(shape["tools"].values()))')):
+            self.assert_split("rollout.jsonl", body, "session", [3, 4], [])
+        red("B17 16b the exec tool")
+
+    def test_codex_exec_output_needs_its_call_id(self):
+        body = _cc(_cx_meta(), _cx_custom(1, "call-o1"),
+                   _cx_end(2, "exec-cmd-1", ["/bin/bash", "-lc", SHELL_READS[0][1]], self.stdout("cat")),
+                   _cx_custom_out(3, "call-o9", f"Script completed\n{self.stdout('cat')}exit code 0"))
+        self.assert_split("rollout.jsonl", body, "session", [3], [4])
+        with _mutant("_shape_read", ("got = calls.get(cid)", "got = next(iter(calls.values()), None)")):
+            self.assert_split("rollout.jsonl", body, "session", [3, 4], [])
+        red("B17 16b the call id")
+
+    def test_codex_exec_output_admits_only_the_copy(self):
+        stdout = self.stdout("cat")
+        body = self.code_mode(out=f"Script completed\n{stdout}exit code 0\n{self.text}\n")
+        self.assert_split("rollout.jsonl", body, "session", [3], [4])
+        with _mutant("_ruled_text", (DECODED_ELSEWHERE, "False"), (RAW_ELSEWHERE, "False")):
+            self.assert_split("rollout.jsonl", body, "session", [3, 4], [])
+        red("B17 16b nothing else in the output")
+
+    def test_codex_function_call_shapes_are_gone(self):
+        """B17-16d: arm O's records hold no function_call or function_call_output; no shape reads them."""
+        for shape in CODEX_SHAPES:
+            for spec in (shape["call"], shape["result"] or {}):
+                self.assertNotIn(spec.get("match", {}).get("type"), ("function_call", "function_call_output"))
+
+    # ---- NIT 2: the enclosing record's type
+    def test_codex_stream_item_of_another_event_refuses(self):
+        body = _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
+                   {"type": "turn.completed", "item": {"type": "command_execution", "id": "z",
+                                                       "command": _cx_wrap(SHELL_READS[0][1]),
+                                                       "aggregated_output": self.stdout("cat")}})
+        wide = _widened(CODEX_SHAPES, CX_STREAM, "call", at=_plus(CODEX_SHAPES[CX_STREAM]["call"], ("item",),
+                                                                   type=["turn.completed"]))
+        self.data_witness("NIT 2 a stream item's event type", "turn-1.jsonl", body, "stream", [3], wide)
+
+    def test_gemini_response_in_a_model_message_refuses(self):
+        part = _gem_response("call-g1", "run_shell_command", _gem_shell(self.stdout("cat").rstrip("\n")))
+        body = _cc(GEM_HEAD, _gem_message("msg-g1", [self.shell_call()]),
+                   {"id": "msg-g2", "timestamp": TS, "type": "gemini", "content": [part]})
+        wide = _widened(GEM_SHAPES, GEM_RESPONSE, "result",
+                        at=_plus(GEM_SHAPES[GEM_RESPONSE]["result"], ("content", "*", "functionResponse"),
+                                 type=["gemini"]))
+        self.data_witness("NIT 2 a response's message type", "session.jsonl", body, "session", [3], wide)
+
+
+for _cls_from in (TestOD57OtherArms, TestB17ReadShapes, TestB17Round3):
+    for _name in [n for n in vars(_cls_from) if n.startswith("test_")]:
+        setattr(TestB17Round4, _name, None)  # each earlier class's tests run once, in their own class
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
