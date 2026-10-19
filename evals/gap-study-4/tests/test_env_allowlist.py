@@ -473,8 +473,11 @@ class E2Allowlist(Case):
         # only for a codex take: the other arms' launchers run with the same paths present
         for h in (m.CLAUDE_CODE, m.GEMINI):
             present = tuple(os.path.join(f, n) for f in ("/srv/w/t1/tree", "/") for n in self.CODEX_PROJECT_PATHS)
-            got = run_launcher(self.launch_for(h), {LOGINS[h]: FAKE_VALUE}, present=present)
-            self.assertIn("env", got, f"R-H1.launcher: a {h} turn was refused for a codex path")
+            try:
+                got = run_launcher(self.launch_for(h), {LOGINS[h]: FAKE_VALUE}, present=present)
+            except SystemExit as e:
+                self.fail(f"R-H1.launcher: a {h} turn was refused for a codex path: {e}")
+            self.assertIn("env", got, f"R-H1.launcher: a {h} turn did not run")
 
     def test_the_launcher_needs_the_credential(self):
         m = rt()
@@ -778,7 +781,7 @@ def mutants() -> dict:
         "codex-project-config-dropped": ("R-H1.launcher", "(os.path.join(d,'.codex','config.toml'),", "("),
         "codex-project-rules-dropped": ("R-H1.launcher", "os.path.join(d,'.codex','rules'),", ""),
         "codex-project-skills-dropped": ("R-H1.launcher", "os.path.join(d,'.codex','skills'),", ""),
-        "codex-project-agents-dropped": ("R-H1.launcher", ",os.path.join(d,'.agents','skills'))", ")"),
+        "codex-project-agents-dropped": ("R-H1.launcher", "os.path.join(d,'.agents','skills')) if", ") if"),
         "codex-project-every-arm": ("R-H1.launcher", "if 'CODEX_HOME' in e:", "if True:"),
         "codex-project-no-arm": ("R-H1.launcher", "if 'CODEX_HOME' in e:", "if 'CODEX_HOME' in os.environ:"),
         "container-env-unchecked": ("E3.container", "  if os.path.lexists(p): raise SystemExit", "  if False: raise SystemExit"),

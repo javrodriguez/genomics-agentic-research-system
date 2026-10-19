@@ -192,6 +192,17 @@ HARNESS_ENV = {h: {k: v for k, v in row.items() if k not in BASE_NAMES and v not
 # Before each harness exec it checks .env names in the actual container cwd, ALL its ancestors and HOME.
 # The host-side check below is an early refusal only: a mounted run tree is not the container filesystem root.
 # Its arguments: the credential's name, the count of NAME=VALUE pairs, the pairs, then the harness's argv.
+# R-H1 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): a codex take's run tree is trusted from turn 1
+# (take_config places its trust table), and the pinned Codex (rust-v0.162.1) loads a trusted project's config from
+# the working folder up to the project root, so for a codex row (the one that carries CODEX_HOME) the launcher also
+# refuses, in the working folder and every ancestor up to /, each of CODEX_PROJECT_CONFIG_PATHS:
+#   .codex/config.toml  config/src/loader/mod.rs 405-411 (load_project_layers), 1663-1677 (the cwd's ancestors to the
+#                       project root), 1682 (dir.join(".codex")) and 1701 (its config.toml)
+#   .codex/rules        core/src/exec_policy.rs 54 (RULES_DIR_NAME) and 678-679 (each layer's folder joined "rules")
+#   .codex/skills       ext/skills/src/host_roots.rs 25 (SKILLS_DIR_NAME) and 85-91 (a Project layer's skills root)
+#   .agents/skills      ext/skills/src/host_roots.rs 24-25 and 154 (each folder from the project root to the cwd)
+CODEX_PROJECT_CONFIG_PATHS = ((".codex", "config.toml"), (".codex", "rules"), (".codex", "skills"),
+                              (".agents", "skills"))
 LAUNCHER_SOURCE = ("import os,sys\n"
                    "a=sys.argv[1:]\n"
                    "k,n=a[0],int(a[1])\n"
@@ -208,6 +219,11 @@ LAUNCHER_SOURCE = ("import os,sys\n"
                    " for name in ('.env',os.path.join('.gemini','.env')):\n"
                    "  p=os.path.join(d,name)\n"
                    "  if os.path.lexists(p): raise SystemExit('refusing .env file: '+p)\n"
+                   "if 'CODEX_HOME' in e:\n"
+                   " found=[p for d in dirs[1:] for p in (os.path.join(d,'.codex','config.toml'),"
+                   "os.path.join(d,'.codex','rules'),os.path.join(d,'.codex','skills'),"
+                   "os.path.join(d,'.agents','skills')) if os.path.lexists(p)]\n"
+                   " if found: raise SystemExit('refusing codex project config: '+found[0])\n"
                    "c=a[2+n:]\n"
                    "os.execvpe(c[0],c,e)\n")
 LAUNCHER = ("/usr/bin/python3", "-I", "-S", "-c", LAUNCHER_SOURCE)
