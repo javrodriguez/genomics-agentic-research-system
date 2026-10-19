@@ -1541,7 +1541,7 @@ class TestSysPath(unittest.TestCase):
 
 # Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can.
 GENERATED_ORDER = ("B17Account", "B20LeaseSource", "B18Native", "B1Identity", "B6Row", "B2Login", "B3Counters", "B11Derived",
-                   "B10Resources", "B7Production", "B8Present", "B13Lease", "B19VendorConfig", "B14Gemini",
+                   "B10Resources", "B7Production", "B8Present", "B13Lease", "B19VendorConfig", "B21AgentHome", "B14Gemini",
                    "B15Bringup", "B16Watch",
                    "B5Fixture", "B4RunTree", "G1Generated", "B12Scanner", "B9Cli", "TestSysPath")
 
@@ -3924,6 +3924,51 @@ class B18Native(Drafted):
 
     def test_place_instruction_file_refuses_by_name(self):
         self.assertEqual(b18_place_problems(wb()), [])
+
+
+# ------------------------------------------------------------------------------------------------- B21
+# Lane vendor-b11 round 2, R-H5 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): a codex or gemini
+# checkout carries the agent's own HOME, the run tree's .home (box/run_take.RUN_TREE_HOMEDIR, the row's HOME), an empty
+# folder of mode 700, git-excluded like .tmp so what the agent's tools write there never reaches the status it is
+# shown; it is the run tree's, so the ownership grant gives it to the agent with the run tree. A Claude Code checkout
+# carries none (arm A's HOME is the config mount).
+@problems_by_assertion("R-H5.home")
+def b21_home_problems(mod) -> list:
+    import stat
+    out = []
+    if getattr(rt, "RUN_TREE_HOMEDIR", None) != ".home":
+        out.append("R-H5.home: box/run_take.RUN_TREE_HOMEDIR is not .home")
+    for h in (rt.CODEX, rt.GEMINI):
+        if rt.TAKE_ENV[h].get("HOME") != getattr(rt, "RUN_TREE_HOME", None):
+            out.append(f"R-H5.home: the {h} row's HOME is not the run tree's home marker")
+    for harness in ("codex", "gemini", rt.CLAUDE_CODE):
+        with b18_origin() as (repo, sha), temp_root():
+            try:
+                tree = Path(mod.build_run_tree("w-0001", repo=repo, commit=sha, exclude=["evals"], harness=harness))
+            except Exception as e:  # noqa: BLE001
+                out.append(f"R-H5.home: {harness}: build_run_tree raised {type(e).__name__}: {e}")
+                continue
+            home = tree / ".home"
+            if harness == rt.CLAUDE_CODE:
+                if os.path.lexists(home):
+                    out.append("R-H5.home: a Claude Code checkout carries .home")
+                continue
+            if home.is_symlink() or not home.is_dir():
+                out.append(f"R-H5.home: a {harness} checkout carries no .home folder")
+                continue
+            if stat.S_IMODE(os.lstat(home).st_mode) != 0o700 or list(home.iterdir()):
+                out.append(f"R-H5.home: a {harness} checkout's .home is not an empty folder of mode 700")
+            (home / ".cache").mkdir()
+            (home / ".cache" / "probe").write_text("synthetic\n")
+            if tbi.git(tree, "status", "--porcelain"):
+                out.append(f"R-H5.home: a file in a {harness} checkout's .home shows in its git status")
+            shutil.rmtree(home / ".cache")
+    return out
+
+
+class B21AgentHome(Case):
+    def test_a_vendor_checkout_carries_the_agent_home(self):
+        self.assertEqual(b21_home_problems(wb()), [])
 
 
 # ------------------------------------------------------------------------------------------------- B19

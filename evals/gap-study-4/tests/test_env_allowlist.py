@@ -144,6 +144,7 @@ def setUpModule():
         MODS["rt"] = compile_module(m.source(text))
     else:
         MODS["rt"] = compile_module(text)
+    MODS["text"] = text if SELECTED is None else text.replace(*mutants()[SELECTED][1:])
     rt = MODS["rt"]
     # run_take always refuses a closed-list name in this process's own environment: set those aside for the module
     # (names only; restored untouched at tearDownModule, never read or printed).
@@ -230,9 +231,12 @@ class Case(unittest.TestCase):
 
 
 def expected_row(harness, run_tree):
-    """The arm's row as the ruling words it, written here by hand (never read from the module under test)."""
+    """The arm's row as the ruling words it, written here by hand (never read from the module under test). R-H5
+    (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): arm O's and arm G's HOME is the run tree's own
+    .home, outside the config mount, while CODEX_HOME and GEMINI_CLI_HOME stay on it; arm A's HOME is the mount."""
     t = f"{run_tree}/.tmp"
-    base = {"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "HOME": "/opt/cfg",
+    home = "/opt/cfg" if harness == "claude-code" else f"{run_tree}/.home"
+    base = {"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "HOME": home,
             "LANG": "C.UTF-8", "TMPDIR": t, "TMP": t, "TEMP": t, "HTTPS_PROXY": "http://proxy:3128"}
     own = {"claude-code": {"DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
                            "ENABLE_CLAUDEAI_MCP_SERVERS": "false", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
@@ -285,14 +289,37 @@ class E1Table(Case):
             row = table[h]
             creds = [k for k, v in row.items() if v == m.CREDENTIAL]
             self.assertEqual(creds, ENV_CREDENTIAL[h], f"E1.table: {h}'s credential is not its one login, by name")
-            filled = {k: (v.replace(m.RUN_TREE_TMP, "/r/t/.tmp") if v == m.RUN_TREE_TMP else v)
-                      for k, v in row.items() if v != m.CREDENTIAL}
+            markers = {m.RUN_TREE_TMP: "/r/t/.tmp", getattr(m, "RUN_TREE_HOME", m.RUN_TREE_TMP): "/r/t/.home"}
+            filled = {k: markers.get(v, v) for k, v in row.items() if v != m.CREDENTIAL}
             self.assertEqual(filled, expected_row(h, "/r/t"), f"E1.table: {h}'s row is off the ruling's set")
             bad = sorted(set(row) & set(m.refused_variables(h)))
             self.assertEqual(bad, [], f"E1.table: {h}'s row names a refused variable")
             for k, v in row.items():
                 self.assertRegex(k, r"^[A-Z_][A-Z0-9_]*$", "E1.table: a name off the variable-name form")
                 self.assertNotIn("\0", v, "E1.table: a value carries a NUL")
+
+    # R-H5: arm A's row stays byte-unchanged (round-3 parity), pinned by its source bytes at 56d7713b (box/run_take.py
+    # lines 155-159 there) and by its value.
+    CLAUDE_ROW_SOURCE = (
+        '    CLAUDE_CODE: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,\n'
+        '                  "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,\n'
+        '                  "DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", **ISOLATION_ENV,\n'
+        '                  **BASH_FIRST_STEER_ENV, **SILENT_TURN_REMINDER_ENV, "CLAUDE_CONFIG_DIR": CONFIG_MOUNT,\n'
+        '                  "CLAUDE_CODE_OAUTH_TOKEN": CREDENTIAL},\n')
+    CLAUDE_ROW_SOURCE_SHA256 = "f28954dea54db364f5ecd3db83d06ab69939651fdb504a6c0cd6b94020d051a7"
+    CLAUDE_ROW_VALUE_SHA256 = "97dd88fe3065413904ab9643767a0b1771d3db7ec0e2741b6ba730b3059c7800"
+
+    def test_arm_a_row_is_byte_unchanged(self):
+        import hashlib
+        m = rt()
+        self.assertEqual(hashlib.sha256(self.CLAUDE_ROW_SOURCE.encode()).hexdigest(), self.CLAUDE_ROW_SOURCE_SHA256,
+                         "R-H5.parity: the pinned bytes themselves moved")
+        self.assertEqual(MODS["text"].count(self.CLAUDE_ROW_SOURCE), 1,
+                         "R-H5.parity: arm A's TAKE_ENV row is not its round-3-parity bytes")
+        value = json.dumps(m.TAKE_ENV[m.CLAUDE_CODE], sort_keys=True, separators=(",", ":")).encode()
+        self.assertEqual(hashlib.sha256(value).hexdigest(), self.CLAUDE_ROW_VALUE_SHA256,
+                         "R-H5.parity: arm A's TAKE_ENV row has another value")
+        self.assertEqual(m.TAKE_ENV[m.CLAUDE_CODE]["HOME"], m.CONFIG_MOUNT, "R-H5.parity: arm A's HOME moved")
 
     def test_the_views_are_derived(self):
         m = rt()
@@ -441,6 +468,24 @@ class E2Allowlist(Case):
                         run_launcher(launch, {LOGINS[h]: FAKE_VALUE}, present=(path,), recorded=recorded)
                     self.assertEqual(recorded, {}, "E3.container: harness dispatched before refusal")
 
+    def test_launcher_refuses_env_in_the_agent_home_and_the_config_home(self):
+        # R-H5: arm O's and arm G's HOME (the run tree's .home) and their config home (the mount) are each read for a
+        # .env before every exec, under both loader names
+        m = rt()
+        for h in (m.CODEX, m.GEMINI):
+            launch = self.launch_for(h)
+            for folder, what in (("/srv/w/t1/tree/.home", "HOME"), (m.CONFIG_MOUNT, "the config home")):
+                for name in (".env", ".gemini/.env"):
+                    path = os.path.join(folder, name)
+                    recorded = {}
+                    try:
+                        run_launcher(launch, {LOGINS[h]: FAKE_VALUE}, present=(path,), recorded=recorded)
+                    except SystemExit as e:
+                        self.assertIn(path, str(e), f"R-H5.launcher: {h}: refused without naming {path}")
+                    else:
+                        self.fail(f"R-H5.launcher: {h}: a .env in {what} ({path}) was accepted")
+                    self.assertEqual(recorded, {}, "R-H5.launcher: harness dispatched before refusal")
+
     # R-H1 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): with the run tree trusted from turn 1, a
     # codex take's launcher also refuses Codex's project-config paths in the working folder and every ancestor up to /,
     # written here by hand from the pinned source (rust-v0.162.1): .codex/config.toml (config/src/loader/mod.rs 1663-1701,
@@ -543,6 +588,18 @@ class E3EnvFiles(Case):
         for name in (".env", ".gemini/.env"):
             msg = self.check(cfg, name, tree=tree, work=work, cfg=cfg, clause="E3.home")
             self.assertIn("HOME", msg, "E3.home: the refusal does not say it is HOME")
+
+    def test_the_agent_home(self):
+        # R-H5: arm O's and arm G's HOME is the run tree's .home, read host-side too, whatever the working folder
+        tree, work, cfg = self.layout()
+        for name in (".env", ".gemini/.env"):
+            msg = self.check(tree / ".home", name, tree=tree, work=work, cfg=cfg, clause="R-H5.home")
+            self.assertIn("HOME", msg, "R-H5.home: the refusal does not say it is HOME")
+            path = tree / ".home" / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("X=1\n")
+            self.refuses("R-H5.home", str(path), rt().refuse_env_files, workdir=str(work), run_tree=str(tree))
+            path.unlink()
 
     def test_a_dangling_link_and_the_shape(self):
         tree, work, cfg = self.layout()
@@ -753,9 +810,22 @@ class E5Units(Case):
         for h in ARMS:
             bad = dict(m.TAKE_ENV, **{h: dict(m.TAKE_ENV[h], HOME="/home/dana")})
             with mock.patch.object(m, "TAKE_ENV", bad):
-                self.refuses("E5.home", "HOME is not the config mount", m.refuse_env_files, workdir=str(tree),
-                             run_tree=str(tree), config_dir=str(cfg))
+                self.refuses("E5.home", "HOME is neither the config mount nor the run tree's home",
+                             m.refuse_env_files, workdir=str(tree), run_tree=str(tree), config_dir=str(cfg))
                 self.must("E5.home", m.refuse_env_files, workdir=str(tree), run_tree=str(tree))
+
+
+class AgentHomeResidual(Case):
+    def test_r_h5_is_in_the_drafts_box_residuals(self):
+        """R-H5's named difference from arm A is pre-registered with the study's box limitations."""
+        draft = json.loads((HERE / "prereg-draft.json").read_text(encoding="utf-8"))
+        rows = [r for r in draft["box_residuals"] if r.get("name") == "arm O and G HOME"]
+        self.assertEqual(len(rows), 1, "R-H5.residual: the draft holds no one 'arm O and G HOME' entry")
+        for words in ("<run tree>/.home", "CODEX_HOME", "GEMINI_CLI_HOME", "config mount", "arm A",
+                      "byte-unchanged", "git-excluded", ".agents/skills", ".bashrc"):
+            self.assertIn(words, rows[0]["text"], f"R-H5.residual: the entry does not say {words!r}")
+        self.assertIn("R-H5", rows[0]["ruling"], "R-H5.residual")
+        self.assertIn("tests/test_env_allowlist.py", rows[0]["closed_check"], "R-H5.residual")
 
 
 # ------------------------------------------------------------------------------------------------- witnesses

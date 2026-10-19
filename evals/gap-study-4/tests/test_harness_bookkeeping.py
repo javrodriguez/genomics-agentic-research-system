@@ -326,6 +326,17 @@ def run_tree_tmp_name() -> str:
     return m.group(1)
 
 
+def run_tree_home_name() -> str:
+    """box/run_take.py's RUN_TREE_HOMEDIR and its RUN_TREE_HOME marker (R-H5, glitch-26, 19 Oct 2026): arm O's and
+    arm G's HOME is <run tree>/<that name>."""
+    with open(RUN_TAKE, encoding="utf-8") as fh:
+        lines = fh.read().splitlines()
+    names = [m.group(1) for m in (re.fullmatch(r'RUN_TREE_HOMEDIR = "([^"]+)"', x) for x in lines) if m]
+    if len(names) != 1 or sum(x.startswith(f'RUN_TREE_HOME = "<run tree>/{names[0]}"') for x in lines) != 1:
+        raise AssertionError("box/run_take.py names no one RUN_TREE_HOMEDIR and its RUN_TREE_HOME marker")
+    return names[0]
+
+
 # (path, excluded?) under each candidate: its native session file only, nothing else of the home or the run tree.
 CANDIDATE_PATHS = {
     "codex": [("sessions/2026/10/14/rollout-2026-10-14T05-00-00-00000000-0000-7000-8000-0000000000c1.jsonl", True),
@@ -365,6 +376,9 @@ def candidate_problems(table: dict) -> list:
                 out.append(f"{name}: the grounds do not say {need!r}")
         if not any(path == tmp + "/" for path, _ in e.not_excluded):
             out.append(f"{name}: not_excluded does not name {tmp}/ (box/run_take.py:93, 152)")
+        # R-H5 (glitch-26, 19 Oct 2026): the agent's HOME is the run tree's .home, whose tool files are the agent's
+        if not any(path == run_tree_home_name() + "/" for path, _ in e.not_excluded):
+            out.append(f"{name}: not_excluded does not name {run_tree_home_name()}/ (the agent's HOME, R-H5)")
         for path, want in CANDIDATE_PATHS[name]:
             if any(hb.matches(p, path) for p in e.home_paths) != want:
                 out.append(f"{name}: {path} is {'not ' if want else ''}excluded")
