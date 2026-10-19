@@ -441,6 +441,41 @@ class E2Allowlist(Case):
                         run_launcher(launch, {LOGINS[h]: FAKE_VALUE}, present=(path,), recorded=recorded)
                     self.assertEqual(recorded, {}, "E3.container: harness dispatched before refusal")
 
+    # R-H1 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): with the run tree trusted from turn 1, a
+    # codex take's launcher also refuses Codex's project-config paths in the working folder and every ancestor up to /,
+    # written here by hand from the pinned source (rust-v0.162.1): .codex/config.toml (config/src/loader/mod.rs 1663-1701,
+    # reached from 405-411), .codex/rules (core/src/exec_policy.rs 54 and 678-679), .codex/skills
+    # (ext/skills/src/host_roots.rs 25 and 85-91) and .agents/skills (host_roots.rs 24-25 and 154).
+    CODEX_PROJECT_PATHS = (".codex/config.toml", ".codex/rules", ".codex/skills", ".agents/skills")
+
+    def test_codex_launcher_refuses_project_config(self):
+        m = rt()
+        self.assertEqual(tuple("/".join(p) for p in getattr(m, "CODEX_PROJECT_CONFIG_PATHS", ())),
+                         self.CODEX_PROJECT_PATHS, "R-H1.launcher: run_take names other codex project-config paths")
+        launch = self.launch_for(m.CODEX)
+        for cwd in ("/srv/w/t1/tree", "/srv/w/t1/tree/a/b"):
+            folders = [cwd]
+            while folders[-1] != "/":
+                folders.append(os.path.dirname(folders[-1]))
+            for folder in folders:
+                for name in self.CODEX_PROJECT_PATHS:
+                    path = os.path.join(folder, name)
+                    recorded = {}
+                    try:
+                        run_launcher(launch, {}, present=(path,), cwd=cwd, recorded=recorded)
+                    except SystemExit as e:
+                        self.assertIn(path, str(e), f"R-H1.launcher: refused without naming {path}")
+                    else:
+                        self.fail(f"R-H1.launcher: a codex turn ran with {path} present (cwd {cwd})")
+                    self.assertEqual(recorded, {}, "R-H1.launcher: harness dispatched before refusal")
+        got = run_launcher(launch, {}, present=())
+        self.assertEqual(got.get("file"), "codex", "R-H1.launcher: a clean codex turn did not run")
+        # only for a codex take: the other arms' launchers run with the same paths present
+        for h in (m.CLAUDE_CODE, m.GEMINI):
+            present = tuple(os.path.join(f, n) for f in ("/srv/w/t1/tree", "/") for n in self.CODEX_PROJECT_PATHS)
+            got = run_launcher(self.launch_for(h), {LOGINS[h]: FAKE_VALUE}, present=present)
+            self.assertIn("env", got, f"R-H1.launcher: a {h} turn was refused for a codex path")
+
     def test_the_launcher_needs_the_credential(self):
         m = rt()
         for h in ARMS:
@@ -737,6 +772,15 @@ def mutants() -> dict:
                         "            container_id, *inner]"),
         "launcher-keeps-env": ("E2.launcher", "                   \"e=dict(x.split('=',1) for x in a[2:2+n])\\n\"",
                                "                   \"e=dict(os.environ,**dict(x.split('=',1) for x in a[2:2+n]))\\n\""),
+        # R-H1 (lane vendor-b11 round 2): the codex launcher's project-config refusal, one guard at a time
+        "codex-project-unchecked": ("R-H1.launcher", " if found: raise SystemExit(", " if False: raise SystemExit("),
+        "codex-project-cwd-only": ("R-H1.launcher", "for d in dirs[1:] for p in", "for d in dirs[1:2] for p in"),
+        "codex-project-config-dropped": ("R-H1.launcher", "(os.path.join(d,'.codex','config.toml'),", "("),
+        "codex-project-rules-dropped": ("R-H1.launcher", "os.path.join(d,'.codex','rules'),", ""),
+        "codex-project-skills-dropped": ("R-H1.launcher", "os.path.join(d,'.codex','skills'),", ""),
+        "codex-project-agents-dropped": ("R-H1.launcher", ",os.path.join(d,'.agents','skills'))", ")"),
+        "codex-project-every-arm": ("R-H1.launcher", "if 'CODEX_HOME' in e:", "if True:"),
+        "codex-project-no-arm": ("R-H1.launcher", "if 'CODEX_HOME' in e:", "if 'CODEX_HOME' in os.environ:"),
         "container-env-unchecked": ("E3.container", "  if os.path.lexists(p): raise SystemExit", "  if False: raise SystemExit"),
         "pairs-unchecked": ("E2.pairs", "        if not _NAME.fullmatch(k):", "        if False:"),
         "launch-no-env-check": ("E3.launch", "    refuse_env_files(workdir=spec.run_tree, run_tree=spec.run_tree, "
@@ -761,6 +805,10 @@ METHOD = {
     "no-launcher": "E2Allowlist.test_the_turn_hands_the_harness_the_row_alone",
     "launcher-keeps-env": "E2Allowlist.test_the_turn_hands_the_harness_the_row_alone",
     "container-env-unchecked": "E2Allowlist.test_launcher_refuses_container_ancestors_and_current_home",
+    **{name: "E2Allowlist.test_codex_launcher_refuses_project_config" for name in (
+        "codex-project-unchecked", "codex-project-cwd-only", "codex-project-config-dropped",
+        "codex-project-rules-dropped", "codex-project-skills-dropped", "codex-project-agents-dropped",
+        "codex-project-every-arm", "codex-project-no-arm")},
     "pairs-unchecked": "E2Allowlist.test_the_launcher_needs_the_credential",
     "launch-no-env-check": "E3EnvFiles.test_launch_refuses_before_any_runtime_call",
     "turn-no-env-check": "E3EnvFiles.test_run_turn_refuses_before_its_exec",
