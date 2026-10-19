@@ -507,3 +507,122 @@ def operator_list(runtime, *, image: str, root_kind: str, run_tree: str, config_
             kind = "other"                  # O-2: listed so the caller sees it, never readable (operator_read refuses)
         out.append((name, kind))
     return out
+
+
+# R-C (glitch-26's ruling on lane vendor-b11, round 3, Mon 19 Oct 2026): B11's per-turn check reads the WHOLE config
+# folder in one operator container, never one container per folder. CENSUS_PROGRAM is LIST_PROGRAM's sibling under
+# the same container, mount and refusal rules: every entry below /scratch with its lstat facts (kind, st_mode, links,
+# owner, size, device, inode) and, for a link, its readlink target; NEVER a byte of any file (nothing but folders is
+# opened, each O_NOFOLLOW through its parent's descriptor, and a folder whose descriptor is not the inode its lstat
+# named refuses). Paths travel base64 and come back byte-exact; a path that is not valid UTF-8 is kind "other". The
+# credential-name rule is unchanged (O-2): a credential-named entry is reported with its facts as kind "other", never
+# a file the caller may read, and nothing below a credential-named folder is returned. More than LIST_MAX_ENTRIES
+# entries (the root aside) refuses loudly, never truncates.
+CENSUS_FIELDS = ("path", "kind", "mode", "nlink", "uid", "size", "dev", "ino", "target")
+CENSUS_PROGRAM = '''import base64,hashlib,json,os,stat,sys
+limit=int(sys.argv[1])
+out=[]
+def b64(r):return None if r is None else base64.b64encode(r).decode("ascii")
+def add(rel,st,target):
+ m=st.st_mode
+ k="link" if stat.S_ISLNK(m) else "dir" if stat.S_ISDIR(m) else "file" if stat.S_ISREG(m) else "other"
+ out.append([rel,k,m,st.st_nlink,st.st_uid,st.st_size,st.st_dev,st.st_ino,target])
+ if len(out)>limit+1:raise SystemExit("refused: more entries than the limit")
+def visit(fd,rel):
+ for n in sorted(os.fsencode(x) for x in os.listdir(fd)):
+  r=n if rel==b"." else rel+b"/"+n
+  st=os.stat(n,dir_fd=fd,follow_symlinks=False)
+  if stat.S_ISLNK(st.st_mode):add(r,st,os.readlink(n,dir_fd=fd));continue
+  add(r,st,None)
+  if stat.S_ISDIR(st.st_mode):
+   c=os.open(n,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd)
+   try:
+    cs=os.fstat(c)
+    if (cs.st_dev,cs.st_ino)!=(st.st_dev,st.st_ino):raise SystemExit("refused: a folder changed during the census")
+    visit(c,r)
+   finally:os.close(c)
+fd=os.open("/scratch",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+add(b".",os.fstat(fd),None)
+try:visit(fd,b".")
+finally:os.close(fd)
+out=[[b64(e[0]),*e[1:8],b64(e[8])] for e in sorted(out,key=lambda e:e[0])]
+canon=json.dumps(out,separators=(",",":"))
+print(json.dumps({"exists":True,"entries":out,"sha256":hashlib.sha256(canon.encode("ascii")).hexdigest()}))
+'''
+
+
+def _census_int(v) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool) and v >= 0
+
+
+def operator_census(runtime, *, image: str, run_tree: str, config_dir: str, caller_env=None) -> list:
+    """R-C: every entry of the take's config folder, the folder itself first as ".", as dicts of CENSUS_FIELDS
+    (path relative to the folder, kind "file" / "dir" / "link" / "other", st_mode, links, owner as the operator
+    container sees it, size, device, inode, a link's target or None), sorted by path bytes. One operator container (the
+    agent's uid, no capabilities, no network, only the config folder, read-only). A credential-named entry is kind
+    "other" with its facts (O-2); nothing below a credential-named folder is returned. A reply off its shape, a step
+    that fails, or more than LIST_MAX_ENTRIES entries is an OwnershipError: loud, never truncated."""
+    import base64
+    import hashlib
+    root = _take_root("config", run_tree, config_dir)
+    argv = operator_argv(image, root, CENSUS_PROGRAM, str(LIST_MAX_ENTRIES), readonly=True)
+    step = _run(runtime, "operator-census-config", argv, run_take.runtime_env(caller_env))
+    rec = {"ok": False, "steps": [step]}
+    if step["returncode"] != 0:
+        raise OwnershipError("the config folder's census refused or failed", rec)
+    try:
+        got = json.loads(step.get("stdout", ""))
+    except ValueError:
+        got = None
+    if not (isinstance(got, dict) and set(got) == {"exists", "entries", "sha256"} and got["exists"] is True
+            and isinstance(got["entries"], list) and len(got["entries"]) <= LIST_MAX_ENTRIES + 1):
+        raise OwnershipError("the config folder's census: the container's reply is off its shape", rec)
+    entries = got["entries"]
+    if got["sha256"] != hashlib.sha256(json.dumps(entries, separators=(",", ":")).encode("utf-8")).hexdigest():
+        raise OwnershipError("the config folder's census: the reply is not its sha256", rec)
+
+    def bad(why):
+        return OwnershipError(f"the config folder's census: {why}", rec)
+    rows, kinds = [], {}
+    for e in entries:
+        if not (isinstance(e, list) and len(e) == len(CENSUS_FIELDS) and isinstance(e[0], str)
+                and e[1] in LIST_KINDS and all(_census_int(v) for v in e[2:8])
+                and (e[8] is None if e[1] != "link" else isinstance(e[8], str))):
+            raise bad("an entry is off its shape")
+        try:
+            raw = base64.b64decode(e[0], validate=True)
+            target = None if e[8] is None else base64.b64decode(e[8], validate=True)
+        except ValueError:
+            raise bad("an entry is off its shape") from None
+        parts = raw.split(b"/")
+        if raw != b"." and (not raw or raw.startswith(b"/") or b"\0" in raw
+                            or any(p in (b"", b".", b"..") for p in parts)):
+            raise bad("a path is not a normalised relative path")
+        if raw in kinds:
+            raise bad("a path is listed twice")
+        if raw != b".":
+            parent = b"/".join(parts[:-1]) or b"."
+            if kinds.get(parent) != "dir":
+                raise bad("an entry's folder is not a listed folder before it")
+        elif e[1] != "dir" or rows:
+            raise bad("the folder itself is not the first entry, a folder")
+        kinds[raw] = e[1]
+        rows.append((raw, e, target))
+    if not rows:
+        raise bad("the folder itself is not listed")
+    out, hidden = [], []
+    for raw, e, target in rows:
+        if any(raw == h or raw.startswith(h + b"/") for h in hidden):
+            continue                             # O-2: nothing below a credential-named folder reaches the caller
+        try:
+            path, kind = raw.decode("utf-8"), e[1]
+        except UnicodeDecodeError:
+            path, kind = raw.decode("utf-8", "surrogateescape"), "other"
+        if raw != b"." and credential_name(path.rsplit("/", 1)[-1]):
+            if kind == "dir":
+                hidden.append(raw)
+            kind = "other"                       # O-2: listed with its facts, never a file the caller may read
+        out.append({"path": path, "kind": kind, "mode": e[2], "nlink": e[3], "uid": e[4], "size": e[5],
+                    "dev": e[6], "ino": e[7],
+                    "target": None if target is None else target.decode("utf-8", "surrogateescape")})
+    return out
