@@ -48,8 +48,10 @@ fallbacks (an `env` block, `model`, `fallbackModel`, `switchModelsOnFlag`, `avai
     harness, as the .claude/ paths are. Left alone, each with its line in WORKSPACE_SOURCES: the paths no pinned CLI
     reads there (Gemini's workspace policies, switched off in the build; its extensions, read from the config home;
     system.md and the sandbox files, behind variables the box refuses; Codex's untrusted project config.toml, hooks,
-    rules and MCP servers), the .env files run_take refuses before every turn, and the instruction files (GEMINI.md
-    and AGENTS.md, placed by R-6 beside every CLAUDE.md, as CLAUDE.md is left to the claude-code arm's agent).
+    rules and MCP servers; .geminiignore; Codex's plugin marketplaces and .codex/agents), the .env files (read from
+    the working folder up to / and HOME, which run_take's in-container launcher refuses before every exec; B10-F1),
+    and the instruction files (GEMINI.md and AGENTS.md, placed by R-6 beside every CLAUDE.md, as CLAUDE.md is left
+    to the claude-code arm's agent).
 
 Standard library only.
 """
@@ -104,6 +106,15 @@ _W_STATE = {"file": "codex-rs/config/src/state.rs", "blob": "ed3d13ccce1fea4776b
 _W_MARKERS = {"file": "codex-rs/config/src/project_root_markers.rs", "blob": "3061dacc6b793cc33265a81ed704d8369240bbfc"}
 _W_EXEC_POLICY = {"file": "codex-rs/core/src/exec_policy.rs", "blob": "21e414ed01b2040830790e8b486d17edd83309dd"}
 _W_AGENTS_MD = {"file": "codex-rs/core/src/agents_md.rs", "blob": "8e0c475d90339a236f51da33f85e70b967a61f26"}
+_W_ARG0 = {"file": "codex-rs/arg0/src/lib.rs", "blob": "c3467367190389297406c1aefd40d42ca503b6b5"}
+_W_HOME_DIR = {"file": "codex-rs/utils/home-dir/src/lib.rs", "blob": "caa43569c78bae9f5cc875092f378f4d935b8063"}
+_W_MARKETPLACE = {"file": "codex-rs/core-plugins/src/marketplace.rs",
+                  "blob": "2199fe4e1e937e239304e0bf26ab56b793f8409c"}
+_W_MARKETPLACE_POLICY = {"file": "codex-rs/core-plugins/src/marketplace_policy.rs",
+                         "blob": "d5907554fb0db454e81d6279927e8531fb552591"}
+_W_PLUGINS_LOCAL = {"file": "codex-rs/app-server/src/request_processors/plugins/local.rs",
+                    "blob": "67cbd5c4bbde97d6dcffc11af3898b29725c46f4"}
+_W_AGENT_ROLES = {"file": "codex-rs/agent-roles/src/loader.rs", "blob": "a82649b8e10debe7a2b3c7e21e2e861d557ea3b7"}
 WORKSPACE_SOURCES = {
     "gemini: the running bundle": dict(_W_PKG, reads=[
         dict(_W_ENTRY, lines={"main from gemini-Q2GRYIAK.js": 110}),
@@ -170,8 +181,36 @@ WORKSPACE_SOURCES = {
         dict(_W_Q2G, lines={"sandbox profile, only under GEMINI_SANDBOX or --sandbox": 10097})],
         read="each needs a variable or flag the box never passes (run_take refuses GEMINI_SYSTEM_MD and "
              "GEMINI_SANDBOX by name)"),
-    "not guarded: .env and .gemini/.env": dict(_W_PKG, reads=[dict(_W_FLKY, lines={".gemini/.env": 16546})],
-                                               read="run_take.refuse_env_files refuses both before every turn"),
+    # Review r18-b10 finding 1 (B10-F1): the .env walk reaches past the run tree, to / and HOME.
+    "not guarded here: .env and .gemini/.env": {
+        "gemini": dict(_W_PKG, reads=[
+            dict(_W_FLKY, lines={"findEnvFile: from the working folder up to /": 16542,
+                              "<folder>/.gemini/.env, first (trusted)": 16546, "<folder>/.env": 16551,
+                              "after /: homedir()/.gemini/.env": 16560, "then homedir()/.env": 16565,
+                              "loadEnvironment's call": 16610, "each key not yet set is set": 16639}),
+            dict(_W_NR7, lines={"homedir(): GEMINI_CLI_HOME, else os.homedir()": 252011})],
+            read="the first of these found is loaded, a .gemini/ file without the excluded-variable filter"),
+        "codex": dict(_W_CODEX, reads=[dict(_W_ARG0, lines={"load_dotenv, before any thread": 159,
+                                                       "CODEX_HOME/.env only": 305}),
+                                    dict(_W_HOME_DIR, lines={"find_codex_home reads CODEX_HOME": 14})],
+                      read="the only .env read outside test code; CODEX_ names are dropped"),
+        "read": "run_take's in-container launcher (LAUNCHER_SOURCE) refuses .env and .gemini/.env in the container's "
+                "working folder, every ancestor up to / and HOME, before every harness exec of every arm; HOME, "
+                "GEMINI_CLI_HOME and CODEX_HOME are the one config mount (run_take.TAKE_ENV), so every file either "
+                "CLI reads is among them; run_take.refuse_env_files, host-side, covers the run tree and the config "
+                "folder only, as an early refusal"},
+    "not guarded: .geminiignore": dict(_W_PKG, reads=[dict(_W_NR7, lines={"GEMINI_IGNORE_FILE_NAME": 313670,
+                                                                     "the ignore filter": 314189})],
+                                       read="it filters only what the agent's own file tools list"),
+    "not guarded: Codex plugin marketplaces": dict(_W_CODEX, reads=[
+        dict(_W_MARKETPLACE, lines={"the repository marketplace paths": 20}),
+        dict(_W_MARKETPLACE_POLICY, lines={"plugins enabled from the effective config only": 214}),
+        dict(_W_PLUGINS_LOCAL, lines={"repository scopes, on the app-server road only": 34})],
+        read="a listing reads them; nothing is enabled from a disabled project layer, and codex exec builds no "
+             "repository scope"),
+    "not guarded: .codex/agents": dict(_W_CODEX, reads=[dict(_W_AGENT_ROLES, lines={"enabled layers only": 29,
+                                                                               "<layer>/agents": 78})],
+                                       read="agent roles come from enabled layers, never the disabled project one"),
     "not guarded: .codex/config.toml, hooks, rules and MCP": dict(_W_CODEX, reads=[
         dict(_W_LOADER, lines={"a layer is enabled only when trusted": 1094}),
         dict(_W_STATE, lines={"effective_config merges enabled layers only": 532,
