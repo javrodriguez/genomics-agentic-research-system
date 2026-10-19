@@ -1,4 +1,38 @@
-Status: running
+Status: needs-review
+
+ROUND 2 SUMMARY FOR REVIEW (cloud executor, 2026-10-19 15:34 EDT; glitch-26's rulings B19-5 to B19-11):
+- Red (ruling B19-8, B19-9; B19-6's comparison is green on the block loop by design): 22838d85, tests/test_batch_rolling.py now 26 tests, 13 red on 94963ea7, run on a scratch copy of 94963ea7 outside the clone. Failure lines:
+  - the 3 round 1 rolling-start tests, as in round 1 ("24 not less than 13", "18 not less than 13", "[] is not true");
+  - TestWindowSpan.test_a_rolling_event_spanning_more_than_a_block_is_accepted: "['window event 1 does not fit one block of at most 3 consecutive outcomes'] != []";
+  - TestWindowSpan.test_a_rolling_run_shares_one_event_across_the_takes_committed_between: slots 6 and 7 commit window event 2, not 1;
+  - TestRuledPauseOwnEvent.test_publication_counts_the_ruled_pause_as_batch_does: "Items in the second set but not the first" (publication shares the block's event);
+  - TestLiveSet.test_max_open_is_the_open_row_limit: "None != 12";
+  - TestLiveSet.test_a_registration_lands_while_other_rows_are_open: "ValueError: a row is registered with no committed outcome in the finishing block";
+  - TestLiveSet.test_twelve_open_and_never_thirteen: "ValueError: at most 3 open rows (three in one live block)";
+  - TestCleanTreeRegistration.test_an_open_takes_folder_does_not_refuse_the_next_registration: "ValueError: registration requires a clean committed repository";
+  - TestOpenBound.test_open_takes_reach_max_open_and_no_more: "3 != 12";
+  - TestRestartOwesTheOpenTakes.test_the_stop_commits_twelve_open_takes_and_the_restart_owes_them_in_row_order: "3 != 12";
+  - TestRestartOwesTheOpenTakes.test_the_old_block_span_forgets_the_wait: "restart_waits does not read the last MAX_OPEN outcomes".
+- Green (B19-5, B19-8): f477832f. batch.py: MAX_OPEN = 12 beside BLOCK = 3; the rolling loop (commit the oldest finished take first and every finished take before a lane fills; a wave per fill through the money gate, registration in row order and launch; holds read from finished drives: pause, blocked, failed, a leak, the nightly count in prospect, a closing half-cell; one reading of finished drives for the holds and the free lanes); the window event as the pauses between two waits; restart_waits over the last MAX_OPEN outcomes; the nightly stop carried by the last take launched; a register failure commits the open takes first; prose re-worded. takes.py: OPEN_LIMIT = MAX_OPEN, the live set loses a row at its commit, clean-tree registration but for the live set's untracked takes/<slot>/<attempt>/ folders. check_results.py: at most BLOCK pauses within at most MAX_OPEN outcomes per event; pause_event counts a ruled pause as its own event, with STRICT_PAUSE_NOTE when another pause of its half-cell carries a window event (B19-6).
+- Tests re-pinned in f477832f, for glitch-26 to check none is loosened:
+  - test_batch.py: its fakes model equal durations (World: a wave's drives end together, its head first; a commit waits until no drive is in flight, then SETTLE = 0.05 s; a drive's wave read at its launch); without that the block-shaped tests went red at random (11, then 6, failures). test_commits_land_serially_in_row_order (finish_after, unequal) checks row order over the run with a new rolling_order_problems, plus two can-fail mutations; the restart_waits mutants re-anchored on [-MAX_OPEN:]. 118 tests, about 64 s (was 13 s).
+  - test_pipeline.py: test_partly_finished_live_set_allows_another_registration, test_live_set_max_open_restart_requires_reconciliation and test_past_max_open_mutant (were the finishing-block, three-open and four-open tests); test_ruled_pause_counts_as_its_own_event (was ..._its_existing_block_once); test_new_slot_after_legal_pause_ruling_uses_batch_count and test_strict_batch_close_is_named_in_completeness_and_result now see publication close c1 as batch does (the strict-close label still checked on the former block reading, patched in). Mutants finishing-block (restores the block rule), past-max-open (was four-open), pause-count-refusal, pause-event-identity and pause-note-other-cell (was pause-candidate-edges) re-anchored; each run with --mutant goes red (also pause-block and window-span).
+  - test_spend_wiring.py: witnesses gate-never-called and gate-after-register re-anchored on the wave; both still red.
+- B19-7: 996e767a. routing.json's pause-cap source prose reworded; build_draft.py run, --check ok. routing.json sha256 eccbb54d7bee09d3c10688c12bd33e9bee28b0e8b29c412c77f32a26d55f0c9b -> e69f468e94fd283defda9a7d535eced3b502be29f6363c46d4908c2754e43387; prereg-draft.json sha256 1a1aa53f37960a54fba61baedee7426bcf9c8f409d98709de70be0cd69a3a0d5 -> 0aed2a2cd124266d2464f8d5d4a9181a66c81ddc56230ca8287859144b0257ae.
+- B19-10: d8b9d8b9, tests/test_batch_rolling.py claimed in COPIED.d/vendor-admission.json (where vendor-b14 and vendor-b16 claimed theirs). copy_manifest.py has no rule asking Javier's word for a claim (its one such line, 100, is the native-readers acceptance records), so no BLOCKED.
+- B19-6 and B19-11: 7cac1d4f, the note's 5.3 sentence and its section 10, Rulings.
+- Checks (foreground, env -i with PATH, HOME, LANG, TMPDIR outside the clone), every gap-study-4 test module importing batch.py, takes.py or check_results.py, all OK:
+  - test_batch 118, test_batch_rolling 26, test_box_integration 61, test_build_draft 49, test_checker_body 30, test_cp6_wiring 5, test_drive_commit 31;
+  - test_drive_loop 27, test_drive_ownership 44, test_executed_turn_refusal 10, test_native_snapshot 15, test_night_ruling_history 4, test_nightly_stop 13;
+  - test_pending_walk 23, test_pin_for_vendor 2, test_pipeline 85, test_routing 297, test_spend_wiring 25, test_vendor_checker_road 5, test_vendor_pins 5;
+  - test_walk_builders 95, test_walk_layout 14, test_walk_runner 89, test_walk_wiring 20, test_walk_launch 49 (29 skipped by its own REAL_SCAN_SKIP class, the battery's one allowed skip; no skip added);
+  - copy_manifest --check ok (489 files); build_draft --check ok; lint_language and lint_pooling on evals/gap-study-4/: clean; check_vendor_sources P2 on the edited files: none is a reader source.
+- For glitch-26:
+  - lint_language --commits-since 94963ea7 names two commit-body words, which this round may not amend: "100" in d8b9d8b9 (copy_manifest's line number) and "free" in f477832f ("the free lanes"). lint_pooling over the same commits is clean.
+  - Prose naming the block outside the three files is left: costs.py line 13 and drive.py's TakeRepo docstring (note 5.4). No departure entries were written in the owning COPIED.d fragments of batch.py, takes.py, check_results.py and the three re-pinned tests.
+  - Equal durations reproduce the block run only under the fakes' equal model (a settle of 0.05 s): with real drives an equal end is a tie in time, and the loop fills a lane as soon as any drive's step is seen finished.
+
+RESUME HERE: review stop (round 2)
 
 ROUND 1 SUMMARY FOR REVIEW (cloud executor, 2026-10-19 13:56 EDT; glitch-26's rulings B19-1 to B19-4):
 - The note (ruling B19-2): lane-reports/B19-DESIGN-NOTE.md (23761cd5), beside batch.py's other design notes (nightly-stop-rule, w1b-cp1-routing-batch, w7c-spend-wiring, B14, B16) and outside evals/gap-study-4/, whose every file is claimed in COPIED.d and bound into the freeze's study tree.
@@ -62,3 +96,6 @@ Progress:
 - 2026-10-19 14:18 EDT: round 2 begins on lane/vendor-b19 at 94963ea7 under glitch-26's rulings B19-5 to B19-11; status running.
 - 2026-10-19 15:02 EDT: red tests 22838d85 (rulings B19-6, B19-8, B19-9): tests/test_batch_rolling.py now 26 tests, 13 red on 94963ea7 (the 3 rolling-start tests of round 1 and 10 new), run on a scratch copy of 94963ea7 outside the clone.
 - 2026-10-19 15:20 EDT: green f477832f (rulings B19-5, B19-8): batch.py's rolling loop, takes.py's live set and clean-tree registration, check_results' window span and ruled pause; test_batch_rolling 26 of 26 green; test_batch, test_pipeline and test_spend_wiring re-pinned (see the round 2 summary).
+- 2026-10-19 15:21 EDT: routing.json's pause-cap prose and the rebuilt draft 996e767a (ruling B19-7).
+- 2026-10-19 15:22 EDT: COPIED.d claim d8b9d8b9 (ruling B19-10); the note's Rulings section 7cac1d4f (rulings B19-6, B19-11).
+- 2026-10-19 15:34 EDT: checks done (round 2 summary above); status needs-review; review stop.
