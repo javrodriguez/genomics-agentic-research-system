@@ -53,8 +53,9 @@ once. With unequal durations, a wave is mostly one row, filling the lane a finis
 ## 3. Every behaviour that depends on the block
 
 For each: today's text and line; the rolling behaviour proposed; and whether the change can move a committed record's
-bytes, an outcome, or a pre-registered element. "Equal durations" always means the block run is reproduced exactly
-(section 2); the "can move" column is about unequal durations.
+bytes, an outcome, or a pre-registered element. "Equal durations" means drives the loop observes finished at one
+reading, under which the block run is reproduced exactly (section 2; real drives of equal length may roll); the "can
+move" column is about unequal durations.
 
 ### 3.1 The block itself: BLOCK, `self.block`, the pool
 

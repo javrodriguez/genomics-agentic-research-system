@@ -1,4 +1,36 @@
-Status: running
+Status: needs-review
+
+ROUND 3 SUMMARY FOR REVIEW (cloud executor, 2026-10-19 16:46 EDT; glitch-26's rulings B19-12 to B19-17 on REVIEW-vendor-b19-27249de.md):
+- Red (B19-14): b18ebbb5, TestNightlyCarrier.test_a_refused_wave_leaves_no_carrier_on_an_uncommitted_row in tests/test_batch_rolling.py, red at 756686f9 in both subtests:
+  - money gate refusal: "AssertionError: (5, 1) not found in [(1, 1), (2, 1), (3, 1)] : the nightly stop's carrier names a row never committed";
+  - register failure: "AssertionError: (4, 1) not found in [(1, 1), (2, 1), (3, 1)] : the nightly stop's carrier names a row never committed".
+- Green (B19-14): 4c5b663d. batch.py's fill sets the carrier after the wave's launches; a refused or unregistered wave leaves the carrier on the last take launched before it (slot 3 carries the stop).
+- B19-12: 80fd6788, green on batch.py (the code was right; the holds were unpinned). TestHoldsBehindASlowHead, slot 1 ten times slower, three checks returning problems:
+  - stop-hold: slot 2 ends blocked, failed or leaking behind the slow head (slot 3 ends after it): no registration after slot 2's drive end, the loop stops;
+  - nightly-hold: slots 2, 3 and 4 end harness-errors behind it, slot 4's reaching NIGHTLY_HARNESS_ERRORS while slot 5 still runs: no registration after slot 4's drive end, and the stop is carried by slot 5, the last take launched;
+  - closing-hold: slots 2, 3 and 4 of hc-b rehearse behind it, slot 4's the third (the cap): no hc-b row registered between slot 4's drive end and its commit; hc-b closes and slot 7 is dropped. A pause behind the slow head is not a separate check: any finished pause already holds every launch (test_batch's pause test), so the closing hold cannot be told apart for a pause.
+  - Witnesses (TestWitnesses, batch.py compiled in memory with one edit set, bound check green on the tree first), each run alone, each red: held-stops-dropped (stop-hold, 3 problems), held-nightly-dropped (nightly-hold, 1), held-pause-only-stops (the review's pause-only mutant; stop-hold, 3), held-pause-only-nightly (the same mutant; nightly-hold, 1), closing-cells-empty (closing-hold, 2). Each problem is the registration the hold forbids.
+- B19-13: a5032928 (fakes) and c936f8ca (the note).
+  - World.wait_wave and EqualRepo wait until every future in the loop's open deque is done; no settle sleep is left. World finds the committing loop on the thread's stack; EqualRepo is handed the loop.
+  - That alone was not enough: in a loop of runs the nightly scenario still registered slot 5 once, because a reading saw a non-head drive of the wave finished before its head, with no commit between, and filled a lane (the rolling design, as the review says). So TimedDriver, when equal, ends a wave's other drives only once the head's commit has begun, as World already did.
+  - TestEqualDurations: 60 runs in a loop, 60 green. The tie-rule mutant (while to if in the commit step) still turns both scenarios red. test_batch: 118 tests in about 4 s (was 64 s), 7 of 7 runs green.
+  - Note: section 2 and the Rulings line for B19-6 reworded as ruled. Section 3's opening sentence restated the old claim ("always means the block run is reproduced exactly"), so it now points at the same definition (in the final lane commit).
+- B19-15: a6325f36. The drain's docstring (the throwaway queue; a re-run decided while draining is owed by the restart from the history, W1B3-6); run() resets the count of queued re-runs; prose reworded in takes.py's guard_registration docstring, costs.py line 13 and test_batch.py's header comment. Kept, as the review says: outside_live_block, drive.py's TakeRepo docstring and the money gate's refusal text.
+- B19-16 (NIT 7), recorded: no test yet runs the production TakeDriver and TakeRepo with a launch overlapping another take's drive. The first run that does will be the run driver's rehearsal walk on athena, which is planned for the freeze rehearsal.
+- B19-17 (NIT 8), recorded as ruled: under B19-6, publication counts a ruled pause as its own event, so for a history with a ruled pause the published per-half-cell count can differ from the block-era reading. The equivalence scenarios hold no ruling. Nothing changed.
+- Checks (foreground, env -i with PATH, HOME, LANG, TMPDIR from mktemp -d outside the clone), every gap-study-4 test module importing batch.py, takes.py or check_results.py, all OK:
+  - test_batch 118, test_batch_rolling 36 (was 26), test_box_integration 61, test_build_draft 49, test_checker_body 30, test_cp6_wiring 5, test_drive_commit 31;
+  - test_drive_loop 27, test_drive_ownership 44, test_executed_turn_refusal 10, test_native_snapshot 15, test_night_ruling_history 4, test_nightly_stop 13;
+  - test_pending_walk 23, test_pin_for_vendor 2, test_pipeline 85, test_routing 297, test_spend_wiring 25, test_vendor_checker_road 5, test_vendor_pins 5;
+  - test_walk_builders 95, test_walk_layout 14, test_walk_runner 89, test_walk_wiring 20, test_walk_launch 49 (29 skipped by its own REAL_SCAN_SKIP class, as before; no skip added);
+  - the five witnesses, each run alone: red, as listed above;
+  - copy_manifest --check ok (489 files from 60 fragments); build_draft --check ok; lint_language and lint_pooling on evals/gap-study-4/ clean, and with --commits-since 756686f9 clean.
+- For glitch-26:
+  - tests/mutations/run.py does not exist on this branch, on main or anywhere in the history. The witnesses follow test_spend_wiring's pattern instead: they are registered in test_batch_rolling's WITNESSES and run one at a time through unittest, by naming each witness test.
+  - No COPIED.d change: no file was added (test_batch_rolling.py was already claimed in round 2).
+  - TimedDriver.wait_idle is now unused; it is left in place.
+
+RESUME HERE: review stop (round 3)
 
 ROUND 2 SUMMARY FOR REVIEW (cloud executor, 2026-10-19 15:34 EDT; glitch-26's rulings B19-5 to B19-11):
 - Red (ruling B19-8, B19-9; B19-6's comparison is green on the block loop by design): 22838d85, tests/test_batch_rolling.py now 26 tests, 13 red on 94963ea7, run on a scratch copy of 94963ea7 outside the clone. Failure lines:
@@ -100,3 +132,9 @@ Progress:
 - 2026-10-19 15:22 EDT: COPIED.d claim d8b9d8b9 (ruling B19-10); the note's Rulings section 7cac1d4f (rulings B19-6, B19-11).
 - 2026-10-19 15:34 EDT: checks done (round 2 summary above); status needs-review; review stop.
 - 2026-10-19 16:10 EDT: round 3 begins on lane/vendor-b19 at 756686f9 under glitch-26's rulings B19-12 to B19-17 on REVIEW-vendor-b19-27249de.md; status running.
+- 2026-10-19 16:16 EDT: red test b18ebbb5 (ruling B19-14): TestNightlyCarrier, red in both subtests at 756686f9.
+- 2026-10-19 16:18 EDT: green 4c5b663d (ruling B19-14): the carrier is set once the wave is launched.
+- 2026-10-19 16:20 EDT: 80fd6788 (ruling B19-12): TestHoldsBehindASlowHead (3 checks) and TestWitnesses (5 witnesses, each red alone).
+- 2026-10-19 16:28 EDT: a5032928 and c936f8ca (ruling B19-13): the equal model waits on the loop's open futures, its head first; TestEqualDurations 60 of 60 green; the note reworded.
+- 2026-10-19 16:29 EDT: a6325f36 (ruling B19-15): drain docstring, run resets the front count, prose.
+- 2026-10-19 16:46 EDT: rulings B19-16 and B19-17 recorded; checks done (round 3 summary above); status needs-review; review stop.
