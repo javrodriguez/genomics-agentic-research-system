@@ -76,6 +76,14 @@ STATE = {"file": "codex-rs/config/src/state.rs", "blob": "ed3d13ccce1fea4776bd7c
 MARKERS = {"file": "codex-rs/config/src/project_root_markers.rs", "blob": "3061dacc6b793cc33265a81ed704d8369240bbfc"}
 EXEC_POLICY = {"file": "codex-rs/core/src/exec_policy.rs", "blob": "21e414ed01b2040830790e8b486d17edd83309dd"}
 AGENTS_MD = {"file": "codex-rs/core/src/agents_md.rs", "blob": "8e0c475d90339a236f51da33f85e70b967a61f26"}
+ARG0 = {"file": "codex-rs/arg0/src/lib.rs", "blob": "c3467367190389297406c1aefd40d42ca503b6b5"}
+HOME_DIR = {"file": "codex-rs/utils/home-dir/src/lib.rs", "blob": "caa43569c78bae9f5cc875092f378f4d935b8063"}
+MARKETPLACE = {"file": "codex-rs/core-plugins/src/marketplace.rs", "blob": "2199fe4e1e937e239304e0bf26ab56b793f8409c"}
+MARKETPLACE_POLICY = {"file": "codex-rs/core-plugins/src/marketplace_policy.rs",
+                      "blob": "d5907554fb0db454e81d6279927e8531fb552591"}
+PLUGINS_LOCAL = {"file": "codex-rs/app-server/src/request_processors/plugins/local.rs",
+                 "blob": "67cbd5c4bbde97d6dcffc11af3898b29725c46f4"}
+AGENT_ROLES = {"file": "codex-rs/agent-roles/src/loader.rs", "blob": "a82649b8e10debe7a2b3c7e21e2e861d557ea3b7"}
 SOURCES = {
     "gemini: the running bundle": dict(PKG, reads=[
         dict(ENTRY, lines={"main from gemini-Q2GRYIAK.js": 110}),
@@ -142,8 +150,36 @@ SOURCES = {
         dict(Q2G, lines={"sandbox profile, only under GEMINI_SANDBOX or --sandbox": 10097})],
         read="each needs a variable or flag the box never passes (run_take refuses GEMINI_SYSTEM_MD and "
              "GEMINI_SANDBOX by name)"),
-    "not guarded: .env and .gemini/.env": dict(PKG, reads=[dict(FLKY, lines={".gemini/.env": 16546})],
-                                               read="run_take.refuse_env_files refuses both before every turn"),
+    # Review r18-b10 finding 1 (B10-F1): the .env walk reaches past the run tree, to / and HOME.
+    "not guarded here: .env and .gemini/.env": {
+        "gemini": dict(PKG, reads=[
+            dict(FLKY, lines={"findEnvFile: from the working folder up to /": 16542,
+                              "<folder>/.gemini/.env, first (trusted)": 16546, "<folder>/.env": 16551,
+                              "after /: homedir()/.gemini/.env": 16560, "then homedir()/.env": 16565,
+                              "loadEnvironment's call": 16610, "each key not yet set is set": 16639}),
+            dict(NR7, lines={"homedir(): GEMINI_CLI_HOME, else os.homedir()": 252011})],
+            read="the first of these found is loaded, a .gemini/ file without the excluded-variable filter"),
+        "codex": dict(CODEX, reads=[dict(ARG0, lines={"load_dotenv, before any thread": 159,
+                                                       "CODEX_HOME/.env only": 305}),
+                                    dict(HOME_DIR, lines={"find_codex_home reads CODEX_HOME": 14})],
+                      read="the only .env read outside test code; CODEX_ names are dropped"),
+        "read": "run_take's in-container launcher (LAUNCHER_SOURCE) refuses .env and .gemini/.env in the container's "
+                "working folder, every ancestor up to / and HOME, before every harness exec of every arm; HOME, "
+                "GEMINI_CLI_HOME and CODEX_HOME are the one config mount (run_take.TAKE_ENV), so every file either "
+                "CLI reads is among them; run_take.refuse_env_files, host-side, covers the run tree and the config "
+                "folder only, as an early refusal"},
+    "not guarded: .geminiignore": dict(PKG, reads=[dict(NR7, lines={"GEMINI_IGNORE_FILE_NAME": 313670,
+                                                                     "the ignore filter": 314189})],
+                                       read="it filters only what the agent's own file tools list"),
+    "not guarded: Codex plugin marketplaces": dict(CODEX, reads=[
+        dict(MARKETPLACE, lines={"the repository marketplace paths": 20}),
+        dict(MARKETPLACE_POLICY, lines={"plugins enabled from the effective config only": 214}),
+        dict(PLUGINS_LOCAL, lines={"repository scopes, on the app-server road only": 34})],
+        read="a listing reads them; nothing is enabled from a disabled project layer, and codex exec builds no "
+             "repository scope"),
+    "not guarded: .codex/agents": dict(CODEX, reads=[dict(AGENT_ROLES, lines={"enabled layers only": 29,
+                                                                               "<layer>/agents": 78})],
+                                       read="agent roles come from enabled layers, never the disabled project one"),
     "not guarded: .codex/config.toml, hooks, rules and MCP": dict(CODEX, reads=[
         dict(LOADER, lines={"a layer is enabled only when trusted": 1094}),
         dict(STATE, lines={"effective_config merges enabled layers only": 532,
@@ -405,6 +441,108 @@ class TheGuard(unittest.TestCase):
                 own = {case for case, (_rel, _kind, c) in GAINED.items() if c == cls}
                 self.assertTrue(lost & own, f"mutant {name} leaves none of its own cases uncaught: {got}")
                 self.assertLessEqual(lost, own, f"mutant {name} leaves cases outside its class uncaught: {lost - own}")
+
+
+# B10-F1 (review r18-b10 finding 1): an env file planted outside the run tree, where the take container's writable /tmp
+# sits above it, is refused before the next exec by run_take's in-container launcher (LAUNCHER_SOURCE). The launcher
+# runs in-process with os.execvpe faked, from a working folder laid out as the box lays it out (<tmp>/run-x), and HOME
+# a separate config folder; no process starts.
+from box import run_take as rt  # noqa: E402
+
+ENV_NAMES = (".env", ".gemini/.env")
+
+
+def launch(cwd: str, home: str):
+    """'exec' when the launcher would exec the harness, else the launcher's refusal text."""
+    got = {}
+
+    def fake_exec(prog, args, env):
+        got["env"] = dict(env)
+        raise SystemExit(0)
+    here = os.getcwd()
+    os.chdir(cwd)
+    try:
+        with mock.patch.object(os, "execvpe", fake_exec), mock.patch.dict(os.environ, {"GEMINI_API_KEY": "x"},
+                                                                          clear=True), \
+                mock.patch.object(sys, "argv", ["-c", "GEMINI_API_KEY", "2", f"HOME={home}",
+                                                f"GEMINI_CLI_HOME={home}", "gemini", "-p", "x"]):
+            try:
+                exec(compile(rt.LAUNCHER_SOURCE, "<launcher>", "exec"), {"__name__": "__main__"})
+            except SystemExit as e:
+                return "exec" if "env" in got else str(e.code)
+    finally:
+        os.chdir(here)
+    return "neither"
+
+
+def env_cases():
+    """(where, name) -> launcher result after planting <where>/<name>: where is the run tree, its parent (the
+    container's /tmp), its grandparent, or HOME."""
+    out = {}
+    for where in ("run tree", "parent", "grandparent", "HOME"):
+        for name in ENV_NAMES:
+            d = tempfile.mkdtemp(prefix="vwe-")
+            try:
+                tmp = os.path.join(d, "tmp")
+                run = os.path.join(tmp, "run-x")
+                home = os.path.join(d, "cfg")
+                os.makedirs(run)
+                os.makedirs(home)
+                base = {"run tree": run, "parent": tmp, "grandparent": d, "HOME": home}[where]
+                clean = launch(run, home)
+                p = os.path.join(base, *name.split("/"))
+                os.makedirs(os.path.dirname(p), exist_ok=True)
+                Path(p).write_text("GEMINI_SYSTEM_MD=/tmp/x\n")
+                out[(where, name)] = (clean, launch(run, home))
+            finally:
+                shutil.rmtree(d)
+    return out
+
+
+def check_env_walk() -> list:
+    out = []
+    for (where, name), (clean, planted) in env_cases().items():
+        if clean != "exec":
+            out.append(f"env walk: the clean tree does not launch ({clean})")
+        if not planted.startswith("refusing .env file: "):
+            out.append(f"env walk: {name} planted in the {where} is not refused ({planted})")
+    for h in (rt.GEMINI, rt.CODEX):
+        row = rt.TAKE_ENV[h]
+        homes = {row.get(k) for k in ("HOME", "GEMINI_CLI_HOME", "CODEX_HOME") if k in row}
+        if homes != {rt.CONFIG_MOUNT}:
+            out.append(f"env walk: {h}'s HOME and config home are not one folder: {homes}")
+    return out
+
+
+class TheEnvWalk(unittest.TestCase):
+    def test_a_planted_env_file_above_the_run_tree_is_refused(self):
+        """A /tmp/.gemini/.env (or .env) planted between turns, above the run tree, in HOME or in the tree itself,
+        refuses the next exec; the harness never starts."""
+        self.assertEqual(check_env_walk(), [])
+
+    def test_mutants_each_red(self):
+        self.assertEqual(check_env_walk(), [], "the launcher is not green, so no mutant can be judged")
+        src = rt.LAUNCHER_SOURCE
+        cases = {
+            "the ancestor walk stops at the working folder": src.replace(" d=parent\n", " break\n"),
+            "only .env is checked": src.replace("('.env',os.path.join('.gemini','.env'))", "('.env',)"),
+            "only .gemini/.env is checked": src.replace("('.env',os.path.join('.gemini','.env'))",
+                                                        "(os.path.join('.gemini','.env'),)"),
+            "HOME is not checked": src.replace("dirs=[e['HOME']]", "dirs=[]"),
+        }
+        for name, mutant in cases.items():
+            with self.subTest(mutant=name):
+                self.assertNotEqual(mutant, src, f"mutant {name} did not apply")
+                with mock.patch.object(rt, "LAUNCHER_SOURCE", mutant):
+                    got = check_env_walk()
+                print(f"mutant {name}: {'red' if got else 'GREEN (survived)'} ({len(got)}; first: "
+                      f"{got[0] if got else '-'})")
+                self.assertTrue(got, f"mutant {name} survived")
+                self.assertFalse([g for g in got if "clean tree" in g], f"mutant {name} broke the launcher: {got}")
+        with mock.patch.dict(rt.TAKE_ENV[rt.GEMINI], {"GEMINI_CLI_HOME": "/opt/elsewhere"}):
+            got = check_env_walk()
+        print(f"mutant GEMINI_CLI_HOME apart from HOME: {'red' if got else 'GREEN (survived)'}")
+        self.assertTrue(got, "mutant GEMINI_CLI_HOME apart from HOME survived")
 
 
 if __name__ == "__main__":
