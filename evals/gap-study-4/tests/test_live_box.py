@@ -107,7 +107,8 @@ class LaunchJournalRegression(unittest.TestCase):
 
 class SubscriptionTransitionRegression(unittest.TestCase):
     def test_codex_refuses_before_credential_read_or_runtime(self):
-        with mock.patch.object(rt, "read_login") as read:
+        # the closed gate, pinned (B8-1; review REVIEW-vendor-r18-b8-ddef2f4 MAJOR 1): it refuses before any read
+        with mock.patch.object(rt, "read_login") as read, mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", False):
             with self.assertRaisesRegex(rt.NotReady, "subscription binding not ready"):
                 rt.exec_argv("a" * 64, ["codex", "exec", "prompt"], user=rt.AGENT_USER,
                              workdir="/srv/w/tree", harness=rt.CODEX, run_tree="/srv/w/tree",
