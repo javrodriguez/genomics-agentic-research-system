@@ -555,10 +555,10 @@ class TestHashAndNames(MutantCase):
 
     def test_hash(self):
         self.assert_green_then_red(self.check_hash, [
-            ("digests-only", patched(tc, "config_sha256", lambda f: __import__("hashlib").sha256("".join(sorted(
+            ("digests-only", patched(tc, "config_sha256", lambda f, harness=None: __import__("hashlib").sha256("".join(sorted(
                 __import__("hashlib").sha256(open(os.path.join(r, n), "rb").read()).hexdigest()
                 for r, _, ns in os.walk(f) for n in ns)).encode()).hexdigest())),
-            ("names-only", patched(tc, "config_sha256", lambda f: __import__("hashlib").sha256(
+            ("names-only", patched(tc, "config_sha256", lambda f, harness=None: __import__("hashlib").sha256(
                 "\n".join(sorted(os.listdir(f))).encode()).hexdigest())),
         ])
 
@@ -614,14 +614,14 @@ class TestArg0Links(MutantCase):
         a, ra = written(tc.CODEX, "gpt-6.1-sol")
         killed_codex(a)
         try:
-            first = tc.config_sha256(a)
+            first = tc.config_sha256(a, tc.CODEX)
         except tc.Refused as e:
             return [f"R-H3: a killed Codex turn's four arg0 links refused: {e}"]
         if first == ra["sha256"]:
             out.append("R-H3: the hash does not see the four links")
         b, _ = written(tc.CODEX, "gpt-6.1-sol")
         killed_codex(b, sub="tmp/arg0/codex-arg0ZyX987")
-        if tc.config_sha256(b) == first:
+        if tc.config_sha256(b, tc.CODEX) == first:
             out.append("R-H3: the hash does not see the link's folder name")
         refused = {
             "a fifth name": dict(names=ARG0_NAMES + ("codex",)),
@@ -636,7 +636,7 @@ class TestArg0Links(MutantCase):
             c, _ = written(tc.CODEX, "gpt-6.1-sol")
             killed_codex(c, **kw)
             try:
-                tc.config_sha256(c)
+                tc.config_sha256(c, tc.CODEX)
                 out.append(f"R-H3: {why} was hashed")
             except tc.Refused:
                 pass
@@ -644,7 +644,7 @@ class TestArg0Links(MutantCase):
         os.makedirs(os.path.join(d, "tmp", "arg0"))
         os.symlink(os.path.join(d, "tmp"), os.path.join(d, "tmp", "arg0", "codex-arg0AbC123"))
         try:
-            tc.config_sha256(d)
+            tc.config_sha256(d, tc.CODEX)
             out.append("R-H3: a folder link at the arg0 folder's place was hashed")
         except tc.Refused:
             pass

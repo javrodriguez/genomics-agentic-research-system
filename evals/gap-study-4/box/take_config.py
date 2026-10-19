@@ -316,7 +316,7 @@ def write(config_dir: str, harness: str, *, model, run_tree=None) -> dict:
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, "wb") as fh:
             fh.write(data)
-    return {"harness": harness, "files": sorted(files), "sha256": config_sha256(config_dir)}
+    return {"harness": harness, "files": sorted(files), "sha256": config_sha256(config_dir, harness)}
 
 
 # R-H3 (glitch-26's ruling on lane vendor-b11, round 3, Mon 19 Oct 2026): a Codex turn that is killed (a timeout,
@@ -338,9 +338,11 @@ def codex_arg0_link(rel: str, target: str) -> bool:
     return run_take.codex_arg0_link(rel, target)
 
 
-def config_sha256(folder: str) -> str:
+def config_sha256(folder: str, harness: str | None = None) -> str:
     """One sha256 over every file of the folder: sorted relative paths and their bytes' sha256. Links refused, but
-    for R-H3's four arg0 links, each hashed by its name and target string (never followed)."""
+    for a codex folder R-H3's four arg0 links, each hashed by its name and target string (never followed). R5-4 (lane
+    vendor-b11 round 5): the link rule is the codex harness's alone, as run_take.check_config_folder's is; a claude-code
+    or gemini folder, or one hashed with no harness named, refuses every link exactly as before R-H3."""
     entries = []
     for root, dirs, names in os.walk(folder, followlinks=False):
         for d in dirs:
@@ -348,14 +350,14 @@ def config_sha256(folder: str) -> str:
                 raise Refused("a link in the config folder")
         for n in names:
             path = os.path.join(root, n)
-            if os.path.islink(path):
+            if harness == CODEX and os.path.islink(path):
                 rel = os.path.relpath(path, folder).replace(os.sep, "/")
                 target = os.readlink(path)
                 if not codex_arg0_link(rel, target):
                     raise Refused(f"a link in the config folder: {rel}")
                 entries.append((rel, "link:" + target))
                 continue
-            if not os.path.isfile(path):
+            if os.path.islink(path) or not os.path.isfile(path):
                 raise Refused("a link or a special file in the config folder")
             with open(path, "rb") as fh:
                 entries.append((os.path.relpath(path, folder), hashlib.sha256(fh.read()).hexdigest()))
