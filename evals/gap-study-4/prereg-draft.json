@@ -23578,19 +23578,19 @@
         "files": [
           {
             "path": "config.toml",
-            "sha256": "27af50c215938bff9ab2a3d6f6541188cfa68e1e44be41103834690ce7fffab5"
+            "sha256": "6a2c753709cfa8c632b795f77f3662c80b91bf0b72bdb8dd8480c7c450c4984b"
           }
         ],
-        "sha256": "cf72b71b11f0684e7a5406879f1c896d82a31cea7606a7e937fd1d3d5ea01a71"
+        "sha256": "e56a71d542aee40789c0d32ac348eccb1660c8a3d0047f8cd202264d9763aa8c"
       },
       "gpt-6-luna": {
         "files": [
           {
             "path": "config.toml",
-            "sha256": "c55a0699ad05f1b6ee61533e28b133dfaa38ac0058469f307d7af247ea8ef28a"
+            "sha256": "41870f8a35b254944713ce0a5e94118861255f248f4bfd3e862e9ce650931ad3"
           }
         ],
-        "sha256": "594815fd3266d9d9e21a92609cab074b061a6db08734fe979917110a45df9940"
+        "sha256": "52a0fba521c2c0c35f7592346cfa7361f8cdcb979b35f540cdd9a92666f80823"
       }
     },
     "gemini": {
