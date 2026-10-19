@@ -194,12 +194,14 @@ R3_SOURCES = {
                                      "AuthType.USE_GEMINI, the API-key auth type"),
     # Round 18 B9 (glitch-26's ruling B9, Sun 18 Oct 2026, from the held walk w-g1's exit 55): folder trust defaults on
     # at the pinned version, so a headless take in a folder Gemini CLI does not trust stops before any model call.
+    # R-B9 (lane vendor-b11 round 3): the check's citation is the running chain's main bundle, gemini-Q2GRYIAK.js (the
+    # bin, bundle/gemini.js line 110, imports it), never the orphan build gemini-6ESINPDZ.js.
     "GEMINI_TRUST_SETTING": dict(GEMINI_PKG, file="bundle/chunk-FLKY6NH5.js",
                                  file_sha256="f6a4ddd46350dad40515218069d369aaa0025f194c552400b69925b941098bc8",
-                                 line=9599, check_file="bundle/gemini-6ESINPDZ.js",
-                                 check_file_sha256="19950cab8f7bd8b48ea89c4ede22418b2e5d836d9c1554baed62c9019d74810b",
-                                 check_lines={"folder trust off: the check returns": 11129,
-                                              "headless and untrusted: FatalUntrustedWorkspaceError (exit 55)": 11137},
+                                 line=9599, check_file="bundle/gemini-Q2GRYIAK.js",
+                                 check_file_sha256="7702da31cf099ca3e1d64fd195f15b7726b2c2829ec21e955558eb9dbfba47da",
+                                 check_lines={"folder trust off: the check returns": 11145,
+                                              "headless and untrusted: FatalUntrustedWorkspaceError (exit 55)": 11153},
                                  read="security.folderTrust.enabled defaults to true (settings.security?.folderTrust"
                                       "?.enabled ?? true), although docs/cli/trusted-folders.md calls the feature off "
                                       "by default; with it on, a headless run in an untrusted folder throws "
