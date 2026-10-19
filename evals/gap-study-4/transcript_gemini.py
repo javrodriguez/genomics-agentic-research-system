@@ -32,7 +32,7 @@ THE CLOSED RULE. An event type, key, role, status, tool name or argument key tha
 grow only by a lane that cites the recording or the pinned package. In particular the web tools (`google_web_search`,
 `web_fetch`, which the per-take settings exclude, D8 section 3), the tools the pinned package defines but never offers a
 headless arm G model (gemini_tool_sources.py names each) and names it does not define (`save_memory`) are refused because
-no entry is pre-registered for them.
+no entry is pre-registered for them. OPEN_INPUT (at the end of this file) is the one exception, by ruling R-B16-2.
 
 THE VIEW MAPPING (the brief's, item 2):
     message role user        -> operator (each one starts the next turn of the view)
@@ -180,7 +180,7 @@ def check_stats(stats) -> None:
 def tool_kind(rec: dict) -> tuple:
     """(view kind, view args) of a tool_use by GEMINI_TOOLS: a tool name or argument key with no entry is refused."""
     try:
-        return tv.map_tool(GEMINI_TOOLS, rec["tool_name"], rec["parameters"])
+        return tv.map_tool(GEMINI_TOOLS, rec["tool_name"], _declared(rec))
     except tv.ViewError as e:
         raise ShapeError(f"tool_use: {e}") from None
 
@@ -255,9 +255,65 @@ class GeminiParser:
             return [tv.RawItem(t, kind, text=rec["content"])]
         if t == TOOL_USE:
             kind, args = tool_kind(rec)
-            return [tv.RawItem(t, tv.TOOL_CALL, tool=kind, args=args, ref=rec["tool_id"])]
+            return [_call_item(t, kind, args, rec)]
         if t == TOOL_RESULT:
             out = rec.get("output")
             text = out if isinstance(out, str) else tv._joined(rec.get("error"))
             return [tv.RawItem(t, tv.TOOL_RESULT, text=text, ref=rec["tool_id"])]
         return [tv.RawItem(t, tv.HARNESS, text=tv._joined({k: v for k, v in rec.items() if k != "type"}))]
+
+
+# ---- undeclared argument keys, read as named, ignored input (lane vendor-b16 round 2, glitch-26's ruling R-B16-2) ---
+# NAMED EXCEPTION (ruling R-B16-2): transcript_gemini.py is a READER_SOURCES file (native_reader_registration). No
+# Gemini reader acceptance record exists, so no accepted bytes move; recorded as B12's was, here, in the lane file and
+# the commit message. The Gemini practice walk was held on "tool 'grep_search': argument keys with no entry:
+# ['file_path']"; the pinned Gemini CLI 0.64.0 ran that call over the working directory and its stream recorded the
+# model's parameters with a success result (lane-reports/B16-DESIGN-NOTE.md sections 2 and 4).
+# name -> (its schema closes its properties, the raw keys the pinned run reads off the call's arguments). For a tool
+# here, a raw key outside its GEMINI_TOOLS entry's allowed keys is not refused when the schema leaves its properties
+# open (Ajv passes the key) and the key is not one the run reads: it is dropped from what is mapped, so the view's args
+# are what ran, and it is named on the view item (undeclared_args). Each entry is cited in
+# gemini_tool_sources.OPEN_INPUT. Still refused: an unknown tool name, a declared key off its type, a tool with no
+# entry here or whose schema closes its properties, and a key the run reads. The read keys are both grep invocations'
+# (GrepTool's and RipGrepTool's, either of which serves grep_search) and wait_for_previous, which the scheduler reads
+# off every call.
+import dataclasses  # noqa: E402  (kept here so the lines above, which the generated sweep keys, do not move)
+
+_GREP_READS = _GREP_KEYS + ("wait_for_previous",)
+OPEN_INPUT = {
+    "grep_search": (False, _GREP_READS),
+    "search_file_content": (False, _GREP_READS),
+}
+
+
+def ignored_args(rec: dict) -> tuple:
+    """The raw argument keys of a checked tool_use that OPEN_INPUT reads as named, ignored input, in the record's
+    order; () when there are none or when any undeclared key may not be ignored (the call is then mapped whole, and
+    map_tool refuses it)."""
+    entry = OPEN_INPUT.get(rec["tool_name"])
+    if entry is None or entry[0] is not False:
+        return ()
+    extra = [k for k in rec["parameters"] if k not in GEMINI_TOOLS[rec["tool_name"]][2]]
+    if set(extra) & set(entry[1]):
+        return ()
+    return tuple(extra)
+
+
+def _declared(rec: dict) -> dict:
+    """The tool_use's parameters without the keys ignored_args names."""
+    ignored = ignored_args(rec)
+    return {k: v for k, v in rec["parameters"].items() if k not in ignored}
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class CallItem(tv.RawItem):
+    """A tool call's view item that names the undeclared argument keys read as ignored input (OPEN_INPUT)."""
+    undeclared_args: tuple
+
+
+def _call_item(t: str, kind: str, args: dict, rec: dict):
+    """The tool call's view item: a CallItem naming the ignored keys when there are any, else the plain RawItem."""
+    ignored = ignored_args(rec)
+    if not ignored:
+        return tv.RawItem(t, tv.TOOL_CALL, tool=kind, args=args, ref=rec["tool_id"])
+    return CallItem(t, tv.TOOL_CALL, tool=kind, args=args, ref=rec["tool_id"], undeclared_args=ignored)

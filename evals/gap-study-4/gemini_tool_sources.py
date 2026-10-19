@@ -153,3 +153,76 @@ SOURCES = {
         [_C, 355009, "Kind.Agent"], [_C, 355013, "agent_name: {"], [_C, 355017, "prompt: {"], _WAIT),
         "AgentTool hands a prompt to a named sub-agent (Kind.Agent): delegate, as Claude Code's Agent is"),
 }
+
+# ---- OPEN_INPUT's citations (lane vendor-b16 round 2, glitch-26's ruling R-B16-2, Mon 19 Oct 2026) -----------------
+# For each tool in transcript_gemini.OPEN_INPUT, where the pinned package shows both of the ruling's conditions: the
+# schema leaves its properties open (no additionalProperties false in either family's grep schema, and Ajv run with
+# strictSchema false only), and the run reads only the keys named in `reads` off the call's arguments.
+# tests/test_gemini_undeclared_args.py U3 binds these to the table; its --sources re-reads every cited line.
+_GREP_READS = ("pattern", "dir_path", "include_pattern", "exclude_pattern", "names_only", "case_sensitive",
+               "fixed_strings", "context", "after", "before", "no_ignore", "max_matches_per_file", "total_max_matches",
+               "wait_for_previous")
+_GREP_OPEN_LINES = (
+    # the schemas, gemini-3 family (both arm G models) and default-legacy (the one build validates): no
+    # additionalProperties between each opening line and its required line (only write_todos sets it, 282573/282578)
+    [_C, 282751, "grep_search: {"], [_C, 282788, "required: [PARAM_PATTERN]"],
+    [_C, 282791, "grep_search_ripgrep: {"], [_C, 282855, "required: [PARAM_PATTERN]"],
+    [_C, 282158, "grep_search: {"], [_C, 282195, "required: [PARAM_PATTERN]"],
+    [_C, 282198, "grep_search_ripgrep: {"], [_C, 282262, "required: [PARAM_PATTERN]"],
+    # build validates this.schema (the base declaration) with Ajv, whose only option is strictSchema false
+    [_C, 274389, "build(params) {"], [_C, 274396, "validateToolParams(params) {"],
+    [_C, 274310, "return this.getSchema();"],
+    [_C, 273788, "var SchemaValidator = class {"], [_C, 273774, "strictSchema: false"],
+    # GrepTool's invocation: its reads off this.params, and the two helpers it hands this.params to
+    [_C, 321704, "var GrepToolInvocation = class extends BaseToolInvocation {"],
+    [_C, 321746, "const pathParam = this.params.dir_path;"],
+    [_C, 321815, "const totalMaxMatches = this.params.total_max_matches ?? DEFAULT_TOTAL_MAX_MATCHES;"],
+    [_C, 321834, "pattern: this.params.pattern,"], [_C, 321836, "include_pattern: this.params.include_pattern,"],
+    [_C, 321837, "exclude_pattern: this.params.exclude_pattern,"],
+    [_C, 321839, "max_matches_per_file: this.params.max_matches_per_file,"],
+    [_C, 321866, "formatGrepResults(allMatches, this.params, searchLocationDescription, totalMaxMatches);"],
+    [_C, 321637, "const { pattern, names_only, include_pattern } = params;"],
+    [_C, 321597, "const { names_only, context: context2, before, after } = params;"],
+    [_C, 322156, "validateToolParamValues(params) {"],
+    # RipGrepTool's invocation (GrepToolInvocation2): its reads off this.params
+    [_C, 322248, "var GrepToolInvocation2 = class extends BaseToolInvocation {"],
+    [_C, 322258, 'const pathParam = this.params.dir_path || ".";'],
+    [_C, 322309, "const totalMaxMatches = this.params.total_max_matches ?? DEFAULT_TOTAL_MAX_MATCHES;"],
+    [_C, 322328, "pattern: this.params.pattern,"], [_C, 322330, "include_pattern: this.params.include_pattern,"],
+    [_C, 322331, "exclude_pattern: this.params.exclude_pattern,"],
+    [_C, 322332, "case_sensitive: this.params.case_sensitive,"],
+    [_C, 322333, "fixed_strings: this.params.fixed_strings,"],
+    [_C, 322334, "context: this.params.context,"], [_C, 322335, "after: this.params.after,"],
+    [_C, 322336, "before: this.params.before,"], [_C, 322337, "no_ignore: this.params.no_ignore,"],
+    [_C, 322339, "max_matches_per_file: this.params.max_matches_per_file,"],
+    [_C, 322361, "formatGrepResults(allMatches, this.params, searchLocationDescription, totalMaxMatches);"],
+    [_C, 322384, "!this.params.names_only && this.params.context === void 0"],
+    [_C, 322578, "validateToolParamValues(params) {"],
+    # the scheduler reads wait_for_previous off every call's arguments
+    [_C, 349439, 'const wait = request.args["wait_for_previous"];'],
+    # the base invocation reads file_path only on an ask-user decision, which a headless run never reaches: the
+    # invocation is built without respectsAutoEdit (default false), and checkPolicy refuses ask-user non-interactively
+    [_C, 321708, "super(params, messageBus, _toolName, _toolDisplayName);"],
+    [_C, 274078, "const filePath = extractFilePathFromArgs(this.params);"],
+    [_C, 274035, "const target = args2.file_path ?? args2.path ?? args2.filePath ?? args2.file;"],
+    [_C, 349488, "if (decision === PolicyDecision.ASK_USER) {"],
+    [_C, 343497, "if (decision === PolicyDecision.ASK_USER) {"], [_C, 343498, "if (!config2.isInteractive()) {"],
+    # the stream records the model's own parameters on tool_use
+    [_Q, 12228, "parameters: event.value.args"],
+)
+_GREP_OPEN_READ = (
+    "both grep schemas, in both families, leave their properties open, so Ajv passes an undeclared key; GrepTool's "
+    "and RipGrepTool's invocations (either serves grep_search) read only declared keys off this.params, and the "
+    "scheduler reads wait_for_previous off every call; the base invocation's file_path read (extractFilePathFromArgs) "
+    "runs only on an ask-user decision, which a headless --approval-mode yolo run never reaches (policies/yolo.toml "
+    "lines 51-55 allow every tool, and checkPolicy refuses ask-user when not interactive), so an undeclared key such "
+    "as file_path changes nothing the call does")
+_ALIAS = [_C, 283434, "search_file_content: GREP_TOOL_NAME"]
+OPEN_INPUT = {
+    "grep_search": dict(_PKG, file=_C, file_sha256=_C_SHA256, closes_properties=False, reads=list(_GREP_READS),
+                        lines=[list(x) for x in _GREP_OPEN_LINES], read=_GREP_OPEN_READ),
+    "search_file_content": dict(_PKG, file=_C, file_sha256=_C_SHA256, closes_properties=False,
+                                reads=list(_GREP_READS),
+                                lines=[list(x) for x in _GREP_OPEN_LINES + (_ALIAS,)],
+                                read="the legacy alias the registry resolves to grep_search: " + _GREP_OPEN_READ),
+}

@@ -10,9 +10,9 @@ hold; each entry is cited in gemini_tool_sources.OPEN_INPUT from the pinned pack
 
   U1  the held walk's shape, SYNTHETIC (grep_search with pattern and file_path, and the same on the legacy alias
       search_file_content): check_record passes it, GeminiParser reads a search call whose args are what ran (path
-      None, the working directory), the item names the undeclared key (undeclared_args), a re-bound copy of the item
-      keeps it (dataclasses.replace, as vendor_record_binding re-binds each ref), and gemini_adapter.read_stream reads
-      a synthetic stream that carries it.
+      None, the working directory), the item names the undeclared keys in the record's order (undeclared_args), a
+      re-bound copy of the item keeps them (dataclasses.replace, as vendor_record_binding re-binds each ref), and
+      gemini_adapter.read_stream reads a synthetic stream that carries the call.
   U2  still refused: an unknown tool name; a declared key off its type; a known tool with no OPEN_INPUT entry
       (read_file, update_topic, write_todos, whose schema closes its properties); an undeclared key the pinned run
       reads (wait_for_previous, read by the scheduler off every call); a tool whose entry says its schema closes its
@@ -104,6 +104,14 @@ def u1_problems(mod=tg) -> list:
                        f"{getattr(item, 'undeclared_args', None)!r}")
         elif getattr(dataclasses.replace(item, ref="1:t1"), "undeclared_args", None) != ("file_path",):
             out.append(f"U1: {name}'s re-bound item drops the undeclared key")
+        for params, want in (({"include": "*.txt", "pattern": "p", "file_path": "a.txt"}, ("include", "file_path")),
+                             ({"file_path": "a.txt", "pattern": "p", "include": "*.txt"}, ("file_path", "include"))):
+            try:
+                got = getattr(mod.GeminiParser().items(use_line(name, params))[0], "undeclared_args", None)
+            except tv.ViewError as e:
+                got = f"refused: {e}"
+            if got != want:
+                out.append(f"U1: {name} with {list(params)} names {got!r}, not {want!r} in the record's order")
         try:
             got = ga.read_stream(stream_with(line), model=MODEL)
         except ga.StreamError as e:
@@ -120,7 +128,8 @@ def u2_problems(mod=tg) -> list:
         ("an unknown tool name", use_line("grep_files", HELD)),
         ("a declared, mapped key off its type (pattern)", use_line("grep_search", dict(HELD, pattern=5))),
         ("a declared, mapped key off its type (dir_path)", use_line("grep_search", dict(HELD, dir_path=7))),
-        ("a known tool with no entry (read_file)", use_line("read_file", {"file_path": "a.txt", "absolute_path": "/a"})),
+        ("a known tool with no entry (read_file)",
+         use_line("read_file", {"file_path": "a.txt", "absolute_path": "/a"})),
         ("a known tool with no entry (update_topic)", use_line("update_topic", {"title": "t", "topic": "y"})),
         ("a closed schema (write_todos)", use_line("write_todos", {"todos": [], "file_path": "a.txt"})),
         ("a key the run reads (wait_for_previous)", use_line("grep_search", dict(HELD, wait_for_previous=True))),
@@ -226,7 +235,11 @@ def _view_mutant():
         return None
     mod = types.ModuleType("transcript_gemini_b16_witness")
     mod.__file__ = str(path)
-    exec(compile(text.replace(VIEW_ANCHOR, "undeclared_args=()"), str(path) + " (witness)", "exec"), mod.__dict__)
+    sys.modules[mod.__name__] = mod                  # dataclass reads its module's namespace while it builds
+    try:
+        exec(compile(text.replace(VIEW_ANCHOR, "undeclared_args=()"), str(path) + " (witness)", "exec"), mod.__dict__)
+    finally:
+        sys.modules.pop(mod.__name__, None)
     return mod
 
 
