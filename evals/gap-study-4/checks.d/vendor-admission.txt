@@ -112,3 +112,9 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 check_take.py test
 python3 -B -W ignore evals/gap-study-4/tests/test_gemini_undeclared_args.py
 python3 -B -W ignore evals/gap-study-4/tests/test_gemini_undeclared_args.py --witnesses
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 gemini_tool_sources.py tests/test_gemini_adapter.py tests/test_gemini_undeclared_args.py COPIED.d/vendor-admission.json
+# Lane vendor-b18 round 1 B18-1 (glitch-26, Mon 19 Oct 2026; the GPT practice walk w-o7's egress log): every arm O
+# config.toml switches off the pinned Codex CLI's plugins (features.plugins) and its metrics export at exit
+# (otel.metrics_exporter none), each cited from rust-v0.162.1 in VALUE_SOURCES; the witnesses are TestB18CodexSwitches'
+# mutants, each red alone; the files the round edits, against the native readers' source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_take_config.py TestB18CodexSwitches
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/take_config.py prereg-draft.json tests/test_take_config.py
