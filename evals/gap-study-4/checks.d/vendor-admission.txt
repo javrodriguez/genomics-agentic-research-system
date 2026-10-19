@@ -92,3 +92,7 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 transcript_codex.p
 # red alone; the files the round edits, against the native readers' source lists.
 python3 -B -W ignore evals/gap-study-4/tests/test_take_config.py
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/take_config.py build_draft.py prereg-draft.json tests/test_take_config.py tests/test_walk_builders.py tests/test_live_box.py
+# Lane vendor-b14 round 3 (glitch-26's rulings R-B14-6 and R-B14-7, Mon 19 Oct 2026; review of d180aaf7 findings 1 and
+# 3): TestB14HelperPins gains the set-twice refusal's test and two writer mutants, each red alone: the unread-model
+# refusal dropped (an unread model falling back to no per-row aliases) and the set-twice refusal dropped.
+python3 -B -W ignore evals/gap-study-4/tests/test_take_config.py TestB14HelperPins

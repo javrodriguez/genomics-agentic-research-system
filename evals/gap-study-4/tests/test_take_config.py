@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+import types
 import unittest
 from unittest import mock
 
@@ -372,6 +373,46 @@ def in_place_aliases():
         yield
 
 
+def writer_mutant(*spans):
+    """R-B14-7: the writer with source spans replaced, run on take_config's live globals, so a patch a check makes
+    (GEMINI_THINKING, GEMINI_ROW_ALIASES) reaches the mutant as it reaches the real writer."""
+    text = inspect.getsource(tc._gemini)
+    for old, new in spans:
+        if text.count(old) != 1:
+            raise AssertionError(f"the writer's span is not where this mutant reads it: {old!r}")
+        text = text.replace(old, new)
+    space = {}
+    exec(compile(text, "<mutant>", "exec"), dict(vars(tc)), space)
+    mutated = types.FunctionType(space["_gemini"].__code__, vars(tc), "_gemini")
+    return lambda: mock.patch.dict(tc.WRITERS, {tc.GEMINI: mutated})
+
+
+# R-B14-7 (a): the unread-model refusal dropped, an unread model falling back to no per-row aliases.
+UNREAD_MODEL_REFUSAL = (
+    '    if model not in GEMINI_ROW_ALIASES:\n'
+    '        raise Refused(f"no helper aliases are read for model {model!r} at the pinned Gemini CLI '
+    '(GEMINI_ROW_ALIASES)")\n')
+# R-B14-7 (b): the set-twice refusal dropped.
+SET_TWICE_REFUSAL = ('        if alias in aliases:\n'
+                     '            raise Refused(f"helper alias {alias!r} is set twice")\n')
+
+
+def set_twice_refused():
+    """R-B14-6: GEMINI_THINKING's value carrying a helper alias's name is refused, never overwritten by the pin."""
+    out = []
+    alias = next(iter(tc.GEMINI_HELPER_ALIASES))
+    value = dict(tc.GEMINI_THINKING["value"], **{alias: {"extends": "base", "modelConfig": {"model": "other"}}})
+    with mock.patch.object(tc, "GEMINI_THINKING", dict(tc.GEMINI_THINKING, value=value)):
+        for row in tc.GEMINI_ROW_ALIASES:
+            try:
+                tc.files_for(tc.GEMINI, model=row)
+                out.append(f"{row}: a gemini config was placed with helper alias {alias!r} set twice")
+            except tc.Refused as exc:
+                if "set twice" not in str(exc):
+                    out.append(f"{row}: refused, but not as set twice: {exc}")
+    return out
+
+
 class TestB14HelperPins(MutantCase):
     """R-B14-1 and R-B14-2, per arm G row, on the settings take_config places (its real, sourced values)."""
 
@@ -411,7 +452,11 @@ class TestB14HelperPins(MutantCase):
             out.append("a gemini config was placed for a model whose helper aliases are not read")
         except tc.Refused:
             pass
+        out += set_twice_refused()
         return out
+
+    def test_helper_alias_set_twice_refused(self):
+        self.assertEqual(set_twice_refused(), [])
 
     def test_b14_helper_pins(self):
         mutants = [(f"alias {alias} dropped", (lambda a: lambda: mock.patch.dict(
@@ -421,6 +466,9 @@ class TestB14HelperPins(MutantCase):
             tc.GEMINI_ROW_ALIASES, {"gemini-3.5-flash-lite": {}}))]
         mutants += [("invoke_agent not excluded", patched(tc, "GEMINI_AGENT_EXCLUSION", ()))]
         mutants += [("helper aliases written into GEMINI_THINKING's own value", in_place_aliases)]
+        mutants += [("unread-model refusal dropped", writer_mutant(
+            (UNREAD_MODEL_REFUSAL, ""), ("GEMINI_ROW_ALIASES[model]", "GEMINI_ROW_ALIASES.get(model, {})")))]
+        mutants += [("set-twice refusal dropped", writer_mutant((SET_TWICE_REFUSAL, "")))]
         self.assert_green_then_red(self.check, mutants)
 
 
