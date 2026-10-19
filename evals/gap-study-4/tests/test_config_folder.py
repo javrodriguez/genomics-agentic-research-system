@@ -36,10 +36,10 @@ rulings R-C, R-CF, R-H2, R-H3, R-H4, R4 to R6 and R-OA of Mon 19 Oct 2026, on la
       probe back on the config folder, its root in the config folder, the folder not discarded, HOME left on the
       image's.
   C13 every guard of the check has a test that fails without it (ruling R5-1, the review of round 4's finding 1): a
-      census entry on another device than the root folder's; a codex lease record placed at a path other than
-      <config_dir>/auth.json, or bound to a uid map other than the record's; a record of another harness or another
-      run tree; a placed entry of another kind, or a placed file with a second link; a path the census listed and
-      that is absent at its read. Each is registered as a witness below.
+      census entry, a file or a directory (ruling R6-1), on another device than the root folder's; a codex lease
+      record placed at a path other than <config_dir>/auth.json, or bound to a uid map other than the record's; a
+      record of another harness or another run tree; a placed entry of another kind, or a placed file with a second
+      link; a path the census listed and that is absent at its read. Each is registered as a witness below.
 
 The runtime is a fake that runs each operator step's own program (the -c source in its argv) in-process over the
 mounted folder, its fixed mount path replaced: the census and the reads are the real programs and the real host-side
@@ -856,7 +856,9 @@ class C13Guards(Case):
         m = self.api()
         self.enterContext(mock.patch.object(m, "CODEX_SYSTEM_SKILLS", DEMO_MANIFEST))
         for h, rel, turn in (("codex", "config.toml", 1), ("gemini", ".gemini/settings.json", 1),
-                             ("codex", "installation_id", 2), ("gemini", ".gemini/projects.json", 2)):
+                             ("codex", "installation_id", 2), ("gemini", ".gemini/projects.json", 2),
+                             # R6-1: a directory entry (a mount point inside the folder is one) refuses too.
+                             ("gemini", ".gemini", 1), ("codex", "tmp", 2)):
             t = Take(self, h)
             if turn == 2:
                 (t.codex_turn_one if h == "codex" else t.gemini_turn_one)()
