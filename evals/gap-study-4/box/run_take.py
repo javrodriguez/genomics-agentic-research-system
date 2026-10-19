@@ -2197,7 +2197,8 @@ def container_state(runtime, cid: str, *, caller_env=None) -> dict:
 #   R-CF  before turn 1 the folder holds exactly the placed set; after it, the placed set (config.toml and
 #         .gemini/settings.json byte-identical to take_config.files_for, every turn) plus the note's section 2
 #         allow-list, nothing else. A refusal is ConfigFolderRefused, routed as settings_guard.snapshot_problems is
-#         (drive: before turn 1 a rehearsal, after it harness-error); the turn's exec never runs.
+#         (R4-1, drive.py's edit D: before turn 1 a rehearsal; after it a stop for a ruling, DriveRefused, recorded
+#         failed with drive_started true); the turn's exec never runs.
 #   R-H2  auth.json by its facts only, from the census: a regular file, one link, mode 600, the agent's owner, the
 #         device and inode place_lease recorded, 1 to LEASE_MAX_BYTES bytes. Never its bytes.
 #   R-H3  a killed Codex turn's leftovers (section 5 H3), the four arg0 links at their one folder shape with the
@@ -2430,7 +2431,8 @@ class ConfigFolder:
 
 class ConfigFolderRefused(Refused):
     """B11: the config folder or the agent's HOME is not what turn `turn` may start with. `problems` names each path
-    and the rule; routed like settings_guard.snapshot_problems (before turn 1 a rehearsal, after it harness-error)."""
+    and the rule; routed like settings_guard.snapshot_problems (R4-1: before turn 1 a rehearsal; after it a stop for a
+    ruling, DriveRefused, recorded failed with drive_started true)."""
 
     def __init__(self, problems, turn):
         super().__init__(f"the config folder before turn {turn}: " + "; ".join(problems))
