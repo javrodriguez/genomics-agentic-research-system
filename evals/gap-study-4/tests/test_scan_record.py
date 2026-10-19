@@ -1556,5 +1556,266 @@ class TestOD57Chain(TestOD57Ruling):
 for _name in [n for n in vars(TestOD57Ruling) if n.startswith("test_")]:
     setattr(TestOD57Chain, _name, None)      # the parent's tests run once, in the parent
 
+
+# ------------------------------------------------------------------------------------------------- OD57, the other arms
+# Lane vendor-b17 round 1 (glitch-26's rulings B17-1 to B17-3; lane-reports/B17-DESIGN-NOTE.md): practice walk w-g9 was
+# held at the drive scan on the ruled line inside the Gemini arm's read of the doc, in its turn stream and its native
+# session file. The records below are synthesized in each shape the design note names for the Gemini and Codex arms:
+# their keys from the pinned sources the note cites, every value invented here, never text from a real walk record; the
+# ruled line is read at test time, as above. The shape tests (test_*_admitted) are RED on the round's head 67075247 by
+# design: today scan_record admits the line only inside a Claude Code tool_result. The refusal tests must stay green
+# after any fix.
+TS = "2026-10-19T00:00:00.000Z"
+DOC_REL = "_references/environment.md"
+SHELL_READS = (("cat", "cat " + DOC_REL), ("grep-n", "grep -n pinned " + DOC_REL), ("grep", "grep pinned " + DOC_REL))
+
+
+def _gem_use(cid, name, params):            # Gemini CLI stream-json tool_use
+    return {"type": "tool_use", "timestamp": TS, "tool_name": name, "tool_id": cid, "parameters": params}
+
+
+def _gem_result(cid, output):               # Gemini CLI stream-json tool_result
+    return {"type": "tool_result", "timestamp": TS, "tool_id": cid, "status": "success", "output": output}
+
+
+def _gem_shell(stdout):                     # run_shell_command's model-facing output (llmContent, wrapped)
+    return f"<untrusted_context>\nOutput: {stdout}\n</untrusted_context>"
+
+
+def _gem_response(cid, name, output):       # a functionResponse part
+    return {"functionResponse": {"id": cid, "name": name, "response": {"output": output}}}
+
+
+def _gem_call(cid, name, args, output, display=""):
+    """One toolCalls entry of a Gemini session message: the call and its result in one object."""
+    return {"id": cid, "name": name, "args": args, "result": [_gem_response(cid, name, output)], "status": "success",
+            "timestamp": TS, "resultDisplay": display, "displayName": name, "description": "",
+            "renderOutputAsMarkdown": False}
+
+
+def _gem_message(mid, calls, content="", tokens=True):
+    rec = {"id": mid, "timestamp": TS, "type": "gemini", "content": content, "toolCalls": calls, "thoughts": [],
+           "model": "model-under-test"}
+    if tokens:
+        rec["tokens"] = {"input": 10, "output": 2, "cached": 0, "thoughts": 0, "tool": 0, "total": 12}
+    return rec
+
+
+GEM_HEAD = {"sessionId": "session-1", "projectHash": "hash-1", "startTime": TS, "lastUpdated": TS}
+GEM_USER = {"id": "msg-u1", "timestamp": TS, "type": "user", "content": [{"text": "read the pinned versions"}]}
+
+
+def _cx_item(event, iid, command, output, status="completed"):     # codex exec --json command_execution
+    item = {"id": iid, "type": "command_execution", "command": command, "aggregated_output": output,
+            "exit_code": 0 if status == "completed" else None, "status": status}
+    return {"type": event, "item": item}
+
+
+def _cx_wrap(script, shell="/bin/bash"):     # the presentation string: shlex_join([shell, "-lc", script])
+    return f"{shell} -lc '{script}'"
+
+
+def _cx_line(n, kind, payload):              # one rollout line
+    return {"timestamp": TS, "ordinal": n, "type": kind, "payload": payload}
+
+
+def _cx_meta():
+    return _cx_line(0, "session_meta", {"id": "thread-1", "cli_version": "0.162.1", "history_mode": "paginated"})
+
+
+def _cx_call(n, cid, script, name="exec_command"):
+    return _cx_line(n, "response_item", {"type": "function_call", "name": name,
+                                         "arguments": json.dumps({"cmd": script}, ensure_ascii=False),
+                                         "call_id": cid})
+
+
+def _cx_output(n, cid, stdout, items=False):
+    text = f"Chunk ID: 1a2b3c\nWall time: 0.0105 seconds\nProcess exited with code 0\nOutput:\n{stdout}"
+    return _cx_line(n, "response_item", {"type": "function_call_output", "call_id": cid,
+                                         "output": [{"type": "input_text", "text": text}] if items else text})
+
+
+def _cx_end(n, cid, argv, stdout):
+    return _cx_line(n, "event_msg", {"type": "item_completed", "thread_id": "thread-1", "turn_id": "turn-1",
+                                     "item": {"type": "CommandExecution", "id": cid, "command": argv,
+                                              "cwd": "/run/gars", "parsed_cmd": [], "source": "agent",
+                                              "status": "completed", "aggregated_output": stdout, "exit_code": 0}})
+
+
+class TestOD57OtherArms(TestOD57Ruling):
+    """B17-2: each Gemini and Codex record shape in which an agent's read of the ruled doc carries the line back to the
+    model, in the turn stream and in the native session file (red on 67075247 by design), and the refusals every fix
+    keeps: the line in the model's own text, in a call's arguments, in a read of another file, and in a result whose
+    call id is missing or names two calls."""
+
+    def stdout(self, how):
+        return {"cat": f"line before\n{self.text}\nline after\n", "grep-n": f"175:{self.text}\n",
+                "grep": f"{self.text}\n"}[how]
+
+    def scanned(self, name, body, kind):
+        p = self.write(name, body)
+        r, _ = self.scan([(p, kind)])
+        return p, r
+
+    def assert_admitted(self, name, body, kind, lines):
+        p, r = self.scanned(name, body, kind)
+        self.assertEqual(r["refused"], [])
+        self.assertEqual(r["ruled"], [{"path": p, "line": n, "rule": OD57_RULE, "ruling": "OD57"} for n in lines])
+
+    def assert_refused(self, name, body, kind, lines):
+        p, r = self.scanned(name, body, kind)
+        self.assertEqual(r["ruled"], [])
+        self.assertEqual([(x["line"], x["why"]) for x in r["refused"]],
+                         [(n, f"the rules scanner's rule {OD57_RULE!r}") for n in lines])
+
+    # ---- Gemini CLI 0.64.0, the turn stream (stream-json): run_shell_command's output is its stdout; read_file's is
+    # a summary string that never carries the file's text (design note, section 1)
+    def test_gemini_stream_shell_reads_are_admitted(self):
+        for how, cmd in SHELL_READS:
+            with self.subTest(how=how):
+                body = _cc({"type": "init", "timestamp": TS, "session_id": "session-1", "model": "model-under-test"},
+                           _gem_use("call-g1", "run_shell_command", {"command": cmd, "description": "read the doc"}),
+                           _gem_result("call-g1", self.stdout(how).rstrip("\n")))
+                self.assert_admitted(f"turn-1-{how}.jsonl", body, "stream", [3])
+
+    # ---- Gemini CLI 0.64.0, the native session file (chats/*.jsonl)
+    def test_gemini_session_tool_calls_are_admitted(self):
+        doc = "/run/gars/" + DOC_REL
+        reads = [(how, "run_shell_command", {"command": cmd}, _gem_shell(self.stdout(how).rstrip("\n")),
+                  self.stdout(how).rstrip("\n")) for how, cmd in SHELL_READS]
+        reads.append(("read_file", "read_file", {"file_path": doc}, f"line before\n{self.text}\nline after", ""))
+        for how, name, args, output, display in reads:
+            with self.subTest(how=how):
+                body = _cc(GEM_HEAD, GEM_USER, _gem_message("msg-g1", [_gem_call("call-g1", name, args, output,
+                                                                                   display)]))
+                self.assert_admitted(f"session-{how}.jsonl", body, "session", [3])
+
+    def test_gemini_session_reappended_message_is_admitted(self):
+        """The writer appends the whole message again on each update (its tokens here): the same call, twice."""
+        call = _gem_call("call-g1", "run_shell_command", {"command": SHELL_READS[0][1]},
+                         _gem_shell(self.stdout("cat").rstrip("\n")), self.stdout("cat").rstrip("\n"))
+        body = _cc(GEM_HEAD, GEM_USER, _gem_message("msg-g1", [call], tokens=False), _gem_message("msg-g1", [call]))
+        self.assert_admitted("session-reappended.jsonl", body, "session", [3, 4])
+
+    def test_gemini_session_function_response_and_patch_are_admitted(self):
+        name, args = "run_shell_command", {"command": SHELL_READS[1][1]}
+        output = _gem_shell(self.stdout("grep-n").rstrip("\n"))
+        call = _gem_call("call-g1", name, args, output, self.stdout("grep-n").rstrip("\n"))
+        cases = {
+            "the function response turn": {"id": "msg-u2", "timestamp": TS, "type": "user",
+                                           "content": [_gem_response("call-g1", name, output)]},
+            "a $patch of the tool result": {"$patch": {"updates": [
+                {"id": "msg-g1", "toolCalls": [{"id": "call-g1", "result": [_gem_response("call-g1", name, output)]}]}
+            ]}},
+        }
+        for case, rec in cases.items():
+            with self.subTest(case):
+                body = _cc(GEM_HEAD, GEM_USER, _gem_message("msg-g1", [call]), rec)
+                self.assert_admitted("session-response.jsonl", body, "session", [3, 4])
+
+    def test_gemini_refusals(self):
+        doc, other = "/run/gars/" + DOC_REL, "/run/gars/_references/other.md"
+        read = _gem_call("call-g1", "read_file", {"file_path": doc}, f"{self.text}\n")
+        stream = {
+            "own text": [{"type": "message", "timestamp": TS, "role": "assistant",
+                          "content": f"the doc says:\n{self.text}\n"}],
+            "call arguments": [_gem_use("call-g1", "write_file", {"file_path": "notes.md", "content": self.text}),
+                               _gem_result("call-g1", "")],
+            "another file": [_gem_use("call-g1", "run_shell_command", {"command": "cat _references/other.md"}),
+                             _gem_result("call-g1", self.stdout("cat"))],
+            "call id missing": [_gem_result("call-g9", self.stdout("grep"))],
+            "call id twice": [_gem_use("call-g1", "run_shell_command", {"command": SHELL_READS[0][1]}),
+                              _gem_use("call-g1", "run_shell_command", {"command": "cat _references/other.md"}),
+                              _gem_result("call-g1", self.stdout("cat"))],
+        }
+        lines = {"own text": [1], "call arguments": [1], "another file": [2], "call id missing": [1],
+                 "call id twice": [3]}
+        for case, recs in stream.items():
+            with self.subTest(file="stream", case=case):
+                self.assert_refused("turn-1.jsonl", _cc(*recs), "stream", lines[case])
+        session = {
+            "own text": ([_gem_message("msg-g1", [], content=f"the doc says:\n{self.text}")], [2]),
+            "own text beside a ruled read": ([_gem_message("msg-g1", [read], content=self.text)], [2]),
+            "call arguments": ([_gem_message("msg-g1", [_gem_call("call-g1", "write_file",
+                                                                  {"file_path": "notes.md", "content": self.text},
+                                                                  "Successfully wrote notes.md")])], [2]),
+            "another file": ([_gem_message("msg-g1", [_gem_call("call-g1", "read_file", {"file_path": other},
+                                                                f"{self.text}\n")])], [2]),
+            "call id missing": ([{"id": "msg-u2", "timestamp": TS, "type": "user", "content": [
+                _gem_response("call-g9", "read_file", f"{self.text}\n")]}], [2]),
+            "call id twice": ([_gem_message("msg-g1", [read]),
+                               _gem_message("msg-g2", [_gem_call("call-g1", "read_file", {"file_path": other},
+                                                                 f"{self.text}\n")])], [2, 3]),
+            "no call id": ([_gem_message("msg-g1", [{k: v for k, v in read.items() if k != "id"}])], [2]),
+        }
+        for case, (recs, want) in session.items():
+            with self.subTest(file="session", case=case):
+                self.assert_refused("session.jsonl", _cc(GEM_HEAD, *recs), "session", want)
+
+    # ---- Codex CLI 0.162.1, the turn stream (exec --json): command_execution items, the call and its output together
+    def test_codex_stream_command_executions_are_admitted(self):
+        cases = [(how, _cx_wrap(cmd)) for how, cmd in SHELL_READS] + [("zsh", _cx_wrap(SHELL_READS[0][1], "/bin/zsh"))]
+        for how, command in cases:
+            with self.subTest(how=how):
+                out = self.stdout("cat" if how == "zsh" else how)
+                body = _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
+                           _cx_item("item.started", "item_1", command, "", "in_progress"),
+                           _cx_item("item.completed", "item_1", command, out))
+                self.assert_admitted(f"turn-1-{how}.jsonl", body, "stream", [4])
+
+    # ---- Codex CLI 0.162.1, the native session file (the rollout)
+    def test_codex_rollout_reads_are_admitted(self):
+        for how, cmd in SHELL_READS:
+            for items in (False, True):
+                with self.subTest(how=how, content_items=items):
+                    body = _cc(_cx_meta(), _cx_call(1, "call-o1", cmd),
+                               _cx_end(2, "call-o1", ["/bin/bash", "-lc", cmd], self.stdout(how)),
+                               _cx_output(3, "call-o1", self.stdout(how), items))
+                    self.assert_admitted(f"rollout-{how}.jsonl", body, "session", [3, 4])
+
+    def test_codex_refusals(self):
+        start = ({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"})
+        other = "cat _references/other.md"
+        stream = {
+            "own text": ([{"type": "item.completed", "item": {"id": "item_1", "type": "agent_message",
+                                                               "text": f"the doc says:\n{self.text}\n"}}], [3]),
+            "call arguments": ([_cx_item("item.completed", "item_1", _cx_wrap(f"echo {self.text}"), "")], [3]),
+            "another file": ([_cx_item("item.completed", "item_1", _cx_wrap(other), self.stdout("cat"))], [3]),
+            "call id missing": ([{"type": "item.completed", "item": {
+                k: v for k, v in _cx_item("item.completed", "x", _cx_wrap(SHELL_READS[0][1]),
+                                          self.stdout("cat"))["item"].items() if k != "id"}}], [3]),
+            "call id twice": ([_cx_item("item.completed", "item_1", _cx_wrap(SHELL_READS[0][1]), self.stdout("cat")),
+                               _cx_item("item.completed", "item_1", _cx_wrap(other), "elsewhere\n")], [3]),
+            "started as another command": ([_cx_item("item.started", "item_1", _cx_wrap(other), "", "in_progress"),
+                                            _cx_item("item.completed", "item_1", _cx_wrap(SHELL_READS[0][1]),
+                                                     self.stdout("cat"))], [4]),
+        }
+        for case, (recs, want) in stream.items():
+            with self.subTest(file="stream", case=case):
+                self.assert_refused("turn-1.jsonl", _cc(*start, *recs), "stream", want)
+        nested = "sh -c 'cat _references/environment.md'"
+        rollout = {
+            "own text": ([_cx_line(1, "response_item", {"type": "message", "role": "assistant", "content": [
+                {"type": "output_text", "text": f"the doc says:\n{self.text}\n"}]})], [2]),
+            "call arguments": ([_cx_call(1, "call-o1", f"echo {self.text}"), _cx_output(2, "call-o1", "")], [2]),
+            "another file": ([_cx_call(1, "call-o1", other), _cx_output(2, "call-o1", self.stdout("cat"))], [3]),
+            "call id missing": ([_cx_output(1, "call-o9", self.stdout("cat"))], [2]),
+            "call id twice": ([_cx_call(1, "call-o1", SHELL_READS[0][1]), _cx_call(2, "call-o1", other),
+                               _cx_output(3, "call-o1", self.stdout("cat"))], [4]),
+            "a shell inside the script": ([_cx_call(1, "call-o1", nested),
+                                           _cx_end(2, "call-o1", ["/bin/bash", "-lc", nested], self.stdout("cat")),
+                                           _cx_output(3, "call-o1", self.stdout("cat"))], [3, 4]),
+            "a tool that is not the shell": ([_cx_line(1, "response_item", {
+                "type": "function_call", "name": "write_stdin", "arguments": json.dumps({"session_id": 1, "chars": ""}),
+                "call_id": "call-o1"}), _cx_output(2, "call-o1", self.stdout("cat"))], [3]),
+        }
+        for case, (recs, want) in rollout.items():
+            with self.subTest(file="rollout", case=case):
+                self.assert_refused("rollout.jsonl", _cc(_cx_meta(), *recs), "session", want)
+
+
+for _name in [n for n in vars(TestOD57Ruling) if n.startswith("test_")]:
+    setattr(TestOD57OtherArms, _name, None)  # the parent's tests run once, in the parent
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
