@@ -148,13 +148,17 @@ def setUpModule():
     _STACK.enter_context(mock.patch.object(rt, "run_turn", stub_run_turn))
 
 
+STUB_CONFIG: list = []
+
+
 def stub_run_turn(runtime, take_id, inner, *, harness, run_tree, login_file, stream_path, budget_s, clock,
-                  caller_env=None):
+                  caller_env=None, config_folder=None, turn=None):
     """run_take.run_turn's contract for the adapter, minus every login: the turn is a plain agent exec (no variable,
     no login file opened, `login_file` never read), its stdout written once to the host-side stream path, the times
     from the injected clock. A timeout is a timed-out exec, as in run_take."""
     if harness != rt.CODEX:
         raise GuardTripped(f"the Codex stub runs Codex turns only, not {harness!r}")
+    STUB_CONFIG.append({"folder": config_folder, "turn": turn})      # B11's record and turn number, as handed
     if not os.path.isabs(stream_path) or os.path.lexists(stream_path):
         raise rt.Refused("the stream path is absolute and new: a stream is never overwritten")
     if not (isinstance(budget_s, (int, float)) and budget_s > 0):
@@ -1333,6 +1337,25 @@ class TestTheAdapter(unittest.TestCase):
 
     def test_b13_the_rollout_is_located_by_turn_ones_thread(self):
         self.assertEqual(b13_native(ca), [])
+
+    def test_b14_each_turn_hands_run_turn_its_config_folder_and_number(self):
+        """B11 (lane vendor-b11 round 3, R-CF): the adapter's config_folder record and each turn's number reach
+        run_take.run_turn (the stub records what it was handed; run_turn's own check is tests/test_config_folder.py)."""
+        record, folder, two = object(), Path(tempfile.mkdtemp(dir=SCRATCH)), fixture("rollout-two-turns.jsonl")
+        a = ca.CodexAdapter(runtime=FakeRuntime([fixture("turn1-tools.jsonl"), fixture("turn1-tools.jsonl")]),
+                            take_id=TAKE, run_tree=str(SCRATCH / "tree"), login_file=login_file(), model=MODEL,
+                            pin={"permission_mode": MODE, "version": VERSION},
+                            stream_path_for=lambda n: str(folder / f"turn-{n}.jsonl"), rollout_for=lambda n: two,
+                            counters_for=Counters(), clock=Clock(), config_folder=record)
+        a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+        STUB_CONFIG.clear()
+        a.turn("one", first=True, budget_s=60)
+        try:
+            a.turn("two", first=False, budget_s=60)
+        except Exception:  # noqa: BLE001 - only what reached run_turn is read here
+            pass
+        self.assertEqual([(c["folder"] is record, c["turn"]) for c in STUB_CONFIG], [(True, 1), (True, 2)],
+                         "R-CF.adapter: the turns did not hand run_turn the take's config folder and their numbers")
 
     def test_b10_a_cut_line_only_last(self):
         self.assertEqual(b10_cut(ca), [])

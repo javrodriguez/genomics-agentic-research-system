@@ -116,9 +116,10 @@ class GeminiBox(tbi.FakeBox):
 def journaling(real):
     """run_take.run_turn plus the box's per-turn launch journal (<stream>.launch.json), in its schema."""
     def run_turn(runtime, take_id, inner, *, harness, run_tree, login_file, stream_path, budget_s, clock,
-                 caller_env=None):
+                 caller_env=None, config_folder=None, turn=None):
         got = real(runtime, take_id, inner, harness=harness, run_tree=run_tree, login_file=login_file,
-                   stream_path=stream_path, budget_s=budget_s, clock=clock, caller_env=caller_env)
+                   stream_path=stream_path, budget_s=budget_s, clock=clock, caller_env=caller_env,
+                   config_folder=config_folder, turn=turn)
         Path(stream_path + ".launch.json").write_text(json.dumps(
             {"schema": 1, "harness": harness, "container_id": take_id, "argv": list(inner), "cwd": run_tree,
              "stream": stream_path, "started_at": got["started_at"]}))
@@ -156,8 +157,13 @@ class Road:
         # has filled it (Gemini: bea73659 / 3a0d7f5a; Codex: 9d4bfd40) the real list is checked (the Gemini walk wiring).
         routes = dict(rt.VENDOR_BILLING_ROUTE_VARIABLES)
         routes.update({h: () for h in (rt.CODEX, rt.GEMINI) if routes.get(h) == rt.PENDING})
+        # B11 (lane vendor-b11 round 3): run_take.check_config_folder runs before every O and G exec and refuses a turn
+        # without its take's record; drive.py (a native reader source, frozen outside edits B and C) does not hand one
+        # yet (BLOCKED ON glitch-26), so on this road the check is a recording spy. Its own tests: test_config_folder.
+        self.config_checks: list = []
         for name, value in (("VENDOR_BILLING_ROUTE_VARIABLES", routes),
-                            ("run_turn", journaling(run_turn or rt.run_turn))):
+                            ("run_turn", journaling(run_turn or rt.run_turn)),
+                            ("check_config_folder", lambda folder, **kw: self.config_checks.append((folder, kw)))):
             patch = mock.patch.object(rt, name, value)
             patch.start()
             test.addCleanup(patch.stop)

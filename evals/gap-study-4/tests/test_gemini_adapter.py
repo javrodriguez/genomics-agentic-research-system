@@ -144,11 +144,24 @@ def setUpModule():
             _STACK.enter_context(mock.patch.object(os, name, _trip(f"os.{name}")))
     # Gemini's own billing-route names are PENDING until named from its documentation: none, for the fake only.
     _STACK.enter_context(mock.patch.object(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {rt.CODEX: rt.PENDING, rt.GEMINI: ()}))
+    # B11 (lane vendor-b11 round 3): run_take.check_config_folder runs before every arm G exec; its own tests are
+    # tests/test_config_folder.py. Here, where the adapter is the subject, it is a spy recording what each turn handed it
+    # (TestTheAdapter.test_a15 binds that), never a pass of the real check.
+    CONFIG_CHECKS.clear()
+    _STACK.enter_context(mock.patch.object(rt, "check_config_folder", config_check_spy))
 
 
 def tearDownModule():
     _STACK.close()
     sys.path[:] = _SYS_PATH
+
+
+CONFIG_CHECKS: list = []
+
+
+def config_check_spy(folder, *, harness, run_tree, turn):
+    """B11's check, recorded (setUpModule installs it): each call's record, harness, run tree and turn number."""
+    CONFIG_CHECKS.append({"folder": folder, "harness": harness, "run_tree": run_tree, "turn": turn})
 
 
 # ------------------------------------------------------------------------------------------------ fixtures and fakes
@@ -1256,6 +1269,23 @@ class TestTheAdapter(unittest.TestCase):
     def test_a14_the_turn_reads_its_mode_from_its_own_journal(self):
         self.assertEqual(a14_journal(ga), [])
 
+    def test_a15_each_turn_hands_run_turn_its_config_folder_and_number(self):
+        """B11 (lane vendor-b11 round 3, R-CF): the adapter's config_folder record and each turn's number reach
+        run_take.run_turn, which runs check_config_folder before the exec (the spy setUpModule installs records it)."""
+        record = object()
+        a = ga.GeminiAdapter(runtime=FakeRuntime([fixture("turn1-tools.jsonl"), fixture("turn2-resume.jsonl")]),
+                             take_id=TAKE, run_tree=str(SCRATCH / "tree"), login_file=login_file(), model=MODEL,
+                             pin={"permission_mode": MODE, "version": VERSION},
+                             stream_path_for=lambda n: str(Path(tempfile.mkdtemp(dir=SCRATCH)) / f"turn-{n}.jsonl"),
+                             counters_for=Counters(), clock=Clock(), config_folder=record)
+        a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+        CONFIG_CHECKS.clear()
+        a.turn("one", first=True, budget_s=60)
+        a.turn("two", first=False, budget_s=60)
+        self.assertEqual([(c["folder"] is record, c["harness"], c["run_tree"], c["turn"]) for c in CONFIG_CHECKS],
+                         [(True, "gemini", str(SCRATCH / "tree"), 1), (True, "gemini", str(SCRATCH / "tree"), 2)],
+                         "R-CF.adapter: the turns did not hand run_turn the take's config folder and their numbers")
+
     def test_a_recorded_label_needs_its_walk_and_version(self):
         for rest in ("", " at walk w-1.", " at walk w-1, gemini-cli 0.63.", " at walk w-1, codex-cli 0.63.0.",
                      " at walk w-1, gemini-cli 0.63.0. extra"):
@@ -1672,14 +1702,14 @@ EQUIVALENT = {
     "gemini_adapter: is-true-truthy L168 9d1f7fda rec.get('delta') is True": ('typed-bool', 'delta is a bool by VALUE_TYPES', 'is True'),
     'gemini_adapter: return-none L220 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
     'gemini_adapter: unwrap L222 790ab58d sorted(EXIT_MEANINGS)': ('message-order', "the sorted names go only into a refusal's message", 'sorted('),
-    "gemini_adapter: str-change L319 3a445bda 'stream_path_for'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'stream_path_for'),
-    "gemini_adapter: str-change L319 5a98356f 'counters_for'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'counters_for'),
-    "gemini_adapter: str-change L319 8c8bd4c2 'clock'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'clock'),
-    'gemini_adapter: assign-empty L328 65756fc1 self._version = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
-    'gemini_adapter: assign-empty L329 7f1bf958 self.session_id = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
-    'gemini_adapter: unwrap L336 95ba8661 list(VERSION_ARGV)': ('sequence-alike', 'agent_exec_argv takes the tuple as it takes the list', 'list(VERSION_ARGV)'),
-    'gemini_adapter: return-none L408 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
-    'gemini_adapter: stmt-delete L408 9f730a1a return None': ('identical-mutant', "a method's last `return None` deleted still returns None", 'None'),
+    "gemini_adapter: str-change L320 3a445bda 'stream_path_for'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'stream_path_for'),
+    "gemini_adapter: str-change L320 5a98356f 'counters_for'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'counters_for'),
+    "gemini_adapter: str-change L320 8c8bd4c2 'clock'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'clock'),
+    'gemini_adapter: assign-empty L329 65756fc1 self._version = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: assign-empty L330 7f1bf958 self.session_id = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: unwrap L337 95ba8661 list(VERSION_ARGV)': ('sequence-alike', 'agent_exec_argv takes the tuple as it takes the list', 'list(VERSION_ARGV)'),
+    'gemini_adapter: return-none L409 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: stmt-delete L409 9f730a1a return None': ('identical-mutant', "a method's last `return None` deleted still returns None", 'None'),
     'transcript_gemini: stmt-delete L45 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's __future__ import", '__future__'),
     'transcript_gemini: assign-empty L51 e8a221d3 _HERE = os.path.dirname(os.path.abspath(__file__))': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
     'transcript_gemini: cmp-negate#0 L52 7c3b80fa _HERE not in sys.path': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),

@@ -328,17 +328,14 @@ def write(config_dir: str, harness: str, *, model, run_tree=None) -> dict:
 # image's environment-name sweep measured (lane-reports/stub-take-20261014/probes/codex-env-name-sweep-athena-20261014.json,
 # sha256 ddb31eec...; its image is box/codex/image.lock's image_id, sha256:21b21415...). They are hashed by name and
 # target string, never followed; every other link refuses.
-CODEX_ARG0_LINKS = ("apply_patch", "applypatch", "codex-linux-sandbox", "codex-execve-wrapper")
-CODEX_ARG0_DIR = re.compile(r"tmp/arg0/codex-arg0[A-Za-z0-9]{6}")
-CODEX_EXECUTABLE = ("/usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/"
-                    "x86_64-unknown-linux-musl/bin/codex")
+CODEX_ARG0_LINKS = run_take.CODEX_ARG0_LINKS
+CODEX_ARG0_DIR = run_take.CODEX_ARG0_DIR
+CODEX_EXECUTABLE = run_take.CODEX_EXECUTABLE
 
 
 def codex_arg0_link(rel: str, target: str) -> bool:
-    """Is `rel` (relative to CODEX_HOME, `/`-separated) one of a killed Codex process's four arg0 links, at its one
-    folder shape, with the image's codex executable as its target (compared as a string, never followed)?"""
-    folder, _, name = rel.rpartition("/")
-    return CODEX_ARG0_DIR.fullmatch(folder) is not None and name in CODEX_ARG0_LINKS and target == CODEX_EXECUTABLE
+    """run_take.codex_arg0_link: the one rule, shared with B11's per-turn check (run_take.check_config_folder)."""
+    return run_take.codex_arg0_link(rel, target)
 
 
 def config_sha256(folder: str) -> str:

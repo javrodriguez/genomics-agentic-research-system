@@ -569,7 +569,8 @@ def operator_census(runtime, *, image: str, run_tree: str, config_dir: str, call
     step = _run(runtime, "operator-census-config", argv, run_take.runtime_env(caller_env))
     rec = {"ok": False, "steps": [step]}
     if step["returncode"] != 0:
-        raise OwnershipError("the config folder's census refused or failed", rec)
+        raise OwnershipError(f"the config folder's census refused or failed ({str(step.get('stderr') or '')[-200:]})",
+                             rec)
     try:
         got = json.loads(step.get("stdout", ""))
     except ValueError:
@@ -626,3 +627,33 @@ def operator_census(runtime, *, image: str, run_tree: str, config_dir: str, call
                     "dev": e[6], "ino": e[7],
                     "target": None if target is None else target.decode("utf-8", "surrogateescape")})
     return out
+
+
+def config_folder(runtime, *, image: str, harness: str, run_tree: str, config_dir: str, model: str, lease, uid_map,
+                  caller_env=None, make=None):
+    """B11 (lane vendor-b11 round 3): one take's run_take.ConfigFolder record for check_config_folder, bound to this
+    road: `census` is operator_census of the take's config folder (R-C, one container), `read` and `read_sha256` are
+    operator_read of one path under it (the bytes, or their sha256; None when absent), and `placed` is
+    take_config.files_for's bytes for the take's harness, model and run tree (R-H1's trust table included). `lease`
+    is lease_for_take's record for a codex take, None for gemini. `make` is the record's class (run_take.ConfigFolder
+    unless a test hands its own module's)."""
+    import hashlib
+    from box import take_config
+    tree = run_take._abs_path(run_tree, "run_tree")
+    cfg = run_take._abs_path(config_dir, "config_dir")
+    _image(image)
+    placed = take_config.files_for(harness, model=model, run_tree=tree)
+
+    def census():
+        return operator_census(runtime, image=image, run_tree=tree, config_dir=cfg, caller_env=caller_env)
+
+    def read(rel):
+        return operator_read(runtime, image=image, root_kind="config", run_tree=tree, config_dir=cfg, rel_path=rel,
+                             caller_env=caller_env)
+
+    def read_sha256(rel):
+        data = read(rel)
+        return None if data is None else hashlib.sha256(data).hexdigest()
+    return (run_take.ConfigFolder if make is None else make)(
+        harness=harness, run_tree=tree, config_dir=cfg, placed=placed, lease=lease,
+        uid_map=tuple(tuple(row) for row in uid_map), census=census, read=read, read_sha256=read_sha256)

@@ -93,6 +93,8 @@ NOTE_SOURCES = {
                    "bundle/chunk-VOLZQW4I.js": "2aea2b74a0f598e459f1d86913f6f24f18a113caff022dc1d9354d744a3a86b6"}},
 }
 NOTE_SKILLS_SHA256 = "f5702460ae03a0bd98d89a01224afb315f70313a06db41284cab367ac468d55d"
+# The aggregate of the 46 digests pinned while two are held (C9), computed this round over the pinned source.
+SKILLS_46_SHA256 = "d9a744fbdd08aa2fcf8dd39455788c31f9683b108144030618aa3053a1c08fce"
 
 
 # ---------------------------------------------------------------------------------- the process guard
@@ -475,6 +477,10 @@ class C6Refused(Case):
         with mock.patch.object(m, "CODEX_SYSTEM_SKILLS", DEMO_MANIFEST):
             self.refused(t.problems(2), "C6.skills", "an edited system skill", "skills/.system/demo/SKILL.md")
         t = Take(self, "codex")
+        t.codex_turn_one()                               # a held digest: the file refuses unread, failing closed
+        with mock.patch.object(m, "CODEX_SYSTEM_SKILLS", dict(DEMO_MANIFEST, **{"demo/SKILL.md": None})):
+            self.refused(t.problems(2), "C6.skills", "a system skill whose digest is held", "demo/SKILL.md", "held")
+        t = Take(self, "codex")
         t.codex_turn_one()
         t.put("skills/.system/demo/extra.md", b"x")
         with mock.patch.object(m, "CODEX_SYSTEM_SKILLS", DEMO_MANIFEST):
@@ -501,7 +507,8 @@ class C6Refused(Case):
 # ---------------------------------------------------------------------------------- C7
 class C7Shapes(Case):
     def test_shape_rules(self):
-        self.api()
+        m = self.api()
+        self.enterContext(mock.patch.object(m, "CODEX_SYSTEM_SKILLS", DEMO_MANIFEST))
         t = Take(self, "codex")
         t.codex_turn_one()
         os.close(os.open(os.path.join(os.fsencode(t.cfg), b"bad-\xff"), os.O_WRONLY | os.O_CREAT, 0o600))
@@ -513,12 +520,17 @@ class C7Shapes(Case):
             self.refused(t.problems(2), "C7.credential", f"the credential-shaped {rel}", rel, "credential")
         t = Take(self, "gemini")
         t.gemini_turn_one()
+        t.put(".gemini/projects.json.lock")              # a file where only the lock folder is admitted
+        self.refused(t.problems(2), "C7.kind", "a file at a folder's name", "projects.json.lock", "admits only")
+        t = Take(self, "gemini")
+        t.gemini_turn_one()
         os.mkfifo(t.cfg / ".gemini" / "tmp" / "fifo")
         self.refused(t.problems(2), "C7.special", "a fifo", "fifo")
         t = Take(self, "gemini")
         t.gemini_turn_one()
-        os.link(t.cfg / ".gemini" / "projects.json", t.base / "outside")
-        self.refused(t.problems(2), "C7.links", "a hard link", "projects.json")
+        os.link(t.cfg / ".gemini" / "tmp" / t.slug() / "chats" / "session-2026-10-19T05-00-ab12cd34.jsonl",
+                t.base / "outside")                     # a file never read: the census's link count alone sees it
+        self.refused(t.problems(2), "C7.links", "a hard link", "session-2026-10-19T05-00-ab12cd34.jsonl", "links")
         t = Take(self, "gemini")
         t.gemini_turn_one()
         for i in range(6):
@@ -587,8 +599,16 @@ class C9Pins(Case):
         folders = {os.path.dirname(p) for p in skills} | {p.split("/")[0] for p in skills}
         parents = {"/".join(p.split("/")[:i]) for p in skills for i in range(1, p.count("/") + 1)}
         self.assertEqual(len(parents), 21, f"C9.pins: the embedded skills are not in 21 folders ({len(folders)})")
-        agg = hashlib.sha256("".join(f"{d}  ./{p}\n" for p, d in sorted(skills.items())).encode()).hexdigest()
-        self.assertEqual(agg, NOTE_SKILLS_SHA256, "C9.pins: the embedded skills' aggregate is not the note's")
+        held = tuple(p for p, d in sorted(skills.items()) if d is None)
+        self.assertEqual(held, tuple(sorted(m.CODEX_SYSTEM_SKILLS_HELD)), "C9.pins: the held digests are not the "
+                                                                         "two the secret scan flagged")
+        self.assertEqual(held, ("imagegen/references/image-api.md", "imagegen/scripts/remove_chroma_key.py"),
+                         "C9.pins: a digest is held beyond the two the secret scan flagged")
+        # The note's aggregate needs the two held digests; until glitch-26 admits them only the 46 are bound, to the
+        # aggregate of the same lines this round computed over the pinned source with the two left out.
+        agg = hashlib.sha256("".join(f"{d}  ./{p}\n" for p, d in sorted(skills.items()) if d is not None)
+                             .encode()).hexdigest()
+        self.assertEqual(agg, SKILLS_46_SHA256, "C9.pins: the 46 pinned skill digests moved")
         self.assertEqual(m.CODEX_SYSTEM_SKILLS_SHA256, NOTE_SKILLS_SHA256, "C9.pins: the recorded aggregate moved")
         self.assertEqual(m.CODEX_EXECUTABLE, CODEX_EXE, "C9.pins: the codex executable is not the measured one")
         self.assertEqual(tc.CODEX_EXECUTABLE, REAL_RT.CODEX_EXECUTABLE, "C9.pins: take_config's executable is not "
@@ -630,15 +650,14 @@ def mutants() -> dict:
     return {
         "turn-one-open": ("C1.exact", "        if turn == 1:\n            problems.append(f\"{rel}: not placed",
                           "        if False:\n            problems.append(f\"{rel}: not placed"),
-        "census-skipped": ("C1.extra", "        entries = folder.census()",
+        "census-skipped": ("C1.clean", "        entries = folder.census()",
                            "        entries = [{'path': p, 'kind': k, 'mode': 0o100600 if k != 'dir' else 0o40700, "
-                           "'nlink': 1, 'uid': 10001, 'size': 1, 'dev': 0, 'ino': getattr(folder.lease, 'ino', 0) "
+                           "'nlink': 1, 'uid': 10001, 'size': 1, 'dev': getattr(folder.lease, 'dev', 0), 'ino': getattr(folder.lease, 'ino', 0) "
                            "if p == 'auth.json' else 0, 'target': None} for p, k in [('.', 'dir')] + "
                            "[(r, 'dir' if k == 'dir' else 'file') for r, k in CONFIG_FOLDER_PLACED[harness]]]"),
         "placed-bytes-unchecked": ("C5.placed", "        return None if data == folder.placed[rel] else",
                                    "        return None if True else"),
-        "lease-inode-unchecked": ("R-H2.facts", "    if (e[\"dev\"], e[\"ino\"]) != (getattr(lease, \"dev\", None), "
-                                                "getattr(lease, \"ino\", None)):",
+        "lease-inode-unchecked": ("R-H2.facts", "    if (e[\"dev\"], e[\"ino\"]) != (lease.dev, lease.ino):",
                                   "    if False:"),
         "lease-mode-unchecked": ("R-H2.facts", "    if stat.S_IMODE(e[\"mode\"]) != 0o600:", "    if False:"),
         "lease-links-unchecked": ("R-H2.facts", "    if e[\"nlink\"] != 1:\n        out.append(f\"{rel}: the lease has",
@@ -649,9 +668,9 @@ def mutants() -> dict:
                                   "and name in CODEX_ARG0_LINKS"),
         "links-unchecked": ("R-H3.links", "            if not codex_arg0_link(rel, e[\"target\"]):",
                             "            if False:"),
-        "gemini-lock-content": ("R-H4.killed", "    (r\"\\.gemini/projects\\.json\\.lock\", \"dir\",",
-                                "    (r\"\\.gemini/projects\\.json\\.lock(?:/.*)?\", \"dir\","),
-        "other-admitted": ("C7.special", "        if kind == \"other\":\n            problems.append(",
+        "kind-unchecked": ("C7.kind", "        if kind != want:\n            problems.append(",
+                           "        if False:\n            problems.append("),
+        "other-admitted": ("C7.utf8", "        if kind == \"other\":\n            problems.append(",
                            "        if False:\n            problems.append("),
         "hard-links-admitted": ("C7.links", "        if kind == \"file\" and e[\"nlink\"] != 1:", "        if False:"),
         "r4-unnamed": ("R4.named", "        (r\"plugins(?:/.*)?\", \"R4: ", "        (r\"pluginsX\", \"R4: "),
@@ -690,7 +709,7 @@ METHOD = {
                                                           "lease-size-unchecked")},
     "link-target-unchecked": "C4KilledTurns.test_killed_codex_leftovers_pass_and_other_links_refuse",
     "links-unchecked": "C4KilledTurns.test_killed_codex_leftovers_pass_and_other_links_refuse",
-    "gemini-lock-content": "C4KilledTurns.test_killed_gemini_leftovers_pass",
+    "kind-unchecked": "C7Shapes.test_shape_rules",
     "other-admitted": "C7Shapes.test_shape_rules",
     "hard-links-admitted": "C7Shapes.test_shape_rules",
     "r4-unnamed": "C6Refused.test_r4_r5_r6_are_named",
