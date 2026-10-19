@@ -2448,7 +2448,8 @@ def gemini_slug(run_tree: str) -> str:
 def agent_home_problems(run_tree: str, uid_map) -> list:
     """R-OA: <run tree>/.home is a folder (never a link) of mode 700, owned by the agent's mapped host uid. Host lstat
     only: the folder itself, never what is in it."""
-    home = os.path.join(_abs_path(run_tree, "run_tree"), RUN_TREE_HOMEDIR)
+    tree = _abs_path(run_tree, "run_tree")
+    home = os.path.join(tree, RUN_TREE_HOMEDIR)
     try:
         st = os.lstat(home)
     except OSError:

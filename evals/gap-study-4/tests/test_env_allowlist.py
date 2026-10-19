@@ -960,12 +960,13 @@ def mutants() -> dict:
         "launcher-keeps-env": ("E2.launcher", "                   \"e=dict(x.split('=',1) for x in a[2:2+n])\\n\"",
                                "                   \"e=dict(os.environ,**dict(x.split('=',1) for x in a[2:2+n]))\\n\""),
         # R-H1 (lane vendor-b11 round 2): the codex launcher's project-config refusal, one guard at a time
-        "codex-project-unchecked": ("R-H1.launcher", " if found: raise SystemExit(", " if False: raise SystemExit("),
+        "codex-project-unchecked": ("R-H1.launcher", " if found: raise SystemExit('refusing codex project",
+                                    " if False: raise SystemExit('refusing codex project"),  # re-anchored, R-N1
         "codex-project-cwd-only": ("R-H1.launcher", "for d in up for p in", "for d in up[:1] for p in"),
         "codex-project-config-dropped": ("R-H1.launcher", "(os.path.join(d,'.codex','config.toml'),", "("),
         "codex-project-rules-dropped": ("R-H1.launcher", "os.path.join(d,'.codex','rules'),", ""),
         "codex-project-skills-dropped": ("R-H1.launcher", "os.path.join(d,'.codex','skills'),", ""),
-        "codex-project-agents-dropped": ("R-H1.launcher", "os.path.join(d,'.agents','skills')) if", ") if"),
+        "codex-project-agents-dropped": ("R-H1.launcher", "os.path.join(d,'.agents','skills'),", ""),  # re-anchored, R-P
         "codex-project-every-arm": ("R-H1.launcher", "if 'CODEX_HOME' in e:", "if True:"),
         "codex-project-no-arm": ("R-H1.launcher", "if 'CODEX_HOME' in e:", "if 'CODEX_HOME' in os.environ:"),
         # R-P and R-N1 (lane vendor-b11 round 3): the codex project's hooks and agents, each CLI's HOME configuration
