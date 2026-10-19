@@ -685,6 +685,20 @@ class E3EnvFiles(Case):
             self.refuses("R-H5.home", str(path), rt().refuse_env_files, workdir=str(work), run_tree=str(tree))
             path.unlink()
 
+    def test_an_arm_a_tree_with_no_home_passes_unchanged(self):
+        # R-N2 (glitch-26, lane vendor-b11 round 3; review NIT 2): the stricter host check of <run tree>/.home runs for
+        # every harness, and an arm-A run tree (a claude-code checkout, which holds no .home) passes it as before
+        tree, work, cfg = self.layout()
+        self.assertFalse(os.path.lexists(tree / ".home"), "R-N2.parity: the layout already holds a .home")
+        self.must("R-N2.parity", rt().refuse_env_files, workdir=str(work), run_tree=str(tree), config_dir=str(cfg))
+        self.must("R-N2.parity", rt().refuse_env_files, workdir=str(tree), run_tree=str(tree))
+        self.assertFalse(os.path.lexists(tree / ".home"), "R-N2.parity: the host check made a .home")
+        for where in (work, cfg):           # its refusals are the ones it had: a .env in the tree or arm A's HOME
+            (where / ".env").write_text("X=1\n")
+            self.refuses("R-N2.parity", str(where / ".env"), rt().refuse_env_files, workdir=str(work),
+                         run_tree=str(tree), config_dir=str(cfg))
+            (where / ".env").unlink()
+
     def test_a_dangling_link_and_the_shape(self):
         tree, work, cfg = self.layout()
         (work / ".env").symlink_to(self.tmp / "nowhere")
@@ -967,6 +981,10 @@ def mutants() -> dict:
         "home-config-every-arm": ("R-N1.launcher", "                   \" if v in e:\\n\"",
                                   "                   \" if True:\\n\""),
         "home-config-bashrc-dropped": ("R-N1.launcher", "        (\".bashrc\", \"shell-command", "        (\".bashrcX\", \"shell-command"),
+        "host-agent-home-required": ("R-N2.parity",
+                                     "    home = os.path.join(_abs_path(run_tree, \"run_tree\"), RUN_TREE_HOMEDIR)\n",
+                                     "    home = os.path.join(_abs_path(run_tree, \"run_tree\"), RUN_TREE_HOMEDIR)\n"
+                                     "    if not os.path.isdir(home):\n        found.append('no HOME at ' + home)\n"),
         "container-env-unchecked": ("E3.container", "  if os.path.lexists(p): raise SystemExit", "  if False: raise SystemExit"),
         "pairs-unchecked": ("E2.pairs", "        if not _NAME.fullmatch(k):", "        if False:"),
         "launch-no-env-check": ("E3.launch", "    refuse_env_files(workdir=spec.run_tree, run_tree=spec.run_tree, "
@@ -1008,6 +1026,7 @@ METHOD = {
     **{name: "E2Allowlist.test_launcher_refuses_harness_config_in_home" for name in (
         "home-config-unchecked", "home-config-first-only", "home-config-gemini-dropped", "home-config-every-arm",
         "home-config-bashrc-dropped")},
+    "host-agent-home-required": "E3EnvFiles.test_an_arm_a_tree_with_no_home_passes_unchanged",
     "pairs-unchecked": "E2Allowlist.test_the_launcher_needs_the_credential",
     "launch-no-env-check": "E3EnvFiles.test_launch_refuses_before_any_runtime_call",
     "turn-no-env-check": "E3EnvFiles.test_run_turn_refuses_before_its_exec",
