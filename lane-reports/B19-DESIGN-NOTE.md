@@ -36,15 +36,19 @@ registered and launched, its outcome not yet committed), and repeats:
 4. **Wait** until any drive in flight finishes; read its routed state from its finished step (section 4); go to 1.
 
 **The tie rule.** Drives that have finished by the time step 1 runs are all committed before step 3 fills a lane; step
-1 runs again after every commit. This is what makes the equal-duration case the block case: three drives of one wave
-that end together are committed together, their re-runs requeued first, and only then is the next wave of three
-taken, exactly as today's block. The red tests model "end together" as drives whose commits wait until the wave has
-ended (tests/test_batch_rolling.py, EqualRepo).
+1 runs again after every commit. This is what makes the equal-duration case the block case. "Equal durations" means
+drives the loop observes finished at one reading: three drives of one wave seen finished together are committed
+together, their re-runs requeued first, and only then is the next wave of three taken, exactly as today's block. The
+tests model it so (tests/test_batch_rolling.py, TimedDriver when equal and EqualRepo; test_batch's World): a wave's
+other drives end only once its head's commit has begun, and a commit waits until every future the loop holds open is
+done (B19-13).
 
-With every drive's duration equal, every wave is three rows (or what the queue has left), every gate, registration,
-launch, commit, re-run requeue, window wait, nightly stop and closed-cell drop happens at the place it happens today,
-and the committed history is byte-for-byte the block run's. With unequal durations, a wave is mostly one row, filling
-the lane a finished drive freed.
+Under that model every wave is three rows (or what the queue has left), every gate, registration, launch, commit,
+re-run requeue, window wait, nightly stop and closed-cell drop happens at the place it happens today, and the committed
+history is byte-for-byte the block run's. Real drives of equal length may roll: when they end a few milliseconds apart
+and the loop reads them inside that skew, it fills the lane one freed, so registration order, re-run placement and
+which pauses share a window event can differ from a block run's, while pauses that share one usage reset still count
+once. With unequal durations, a wave is mostly one row, filling the lane a finished drive freed.
 
 ## 3. Every behaviour that depends on the block
 
@@ -345,7 +349,10 @@ glitch-26's rulings on this note, Mon 19 Oct 2026 (round 2), and what each chang
   window events and pause counts per half-cell with the block run's, read from 94963ea7; equal (22838d85). In f477832f
   check_results.window_problems takes at most BLOCK pauses within at most MAX_OPEN consecutive outcomes (no slot twice,
   no other event between), and pause_event counts a ruled pause as its own event, with STRICT_PAUSE_NOTE when another
-  pause of its half-cell carries a window event. 5.3 gains the sentence this ruling asks for.
+  pause of its half-cell carries a window event. 5.3 gains the sentence this ruling asks for. Equal durations means
+  drives the loop observes finished at one reading (B19-13, section 2); real drives of equal length may roll, so
+  registration order, re-run placement and which pauses share a window event can differ from a block run's, while
+  pauses that share one usage reset still count once.
 - **B19-7** (proposal 8): routing.json's pause-cap source prose describes the rolling window; build_draft.py run
   again (996e767a). routing.json sha256 eccbb54d7bee09d3c10688c12bd33e9bee28b0e8b29c412c77f32a26d55f0c9b becomes
   e69f468e94fd283defda9a7d535eced3b502be29f6363c46d4908c2754e43387; prereg-draft.json sha256
