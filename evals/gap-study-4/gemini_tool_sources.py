@@ -232,6 +232,27 @@ _GREP_OPEN_LINES = (
     [_C, 380958, "this.enableConseca = params.enableConseca ?? false;"],
     [_C, 368888, "if (!this.context.config.enableConseca) {"],
     [_Q, 8656, "enableHooks: settings.hooksConfig.enabled,"],
+    # the loop detector's two outcomes (review c2c7e1e finding 1): a first detection breaks the stream before the
+    # tripping request is yielded, so that call is neither recorded nor run, and a new turn sends the model a loop
+    # warning; a second ends the turn, which the stream records as an error event of severity warning
+    [_C, 348328, "} else if (loopResult2.count === 1) {"], [_C, 348334, "loopRecoverResult = loopResult2;"],
+    [_C, 348356, "return yield* this._recoverFromLoop(loopRecoverResult"],
+    [_C, 348608, "return this.sendMessageStream(feedback, signal, prompt_id, boundedTurns - 1, displayContent);"],
+    [_Q, 12232, "} else if (event.type === GeminiEventType.LoopDetected) {"],
+    [_Q, 12236, "type: JsonStreamEventType.ERROR,"], [_Q, 12238, 'severity: "warning",'],
+    # the policy tiers and the runtime rules (review c2c7e1e finding 2): the admin, user, workspace and default tiers;
+    # the workspace tier is off at the pin; policyPaths and adminPolicyPaths come from settings, which the takes never
+    # set; the user tier is the config home's policies folder, which no take places; the runtime rules carry an
+    # argsPattern only on a confirmed always-allow (an ask-user decision) or for a remote agent's invoke_agent
+    [_C, 367769, "function getPolicyDirectories(defaultPoliciesDir, policyPaths, workspacePoliciesDir, adminPolicyPaths) {"],
+    [_C, 367772, "Storage.getSystemPoliciesDir(),"],
+    [_C, 367775, "...policyPaths && policyPaths.length > 0 ? policyPaths : [Storage.getUserPoliciesDir()],"],
+    [_C, 253248, 'return path4.join(_Storage.getGlobalGeminiDir(), "policies");'],
+    [_C, 253278, 'return path4.join(_Storage.getSystemConfigDir(), "policies");'],
+    [_C, 253268, 'return "/etc/gemini-cli";'],
+    [_Q, 7881, "var disableWorkspacePolicies = true;"], [_Q, 7906, "if (trustedFolder && !disableWorkspacePolicies) {"],
+    [_Q, 7887, "policyPaths: settings.policyPaths,"], [_Q, 7888, "adminPolicyPaths: settings.adminPolicyPaths,"],
+    [_C, 368100, "argsPattern: new RegExp(pattern),"], [_C, 342701, 'argsPattern: new RegExp(`"agent_name":'],
 )
 _GREP_OPEN_READ = (
     "both grep schemas, in both families, leave their properties open, so Ajv passes an undeclared key; GrepTool's "
@@ -239,15 +260,21 @@ _GREP_OPEN_READ = (
     "scheduler reads wait_for_previous off every call; the base invocation's file_path read (extractFilePathFromArgs) "
     "runs only on an ask-user decision, which a headless --approval-mode yolo run never reaches (policies/yolo.toml "
     "lines 51-55 allow every tool, and checkPolicy refuses ask-user when not interactive), so an undeclared key such "
-    "as file_path changes nothing the call does; the invocation reads only declared keys, and the two readers outside "
-    "it that take the whole args change nothing the call does either: the loop detector hashes the tool name with the "
-    "whole args, so two calls that differ only in an undeclared key's value count as different calls, and a detected "
-    "loop ends the turn as its own event in the record (the reader does not model loop detection); the policy engine "
-    "stringifies the whole args only for a loaded rule or checker with an argsPattern and tests each rule's modes and "
-    "tool name first, and no loaded rule with an argsPattern applies to grep_search in a yolo take (policies/plan.toml's "
-    "argsPattern rules name invoke_agent, write_file and replace in plan mode only; policies/sandbox-default.toml's "
-    "rules table is no policy rule, the policy file schema reading the key rule; Conseca's checker carries no "
-    "argsPattern and is off; the takes turn hooks off)")
+    "as file_path changes nothing the call does; the invocation reads only declared keys. Two readers outside it take "
+    "the whole args, undeclared keys included, and neither changes what this call does. The loop detector hashes the "
+    "tool name with the whole args, so an undeclared key's value decides whether a repeated call counts as a loop: a "
+    "first detection drops the call that tripped it before the stream records it and starts a new turn with a loop "
+    "warning to the model, and a second ends the turn, recorded as an error event of severity warning; the record "
+    "shows what ran, and the reader reads that record, not the detector. The policy engine stringifies the whole args "
+    "only for a loaded rule or checker with an argsPattern and tests each rule's modes and tool name first, and in a "
+    "yolo take no such rule applies to grep_search: the default tier's argsPattern rules (policies/plan.toml) name "
+    "invoke_agent, write_file and replace in plan mode only; policies/sandbox-default.toml's rules table is no policy "
+    "rule (the policy file schema reads the key rule); the workspace tier is off at the pin; the takes set no "
+    "policyPaths or adminPolicyPaths, and the user tier is the config home's policies folder, which no take places; "
+    "the runtime rules carry an argsPattern only on a confirmed always-allow (an ask-user decision, never reached "
+    "headless) or for a remote agent's invoke_agent (excluded); Conseca's checker carries no argsPattern and is off; "
+    "the takes turn hooks off. The system tier (/etc/gemini-cli/policies in the take image) is not read here; the "
+    "image's Dockerfile (box/gemini/Dockerfile) writes nothing there")
 _ALIAS = [_C, 283434, "search_file_content: GREP_TOOL_NAME"]
 OPEN_INPUT = {
     "grep_search": dict(_PKG, file=_C, file_sha256=_C_SHA256, closes_properties=False, reads=list(_GREP_READS),

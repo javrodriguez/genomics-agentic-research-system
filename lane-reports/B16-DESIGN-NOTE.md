@@ -108,3 +108,19 @@ Only the study's own sources were read; no Claude Code package or binary was rea
   - So no committed take was held on an undeclared key, and no committed record shows what Claude Code does with one.
 - **What is missing.** Round 4's own Claude arm records (Claude Code 2.1.296) are not in this tree, and what Claude Code does with an undeclared key (refuse the call, or pass the key through) is not read here.
 - **Where that leaves parity.** If a Claude take carries an undeclared key, arm A's reader holds the take where arm G's reader reads the call (R-B16-2); the committed records never exercise that case. Arm A's rule stands as it is until glitch-26 rules on it separately.
+
+## 8. The review of round 5 (review c2c7e1e, Mon 19 Oct 2026): what the loop detector does with the call, the other policy tiers, and one line number
+
+- **The loop detector's two outcomes (finding 1).**
+  - Section 6 says a detected loop ends the turn; that holds for the second detection only.
+  - A first detection, with turns left (chunk 348328-348334), breaks the stream before the request that tripped it is yielded, so that call is neither recorded in the stream nor run. Then _recoverFromLoop (348356, 348601-348608) starts a new turn that sends the model a loop warning.
+  - A second detection ends the turn (348324-348327), and the stream records it as an error event of severity warning, "Loop detected, stopping execution" (gemini-Q2GRYIAK.js 12232-12240).
+  - So an undeclared key's value can decide whether a repeated call is dropped. The record shows what ran, and the reader reads the record, not the detector; ruling R-B16-5 stands.
+- **The other policy tiers (finding 2).** Section 6's reading covered the default tier only.
+  - The pinned CLI reads four tiers (getPolicyDirectories, chunk 367769-367780): the admin tier (the system policies folder, /etc/gemini-cli/policies in a Linux take, 253262-253278, plus settings' adminPolicyPaths), the user tier (settings' policyPaths, else the config home's policies folder, 253247-253248), the workspace tier, and the default tier.
+  - The workspace tier is off at the pin (disableWorkspacePolicies, gemini-Q2GRYIAK.js 7881, read at 7906).
+  - The takes set neither policyPaths nor adminPolicyPaths (read at 7887-7888; box/take_config.py writes neither), and no take places a policies folder in its config home.
+  - The runtime rules carry an argsPattern only on a confirmed always-allow, an ask-user decision a headless take never reaches (createPolicyUpdater, chunk 368082-368106), or for a remote agent's invoke_agent (342699-342705), which the takes exclude.
+  - The system policies folder in the take image is not read here; box/gemini/Dockerfile writes nothing under /etc/gemini-cli.
+  - gemini_tool_sources.py cites each of these lines, and `--sources` finds 0 problems over 173 cited lines.
+- **One line number (finding 3).** Section 7's Agent entry is transcript_view.py lines 271-272; lines 267-270 are the comment above it, which records glitch-b5's reading.
