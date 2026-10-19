@@ -493,8 +493,89 @@ class E2Allowlist(Case):
     # codex take's launcher also refuses Codex's project-config paths in the working folder and every ancestor up to /,
     # written here by hand from the pinned source (rust-v0.162.1): .codex/config.toml (config/src/loader/mod.rs 1663-1701,
     # reached from 405-411), .codex/rules (core/src/exec_policy.rs 54 and 678-679), .codex/skills
-    # (ext/skills/src/host_roots.rs 25 and 85-91) and .agents/skills (host_roots.rs 24-25 and 154).
-    CODEX_PROJECT_PATHS = (".codex/config.toml", ".codex/rules", ".codex/skills", ".agents/skills")
+    # (ext/skills/src/host_roots.rs 25 and 85-91) and .agents/skills (host_roots.rs 24-25 and 154). R-P (glitch-26,
+    # lane vendor-b11 round 3) adds .codex/hooks.json (hooks/src/engine/discovery.rs 146-148 and 339-343, through
+    # config/src/state.rs 219-243) and .codex/agents (agent-roles/src/loader.rs 75-78).
+    CODEX_PROJECT_PATHS = (".codex/config.toml", ".codex/rules", ".codex/skills", ".agents/skills",
+                           ".codex/hooks.json", ".codex/agents")
+    R_P_PATHS = (".codex/hooks.json", ".codex/agents")
+    # R-N1 (glitch-26, lane vendor-b11 round 3, review NIT 1): what each pinned CLI reads from HOME as configuration,
+    # written here by hand from the B11 design note's section 4 and the pinned source. Codex (rust-v0.162.1): the user
+    # skill root ~/.agents/skills (ext/skills/src/host_roots.rs 24-25, 35-36, 105), the personal marketplace manifests
+    # (core-plugins/src/marketplace.rs 20-25, 307-314, 479-480), the primary-runtime marketplace under ~/.cache
+    # (core-plugins/src/marketplace_policy.rs 546-572, dirs::cache_dir), and the shell start files its login-shell
+    # snapshot reads (core/src/shell_snapshot.rs 586-605; shell-command/src/startup.rs 9-27; a login bash's profile
+    # files; zsh's). Gemini CLI (0.64.0): only ~/.gemini/policies/sandbox.toml (chunk-NR7L3FXV.js 257794, sandbox only);
+    # it keys everything else on GEMINI_CLI_HOME.
+    HOME_CONFIG = {"codex": (".agents/skills", ".agents/plugins/marketplace.json",
+                             ".agents/plugins/api_marketplace.json", ".claude-plugin/marketplace.json",
+                             ".cursor-plugin/marketplace.json", ".cache/codex-runtimes", ".bashrc", ".bash_profile",
+                             ".bash_login", ".profile", ".zshrc", ".zprofile", ".zshenv", ".zlogin"),
+                   "gemini": (".gemini/policies/sandbox.toml",)}
+    # H5: the agent's own tools' files under HOME stay the agent's
+    AGENT_HOME_FILES = (".cache/pip/http/x", ".nextflow/history", ".conda/environments.txt", ".Rhistory",
+                        ".bash_history", ".local/bin/tool", ".npm/_cacache/index", ".config/matplotlib/rc")
+
+    def test_codex_launcher_refuses_hooks_and_agents(self):
+        m = rt()
+        named = tuple("/".join(p) for p in getattr(m, "CODEX_PROJECT_CONFIG_PATHS", ()))
+        self.assertEqual([p for p in self.R_P_PATHS if p not in named], [],
+                         "R-P.launcher: run_take's codex project-config paths miss .codex/hooks.json or .codex/agents")
+        launch = self.launch_for(m.CODEX)
+        for cwd in ("/srv/w/t1/tree", "/srv/w/t1/tree/a/b"):
+            folders = [cwd]
+            while folders[-1] != "/":
+                folders.append(os.path.dirname(folders[-1]))
+            for folder in folders:
+                for name in self.R_P_PATHS:
+                    path = os.path.join(folder, name)
+                    recorded = {}
+                    try:
+                        run_launcher(launch, {}, present=(path,), cwd=cwd, recorded=recorded)
+                    except SystemExit as e:
+                        self.assertIn(path, str(e), f"R-P.launcher: refused without naming {path}")
+                    else:
+                        self.fail(f"R-P.launcher: a codex turn ran with {path} present (cwd {cwd})")
+                    self.assertEqual(recorded, {}, "R-P.launcher: harness dispatched before refusal")
+
+    def test_launcher_refuses_harness_config_in_home(self):
+        m = rt()
+        table = getattr(m, "HOME_CONFIG_PATHS", None)
+        self.assertIsInstance(table, dict, "R-N1.launcher: run_take has no HOME_CONFIG_PATHS")
+        self.assertEqual({h: tuple(p for p, _src in table.get(h, ())) for h in (m.CODEX, m.GEMINI)}, self.HOME_CONFIG,
+                         "R-N1.launcher: run_take's HOME configuration paths are off the ruled set")
+        self.assertEqual(sorted(table), sorted((m.CODEX, m.GEMINI)), "R-N1.launcher: a row other than O and G")
+        self.assertEqual([p for h in table for p, src in table[h] if not (isinstance(src, str) and src.strip())], [],
+                         "R-N1.launcher: a HOME configuration path without its pinned-source line")
+        home = "/srv/w/t1/tree/.home"
+        for h in (m.CODEX, m.GEMINI):
+            launch = self.launch_for(h)
+            start = {LOGINS[h]: FAKE_VALUE} if h != m.CODEX else {}
+            for name in self.HOME_CONFIG[h]:
+                path = os.path.join(home, name)
+                recorded = {}
+                try:
+                    run_launcher(launch, start, present=(path,), recorded=recorded)
+                except SystemExit as e:
+                    self.assertIn(path, str(e), f"R-N1.launcher: {h}: refused without naming {path}")
+                else:
+                    self.fail(f"R-N1.launcher: {h}: a turn ran with {path} in HOME")
+                self.assertEqual(recorded, {}, "R-N1.launcher: harness dispatched before refusal")
+            # H5: everything else under HOME stays the agent's, and the other CLI's HOME reads are not this row's
+            other = self.HOME_CONFIG[m.GEMINI if h == m.CODEX else m.CODEX]
+            present = tuple(os.path.join(home, n) for n in self.AGENT_HOME_FILES + other)
+            try:
+                got = run_launcher(launch, start, present=present)
+            except SystemExit as e:
+                self.fail(f"R-N1.launcher: {h}: the agent's own HOME files refused the turn: {e}")
+            self.assertIn("env", got, f"R-N1.launcher: {h}: a clean turn did not run")
+        # arm A: the same names under its HOME (the config mount) leave its launcher as it was
+        present = tuple(os.path.join(m.CONFIG_MOUNT, n) for n in self.HOME_CONFIG[m.CODEX] + self.HOME_CONFIG[m.GEMINI])
+        try:
+            got = run_launcher(self.launch_for(m.CLAUDE_CODE), {LOGINS[m.CLAUDE_CODE]: FAKE_VALUE}, present=present)
+        except SystemExit as e:
+            self.fail(f"R-N1.launcher: arm A's turn was refused for a vendor HOME path: {e}")
+        self.assertIn("env", got, "R-N1.launcher: arm A's turn did not run")
 
     def test_codex_launcher_refuses_project_config(self):
         m = rt()
