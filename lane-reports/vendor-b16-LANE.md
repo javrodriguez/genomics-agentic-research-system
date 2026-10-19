@@ -1,4 +1,4 @@
-Status: blocked
+Status: running
 BLOCKED ON glitch-26: a safety check refused the tool call that searched the pinned Claude Code 2.1.296 linux-x64 binary (from the npm tarball, integrity verified, unpacked outside the clone, never run) for the definition of the tool-input check its tool-call path runs before the ZOD_VALIDATION InputValidationError result; may R-B16-3 go on reading the bundle embedded in that binary, or from what source should the arm A reading come?
 BLOCKED ON glitch-26: a safety check refused the tool call that appends the claim for tests/test_gemini_undeclared_args.py (status new, its reason) to COPIED.d/vendor-admission.json, so copy_manifest --check now finds an unclaimed file; may this round write that claim (in that fragment or in a new COPIED.d/vendor-b16.json), or how should the new test file be claimed?
 
