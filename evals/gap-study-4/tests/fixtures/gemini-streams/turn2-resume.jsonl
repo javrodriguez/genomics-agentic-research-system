@@ -5,6 +5,6 @@
 {"type": "tool_result", "timestamp": "2026-10-12T00:00:16.000Z", "tool_id": "tool-4", "status": "success", "output": "written"}
 {"type": "tool_use", "timestamp": "2026-10-12T00:00:17.000Z", "tool_name": "glob", "tool_id": "tool-5", "parameters": {"pattern": "*.py", "dir_path": "src"}}
 {"type": "tool_result", "timestamp": "2026-10-12T00:00:18.000Z", "tool_id": "tool-5", "status": "success", "output": "src/b.py"}
-{"type": "tool_use", "timestamp": "2026-10-12T00:00:19.000Z", "tool_name": "search_file_content", "tool_id": "tool-6", "parameters": {"pattern": "def ", "dir_path": "src", "include": "*.py"}}
+{"type": "tool_use", "timestamp": "2026-10-12T00:00:19.000Z", "tool_name": "search_file_content", "tool_id": "tool-6", "parameters": {"pattern": "def ", "dir_path": "src", "include_pattern": "*.py"}}
 {"type": "tool_result", "timestamp": "2026-10-12T00:00:20.000Z", "tool_id": "tool-6", "status": "success", "output": "src/b.py:1"}
 {"type": "result", "timestamp": "2026-10-12T00:00:21.000Z", "status": "success", "stats": {"total_tokens": 1500, "input_tokens": 1200, "output_tokens": 90, "cached": 800, "input": 400, "duration_ms": 5000, "tool_calls": 3, "models": {"gemini-3.8-flash": {"total_tokens": 1500, "input_tokens": 1200, "output_tokens": 90, "cached": 800, "input": 400}}}}

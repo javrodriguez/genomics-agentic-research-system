@@ -22,14 +22,17 @@ the pinned version re-tests it (ruling Q-3, glitch-2f, 12 Oct 2026). Two grades 
     `timestamp` on every event; message role (user | assistant), content and the optional `delta`; tool_use
     tool_name, tool_id and parameters; tool_result tool_id, status (success | error), output and error; error
     severity and message; the error object's keys (type, message); result status's two words (success | error);
-    the per-model entry's keys (total_tokens, input_tokens, output_tokens, cached, input); and the tool table
-    GEMINI_TOOLS (Gemini CLI's built-in tool names and their argument keys).
+    the per-model entry's keys (total_tokens, input_tokens, output_tokens, cached, input).
+  READ FROM THE PINNED PACKAGE (lane vendor-admission round 18 B12, glitch-26's ruling of 18 Oct 2026, after practice
+  walk w-g3 held on update_topic): the tool table GEMINI_TOOLS, from Gemini CLI 0.64.0's own tool registry, each entry
+  with its source lines and file sha256 in gemini_tool_sources.py (read statically, never run or imported).
 
 THE CLOSED RULE. An event type, key, role, status, tool name or argument key that is not in these tables is refused
 (`ShapeError`), never read on a guess: the first recorded stream that carries one stops at the reader, and the tables
-grow only by a lane that cites the recording. In particular the web tools (`google_web_search`, `web_fetch`, which the
-per-take settings exclude), `read_many_files` (it reads many paths, and the view's read carries one) and `save_memory`
-are refused because no entry is pre-registered for them.
+grow only by a lane that cites the recording or the pinned package. In particular the web tools (`google_web_search`,
+`web_fetch`, which the per-take settings exclude, D8 section 3), the tools the pinned package defines but never offers a
+headless arm G model (gemini_tool_sources.py names each) and names it does not define (`save_memory`) are refused because
+no entry is pre-registered for them.
 
 THE VIEW MAPPING (the brief's, item 2):
     message role user        -> operator (each one starts the next turn of the view)
@@ -92,20 +95,38 @@ STATS_KEYS = STATS_COUNTS + (STATS_MODELS,)
 # One model's entry in stats.models (NOT in D8; Q-w11b-1).
 MODEL_STATS_KEYS = ("total_tokens", "input_tokens", "output_tokens", "cached", "input")
 
-# ---- the tool table (NOT in D8; Q-w11b-1): name -> (view kind, {raw key: view arg}, allowed raw keys) ---------------
+# ---- the tool table: read from the pinned Gemini CLI 0.64.0's tool registry (round 18 B12) -------------------------
+# name -> (view kind, {raw key: view arg}, allowed raw keys). The names are every tool the pinned package's main registry
+# (Config.createToolRegistry, bundle/chunk-NR7L3FXV.js lines 382782-382852) can offer a headless `-o stream-json` arm G
+# run under take_config's settings, and the legacy alias the registry resolves (search_file_content); the stream's
+# tool_name is the model's own call name (bundle/gemini-Q2GRYIAK.js line 12226). The keys are each tool's declared
+# parameters for the gemini-3 tool family (both arm G models resolve to it; the default-legacy family declares the same
+# keys), plus `wait_for_previous` on the tools that keep the base getSchema (bundle/chunk-NR7L3FXV.js lines 274269-274305).
+# Each view kind is one of the view's existing kinds, from what the tool does in the pinned code (gemini_tool_sources).
+_GREP_KEYS = ("pattern", "dir_path", "include_pattern", "exclude_pattern", "names_only", "case_sensitive",
+              "fixed_strings", "context", "after", "before", "no_ignore", "max_matches_per_file", "total_max_matches")
 GEMINI_TOOLS = {
     "run_shell_command": (tv.SHELL, {"command": "command", "is_background": "background"},
-                          ("command", "description", "dir_path", "is_background")),
-    "read_file": (tv.READ, {"file_path": "path"}, ("file_path", "offset", "limit")),
+                          ("command", "description", "dir_path", "is_background", "delay_ms")),
+    "read_file": (tv.READ, {"file_path": "path"}, ("file_path", "start_line", "end_line")),
     "write_file": (tv.WRITE, {"file_path": "path"}, ("file_path", "content")),
-    "replace": (tv.EDIT, {"file_path": "path"}, ("file_path", "old_string", "new_string", "expected_replacements",
-                                                 "instruction")),
+    "replace": (tv.EDIT, {"file_path": "path"}, ("file_path", "instruction", "old_string", "new_string",
+                                                 "allow_multiple")),
     "glob": (tv.SEARCH, {"pattern": "pattern", "dir_path": "path"},
              ("pattern", "dir_path", "case_sensitive", "respect_git_ignore", "respect_gemini_ignore")),
-    "search_file_content": (tv.SEARCH, {"pattern": "pattern", "dir_path": "path"}, ("pattern", "dir_path", "include")),
+    "grep_search": (tv.SEARCH, {"pattern": "pattern", "dir_path": "path"}, _GREP_KEYS),
+    "search_file_content": (tv.SEARCH, {"pattern": "pattern", "dir_path": "path"}, _GREP_KEYS),
     "list_directory": (tv.OTHER, {}, ("dir_path", "ignore", "file_filtering_options")),
     "write_todos": (tv.OTHER, {}, ("todos",)),
+    "update_topic": (tv.OTHER, {}, ("title", "summary", "strategic_intent", "wait_for_previous")),
+    "activate_skill": (tv.OTHER, {}, ("name",)),
+    "enter_plan_mode": (tv.OTHER, {}, ("reason",)),
+    "exit_plan_mode": (tv.OTHER, {}, ("plan_filename",)),
+    "list_background_processes": (tv.OTHER, {}, ("wait_for_previous",)),
+    "read_background_output": (tv.OTHER, {}, ("pid", "lines", "delay_ms", "wait_for_previous")),
+    "invoke_agent": (tv.DELEGATE, {}, ("agent_name", "prompt", "wait_for_previous")),
 }
+# Each entry's source lines, the pinned files' sha256 and the reading of each class: gemini_tool_sources.SOURCES.
 
 
 class ShapeError(tv.ViewError):

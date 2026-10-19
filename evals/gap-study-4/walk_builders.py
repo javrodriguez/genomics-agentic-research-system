@@ -760,7 +760,10 @@ def place_instruction_file(tree: Path, harness, *, repo, commit: str, session_id
             raise BuilderRefused(f"the checkout already holds {dest}")
         target.write_bytes(pinned)
         placed.append((dest, hashlib.sha256(pinned).hexdigest()))
-    for args in (("add", "--", *[d for d, _ in placed]),
+    # -f for exactly the placed paths (round 18 B13, practice walk w-o1): the pinned GARS tree's own .gitignore lists
+    # AGENTS.md (844a4ce0 line 74), and a plain add of an ignored path exits 1; nothing else the .gitignore covers
+    # is added, and the exclusions never reached the checkout (drive.clean_run_tree).
+    for args in (("add", "-f", "--", *[d for d, _ in placed]),
                  ("commit", "-q", "--amend", "--no-verify", "--no-edit"),
                  ):
         subprocess.run(["git", "-C", str(tree), *args], check=True, capture_output=True)

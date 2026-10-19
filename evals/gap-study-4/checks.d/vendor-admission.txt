@@ -76,3 +76,7 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 routing.py routing
 # folds edit (the vendor workspace guard, the folder-trust record, their tests, the fragment) stay off the native
 # readers' source lists; the same line with drive.py added exits 1 (checked by hand as the control).
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/settings_guard.py box/take_config.py tests/test_vendor_workspace_guard.py tests/test_take_config.py COPIED.d/vendor-admission.json
+# Round 18 B12 (glitch-26, 18 Oct 2026; practice walk w-g3): arm G's tool table read from the pinned Gemini CLI 0.64.0's
+# registry, each entry with its source lines, and its witnesses. B13 (practice walk w-o1) is in test_walk_builders.
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_tool_registry.py
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_tool_registry.py --witnesses
