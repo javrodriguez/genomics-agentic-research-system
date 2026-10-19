@@ -1642,6 +1642,15 @@ def _cx_end(n, cid, argv, stdout):
                                               "status": "completed", "aggregated_output": stdout, "exit_code": 0}})
 
 
+# Round 2 (glitch-26's ruling B17-5): each arm's read shapes live with its adapter and reach the scan through
+# read_shapes; read here so a missing record makes the shape tests red, never this module's import.
+import gemini_adapter as _gemini_adapter  # noqa: E402
+import codex_adapter as _codex_adapter  # noqa: E402
+
+GEM_SHAPES = getattr(_gemini_adapter, "READ_SHAPES", ())
+CODEX_SHAPES = getattr(_codex_adapter, "READ_SHAPES", ())
+
+
 class TestOD57OtherArms(TestOD57Ruling):
     """B17-2: each Gemini and Codex record shape in which an agent's read of the ruled doc carries the line back to the
     model, in the turn stream and in the native session file (red on 67075247 by design), and the refusals every fix
@@ -1651,6 +1660,15 @@ class TestOD57OtherArms(TestOD57Ruling):
     def stdout(self, how):
         return {"cat": f"line before\n{self.text}\nline after\n", "grep-n": f"175:{self.text}\n",
                 "grep": f"{self.text}\n"}[how]
+
+    def read_shapes(self):
+        """The arm's read shapes, as the drive passes them for its arm's take: by the test's name."""
+        name = self._testMethodName
+        return GEM_SHAPES if "gemini" in name else CODEX_SHAPES if "codex" in name else ()
+
+    def scan(self, files, scanner=None):
+        scanner = scanner or _Gitleaks(self.text[:40])
+        return sr.scan(files, SECRETS, rules_scanner=scanner, read_shapes=self.read_shapes()), scanner
 
     def scanned(self, name, body, kind):
         p = self.write(name, body)
@@ -1816,6 +1834,213 @@ class TestOD57OtherArms(TestOD57Ruling):
 
 for _name in [n for n in vars(TestOD57Ruling) if n.startswith("test_")]:
     setattr(TestOD57OtherArms, _name, None)  # the parent's tests run once, in the parent
+
+
+# ------------------------------------------------------------------------------------------------- B17, round 2
+# glitch-26's rulings B17-5 to B17-9 (lane vendor-b17 round 2, 19 Oct 2026): the empty default admits exactly what it
+# did before; a session call found by its id only when every copy is the same call (B17-6); grep_search, PTY (CRLF)
+# output, write_stdin and zsh -lfc stay refused (B17-7); each admission conjunct has a witness that goes red alone; the
+# drive passes each row's arm's shapes at its three scan calls, registered as piece B17 of check_vendor_sources.
+OTHER = "cat _references/other.md"
+
+
+class TestB17ReadShapes(TestOD57OtherArms):
+    """Round 2: the default, the schema, B17-6 and B17-7's refusals, and one witness per admission conjunct."""
+
+    def witness(self, label, name, body, kind, lines, fn, *edits):
+        """Refused as is, on `lines`; admitted on exactly those lines with only `edits` made to sr.<fn>."""
+        self.assert_refused(name, body, kind, lines)
+        with _mutant(fn, *edits):
+            self.assert_admitted(name, body, kind, lines)
+        red(f"B17 {label}")
+
+    def shell_call(self, cid="call-g1", command=SHELL_READS[0][1], output="", display=""):
+        return _gem_call(cid, "run_shell_command", {"command": command}, output, display)
+
+    # ---- the default and the schema
+    def test_the_arms_hold_read_shapes(self):
+        for shapes in (GEM_SHAPES, CODEX_SHAPES):
+            self.assertIsInstance(shapes, tuple)
+            self.assertTrue(shapes)
+            p = self.write("plain.jsonl", _cc({"type": "assistant", "text": "nothing ruled"}))
+            r = sr.scan([(p, "transcript")], SECRETS, rules_scanner=no_findings, read_shapes=shapes)
+            self.assertEqual((r["refused"], r["ruled"]), ([], []))
+
+    def test_empty_read_shapes_give_todays_results(self):
+        """B17-5: every OD57 fixture of TestOD57Ruling scans the same with read_shapes=() as with no argument."""
+        doc = "_references/environment.md"
+        bodies = [self.read_record(), self.read_record(sidechain=True), self.read_record(_one_char_off(self.text)),
+                  self.bash_record(f"cat {doc}", f"line before\n{self.text}\nline after\n"),
+                  self.bash_record(f"grep -n pinned {doc}", f"175:{self.text}\n", True),
+                  self.bash_record(f"sed -n 175p {doc}", self.text + "\n"),
+                  self.bash_record(W167, f"{doc}:175:{self.text}\n"),
+                  _cc({"type": "assistant", "message": {"content": [{"type": "text", "text": self.text}]}}),
+                  _cc(_result("toolu_X", f"175\t{self.text}"))]
+        for i, body in enumerate(bodies):
+            for kind in ("transcript", "stream", "session", "ledger"):
+                with self.subTest(body=i, kind=kind):
+                    p = self.write(f"{kind}-{i}.jsonl", body)
+                    before = sr.scan([(p, kind)], SECRETS, rules_scanner=_Gitleaks(self.text[:40]))
+                    after = sr.scan([(p, kind)], SECRETS, rules_scanner=_Gitleaks(self.text[:40]), read_shapes=())
+                    self.assertEqual(after, before)
+
+    def test_a_shape_off_its_schema_refuses(self):
+        p = self.write("plain.jsonl", _cc({"type": "assistant", "text": "nothing ruled"}))
+        good = GEM_SHAPES[0]
+        bad = [dict(good, extra=1), {k: v for k, v in good.items() if k != "copies"}, dict(good, copies="many"),
+               dict(good, tools={}), dict(good, call=dict(good["call"], match=None)), "a shape", None]
+        for i, shape in enumerate(bad):
+            with self.subTest(i=i):
+                with self.assertRaises(sr.ScanError):
+                    sr.scan([(p, "transcript")], SECRETS, rules_scanner=no_findings, read_shapes=(shape,))
+        with self.assertRaises(sr.ScanError):
+            sr.scan([(p, "transcript")], SECRETS, rules_scanner=no_findings, read_shapes=good)
+
+    # ---- B17-6: one call per id in a session file
+    def test_gemini_session_two_calls_under_one_id_refuse(self):
+        out = _gem_shell(self.stdout("cat").rstrip("\n"))
+        body = _cc(GEM_HEAD, _gem_message("msg-g1", [self.shell_call(output=out)]),
+                   _gem_message("msg-g2", [self.shell_call(command=SHELL_READS[1][1], output=out)]))
+        self.witness("B17-6: two calls under one id", "session-two.jsonl", body, "session", [2, 3], "_shape_read",
+                     ("any(g != got[0] for g in got)", "False"))
+
+    # ---- B17-7: what stays refused
+    def test_gemini_session_grep_search_refuses(self):
+        call = _gem_call("call-g1", "grep_search", {"pattern": "pinned", "dir_path": "_references"}, f"{self.text}\n")
+        self.assert_refused("session-grep.jsonl", _cc(GEM_HEAD, _gem_message("msg-g1", [call])), "session", [2])
+
+    def test_codex_pty_output_refuses(self):
+        crlf = self.stdout("cat").replace("\n", "\r\n")
+        cmd = SHELL_READS[0][1]
+        stream = _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
+                     _cx_item("item.completed", "item_1", _cx_wrap(cmd), crlf))
+        self.assert_refused("turn-1.jsonl", stream, "stream", [3])
+        rollout = _cc(_cx_meta(), _cx_call(1, "call-o1", cmd), _cx_end(2, "call-o1", ["/bin/bash", "-lc", cmd], crlf),
+                      _cx_output(3, "call-o1", crlf))
+        self.assert_refused("rollout.jsonl", rollout, "session", [3, 4])
+
+    def test_codex_write_stdin_refuses(self):
+        """The tool binding's witness: write_stdin's output refuses, even with a read's script in its arguments."""
+        body = _cc(_cx_meta(), _cx_line(1, "response_item", {
+            "type": "function_call", "name": "write_stdin", "call_id": "call-o1",
+            "arguments": json.dumps({"session_id": 1, "cmd": SHELL_READS[0][1]})}),
+            _cx_output(2, "call-o1", self.stdout("cat")))
+        self.witness("the tool binding", "rollout.jsonl", body, "session", [3], "_shape_read",
+                     ('shape["tools"].get(got[0][0])', 'next(iter(shape["tools"].values()))'))
+
+    def test_codex_zsh_lfc_refuses(self):
+        command = "/bin/zsh -lfc 'cat _references/environment.md'"
+        body = _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
+                   _cx_item("item.completed", "item_1", command, self.stdout("cat")))
+        self.witness("the wrapper's flag", "turn-1.jsonl", body, "stream", [3], "_ruled_wrapped",
+                     ("argv[1] in _WRAP_FLAGS", "True"))
+
+    # ---- one witness per admission conjunct
+    def test_gemini_witness_the_path_names_the_doc(self):
+        call = _gem_call("call-g1", "read_file", {"file_path": "/run/gars/_references/other.md"}, f"{self.text}\n")
+        self.witness("the read's path", "session.jsonl", _cc(GEM_HEAD, _gem_message("msg-g1", [call])), "session",
+                     [2], "_reads_doc", ('(arg == _RULED_DOC or arg.endswith("/" + _RULED_DOC))', "True"))
+
+    def test_gemini_witness_the_script_reads_the_doc(self):
+        call = self.shell_call(command=OTHER, output=_gem_shell(self.stdout("cat").rstrip("\n")))
+        self.witness("the script", "session.jsonl", _cc(GEM_HEAD, _gem_message("msg-g1", [call])), "session", [2],
+                     "_reads_doc", ("return _ruled_bash(arg)", "return True"))
+
+    def test_codex_witness_the_wrapper_has_three_words(self):
+        body = _cc(_cx_meta(), _cx_end(1, "call-o1", ["/bin/bash", "-lc", SHELL_READS[0][1], "x"], self.stdout("cat")))
+        self.witness("the wrapper's length", "rollout.jsonl", body, "session", [2], "_ruled_wrapped",
+                     ("len(argv) == 3", "len(argv) >= 3"))
+
+    def test_codex_witness_the_wrapper_is_a_shell(self):
+        body = _cc(_cx_meta(), _cx_end(1, "call-o1", ["/usr/bin/fish", "-lc", SHELL_READS[0][1]], self.stdout("cat")))
+        self.witness("the wrapper's shell", "rollout.jsonl", body, "session", [2], "_ruled_wrapped",
+                     ("bool(_WRAP_SHELL.fullmatch(argv[0]))", "True"))
+
+    def test_gemini_witness_a_stream_call_is_found_once(self):
+        use = _gem_use("call-g1", "run_shell_command", {"command": SHELL_READS[0][1]})
+        body = _cc(use, use, _gem_result("call-g1", self.stdout("cat")))
+        self.witness("a stream call found once", "turn-1.jsonl", body, "stream", [3], "_shape_read",
+                     ('shape["copies"] == "one" and len(got) != 1', "False"))
+
+    def test_gemini_witness_a_response_names_its_call(self):
+        part = _gem_response("call-g1", "read_file", f"{self.text}\n")
+        body = _cc(GEM_HEAD, _gem_message("msg-g1", [self.shell_call()]),
+                   {"id": "msg-u2", "timestamp": TS, "type": "user", "content": [part]})
+        self.witness("a response's name", "session.jsonl", body, "session", [3], "_shape_read",
+                     ("name is not None and name != got[0][0]", "False"))
+
+    def test_gemini_witness_a_joined_result_is_its_own_call(self):
+        body = _cc(GEM_HEAD, _gem_message("msg-g1", [self.shell_call()]),
+                   _gem_message("msg-g2", [{"id": "call-g1", "resultDisplay": f"{self.text}\n"}]))
+        self.witness("a joined result is a copy of its call", "session.jsonl", body, "session", [3],
+                     "_shape_strings", ("if joined and _shape_call(node, spec) is None:", "if False:"))
+
+    def test_gemini_witness_the_prefix_is_on_the_first_line_only(self):
+        out = f"<untrusted_context>\nOutput: line before\nOutput: {self.text}\n</untrusted_context>"
+        body = _cc(GEM_HEAD, _gem_message("msg-g1", [self.shell_call(output=out)]))
+        self.witness("the prefix's line", "session.jsonl", body, "session", [2], "_line_prefix",
+                     ("i == first", "True"))
+
+
+class TestB17Wiring(unittest.TestCase):
+    """B17-5: the drive passes each row's arm's shapes at its three scan calls, and check_vendor_sources registers the
+    drive.py edit as piece B17 (its exact lines, the rest of drive.py held by piece EB as before)."""
+
+    def drive(self):
+        import drive
+        return drive
+
+    def test_scan_read_shapes_by_arm(self):
+        d = self.drive()
+        cases = [({"arm": "G"}, GEM_SHAPES), ({"arm": "O"}, CODEX_SHAPES), ({"arm": "A"}, ()), ({"arm": "C"}, ()),
+                 ({}, ()), (None, ()), ({"arm": "G", "agent": {"harness": "gemini"}}, GEM_SHAPES),
+                 ({"arm": "O", "agent": {"harness": "codex"}}, CODEX_SHAPES),
+                 ({"arm": "G", "agent": {"harness": "codex"}}, ()), ({"arm": "O", "agent": {"harness": "claude-code"}}, ())]
+        for row, want in cases:
+            with self.subTest(row=row):
+                self.assertEqual(d.scan_read_shapes(row), want)
+
+    def test_every_scan_call_passes_its_rows_shapes(self):
+        import ast
+        src = Path(STUDY, "drive.py").read_text(encoding="utf-8")
+        calls = [n for n in ast.walk(ast.parse(src)) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                 and n.func.attr in ("scan", "scan_with_witness") and isinstance(n.func.value, ast.Name)
+                 and n.func.value.id == "_scan_record"]
+        self.assertEqual(len(calls), 3)
+        for c in calls:
+            kw = [k for k in c.keywords if k.arg == "read_shapes"]
+            self.assertEqual(len(kw), 1)
+            v = kw[0].value
+            self.assertTrue(isinstance(v, ast.Call) and isinstance(v.func, ast.Name) and v.func.id == "scan_read_shapes"
+                            and len(v.args) == 1 and isinstance(v.args[0], ast.Name)
+                            and v.args[0].id in ("row", "entry"), ast.dump(v))
+
+    def test_piece_b17_holds_the_drive_edit(self):
+        import check_vendor_sources as cvs
+        src = Path(STUDY, "drive.py").read_text(encoding="utf-8")
+        self.assertEqual(cvs.problems("B17", ["drive.py", "box/scan_record.py", "gemini_adapter.py",
+                                              "codex_adapter.py", "tests/test_scan_record.py"]), [])
+        self.assertNotEqual(cvs.problems("P2", ["drive.py"]), [])
+        self.assertEqual(cvs.edit_b_problems(src), [])
+        line = "read_shapes=scan_read_shapes(row),"
+        self.assertEqual(src.count(line), 2)
+        mutants = {
+            "a keyword line changed": src.replace(line, "read_shapes=_gemini.READ_SHAPES,", 1),
+            "a keyword line dropped": src.replace(" " * 33 + line + "\n", "", 1),
+            "the helper changed": src.replace("return module.READ_SHAPES if declared == harness else ()",
+                                              "return module.READ_SHAPES", 1),
+            "another line moved": src.replace("VENDOR_HARNESSES = (\"codex\", \"gemini\")",
+                                              "VENDOR_HARNESSES = (\"codex\", \"gemini\", \"claude-code\")", 1),
+        }
+        for name, text in mutants.items():
+            with self.subTest(mutant=name):
+                self.assertNotEqual(text, src)
+                self.assertNotEqual(cvs.b17_problems(text) + cvs.edit_b_problems(text), [], name)
+
+
+for _cls in (TestB17ReadShapes,):
+    for _name in [n for n in vars(TestOD57OtherArms) if n.startswith("test_")]:
+        setattr(_cls, _name, None)           # TestOD57OtherArms' tests run once, in their own class
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
