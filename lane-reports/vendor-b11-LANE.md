@@ -1,4 +1,4 @@
-Status: needs-review
+Status: running
 
 ROUND 4 SUMMARY FOR REVIEW (cloud executor, Mon 19 Oct 2026, 07:14 to about 07:50 UTC; glitch-26's rulings R4-1 to R4-4 on the four round-3 questions). Each piece red first (failing by assertion), then green. Nothing was run against a vendor, container, login or walk; no login, token, lease or account file was opened. The Codex gate and its tests, check_take.py, box/sidecar.py and the sidecar image are untouched.
 - R4-1, the drive wiring (red b098c34b, green 059249f5).
@@ -119,3 +119,4 @@ ROUND 1 SUMMARY FOR REVIEW (cloud executor, Mon 19 Oct 2026, about 03:50 UTC): l
 - Round 3 stopped Mon 19 Oct 2026 about 06:58 UTC at 43eab75b (code) plus this file and the plan row; status blocked on four questions (the BLOCKED line).
 - Round 4 (glitch-26's rulings R4-1 to R4-4 on the four round-3 questions) started Mon 19 Oct 2026 07:14 UTC on lane/vendor-b11 at c445e9c3. The round-3 BLOCKED line is answered by those rulings and removed.
 - Round 4 done Mon 19 Oct 2026 about 07:50 UTC at 52c5a949 (code) plus this file; status needs-review.
+- Round 5 (glitch-26's rulings R5-1 to R5-5 on the review of 52619ab1..07312e4f; R4-3 stands) started Mon 19 Oct 2026 08:17 UTC on lane/vendor-b11 at c581ccdf.
