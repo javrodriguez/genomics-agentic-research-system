@@ -1,4 +1,4 @@
-Status: needs-review
+Status: running
 
 ROUND 2 SUMMARY FOR REVIEW (cloud executor, 2026-10-19 15:34 EDT; glitch-26's rulings B19-5 to B19-11):
 - Red (ruling B19-8, B19-9; B19-6's comparison is green on the block loop by design): 22838d85, tests/test_batch_rolling.py now 26 tests, 13 red on 94963ea7, run on a scratch copy of 94963ea7 outside the clone. Failure lines:
@@ -99,3 +99,4 @@ Progress:
 - 2026-10-19 15:21 EDT: routing.json's pause-cap prose and the rebuilt draft 996e767a (ruling B19-7).
 - 2026-10-19 15:22 EDT: COPIED.d claim d8b9d8b9 (ruling B19-10); the note's Rulings section 7cac1d4f (rulings B19-6, B19-11).
 - 2026-10-19 15:34 EDT: checks done (round 2 summary above); status needs-review; review stop.
+- 2026-10-19 16:10 EDT: round 3 begins on lane/vendor-b19 at 756686f9 under glitch-26's rulings B19-12 to B19-17 on REVIEW-vendor-b19-27249de.md; status running.
