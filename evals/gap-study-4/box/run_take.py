@@ -146,21 +146,30 @@ CLAUDE_DENY_FLAGS = ("--disallowedTools", "--disallowed-tools")
 # caller's). Each arm's row is the whole of what may reach the agent: PATH, HOME, LANG, the run tree's temporary
 # folder, the proxy, the harness's own switches and config home, and the arm's ONE credential, by NAME only (its value
 # is read from the login file at exec time and never rides in any argv). A name not in its row never reaches the agent.
-# HOME is the per-take config mount, so a `.env` there can be read host-side before launch (refuse_env_files).
+# Arm A's HOME is the per-take config mount; arm O's and arm G's is the run tree's own RUN_TREE_HOMEDIR (R-H5, below).
+# Either way a `.env` there can be read host-side before launch (refuse_env_files).
 TAKE_PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 TAKE_LANG = "C.UTF-8"
 RUN_TREE_TMP = "<run tree>/.tmp"            # a marker: filled with f"{run_tree}/{RUN_TREE_TMPDIR}" per take
 CREDENTIAL = "<credential, by name only>"   # a marker: the arm's one login variable
+# R-H5 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): arm O's and arm G's HOME is a separate folder the
+# agent writes, beside the run tree's temporary folder and granted with the run tree (it is in it, git-excluded like
+# .tmp: walk_builders.place_agent_home), so the agent's own tools (git, conda, R, Nextflow, pip and their caches) write
+# `~` there, never into the config mount, while CODEX_HOME and GEMINI_CLI_HOME stay on the mount. Arm A's row is
+# byte-unchanged (round-3 parity): its HOME stays the mount. A named difference from arm A (prereg-draft box_residuals,
+# "arm O and G HOME"; the codex2 sign-in plan's section 6).
+RUN_TREE_HOMEDIR = ".home"
+RUN_TREE_HOME = "<run tree>/.home"          # a marker: filled with f"{run_tree}/{RUN_TREE_HOMEDIR}" per take
 TAKE_ENV = {
     CLAUDE_CODE: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
                   "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
                   "DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", **ISOLATION_ENV,
                   **BASH_FIRST_STEER_ENV, **SILENT_TURN_REMINDER_ENV, "CLAUDE_CONFIG_DIR": CONFIG_MOUNT,
                   "CLAUDE_CODE_OAUTH_TOKEN": CREDENTIAL},
-    CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
+    CODEX: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME, "LANG": TAKE_LANG,
             "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
             "CODEX_HOME": CONFIG_MOUNT},     # no credential: subscriptions only (glitch-06, 14 Oct; the 13 Oct amendment)
-    GEMINI: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
+    GEMINI: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME, "LANG": TAKE_LANG,
              "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
              "GEMINI_CLI_HOME": CONFIG_MOUNT, "GEMINI_API_KEY": CREDENTIAL},
 }
@@ -185,29 +194,89 @@ CODEX_SUBSCRIPTION_NOT_READY = "Codex subscription binding not ready; API-key lo
 CODEX_SUBSCRIPTION_READY = True
 # Each harness's own non-secret values (its switches, proxy and config home): the row less the base, the run tree's
 # temporary folder and the credential. config_home_names() and preflight read this view.
-HARNESS_ENV = {h: {k: v for k, v in row.items() if k not in BASE_NAMES and v not in (RUN_TREE_TMP, CREDENTIAL)}
+HARNESS_ENV = {h: {k: v for k, v in row.items()
+                   if k not in BASE_NAMES and v not in (RUN_TREE_TMP, RUN_TREE_HOME, CREDENTIAL)}
                for h, row in TAKE_ENV.items()}
 # The turn's launcher inside the take container: the image's own python3, isolated (-I -S), reads the credential by
 # its name from the exec's environment and execs the harness with exactly the row (os.execvpe: PATH from the row).
-# Before each harness exec it checks .env names in the actual container cwd, ALL its ancestors and HOME.
+# Before each harness exec it checks .env names in the actual container cwd, ALL its ancestors, HOME and the row's
+# config home (R-H5: for arms O and G, HOME is the run tree's home and the config home the mount).
 # The host-side check below is an early refusal only: a mounted run tree is not the container filesystem root.
 # Its arguments: the credential's name, the count of NAME=VALUE pairs, the pairs, then the harness's argv.
+# R-H1 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): a codex take's run tree is trusted from turn 1
+# (take_config places its trust table), and the pinned Codex (rust-v0.162.1) loads a trusted project's config from
+# the working folder up to the project root, so for a codex row (the one that carries CODEX_HOME) the launcher also
+# refuses, in the working folder and every ancestor up to /, each of CODEX_PROJECT_CONFIG_PATHS:
+#   .codex/config.toml  config/src/loader/mod.rs 405-411 (load_project_layers), 1663-1677 (the cwd's ancestors to the
+#                       project root), 1682 (dir.join(".codex")) and 1701 (its config.toml)
+#   .codex/rules        core/src/exec_policy.rs 54 (RULES_DIR_NAME) and 678-679 (each layer's folder joined "rules")
+#   .codex/skills       ext/skills/src/host_roots.rs 25 (SKILLS_DIR_NAME) and 85-91 (a Project layer's skills root)
+#   .agents/skills      ext/skills/src/host_roots.rs 24-25 and 154 (each folder from the project root to the cwd)
+# R-P (glitch-26's ruling on lane vendor-b11 round 2's question, round 3): two more, read from a trusted project's
+# .codex folder (config/src/state.rs 219-226, a Project layer's config folder is its .codex; 239-243 its hooks folder):
+#   .codex/hooks.json   hooks/src/engine/discovery.rs 146-148 (each layer's hooks folder) and 339-343 (its hooks.json)
+#   .codex/agents       agent-roles/src/loader.rs 75-78 (each layer's config folder joined "agents")
+CODEX_PROJECT_CONFIG_PATHS = ((".codex", "config.toml"), (".codex", "rules"), (".codex", "skills"),
+                              (".agents", "skills"), (".codex", "hooks.json"), (".codex", "agents"))
+# R-N1 (glitch-26, lane vendor-b11 round 3; review NIT 1 of c30234d6): arms O's and G's HOME is the run tree's .home,
+# which the agent writes, so before every exec the launcher also refuses, in HOME, each path the pinned CLI of that row
+# reads from HOME as configuration (the B11 design note's section 4). Everything else under HOME stays the agent's (H5).
+# Codex at rust-v0.162.1 (HOME from dirs::home_dir or $HOME; CODEX_HOME is the config mount):
+HOME_CONFIG_PATHS = {
+    CODEX: (
+        (".agents/skills", "ext/skills/src/host_roots.rs 24-25, 35-36 and 105: a User layer's ~/.agents/skills root"),
+        (".agents/plugins/marketplace.json", "core-plugins/src/marketplace.rs 20-25, 307-314 and 479-480: a personal "
+                                             "marketplace manifest under HOME"),
+        (".agents/plugins/api_marketplace.json", "core-plugins/src/marketplace.rs 20-25, 307-314 and 479-480"),
+        (".claude-plugin/marketplace.json", "core-plugins/src/marketplace.rs 20-25, 307-314 and 479-480"),
+        (".cursor-plugin/marketplace.json", "core-plugins/src/marketplace.rs 20-25, 307-314 and 479-480"),
+        (".cache/codex-runtimes", "core-plugins/src/marketplace_policy.rs 546-552 and 570-572: the primary-runtime "
+                                  "marketplace under dirs::cache_dir, ~/.cache with no XDG_CACHE_HOME in the row"),
+        (".bashrc", "shell-command/src/startup.rs 22-25 and core/src/shell_snapshot.rs 586-605: the snapshot's login "
+                    "shell sources ~/.bashrc, and the snapshot is replayed into every shell command"),
+        (".bash_profile", "core/src/shell_snapshot.rs 600-604: a login bash reads the first of ~/.bash_profile, "
+                          "~/.bash_login, ~/.profile"),
+        (".bash_login", "core/src/shell_snapshot.rs 600-604: a login bash's profile file"),
+        (".profile", "core/src/shell_snapshot.rs 600-604: a login bash's profile file"),
+        (".zshrc", "shell-command/src/startup.rs 11-19: the snapshot sources $ZDOTDIR or ~/.zshrc for a zsh shell"),
+        (".zprofile", "core/src/shell_snapshot.rs 600-604: a login zsh's start file"),
+        (".zshenv", "core/src/shell_snapshot.rs 600-604: every zsh's start file"),
+        (".zlogin", "core/src/shell_snapshot.rs 600-604: a login zsh's start file"),
+    ),
+    # Gemini CLI 0.64.0 keys everything on GEMINI_CLI_HOME (the config mount) but this one (the B11 design note):
+    GEMINI: (
+        (".gemini/policies/sandbox.toml", "bundle/chunk-NR7L3FXV.js 257794: the sandbox policy, read from the OS "
+                                          "home (sandbox mode only; refused anyway)"),
+    ),
+}
 LAUNCHER_SOURCE = ("import os,sys\n"
                    "a=sys.argv[1:]\n"
                    "k,n=a[0],int(a[1])\n"
                    "e=dict(x.split('=',1) for x in a[2:2+n])\n"
                    "if k!='-':e[k]=os.environ[k]\n"
-                   "dirs=[e['HOME']]\n"
+                   "up=[]\n"
                    "d=os.getcwd()\n"
                    "while True:\n"
-                   " dirs.append(d)\n"
+                   " up.append(d)\n"
                    " parent=os.path.dirname(d)\n"
                    " if parent==d: break\n"
                    " d=parent\n"
+                   "dirs=[e['HOME']]+[e[v] for v in ('CLAUDE_CONFIG_DIR','CODEX_HOME','GEMINI_CLI_HOME') if v in e]+up\n"
                    "for d in dirs:\n"
                    " for name in ('.env',os.path.join('.gemini','.env')):\n"
                    "  p=os.path.join(d,name)\n"
                    "  if os.path.lexists(p): raise SystemExit('refusing .env file: '+p)\n"
+                   "if 'CODEX_HOME' in e:\n"
+                   " found=[p for d in up for p in (os.path.join(d,'.codex','config.toml'),"
+                   "os.path.join(d,'.codex','rules'),os.path.join(d,'.codex','skills'),"
+                   "os.path.join(d,'.agents','skills'),os.path.join(d,'.codex','hooks.json'),"
+                   "os.path.join(d,'.codex','agents')) if os.path.lexists(p)]\n"
+                   " if found: raise SystemExit('refusing codex project config: '+found[0])\n"
+                   f"for v,ps in (('CODEX_HOME',{tuple(p for p, _s in HOME_CONFIG_PATHS[CODEX])!r}),"
+                   f"('GEMINI_CLI_HOME',{tuple(p for p, _s in HOME_CONFIG_PATHS[GEMINI])!r})):\n"
+                   " if v in e:\n"
+                   "  found=[os.path.join(e['HOME'],p) for p in ps if os.path.lexists(os.path.join(e['HOME'],p))]\n"
+                   "  if found: raise SystemExit('refusing harness configuration in HOME: '+found[0])\n"
                    "c=a[2+n:]\n"
                    "os.execvpe(c[0],c,e)\n")
 LAUNCHER = ("/usr/bin/python3", "-I", "-S", "-c", LAUNCHER_SOURCE)
@@ -892,9 +961,10 @@ def take_environment(harness: str, run_tree: str) -> dict:
     tree = _abs_path(run_tree, "run_tree")
     if sorted(k for k, v in TAKE_ENV[harness].items() if v == RUN_TREE_TMP) != sorted(RUN_TREE_TMPDIR_VARIABLES):
         raise Refused(f"the {harness} row's temporary-folder names are not {list(RUN_TREE_TMPDIR_VARIABLES)}")
+    markers = {RUN_TREE_TMP: f"{tree}/{RUN_TREE_TMPDIR}", RUN_TREE_HOME: f"{tree}/{RUN_TREE_HOMEDIR}"}
     out = {}
     for name, value in TAKE_ENV[harness].items():
-        out[name] = f"{tree}/{RUN_TREE_TMPDIR}" if value == RUN_TREE_TMP else value
+        out[name] = markers.get(value, value)
     if harness == CLAUDE_CODE:
         if _is_pending(FALLBACK_ENV):
             raise NotReady(f"FALLBACK_ENV is PENDING: {PENDING_WHY['FALLBACK_ENV']}")
@@ -1103,20 +1173,26 @@ def env_file_dirs(workdir: str, run_tree: str) -> list:
 
 def refuse_env_files(*, workdir: str, run_tree: str, config_dir: str | None = None) -> None:
     """Refuse, naming each file, when a `.env` a harness would read exists: in the working folder, any parent up to
-    the box root, and (given the per-take config folder, HOME's host side) in HOME. Read host-side, a link counted."""
+    the box root, arms O's and G's HOME (the run tree's home, R-H5), and (given the per-take config folder, arm A's
+    HOME and every arm's config home, host side) in the config folder. Read host-side, a link counted."""
     found = []
     for d in env_file_dirs(workdir, run_tree):
         for name in ENV_FILE_NAMES:
             if os.path.lexists(os.path.join(d, name)):
                 found.append(os.path.join(d, name))
+    home = os.path.join(_abs_path(run_tree, "run_tree"), RUN_TREE_HOMEDIR)
+    for name in ENV_FILE_NAMES:
+        if os.path.lexists(os.path.join(home, name)):
+            found.append(f"HOME ({RUN_TREE_HOME}) {os.path.join(home, name)}")
     if config_dir is not None:
         cfg = _abs_path(config_dir, "config_dir")
         for h, row in TAKE_ENV.items():
-            if row.get("HOME") != CONFIG_MOUNT:
-                raise Refused(f"the {h} row's HOME is not the config mount: its .env cannot be read")
+            if row.get("HOME") not in (CONFIG_MOUNT, RUN_TREE_HOME):
+                raise Refused(f"the {h} row's HOME is neither the config mount nor the run tree's home: its .env "
+                              f"cannot be read")
         for name in ENV_FILE_NAMES:
             if os.path.lexists(os.path.join(cfg, name)):
-                found.append(f"HOME ({CONFIG_MOUNT}) {os.path.join(cfg, name)}")
+                found.append(f"HOME or config home ({CONFIG_MOUNT}) {os.path.join(cfg, name)}")
     if found:
         raise Refused("a .env file a harness would read is present, so the take is refused: " + "; ".join(found))
 
@@ -2109,14 +2185,468 @@ def container_state(runtime, cid: str, *, caller_env=None) -> dict:
     return {"running": running, "exit_code": code, "oom_killed": oom}
 
 
+# ----------------------------------------------------------------------------- B11: the per-take config folder, per turn
+# glitch-26's rulings on lane vendor-b11, round 3 (Mon 19 Oct 2026), on the B11 design note (lane-reports/
+# B11-DESIGN-NOTE.md, sections 2 to 7). Arms O and G only: before every codex or gemini turn, immediately before
+# exec_argv, run_turn checks the take's config folder (CODEX_HOME / GEMINI_CLI_HOME, the agent's to write since the
+# grant) and the agent's HOME (<run tree>/.home). Arm A keeps its own guard, settings_guard over the sidecar's
+# snapshots, and its road is unchanged: run_turn never calls this for claude-code (the named difference is a row of the
+# codex2 sign-in plan's section 6 table).
+#   R-C   the folder is read by ONE census (ownership.operator_census: every entry's lstat facts, never a byte), plus
+#         operator_read of exactly what the note's section 6 point 2 lists, nothing else.
+#   R-CF  before turn 1 the folder holds exactly the placed set; after it, the placed set (config.toml and
+#         .gemini/settings.json byte-identical to take_config.files_for, every turn) plus the note's section 2
+#         allow-list, nothing else. A refusal is ConfigFolderRefused, routed as settings_guard.snapshot_problems is
+#         (R4-1, drive.py's edit D: before turn 1 a rehearsal; after it a stop for a ruling, DriveRefused, recorded
+#         failed with drive_started true); the turn's exec never runs.
+#   R-H2  auth.json by its facts only, from the census: a regular file, one link, mode 600, the agent's owner, the
+#         device and inode place_lease recorded, 1 to LEASE_MAX_BYTES bytes. Never its bytes.
+#   R-H3  a killed Codex turn's leftovers (section 5 H3), the four arg0 links at their one folder shape with the
+#         image's codex executable as target; any other link refuses.
+#   R-H4  a killed Gemini turn's leftovers (section 5 H4).
+#   R4-6  plugins/** (R4: remote-installed plugins), cloud-config-bundle-cache.json (R5: the codex2 plan is not ruled
+#         eligible) and db-backups/** (R6) refuse, each named.
+#   R-OA  <run tree>/.home: a folder (never a link) of mode 700, owned by the agent's mapped host uid.
+CONFIG_FOLDER_HARNESSES = (CODEX, GEMINI)
+# The pinned sources the allow-list below was read from (the B11 design note's "Sources read"); tests bind them, and a
+# version bump of either CLI's image lock breaks that binding on purpose.
+CONFIG_FOLDER_SOURCES = {
+    CODEX: {"package": "openai/codex", "tag": "rust-v0.162.1", "version": "0.162.1",
+            "commit": "092d3acd6bec3e3a14bdc7e7a2810ab628ab759d"},
+    GEMINI: {"package": "@google/gemini-cli", "version": "0.64.0",
+             "tarball_sha256": "891a794e55c8319b6b78f6f8f13d6b8b2782a4709dfd2fcabf3a1f63ae8365e6",
+             "bundle_sha256": {
+                 "bundle/gemini.js": "ab113d84c8f1692fd6c95081366718897876d8664328c7bf0ccf9437d688145f",
+                 "bundle/gemini-Q2GRYIAK.js": "7702da31cf099ca3e1d64fd195f15b7726b2c2829ec21e955558eb9dbfba47da",
+                 "bundle/chunk-NR7L3FXV.js": "d566e81b1df8d4d44a91bf7aeea96a58ec0e6c8934fa424315ef060507dcbb8c",
+                 "bundle/chunk-FLKY6NH5.js": "f6a4ddd46350dad40515218069d369aaa0025f194c552400b69925b941098bc8",
+                 "bundle/chunk-MA35JFUP.js": "5afb745a6015fcdd0108c6fa33112e8250bb93774e73634641f458e89f990985",
+                 "bundle/chunk-VOLZQW4I.js": "2aea2b74a0f598e459f1d86913f6f24f18a113caff022dc1d9354d744a3a86b6"}},
+}
+# R-H3: a Codex process that is killed, or that exits without unwinding (clap's own exit after --version), leaves its
+# arg0 helper folder: CODEX_HOME/tmp/arg0/codex-arg0<6 tempfile characters>/ with .lock and four links, each to
+# std::env::current_exe() (codex-rs/arg0/src/lib.rs at rust-v0.162.1: names 21-24 and sandboxing/src/landlock.rs 7,
+# .lock 25, the folder 358 and 373-375, the links 387-401). The executable is the pinned take-o image's, as measured
+# (lane-reports/stub-take-20261014/probes/codex-env-name-sweep-athena-20261014.json, sha256 ddb31eec..., binary_path;
+# its image is box/codex/image.lock's image_id, sha256:21b21415...). take_config.config_sha256 reads the same rule.
+CODEX_ARG0_LINKS = ("apply_patch", "applypatch", "codex-linux-sandbox", "codex-execve-wrapper")
+CODEX_ARG0_DIR = re.compile(r"tmp/arg0/codex-arg0[A-Za-z0-9]{6}")
+CODEX_EXECUTABLE = ("/usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/"
+                    "x86_64-unknown-linux-musl/bin/codex")
+
+
+def codex_arg0_link(rel: str, target) -> bool:
+    """Is `rel` (relative to CODEX_HOME, `/`-separated) one of a killed Codex process's four arg0 links, at its one
+    folder shape, with the image's codex executable as its target (compared as a string, never followed)?"""
+    folder, _, name = rel.rpartition("/")
+    return CODEX_ARG0_DIR.fullmatch(folder) is not None and name in CODEX_ARG0_LINKS and target == CODEX_EXECUTABLE
+
+
+# Codex's embedded system skills at the pin (codex-rs/skills/src/assets/samples, include_dir!, skills/src/lib.rs 55),
+# installed into CODEX_HOME/skills/.system on a start whose marker differs (skills/src/lib.rs 77-100). Each file's
+# sha256: 48 files in 21 folders, no links; `find . -type f | sort | xargs sha256sum | sha256sum` over them is the
+# note's f5702460... (CODEX_SYSTEM_SKILLS_SHA256, bound by the tests). An edited file with its marker untouched is
+# loaded as a skill (the note's section 4), so each one present is read and compared. The marker itself is a Rust
+# DefaultHasher value, admitted by name (a named residual: its content is not checked).
+CODEX_SYSTEM_SKILLS_SHA256 = "f5702460ae03a0bd98d89a01224afb315f70313a06db41284cab367ac468d55d"
+# HELD (lane vendor-b11 round 3): the pre-push secret scan (gitleaks generic-api-key) flagged two files' sha256 digests
+# in this table, for their names (an "api" and a "key"), and they stayed out, failing closed. ADMITTED on Javier's word
+# skill-digests (Mon 19 Oct 2026, typed in glitch-26's window): both are sha256 digests of public files, read from
+# openai/codex at 092d3acd (rust-v0.162.1), and with them the 48 files' aggregate is CODEX_SYSTEM_SKILLS_SHA256. Each of
+# the two lines carries the scanner's own inline allow. A digest held again goes back in this tuple, its value to None.
+CODEX_SYSTEM_SKILLS_HELD = ()
+CODEX_SYSTEM_SKILLS_MARKER = ".codex-system-skills.marker"
+CODEX_SYSTEM_SKILLS = {
+    "imagegen/LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9",
+    "imagegen/SKILL.md": "681ddb4ad6d06a2acc78a3535b583f8d0c1ea800ecda3d56370d3310fd2cd4ba",
+    "imagegen/agents/openai.yaml": "9ca574af14580dc7a2a3dc37a1796d17f93cb8850be66501f0799ef8603e9dc0",
+    "imagegen/assets/imagegen-small.svg": "cff5f34f57ff60b3ee92eaedd17b15e96dd4b9e776df3e78936c9e00d42be294",
+    "imagegen/assets/imagegen.png": "95952f644064eb9e890f98d8db07216347186526e4c41ad66d3420629eb86e20",
+    "imagegen/references/cli.md": "ecfc2e09261a0feb3482517a5fa0ff410cb7d1958e3cbd2ac6b61586f5b81405",
+    "imagegen/references/codex-network.md": "c88298ca4481f6116a16fa7987434fc977f8b311c1bbc0c3d862ffd0c5981148",
+    "imagegen/references/image-api.md": "dc975d7af8a4888967251a0276014b4a71ea30455294944b762256373ce3e569",  # gitleaks:allow
+    "imagegen/references/prompting.md": "b210b051c775860267080941eba968212bf0ac7fce581d75c5dcc217d8293f8b",
+    "imagegen/references/sample-prompts.md": "70474177d151855b175c6133de2aae1d90b7f146b0dab50ec830972c47d72183",
+    "imagegen/scripts/image_gen.py": "b4345cf835e5b593b97df6bb2b70bda493b8a97eee4cabbc99b2fa57dba9b448",
+    "imagegen/scripts/remove_chroma_key.py": "a5893c4bd04b21abced33731ea89d2ac428e81d92a0368eb18ffbe4fda5253e2",  # gitleaks:allow
+    "openai-docs/LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9",
+    "openai-docs/SKILL.md": "aa6829e21df2223167c85d2e49b6337a7345c84c1033f1ec10182c7882b36d45",
+    "openai-docs/agents/openai.yaml": "44b9efac6be1bae32d869aa2942fecbe4dcae82682ee03e4120f2f9b7d4658ec",
+    "openai-docs/assets/openai-small.svg": "45be1f0757eb18889eefb1e7db79668ef46a275dc4e0e78e8df5ebd7f6cdeadc",
+    "openai-docs/assets/openai.png": "156cc84d7332bfe95b310350bd470b690d22aa33d65340cc6c2e06022946194c",
+    "openai-docs/references/codex-self-knowledge.md": "8c8fb00e6e5cb1977924f5164684a6095427fa828bbc765225f17d9aeb79a912",
+    "openai-docs/references/latest-model.md": "bdf241d505eb071b1c7b0b732f842b701348cf6eab95d1c36fd97edac64dd158",
+    "openai-docs/references/mcp-diagnostics.md": "49bbd2f73df7bbd7f86c80425dea4da2d301c22046080399a36bfc0ca49509e9",
+    "openai-docs/references/model-migration.md": "bef46671036c8e483b7f65df931171217d55a8d26098851c2f89784db8edca2f",
+    "openai-docs/references/model-selection.md": "ba2d164abbca30435a460a0bc3a7d82398dce2bdf092705c98ba55b3f3af38a8",
+    "openai-docs/references/official-docs.md": "7962f2dce55089b93bde4115bb89fd42f20993c1597a2b13edd4956f463875b9",
+    "openai-docs/references/prompting-guide.md": "548d4ca73a34cd4b0041ef05a899592e8c50772b8f3a76c579ec941e403e19f6",
+    "openai-docs/references/upgrade-guide.md": "ecac89155f910f064fd306e89c74585cabdb2142aba4f2acc0cead092ae1d1a5",
+    "openai-docs/references/upgrading-to-gpt-6-astra.md": "62ef6d22684662a019d203834fe1205a07e4ca4c65dddcbabe1bb51efe1aa840",
+    "openai-docs/scripts/fetch-codex-manual.mjs": "f53eb6d2f286e9efcc397e8bee93a938e37296c90953e4e06e94899ef1b6c363",
+    "openai-docs/scripts/resolve-latest-model-info": "7354dbb030ca0736dd633a7ca1b930cf640abd40370725dea3a458cb51d49523",
+    "openai-docs/scripts/resolve-latest-model-info.cjs": "eeb1bb486018e16b37edfc06b1a37179dbc672982d501040d4f7142f29dd2e64",
+    "review-agent/SKILL.md": "07079efd0dc76f05fade424e5dfb048dce1de2df7626e1a4f56292a4f3f92228",
+    "review-agent/agents/openai.yaml": "4d867a46d15e36ac880176484aae160f59855340c6059b2ea6ab9fbc9af084de",
+    "skill-creator/SKILL.md": "6656e54755638e8efcf275a472b9672eaa8a9a1b9e59dc210e275b03b59e1e66",
+    "skill-creator/agents/openai.yaml": "d07d21b93fcf3d4dc8d9a3399c05fc226a49a333a96d3e1c68b451b8dd9eade6",
+    "skill-creator/assets/skill-creator-small.svg": "6591bf8ea9bb9435890dbdea299e0d2bd05f3aa893a335d26e4c535e93c8e7fb",
+    "skill-creator/assets/skill-creator.png": "a4024b0306ddb05847e1012879d37aaf1e658205199da596f5145ed7a88d9162",
+    "skill-creator/license.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "skill-creator/references/openai_yaml.md": "ffac39318e408108141d40f820968e59f70434a891694f9bf1d25be8237b150c",
+    "skill-creator/scripts/generate_openai_yaml.py": "816df12072d74faf924d802a6599a139997e1441e90bfe4869ec304f2e5e2851",
+    "skill-creator/scripts/init_skill.py": "bf0656a5f9d8d8cdecf0245eaf27e1df8e0e9b6d40ccdda814eb8e3d5f6992c8",
+    "skill-creator/scripts/quick_validate.py": "ee6dba90f44d37171c5a6edb8095979c54919ff6822c1a907afca2e78c48738c",
+    "skill-installer/LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "skill-installer/SKILL.md": "d68b77e5bbb34dedab89d134da52855f140fc4b4299b80104f534e3b9e98f8ee",
+    "skill-installer/agents/openai.yaml": "5ce223d8b1070b82c42298538f1b8d376f788eb9e7a42a987e8c094070d73f0e",
+    "skill-installer/assets/skill-installer-small.svg": "3928703ff00dc1a681e7a22401843b7edcbd4b2051651ce4c43b75f7e140504e",
+    "skill-installer/assets/skill-installer.png": "d0a230b1a79b71b858b7c215a0fbb0768d6459c14ea4ef80c61592629bf0e605",
+    "skill-installer/scripts/github_utils.py": "61c1bbe2ae217433b4b6f9f09f21aca4df52c12598068343ade719f706e4859b",
+    "skill-installer/scripts/install-skill-from-github.py": "38f311b75664bb063808f982c600271ebc4b560830f491705190f88a94e3e781",
+    "skill-installer/scripts/list-skills.py": "9d6dfb2abf3afeee7f027a89fb1626b918a973da18f4eb6c25681286301beb41",
+}
+_UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+_TEMP6 = r"[A-Za-z0-9]{6}"
+_SESSION_DAY = r"sessions/[0-9]{4}/[0-9]{2}/[0-9]{2}"
+# The placed set (the note's section 1): what take_config.write and place_lease put in the folder before the grant.
+# "lease" is R-H2's facts-only rule.
+CONFIG_FOLDER_PLACED = {CODEX: (("config.toml", "file"), ("auth.json", "lease")),
+                        GEMINI: ((".gemini", "dir"), (".gemini/settings.json", "file"))}
+# Section 2's allow-list: (pattern, kind, what is read and checked or None, source), after turn 1 only. Every pattern
+# is a full match over the path relative to the folder. Codex 0.162.1 (paths relative to codex-rs/):
+CODEX_ALLOWED = (
+    (r"tmp|tmp/arg0", "dir", None, "arg0/src/lib.rs 355-365"),
+    (r"tmp/arg0/codex-arg0" + _TEMP6, "dir", None, "arg0/src/lib.rs 373-375 (H3: left by a killed process)"),
+    (r"tmp/arg0/codex-arg0" + _TEMP6 + r"/\.lock", "file", None, "arg0/src/lib.rs 25, 378-385 (H3)"),
+    (r"tmp/arg0/codex-arg0" + _TEMP6 + r"/(?:apply_patch|applypatch|codex-linux-sandbox|codex-execve-wrapper)",
+     "link", "arg0", "arg0/src/lib.rs 21-24, 387-401 (H3: the target is the image's codex executable)"),
+    (r"(?:state_5|logs_2|goals_1|memories_1|queue_1|thread_history_1)\.sqlite(?:-wal|-shm)?", "file", None,
+     "state/src/sqlite.rs 34-39; state/src/runtime.rs 130-195; thread-store/src/local/mod.rs 291-301"),
+    (r"installation_id", "file", "uuid", "core/src/installation_id.rs 17-62 (Uuid::new_v4, written once)"),
+    (r"skills|skills/\.system", "dir", None, "skills/src/lib.rs 55-100"),
+    (r"skills/\.system/" + re.escape(CODEX_SYSTEM_SKILLS_MARKER), "file", None, "skills/src/lib.rs 58, 97-98"),
+    (r"models_cache\.json", "file", None, "models-manager/src/manager.rs 34-35; models-manager/src/cache.rs 241-247"),
+    (r"cache|cache/(?:codex_apps_tools|codex_apps_server_info|codex_app_directory|remote_plugin_catalog)", "dir",
+     None, "connectors/src/connector_runtime/persistence.rs 30-52; connectors/src/directory_cache.rs 13; "
+           "core-plugins/src/remote/catalog_cache.rs 17"),
+    (r"cache/(?:codex_apps_tools|codex_apps_server_info)/(?:[0-9a-f]{40}\.json|\.tmp" + _TEMP6 + ")", "file", None,
+     "connectors/src/connector_runtime/persistence.rs 46-52, 168-197 (sha1 name; tempfile and rename)"),
+    (r"cache/codex_app_directory/[0-9a-f]+\.json", "file", None, "connectors/src/directory_cache.rs 34-35, 83-99"),
+    (r"cache/remote_plugin_catalog/(?:[0-9a-f]{16}\.json|\.tmp" + _TEMP6 + ")", "file", None,
+     "core-plugins/src/remote/catalog_cache.rs 128-147, 181-182"),
+    (r"thread-writer-locks", "dir", None, "rollout/src/writer_lock.rs 17"),
+    (r"thread-writer-locks/(?:\.coordination|" + _UUID + r")\.lock", "file", None,
+     "rollout/src/writer_lock.rs 18, 51, 96 (a thread's lock is left by a killed turn, H3)"),
+    (r"sessions|sessions/[0-9]{4}|sessions/[0-9]{4}/[0-9]{2}|" + _SESSION_DAY, "dir", None,
+     "rollout/src/recorder.rs 984-1000"),
+    (_SESSION_DAY + r"/rollout-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}-" + _UUID + r"(?:_" + _UUID
+     + r")?\.jsonl", "file", None, "rollout/src/rollout_file_name.rs 62-73"),
+    (r"shell_snapshots", "dir", None, "core/src/shell_snapshot.rs 259-283"),
+    (r"shell_snapshots/" + _UUID + r"\.(?:tmp-[0-9]+|[0-9]+\.sh)", "file", None,
+     "core/src/shell_snapshot.rs 263-272 (the .tmp- form is left by a killed turn, H3)"),
+    (r"\.tmp" + _TEMP6, "file", None, "core/src/config/edit.rs 731-770 (config.toml's sibling, left by a killed "
+                                      "write, H3)"),
+)
+# Gemini CLI 0.64.0 (bundle files as in CONFIG_FOLDER_SOURCES; [C] chunk-NR7L3FXV.js, [M] gemini-Q2GRYIAK.js).
+# {slug} is the run tree's basename lowercased, every other character than [a-z0-9] as "-" ([C] 253035-253040; a fresh
+# folder has no collision, so no "-N").
+GEMINI_ALLOWED = (
+    (r"\.gemini/projects\.json", "file", "projects", "[C] 252893-252912, 252960-252980"),
+    (r"\.gemini/projects\.json\.lock", "dir", None, "[C] 252955-252958 (proper-lockfile's folder; H4: left by a kill)"),
+    (r"\.gemini/projects\.json\." + _UUID + r"\.tmp", "file", None, "[C] 252899 (H4: left by a killed save)"),
+    (r"\.gemini/(?:tmp|history)|\.gemini/(?:tmp|history)/{slug}", "dir", None, "[C] 253079-253112, 253351-253377"),
+    (r"\.gemini/(?:tmp|history)/{slug}/\.project_root", "file", "project_root", "[C] 253079-253112, 253351-253355"),
+    (r"\.gemini/tmp/{slug}/logs", "dir", None, "[C] 334255-334260, 381051 (empty)"),
+    (r"\.gemini/tmp/{slug}/chats", "dir", None, "[C] 286703-286745"),
+    (r"\.gemini/tmp/{slug}/chats/session-[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9a-f]{8}(?:-[0-9]+)?"
+     r"(?:\.jsonl|\.jsonl\.tmp-[0-9]+|\.jsonl\.unreadable-[0-9]+|\.json)", "file", None,
+     "[C] 286662-286745, 286808-286872, 286895-286910 (a partial .jsonl is H4's)"),
+    (r"\.gemini/tmp/{slug}/chats/" + _UUID, "dir", None, "[C] 286709-286725 (a subagent's folder)"),
+    (r"\.gemini/tmp/{slug}/chats/" + _UUID + r"/[A-Za-z0-9_-]+\.jsonl", "file", None, "[C] 286709-286725"),
+    (r"\.gemini/tmp/{slug}/tool-outputs|\.gemini/tmp/{slug}/tool-outputs/session-" + _UUID, "dir", None,
+     "[C] 254186-254200, 344729-344736"),
+    (r"\.gemini/tmp/{slug}/tool-outputs/(?:session-" + _UUID + r"/)?[A-Za-z0-9_-]+_[A-Za-z0-9_-]+\.txt", "file", None,
+     "[C] 254186-254200, 344729-344736"),
+    (r"\.gemini/tmp/background-processes", "dir", None, "[M] 17012-17040"),
+    (r"\.gemini/tmp/background-processes/background-[0-9]+\.log", "file", None, "[M] 17012-17040; [C] 324254-324270"),
+    (r"\.gemini/tmp/{slug}/" + _UUID + r"|\.gemini/tmp/{slug}/" + _UUID + r"/plans", "dir", None,
+     "[C] 355376-355381"),
+)
+# Paths refused by name, each with its reason, before the allow-list is read (the note's section 4 and R4 to R6).
+# Anything else neither placed nor allow-listed refuses too, as "not on the allow-list".
+CONFIG_FOLDER_NAMED = {
+    CODEX: (
+        (r"plugins(?:/.*)?", "R4: plugins/** (remote-installed plugins carry MCP and hook config; "
+                             "core-plugins/src/manager.rs 1596-1616, loader.rs 70-72)"),
+        (r"cloud-config-bundle-cache\.json", "R5: a managed-config bundle Codex reads back (cloud-config/src/cache.rs "
+                                             "28, 160-190); the codex2 plan is not ruled eligible"),
+        (r"db-backups(?:/.*)?", "R6: the state database's corruption recovery (state/src/runtime/recovery.rs 16, "
+                                "181-196): recorded for a human"),
+        (r"\.env", "the dotenv Codex loads before threads start (arg0/src/lib.rs 299-327)"),
+        (r"AGENTS(?:\.override)?\.md", "global instructions (codex-home/src/instructions/mod.rs 12-13, 43-57)"),
+        (r"rules(?:/.*)?", "exec policy (core/src/exec_policy.rs 54-56, 679)"),
+        (r"agents(?:/.*)?", "agent roles (agent-roles/src/loader.rs 75-80)"),
+        (r"skills/(?!\.system(?:/|$)).*", "a user skill root (ext/skills/src/host_roots.rs 94-118)"),
+        (r"\.agents(?:/.*)?", "a user skill root or a personal marketplace (host_roots.rs 105; "
+                              "core-plugins/src/marketplace.rs 20-25)"),
+        (r"hooks\.json", "hook config (hooks/src/engine/discovery.rs 339-343)"),
+        (r"environments\.toml", "exec-server/src/environment_toml.rs 26, 237"),
+        (r"[^/]*\.config\.toml|requirements\.toml|managed_config\.toml", "a profile or managed config layer"),
+        (r"\.(?:bashrc|bash_profile|bash_login|profile|zshrc|zprofile|zshenv|zlogin)",
+         "a shell start file (core/src/shell_snapshot.rs 586-605)"),
+    ),
+    GEMINI: (
+        (r"settings\.json", "the launcher reads the root settings.json ([L] 25-30)"),
+        (r"\.env|\.gemini/\.env", "the dotenv fallback ([S] 16542-16572, 16602-16650)"),
+        (r"\.gemini/GEMINI\.md", "global memory, model-writable ([C] 363483-363497, 382330-382356)"),
+        (r"\.gemini/tmp/[^/]+/memory(?:/.*)?", "project memory, model-writable ([C] 363498-363520)"),
+        (r"\.gemini/(?:extensions|agents|skills|policies|commands|acknowledgments)(?:/.*)?",
+         "extensions, agents, skills, policies or commands Gemini CLI loads ([U] 65778-65790; [C] 342579, 253238, "
+         "367775; [U] 74994)"),
+        (r"\.agents(?:/.*)?", "a user skill root ([C] 253238-253255)"),
+        (r"\.gemini/(?:trustedFolders|mcp-server-enablement|keybindings|trusted_hooks|policy_integrity)\.json",
+         "configuration Gemini CLI reads every run ([M] 17474; [C] 360716-360750)"),
+    ),
+}
+CONFIG_FOLDER_ALLOWED = {CODEX: CODEX_ALLOWED, GEMINI: GEMINI_ALLOWED}
+
+
+@dataclass(frozen=True, eq=False)
+class ConfigFolder:
+    """One take's B11 record, built once per take by ownership.config_folder (drive: TakeDriver.config_folder) and
+    handed to every arm O and G turn. `placed` is take_config.files_for's {relative path: bytes}; `lease` is
+    lease_for_take's record (codex) or None (gemini); `uid_map` the take's runtime uid map; `census()` is one
+    ownership.operator_census of the folder, `read(rel)` and `read_sha256(rel)` one ownership.operator_read each (the
+    bytes, or their sha256; None when absent)."""
+    harness: str
+    run_tree: str
+    config_dir: str
+    placed: dict
+    lease: object
+    uid_map: tuple
+    census: Callable
+    read: Callable
+    read_sha256: Callable
+
+
+class ConfigFolderRefused(Refused):
+    """B11: the config folder or the agent's HOME is not what turn `turn` may start with. `problems` names each path
+    and the rule; routed like settings_guard.snapshot_problems (R4-1: before turn 1 a rehearsal; after it a stop for a
+    ruling, DriveRefused, recorded failed with drive_started true)."""
+
+    def __init__(self, problems, turn):
+        super().__init__(f"the config folder before turn {turn}: " + "; ".join(problems))
+        self.problems, self.turn = list(problems), turn
+
+
+_SLUG_OTHER = re.compile(r"[^a-z0-9]")
+
+
+def gemini_slug(run_tree: str) -> str:
+    """Gemini CLI's project short id for a fresh folder: the basename lowercased, each non-[a-z0-9] character "-"."""
+    return _SLUG_OTHER.sub("-", os.path.basename(run_tree).lower())
+
+
+def agent_home_problems(run_tree: str, uid_map) -> list:
+    """R-OA: <run tree>/.home is a folder (never a link) of mode 700, owned by the agent's mapped host uid. Host lstat
+    only: the folder itself, never what is in it."""
+    tree = _abs_path(run_tree, "run_tree")
+    home = os.path.join(tree, RUN_TREE_HOMEDIR)
+    try:
+        st = os.lstat(home)
+    except OSError:
+        return [f"{home}: the agent's HOME is missing"]
+    if stat.S_ISLNK(st.st_mode) or not os.path.isdir(home):
+        return [f"{home}: the agent's HOME is not a folder (a link or a file)"]
+    out = []
+    if stat.S_IMODE(st.st_mode) != 0o700:
+        out.append(f"{home}: the agent's HOME is mode {stat.S_IMODE(st.st_mode):o}, not 700")
+    try:
+        agent = host_uid(_uid_of(AGENT_USER), uid_map)
+    except Refused as e:
+        return out + [f"{home}: the take's uid map does not map the agent ({e})"]
+    if st.st_uid != agent:
+        out.append(f"{home}: the agent's HOME is not owned by the agent's mapped host uid {agent}")
+    return out
+
+
+def _lease_problems(e: dict, lease) -> list:
+    """R-H2: auth.json by its census facts only, never its bytes."""
+    out, rel = [], e["path"]
+    if not isinstance(lease, LeasePlacement):
+        return [f"{rel}: no placement record to compare the lease with"]
+    if not stat.S_ISREG(e["mode"]):
+        out.append(f"{rel}: the lease is not a regular file")
+    if e["nlink"] != 1:
+        out.append(f"{rel}: the lease has {e['nlink']} links, not one")
+    if stat.S_IMODE(e["mode"]) != 0o600:
+        out.append(f"{rel}: the lease's mode is {stat.S_IMODE(e['mode']):o}, not 600")
+    if e["uid"] != _uid_of(AGENT_USER):
+        out.append(f"{rel}: the lease is not owned by the agent")
+    if (e["dev"], e["ino"]) != (lease.dev, lease.ino):
+        out.append(f"{rel}: the lease is not the file place_lease placed (another device or inode)")
+    if not 0 < e["size"] <= LEASE_MAX_BYTES:
+        out.append(f"{rel}: the lease's size is not 1 to {LEASE_MAX_BYTES} bytes")
+    return out
+
+
+def _allowed(harness: str, rel: str, run_tree: str):
+    """(kind, read rule, source) of the allow-list pattern `rel` matches, or None."""
+    if harness == CODEX and rel.startswith("skills/.system/"):
+        key = rel[len("skills/.system/"):]
+        if key == CODEX_SYSTEM_SKILLS_MARKER:
+            return "file", None, "skills/src/lib.rs 58, 97-98"
+        if key in CODEX_SYSTEM_SKILLS:
+            return "file", "skill", "skills/src/lib.rs 55, 146-173 (the embedded set)"
+        if any(f.startswith(key + "/") for f in CODEX_SYSTEM_SKILLS):
+            return "dir", None, "skills/src/lib.rs 146-173 (the embedded set)"
+        return None
+    slug = re.escape(gemini_slug(run_tree))
+    for pattern, kind, rule, source in CONFIG_FOLDER_ALLOWED[harness]:
+        if re.fullmatch(pattern.replace("{slug}", slug), rel):
+            return kind, rule, source
+    return None
+
+
+def config_folder_problems(folder, entries, *, turn: int) -> tuple:
+    """(problems, reads) of a census against the placed set and, after turn 1, the allow-list; reads are the
+    (path, rule) pairs check_config_folder then reads. A pure function of the census."""
+    h = folder.harness
+    by = {e["path"]: e for e in entries}
+    root = by.get(".")
+    if root is None or root["kind"] != "dir":
+        return ["the census holds no folder at its root"], []
+    problems, reads = [], []
+    for e in entries:
+        if e["dev"] != root["dev"]:
+            problems.append(f"{e['path']}: on another device than the folder")
+    placed = dict(CONFIG_FOLDER_PLACED[h])
+    for rel, kind in placed.items():
+        e = by.get(rel)
+        if e is None:
+            problems.append(f"{rel}: placed, and missing")
+        elif kind == "lease":
+            problems += _lease_problems(e, folder.lease)
+        elif e["kind"] != kind:
+            problems.append(f"{rel}: placed as a {kind}, now a {e['kind']}")
+        elif kind == "file":
+            if e["nlink"] != 1:
+                problems.append(f"{rel}: placed with one link, now {e['nlink']}")
+            reads.append((rel, "placed"))
+    for e in entries:
+        rel, kind = e["path"], e["kind"]
+        if rel == "." or rel in placed:
+            continue
+        if turn == 1:
+            problems.append(f"{rel}: not placed (before turn 1 the folder holds exactly the placed set)")
+            continue
+        if kind == "other":
+            problems.append(f"{rel}: a special file, a name that is not UTF-8, or a credential-shaped name other "
+                            f"than the placed lease")
+            continue
+        named = [why for pattern, why in CONFIG_FOLDER_NAMED[h] if re.fullmatch(pattern, rel)]
+        if named:
+            problems.append(f"{rel}: refused, {named[0]}")
+            continue
+        got = _allowed(h, rel, folder.run_tree)
+        if got is None:
+            problems.append(f"{rel}: neither placed nor on {h}'s allow-list")
+            continue
+        want, rule, _source = got
+        if kind != want:
+            problems.append(f"{rel}: a {kind} where the allow-list admits only a {want}")
+            continue
+        if kind == "link":
+            if not codex_arg0_link(rel, e["target"]):
+                problems.append(f"{rel}: a link whose target is not the image's codex executable")
+            continue
+        if kind == "file" and e["nlink"] != 1:
+            problems.append(f"{rel}: a file with {e['nlink']} links")
+            continue
+        if rule is not None:
+            reads.append((rel, rule))
+    return problems, reads
+
+
+def _read_problem(folder, rel: str, rule: str):
+    """The one problem a section-6-point-2 read finds, or None."""
+    if rule == "skill":
+        want = CODEX_SYSTEM_SKILLS[rel[len("skills/.system/"):]]
+        if want is None:
+            return f"{rel}: its pinned digest is held (CODEX_SYSTEM_SKILLS_HELD), so it is never admitted unread"
+        got = folder.read_sha256(rel)
+        return None if got == want else f"{rel}: not the pinned embedded skill (an edited system skill)"
+    data = folder.read(rel)
+    if data is None:
+        return f"{rel}: listed by the census, absent at its read"
+    if rule == "placed":
+        return None if data == folder.placed[rel] else f"{rel}: not byte-identical to take_config.files_for"
+    if rule == "uuid":
+        return None if re.fullmatch(_UUID, data.decode("ascii", "replace")) else f"{rel}: not one UUID"
+    if rule == "project_root":
+        return None if data == folder.run_tree.encode("utf-8") else f"{rel}: does not name the run tree alone"
+    if rule == "projects":
+        try:
+            doc = json.loads(data)
+        except ValueError:
+            doc = None
+        want = {"projects": {folder.run_tree: gemini_slug(folder.run_tree)}}
+        return None if doc == want else f"{rel}: not exactly the run tree's one mapping"
+    return f"{rel}: no read rule {rule!r}"
+
+
+def check_config_folder(folder, *, harness: str, run_tree: str, turn: int) -> None:
+    """B11 before every arm O and G turn (run_turn, immediately before exec_argv): R-OA's HOME, then one census of the
+    config folder against the placed set and (after turn 1) the allow-list, then the reads section 6 point 2 lists.
+    Any problem raises ConfigFolderRefused, naming each; nothing of the turn runs."""
+    if harness not in CONFIG_FOLDER_HARNESSES:
+        raise Refused(f"the config folder check is arm O's and arm G's; {harness!r} keeps its own guard")
+    if not (isinstance(turn, int) and not isinstance(turn, bool) and turn >= 1):
+        raise Refused("a turn is numbered from 1")
+    if not isinstance(folder, ConfigFolder):
+        raise ConfigFolderRefused([f"a {harness} turn carries no config folder record (ownership.config_folder)"],
+                                  turn)
+    tree = _abs_path(run_tree, "run_tree")
+    if folder.harness != harness or folder.run_tree != tree:
+        raise ConfigFolderRefused(["the config folder record is another harness's or another run tree's"], turn)
+    if harness == CODEX and (not isinstance(folder.lease, LeasePlacement)
+                             or folder.lease.path != os.path.join(folder.config_dir, LEASE_FILE)
+                             or tuple(folder.lease.uid_map) != tuple(folder.uid_map)):
+        raise ConfigFolderRefused(["the lease record is not this config folder's, bound to the record's uid map"],
+                                  turn)
+    problems = agent_home_problems(tree, folder.uid_map)
+    if problems:
+        raise ConfigFolderRefused(problems, turn)
+    try:
+        entries = folder.census()
+    except Exception as e:  # noqa: BLE001 - OwnershipError (a cap, a refusal, a reply off its shape) or any other
+        raise ConfigFolderRefused([f"the census refused: {type(e).__name__}: {str(e)[:300]}"], turn) from None
+    problems, reads = config_folder_problems(folder, entries, turn=turn)
+    if not problems:
+        for rel, rule in reads:
+            try:
+                why = _read_problem(folder, rel, rule)
+            except Exception as e:  # noqa: BLE001 - a read that fails is a problem, never a pass
+                why = f"{rel}: the read refused ({type(e).__name__}: {str(e)[:200]})"
+            if why is not None:
+                problems.append(why)
+    if problems:
+        raise ConfigFolderRefused(problems, turn)
+
+
 # ------------------------------------------------------------------------------------------------- one turn
 def run_turn(runtime, take_id: str, inner, *, harness: str, run_tree: str, login_file: str, stream_path: str,
-             budget_s: float, clock, caller_env=None) -> dict:
+             budget_s: float, clock, caller_env=None, config_folder=None, turn=None) -> dict:
     """One exec per turn in the kept-alive container; stdout written to the host-side stream path; times from the
     injected clock. A timeout is recorded as a timed-out exec: the caller then kills the agent's processes inside
     (killing the client alone leaves them running). The launch journal records the submitted exec request,
     not proof that Docker started it; started_at is submission time. The returned exit/timeout record and retained
-    stream must be bound to it before the checker claims an executed interaction."""
+    stream must be bound to it before the checker claims an executed interaction.
+
+    B11 (lane vendor-b11 round 3, R-CF): an arm O or G turn carries its take's ConfigFolder record and its number
+    (`config_folder`, `turn`), and check_config_folder runs immediately before exec_argv; a refusal runs nothing and
+    writes no journal or stream. Arm A's turn never calls it (settings_guard is its guard)."""
     stream_path = _abs_path(stream_path, "stream_path")
     if _inside(stream_path, _abs_path(run_tree, "run_tree")):
         raise Refused("the host-side stream never sits inside the run tree")
@@ -2129,6 +2659,8 @@ def run_turn(runtime, take_id: str, inner, *, harness: str, run_tree: str, login
         raise Refused("budget_s > 0")
     refuse_env_files(workdir=run_tree, run_tree=run_tree)
     inner = _check_argv(inner)
+    if harness in CONFIG_FOLDER_HARNESSES:
+        check_config_folder(config_folder, harness=harness, run_tree=run_tree, turn=turn)
     argv, env = exec_argv(take_id, inner, user=AGENT_USER, workdir=run_tree, harness=harness, run_tree=run_tree,
                           login_file=login_file, caller_env=caller_env)
     started = clock()

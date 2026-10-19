@@ -311,6 +311,7 @@ class CodexAdapter(aa.AgentAdapter):
     rollout_for      (n) -> the rollout file's text as copied out host-side after turn n
     counters_for     () -> run_take.counters(cgroup_dir), read host-side
     clock            the injected host clock
+    config_folder    run_take.ConfigFolder: B11's record, handed to run_turn with each turn's number (vendor-b11)
 
     `turn_records` holds, per turn, what the TurnResult has no field for: the exit and timeout, the thread ids, the
     usage, the tool ids, the undecoded line count, why the init is None, and SHAPES_SOURCE.
@@ -319,7 +320,7 @@ class CodexAdapter(aa.AgentAdapter):
     name = NAME
 
     def __init__(self, *, runtime, take_id: str, run_tree: str, login_file: str, model: str, pin: dict,
-                 stream_path_for, rollout_for, counters_for, clock, caller_env=None):
+                 stream_path_for, rollout_for, counters_for, clock, caller_env=None, config_folder=None):
         super().__init__()
         mode = pin.get("permission_mode") if isinstance(pin, dict) else None
         if not isinstance(mode, str) or mode not in MODE_FLAGS:      # PENDING and the empty word are not keys
@@ -332,7 +333,7 @@ class CodexAdapter(aa.AgentAdapter):
         if not isinstance(model, str) or not model:
             raise StreamError("the row's model must be a non-empty string")
         self.runtime, self.take_id, self.run_tree, self.login_file = runtime, take_id, run_tree, login_file
-        self.model, self.mode = model, mode
+        self.model, self.mode, self.config_folder = model, mode, config_folder
         self.stream_path_for, self.rollout_for = stream_path_for, rollout_for
         self.counters_for, self.clock, self.caller_env = counters_for, clock, caller_env
         self._version = None
@@ -366,7 +367,7 @@ class CodexAdapter(aa.AgentAdapter):
         before = self.counters_for()
         got = rt.run_turn(self.runtime, self.take_id, inner, harness=NAME, run_tree=self.run_tree,
                           login_file=self.login_file, stream_path=self.stream_path_for(n), budget_s=budget_s,
-                          clock=self.clock, caller_env=self.caller_env)
+                          clock=self.clock, caller_env=self.caller_env, config_folder=self.config_folder, turn=n)
         self.__dict__.setdefault("stderr_seen", []).append(got["stderr"])   # R15-2: EROFS evidence (run_turn: a str)
         after = self.counters_for()
         counters = rt.counter_delta(before, after)

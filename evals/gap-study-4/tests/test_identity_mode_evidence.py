@@ -52,9 +52,10 @@ class Journal:
 
     def __enter__(self):
         def run_turn(runtime, take_id, inner, *, harness, run_tree, login_file, stream_path, budget_s, clock,
-                     caller_env=None):
+                     caller_env=None, config_folder=None, turn=None):
             got = self.real(runtime, take_id, inner, harness=harness, run_tree=run_tree, login_file=login_file,
-                            stream_path=stream_path, budget_s=budget_s, clock=clock, caller_env=caller_env)
+                            stream_path=stream_path, budget_s=budget_s, clock=clock, caller_env=caller_env,
+                             config_folder=config_folder, turn=turn)
             path = stream_path + ".launch.json"
             if not self.write:
                 os.unlink(path)

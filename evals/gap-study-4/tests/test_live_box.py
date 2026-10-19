@@ -87,7 +87,8 @@ class LaunchJournalRegression(unittest.TestCase):
 
             runtime = mock.Mock(run=execute)
             with mock.patch.object(rt, "exec_argv", return_value=(["docker", "exec"], {"credential": "synthetic credential value"})), \
-                    mock.patch.object(rt, "refuse_env_files"):
+                    mock.patch.object(rt, "refuse_env_files"), \
+                    mock.patch.object(rt, "check_config_folder"):   # B11's own tests: tests/test_config_folder.py
                 got = rt.run_turn(runtime, "a" * 64, inner, harness="gemini", run_tree="/srv/w/tree",
                                   login_file="/unused", stream_path=stream, budget_s=2,
                                   clock=iter((1.0, 2.0)).__next__)

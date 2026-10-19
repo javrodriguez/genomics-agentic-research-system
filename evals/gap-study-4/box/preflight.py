@@ -376,6 +376,30 @@ print(json.dumps({"via_proxy": {allowed: via_proxy(allowed), other: via_proxy(ot
                   "resolves": {n: resolves(n) for n in names}}))
 """
 
+# R4-2 (lane vendor-b11 round 4, glitch-26's ruling, Mon 19 Oct 2026): arms O's and G's `--version` never touch the
+# take's config folder. Codex's arg0 dispatch (rust-v0.162.1 arg0/src/lib.rs 158-162, 355-401) leaves tmp/arg0 and a
+# codex-arg0 folder under CODEX_HOME before clap's --version exit, and before turn 1 the config folder must hold exactly
+# the placed set (run_take.check_config_folder). So the probe makes one fresh folder under the take's /tmp tmpfs
+# (VERSION_PROBE_ROOT; neither the config folder nor the run tree), runs the harness with its config home and HOME both
+# on it (VERSION_PROBE_HOMES), discards it, and passes the harness's output and exit code through. A folder that cannot
+# be discarded fails the probe. Arm A's probe is unchanged (CLAUDE_CONFIG_DIR on the config mount).
+VERSION_PROBE_ROOT = "/tmp"
+VERSION_PROBE_HOMES = {run_take.CODEX: ("CODEX_HOME", "HOME"), run_take.GEMINI: ("GEMINI_CLI_HOME", "HOME")}
+VERSION_PROBE_PROGRAM = """\
+import os, shutil, subprocess, sys, tempfile
+root, names, argv = sys.argv[1], sys.argv[2].split(","), sys.argv[3:]
+home = tempfile.mkdtemp(prefix="version-home-", dir=root)
+env = dict(os.environ)
+env.update({n: home for n in names})
+try:
+    done = subprocess.run(argv, env=env, stdin=subprocess.DEVNULL, capture_output=True, timeout=50)
+finally:
+    shutil.rmtree(home)
+sys.stdout.write(done.stdout.decode("utf-8", "replace"))
+sys.stderr.write(done.stderr.decode("utf-8", "replace"))
+sys.exit(done.returncode)
+"""
+
 PROGRAMS = {"identity": IDENTITY_PROGRAM, "cgroup": CGROUP_PROGRAM, "listing": LISTING_PROGRAM,
             "processes": PROCESSES_PROGRAM, "sockets": SOCKETS_PROGRAM, "egress": EGRESS_PROGRAM,
             "watcher-caps": PROCESSES_PROGRAM}
@@ -396,6 +420,15 @@ def _config_home_values(harness: str) -> dict:
 
 def _py(program: str, *args: str) -> list:
     return ["python3", "-I", "-B", "-c", program, *args]
+
+
+def _version_argv(agent, harness: str) -> tuple:
+    """The harness-version probe's argv: for codex and gemini the throwaway-home program (R4-2), for claude-code the
+    command itself with its config home on the config mount."""
+    if harness in VERSION_PROBE_HOMES:
+        return agent(_py(VERSION_PROBE_PROGRAM, VERSION_PROBE_ROOT, ",".join(VERSION_PROBE_HOMES[harness]),
+                         *VERSION_COMMANDS[harness]))
+    return agent(list(VERSION_COMMANDS[harness]), _config_home_values(harness))
 
 
 # ------------------------------------------------------------------------------------------------- the probes
@@ -465,7 +498,7 @@ def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, ev
         Probe("take-inspect", inspect(take_id)),
         Probe("take-image-manifest", (run_take.RUNTIME_CLIENT, "image", "inspect", "--platform", IMAGE_PLATFORM,
                                       "--format", "{{json .Id}}", spec.image)),
-        Probe("harness-version", agent(list(VERSION_COMMANDS[harness]), _config_home_values(harness))),
+        Probe("harness-version", _version_argv(agent, harness)),
         Probe("cgroup", agent(_py(CGROUP_PROGRAM, CGROUP_ROOT, "cpu.max", "memory.max", "memory.low", "pids.max"))),
         Probe("listing", agent(_py(LISTING_PROGRAM, SIDECAR_EVIDENCE_MOUNT, evidence_dir))),
         Probe("processes", agent(_py(PROCESSES_PROGRAM))),

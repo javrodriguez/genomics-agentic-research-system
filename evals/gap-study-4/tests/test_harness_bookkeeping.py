@@ -268,10 +268,16 @@ class Seam(unittest.TestCase):
 
 
 def typed_harness(src: str) -> list:
-    """Every harness name or home folder of the table (test entry included) typed in `src`."""
+    """Every harness name or home folder of the table (test entry included) typed in `src`. A folder spelled with a
+    leading dot is not a hit where it reads as an attribute (an identifier, `)` or `]` right before it): R4-4's
+    `.home/**` is otherwise found in endstate's `self.home` and `take.home`, which type no folder."""
     hits = [n for n in TABLE if n in src]
-    hits += [p.split("/")[0] for e in TABLE.values() for p in e.home_paths + e.run_tree_paths
-             if p.split("/")[0] in src]
+    for folder in {p.split("/")[0] for e in TABLE.values() for p in e.home_paths + e.run_tree_paths}:
+        if folder.startswith("."):
+            if re.search(r"(?<![A-Za-z0-9_)\]])" + re.escape(folder), src):
+                hits.append(folder)
+        elif folder in src:
+            hits.append(folder)
     return sorted(set(hits))
 
 
@@ -290,40 +296,54 @@ def source_line(path: str, n: int) -> str:
 
 def derived_codex_pattern() -> str:
     """codex_adapter.py:41: the rollout is `$CODEX_HOME/sessions/.../rollout-*.jsonl` (`...`: any folders); and
-    box/run_take.py:68, 160-162: CODEX_HOME is the config mount, which is also HOME, so the pattern is home-relative."""
+    box/run_take.py:68, 169-171: CODEX_HOME is the config mount (HOME is the run tree's .home since R-H5), so the
+    pattern is relative to the config mount."""
     m = re.fullmatch(r"\s*rollout\s+`\$CODEX_HOME/([^`]+)`, copied out host-side by the driver and handed over by",
                      source_line(CODEX_ADAPTER, 41))
     if not m:
         raise AssertionError("codex_adapter.py:41 is not the rollout line this candidate is grounded in")
     if source_line(RUN_TAKE, 68) != 'CONFIG_MOUNT = "/opt/cfg"':
         raise AssertionError("box/run_take.py:68 is not CONFIG_MOUNT")
-    row = " ".join(source_line(RUN_TAKE, n) for n in (160, 161, 162))
-    if 'CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT' not in row or '"CODEX_HOME": CONFIG_MOUNT}' not in row:
-        raise AssertionError("box/run_take.py:160-162 no longer sets CODEX_HOME and HOME to the config mount")
+    row = " ".join(source_line(RUN_TAKE, n) for n in (169, 170, 171))
+    if 'CODEX: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME' not in row or '"CODEX_HOME": CONFIG_MOUNT}' not in row:
+        raise AssertionError("box/run_take.py:169-171 no longer sets CODEX_HOME to the config mount and HOME to the "
+                             "run tree's home")
     return m.group(1).replace("/.../", "/**/")
 
 
 def derived_gemini_pattern() -> str:
     """native_snapshot.py:20: under exactly <home>/.gemini/tmp/*/chats; :13: filename = session-<...>.jsonl; :9 and
-    box/run_take.py:163-165: <home> is $GEMINI_CLI_HOME, the config mount, which is also HOME."""
+    box/run_take.py:172-174: <home> is $GEMINI_CLI_HOME, the config mount (HOME is the run tree's .home since R-H5)."""
     folder = re.fullmatch(r"gemini_session_file reads directory names only, under exactly <home>/(\S+), never a "
                           r"file's content and", source_line(NATIVE_SNAPSHOT, 20))
     name = re.fullmatch(r"\s*filename\s+= (session-)<.*>(\.jsonl),", source_line(NATIVE_SNAPSHOT, 13))
     home = re.fullmatch(r"\s*homedir\(\)\s+= \$GEMINI_CLI_HOME when set", source_line(NATIVE_SNAPSHOT, 9))
     if not (folder and name and home):
         raise AssertionError("native_snapshot.py:9, 13, 20 are not the lines this candidate is grounded in")
-    row = " ".join(source_line(RUN_TAKE, n) for n in (163, 164, 165))
-    if 'GEMINI: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT' not in row or '"GEMINI_CLI_HOME": CONFIG_MOUNT' not in row:
-        raise AssertionError("box/run_take.py:163-165 no longer sets GEMINI_CLI_HOME and HOME to the config mount")
+    row = " ".join(source_line(RUN_TAKE, n) for n in (172, 173, 174))
+    if 'GEMINI: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME' not in row or '"GEMINI_CLI_HOME": CONFIG_MOUNT' not in row:
+        raise AssertionError("box/run_take.py:172-174 no longer sets GEMINI_CLI_HOME to the config mount and HOME to "
+                             "the run tree's home")
     return f"{folder.group(1)}/{name.group(1)}*{name.group(2)}"
 
 
 def run_tree_tmp_name() -> str:
-    """box/run_take.py:93 and 152: TMPDIR, TMP and TEMP point at <run tree>/.tmp."""
+    """box/run_take.py:93 and 153: TMPDIR, TMP and TEMP point at <run tree>/.tmp."""
     m = re.fullmatch(r'RUN_TREE_TMPDIR = "([^"]+)"', source_line(RUN_TAKE, 93))
-    if not m or not source_line(RUN_TAKE, 152).startswith('RUN_TREE_TMP = "<run tree>/' + m.group(1) + '"'):
-        raise AssertionError("box/run_take.py:93 and 152 are not the run tree's temporary folder")
+    if not m or not source_line(RUN_TAKE, 153).startswith('RUN_TREE_TMP = "<run tree>/' + m.group(1) + '"'):
+        raise AssertionError("box/run_take.py:93 and 153 are not the run tree's temporary folder")
     return m.group(1)
+
+
+def run_tree_home_name() -> str:
+    """box/run_take.py's RUN_TREE_HOMEDIR and its RUN_TREE_HOME marker (R-H5, glitch-26, 19 Oct 2026): arm O's and
+    arm G's HOME is <run tree>/<that name>."""
+    with open(RUN_TAKE, encoding="utf-8") as fh:
+        lines = fh.read().splitlines()
+    names = [m.group(1) for m in (re.fullmatch(r'RUN_TREE_HOMEDIR = "([^"]+)"', x) for x in lines) if m]
+    if len(names) != 1 or sum(x.startswith(f'RUN_TREE_HOME = "<run tree>/{names[0]}"') for x in lines) != 1:
+        raise AssertionError("box/run_take.py names no one RUN_TREE_HOMEDIR and its RUN_TREE_HOME marker")
+    return names[0]
 
 
 # (path, excluded?) under each candidate: its native session file only, nothing else of the home or the run tree.
@@ -331,17 +351,26 @@ CANDIDATE_PATHS = {
     "codex": [("sessions/2026/10/14/rollout-2026-10-14T05-00-00-00000000-0000-7000-8000-0000000000c1.jsonl", True),
               ("sessions/2026/10/14/notes.txt", False), ("sessions/2026/10/14/rollout-x.jsonl.zst", False),
               ("auth.json", False), ("config.toml", False), ("history.jsonl", False), ("log/codex-tui.log", False),
-              (".tmp/x", False), ("rollout-x.jsonl", False), ("other/sessions/rollout-x.jsonl", False)],
+              (".tmp/x", False), (".home/.cache/x", False), ("rollout-x.jsonl", False),
+              ("other/sessions/rollout-x.jsonl", False)],
     "gemini": [(".gemini/tmp/abc/chats/session-2026-10-14T05-00-1a2b3c4d.jsonl", True),
                (".gemini/tmp/abc/chats/1a2b3c4d/sub-1.jsonl", False), (".gemini/tmp/abc/logs.json", False),
                (".gemini/settings.json", False), (".gemini/tmp/abc/chats/notes.txt", False),
-               (".gemini/tmp/chats/session-x.jsonl", False), (".tmp/x", False), ("session-x.jsonl", False)],
+               (".gemini/tmp/chats/session-x.jsonl", False), (".tmp/x", False), (".home/.cache/x", False),
+               ("session-x.jsonl", False)],
 }
 
 
+# (run-tree path, excluded?) under each candidate (R4-4): the agent's HOME and everything below it, nothing else.
+RUN_TREE_PATHS = [(".home/.cache/pip/x", True), (".home/.conda/envs/e/bin/python", True), (".home/.bashrc", True),
+                  (".homes/x", False), ("home/x", False), (".tmp/x", False), ("data/x.csv", False),
+                  ("results/.home/x", False), (".git/config", False)]
+
+
 def candidate_problems(table: dict) -> list:
-    """Each candidate is exactly its derived pattern, its grounds quote what they rest on, its run tree is unmeasured
-    (empty), it names .tmp/ as kept in, and it excludes its native session file and nothing else listed."""
+    """Each candidate is exactly its derived pattern, its grounds quote what they rest on, its run tree excludes the
+    agent's HOME alone (R4-4: <run tree>/.home/**, snapshotted but not graded; the rest of the run tree unmeasured),
+    it names .tmp/ as kept in, and it excludes its native session file and nothing else listed."""
     out = []
     derived = {"codex": derived_codex_pattern(), "gemini": derived_gemini_pattern()}
     tmp = run_tree_tmp_name()
@@ -353,21 +382,31 @@ def candidate_problems(table: dict) -> list:
             continue
         if e.home_paths != (derived[name],):
             out.append(f"{name}: home_paths {e.home_paths} are not exactly the derived {derived[name]!r}")
-        if e.run_tree_paths != ():
-            out.append(f"{name}: run_tree_paths {e.run_tree_paths}: unmeasured until a real walk")
+        # R4-4 (glitch-26, lane vendor-b11 round 4): the agent's HOME is inside the run tree, snapshotted, not graded
+        home_tree = (run_tree_home_name() + "/**",)
+        if e.run_tree_paths != home_tree:
+            out.append(f"{name}: run_tree_paths {e.run_tree_paths} are not exactly {home_tree} (R4-4; the rest of the "
+                       f"run tree is unmeasured until a real walk)")
         grounds = " ".join(e.grounds)
         for need in ({"codex": ["codex_adapter.py:41", "`$CODEX_HOME/sessions/.../rollout-*.jsonl`",
                                 "box/run_take.py:68", '"CODEX_HOME": CONFIG_MOUNT'],
                       "gemini": ["native_snapshot.py:20", "<home>/.gemini/tmp/*/chats", "native_snapshot.py:13",
                                  "native_snapshot.py:16-18", "assumed, not source-shown", "box/run_take.py:68",
-                                 '"GEMINI_CLI_HOME": CONFIG_MOUNT']}[name] + ["unmeasured until a real walk"]):
+                                 '"GEMINI_CLI_HOME": CONFIG_MOUNT']}[name] + ["unmeasured until a real walk",
+                                                                              "R4-4", "box/sidecar.py"]):
             if need not in grounds:
                 out.append(f"{name}: the grounds do not say {need!r}")
         if not any(path == tmp + "/" for path, _ in e.not_excluded):
-            out.append(f"{name}: not_excluded does not name {tmp}/ (box/run_take.py:93, 152)")
+            out.append(f"{name}: not_excluded does not name {tmp}/ (box/run_take.py:93, 153)")
+        # R4-4: the agent's HOME (R-H5's .home) is excluded from grading now, so it is no longer named as kept in
+        if any(path == run_tree_home_name() + "/" for path, _ in e.not_excluded):
+            out.append(f"{name}: not_excluded still names {run_tree_home_name()}/, which R4-4 excludes")
         for path, want in CANDIDATE_PATHS[name]:
             if any(hb.matches(p, path) for p in e.home_paths) != want:
                 out.append(f"{name}: {path} is {'not ' if want else ''}excluded")
+        for path, want in RUN_TREE_PATHS:
+            if any(hb.matches(p, path) for p in e.run_tree_paths) != want:
+                out.append(f"{name}: run tree {path} is {'not ' if want else ''}excluded")
     return out
 
 
@@ -387,6 +426,34 @@ def candidate_conflicts(candidates: dict) -> list:
             continue
         out += [f"{task_id}: {x}" for x in ct.check_8_exclusions(task, doc, table=table)]
     return out
+
+
+class HomeExclusion(unittest.TestCase):
+    """R4-4 (glitch-26, lane vendor-b11 round 4), each way through the end-state grader's own is_excluded: under arms
+    O's and G's candidates <run tree>/.home/** is excluded (the agent HOME is inside the run tree: snapshotted, not
+    graded); under arm A's entry, untouched, it is not (arm A's HOME is outside the run tree)."""
+
+    def excluded(self, harness, rel, table):
+        from graders import endstate
+        ev = mock.Mock(run_tree="/srv/w/t", harness=harness, _table=table, home=None)
+        return endstate.Evidence.is_excluded(ev, f"/srv/w/t/{rel}")
+
+    def test_arms_o_and_g_exclude_the_agent_home_and_arm_a_does_not(self):
+        table = dict(hb.TABLE, **hb.VENDOR_CANDIDATES)
+        for rel, want in RUN_TREE_PATHS:
+            for name in CANDIDATE_NAMES:
+                with self.subTest(harness=name, path=rel):
+                    self.assertEqual(self.excluded(name, rel, table), want)
+            with self.subTest(harness=ADAPTER_NAME, path=rel):
+                self.assertFalse(self.excluded(ADAPTER_NAME, rel, table))
+        self.assertEqual(hb.TABLE[ADAPTER_NAME].run_tree_paths, (), "R4-4: arm A's entry moved")
+
+    def test_a_vendor_candidate_without_the_home_exclusion_grades_it(self):
+        for name in CANDIDATE_NAMES:
+            e = dataclasses.replace(hb.VENDOR_CANDIDATES[name], run_tree_paths=())
+            table = dict(hb.TABLE, **dict(hb.VENDOR_CANDIDATES, **{name: e}))
+            with self.subTest(harness=name):
+                self.assertFalse(self.excluded(name, ".home/.conda/envs/e/bin/python", table))
 
 
 class VendorCandidates(unittest.TestCase):
@@ -435,7 +502,13 @@ class VendorCandidates(unittest.TestCase):
             base = hb.VENDOR_CANDIDATES[name]
             for what, e in {"a guessed run tree": dataclasses.replace(base, run_tree_paths=(".tmp/**",)),
                             "no grounds": dataclasses.replace(base, grounds=("TEST DATA",)),
-                            ".tmp/ dropped": dataclasses.replace(base, not_excluded=())}.items():
+                            ".tmp/ dropped": dataclasses.replace(base, not_excluded=()),
+                            # R4-4: the agent's HOME excluded from grading, exactly
+                            ".home/** dropped": dataclasses.replace(base, run_tree_paths=()),
+                            ".home/** widened": dataclasses.replace(base, run_tree_paths=(".home/**", ".tmp/**")),
+                            ".home/** narrowed": dataclasses.replace(base, run_tree_paths=(".home/*",)),
+                            ".home/ still kept in": dataclasses.replace(base, not_excluded=base.not_excluded + (
+                                (".home/", "kept in"),))}.items():
                 with self.subTest(name=name, what=what):
                     self.assertNotEqual(candidate_problems(dict(hb.VENDOR_CANDIDATES, **{name: e})), [])
         self.assertNotEqual(candidate_problems({"codex": hb.VENDOR_CANDIDATES["codex"]}), [])
@@ -455,6 +528,9 @@ class VendorCandidates(unittest.TestCase):
                         hits = typed_harness(fh.read())
                     if hits:
                         found[name] = hits
+            # R4-4: the agent HOME typed as a path is found; an attribute named home is not
+            self.assertEqual(typed_harness('X = "/srv/w/t/.home/x"'), [".home"])
+            self.assertEqual(typed_harness("X = take.home or self.home or f(a).home or b[0].home"), [])
             for typed in ('X = "codex"', 'X = "gemini"', 'X = "sessions/"', 'X = ".gemini/"'):
                 self.assertNotEqual(typed_harness(typed), [], typed)   # the scan fires on each known positive
         self.assertEqual(found, {})

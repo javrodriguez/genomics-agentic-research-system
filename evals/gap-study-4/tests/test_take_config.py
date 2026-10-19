@@ -141,10 +141,14 @@ def get(doc, dotted):
     return doc
 
 
-def written(harness, model):
+# R-H1 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): a codex take's config.toml names its run tree.
+RUN_TREE = "/srv/w/run-0a1b2c3d"
+
+
+def written(harness, model, run_tree=RUN_TREE):
     d = tempfile.mkdtemp(prefix="w-")
     with filled():
-        rec = tc.write(d, harness, model=model)
+        rec = tc.write(d, harness, model=model, run_tree=run_tree)
     return d, rec
 
 
@@ -192,6 +196,8 @@ R3_SOURCES = {
                                      "AuthType.USE_GEMINI, the API-key auth type"),
     # Round 18 B9 (glitch-26's ruling B9, Sun 18 Oct 2026, from the held walk w-g1's exit 55): folder trust defaults on
     # at the pinned version, so a headless take in a folder Gemini CLI does not trust stops before any model call.
+    # R-B9 (lane vendor-b11 round 3): the check's citation is the running chain's main bundle, gemini-Q2GRYIAK.js (the
+    # bin, bundle/gemini.js line 110, imports it), never the orphan build gemini-6ESINPDZ.js.
     "GEMINI_TRUST_SETTING": dict(GEMINI_PKG, file="bundle/chunk-FLKY6NH5.js",
                                  file_sha256="f6a4ddd46350dad40515218069d369aaa0025f194c552400b69925b941098bc8",
                                  line=9599, check_file="bundle/gemini-Q2GRYIAK.js",
@@ -246,7 +252,7 @@ class TestR3Values(MutantCase):
             out.append("the efforts are not for exactly arm O's models")
         for m in models["O"]:
             d = tempfile.mkdtemp(prefix="w-")
-            tc.write(d, tc.CODEX, model=m)
+            tc.write(d, tc.CODEX, model=m, run_tree=RUN_TREE)
             with open(os.path.join(d, "config.toml"), "rb") as fh:
                 doc = tomllib.load(fh)
             if doc.get("model_reasoning_effort") != R3_VALUES["CODEX_REASONING_EFFORT"][m] or doc.get("model") != m:
@@ -484,7 +490,9 @@ class TestContents(MutantCase):
                 # The renderer fold (owner amendment, 13 Oct): Codex reads a ChatGPT subscription login from a
                 # file store; no API-key route.
                 "forced_login_method": "chatgpt", "cli_auth_credentials_store": "file",
-                "features": {"hooks": False}}
+                "features": {"hooks": False},
+                # R-H1: the run tree trusted up front, so Codex never rewrites the file
+                "projects": {RUN_TREE: {"trust_level": "trusted"}}}
         if doc != want:
             out.append(f"codex config.toml reads {doc}")
         d, rec = written(tc.GEMINI, "gemini-3.8-flash")
@@ -548,13 +556,13 @@ class TestContents(MutantCase):
             d = tempfile.mkdtemp(prefix="w-")
             open(os.path.join(d, "stale"), "w").close()
             with self.assertRaises(tc.Refused):
-                tc.write(d, tc.CODEX, model="m")
+                tc.write(d, tc.CODEX, model="m", run_tree=RUN_TREE)
             repo = tempfile.mkdtemp(prefix="w-")
             os.makedirs(os.path.join(repo, ".git"))
             cfg = os.path.join(repo, "cfg")
             os.makedirs(cfg)
             with self.assertRaises(tc.Refused):
-                tc.write(cfg, tc.CODEX, model="m")
+                tc.write(cfg, tc.CODEX, model="m", run_tree=RUN_TREE)
 
 
 def _leaves(doc):
@@ -563,6 +571,83 @@ def _leaves(doc):
             yield from _leaves(v)
     else:
         yield doc
+
+
+class TestCodexTrustTable(MutantCase):
+    """R-H1 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026). At the pinned Codex 0.162.1 a thread start
+    whose project has no trust_level, in a git checkout, with the bypass flag's full access, writes
+    [projects."<run tree>"] trust_level = "trusted" into config.toml (app-server/src/request_processors/
+    thread_processor.rs 1362-1378; core/src/config/mod.rs 2359-2441). take_config places that table up front, keyed by
+    the run tree as project_trust_key spells it (config/src/loader/mod.rs 1381-1412: dunce::canonicalize, imported as
+    normalize_path at line 61; lowercased on Windows only), so Codex finds trust_level set on turn 1, never rewrites
+    the file, and its bytes stay take_config's on every turn."""
+
+    TABLE = f'\n[projects."{RUN_TREE}"]\ntrust_level = "trusted"\n'
+
+    def check(self):
+        out = []
+        with filled():
+            plain = tc.files_for(tc.CODEX, model="gpt-6.1-sol")[tc.CODEX_CONFIG]
+            files = tc.files_for(tc.CODEX, model="gpt-6.1-sol", run_tree=RUN_TREE)
+        if sorted(files) != [tc.CODEX_CONFIG]:
+            out.append(f"R-H1.table: a codex take writes {sorted(files)}")
+            return out
+        data = files[tc.CODEX_CONFIG]
+        if data != plain + self.TABLE.encode("ascii"):
+            out.append(f"R-H1.table: config.toml does not end in the one trust table: {data[-120:]!r}")
+        doc = tomllib.loads(data.decode("ascii"))
+        if doc.get("projects") != {RUN_TREE: {"trust_level": "trusted"}}:
+            out.append(f"R-H1.table: the projects table reads {doc.get('projects')!r}")
+        d, rec = written(tc.CODEX, "gpt-6.1-sol")
+        with open(os.path.join(d, tc.CODEX_CONFIG), "rb") as fh:
+            if fh.read() != data:
+                out.append("R-H1.write: write placed other bytes than files_for with the run tree")
+        if rec["files"] != [tc.CODEX_CONFIG]:
+            out.append(f"R-H1.write: the record lists {rec['files']}")
+        # the other harnesses' files do not depend on the run tree
+        for h, m in ((tc.GEMINI, "gemini-3.8-flash"), (tc.CLAUDE_CODE, None)):
+            with filled():
+                if tc.files_for(h, model=m, run_tree=RUN_TREE) != tc.files_for(h, model=m):
+                    out.append(f"R-H1.table: {h}'s files changed with the run tree")
+        # a codex write without its run tree would leave Codex to rewrite config.toml on turn 1: refused
+        try:
+            with filled():
+                tc.write(tempfile.mkdtemp(prefix="w-"), tc.CODEX, model="gpt-6.1-sol")
+            out.append("R-H1.write: a codex config was written without its run tree")
+        except tc.Refused as e:
+            if "run tree" not in str(e):
+                out.append(f"R-H1.write: refused without naming the run tree: {e}")
+        # the key is the canonical spelling, or Codex's lookup misses it and writes its own table
+        link_parent = tempfile.mkdtemp(prefix="w-")
+        os.makedirs(os.path.join(link_parent, "real", "run-0a1b2c3d"))
+        os.symlink(os.path.join(link_parent, "real"), os.path.join(link_parent, "via"))
+        for bad in ("srv/w/run-0a1b2c3d", "/srv/w/run-0a1b2c3d/", "/srv/w/../w/run-0a1b2c3d", "/srv//w/run-0a",
+                    "//srv/w/run-0a1b2c3d", "/", '/srv/w/t"]\n[x', "/srv/w/t\nx", "/srv/w/r\u00e9", "", 7,
+                    os.path.join(link_parent, "via", "run-0a1b2c3d")):
+            try:
+                with filled():
+                    tc.files_for(tc.CODEX, model="gpt-6.1-sol", run_tree=bad)
+                out.append(f"R-H1.key: run tree {bad!r} was admitted")
+            except tc.Refused:
+                pass
+            except Exception as e:  # noqa: BLE001 - anything but the refusal is the guard's failure
+                out.append(f"R-H1.key: run tree {bad!r} raised {type(e).__name__}, not a refusal")
+        with filled():
+            real = os.path.join(link_parent, "real", "run-0a1b2c3d")
+            if os.path.realpath(real) == real:
+                got = tomllib.loads(tc.files_for(tc.CODEX, model="gpt-6.1-sol", run_tree=real)[tc.CODEX_CONFIG]
+                                    .decode("ascii"))
+                if got.get("projects") != {real: {"trust_level": "trusted"}}:
+                    out.append("R-H1.key: a canonical run tree was keyed otherwise")
+        return out
+
+    def test_the_trust_table(self):
+        self.assert_green_then_red(self.check, [
+            ("table-dropped", patched(tc, "_codex_trust_table", lambda run_tree: b"")),
+            ("untrusted", patched(tc, "CODEX_TRUST_LEVEL", "untrusted")),
+            ("key-not-canonical", patched(tc, "codex_project_key", lambda run_tree: run_tree)),
+            ("write-without-run-tree", patched(tc, "CODEX_NEEDS_RUN_TREE", False)),
+        ])
 
 
 class TestPending(MutantCase):
@@ -605,7 +690,7 @@ class TestPending(MutantCase):
                 if name not in tc.pending():
                     out.append(f"{name} put back to PENDING is not pending")
                 try:
-                    tc.write(d, h, model=m)
+                    tc.write(d, h, model=m, run_tree=RUN_TREE)
                     out.append(f"{h} config written while {name} is PENDING")
                 except tc.NotReady:
                     pass
@@ -672,10 +757,10 @@ class TestHashAndNames(MutantCase):
 
     def test_hash(self):
         self.assert_green_then_red(self.check_hash, [
-            ("digests-only", patched(tc, "config_sha256", lambda f: __import__("hashlib").sha256("".join(sorted(
+            ("digests-only", patched(tc, "config_sha256", lambda f, harness=None: __import__("hashlib").sha256("".join(sorted(
                 __import__("hashlib").sha256(open(os.path.join(r, n), "rb").read()).hexdigest()
                 for r, _, ns in os.walk(f) for n in ns)).encode()).hexdigest())),
-            ("names-only", patched(tc, "config_sha256", lambda f: __import__("hashlib").sha256(
+            ("names-only", patched(tc, "config_sha256", lambda f, harness=None: __import__("hashlib").sha256(
                 "\n".join(sorted(os.listdir(f))).encode()).hexdigest())),
         ])
 
@@ -701,6 +786,119 @@ class TestHashAndNames(MutantCase):
             ("study-word", patched(tc, "CODEX_FEATURES", (("hooks", False), ("sidecar", False)))),
             ("key-in-file", patched(tc, "CODEX_TOP", tc.CODEX_TOP + (("api_key", FAKE_VALUE),))),
             ("writer-missing", patched(tc, "WRITERS", {tc.CODEX: tc._codex, tc.GEMINI: tc._gemini})),
+        ])
+
+
+# R-H3 (glitch-26's ruling on lane vendor-b11, round 3): a killed Codex turn leaves tmp/arg0/codex-arg0??????/ with
+# .lock and four links to the image's codex executable (arg0/src/lib.rs 21-25, 358, 373-375, 395-400 at rust-v0.162.1).
+# config_sha256 hashes exactly those four by name and target string, never following them, and refuses every other
+# link. The executable is the pinned take-o image's, as measured (the athena name sweep's binary_path).
+CODEX_EXE = ("/usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/"
+             "x86_64-unknown-linux-musl/bin/codex")
+ARG0_NAMES = ("apply_patch", "applypatch", "codex-linux-sandbox", "codex-execve-wrapper")
+
+
+def killed_codex(folder, *, names=ARG0_NAMES, sub="tmp/arg0/codex-arg0AbC123", target=CODEX_EXE):
+    d = os.path.join(folder, *sub.split("/"))
+    os.makedirs(d, exist_ok=True)
+    open(os.path.join(d, ".lock"), "w").close()
+    for n in names:
+        os.symlink(target, os.path.join(d, n))
+    return d
+
+
+class TestArg0Links(MutantCase):
+    def check_arg0_links(self):
+        out = []
+        if getattr(tc, "CODEX_EXECUTABLE", None) != CODEX_EXE or tuple(getattr(tc, "CODEX_ARG0_LINKS", ())) != \
+                ARG0_NAMES:
+            return ["R-H3: take_config does not name the image's codex executable and the four arg0 link names"]
+        a, ra = written(tc.CODEX, "gpt-6.1-sol")
+        killed_codex(a)
+        try:
+            first = tc.config_sha256(a, tc.CODEX)
+        except tc.Refused as e:
+            return [f"R-H3: a killed Codex turn's four arg0 links refused: {e}"]
+        if first == ra["sha256"]:
+            out.append("R-H3: the hash does not see the four links")
+        b, _ = written(tc.CODEX, "gpt-6.1-sol")
+        killed_codex(b, sub="tmp/arg0/codex-arg0ZyX987")
+        if tc.config_sha256(b, tc.CODEX) == first:
+            out.append("R-H3: the hash does not see the link's folder name")
+        refused = {
+            "a fifth name": dict(names=ARG0_NAMES + ("codex",)),
+            "a link at another depth": dict(sub="tmp/arg0"),
+            "a link one level deeper": dict(sub="tmp/arg0/codex-arg0AbC123/x"),
+            "a folder off the tempfile shape": dict(sub="tmp/arg0/codex-arg0AbC"),
+            "a folder outside tmp/arg0": dict(sub="tmp/x/codex-arg0AbC123"),
+            "a target that is not the executable": dict(target="/bin/sh"),
+            "a relative target": dict(target="codex"),
+        }
+        for why, kw in refused.items():
+            c, _ = written(tc.CODEX, "gpt-6.1-sol")
+            killed_codex(c, **kw)
+            try:
+                tc.config_sha256(c, tc.CODEX)
+                out.append(f"R-H3: {why} was hashed")
+            except tc.Refused:
+                pass
+        d, _ = written(tc.CODEX, "gpt-6.1-sol")
+        os.makedirs(os.path.join(d, "tmp", "arg0"))
+        os.symlink(os.path.join(d, "tmp"), os.path.join(d, "tmp", "arg0", "codex-arg0AbC123"))
+        try:
+            tc.config_sha256(d, tc.CODEX)
+            out.append("R-H3: a folder link at the arg0 folder's place was hashed")
+        except tc.Refused:
+            pass
+        return out
+
+    def test_the_arg0_links(self):
+        self.assert_green_then_red(self.check_arg0_links, [
+            ("any-link", patched(tc, "codex_arg0_link", lambda rel, target: True)),
+            ("name-only", patched(tc, "codex_arg0_link",
+                                  lambda rel, target: rel.rsplit("/", 1)[-1] in ARG0_NAMES)),
+            ("no-target-check", patched(tc, "codex_arg0_link", lambda rel, target: re.fullmatch(
+                r"tmp/arg0/codex-arg0[A-Za-z0-9]{6}/(apply_patch|applypatch|codex-linux-sandbox|codex-execve-wrapper)",
+                rel) is not None)),
+            ("no-link-admitted", patched(tc, "codex_arg0_link", lambda rel, target: False)),
+        ])
+
+
+# R5-4 (glitch-26's ruling, round 5 of lane vendor-b11; the review of round 4, finding 4): config_sha256 admits R-H3's
+# four arg0 links for the codex harness only, as run_take.check_config_folder does. A claude-code or gemini folder, or
+# a folder hashed with no harness named, behaves exactly as before R-H3 (take_config.py at 936cf29f^, lines 331-332):
+# any link refuses with "a link or a special file in the config folder".
+PRE_R_H3_REFUSAL = "a link or a special file in the config folder"
+
+
+class TestArg0LinksCodexOnly(MutantCase):
+    def check_codex_only(self):
+        out = []
+        for h, m in ((tc.CLAUDE_CODE, None), (tc.GEMINI, "gemini-3.8-flash"), (tc.CODEX, "gpt-6.1-sol")):
+            a, _ = written(h, m)
+            killed_codex(a, names=ARG0_NAMES[:1])                    # one arg0 link, at its one shape and target
+            calls = ((h, (a, h)), ("no harness named", (a,))) if h != tc.CODEX else (("no harness named", (a,)),)
+            for who, args in calls:
+                try:
+                    tc.config_sha256(*args)
+                    out.append(f"R5-4: {h}: a folder holding one arg0 link was hashed ({who})")
+                except TypeError as e:
+                    out.append(f"R5-4: config_sha256 takes no harness ({e})")
+                except tc.Refused as e:
+                    if str(e) != PRE_R_H3_REFUSAL:
+                        out.append(f"R5-4: {h}: refused, but not as before R-H3 ({who}): {e}")
+        c, _ = written(tc.CODEX, "gpt-6.1-sol")
+        killed_codex(c)
+        try:
+            tc.config_sha256(c, tc.CODEX)
+        except (TypeError, tc.Refused) as e:
+            out.append(f"R5-4: codex: the four arg0 links refused with the harness named ({e})")
+        return out
+
+    def test_the_arg0_links_are_codexs_alone(self):
+        original = tc.config_sha256
+        self.assert_green_then_red(self.check_codex_only, [
+            ("every-harness", patched(tc, "config_sha256", lambda f, harness=None: original(f, tc.CODEX))),
         ])
 
 

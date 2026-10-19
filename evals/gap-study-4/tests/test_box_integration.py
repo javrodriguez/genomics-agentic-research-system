@@ -243,6 +243,17 @@ class FakeOwnership:
         self.box, self.fail_grant, self.fail_restore, self.fail_write = box, fail_grant, fail_restore, fail_write
         self.fail_read = fail_read
         self.events: list = []
+        self.config_folders: list = []
+
+    def config_folder(self, runtime, *, image, harness, run_tree, config_dir, model, lease, uid_map,
+                      caller_env=None):
+        """B11 (lane vendor-b11 round 3): the box's ownership.config_folder on fakes. The record's arguments are
+        kept (config_folders, never `events`, whose order other checks read) and returned as the stand-in record an
+        O or G turn hands run_turn; the real check and its census are tests/test_config_folder.py's."""
+        rec = {"image": image, "harness": harness, "run_tree": run_tree, "config_dir": config_dir, "model": model,
+               "lease": lease, "uid_map": uid_map}
+        self.config_folders.append(rec)
+        return rec
 
     def _at(self):
         return None if self.box is None else len(self.box.calls)

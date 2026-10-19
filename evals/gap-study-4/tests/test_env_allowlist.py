@@ -5,7 +5,9 @@ delegation).
 
   E1  the ONE table: box/run_take.TAKE_ENV names, per arm, everything the agent may start with: PATH, HOME, LANG, the
       run tree's TMPDIR, TMP and TEMP, the proxy, the harness's own switches and config home, and exactly one
-      credential, by NAME only (the CREDENTIAL marker). HOME is the config mount. No row names a refused variable.
+      credential, by NAME only (the CREDENTIAL marker). Arm A's HOME is the config mount; arm O's and arm G's is the
+      run tree's .home (R-H5, glitch-26, 19 Oct 2026), and arm A's row is pinned by its bytes. No row names a refused
+      variable.
       LOGIN_VARIABLE and HARNESS_ENV are views derived from it (by AST: comprehensions over TAKE_ENV, never literals).
   E2  nothing else reaches the agent: with every billing and route variable the docs read found (Codex's
       OPENAI_PROJECT, OPENAI_ORGANIZATION and the AWS chain; Gemini CLI's GOOGLE_GENAI_USE_VERTEXAI,
@@ -16,7 +18,8 @@ delegation).
       and the image's own ENV in its starting environment, execs the harness with exactly the row and the credential.
       A name the old closed refusal also names is still refused at exec (refused, never passed).
   E3  a `.env` the CLI would read refuses, by its path: the working folder, a parent between it and the box root (the
-      run tree), the box root itself, and HOME (the config folder), each alone, under both loader names (`.env`,
+      run tree), the box root itself, HOME and the config home (the config folder; arm O's and G's HOME is the run
+      tree's .home, R-H5), each alone, under both loader names (`.env`,
       `.gemini/.env`), a dangling link included; launch refuses before any runtime call; run_turn refuses before its
       exec and writes no stream; no take Dockerfile writes a `.env`.
   E4  arm G's model: a short alias (auto, pro, flash, flash-lite) is refused by its name, with what it resolves to
@@ -144,6 +147,7 @@ def setUpModule():
         MODS["rt"] = compile_module(m.source(text))
     else:
         MODS["rt"] = compile_module(text)
+    MODS["text"] = text if SELECTED is None else text.replace(*mutants()[SELECTED][1:])
     rt = MODS["rt"]
     # run_take always refuses a closed-list name in this process's own environment: set those aside for the module
     # (names only; restored untouched at tearDownModule, never read or printed).
@@ -230,9 +234,12 @@ class Case(unittest.TestCase):
 
 
 def expected_row(harness, run_tree):
-    """The arm's row as the ruling words it, written here by hand (never read from the module under test)."""
+    """The arm's row as the ruling words it, written here by hand (never read from the module under test). R-H5
+    (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): arm O's and arm G's HOME is the run tree's own
+    .home, outside the config mount, while CODEX_HOME and GEMINI_CLI_HOME stay on it; arm A's HOME is the mount."""
     t = f"{run_tree}/.tmp"
-    base = {"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "HOME": "/opt/cfg",
+    home = "/opt/cfg" if harness == "claude-code" else f"{run_tree}/.home"
+    base = {"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "HOME": home,
             "LANG": "C.UTF-8", "TMPDIR": t, "TMP": t, "TEMP": t, "HTTPS_PROXY": "http://proxy:3128"}
     own = {"claude-code": {"DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
                            "ENABLE_CLAUDEAI_MCP_SERVERS": "false", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
@@ -285,14 +292,37 @@ class E1Table(Case):
             row = table[h]
             creds = [k for k, v in row.items() if v == m.CREDENTIAL]
             self.assertEqual(creds, ENV_CREDENTIAL[h], f"E1.table: {h}'s credential is not its one login, by name")
-            filled = {k: (v.replace(m.RUN_TREE_TMP, "/r/t/.tmp") if v == m.RUN_TREE_TMP else v)
-                      for k, v in row.items() if v != m.CREDENTIAL}
+            markers = {m.RUN_TREE_TMP: "/r/t/.tmp", getattr(m, "RUN_TREE_HOME", m.RUN_TREE_TMP): "/r/t/.home"}
+            filled = {k: markers.get(v, v) for k, v in row.items() if v != m.CREDENTIAL}
             self.assertEqual(filled, expected_row(h, "/r/t"), f"E1.table: {h}'s row is off the ruling's set")
             bad = sorted(set(row) & set(m.refused_variables(h)))
             self.assertEqual(bad, [], f"E1.table: {h}'s row names a refused variable")
             for k, v in row.items():
                 self.assertRegex(k, r"^[A-Z_][A-Z0-9_]*$", "E1.table: a name off the variable-name form")
                 self.assertNotIn("\0", v, "E1.table: a value carries a NUL")
+
+    # R-H5: arm A's row stays byte-unchanged (round-3 parity), pinned by its source bytes at 56d7713b (box/run_take.py
+    # lines 155-159 there) and by its value.
+    CLAUDE_ROW_SOURCE = (
+        '    CLAUDE_CODE: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,\n'
+        '                  "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,\n'
+        '                  "DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", **ISOLATION_ENV,\n'
+        '                  **BASH_FIRST_STEER_ENV, **SILENT_TURN_REMINDER_ENV, "CLAUDE_CONFIG_DIR": CONFIG_MOUNT,\n'
+        '                  "CLAUDE_CODE_OAUTH_TOKEN": CREDENTIAL},\n')
+    CLAUDE_ROW_SOURCE_SHA256 = "f28954dea54db364f5ecd3db83d06ab69939651fdb504a6c0cd6b94020d051a7"
+    CLAUDE_ROW_VALUE_SHA256 = "97dd88fe3065413904ab9643767a0b1771d3db7ec0e2741b6ba730b3059c7800"
+
+    def test_arm_a_row_is_byte_unchanged(self):
+        import hashlib
+        m = rt()
+        self.assertEqual(hashlib.sha256(self.CLAUDE_ROW_SOURCE.encode()).hexdigest(), self.CLAUDE_ROW_SOURCE_SHA256,
+                         "R-H5.parity: the pinned bytes themselves moved")
+        self.assertEqual(MODS["text"].count(self.CLAUDE_ROW_SOURCE), 1,
+                         "R-H5.parity: arm A's TAKE_ENV row is not its round-3-parity bytes")
+        value = json.dumps(m.TAKE_ENV[m.CLAUDE_CODE], sort_keys=True, separators=(",", ":")).encode()
+        self.assertEqual(hashlib.sha256(value).hexdigest(), self.CLAUDE_ROW_VALUE_SHA256,
+                         "R-H5.parity: arm A's TAKE_ENV row has another value")
+        self.assertEqual(m.TAKE_ENV[m.CLAUDE_CODE]["HOME"], m.CONFIG_MOUNT, "R-H5.parity: arm A's HOME moved")
 
     def test_the_views_are_derived(self):
         m = rt()
@@ -441,6 +471,143 @@ class E2Allowlist(Case):
                         run_launcher(launch, {LOGINS[h]: FAKE_VALUE}, present=(path,), recorded=recorded)
                     self.assertEqual(recorded, {}, "E3.container: harness dispatched before refusal")
 
+    def test_launcher_refuses_env_in_the_agent_home_and_the_config_home(self):
+        # R-H5: arm O's and arm G's HOME (the run tree's .home) and their config home (the mount) are each read for a
+        # .env before every exec, under both loader names
+        m = rt()
+        for h in (m.CODEX, m.GEMINI):
+            launch = self.launch_for(h)
+            for folder, what in (("/srv/w/t1/tree/.home", "HOME"), (m.CONFIG_MOUNT, "the config home")):
+                for name in (".env", ".gemini/.env"):
+                    path = os.path.join(folder, name)
+                    recorded = {}
+                    try:
+                        run_launcher(launch, {LOGINS[h]: FAKE_VALUE}, present=(path,), recorded=recorded)
+                    except SystemExit as e:
+                        self.assertIn(path, str(e), f"R-H5.launcher: {h}: refused without naming {path}")
+                    else:
+                        self.fail(f"R-H5.launcher: {h}: a .env in {what} ({path}) was accepted")
+                    self.assertEqual(recorded, {}, "R-H5.launcher: harness dispatched before refusal")
+
+    # R-H1 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): with the run tree trusted from turn 1, a
+    # codex take's launcher also refuses Codex's project-config paths in the working folder and every ancestor up to /,
+    # written here by hand from the pinned source (rust-v0.162.1): .codex/config.toml (config/src/loader/mod.rs 1663-1701,
+    # reached from 405-411), .codex/rules (core/src/exec_policy.rs 54 and 678-679), .codex/skills
+    # (ext/skills/src/host_roots.rs 25 and 85-91) and .agents/skills (host_roots.rs 24-25 and 154). R-P (glitch-26,
+    # lane vendor-b11 round 3) adds .codex/hooks.json (hooks/src/engine/discovery.rs 146-148 and 339-343, through
+    # config/src/state.rs 219-243) and .codex/agents (agent-roles/src/loader.rs 75-78).
+    CODEX_PROJECT_PATHS = (".codex/config.toml", ".codex/rules", ".codex/skills", ".agents/skills",
+                           ".codex/hooks.json", ".codex/agents")
+    R_P_PATHS = (".codex/hooks.json", ".codex/agents")
+    # R-N1 (glitch-26, lane vendor-b11 round 3, review NIT 1): what each pinned CLI reads from HOME as configuration,
+    # written here by hand from the B11 design note's section 4 and the pinned source. Codex (rust-v0.162.1): the user
+    # skill root ~/.agents/skills (ext/skills/src/host_roots.rs 24-25, 35-36, 105), the personal marketplace manifests
+    # (core-plugins/src/marketplace.rs 20-25, 307-314, 479-480), the primary-runtime marketplace under ~/.cache
+    # (core-plugins/src/marketplace_policy.rs 546-572, dirs::cache_dir), and the shell start files its login-shell
+    # snapshot reads (core/src/shell_snapshot.rs 586-605; shell-command/src/startup.rs 9-27; a login bash's profile
+    # files; zsh's). Gemini CLI (0.64.0): only ~/.gemini/policies/sandbox.toml (chunk-NR7L3FXV.js 257794, sandbox only);
+    # it keys everything else on GEMINI_CLI_HOME.
+    HOME_CONFIG = {"codex": (".agents/skills", ".agents/plugins/marketplace.json",
+                             ".agents/plugins/api_marketplace.json", ".claude-plugin/marketplace.json",
+                             ".cursor-plugin/marketplace.json", ".cache/codex-runtimes", ".bashrc", ".bash_profile",
+                             ".bash_login", ".profile", ".zshrc", ".zprofile", ".zshenv", ".zlogin"),
+                   "gemini": (".gemini/policies/sandbox.toml",)}
+    # H5: the agent's own tools' files under HOME stay the agent's
+    AGENT_HOME_FILES = (".cache/pip/http/x", ".nextflow/history", ".conda/environments.txt", ".Rhistory",
+                        ".bash_history", ".local/bin/tool", ".npm/_cacache/index", ".config/matplotlib/rc")
+
+    def test_codex_launcher_refuses_hooks_and_agents(self):
+        m = rt()
+        named = tuple("/".join(p) for p in getattr(m, "CODEX_PROJECT_CONFIG_PATHS", ()))
+        self.assertEqual([p for p in self.R_P_PATHS if p not in named], [],
+                         "R-P.launcher: run_take's codex project-config paths miss .codex/hooks.json or .codex/agents")
+        launch = self.launch_for(m.CODEX)
+        for cwd in ("/srv/w/t1/tree", "/srv/w/t1/tree/a/b"):
+            folders = [cwd]
+            while folders[-1] != "/":
+                folders.append(os.path.dirname(folders[-1]))
+            for folder in folders:
+                for name in self.R_P_PATHS:
+                    path = os.path.join(folder, name)
+                    recorded = {}
+                    try:
+                        run_launcher(launch, {}, present=(path,), cwd=cwd, recorded=recorded)
+                    except SystemExit as e:
+                        self.assertIn(path, str(e), f"R-P.launcher: refused without naming {path}")
+                    else:
+                        self.fail(f"R-P.launcher: a codex turn ran with {path} present (cwd {cwd})")
+                    self.assertEqual(recorded, {}, "R-P.launcher: harness dispatched before refusal")
+
+    def test_launcher_refuses_harness_config_in_home(self):
+        m = rt()
+        table = getattr(m, "HOME_CONFIG_PATHS", None)
+        self.assertIsInstance(table, dict, "R-N1.launcher: run_take has no HOME_CONFIG_PATHS")
+        self.assertEqual({h: tuple(p for p, _src in table.get(h, ())) for h in (m.CODEX, m.GEMINI)}, self.HOME_CONFIG,
+                         "R-N1.launcher: run_take's HOME configuration paths are off the ruled set")
+        self.assertEqual(sorted(table), sorted((m.CODEX, m.GEMINI)), "R-N1.launcher: a row other than O and G")
+        self.assertEqual([p for h in table for p, src in table[h] if not (isinstance(src, str) and src.strip())], [],
+                         "R-N1.launcher: a HOME configuration path without its pinned-source line")
+        home = "/srv/w/t1/tree/.home"
+        for h in (m.CODEX, m.GEMINI):
+            launch = self.launch_for(h)
+            start = {LOGINS[h]: FAKE_VALUE} if h != m.CODEX else {}
+            for name in self.HOME_CONFIG[h]:
+                path = os.path.join(home, name)
+                recorded = {}
+                try:
+                    run_launcher(launch, start, present=(path,), recorded=recorded)
+                except SystemExit as e:
+                    self.assertIn(path, str(e), f"R-N1.launcher: {h}: refused without naming {path}")
+                else:
+                    self.fail(f"R-N1.launcher: {h}: a turn ran with {path} in HOME")
+                self.assertEqual(recorded, {}, "R-N1.launcher: harness dispatched before refusal")
+            # H5: everything else under HOME stays the agent's, and the other CLI's HOME reads are not this row's
+            other = self.HOME_CONFIG[m.GEMINI if h == m.CODEX else m.CODEX]
+            present = tuple(os.path.join(home, n) for n in self.AGENT_HOME_FILES + other)
+            try:
+                got = run_launcher(launch, start, present=present)
+            except SystemExit as e:
+                self.fail(f"R-N1.launcher: {h}: the agent's own HOME files refused the turn: {e}")
+            self.assertIn("env", got, f"R-N1.launcher: {h}: a clean turn did not run")
+        # arm A: the same names under its HOME (the config mount) leave its launcher as it was
+        present = tuple(os.path.join(m.CONFIG_MOUNT, n) for n in self.HOME_CONFIG[m.CODEX] + self.HOME_CONFIG[m.GEMINI])
+        try:
+            got = run_launcher(self.launch_for(m.CLAUDE_CODE), {LOGINS[m.CLAUDE_CODE]: FAKE_VALUE}, present=present)
+        except SystemExit as e:
+            self.fail(f"R-N1.launcher: arm A's turn was refused for a vendor HOME path: {e}")
+        self.assertIn("env", got, "R-N1.launcher: arm A's turn did not run")
+
+    def test_codex_launcher_refuses_project_config(self):
+        m = rt()
+        self.assertEqual(tuple("/".join(p) for p in getattr(m, "CODEX_PROJECT_CONFIG_PATHS", ())),
+                         self.CODEX_PROJECT_PATHS, "R-H1.launcher: run_take names other codex project-config paths")
+        launch = self.launch_for(m.CODEX)
+        for cwd in ("/srv/w/t1/tree", "/srv/w/t1/tree/a/b"):
+            folders = [cwd]
+            while folders[-1] != "/":
+                folders.append(os.path.dirname(folders[-1]))
+            for folder in folders:
+                for name in self.CODEX_PROJECT_PATHS:
+                    path = os.path.join(folder, name)
+                    recorded = {}
+                    try:
+                        run_launcher(launch, {}, present=(path,), cwd=cwd, recorded=recorded)
+                    except SystemExit as e:
+                        self.assertIn(path, str(e), f"R-H1.launcher: refused without naming {path}")
+                    else:
+                        self.fail(f"R-H1.launcher: a codex turn ran with {path} present (cwd {cwd})")
+                    self.assertEqual(recorded, {}, "R-H1.launcher: harness dispatched before refusal")
+        got = run_launcher(launch, {}, present=())
+        self.assertEqual(got.get("file"), "codex", "R-H1.launcher: a clean codex turn did not run")
+        # only for a codex take: the other arms' launchers run with the same paths present
+        for h in (m.CLAUDE_CODE, m.GEMINI):
+            present = tuple(os.path.join(f, n) for f in ("/srv/w/t1/tree", "/") for n in self.CODEX_PROJECT_PATHS)
+            try:
+                got = run_launcher(self.launch_for(h), {LOGINS[h]: FAKE_VALUE}, present=present)
+            except SystemExit as e:
+                self.fail(f"R-H1.launcher: a {h} turn was refused for a codex path: {e}")
+            self.assertIn("env", got, f"R-H1.launcher: a {h} turn did not run")
+
     def test_the_launcher_needs_the_credential(self):
         m = rt()
         for h in ARMS:
@@ -505,6 +672,32 @@ class E3EnvFiles(Case):
         for name in (".env", ".gemini/.env"):
             msg = self.check(cfg, name, tree=tree, work=work, cfg=cfg, clause="E3.home")
             self.assertIn("HOME", msg, "E3.home: the refusal does not say it is HOME")
+
+    def test_the_agent_home(self):
+        # R-H5: arm O's and arm G's HOME is the run tree's .home, read host-side too, whatever the working folder
+        tree, work, cfg = self.layout()
+        for name in (".env", ".gemini/.env"):
+            msg = self.check(tree / ".home", name, tree=tree, work=work, cfg=cfg, clause="R-H5.home")
+            self.assertIn("HOME", msg, "R-H5.home: the refusal does not say it is HOME")
+            path = tree / ".home" / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("X=1\n")
+            self.refuses("R-H5.home", str(path), rt().refuse_env_files, workdir=str(work), run_tree=str(tree))
+            path.unlink()
+
+    def test_an_arm_a_tree_with_no_home_passes_unchanged(self):
+        # R-N2 (glitch-26, lane vendor-b11 round 3; review NIT 2): the stricter host check of <run tree>/.home runs for
+        # every harness, and an arm-A run tree (a claude-code checkout, which holds no .home) passes it as before
+        tree, work, cfg = self.layout()
+        self.assertFalse(os.path.lexists(tree / ".home"), "R-N2.parity: the layout already holds a .home")
+        self.must("R-N2.parity", rt().refuse_env_files, workdir=str(work), run_tree=str(tree), config_dir=str(cfg))
+        self.must("R-N2.parity", rt().refuse_env_files, workdir=str(tree), run_tree=str(tree))
+        self.assertFalse(os.path.lexists(tree / ".home"), "R-N2.parity: the host check made a .home")
+        for where in (work, cfg):           # its refusals are the ones it had: a .env in the tree or arm A's HOME
+            (where / ".env").write_text("X=1\n")
+            self.refuses("R-N2.parity", str(where / ".env"), rt().refuse_env_files, workdir=str(work),
+                         run_tree=str(tree), config_dir=str(cfg))
+            (where / ".env").unlink()
 
     def test_a_dangling_link_and_the_shape(self):
         tree, work, cfg = self.layout()
@@ -715,9 +908,22 @@ class E5Units(Case):
         for h in ARMS:
             bad = dict(m.TAKE_ENV, **{h: dict(m.TAKE_ENV[h], HOME="/home/dana")})
             with mock.patch.object(m, "TAKE_ENV", bad):
-                self.refuses("E5.home", "HOME is not the config mount", m.refuse_env_files, workdir=str(tree),
-                             run_tree=str(tree), config_dir=str(cfg))
+                self.refuses("E5.home", "HOME is neither the config mount nor the run tree's home",
+                             m.refuse_env_files, workdir=str(tree), run_tree=str(tree), config_dir=str(cfg))
                 self.must("E5.home", m.refuse_env_files, workdir=str(tree), run_tree=str(tree))
+
+
+class AgentHomeResidual(Case):
+    def test_r_h5_is_in_the_drafts_box_residuals(self):
+        """R-H5's named difference from arm A is pre-registered with the study's box limitations."""
+        draft = json.loads((HERE / "prereg-draft.json").read_text(encoding="utf-8"))
+        rows = [r for r in draft["box_residuals"] if r.get("name") == "arm O and G HOME"]
+        self.assertEqual(len(rows), 1, "R-H5.residual: the draft holds no one 'arm O and G HOME' entry")
+        for words in ("<run tree>/.home", "CODEX_HOME", "GEMINI_CLI_HOME", "config mount", "arm A",
+                      "byte-unchanged", "git-excluded", ".agents/skills", ".bashrc"):
+            self.assertIn(words, rows[0]["text"], f"R-H5.residual: the entry does not say {words!r}")
+        self.assertIn("R-H5", rows[0]["ruling"], "R-H5.residual")
+        self.assertIn("tests/test_env_allowlist.py", rows[0]["closed_check"], "R-H5.residual")
 
 
 # ------------------------------------------------------------------------------------------------- witnesses
@@ -727,16 +933,59 @@ def mutants() -> dict:
         "env-from-caller": ("E2.built", "    out = {}\n    for name, value in TAKE_ENV[harness].items():",
                             "    out = {k: v for k, v in os.environ.items() if k.startswith('OPENAI_')}\n"
                             "    for name, value in TAKE_ENV[harness].items():"),
-        "row-base-dropped": ("E1.table", '    CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,\n',
-                             '    CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT,\n'),
-        "home-elsewhere": ("E1.table", '    GEMINI: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT,',
+        "row-base-dropped": ("E1.table", '    CODEX: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME, "LANG": TAKE_LANG,\n',
+                             '    CODEX: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME,\n'),
+        "home-elsewhere": ("E1.table", '    GEMINI: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME,',
                            '    GEMINI: {"PATH": TAKE_PATH, "HOME": "/home/dana",'),
+        # R-H5 (lane vendor-b11 round 2): the agent's own HOME for arms O and G, arm A's row by its bytes
+        "agent-home-on-mount": ("E1.table", '    CODEX: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME,',
+                                '    CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT,'),
+        "claude-home-moved": ("R-H5.parity", '    CLAUDE_CODE: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT,',
+                              '    CLAUDE_CODE: {"PATH": TAKE_PATH, "HOME": RUN_TREE_HOME,'),
+        "claude-row-respaced": ("R-H5.parity", '"CLAUDE_CODE_OAUTH_TOKEN": CREDENTIAL},',
+                                '"CLAUDE_CODE_OAUTH_TOKEN":  CREDENTIAL},'),
+        "home-marker-unfilled": ("E2.built", ', RUN_TREE_HOME: f"{tree}/{RUN_TREE_HOMEDIR}"}', "}"),
+        "env-agent-home-unchecked": ("R-H5.launcher", "dirs=[e['HOME']]+", "dirs="),
+        "env-config-home-unchecked": ("R-H5.launcher",
+                                      "+[e[v] for v in ('CLAUDE_CONFIG_DIR','CODEX_HOME','GEMINI_CLI_HOME') if v in e]",
+                                      ""),
+        "host-agent-home-unchecked": ("R-H5.home", "        if os.path.lexists(os.path.join(home, name)):",
+                                      "        if False:"),
+        "home-check-widened": ("E5.home", "            if row.get(\"HOME\") not in (CONFIG_MOUNT, RUN_TREE_HOME):",
+                               "            if row.get(\"HOME\") not in (CONFIG_MOUNT, RUN_TREE_HOME, \"/home/dana\"):"),
         "values-in-client-env": ("E2.turn", "    env[login] = value\n", "    env[login] = value\n"
                                  "    env.update(values)\n"),
         "no-launcher": ("E2.turn", "            container_id, *launcher_argv(login, values, inner, harness=harness)]",
                         "            container_id, *inner]"),
         "launcher-keeps-env": ("E2.launcher", "                   \"e=dict(x.split('=',1) for x in a[2:2+n])\\n\"",
                                "                   \"e=dict(os.environ,**dict(x.split('=',1) for x in a[2:2+n]))\\n\""),
+        # R-H1 (lane vendor-b11 round 2): the codex launcher's project-config refusal, one guard at a time
+        "codex-project-unchecked": ("R-H1.launcher", " if found: raise SystemExit('refusing codex project",
+                                    " if False: raise SystemExit('refusing codex project"),  # re-anchored, R-N1
+        "codex-project-cwd-only": ("R-H1.launcher", "for d in up for p in", "for d in up[:1] for p in"),
+        "codex-project-config-dropped": ("R-H1.launcher", "(os.path.join(d,'.codex','config.toml'),", "("),
+        "codex-project-rules-dropped": ("R-H1.launcher", "os.path.join(d,'.codex','rules'),", ""),
+        "codex-project-skills-dropped": ("R-H1.launcher", "os.path.join(d,'.codex','skills'),", ""),
+        "codex-project-agents-dropped": ("R-H1.launcher", "os.path.join(d,'.agents','skills'),", ""),  # re-anchored, R-P
+        "codex-project-every-arm": ("R-H1.launcher", "if 'CODEX_HOME' in e:", "if True:"),
+        "codex-project-no-arm": ("R-H1.launcher", "if 'CODEX_HOME' in e:", "if 'CODEX_HOME' in os.environ:"),
+        # R-P and R-N1 (lane vendor-b11 round 3): the codex project's hooks and agents, each CLI's HOME configuration
+        "codex-project-hooks-dropped": ("R-P.launcher", "os.path.join(d,'.codex','hooks.json'),", ""),
+        "codex-project-agents-folder-dropped": ("R-P.launcher", "\"os.path.join(d,'.codex','agents')) if",
+                                                "\") if"),
+        "home-config-unchecked": ("R-N1.launcher", "  if found: raise SystemExit('refusing harness configuration",
+                                  "  if False: raise SystemExit('refusing harness configuration"),
+        "home-config-first-only": ("R-N1.launcher", "for p in ps if", "for p in ps[:1] if"),
+        "home-config-gemini-dropped": ("R-N1.launcher",
+                                       "f\"('GEMINI_CLI_HOME',{tuple(p for p, _s in HOME_CONFIG_PATHS[GEMINI])!r})):\\n\"",
+                                       "\"('GEMINI_CLI_HOME',())):\\n\""),
+        "home-config-every-arm": ("R-N1.launcher", "                   \" if v in e:\\n\"",
+                                  "                   \" if True:\\n\""),
+        "home-config-bashrc-dropped": ("R-N1.launcher", "        (\".bashrc\", \"shell-command", "        (\".bashrcX\", \"shell-command"),
+        "host-agent-home-required": ("R-N2.parity",
+                                     "    home = os.path.join(_abs_path(run_tree, \"run_tree\"), RUN_TREE_HOMEDIR)\n",
+                                     "    home = os.path.join(_abs_path(run_tree, \"run_tree\"), RUN_TREE_HOMEDIR)\n"
+                                     "    if not os.path.isdir(home):\n        found.append('no HOME at ' + home)\n"),
         "container-env-unchecked": ("E3.container", "  if os.path.lexists(p): raise SystemExit", "  if False: raise SystemExit"),
         "pairs-unchecked": ("E2.pairs", "        if not _NAME.fullmatch(k):", "        if False:"),
         "launch-no-env-check": ("E3.launch", "    refuse_env_files(workdir=spec.run_tree, run_tree=spec.run_tree, "
@@ -761,6 +1010,24 @@ METHOD = {
     "no-launcher": "E2Allowlist.test_the_turn_hands_the_harness_the_row_alone",
     "launcher-keeps-env": "E2Allowlist.test_the_turn_hands_the_harness_the_row_alone",
     "container-env-unchecked": "E2Allowlist.test_launcher_refuses_container_ancestors_and_current_home",
+    "agent-home-on-mount": "E1Table.test_each_row_is_the_ruling_s_set",
+    "claude-home-moved": "E1Table.test_arm_a_row_is_byte_unchanged",
+    "claude-row-respaced": "E1Table.test_arm_a_row_is_byte_unchanged",
+    "home-marker-unfilled": "E2Allowlist.test_take_environment_is_the_row_alone",
+    "env-agent-home-unchecked": "E2Allowlist.test_launcher_refuses_env_in_the_agent_home_and_the_config_home",
+    "env-config-home-unchecked": "E2Allowlist.test_launcher_refuses_env_in_the_agent_home_and_the_config_home",
+    "host-agent-home-unchecked": "E3EnvFiles.test_the_agent_home",
+    "home-check-widened": "E5Units.test_home_must_be_the_config_mount",
+    **{name: "E2Allowlist.test_codex_launcher_refuses_project_config" for name in (
+        "codex-project-unchecked", "codex-project-cwd-only", "codex-project-config-dropped",
+        "codex-project-rules-dropped", "codex-project-skills-dropped", "codex-project-agents-dropped",
+        "codex-project-every-arm", "codex-project-no-arm")},
+    **{name: "E2Allowlist.test_codex_launcher_refuses_hooks_and_agents" for name in (
+        "codex-project-hooks-dropped", "codex-project-agents-folder-dropped")},
+    **{name: "E2Allowlist.test_launcher_refuses_harness_config_in_home" for name in (
+        "home-config-unchecked", "home-config-first-only", "home-config-gemini-dropped", "home-config-every-arm",
+        "home-config-bashrc-dropped")},
+    "host-agent-home-required": "E3EnvFiles.test_an_arm_a_tree_with_no_home_passes_unchanged",
     "pairs-unchecked": "E2Allowlist.test_the_launcher_needs_the_credential",
     "launch-no-env-check": "E3EnvFiles.test_launch_refuses_before_any_runtime_call",
     "turn-no-env-check": "E3EnvFiles.test_run_turn_refuses_before_its_exec",

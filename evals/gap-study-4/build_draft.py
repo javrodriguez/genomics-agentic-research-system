@@ -933,7 +933,23 @@ def describe(root=None):
                  "holds nothing a test agent should not reach.",
          "ruling": "glitch-b5's ruling R1, Sun 18 Oct 2026, under Javier's delegation",
          "closed_check": "tests/test_egress.py CodexHostTest (the host is the pinned base URL's host alone; the API "
-                         "host, a leading dot and the sign-in host each red)"}]
+                         "host, a leading dot and the sign-in host each red)"},
+        # glitch-26's ruling R-H5 (Mon 19 Oct 2026; lane vendor-b11 round 2): arm O's and arm G's own HOME.
+        {"name": "arm O and G HOME",
+         "text": "a box difference from arm A: arm O's and arm G's HOME is <run tree>/.home, a folder of the run tree "
+                 "(git-excluded like its .tmp, mode 700, the agent's by the same grant as the run tree), while "
+                 "CODEX_HOME and GEMINI_CLI_HOME stay on the per-take config mount; arm A's HOME is the config mount, "
+                 "its row byte-unchanged from round 3's conditions. So the tools a Codex or Gemini take runs (git, "
+                 "conda, R, Nextflow, pip and their caches) read and write ~ in the run tree, outside the config "
+                 "folder, and so do Codex's own HOME reads (~/.agents/skills, the personal plugin marketplaces, and "
+                 "the shell start files its shell snapshot sources, such as ~/.bashrc and ~/.profile); an arm A "
+                 "take's tools read and write ~ in its config folder. Before every turn the launcher refuses a .env "
+                 "in either home, the working folder or any ancestor.",
+         "ruling": "glitch-26's ruling R-H5 on the B11 design note, Mon 19 Oct 2026",
+         "closed_check": "tests/test_env_allowlist.py E1Table (each row; arm A's pinned by its bytes and value), "
+                         "E2Allowlist and E3EnvFiles (a .env in either home refuses, in the container and host-side); "
+                         "tests/test_walk_builders.py B21AgentHome (the folder in a vendor checkout, git-excluded, "
+                         "mode 700, none for arm A)"}]
     # Q-w7a-1 (ruling W7A-close-1): S7-D4 ruled (A), the watcher's final stop, pre-registered with its check.
     d["final_stop"] = {
         "text": "the watcher's last recorded interval must close strictly after post-N's snapshot; a take whose last "

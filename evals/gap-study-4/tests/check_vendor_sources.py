@@ -8,7 +8,9 @@ scan's masked bytes). Piece EB naming drive.py also checks both edits' whole dif
 drive.py with edit B's lines (TakeDriver._take_records' first `if vendor:` branch after its first statement) and edit
 C's lines (the one statement of TakeDriver.drive right after the drive scan's `if not _scan_record.passed(scan):`, an
 `if` whose test requires the row's harness in VENDOR_HARNESSES, round 16) taken out must be, byte for byte, drive.py
-before edit B (PRE_EDIT_B_DRIVE_SHA256, its text at f628e9d8), so no other drive.py line moves. Any such edit after
+before edit B (PRE_EDIT_B_DRIVE_SHA256, its text at f628e9d8), so no other drive.py line moves. Edit D (lane vendor-b11
+round 4, glitch-26's ruling R4-1: EDIT_D_RULING) is recorded the same way: its hunks (EDIT_D) are taken out by their
+text before edits C and B, and drive.py after it is pinned whole (POST_EDIT_D_DRIVE_SHA256). Any such edit after
 Javier's acceptance commit makes production_readers refuse, so a piece naming one is a red check, never a note."""
 
 from __future__ import annotations
@@ -28,6 +30,59 @@ import native_reader_registration as nrr  # noqa: E402
 PIECES = ("PF", "P0", "P0b", "P1", "P2", "P3", "P4", "P5", "EB")
 ALLOWED = {"P0": {"drive.py"}, "EB": {"drive.py"}}
 PRE_EDIT_B_DRIVE_SHA256 = "ea3917d4e4c1acc2078b1779bab0c6c47304aee920c8d2f2dc3423ec33934906"
+
+# Edit D (lane vendor-b11 round 4, glitch-26's ruling R4-1, Mon 19 Oct 2026): the drive-side wiring of B11's per-turn
+# config folder check, the round-3 proposed patch applied as it stood. Each hunk is (before, after): `after` occurs in
+# drive.py exactly once, and replacing it with `before` takes the hunk out.
+EDIT_D_RULING = ("R4-1 (glitch-26, lane vendor-b11 round 4): TakeDriver.config_folder builds the take's config folder "
+                 "record (ownership.config_folder) and harness_adapter_for hands it to the arm O and G adapters "
+                 "(walk_driver binds the driver's); run_take.ConfigFolderRefused is routed as the settings guard's "
+                 "problems are: before turn 1 a rehearsal, after it a stop for a ruling. A named exception on a native "
+                 "reader source (as B12's edit of transcript_gemini.py was): no reader acceptance exists yet, so no "
+                 "accepted bytes move.")
+POST_EDIT_D_DRIVE_SHA256 = "b93bf6c5f40fa53257bffb7b147720886a252ab3051a64532eb04a9896d4eabd"
+EDIT_D = (
+    ("",
+     "        self.config_stop = None        # B11: the config folder's problems that stopped an O or G take before turn k > 1\n"),
+    ("",
+     '    def config_folder(self, take, lease=None):\n'
+     '        """B11 (lane vendor-b11 round 3): the take\'s run_take.ConfigFolder for its O or G turns, through the box\'s\n'
+     '        census and reads of the config folder (ownership.config_folder): the take image, run tree, config folder and\n'
+     "        model, the codex lease's placement record (`lease`, the adapter's login: bound to the take's uid map; None\n"
+     '        for gemini), and the take\'s uid map."""\n'
+     '        harness = (take.row.get("agent") or {}).get("harness")\n'
+     '        uid_map = self.uid_map\n'
+     "        if callable(uid_map):                       # read at run time (the take container's own map), or given\n"
+     '            uid_map = uid_map(take)\n'
+     '        return self.ownership.config_folder(self.runtime, image=take.spec.image, harness=harness,\n'
+     '                                            run_tree=take.spec.run_tree, config_dir=take.config_dir,\n'
+     '                                            model=take.row["model"], lease=lease, uid_map=uid_map,\n'
+     '                                            caller_env=self.caller_env)\n'
+     '\n'),
+    ("",
+     '                    except _run_take.ConfigFolderRefused as e:    # B11 (vendor-b11 R-CF): refused before its exec,\n'
+     '                        if n == 1:                                # routed as the settings guard is: a rehearsal\n'
+     '                            self._refused(take, e)\n'
+     '                            ok = False\n'
+     '                        else:                                     # after turn 1, a stop for a ruling\n'
+     '                            take.config_stop = f"pre-{n}: the config folder: {\'; \'.join(e.problems)}"\n'
+     '                        break\n'),
+    ("",
+     '        if take.config_stop is not None:          # B11 after turn 1, as the settings guard: cleaned and scanned\n'
+     '            raise DriveRefused(f"{take.config_stop}: no further turn is sent; the take is kept for a human ruling "\n'
+     '                               f"(no registered harness-error row reads it), never a re-run")\n'),
+    ('                        rollout_for=None, caller_env=None, config_view=None):\n',
+     '                        rollout_for=None, caller_env=None, config_view=None, config_folder=None):\n'),
+    ('                      counters_for=lambda: counters_for(take), clock=clock, caller_env=caller_env)\n',
+     '                      counters_for=lambda: counters_for(take), clock=clock, caller_env=caller_env,\n'
+     "                      # B11 (vendor-b11 R-CF): the take's config folder record (walk_driver binds the driver's)\n"
+     '                      config_folder=None)\n'
+     '        if callable(config_folder):\n'
+     '            common["config_folder"] = config_folder(take, common["login_file"] if harness == "codex" else None)\n'),
+    ('                                        config_view=lambda take: bound["driver"].config_view(take)),\n',
+     '                                        config_view=lambda take: bound["driver"].config_view(take),\n'
+     '                                        config_folder=lambda take, lease: bound["driver"].config_folder(take, lease)),\n'),
+)
 
 
 def edit_b_span(src: str):
@@ -104,13 +159,35 @@ def without_edit_c(src: str) -> str:
     return _cut(src, edit_c_span(src))
 
 
+def without_edit_d(src: str) -> str:
+    """drive.py's text with edit D taken out: each hunk's `after` replaced by its `before`; raises ValueError when a
+    hunk's `after` is not in the text exactly once (edit D absent, partial or moved)."""
+    for k, (before, after) in enumerate(EDIT_D):
+        if src.count(after) != 1:
+            raise ValueError(f"edit D's hunk {k} is in drive.py {src.count(after)} times, not once")
+        src = src.replace(after, before)
+    return src
+
+
 def without_edits(src: str) -> str:
-    """drive.py's text with edits C and B taken out: C first, as it lies below B, so B's lines do not move."""
-    return without_edit_b(without_edit_c(src))
+    """drive.py's text with edits D, C and B taken out: D first (by its text), then C, as it lies below B, so B's lines
+    do not move."""
+    return without_edit_b(without_edit_c(without_edit_d(src)))
+
+
+def edit_d_problems(src: str) -> list:
+    """Edit D's pin: drive.py's sha256 is the one recorded after edit D (POST_EDIT_D_DRIVE_SHA256)."""
+    got = hashlib.sha256(src.encode("utf-8")).hexdigest()
+    return [] if got == POST_EDIT_D_DRIVE_SHA256 else [
+        f"edit D: drive.py's sha256 {got[:12]}... is not the one pinned after edit D ({POST_EDIT_D_DRIVE_SHA256[:12]}...)"]
 
 
 def edit_b_problems(src: str) -> list:
-    """Edits B and C, each present, and drive.py outside both their spans drive.py before edit B."""
+    """Edits B, C and D, each present, and drive.py outside them drive.py before edit B."""
+    try:
+        without_edit_d(src)
+    except ValueError as e:
+        return [f"edit D: {e}"]
     try:
         span, span_c = edit_b_span(src), edit_c_span(src)
     except (SyntaxError, ValueError) as e:
@@ -124,8 +201,8 @@ def edit_b_problems(src: str) -> list:
     if out:
         return out
     if hashlib.sha256(without_edits(src).encode("utf-8")).hexdigest() != PRE_EDIT_B_DRIVE_SHA256:
-        return [f"edits B and C: drive.py outside lines {span[0]}-{span[1]} (the vendor branch) and "
-                f"{span_c[0]}-{span_c[1]} (after the drive scan) is not drive.py before edit B"]
+        return [f"edits B, C and D: drive.py outside lines {span[0]}-{span[1]} (the vendor branch), "
+                f"{span_c[0]}-{span_c[1]} (after the drive scan) and edit D's hunks is not drive.py before edit B"]
     return []
 
 
@@ -140,7 +217,8 @@ def problems(piece: str, files: list) -> list:
     out += [f"piece {piece} names {f}, which is not a file under evals/gap-study-4/" for f in files
             if not (HERE / f).is_file()]
     if piece == "EB" and "drive.py" in files and (HERE / "drive.py").is_file():
-        out += edit_b_problems((HERE / "drive.py").read_text(encoding="utf-8"))
+        text = (HERE / "drive.py").read_text(encoding="utf-8")
+        out += edit_b_problems(text) + edit_d_problems(text)
     return out
 
 

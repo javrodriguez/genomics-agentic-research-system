@@ -3284,7 +3284,10 @@ GUARDED_MODULES = ("os", "subprocess")
 #   close      - the descriptor is closed when that comparison refuses, before any byte is read.
 OS_ATTRS = frozenset({"O_CREAT", "O_EXCL", "O_NOFOLLOW", "O_RDONLY", "O_WRONLY", "environ", "fdopen", "fsync",
                       "getuid", "listdir", "lstat", "makedirs", "mkdir", "open", "path", "sep", "walk",
-                      "O_NONBLOCK", "fstat", "close"})
+                      "O_NONBLOCK", "fstat", "close",
+                      # R-H3 (lane vendor-b11 round 3): take_config.config_sha256 reads a link's target string, by
+                      # name and never followed, to hash the four arg0 links; readlink starts nothing and opens nothing
+                      "readlink"})
 DUNDERS_ALLOWED = frozenset({"__file__", "__init__", "__name__"})
 # How subprocess may appear, at DockerRuntime.run only: run as the func of a call, TimeoutExpired in an except.
 SUBPROCESS_USES = frozenset({("run", "call"), ("TimeoutExpired", "except")})
@@ -3315,7 +3318,10 @@ MODULE_ATTRS = {
                            "REFUSED_NAME_PREFIXES",
                            "Refused", "_abs_path", "_check_id", "_is_pending", "_known_harness", "_path_get",
                            "_write_json", "agent_exec_argv", "check_spec", "config_home_names",
-                           "outside_every_repository", "refused_variables", "runtime_env"}),
+                           "outside_every_repository", "refused_variables", "runtime_env",
+                           # R-H3 (lane vendor-b11 round 3): take_config.config_sha256 reads run_take's one arg0
+                           # link rule, shared with check_config_folder (constants and a pure function)
+                           "CODEX_ARG0_DIR", "CODEX_ARG0_LINKS", "CODEX_EXECUTABLE", "codex_arg0_link"}),
     "secrets": frozenset({"token_hex"}), "shutil": frozenset({"rmtree"}),
     "sidecar_contract": frozenset({"BOOT_INSPECT_CAPABILITIES", "BOOT_USER", "INTERPRETER", "PROGRAM",
                                    "WATCHER_LAUNCHER", "WATCHER_USER"}),
