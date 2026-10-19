@@ -4000,7 +4000,9 @@ def _b19_config_problems(mod, tmp: Path) -> list:
             doc = json.loads((cfg / ".gemini" / "settings.json").read_text())
             if doc.get("tools") != {"exclude": ["google_web_search", "web_fetch"]} or \
                     doc.get("model") != {"name": "gemini-3.8-flash"} or \
-                    doc.get("security") != {"auth": {"selectedType": "gemini-api-key"}} or "modelConfigs" not in doc:
+                    doc.get("security") != {"auth": {"selectedType": "gemini-api-key"},
+                                            "folderTrust": {"enabled": False}} or \
+                    "modelConfigs" not in doc:    # round 18 B9: folder trust off (glitch-26's ruling B9)
                 out.append(f"B19.config: a gemini walk's settings.json reads {doc}")
         elif names:
             out.append(f"B19.config: a Claude Code walk's spec_for wrote {names} into its config folder")
