@@ -35,6 +35,11 @@ rulings R-C, R-CF, R-H2, R-H3, R-H4, R4 to R6 and R-OA of Mon 19 Oct 2026, on la
       the placed set; the fake codex leaves the arg0 folder where its CODEX_HOME points. Four mutants go red: the
       probe back on the config folder, its root in the config folder, the folder not discarded, HOME left on the
       image's.
+  C13 every guard of the check has a test that fails without it (ruling R5-1, the review of round 4's finding 1): a
+      census entry on another device than the root folder's; a codex lease record placed at a path other than
+      <config_dir>/auth.json, or bound to a uid map other than the record's; a record of another harness or another
+      run tree; a placed entry of another kind, or a placed file with a second link; a path the census listed and
+      that is absent at its read. Each is registered as a witness below.
 
 The runtime is a fake that runs each operator step's own program (the -c source in its argv) in-process over the
 mounted folder, its fixed mount path replaced: the census and the reads are the real programs and the real host-side
@@ -48,6 +53,7 @@ registered mutant in its own process and requires its bound test to fail by an A
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import hashlib
 import io
 import json
@@ -833,6 +839,107 @@ class C12VersionProbe(Case):
             for h in ("codex", "gemini"):
                 with self.subTest(mutant=name, harness=h), patch:
                     self.assertNotEqual(version_probe_problems(self, h), [], f"mutant {name} stayed green on {h}")
+
+
+# ---------------------------------------------------------------------------------- C13 (every guard witnessed, R5-1)
+class C13Guards(Case):
+    def check(self, t, folder, *, harness=None, run_tree=None, turn=1):
+        """[] when check_config_folder passes `folder` (another record than t's own), else its problems."""
+        m = rt()
+        try:
+            m.check_config_folder(folder, harness=harness or t.h, run_tree=str(run_tree or t.tree), turn=turn)
+        except m.ConfigFolderRefused as e:
+            return list(e.problems)
+        return []
+
+    def test_an_entry_on_another_device_refuses(self):
+        m = self.api()
+        self.enterContext(mock.patch.object(m, "CODEX_SYSTEM_SKILLS", DEMO_MANIFEST))
+        for h, rel, turn in (("codex", "config.toml", 1), ("gemini", ".gemini/settings.json", 1),
+                             ("codex", "installation_id", 2), ("gemini", ".gemini/projects.json", 2)):
+            t = Take(self, h)
+            if turn == 2:
+                (t.codex_turn_one if h == "codex" else t.gemini_turn_one)()
+            f = t.folder()
+            self.none(self.check(t, f, turn=turn), "C13.device", f"{h}: the folder before turn {turn}")
+
+            def census(real=f.census, rel=rel):
+                return [dict(e, dev=e["dev"] + 1) if e["path"] == rel else e for e in real()]
+            self.refused(self.check(t, dataclasses.replace(f, census=census), turn=turn), "C13.device",
+                         f"{h}: {rel} on another device than the folder", rel, "another device")
+
+    def test_the_lease_record_is_this_folders(self):
+        self.api()
+        t = Take(self, "codex")
+        f = t.folder()
+        self.none(self.check(t, f), "C13.lease-record", "the take's own lease record")
+        for why, lease in (("placed at another path", dataclasses.replace(f.lease, path=str(t.base / "auth.json"))),
+                           ("placed under another folder name",
+                            dataclasses.replace(f.lease, path=str(t.cfg / "tmp" / "auth.json"))),
+                           ("bound to another uid map",
+                            dataclasses.replace(f.lease, uid_map=((AGENT, os.getuid() + 1, 1),))),
+                           ("bound to no uid map", dataclasses.replace(f.lease, uid_map=()))):
+            self.refused(self.check(t, dataclasses.replace(f, lease=lease)), "C13.lease-record",
+                         f"a lease record {why}", "lease record", "uid map")
+
+    def test_the_record_is_this_harness_and_run_trees(self):
+        self.api()
+        c, g = Take(self, "codex"), Take(self, "gemini")
+        self.refused(self.check(c, c.folder(), harness="gemini"), "C13.record", "a codex record on a gemini turn",
+                     "another harness")
+        self.refused(self.check(g, g.folder(), harness="codex"), "C13.record", "a gemini record on a codex turn",
+                     "another harness")
+        for t in (c, g):
+            other = t.base / "run-9f8e7d6c"
+            (other / ".home").mkdir(parents=True)
+            os.chmod(other / ".home", 0o700)
+            self.none(self.check(t, t.folder()), "C13.record", f"{t.h}: the record on its own run tree")
+            self.refused(self.check(t, t.folder(), run_tree=other), "C13.record",
+                         f"{t.h}: the record on another run tree", "another run tree")
+
+    def test_a_placed_entry_of_another_kind_refuses(self):
+        self.api()
+        c = Take(self, "codex")
+        data = (c.cfg / "config.toml").read_bytes()
+        (c.base / "same.toml").write_bytes(data)                       # the same bytes, behind a link
+        os.unlink(c.cfg / "config.toml")
+        os.symlink(c.base / "same.toml", c.cfg / "config.toml")
+        self.refused(c.problems(1), "C13.placed-kind", "config.toml a link to its own bytes", "config.toml",
+                     "placed as a file, now a link")
+        g = Take(self, "gemini")
+        os.unlink(g.cfg / ".gemini" / "settings.json")
+        (g.cfg / ".gemini" / "settings.json").mkdir()
+        self.refused(g.problems(1), "C13.placed-kind", "settings.json a folder", ".gemini/settings.json",
+                     "placed as a file, now a dir")
+
+    def test_a_placed_file_with_another_link_refuses(self):
+        m = self.api()
+        self.enterContext(mock.patch.object(m, "CODEX_SYSTEM_SKILLS", DEMO_MANIFEST))
+        for h, rel, turn in (("codex", "config.toml", 1), ("gemini", ".gemini/settings.json", 1),
+                             ("codex", "config.toml", 2), ("gemini", ".gemini/settings.json", 2)):
+            t = Take(self, h)
+            if turn == 2:
+                (t.codex_turn_one if h == "codex" else t.gemini_turn_one)()
+            os.link(t.cfg / rel, t.base / f"outside-{turn}")              # the bytes unchanged, a second name
+            self.refused(t.problems(turn), "C13.placed-links", f"{h}: {rel} with a second link before turn {turn}",
+                         rel, "placed with one link, now 2")
+
+    def test_a_path_absent_at_its_read_refuses_named(self):
+        m = self.api()
+        self.enterContext(mock.patch.object(m, "CODEX_SYSTEM_SKILLS", DEMO_MANIFEST))
+        for h, rel, turn in (("codex", "config.toml", 1), ("gemini", ".gemini/settings.json", 1),
+                             ("codex", "installation_id", 2), ("gemini", ".gemini/projects.json", 2)):
+            t = Take(self, h)
+            if turn == 2:
+                (t.codex_turn_one if h == "codex" else t.gemini_turn_one)()
+            f = t.folder()
+
+            def census(real=f.census, path=t.cfg / rel):                  # listed, then gone before its read
+                entries = real()
+                os.unlink(path)
+                return entries
+            self.refused(self.check(t, dataclasses.replace(f, census=census), turn=turn), "C13.absent",
+                         f"{h}: {rel} gone between the census and its read", rel, "absent at its read")
 
 
 # ------------------------------------------------------------------------------------------------- witnesses
