@@ -564,7 +564,7 @@ class TestB18CodexSwitches(MutantCase):
         for row in rows:
             d = tempfile.mkdtemp(prefix="w-")
             try:
-                tc.write(d, tc.CODEX, model=row)
+                tc.write(d, tc.CODEX, model=row, run_tree=RUN_TREE)    # R-H1: a codex config names its run tree
                 with open(os.path.join(d, "config.toml"), "rb") as fh:
                     doc = tomllib.load(fh)
             except Exception as exc:
@@ -577,7 +577,8 @@ class TestB18CodexSwitches(MutantCase):
             rest = copy.deepcopy(doc)
             rest.get("features", {}).pop("plugins", None)
             rest.pop("otel", None)
-            want = dict(B18_BEFORE, model=row, model_reasoning_effort=R3_VALUES["CODEX_REASONING_EFFORT"][row])
+            want = dict(B18_BEFORE, model=row, model_reasoning_effort=R3_VALUES["CODEX_REASONING_EFFORT"][row],
+                        projects={RUN_TREE: {"trust_level": "trusted"}})    # R-H1's trust table, B11's own key
             if rest != want:
                 out.append(f"{row}: the config's other keys read {rest}, not {want}")
         sources = getattr(tc, "VALUE_SOURCES", {})
