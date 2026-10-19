@@ -644,6 +644,46 @@ class C10AgentHome(Case):
             self.refused(t.problems(1), "R-OA.home", f"{h}: .home owned by another uid", ".home", "owned")
 
 
+# ---------------------------------------------------------------------------------- C11 (the drive's wiring)
+class C11DriveWiring(Case):
+    def test_each_o_and_g_adapter_gets_the_takes_record(self):
+        import drive
+        from types import SimpleNamespace
+        take = SimpleNamespace(launched=SimpleNamespace(take_id="d" * 64, spec=SimpleNamespace(run_tree="/srv/w/t")),
+                               spec=SimpleNamespace(image=IMAGE, run_tree="/srv/w/t"), config_dir="/srv/c/cfg",
+                               identity={"session_id": "s"}, folder="/srv/w/records",
+                               row={"agent": {"harness": "codex"}, "model": "gpt-6.1-sol"})
+        asked = []
+
+        def config_folder(tk, lease):
+            asked.append((tk, lease))
+            return ("RECORD", len(asked))
+        factory = drive.harness_adapter_for(runtime=None, login_file=lambda tk: "LEASE-RECORD",
+                                            counters_for=lambda tk: {}, clock=lambda: 0,
+                                            pin_for=lambda row: {"permission_mode": {"codex": "bypass", "gemini": "yolo",
+                                                                                     "claude-code": "bypass"}
+                                                                 .get(row["agent"]["harness"])},
+                                            rollout_for=lambda tk, n: "r", config_folder=config_folder)
+        got = {h: factory({"agent": {"harness": h}, "model": "synthetic-model"}, take) for h in ("codex", "gemini")}
+        self.assertEqual([(tk is take, lease) for tk, lease in asked], [(True, "LEASE-RECORD"), (True, None)],
+                         "R-CF.drive: the factory did not ask for the take's record with the codex lease alone")
+        self.assertEqual((got["codex"].config_folder, got["gemini"].config_folder), (("RECORD", 1), ("RECORD", 2)),
+                         "R-CF.drive: an adapter does not hold the take's record")
+        src = Path(drive.__file__).read_text()
+        self.assertIn('config_folder=lambda take, lease: bound["driver"].config_folder(take, lease)', src,
+                      "R-CF.drive: walk_driver does not bind the driver's config folder record")
+        calls = []
+        road = SimpleNamespace(config_folder=lambda runtime, **kw: calls.append((runtime, kw)) or "BUILT")
+        driver = SimpleNamespace(runtime="RUNTIME", ownership=road, uid_map=lambda tk: ((10001, 1000, 1),),
+                                 caller_env={"PATH": "/usr/bin"})
+        self.assertEqual(drive.TakeDriver.config_folder(driver, take, "LEASE-RECORD"), "BUILT")
+        self.assertEqual(calls, [("RUNTIME", {"image": IMAGE, "harness": "codex", "run_tree": "/srv/w/t",
+                                              "config_dir": "/srv/c/cfg", "model": "gpt-6.1-sol",
+                                              "lease": "LEASE-RECORD", "uid_map": ((10001, 1000, 1),),
+                                              "caller_env": {"PATH": "/usr/bin"}})],
+                         "R-CF.drive: the record is not built from the take's own facts")
+
+
 # ------------------------------------------------------------------------------------------------- witnesses
 def mutants() -> dict:
     """name -> (clause, old text in box/run_take.py, new text). Each weakens one guard; old occurs exactly once."""

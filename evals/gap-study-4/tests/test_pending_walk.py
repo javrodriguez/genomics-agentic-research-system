@@ -157,10 +157,7 @@ class Road:
         # has filled it (Gemini: bea73659 / 3a0d7f5a; Codex: 9d4bfd40) the real list is checked (the Gemini walk wiring).
         routes = dict(rt.VENDOR_BILLING_ROUTE_VARIABLES)
         routes.update({h: () for h in (rt.CODEX, rt.GEMINI) if routes.get(h) == rt.PENDING})
-        # B11 (lane vendor-b11 round 3): run_take.check_config_folder runs before every O and G exec and refuses a turn
-        # without its take's record; drive.py (a native reader source, frozen outside edits B and C) does not hand one
-        # yet (BLOCKED ON glitch-26), so on this road the check is a recording spy. Its own tests: test_config_folder.
-        self.config_checks: list = []
+        self.config_checks: list = []      # B11's per-turn check, recorded: its own tests are test_config_folder's
         for name, value in (("VENDOR_BILLING_ROUTE_VARIABLES", routes),
                             ("run_turn", journaling(run_turn or rt.run_turn)),
                             ("check_config_folder", lambda folder, **kw: self.config_checks.append((folder, kw)))):
@@ -205,7 +202,9 @@ class Road:
             adapter_for=drive.harness_adapter_for(runtime=r.box, login_file=str(login),
                                                   counters_for=lambda take: {"oom_kill": 0, "pids_max": 0},
                                                   pin_for=self.pin_for, clock=r.clock,
-                                                  config_view=lambda take: self.driver.config_view(take)),
+                                                  config_view=lambda take: self.driver.config_view(take),
+                                                  config_folder=lambda take, lease: self.driver.config_folder(take,
+                                                                                                             lease)),
             script_for=lambda row: [{"n": k, "line": f"sent {k}"} for k in range(1, turns + 1)],
             pin_for=self.pin_for, checker=self.never_checked, secrets=lambda: [("token", tbi.TOKEN)],
             rules_scanner=lambda paths: [], uid_map=tbi.UID_MAP, budget_s=600, finalize_wait_s=tbi.CAP_S,
@@ -346,6 +345,12 @@ class PendingWalk(unittest.TestCase):
         for k in (1, 2):
             self.assertTrue((road.folder / f"turn-{k}.jsonl.launch.json").is_file())
             self.assertTrue((road.folder / "session" / f"native-turn-{k}.jsonl").is_file())
+        # B11 (lane vendor-b11 round 3, R-CF): each turn reached run_take's config folder check with the take's record
+        # from the driver's ownership road (TakeDriver.config_folder) and its number
+        checks = [(kw["harness"], kw["turn"], folder.get("harness"), folder.get("model"), folder.get("lease"),
+                   folder.get("uid_map")) for folder, kw in road.config_checks]
+        self.assertEqual(checks, [("gemini", k, "gemini", MODEL, None, tbi.UID_MAP)
+                                  for k in (1, 2)])
         self.assertEqual(walk_register.check(road.study / "rehearsals", walk_register.design_in_force(road.study))[0],
                          [])
         self.assertEqual(run.walk_problems(road.study)[0], [])

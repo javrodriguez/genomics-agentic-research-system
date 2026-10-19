@@ -580,6 +580,60 @@ def s2_turn_one(mod, p):
     return out
 
 
+@contextmanager
+def config_refused_at(k: int):
+    """B11 (lane vendor-b11 round 3): the fake turn k raises run_take.ConfigFolderRefused before anything of it runs,
+    as run_take.run_turn does for an arm O or G turn whose config folder check refuses (tests/test_config_folder.py)."""
+    real = tbi.FakeAdapter._turn
+
+    def turn(self, line, *, first, budget_s):
+        if self._turns + 1 == k:
+            raise rt.ConfigFolderRefused(["extra.txt: neither placed nor on codex's allow-list"], k)
+        return real(self, line, first=first, budget_s=budget_s)
+    with mock.patch.object(tbi.FakeAdapter, "_turn", turn):
+        yield
+
+
+@tbi.guarded("C1-config-turn-one")
+def c1_config_turn_one(mod, p):
+    """B11 R-CF: a config folder refusal before turn 1 is routed as the settings guard's pre-1 problem is: no turn is
+    sent, the take rehearses, and the refusal record names the config folder."""
+    out = []
+    with tbi.scratch_repo() as root:
+        rig = tbi.Rig(mod, root)
+        with config_refused_at(1):
+            b, got = tbi.run_batch(rig, [tbi.row(1)])
+        o = got[0]
+        if o["state"] != tbi.labels4.REHEARSAL:
+            out.append(f"{p}: a config folder refusal before turn 1 is {o['state']} ({o['reason']})")
+        if rig.adapters and rig.adapters[0].lines:
+            out.append(f"{p}: turn 1 was sent: {rig.adapters[0].lines}")
+        take = rig.driver.published_takes[0] if rig.driver.published_takes else None
+        rec = read(os.path.join(take.folder, mod.REFUSAL_RECORD)) if take else None
+        if not rec or rec.get("refused") != "ConfigFolderRefused" or "extra.txt" not in rec.get("why", ""):
+            out.append(f"{p}: the refusal is not recorded with its problems: {rec}")
+    return out
+
+
+@tbi.guarded("C2-config-later")
+def c2_config_later(mod, p):
+    """B11 R-CF: a config folder refusal before turn k > 1 stops the take as the settings guard's pre-k problem does:
+    nothing further is sent, and the take is kept for a ruling, never a re-run (harness-error's side, not graded)."""
+    out = []
+    with tbi.scratch_repo() as root:
+        rig = tbi.Rig(mod, root, turns=[{"text": "a"}, {"text": "b"}, {"text": "c"}])
+        with config_refused_at(2):
+            b, got = tbi.run_batch(rig, [tbi.row(1)])
+        o = got[0]
+        if o["state"] != tbi.labels4.FAILED or o["drive_started"] is not True or "pre-2" not in (o["reason"] or "") \
+                or "config folder" not in (o["reason"] or ""):
+            out.append(f"{p}: a config folder refusal before turn 2 is {o['state']} (drive_started "
+                       f"{o['drive_started']}): {o['reason']}")
+        if len(rig.adapters[0].lines) != 1:
+            out.append(f"{p}: {len(rig.adapters[0].lines)} lines were sent, not 1")
+    return out
+
+
 @tbi.guarded("S3-later")
 def s3_later(mod, p):
     out = []
@@ -843,7 +897,8 @@ CHECKS = {"O1-grant": o1_grant, "O2-restore": o2_restore, "O3-launch": o3_launch
           "S1-baseline": s1_baseline, "S2-turn-one": s2_turn_one, "S3-later": s3_later, "B3-one-road": b3_one_road,
           "U1-uid-map": u1_uid_map, "P2-machine": p2_machine,
           "L1-ledger": l1_ledger, "N1-native": n1_native,
-          "S4-executed": s4_executed, "O9-early": o9_early, "R6-ruling": r6_ruling}
+          "S4-executed": s4_executed, "O9-early": o9_early, "R6-ruling": r6_ruling,
+          "C1-config-turn-one": c1_config_turn_one, "C2-config-later": c2_config_later}
 
 # name: (edits to drive.py, the check whose own line must go red)
 MUTANTS = {
@@ -914,6 +969,12 @@ MUTANTS = {
     "post-unchecked": ((("                    after = self._settings_problems(take, f\"post-{n}\")   # the settings guard, "
                          "the last turn's too",
                          "                    after = []"),), "S3-later"),
+    "config-turn-one-not-rehearsed": ((("                        if n == 1:                                # routed as "
+                                        "the settings guard is: a rehearsal",
+                                        "                        if False:                                # routed as "
+                                        "the settings guard is: a rehearsal"),), "C1-config-turn-one"),
+    "config-later-unstopped": ((("        if take.config_stop is not None:          # B11 after turn 1",
+                                 "        if False:          # B11 after turn 1"),), "C2-config-later"),
     "missing-snapshot-passes": ((("            problems = [f\"{label}: the settings check could not run "
                                   "({type(e).__name__}: {str(e)[:200]})\"]",
                                   "            problems = []"),), "S3-later"),
@@ -981,6 +1042,12 @@ class TestOwnershipRoad(unittest.TestCase):
     def test_s3_later(self):
         self.assertEqual(s3_later(tbi.drive), [])
 
+    def test_c1_config_turn_one(self):
+        self.assertEqual(c1_config_turn_one(tbi.drive), [])
+
+    def test_c2_config_later(self):
+        self.assertEqual(c2_config_later(tbi.drive), [])
+
     def test_b3_one_road(self):
         self.assertEqual(b3_one_road(tbi.drive), [])
 
@@ -1025,6 +1092,12 @@ class TestOwnershipMutants(unittest.TestCase):
 
     def test_grant_skipped(self):
         self.kill("grant-skipped")
+
+    def test_config_turn_one_not_rehearsed(self):
+        self.kill("config-turn-one-not-rehearsed")
+
+    def test_config_later_unstopped(self):
+        self.kill("config-later-unstopped")
 
     def test_restore_after_postflight(self):
         self.kill("restore-after-postflight")

@@ -33,6 +33,12 @@ readers-disagree before checker_for.
               stream; and for edit C, the rebinding taken out (the review's masked-address mutant), the envelopes
               left on the unmasked bytes, the snapshots left on the unmasked bytes, and the rebinding also run for
               claude-code with its envelope write unguarded: each goes red.
+  ED-record   edit D (lane vendor-b11 round 4, glitch-26's ruling R4-1): the drive hands each arm O and G adapter its
+              take's config folder record and routes run_take.ConfigFolderRefused as the settings guard is. Piece EB
+              records it as edits B and C are: drive.py's sha256 after edit D is pinned (POST_EDIT_D_DRIVE_SHA256),
+              the edit names its ruling and reason, drive.py with edit D taken out (without_edit_d) and then edits B
+              and C is drive.py before edit B, and drive.py with any one of edit D's hunks taken out, or one line
+              moved outside the three edits, fails piece EB.
 
 Fakes and synthetic strings only (the address is test_box_integration's synthetic .invalid one), inside
 test_box_integration's process guard with test_drive_loop's checker world, in scratch folders: no take, model,
@@ -403,6 +409,32 @@ class EditBWitnesses(unittest.TestCase):
                                                 f"witness {name} stayed green on {harness}")
                         finally:
                             self.doCleanups()
+
+
+class EditD(unittest.TestCase):
+    def test_ed_record_edit_d_is_pinned_and_named(self):
+        src = drive_source()
+        hunks = getattr(cvs, "EDIT_D", None)
+        self.assertTrue(isinstance(hunks, tuple) and hunks, "check_vendor_sources records no edit D")
+        self.assertIn("R4-1", getattr(cvs, "EDIT_D_RULING", ""), "edit D does not name its ruling")
+        self.assertEqual(getattr(cvs, "POST_EDIT_D_DRIVE_SHA256", None),
+                         hashlib.sha256(src.encode("utf-8")).hexdigest(), "drive.py after edit D is not pinned")
+        self.assertEqual(cvs.problems("EB", ["drive.py"]), [])
+        self.assertEqual(hashlib.sha256(cvs.without_edits(src).encode("utf-8")).hexdigest(),
+                         cvs.PRE_EDIT_B_DRIVE_SHA256, "drive.py without edits B, C and D is not drive.py before B")
+
+    def test_ed_record_a_partial_or_widened_edit_d_fails_piece_eb(self):
+        src = drive_source()
+        hunks = getattr(cvs, "EDIT_D", None) or ()
+        self.assertTrue(hunks, "check_vendor_sources records no edit D")
+        for k, (before, after) in enumerate(hunks):
+            with self.subTest(hunk=k):
+                self.assertEqual(src.count(after), 1, f"edit D hunk {k} is not in drive.py exactly once")
+                self.assertNotEqual(cvs.edit_b_problems(src.replace(after, before)), [],
+                                    f"piece EB admitted drive.py without edit D's hunk {k}")
+        moved = src.replace("class TakeDriver:\n", "class TakeDriver:\n    # moved\n", 1)
+        self.assertNotEqual(cvs.edit_b_problems(moved), [], "piece EB admitted a line moved outside edits B to D")
+        self.assertNotEqual(cvs.edit_d_problems(moved), [], "the pinned sha256 admitted a moved drive.py")
 
 
 if __name__ == "__main__":
