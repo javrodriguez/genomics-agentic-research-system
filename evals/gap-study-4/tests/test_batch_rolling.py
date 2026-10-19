@@ -119,14 +119,15 @@ class EqualRepo(tb.FakeRepo):
         super().commit_records(row, attempt, outcome)
 
 
-def drive_run(row_list, plan=None, units=None, equal=False):
-    """One run of batch.Batch on the stubs, under the hang detector: (loop, outcomes, world, driver, repo, window)."""
+def drive_run(row_list, plan=None, units=None, equal=False, mod=batch, cls=None, driver=None, repo=None):
+    """One run of batch.Batch on the stubs, under the hang detector: (loop, outcomes, world, driver, repo, window).
+    Round 3: `mod` is batch.py or a witness of it; `cls`, `driver` and `repo` replace the loop, driver and repo."""
     w = tb.World()
-    d = TimedDriver(w, plan, units)
-    r = EqualRepo(w) if equal else tb.FakeRepo(w)
+    d = (driver or TimedDriver)(w, plan, units)
+    r = (repo or (EqualRepo if equal else tb.FakeRepo))(w)
     r.driver = d
     win = tb.FakeWindow(w)
-    b = batch.Batch(d, r, win, table=tb.test_table())
+    b = (cls or mod.Batch)(d, r, win, table=tb.test_table())
     got = {}
     t = threading.Thread(target=lambda: got.setdefault("out", b.run(row_list)), daemon=True)
     t.start()
@@ -588,6 +589,50 @@ class TestRestartOwesTheOpenTakes(unittest.TestCase):
         self.assertIsNotNone(anchor, "restart_waits does not read the last MAX_OPEN outcomes")
         self.assertTrue(batch.restart_waits(r.history()))
         self.assertFalse(tb.restart_waits_mutant(anchor, "[-BLOCK:]")(r.history()))
+
+
+# ------------------------------------------------------------------------------------------------- round 3
+class RefusingRepo(tb.FakeRepo):
+    """A register failure at slot 4: the wave it opens is never registered (W1B2-5)."""
+
+    def register(self, row, attempt):
+        if row["slot"] == 4:
+            raise RuntimeError("synthetic register failure")
+        super().register(row, attempt)
+
+
+class RefusingBatch(batch.Batch):
+    """The money gate refusing every wave from slot 4 on (W7C): the refusal's road in the loop, not its reasons."""
+
+    def _money_gate(self, wave):
+        row, attempt = wave[0]
+        if row["slot"] < 4:
+            return super()._money_gate(wave)
+        self.stopped = {"slot": row["slot"], "attempt": attempt, "state": labels4.BLOCKED,
+                        "reason": "synthetic money gate refusal"}
+        return True
+
+
+class TestNightlyCarrier(unittest.TestCase):
+    """B19-14: the nightly stop's carrier is set once the wave is launched. Slots 1 to 3 end harness-errors, slot 1
+    slow; the wave from slot 4 is refused by the money gate or fails to register while they are open; their commits
+    bring the night's count to NIGHTLY_HARNESS_ERRORS, and the stop is carried by the last take launched, slot 3."""
+
+    PLAN = {(s, 1): "watcher-overflow" for s in (1, 2, 3)}
+
+    def test_a_refused_wave_leaves_no_carrier_on_an_uncommitted_row(self):
+        self.assertEqual(batch.NIGHTLY_HARNESS_ERRORS, 3)
+        for name, kw in {"the money gate refuses": dict(cls=RefusingBatch),
+                         "a register failure": dict(repo=RefusingRepo)}.items():
+            with self.subTest(name):
+                b, out, w, d, r, win = drive_run(slow_head_rows(6), plan=self.PLAN, units={1: SLOW}, **kw)
+                committed = [(o["slot"], o["attempt"]) for o in out]
+                self.assertEqual(committed, [(1, 1), (2, 1), (3, 1)])
+                self.assertIsNotNone(b.stopped)
+                self.assertNotIn(4, [e[2] for e in w.events if e[1] == "launch"])
+                self.assertIn(b._block_last, committed, "the nightly stop's carrier names a row never committed")
+                self.assertEqual([(o["slot"], o["attempt"]) for o in out
+                                  if (o["stop"] or "").startswith(batch.NIGHTLY_STOP)], [(3, 1)])
 
 
 if __name__ == "__main__":
