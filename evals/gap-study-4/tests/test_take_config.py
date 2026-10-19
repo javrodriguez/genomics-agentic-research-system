@@ -587,6 +587,81 @@ class TestHashAndNames(MutantCase):
         ])
 
 
+# R-H3 (glitch-26's ruling on lane vendor-b11, round 3): a killed Codex turn leaves tmp/arg0/codex-arg0??????/ with
+# .lock and four links to the image's codex executable (arg0/src/lib.rs 21-25, 358, 373-375, 395-400 at rust-v0.162.1).
+# config_sha256 hashes exactly those four by name and target string, never following them, and refuses every other
+# link. The executable is the pinned take-o image's, as measured (the athena name sweep's binary_path).
+CODEX_EXE = ("/usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/"
+             "x86_64-unknown-linux-musl/bin/codex")
+ARG0_NAMES = ("apply_patch", "applypatch", "codex-linux-sandbox", "codex-execve-wrapper")
+
+
+def killed_codex(folder, *, names=ARG0_NAMES, sub="tmp/arg0/codex-arg0AbC123", target=CODEX_EXE):
+    d = os.path.join(folder, *sub.split("/"))
+    os.makedirs(d, exist_ok=True)
+    open(os.path.join(d, ".lock"), "w").close()
+    for n in names:
+        os.symlink(target, os.path.join(d, n))
+    return d
+
+
+class TestArg0Links(MutantCase):
+    def check_arg0_links(self):
+        out = []
+        if getattr(tc, "CODEX_EXECUTABLE", None) != CODEX_EXE or tuple(getattr(tc, "CODEX_ARG0_LINKS", ())) != \
+                ARG0_NAMES:
+            return ["R-H3: take_config does not name the image's codex executable and the four arg0 link names"]
+        a, ra = written(tc.CODEX, "gpt-6.1-sol")
+        killed_codex(a)
+        try:
+            first = tc.config_sha256(a)
+        except tc.Refused as e:
+            return [f"R-H3: a killed Codex turn's four arg0 links refused: {e}"]
+        if first == ra["sha256"]:
+            out.append("R-H3: the hash does not see the four links")
+        b, _ = written(tc.CODEX, "gpt-6.1-sol")
+        killed_codex(b, sub="tmp/arg0/codex-arg0ZyX987")
+        if tc.config_sha256(b) == first:
+            out.append("R-H3: the hash does not see the link's folder name")
+        refused = {
+            "a fifth name": dict(names=ARG0_NAMES + ("codex",)),
+            "a link at another depth": dict(sub="tmp/arg0"),
+            "a link one level deeper": dict(sub="tmp/arg0/codex-arg0AbC123/x"),
+            "a folder off the tempfile shape": dict(sub="tmp/arg0/codex-arg0AbC"),
+            "a folder outside tmp/arg0": dict(sub="tmp/x/codex-arg0AbC123"),
+            "a target that is not the executable": dict(target="/bin/sh"),
+            "a relative target": dict(target="codex"),
+        }
+        for why, kw in refused.items():
+            c, _ = written(tc.CODEX, "gpt-6.1-sol")
+            killed_codex(c, **kw)
+            try:
+                tc.config_sha256(c)
+                out.append(f"R-H3: {why} was hashed")
+            except tc.Refused:
+                pass
+        d, _ = written(tc.CODEX, "gpt-6.1-sol")
+        os.makedirs(os.path.join(d, "tmp", "arg0"))
+        os.symlink(os.path.join(d, "tmp"), os.path.join(d, "tmp", "arg0", "codex-arg0AbC123"))
+        try:
+            tc.config_sha256(d)
+            out.append("R-H3: a folder link at the arg0 folder's place was hashed")
+        except tc.Refused:
+            pass
+        return out
+
+    def test_the_arg0_links(self):
+        self.assert_green_then_red(self.check_arg0_links, [
+            ("any-link", patched(tc, "codex_arg0_link", lambda rel, target: True)),
+            ("name-only", patched(tc, "codex_arg0_link",
+                                  lambda rel, target: rel.rsplit("/", 1)[-1] in ARG0_NAMES)),
+            ("no-target-check", patched(tc, "codex_arg0_link", lambda rel, target: re.fullmatch(
+                r"tmp/arg0/codex-arg0[A-Za-z0-9]{6}/(apply_patch|applypatch|codex-linux-sandbox|codex-execve-wrapper)",
+                rel) is not None)),
+            ("no-link-admitted", patched(tc, "codex_arg0_link", lambda rel, target: False)),
+        ])
+
+
 # Taken last, after every import-time statement of this module: must be empty (setUpModule arms the guard).
 _PATCHED_AT_IMPORT = _patched_now()
 
