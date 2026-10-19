@@ -11,12 +11,22 @@ C's lines (the one statement of TakeDriver.drive right after the drive scan's `i
 before edit B (PRE_EDIT_B_DRIVE_SHA256, its text at f628e9d8), so no other drive.py line moves. Edit D (lane vendor-b11
 round 4, glitch-26's ruling R4-1: EDIT_D_RULING) is recorded the same way: its hunks (EDIT_D) are taken out by their
 text before edits C and B, and drive.py after it is pinned whole (POST_EDIT_D_DRIVE_SHA256). Any such edit after
-Javier's acceptance commit makes production_readers refuse, so a piece naming one is a red check, never a note."""
+Javier's acceptance commit makes production_readers refuse, so a piece naming one is a red check, never a note.
+
+Piece B17 (glitch-26's ruling B17-5, lane vendor-b17 round 2, Mon 19 Oct 2026: OD57's read shapes reach the drive
+scan) admits drive.py only with its exact edit: the module function scan_read_shapes (B17_HELPER_SHA256 pins its text
+from its `def` line to its last line) after two blank lines, and in each of the drive's three `_scan_record.scan(...)`
+calls one line holding only `read_shapes=scan_read_shapes(row),` in TakeRepo._commit_step and TakeDriver.drive, and
+`read_shapes=scan_read_shapes(entry),` in WalkRepo._commit_walk (B17_SITES, round 3). Every other drive.py line is then
+bound by piece EB's check as before: edit_b_problems, edit_d_problems and without_edits read drive.py with B17's
+lines taken out (so edit D's whole-file pin, POST_EDIT_D_DRIVE_SHA256, holds drive.py outside B17's exact lines), and
+report any trace of B17 that is off its exact form."""
 
 from __future__ import annotations
 
 import ast
 import hashlib
+import re
 import sys
 from pathlib import Path
 
@@ -27,9 +37,85 @@ if str(HERE) not in sys.path:
 
 import native_reader_registration as nrr  # noqa: E402
 
-PIECES = ("PF", "P0", "P0b", "P1", "P2", "P3", "P4", "P5", "EB")
-ALLOWED = {"P0": {"drive.py"}, "EB": {"drive.py"}}
+PIECES = ("PF", "P0", "P0b", "P1", "P2", "P3", "P4", "P5", "EB", "B17")
+ALLOWED = {"P0": {"drive.py"}, "EB": {"drive.py"}, "B17": {"drive.py"}}
 PRE_EDIT_B_DRIVE_SHA256 = "ea3917d4e4c1acc2078b1779bab0c6c47304aee920c8d2f2dc3423ec33934906"
+B17_HELPER = "scan_read_shapes"
+B17_HELPER_SHA256 = "f2ad5a5fae8467f8545fd55bb7295a1647d3af7568e8ec1c4a32ec9f992bd713"
+B17_CALLS = 3
+# Round 3 (glitch-26's B17-14, review a051f6e3 NIT 4): each call site's argument name, by its enclosing function:
+# TakeRepo._commit_step and TakeDriver.drive pass the row, WalkRepo._commit_walk its register entry.
+B17_SITES = {"_commit_step": "row", "drive": "row", "_commit_walk": "entry"}
+
+
+def _scan_calls(tree) -> list:
+    return [n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+            and n.func.attr in ("scan", "scan_with_witness") and isinstance(n.func.value, ast.Name)
+            and n.func.value.id == "_scan_record"]
+
+
+def _call_sites(tree) -> dict:
+    """{id(scan call): the name of the innermost function holding it}."""
+    out = {}
+    for fn in ast.walk(tree):
+        if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for c in _scan_calls(fn):
+                out[id(c)] = fn.name                # ast.walk visits outer functions first, so the inner one wins
+    return out
+
+
+def b17_spans(src: str) -> tuple:
+    """(spans, problems): the 1-based (first, last) line spans of piece B17's drive.py edit, and what is off its exact
+    form. No helper and no read_shapes keyword: no spans and no problems (drive.py before B17)."""
+    try:
+        tree = ast.parse(src)
+    except SyntaxError as e:
+        return [], [f"piece B17: drive.py does not parse: {e}"]
+    lines = src.splitlines(keepends=True)
+    calls = _scan_calls(tree)
+    helpers = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == B17_HELPER]
+    keywords = [(c, k) for c in calls for k in c.keywords if k.arg == "read_shapes"]
+    if not helpers and not keywords:
+        return [], []
+    spans, out = [], []
+    if len(helpers) != 1:
+        out.append(f"piece B17: drive.py defines {B17_HELPER} {len(helpers)} times, not once")
+    else:
+        h = helpers[0]
+        text = "".join(lines[h.lineno - 1:h.end_lineno])
+        if h.decorator_list or hashlib.sha256(text.encode("utf-8")).hexdigest() != B17_HELPER_SHA256:
+            out.append(f"piece B17: {B17_HELPER}'s text is not the pinned one (B17_HELPER_SHA256)")
+        if h.lineno < 3 or lines[h.lineno - 3] != "\n" or lines[h.lineno - 2] != "\n":
+            out.append(f"piece B17: {B17_HELPER} is not preceded by two blank lines")
+        spans.append((h.lineno - 2, h.end_lineno))
+    if len(calls) != B17_CALLS or len(keywords) != B17_CALLS or {id(c) for c, _ in keywords} != {id(c) for c in calls}:
+        out.append(f"piece B17: drive.py's {len(calls)} scan calls carry {len(keywords)} read_shapes keywords, not one "
+                   f"in each of {B17_CALLS}")
+    sites = _call_sites(tree)
+    if sorted(sites.get(id(c)) or "" for c in calls) != sorted(B17_SITES):
+        out.append(f"piece B17: drive.py's scan calls sit in {sorted(sites.get(id(c)) or '?' for c in calls)}, not "
+                   f"{sorted(B17_SITES)}")
+    for c, k in keywords:
+        name = B17_SITES.get(sites.get(id(c)), "?")
+        line = lines[k.value.lineno - 1]
+        if k.value.lineno != k.value.end_lineno or not re.fullmatch(
+                r" +read_shapes=scan_read_shapes\(" + re.escape(name) + r"\),\n", line):
+            out.append(f"piece B17: drive.py line {k.value.lineno} is not one line holding only "
+                       f"read_shapes=scan_read_shapes({name}),")
+        spans.append((k.value.lineno, k.value.lineno))
+    return sorted(spans), out
+
+
+def b17_problems(src: str) -> list:
+    """What is off piece B17's exact drive.py edit (nothing when drive.py holds no trace of it)."""
+    return b17_spans(src)[1]
+
+
+def without_b17(src: str) -> str:
+    """drive.py's text with piece B17's lines taken out (before B17, the text itself)."""
+    spans = b17_spans(src)[0]
+    drop = {n for first, last in spans for n in range(first, last + 1)}
+    return "".join(line for n, line in enumerate(src.splitlines(keepends=True), 1) if n not in drop)
 
 # Edit D (lane vendor-b11 round 4, glitch-26's ruling R4-1, Mon 19 Oct 2026): the drive-side wiring of B11's per-turn
 # config folder check, the round-3 proposed patch applied as it stood. Each hunk is (before, after): `after` occurs in
@@ -170,20 +256,26 @@ def without_edit_d(src: str) -> str:
 
 
 def without_edits(src: str) -> str:
-    """drive.py's text with edits D, C and B taken out: D first (by its text), then C, as it lies below B, so B's lines
-    do not move."""
-    return without_edit_b(without_edit_c(without_edit_d(src)))
+    """drive.py's text with piece B17's lines (by their spans), then edits D (by its text), C and B taken out: C before
+    B, as it lies below B, so B's lines do not move."""
+    return without_edit_b(without_edit_c(without_edit_d(without_b17(src))))
 
 
 def edit_d_problems(src: str) -> list:
-    """Edit D's pin: drive.py's sha256 is the one recorded after edit D (POST_EDIT_D_DRIVE_SHA256)."""
-    got = hashlib.sha256(src.encode("utf-8")).hexdigest()
+    """Edit D's pin: drive.py with piece B17's exact lines taken out has the sha256 recorded after edit D
+    (POST_EDIT_D_DRIVE_SHA256); B17's lines are bound by b17_problems."""
+    got = hashlib.sha256(without_b17(src).encode("utf-8")).hexdigest()
     return [] if got == POST_EDIT_D_DRIVE_SHA256 else [
         f"edit D: drive.py's sha256 {got[:12]}... is not the one pinned after edit D ({POST_EDIT_D_DRIVE_SHA256[:12]}...)"]
 
 
 def edit_b_problems(src: str) -> list:
-    """Edits B, C and D, each present, and drive.py outside them drive.py before edit B."""
+    """Piece B17's lines, when drive.py holds any, exactly its edit; then, with them taken out, edits B, C and D, each
+    present, and drive.py outside them drive.py before edit B."""
+    b17 = b17_problems(src)
+    if b17:
+        return b17
+    src = without_b17(src)
     try:
         without_edit_d(src)
     except ValueError as e:
@@ -216,8 +308,10 @@ def problems(piece: str, files: list) -> list:
            if f in listed and f not in ALLOWED.get(piece, set())]
     out += [f"piece {piece} names {f}, which is not a file under evals/gap-study-4/" for f in files
             if not (HERE / f).is_file()]
-    if piece == "EB" and "drive.py" in files and (HERE / "drive.py").is_file():
+    if piece in ("EB", "B17") and "drive.py" in files and (HERE / "drive.py").is_file():
         text = (HERE / "drive.py").read_text(encoding="utf-8")
+        if piece == "B17" and not b17_spans(text)[0]:
+            out.append("piece B17: drive.py holds no B17 edit (scan_read_shapes and its three read_shapes lines)")
         out += edit_b_problems(text) + edit_d_problems(text)
     return out
 

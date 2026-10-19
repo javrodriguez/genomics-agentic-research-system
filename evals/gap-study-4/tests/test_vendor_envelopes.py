@@ -417,8 +417,12 @@ class EditD(unittest.TestCase):
         hunks = getattr(cvs, "EDIT_D", None)
         self.assertTrue(isinstance(hunks, tuple) and hunks, "check_vendor_sources records no edit D")
         self.assertIn("R4-1", getattr(cvs, "EDIT_D_RULING", ""), "edit D does not name its ruling")
+        # merge of B17 (lane vendor-b17): edit D's pin holds drive.py with piece B17's exact lines taken out (B17's lines
+        # are bound by check_vendor_sources.b17_problems), as edit_d_problems reads it
+        self.assertEqual(cvs.b17_problems(src), [], "piece B17's drive.py lines are off their exact form")
         self.assertEqual(getattr(cvs, "POST_EDIT_D_DRIVE_SHA256", None),
-                         hashlib.sha256(src.encode("utf-8")).hexdigest(), "drive.py after edit D is not pinned")
+                         hashlib.sha256(cvs.without_b17(src).encode("utf-8")).hexdigest(),
+                         "drive.py after edit D is not pinned")
         self.assertEqual(cvs.problems("EB", ["drive.py"]), [])
         self.assertEqual(hashlib.sha256(cvs.without_edits(src).encode("utf-8")).hexdigest(),
                          cvs.PRE_EDIT_B_DRIVE_SHA256, "drive.py without edits B, C and D is not drive.py before B")

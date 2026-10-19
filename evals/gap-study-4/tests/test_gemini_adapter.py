@@ -1257,6 +1257,18 @@ def a14_journal(mod, p):
     return out
 
 
+# Lane vendor-b17 round 2 (glitch-26's ruling B17-5, 19 Oct 2026): arm G's OD57 read shapes, pinned by their bytes so
+# the generated sweep kills every mutant of them; what they admit and refuse is tests/test_scan_record.py's.
+READ_SHAPES_SHA256 = "0ee23c456e3f8b9c856a76582d337c4dae69d9841f1a5c653582ee6d55a2b1f1"   # round 4 (NIT 2, copy_of)
+
+
+@guarded("A15-read-shapes", ("READ_SHAPES",))
+def a15_read_shapes(mod, p):
+    """The module's READ_SHAPES, as JSON with sorted keys, hash to the pinned bytes."""
+    got = hashlib.sha256(json.dumps(mod.READ_SHAPES, sort_keys=True).encode()).hexdigest()
+    return [] if got == READ_SHAPES_SHA256 else [f"{p}: READ_SHAPES is not the pinned records ({got[:12]})"]
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestTheShapes(unittest.TestCase):
     def test_s1_an_unknown_event_is_refused(self):
@@ -1343,6 +1355,9 @@ class TestTheAdapter(unittest.TestCase):
         self.assertEqual([(c["folder"] is record, c["harness"], c["run_tree"], c["turn"]) for c in CONFIG_CHECKS],
                          [(True, "gemini", str(SCRATCH / "tree"), 1), (True, "gemini", str(SCRATCH / "tree"), 2)],
                          "R-CF.adapter: the turns did not hand run_turn the take's config folder and their numbers")
+
+    def test_a15_the_read_shapes_are_the_pinned_records(self):
+        self.assertEqual(a15_read_shapes(ga), [])
 
     def test_a_recorded_label_needs_its_walk_and_version(self):
         for rest in ("", " at walk w-1.", " at walk w-1, gemini-cli 0.63.", " at walk w-1, codex-cli 0.63.0.",
@@ -1983,7 +1998,7 @@ def a_stderr(mod, p):
 
 TG_CHECKS = (s1_event, s2_key, s3_words, s4_stats, s5_tools, s6_error_text, s7_open_input, p1_view)
 GA_CHECKS = (a_stderr, a1_stream, a2_error, a3_output, a4_stats, a5_model, a6_argv, a7_session, a8_turn, a9_source, a10_mode,
-             a11_identity, a12_executed, a13_native, a14_journal)
+             a11_identity, a12_executed, a13_native, a14_journal, a15_read_shapes)
 
 
 def all_checks(tgm, gam) -> list:

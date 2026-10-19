@@ -118,3 +118,16 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 gemini_tool_source
 # mutants, each red alone; the files the round edits, against the native readers' source lists.
 python3 -B -W ignore evals/gap-study-4/tests/test_take_config.py TestB18CodexSwitches
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/take_config.py prereg-draft.json tests/test_take_config.py
+# Lane vendor-b17 round 2 (glitch-26's rulings B17-5 to B17-9, Mon 19 Oct 2026; Gemini practice walk w-g9 held at the
+# drive scan on OD57's line in its turn stream and native session files): OD57's admission carried to the Gemini and
+# Codex arms' reads of the same doc through read shapes (box/scan_record.py's closed, vendor-neutral schema; each arm's
+# records in its adapter; drive.scan_read_shapes at the three scan calls), the empty default unchanged, B17-6 and
+# B17-7's refusals, one witness per admission conjunct (test_scan_record's TestB17ReadShapes mutants, each red alone);
+# the adapters pin their records' bytes so their generated sweeps kill every mutant of them. drive.py is a native
+# reader source, so its edit is registered as piece B17 (its exact lines; every other drive.py line held by piece EB as
+# before), and the round's other files are checked against the source lists on the same line.
+python3 -B -W ignore evals/gap-study-4/tests/test_scan_record.py
+python3 -B -W ignore evals/gap-study-4/tests/test_sidecar.py
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_adapter.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py B17 drive.py box/scan_record.py gemini_adapter.py codex_adapter.py tests/check_vendor_sources.py tests/test_scan_record.py tests/test_gemini_adapter.py tests/test_codex_adapter.py checks.d/vendor-admission.txt

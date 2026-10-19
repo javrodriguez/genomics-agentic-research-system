@@ -1363,6 +1363,9 @@ class TestTheAdapter(unittest.TestCase):
         self.assertEqual([(c["folder"] is record, c["turn"]) for c in STUB_CONFIG], [(True, 1), (True, 2)],
                          "R-CF.adapter: the turns did not hand run_turn the take's config folder and their numbers")
 
+    def test_b14_the_read_shapes_are_the_pinned_records(self):
+        self.assertEqual(b14_read_shapes(ca), [])
+
     def test_b10_a_cut_line_only_last(self):
         self.assertEqual(b10_cut(ca), [])
 
@@ -1569,9 +1572,23 @@ def a_stderr(mod, p):
     return out + ([] if getattr(quiet, "stderr_seen", None) == [""] else [f"{p}: an empty stderr is not kept as \"\""])
 
 
+# Lane vendor-b17 round 2 (glitch-26's ruling B17-5, 19 Oct 2026): arm O's OD57 read shapes, pinned by their bytes so
+# the generated sweep kills every mutant of them; what they admit and refuse is tests/test_scan_record.py's.
+READ_SHAPES_SHA256 = "906ab0baf84e9f86fd1bba49351e2ed6ade751a2cfe37798ede23d6056f3244c"   # round 4 (B17-16, NIT 2)
+
+
+@guarded("B14-read-shapes", ("READ_SHAPES",))
+def b14_read_shapes(mod, p):
+    """The module's READ_SHAPES, as JSON with sorted keys, hash to the pinned bytes."""
+    import hashlib
+    got = hashlib.sha256(json.dumps(mod.READ_SHAPES, sort_keys=True).encode()).hexdigest()
+    return [] if got == READ_SHAPES_SHA256 else [f"{p}: READ_SHAPES is not the pinned records ({got[:12]})"]
+
+
 TC_CHECKS = (s1_event, s2_item, s3_key, p1_view, b3_required, b8_types)
 CA_CHECKS = (a_stderr, a1_stream, a2_error, a3_usage, a4_argv, a5_model, a8_journal, a6_turn, a7_source, b1_end, b2_thread, b3_stream,
-             b4_rollout, b5_usage, b6_empty, b7_blank, b9_record, b10_cut, b11_version, b12_executed, b13_native)
+             b4_rollout, b5_usage, b6_empty, b7_blank, b9_record, b10_cut, b11_version, b12_executed, b13_native,
+             b14_read_shapes)
 
 _PREAMBLE = "the import preamble: this test puts the module folder on sys.path before it imports either module"
 _LABEL = "a what-label passed to _keys or _types, which use it only in their refusal's words"

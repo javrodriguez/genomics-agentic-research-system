@@ -101,6 +101,63 @@ _THREAD_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,127}")
 # off the tables and refuses the turn.
 LAUNCH_DISAGREES = "launch-differs-from-registered-invocation"
 
+# ---- OD57's read shapes for arm O (lane vendor-b17 round 2, glitch-26's rulings B17-5 to B17-7, 19 Oct 2026) ---------
+# The records box/scan_record.py's read-shape schema reads (drive.scan_read_shapes passes them for an arm O row's scan),
+# each from the pinned source, openai/codex 092d3acd6bec3e3a14bdc7e7a2810ab628ab759d (rust-v0.162.1), cited as
+# codex-rs/<path>:<line> (lane-reports/B17-DESIGN-NOTE.md section 2). The one read tool is the shell: the pinned CLI
+# offers unified exec or none (protocol/src/openai_models.rs:316-320), exec_command {cmd, ...}
+# (core/src/tools/handlers/shell_spec.rs:24-114), run as exactly [<shell>, -lc | -c, <script>] (core/src/shell.rs:24-33).
+# write_stdin's output is not a read (glitch-26's B17-7), nor is a PTY's CRLF line (81 bytes, never the ruled 80).
+# Round 3 (glitch-26's B17-10, B17-12 to B17-14, on review a051f6e3): every node at its fixed record position (a stream
+# line's top-level `item`; a rollout line's `payload`, or its `payload.item`), never at any depth; the one shell is the
+# arm O image's, /bin/bash (box/codex/Dockerfile:18, `useradd ... --shell /bin/bash dana`: the agent user's login shell,
+# which Codex runs as [shell, -lc | -c, script], core/src/shell.rs:24-33), both as a wrapper's argv[0] and as
+# exec_command's `shell` argument (shell_spec.rs:65-72); and a call with `tty: true` (shell_spec.rs:47-53) is no read,
+# whatever its output's line ending.
+# Round 4 (glitch-26's B17-16a to B17-16d and NIT 2, on review dd2d0398's MAJOR 1): both arm O models run code mode
+# only. The pinned catalog marks gpt-6.1-sol and gpt-6-luna `"tool_mode": "code_mode_only"` (models-manager/models.json
+# lines 177/193 and 524/540; core/src/tools/mod.rs:75-97), which hides every tool but `exec` and `wait`
+# (core/src/tools/spec_plan.rs:838-850; code-mode-protocol/src/lib.rs:54-55, description.rs:262-263). So exec_command
+# is never a direct function_call, and the committed arm O rollouts (w-o7 to w-o14, by counts) hold 97 custom_tool_call
+# `exec` records and their 97 custom_tool_call_output records, no function_call and no function_call_output; the
+# function_call shapes of rounds 2 and 3 are removed. The rollout's CommandExecution (source unified_exec_startup) admits
+# on its own argv again, a joined shape (16a), pinned to [/bin/bash, -lc, script] as all 108 committed ones are; an exec
+# output admits only the verbatim copies of such a read's aggregated_output (16b). Each position names its record's
+# type (NIT 2). A tty exec's `tty` argument is inside the exec script's text, read by no shape: its output is held by
+# its CRLF bytes only (a known limit, as the stream's).
+_O_SHELLS = ("/bin/bash",)
+_O_TOOL = {"prefix": None, "opener": None}
+_O_WRAP = dict(_O_TOOL, kind="wrapped", arg=None, shells=_O_SHELLS, flags=("-lc", "-c"))
+_O_WRAP_LC = dict(_O_WRAP, flags=("-lc",))
+_RESPONSE_ITEM = {"type": ("response_item",)}
+READ_SHAPES = (
+    # the turn stream: a command_execution item, the call and its output in one object; `command` is
+    # redact_secrets(shlex_join(argv)) (app-server-protocol/src/protocol/item_builders.rs:54-61, 96-143); item.started
+    # and item.completed carry the same synthetic id (exec/src/event_processor_with_jsonl_output.rs:100-102, 162-181,
+    # 327-341, 474-491), so every copy of an id must be the same call
+    {"shape": "stream command_execution", "copies": "same", "tools": {"shell": _O_WRAP}, "result": None,
+     "copy_of": None,
+     "call": {"match": {"type": "command_execution"}, "at": ((("item",), {"type": ("item.started", "item.completed")}),),
+              "id": "id", "name": {"value": "shell"}, "args": "command", "args_json": False,
+              "text": (("aggregated_output",),)}},
+    # the rollout: event_msg item_completed's CommandExecution item {id, command: argv, aggregated_output, source, ...}
+    # (protocol/src/items.rs:243-281; core/src/tools/events.rs:561-589), the call and its output in one object
+    {"shape": "rollout CommandExecution", "copies": "same", "tools": {"shell": _O_WRAP_LC}, "result": None,
+     "copy_of": None,
+     "call": {"match": {"type": "CommandExecution"}, "at": ((("payload", "item"), {"type": ("event_msg",)}),),
+              "id": "id", "name": {"value": "shell"}, "args": "command", "args_json": False,
+              "text": (("aggregated_output",),)}},
+    # the rollout: a custom_tool_call {name: "exec", call_id, input: the script} and its custom_tool_call_output
+    # {call_id, output: [{type: input_text, text}]} (protocol/src/models.rs:1136-1171, 2096-2104, 2187-2265), the output
+    # admitted only where it copies an admitted CommandExecution's output (shape 1) verbatim
+    {"shape": "rollout exec output", "copies": "one", "copy_of": 1,
+     "tools": {"exec": dict(_O_TOOL, kind="copy", arg=None, shells=None, flags=None)},
+     "call": {"match": {"type": "custom_tool_call"}, "at": ((("payload",), _RESPONSE_ITEM),), "id": "call_id",
+              "name": {"key": "name"}, "args": "input", "args_json": False, "text": ()},
+     "result": {"match": {"type": "custom_tool_call_output"}, "at": ((("payload",), _RESPONSE_ITEM),), "id": "call_id",
+                "name": None, "text": (("output",), ("output", "*", "text"))}},
+)
+
 
 class StreamError(ValueError):
     """A stream or rollout the reader cannot use as it stands (a typed refusal, never a guess)."""

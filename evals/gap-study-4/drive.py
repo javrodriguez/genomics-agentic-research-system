@@ -1697,6 +1697,7 @@ class TakeRepo:
         _git_bytes(self.repo, "add", "--", *sorted(declared))
         staged = self._staged_exactly(declared)
         scan = _scan_record.scan([(paths[n], declared[n]) for n in staged], list(self.secrets()),
+                                 read_shapes=scan_read_shapes(row),
                                  rules_scanner=self.rules_scanner, holdout_matcher=self.holdout_matcher)
         if not _scan_record.passed(scan):
             why = "; ".join(f"{r['path']}:{r['line']} ({r['kind']}): {r['why']}" for r in scan["refused"])
@@ -2900,6 +2901,7 @@ class TakeDriver:
             self._take_records(take, row, adapter, turns)
         # R4-10: scan -> mask, then the checker; routing and the commit follow in batch.py.
         scan = _scan_record.scan(self.take_files(take), list(self.secrets()), rules_scanner=self.rules_scanner,
+                                 read_shapes=scan_read_shapes(row),
                                  holdout_matcher=self.holdout_matcher)
         if not _scan_record.passed(scan):
             why = "; ".join(f"{r['path']}:{r['line']} ({r['kind']}): {r['why']}" for r in scan["refused"])
@@ -3769,6 +3771,19 @@ PRODUCTION_ADAPTERS = {
 }
 
 
+def scan_read_shapes(row) -> tuple:
+    """Piece B17 (glitch-26's ruling B17-5, 19 Oct 2026): the read shapes OD57's admission uses in this row's scan,
+    its arm's (routing.PAID_HARNESSES binds the arm to its harness, whose adapter holds them); () for any other arm,
+    a row without one, or a row whose declared harness is not its arm's, so the scan admits what it did before B17."""
+    arm = row.get("arm") if isinstance(row, dict) else None
+    agent = row.get("agent") if isinstance(row, dict) else None
+    for harness, module in (("codex", _codex), ("gemini", _gemini)):
+        if _routing.PAID_HARNESSES[harness]["arm"] == arm:
+            declared = agent.get("harness") if isinstance(agent, dict) else harness
+            return module.READ_SHAPES if declared == harness else ()
+    return ()
+
+
 def adapter_class_problems(adapter) -> None:
     """The adapter is its harness's captured production class, never a stub or subclass."""
     expected = PRODUCTION_ADAPTERS.get(getattr(adapter, "name", None))
@@ -4124,6 +4139,7 @@ class WalkRepo(TakeRepo):
         _git_bytes(self.repo, "add", "--", *sorted(declared))
         staged = self._staged_exactly(declared)
         scan = _scan_record.scan([(paths[n], declared[n]) for n in staged], list(self.secrets()),
+                                 read_shapes=scan_read_shapes(entry),
                                  rules_scanner=self.rules_scanner, holdout_matcher=self.holdout_matcher)
         if not _scan_record.passed(scan):
             why = "; ".join(f"{r['path']}:{r['line']} ({r['kind']}): {r['why']}" for r in scan["refused"])
