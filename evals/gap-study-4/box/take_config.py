@@ -319,8 +319,31 @@ def write(config_dir: str, harness: str, *, model, run_tree=None) -> dict:
     return {"harness": harness, "files": sorted(files), "sha256": config_sha256(config_dir)}
 
 
+# R-H3 (glitch-26's ruling on lane vendor-b11, round 3, Mon 19 Oct 2026): a Codex turn that is killed (a timeout,
+# kill_agent), or a Codex process that exits without unwinding (clap's own exit after --version), leaves its arg0
+# helper folder behind: CODEX_HOME/tmp/arg0/codex-arg0<6 tempfile characters>/ with .lock and four links, each to
+# std::env::current_exe() (codex-rs/arg0/src/lib.rs at rust-v0.162.1: names 21-24 and sandboxing/src/landlock.rs 7,
+# .lock 25, the folder 358 and 373-375, the links 387-401). Those four are the only links admitted in the config folder,
+# and only with their target the take image's codex executable: CODEX_EXECUTABLE, the binary_path the pinned take-o
+# image's environment-name sweep measured (lane-reports/stub-take-20261014/probes/codex-env-name-sweep-athena-20261014.json,
+# sha256 ddb31eec...; its image is box/codex/image.lock's image_id, sha256:21b21415...). They are hashed by name and
+# target string, never followed; every other link refuses.
+CODEX_ARG0_LINKS = ("apply_patch", "applypatch", "codex-linux-sandbox", "codex-execve-wrapper")
+CODEX_ARG0_DIR = re.compile(r"tmp/arg0/codex-arg0[A-Za-z0-9]{6}")
+CODEX_EXECUTABLE = ("/usr/local/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/"
+                    "x86_64-unknown-linux-musl/bin/codex")
+
+
+def codex_arg0_link(rel: str, target: str) -> bool:
+    """Is `rel` (relative to CODEX_HOME, `/`-separated) one of a killed Codex process's four arg0 links, at its one
+    folder shape, with the image's codex executable as its target (compared as a string, never followed)?"""
+    folder, _, name = rel.rpartition("/")
+    return CODEX_ARG0_DIR.fullmatch(folder) is not None and name in CODEX_ARG0_LINKS and target == CODEX_EXECUTABLE
+
+
 def config_sha256(folder: str) -> str:
-    """One sha256 over every file of the folder: sorted relative paths and their bytes' sha256. Links refused."""
+    """One sha256 over every file of the folder: sorted relative paths and their bytes' sha256. Links refused, but
+    for R-H3's four arg0 links, each hashed by its name and target string (never followed)."""
     entries = []
     for root, dirs, names in os.walk(folder, followlinks=False):
         for d in dirs:
@@ -328,7 +351,14 @@ def config_sha256(folder: str) -> str:
                 raise Refused("a link in the config folder")
         for n in names:
             path = os.path.join(root, n)
-            if os.path.islink(path) or not os.path.isfile(path):
+            if os.path.islink(path):
+                rel = os.path.relpath(path, folder).replace(os.sep, "/")
+                target = os.readlink(path)
+                if not codex_arg0_link(rel, target):
+                    raise Refused(f"a link in the config folder: {rel}")
+                entries.append((rel, "link:" + target))
+                continue
+            if not os.path.isfile(path):
                 raise Refused("a link or a special file in the config folder")
             with open(path, "rb") as fh:
                 entries.append((os.path.relpath(path, folder), hashlib.sha256(fh.read()).hexdigest()))
