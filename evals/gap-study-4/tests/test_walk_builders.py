@@ -3764,9 +3764,10 @@ B18_NATIVE = {"codex": "AGENTS.md", "gemini": "GEMINI.md"}
 
 
 @contextlib.contextmanager
-def b18_origin(claude_md=B18_TEXT, nested=B18_NESTED, extra=None):
+def b18_origin(claude_md=B18_TEXT, nested=B18_NESTED, extra=None, forced=None):
     """A scratch origin: one commit holding CLAUDE.md and gars/CLAUDE.md (either None: absent), src/, evals/ and
-    `extra` files."""
+    `extra` files, and `forced` files tracked although the origin's own .gitignore matches them (as the pinned GARS
+    tree tracks gars/00_initialize_project/CONTEXT.md under its `*_project/` line)."""
     with tbi.scratch_repo() as repo:
         (repo / "src").mkdir()
         (repo / "src" / "a.txt").write_text("synthetic source\n")
@@ -3774,10 +3775,14 @@ def b18_origin(claude_md=B18_TEXT, nested=B18_NESTED, extra=None):
         (repo / "gars" / "README.md").write_text("synthetic workspace\n")
         (repo / "evals").mkdir()
         (repo / "evals" / "hidden.txt").write_text("synthetic study file\n")
-        for rel, text in (("CLAUDE.md", claude_md), ("gars/CLAUDE.md", nested)) + tuple((extra or {}).items()):
+        for rel, text in ((("CLAUDE.md", claude_md), ("gars/CLAUDE.md", nested)) + tuple((extra or {}).items())
+                          + tuple((forced or {}).items())):
             if text is not None:
+                (repo / rel).parent.mkdir(parents=True, exist_ok=True)
                 (repo / rel).write_text(text)
         tbi.git(repo, "add", "-A")
+        if forced:
+            tbi.git(repo, "--literal-pathspecs", "add", "-f", "--", *forced)
         tbi.git(repo, "commit", "-q", "-m", "A synthetic origin")
         yield repo, tbi.git(repo, "rev-parse", "HEAD")
 
@@ -3955,6 +3960,45 @@ def b18_ignored_problems(mod) -> list:
     return out
 
 
+# glitch-26's ruling R-FB2 (Mon 19 Oct 2026; review vendor-r18-b12b13-0094246 NIT 3): the placed paths reach git as
+# pathspecs, so a CLAUDE.md under a folder whose name git reads as pathspec syntax could add, or fail to add, another
+# path. The origin's folders `:x` (a leading colon is pathspec magic) and `g[ab]` (a glob class) each hold a CLAUDE.md;
+# `x/` and `ga/` hold native-named files tracked in the origin but ignored by its .gitignore, so they are on disk in
+# every checkout and out of its commit. Each placed copy is added as its own literal path and nothing else.
+B18_LITERAL_DIRS = (":x/", "g[ab]/")
+B18_LITERAL_DECOYS = ("x/", "ga/")
+
+
+@problems_by_assertion("B18.literal")
+def b18_literal_problems(mod) -> list:
+    """build_run_tree for codex and gemini on an origin with CLAUDE.md under B18_LITERAL_DIRS: the one commit holds
+    each placed copy at its literal path with its CLAUDE.md's bytes, and no decoy the pathspec syntax would reach."""
+    out = []
+    extra = {".gitignore": "AGENTS.md\nGEMINI.md\n"}
+    extra.update({f"{d}CLAUDE.md": f"# Synthetic instructions under {d}\n" for d in B18_LITERAL_DIRS})
+    forced = {f"{d}{n}": "# synthetic: an ignored decoy\n" for d in B18_LITERAL_DECOYS for n in B18_NATIVE.values()}
+    for harness in ("codex", "gemini"):
+        with b18_origin(extra=extra, forced=forced) as (repo, sha), temp_root():
+            try:
+                tree = Path(mod.build_run_tree("w-0001", repo=repo, commit=sha, exclude=["evals"], harness=harness))
+            except Exception as e:  # noqa: BLE001
+                out.append(f"B18.literal: {harness}: build_run_tree raised {type(e).__name__}: {str(e)[:300]}")
+                continue
+            want = B18_NATIVE[harness]
+            got = set(tbi.git(tree, "ls-tree", "-r", "--name-only", "HEAD").splitlines())
+            for d in B18_LITERAL_DIRS:
+                if f"{d}{want}" not in got:
+                    out.append(f"B18.literal: {harness}: {d}{want} is not in the one commit")
+                elif tbi.git_bytes(tree, "show", f"HEAD:{d}{want}") != extra[f"{d}CLAUDE.md"].encode():
+                    out.append(f"B18.literal: {harness}: {d}{want} is not its CLAUDE.md's bytes in the commit")
+            reached = sorted(got & set(forced))
+            if reached:
+                out.append(f"B18.literal: {harness}: the one commit holds the ignored decoys {reached}")
+            if (tbi.git(tree, "rev-list", "--all", "--count"), tbi.git(tree, "status", "--porcelain")) != ("1", ""):
+                out.append(f"B18.literal: {harness}: not one commit and a clean status")
+    return out
+
+
 class B18Native(Drafted):
     def test_the_native_file_beside_every_claude_md(self):
         self.assertEqual(b18_road_problems(wb()), [])
@@ -3964,6 +4008,9 @@ class B18Native(Drafted):
 
     def test_the_native_file_is_added_past_the_trees_gitignore(self):
         self.assertEqual(b18_ignored_problems(wb()), [])
+
+    def test_each_placed_path_is_added_literally(self):
+        self.assertEqual(b18_literal_problems(wb()), [])
 
 
 # ------------------------------------------------------------------------------------------------- B19
