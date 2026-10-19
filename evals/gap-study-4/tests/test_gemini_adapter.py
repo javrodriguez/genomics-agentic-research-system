@@ -27,6 +27,8 @@ and load-bearing assignment has a whole-file witness of gemini_adapter.py or tra
   S5-tools   a tool name with no entry (web_fetch, read_many_files) and an argument key with no entry are refused by
              the record check and the parser; the table's view kinds are pinned (round 18 B12: the table read from the
              pinned 0.64.0 registry, tests/test_gemini_tool_registry.py).
+  S7-open-input  an undeclared key on an OPEN_INPUT tool is named, ignored input; the refusals that stand; each
+             entry cited (lane vendor-b16 round 2, ruling R-B16-2; tests/test_gemini_undeclared_args.py U1-U3).
   P1-view    through transcript_view.events (the parser put in a COPY of PARSERS for the test only, never
              registered): user -> operator, assistant -> agent-text, tool_use -> tool-call of its kind, tool_result
              -> its tool-result, init, error and result -> harness.
@@ -554,6 +556,17 @@ def s6_error_text(mod, p):
         if got != want:
             out.append(f"{p}: the error text of a {rec['type']} reads {got!r}, not {want!r}")
     return out
+
+
+@guarded("S7-open-input", TG_API + ("OPEN_INPUT",))
+def s7_open_input(mod, p):
+    """Lane vendor-b16 round 2 (glitch-26's ruling R-B16-2): tests/test_gemini_undeclared_args.py's U1-U3 against this
+    module, so the generated sweep sees the rule: the held walk's grep_search shape read with file_path named and
+    ignored, the refusals that stand, and each OPEN_INPUT entry cited."""
+    if str(HERE / "tests") not in sys.path:
+        sys.path.insert(0, str(HERE / "tests"))
+    import test_gemini_undeclared_args as u
+    return [f"{p}: {x}" for x in u.u1_problems(mod) + u.u2_problems(mod) + u.u3_problems(mod)]
 
 
 def view_events(mod, name_or_lines):
@@ -1254,6 +1267,9 @@ class TestTheShapes(unittest.TestCase):
     def test_s6_the_harness_error_words(self):
         self.assertEqual(s6_error_text(tg), [])
 
+    def test_s7_undeclared_keys_on_an_open_input_tool(self):
+        self.assertEqual(s7_open_input(tg), [])
+
 
 class TestTheAdapter(unittest.TestCase):
     def test_a1_the_stream_read(self):
@@ -1414,9 +1430,9 @@ WITNESSES = {
         "    except ValueError:\n        raise\n")),
     "decode-unchecked": _w("tg", s1_event, "S1-event", ("    check_record(rec)\n    return rec\n", "    return rec\n")),
     "tool-refusal-untyped": _w("tg", s5_tools, "S5-tools", (
-        "    try:\n        return tv.map_tool(GEMINI_TOOLS, rec[\"tool_name\"], rec[\"parameters\"])\n"
+        "    try:\n        return tv.map_tool(GEMINI_TOOLS, rec[\"tool_name\"], _declared(rec))\n"
         "    except tv.ViewError as e:\n        raise ShapeError(f\"tool_use: {e}\") from None\n",
-        "    return tv.map_tool(GEMINI_TOOLS, rec[\"tool_name\"], rec[\"parameters\"])\n")),
+        "    return tv.map_tool(GEMINI_TOOLS, rec[\"tool_name\"], _declared(rec))\n")),
     "error-event-words-dropped": _w("tg", s6_error_text, "S6-error-text", (
         "        return rec[\"message\"]\n", "        return None\n")),
     "failed-result-words-dropped": _w("tg", s6_error_text, "S6-error-text", (
@@ -1935,7 +1951,7 @@ def a_stderr(mod, p):
     return out + ([] if getattr(quiet, "stderr_seen", None) == [""] else [f"{p}: an empty stderr is not kept as \"\""])
 
 
-TG_CHECKS = (s1_event, s2_key, s3_words, s4_stats, s5_tools, s6_error_text, p1_view)
+TG_CHECKS = (s1_event, s2_key, s3_words, s4_stats, s5_tools, s6_error_text, s7_open_input, p1_view)
 GA_CHECKS = (a_stderr, a1_stream, a2_error, a3_output, a4_stats, a5_model, a6_argv, a7_session, a8_turn, a9_source, a10_mode,
              a11_identity, a12_executed, a13_native, a14_journal)
 

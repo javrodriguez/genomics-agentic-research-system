@@ -153,3 +153,134 @@ SOURCES = {
         [_C, 355009, "Kind.Agent"], [_C, 355013, "agent_name: {"], [_C, 355017, "prompt: {"], _WAIT),
         "AgentTool hands a prompt to a named sub-agent (Kind.Agent): delegate, as Claude Code's Agent is"),
 }
+
+# ---- OPEN_INPUT's citations (lane vendor-b16 round 2, glitch-26's ruling R-B16-2, Mon 19 Oct 2026) -----------------
+# For each tool in transcript_gemini.OPEN_INPUT, where the pinned package shows both of the ruling's conditions: the
+# schema leaves its properties open (no additionalProperties false in either family's grep schema, and Ajv run with
+# strictSchema false only), and the run reads only the keys named in `reads` off the call's arguments.
+# tests/test_gemini_undeclared_args.py U3 binds these to the table; its --sources re-reads every cited line.
+_GREP_READS = ("pattern", "dir_path", "include_pattern", "exclude_pattern", "names_only", "case_sensitive",
+               "fixed_strings", "context", "after", "before", "no_ignore", "max_matches_per_file", "total_max_matches",
+               "wait_for_previous")
+_GREP_OPEN_LINES = (
+    # the schemas, gemini-3 family (both arm G models) and default-legacy (the one build validates): no
+    # additionalProperties between each opening line and its required line (only write_todos sets it, 282573/282578)
+    [_C, 282751, "grep_search: {"], [_C, 282788, "required: [PARAM_PATTERN]"],
+    [_C, 282791, "grep_search_ripgrep: {"], [_C, 282855, "required: [PARAM_PATTERN]"],
+    [_C, 282158, "grep_search: {"], [_C, 282195, "required: [PARAM_PATTERN]"],
+    [_C, 282198, "grep_search_ripgrep: {"], [_C, 282262, "required: [PARAM_PATTERN]"],
+    # build validates this.schema (the base declaration) with Ajv, whose only option is strictSchema false
+    [_C, 274389, "build(params) {"], [_C, 274396, "validateToolParams(params) {"],
+    [_C, 274310, "return this.getSchema();"],
+    [_C, 273788, "var SchemaValidator = class {"], [_C, 273774, "strictSchema: false"],
+    # GrepTool's invocation: its reads off this.params, and the two helpers it hands this.params to
+    [_C, 321704, "var GrepToolInvocation = class extends BaseToolInvocation {"],
+    [_C, 321746, "const pathParam = this.params.dir_path;"],
+    [_C, 321815, "const totalMaxMatches = this.params.total_max_matches ?? DEFAULT_TOTAL_MAX_MATCHES;"],
+    [_C, 321834, "pattern: this.params.pattern,"], [_C, 321836, "include_pattern: this.params.include_pattern,"],
+    [_C, 321837, "exclude_pattern: this.params.exclude_pattern,"],
+    [_C, 321839, "max_matches_per_file: this.params.max_matches_per_file,"],
+    [_C, 321866, "formatGrepResults(allMatches, this.params, searchLocationDescription, totalMaxMatches);"],
+    [_C, 321637, "const { pattern, names_only, include_pattern } = params;"],
+    [_C, 321597, "const { names_only, context: context2, before, after } = params;"],
+    [_C, 322156, "validateToolParamValues(params) {"],
+    # RipGrepTool's invocation (GrepToolInvocation2): its reads off this.params
+    [_C, 322248, "var GrepToolInvocation2 = class extends BaseToolInvocation {"],
+    [_C, 322258, 'const pathParam = this.params.dir_path || ".";'],
+    [_C, 322309, "const totalMaxMatches = this.params.total_max_matches ?? DEFAULT_TOTAL_MAX_MATCHES;"],
+    [_C, 322328, "pattern: this.params.pattern,"], [_C, 322330, "include_pattern: this.params.include_pattern,"],
+    [_C, 322331, "exclude_pattern: this.params.exclude_pattern,"],
+    [_C, 322332, "case_sensitive: this.params.case_sensitive,"],
+    [_C, 322333, "fixed_strings: this.params.fixed_strings,"],
+    [_C, 322334, "context: this.params.context,"], [_C, 322335, "after: this.params.after,"],
+    [_C, 322336, "before: this.params.before,"], [_C, 322337, "no_ignore: this.params.no_ignore,"],
+    [_C, 322339, "max_matches_per_file: this.params.max_matches_per_file,"],
+    [_C, 322361, "formatGrepResults(allMatches, this.params, searchLocationDescription, totalMaxMatches);"],
+    [_C, 322384, "!this.params.names_only && this.params.context === void 0"],
+    [_C, 322578, "validateToolParamValues(params) {"],
+    # the scheduler reads wait_for_previous off every call's arguments
+    [_C, 349439, 'const wait = request.args["wait_for_previous"];'],
+    # the base invocation reads file_path only on an ask-user decision, which a headless run never reaches: the
+    # invocation is built without respectsAutoEdit (default false), and checkPolicy refuses ask-user non-interactively
+    [_C, 321708, "super(params, messageBus, _toolName, _toolDisplayName);"],
+    [_C, 274078, "const filePath = extractFilePathFromArgs(this.params);"],
+    [_C, 274035, "const target = args2.file_path ?? args2.path ?? args2.filePath ?? args2.file;"],
+    [_C, 349488, "if (decision === PolicyDecision.ASK_USER) {"],
+    [_C, 343497, "if (decision === PolicyDecision.ASK_USER) {"], [_C, 343498, "if (!config2.isInteractive()) {"],
+    # the stream records the model's own parameters on tool_use
+    [_Q, 12228, "parameters: event.value.args"],
+    # two readers outside the invocation take the whole args, undeclared keys included (ruling R-B16-5). The loop
+    # detector hashes the tool name with the whole args on every tool call request; a detected loop ends the turn, an
+    # event the record carries; it is on in the takes (model.disableLoopDetection is not written, so it is false)
+    [_C, 343947, "getToolCallKey(toolCall) {"], [_C, 343948, "const argsString = JSON.stringify(toolCall.args);"],
+    [_C, 343949, "const keyString = `${toolCall.name}:${argsString}`;"],
+    [_C, 343973, "isLoop = this.checkToolCallLoop(event.value);"],
+    [_C, 344042, "const key = this.getToolCallKey(toolCall);"],
+    [_C, 348323, "const loopResult2 = this.loopDetector.addAndCheck(event);"],
+    [_C, 348325, "yield { type: GeminiEventType.LoopDetected };"],
+    [_Q, 8614, "disableLoopDetection: settings.model?.disableLoopDetection,"],
+    [_C, 380818, "this.disableLoopDetection = params.disableLoopDetection ?? false;"],
+    # the policy engine stringifies the whole args only while a loaded rule or checker carries an argsPattern, and
+    # tests a rule's modes and tool name before its argsPattern; Conseca is off unless security.enableConseca is set;
+    # the takes turn hooks off (hooksConfig.enabled false in box/take_config.py GEMINI_SETTINGS)
+    [_C, 364402, "if (toolCall.args && (this.rules.some((rule) => rule.argsPattern)"],
+    [_C, 364403, "stringifiedArgs = stableStringify(toolCall.args);"],
+    [_C, 364076, "if (rule.modes && rule.modes.length > 0) {"], [_C, 364095, "if (rule.toolName !== void 0) {"],
+    [_C, 364130, "if (rule.argsPattern) {"],
+    [_C, 366841, "rule: external_exports.array(PolicyRuleSchema).optional(),"],
+    [_Q, 8669, "enableConseca: settings.security?.enableConseca"],
+    [_C, 380958, "this.enableConseca = params.enableConseca ?? false;"],
+    [_C, 368888, "if (!this.context.config.enableConseca) {"],
+    [_Q, 8656, "enableHooks: settings.hooksConfig.enabled,"],
+    # the loop detector's two outcomes (review c2c7e1e finding 1): a first detection breaks the stream before the
+    # tripping request is yielded, so that call is neither recorded nor run, and a new turn sends the model a loop
+    # warning; a second ends the turn, which the stream records as an error event of severity warning
+    [_C, 348328, "} else if (loopResult2.count === 1) {"], [_C, 348334, "loopRecoverResult = loopResult2;"],
+    [_C, 348356, "return yield* this._recoverFromLoop(loopRecoverResult"],
+    [_C, 348608, "return this.sendMessageStream(feedback, signal, prompt_id, boundedTurns - 1, displayContent);"],
+    [_Q, 12232, "} else if (event.type === GeminiEventType.LoopDetected) {"],
+    [_Q, 12236, "type: JsonStreamEventType.ERROR,"], [_Q, 12238, 'severity: "warning",'],
+    # the policy tiers and the runtime rules (review c2c7e1e finding 2): the admin, user, workspace and default tiers;
+    # the workspace tier is off at the pin; policyPaths and adminPolicyPaths come from settings, which the takes never
+    # set; the user tier is the config home's policies folder, which no take places; the runtime rules carry an
+    # argsPattern only on a confirmed always-allow (an ask-user decision) or for a remote agent's invoke_agent
+    [_C, 367769, "function getPolicyDirectories(defaultPoliciesDir, policyPaths, workspacePoliciesDir, adminPolicyPaths) {"],
+    [_C, 367772, "Storage.getSystemPoliciesDir(),"],
+    [_C, 367775, "...policyPaths && policyPaths.length > 0 ? policyPaths : [Storage.getUserPoliciesDir()],"],
+    [_C, 253248, 'return path4.join(_Storage.getGlobalGeminiDir(), "policies");'],
+    [_C, 253278, 'return path4.join(_Storage.getSystemConfigDir(), "policies");'],
+    [_C, 253268, 'return "/etc/gemini-cli";'],
+    [_Q, 7881, "var disableWorkspacePolicies = true;"], [_Q, 7906, "if (trustedFolder && !disableWorkspacePolicies) {"],
+    [_Q, 7887, "policyPaths: settings.policyPaths,"], [_Q, 7888, "adminPolicyPaths: settings.adminPolicyPaths,"],
+    [_C, 368100, "argsPattern: new RegExp(pattern),"], [_C, 342701, 'argsPattern: new RegExp(`"agent_name":'],
+)
+_GREP_OPEN_READ = (
+    "both grep schemas, in both families, leave their properties open, so Ajv passes an undeclared key; GrepTool's "
+    "and RipGrepTool's invocations (either serves grep_search) read only declared keys off this.params, and the "
+    "scheduler reads wait_for_previous off every call; the base invocation's file_path read (extractFilePathFromArgs) "
+    "runs only on an ask-user decision, which a headless --approval-mode yolo run never reaches (policies/yolo.toml "
+    "lines 51-55 allow every tool, and checkPolicy refuses ask-user when not interactive), so an undeclared key such "
+    "as file_path changes nothing the call does; the invocation reads only declared keys. Two readers outside it take "
+    "the whole args, undeclared keys included, and neither changes what this call does. The loop detector hashes the "
+    "tool name with the whole args, so an undeclared key's value decides whether a repeated call counts as a loop: a "
+    "first detection drops the call that tripped it before the stream records it and starts a new turn with a loop "
+    "warning to the model, and a second ends the turn, recorded as an error event of severity warning; the record "
+    "shows what ran, and the reader reads that record, not the detector. The policy engine stringifies the whole args "
+    "only for a loaded rule or checker with an argsPattern and tests each rule's modes and tool name first, and in a "
+    "yolo take no such rule applies to grep_search: the default tier's argsPattern rules (policies/plan.toml) name "
+    "invoke_agent, write_file and replace in plan mode only; policies/sandbox-default.toml's rules table is no policy "
+    "rule (the policy file schema reads the key rule); the workspace tier is off at the pin; the takes set no "
+    "policyPaths or adminPolicyPaths, and the user tier is the config home's policies folder, which no take places; "
+    "the runtime rules carry an argsPattern only on a confirmed always-allow (an ask-user decision, never reached "
+    "headless) or for a remote agent's invoke_agent (excluded); Conseca's checker carries no argsPattern and is off; "
+    "the takes turn hooks off. The system tier (/etc/gemini-cli/policies in the take image) is not read here; the "
+    "image's Dockerfile (box/gemini/Dockerfile) writes nothing there")
+_ALIAS = [_C, 283434, "search_file_content: GREP_TOOL_NAME"]
+OPEN_INPUT = {
+    "grep_search": dict(_PKG, file=_C, file_sha256=_C_SHA256, closes_properties=False, reads=list(_GREP_READS),
+                        lines=[list(x) for x in _GREP_OPEN_LINES], read=_GREP_OPEN_READ),
+    "search_file_content": dict(_PKG, file=_C, file_sha256=_C_SHA256, closes_properties=False,
+                                reads=list(_GREP_READS),
+                                lines=[list(x) for x in _GREP_OPEN_LINES + (_ALIAS,)],
+                                read="the legacy alias the registry resolves to grep_search: " + _GREP_OPEN_READ),
+}

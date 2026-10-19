@@ -4996,7 +4996,7 @@ def vendor_native_rel(entries, harness, vendor_id) -> str:
         raise _native_snapshot.SnapshotRefused("the listing is not [path, kind] pairs")
 
     def lister(rel_dir):
-        here = rel_dir.split("/") if rel_dir else []
+        here = [] if rel_dir == "." else rel_dir.split("/")   # the box's root, "." (B16-1)
         if len(here) < len(root) and root[:len(here)] == here:
             return [(root[len(here)], "dir")]
         prefix = rel_dir + "/"
