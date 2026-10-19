@@ -2249,11 +2249,12 @@ def codex_arg0_link(rel: str, target) -> bool:
 # loaded as a skill (the note's section 4), so each one present is read and compared. The marker itself is a Rust
 # DefaultHasher value, admitted by name (a named residual: its content is not checked).
 CODEX_SYSTEM_SKILLS_SHA256 = "f5702460ae03a0bd98d89a01224afb315f70313a06db41284cab367ac468d55d"
-# HELD (lane vendor-b11 round 3): the pre-push secret scan (gitleaks generic-api-key) flagged these two files' sha256
-# digests in this table, for their names (an "api" and a "key"). They are digests of public files, but the lane never
-# rewords or routes around a scan's finding: the two digests stay out until glitch-26 admits them, and until then
-# check_config_folder refuses either file as an unpinned system skill (failing closed).
-CODEX_SYSTEM_SKILLS_HELD = ("imagegen/references/image-api.md", "imagegen/scripts/remove_chroma_key.py")
+# HELD (lane vendor-b11 round 3): the pre-push secret scan (gitleaks generic-api-key) flagged two files' sha256 digests
+# in this table, for their names (an "api" and a "key"), and they stayed out, failing closed. ADMITTED on Javier's word
+# skill-digests (Mon 19 Oct 2026, typed in glitch-26's window): both are sha256 digests of public files, read from
+# openai/codex at 092d3acd (rust-v0.162.1), and with them the 48 files' aggregate is CODEX_SYSTEM_SKILLS_SHA256. Each of
+# the two lines carries the scanner's own inline allow. A digest held again goes back in this tuple, its value to None.
+CODEX_SYSTEM_SKILLS_HELD = ()
 CODEX_SYSTEM_SKILLS_MARKER = ".codex-system-skills.marker"
 CODEX_SYSTEM_SKILLS = {
     "imagegen/LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9",
@@ -2263,11 +2264,11 @@ CODEX_SYSTEM_SKILLS = {
     "imagegen/assets/imagegen.png": "95952f644064eb9e890f98d8db07216347186526e4c41ad66d3420629eb86e20",
     "imagegen/references/cli.md": "ecfc2e09261a0feb3482517a5fa0ff410cb7d1958e3cbd2ac6b61586f5b81405",
     "imagegen/references/codex-network.md": "c88298ca4481f6116a16fa7987434fc977f8b311c1bbc0c3d862ffd0c5981148",
-    "imagegen/references/image-api.md": None,          # HELD: see CODEX_SYSTEM_SKILLS_HELD
+    "imagegen/references/image-api.md": "dc975d7af8a4888967251a0276014b4a71ea30455294944b762256373ce3e569",  # gitleaks:allow
     "imagegen/references/prompting.md": "b210b051c775860267080941eba968212bf0ac7fce581d75c5dcc217d8293f8b",
     "imagegen/references/sample-prompts.md": "70474177d151855b175c6133de2aae1d90b7f146b0dab50ec830972c47d72183",
     "imagegen/scripts/image_gen.py": "b4345cf835e5b593b97df6bb2b70bda493b8a97eee4cabbc99b2fa57dba9b448",
-    "imagegen/scripts/remove_chroma_key.py": None,          # HELD: see CODEX_SYSTEM_SKILLS_HELD
+    "imagegen/scripts/remove_chroma_key.py": "a5893c4bd04b21abced33731ea89d2ac428e81d92a0368eb18ffbe4fda5253e2",  # gitleaks:allow
     "openai-docs/LICENSE.txt": "4dd13869245e356246a5b770723247bbb80a8f07a181d1d3d873a1734297cdb9",
     "openai-docs/SKILL.md": "aa6829e21df2223167c85d2e49b6337a7345c84c1033f1ec10182c7882b36d45",
     "openai-docs/agents/openai.yaml": "44b9efac6be1bae32d869aa2942fecbe4dcae82682ee03e4120f2f9b7d4658ec",

@@ -107,7 +107,8 @@ NOTE_SOURCES = {
                    "bundle/chunk-VOLZQW4I.js": "2aea2b74a0f598e459f1d86913f6f24f18a113caff022dc1d9354d744a3a86b6"}},
 }
 NOTE_SKILLS_SHA256 = "f5702460ae03a0bd98d89a01224afb315f70313a06db41284cab367ac468d55d"
-# The aggregate of the 46 digests pinned while two are held (C9), computed this round over the pinned source.
+# The aggregate of the 46 digests pinned while two were held (C9 until the skill-digests admission, 19 Oct 2026),
+# computed in round 3 over the pinned source; kept as that round's record.
 SKILLS_46_SHA256 = "d9a744fbdd08aa2fcf8dd39455788c31f9683b108144030618aa3053a1c08fce"
 
 
@@ -615,14 +616,12 @@ class C9Pins(Case):
         self.assertEqual(len(parents), 21, f"C9.pins: the embedded skills are not in 21 folders ({len(folders)})")
         held = tuple(p for p, d in sorted(skills.items()) if d is None)
         self.assertEqual(held, tuple(sorted(m.CODEX_SYSTEM_SKILLS_HELD)), "C9.pins: the held digests are not the "
-                                                                         "two the secret scan flagged")
-        self.assertEqual(held, ("imagegen/references/image-api.md", "imagegen/scripts/remove_chroma_key.py"),
-                         "C9.pins: a digest is held beyond the two the secret scan flagged")
-        # The note's aggregate needs the two held digests; until glitch-26 admits them only the 46 are bound, to the
-        # aggregate of the same lines this round computed over the pinned source with the two left out.
-        agg = hashlib.sha256("".join(f"{d}  ./{p}\n" for p, d in sorted(skills.items()) if d is not None)
-                             .encode()).hexdigest()
-        self.assertEqual(agg, SKILLS_46_SHA256, "C9.pins: the 46 pinned skill digests moved")
+                                                                         "held tuple's")
+        # Javier's word skill-digests (Mon 19 Oct 2026) admitted the two digests the secret scan flagged, so none is
+        # held and all 48 are bound, to the note's aggregate of the pinned source's files.
+        self.assertEqual(held, (), "C9.pins: a digest is held after the two were admitted")
+        agg = hashlib.sha256("".join(f"{d}  ./{p}\n" for p, d in sorted(skills.items())).encode()).hexdigest()
+        self.assertEqual(agg, NOTE_SKILLS_SHA256, "C9.pins: the 48 pinned skill digests are not the note's aggregate")
         self.assertEqual(m.CODEX_SYSTEM_SKILLS_SHA256, NOTE_SKILLS_SHA256, "C9.pins: the recorded aggregate moved")
         self.assertEqual(m.CODEX_EXECUTABLE, CODEX_EXE, "C9.pins: the codex executable is not the measured one")
         self.assertEqual(tc.CODEX_EXECUTABLE, REAL_RT.CODEX_EXECUTABLE, "C9.pins: take_config's executable is not "
