@@ -11,8 +11,9 @@ records, and the set the tests must reach is labels4.TERMINAL_STATES: neither is
 Concurrency and finishing order are forced with a barrier and events, never with sleeps: a drive
 waits (up to WAIT_S, a hang detector) until every drive of its block is in flight, and a drive
 told to finish after another waits for that one's end. B19-8 (batch.py's rolling window): with no
-finish_after the drives of one wave end together, its head first, and a commit waits until no drive
-is in flight and SETTLE more (World), so the rolling loop's tie rule reproduces the block run; with
+finish_after the drives of one wave end together, its head first, and a commit waits until every
+drive step the loop holds open has finished (World, B19-13), so the rolling loop's tie rule
+reproduces the block run; with
 finish_after the durations differ and the loop fills freed lanes. Every check is a function returning
 problems, and each is also run against an in-memory mutant of what it guards and must go red.
 
@@ -34,7 +35,6 @@ import os
 import sys
 import textwrap
 import threading
-import time
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
@@ -66,7 +66,6 @@ FAKE_TOKEN = "FAKE-TOKEN-in-memory-0000"            # never a real token
 FAKE_EMAIL = "fake.account@example.invalid"         # never a real address
 MASK_MARK = "[masked]"
 WAIT_S = 10.0   # a hang detector for the barrier and ordering events, never a timing assumption
-SETTLE = 0.05   # B19-8: the equal-duration model's settle, after a wave's drives end and before its head commits
 
 
 def test_table() -> dict:
@@ -185,8 +184,9 @@ class World:
         self._registering = False
         # B19-8, the equal-duration model (batch.py's rolling window): a FakeDriver given no finish_after sets
         # `equal`; then a wave's drives end together, its head first (the others wait until the head's commit has
-        # begun), and that commit waits until no drive is in flight, and SETTLE more, so the loop's tie rule sees the
-        # whole wave finished, as test_batch_rolling's EqualRepo does.
+        # begun), and that commit waits until every drive step the loop holds open has finished (B19-13: its future
+        # is done, read from the loop itself, never a sleep), so the loop's tie rule sees the whole wave finished, as
+        # test_batch_rolling's EqualRepo does.
         self.equal = False
         self.heads = {}                      # block -> its first registration (slot, attempt): the wave's head
         self.in_flight = 0
@@ -204,13 +204,10 @@ class World:
             raise RuntimeError(f"the wave's head {head} was never committed (hang detector)")
 
     def wait_wave(self, wait_s) -> None:
-        """The equal model's commit: no drive in flight, then SETTLE more."""
+        """The equal model's commit: every future in the committing loop's `open` deque is done (B19-13)."""
         if not self.equal:
             return
-        with self.lock:
-            if not self.idle.wait_for(lambda: self.in_flight == 0, wait_s):
-                raise RuntimeError("a drive never ended (hang detector)")
-        time.sleep(SETTLE)
+        wait_open(committing_loop(), wait_s)
 
     def log(self, *e):
         with self.lock:
@@ -224,6 +221,25 @@ class World:
             if e[0] == "launch":
                 self.launches[self.block] += 1
             self.events.append((len(self.events),) + e)
+
+
+def committing_loop():
+    """The batch loop whose commit is on this thread's stack: the fakes are handed no loop, and every loop of these
+    tests (batch.Batch, a subclass, or a witness compiled from batch.py) commits from its own methods."""
+    frame = sys._getframe(1)
+    while frame is not None:
+        me = frame.f_locals.get("self")
+        if isinstance(getattr(me, "open", None), collections.deque) and hasattr(me, "_commit_finished"):
+            return me
+        frame = frame.f_back
+    raise RuntimeError("no batch loop is committing on this thread")
+
+
+def wait_open(loop, wait_s) -> None:
+    """Until every drive step `loop` holds open has finished (its future done), under the hang detector (B19-13)."""
+    _, running = concurrent.futures.wait([f for *_, f in loop.open], wait_s)
+    if running:
+        raise RuntimeError("a drive never ended (hang detector)")
 
 
 class LaunchError(RuntimeError):

@@ -10,8 +10,10 @@ does, in the same order. The design note is lane-reports/B19-DESIGN-NOTE.md.
 The drives are stubs on agent_adapter.ScriptedAdapter (test_batch's scenarios): no model, no container, no drive.py.
 A drive's duration is a number of UNITs of sleep; one drive in three is ten times slower than the others. Equal
 durations are modelled as drives of one launch wave that end together: the stub repo's commit waits (up to WAIT_S, a
-hang detector) until no drive is in flight and then SETTLE more, so a loop that commits every drive that has ended,
-in row order, before it fills a slot sees the whole wave ended (the tie rule, design note section 3).
+hang detector) until every future in the loop's open deque is done (B19-13: no sleep), so a loop that commits every
+drive that has ended, in row order, before it fills a slot sees the whole wave ended (the tie rule, design note
+section 3). Equal durations here are drives the loop observes finished at one reading; real drives of equal length
+may roll.
 
 On today's code (blocks of three) the tests that pin the rolling start are red, by design: the block waits for its
 slowest drive before it registers the next row. The rest are green today and pin what the rolling window keeps.
@@ -56,17 +58,21 @@ import test_pipeline as tp  # noqa: E402  (its scratch repositories, rows, outco
 
 UNIT = 0.1         # one fast drive's duration, in seconds
 SLOW = 10          # the slow drive's duration, in UNITs: ten times slower
-SETTLE = 0.05      # equal durations: how long after the wave's last drive ends the commit waits
 WAIT_S = 30.0      # a hang detector, never a timing assumption
 RUN_S = 120.0      # the whole run's hang detector
 
 
 class TimedDriver:
     """launch / drive / remove, each drive taking `units` UNITs of sleep (slot -> UNITs for its first attempt; every
-    other drive takes one). `plan` maps (slot, attempt) to a test_batch scenario (default clean)."""
+    other drive takes one). `plan` maps (slot, attempt) to a test_batch scenario (default clean). With `equal` (B19-13)
+    a wave's drives other than its head end only once the head's commit has begun (test_batch's World.wait_head), so
+    the loop observes the whole wave finished at one reading, never a part of it."""
+
+    equal = False
 
     def __init__(self, world, plan=None, units=None):
         self.world, self.plan, self.units = world, plan or {}, units or {}
+        self.wave_of = {}                              # slot -> the wave (World.block) it was launched in
         self.in_flight = self.max_in_flight = 0
         self.lock = threading.Lock()
         self.idle = threading.Condition(self.lock)
@@ -75,6 +81,7 @@ class TimedDriver:
 
     def launch(self, row):
         cid = f"ctr-{next(self.ids):04d}"
+        self.wave_of[row["slot"]] = self.world.block
         self.world.log("launch", row["slot"], cid)
         return cid
 
@@ -87,6 +94,8 @@ class TimedDriver:
             self.world.log("drive-start", row["slot"], attempt, self.in_flight)
         try:
             time.sleep(UNIT * (self.units.get(row["slot"], 1) if attempt == 1 else 1))
+            if self.equal:                             # B19-13: the wave ends at one reading, its head first
+                self.world.wait_head(self.wave_of[row["slot"]], row["slot"], WAIT_S)
             name = self.plan.get((row["slot"], attempt), "clean")
             turns, box = tb.ALL[name]
             adapter = aa.ScriptedAdapter(turns, container_id=cid)
@@ -113,13 +122,12 @@ class TimedDriver:
 
 
 class EqualRepo(tb.FakeRepo):
-    """Equal durations: a commit waits until the whole launch wave has ended, and SETTLE more (the tie rule)."""
+    """Equal durations: a commit waits until every future in the loop's open deque is done (the tie rule, B19-13)."""
 
-    driver = None
+    driver = loop = None
 
     def commit_records(self, row, attempt, outcome):
-        self.driver.wait_idle()
-        time.sleep(SETTLE)
+        tb.wait_open(self.loop, WAIT_S)
         super().commit_records(row, attempt, outcome)
 
 
@@ -128,10 +136,12 @@ def drive_run(row_list, plan=None, units=None, equal=False, mod=batch, cls=None,
     Round 3: `mod` is batch.py or a witness of it; `cls`, `driver` and `repo` replace the loop, driver and repo."""
     w = tb.World()
     d = (driver or TimedDriver)(w, plan, units)
+    d.equal = equal
     r = (repo or (EqualRepo if equal else tb.FakeRepo))(w)
     r.driver = d
     win = tb.FakeWindow(w)
     b = (cls or mod.Batch)(d, r, win, table=tb.test_table())
+    r.loop = b                                         # EqualRepo reads the loop's open deque (B19-13)
     got = {}
     t = threading.Thread(target=lambda: got.setdefault("out", b.run(row_list)), daemon=True)
     t.start()
@@ -315,9 +325,11 @@ class TestEqualDurations(unittest.TestCase):
         n, plan, want = EQUAL["reruns, a shared pause and an abort"]
         w = tb.World()
         d = TimedDriver(w, plan)
+        d.equal = True
         r = EqualRepo(w)
         r.driver = d
         b = batch.Batch(d, r, tb.FakeWindow(w), table=tb.test_table(), serial=True)
+        r.loop = b
         out = b.run(tb.rows_in(["hc-a", "hc-b", "hc-c"] * (n // 3)))
         self.assertNotEqual(trace(w.events, out), want)
 
