@@ -1,4 +1,5 @@
-Status: running
+Status: blocked
+BLOCKED ON glitch-26: a safety check refused the tool call that appends the claim for tests/test_gemini_undeclared_args.py (status new, its reason) to COPIED.d/vendor-admission.json, so copy_manifest --check now finds an unclaimed file; may this round write that claim (in that fragment or in a new COPIED.d/vendor-b16.json), or how should the new test file be claimed?
 
 ROUND 1 SUMMARY FOR REVIEW (cloud executor, 2026-10-19 06:43 EDT; glitch-26's rulings B16-1 and B16-2):
 - B16-1 reading verified (ruling B16-1): native_snapshot.codex_rollout_rel (line 191) and gemini_session_rel (line 163) listed the config root as rel_dir ""; box/ownership.py _rel_dir (456) admits "." only and hands "" to _rel (347), which refuses it with the GPT walk's line.
@@ -30,7 +31,7 @@ ROUND 1 SUMMARY FOR REVIEW (cloud executor, 2026-10-19 06:43 EDT; glitch-26's ru
   - Readers: transcript_gemini refuses through map_tool (transcript_view.py 214-217; gemini_adapter.py 152). The Gemini native readers keep args opaque and join them by exact JSON. The Codex readers never read a model's argument keys (transcript_codex 203-206; codex_native 230-233). The Claude Code reader refuses through the same map_tool (transcript_view.py 557).
 - B16-2 recommendation: option B, for arm G only. A key outside a known tool's declared keys is read as named, ignored input, and only where the pinned package shows the schema leaves properties open and the invocation never reads the key, cited per tool. The view's args stay what ran (path None), and the undeclared key is kept by name on the view item. Unknown tools, off-type values and closed schemas still refuse. It needs a named exception for transcript_gemini.py. Arm A is ruled separately, after Claude Code's own input validation is read; arm O needs nothing. No reader changed.
 
-RESUME HERE: review stop (round 1)
+RESUME HERE: blocked on glitch-26 (round 2, the copy-manifest claim for tests/test_gemini_undeclared_args.py)
 
 Clock: 2026-10-19 06:22 EDT (lane vendor-b16, cloud executor, branch from lane/vendor-admission at 0aa493c0).
 
@@ -41,3 +42,18 @@ Progress:
 - 2026-10-19 06:42 EDT: B16-2 (ruling B16-2): lane-reports/B16-DESIGN-NOTE.md, read from the verified 0.64.0 tarball (sha256 891a794e..., unpacked under mktemp outside the clone, never run). file_path is in neither grep_search schema (either family); the call validates (Ajv, no additionalProperties), runs over the working directory and the stream records the model's parameters and a success result. Recommendation: option B (named, ignored input on a known Gemini tool, per tool from the pinned source); no reader changed.
 - 2026-10-19 06:46 EDT: round 2 under glitch-26's rulings R-B16-2 (build, red first), R-B16-3 (arm A reading) and R-B16-4 (plan row); status running. The verified 0.64.0 tarball (sha256 891a794e..., chunk-NR7L3FXV.js d566e81b..., gemini-Q2GRYIAK.js 7702da31...) unpacked again under mktemp outside the clone, read only.
 - 2026-10-19 06:52 EDT: R-B16-2 red 184d74a4: tests/test_gemini_undeclared_args.py (synthetic grep_search and search_file_content calls with pattern and file_path). 3 run, 3 failures; U1's line: "grep_search with ['file_path', 'pattern'] is refused: tool_use: tool 'grep_search': argument keys with no entry: ['file_path']", the walk's.
+- 2026-10-19 07:19 EDT: R-B16-2 green 471d947e (ruling R-B16-2). transcript_gemini.OPEN_INPUT names grep_search and search_file_content: (schema closes its properties False, the keys the run reads). A raw key outside the entry's declared keys is dropped from what is mapped (the view's args are what ran: path None) and named on the view item, a CallItem (a RawItem with undeclared_args, in the record's order, kept through dataclasses.replace). A call with no undeclared key is still the plain RawItem. Still refused: an unknown tool name, a declared key off its type, a tool with no entry or with a closed schema, and a key the run reads (wait_for_previous). Named exception (ruling R-B16-2): transcript_gemini.py is in READER_SOURCES. No Gemini reader acceptance record exists, so no accepted bytes move. It is recorded as B12's was: a comment above OPEN_INPUT, this file and the commit message. tool_kind's and the parser's line counts are unchanged, and the new code sits at the end of the file, so the generated sweep's line-keyed EQUIVALENT entries do not move.
+  - Per-tool citations, gemini_tool_sources.OPEN_INPUT, 97 lines, read from the verified tarball (chunk-NR7L3FXV.js d566e81b...):
+    - Both families' grep schemas carry no additionalProperties (282751-282788, 282791-282855, 282158-282195, 282198-282262); only write_todos sets it.
+    - build validates with Ajv, whose only option is strictSchema false (274389, 274396, 273774).
+    - GrepTool's invocation reads only declared keys: 321746, 321815, 321834-321839, 321866, and its helpers 321637 and 321597.
+    - RipGrepTool's invocation (GrepToolInvocation2) reads only declared keys: 322258, 322309, 322328-322339, 322361, 322384.
+    - The scheduler reads wait_for_previous off every call (349439), so that key stays refused for the grep tools.
+    - The base invocation reads file_path through extractFilePathFromArgs (274078, 274035), but only on an ask-user decision. A headless yolo run never reaches that: policies/yolo.toml 51-55 allow every tool, and checkPolicy refuses ask-user when not interactive (343497-343498). The grep invocation is built without respectsAutoEdit (321708).
+    - The stream records the model's parameters (gemini-Q2GRYIAK.js 12228).
+    - test_gemini_undeclared_args --sources: 0 problems over 97 cited lines.
+  - Witnesses (test_gemini_undeclared_args --witnesses), 3/3 red, each alone: citation-removed (U3 red), closed-schema-assumed (U1 red), name-dropped-from-view (U1 red).
+  - Tests: test_gemini_undeclared_args 3 OK. test_gemini_adapter 144 OK: S7-open-input binds U1-U3 into the bound checks, and the tool-refusal-untyped witness is re-anchored on the new map_tool line. test_gemini_adapter --witnesses 114/114 red. test_gemini_tool_registry 4 OK, --witnesses 115/115 red, --sources 0 problems over 125 lines.
+  - Generated sweep (40 shards, each under env -i): 1535 ran, 1493 killed, 42 equivalent (the existing list), 0 survived, 0 stale. Before S7 and a tightening of the new functions, 12 survivors, all in the new code.
+  - Not done: R-B16-2's witness registration in checks.d, R-B16-3 and R-B16-4, and the round's checks.
+- 2026-10-19 07:20 EDT: BLOCKED. A safety check refused the tool call that appends tests/test_gemini_undeclared_args.py's claim (status new, with its reason) to COPIED.d/vendor-admission.json. Under this lane's rule, the call is not reworded or routed around. The fragment is unchanged, so copy_manifest --check finds the new test file unclaimed (it has been on the branch since the red commit 184d74a4).
