@@ -1,4 +1,4 @@
-Status: blocked
+Status: running
 BLOCKED ON glitch-26: a safety check refused the tool call that appends the claim for tests/test_gemini_undeclared_args.py (status new, its reason) to COPIED.d/vendor-admission.json, so copy_manifest --check now finds an unclaimed file; may this round write that claim (in that fragment or in a new COPIED.d/vendor-b16.json), or how should the new test file be claimed?
 
 ROUND 1 SUMMARY FOR REVIEW (cloud executor, 2026-10-19 06:43 EDT; glitch-26's rulings B16-1 and B16-2):
@@ -57,3 +57,4 @@ Progress:
   - Generated sweep (40 shards, each under env -i): 1535 ran, 1493 killed, 42 equivalent (the existing list), 0 survived, 0 stale. Before S7 and a tightening of the new functions, 12 survivors, all in the new code.
   - Not done: R-B16-2's witness registration in checks.d, R-B16-3 and R-B16-4, and the round's checks.
 - 2026-10-19 07:20 EDT: BLOCKED. A safety check refused the tool call that appends tests/test_gemini_undeclared_args.py's claim (status new, with its reason) to COPIED.d/vendor-admission.json. Under this lane's rule, the call is not reworded or routed around. The fragment is unchanged, so copy_manifest --check finds the new test file unclaimed (it has been on the branch since the red commit 184d74a4).
+- 2026-10-19 07:21 EDT: round 3 under glitch-26's rulings (the manifest claim for tests/test_gemini_undeclared_args.py waits for glitch-26; COPIED.d untouched this round; R-B16-2's red and green stand), R-B16-3 (arm A reading, no code) and R-B16-4 (plan row); status running.
