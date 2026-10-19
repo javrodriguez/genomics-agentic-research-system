@@ -418,8 +418,12 @@ def mutants() -> dict:
         "place-inherited-unchecked": ("B18.place", "walk_builders", "    above = inherited_instruction_files(tree)\n",
                                       "    above = []\n"),
         # lane vendor-admission round 18 B13 (practice walk w-o1): the placed copies added without -f
-        "place-add-unforced": ("B18.ignored", "walk_builders", '    for args in (("add", "-f", "--", *[d for d, _ in placed]),',
-                               '    for args in (("add", "--", *[d for d, _ in placed]),'),
+        "place-add-unforced": ("B18.ignored", "walk_builders",
+                               '    for args in (("add", "-f", "--", *[":(literal)" + d for d, _ in placed]),',
+                               '    for args in (("add", "--", *[":(literal)" + d for d, _ in placed]),'),
+        # R-FB2 (glitch-26, Mon 19 Oct 2026; review vendor-r18-b12b13-0094246 NIT 3): the placed paths as pathspecs
+        "place-add-not-literal": ("B18.literal", "walk_builders", '*[":(literal)" + d for d, _ in placed]',
+                                  '*[d for d, _ in placed]'),
     }
 
 
@@ -475,6 +479,7 @@ METHOD = {
     "lease-refusal-carries-token": "B13Lease.test_the_walk_start_token_check",
     "place-inherited-unchecked": "B18Native.test_place_instruction_file_refuses_by_name",
     "place-add-unforced": "B18Native.test_the_native_file_is_added_past_the_trees_gitignore",
+    "place-add-not-literal": "B18Native.test_each_placed_path_is_added_literally",
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 
