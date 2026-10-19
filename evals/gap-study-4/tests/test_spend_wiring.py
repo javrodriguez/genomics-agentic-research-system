@@ -624,8 +624,9 @@ class TestSpendStatusRuled(unittest.TestCase):
 
 # name: (edits, the module the edits apply to, the bound check)
 WITNESSES = {
-    "gate-never-called": ((("            if self._money_gate(block):                     # W7C: before the block is "
-                            "registered\n                return self.outcomes\n", ""),), "batch", "G2-month"),
+    # re-anchored to batch.py's rolling window (B19-8): the same mutations, on the wave the gate now reads
+    "gate-never-called": ((("        if self._money_gate(wave):                         # W7C: before the wave is "
+                            "registered\n            return\n", ""),), "batch", "G2-month"),
     "month-check-dropped": ((("            allowed = costs.month_turn_allowed(arm, now, snap[\"trimmed\"])",
                               "            allowed = True"),), "batch", "G2-month"),
     "walk-check-dropped": ((("    if gate.get(\"decision\") != costs.PROCEED:",
@@ -636,14 +637,14 @@ WITNESSES = {
                            "        return []\n        return [f\"the loop was given no spend ledger"),
                           ("            elif bills_money(r) and self.ledger is None:",
                            "            elif False:"),), "batch", "G4-ledger"),
-    "gate-after-register": ((("            if self._money_gate(block):                     # W7C: before the block is "
-                              "registered\n                return self.outcomes\n"
-                              "            if not self._register(block):                    # serial: one commit each\n"
-                              "                return self.outcomes\n",
-                              "            if not self._register(block):                    # serial: one commit each\n"
-                              "                return self.outcomes\n"
-                              "            if self._money_gate(block):                     # W7C: before the block is "
-                              "registered\n                return self.outcomes\n"),), "batch", "G5-order"),
+    "gate-after-register": ((("        if self._money_gate(wave):                         # W7C: before the wave is "
+                              "registered\n            return\n"
+                              "        if not self._register(wave):                        # serial: one commit each\n"
+                              "            return\n",
+                              "        if not self._register(wave):                        # serial: one commit each\n"
+                              "            return\n"
+                              "        if self._money_gate(wave):                         # W7C: before the wave is "
+                              "registered\n            return\n"),), "batch", "G5-order"),
     # re-anchored to round 17 B7's check line (ruling M): the same mutation, the empty-list refusal switched off
     "empty-paid-list-admitted": ((("        if key == \"spend_cap_markers\" and harness not in EMPTY_SPEND_LIST_HARNESSES",
                                    "        if False"),), "routing", "R1-nonempty"),

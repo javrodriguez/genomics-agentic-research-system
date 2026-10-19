@@ -72,9 +72,11 @@ def review_mutations():
             'if o["slot"] in final_slots:', 'if False:'),
         "mechanical-error-type": source_mutant(completeness, "mechanical_states",
             'except batch.BatchConfigError as exc:', 'except ValueError as exc:'),
-        "pause-count-refusal": source_mutant(cr, "pause_event",
-            'return {"event": ("take", *key), "note": STRICT_PAUSE_NOTE}',
-            'raise ValueError("the ruled pause event count is ambiguous")'),
+        "pause-count-refusal": source_mutant(cr, "pause_event",   # B19-5: re-anchored on the own-event return
+            'return {"event": ("take", *key), "note": STRICT_PAUSE_NOTE if shared else None}',
+            'if shared:\n'
+            '        raise ValueError("the ruled pause event count is ambiguous")\n'
+            '    return {"event": ("take", *key), "note": None}'),
         "strict-pause-note": (cr, "STRICT_PAUSE_NOTE", "missing note"),
         "strict-pause-cell-note": source_mutant(completeness, "mechanical_states",
             'if state.get("note"):', 'if False:'),
@@ -110,13 +112,11 @@ def review_mutations():
             'if frozen.get("rehearsal_record") != "rehearsal or preview":', 'if False:'),
         "rehearsal-not-checked": source_mutant(cr, "check_frozen_content",
             'NOT CHECKED: rehearsal record (disposable rehearsal)', 'PASS: rehearsal record'),
-        "pause-event-identity": source_mutant(cr, "pause_event",
-            'if events and ("window", next(iter(events))) in cell_events:\n'
-            '            event = ("window", next(iter(events)))\n'
-            '        choices[len(cell_events | {event})] = event',
-            'if events:\n'
-            '            event = ("window", next(iter(events)))\n'
-            '        choices[event] = event'),
+        "pause-event-identity": source_mutant(cr, "pause_event",   # B19-5: the block reading, sharing a window
+            'return {"event": ("take", *key), "note": STRICT_PAUSE_NOTE if shared else None}',
+            'return {"event": next((("window", o["window_event"]) for o in outcomes\n'
+            '                           if o["half_cell"] == taken["half_cell"] and o["window_event"] is not None),\n'
+            '                          ("take", *key)), "note": None}'),
         "frozen-rehearsal-empty": source_mutant(cr, "rehearsal_record_problems",
             'return ["the frozen rehearsal record is empty"]', 'return []'),
         "registration-pause-dedup": source_mutant(takes, "registration_outcomes",
@@ -131,8 +131,11 @@ def review_mutations():
             'message.write("Register one planned take\\n\\nCo-Authored-By: synthetic\\n")'),
         "scratch-identity": (sys.modules[__name__], "scratch_identity", lambda root: None),
         "runtime-identity": (takes, "require_commit_identity", lambda repo: None),
-        "finishing-block": source_mutant(takes.RegistrationGuard, "check",
-            'elif self.live & done:', 'elif False:'),
+        "finishing-block": source_mutant(takes.RegistrationGuard, "check",   # B19-5: the block rule restored
+            'self.live -= done',
+            'if self.live & done and not self.live <= done:\n'
+            '        raise ValueError("a row is registered with no committed outcome in the finishing block")\n'
+            '    self.live -= done'),
         "one-history-record": source_mutant(takes, "read_history",
             'if len(added) != 1:', 'if len(added) < 1:'),
         "ruling-clean-tree": source_mutant(takes, "commit_ruling",
@@ -162,8 +165,9 @@ def review_mutations():
             "return True  # outside the month-turn hold", "return False  # demands a current-month record"),
         "door-default-by": source_mutant(takes, "commit_ruling", "route=route, by=by)",
             'route=route, by=by or "synthetic-person")'),
-        "pause-candidate-edges": source_mutant(cr, "pause_event",
-            "if not candidates:", "if len(candidates) != 1:"),
+        "pause-note-other-cell": source_mutant(cr, "pause_event",   # B19-5: replaces pause-candidate-edges
+            'any(o["half_cell"] == taken["half_cell"] and o["state"] == labels4.PAUSE',
+            'any(o["state"] == labels4.PAUSE'),
         "registration-publication": (takes, "registration_outcomes",
             lambda history: cr.publication(history)["attempts"]),
     }
@@ -201,7 +205,7 @@ def mutations():
         "published-page": (cr, "page_equal", lambda actual, wanted: True),
         "design-row": (takes, "require_planned_row", lambda row, pre: None),
         "stale-row": (takes, "outside_live_block", lambda waiting, live: []),
-        "four-open": (takes, "OPEN_LIMIT", 4),
+        "past-max-open": (takes, "OPEN_LIMIT", batch.MAX_OPEN + 1),
         "row-agent": (takes, "agent_problems", lambda row: batch.agent_problems(
             dict(row, agent=row.get("agent", {"harness": hb.CLAUDE_CODE, "version": "0.0.1"})))),
         "final-slot": (takes, "slot_final", lambda outcome: False),
@@ -488,41 +492,42 @@ class Registration(unittest.TestCase):
     def setUp(self):
         self.assertTrue(callable(getattr(takes, "guard_registration", None)), "repo-callable registration guard")
 
-    def test_partly_finished_live_block_refuses_another_registration(self):
+    def test_partly_finished_live_set_allows_another_registration(self):
+        # B19-5 (batch.py's rolling window): a row leaves the live set at its commit, so a registration lands while
+        # other rows are still open; the finishing-block refusal is gone (its mutant restores it and goes red).
         with repository() as repo:
             for n in (1, 2, 3):
                 repo.register(row(n), 1)
             repo.commit_records(row(1), 1, outcome(row(1)))
-            before = git(repo.root, "rev-parse", "HEAD")
-            with self.assertRaisesRegex(ValueError, "finishing block"):
-                repo.register(row(4), 1)
-            self.assertEqual(git(repo.root, "rev-parse", "HEAD"), before)
-            self.assertEqual(len(repo.rows()), 3)
+            repo.register(row(4), 1)
+            self.assertEqual(len(repo.rows()), 4)
+            self.assertEqual(repo.guard.live, {("s2", 1), ("s3", 1), ("s4", 1)})
 
-    def test_live_block_three_restart_requires_reconciliation(self):
+    def test_live_set_max_open_restart_requires_reconciliation(self):
         with repository() as repo:
-            for n in range(1, 4):
+            for n in range(1, batch.MAX_OPEN + 1):
                 repo.register(row(n), 1)
-            with self.assertRaisesRegex(ValueError, "three|3"):
-                repo.register(row(4), 1)
-            for n in (1, 2):
+            with self.assertRaisesRegex(ValueError, f"at most {batch.MAX_OPEN} open"):
+                repo.register(row(batch.MAX_OPEN + 1), 1)
+            for n in range(1, batch.MAX_OPEN):
                 repo.commit_records(row(n), 1, outcome(row(n)))
             restarted = FakeRepo(repo.root)
             with self.assertRaisesRegex(ValueError, "registered.*outcome"):
-                restarted.register(row(4), 1)
+                restarted.register(row(batch.MAX_OPEN + 1), 1)
             with mock.patch.object(takes, "outside_live_block", lambda waiting, live: []):
-                takes.guard_registration(row(4), 1, restarted.rows(), restarted.history())
-            restarted.commit_records(row(3), 1, outcome(row(3)))
-            restarted.register(row(4), 1)
-            self.assertEqual(len(restarted.rows()), 4)
+                takes.guard_registration(row(batch.MAX_OPEN + 1), 1, restarted.rows(), restarted.history())
+            restarted.commit_records(row(batch.MAX_OPEN), 1, outcome(row(batch.MAX_OPEN)))
+            restarted.register(row(batch.MAX_OPEN + 1), 1)
+            self.assertEqual(len(restarted.rows()), batch.MAX_OPEN + 1)
 
-    def test_four_open_mutant(self):
-        rows = [dict(row(n), attempt=1) for n in range(1, 4)]
+    def test_past_max_open_mutant(self):
+        self.assertEqual(takes.OPEN_LIMIT, batch.MAX_OPEN)
+        rows = [dict(row(n), attempt=1) for n in range(1, batch.MAX_OPEN + 1)]
         live = {(r["slot"], r["attempt"]) for r in rows}
         with self.assertRaises(ValueError):
-            takes.guard_registration(row(4), 1, rows, [], live=live)
-        with mock.patch.object(takes, "OPEN_LIMIT", 4):
-            takes.guard_registration(row(4), 1, rows, [], live=live)
+            takes.guard_registration(row(batch.MAX_OPEN + 1), 1, rows, [], live=live)
+        with mock.patch.object(takes, "OPEN_LIMIT", batch.MAX_OPEN + 1):
+            takes.guard_registration(row(batch.MAX_OPEN + 1), 1, rows, [], live=live)
 
     def test_lost_drive_and_lost_pause_never_launch_on_restart(self):
         for state in (labels4.GRADED, labels4.PAUSE):
@@ -697,15 +702,19 @@ class PublicationHistory(unittest.TestCase):
             with self.subTest(history=history), self.assertRaisesRegex(ValueError, "after.*final"):
                 cr.publication(history, table())
 
-    def test_ruled_pause_counts_its_existing_block_once(self):
+    def test_ruled_pause_counts_as_its_own_event(self):
+        # B19-5 (proposal 7) and B19-6: a ruled pause counts as its own event, with the note, where a block run
+        # would have merged it with its block's window event; publication's count is batch's strict count.
         stopped = outcome(row(2), state=labels4.FAILED, final=False)
         history = [recorded(labels4.PAUSE, row(1)), stopped, recorded(labels4.PAUSE, row(3)), ruling(row(2))]
         got = cr.publication(history, table())
-        self.assertEqual(len(got["window_events"]["c1"]), 1)
+        self.assertEqual(set(got["window_events"]["c1"]), {("window", 1), ("take", "s2", 1)})
+        strict = batch.Batch(None, None, None, table=table(), history=history)
+        self.assertEqual(set(got["window_events"]["c1"]), strict.cell_events[("c1", labels4.PAUSE)])
+        self.assertEqual(next(o for o in got["attempts"] if o["slot"] == "s2").get("note"), cr.STRICT_PAUSE_NOTE)
         self.assertEqual(got["cells"], {})
-        with mock.patch.object(cr, "pause_event", lambda h, o:
-                               {"event": ("take", o["slot"], o["attempt"]), "note": None}):
-            self.assertEqual(len(cr.publication(history, table())["window_events"]["c1"]), 2)
+        with mock.patch.object(cr, "pause_event", lambda h, o: {"event": ("window", 1), "note": None}):
+            self.assertEqual(len(cr.publication(history, table())["window_events"]["c1"]), 1)   # the block reading
 
     def test_ruled_pause_requires_existing_take(self):
         absent = [ruling(row())]
@@ -775,7 +784,8 @@ class PublicationHistory(unittest.TestCase):
         history += [outcome(row(2), state=labels4.FAILED, final=False),
                     recorded(labels4.PAUSE, row(3), window=cap - 1), ruling(row(2))]
         rows = [dict(row(1), attempt=i) for i in range(1, cap)] + [dict(row(n), attempt=1) for n in (2, 3)]
-        self.assertEqual(cr.publication(history, native)["cells"], {})
+        # B19-5 (proposal 7): publication counts the ruled pause as its own event too, so both readers close c1.
+        self.assertEqual(cr.publication(history, native)["cells"]["c1"]["state"], labels4.INCOMPLETE_MECHANICAL)
         with self.assertRaisesRegex(ValueError, "closed"):
             takes.guard_registration(row(4), 1, rows, history)
         takes.guard_registration(row(4, half_cell="c2"), 1, rows, history)
@@ -1098,6 +1108,13 @@ class Reporting(unittest.TestCase):
         history = [recorded(labels4.PAUSE, row(1), attempt=i, window=i) for i in range(1, cap)]
         history += [outcome(row(2), state=labels4.FAILED, final=False, drive_started=True),
                     recorded(labels4.PAUSE, row(3), window=cap - 1), ruling(row(2))]
+        published = cr.publication(history, native)
+        # B19-5 (proposal 7): publication now counts the ruled pause strictly and closes c1 with its note, as batch
+        # does; the strict-close label is still checked, on publication's former block reading of the ruled pause.
+        self.assertEqual(published["cells"]["c1"]["note"], cr.STRICT_PAUSE_NOTE)
+        block_reading = mock.patch.object(cr, "pause_event", lambda h, o: {"event": ("window", cap - 1), "note": None})
+        block_reading.start()
+        self.addCleanup(block_reading.stop)
         published = cr.publication(history, native)
         self.assertEqual(published["cells"], {})
         strict = batch.Batch(None, None, None, table=native, history=history)

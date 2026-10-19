@@ -4,8 +4,11 @@
 The append-only takes.json holds {"rows": [...]}; one commit adds one row.
 Every identity includes arm, task, half, model, agent, wording and repeat/pressure.
 The row's commit determines its session UUID. CP2 calls guard_registration or a
-process-local RegistrationGuard before registering; only that instance's current
-block may have up to three open rows. A restart never inherits its live set.
+process-local RegistrationGuard before registering; only that instance's live
+set may have open rows, at most MAX_OPEN (B19-5): a row joins it at its
+registration and leaves it at its commit. A restart never inherits its live set.
+A registration needs a clean tree but for the untracked folders of the live
+set's open takes, takes/<slot>/<attempt>/.
 
 commit_registration writes and commits the complete planned row. commit_ruling
 writes rulings.json, a closed batch record with the caller's explicit by, in one
@@ -39,8 +42,9 @@ import batch  # noqa: E402
 from graders import labels4  # noqa: E402
 import stats  # noqa: E402
 import routing  # noqa: E402
+import mode_binding  # noqa: E402  (TAKES_DIR: an open take's folder, B19-5)
 
-OPEN_LIMIT = batch.BLOCK
+OPEN_LIMIT = batch.MAX_OPEN      # B19-5: the most takes open at once (registered, outcome not committed)
 
 
 def half_cell_key(row: dict) -> tuple:
@@ -237,7 +241,8 @@ def guard_registration(row: dict, attempt: int, rows: list, history: list, *, li
 
     rows holds registered rows with their attempt; history is batch's closed
     outcomes/rulings in commit order. live contains only (slot, attempt) pairs
-    registered by this instance in its current block, never restored on restart.
+    registered by this instance whose outcome is not yet committed (its open
+    rows, at most OPEN_LIMIT), never restored on restart.
     An exception precedes every write and every launch.
     """
     bad = agent_problems(row)
@@ -261,7 +266,7 @@ def guard_registration(row: dict, attempt: int, rows: list, history: list, *, li
     if key in registered:
         raise ValueError("this slot and attempt are already registered; no re-registration")
     if len(waiting) >= OPEN_LIMIT:
-        raise ValueError(f"at most {OPEN_LIMIT} open rows (three in one live block)")
+        raise ValueError(f"at most {OPEN_LIMIT} open rows (MAX_OPEN takes open in one live set)")
     if cell_closed(history, row["half_cell"]):
         raise ValueError("the half-cell is closed by its committed state")
     prior = [o for o in registration_outcomes(history) if o["slot"] == row["slot"]]
@@ -285,16 +290,14 @@ def guard_registration(row: dict, attempt: int, rows: list, history: list, *, li
 
 
 class RegistrationGuard:
-    """One live block in one repo instance; never persist or restore this object."""
+    """One live set in one repo instance (B19-5): a row joins it at its registration and leaves it at its commit;
+    never persist or restore this object."""
     def __init__(self):
         self.live = set()
 
     def check(self, row: dict, attempt: int, rows: list, history: list) -> None:
         done = {(o["slot"], o["attempt"]) for o in history if batch.is_outcome(o)}
-        if self.live <= done:
-            self.live.clear()
-        elif self.live & done:
-            raise ValueError("a row is registered with no committed outcome in the finishing block")
+        self.live -= done
         guard_registration(row, attempt, rows, history, live=self.live)
 
     def registered(self, row: dict, attempt: int) -> None:
@@ -361,6 +364,23 @@ def require_planned_row(row, pre):
         raise ValueError("the row differs from its pre-registered metadata")
 
 
+def open_take_folders(guard, history, *, root=HERE, repo=REPO) -> set:
+    """B19-5: the folders of this instance's open takes (its live set, less every take the history commits), each
+    takes/<slot>/<attempt>/ under the study folder, repo-relative with a trailing slash."""
+    root, repo = Path(root).resolve(), Path(repo).resolve()
+    done = {(o["slot"], o["attempt"]) for o in history if batch.is_outcome(o)}
+    return {(root / mode_binding.TAKES_DIR / str(slot) / str(attempt)).relative_to(repo).as_posix() + "/"
+            for slot, attempt in guard.live - done}
+
+
+def unclean_paths(repo, allowed=frozenset()) -> list:
+    """Every `git status` line but an untracked file inside one of the `allowed` folders (B19-5: an open take's
+    folder is written from its launch to its commit). A modified, staged or quoted path is never allowed."""
+    lines = _git_at(Path(repo), "status", "--porcelain", "--untracked-files=all").splitlines()
+    return [line for line in lines
+            if not (line.startswith("?? ") and any(line[3:].startswith(folder) for folder in allowed))]
+
+
 def commit_registration(row, attempt, *, guard=None, root=HERE, repo=REPO, pre=None):
     root, repo = Path(root).resolve(), Path(repo).resolve()
     if pre is None:
@@ -369,11 +389,12 @@ def commit_registration(row, attempt, *, guard=None, root=HERE, repo=REPO, pre=N
     import check_results
     registered = dict(row, attempt=attempt)
     check_results.validate_ledger([registered])
-    if _git_at(repo, "status", "--porcelain"):
-        raise ValueError("registration requires a clean committed repository")
-    require_commit_identity(repo)
-    rows, history = load_rows(root=root, repo=repo), read_history(root=root, repo=repo)
     guard = RegistrationGuard() if guard is None else guard
+    history = read_history(root=root, repo=repo)
+    if unclean_paths(repo, open_take_folders(guard, history, root=root, repo=repo)):
+        raise ValueError("registration requires a clean committed repository (but the open takes' folders)")
+    require_commit_identity(repo)
+    rows = load_rows(root=root, repo=repo)
     guard.check(row, attempt, rows, history)
     path = root / "takes.json"
     path.write_text(json.dumps({"rows": rows + [registered]}, indent=2) + "\n")
