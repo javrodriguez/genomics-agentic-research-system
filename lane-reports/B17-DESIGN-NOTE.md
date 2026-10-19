@@ -144,3 +144,25 @@ What ops/athena_suite.py's OD57 twin (aegis workspace, lines 1305-1399, "keep th
 - O7. Gemini's stream output for a shell read in debug mode would be the llmContent with its `Output: ` prefix (:326217-326218); the prefix rule covers it, and whether the arm runs in debug mode I did not check.
 - O8. That w-g9's stream finding came from a `run_shell_command` read is inferred from section 1.2 (a `read_file` stream result never carries the text); glitch-26 can confirm it from the held scan record.
 - O9. The Gemini session's G-S4 content patch is named from the source but has no red test of its own; it uses the same functionResponse rule as G-S2.
+
+## 6. Round 4: C-R1 and C-R2 re-derived against the committed arm O rollouts (B17-16d)
+
+Read by counts and key names only, from the committed arm O walks w-o7 to w-o14 (eight folders on the walk/* branches of gap4-walk-records-20261019, the reviewer's census scripts census_o2.py and census_o4.py, run unchanged).
+
+- The native rollouts hold 97 `response_item` `custom_tool_call` records, every one `name=exec`, with the keys call_id, id, input, internal_chat_message_metadata_passthrough, name, status and type, and a string input.
+- They hold 97 `custom_tool_call_output` records, with the keys call_id, id, internal_chat_message_metadata_passthrough, output and type, and `output` a list of `input_text` items.
+- They hold no `function_call` and no `function_call_output` record.
+- They hold 108 `CommandExecution` items, all `source='unified_exec_startup'`, with the keys aggregated_output, command, cwd, duration, exit_code, id, parsed_cmd, process_id, source, status and type. No item's id is a custom_tool_call call_id.
+- Every exec input contains `tools.`, `await ` and `exec_command`: this is Codex's code mode, whose script calls exec_command inside.
+
+Why there is no function_call: both arm O models (prereg-draft.json "O": gpt-6.1-sol, gpt-6-luna) carry `"tool_mode": "code_mode_only"` in the pinned catalog.
+The citations are at codex-rs/models-manager/models.json: gpt-6.1-sol is at slug line 177 and tool_mode line 193, and gpt-6-luna at lines 524 and 540.
+requested_tool_mode takes the model's tool_mode first (core/src/tools/mod.rs:75-85), and effective_tool_mode keeps CodeModeOnly (:87-97).
+In CodeModeOnly every tool but `exec` and `wait` is hidden (core/src/tools/spec_plan.rs:838-850; code-mode-protocol/src/lib.rs:54-55, description.rs:262-263), so exec_command is never offered as a direct function.
+So C-R1 (function_call) and C-R2 (function_call_output) cannot be emitted by the pinned arm O configuration, and their shapes are removed.
+In their place:
+
+- C-R3 (the CommandExecution item) admits on its own argv, as a joined shape pinned to `[/bin/bash, -lc, script]`, which all 108 committed items match (B17-16a).
+- C-R4, new: the exec `custom_tool_call_output` admits the ruled line only inside a verbatim copy of an admitted C-R3 item's aggregated_output in the same file. Its call is a `custom_tool_call` named `exec` with the same call id, and nothing else in that output is admitted by this rule (B17-16b).
+
+Known limit (round 4): a tty exec's `tty` argument now sits only inside the exec script's text, which no shape reads. Its output is held by its CRLF bytes, in the rollout as in the stream.

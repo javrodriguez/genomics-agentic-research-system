@@ -1,5 +1,41 @@
 Status: needs-review
 
+## ROUND 4 SUMMARY FOR REVIEW (local executor, 2026-10-19 23:16 UTC; glitch-26's rulings B17-16a to B17-16d, MINOR 1 and the NITs, on REVIEW-vendor-b17-dd2d0398)
+
+Red commit 7a797ec9 (tests only): the Codex rollout fixtures in the census's real shape (custom_tool_call `exec` with a string input, CommandExecution with source unified_exec_startup, custom_tool_call_output as input_text items; no record text copied); TestB17Round4 and the reshaped round 1 to 3 tests. Run on 7a797ec9: Ran 176 tests, FAILED (failures=20, errors=12), all in the B17 classes.
+Green commit 2f267f7a:
+- B17-16a: the rollout CommandExecution admits on its own argv again, a joined shape (copies "same", aggregated_output, at payload.item of an event_msg), its wrapper pinned to [/bin/bash, -lc, script] (tool `flags`); witness "16a the CommandExecution's -lc"; refusal subtests for another file and a nested shell.
+- B17-16b: a copy shape (`copy_of`, tool kind "copy"): a custom_tool_call_output admits the ruled line only inside a verbatim copy of the aggregated_output of a CommandExecution that 16a admits in the same file, its call a custom_tool_call `exec` of the same call id; the record's "nowhere else" guard still counts every copy of the line. Witnesses, each red alone: an admitted read in the file, the span is a verbatim copy, the exec tool, the call id, nothing else in the output.
+- B17-16c: admission tests (exec output equal to, around and after the copy; probe U1 and U2 now ruled=[2] and ruled=[3, 4]); refusal tests: no admitted read in the file, a read of another file, a changed span, another custom tool (`wait`), a mismatched call id, the line again outside the copy.
+- B17-16d: design note section 6. Both arm O models are code_mode_only in the pinned catalog (models-manager/models.json lines 177/193 and 524/540; core/src/tools/mod.rs:75-97; spec_plan.rs:838-850; code-mode-protocol lib.rs:54-55, description.rs:262-263), and the committed w-o7 to w-o14 rollouts hold 97 custom_tool_call `exec` records, 97 custom_tool_call_output records and no function_call or function_call_output. So both function_call shapes are removed, and round 3's exec_command `shell` and `tty` checks (tool `shell_arg`, `refuse`) went with them.
+- NIT 2 (folded): each position is (path, record), the record's top-level `type` among the named values (Gemini stream tool_use/tool_result, messages gemini/user, Codex item.started/item.completed, event_msg, response_item); witnesses "NIT 2 a stream item's event type" and "NIT 2 a response's message type".
+- Pins moved, each because its records changed: Gemini READ_SHAPES 0ee23c45... (record types, copy_of), Codex 906ab0ba... (B17-16, NIT 2). drive.py and check_vendor_sources.py are unchanged.
+Recorded (NIT 3, NIT 4, and round 4's limit):
+- NIT 3: the Codex stream cannot see `tty`. A tty exec's command_execution is held only by its CRLF bytes.
+- Round 4's limit: the same now holds in the rollout. `tty` is inside the exec script's text, which no shape reads, and the reviewer's O2 (a function_call with tty true beside an LF CommandExecution) is admitted on the CommandExecution's own argv. No real record holds a function_call.
+- NIT 4: B17-11 widens one Claude case. A tool_use copy nested off message.content no longer counts as a second copy of its id. This is the ruling as written, and the census shows no nested block in the 151 committed arm A walks.
+- NIT 1 is moot under 16a. NIT 5 needs nothing.
+MINOR 1, the athena rescan with 2f267f7a's scan_record and drive.scan_read_shapes for arm G, nothing printed but paths, lines, key paths and booleans:
+- How it ran: a git archive of evals/gap-study-4 plus the doc, in /home/javier/b17-rescan.8LGEiMcA. Each walk folder was copied into that folder before scanning, and the scanner was the pinned gitleaks 8.30.1. The scratch folder was removed afterwards and nothing else was touched. drive.walk_files refused each held folder, so per-file kinds were used, and every file had a kind.
+- w-g9 (child w-gZYiruEu): 40 files, ruled [], refused turn-1.jsonl:198, session/native-turn-1.jsonl:463 and session/native-turn-2.jsonl:463, each generic-api-key.
+  - turn-1.jsonl:198: a tool_result with the line once at `output`.
+  - Both native files at line 463: a gemini message with the line once at `toolCalls.*.resultDisplay`. The entry's one functionResponse output (40,257 characters) does not hold it; the display is 1,354,158 characters.
+  - The matching call, one copy, is a run_shell_command whose command fails _ruled_bash. It is one segment, it tokenises, its first word is off the allow-list, and it does not name the doc. It has no newline, `#`, substitution, unquoted backslash or shell token.
+  - So the stream and session shapes are the designed ones. The command is not a read of the doc that OD57 admits, and the refusal holds as Claude's Bash rule would hold it. No shape changed (reported to glitch-26).
+- w-g3, w-g5 and w-g7: 34 files each, ruled [] and refused [].
+Counts (light-ok for each module, the lane run under mac_slot run --kind heavy; /usr/local/bin first on PATH, Python 3.13.2), on the tree committed as 2f267f7a:
+- test_scan_record: Ran 176, OK; 106 mutants red.
+- test_gemini_adapter: Ran 145, OK; --witnesses Ran 115, OK.
+- test_codex_adapter: Ran 56, OK; --witnesses Ran 17, OK.
+- test_sidecar: Ran 157, OK (1 skipped); --process-check exit 0.
+- test_scan_witness: Ran 10, OK.
+- check_vendor_sources B17 (the round's files) exit 0; EB drive.py exit 0.
+- The reviewer's probe_r3: U1 ruled [2], U2 ruled [3, 4], U3 ruled [3], U4 refused [2]. O1 to O4 are admitted on the CommandExecution's own argv (16a). Every other over-admission attempt is still refused, apart from O23, O24, O25, O29, O31, O41, O42 and O44, admitted as before.
+- The lane's witness run: all 64 command lines in three heavy bookings, 22 + 22 + 20 ran, 0 failed.
+Left unrun (athena's): the adapters' generated sweeps and the full suite. The integration merge clone vendor-int-b17-20261019 was stopped as ruled: merge head 4fc1322a and the B17 merge 9b9e71fc (amended to resolve test_vendor_envelopes' edit D pin) stand untouched, to be redone on top of round 4.
+
+RESUME HERE: review stop (round 4)
+
 ## ROUND 3 SUMMARY FOR REVIEW (local executor, 2026-10-19 22:20 UTC; glitch-26's rulings B17-10 to B17-15 on REVIEW-vendor-b17-a051f6e3)
 
 Red commit 2d707249 (tests only): forged nested call/result nodes on each arm and file kind (Gemini stream, Gemini session, Codex stream, Codex rollout) and on the Claude path (the reviewer's probe_claude_nested record); exec_command's shell argument; tty output with LF and CRLF; debug-mode output; grep_search; PTY CRLF; read_file's resultDisplay; the image shell; a swapped call-site argument; each with a witness. Run on 2d707249: Ran 153 tests, FAILED (failures=29, errors=4), every one in TestB17Round3, TestB17Round3Wiring or the reshaped TestB17ReadShapes wrapper witnesses; every other test green.
@@ -16,7 +52,7 @@ B17-11 regression proof: log /private/tmp/claude-501/-Users-javrodher-glitch/53d
 Counts (each one foreground process; the lane run under mac_slot run --kind heavy, the others after light-ok; /usr/local/bin first on PATH, Python 3.13.2), on the tree committed as a7760094: test_scan_record Ran 153 OK, 99 mutants red; test_gemini_adapter Ran 145 OK, --witnesses 115 OK; test_codex_adapter Ran 56 OK, --witnesses 17 OK; test_sidecar Ran 157 OK (1 skipped), --process-check exit 0; test_scan_witness 10 OK; check_vendor_sources B17 (the round's files) exit 0, EB drive.py exit 0; the lane's witness run, all 64 command lines of checks.d/vendor-admission.txt in two heavy bookings: lines 1-32 ran 32, failed 0 (411 s); lines 33-64 ran 32, failed 0 (145 s).
 Left unrun (athena's): both adapters' generated mutation sweeps and the full athena suite. Not touched: the athena door's twin (glitch-26's list).
 
-RESUME HERE: review stop (round 3)
+(round 3's stop, superseded by round 4's line above: review stop (round 3))
 
 ## ROUND 2 SUMMARY FOR REVIEW (local executor, 2026-10-19 18:38 UTC; glitch-26's rulings B17-5 to B17-9)
 
@@ -60,3 +96,4 @@ BLOCKED ON glitch-26: in round 1 (B17-1), a safety check refused a shell command
 - 2026-10-19 16:22 UTC: Javier's "b17-local yes" (T101): the round resumed locally on the Mac at 67075247 (worktree branch work/b17-local-20261019); both BLOCKED lines above are answered by it. Pins checked: Codex source HEAD 092d3acd6bec3e3a14bdc7e7a2810ab628ab759d, Gemini 0.64.0 tarball sha256 891a794e...8365e6. B17-1 note and B17-2 tests written and committed red at da83077f; B17-3 run and summary above. Nothing pushed.
 - 2026-10-19 18:38 UTC: round 2 on glitch-26's rulings B17-5 to B17-9: red at 03efe11d, green at 7cdba6b7, piece B17 registered in check_vendor_sources, the lane's 64-line witness run all exit 0; the round-1 RESUME HERE line is replaced by round 2's as ruled. Nothing pushed.
 - 2026-10-19 22:20 UTC: round 3 on glitch-26's rulings B17-10 to B17-15 (review a051f6e3, CHANGES): red at 2d707249, green at a7760094, the B17-11 walk-record comparison 0 differences over 159 folders and 5045 files (0 findings under either scanner), the lane's 64-line witness run all exit 0 under two heavy bookings. Nothing pushed.
+- 2026-10-19 23:16 UTC: round 4 on glitch-26's rulings B17-16a to B17-16d, MINOR 1 and NIT 2 (review dd2d0398, CHANGES): red at 7a797ec9, green at 2f267f7a, design note section 6, the athena rescan of w-g9, w-g3, w-g5 and w-g7 (scratch removed), the lane's 64-line witness run all exit 0. The integration merge clone was stopped as ruled. Nothing pushed.
