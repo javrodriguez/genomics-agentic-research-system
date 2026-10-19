@@ -1,4 +1,4 @@
-Status: needs-review
+Status: running
 
 ROUND 1 SUMMARY FOR REVIEW (cloud executor, 2026-10-19 13:56 EDT; glitch-26's rulings B19-1 to B19-4):
 - The note (ruling B19-2): lane-reports/B19-DESIGN-NOTE.md (23761cd5), beside batch.py's other design notes (nightly-stop-rule, w1b-cp1-routing-batch, w7c-spend-wiring, B14, B16) and outside evals/gap-study-4/, whose every file is claimed in COPIED.d and bound into the freeze's study tree.
@@ -59,3 +59,4 @@ Progress:
 - 2026-10-19 13:51 EDT: red tests cf74278a (ruling B19-3): tests/test_batch_rolling.py, 11 tests, 3 red on 7dc0cf9e (the rolling start), 8 green (row order, the bound, the requeue, the equal-duration equivalence); batch.py unchanged (ruling B19-4).
 - 2026-10-19 13:51 EDT: design note 23761cd5 (ruling B19-2): lane-reports/B19-DESIGN-NOTE.md.
 - 2026-10-19 13:56 EDT: checks done (summary above); status needs-review; rulings stop.
+- 2026-10-19 14:18 EDT: round 2 begins on lane/vendor-b19 at 94963ea7 under glitch-26's rulings B19-5 to B19-11; status running.
