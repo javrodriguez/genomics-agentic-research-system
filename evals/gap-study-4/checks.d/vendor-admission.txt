@@ -80,3 +80,9 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/settings_guard
 # registry, each entry with its source lines, and its witnesses. B13 (practice walk w-o1) is in test_walk_builders.
 python3 -B -W ignore evals/gap-study-4/tests/test_gemini_tool_registry.py
 python3 -B -W ignore evals/gap-study-4/tests/test_gemini_tool_registry.py --witnesses
+# Lane vendor-b14 round 1 B15 (glitch-26, Mon 19 Oct 2026; practice walk w-o3): arm O's turn.completed usage table read
+# from the pinned Codex CLI's exec event struct, each key with its source line, and its witnesses; the files B15 edits,
+# against the native readers' source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_usage_source.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_usage_source.py --witnesses
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 transcript_codex.py codex_adapter.py codex_usage_sources.py tests/test_codex_usage_source.py tests/test_codex_adapter.py COPIED.d/vendor-admission.json

@@ -205,6 +205,11 @@
       "path": "gemini_tool_sources.py",
       "status": "new",
       "reason": "Lane vendor-admission round 18 B12 (glitch-26, 18 Oct 2026, under Javier's standing delegation). Where each entry of transcript_gemini.GEMINI_TOOLS was read in the pinned Gemini CLI 0.64.0 (tarball sha256 891a794e...): for every tool, the bundle file and its sha256, the lines read with the text each holds, the package's own Kind and the view kind, and a sentence on what the tool does in the pinned code; the tools the package defines but never offers a headless arm G run are named with their lines. Read statically, never run or imported; kept apart from transcript_gemini.py so the reader's generated sweep mutates the table, not its documentation. Bound by tests/test_gemini_tool_registry.py (R3; --sources re-reads every cited line)."
+    },
+    {
+      "path": "tests/test_codex_usage_source.py",
+      "status": "new",
+      "reason": "Lane vendor-b14 round 1 B15 (glitch-26's ruling, Mon 19 Oct 2026; practice walk w-o3 held on \"turn.completed.usage carries key(s) with no entry: ['cache_write_input_tokens']\"). Arm O's turn.completed usage table read from the pinned Codex CLI's exec event struct (openai/codex rust-v0.162.1, commit 092d3acd, codex-rs/exec/src/exec_events.rs struct Usage, printed by serde_json::to_string in event_processor_with_jsonl_output.rs): five i64 fields, none skipped when unset, cache_write_input_tokens's serde(default) read only on deserializing. U1 a synthetic turn.completed built from the struct passes check_record, decode, CodexParser and read_stream; U2 transcript_codex.USAGE_KEYS is exactly the struct's fields in order and codex_usage_sources records each one's file, line and text, the files' sha256, the empty present-when-set set and the serializer lines; U3 a line missing any field, carrying an invented key (named in the refusal) or carrying a non-count value still refuses; U4 --sources re-reads every cited line on demand; --witnesses builds nine in-memory mutants of transcript_codex, codex_adapter and codex_usage_sources, each red alone. Synthetic strings only."
     }
   ]
 }
