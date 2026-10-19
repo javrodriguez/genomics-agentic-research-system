@@ -194,11 +194,13 @@ WORKSPACE_SOURCES = {
                                                        "CODEX_HOME/.env only": 305}),
                                     dict(_W_HOME_DIR, lines={"find_codex_home reads CODEX_HOME": 14})],
                       read="the only .env read outside test code; CODEX_ names are dropped"),
-        "read": "run_take's in-container launcher (LAUNCHER_SOURCE) refuses .env and .gemini/.env in the container's "
-                "working folder, every ancestor up to / and HOME, before every harness exec of every arm; HOME, "
-                "GEMINI_CLI_HOME and CODEX_HOME are the one config mount (run_take.TAKE_ENV), so every file either "
-                "CLI reads is among them; run_take.refuse_env_files, host-side, covers the run tree and the config "
-                "folder only, as an early refusal"},
+        "read": "run_take's in-container launcher (LAUNCHER_SOURCE) refuses .gemini/.env and .env, before every harness "
+                "exec of every arm, in CODEX_HOME (a codex row), the container's working folder, each config home "
+                "and HOME, each with every ancestor up to /, in that order; R-H5 made arms O's and G's HOME the run "
+                "tree's .home while CODEX_HOME and GEMINI_CLI_HOME stay the config mount (run_take.TAKE_ENV), so the "
+                "walk reads them as two folders (R-H5-1) and every file either CLI reads is among them; "
+                "run_take.refuse_env_files, host-side, covers the run tree, the agent's home and the config folder "
+                "only, as an early refusal"},
     "not guarded: .geminiignore": dict(_W_PKG, reads=[dict(_W_NR7, lines={"GEMINI_IGNORE_FILE_NAME": 313670,
                                                                      "the ignore filter": 314189})],
                                        read="it filters only what the agent's own file tools list"),

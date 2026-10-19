@@ -201,6 +201,16 @@ HARNESS_ENV = {h: {k: v for k, v in row.items()
 # its name from the exec's environment and execs the harness with exactly the row (os.execvpe: PATH from the row).
 # Before each harness exec it checks .env names in the actual container cwd, ALL its ancestors, HOME and the row's
 # config home (R-H5: for arms O and G, HOME is the run tree's home and the config home the mount).
+# R-H5-1 (glitch-26's ruling, Mon 19 Oct 2026): HOME and the config home are two folders, so the walk reads each as its
+# own folder and refuses a .env name in or above either, in the order each pinned CLI's own lookup reads them (the
+# sources as settings_guard.SOURCES records them, "not guarded here: .env and .gemini/.env"):
+#   Codex rust-v0.162.1: CODEX_HOME/.env only (codex-rs/arg0/src/lib.rs 159, load_dotenv before any thread; 305,
+#     CODEX_HOME/.env; utils/home-dir/src/lib.rs 14, find_codex_home reads CODEX_HOME), so CODEX_HOME comes first.
+#   Gemini CLI 0.64.0: findEnvFile from the working folder up to / (bundle/chunk-FLKY6NH5.js 16542), each folder's
+#     .gemini/.env first (16546), then its .env (16551); after /, homedir()/.gemini/.env (16560) then homedir()/.env
+#     (16565), where homedir() is GEMINI_CLI_HOME, else os.homedir() (bundle/chunk-NR7L3FXV.js 252011).
+# So the walk is: CODEX_HOME (a codex row), the working folder up to /, each config home, then HOME, each followed by
+# its own ancestors (a folder no CLI reads, refused anyway), each folder once, .gemini/.env before .env in each.
 # The host-side check below is an early refusal only: a mounted run tree is not the container filesystem root.
 # Its arguments: the credential's name, the count of NAME=VALUE pairs, the pairs, then the harness's argv.
 # R-H1 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): a codex take's run tree is trusted from turn 1
@@ -254,16 +264,23 @@ LAUNCHER_SOURCE = ("import os,sys\n"
                    "k,n=a[0],int(a[1])\n"
                    "e=dict(x.split('=',1) for x in a[2:2+n])\n"
                    "if k!='-':e[k]=os.environ[k]\n"
-                   "up=[]\n"
-                   "d=os.getcwd()\n"
-                   "while True:\n"
-                   " up.append(d)\n"
-                   " parent=os.path.dirname(d)\n"
-                   " if parent==d: break\n"
-                   " d=parent\n"
-                   "dirs=[e['HOME']]+[e[v] for v in ('CLAUDE_CONFIG_DIR','CODEX_HOME','GEMINI_CLI_HOME') if v in e]+up\n"
+                   "def walk(d):\n"
+                   " r=[]\n"
+                   " while True:\n"
+                   "  r.append(d)\n"
+                   "  parent=os.path.dirname(d)\n"
+                   "  if parent==d: break\n"
+                   "  d=parent\n"
+                   " return r\n"
+                   "up=walk(os.getcwd())\n"
+                   "homes=[e[v] for v in ('CLAUDE_CONFIG_DIR','CODEX_HOME','GEMINI_CLI_HOME') if v in e]\n"
+                   "starts=([e['CODEX_HOME']] if 'CODEX_HOME' in e else [])+[os.getcwd()]+homes+[e['HOME']]\n"
+                   "dirs=[]\n"
+                   "for s in starts:\n"
+                   " for d in walk(s):\n"
+                   "  if d not in dirs: dirs.append(d)\n"
                    "for d in dirs:\n"
-                   " for name in ('.env',os.path.join('.gemini','.env')):\n"
+                   " for name in (os.path.join('.gemini','.env'),'.env'):\n"
                    "  p=os.path.join(d,name)\n"
                    "  if os.path.lexists(p): raise SystemExit('refusing .env file: '+p)\n"
                    "if 'CODEX_HOME' in e:\n"

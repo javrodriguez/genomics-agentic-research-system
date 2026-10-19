@@ -163,11 +163,13 @@ SOURCES = {
                                                        "CODEX_HOME/.env only": 305}),
                                     dict(HOME_DIR, lines={"find_codex_home reads CODEX_HOME": 14})],
                       read="the only .env read outside test code; CODEX_ names are dropped"),
-        "read": "run_take's in-container launcher (LAUNCHER_SOURCE) refuses .env and .gemini/.env in the container's "
-                "working folder, every ancestor up to / and HOME, before every harness exec of every arm; HOME, "
-                "GEMINI_CLI_HOME and CODEX_HOME are the one config mount (run_take.TAKE_ENV), so every file either "
-                "CLI reads is among them; run_take.refuse_env_files, host-side, covers the run tree and the config "
-                "folder only, as an early refusal"},
+        "read": "run_take's in-container launcher (LAUNCHER_SOURCE) refuses .gemini/.env and .env, before every harness "
+                "exec of every arm, in CODEX_HOME (a codex row), the container's working folder, each config home "
+                "and HOME, each with every ancestor up to /, in that order; R-H5 made arms O's and G's HOME the run "
+                "tree's .home while CODEX_HOME and GEMINI_CLI_HOME stay the config mount (run_take.TAKE_ENV), so the "
+                "walk reads them as two folders (R-H5-1) and every file either CLI reads is among them; "
+                "run_take.refuse_env_files, host-side, covers the run tree, the agent's home and the config folder "
+                "only, as an early refusal"},
     "not guarded: .geminiignore": dict(PKG, reads=[dict(NR7, lines={"GEMINI_IGNORE_FILE_NAME": 313670,
                                                                      "the ignore filter": 314189})],
                                        read="it filters only what the agent's own file tools list"),
@@ -445,16 +447,21 @@ class TheGuard(unittest.TestCase):
 
 # B10-F1 (review r18-b10 finding 1): an env file planted outside the run tree, where the take container's writable /tmp
 # sits above it, is refused before the next exec by run_take's in-container launcher (LAUNCHER_SOURCE). The launcher
-# runs in-process with os.execvpe faked, from a working folder laid out as the box lays it out (<tmp>/run-x), and HOME
-# a separate config folder; no process starts.
+# runs in-process with os.execvpe faked, from a working folder laid out as the box lays it out (<tmp>/run-x); no
+# process starts. R-H5-1 (glitch-26's ruling, Mon 19 Oct 2026): HOME is the run tree's .home and the config home a
+# separate folder (<d>/opt/cfg, as the mount /opt/cfg), each walked as its own folder with its ancestors, for the
+# Gemini row and the Codex row alike.
 from box import run_take as rt  # noqa: E402
 
 ENV_NAMES = (".env", ".gemini/.env")
+ENV_ROWS = {rt.GEMINI: ("GEMINI_API_KEY", "GEMINI_CLI_HOME", ["gemini", "-p", "x"]),
+            rt.CODEX: (rt.NO_LOGIN, "CODEX_HOME", ["codex", "exec", "x"])}
 
 
-def launch(cwd: str, home: str):
+def launch(cwd: str, home: str, cfg: str, harness: str = rt.GEMINI):
     """'exec' when the launcher would exec the harness, else the launcher's refusal text."""
     got = {}
+    login, home_var, argv = ENV_ROWS[harness]
 
     def fake_exec(prog, args, env):
         got["env"] = dict(env)
@@ -464,8 +471,7 @@ def launch(cwd: str, home: str):
     try:
         with mock.patch.object(os, "execvpe", fake_exec), mock.patch.dict(os.environ, {"GEMINI_API_KEY": "x"},
                                                                           clear=True), \
-                mock.patch.object(sys, "argv", ["-c", "GEMINI_API_KEY", "2", f"HOME={home}",
-                                                f"GEMINI_CLI_HOME={home}", "gemini", "-p", "x"]):
+                mock.patch.object(sys, "argv", ["-c", login, "2", f"HOME={home}", f"{home_var}={cfg}", *argv]):
             try:
                 exec(compile(rt.LAUNCHER_SOURCE, "<launcher>", "exec"), {"__name__": "__main__"})
             except SystemExit as e:
@@ -475,43 +481,61 @@ def launch(cwd: str, home: str):
     return "neither"
 
 
-def env_cases():
-    """(where, name) -> launcher result after planting <where>/<name>: where is the run tree, its parent (the
-    container's /tmp), its grandparent, or HOME."""
+ENV_WHERE = ("run tree", "parent", "grandparent", "HOME", "config home", "above the config home")
+
+
+def env_cases(wheres=ENV_WHERE):
+    """(harness, where, name) -> launcher result after planting <where>/<name>: where is the run tree, its parent (the
+    container's /tmp), its grandparent, HOME (the run tree's .home), the config home, or the config home's parent."""
     out = {}
-    for where in ("run tree", "parent", "grandparent", "HOME"):
-        for name in ENV_NAMES:
-            d = tempfile.mkdtemp(prefix="vwe-")
-            try:
-                tmp = os.path.join(d, "tmp")
-                run = os.path.join(tmp, "run-x")
-                home = os.path.join(d, "cfg")
-                os.makedirs(run)
-                os.makedirs(home)
-                base = {"run tree": run, "parent": tmp, "grandparent": d, "HOME": home}[where]
-                clean = launch(run, home)
-                p = os.path.join(base, *name.split("/"))
-                os.makedirs(os.path.dirname(p), exist_ok=True)
-                Path(p).write_text("GEMINI_SYSTEM_MD=/tmp/x\n")
-                out[(where, name)] = (clean, launch(run, home))
-            finally:
-                shutil.rmtree(d)
+    for harness in ENV_ROWS:
+        for where in wheres:
+            for name in ENV_NAMES:
+                d = tempfile.mkdtemp(prefix="vwe-")
+                try:
+                    tmp = os.path.join(d, "tmp")
+                    run = os.path.join(tmp, "run-x")
+                    home = os.path.join(run, rt.RUN_TREE_HOMEDIR)
+                    cfg = os.path.join(d, "opt", "cfg")
+                    os.makedirs(home, mode=0o700)
+                    os.makedirs(cfg)
+                    base = {"run tree": run, "parent": tmp, "grandparent": d, "HOME": home, "config home": cfg,
+                            "above the config home": os.path.dirname(cfg)}[where]
+                    clean = launch(run, home, cfg, harness)
+                    p = os.path.join(base, *name.split("/"))
+                    os.makedirs(os.path.dirname(p), exist_ok=True)
+                    Path(p).write_text("GEMINI_SYSTEM_MD=/tmp/x\n")
+                    out[(harness, where, name)] = (clean, launch(run, home, cfg, harness))
+                finally:
+                    shutil.rmtree(d)
+    return out
+
+
+def walk_problems(cases) -> list:
+    out = []
+    for (harness, where, name), (clean, planted) in cases.items():
+        if clean != "exec":
+            out.append(f"env walk: the clean tree does not launch ({harness}: {clean})")
+        if not planted.startswith("refusing .env file: "):
+            out.append(f"env walk: {name} planted in the {where} is not refused ({harness}: {planted})")
     return out
 
 
 def check_env_walk() -> list:
-    out = []
-    for (where, name), (clean, planted) in env_cases().items():
-        if clean != "exec":
-            out.append(f"env walk: the clean tree does not launch ({clean})")
-        if not planted.startswith("refusing .env file: "):
-            out.append(f"env walk: {name} planted in the {where} is not refused ({planted})")
-    for h in (rt.GEMINI, rt.CODEX):
+    out = walk_problems(env_cases())
+    # R-H5-1: the rows are the two folders the walk above models: HOME the run tree's .home, the config home the mount
+    for h in ENV_ROWS:
         row = rt.TAKE_ENV[h]
-        homes = {row.get(k) for k in ("HOME", "GEMINI_CLI_HOME", "CODEX_HOME") if k in row}
-        if homes != {rt.CONFIG_MOUNT}:
-            out.append(f"env walk: {h}'s HOME and config home are not one folder: {homes}")
+        home_var = ENV_ROWS[h][1]
+        if row.get("HOME") != rt.RUN_TREE_HOME or row.get(home_var) != rt.CONFIG_MOUNT:
+            out.append(f"env walk: {h}'s HOME and config home are not the run tree's home and the mount: "
+                       f"{row.get('HOME')!r}, {row.get(home_var)!r}")
     return out
+
+
+def check_config_home_env() -> list:
+    """R-H5-1: a .env name planted in the config home, or above it, is refused for each row."""
+    return walk_problems(env_cases(("config home", "above the config home")))
 
 
 class TheEnvWalk(unittest.TestCase):
@@ -525,10 +549,10 @@ class TheEnvWalk(unittest.TestCase):
         src = rt.LAUNCHER_SOURCE
         cases = {
             "the ancestor walk stops at the working folder": src.replace(" d=parent\n", " break\n"),
-            "only .env is checked": src.replace("('.env',os.path.join('.gemini','.env'))", "('.env',)"),
-            "only .gemini/.env is checked": src.replace("('.env',os.path.join('.gemini','.env'))",
+            "only .env is checked": src.replace("(os.path.join('.gemini','.env'),'.env')", "('.env',)"),
+            "only .gemini/.env is checked": src.replace("(os.path.join('.gemini','.env'),'.env')",
                                                         "(os.path.join('.gemini','.env'),)"),
-            "HOME is not checked": src.replace("dirs=[e['HOME']]", "dirs=[]"),
+            "HOME is not checked": src.replace("+homes+[e['HOME']]", "+homes"),
         }
         for name, mutant in cases.items():
             with self.subTest(mutant=name):
@@ -541,8 +565,25 @@ class TheEnvWalk(unittest.TestCase):
                 self.assertFalse([g for g in got if "clean tree" in g], f"mutant {name} broke the launcher: {got}")
         with mock.patch.dict(rt.TAKE_ENV[rt.GEMINI], {"GEMINI_CLI_HOME": "/opt/elsewhere"}):
             got = check_env_walk()
-        print(f"mutant GEMINI_CLI_HOME apart from HOME: {'red' if got else 'GREEN (survived)'}")
-        self.assertTrue(got, "mutant GEMINI_CLI_HOME apart from HOME survived")
+        print(f"mutant GEMINI_CLI_HOME off the mount: {'red' if got else 'GREEN (survived)'}")
+        self.assertTrue(got, "mutant GEMINI_CLI_HOME off the mount survived")
+
+    def test_a_planted_env_file_in_the_config_home_is_refused(self):
+        """R-H5-1: a .env or .gemini/.env planted in the config home (or above it) refuses the next exec, for the
+        Gemini row and the Codex row; its witness, the config homes dropped from the walk, goes red alone."""
+        self.assertEqual(check_config_home_env(), [])
+        src = rt.LAUNCHER_SOURCE
+        mutant = src.replace("[e['CODEX_HOME']] if 'CODEX_HOME' in e else []", "[]").replace("+homes+", "+")
+        self.assertNotEqual(mutant, src, "the witness did not apply")
+        self.assertEqual(mutant.count("homes"), src.count("homes") - 1, "the witness touched more than the walk")
+        with mock.patch.object(rt, "LAUNCHER_SOURCE", mutant):
+            got = check_config_home_env()
+        print(f"witness the config homes dropped from the walk: {'red' if got else 'GREEN (survived)'} ({len(got)}; "
+              f"first: {got[0] if got else '-'})")
+        self.assertTrue(got, "witness the config homes dropped from the walk survived")
+        self.assertFalse([g for g in got if "clean tree" in g], f"the witness broke the launcher: {got}")
+        self.assertTrue([g for g in got if "(codex:" in g] and [g for g in got if "(gemini:" in g],
+                        f"the witness is not red for both rows: {got}")
 
 
 if __name__ == "__main__":
