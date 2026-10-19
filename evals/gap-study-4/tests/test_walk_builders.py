@@ -55,6 +55,12 @@ delegation, Tue 13 Oct 2026).
       refuses. Round 18 B13: on an origin whose .gitignore lists AGENTS.md and GEMINI.md (the pinned GARS tree lists
       AGENTS.md), the placed copies are still in the one commit, which holds exactly the origin's files minus the
       exclusions plus the placed copies.
+  B22 R-H5-2 (glitch-26, 19 Oct 2026): place_agent_home on its own, each statement by its effect: a Claude Code
+      checkout gets None, no folder and no exclude line; a checkout already holding .home (a folder, a file, a dangling
+      link) is refused with nothing written; codex and gemini get the name back, .home/ appended to .git/info/exclude
+      after its old lines, and an empty folder of mode 700 under any umask that leaves git working; an exclude a
+      committed `!.home/` negates is refused by the check-ignore read; run_tree_problems is read once on the built
+      tree and any problem refuses.
   G1  the generated mutants (tests/walk_mutation.py's generator over every top-level function of walk_builders.py and
       walk_runner.main): EQUIVALENT names only generated ids, each with a reason.
 
@@ -1570,7 +1576,8 @@ class TestSysPath(unittest.TestCase):
 
 # Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can.
 GENERATED_ORDER = ("B17Account", "B20LeaseSource", "B18Native", "B1Identity", "B6Row", "B2Login", "B3Counters", "B11Derived",
-                   "B10Resources", "B7Production", "B8Present", "B13Lease", "B19VendorConfig", "B21AgentHome", "B14Gemini",
+                   "B10Resources", "B7Production", "B8Present", "B13Lease", "B19VendorConfig", "B21AgentHome",
+                   "B22AgentHomePlaced", "B14Gemini",
                    "B15Bringup", "B16Watch",
                    "B5Fixture", "B4RunTree", "G1Generated", "B12Scanner", "B9Cli", "TestSysPath")
 
@@ -4117,6 +4124,118 @@ def b21_home_problems(mod) -> list:
 class B21AgentHome(Drafted):
     def test_a_vendor_checkout_carries_the_agent_home(self):
         self.assertEqual(b21_home_problems(wb()), [])
+
+
+# ------------------------------------------------------------------------------------------------- B22
+# Lane vendor-b11, R-H5-2 (glitch-26, Mon 19 Oct 2026): place_agent_home called on its own, each statement pinned by
+# its effect, so none of its generated mutants survives (athena's battery on 9d473873 left twelve alive). Each test
+# builds the bare checkout (no native file, no HOME) on b18_origin and calls the function directly.
+class B22AgentHomePlaced(Drafted):
+    @contextlib.contextmanager
+    def bare_tree(self, **kw):
+        with b18_origin(**kw) as (repo, sha), temp_root():
+            tree = self.must("R-H5-2.home", wb().build_run_tree, "w-0001", repo=repo, commit=sha, exclude=["evals"],
+                             harness=rt.CLAUDE_CODE)
+            yield Path(tree)
+
+    def place(self, tree, harness, umask=None):
+        if umask is None:
+            return self.must("R-H5-2.home", wb().place_agent_home, tree, harness, session_id=walk_sid("w-0001"),
+                             exclude=["evals"])
+        old = os.umask(umask)
+        try:
+            return self.must("R-H5-2.home", wb().place_agent_home, tree, harness, session_id=walk_sid("w-0001"),
+                             exclude=["evals"])
+        finally:
+            os.umask(old)
+
+    @staticmethod
+    def exclude_bytes(tree) -> bytes:
+        return (Path(tree) / ".git" / "info" / "exclude").read_bytes()
+
+    def test_a_claude_code_checkout_gets_none(self):
+        with self.bare_tree() as tree:
+            before = self.exclude_bytes(tree)
+            self.assertIsNone(self.place(tree, rt.CLAUDE_CODE), "R-H5-2.home: a Claude Code checkout got a name")
+            self.assertFalse(os.path.lexists(tree / ".home"), "R-H5-2.home: a Claude Code checkout got .home")
+            self.assertEqual(self.exclude_bytes(tree), before, "R-H5-2.home: a Claude Code checkout's exclude changed")
+
+    def test_the_name_is_returned_and_the_exclude_appended(self):
+        for harness in (rt.CODEX, rt.GEMINI):
+            with self.subTest(harness=harness), self.bare_tree() as tree:
+                before = self.exclude_bytes(tree)
+                self.assertTrue(before.endswith(b"\n") and b".tmp/" in before, "R-H5-2.home: the bare exclude")
+                self.assertEqual(self.place(tree, harness), ".home",
+                                 f"R-H5-2.home: a {harness} checkout's HOME name is not handed back")
+                self.assertEqual(self.exclude_bytes(tree), before + b".home/\n",
+                                 f"R-H5-2.home: a {harness} checkout's exclude is not its old lines plus .home/")
+                home = tree / ".home"
+                self.assertTrue(home.is_dir() and not home.is_symlink() and not list(home.iterdir()),
+                                f"R-H5-2.home: a {harness} checkout's .home is not an empty folder")
+                self.assertEqual(MODS["drive"].run_tree_problems(tree, walk_sid("w-0001"), ["evals"]), [],
+                                 f"R-H5-2.home: a {harness} checkout with .home has run_tree_problems")
+
+    def test_the_home_is_700_whatever_the_umask(self):
+        # mkdir(mode=0o700) can only lose bits to a umask, so the chmod shows only under one taking owner bits (0o277:
+        # mkdir alone gives 0o500). Not 0o777: git's own index refresh in run_tree_problems then writes an index git
+        # cannot read back, a refusal of the whole checkout that says nothing about .home.
+        for umask in (0o000, 0o022, 0o077, 0o277):
+            with self.subTest(umask=oct(umask)), self.bare_tree() as tree:
+                self.assertEqual(self.place(tree, rt.CODEX, umask=umask), ".home", "R-H5-2.home")
+                got = stat.S_IMODE(os.lstat(tree / ".home").st_mode)
+                os.chmod(tree / ".home", 0o700)            # so the scratch folder is always removable
+                self.assertEqual(oct(got), oct(0o700), f"R-H5-2.home: under umask {umask:o}, .home is {got:o}")
+
+    def test_a_checkout_already_holding_the_name_is_refused(self):
+        def folder(home):
+            home.mkdir()
+            return lambda: home.is_dir() and not home.is_symlink() and not list(home.iterdir())
+
+        def regular(home):
+            home.write_text("synthetic occupant\n")
+            return lambda: home.is_file() and not home.is_symlink() and home.read_text() == "synthetic occupant\n"
+
+        def dangling(home):
+            os.symlink(home.parent / "nowhere-synthetic", home)
+            return lambda: home.is_symlink() and os.readlink(home) == str(home.parent / "nowhere-synthetic") \
+                and not home.exists()
+
+        for label, occupy in (("a folder", folder), ("a file", regular), ("a dangling link", dangling)):
+            for harness in (rt.CODEX, rt.GEMINI):
+                with self.subTest(occupant=label, harness=harness), self.bare_tree() as tree:
+                    unchanged = occupy(tree / ".home")
+                    before = self.exclude_bytes(tree)
+                    self.refuses("R-H5-2.home", "already holds .home", wb().place_agent_home, tree, harness,
+                                 session_id=walk_sid("w-0001"), exclude=["evals"])
+                    self.assertTrue(unchanged(), f"R-H5-2.home: {label} named .home was changed")
+                    self.assertEqual(self.exclude_bytes(tree), before,
+                                     f"R-H5-2.home: {label} named .home refused, but the exclude was written")
+
+    def test_an_exclude_that_does_not_take_is_refused(self):
+        # The pinned tree's own .gitignore negates .home/ (it outranks .git/info/exclude), committed, so the status
+        # stays clean and only the check-ignore read can see that the appended line does not take.
+        with self.bare_tree(extra={".gitignore": "!.home/\n"}) as tree:
+            self.assertEqual(tbi.git(tree, "status", "--porcelain"), "", "R-H5-2.home: the negating tree")
+            self.refuses("R-H5-2.home", "is not git-excluded", wb().place_agent_home, tree, rt.CODEX,
+                         session_id=walk_sid("w-0001"), exclude=["evals"])
+
+    def test_run_tree_problems_is_read_on_the_built_tree(self):
+        drive = MODS["drive"]
+        with self.bare_tree() as tree:                     # a real problem: a stray file in the checkout's status
+            (tree / "stray-synthetic.txt").write_text("synthetic\n")
+            self.refuses("R-H5-2.home", "status is not clean", wb().place_agent_home, tree, rt.GEMINI,
+                         session_id=walk_sid("w-0001"), exclude=["evals"])
+        with self.bare_tree() as tree:                     # any problem refuses, read with this tree's own inputs
+            seen = []
+
+            def one_problem(t, sid, exclude):
+                seen.append((Path(t), sid, list(exclude), (Path(t) / ".home").is_dir()))
+                return ["synthetic problem R-H5-2"]
+            with mock.patch.object(drive, "run_tree_problems", one_problem):
+                self.refuses("R-H5-2.home", "synthetic problem R-H5-2", wb().place_agent_home, tree, rt.CODEX,
+                             session_id=walk_sid("w-0001"), exclude=["evals"])
+            self.assertEqual(seen, [(tree, walk_sid("w-0001"), ["evals"], True)],
+                             "R-H5-2.home: run_tree_problems not read once on the built tree")
 
 
 # ------------------------------------------------------------------------------------------------- B19
