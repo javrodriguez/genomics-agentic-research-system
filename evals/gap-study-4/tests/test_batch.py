@@ -10,7 +10,10 @@ Which terminal state each fake scenario reaches is computed by routing.route on 
 records, and the set the tests must reach is labels4.TERMINAL_STATES: neither is typed here.
 Concurrency and finishing order are forced with a barrier and events, never with sleeps: a drive
 waits (up to WAIT_S, a hang detector) until every drive of its block is in flight, and a drive
-told to finish after another waits for that one's end. Every check is a function returning
+told to finish after another waits for that one's end. B19-8 (batch.py's rolling window): with no
+finish_after the drives of one wave end together, its head first, and a commit waits until no drive
+is in flight and SETTLE more (World), so the rolling loop's tie rule reproduces the block run; with
+finish_after the durations differ and the loop fills freed lanes. Every check is a function returning
 problems, and each is also run against an in-memory mutant of what it guards and must go red.
 
 The agent "reaching the token and the account email" is played by two in-memory fake strings
@@ -31,6 +34,7 @@ import os
 import sys
 import textwrap
 import threading
+import time
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
@@ -62,6 +66,7 @@ FAKE_TOKEN = "FAKE-TOKEN-in-memory-0000"            # never a real token
 FAKE_EMAIL = "fake.account@example.invalid"         # never a real address
 MASK_MARK = "[masked]"
 WAIT_S = 10.0   # a hang detector for the barrier and ordering events, never a timing assumption
+SETTLE = 0.05   # B19-8: the equal-duration model's settle, after a wave's drives end and before its head commits
 
 
 def test_table() -> dict:
@@ -178,12 +183,41 @@ class World:
         self.block = 0
         self.launches = collections.Counter()
         self._registering = False
+        # B19-8, the equal-duration model (batch.py's rolling window): a FakeDriver given no finish_after sets
+        # `equal`; then a wave's drives end together, its head first (the others wait until the head's commit has
+        # begun), and that commit waits until no drive is in flight, and SETTLE more, so the loop's tie rule sees the
+        # whole wave finished, as test_batch_rolling's EqualRepo does.
+        self.equal = False
+        self.heads = {}                      # block -> its first registration (slot, attempt): the wave's head
+        self.in_flight = 0
+        self.idle = threading.Condition(self.lock)
+        self._begun = collections.defaultdict(threading.Event)
+
+    def commit_begun(self, slot, attempt) -> None:
+        self._begun[(slot, attempt)].set()
+
+    def wait_head(self, block, slot, wait_s) -> None:
+        """A drive that is not its wave's head ends only after the head's commit has begun (the equal model). A wave
+        holds each slot once, so the slot names the drive (a driver's own attempt count can differ after a restart)."""
+        head = self.heads.get(block)
+        if head is not None and head[0] != slot and not self._begun[head].wait(wait_s):
+            raise RuntimeError(f"the wave's head {head} was never committed (hang detector)")
+
+    def wait_wave(self, wait_s) -> None:
+        """The equal model's commit: no drive in flight, then SETTLE more."""
+        if not self.equal:
+            return
+        with self.lock:
+            if not self.idle.wait_for(lambda: self.in_flight == 0, wait_s):
+                raise RuntimeError("a drive never ended (hang detector)")
+        time.sleep(SETTLE)
 
     def log(self, *e):
         with self.lock:
             if e[0] == "register":
                 if not self._registering:
                     self.block += 1
+                    self.heads[self.block] = (e[1], e[2])
                 self._registering = True
             else:
                 self._registering = False
@@ -220,6 +254,9 @@ class FakeDriver:
         self._ids = itertools.count(1)
         self._barriers = {}
         self._done = collections.defaultdict(threading.Event)
+        self._block_of = {}
+        if not self.finish_after:
+            world.equal = True               # B19-8: the equal-duration model (World)
 
     def launch(self, row):
         how = self.launch_fails.get(row["slot"])
@@ -232,6 +269,7 @@ class FakeDriver:
             raise LaunchError("runtime refused the container")
         self.launched.append(cid)
         self.slot_of[cid] = row["slot"]
+        self._block_of[row["slot"]] = self.world.block   # B19-8: the wave a drive belongs to, read at its launch
         if how == "half":
             self.world.log("launch-failed", row["slot"], cid)
             raise LaunchError("runtime failed after creating the container", container_id=cid)
@@ -244,13 +282,18 @@ class FakeDriver:
             attempt = self._attempts[row["slot"]]
             self.in_flight += 1
             self.max_in_flight = max(self.max_in_flight, self.in_flight)
-            barrier = self._barriers.setdefault(self.world.block, threading.Barrier(self.world.launches[self.world.block]))
+            block = self._block_of.get(row["slot"], self.world.block)
+            barrier = self._barriers.setdefault(block, threading.Barrier(self.world.launches[block]))
+        with self.world.lock:
+            self.world.in_flight += 1
         self.world.log("drive-start", row["slot"], attempt)
         try:
             barrier.wait(self.wait_s)        # every drive of the block is in flight at once
             after = self.finish_after.get(row["slot"]) if attempt == 1 else None
             if after is not None and not self._done[after].wait(self.wait_s):
                 raise RuntimeError(f"slot {after} never finished")
+            if self.world.equal:             # B19-8: the wave ends together, its head first
+                self.world.wait_head(block, row["slot"], self.wait_s)
             name = self.plan.get((row["slot"], attempt), "clean")
             if name in RAISES_AFTER:                # the first turn runs, then the driver raises
                 adapter = aa.ScriptedAdapter(RAISES_AFTER[name], container_id=cid)
@@ -277,6 +320,9 @@ class FakeDriver:
             with self._lock:
                 self.in_flight -= 1
             self.world.log("drive-end", row["slot"], attempt)
+            with self.world.lock:
+                self.world.in_flight -= 1
+                self.world.idle.notify_all()
             self._done[row["slot"]].set()
 
     def remove(self, cid):
@@ -305,6 +351,16 @@ class FakeRepo:
         self.committed = {}     # (slot, attempt) -> the fake committed record
         self.prior = copy.deepcopy(list(prior or []))   # outcomes committed before a restart
 
+    def __init_subclass__(cls, **kw):
+        """B19-8: a subclass's own commit_records still signals the equal model's head, even when it raises first."""
+        super().__init_subclass__(**kw)
+        own = cls.__dict__.get("commit_records")
+        if own is not None:
+            def commit_records(self, row, attempt, outcome, _own=own):
+                self.world.commit_begun(row["slot"], attempt)
+                return _own(self, row, attempt, outcome)
+            cls.commit_records = commit_records
+
     def history(self):
         """W1B2-3: every outcome committed so far, in commit order, as the repo holds them."""
         return copy.deepcopy(self.prior + [snap for _, _, _, snap in self.passed])
@@ -322,6 +378,8 @@ class FakeRepo:
         self._one_commit("register", row["slot"], attempt)
 
     def commit_records(self, row, attempt, outcome):
+        self.world.commit_begun(row["slot"], attempt)
+        self.world.wait_wave(WAIT_S)          # B19-8: the equal model (World); no wait otherwise
         self.passed.append((row["slot"], attempt, outcome, copy.deepcopy(outcome)))
         text = self.world.texts.get((row["slot"], attempt), "")
         record = {k: copy.deepcopy(outcome[k]) for k in batch.OUTCOME_KEYS}   # a missing key fails the commit
@@ -611,6 +669,32 @@ def commit_order_problems(events) -> list[str]:
         first_commit = min((k for k, e in enumerate(block_events) if e[0] == "commit"), default=10 ** 9)
         if first_commit < last_end:
             p.append(f"block {regs}: a record committed while a drive of the block was running")
+    return p
+
+
+def rolling_order_problems(events) -> list[str]:
+    """B19-5, with unequal durations (batch.py's rolling window): records commit in registration order, each after
+    its own drive ended, and every row is registered before its launch."""
+    p = []
+    seq = [e[1:] for e in events]
+    regs = [(e[1], e[2]) for e in seq if e[0] == "register"]
+    commits = [(e[1], e[2]) for e in seq if e[0] == "commit"]
+    if commits != regs[:len(commits)]:
+        p.append(f"records committed as {commits}, registered as {regs}")
+    ends, reg_at, launch_at = set(), collections.defaultdict(list), collections.defaultdict(list)
+    for k, e in enumerate(seq):
+        if e[0] == "drive-end":
+            ends.add((e[1], e[2]))
+        elif e[0] == "register":
+            reg_at[e[1]].append(k)
+        elif e[0] in ("launch", "launch-failed"):
+            launch_at[e[1]].append(k)
+        elif e[0] == "commit" and (e[1], e[2]) not in ends:
+            p.append(f"slot {e[1]} attempt {e[2]} committed before its drive ended")
+    for slot, ks in launch_at.items():
+        for n, k in enumerate(ks):
+            if n >= len(reg_at[slot]) or reg_at[slot][n] > k:
+                p.append(f"slot {slot}'s launch {n + 1} came before its registration")
     return p
 
 
@@ -1262,13 +1346,24 @@ class NoHalfCreated(batch.Batch):
 
 class TestOrderAndContainers(unittest.TestCase):
     def test_commits_land_serially_in_row_order(self):
-        # Later rows finish first; their records still commit after, in row order.
+        # Later rows finish first; their records still commit after, in row order. B19-5: with unequal durations the
+        # freed drive lanes are filled while slot 1 runs (batch.py's rolling window), so the order is checked over
+        # the whole run, not per block (commit_order_problems keeps the equal-duration blocks).
         b, out, w, d, r, _ = run(7, finish_after={1: 2, 2: 3, 4: 5, 5: 6})
-        self.assertEqual(commit_order_problems(w.events), [])
+        self.assertEqual(rolling_order_problems(w.events), [])
         self.assertEqual(r.overlaps, 0)
         self.assertEqual([o["slot"] for o in out], [1, 2, 3, 4, 5, 6, 7])
         ends = [e[2] for e in kinds(w.events, "drive-end")]
-        self.assertEqual(ends[:6], [3, 2, 1, 6, 5, 4])   # the drives really did finish out of row order
+        self.assertEqual(ends[:3], [3, 2, 1])            # the drives really did finish out of row order
+        self.assertLess(ends.index(6), ends.index(5))
+        self.assertLess(ends.index(5), ends.index(4))
+        commits = [i for i, e in enumerate(w.events) if e[1] == "commit"]
+        mutated = list(w.events)                          # the rolling check can fail
+        mutated[commits[0]], mutated[commits[1]] = mutated[commits[1]], mutated[commits[0]]
+        self.assertNotEqual(rolling_order_problems(mutated), [])
+        early = [e for e in w.events if e[1] != "commit"]
+        early.insert(next(i for i, e in enumerate(early) if e[1] == "drive-start"), w.events[commits[0]])
+        self.assertNotEqual(rolling_order_problems(early), [])
 
     def test_commit_order_check_can_fail(self):
         _, _, w, *_ = run(3, finish_after={1: 2, 2: 3})
@@ -2262,7 +2357,8 @@ def owed_problems(cls=batch.Batch) -> list[str]:
 
 
 def pause_window_problems(cls=batch.Batch) -> list[str]:
-    """W1B3-3: a restart waits for the usage window when a pause is anywhere among the last BLOCK committed outcomes:
+    """W1B3-3: a restart waits for the usage window when a pause is anywhere among the last MAX_OPEN committed outcomes
+    (B19-5; with three committed, among the last BLOCK):
     first in a block of three, or in its middle. The block paused, its two siblings graded, and wait_reset() failed."""
     p = []
     for where, slot in (("first", 1), ("in the middle", 2)):
@@ -2629,11 +2725,12 @@ class TestFold4Mutants(unittest.TestCase):
                             for x in owed_problems(OwesInClosedCells)))
 
     def test_pause_window_check_can_fail(self):
-        """W1B3-3: the reviewer's two surviving mutants of the restart's pause window now go red."""
-        with mock.patch.object(batch, "restart_waits", restart_waits_mutant("[-BLOCK:]", "[-2:]")):
+        """W1B3-3: the reviewer's two surviving mutants of the restart's pause window now go red. B19-5 re-ruled the
+        window to the last MAX_OPEN outcomes; test_batch_rolling pins the old BLOCK span as a mutant too."""
+        with mock.patch.object(batch, "restart_waits", restart_waits_mutant("[-MAX_OPEN:]", "[-2:]")):
             found = pause_window_problems()
         self.assertTrue(any(x.startswith("pause first:") for x in found), found)
-        with mock.patch.object(batch, "restart_waits", restart_waits_mutant("[-BLOCK:]", "[-1:]")):
+        with mock.patch.object(batch, "restart_waits", restart_waits_mutant("[-MAX_OPEN:]", "[-1:]")):
             found = pause_window_problems()
         for where in ("first", "in the middle"):
             self.assertTrue(any(x.startswith(f"pause {where}:") for x in found), (where, found))

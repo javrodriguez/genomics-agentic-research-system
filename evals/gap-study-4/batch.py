@@ -6,18 +6,30 @@ replacement. It runs under `nohup` and refuses to start otherwise (`--foreground
 watched terminal).
 
 SERIAL WHERE IT MATTERS, CONCURRENT WHERE IT IS SAFE. Registering and committing stay serial;
-only the drives run at once:
+only the drives run at once, at most BLOCK = 3 (one with `serial=True`, the fallback), in a rolling window
+(lane vendor-b19, glitch-26's rulings B19-5 to B19-8, 19 Oct 2026; lane-reports/B19-DESIGN-NOTE.md):
 
-  1. take a block of up to three slots from the queue (one with `serial=True`, the fallback);
+  1. take a WAVE of queued rows, as many as there are free drive lanes, fewer once MAX_OPEN takes are open
+     (registered, outcome not committed), and none while a hold is set (below);
   2. register each row, one commit each, in row order;
-  3. launch each take's container and RECORD ITS ID; drive the block concurrently;
+  3. launch each take's container and RECORD ITS ID; drive it beside the drives already running;
   4. inside each drive step, remove the container BY THE RECORDED ID (never by a name pattern),
      then decide the take's annotations (`routing.annotate`: events, mask) and its route
      (`routing.route`) from its harness-side records, before its commit, so a re-run frees its
      slot before it closes. The drive step never raises: whatever goes wrong becomes the take's
      terminal state;
-  5. decide each take's fate (below), then commit its records with that fate, serially, in row
-     order, for every take of the block, even after one of them failed; only then stop.
+  5. whenever the oldest open take's drive has finished, decide its fate (below), then commit its
+     records with that fate, serially, in row order, for every open take, even after one of them
+     failed; only then stop. A drive that finished behind an unfinished older one waits for it.
+     Every drive already finished is committed before a lane is filled (the tie rule), so with
+     equal drive durations every wave is today's block of three and the history is a block run's.
+
+THE HOLDS (B19-5). The routed state of a finished, uncommitted take is read (never decided) from
+its drive step, and no new drive starts while one paused, was blocked or failed, leaked its
+container, or brings this night's harness-errors to the count; nor while the loop has stopped or
+waits for the usage window; nor for a half-cell that a finished, uncommitted rehearsal or pause
+would bring to its cap (the wave stops before such a row, so the queue's order is kept). The open
+takes finish and are committed first.
 
 EVERY TERMINAL STATE IS WATCHED, never success alone: the five routes, plus `blocked` (routing
 refused the records, or the driver's pin is not the registered row's) and `failed` (a register,
@@ -31,9 +43,9 @@ could not be removed is no terminal state of its own: the take keeps its route a
   harness-error    one re-run in the same slot, within the half-cell's cap; beyond it the slot is
                    final as harness-error (published in its own column, out of the denominator)
   pause            re-run in the same slot until its half-cell has had its cap of pauses, then the
-                   half-cell closes (THE CELL CAPS); either way NO NEW DRIVE is launched until the
-                   usage window resets (THE USAGE WINDOW); drives already running finish and are
-                   routed as usual
+                   half-cell closes (THE CELL CAPS); either way NO NEW DRIVE is launched from the
+                   moment its drive finishes until the usage window resets (THE USAGE WINDOW);
+                   drives already running finish and are routed as usual
   blocked, failed  the loop stops launching; the rest of the queue stays unstarted for a human. A
                    restart never drives such a slot again without a committed ruling (THE RULINGS),
                    except a `failed` take where nothing ran (a register or launch failure)
@@ -48,14 +60,15 @@ never reads inside it. What is counted is a half-cell's events of that route (`c
 committed rehearsal is its own event; the pauses count by USAGE-WINDOW EVENT, so the pauses that
 share one reset count once (glitch-f3's ruling on review round 3, W1B3-5, in-plan, 6 Oct 2026;
 glitch-f3's, not the owner's). The cap bounds window events, round 3's own unit: round 3 drove one
-take at a time, so each of its pauses was its own window event, while this loop drives a block of
-up to three and every pause of one block shares the one reset it waits for before the next block.
-Each committed pause carries that event as `window_event`. The take whose event brings the count to
+take at a time, so each of its pauses was its own window event, while this loop drives up to three
+at once and every pause committed between two waits for the usage window shares the one reset the
+second wait is for (B19-5: an event holds at most BLOCK pauses, one per slot, those of the drives
+in flight when the first pause was seen). Each committed pause carries that event as `window_event`. The take whose event brings the count to
 routing.json's cap is its slot's last (final, never re-run, beyond_cap), and it is committed with
 `cell_state` = labels4.INCOMPLETE_MECHANICAL and a `cell_reason` before the loop moves on. From then on nothing more is registered for the half-cell:
 its queued rows and re-runs are dropped, each listed in `skipped`. The loop goes on with the other
-half-cells; it never stops for a human here. A drive of the same block that was already running
-when its half-cell closed is committed as usual, never re-run, and carries the cell state too.
+half-cells; it never stops for a human here. A take of the half-cell that was open when its
+half-cell closed is committed as usual, never re-run, and carries the cell state too (B19-5).
 Harness-error's own caps and its beyond-cap fate are unchanged.
 
 WHAT IS COMMITTED. `repo.commit_records(row, attempt, outcome)` receives one outcome per take,
@@ -83,7 +96,7 @@ with every key below always present (None where it does not apply), decided BEFO
     final                        True when this record is the slot's final result
     rerun                        True when the slot is re-run (same slot, next attempt)
     beyond_cap                   True when a cap was reached
-    stop                         why the loop stops after this block (else None)
+    stop                         why the loop stops once its open takes are committed (else None)
     cell_state                   labels4.INCOMPLETE_MECHANICAL once the take's half-cell has closed at
                                  its rehearsal or pause cap, by this take or an earlier one (else None)
     cell_reason                  why the half-cell closed: its count and cap (else None)
@@ -92,7 +105,8 @@ with every key below always present (None where it does not apply), decided BEFO
                                  fail-closed True when the loop cannot tell (the drive step raised).
                                  A `failed` take whose drive started needs a ruling (THE RULINGS)
     window_event                 for a pause, the usage-window event it belongs to (an int, rising in
-                                 commit order, shared by every pause of one block); else None
+                                 commit order, shared by every pause committed between two waits for
+                                 the usage window, B19-5); else None
 
 The repo masks the take's text whenever `mask` is true; it never deletes it. The mask rule is
 applied at the one place every outcome passes before its commit (`_seal`), so no road to a commit
@@ -101,8 +115,8 @@ can skip it.
 A LEAK (review round 3, W1B3-1; glitch-f3 accepted the gap4 lane lead's fix as written, 6 Oct 2026;
 glitch-f3's, not the owner's). When remove() fails, the take keeps its routed state and its fate
 (a graded take stays graded and final, a rehearsal keeps its re-run); `leaked_container` names the
-recorded id, `reason` says why, the routed decision is committed, and the loop stops after the
-block, the stop committed with the record. A leak never turns a take into `failed`.
+recorded id, `reason` says why, the routed decision is committed, and the loop stops once its open
+takes are committed, the stop committed with the record. A leak never turns a take into `failed`.
 
 THE RULINGS (W1B3-1, the same ruling). "Refused, never defaulted"; "no try is ever discarded or re-run
 for something the agent did"; round 3: "there are no retakes" (evals/gap-study-3/takes.py:260 at
@@ -146,9 +160,9 @@ window event on no pause or none on a pause or one reopened, a ruling that is no
 on a take never committed, committed after it, needing none, or twice, a stopped slot driven again
 with no ruling, or a cell state that disagrees with the counts: the take that brings a half-cell to
 a cap carries it, so does every later take of that half-cell, no other take does, and none of them
-is re-run). Lane w1b decision (`restart_waits`): when a pause, committed or ruled, is among the last
-BLOCK committed outcomes or the rulings committed among or after them, a restart waits for the usage
-window before its first launch.
+is re-run). Lane w1b decision (`restart_waits`, re-ruled by B19-5): when a pause, committed or ruled,
+is among the last MAX_OPEN committed outcomes or the rulings committed among or after them, a restart
+waits for the usage window before its first launch.
 
 THE START GATE. The loop refuses to start (`BatchConfigError`, and `batch.py --check` exits 1)
 while routing.json still lacks what only the owner or a later checkpoint can supply: round 3's
@@ -164,23 +178,26 @@ THE MONEY GATE (lane w7c, ruling W7C-gap4-1, glitch-1b under Javier's standing d
 round's two money checks, costs.month_turn_allowed (the month-turn hold: no OpenAI or Google take from 23:30 UTC on a
 month's last day until Javier's "caps trimmed" is recorded) and costs.walk_gate (spend since the round began, plus
 what the remaining tries project, against the $260 / $140 / $400 caps), are called by the loop itself, never left to
-a driver. Before each block is registered, every row of the block whose harness bills money per call (any harness
+a driver. Before each wave is registered (B19-5: the rows that fill the drive lanes free at that moment; with equal
+drive durations, a block of three), every row of the wave whose harness bills money per call (any harness
 but routing.NO_MONEY_HARNESSES; routing.PAID_HARNESSES names each one's arm) is put through both, on one reading of
 the spend ledger (`ledger.read()`, exactly LEDGER_KEYS: now, walks, spend, start, trimmed). The hold reads the
 loop's OWN clock (`clock()`, aware UTC, read at check time; injectable for tests), never the ledger's `now`, which
 may be recorded but never decides the hold (glitch-1b's ruling on Q-w7c-1, 12 Oct 2026). When either refuses, or
-the ledger cannot be read or is not that shape, or the harness has no arm, nothing of the block is registered or
-launched: the loop stops (`stopped`, state blocked) with the named reason, for Javier's word, and the frozen order is
-kept (the block's Claude rows wait too). Nothing is committed, so a restart puts the block through the gate again. A
+the ledger cannot be read or is not that shape, or the harness has no arm, nothing of the wave is registered or
+launched: the takes already open finish and are committed, the loop stops (`stopped`, state blocked) with the named
+reason, for Javier's word, and the frozen order is kept (the wave's Claude rows wait too). Nothing of the wave is
+committed, so a restart puts it through the gate again. A
 row of a harness that bills money, handed to a loop given no ledger, is refused before anything runs. Rows of
 claude-code (arms A and C, a subscription login that bills no money per call) never read the ledger and never call
 either check. The ledger is CP2's (the vendor spend reads and the recorded trim); none is built here.
 
-A REPO OR WINDOW FAILURE STOPS, never sinks (review round 2, W1B2-5). If `register` raises, every
-row of the block already registered is committed `failed` (masked fail-closed, nothing launched),
-the loop records why in `stopped` and returns; if `wait_reset` raises, nothing of the next block
-was registered, so the loop records why in `stopped` and returns. A restart then continues from
-the committed outcomes.
+A REPO OR WINDOW FAILURE STOPS, never sinks (review round 2, W1B2-5). If `register` raises, the
+loop records why in `stopped`, the takes already open finish and are committed, then every row of
+the wave already registered is committed `failed` (masked fail-closed, nothing launched), and the
+loop returns; if `wait_reset` raises, nothing was open and nothing of the next wave was registered,
+so the loop records why in `stopped` and returns. A restart then continues from the committed
+outcomes.
 
 THE DRIVER. `Batch` never imports drive.py, Claude Code or any adapter: it receives a driver
 object with three methods,
@@ -200,21 +217,24 @@ one commit, and `history()` (the committed outcomes and rulings), and a usage wi
 four; CP5's tooling commits the rulings a human makes.
 
 THE USAGE WINDOW (glitch-f3's ruling, in-plan, 6 Oct 2026; recorded as glitch-f3's, not the
-owner's). The loop calls `window.wait_reset()` before its next launch after a committed pause, and
-on a restart when any of the last BLOCK committed outcomes is a pause (lane w1b decision 11); only
-then does it register and launch. The contract CP2's window keeps, and this loop relies on:
+owner's). The loop calls `window.wait_reset()` before its next launch after a committed pause, once
+every take open when the pause was seen is committed (B19-5), and on a restart when any of the last
+MAX_OPEN committed outcomes is a pause (lane w1b decision 11, re-ruled by B19-5); only then does it
+register and launch. The contract CP2's window keeps, and this loop relies on:
 
     - wait_reset() returns promptly when the usage window has already reset (so a restart after a
       pause whose window reset meanwhile waits once and goes on, never a whole window again);
     - it blocks until the window resets otherwise;
     - it raises on failure, and the loop then stops as `failed` (W1B2-5): nothing of the next
-      block is registered, launched or committed, and `stopped` says why.
+      wave is registered, launched or committed, and `stopped` says why.
 
 THE NIGHTLY STOP (live harness step 4, 14 Oct 2026; plans/gap-study-round-4.md line 904: "Routing follows the
 pre-registered table, and three `harness-error`s in one night stop the run for a ruling."; line 560: "Three in one
 night stop the run for a ruling."; line 196: a pause is "outside the nightly stop rule"). The loop counts the
-`harness-error` outcomes it commits; when the count reaches NIGHTLY_HARNESS_ERRORS, the block's last committed
-outcome carries `stop` = NIGHTLY_STOP + why, `stopped` says so, and nothing further is registered. Pauses are never
+`harness-error` outcomes it commits; once the harness-errors committed or finished reach NIGHTLY_HARNESS_ERRORS, no
+new drive starts; the last take open when the count is committed (B19-5: the take launched last, that take itself when
+none other is open; with equal durations the block's last) carries `stop` = NIGHTLY_STOP + why, `stopped` says so,
+and nothing further is registered. Pauses are never
 counted. A take `failed` after its drive started (the executed-refusal road, named departure D-3a-1) is no
 registered harness-error: it is counted apart in `night_counts` and never consumed by the rule (it stops the loop on
 its own). Named departure D-4-1 (lane-reports/nightly-stop-rule-2026-10-14.md): no registered text defines "night"
@@ -249,6 +269,9 @@ import routing  # noqa: E402
 from graders import labels4  # noqa: E402
 
 BLOCK = 3
+# B19-5 (glitch-26, 19 Oct 2026): the most takes open at once, registered and their outcome not committed (in flight,
+# or finished and waiting for an older take's commit). BLOCK stays the number of drives in flight.
+MAX_OPEN = 12
 PENDING = "PENDING"
 
 # Every key of a committed outcome (see WHAT IS COMMITTED).
@@ -318,10 +341,10 @@ def effective_route(entry: dict):
 
 
 def restart_waits(history: list) -> bool:
-    """Lane w1b decision 11, bound by W1B3-3: a restart waits for the usage window when a pause, committed or ruled, is
-    among the last BLOCK committed outcomes (a block's worth: a pause first in it or in its middle counts) or the
-    rulings committed among or after them."""
-    at = [i for i, e in enumerate(history) if is_outcome(e)][-BLOCK:]
+    """Lane w1b decision 11, bound by W1B3-3 and re-ruled by B19-5: a restart waits for the usage window when a pause,
+    committed or ruled, is among the last MAX_OPEN committed outcomes (every take open when the pause was seen: a pause
+    first among them or in their middle counts) or the rulings committed among or after them."""
+    at = [i for i, e in enumerate(history) if is_outcome(e)][-MAX_OPEN:]
     tail = history[at[0]:] if at else history
     return any(effective_route(e) == labels4.PAUSE for e in tail)
 
@@ -576,7 +599,7 @@ class Batch:
                  route_fn=None, annotate_fn=None, history: list | None = None, ledger=None,
                  clock=utc_now):
         self.driver, self.repo, self.window = driver, repo, window
-        self.ledger = ledger                 # W7C: the spend ledger (THE MONEY GATE), read before each paid block
+        self.ledger = ledger                 # W7C: the spend ledger (THE MONEY GATE), read before each paid wave
         self.clock = clock                   # W7C (Q-w7c-1): the loop's own UTC clock, the one the hold reads
         self.table = table if table is not None else routing.load_table()
         self.route_fn = route_fn or routing.route
@@ -600,7 +623,7 @@ class Batch:
         if problems:
             raise BatchConfigError("routing.json is not ready: " + "; ".join(problems))
         self.outcomes: list[dict] = []
-        self._block_trim: dict = {}         # W7C-R1-3: the gated block's trim, for each paid launch's re-check
+        self._block_trim: dict = {}         # W7C-R1-3: the gated wave's trim, for each paid launch's re-check
         self.containers: dict = {}           # (slot, attempt) -> recorded container id
         self.reruns = collections.Counter()  # (half_cell, route) -> re-runs spent
         self.slot_reruns = collections.Counter()  # (slot, route) -> re-runs spent
@@ -613,7 +636,7 @@ class Batch:
         self.stopped = None
         self.paused = False
         self.last_window_event = 0           # the highest window event committed (W1B3-5)
-        self._block_event = None             # the window event of the block being committed, once one paused
+        self._block_event = None             # the window event of the pauses since the last wait, once one paused
         self.ruled: dict = {}                # (slot, attempt) -> (the ruling, its fate), from the history (W1B3-1)
         self.unruled: dict = {}              # slot -> (attempt, why): its last take awaits a ruling (W1B3-1)
         self.owed: dict = {}                 # slot -> (attempt, why): the history owes it this drive (W1B3-6)
@@ -622,7 +645,9 @@ class Batch:
         self.night_counts = {"harness_error": 0, "failed_after_drive_started": 0}
         self.nightly_stop_pending = False
         self.night_reaching = None           # (slot, attempt) of the harness-error that brought the window to the count
-        self._block_last = None
+        self._block_last = None              # THE NIGHTLY STOP's carrier: the last take launched (B19-5)
+        self.open = collections.deque()      # B19-5: the open takes, (row, attempt, cid, future), in launch order
+        self._front = 0                      # B19-5: how many queued re-runs lead the queue
         read = getattr(repo, "history", None)
         if history is None:
             if not callable(read):
@@ -902,50 +927,125 @@ class Batch:
         if problems:
             raise BatchConfigError("; ".join(problems))
         queue = collections.deque((dict(r), self.next_attempt.get(r["slot"], 1)) for r in rows)
-        while self.stopped is None:
-            queue = self._drop_closed(queue)                 # nothing more for a closed half-cell
+        self.open = collections.deque()                     # B19-5: (row, attempt, cid, future), in launch order
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.block) as pool:
+            while True:
+                queue = self._commit_finished(queue)         # 1. serial, row order: the oldest open take first
+                queue = self._drop_closed(queue)             # nothing more for a closed half-cell
+                if not self.open:
+                    if self.stopped is not None or not queue:
+                        break
+                    if self.paused:                          # 2. the open takes are committed: wait, then go on
+                        if not self._wait_window():
+                            break
+                        self.paused = False
+                        self._block_event = None             # the pauses before this wait share one event (W1B3-5)
+                if queue:
+                    finished = self._finished()              # one reading: the holds and the free lanes agree
+                    if not self._held(finished):
+                        self._fill(queue, pool, finished)    # 3. a wave into the free drive lanes
+                running = [f for *_, f in self.open if not f.done()]
+                if running and not self.open[0][3].done():
+                    concurrent.futures.wait(running, return_when=concurrent.futures.FIRST_COMPLETED)   # 4.
+        return self.outcomes
+
+    def _commit_finished(self, queue):
+        """B19-5 step 1: while the oldest open take's drive has finished, commit it; its re-run goes to the front of
+        the queue, behind the re-runs already queued there. Every drive already finished is committed before a lane
+        is filled (the tie rule), and re-runs keep the order of their commits, which is row order."""
+        while self.open and self.open[0][3].done():
+            row, attempt, cid, f = self.open.popleft()
+            outcome = self._commit(row, attempt, self._result(f, row, attempt, cid))
+            if outcome["rerun"]:
+                queue.insert(self._front, (row, attempt + 1))   # same slot, ahead of every row not yet registered
+                self._front += 1
+        return queue
+
+    def _finished(self) -> list:
+        """The open takes whose drive step has finished and whose commit waits: (row, attempt, routed outcome). The
+        routed state is read, never decided: the fate is decided at the commit (B19-5, design note section 4)."""
+        out = []
+        for row, attempt, cid, f in self.open:
+            if f.done():
+                out.append((row, attempt, self._result(f, row, attempt, cid)))
+        return out
+
+    def _held(self, finished) -> bool:
+        """B19-5 step 2: no new drive starts while the loop has stopped or waits for the usage window, or once a
+        finished take that is not yet committed paused, stopped (blocked, failed, a leak) or brings this night's
+        harness-errors to the registered count (THE NIGHTLY STOP, read in prospect). `finished` is _finished()'s one
+        reading, the same the free lanes are counted from, so a drive that ends after it frees no lane yet."""
+        if self.stopped is not None or self.paused or getattr(self, "_night_reached", False):
+            return True
+        if any(o["state"] in (labels4.PAUSE, labels4.BLOCKED, labels4.FAILED) or o["leaked_container"] is not None
+               for _, _, o in finished):
+            return True
+        errors = sum(o["state"] == labels4.HARNESS_ERROR for _, _, o in finished)
+        return self.night_counts["harness_error"] + errors >= NIGHTLY_HARNESS_ERRORS
+
+    def _closing_cells(self, finished) -> set:
+        """B19-5 (glitch-f3's cap ruling, re-ruled): the half-cells a finished, uncommitted rehearsal or pause would
+        bring to their cap. No drive of one starts until that take commits (and then its rows are dropped)."""
+        seen = collections.defaultdict(set)
+        for row, attempt, o in finished:
+            if o["state"] in CELL_CAPPED_ROUTES:
+                key = (row["half_cell"], o["state"])
+                event = (("window", self._block_event or self.last_window_event + 1) if o["state"] == labels4.PAUSE
+                         else cell_event(dict(o, window_event=None)))
+                seen[key].add(event)
+        return {cell for (cell, route), events in seen.items()
+                if len(self.cell_events[(cell, route)] | events) >= half_cell_cap(self.table, route)}
+
+    def _fill(self, queue, pool, finished) -> None:
+        """B19-5 step 3: the next queued rows, as many as there are free drive lanes (fewer at MAX_OPEN open takes, and
+        none past a row of a closing half-cell, so the queue's order is kept), as one wave: the money gate on the
+        wave, its rows registered in row order, each launched in row order and driven. A refusal or a register failure
+        stops the loop; the takes already open finish and are committed first. A lane is free only when its drive is
+        among `finished`, the reading the holds were decided on."""
+        free = self.block - (len(self.open) - len(finished))
+        n = min(free, MAX_OPEN - len(self.open), len(queue))
+        closing = self._closing_cells(finished)
+        wave = []
+        while len(wave) < n and queue[0][0]["half_cell"] not in closing:
+            wave.append(queue.popleft())
             if not queue:
                 break
-            if self.paused:
-                if not self._wait_window():
-                    return self.outcomes
-                self.paused = False
-            block = [queue.popleft() for _ in range(min(self.block, len(queue)))]
-            self._block_last = (block[-1][0]["slot"], block[-1][1])     # THE NIGHTLY STOP: carried by the last
-            if self._money_gate(block):                     # W7C: before the block is registered
-                return self.outcomes
-            if not self._register(block):                    # serial: one commit each
-                return self.outcomes
-            launched = [(row, attempt) + self._launch_paid_checked(row, attempt) for row, attempt in block]   # ids
-            with concurrent.futures.ThreadPoolExecutor(max_workers=len(block)) as pool:
-                futures = [pool.submit(self._drive_step, row, attempt, cid, err)
-                           for row, attempt, cid, err in launched]
-                results = [self._result(f, row, attempt, cid)              # row order
-                           for (row, attempt, cid, _), f in zip(launched, futures)]
-            self._block_event = None                         # the block's pauses share one window event (W1B3-5)
-            requeue = []
-            for (row, attempt, _, _), outcome in zip(launched, results):   # serial, row order, all of them
-                outcome = self._commit(row, attempt, outcome)
-                if outcome["rerun"]:
-                    requeue.append((row, attempt + 1))
-            queue.extendleft(reversed(requeue))              # same slots, first, in row order
-        return self.outcomes
+        if not wave:
+            return
+        self._front = max(0, self._front - len(wave))
+        self._block_last = (wave[-1][0]["slot"], wave[-1][1])   # THE NIGHTLY STOP: carried by the last open take
+        if self._money_gate(wave):                         # W7C: before the wave is registered
+            return
+        if not self._register(wave):                        # serial: one commit each
+            return
+        launched = [(row, attempt) + self._launch_paid_checked(row, attempt) for row, attempt in wave]   # ids
+        for row, attempt, cid, err in launched:
+            self.open.append((row, attempt, cid, pool.submit(self._drive_step, row, attempt, cid, err)))
+
+    def _drain(self) -> None:
+        """Every open take's drive waited for and committed, in row order (a stop's open takes finish first)."""
+        while self.open:
+            concurrent.futures.wait([f for *_, f in self.open])
+            self._commit_finished(collections.deque())
 
     def _drop_closed(self, queue):
         """The queue without the rows (first drives and re-runs alike) of a half-cell that closed at its rehearsal or
         pause cap: they are never registered, and each is listed in `skipped` (glitch-f3's cap ruling)."""
-        kept = collections.deque()
-        for row, attempt in queue:
+        kept, front = collections.deque(), 0
+        for i, (row, attempt) in enumerate(queue):
             if row["half_cell"] in self.closed_cells:
                 self.skipped.append({"slot": row["slot"], "attempt": attempt, "half_cell": row["half_cell"],
                                      "why": self.closed_cells[row["half_cell"]]})
             else:
                 kept.append((row, attempt))
+                front += i < self._front                     # a queued re-run kept at the front
+        self._front = front
         return kept
 
     def _money_gate(self, block) -> bool:
-        """W7C (THE MONEY GATE): True when the block may not be launched. Nothing of it is registered or launched; the
-        loop stops blocked, naming the first row that bills money and every reason, for Javier's word."""
+        """W7C (THE MONEY GATE): True when the wave may not be launched. Nothing of it is registered or launched; the
+        loop stops blocked, naming the first row that bills money and every reason, for Javier's word. (The refusal's
+        text still names the block: a reader's marker, unchanged.)"""
         self._block_trim = {}
         problems = money_gate_problems([r for r, _ in block], self.ledger, self.clock, seen=self._block_trim)
         if not problems:
@@ -958,9 +1058,9 @@ class Batch:
 
     def _launch_paid_checked(self, row, attempt) -> tuple:
         """W7C-R1-3 (ruling W7C-close-1): just before a paid launch, the month-turn hold again on a fresh clock reading
-        (the block's gate may have read it before 23:30 UTC). On a refusal nothing is launched: the take is committed
+        (the wave's gate may have read it before 23:30 UTC). On a refusal nothing is launched: the take is committed
         `failed` with drive_started false (so a restart re-drives it, no ruling needed), and the loop stops blocked
-        naming the hold. Once the loop has stopped, no later take of the block is launched either."""
+        naming the hold. Once the loop has stopped, no later take of the wave is launched either."""
         if self.stopped is not None:
             return None, MoneyGateRefused(f"not launched: the loop stopped before it ({self.stopped['reason']})")
         if bills_money(row):
@@ -984,8 +1084,9 @@ class Batch:
         return True
 
     def _register(self, block) -> bool:
-        """Register the block's rows, one commit each, in row order. If one fails, commit every row
-        already registered as `failed`, stop with why, and return False (W1B2-5)."""
+        """Register the wave's rows, one commit each, in row order. If one fails, stop with why, let the takes already
+        open finish and commit them, then commit every row of the wave already registered as `failed`, and return
+        False (W1B2-5; B19-5)."""
         registered = []
         for row, attempt in block:
             try:
@@ -994,6 +1095,7 @@ class Batch:
                 reason = f"register failed for slot {row['slot']} attempt {attempt}: {type(e).__name__}: {e}"
                 if self.stopped is None:
                     self.stopped = {"slot": row["slot"], "attempt": attempt, "state": labels4.FAILED, "reason": reason}
+                self._drain()                                # the older open takes commit first, in row order
                 for r, a in registered:                      # nothing ran: re-driven on a restart (W1B3-1)
                     self._commit(r, a, self._outcome(r, a, None, state=labels4.FAILED, reason=reason,
                                                      drive_started=False))
@@ -1004,7 +1106,7 @@ class Batch:
     def _commit(self, row, attempt, outcome) -> dict:
         """Decide the take's fate, seal its mask, commit it: the one road every outcome takes to the repo."""
         if outcome["state"] == labels4.PAUSE:
-            outcome["window_event"] = self._window_event()   # W1B3-5: one per block that paused
+            outcome["window_event"] = self._window_event()   # W1B3-5: one per wait for the window (B19-5)
         outcome.update(self._decide(row, attempt, outcome))   # the fate, before the commit
         if outcome["leaked_container"] is not None:          # A LEAK (W1B3-1): the route's fate kept, the loop stops
             outcome["stop"] = outcome["stop"] or outcome["reason"]
@@ -1080,7 +1182,8 @@ class Batch:
 
     def _nightly(self, row, attempt, outcome) -> None:
         """THE NIGHTLY STOP: when the harness-errors of this night (D-4-1), this take's included, reach the registered
-        count, the block's last outcome carries the stop and the loop stops after the block, for a ruling."""
+        count, the last open take's outcome carries the stop (B19-5: the take launched last, the block's last with
+        equal durations) and the loop stops once it is committed, for a ruling."""
         reached = self.night_counts["harness_error"] + (outcome["state"] == labels4.HARNESS_ERROR)
         if reached >= NIGHTLY_HARNESS_ERRORS:
             self._night_reached = True
@@ -1102,7 +1205,8 @@ class Batch:
                 outcome["mask_basis"] = f"the take is {outcome['state']}: masked fail-closed (annotations read)"
 
     def _window_event(self) -> int:
-        """The usage-window event of the block being committed: a new one at its first pause, shared by the rest."""
+        """The usage-window event of the pauses committed since the last wait for the window: a new one at the first,
+        shared by the rest (W1B3-5; B19-5)."""
         if self._block_event is None:
             self.last_window_event += 1
             self._block_event = self.last_window_event
@@ -1212,8 +1316,8 @@ class Batch:
     # Each returns the take's fate: {final, rerun, beyond_cap, stop}. It is decided before the
     # commit and committed with the take's records.
     def _decide(self, row, attempt, outcome) -> dict:
-        """The take's fate, from its state's handler. In a half-cell that has already closed (a drive of the same
-        block, running when it closed), never a re-run, and the cell state is carried (glitch-f3's cap ruling)."""
+        """The take's fate, from its state's handler. In a half-cell that has already closed (a take open when it
+        closed, B19-5), never a re-run, and the cell state is carried (glitch-f3's cap ruling)."""
         cell = row["half_cell"]
         if cell not in self.closed_cells:
             return self.handlers[outcome["state"]](row, attempt, outcome)

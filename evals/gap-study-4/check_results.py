@@ -5,8 +5,8 @@ Default, --check and --ledger all check the complete publication. No recorded
 route is repaired. Before the freeze an empty tree says no takes, never zeros.
 After the freeze the pinned bytes and frozen content are checked before records
 are regraded with local v4 files. Publication reads committed cell states and
-closed rulings; differing candidate counts for a ruled pause use the strict
-own-event count with a publication note (round 3 re-ruling).
+closed rulings; a ruled pause counts as its own event with a publication note
+(round 3 re-ruling; B19-5, batch.py's rolling window, made it the only count).
 Under w5b-4, runtime outputs have no copy fragment. Their commit history must
 start strictly after the freeze, including outputs later removed from the tree.
 Only the disposable rehearsal plan passes --rehearsal-plan: its exact placeholder
@@ -82,7 +82,9 @@ def verify_route(outcome: dict, table: dict) -> None:
 
 
 def window_problems(history: list) -> list[str]:
-    """A window event occupies at most one block's span, with no slot twice."""
+    """A window event holds at most BLOCK pauses within at most MAX_OPEN consecutive outcomes, with no slot twice
+    and no other event's pause between them (B19-5: batch.py's rolling window commits the takes that were open when
+    the first pause was seen between its pauses)."""
     outcomes = [o for o in history if batch.is_outcome(o)]
     positions = collections.defaultdict(list)
     for i, o in enumerate(outcomes):
@@ -93,68 +95,31 @@ def window_problems(history: list) -> list[str]:
         stretch = outcomes[indices[0]:indices[-1] + 1]
         slots = [o["slot"] for o in stretch]
         events = {o["window_event"] for o in stretch if o["state"] == labels4.PAUSE}
-        if len(stretch) > batch.BLOCK or len(set(slots)) != len(slots) or events != {event}:
-            bad.append(f"window event {event} does not fit one block of at most {batch.BLOCK} consecutive outcomes")
+        if (len(indices) > batch.BLOCK or len(stretch) > batch.MAX_OPEN or len(set(slots)) != len(slots)
+                or events != {event}):
+            bad.append(f"window event {event} does not fit: at most {batch.BLOCK} pauses within at most "
+                       f"{batch.MAX_OPEN} consecutive outcomes, no slot twice and no other event between them")
     return bad
 
 
 def pause_event(history: list, taken: dict) -> dict:
-    """Derive the ruled take's event and publication note; no seventh ruling field.
+    """The ruled take's event and publication note; no seventh ruling field.
 
-    Enumerate admissible block edges, not exponentially many partitions. An edge
-    spans one to BLOCK outcomes, has no repeated slot and cannot split one
-    recorded window event or join two. Forward/backward reachability keeps only
-    edges in a complete partition. Different edges are allowed when they give
-    the same half-cell count. Sharing reduces the count only when that window
-    already belongs to this half-cell through another outcome. Otherwise the
-    ruled take has its own event, regardless of another cell's window identity.
-    If candidate counts differ, use batch's strict own-event count and name it.
+    B19-5 (proposal 7) and B19-6: a pause a ruling routes counts as its own event
+    in its half-cell, the strict own-event count batch itself uses. A rolling run
+    has no block edges to derive a shared event from, so a ruled pause can count
+    as its own event where a block run would have merged it with its block; it is
+    named with the publication note whenever another pause of its half-cell
+    carries a window event (one it could have shared).
     """
     outcomes = [o for o in history if batch.is_outcome(o)]
     key = (taken["slot"], taken["attempt"])
     indices = [i for i, o in enumerate(outcomes) if (o["slot"], o["attempt"]) == key]
     if len(indices) != 1:
         raise ValueError("the ruled pause's take cannot be found uniquely in history")
-    n, at = len(outcomes), indices[0]
-    event_indices = collections.defaultdict(set)
-    for i, o in enumerate(outcomes):
-        if o["window_event"] is not None:
-            event_indices[o["window_event"]].add(i)
-    edges = collections.defaultdict(list)
-    for left in range(n):
-        for right in range(left + 1, min(n, left + batch.BLOCK) + 1):
-            span = outcomes[left:right]
-            events = {o["window_event"] for o in span if o["window_event"] is not None}
-            if len({o["slot"] for o in span}) != len(span) or len(events) > 1:
-                continue
-            if any(not event_indices[e] <= set(range(left, right)) for e in events):
-                continue
-            edges[left].append(right)
-    forward = {0}
-    for left in range(n):
-        if left in forward:
-            forward.update(edges[left])
-    backward = {n}
-    for left in range(n - 1, -1, -1):
-        if any(right in backward for right in edges[left]):
-            backward.add(left)
-    candidates = [(left, right) for left in forward for right in edges[left]
-                  if right in backward and left <= at < right]
-    if not candidates:
-        raise ValueError("the ruled pause's block cannot be derived uniquely from committed history")
-    cell_events = {batch.cell_event(o) for o in outcomes
-                   if o["half_cell"] == taken["half_cell"] and o["state"] == labels4.PAUSE
-                   and (o["slot"], o["attempt"]) != key}
-    choices = {}
-    for left, right in candidates:
-        events = {o["window_event"] for o in outcomes[left:right] if o["window_event"] is not None}
-        event = ("take", *key)
-        if events and ("window", next(iter(events))) in cell_events:
-            event = ("window", next(iter(events)))
-        choices[len(cell_events | {event})] = event
-    if len(choices) != 1:
-        return {"event": ("take", *key), "note": STRICT_PAUSE_NOTE}
-    return {"event": next(iter(choices.values())), "note": None}
+    shared = any(o["half_cell"] == taken["half_cell"] and o["state"] == labels4.PAUSE and o["window_event"] is not None
+                 for o in outcomes)
+    return {"event": ("take", *key), "note": STRICT_PAUSE_NOTE if shared else None}
 
 
 def ruling_closes(count: int, cap: int) -> bool:
@@ -170,8 +135,8 @@ def publication(history: list, table: dict | None = None) -> dict:
 
     Ordinary cell states are read, never regenerated from a cap. A route ruling
     has no outcome carrying its fate, so its handler's fate is evaluated at the
-    ruling's position. Pauses share a block event when its count is unambiguous;
-    differing candidate counts use the strict own-event count with a note.
+    ruling's position. A ruled pause counts as its own event, with a note
+    (pause_event; B19-5).
     """
     table = routing.load_table() if table is None else table
     try:
