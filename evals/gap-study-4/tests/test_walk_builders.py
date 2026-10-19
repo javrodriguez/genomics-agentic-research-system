@@ -417,6 +417,9 @@ def mutants() -> dict:
         # lane vendor-admission round 12 (review c-6302fd3 NIT 7): the vendor names above the checkout unchecked
         "place-inherited-unchecked": ("B18.place", "walk_builders", "    above = inherited_instruction_files(tree)\n",
                                       "    above = []\n"),
+        # lane vendor-admission round 18 B13 (practice walk w-o1): the placed copies added without -f
+        "place-add-unforced": ("B18.ignored", "walk_builders", '    for args in (("add", "-f", "--", *[d for d, _ in placed]),',
+                               '    for args in (("add", "--", *[d for d, _ in placed]),'),
     }
 
 
@@ -471,6 +474,7 @@ METHOD = {
     "lease-refresh-missing-admitted": "B13Lease.test_the_walk_start_token_check",
     "lease-refusal-carries-token": "B13Lease.test_the_walk_start_token_check",
     "place-inherited-unchecked": "B18Native.test_place_instruction_file_refuses_by_name",
+    "place-add-unforced": "B18Native.test_the_native_file_is_added_past_the_trees_gitignore",
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 
