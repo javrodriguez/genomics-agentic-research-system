@@ -157,7 +157,8 @@ class PublicConfigRegression(unittest.TestCase):
             path = Path(folder) / ".gemini/settings.json"
             settings = json.loads(path.read_text())
             self.assertIs(settings["experimental"]["adk"]["agentSessionNoninteractiveEnabled"], False)
-            self.assertEqual(settings["tools"]["exclude"], ["google_web_search", "web_fetch"])
+            # Lane vendor-b14 round 2 (glitch-26's ruling R-B14-2): invoke_agent joins D8's excluded tools.
+            self.assertEqual(settings["tools"]["exclude"], ["google_web_search", "web_fetch", "invoke_agent"])
             self.assertIs(settings["hooksConfig"]["enabled"], False)
             self.assertIs(settings["telemetry"]["enabled"], False)
             self.assertEqual(record["files"][0]["text"], path.read_text())

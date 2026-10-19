@@ -87,9 +87,16 @@ Helper calls go through the same content generator and are counted in the same p
 Loop-detection calls even reuse the main turn's prompt id (C:344284).
 telemetry.enabled false and privacy.usageStatisticsEnabled false do not stop this accounting (uiTelemetryService.addEvent runs unconditionally, C:289316).
 So stats.models is the set of server-reported versions over the main turns and every helper call in the invocation, never the set of requested ids.
-The w-g5 stats name no gemini-3.8-flash key at all.
-So no response in that call reported gemini-3.8-flash as its modelVersion; this is an inference from C:312388, and the bytes were not seen.
-Either the API reported another version string for the main turns (gemini-3-flash-preview is the obvious candidate), or every response came from helpers, which cannot be true of a turn that answered.
+~~The w-g5 stats name no gemini-3.8-flash key at all.~~ Corrected in round 2 (below).
+
+**Round 2 correction (glitch-26's ROUND 2 rulings, Mon 19 Oct 2026).**
+The inference made here in round 1, that w-g5's result.stats.models named no gemini-3.8-flash key and so no response reported gemini-3.8-flash as its modelVersion, was wrong.
+It rested on the refusal line, which listed only the keys beyond the row's id, not the whole stats object.
+glitch-26 read the per-model numbers of the held w-g5 take's result.stats.models on athena: gemini-3.8-flash carries 5,577,337 tokens (the main turns), gemini-3-flash-preview 25,347 and gemini-3.1-pro-preview-customtools 2,430, and the result counts 113 tool calls against 91 tool_use events in the stream.
+So the server reports the row's id as modelVersion for the main turns, and the two extra keys are helper calls, as section 2d reads them.
+This settles option C's open question in favour of option A: the strict identity check stands with no named server-alias difference (ruling R-B14-3).
+Round 2 builds option A as ruled: R-B14-1 repoints every helper alias at the row's model with loop detection left on (not model.disableLoopDetection, as section 6's option A first proposed), and R-B14-2 excludes invoke_agent (box/take_config.py GEMINI_HELPER_ALIASES, GEMINI_ROW_ALIASES, GEMINI_AGENT_EXCLUSION, each with its lines in VALUE_SOURCES).
+Round 2 re-read every other built-in alias for whether a run under these settings reaches it, and found none beyond the ruled ones: loop-detection, llm-edit-fixer and next-speaker-checker extend gemini-3-flash-base (C:362486, 362496, 362500) and follow its repointed entry; chat-compression-3-pro and the 2.5 compression aliases are picked only for other chat models (C:337037-337061); classifier and prompt-completion serve the router for auto models and completion in the interactive UI; fast-ack-helper serves only generateSteeringAckMessage (C:349827), which no bundle file calls (it is defined and re-exported only, C:400661); edit-corrector needs disableLLMCorrection false (C:310738, default true, C:380822); summarizer-shell needs model.summarizeToolOutput; summarizer-default serves the session summary of listSessions (C:390466); web-search, web-fetch and web-fetch-fallback belong to the two excluded web tools; context-snapshotter and the node distillation's own gemini-3-flash-base call (C:345269, repointed anyway) run only with contextManagement.enabled (default false, C:380870), which also gates agent-history-provider-summarizer's two callers (C:348224, C:348857); that alias is pinned as ruled all the same.
 The customtools key needs a pro-model helper call: the loop detector's double check, chat-compression-default, or a customtools fallback of a failed gemini-3-flash-preview helper (the helper chains wrap; C:308266, C:308336).
 
 ## 4. Whether gemini-3.8-flash is accepted as given

@@ -86,3 +86,9 @@ python3 -B -W ignore evals/gap-study-4/tests/test_gemini_tool_registry.py --witn
 python3 -B -W ignore evals/gap-study-4/tests/test_codex_usage_source.py
 python3 -B -W ignore evals/gap-study-4/tests/test_codex_usage_source.py --witnesses
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 transcript_codex.py codex_adapter.py codex_usage_sources.py tests/test_codex_usage_source.py tests/test_codex_adapter.py COPIED.d/vendor-admission.json
+# Lane vendor-b14 round 2 (glitch-26's rulings R-B14-1 and R-B14-2, Mon 19 Oct 2026; practice walk w-g5): arm G's
+# helper aliases repointed at the row's model and invoke_agent excluded, read from the pinned Gemini CLI 0.64.0; the
+# witnesses are test_take_config's TestB14HelperPins mutants (each alias entry, the exclusion, the in-place write), each
+# red alone; the files the round edits, against the native readers' source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_take_config.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/take_config.py build_draft.py prereg-draft.json tests/test_take_config.py tests/test_walk_builders.py tests/test_live_box.py

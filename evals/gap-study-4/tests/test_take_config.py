@@ -234,7 +234,8 @@ class TestR3Values(MutantCase):
         for name, want in R3_VALUES.items():
             if getattr(tc, name, None) != want:
                 out.append(f"{name} is {getattr(tc, name, None)!r}, not the sourced {want!r}")
-        if getattr(tc, "VALUE_SOURCES", None) != R3_SOURCES:
+        # Lane vendor-b14 round 2 (R-B14-1, R-B14-2): the record gains the helper aliases' and the exclusion's reads.
+        if getattr(tc, "VALUE_SOURCES", None) != dict(R3_SOURCES, **B14_SOURCES):
             out.append("take_config.VALUE_SOURCES is not the record of R3's static reads")
         if tc.pending():
             out.append(f"still pending: {sorted(tc.pending())}")
@@ -259,10 +260,11 @@ class TestR3Values(MutantCase):
             tc.write(d, tc.GEMINI, model=m)
             with open(os.path.join(d, ".gemini", "settings.json")) as fh:
                 doc = json.load(fh)
-            if doc.get("modelConfigs") != {"customAliases": R3_VALUES["GEMINI_THINKING"]["value"]} or \
+            # R-B14-1 and R-B14-2 move these two: chat-base-3 beside the repointed helper aliases, invoke_agent excluded.
+            if doc.get("modelConfigs") != {"customAliases": b14_aliases(m)} or \
                     doc.get("security") != {"auth": {"selectedType": "gemini-api-key"},
                                             "folderTrust": {"enabled": False}} or \
-                    doc.get("tools") != {"exclude": ["google_web_search", "web_fetch"]} or \
+                    doc.get("tools") != {"exclude": B14_EXCLUDE} or \
                     doc.get("model") != {"name": m}:
                 out.append(f"{m}'s settings.json reads {doc}")
         return out
@@ -295,6 +297,55 @@ B14_ALIASES = {"gemini-3-flash-base": {"extends": "base"}, "loop-detection-doubl
                "chat-compression-3-flash": {}, "chat-compression-default": {}, "agent-history-provider-summarizer": {}}
 B14_ROW_ALIASES = {"gemini-3.8-flash": {}, "gemini-3.5-flash-lite": {"chat-compression-3.1-flash-lite": {}}}
 B14_EXCLUDE = ["google_web_search", "web_fetch", "invoke_agent"]
+# Where each was read in the pinned package, as the executor read it (VALUE_SOURCES).
+B14_SOURCES = {
+    "GEMINI_HELPER_ALIASES": dict(GEMINI_PKG, file="bundle/chunk-NR7L3FXV.js",
+                                  file_sha256="d566e81b1df8d4d44a91bf7aeea96a58ec0e6c8934fa424315ef060507dcbb8c",
+                                  lines={"gemini-3-flash-base": 362386, "loop-detection-double-check": 362490,
+                                         "chat-compression-3-flash": 362522, "chat-compression-3.1-flash-lite": 362527,
+                                         "chat-compression-default": 362547,
+                                         "agent-history-provider-summarizer": 362552},
+                                  model_lines={"gemini-3-flash-base": 362389, "loop-detection-double-check": 362493,
+                                               "chat-compression-3-flash": 362524,
+                                               "chat-compression-3.1-flash-lite": 362529,
+                                               "chat-compression-default": 362549,
+                                               "agent-history-provider-summarizer": 362554},
+                                  use_lines={"gemini-3-flash-base": 345269, "loop-detection extends it": 362487,
+                                             "loop-detection called": 344226,
+                                             "loop-detection-double-check": 343867,
+                                             "compression alias by the chat's model": 337195,
+                                             "chat-compression-3-flash for gemini-3.8-flash": 337044,
+                                             "chat-compression-3.1-flash-lite for gemini-3.5-flash-lite": 337051,
+                                             "chat-compression-default for any other model": 337060,
+                                             "agent-history-provider-summarizer": 344635,
+                                             "agent-history-provider-summarizer, tool output": 348760},
+                                  layer_lines={"customAliases over the built-in aliases": 342156,
+                                               "customAliases kept": 380852, "the alias's model wins": 342295},
+                                  setting_file="bundle/chunk-FLKY6NH5.js",
+                                  setting_file_sha256="f6a4ddd46350dad40515218069d369aaa0025f194c552400b69925b941098bc8",
+                                  setting_line=13409, loop_detection_setting_line=13371,
+                                  read="each built-in helper alias the run can reach, its model, and where it is "
+                                       "used; settings.json's modelConfigs.customAliases replaces a built-in alias "
+                                       "by name, so each entry restates the built-in's extends (gemini-3-flash-base "
+                                       "and loop-detection-double-check extend base, the compression and summarizer "
+                                       "aliases extend nothing) with the row's model; loop-detection, llm-edit-fixer "
+                                       "and next-speaker-checker extend gemini-3-flash-base and follow it; "
+                                       "model.disableLoopDetection (default false) is not written"),
+    "GEMINI_AGENT_EXCLUSION": dict(GEMINI_PKG, file="bundle/chunk-NR7L3FXV.js",
+                                   file_sha256="d566e81b1df8d4d44a91bf7aeea96a58ec0e6c8934fa424315ef060507dcbb8c",
+                                   lines={'var AGENT_TOOL_NAME = "invoke_agent";': 283421,
+                                          "maybeRegister(AgentTool,": 382849,
+                                          "getActiveTools leaves out the excluded tools": 313466},
+                                   setting_file="bundle/chunk-FLKY6NH5.js",
+                                   setting_file_sha256=("f6a4ddd46350dad40515218069d369aaa0025f194c552400b69925b"
+                                                        "941098bc8"),
+                                   setting_line=13925, cli_file="bundle/gemini-Q2GRYIAK.js",
+                                   cli_file_sha256="7702da31cf099ca3e1d64fd195f15b7726b2c2829ec21e955558eb9dbfba47da",
+                                   cli_line=8674,
+                                   read="tools.exclude (a list of tool names, merged into the CLI's excluded tools) "
+                                        "with invoke_agent, the subagent tool's name, so the registry never offers "
+                                        "it; the plan's vendor side counts zero Agent calls by construction"),
+}
 
 
 def b14_aliases(row) -> dict:
@@ -303,6 +354,22 @@ def b14_aliases(row) -> dict:
     for alias, rest in dict(B14_ALIASES, **B14_ROW_ALIASES[row]).items():
         want[alias] = dict(rest, modelConfig={"model": row})
     return want
+
+
+@contextlib.contextmanager
+def in_place_aliases():
+    """The writer with its one copy undone, so it adds the helper aliases into the restated chat-base-3's own mapping.
+    GEMINI_THINKING is a copy for the mutant's span, so no test after it sees the change."""
+    text = inspect.getsource(tc._gemini)
+    copied = 'aliases = dict(configs.get("customAliases", {}))'
+    if text.count(copied) != 1:
+        raise AssertionError("the writer's copy of the aliases is not where this mutant reads it")
+    space = dict(vars(tc))
+    exec(text.replace(copied, 'aliases = configs.setdefault("customAliases", {})'), space)
+    with mock.patch.object(tc, "GEMINI_THINKING", copy.deepcopy(tc.GEMINI_THINKING)), \
+            mock.patch.dict(tc.WRITERS, {tc.GEMINI: lambda m: space["_gemini"](m)}):
+        space["GEMINI_THINKING"] = tc.GEMINI_THINKING
+        yield
 
 
 class TestB14HelperPins(MutantCase):
@@ -333,10 +400,12 @@ class TestB14HelperPins(MutantCase):
                 out.append(f"{row}: tools is {doc.get('tools')!r}, not tools.exclude {B14_EXCLUDE}")
             if "disableLoopDetection" in doc.get("model", {}):
                 out.append(f"{row}: loop detection is configured ({doc['model']}); R-B14-1 keeps the CLI as shipped")
+        if tc.GEMINI_THINKING != R3_VALUES["GEMINI_THINKING"]:
+            out.append(f"placing the settings changed GEMINI_THINKING in place: {tc.GEMINI_THINKING}")
         sources = getattr(tc, "VALUE_SOURCES", {})
-        for name in ("GEMINI_HELPER_ALIASES", "GEMINI_AGENT_EXCLUSION"):
-            if name not in sources:
-                out.append(f"VALUE_SOURCES has no {name}")
+        for name in B14_SOURCES:
+            if sources.get(name) != B14_SOURCES[name]:
+                out.append(f"VALUE_SOURCES[{name!r}] is not the record of the B14 read")
         try:
             tc.files_for(tc.GEMINI, model="gemini-3-flash-preview")
             out.append("a gemini config was placed for a model whose helper aliases are not read")
@@ -351,6 +420,7 @@ class TestB14HelperPins(MutantCase):
         mutants += [("alias chat-compression-3.1-flash-lite dropped", lambda: mock.patch.dict(
             tc.GEMINI_ROW_ALIASES, {"gemini-3.5-flash-lite": {}}))]
         mutants += [("invoke_agent not excluded", patched(tc, "GEMINI_AGENT_EXCLUSION", ()))]
+        mutants += [("helper aliases written into GEMINI_THINKING's own value", in_place_aliases)]
         self.assert_green_then_red(self.check, mutants)
 
 
@@ -372,7 +442,7 @@ class TestContents(MutantCase):
         d, rec = written(tc.GEMINI, "gemini-3.8-flash")
         with open(os.path.join(d, ".gemini", "settings.json")) as fh:
             doc = json.load(fh)
-        want = {"tools.exclude": ["google_web_search", "web_fetch"],          # R-6: no context.fileName
+        want = {"tools.exclude": B14_EXCLUDE,          # R-6: no context.fileName; R-B14-2: invoke_agent excluded
                 "hooksConfig.enabled": False, "general.enableAutoUpdate": False,
                 "general.enableAutoUpdateNotification": False, "privacy.usageStatisticsEnabled": False,
                 "telemetry.enabled": False, "model.name": "gemini-3.8-flash", "model.thinkingLevel": "default",
@@ -380,6 +450,10 @@ class TestContents(MutantCase):
                 "security.folderTrust.enabled": False,         # round 18 B9: folder trust off (glitch-26's ruling B9)
                 # The frozen legacy noninteractive path (pinned 0.64.0 evidence; the renderer fold).
                 "experimental.adk.agentSessionNoninteractiveEnabled": False}
+        # R-B14-1: each helper alias repointed at the row's model (lane vendor-b14 round 2).
+        for alias, rest in B14_ALIASES.items():
+            want.update({f"modelConfigs.customAliases.{alias}.{k}": v for k, v in rest.items()})
+            want[f"modelConfigs.customAliases.{alias}.modelConfig.model"] = "gemini-3.8-flash"
         for k, v in want.items():
             try:
                 if get(doc, k) != v:
