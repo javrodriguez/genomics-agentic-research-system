@@ -21,6 +21,10 @@ events and pause counts per half-cell (B19-6); and, red on the block loop of 949
 and its ruled pause counted as its own event (proposal 7), takes.py's live set, MAX_OPEN and clean-tree registration
 (proposal 6, on test_pipeline's scratch repositories), the open takes bounded by MAX_OPEN while three drives run, and
 a run stopped with twelve takes open restarting owing exactly those takes, in row order (B19-9).
+
+Round 3 (glitch-26's rulings B19-12 to B19-14): the holds read from a finished drive whose commit waits behind a slow
+head (a stop, the nightly count, a half-cell closing at its cap), each pinned by a check that witnesses of batch.py
+(WITNESSES, the review's mutants, each alone) turn red; and the nightly stop's carrier set once the wave is launched.
 """
 
 from __future__ import annotations
@@ -633,6 +637,191 @@ class TestNightlyCarrier(unittest.TestCase):
                 self.assertIn(b._block_last, committed, "the nightly stop's carrier names a row never committed")
                 self.assertEqual([(o["slot"], o["attempt"]) for o in out
                                   if (o["stop"] or "").startswith(batch.NIGHTLY_STOP)], [(3, 1)])
+
+
+class StoppingDriver(TimedDriver):
+    """TimedDriver whose drive raises for the slots in `fails` (the take fails) and whose container removal raises
+    for the slots in `leaks` (A LEAK, W1B3-1)."""
+
+    fails, leaks = (), ()
+
+    def __init__(self, world, plan=None, units=None):
+        super().__init__(world, plan, units)
+        self.slot_of = {}
+
+    def launch(self, row):
+        cid = super().launch(row)
+        self.slot_of[cid] = row["slot"]
+        return cid
+
+    def drive(self, row, cid):
+        records = super().drive(row, cid)
+        if row["slot"] in self.fails:
+            raise RuntimeError("synthetic drive failure")
+        return records
+
+    def remove(self, cid):
+        super().remove(cid)
+        if self.slot_of[cid] in self.leaks:
+            raise RuntimeError("synthetic removal failure")
+
+
+class FailsTwo(StoppingDriver):
+    fails = (2,)
+
+
+class LeaksTwo(StoppingDriver):
+    leaks = (2,)
+
+
+def late(events, after, keep=lambda e: True):
+    """The registrations (slot, attempt) logged after the event index `after`, those `keep` admits."""
+    return [e[2:4] for e in events if e[1] == "register" and e[0] > after and keep(e)]
+
+
+# B19-12 (the review's finding 1): the holds read from a finished drive whose commit waits behind a slow head. Each
+# check returns problems, and each is run against witnesses of batch.py that must turn it red (WITNESSES).
+STOPS = {"blocked": ({(2, 1): "unlisted-reason"}, None, labels4.BLOCKED),
+         "failed": ({}, FailsTwo, labels4.FAILED),
+         "leaking": ({}, LeaksTwo, labels4.GRADED)}
+
+
+def stop_hold_problems(mod=batch) -> list:
+    """Slot 2 ends blocked, failed or leaking behind slot 1's slow drive (slot 3 ends after it): nothing is registered
+    after slot 2's drive ends, and the loop stops at its commit."""
+    p = []
+    for name, (plan, driver, state) in STOPS.items():
+        b, out, w, d, r, win = drive_run(slow_head_rows(), plan=plan, units={1: SLOW, 3: 3}, mod=mod, driver=driver)
+        ev, two = w.events, next(o for o in out if o["slot"] == 2)
+        end = at(ev, "drive-end", 2, 1)
+        if not end < at(ev, "drive-end", 3, 1) < at(ev, "drive-end", 1, 1):
+            p.append(f"{name}: slot 2 does not end first, behind the slow head (the scenario did not happen)")
+        if (two["state"], two["leaked_container"] is not None) != (state, name == "leaking") or b.stopped is None:
+            p.append(f"{name}: slot 2 committed {two['state']} (leak {two['leaked_container']!r}), loop stopped "
+                     f"{b.stopped is not None}")
+        if late(ev, end):
+            p.append(f"{name}: {late(ev, end)} registered after slot 2's drive ended {name} behind the slow head")
+    return p
+
+
+def nightly_hold_problems(mod=batch) -> list:
+    """Slots 2, 3 and 4 end harness-errors behind slot 1's slow drive; slot 4's brings the night's count to
+    NIGHTLY_HARNESS_ERRORS while slot 5, launched last, still runs: nothing is registered after slot 4's drive ends,
+    and the stop is carried by slot 5, the last take launched."""
+    plan = {(s, 1): "watcher-overflow" for s in (2, 3, 4)}
+    b, out, w, d, r, win = drive_run(slow_head_rows(), plan=plan, units={1: SLOW, 3: 2, 4: 2, 5: 4}, mod=mod)
+    ev, p = w.events, []
+    end = at(ev, "drive-end", 4, 1)
+    if not (at(ev, "drive-end", 3, 1) < end < at(ev, "drive-end", 5, 1) < at(ev, "drive-end", 1, 1)):
+        p.append("slot 4 does not reach the count behind the slow head with slot 5 running (no scenario)")
+    if late(ev, end):
+        p.append(f"{late(ev, end)} registered after slot 4's harness-error reached the nightly count")
+    last = [e[2] for e in ev if e[1] == "launch"][-1]
+    carried = [(o["slot"], o["attempt"]) for o in out if (o["stop"] or "").startswith(batch.NIGHTLY_STOP)]
+    if carried != [(last, 1)] or b.stopped is None:
+        p.append(f"the nightly stop is carried by {carried}, not by the last take launched, slot {last}")
+    return p
+
+
+CLOSING_ROWS = tb.rows_in(["hc-a", "hc-b", "hc-b", "hc-b", "hc-b", "hc-c", "hc-b", "hc-c", "hc-a"])
+
+
+def closing_hold_problems(mod=batch) -> list:
+    """Slots 2, 3 and 4 of hc-b rehearse behind slot 1's slow drive; slot 4's is the third, hc-b's cap: no further
+    row of hc-b is registered between slot 4's drive end and its commit, which closes the half-cell (slot 7 dropped).
+    (A pause behind the slow head holds every launch already: test_batch's pause test.)"""
+    cap = batch.half_cell_cap(tb.test_table(), labels4.REHEARSAL)
+    plan = {(s, 1): "preflight-fail" for s in (2, 3, 4)}
+    b, out, w, d, r, win = drive_run(CLOSING_ROWS, plan=plan, units={1: SLOW, 3: 2, 4: 3, 6: 5}, mod=mod)
+    ev, p = w.events, []
+    end, commit = at(ev, "drive-end", 4, 1), at(ev, "commit", 4, 1)
+    if cap != 3 or not at(ev, "drive-end", 5, 1) < end < at(ev, "drive-end", 6, 1) < at(ev, "drive-end", 1, 1):
+        p.append(f"slot 4 does not close hc-b (cap {cap}) behind the slow head with slot 6 running (no scenario)")
+    early = late(ev, end, keep=lambda e: e[0] < commit and CLOSING_ROWS[e[2] - 1]["half_cell"] == "hc-b")
+    if early:
+        p.append(f"{early} of hc-b registered after slot 4's rehearsal closing it ended, before its commit")
+    if b.closed_cells.get("hc-b") is None or 7 not in [s["slot"] for s in b.skipped]:
+        p.append(f"hc-b not closed at slot 4's commit, or slot 7 not dropped: {b.closed_cells}, {b.skipped}")
+    return p
+
+
+CHECKS = {"stop-hold": stop_hold_problems, "nightly-hold": nightly_hold_problems,
+          "closing-hold": closing_hold_problems}
+
+
+class TestHoldsBehindASlowHead(unittest.TestCase):
+    """B19-12: the stop, nightly and closing half-cell holds, read from finished drives behind a slow head."""
+
+    def test_a_stop_behind_the_slow_head_registers_nothing_after_its_drive_end(self):
+        self.assertEqual(stop_hold_problems(), [])
+
+    def test_the_nightly_count_behind_the_slow_head_registers_nothing_after_it(self):
+        self.assertEqual(nightly_hold_problems(), [])
+
+    def test_a_half_cell_closing_behind_the_slow_head_registers_none_of_its_rows_before_its_commit(self):
+        self.assertEqual(closing_hold_problems(), [])
+
+
+# name: (edits to batch.py, the bound check). The review's mutants of finding 1, each alone.
+HELD_STOPS = ('o["state"] in (labels4.PAUSE, labels4.BLOCKED, labels4.FAILED) or o["leaked_container"] is not None',
+              'o["state"] in (labels4.PAUSE,)')
+HELD_NIGHT = ('        return self.night_counts["harness_error"] + errors >= NIGHTLY_HARNESS_ERRORS\n',
+              '        return False\n')
+WITNESSES = {
+    "held-stops-dropped": ((HELD_STOPS,), "stop-hold"),
+    "held-nightly-dropped": ((HELD_NIGHT,), "nightly-hold"),
+    "held-pause-only-stops": ((HELD_STOPS, HELD_NIGHT), "stop-hold"),
+    "held-pause-only-nightly": ((HELD_STOPS, HELD_NIGHT), "nightly-hold"),
+    "closing-cells-empty": ((("        closing = self._closing_cells(finished)\n", "        closing = set()\n"),),
+                            "closing-hold"),
+}
+
+
+def compiled(edits):
+    """batch.py with `edits`, compiled in memory as its own module (the real one stays in sys.modules)."""
+    with open(batch.__file__, encoding="utf-8") as fh:
+        src = fh.read()
+    for old, new in edits:
+        if src.count(old) != 1:
+            raise AssertionError(f"witness not performed: the anchor occurs {src.count(old)} times: {old[:70]!r}")
+        src = src.replace(old, new)
+    mod = type(sys)("batch")
+    mod.__file__ = batch.__file__
+    exec(compile(src, batch.__file__ + " (witness)", "exec"), mod.__dict__)
+    return mod
+
+
+class TestWitnesses(unittest.TestCase):
+    """B19-12: each witness, alone, turns its bound check red; the check is green on the tree first."""
+
+    def kill(self, name):
+        edits, check = WITNESSES[name]
+        self.assertEqual(CHECKS[check](batch), [], f"{name}: the bound check {check} is not green on the tree")
+        got = CHECKS[check](compiled(edits))
+        print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} by {check} ({len(got)} problems)", end=" ",
+              file=sys.stderr, flush=True)
+        self.assertTrue(got, f"{name}: survived {check}")
+
+    def test_witness_held_stops_dropped(self):
+        self.kill("held-stops-dropped")
+
+    def test_witness_held_nightly_dropped(self):
+        self.kill("held-nightly-dropped")
+
+    def test_witness_held_pause_only_stops(self):
+        self.kill("held-pause-only-stops")
+
+    def test_witness_held_pause_only_nightly(self):
+        self.kill("held-pause-only-nightly")
+
+    def test_witness_closing_cells_empty(self):
+        self.kill("closing-cells-empty")
+
+    def test_the_witnesses_are_named_and_bound(self):
+        self.assertEqual(sorted(WITNESSES), sorted(["held-stops-dropped", "held-nightly-dropped",
+                                                    "held-pause-only-stops", "held-pause-only-nightly",
+                                                    "closing-cells-empty"]))
+        self.assertTrue(all(check in CHECKS for _, check in WITNESSES.values()))
 
 
 if __name__ == "__main__":
