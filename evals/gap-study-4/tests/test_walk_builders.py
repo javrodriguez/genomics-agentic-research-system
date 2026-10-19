@@ -421,6 +421,11 @@ def mutants() -> dict:
         "place-add-unforced": ("B18.ignored", "walk_builders",
                                '    for args in (("add", "-f", "--", *[":(literal)" + d for d, _ in placed]),',
                                '    for args in (("add", "--", *[":(literal)" + d for d, _ in placed]),'),
+        # R-FB1 (glitch-26, Mon 19 Oct 2026; review vendor-r18-b12b13-0094246 MINOR 1, the reviewer's mutant M1):
+        # the add widened to every file in the checkout, ignored ones included
+        "place-add-all": ("B18.ignored", "walk_builders",
+                          '    for args in (("add", "-f", "--", *[":(literal)" + d for d, _ in placed]),',
+                          '    for args in (("add", "-f", "-A"),'),
         # R-FB2 (glitch-26, Mon 19 Oct 2026; review vendor-r18-b12b13-0094246 NIT 3): the placed paths as pathspecs
         "place-add-not-literal": ("B18.literal", "walk_builders", '*[":(literal)" + d for d, _ in placed]',
                                   '*[d for d, _ in placed]'),
@@ -480,6 +485,7 @@ METHOD = {
     "place-inherited-unchecked": "B18Native.test_place_instruction_file_refuses_by_name",
     "place-add-unforced": "B18Native.test_the_native_file_is_added_past_the_trees_gitignore",
     "place-add-not-literal": "B18Native.test_each_placed_path_is_added_literally",
+    "place-add-all": "B18Native.test_the_native_file_is_added_past_the_trees_gitignore",
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 
@@ -3932,36 +3938,67 @@ def b18_place_problems(mod) -> list:
 # checkout exits 1 ("The following paths are ignored by one of your .gitignore files") and no codex walk got a run
 # tree. The placed copies are added by exactly their paths, whatever the checkout's .gitignore says; nothing else
 # the .gitignore covers, and nothing the exclusions leave out, reaches the one commit.
+# glitch-26's ruling R-FB1 (Mon 19 Oct 2026; review vendor-r18-b12b13-0094246 MINOR 1): the pin tracks a file its own
+# .gitignore matches (gars/00_initialize_project/CONTEXT.md under `*_project/`), which every arm's checkout holds on
+# disk and leaves out of its commit. The origin here tracks two such files (B18_TRACKED_IGNORED), and each native
+# arm's commit must be the claude-code commit plus exactly the placed copies, entry for entry, so a wider add (the
+# review's mutant M1, `git add -f -A`) that commits them into a vendor arm alone is red.
 B18_IGNORE = "AGENTS.md\nGEMINI.md\n*.log\n"
+B18_TRACKED_IGNORED = {"x.log": "synthetic: tracked, and matched by the origin's .gitignore\n",
+                       "gars/run/notes.log": "synthetic: tracked and ignored, in a folder\n"}
 
 
 @problems_by_assertion("B18.ignored")
 def b18_ignored_problems(mod) -> list:
-    """build_run_tree for codex and gemini on an origin whose .gitignore lists both native names: each placed copy
-    beside every CLAUDE.md is in the one commit with its bytes, the commit holds exactly the origin's files minus the
-    exclusions plus the placed copies, and the status is clean; a Claude Code checkout of it holds no native file."""
+    """build_run_tree for claude-code, codex and gemini on an origin whose .gitignore lists both native names and
+    `*.log`, and which tracks two .log files: the claude-code commit holds the origin's files minus the exclusions
+    and the ignored ones, and no native file; each vendor arm's commit is that commit's entries plus exactly the
+    placed copies beside every CLAUDE.md, each with its bytes; every status is clean and the ignored files stay on
+    disk outside the commit."""
     out = []
-    drive = MODS["drive"]
-    for harness in ("codex", "gemini", rt.CLAUDE_CODE):
-        with b18_origin(extra={".gitignore": B18_IGNORE}) as (repo, sha), temp_root():
+    entries = {}
+    for harness in (rt.CLAUDE_CODE, "codex", "gemini"):
+        with b18_origin(extra={".gitignore": B18_IGNORE}, forced=B18_TRACKED_IGNORED) as (repo, sha), temp_root():
             origin_files = set(tbi.git(repo, "ls-tree", "-r", "--name-only", "HEAD").splitlines())
+            if not set(B18_TRACKED_IGNORED) <= origin_files:
+                out.append(f"B18.ignored: {harness}: the origin does not track {sorted(B18_TRACKED_IGNORED)}")
             try:
                 tree = Path(mod.build_run_tree("w-0001", repo=repo, commit=sha, exclude=["evals"], harness=harness))
             except Exception as e:  # noqa: BLE001
                 out.append(f"B18.ignored: {harness}: build_run_tree raised {type(e).__name__}: {str(e)[:300]}")
                 continue
+            listed = tbi.git(tree, "ls-tree", "-r", "HEAD").splitlines()
+            entries[harness] = {line.split("\t", 1)[1]: line.split("\t", 1)[0] for line in listed}
+            if len(entries[harness]) != len(listed):
+                out.append(f"B18.ignored: {harness}: the one commit lists a path twice")
+            for rel, text in B18_TRACKED_IGNORED.items():
+                if not (tree / rel).is_file() or (tree / rel).read_text() != text:
+                    out.append(f"B18.ignored: {harness}: {rel} is not on disk in the checkout with its bytes")
             want = B18_NATIVE.get(harness)
-            placed = {f"{folder}{want}" for folder in ("", "gars/")} if want else set()
-            expect = {p for p in origin_files if not (p == "evals" or p.startswith("evals/"))} | placed
-            got = set(tbi.git(tree, "ls-tree", "-r", "--name-only", "HEAD").splitlines())
-            if got != expect:
-                out.append(f"B18.ignored: {harness}: the one commit holds {sorted(got ^ expect)} off the origin's "
-                           f"files minus the exclusions plus the placed copies")
             for folder, text in (("", B18_TEXT), ("gars/", B18_NESTED)):
                 if want and tbi.git_bytes(tree, "show", f"HEAD:{folder}{want}") != text.encode():
                     out.append(f"B18.ignored: {harness}: {folder}{want} is not its CLAUDE.md's bytes in the commit")
             if (tbi.git(tree, "rev-list", "--all", "--count"), tbi.git(tree, "status", "--porcelain")) != ("1", ""):
                 out.append(f"B18.ignored: {harness}: not one commit and a clean status")
+            if harness == rt.CLAUDE_CODE:
+                expect = {p for p in origin_files if not (p == "evals" or p.startswith("evals/"))
+                          and p not in B18_TRACKED_IGNORED}
+                if set(entries[harness]) != expect:
+                    out.append(f"B18.ignored: claude-code: the one commit holds {sorted(set(entries[harness]) ^ expect)}"
+                               f" off the origin's files minus the exclusions and the ignored files")
+    base = entries.get(rt.CLAUDE_CODE)
+    for harness in ("codex", "gemini"):
+        if base is None or harness not in entries:
+            continue
+        placed = {f"{folder}{B18_NATIVE[harness]}" for folder in ("", "gars/")}
+        got = entries[harness]
+        extra = sorted(set(got) - set(base) - placed)
+        lost = sorted(set(base) - set(got))
+        unplaced = sorted(placed - set(got))
+        moved = sorted(p for p in set(base) & set(got) if got[p] != base[p])
+        if extra or lost or unplaced or moved:
+            out.append(f"B18.ignored: {harness}: the one commit is not the claude-code commit plus exactly the placed "
+                       f"copies: extra {extra}, missing {lost}, placed copies absent {unplaced}, entries changed {moved}")
     return out
 
 
