@@ -1,4 +1,4 @@
-Status: needs-review
+Status: in-progress
 
 # Lane vendor-b11
 
@@ -16,3 +16,4 @@ RESUME HERE: review stop (round 1)
 ## Log
 
 - Round 1 started Mon 19 Oct 2026 03:24 UTC on lane/vendor-b11 at f257a99d; design note written; status needs-review.
+- Round 2 (glitch-26's rulings R-H1 and R-H5 on the design note) started Mon 19 Oct 2026 04:26 UTC on lane/vendor-b11 at 56d7713b. Baseline, clean environment, TMPDIR outside the clone: test_take_config 10, test_run_take 68, test_env_allowlist 29, test_walk_builders 93, test_vendor_roads 13, test_live_box 38, test_build_draft 49, test_harness_bookkeeping 21 all OK; of the 38 other modules naming TAKE_ENV, the launcher or the draft, 35 OK and test_nested_agent, test_preflight, test_sidecar (with test_settings_guard) red as in earlier rounds (this root sandbox). test_vendor_workspace_guard is not present.
