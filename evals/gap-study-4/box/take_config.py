@@ -84,7 +84,10 @@ GEMINI_THINKING = {"path": "modelConfigs.customAliases", "value": {"chat-base-3"
 GEMINI_AUTH_SETTING = {"path": "security.auth.selectedType", "value": "gemini-api-key"}
 # Folder trust off (round 18 B9, glitch-26's ruling B9): it defaults on at the pinned version (bundle/chunk-FLKY6NH5.js
 # line 9599), and a headless run in a folder it does not trust stops at startup with FatalUntrustedWorkspaceError, exit
-# 55 (bundle/gemini-6ESINPDZ.js line 11137), before any model call; off, that check returns first (line 11129).
+# 55 (bundle/gemini-Q2GRYIAK.js line 11153; the class at bundle/chunk-NR7L3FXV.js line 252702), before any model
+# call; off, that check returns first (line 11145). Reviews r18-b9 NIT 2 and r18-b10 NIT 1 (B10): these are the files
+# the bundle runs; gemini-6ESINPDZ.js, which B9 first cited, is a copy no bundle file imports (VALUE_SOURCES,
+# unreached_).
 GEMINI_TRUST_SETTING = {"path": "security.folderTrust.enabled", "value": False}
 # R3's record of each static read: the pinned package, the file (with its sha256 for the Gemini bundle files, equal to
 # the box lane's installed-package evidence of 14 Oct), the line or lines, and what was read there.
@@ -114,15 +117,27 @@ VALUE_SOURCES = {
                                      "AuthType.USE_GEMINI, the API-key auth type"),
     "GEMINI_TRUST_SETTING": dict(_GEMINI_PKG, file="bundle/chunk-FLKY6NH5.js",
                                  file_sha256="f6a4ddd46350dad40515218069d369aaa0025f194c552400b69925b941098bc8",
-                                 line=9599, check_file="bundle/gemini-6ESINPDZ.js",
-                                 check_file_sha256="19950cab8f7bd8b48ea89c4ede22418b2e5d836d9c1554baed62c9019d74810b",
-                                 check_lines={"folder trust off: the check returns": 11129,
-                                              "headless and untrusted: FatalUntrustedWorkspaceError (exit 55)": 11137},
+                                 line=9599, check_file="bundle/gemini-Q2GRYIAK.js",
+                                 check_file_sha256="7702da31cf099ca3e1d64fd195f15b7726b2c2829ec21e955558eb9dbfba47da",
+                                 check_lines={"folder trust off: the check returns": 11145,
+                                              "headless and untrusted: FatalUntrustedWorkspaceError (exit 55)": 11153},
+                                 exit55_file="bundle/chunk-NR7L3FXV.js",
+                                 exit55_file_sha256="d566e81b1df8d4d44a91bf7aeea96a58ec0e6c8934fa424315ef060507dcbb8c",
+                                 exit55_line=252702, unreached_check_file="bundle/gemini-6ESINPDZ.js",
+                                 unreached_check_file_sha256=("19950cab8f7bd8b48ea89c4ede22418b2e5d836d9c1554baed6"
+                                                              "2c9019d74810b"),
+                                 unreached_check_lines={
+                                     "folder trust off: the check returns": 11129,
+                                     "headless and untrusted: FatalUntrustedWorkspaceError (exit 55)": 11137},
+                                 unreached_exit55={"file": "bundle/chunk-J7SXW2FI.js", "line": 252715, "file_sha256":
+                                                   "e2aca15290b02dc9845704f3fed44c577919652508624f340974f0ff588f206e"},
                                  read="security.folderTrust.enabled defaults to true (settings.security?.folderTrust"
                                       "?.enabled ?? true), although docs/cli/trusted-folders.md calls the feature off "
                                       "by default; with it on, a headless run in an untrusted folder throws "
-                                      "FatalUntrustedWorkspaceError, exit 55 "
-                                      "(gemini-cli-core dist/src/utils/errors.js); "
+                                      "FatalUntrustedWorkspaceError, exit 55 (super(message, 55) at exit55_file "
+                                      "exit55_line, in the running bundle: bundle/gemini.js line 110 loads "
+                                      "gemini-Q2GRYIAK.js, which imports chunk-NR7L3FXV.js; unreached_check_file "
+                                      "and unreached_exit55 are a second copy no bundle file imports); "
                                       "set to false, the startup check returns before any trust lookup"),
 }
 # The settings file's path relative to GEMINI_CLI_HOME (for example ".gemini/settings.json"), once measured.
