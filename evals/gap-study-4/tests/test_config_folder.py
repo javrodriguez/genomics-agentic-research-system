@@ -997,6 +997,9 @@ def mutants() -> dict:
                             "        raise"),
         # R5-1: every guard of the check has a witness (the review of round 4, finding 1).
         "device-unchecked": ("C13.device", "        if e[\"dev\"] != root[\"dev\"]:", "        if False:"),
+        # R6-1: the review of round 5's mutant 2, the device check narrowed so it skips directories.
+        "device-unchecked-dirs": ("C13.device", "        if e[\"dev\"] != root[\"dev\"]:",
+                                  "        if e[\"dev\"] != root[\"dev\"] and e[\"kind\"] != \"dir\":"),
         "lease-record-unbound": ("C13.lease-record",
                                  "    if harness == CODEX and (not isinstance(folder.lease, LeasePlacement)",
                                  "    if False and (not isinstance(folder.lease, LeasePlacement)"),
@@ -1042,7 +1045,8 @@ METHOD = {
     "arm-a-checked": "C8Wiring.test_the_check_runs_before_exec_argv_for_o_and_g_only",
     "check-skipped": "C8Wiring.test_the_check_runs_before_exec_argv_for_o_and_g_only",
     "record-optional": "C8Wiring.test_a_refusal_runs_nothing_and_writes_nothing",
-    "device-unchecked": "C13Guards.test_an_entry_on_another_device_refuses",
+    **{n: "C13Guards.test_an_entry_on_another_device_refuses" for n in ("device-unchecked",
+                                                                       "device-unchecked-dirs")},
     **{n: "C13Guards.test_the_lease_record_is_this_folders" for n in ("lease-record-unbound", "lease-path-unbound",
                                                                      "lease-uid-map-unbound")},
     **{n: "C13Guards.test_the_record_is_this_harness_and_run_trees" for n in ("record-harness-unbound",
