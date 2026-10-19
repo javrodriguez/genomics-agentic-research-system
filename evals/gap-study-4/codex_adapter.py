@@ -114,33 +114,48 @@ LAUNCH_DISAGREES = "launch-differs-from-registered-invocation"
 # which Codex runs as [shell, -lc | -c, script], core/src/shell.rs:24-33), both as a wrapper's argv[0] and as
 # exec_command's `shell` argument (shell_spec.rs:65-72); and a call with `tty: true` (shell_spec.rs:47-53) is no read,
 # whatever its output's line ending.
+# Round 4 (glitch-26's B17-16a to B17-16d and NIT 2, on review dd2d0398's MAJOR 1): both arm O models run code mode
+# only. The pinned catalog marks gpt-6.1-sol and gpt-6-luna `"tool_mode": "code_mode_only"` (models-manager/models.json
+# lines 177/193 and 524/540; core/src/tools/mod.rs:75-97), which hides every tool but `exec` and `wait`
+# (core/src/tools/spec_plan.rs:838-850; code-mode-protocol/src/lib.rs:54-55, description.rs:262-263). So exec_command
+# is never a direct function_call, and the committed arm O rollouts (w-o7 to w-o14, by counts) hold 97 custom_tool_call
+# `exec` records and their 97 custom_tool_call_output records, no function_call and no function_call_output; the
+# function_call shapes of rounds 2 and 3 are removed. The rollout's CommandExecution (source unified_exec_startup) admits
+# on its own argv again, a joined shape (16a), pinned to [/bin/bash, -lc, script] as all 108 committed ones are; an exec
+# output admits only the verbatim copies of such a read's aggregated_output (16b). Each position names its record's
+# type (NIT 2). A tty exec's `tty` argument is inside the exec script's text, read by no shape: its output is held by
+# its CRLF bytes only (a known limit, as the stream's).
 _O_SHELLS = ("/bin/bash",)
-_O_TOOL = {"prefix": None, "opener": None, "refuse": {}}
-_O_WRAP = dict(_O_TOOL, kind="wrapped", arg=None, shells=_O_SHELLS, shell_arg=None)
-_O_EXEC = {"exec_command": dict(_O_TOOL, kind="script", arg="cmd", shells=_O_SHELLS, shell_arg="shell",
-                                refuse={"tty": True})}
-_O_CALL = {"match": {"type": "function_call"}, "at": (("payload",),), "id": "call_id", "name": {"key": "name"},
-           "args": "arguments", "args_json": True, "text": ()}
+_O_TOOL = {"prefix": None, "opener": None}
+_O_WRAP = dict(_O_TOOL, kind="wrapped", arg=None, shells=_O_SHELLS, flags=("-lc", "-c"))
+_O_WRAP_LC = dict(_O_WRAP, flags=("-lc",))
+_RESPONSE_ITEM = {"type": ("response_item",)}
 READ_SHAPES = (
     # the turn stream: a command_execution item, the call and its output in one object; `command` is
     # redact_secrets(shlex_join(argv)) (app-server-protocol/src/protocol/item_builders.rs:54-61, 96-143); item.started
     # and item.completed carry the same synthetic id (exec/src/event_processor_with_jsonl_output.rs:100-102, 162-181,
-    # 327-341), so every copy of an id must be the same call
+    # 327-341, 474-491), so every copy of an id must be the same call
     {"shape": "stream command_execution", "copies": "same", "tools": {"shell": _O_WRAP}, "result": None,
-     "call": {"match": {"type": "command_execution"}, "at": (("item",),), "id": "id", "name": {"value": "shell"},
-              "args": "command", "args_json": False, "text": (("aggregated_output",),)}},
-    # the rollout: function_call {name, arguments (a JSON string), call_id} (protocol/src/models.rs:1076-1095) and
-    # function_call_output {call_id, output: a string or input_text items} (:1111-1135, 2096-2104, 2187-2265), the output
-    # exec_command's header then `Output:` then the output's lines (core/src/tools/context.rs:524-575)
-    {"shape": "rollout function_call_output", "copies": "one", "tools": _O_EXEC, "call": _O_CALL,
-     "result": {"match": {"type": "function_call_output"}, "at": (("payload",),), "id": "call_id", "name": None,
-                "text": (("output",), ("output", "*", "text")), "own": None}},
-    # the rollout: event_msg item_completed's CommandExecution item {id: call_id, command: argv, aggregated_output}
-    # (protocol/src/items.rs:243-281; core/src/tools/events.rs:561-589), its call the function_call of that id, and its
-    # own argv a wrapper of the image's shell around the same read
-    {"shape": "rollout CommandExecution", "copies": "one", "tools": _O_EXEC, "call": _O_CALL,
-     "result": {"match": {"type": "CommandExecution"}, "at": (("payload", "item"),), "id": "id", "name": None,
-                "text": (("aggregated_output",),), "own": dict(_O_WRAP, arg="command")}},
+     "copy_of": None,
+     "call": {"match": {"type": "command_execution"}, "at": ((("item",), {"type": ("item.started", "item.completed")}),),
+              "id": "id", "name": {"value": "shell"}, "args": "command", "args_json": False,
+              "text": (("aggregated_output",),)}},
+    # the rollout: event_msg item_completed's CommandExecution item {id, command: argv, aggregated_output, source, ...}
+    # (protocol/src/items.rs:243-281; core/src/tools/events.rs:561-589), the call and its output in one object
+    {"shape": "rollout CommandExecution", "copies": "same", "tools": {"shell": _O_WRAP_LC}, "result": None,
+     "copy_of": None,
+     "call": {"match": {"type": "CommandExecution"}, "at": ((("payload", "item"), {"type": ("event_msg",)}),),
+              "id": "id", "name": {"value": "shell"}, "args": "command", "args_json": False,
+              "text": (("aggregated_output",),)}},
+    # the rollout: a custom_tool_call {name: "exec", call_id, input: the script} and its custom_tool_call_output
+    # {call_id, output: [{type: input_text, text}]} (protocol/src/models.rs:1136-1171, 2096-2104, 2187-2265), the output
+    # admitted only where it copies an admitted CommandExecution's output (shape 1) verbatim
+    {"shape": "rollout exec output", "copies": "one", "copy_of": 1,
+     "tools": {"exec": dict(_O_TOOL, kind="copy", arg=None, shells=None, flags=None)},
+     "call": {"match": {"type": "custom_tool_call"}, "at": ((("payload",), _RESPONSE_ITEM),), "id": "call_id",
+              "name": {"key": "name"}, "args": "input", "args_json": False, "text": ()},
+     "result": {"match": {"type": "custom_tool_call_output"}, "at": ((("payload",), _RESPONSE_ITEM),), "id": "call_id",
+                "name": None, "text": (("output",), ("output", "*", "text"))}},
 )
 
 

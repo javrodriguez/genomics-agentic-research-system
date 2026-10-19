@@ -2323,7 +2323,7 @@ class TestB17Round4(TestB17Round3):
 
     def test_codex_exec_output_needs_an_admitted_read(self):
         self.witness("16b an admitted read in the file", "rollout.jsonl", self.code_mode(ce=False), "session", [3],
-                     "_shape_strings", ("for a in sources:", "for a in sources + [s]:"))
+                     "_shape_strings", ("for a in sources:", "for a in sources + (s,):"))
         self.assert_refused("rollout.jsonl", self.code_mode(cmd=OTHER), "session", [3, 4])
 
     def test_codex_exec_output_span_must_be_a_copy(self):
