@@ -755,5 +755,156 @@ class OperatorList(unittest.TestCase):
                              rel_dir="x")
 
 
+def census_reply(rows) -> str:
+    """The census program's reply for rows [raw path bytes, kind, mode, nlink, uid, size, dev, ino, raw target or
+    None], canonical as the program prints it."""
+    import base64
+    import hashlib
+    b64 = lambda r: None if r is None else base64.b64encode(r).decode()  # noqa: E731
+    out = [[b64(r[0]), *r[1:8], b64(r[8])] for r in sorted(rows, key=lambda r: r[0])]
+    return json.dumps({"exists": True, "entries": out,
+                       "sha256": hashlib.sha256(json.dumps(out, separators=(",", ":")).encode()).hexdigest()})
+
+
+ROOT_ROW = [b".", "dir", stat.S_IFDIR | 0o700, 2, rt._uid_of(rt.AGENT_USER), 4096, 7, 1, None]
+
+
+class OperatorCensus(unittest.TestCase):
+    """R-C (glitch-26's ruling on lane vendor-b11, round 3): one census program, a sibling of LIST_PROGRAM, returns the
+    whole config folder's lstat facts in ONE reply (kind, mode, nlink, uid, size, dev, ino, and a link's readlink
+    target), never a byte of any file; O_NOFOLLOW at every level; the credential-name rule unchanged;
+    LIST_MAX_ENTRIES still refuses loudly. So B11's per-turn check costs one operator container."""
+
+    MARK = "R-C-FILE-BYTES-NEVER-IN-THE-REPLY"
+
+    def setUp(self):
+        self.d = tempfile.mkdtemp(prefix="oc-")
+        self.tree = os.path.join(self.d, "tree")
+        os.mkdir(self.tree)
+        self.cfg = os.path.join(self.d, "cfg")
+        os.mkdir(self.cfg, 0o700)
+        Path(self.cfg, "config.toml").write_text(self.MARK)
+        os.makedirs(os.path.join(self.cfg, "sessions", "2026", "10", "19"))
+        Path(self.cfg, "sessions", "2026", "10", "19", "rollout-x.jsonl").write_text(self.MARK * 3)
+        os.makedirs(os.path.join(self.cfg, "tmp", "arg0", "codex-arg0AbC123"))
+        os.symlink("/usr/bin/true", os.path.join(self.cfg, "tmp", "arg0", "codex-arg0AbC123", "apply_patch"))
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.d)
+
+    def census_api(self):
+        self.assertTrue(callable(getattr(ow, "operator_census", None)) and isinstance(
+            getattr(ow, "CENSUS_PROGRAM", None), str), "R-C: ownership has no census (CENSUS_PROGRAM, operator_census)")
+        return ow.operator_census
+
+    def run_program(self, limit="4096"):
+        self.census_api()
+        prog = ow.CENSUS_PROGRAM.replace('"/scratch"', repr(self.cfg))
+        return subprocess.run([sys.executable, "-I", "-S", "-c", prog, limit], capture_output=True, text=True,
+                              timeout=60)
+
+    def via_host(self):
+        p = self.run_program()
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertNotIn(self.MARK, p.stdout, "R-C: a file's bytes reached the census reply")
+        return self.census_api()(Fake(reply=p.stdout), image=IMAGE, run_tree=self.tree, config_dir=self.cfg,
+                                 caller_env=CALLER)
+
+    def test_one_reply_holds_the_whole_folder_with_its_lstat_facts(self):
+        got = self.via_host()
+        by = {e["path"]: e for e in got}
+        self.assertEqual(sorted(by), [".", "config.toml", "sessions", "sessions/2026", "sessions/2026/10",
+                                      "sessions/2026/10/19", "sessions/2026/10/19/rollout-x.jsonl", "tmp",
+                                      "tmp/arg0", "tmp/arg0/codex-arg0AbC123",
+                                      "tmp/arg0/codex-arg0AbC123/apply_patch"])
+        for rel, e in by.items():
+            st = os.lstat(os.path.join(self.cfg, rel))
+            self.assertEqual((e["mode"], e["nlink"], e["uid"], e["size"], e["dev"], e["ino"]),
+                             (st.st_mode, st.st_nlink, st.st_uid, st.st_size, st.st_dev, st.st_ino), rel)
+        self.assertEqual(by["config.toml"]["kind"], "file")
+        self.assertEqual(by["sessions/2026"]["kind"], "dir")
+        link = by["tmp/arg0/codex-arg0AbC123/apply_patch"]
+        self.assertEqual((link["kind"], link["target"]), ("link", "/usr/bin/true"))
+        self.assertTrue(all(e["target"] is None for p, e in by.items() if e["kind"] != "link"))
+
+    def test_a_link_is_reported_never_followed(self):
+        outside = os.path.join(self.d, "outside")
+        os.makedirs(os.path.join(outside, "deep"))
+        Path(outside, "deep", "secret.txt").write_text(self.MARK)
+        os.symlink(outside, os.path.join(self.cfg, "dirlink"))
+        os.mkfifo(os.path.join(self.cfg, "fifo"))
+        by = {e["path"]: e for e in self.via_host()}
+        self.assertEqual((by["dirlink"]["kind"], by["dirlink"]["target"]), ("link", outside))
+        self.assertFalse([p for p in by if p.startswith("dirlink/")], "R-C: the census followed a link")
+        self.assertEqual(by["fifo"]["kind"], "other")
+        self.assertIn("O_NOFOLLOW", ow.CENSUS_PROGRAM)
+        self.assertNotIn("os.read(", ow.CENSUS_PROGRAM, "R-C: the census program reads a file's bytes")
+
+    def test_the_credential_name_rule_is_unchanged(self):
+        """A credential-named entry is reported with its facts as "other" (never a file the caller may read); nothing
+        below a credential-named folder is returned."""
+        Path(self.cfg, "auth.json").write_text(self.MARK)
+        os.chmod(os.path.join(self.cfg, "auth.json"), 0o600)
+        os.makedirs(os.path.join(self.cfg, "oauth_creds.json", "inner"))
+        by = {e["path"]: e for e in self.via_host()}
+        st = os.lstat(os.path.join(self.cfg, "auth.json"))
+        self.assertEqual(by["auth.json"]["kind"], "other")
+        self.assertEqual((by["auth.json"]["mode"], by["auth.json"]["ino"]), (st.st_mode, st.st_ino))
+        self.assertEqual(by["oauth_creds.json"]["kind"], "other")
+        self.assertFalse([p for p in by if p.startswith("oauth_creds.json/")],
+                         "R-C: the census returned a path through a credential name")
+
+    def test_the_entry_cap_refuses_loudly(self):
+        self.assertEqual(self.run_program(limit="10").returncode, 0)
+        self.assertNotEqual(self.run_program(limit="9").returncode, 0, "R-C: the census truncated past its cap")
+        rows = [ROOT_ROW] + [[f"f{i}".encode(), "file", stat.S_IFREG | 0o600, 1, 0, 1, 7, 10 + i, None]
+                             for i in range(ow.LIST_MAX_ENTRIES + 1)]
+        with self.assertRaises(ow.OwnershipError):
+            self.census_api()(Fake(reply=census_reply(rows)), image=IMAGE, run_tree=self.tree, config_dir=self.cfg)
+
+    def test_one_container_one_read_only_mount(self):
+        f = Fake(reply=census_reply([ROOT_ROW]))
+        got = self.census_api()(f, image=IMAGE, run_tree=self.tree, config_dir=self.cfg, caller_env=CALLER)
+        self.assertEqual([e["path"] for e in got], ["."])
+        runs = [strip(c) for c in f.calls if c[1:2] == ["run"]]
+        self.assertEqual(len(runs), 1, "R-C: the census costs exactly one operator container")
+        argv = runs[0]
+        self.assertEqual(argv[:12], ["docker", "run", "--rm", "--pull=never", "--network", "none", "--user",
+                                     rt.AGENT_USER, "--cap-drop", "ALL", "--security-opt", "no-new-privileges"])
+        mounts = [argv[i + 1] for i, a in enumerate(argv) if a in ("--mount", "-v", "--volume")]
+        self.assertEqual(mounts, [f"type=bind,source={self.cfg},target=/scratch,readonly"])
+        self.assertEqual(argv[argv.index(ow.CENSUS_PROGRAM) + 1:], [str(ow.LIST_MAX_ENTRIES)])
+
+    def test_the_reply_is_checked(self):
+        good = [ROOT_ROW, [b"a", "file", stat.S_IFREG | 0o600, 1, 10001, 3, 7, 2, None],
+                [b"d", "dir", stat.S_IFDIR | 0o700, 2, 10001, 4096, 7, 3, None],
+                [b"d/l", "link", stat.S_IFLNK | 0o777, 1, 10001, 4, 7, 4, b"/x/y"]]
+        got = self.census_api()(Fake(reply=census_reply(good)), image=IMAGE, run_tree=self.tree, config_dir=self.cfg)
+        self.assertEqual([(e["path"], e["kind"], e["target"]) for e in got],
+                         [(".", "dir", None), ("a", "file", None), ("d", "dir", None), ("d/l", "link", "/x/y")])
+        doc = json.loads(census_reply(good))
+        bad = {
+            "hash": json.dumps(dict(doc, sha256="0" * 64)),
+            "kind": census_reply([ROOT_ROW, [b"a", "symlink", 0, 1, 0, 1, 7, 2, None]]),
+            "no-root": census_reply(good[1:]),
+            "orphan": census_reply([ROOT_ROW, [b"x/a", "file", stat.S_IFREG, 1, 0, 1, 7, 2, None]]),
+            "parent-not-dir": census_reply([ROOT_ROW, good[1], [b"a/b", "file", stat.S_IFREG, 1, 0, 1, 7, 9, None]]),
+            "dotdot": census_reply([ROOT_ROW, [b"../a", "file", stat.S_IFREG, 1, 0, 1, 7, 2, None]]),
+            "absolute": census_reply([ROOT_ROW, [b"/a", "file", stat.S_IFREG, 1, 0, 1, 7, 2, None]]),
+            "dupe": census_reply([ROOT_ROW, good[1], good[1]]),
+            "target-on-file": census_reply([ROOT_ROW, [b"a", "file", stat.S_IFREG, 1, 0, 1, 7, 2, b"/x"]]),
+            "negative": census_reply([ROOT_ROW, [b"a", "file", stat.S_IFREG, 1, -1, 1, 7, 2, None]]),
+            "bool": census_reply([ROOT_ROW, [b"a", "file", stat.S_IFREG, True, 0, 1, 7, 2, None]]),
+            "shape": json.dumps({"exists": True, "entries": doc["entries"]}),
+        }
+        for name, reply in bad.items():
+            with self.subTest(name), self.assertRaises(ow.OwnershipError, msg=f"R-C: reply {name} admitted"):
+                ow.operator_census(Fake(reply=reply), image=IMAGE, run_tree=self.tree, config_dir=self.cfg)
+        with self.assertRaises(ow.OwnershipError):
+            ow.operator_census(Fake(reply=census_reply(good), fail=(self.cfg,)), image=IMAGE, run_tree=self.tree,
+                               config_dir=self.cfg)
+
+
 if __name__ == "__main__":
     unittest.main()
