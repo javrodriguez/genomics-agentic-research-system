@@ -212,8 +212,43 @@ HARNESS_ENV = {h: {k: v for k, v in row.items()
 #   .codex/rules        core/src/exec_policy.rs 54 (RULES_DIR_NAME) and 678-679 (each layer's folder joined "rules")
 #   .codex/skills       ext/skills/src/host_roots.rs 25 (SKILLS_DIR_NAME) and 85-91 (a Project layer's skills root)
 #   .agents/skills      ext/skills/src/host_roots.rs 24-25 and 154 (each folder from the project root to the cwd)
+# R-P (glitch-26's ruling on lane vendor-b11 round 2's question, round 3): two more, read from a trusted project's
+# .codex folder (config/src/state.rs 219-226, a Project layer's config folder is its .codex; 239-243 its hooks folder):
+#   .codex/hooks.json   hooks/src/engine/discovery.rs 146-148 (each layer's hooks folder) and 339-343 (its hooks.json)
+#   .codex/agents       agent-roles/src/loader.rs 75-78 (each layer's config folder joined "agents")
 CODEX_PROJECT_CONFIG_PATHS = ((".codex", "config.toml"), (".codex", "rules"), (".codex", "skills"),
-                              (".agents", "skills"))
+                              (".agents", "skills"), (".codex", "hooks.json"), (".codex", "agents"))
+# R-N1 (glitch-26, lane vendor-b11 round 3; review NIT 1 of c30234d6): arms O's and G's HOME is the run tree's .home,
+# which the agent writes, so before every exec the launcher also refuses, in HOME, each path the pinned CLI of that row
+# reads from HOME as configuration (the B11 design note's section 4). Everything else under HOME stays the agent's (H5).
+# Codex at rust-v0.162.1 (HOME from dirs::home_dir or $HOME; CODEX_HOME is the config mount):
+HOME_CONFIG_PATHS = {
+    CODEX: (
+        (".agents/skills", "ext/skills/src/host_roots.rs 24-25, 35-36 and 105: a User layer's ~/.agents/skills root"),
+        (".agents/plugins/marketplace.json", "core-plugins/src/marketplace.rs 20-25, 307-314 and 479-480: a personal "
+                                             "marketplace manifest under HOME"),
+        (".agents/plugins/api_marketplace.json", "core-plugins/src/marketplace.rs 20-25, 307-314 and 479-480"),
+        (".claude-plugin/marketplace.json", "core-plugins/src/marketplace.rs 20-25, 307-314 and 479-480"),
+        (".cursor-plugin/marketplace.json", "core-plugins/src/marketplace.rs 20-25, 307-314 and 479-480"),
+        (".cache/codex-runtimes", "core-plugins/src/marketplace_policy.rs 546-552 and 570-572: the primary-runtime "
+                                  "marketplace under dirs::cache_dir, ~/.cache with no XDG_CACHE_HOME in the row"),
+        (".bashrc", "shell-command/src/startup.rs 22-25 and core/src/shell_snapshot.rs 586-605: the snapshot's login "
+                    "shell sources ~/.bashrc, and the snapshot is replayed into every shell command"),
+        (".bash_profile", "core/src/shell_snapshot.rs 600-604: a login bash reads the first of ~/.bash_profile, "
+                          "~/.bash_login, ~/.profile"),
+        (".bash_login", "core/src/shell_snapshot.rs 600-604: a login bash's profile file"),
+        (".profile", "core/src/shell_snapshot.rs 600-604: a login bash's profile file"),
+        (".zshrc", "shell-command/src/startup.rs 11-19: the snapshot sources $ZDOTDIR or ~/.zshrc for a zsh shell"),
+        (".zprofile", "core/src/shell_snapshot.rs 600-604: a login zsh's start file"),
+        (".zshenv", "core/src/shell_snapshot.rs 600-604: every zsh's start file"),
+        (".zlogin", "core/src/shell_snapshot.rs 600-604: a login zsh's start file"),
+    ),
+    # Gemini CLI 0.64.0 keys everything on GEMINI_CLI_HOME (the config mount) but this one (the B11 design note):
+    GEMINI: (
+        (".gemini/policies/sandbox.toml", "bundle/chunk-NR7L3FXV.js 257794: the sandbox policy, read from the OS "
+                                          "home (sandbox mode only; refused anyway)"),
+    ),
+}
 LAUNCHER_SOURCE = ("import os,sys\n"
                    "a=sys.argv[1:]\n"
                    "k,n=a[0],int(a[1])\n"
@@ -234,8 +269,14 @@ LAUNCHER_SOURCE = ("import os,sys\n"
                    "if 'CODEX_HOME' in e:\n"
                    " found=[p for d in up for p in (os.path.join(d,'.codex','config.toml'),"
                    "os.path.join(d,'.codex','rules'),os.path.join(d,'.codex','skills'),"
-                   "os.path.join(d,'.agents','skills')) if os.path.lexists(p)]\n"
+                   "os.path.join(d,'.agents','skills'),os.path.join(d,'.codex','hooks.json'),"
+                   "os.path.join(d,'.codex','agents')) if os.path.lexists(p)]\n"
                    " if found: raise SystemExit('refusing codex project config: '+found[0])\n"
+                   f"for v,ps in (('CODEX_HOME',{tuple(p for p, _s in HOME_CONFIG_PATHS[CODEX])!r}),"
+                   f"('GEMINI_CLI_HOME',{tuple(p for p, _s in HOME_CONFIG_PATHS[GEMINI])!r})):\n"
+                   " if v in e:\n"
+                   "  found=[os.path.join(e['HOME'],p) for p in ps if os.path.lexists(os.path.join(e['HOME'],p))]\n"
+                   "  if found: raise SystemExit('refusing harness configuration in HOME: '+found[0])\n"
                    "c=a[2+n:]\n"
                    "os.execvpe(c[0],c,e)\n")
 LAUNCHER = ("/usr/bin/python3", "-I", "-S", "-c", LAUNCHER_SOURCE)

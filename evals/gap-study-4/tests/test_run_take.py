@@ -3284,7 +3284,10 @@ GUARDED_MODULES = ("os", "subprocess")
 #   close      - the descriptor is closed when that comparison refuses, before any byte is read.
 OS_ATTRS = frozenset({"O_CREAT", "O_EXCL", "O_NOFOLLOW", "O_RDONLY", "O_WRONLY", "environ", "fdopen", "fsync",
                       "getuid", "listdir", "lstat", "makedirs", "mkdir", "open", "path", "sep", "walk",
-                      "O_NONBLOCK", "fstat", "close"})
+                      "O_NONBLOCK", "fstat", "close",
+                      # R-H3 (lane vendor-b11 round 3): take_config.config_sha256 reads a link's target string, by
+                      # name and never followed, to hash the four arg0 links; readlink starts nothing and opens nothing
+                      "readlink"})
 DUNDERS_ALLOWED = frozenset({"__file__", "__init__", "__name__"})
 # How subprocess may appear, at DockerRuntime.run only: run as the func of a call, TimeoutExpired in an except.
 SUBPROCESS_USES = frozenset({("run", "call"), ("TimeoutExpired", "except")})

@@ -954,6 +954,19 @@ def mutants() -> dict:
         "codex-project-agents-dropped": ("R-H1.launcher", "os.path.join(d,'.agents','skills')) if", ") if"),
         "codex-project-every-arm": ("R-H1.launcher", "if 'CODEX_HOME' in e:", "if True:"),
         "codex-project-no-arm": ("R-H1.launcher", "if 'CODEX_HOME' in e:", "if 'CODEX_HOME' in os.environ:"),
+        # R-P and R-N1 (lane vendor-b11 round 3): the codex project's hooks and agents, each CLI's HOME configuration
+        "codex-project-hooks-dropped": ("R-P.launcher", "os.path.join(d,'.codex','hooks.json'),", ""),
+        "codex-project-agents-folder-dropped": ("R-P.launcher", "\"os.path.join(d,'.codex','agents')) if",
+                                                "\") if"),
+        "home-config-unchecked": ("R-N1.launcher", "  if found: raise SystemExit('refusing harness configuration",
+                                  "  if False: raise SystemExit('refusing harness configuration"),
+        "home-config-first-only": ("R-N1.launcher", "for p in ps if", "for p in ps[:1] if"),
+        "home-config-gemini-dropped": ("R-N1.launcher",
+                                       "f\"('GEMINI_CLI_HOME',{tuple(p for p, _s in HOME_CONFIG_PATHS[GEMINI])!r})):\\n\"",
+                                       "\"('GEMINI_CLI_HOME',())):\\n\""),
+        "home-config-every-arm": ("R-N1.launcher", "                   \" if v in e:\\n\"",
+                                  "                   \" if True:\\n\""),
+        "home-config-bashrc-dropped": ("R-N1.launcher", "        (\".bashrc\", \"shell-command", "        (\".bashrcX\", \"shell-command"),
         "container-env-unchecked": ("E3.container", "  if os.path.lexists(p): raise SystemExit", "  if False: raise SystemExit"),
         "pairs-unchecked": ("E2.pairs", "        if not _NAME.fullmatch(k):", "        if False:"),
         "launch-no-env-check": ("E3.launch", "    refuse_env_files(workdir=spec.run_tree, run_tree=spec.run_tree, "
@@ -990,6 +1003,11 @@ METHOD = {
         "codex-project-unchecked", "codex-project-cwd-only", "codex-project-config-dropped",
         "codex-project-rules-dropped", "codex-project-skills-dropped", "codex-project-agents-dropped",
         "codex-project-every-arm", "codex-project-no-arm")},
+    **{name: "E2Allowlist.test_codex_launcher_refuses_hooks_and_agents" for name in (
+        "codex-project-hooks-dropped", "codex-project-agents-folder-dropped")},
+    **{name: "E2Allowlist.test_launcher_refuses_harness_config_in_home" for name in (
+        "home-config-unchecked", "home-config-first-only", "home-config-gemini-dropped", "home-config-every-arm",
+        "home-config-bashrc-dropped")},
     "pairs-unchecked": "E2Allowlist.test_the_launcher_needs_the_credential",
     "launch-no-env-check": "E3EnvFiles.test_launch_refuses_before_any_runtime_call",
     "turn-no-env-check": "E3EnvFiles.test_run_turn_refuses_before_its_exec",
