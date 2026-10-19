@@ -1,4 +1,4 @@
-Status: needs-review
+Status: running
 
 ROUND 1 SUMMARY FOR REVIEW (cloud executor, 2026-10-19 06:43 EDT; glitch-26's rulings B16-1 and B16-2):
 - B16-1 reading verified (ruling B16-1): native_snapshot.codex_rollout_rel (line 191) and gemini_session_rel (line 163) listed the config root as rel_dir ""; box/ownership.py _rel_dir (456) admits "." only and hands "" to _rel (347), which refuses it with the GPT walk's line.
