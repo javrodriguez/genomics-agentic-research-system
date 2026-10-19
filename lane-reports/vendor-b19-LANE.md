@@ -60,3 +60,5 @@ Progress:
 - 2026-10-19 13:51 EDT: design note 23761cd5 (ruling B19-2): lane-reports/B19-DESIGN-NOTE.md.
 - 2026-10-19 13:56 EDT: checks done (summary above); status needs-review; rulings stop.
 - 2026-10-19 14:18 EDT: round 2 begins on lane/vendor-b19 at 94963ea7 under glitch-26's rulings B19-5 to B19-11; status running.
+- 2026-10-19 15:02 EDT: red tests 22838d85 (rulings B19-6, B19-8, B19-9): tests/test_batch_rolling.py now 26 tests, 13 red on 94963ea7 (the 3 rolling-start tests of round 1 and 10 new), run on a scratch copy of 94963ea7 outside the clone.
+- 2026-10-19 15:20 EDT: green f477832f (rulings B19-5, B19-8): batch.py's rolling loop, takes.py's live set and clean-tree registration, check_results' window span and ruled pause; test_batch_rolling 26 of 26 green; test_batch, test_pipeline and test_spend_wiring re-pinned (see the round 2 summary).
