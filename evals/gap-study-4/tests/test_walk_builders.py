@@ -299,16 +299,22 @@ def mutants() -> dict:
         # round 17 B5: the walk-start token check (the plan's four mutants, the refresh rule's two halves)
         # round 17 B6: the vendor config on the walk road
         "vendor-config-skipped-codex": ("B19.config", "walk_builders",
-                                        "            vendor_config(r, cfg)          # round 17 B6: codex",
+                                        "            vendor_config(r, cfg, tree)    # round 17 B6: codex",
                                         "            pass                           # round 17 B6: codex"),
         "vendor-config-skipped-gemini": ("B19.config", "walk_builders",
-                                         "            vendor_config(r, cfg)          # round 17 B6: gemini",
+                                         "            vendor_config(r, cfg, tree)    # round 17 B6: gemini",
                                          "            pass                           # round 17 B6: gemini"),
         "vendor-config-after-the-lease": ("B19.config", "walk_builders",
-                                          "            vendor_config(r, cfg)          # round 17 B6: codex, into the "
+                                          "            vendor_config(r, cfg, tree)    # round 17 B6: codex, into the "
                                           "empty folder\n            lease.place(cfg)\n",
-                                          "            lease.place(cfg)\n            vendor_config(r, cfg)          "
+                                          "            lease.place(cfg)\n            vendor_config(r, cfg, tree)    "
                                           "# round 17 B6: codex, into the empty folder\n"),
+        # round 2 of lane vendor-b11, R-H1 (glitch-26, 19 Oct 2026): the walk's run tree reaches the config writer
+        "vendor-config-without-tree": ("B19.config", "walk_builders",
+                                       "    return take_config.write(cfg, harness, model=row[\"model\"], "
+                                       "run_tree=str(tree))",
+                                       "    return take_config.write(cfg, harness, model=row[\"model\"], "
+                                       "run_tree=None if harness == take_config.CODEX else str(tree))"),
         "lease-margin-zero": ("B13.freshness", "walk_builders",
                               "    left, need = exp - now, walk_s + LEASE_START_MARGIN_S\n",
                               "    left, need = exp - now, walk_s\n"),
@@ -463,6 +469,7 @@ METHOD = {
     "vendor-config-skipped-codex": "B19VendorConfig.test_the_vendor_config_is_written_on_the_walk_road",
     "vendor-config-skipped-gemini": "B19VendorConfig.test_the_vendor_config_is_written_on_the_walk_road",
     "vendor-config-after-the-lease": "B19VendorConfig.test_the_vendor_config_is_written_on_the_walk_road",
+    "vendor-config-without-tree": "B19VendorConfig.test_the_vendor_config_is_written_on_the_walk_road",
     "lease-margin-zero": "B13Lease.test_the_walk_start_token_check",
     "lease-exp-ignored": "B13Lease.test_the_walk_start_token_check",
     "lease-refresh-age-ignored": "B13Lease.test_the_walk_start_token_check",

@@ -235,7 +235,7 @@ class TestR3Values(MutantCase):
             out.append("the efforts are not for exactly arm O's models")
         for m in models["O"]:
             d = tempfile.mkdtemp(prefix="w-")
-            tc.write(d, tc.CODEX, model=m)
+            tc.write(d, tc.CODEX, model=m, run_tree=RUN_TREE)
             with open(os.path.join(d, "config.toml"), "rb") as fh:
                 doc = tomllib.load(fh)
             if doc.get("model_reasoning_effort") != R3_VALUES["CODEX_REASONING_EFFORT"][m] or doc.get("model") != m:
@@ -352,13 +352,13 @@ class TestContents(MutantCase):
             d = tempfile.mkdtemp(prefix="w-")
             open(os.path.join(d, "stale"), "w").close()
             with self.assertRaises(tc.Refused):
-                tc.write(d, tc.CODEX, model="m")
+                tc.write(d, tc.CODEX, model="m", run_tree=RUN_TREE)
             repo = tempfile.mkdtemp(prefix="w-")
             os.makedirs(os.path.join(repo, ".git"))
             cfg = os.path.join(repo, "cfg")
             os.makedirs(cfg)
             with self.assertRaises(tc.Refused):
-                tc.write(cfg, tc.CODEX, model="m")
+                tc.write(cfg, tc.CODEX, model="m", run_tree=RUN_TREE)
 
 
 def _leaves(doc):
@@ -418,7 +418,7 @@ class TestCodexTrustTable(MutantCase):
         os.makedirs(os.path.join(link_parent, "real", "run-0a1b2c3d"))
         os.symlink(os.path.join(link_parent, "real"), os.path.join(link_parent, "via"))
         for bad in ("srv/w/run-0a1b2c3d", "/srv/w/run-0a1b2c3d/", "/srv/w/../w/run-0a1b2c3d", "/srv//w/run-0a",
-                    "//srv/w/run-0a1b2c3d", "/", '/srv/w/t"]\n[x', "/srv/w/t\nx", "/srv/w/r\u00e9", None, 7,
+                    "//srv/w/run-0a1b2c3d", "/", '/srv/w/t"]\n[x', "/srv/w/t\nx", "/srv/w/r\u00e9", "", 7,
                     os.path.join(link_parent, "via", "run-0a1b2c3d")):
             try:
                 with filled():
@@ -426,6 +426,8 @@ class TestCodexTrustTable(MutantCase):
                 out.append(f"R-H1.key: run tree {bad!r} was admitted")
             except tc.Refused:
                 pass
+            except Exception as e:  # noqa: BLE001 - anything but the refusal is the guard's failure
+                out.append(f"R-H1.key: run tree {bad!r} raised {type(e).__name__}, not a refusal")
         with filled():
             real = os.path.join(link_parent, "real", "run-0a1b2c3d")
             if os.path.realpath(real) == real:
@@ -484,7 +486,7 @@ class TestPending(MutantCase):
                 if name not in tc.pending():
                     out.append(f"{name} put back to PENDING is not pending")
                 try:
-                    tc.write(d, h, model=m)
+                    tc.write(d, h, model=m, run_tree=RUN_TREE)
                     out.append(f"{h} config written while {name} is PENDING")
                 except tc.NotReady:
                     pass
