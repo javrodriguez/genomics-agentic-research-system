@@ -888,6 +888,24 @@ def mutants() -> dict:
         "record-optional": ("R-CF.wiring", "    if not isinstance(folder, ConfigFolder):\n        raise",
                             "    if folder is None:\n        return\n    if not isinstance(folder, ConfigFolder):\n"
                             "        raise"),
+        # R5-1: every guard of the check has a witness (the review of round 4, finding 1).
+        "device-unchecked": ("C13.device", "        if e[\"dev\"] != root[\"dev\"]:", "        if False:"),
+        "lease-record-unbound": ("C13.lease-record",
+                                 "    if harness == CODEX and (not isinstance(folder.lease, LeasePlacement)",
+                                 "    if False and (not isinstance(folder.lease, LeasePlacement)"),
+        "lease-path-unbound": ("C13.lease-record",
+                               "                             or folder.lease.path != os.path.join(folder.config_dir, "
+                               "LEASE_FILE)\n", "                             or False\n"),
+        "lease-uid-map-unbound": ("C13.lease-record",
+                                  "                             or tuple(folder.lease.uid_map) != tuple(folder.uid_map)):",
+                                  "                             or False):"),
+        "record-harness-unbound": ("C13.record", "    if folder.harness != harness or folder.run_tree != tree:",
+                                   "    if folder.run_tree != tree:"),
+        "record-tree-unbound": ("C13.record", "    if folder.harness != harness or folder.run_tree != tree:",
+                                "    if folder.harness != harness:"),
+        "placed-kind-unchecked": ("C13.placed-kind", "        elif e[\"kind\"] != kind:", "        elif False:"),
+        "placed-links-unchecked": ("C13.placed-links", "            if e[\"nlink\"] != 1:", "            if False:"),
+        "absent-unnamed": ("C13.absent", "    if data is None:", "    if False:"),
     }
 
 
@@ -917,6 +935,14 @@ METHOD = {
     "arm-a-checked": "C8Wiring.test_the_check_runs_before_exec_argv_for_o_and_g_only",
     "check-skipped": "C8Wiring.test_the_check_runs_before_exec_argv_for_o_and_g_only",
     "record-optional": "C8Wiring.test_a_refusal_runs_nothing_and_writes_nothing",
+    "device-unchecked": "C13Guards.test_an_entry_on_another_device_refuses",
+    **{n: "C13Guards.test_the_lease_record_is_this_folders" for n in ("lease-record-unbound", "lease-path-unbound",
+                                                                     "lease-uid-map-unbound")},
+    **{n: "C13Guards.test_the_record_is_this_harness_and_run_trees" for n in ("record-harness-unbound",
+                                                                             "record-tree-unbound")},
+    "placed-kind-unchecked": "C13Guards.test_a_placed_entry_of_another_kind_refuses",
+    "placed-links-unchecked": "C13Guards.test_a_placed_file_with_another_link_refuses",
+    "absent-unnamed": "C13Guards.test_a_path_absent_at_its_read_refuses_named",
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 
