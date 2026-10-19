@@ -2098,8 +2098,9 @@ CX_STREAM, CX_ITEM, CX_COPY = 0, 1, 2       # round 4 (B17-16): no function_call
 
 
 def _plus(spec, path, **record):
-    """A node spec's positions plus one more: `path`, in a record whose top-level keys hold the given values."""
-    return spec["at"] + ((path, {k: tuple(v) for k, v in record.items()}),)
+    """A node spec's positions plus one more: `path`, in a record whose top-level keys hold the given values (round 5:
+    each position also carries its anchor, None here)."""
+    return spec["at"] + ((path, {k: tuple(v) for k, v in record.items()}, None),)
 
 
 class TestB17Round3(TestB17ReadShapes):
@@ -2288,9 +2289,10 @@ class TestB17Round4(TestB17Round3):
         self.assertEqual([(x["line"], x["why"]) for x in r["refused"]],
                          [(n, f"the rules scanner's rule {OD57_RULE!r}") for n in refused])
 
-    def code_mode(self, ce=None, call=None, out=None, cmd=SHELL_READS[0][1], argv=None):
-        """meta, a custom_tool_call `exec`, its script's CommandExecution, the exec's output (each None leaves it out)."""
-        stdout = self.stdout("cat")
+    def code_mode(self, ce=None, call=None, out=None, cmd=SHELL_READS[0][1], argv=None, stdout=None):
+        """meta, a custom_tool_call `exec`, its script's CommandExecution, the exec's output (each False leaves it out;
+        round 5: `stdout` the read's output, the cat's by default)."""
+        stdout = self.stdout("cat") if stdout is None else stdout
         recs = [_cx_meta()]
         if call is not False:
             recs.append(_cx_custom(len(recs), "call-o1", **(call or {})))
@@ -2323,7 +2325,7 @@ class TestB17Round4(TestB17Round3):
 
     def test_codex_exec_output_needs_an_admitted_read(self):
         self.witness("16b an admitted read in the file", "rollout.jsonl", self.code_mode(ce=False), "session", [3],
-                     "_shape_strings", ("for a in sources:", "for a in sources + (s,):"))
+                     "_copy_hits", ("for a in srcs:", "for a in srcs + [s]:"))
         self.assert_refused("rollout.jsonl", self.code_mode(cmd=OTHER), "session", [3, 4])
 
     def test_codex_exec_output_span_must_be_a_copy(self):
@@ -2331,7 +2333,7 @@ class TestB17Round4(TestB17Round3):
         changed = stdout.replace("line after", "LINE AFTER")
         body = self.code_mode(out=f"Script completed\n{changed}exit code 0")
         self.assert_split("rollout.jsonl", body, "session", [3], [4])
-        with _mutant("_shape_strings", ("s.count(a)", "1")):
+        with _mutant("_copy_hits", ("s[p:p + len(a)] == a", "True")):
             self.assert_split("rollout.jsonl", body, "session", [3, 4], [])
         red("B17 16b the span is a verbatim copy")
 
@@ -2347,7 +2349,10 @@ class TestB17Round4(TestB17Round3):
                    _cx_end(2, "exec-cmd-1", ["/bin/bash", "-lc", SHELL_READS[0][1]], self.stdout("cat")),
                    _cx_custom_out(3, "call-o9", f"Script completed\n{self.stdout('cat')}exit code 0"))
         self.assert_split("rollout.jsonl", body, "session", [3], [4])
-        with _mutant("_shape_read", ("got = calls.get(cid)", "got = next(iter(calls.values()), None)")):
+        # round 5 (B17-19): the call is found by its id twice, for its tool and for its line (the copy's window)
+        with _mutant("_shape_read", ("got = calls.get(cid)", "got = next(iter(calls.values()), None)")), \
+                _mutant("_shape_strings", ('cl = call_lines.get(node[spec["id"]])',
+                                           "cl = next(iter(call_lines.values()), None)")):
             self.assert_split("rollout.jsonl", body, "session", [3, 4], [])
         red("B17 16b the call id")
 
@@ -2388,6 +2393,179 @@ class TestB17Round4(TestB17Round3):
 for _cls_from in (TestOD57OtherArms, TestB17ReadShapes, TestB17Round3):
     for _name in [n for n in vars(_cls_from) if n.startswith("test_")]:
         setattr(TestB17Round4, _name, None)  # each earlier class's tests run once, in their own class
+
+
+# ------------------------------------------------------------------------------------------------- B17, round 5
+# glitch-26's rulings B17-17 to B17-19 and NITs 2, 3 and 5 on review REVIEW-vendor-b17-baef7c51 (19 Oct 2026):
+# gpt-6.1-sol's exec output holds its read's output as one JSON string literal (census: 60 of 72; gpt-6-luna 32 of 36
+# verbatim; the rest lossy middle truncations, refused); a position of the ruled line counts once, however many sources
+# match it (B17-18); an exec output's sources are the reads between its own call's line and its line (B17-19); the
+# CommandExecution's event is item_completed and its argv a list; no shape crosses file kinds; a functionResponse in an
+# entry's result answers that entry.
+def _sol(stdout):
+    """gpt-6.1-sol's exec output item, in the census's shape: an object whose output is the read's output as one JSON
+    string literal (key names and order invented; non-ASCII kept raw)."""
+    return '{"exit_code":0,"output":' + json.dumps(stdout, ensure_ascii=False) + "}"
+
+
+class TestB17Round5(TestB17Round4):
+    """Round 5: each model's real exec output form, position counting, the exec pair's window, and the residual
+    positions, each check with a witness that goes red alone."""
+
+    def pair(self, cid, n, reads, out):
+        """An exec call, its script's CommandExecutions (script, stdout), its output; from rollout line n + 1."""
+        recs = [_cx_custom(n, cid)]
+        for k, (script, stdout) in enumerate(reads):
+            recs.append(_cx_end(n + 1 + k, f"{cid}-cmd-{k}", ["/bin/bash", "-lc", script], stdout))
+        recs.append(_cx_custom_out(n + 1 + len(reads), cid, out))
+        return recs
+
+    # ---- B17-17: each model's real form
+    def test_codex_each_models_exec_output_is_admitted(self):
+        for how, cmd in SHELL_READS:
+            stdout = self.stdout(how)
+            for model, out in (("gpt-6-luna", stdout), ("gpt-6.1-sol", _sol(stdout))):
+                with self.subTest(how=how, model=model):
+                    self.assert_admitted("rollout.jsonl", self.code_mode(out=out, cmd=cmd, stdout=stdout), "session",
+                                         [3, 4])
+
+    def test_codex_escaped_copy_is_one_exact_literal(self):
+        stdout = self.stdout("cat")
+        lit = json.dumps(stdout, ensure_ascii=False)
+        cases = {"double-escaped": '{"r":' + json.dumps(json.dumps(stdout)) + "}",
+                 "a literal of a changed output": _sol(stdout.replace("line after", "LINE AFTER")),
+                 "an escaped quote before the literal": '{"r":"x\\' + lit + '"}'}
+        for case, out in cases.items():
+            with self.subTest(case):
+                self.assert_split("rollout.jsonl", self.code_mode(out=out), "session", [3], [4])
+        with _mutant("_copy_hits", ("s[p:p + len(e)] == e", "True")):
+            self.assert_split("rollout.jsonl", self.code_mode(out=cases["a literal of a changed output"]), "session",
+                              [3, 4], [])
+        red("B17 round 5 the escaped span is one exact literal")
+
+    def test_codex_lossy_copy_refuses(self):
+        stdout = self.stdout("cat")
+        middle = "line before\n... [12 bytes truncated] ...\n" + self.text + "\n"
+        self.assert_split("rollout.jsonl", self.code_mode(out=_sol(middle)), "session", [3], [4])
+
+    # ---- B17-18: positions, not matches (the reviewer's D1 to D4b)
+    def test_codex_positions_count_once(self):
+        cat, grep = SHELL_READS[0][1], SHELL_READS[2][1]
+        co, go = self.stdout("cat"), self.stdout("grep")
+        cases = {
+            "D1 the doc read twice, two exec pairs": (self.pair("a", 1, [(cat, co)], co) + self.pair("b", 4, [(cat, co)], co),
+                                                     [3, 4, 6, 7], []),
+            "D2 a grep then a cat, two exec pairs": (self.pair("a", 1, [(grep, go)], go) + self.pair("b", 4, [(cat, co)], co),
+                                                    [3, 4, 6, 7], []),
+            "D3 two cat reads, the line again outside the copy": (self.pair("a", 1, [(cat, co), (cat, co)],
+                                                                            co + "zz" + self.text), [3, 4], [5]),
+            "D4 a grep and a cat read, the line again after": (self.pair("a", 1, [(grep, go), (cat, co)],
+                                                                         co + "tail:" + self.text), [3, 4], [5]),
+        }
+        for case, (recs, ruled, refused) in cases.items():
+            with self.subTest(case):
+                self.assert_split("rollout.jsonl", _cc(_cx_meta(), *recs), "session", ruled, refused)
+        d4b = _cc(_cx_meta(), _cx_custom(1, "a"), _cx_end(2, "a-0", ["/bin/bash", "-lc", grep], go),
+                  _cx_end(3, "a-1", ["/bin/bash", "-lc", cat], co),
+                  _cx_line(4, "response_item", {"type": "custom_tool_call_output", "call_id": "a", "id": "x",
+                                                "output": [{"type": "input_text", "text": co},
+                                                           {"type": "input_text", "text": "q" + self.text}]}))
+        self.assert_split("rollout.jsonl", d4b, "session", [3, 4], [5])
+
+    def test_codex_one_position_matched_by_two_sources_counts_once(self):
+        cat, co = SHELL_READS[0][1], self.stdout("cat")
+        body = _cc(_cx_meta(), *self.pair("a", 1, [(cat, co), (cat, co)], co))
+        self.assert_admitted("rollout.jsonl", body, "session", [3, 4, 5])
+        with _mutant("_copy_hits", ("if q not in seen:", "if True:")):
+            self.assert_split("rollout.jsonl", body, "session", [3, 4], [5])
+        red("B17 round 5 a position counts once")
+
+    def test_codex_two_positions_count_twice(self):
+        script = SHELL_READS[0][1] + " " + DOC_REL
+        co = self.stdout("cat") * 2
+        body = _cc(_cx_meta(), *self.pair("a", 1, [(script, co)], co))
+        self.assert_admitted("rollout.jsonl", body, "session", [3, 4])
+        with _mutant("_copy_hits", ("return hits", "return hits[:1]")):
+            self.assert_split("rollout.jsonl", body, "session", [3], [4])
+        red("B17 round 5 every position counts")
+
+    # ---- B17-19: an exec output's sources lie inside its own exec pair
+    def test_codex_exec_output_reads_only_its_own_pair(self):
+        grep, go = SHELL_READS[2][1], self.stdout("grep")
+        body = _cc(_cx_meta(), *self.pair("a", 1, [(SHELL_READS[0][1], "ok\n")], "ok\n"),
+                   _cx_custom(4, "b", inp="text('x')"), _cx_custom_out(5, "b", go),
+                   _cx_end(6, "c-0", ["/bin/bash", "-lc", grep], go))
+        self.assert_split("rollout.jsonl", body, "session", [7], [6])
+        with _mutant("_shape_strings", ("cl[0] < ln < line", "True")):
+            self.assert_split("rollout.jsonl", body, "session", [6, 7], [])
+        red("B17 round 5 the exec pair's window")
+
+    # ---- NIT 2: the event's payload type, the file kind, a response's own entry
+    def test_codex_command_execution_of_another_event_refuses(self):
+        item = {"type": "CommandExecution", "id": "e1", "command": ["/bin/bash", "-lc", SHELL_READS[0][1]],
+                "aggregated_output": self.stdout("cat")}
+        body = _cc(_cx_meta(), _cx_line(1, "event_msg", {"type": "agent_message", "item": item}))
+        wide = _widened(CODEX_SHAPES, CX_ITEM, "call", at=_plus(CODEX_SHAPES[CX_ITEM]["call"], ("payload", "item"),
+                                                                 type=["event_msg"]))
+        self.data_witness("NIT 2 the event's payload type", "rollout.jsonl", body, "session", [2], wide)
+
+    def test_codex_rollout_line_in_a_stream_file_refuses(self):
+        body = _cc({"type": "thread.started", "thread_id": "thread-1"},
+                   _cx_end(1, "e1", ["/bin/bash", "-lc", SHELL_READS[0][1]], self.stdout("cat")))
+        wide = _widened(CODEX_SHAPES, CX_ITEM, None, kinds=("session", "stream"))
+        self.data_witness("NIT 2 the file kind", "turn-1.jsonl", body, "stream", [2], wide)
+
+    def test_gemini_response_answers_its_own_entry(self):
+        grep_entry = _gem_call("call-g2", "grep_search", {"pattern": "pinned"}, "No matches")
+        grep_entry["result"] = [_gem_response("call-g1", "run_shell_command",
+                                              _gem_shell(self.stdout("cat").rstrip("\n")))]
+        body = _cc(GEM_HEAD, _gem_message("msg-g1", [self.shell_call(), grep_entry]))
+        at = tuple((p, r, None) for p, r, _ in GEM_SHAPES[GEM_RESPONSE]["result"]["at"])
+        wide = _widened(GEM_SHAPES, GEM_RESPONSE, "result", at=at)
+        self.data_witness("NIT 2 a response's own entry", "session.jsonl", body, "session", [2], wide)
+
+    # ---- NIT 5: the rollout CommandExecution's argv is a list
+    def test_codex_command_execution_argv_string_refuses(self):
+        item = {"type": "CommandExecution", "id": "e1", "command": _cx_wrap(SHELL_READS[0][1]),
+                "aggregated_output": self.stdout("cat")}
+        body = _cc(_cx_meta(), _cx_line(1, "event_msg", {"type": "item_completed", "item": item}))
+        wide = _with_tool(CODEX_SHAPES, CX_ITEM, "shell", kind="wrapped")
+        self.data_witness("NIT 5 the argv's list form", "rollout.jsonl", body, "session", [2], wide)
+
+    # ---- NIT 3: the schema's copy_of and wrapped-tool cases
+    def test_the_copy_and_wrapped_schema_refuses(self):
+        p = self.write("plain.jsonl", _cc({"type": "assistant", "text": "nothing ruled"}))
+        cx, gm = list(CODEX_SHAPES), list(GEM_SHAPES)
+        wrap = cx[CX_STREAM]["tools"]["shell"]
+        bad = {
+            "copy_of names a non-joined shape": cx[:CX_COPY] + [dict(cx[CX_COPY], copy_of=3), gm[GEM_STREAM]],
+            "copy_of names itself": cx[:CX_COPY] + [dict(cx[CX_COPY], copy_of=CX_COPY)],
+            "copy_of out of range": cx[:CX_COPY] + [dict(cx[CX_COPY], copy_of=9)],
+            "a copy tool with copy_of None": cx[:CX_COPY] + [dict(cx[CX_COPY], copy_of=None)],
+            "copy_of on a shape without copy tools": [dict(cx[CX_STREAM], copy_of=CX_ITEM)] + cx[1:],
+            "copy_of names a copy shape": [cx[0], cx[1], dict(cx[CX_COPY], copy_of=1),
+                                           dict(cx[CX_COPY], copy_of=2)],
+            "a wrapped tool without shells": [dict(cx[CX_STREAM], tools={"shell": dict(wrap, shells=None)})],
+            "a wrapped tool without flags": [dict(cx[CX_STREAM], tools={"shell": dict(wrap, flags=None)})],
+            "a wrapped tool with a relative shell": [dict(cx[CX_STREAM], tools={"shell": dict(wrap,
+                                                                                              shells=("bash",))})],
+            "shells on a script tool": [dict(gm[GEM_STREAM], tools={"run_shell_command": dict(
+                gm[GEM_STREAM]["tools"]["run_shell_command"], shells=("/bin/bash",))})],
+            "no file kind": [dict(gm[GEM_STREAM], kinds=())],
+            "an unknown file kind": [dict(gm[GEM_STREAM], kinds=("ledger",))],
+            "an anchor past its path": [dict(gm[GEM_STREAM], call=dict(gm[GEM_STREAM]["call"],
+                                                                        at=(((), {}, 3),)))],
+        }
+        for case, shapes in bad.items():
+            with self.subTest(case):
+                with self.assertRaises(sr.ScanError):
+                    sr.scan([(p, "transcript")], SECRETS, rules_scanner=no_findings, read_shapes=tuple(shapes))
+        red("B17 round 5 the copy_of and wrapped schema")
+
+
+for _cls_from in (TestOD57OtherArms, TestB17ReadShapes, TestB17Round3, TestB17Round4):
+    for _name in [n for n in vars(_cls_from) if n.startswith("test_")]:
+        setattr(TestB17Round5, _name, None)  # each earlier class's tests run once, in their own class
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
