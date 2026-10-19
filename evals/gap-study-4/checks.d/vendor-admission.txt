@@ -96,3 +96,10 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/take_config.py
 # 3): TestB14HelperPins gains the set-twice refusal's test and two writer mutants, each red alone: the unread-model
 # refusal dropped (an unread model falling back to no per-row aliases) and the set-twice refusal dropped.
 python3 -B -W ignore evals/gap-study-4/tests/test_take_config.py TestB14HelperPins
+# Lane vendor-b16 round 1 B16-1 (glitch-26, Mon 19 Oct 2026; the GPT practice walk's SnapshotRefused): both native-session
+# locators name the config folder's root "." as the box's operator_list does, driven through ownership's real _rel_dir;
+# the witnesses put "" back in one locator each, each red alone. native_snapshot.py is CODEX_SOURCES and its edit is
+# the ruling's named exception, so it is not on the source-list line, which holds the round's other files.
+python3 -B -W ignore evals/gap-study-4/tests/test_native_snapshot.py
+python3 -B -W ignore evals/gap-study-4/tests/test_native_snapshot.py --witnesses
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 check_take.py tests/test_native_snapshot.py tests/test_box_integration.py tests/test_drive_ownership.py

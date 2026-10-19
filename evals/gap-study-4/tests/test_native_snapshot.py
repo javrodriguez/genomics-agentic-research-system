@@ -378,5 +378,47 @@ class BoxRootNaming(unittest.TestCase):
             box_rules_lister({}, [])("")
 
 
+
+# ---- B16-1 witnesses: one locator's root named "" again, compiled in memory; each must turn BoxRootNaming red -------
+WITNESSES = {
+    "codex-root-empty": ('    _dir(_entries(lister, "."), "sessions", ".")\n',
+                         '    _dir(_entries(lister, ""), "sessions", ".")\n', "codex"),
+    "gemini-root-empty": ('    _dir(_entries(lister, "."), ".gemini", ".")\n',
+                          '    _dir(_entries(lister, ""), ".gemini", ".")\n', "gemini"),
+}
+
+
+def witnesses() -> int:
+    import types
+    src = Path(ns().__file__).read_text(encoding="utf-8")
+    red = 0
+    for name, (old, new, locator) in WITNESSES.items():
+        if src.count(old) != 1:
+            print(f"NOT PERFORMED {name}: the anchor occurs {src.count(old)} times in native_snapshot.py")
+            continue
+        mod = types.ModuleType("native_snapshot_b16_witness")
+        mod.__file__ = ns().__file__
+        exec(compile(src.replace(old, new), mod.__file__ + " (witness)", "exec"), mod.__dict__)
+        mod.SnapshotRefused = ns().SnapshotRefused          # the lister raises the real module's refusal
+        others = [n for n in ("codex", "gemini") if n != locator]
+        try:
+            getattr(BoxRootNaming(), locator)(mod)
+        except ns().SnapshotRefused as e:
+            try:
+                for other in others:                         # red alone: the other locator still passes
+                    getattr(BoxRootNaming(), other)(mod)
+            except ns().SnapshotRefused as e2:
+                print(f"NOT ALONE {name}: the other locator also refuses: {e2}")
+                continue
+            red += 1
+            print(f"red   {name}: {e}")
+            continue
+        print(f"GREEN {name}: the mutant passes BoxRootNaming")
+    print(f"test_native_snapshot witnesses: {red}/{len(WITNESSES)} red")
+    return 0 if red == len(WITNESSES) else 1
+
+
 if __name__ == "__main__":
+    if "--witnesses" in sys.argv:
+        raise SystemExit(witnesses())
     unittest.main()

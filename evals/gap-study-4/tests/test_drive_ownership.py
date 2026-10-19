@@ -738,7 +738,7 @@ class NativeAdapter(tbi.FakeAdapter):
         return got
 
     def native_session_rel(self, lister):
-        if dict(lister("")).get("native") != "dir" or dict(lister("native")).get("session.jsonl") != "file":
+        if dict(lister(".")).get("native") != "dir" or dict(lister("native")).get("session.jsonl") != "file":
             raise AssertionError("the box's listing does not show the native session")
         return "native/session.jsonl"
 

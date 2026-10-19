@@ -134,6 +134,9 @@ def codex_rollout_file(home, thread_id) -> str:
 # so the driver never opens it. The two locators below walk it one level at a time through the box's operator_list
 # (lister(rel_dir) -> [(name, kind)], kind in file, dir, link, other; a link anywhere refuses) and name the session's
 # path relative to the config folder; the box's operator_read gives its bytes and retain_bytes keeps them.
+# The folder's root is named "." as operator_list's contract names it (box/ownership.py _rel_dir), never "", which
+# the box refuses (lane vendor-b16 B16-1, glitch-26's ruling of 19 Oct 2026, after the GPT practice walk held on that
+# refusal; a named exception to the frozen CODEX_SOURCES, made before any native reader acceptance record exists).
 def _entries(lister, rel_dir) -> dict:
     got = lister(rel_dir)
     if got is None:
@@ -160,7 +163,7 @@ def gemini_session_rel(lister, session_id) -> str:
     folder (GEMINI_CLI_HOME)."""
     if not isinstance(session_id, str) or not _SESSION_ID.fullmatch(session_id):
         raise SnapshotRefused("a native session is located only by the session id turn 1's init named")
-    _dir(_entries(lister, ""), ".gemini", ".")
+    _dir(_entries(lister, "."), ".gemini", ".")
     _dir(_entries(lister, ".gemini"), "tmp", ".gemini")
     name = re.compile(rf"session-{_MINUTE}(?:-[1-9][0-9]*)?-{re.escape(session_id[:8])}\.jsonl")
     hits = []
@@ -188,7 +191,7 @@ def codex_rollout_rel(lister, thread_id) -> str:
     (CODEX_HOME)."""
     if not isinstance(thread_id, str) or not _CODEX_THREAD.fullmatch(thread_id):
         raise SnapshotRefused("a rollout is located only by the thread id turn 1's stream named")
-    _dir(_entries(lister, ""), "sessions", ".")
+    _dir(_entries(lister, "."), "sessions", ".")
     name = re.compile(rf"rollout-\d{{4,}}-\d{{2}}-\d{{2}}T\d{{2}}-\d{{2}}-\d{{2}}-{re.escape(thread_id)}\.jsonl")
     other = re.compile(rf"rollout-.*{re.escape(thread_id)}(?:_[^/]*)?\.jsonl(?:\.zst)?")
     hits = []

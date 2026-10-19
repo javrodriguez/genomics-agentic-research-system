@@ -358,7 +358,7 @@ class FakeOwnership:
         if root_kind not in ("run_tree", "config"):
             raise self.OwnershipError(f"operator-list refused: root kind {root_kind!r}", {})
         with FakeBox.as_container(root):
-            if rel_dir == "":
+            if rel_dir == ".":                  # the box's root (_rel_dir); "" refuses, as there (B16-1)
                 fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
             else:
                 parent, name = self._parent(root, rel_dir)
