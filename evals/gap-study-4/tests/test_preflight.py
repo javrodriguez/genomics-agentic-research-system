@@ -1120,8 +1120,8 @@ class TestPrograms(MutantCase):
             for p in World(h).probes():
                 if p.argv is not None and "-c" in p.argv:
                     built[p.id] = p.argv[list(p.argv).index("-c") + 1]
-        if len(built) != 7:
-            out.append(f"{len(built)} probes run a program, not 7")
+        if len(built) != 8:      # R4-2 (lane vendor-b11 round 4): arms O's and G's version probe runs one too
+            out.append(f"{len(built)} probes run a program, not 8")
         for name, src in built.items():
             try:
                 ast.parse(src, feature_version=(3, 11))
@@ -1163,6 +1163,15 @@ class TestPrograms(MutantCase):
                 if [x for x in LEAK_WORDS if re.search(r"(?<![A-Za-z0-9])" + re.escape(x) + r"(?![A-Za-z0-9])", a,
                                                        re.IGNORECASE)]:
                     out.append(f"probe {p.id} argv carries a leak word")
+        for h in (rt.CODEX, rt.GEMINI):      # R4-2: their --version runs on a throwaway home, never the config mount
+            argv = [q for q in World(h).probes() if q.id == "harness-version"][0].argv
+            if "-e" in argv or any(rt.CONFIG_MOUNT in a for a in argv):
+                out.append(f"the {h} version probe names the config mount or carries a variable")
+            want = ["python3", "-I", "-B", "-c", pf.VERSION_PROBE_PROGRAM, "/tmp",
+                    f"{CONFIG_HOME[h]},HOME", *pf.VERSION_COMMANDS[h]]
+            if list(argv[-len(want):]) != want:
+                out.append(f"the {h} version probe is not the throwaway-home program on /tmp with its config home "
+                           f"and HOME")
         return out
 
     def test_programs(self):
@@ -1171,6 +1180,8 @@ class TestPrograms(MutantCase):
             ("study-word", patched(pf, "IDENTITY_PROGRAM", pf.IDENTITY_PROGRAM + "# probe\n")),
             ("reads-tree", patched(pf, "CGROUP_PROGRAM", 'open("tree/x")\n')),
             ("version-without-config-home", patched(pf, "_config_home_values", lambda h: {})),
+            ("version-probe-on-the-config-mount", patched(pf, "VERSION_PROBE_HOMES", {})),
+            ("version-probe-root-moved", patched(pf, "VERSION_PROBE_ROOT", "/opt/cfg")),
             ("port-typed", patched(pf, "_proxy_port", lambda: "3128")),
             ("tree-in-argv", patched(pf, "probes", lambda spec, **k: tuple(
                 pf.Probe(p.id, p.argv + (spec.run_tree,) if p.argv else None, p.read) for p in ORIG_PROBES(spec, **k)))),
