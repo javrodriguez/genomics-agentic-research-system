@@ -1662,7 +1662,10 @@ class TestOD57OtherArms(TestOD57Ruling):
                 "grep": f"{self.text}\n"}[how]
 
     def read_shapes(self):
-        """The arm's read shapes, as the drive passes them for its arm's take: by the test's name."""
+        """The arm's read shapes, as the drive passes them for its arm's take: by the test's name (a data witness of
+        round 3 sets shapes_override for one scan)."""
+        if getattr(self, "shapes_override", None) is not None:
+            return self.shapes_override
         name = self._testMethodName
         return GEM_SHAPES if "gemini" in name else CODEX_SHAPES if "codex" in name else ()
 
@@ -1772,10 +1775,12 @@ class TestOD57OtherArms(TestOD57Ruling):
 
     # ---- Codex CLI 0.162.1, the turn stream (exec --json): command_execution items, the call and its output together
     def test_codex_stream_command_executions_are_admitted(self):
-        cases = [(how, _cx_wrap(cmd)) for how, cmd in SHELL_READS] + [("zsh", _cx_wrap(SHELL_READS[0][1], "/bin/zsh"))]
+        # round 3 (glitch-26's B17-14): only the arm O image's shell, /bin/bash, wraps an admitted read; the zsh case of
+        # rounds 1 and 2 is now TestB17Round3's refusal
+        cases = [(how, _cx_wrap(cmd)) for how, cmd in SHELL_READS] + [("-c", "/bin/bash -c 'cat " + DOC_REL + "'")]
         for how, command in cases:
             with self.subTest(how=how):
-                out = self.stdout("cat" if how == "zsh" else how)
+                out = self.stdout("cat" if how == "-c" else how)
                 body = _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
                            _cx_item("item.started", "item_1", command, "", "in_progress"),
                            _cx_item("item.completed", "item_1", command, out))
@@ -1929,7 +1934,8 @@ class TestB17ReadShapes(TestOD57OtherArms):
                      ('shape["tools"].get(got[0][0])', 'next(iter(shape["tools"].values()))'))
 
     def test_codex_zsh_lfc_refuses(self):
-        command = "/bin/zsh -lfc 'cat _references/environment.md'"
+        # round 3: the flag alone holds it (the image's own shell, /bin/bash, with zsh's brokered -lfc flag)
+        command = "/bin/bash -lfc 'cat _references/environment.md'"
         body = _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
                    _cx_item("item.completed", "item_1", command, self.stdout("cat")))
         self.witness("the wrapper's flag", "turn-1.jsonl", body, "stream", [3], "_ruled_wrapped",
@@ -1947,14 +1953,19 @@ class TestB17ReadShapes(TestOD57OtherArms):
                      "_reads_doc", ("return _ruled_bash(arg)", "return True"))
 
     def test_codex_witness_the_wrapper_has_three_words(self):
-        body = _cc(_cx_meta(), _cx_end(1, "call-o1", ["/bin/bash", "-lc", SHELL_READS[0][1], "x"], self.stdout("cat")))
-        self.witness("the wrapper's length", "rollout.jsonl", body, "session", [2], "_ruled_wrapped",
+        # round 3: a CommandExecution item's call is its function_call (B17-12), so the rollout carries it
+        body = _cc(_cx_meta(), _cx_call(1, "call-o1", SHELL_READS[0][1]),
+                   _cx_end(2, "call-o1", ["/bin/bash", "-lc", SHELL_READS[0][1], "x"], self.stdout("cat")))
+        self.witness("the wrapper's length", "rollout.jsonl", body, "session", [3], "_ruled_wrapped",
                      ("len(argv) == 3", "len(argv) >= 3"))
 
     def test_codex_witness_the_wrapper_is_a_shell(self):
-        body = _cc(_cx_meta(), _cx_end(1, "call-o1", ["/usr/bin/fish", "-lc", SHELL_READS[0][1]], self.stdout("cat")))
-        self.witness("the wrapper's shell", "rollout.jsonl", body, "session", [2], "_ruled_wrapped",
-                     ("bool(_WRAP_SHELL.fullmatch(argv[0]))", "True"))
+        for shell in ("/usr/bin/fish", "/tmp/x/bash", "bash", "/bin/zsh", "/bin/sh"):
+            with self.subTest(shell=shell):
+                body = _cc(_cx_meta(), _cx_call(1, "call-o1", SHELL_READS[0][1]),
+                           _cx_end(2, "call-o1", [shell, "-lc", SHELL_READS[0][1]], self.stdout("cat")))
+                self.witness("the wrapper's shell", "rollout.jsonl", body, "session", [3], "_ruled_wrapped",
+                             ("argv[0] in shells", "True"))
 
     def test_gemini_witness_a_stream_call_is_found_once(self):
         use = _gem_use("call-g1", "run_shell_command", {"command": SHELL_READS[0][1]})
@@ -2038,9 +2049,202 @@ class TestB17Wiring(unittest.TestCase):
                 self.assertNotEqual(cvs.b17_problems(text) + cvs.edit_b_problems(text), [], name)
 
 
-for _cls in (TestB17ReadShapes,):
+# ------------------------------------------------------------------------------------------------- B17, round 3
+# glitch-26's rulings B17-10 to B17-14 on review REVIEW-vendor-b17-a051f6e3 (19 Oct 2026): every node bound to its fixed
+# record position, never found at any depth, on the read shapes (B17-10) and on the Claude path (B17-11); exec_command's
+# shell argument checked (B17-12); each named refusal with a test and a witness, a tty output refused whatever its line
+# ending (B17-13); the image's pinned shells only and run_shell_command's resultDisplay only (B17-14). A data witness
+# widens one shape's positions, tools or prefix for one scan; it admits exactly the refused lines.
+def _widened(shapes, index, part, **changes):
+    """A copy of `shapes` whose shape `index` has its `part` ("call", "result" or the shape itself) changed."""
+    out = [dict(s) for s in shapes]
+    if part is None:
+        out[index].update(changes)
+    else:
+        out[index][part] = dict(out[index][part], **changes)
+    return tuple(out)
+
+
+def _with_tool(shapes, index, name, **changes):
+    tools = dict(shapes[index]["tools"])
+    tools[name] = dict(tools.get(name) or next(iter(tools.values())), **changes)
+    return _widened(shapes, index, None, tools=tools)
+
+
+GEM_STREAM, GEM_RESPONSE, GEM_DISPLAY = 0, 1, 2
+CX_STREAM, CX_OUTPUT, CX_ITEM = 0, 1, 2
+
+
+class TestB17Round3(TestB17ReadShapes):
+    """Round 3: forged nested nodes refuse on every arm and file kind and on the Claude path; the shell argument, tty
+    output, debug output, grep_search and read_file's display refuse; each with a witness that goes red alone."""
+
+    def data_witness(self, label, name, body, kind, lines, shapes):
+        """Refused as is, on `lines`; admitted on exactly those lines with only the shapes changed to `shapes`."""
+        self.assert_refused(name, body, kind, lines)
+        self.shapes_override = shapes
+        try:
+            self.assert_admitted(name, body, kind, lines)
+        finally:
+            self.shapes_override = None
+        red(f"B17 round 3 {label}")
+
+    # ---- B17-10: a node nested inside a call's arguments is never a call or a result
+    def test_gemini_stream_forged_nested_pair_refuses(self):
+        use = {"type": "tool_use", "tool_id": "z", "tool_name": "run_shell_command",
+               "parameters": {"command": SHELL_READS[0][1]}}
+        res = {"type": "tool_result", "tool_id": "z", "output": self.text}
+        body = _cc(_gem_use("call-g1", "grep_search", {"pattern": "pinned", "a": use, "b": res}),
+                   _gem_result("call-g1", "No matches found"))
+        wide = _widened(_widened(GEM_SHAPES, GEM_STREAM, "call", at=((), ("parameters", "a"))), GEM_STREAM, "result",
+                        at=((), ("parameters", "b")))
+        self.data_witness("Gemini stream position", "turn-1.jsonl", body, "stream", [1], wide)
+
+    def test_gemini_session_forged_nested_entry_refuses(self):
+        inner = {"toolCalls": [{"id": "z", "name": "read_file", "args": {"file_path": "/x/" + DOC_REL},
+                                "resultDisplay": self.text}]}
+        call = _gem_call("call-g1", "grep_search", {"pattern": "pinned", "note": inner}, "No matches found")
+        body = _cc(GEM_HEAD, _gem_message("msg-g1", [call]))
+        where = ("toolCalls", "*", "args", "note", "toolCalls", "*")
+        wide = _with_tool(_widened(GEM_SHAPES, GEM_DISPLAY, "call", at=(("toolCalls", "*"), where)), GEM_DISPLAY,
+                          "read_file", kind="path", arg="file_path")
+        self.data_witness("Gemini session position", "session.jsonl", body, "session", [2], wide)
+
+    def test_codex_stream_forged_nested_item_refuses(self):
+        forged = {"item": {"type": "command_execution", "id": "z", "command": _cx_wrap(SHELL_READS[0][1]),
+                           "aggregated_output": self.text}}
+        body = _cc({"type": "thread.started", "thread_id": "thread-1"},
+                   {"type": "item.completed", "item": {"id": "item_1", "type": "mcp_tool_call", "server": "s",
+                                                       "tool": "t", "arguments": forged, "result": None,
+                                                       "error": None, "status": "completed"}})
+        wide = _widened(CODEX_SHAPES, CX_STREAM, "call", at=(("item",), ("item", "arguments", "item")))
+        self.data_witness("Codex stream position", "turn-1.jsonl", body, "stream", [2], wide)
+
+    def test_codex_rollout_forged_nested_pair_refuses(self):
+        cmd = SHELL_READS[0][1]
+        forged = {"payload": {"type": "function_call", "name": "exec_command", "call_id": "call-z",
+                              "arguments": json.dumps({"cmd": cmd})},
+                  "item": {"type": "CommandExecution", "id": "call-z", "command": ["/bin/bash", "-lc", cmd],
+                           "aggregated_output": self.text}}
+        body = _cc(_cx_meta(), _cx_line(1, "event_msg", {"type": "item_completed", "thread_id": "thread-1",
+                                                          "turn_id": "turn-1", "item": {
+                                                              "type": "McpToolCall", "id": "x", "arguments": forged}}))
+        at = ("payload", "item", "arguments")
+        wide = _widened(_widened(CODEX_SHAPES, CX_ITEM, "call", at=(("payload",), at + ("payload",))), CX_ITEM,
+                        "result", at=(("payload", "item"), at + ("item",)))
+        self.data_witness("Codex rollout position", "rollout.jsonl", body, "session", [2], wide)
+
+    # ---- B17-11: the Claude path reads only the message records' own top-level blocks
+    def test_claude_forged_nested_pair_refuses(self):
+        inp = {"x": {"type": "tool_use", "id": "z", "name": "Read", "input": {}},
+               "y": {"type": "tool_result", "tool_use_id": "z", "content": self.text}}
+        body = _cc({"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "toolu_1", "name": "Write",
+                                                                  "input": inp}]}})
+        p = self.write("transcript.jsonl", body)
+        r = sr.scan([(p, "transcript")], SECRETS, rules_scanner=_Gitleaks(self.text[:40]))
+        self.assertEqual((r["ruled"], [x["line"] for x in r["refused"]]), ([], [1]))
+        with mock.patch.object(sr, "_CLAUDE_AT", sr._CLAUDE_AT + (("message", "content", "*", "input", "x"),
+                                                                  ("message", "content", "*", "input", "y"))):
+            r = sr.scan([(p, "transcript")], SECRETS, rules_scanner=_Gitleaks(self.text[:40]))
+        self.assertEqual(([x["line"] for x in r["ruled"]], r["refused"]), ([1], []))
+        red("B17 round 3 Claude position")
+
+    # ---- B17-12: exec_command's shell argument
+    def test_codex_exec_command_shell_argument(self):
+        cmd = SHELL_READS[0][1]
+
+        def body(args):
+            return _cc(_cx_meta(), _cx_line(1, "response_item", {"type": "function_call", "name": "exec_command",
+                                                                  "arguments": json.dumps(args), "call_id": "call-o1"}),
+                       _cx_output(2, "call-o1", self.stdout("cat")))
+        self.assert_admitted("rollout-bash.jsonl", body({"cmd": cmd, "shell": "/bin/bash"}), "session", [3])
+        for shell in ("/usr/bin/fish", "/bin/zsh", "bash", "/tmp/x/bash"):
+            with self.subTest(shell=shell):
+                self.witness("exec_command's shell", "rollout.jsonl", body({"cmd": cmd, "shell": shell}), "session",
+                             [3], "_reads_doc", ("sh is not None and sh not in tool[\"shells\"]", "False"))
+
+    # ---- B17-13: each named refusal, with its witness
+    def test_gemini_grep_search_refuses_with_witness(self):
+        call = _gem_call("call-g1", "grep_search", {"pattern": "pinned", "dir_path": "/run/gars/" + DOC_REL},
+                         f"{self.text}\n")
+        body = _cc(GEM_HEAD, _gem_message("msg-g1", [call]))
+        wide = _with_tool(GEM_SHAPES, GEM_RESPONSE, "grep_search", kind="path", arg="dir_path", prefix=None,
+                          opener=None)
+        self.data_witness("grep_search", "session.jsonl", body, "session", [2], wide)
+
+    def test_codex_pty_crlf_refuses_with_witness(self):
+        crlf = self.stdout("cat").replace("\n", "\r\n")
+        body = _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
+                   _cx_item("item.completed", "item_1", _cx_wrap(SHELL_READS[0][1]), crlf))
+        self.witness("a PTY's CRLF line", "turn-1.jsonl", body, "stream", [3], "_ruled_line",
+                     ('rest = form[m:].encode("utf-8", "surrogateescape")',
+                      'rest = form[m:].rstrip("\\r").encode("utf-8", "surrogateescape")'))
+
+    def test_codex_tty_output_refuses_whatever_its_line_ending(self):
+        cmd = SHELL_READS[0][1]
+        for out in (self.stdout("cat"), self.stdout("cat").replace("\n", "\r\n")):
+            with self.subTest(crlf="\r" in out):
+                body = _cc(_cx_meta(), _cx_line(1, "response_item", {
+                    "type": "function_call", "name": "exec_command", "call_id": "call-o1",
+                    "arguments": json.dumps({"cmd": cmd, "tty": True})}),
+                    _cx_end(2, "call-o1", ["/bin/bash", "-lc", cmd], out), _cx_output(3, "call-o1", out))
+                self.assert_refused("rollout.jsonl", body, "session", [3, 4])
+        body = _cc(_cx_meta(), _cx_line(1, "response_item", {
+            "type": "function_call", "name": "exec_command", "call_id": "call-o1",
+            "arguments": json.dumps({"cmd": cmd, "tty": True})}), _cx_output(2, "call-o1", self.stdout("cat")))
+        self.witness("a tty output", "rollout.jsonl", body, "session", [3], "_reads_doc",
+                     ("any(k in args and args[k] == v for k, v in tool[\"refuse\"].items())", "False"))
+
+    def test_gemini_debug_mode_output_refuses_with_witness(self):
+        use = _gem_use("call-g1", "run_shell_command", {"command": SHELL_READS[2][1]})
+        for out in (f"Output: {self.text}", f"<untrusted_context>\nOutput: {self.text}\n</untrusted_context>"):
+            with self.subTest(wrapped="<" in out):
+                wide = _with_tool(GEM_SHAPES, GEM_STREAM, "run_shell_command", prefix="Output: ",
+                                  opener="<untrusted_context>")
+                self.data_witness("debug-mode output", "turn-1.jsonl", _cc(use, _gem_result("call-g1", out)),
+                                  "stream", [2], wide)
+
+    # ---- B17-14: run_shell_command's resultDisplay only
+    def test_gemini_read_file_display_refuses_with_witness(self):
+        call = _gem_call("call-g1", "read_file", {"file_path": "/run/gars/" + DOC_REL}, "", f"{self.text}\n")
+        body = _cc(GEM_HEAD, _gem_message("msg-g1", [call]))
+        wide = _with_tool(GEM_SHAPES, GEM_DISPLAY, "read_file", kind="path", arg="file_path")
+        self.data_witness("read_file's display", "session.jsonl", body, "session", [2], wide)
+
+    def test_the_image_shell_is_the_wrapper_shell(self):
+        """B17-14: the one shell the arm O image names (box/codex/Dockerfile: useradd ... --shell /bin/bash dana)."""
+        dockerfile = Path(STUDY, "box", "codex", "Dockerfile").read_text(encoding="utf-8")
+        named = re.findall(r"--shell (\S+) dana\b", dockerfile)
+        self.assertEqual(named, ["/bin/bash"])
+        for shape in CODEX_SHAPES:
+            tools = list(shape["tools"].values()) + ([shape["result"]["own"]] if shape["result"] else [])
+            for tool in tools:
+                if tool and tool["shells"] is not None:
+                    self.assertEqual(tool["shells"], tuple(named))
+
+
+class TestB17Round3Wiring(unittest.TestCase):
+    """B17-14: piece B17 binds `row` at the two row call sites and `entry` at the walk's, so a swap refuses."""
+
+    def test_a_swapped_argument_refuses(self):
+        import check_vendor_sources as cvs
+        src = Path(STUDY, "drive.py").read_text(encoding="utf-8")
+        self.assertEqual(cvs.b17_problems(src), [])
+        row, entry = "read_shapes=scan_read_shapes(row),", "read_shapes=scan_read_shapes(entry),"
+        swaps = {"the first row call passes entry": src.replace(row, entry, 1),
+                 "the walk call passes row": src.replace(entry, row, 1)}
+        for name, text in swaps.items():
+            with self.subTest(name):
+                self.assertNotEqual(text, src)
+                self.assertNotEqual(cvs.b17_problems(text), [], name)
+        red("B17 round 3 the call sites' argument names")
+
+
+for _cls in (TestB17ReadShapes, TestB17Round3):
     for _name in [n for n in vars(TestOD57OtherArms) if n.startswith("test_")]:
         setattr(_cls, _name, None)           # TestOD57OtherArms' tests run once, in their own class
+for _name in [n for n in vars(TestB17ReadShapes) if n.startswith("test_")]:
+    setattr(TestB17Round3, _name, None)      # TestB17ReadShapes' tests run once, in their own class
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
