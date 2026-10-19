@@ -355,9 +355,16 @@ CANDIDATE_PATHS = {
 }
 
 
+# (run-tree path, excluded?) under each candidate (R4-4): the agent's HOME and everything below it, nothing else.
+RUN_TREE_PATHS = [(".home/.cache/pip/x", True), (".home/.conda/envs/e/bin/python", True), (".home/.bashrc", True),
+                  (".homes/x", False), ("home/x", False), (".tmp/x", False), ("data/x.csv", False),
+                  ("results/.home/x", False), (".git/config", False)]
+
+
 def candidate_problems(table: dict) -> list:
-    """Each candidate is exactly its derived pattern, its grounds quote what they rest on, its run tree is unmeasured
-    (empty), it names .tmp/ as kept in, and it excludes its native session file and nothing else listed."""
+    """Each candidate is exactly its derived pattern, its grounds quote what they rest on, its run tree excludes the
+    agent's HOME alone (R4-4: <run tree>/.home/**, snapshotted but not graded; the rest of the run tree unmeasured),
+    it names .tmp/ as kept in, and it excludes its native session file and nothing else listed."""
     out = []
     derived = {"codex": derived_codex_pattern(), "gemini": derived_gemini_pattern()}
     tmp = run_tree_tmp_name()
@@ -369,24 +376,31 @@ def candidate_problems(table: dict) -> list:
             continue
         if e.home_paths != (derived[name],):
             out.append(f"{name}: home_paths {e.home_paths} are not exactly the derived {derived[name]!r}")
-        if e.run_tree_paths != ():
-            out.append(f"{name}: run_tree_paths {e.run_tree_paths}: unmeasured until a real walk")
+        # R4-4 (glitch-26, lane vendor-b11 round 4): the agent's HOME is inside the run tree, snapshotted, not graded
+        home_tree = (run_tree_home_name() + "/**",)
+        if e.run_tree_paths != home_tree:
+            out.append(f"{name}: run_tree_paths {e.run_tree_paths} are not exactly {home_tree} (R4-4; the rest of the "
+                       f"run tree is unmeasured until a real walk)")
         grounds = " ".join(e.grounds)
         for need in ({"codex": ["codex_adapter.py:41", "`$CODEX_HOME/sessions/.../rollout-*.jsonl`",
                                 "box/run_take.py:68", '"CODEX_HOME": CONFIG_MOUNT'],
                       "gemini": ["native_snapshot.py:20", "<home>/.gemini/tmp/*/chats", "native_snapshot.py:13",
                                  "native_snapshot.py:16-18", "assumed, not source-shown", "box/run_take.py:68",
-                                 '"GEMINI_CLI_HOME": CONFIG_MOUNT']}[name] + ["unmeasured until a real walk"]):
+                                 '"GEMINI_CLI_HOME": CONFIG_MOUNT']}[name] + ["unmeasured until a real walk",
+                                                                              "R4-4", "box/sidecar.py"]):
             if need not in grounds:
                 out.append(f"{name}: the grounds do not say {need!r}")
         if not any(path == tmp + "/" for path, _ in e.not_excluded):
             out.append(f"{name}: not_excluded does not name {tmp}/ (box/run_take.py:93, 153)")
-        # R-H5 (glitch-26, 19 Oct 2026): the agent's HOME is the run tree's .home, whose tool files are the agent's
-        if not any(path == run_tree_home_name() + "/" for path, _ in e.not_excluded):
-            out.append(f"{name}: not_excluded does not name {run_tree_home_name()}/ (the agent's HOME, R-H5)")
+        # R4-4: the agent's HOME (R-H5's .home) is excluded from grading now, so it is no longer named as kept in
+        if any(path == run_tree_home_name() + "/" for path, _ in e.not_excluded):
+            out.append(f"{name}: not_excluded still names {run_tree_home_name()}/, which R4-4 excludes")
         for path, want in CANDIDATE_PATHS[name]:
             if any(hb.matches(p, path) for p in e.home_paths) != want:
                 out.append(f"{name}: {path} is {'not ' if want else ''}excluded")
+        for path, want in RUN_TREE_PATHS:
+            if any(hb.matches(p, path) for p in e.run_tree_paths) != want:
+                out.append(f"{name}: run tree {path} is {'not ' if want else ''}excluded")
     return out
 
 
@@ -406,6 +420,34 @@ def candidate_conflicts(candidates: dict) -> list:
             continue
         out += [f"{task_id}: {x}" for x in ct.check_8_exclusions(task, doc, table=table)]
     return out
+
+
+class HomeExclusion(unittest.TestCase):
+    """R4-4 (glitch-26, lane vendor-b11 round 4), each way through the end-state grader's own is_excluded: under arms
+    O's and G's candidates <run tree>/.home/** is excluded (the agent HOME is inside the run tree: snapshotted, not
+    graded); under arm A's entry, untouched, it is not (arm A's HOME is outside the run tree)."""
+
+    def excluded(self, harness, rel, table):
+        from graders import endstate
+        ev = mock.Mock(run_tree="/srv/w/t", harness=harness, _table=table, home=None)
+        return endstate.Evidence.is_excluded(ev, f"/srv/w/t/{rel}")
+
+    def test_arms_o_and_g_exclude_the_agent_home_and_arm_a_does_not(self):
+        table = dict(hb.TABLE, **hb.VENDOR_CANDIDATES)
+        for rel, want in RUN_TREE_PATHS:
+            for name in CANDIDATE_NAMES:
+                with self.subTest(harness=name, path=rel):
+                    self.assertEqual(self.excluded(name, rel, table), want)
+            with self.subTest(harness=ADAPTER_NAME, path=rel):
+                self.assertFalse(self.excluded(ADAPTER_NAME, rel, table))
+        self.assertEqual(hb.TABLE[ADAPTER_NAME].run_tree_paths, (), "R4-4: arm A's entry moved")
+
+    def test_a_vendor_candidate_without_the_home_exclusion_grades_it(self):
+        for name in CANDIDATE_NAMES:
+            e = dataclasses.replace(hb.VENDOR_CANDIDATES[name], run_tree_paths=())
+            table = dict(hb.TABLE, **dict(hb.VENDOR_CANDIDATES, **{name: e}))
+            with self.subTest(harness=name):
+                self.assertFalse(self.excluded(name, ".home/.conda/envs/e/bin/python", table))
 
 
 class VendorCandidates(unittest.TestCase):
@@ -455,9 +497,12 @@ class VendorCandidates(unittest.TestCase):
             for what, e in {"a guessed run tree": dataclasses.replace(base, run_tree_paths=(".tmp/**",)),
                             "no grounds": dataclasses.replace(base, grounds=("TEST DATA",)),
                             ".tmp/ dropped": dataclasses.replace(base, not_excluded=()),
-                            # R-H5: the agent's HOME (.home/) named as kept in, alone dropped
-                            ".home/ dropped": dataclasses.replace(base, not_excluded=tuple(
-                                x for x in base.not_excluded if x[0] != ".home/"))}.items():
+                            # R4-4: the agent's HOME excluded from grading, exactly
+                            ".home/** dropped": dataclasses.replace(base, run_tree_paths=()),
+                            ".home/** widened": dataclasses.replace(base, run_tree_paths=(".home/**", ".tmp/**")),
+                            ".home/** narrowed": dataclasses.replace(base, run_tree_paths=(".home/*",)),
+                            ".home/ still kept in": dataclasses.replace(base, not_excluded=base.not_excluded + (
+                                (".home/", "kept in"),))}.items():
                 with self.subTest(name=name, what=what):
                     self.assertNotEqual(candidate_problems(dict(hb.VENDOR_CANDIDATES, **{name: e})), [])
         self.assertNotEqual(candidate_problems({"codex": hb.VENDOR_CANDIDATES["codex"]}), [])
