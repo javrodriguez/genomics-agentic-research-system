@@ -120,3 +120,6 @@ ROUND 1 SUMMARY FOR REVIEW (cloud executor, Mon 19 Oct 2026, about 03:50 UTC): l
 - Round 4 (glitch-26's rulings R4-1 to R4-4 on the four round-3 questions) started Mon 19 Oct 2026 07:14 UTC on lane/vendor-b11 at c445e9c3. The round-3 BLOCKED line is answered by those rulings and removed.
 - Round 4 done Mon 19 Oct 2026 about 07:50 UTC at 52c5a949 (code) plus this file; status needs-review.
 - Round 5 (glitch-26's rulings R5-1 to R5-5 on the review of 52619ab1..07312e4f; R4-3 stands) started Mon 19 Oct 2026 08:17 UTC on lane/vendor-b11 at c581ccdf.
+- Round 5, R5-1: nine witnesses registered (red 319dac37: each survives the existing 19 tests), C13Guards green (ba5a72ac): test_config_folder 25 OK, --witnesses 36 of 36 red.
+- Round 5, R5-2: the plan's section 6 row B11 R4-2 (306be95d). R5-3: the two stale comments name R4-1's routing (f8136f1c). R5-4: red 5fb85434, green b1f0a588 (config_sha256's arg0 links for codex alone).
+- Round 5, R5-5: merging origin/lane/vendor-admission started 08:25 UTC.
