@@ -52,7 +52,9 @@ delegation, Tue 13 Oct 2026).
       no root CLAUDE.md or a commit already carrying the name refuses and leaves nothing; place_instruction_file
       hands back the name, and refuses by name an untracked copy already in the checkout, a commit without one of the
       checkout's CLAUDE.md files, a copy altered in the commit or in the checkout, and a checkout run_tree_problems
-      refuses.
+      refuses. Round 18 B13: on an origin whose .gitignore lists AGENTS.md and GEMINI.md (the pinned GARS tree lists
+      AGENTS.md), the placed copies are still in the one commit, which holds exactly the origin's files minus the
+      exclusions plus the placed copies.
   G1  the generated mutants (tests/walk_mutation.py's generator over every top-level function of walk_builders.py and
       walk_runner.main): EQUIVALENT names only generated ids, each with a reason.
 
@@ -3911,12 +3913,53 @@ def b18_place_problems(mod) -> list:
     return out
 
 
+# Round 18 B13 (glitch-26, Sun 18 Oct 2026; practice walk w-o1 on ship head 779097fc): the pinned GARS tree's own
+# .gitignore lists AGENTS.md (844a4ce0 .gitignore line 74), so a plain `git add -- AGENTS.md gars/AGENTS.md` in the
+# checkout exits 1 ("The following paths are ignored by one of your .gitignore files") and no codex walk got a run
+# tree. The placed copies are added by exactly their paths, whatever the checkout's .gitignore says; nothing else
+# the .gitignore covers, and nothing the exclusions leave out, reaches the one commit.
+B18_IGNORE = "AGENTS.md\nGEMINI.md\n*.log\n"
+
+
+@problems_by_assertion("B18.ignored")
+def b18_ignored_problems(mod) -> list:
+    """build_run_tree for codex and gemini on an origin whose .gitignore lists both native names: each placed copy
+    beside every CLAUDE.md is in the one commit with its bytes, the commit holds exactly the origin's files minus the
+    exclusions plus the placed copies, and the status is clean; a Claude Code checkout of it holds no native file."""
+    out = []
+    drive = MODS["drive"]
+    for harness in ("codex", "gemini", rt.CLAUDE_CODE):
+        with b18_origin(extra={".gitignore": B18_IGNORE}) as (repo, sha), temp_root():
+            origin_files = set(tbi.git(repo, "ls-tree", "-r", "--name-only", "HEAD").splitlines())
+            try:
+                tree = Path(mod.build_run_tree("w-0001", repo=repo, commit=sha, exclude=["evals"], harness=harness))
+            except Exception as e:  # noqa: BLE001
+                out.append(f"B18.ignored: {harness}: build_run_tree raised {type(e).__name__}: {str(e)[:300]}")
+                continue
+            want = B18_NATIVE.get(harness)
+            placed = {f"{folder}{want}" for folder in ("", "gars/")} if want else set()
+            expect = {p for p in origin_files if not (p == "evals" or p.startswith("evals/"))} | placed
+            got = set(tbi.git(tree, "ls-tree", "-r", "--name-only", "HEAD").splitlines())
+            if got != expect:
+                out.append(f"B18.ignored: {harness}: the one commit holds {sorted(got ^ expect)} off the origin's "
+                           f"files minus the exclusions plus the placed copies")
+            for folder, text in (("", B18_TEXT), ("gars/", B18_NESTED)):
+                if want and tbi.git_bytes(tree, "show", f"HEAD:{folder}{want}") != text.encode():
+                    out.append(f"B18.ignored: {harness}: {folder}{want} is not its CLAUDE.md's bytes in the commit")
+            if (tbi.git(tree, "rev-list", "--all", "--count"), tbi.git(tree, "status", "--porcelain")) != ("1", ""):
+                out.append(f"B18.ignored: {harness}: not one commit and a clean status")
+    return out
+
+
 class B18Native(Drafted):
     def test_the_native_file_beside_every_claude_md(self):
         self.assertEqual(b18_road_problems(wb()), [])
 
     def test_place_instruction_file_refuses_by_name(self):
         self.assertEqual(b18_place_problems(wb()), [])
+
+    def test_the_native_file_is_added_past_the_trees_gitignore(self):
+        self.assertEqual(b18_ignored_problems(wb()), [])
 
 
 # ------------------------------------------------------------------------------------------------- B19
