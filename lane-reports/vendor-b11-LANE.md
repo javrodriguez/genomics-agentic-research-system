@@ -1,4 +1,4 @@
-Status: needs-review
+Status: in-progress
 
 # Lane vendor-b11
 
@@ -54,3 +54,4 @@ ROUND 1 SUMMARY FOR REVIEW (cloud executor, Mon 19 Oct 2026, about 03:50 UTC): l
 - Round 1 started Mon 19 Oct 2026 03:24 UTC on lane/vendor-b11 at f257a99d; design note written; status needs-review.
 - Round 2 (glitch-26's rulings R-H1 and R-H5 on the design note) started Mon 19 Oct 2026 04:26 UTC on lane/vendor-b11 at 56d7713b. Baseline, clean environment, TMPDIR outside the clone: test_take_config 10, test_run_take 68, test_env_allowlist 29, test_walk_builders 93, test_vendor_roads 13, test_live_box 38, test_build_draft 49, test_harness_bookkeeping 21 all OK; of the 38 other modules naming TAKE_ENV, the launcher or the draft, 35 OK and test_nested_agent, test_preflight, test_sidecar (with test_settings_guard) red as in earlier rounds (this root sandbox). test_vendor_workspace_guard is not present.
 - Round 2 done Mon 19 Oct 2026 about 05:15 UTC at ade6ae01 (code) plus this file and the plan row; status needs-review.
+- Round 3 (glitch-26's rulings R-C, R-CF, R-H2, R-H3, R-H4, R4 to R6, R-P, R-N1, R-N2, R-OA, R-OC, R-B9; Mon 19 Oct 2026) started 05:46 UTC on lane/vendor-b11 at 52619ab1. Baseline under env -i (PATH, HOME, LANG, TMPDIR outside the clone): test_take_config 11, test_run_take 68, test_env_allowlist 34, test_walk_builders 94, test_vendor_roads 13, test_live_box 38, test_build_draft 49, test_harness_bookkeeping 21, test_box_integration 61 all OK. At the base: test_preflight 59 run, 1 failure (TestLeasePostflight.test_the_lease_admits_exactly_its_one_credential); test_sidecar 157 run, 1 failure (TestRoundTrip.test_round_trip_loads_clean); test_ownership 38 run, 1 failure (RestoreGuards.test_the_verify_reports_an_unreadable_folder: this root sandbox reads a mode-000 folder). test_vendor_workspace_guard is not present.
