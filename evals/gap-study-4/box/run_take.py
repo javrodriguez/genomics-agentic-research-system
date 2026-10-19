@@ -203,14 +203,18 @@ HARNESS_ENV = {h: {k: v for k, v in row.items()
 # config home (R-H5: for arms O and G, HOME is the run tree's home and the config home the mount).
 # R-H5-1 (glitch-26's ruling, Mon 19 Oct 2026): HOME and the config home are two folders, so the walk reads each as its
 # own folder and refuses a .env name in or above either, in the order each pinned CLI's own lookup reads them (the
-# sources as settings_guard.SOURCES records them, "not guarded here: .env and .gemini/.env"):
-#   Codex rust-v0.162.1: CODEX_HOME/.env only (codex-rs/arg0/src/lib.rs 159, load_dotenv before any thread; 305,
-#     CODEX_HOME/.env; utils/home-dir/src/lib.rs 14, find_codex_home reads CODEX_HOME), so CODEX_HOME comes first.
+# sources as settings_guard.SOURCES records them, "not guarded here" for both files: the .env, and the .env inside
+# .gemini):
+#   Codex rust-v0.162.1: CODEX_HOME's .env only (codex-rs/arg0/src/lib.rs 159, load_dotenv before any thread; 305,
+#     the .env in CODEX_HOME; utils/home-dir/src/lib.rs 14, find_codex_home reads CODEX_HOME), so CODEX_HOME comes
+#     first.
 #   Gemini CLI 0.64.0: findEnvFile from the working folder up to / (bundle/chunk-FLKY6NH5.js 16542), each folder's
-#     .gemini/.env first (16546), then its .env (16551); after /, homedir()/.gemini/.env (16560) then homedir()/.env
-#     (16565), where homedir() is GEMINI_CLI_HOME, else os.homedir() (bundle/chunk-NR7L3FXV.js 252011).
+#     .env inside its .gemini folder first (16546), then its own .env (16551); after /, the .env inside homedir()'s
+#     .gemini folder (16560) then homedir()'s own .env (16565), where homedir() is GEMINI_CLI_HOME, else os.homedir()
+#     (bundle/chunk-NR7L3FXV.js 252011).
 # So the walk is: CODEX_HOME (a codex row), the working folder up to /, each config home, then HOME, each followed by
-# its own ancestors (a folder no CLI reads, refused anyway), each folder once, .gemini/.env before .env in each.
+# its own ancestors (a folder no CLI reads, refused anyway), each folder once, the .env inside .gemini before the
+# folder's own .env in each.
 # The host-side check below is an early refusal only: a mounted run tree is not the container filesystem root.
 # Its arguments: the credential's name, the count of NAME=VALUE pairs, the pairs, then the harness's argv.
 # R-H1 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): a codex take's run tree is trusted from turn 1
