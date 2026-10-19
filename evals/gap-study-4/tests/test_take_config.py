@@ -662,6 +662,44 @@ class TestArg0Links(MutantCase):
         ])
 
 
+# R5-4 (glitch-26's ruling, round 5 of lane vendor-b11; the review of round 4, finding 4): config_sha256 admits R-H3's
+# four arg0 links for the codex harness only, as run_take.check_config_folder does. A claude-code or gemini folder, or
+# a folder hashed with no harness named, behaves exactly as before R-H3 (take_config.py at 936cf29f^, lines 331-332):
+# any link refuses with "a link or a special file in the config folder".
+PRE_R_H3_REFUSAL = "a link or a special file in the config folder"
+
+
+class TestArg0LinksCodexOnly(MutantCase):
+    def check_codex_only(self):
+        out = []
+        for h, m in ((tc.CLAUDE_CODE, None), (tc.GEMINI, "gemini-3.8-flash"), (tc.CODEX, "gpt-6.1-sol")):
+            a, _ = written(h, m)
+            killed_codex(a, names=ARG0_NAMES[:1])                    # one arg0 link, at its one shape and target
+            calls = ((h, (a, h)), ("no harness named", (a,))) if h != tc.CODEX else (("no harness named", (a,)),)
+            for who, args in calls:
+                try:
+                    tc.config_sha256(*args)
+                    out.append(f"R5-4: {h}: a folder holding one arg0 link was hashed ({who})")
+                except TypeError as e:
+                    out.append(f"R5-4: config_sha256 takes no harness ({e})")
+                except tc.Refused as e:
+                    if str(e) != PRE_R_H3_REFUSAL:
+                        out.append(f"R5-4: {h}: refused, but not as before R-H3 ({who}): {e}")
+        c, _ = written(tc.CODEX, "gpt-6.1-sol")
+        killed_codex(c)
+        try:
+            tc.config_sha256(c, tc.CODEX)
+        except (TypeError, tc.Refused) as e:
+            out.append(f"R5-4: codex: the four arg0 links refused with the harness named ({e})")
+        return out
+
+    def test_the_arg0_links_are_codexs_alone(self):
+        original = tc.config_sha256
+        self.assert_green_then_red(self.check_codex_only, [
+            ("every-harness", patched(tc, "config_sha256", lambda f, harness=None: original(f, tc.CODEX))),
+        ])
+
+
 # Taken last, after every import-time statement of this module: must be empty (setUpModule arms the guard).
 _PATCHED_AT_IMPORT = _patched_now()
 
