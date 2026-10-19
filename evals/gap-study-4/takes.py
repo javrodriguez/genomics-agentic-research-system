@@ -241,7 +241,8 @@ def guard_registration(row: dict, attempt: int, rows: list, history: list, *, li
 
     rows holds registered rows with their attempt; history is batch's closed
     outcomes/rulings in commit order. live contains only (slot, attempt) pairs
-    registered by this instance in its current block, never restored on restart.
+    registered by this instance whose outcome is not yet committed (its open
+    rows, at most OPEN_LIMIT), never restored on restart.
     An exception precedes every write and every launch.
     """
     bad = agent_problems(row)

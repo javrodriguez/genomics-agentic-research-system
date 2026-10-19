@@ -10,7 +10,7 @@ the pre-registration. Drivers must supply call IDs, usage and timestamps from
 their vendor records. Missing measurements remain unmeasured, never zero.
 
 Round caps cover vendor-read spend since the round began, across all months.
-walk_gate and month_turn_allowed are pure functions; batch.Batch invokes them before a block is registered (lane w7c),
+walk_gate and month_turn_allowed are pure functions; batch.Batch invokes them before each wave is registered (lane w7c),
 month_turn_allowed again before each paid launch. No account lookup, price lookup or human ruling is inferred.
 """
 from __future__ import annotations

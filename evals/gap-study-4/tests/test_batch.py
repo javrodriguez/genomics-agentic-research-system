@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """batch.py: every terminal state with three drives at once, commits serial in row order and for
-every take of a block, containers removed by recorded id, a pause launches no new drive, the mask
+every take of a wave, containers removed by recorded id, a pause launches no new drive, the mask
 and events decided on every take and committed, the fate committed with the record, a start
 gate that refuses pending data, and glitch-f3's rulings of 6 Oct 2026 (a half-cell closing
 `incomplete — mechanical` at its rehearsal or pause cap, round 3's unit; the wait_reset contract).
@@ -9,12 +9,12 @@ The driver is a fake built on agent_adapter.ScriptedAdapter: no model, no contai
 Which terminal state each fake scenario reaches is computed by routing.route on the scenario's
 records, and the set the tests must reach is labels4.TERMINAL_STATES: neither is typed here.
 Concurrency and finishing order are forced with a barrier and events, never with sleeps: a drive
-waits (up to WAIT_S, a hang detector) until every drive of its block is in flight, and a drive
+waits (up to WAIT_S, a hang detector) until every drive of its wave is in flight, and a drive
 told to finish after another waits for that one's end. B19-8 (batch.py's rolling window): with no
 finish_after the drives of one wave end together, its head first, and a commit waits until every
 drive step the loop holds open has finished (World, B19-13), so the rolling loop's tie rule
-reproduces the block run; with
-finish_after the durations differ and the loop fills freed lanes. Every check is a function returning
+reproduces the block run of the old loop; with finish_after the durations differ and the loop
+fills freed lanes. Every check is a function returning
 problems, and each is also run against an in-memory mutant of what it guards and must go red.
 
 The agent "reaching the token and the account email" is played by two in-memory fake strings

@@ -928,6 +928,7 @@ class Batch:
             raise BatchConfigError("; ".join(problems))
         queue = collections.deque((dict(r), self.next_attempt.get(r["slot"], 1)) for r in rows)
         self.open = collections.deque()                     # B19-5: (row, attempt, cid, future), in launch order
+        self._front = 0                                      # no queued re-run leads a new queue
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.block) as pool:
             while True:
                 queue = self._commit_finished(queue)         # 1. serial, row order: the oldest open take first
@@ -1024,7 +1025,9 @@ class Batch:
         # set once the wave is launched, so a refused or unregistered wave never names a row that is not committed
 
     def _drain(self) -> None:
-        """Every open take's drive waited for and committed, in row order (a stop's open takes finish first)."""
+        """Every open take's drive waited for and committed, in row order (a stop's open takes finish first). The
+        commits go to a throwaway queue: the loop has stopped, so a re-run decided while draining is never queued here
+        and its count of queued re-runs is not this queue's; the restart owes that re-run from the history (W1B3-6)."""
         while self.open:
             concurrent.futures.wait([f for *_, f in self.open])
             self._commit_finished(collections.deque())
