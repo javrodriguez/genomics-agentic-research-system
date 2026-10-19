@@ -101,6 +101,38 @@ _THREAD_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,127}")
 # off the tables and refuses the turn.
 LAUNCH_DISAGREES = "launch-differs-from-registered-invocation"
 
+# ---- OD57's read shapes for arm O (lane vendor-b17 round 2, glitch-26's rulings B17-5 to B17-7, 19 Oct 2026) ---------
+# The records box/scan_record.py's read-shape schema reads (drive.scan_read_shapes passes them for an arm O row's scan),
+# each from the pinned source, openai/codex 092d3acd6bec3e3a14bdc7e7a2810ab628ab759d (rust-v0.162.1), cited as
+# codex-rs/<path>:<line> (lane-reports/B17-DESIGN-NOTE.md section 2). The one read tool is the shell: the pinned CLI
+# offers unified exec or none (protocol/src/openai_models.rs:316-320), exec_command {cmd, ...}
+# (core/src/tools/handlers/shell_spec.rs:24-114), run as exactly [<shell>, -lc | -c, <script>] (core/src/shell.rs:24-33).
+# write_stdin's output is not a read (glitch-26's B17-7), nor is a PTY's CRLF line (81 bytes, never the ruled 80).
+_O_WRAPPED = {"shell": {"kind": "wrapped", "arg": None, "prefix": None, "opener": None}}
+READ_SHAPES = (
+    # the turn stream: a command_execution item, the call and its output in one object; `command` is
+    # redact_secrets(shlex_join(argv)) (app-server-protocol/src/protocol/item_builders.rs:54-61, 96-143); item.started
+    # and item.completed carry the same synthetic id (exec/src/event_processor_with_jsonl_output.rs:100-102, 162-181,
+    # 327-341), so every copy of an id must be the same call
+    {"shape": "stream command_execution", "copies": "same", "tools": _O_WRAPPED, "result": None,
+     "call": {"match": {"type": "command_execution"}, "under": "item", "id": "id", "name": {"value": "shell"},
+              "args": "command", "args_json": False, "text": (("aggregated_output",),)}},
+    # the rollout: function_call {name, arguments (a JSON string), call_id} (protocol/src/models.rs:1076-1095) and
+    # function_call_output {call_id, output: a string or input_text items} (:1111-1135, 2096-2104, 2187-2265), the output
+    # exec_command's header then `Output:` then the output's lines (core/src/tools/context.rs:524-575)
+    {"shape": "rollout function_call_output", "copies": "one",
+     "tools": {"exec_command": {"kind": "script", "arg": "cmd", "prefix": None, "opener": None}},
+     "call": {"match": {"type": "function_call"}, "under": "payload", "id": "call_id", "name": {"key": "name"},
+              "args": "arguments", "args_json": True, "text": ()},
+     "result": {"match": {"type": "function_call_output"}, "under": "payload", "id": "call_id", "name": None,
+                "text": (("output",), ("output", "*", "text"))}},
+    # the rollout: event_msg item_completed's CommandExecution item {id: call_id, command: argv, aggregated_output}
+    # (protocol/src/items.rs:243-281; core/src/tools/events.rs:561-589)
+    {"shape": "rollout CommandExecution", "copies": "same", "tools": _O_WRAPPED, "result": None,
+     "call": {"match": {"type": "CommandExecution"}, "under": "item", "id": "id", "name": {"value": "shell"},
+              "args": "command", "args_json": False, "text": (("aggregated_output",),)}},
+)
+
 
 class StreamError(ValueError):
     """A stream or rollout the reader cannot use as it stands (a typed refusal, never a guess)."""

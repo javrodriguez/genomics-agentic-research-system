@@ -2,7 +2,7 @@
 """The commit scan (CP2): before a take's commit, scan every file of that commit; mask what is maskable, refuse the
 rest.
 
-    scan(files, secrets, *, rules_scanner, holdout_matcher=None) -> dict          (interface 14)
+    scan(files, secrets, *, rules_scanner, holdout_matcher=None, read_shapes=()) -> dict          (interface 14)
 
 INPUTS.
   files            every file of the take's commit, as (absolute path, kind), kind from KINDS. The caller builds the
@@ -19,6 +19,8 @@ INPUTS.
                    the result records "holdout": "not-checked" (the scan never passes silently; a later gate on the
                    Mac, inside aegis, before any push, clears it). With one, "checked", and every hit is refused,
                    never masked, and reported by path, line and kind only.
+  read_shapes      the take's arm's read shapes (B17: the drive passes them per row; each arm's records live with
+                   its adapter), checked against this module's closed schema; () admits exactly what it did before.
 
 MASKING, NEVER DELETING. A hit of a secret's exact value in an agent-text file (MASKABLE: transcript, stream,
 session) is replaced in place by its kind's fixed marker (MARKERS; the email's is scrub.NOTE, imported). Every line
@@ -579,6 +581,230 @@ def _ruled_tool(uses, tool_use_id) -> bool:
     return _ruled_bash(cmd)
 
 
+# ------------------------------------------------------------------------------------------------- read shapes (B17)
+# glitch-26's rulings B17-5 to B17-7 (lane vendor-b17 round 2, 19 Oct 2026; lane-reports/B17-DESIGN-NOTE.md): OD57
+# admits its line in another agent's read of the same doc through READ SHAPES the caller passes (the drive, per the
+# row's arm; each arm's records live with its adapter, never here: this module names no harness). A shape says, as
+# data only, how a read's call and its result are found in a record file; this module checks every shape against the
+# closed schema below and keeps each OD57 constraint in its own code: the exact 80 bytes; only inside a read of that doc
+# (a path that names it, a script _ruled_bash admits, or exactly [bash|zsh|sh, -lc|-c, script] around such a script)
+# whose call its id finds (exactly one call record, or, for copies "same", every copy of the id the same name and
+# arguments: B17-6); only in an agent-text kind; the probe rescan; each admitted finding listed. No shape (the default)
+# admits exactly what this module admitted before B17.
+#
+#   shape   {"shape": label, "call": CALL, "result": RESULT or None, "copies": "one" | "same", "tools": TOOLS}
+#   CALL    {"match": {key: value}, "under": key or None, "id": key, "name": {"key": key} or {"value": name},
+#            "args": key, "args_json": bool, "text": (path, ...)}   (text only when result is None: the call and its
+#                                                                       result are one object)
+#   RESULT  {"match": {key: value}, "under": key or None, "id": key, "name": key or None, "text": (path, ...)}
+#   TOOLS   {tool name: {"kind": "path" | "script" | "wrapped", "arg": key or None, "prefix": str or None,
+#                        "opener": str or None}}
+# A node is a JSON object holding every `match` value and a string id, anywhere in a record, sitting under key `under`
+# (as its value or a list element) when that is set. A path is a tuple of keys, "*" for each list element; the strings
+# at its end are the result's text. A tool's prefix is allowed only on its result's first line (the line after
+# `opener`, when the first line is the opener).
+SHAPE_KEYS = ("shape", "call", "result", "copies", "tools")
+CALL_KEYS = ("match", "under", "id", "name", "args", "args_json", "text")
+RESULT_KEYS = ("match", "under", "id", "name", "text")
+TOOL_KEYS = ("kind", "arg", "prefix", "opener")
+COPIES = ("one", "same")
+TOOL_KINDS = ("path", "script", "wrapped")
+_WRAP_SHELL = re.compile(r"(?:(?:/[A-Za-z0-9_.-]+)*/)?(?:bash|zsh|sh)")
+_WRAP_FLAGS = ("-lc", "-c")
+
+
+def _opt_str(v) -> bool:
+    return v is None or (isinstance(v, str) and v != "")
+
+
+def _paths_ok(paths) -> bool:
+    return isinstance(paths, tuple) and all(isinstance(p, tuple) and p and all(isinstance(k, str) and k for k in p)
+                                            for p in paths)
+
+
+def _node_ok(spec, keys) -> bool:
+    return (isinstance(spec, dict) and set(spec) == set(keys) and isinstance(spec["match"], dict)
+            and all(isinstance(k, str) and isinstance(v, str) for k, v in spec["match"].items())
+            and _opt_str(spec["under"]) and isinstance(spec["id"], str) and spec["id"] != ""
+            and _paths_ok(spec["text"]))
+
+
+def _tool_ok(tool) -> bool:
+    return (isinstance(tool, dict) and set(tool) == set(TOOL_KEYS) and tool["kind"] in TOOL_KINDS
+            and _opt_str(tool["arg"]) and (tool["arg"] is not None or tool["kind"] == "wrapped")
+            and _opt_str(tool["prefix"]) and _opt_str(tool["opener"])
+            and (tool["opener"] is None or tool["prefix"] is not None))
+
+
+def _shape_ok(shape) -> bool:
+    if not (isinstance(shape, dict) and set(shape) == set(SHAPE_KEYS) and isinstance(shape["shape"], str)
+            and shape["copies"] in COPIES and isinstance(shape["tools"], dict) and shape["tools"]
+            and all(isinstance(k, str) and _tool_ok(t) for k, t in shape["tools"].items())):
+        return False
+    call, result = shape["call"], shape["result"]
+    if not (_node_ok(call, CALL_KEYS) and isinstance(call["name"], dict) and len(call["name"]) == 1
+            and set(call["name"]) <= {"key", "value"} and all(isinstance(v, str) and v for v in call["name"].values())
+            and isinstance(call["args"], str) and call["args"] != "" and type(call["args_json"]) is bool):
+        return False
+    if result is None:
+        return call["text"] != ()
+    return call["text"] == () and _node_ok(result, RESULT_KEYS) and result["text"] != () and _opt_str(result["name"])
+
+
+def _check_shapes(read_shapes) -> tuple:
+    """The caller's read shapes, each checked against the closed schema (ScanError on any other)."""
+    if not isinstance(read_shapes, tuple) or not all(_shape_ok(s) for s in read_shapes):
+        raise ScanError("read shapes are a tuple of shape records on the closed schema (SHAPE_KEYS, CALL_KEYS, "
+                        "RESULT_KEYS, TOOL_KEYS)")
+    return read_shapes
+
+
+def _shape_nodes(node, spec, key, out):
+    """Every object in a decoded record that a node spec finds (the schema above)."""
+    if isinstance(node, dict):
+        if (spec["under"] is None or spec["under"] == key) and isinstance(node.get(spec["id"]), str) \
+                and all(node.get(k) == v for k, v in spec["match"].items()):
+            out.append(node)
+        for k, v in node.items():
+            _shape_nodes(v, spec, k, out)
+    elif isinstance(node, list):
+        for v in node:
+            _shape_nodes(v, spec, key, out)
+    return out
+
+
+def _shape_call(node, spec):
+    """(tool name, arguments) of a call node, or None when it names no tool."""
+    name = spec["name"]["value"] if "value" in spec["name"] else node.get(spec["name"]["key"])
+    if not isinstance(name, str):
+        return None
+    args = node.get(spec["args"])
+    if spec["args_json"]:
+        try:
+            args = json.loads(args) if isinstance(args, str) else None
+        except (ValueError, RuntimeError):
+            args = None
+    return name, args
+
+
+def _shape_calls(data: bytes, shapes) -> list:
+    """Per shape, {call id: [(tool name, arguments)]} over every JSON record of one file: every copy of each call."""
+    records = []
+    for line in _lines(data):
+        try:
+            records.append(json.loads(line))
+        except ValueError:
+            continue
+    out = []
+    for shape in shapes:
+        calls = {}
+        for rec in records:
+            for node in _shape_nodes(rec, shape["call"], None, []):
+                got = _shape_call(node, shape["call"])
+                if got is not None:
+                    calls.setdefault(node[shape["call"]["id"]], []).append(got)
+        out.append(calls)
+    return out
+
+
+def _ruled_wrapped(argv) -> bool:
+    """A shell wrapper OD57 admits: exactly [<bash|zsh|sh, bare or absolute>, -lc | -c, <a script _ruled_bash
+    admits>], as an argument list or as its shell-quoted string."""
+    if isinstance(argv, str):
+        try:
+            lex = shlex.shlex(argv, posix=True)
+            lex.whitespace_split = True
+            lex.commenters = ""
+            argv = list(lex)
+        except ValueError:
+            return False
+    if not (isinstance(argv, list) and len(argv) == 3 and all(isinstance(a, str) for a in argv)):
+        return False
+    return bool(_WRAP_SHELL.fullmatch(argv[0])) and argv[1] in _WRAP_FLAGS and _ruled_bash(argv[2])
+
+
+def _reads_doc(tool, args) -> bool:
+    """Whether a call's arguments make its tool a read of the ruled doc."""
+    if tool["arg"] is None:
+        arg = args
+    else:
+        arg = args.get(tool["arg"]) if isinstance(args, dict) else None
+    if tool["kind"] == "path":
+        return isinstance(arg, str) and (arg == _RULED_DOC or arg.endswith("/" + _RULED_DOC))
+    if tool["kind"] == "script":
+        return _ruled_bash(arg)
+    return _ruled_wrapped(arg)
+
+
+def _shape_read(shape, calls, cid, name):
+    """The tool entry of the one read of the ruled doc that call id `cid` finds, or None: the id's copies (exactly one
+    for copies "one"; every copy the same name and arguments: B17-6), the result's own name when it carries one, a
+    tool the shape names, and arguments that read the doc."""
+    got = calls.get(cid)
+    if not got or (shape["copies"] == "one" and len(got) != 1):
+        return None
+    if any(g != got[0] for g in got):
+        return None
+    tool = shape["tools"].get(got[0][0])
+    if tool is None or (name is not None and name != got[0][0]):
+        return None
+    return tool if _reads_doc(tool, got[0][1]) else None
+
+
+def _path_strings(node, path, out):
+    """The strings at the end of a path (a tuple of keys, "*" for each list element)."""
+    if not path:
+        if isinstance(node, str):
+            out.append(node)
+    elif path[0] == "*":
+        if isinstance(node, list):
+            for v in node:
+                _path_strings(v, path[1:], out)
+    elif isinstance(node, dict):
+        _path_strings(node.get(path[0]), path[1:], out)
+    return out
+
+
+def _shape_strings(rec, shapes, indexes) -> list:
+    """(text, tool entry) for every string a ruled read's result carries in this record, by the read shapes."""
+    out = []
+    for shape, calls in zip(shapes, indexes):
+        joined = shape["result"] is None
+        spec = shape["call"] if joined else shape["result"]
+        for node in _shape_nodes(rec, spec, None, []):
+            if joined and _shape_call(node, spec) is None:
+                continue                      # a joined result is itself a copy of its call
+            name = None
+            if not joined and spec["name"] is not None:
+                name = node.get(spec["name"])
+                if not isinstance(name, str):
+                    continue
+            tool = _shape_read(shape, calls, node[spec["id"]], name)
+            if tool is not None:
+                for path in spec["text"]:
+                    out += [(s, tool) for s in _path_strings(node, path, [])]
+    return out
+
+
+def _line_prefix(tool, lines, i):
+    """The tool's own prefix when line i is its result's first line (after its opener line), else None."""
+    if tool is None or tool["prefix"] is None:
+        return None
+    first = 1 if tool["opener"] is not None and lines[0] == tool["opener"] else 0
+    return tool["prefix"] if i == first else None
+
+
+def _ruled_line(ln, ruling, extra):
+    """The ruled text when one result line is exactly it after the allowed prefixes, else None."""
+    forms = [ln] + ([ln[len(extra):]] if extra is not None and ln.startswith(extra) else [])
+    for form in forms:
+        for m in (0, _RULED_PREFIX.match(form).end()):
+            rest = form[m:].encode("utf-8", "surrogateescape")
+            if len(rest) == ruling["bytes"] and _sha(rest) == ruling["sha256"]:
+                return rest.decode()
+    return None
+
+
 def _blocks(node, out):
     """Every tool_result block in a record (outside its own tool-result keys)."""
     if isinstance(node, dict):
@@ -618,21 +844,20 @@ def _tool_result_strings(node, uses, out):
     return out
 
 
-def _ruled_text(body: bytes, ruling, uses) -> str | None:
-    """The ruled line's text when this JSON record carries it only as whole lines of ruled tools' results, else
-    None."""
+def _ruled_text(body: bytes, ruling, uses, shapes=(), indexes=()) -> str | None:
+    """The ruled line's text when this JSON record carries it only as whole lines of ruled tools' results (a Read or
+    admitted Bash result, or a ruled read by the read shapes), else None."""
     try:
         rec = json.loads(body)
     except ValueError:
         return None
     found, hits = None, 0
-    for s in _tool_result_strings(rec, uses, []):
-        for ln in s.split("\n"):
-            for m in (0, _RULED_PREFIX.match(ln).end()):
-                rest = ln[m:].encode("utf-8", "surrogateescape")
-                if len(rest) == ruling["bytes"] and _sha(rest) == ruling["sha256"]:
-                    found, hits = rest.decode(), hits + 1
-                    break
+    for s, tool in [(s, None) for s in _tool_result_strings(rec, uses, [])] + _shape_strings(rec, shapes, indexes):
+        lines = s.split("\n")
+        for i, ln in enumerate(lines):
+            text = _ruled_line(ln, ruling, _line_prefix(tool, lines, i))
+            if text is not None:
+                found, hits = text, hits + 1
     if found is None:
         return None
     # the text must sit in the record only where it was counted, and appear raw exactly as often (it needs no JSON
@@ -643,7 +868,7 @@ def _ruled_text(body: bytes, ruling, uses) -> str | None:
     return found
 
 
-def _ruled_findings(scanner, files, findings) -> tuple:
+def _ruled_findings(scanner, files, findings, shapes=()) -> tuple:
     """(still refused, admitted) for the rule findings. A finding is admitted only when its rule has a ruling, its file
     is agent text, its line carries the ruled text as tool-result lines alone, and the rules scanner, run again over
     a probe copy of the file with exactly those occurrences removed, no longer reports that rule on that line."""
@@ -657,7 +882,7 @@ def _ruled_findings(scanner, files, findings) -> tuple:
             lines = _lines(data)
             if f["line"] <= len(lines):
                 body = lines[f["line"] - 1].rstrip(b"\n")
-                text = _ruled_text(body, rulings[0], _tool_uses(data))
+                text = _ruled_text(body, rulings[0], _tool_uses(data), shapes, _shape_calls(data, shapes))
                 if text is not None:
                     candidates.setdefault(f["path"], []).append((f, rulings[0], text))
                     continue
@@ -690,14 +915,14 @@ def _ruled_findings(scanner, files, findings) -> tuple:
     return refused, admitted
 
 
-def _rules(scanner, files) -> tuple:
+def _rules(scanner, files, shapes=()) -> tuple:
     """(every rules-scanner finding no exact ruling admits, refused; the admitted ones, each naming its ruling)."""
     found = []
     for f in scanner([p for p, _ in files]):
         if not _finding_ok(f):
             raise ScanError("a rules-scanner finding is {path, line, rule}")
         found.append(f)
-    still, admitted = _ruled_findings(scanner, files, found)
+    still, admitted = _ruled_findings(scanner, files, found, shapes)
     return [{"path": f["path"], "line": f["line"], "kind": RULE_KIND,
              "why": f"the rules scanner's rule {f['rule']!r}"} for f in still], admitted
 
@@ -778,10 +1003,11 @@ def _witness(path: str, before: bytes, after: bytes, replacements) -> dict:
             "original_bytes": len(before), "published_bytes": len(after), "replacements": replacements}
 
 
-def _scan_core(files, secrets, scanner, holdout_matcher):
+def _scan_core(files, secrets, scanner, holdout_matcher, read_shapes=()):
     """The shared scan: (the scan result, {path: witness}). Each file's witness is built and checked before that
     file is written, so a refused witness never writes its file."""
     _require_scanner(scanner)   # the injected callable (interface 14); never RULES_SCANNER
+    shapes = _check_shapes(read_shapes)
     files, secrets = list(files), list(secrets)
     _require_files(files)
     _require_search(secrets)
@@ -808,23 +1034,23 @@ def _scan_core(files, secrets, scanner, holdout_matcher):
         if holdout_matcher is not None:
             refused += _holdout(holdout_matcher, path, after)
         records.append({"path": path, "sha256_before": _sha(before), "sha256_after": _sha(after)})
-    rule_refused, ruled = _rules(scanner, files)
+    rule_refused, ruled = _rules(scanner, files, shapes) if shapes else _rules(scanner, files)   # () calls as before
     refused += rule_refused
     result = {"masked": masked, "events": len(masked), "refused": refused, "files": records,
               "holdout": NOT_CHECKED if holdout_matcher is None else CHECKED, "ruled": ruled}
     return result, witnesses
 
 
-def scan(files, secrets, *, rules_scanner, holdout_matcher=None) -> dict:
-    """Scan every file of a take's commit (see the module docstring)."""
-    return _scan_core(files, secrets, rules_scanner, holdout_matcher)[0]
+def scan(files, secrets, *, rules_scanner, holdout_matcher=None, read_shapes=()) -> dict:
+    """Scan every file of a take's commit (see the module docstring; read_shapes: the read shapes block, B17)."""
+    return _scan_core(files, secrets, rules_scanner, holdout_matcher, read_shapes)[0]
 
 
-def scan_with_witness(files, secrets, *, rules_scanner, holdout_matcher=None) -> tuple:
+def scan_with_witness(files, secrets, *, rules_scanner, holdout_matcher=None, read_shapes=()) -> tuple:
     """scan's result unchanged, plus {path: witness} for every scanned file (unchanged files carry an empty
     replacement list). A witness carries offsets, lengths, kinds, fixed marker ids and whole-file sha256s only: never
     a secret's value, nor a digest of a value alone."""
-    return _scan_core(files, secrets, rules_scanner, holdout_matcher)
+    return _scan_core(files, secrets, rules_scanner, holdout_matcher, read_shapes)
 
 
 def passed(result: dict) -> bool:
