@@ -8,7 +8,8 @@ streams over a fake runtime.
                                                     the generated mutation sweep of both modules (see its section)
 
 Fixtures: tests/fixtures/codex-streams/, every file SYNTHETIC (its README labels each one): written from the event
-types, item types and usage keys D8 section 1 names, plus the keys transcript_codex.py lists as "NOT in D8". No Codex
+types, item types and usage keys D8 section 1 names, plus the keys transcript_codex.py lists as "NOT in D8" (and B15's
+cache_write_input_tokens, read from the pinned struct: codex_usage_sources.py). No Codex
 stream has been recorded (ruling Q-3: build on the documented shapes now; the freeze binds the recorded re-test).
 
 What is tested, each guard with its own bound check and a whole-file witness of codex_adapter.py or
@@ -107,6 +108,9 @@ D8_EVENTS = ("thread.started", "turn.started", "item.started", "item.completed",
              "error")
 D8_ITEMS = ("agent_message", "reasoning", "command_execution", "file_change", "mcp_tool_call")
 D8_USAGE = ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens")
+# Lane vendor-b14 B15 (practice walk w-o3): the pinned struct Usage, exec_events.rs:59-73 at rust-v0.162.1, in its order.
+PINNED_USAGE = ("input_tokens", "cached_input_tokens", "cache_write_input_tokens", "output_tokens",
+                "reasoning_output_tokens")
 TID = "synthetic-thread-0001"
 TAKE = "cd" * 32
 MODEL = "gpt-6.1-sol"
@@ -115,7 +119,8 @@ MODE_FLAG_TEXT = "--dangerously-bypass-approvals-and-sandbox"   # spelled here (
 VERSION = "0.160.1"
 LOGIN = "CODEX_API_KEY"
 LOGIN_VALUE = "synthetic-login-value-" + "fedcba9876543210"     # a planted fake, never a real key
-USAGE = {"input_tokens": 1200, "cached_input_tokens": 800, "output_tokens": 90, "reasoning_output_tokens": 40}
+USAGE = {"input_tokens": 1200, "cached_input_tokens": 800, "cache_write_input_tokens": 0, "output_tokens": 90,
+         "reasoning_output_tokens": 40}
 
 SCRATCH: Path | None = None
 _STACK = contextlib.ExitStack()
@@ -1234,8 +1239,9 @@ class TestTheShapes(unittest.TestCase):
     def test_b8_a_value_off_its_type_is_refused(self):
         self.assertEqual(b8_types(tc), [])
 
-    def test_the_usage_keys_are_d8s(self):
-        self.assertEqual(tuple(getattr(tc, "USAGE_KEYS", ())), D8_USAGE)
+    def test_the_usage_keys_are_d8s_and_the_pinned_structs(self):
+        self.assertEqual(tuple(getattr(tc, "USAGE_KEYS", ())), PINNED_USAGE)
+        self.assertEqual(tuple(k for k in PINNED_USAGE if k in D8_USAGE), D8_USAGE)
 
 
 class TestTheAdapter(unittest.TestCase):

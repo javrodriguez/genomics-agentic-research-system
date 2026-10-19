@@ -15,6 +15,9 @@ the pinned version re-tests it (ruling Q-3, glitch-2f, 12 Oct 2026). Two grades 
     the event types   thread.started, turn.started, item.started, item.completed, turn.completed, turn.failed, error
     the item types    agent_message, reasoning, command_execution, file_change, mcp_tool_call
     the usage keys    turn.completed.usage: input_tokens, cached_input_tokens, output_tokens, reasoning_output_tokens
+  READ FROM THE PINNED SOURCE (lane vendor-b14 B15, practice walk w-o3; codex_usage_sources records each line):
+    the usage keys    D8's four and cache_write_input_tokens, exactly the fields of struct Usage at openai/codex
+                      rust-v0.162.1 (092d3acd), codex-rs/exec/src/exec_events.rs:59-73, all five always serialized
   NOT in D8 (this lane's reading of Codex's exec event schema, unverified in this lane, which has no network; the
   docs read of plan item 2 or the first recorded stream confirms or replaces each, Q-w11a-1):
     thread.started.thread_id; turn.failed.error.message; error.message; every item's `id` and `type`;
@@ -95,8 +98,11 @@ STARTED_ITEM_TYPES = (COMMAND_EXECUTION, MCP_TOOL_CALL)
 OUTPUT_ITEM_TYPES = (AGENT_MESSAGE, COMMAND_EXECUTION, FILE_CHANGE, MCP_TOOL_CALL)
 TOOL_ITEM_TYPES = (COMMAND_EXECUTION, FILE_CHANGE, MCP_TOOL_CALL)
 
-# ---- turn.completed.usage (D8 section 1 and the per-harness table, D8:175) -----------------------------------------
-USAGE_KEYS = ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens")
+# ---- turn.completed.usage (D8 section 1 and the per-harness table, D8:175; B15, the pinned struct) -----------------
+# exec_events.rs:63, :65, :68, :70 and :72 in that order. No field is skip_serializing_if, and the serde(default) on
+# cache_write_input_tokens (:67) is read only when deserializing, so exec prints all five on every turn.completed.
+USAGE_KEYS = ("input_tokens", "cached_input_tokens", "cache_write_input_tokens", "output_tokens",
+              "reasoning_output_tokens")
 
 # ---- file_change's changes -----------------------------------------------------------------------------------------
 CHANGE_KEYS = ("path", "kind")

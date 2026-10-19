@@ -36,7 +36,7 @@ THE RECORDS READ (the tables are transcript_codex's; see its docstring for which
                          text the harness's own message}. The agent's words (agent_message) are never an API error.
              agent_output True when an item.completed of an OUTPUT_ITEM_TYPES type exists (text or a tool call;
                          reasoning alone is not output), read from event and item types, never from content.
-             usage       turn.completed.usage's four USAGE_KEYS as recorded; a key that is missing or not a count
+             usage       turn.completed.usage's five USAGE_KEYS as recorded; a key that is missing or not a count
                          refuses (StreamError), never 0; a turn with no turn.completed has no usage (None, unmeasured).
   rollout    `$CODEX_HOME/sessions/.../rollout-*.jsonl`, copied out host-side by the driver and handed over by
              `rollout_for(n)`: exec JSON carries no model (D8:168, issue #14736), so the turn's init is read here.

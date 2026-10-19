@@ -256,9 +256,9 @@ WITNESSES = {
     "new-key-dropped": ("tc", ((_TC_KEYS, 'USAGE_KEYS = ("input_tokens", "cached_input_tokens", "output_tokens",\n'
                                           '              "reasoning_output_tokens")'),)),
     "invented-key-tabled": ("tc", ((_TC_KEYS, _TC_KEYS[:-1] + ', "total_tokens")'),)),
-    "new-key-optional": ("ca", (("vals = {k: rec[\"usage\"].get(k) for k in tc.USAGE_KEYS}",
+    "missing-key-skipped": ("ca", (("vals = {k: rec[\"usage\"].get(k) for k in tc.USAGE_KEYS}",
                                  "vals = {k: rec[\"usage\"][k] for k in tc.USAGE_KEYS if k in rec[\"usage\"]}"),)),
-    "new-key-zero": ("ca", (("vals = {k: rec[\"usage\"].get(k) for k in tc.USAGE_KEYS}",
+    "missing-key-zero": ("ca", (("vals = {k: rec[\"usage\"].get(k) for k in tc.USAGE_KEYS}",
                              "vals = {k: rec[\"usage\"].get(k, 0) for k in tc.USAGE_KEYS}"),)),
     "new-key-any-value": ("ca", (("            if not all(_count(v) for v in vals.values()):",
                                   "            if not all(_count(v) for k, v in vals.items() if k != "
