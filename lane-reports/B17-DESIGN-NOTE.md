@@ -166,3 +166,21 @@ In their place:
 - C-R4, new: the exec `custom_tool_call_output` admits the ruled line only inside a verbatim copy of an admitted C-R3 item's aggregated_output in the same file. Its call is a `custom_tool_call` named `exec` with the same call id, and nothing else in that output is admitted by this rule (B17-16b).
 
 Known limit (round 4): a tty exec's `tty` argument now sits only inside the exec script's text, which no shape reads. Its output is held by its CRLF bytes, in the rollout as in the stream.
+
+## 7. Round 5: the exec output's real forms (B17-17), by counts only
+
+The census was census_r5.py (scratchpad/b17regress-tool/), over the committed arm O rollouts (gap4-walk-records-20261019, walk/* branches, 20 distinct native files read through git cat-file, run under a heavy booking).
+It printed counts, booleans and model slugs only.
+Each of the 108 CommandExecution items lies inside exactly one exec call/output pair by line order.
+Its aggregated_output was looked for in that pair's custom_tool_call_output items:
+
+| model | A verbatim | B one JSON string literal, escaped once | C double-escaped | D other |
+|---|---|---|---|---|
+| gpt-6-luna (36) | 32 | 0 | 0 | 4 |
+| gpt-6.1-sol (72) | 0 | 60 | 0 | 12 |
+
+- B: in all 60, the escaped form appears with its own quotes, as one whole JSON string literal. 54 sit in an item that is a JSON object, and 6 in an item that is not. The reviewer counted 38 escaped for gpt-6.1-sol because ascii escaping hid the non-ASCII outputs; the real literal keeps non-ASCII raw.
+- D: all 16 are lossy. Each item holds a truncation marker, only 50 to 90 percent of the non-empty lines are present, and the first half of the output is not; this is a middle truncation. 4 of gpt-6.1-sol's 12 scripts pipe through `head`.
+- Admitted (B17-17a): A, and B as one JSON string literal whose single `json.loads` decode equals the read's output exactly, its opening quote not escaped. C never occurs, so it is not admitted. D stays refused: a lossy copy cannot be shown to come from the read. That is a known limit, 16 of 108 committed outputs, all of them reads of other files.
+- B17-18: each position of the ruled line in an exec output counts once, however many sources match it.
+- B17-19: an exec output's sources are only the CommandExecutions that lie between its own exec call's line and its own line.

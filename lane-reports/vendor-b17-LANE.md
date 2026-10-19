@@ -1,5 +1,56 @@
 Status: needs-review
 
+## ROUND 5 SUMMARY FOR REVIEW (local executor, 2026-10-19 23:51 UTC; glitch-26's rulings B17-17 to B17-19 and NITs 2, 3, 5 on REVIEW-vendor-b17-baef7c51)
+
+Red commit f99fd6b6 (tests only): Ran 187 tests, FAILED (failures=15, errors=19), all in the B17 classes.
+Green commit 019cdc7e:
+- B17-17 (MAJOR 1):
+  - Census (design note section 7, census_r5.py, counts only), each CommandExecution against its own exec pair:
+    - gpt-6-luna: 32 verbatim, 0 escaped, 0 double-escaped, 4 lossy.
+    - gpt-6.1-sol: 0 verbatim, 60 one JSON string literal escaped once, 0 double-escaped, 12 lossy.
+  - The 16 lossy outputs are middle truncations: a truncation marker, 50 to 90 percent of lines present, the first half absent.
+  - Admitted, as ruled in (a): the escaped span as one JSON string literal whose single json.loads equals the read's output exactly. Its opening quote must not be escaped, and both non-ASCII forms are accepted. The 60 are all in this form.
+  - Not built: no double-escape exists, so none is admitted.
+  - Lossy outputs stay refused, recorded as a known limit (16 of 108).
+  - Fixtures: gpt-6-luna verbatim and gpt-6.1-sol as a JSON object holding the literal, each admitted.
+  - Refused, with their tests: a double-escaped output, a literal of a changed output, an escaped quote before the literal, and a middle truncation.
+  - Witness "the escaped span is one exact literal".
+- B17-18 (MINOR 1): `_copy_hits` counts distinct positions of the ruled line, never matches.
+  - The reviewer's D1 to D4b: D1 and D2 are admitted, and D3, D4 and D4b refuse their exec output.
+  - Witnesses "a position counts once" (the dedupe dropped) and "every position counts" (the count capped at one).
+- B17-19 (NIT 1): an exec output's sources are only the CommandExecutions between its own exec call's line and its own line.
+  - Witness "the exec pair's window".
+  - The reviewer's B1 now refuses the read-less exec's output.
+  - The call-id witness now drops both id lookups, the tool's and the window's.
+- NIT 2:
+  - P2: the CommandExecution's record must hold payload.type item_completed (RECORD keys may be dotted).
+  - P10: each shape names its file kinds, so no rollout shape reads a stream file.
+  - O25: a functionResponse inside a toolCalls entry's result must carry that entry's id (a position anchor).
+  - Each has a data witness.
+  - Risk for review: if Gemini ever records sibling responses inside one entry's result (updateMessagesFromHistory, design note 1.3), that copy now counts as a second, unadmitted copy of the line, and the record refuses.
+- NIT 3: test_the_copy_and_wrapped_schema_refuses.
+  - The reviewer's mutants are killed: C (`_copy_ok` always True) fails 6 subtests, and H (the wrapped schema dropped) fails 4.
+  - Both were applied in scratch copies.
+- NIT 5: the rollout CommandExecution's tool is kind "argv" (list form only). Witness "the argv's list form"; P7 refuses.
+- NIT 4: recorded, no change.
+- Pins moved, each because its records changed: Gemini d1250532… (anchors, kinds), Codex ea250707… (argv, payload.type, kinds). drive.py and check_vendor_sources.py are unchanged.
+- The reviewer's probe_r4 on 019cdc7e:
+  - C0, D1, D2, B2, B6, B7 and B9 are admitted.
+  - D3, D4, D4b and D5 refuse the extra copy.
+  - B1, B3, B4, B5, B8 and B10 refuse.
+  - P1 to P10 refuse.
+Counts (each module after light-ok, the lane run under mac_slot run --kind heavy; Python 3.13.2 on /usr/local/bin):
+- test_scan_record: Ran 187, OK; 113 mutants red.
+- test_gemini_adapter: Ran 145, OK; --witnesses Ran 115, OK.
+- test_codex_adapter: Ran 56, OK; --witnesses Ran 17, OK.
+- test_sidecar: Ran 157, OK (1 skipped); --process-check exit 0.
+- test_scan_witness: Ran 10, OK.
+- check_vendor_sources B17 exit 0; EB drive.py exit 0.
+- The lane's 64-line witness run: 22 + 22 + 20 ran, 0 failed.
+Integration: the round 4 merge int/vendor-b17-merge-r4-20261019 is at 9c0b8861 (dc3c1e02 + baef7c51). Its checks were all green before round 5: B17/EB exit 0, the six modules and test_vendor_envelopes OK, test_run_take Ran 68 OK, build_draft and copy_manifest --check ok, and the 66 witness lines 0 failed. Round 5's head merges into it as a second commit.
+
+RESUME HERE: review stop (round 5)
+
 ## ROUND 4 SUMMARY FOR REVIEW (local executor, 2026-10-19 23:16 UTC; glitch-26's rulings B17-16a to B17-16d, MINOR 1 and the NITs, on REVIEW-vendor-b17-dd2d0398)
 
 Red commit 7a797ec9 (tests only): the Codex rollout fixtures in the census's real shape (custom_tool_call `exec` with a string input, CommandExecution with source unified_exec_startup, custom_tool_call_output as input_text items; no record text copied); TestB17Round4 and the reshaped round 1 to 3 tests. Run on 7a797ec9: Ran 176 tests, FAILED (failures=20, errors=12), all in the B17 classes.
@@ -34,7 +85,7 @@ Counts (light-ok for each module, the lane run under mac_slot run --kind heavy; 
 - The lane's witness run: all 64 command lines in three heavy bookings, 22 + 22 + 20 ran, 0 failed.
 Left unrun (athena's): the adapters' generated sweeps and the full suite. The integration merge clone vendor-int-b17-20261019 was stopped as ruled: merge head 4fc1322a and the B17 merge 9b9e71fc (amended to resolve test_vendor_envelopes' edit D pin) stand untouched, to be redone on top of round 4.
 
-RESUME HERE: review stop (round 4)
+(round 4's stop, superseded by round 5's line above: review stop (round 4))
 
 ## ROUND 3 SUMMARY FOR REVIEW (local executor, 2026-10-19 22:20 UTC; glitch-26's rulings B17-10 to B17-15 on REVIEW-vendor-b17-a051f6e3)
 
@@ -97,3 +148,4 @@ BLOCKED ON glitch-26: in round 1 (B17-1), a safety check refused a shell command
 - 2026-10-19 18:38 UTC: round 2 on glitch-26's rulings B17-5 to B17-9: red at 03efe11d, green at 7cdba6b7, piece B17 registered in check_vendor_sources, the lane's 64-line witness run all exit 0; the round-1 RESUME HERE line is replaced by round 2's as ruled. Nothing pushed.
 - 2026-10-19 22:20 UTC: round 3 on glitch-26's rulings B17-10 to B17-15 (review a051f6e3, CHANGES): red at 2d707249, green at a7760094, the B17-11 walk-record comparison 0 differences over 159 folders and 5045 files (0 findings under either scanner), the lane's 64-line witness run all exit 0 under two heavy bookings. Nothing pushed.
 - 2026-10-19 23:16 UTC: round 4 on glitch-26's rulings B17-16a to B17-16d, MINOR 1 and NIT 2 (review dd2d0398, CHANGES): red at 7a797ec9, green at 2f267f7a, design note section 6, the athena rescan of w-g9, w-g3, w-g5 and w-g7 (scratch removed), the lane's 64-line witness run all exit 0. The integration merge clone was stopped as ruled. Nothing pushed.
+- 2026-10-19 23:51 UTC: round 5 on glitch-26's rulings B17-17 to B17-19 and NITs 2, 3, 5 (review baef7c51, CHANGES): the exec-output census in design note section 7, red at f99fd6b6, green at 019cdc7e, the lane's 64-line witness run all exit 0. Nothing pushed.

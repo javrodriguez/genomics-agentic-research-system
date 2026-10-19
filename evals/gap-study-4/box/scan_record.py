@@ -633,12 +633,20 @@ def _ruled_tool(uses, tool_use_id) -> bool:
 # verbatim copy of the text of a call that joined shape admits as a read of the doc in the same file (the result's own
 # call found by its id, of a tool the shape names); nothing else in the result is admitted by this rule, and the
 # "nowhere else on the record" guard still counts every copy of the line on the record.
-SHAPE_KEYS = ("shape", "call", "result", "copies", "tools", "copy_of")
+# Round 5 (glitch-26's B17-17 to B17-19 and NITs 2, 3, 5 on review baef7c51):
+# - a shape names the file kinds it reads (`kinds`, agent-text kinds only), so no shape crosses a stream and a session;
+# - a position is (path, RECORD, anchor): RECORD's keys may be dotted paths ("payload.type"), and an anchor k binds the
+#   node's id to the id of the object at path[:k] (a functionResponse answers its own toolCalls entry);
+# - kind "argv" is a wrapped tool that takes the argument list form only;
+# - a copy result's sources are only the reads between its own call's line and its own line (B17-19), and its
+#   admitted text is counted by distinct positions of the ruled line in it (B17-18), each inside either a verbatim copy
+#   of a source or one JSON string literal whose single decode is that source exactly (B17-17a).
+SHAPE_KEYS = ("shape", "call", "result", "copies", "tools", "copy_of", "kinds")
 CALL_KEYS = ("match", "at", "id", "name", "args", "args_json", "text")
 RESULT_KEYS = ("match", "at", "id", "name", "text")
 TOOL_KEYS = ("kind", "arg", "prefix", "opener", "shells", "flags")
 COPIES = ("one", "same")
-TOOL_KINDS = ("path", "script", "wrapped", "copy")
+TOOL_KINDS = ("path", "script", "wrapped", "argv", "copy")
 
 
 def _opt_str(v) -> bool:
@@ -658,8 +666,9 @@ def _strs_ok(v) -> bool:
 
 
 def _at_ok(at) -> bool:
-    return (isinstance(at, tuple) and len(at) == 2 and _path_ok(at[0], True) and isinstance(at[1], dict)
-            and all(isinstance(k, str) and _strs_ok(v) for k, v in at[1].items()))
+    return (isinstance(at, tuple) and len(at) == 3 and _path_ok(at[0], True) and isinstance(at[1], dict)
+            and all(isinstance(k, str) and k and _strs_ok(v) for k, v in at[1].items())
+            and (at[2] is None or (type(at[2]) is int and 0 < at[2] < len(at[0]))))
 
 
 def _node_ok(spec, keys) -> bool:
@@ -670,9 +679,9 @@ def _node_ok(spec, keys) -> bool:
 
 
 def _tool_ok(tool) -> bool:
-    wrapped = isinstance(tool, dict) and tool.get("kind") == "wrapped"
+    wrapped = isinstance(tool, dict) and tool.get("kind") in ("wrapped", "argv")
     return (isinstance(tool, dict) and set(tool) == set(TOOL_KEYS) and tool["kind"] in TOOL_KINDS
-            and _opt_str(tool["arg"]) and (tool["arg"] is not None or tool["kind"] in ("wrapped", "copy"))
+            and _opt_str(tool["arg"]) and (tool["arg"] is not None or tool["kind"] in ("wrapped", "argv", "copy"))
             and _opt_str(tool["prefix"]) and _opt_str(tool["opener"])
             and (tool["opener"] is None or tool["prefix"] is not None)
             and (_strs_ok(tool["shells"]) and all(s.startswith("/") for s in tool["shells"]) and _strs_ok(tool["flags"])
@@ -682,7 +691,8 @@ def _tool_ok(tool) -> bool:
 def _shape_ok(shape) -> bool:
     if not (isinstance(shape, dict) and set(shape) == set(SHAPE_KEYS) and isinstance(shape["shape"], str)
             and shape["copies"] in COPIES and isinstance(shape["tools"], dict) and shape["tools"]
-            and all(isinstance(k, str) and _tool_ok(t) for k, t in shape["tools"].items())):
+            and all(isinstance(k, str) and _tool_ok(t) for k, t in shape["tools"].items())
+            and _strs_ok(shape["kinds"]) and all(k in MASKABLE for k in shape["kinds"])):
         return False
     call, result = shape["call"], shape["result"]
     if not (_node_ok(call, CALL_KEYS) and isinstance(call["name"], dict) and len(call["name"]) == 1
@@ -713,14 +723,28 @@ def _check_shapes(read_shapes) -> tuple:
     return read_shapes
 
 
+def _record_value(rec, key):
+    """The one value at a record's (dotted) key, else None."""
+    got = _path_values(rec, tuple(key.split(".")), [])
+    return got[0] if len(got) == 1 else None
+
+
+def _anchored(rec, path, anchor) -> list:
+    """(node, its anchor object or None) at a position's path."""
+    if anchor is None:
+        return [(n, None) for n in _path_values(rec, path, [])]
+    return [(n, a) for a in _path_values(rec, path[:anchor], []) for n in _path_values(a, path[anchor:], [])]
+
+
 def _shape_nodes(rec, spec) -> list:
     """The objects a node spec finds in a decoded record: only at its fixed positions (B17-10), in a record of the
-    position's type (NIT 2)."""
-    return [n for path, record in spec["at"]
-            if isinstance(rec, dict) and all(rec.get(k) in v for k, v in record.items())
-            for n in _path_values(rec, path, [])
+    position's type (NIT 2), answering their anchor object's id when the position has one (round 5)."""
+    return [n for path, record, anchor in spec["at"]
+            if isinstance(rec, dict) and all(_record_value(rec, k) in v for k, v in record.items())
+            for n, a in _anchored(rec, path, anchor)
             if isinstance(n, dict) and isinstance(n.get(spec["id"]), str)
-            and all(n.get(k) == v for k, v in spec["match"].items())]
+            and all(n.get(k) == v for k, v in spec["match"].items())
+            and (a is None or (isinstance(a, dict) and a.get(spec["id"]) == n.get(spec["id"])))]
 
 
 def _shape_call(node, spec):
@@ -737,39 +761,43 @@ def _shape_call(node, spec):
     return name, args
 
 
-def _shape_calls(data: bytes, shapes) -> list:
-    """Per shape, ({call id: [(tool name, arguments)]} over every JSON record of one file: every copy of each call,
-    and for a copy shape the texts its copy_of shape admits as reads of the doc in this file, else ())."""
+def _shape_calls(data: bytes, shapes, kind=None) -> list:
+    """Per shape, ({call id: [(tool name, arguments)]} over every JSON record of one file: every copy of each call;
+    for a copy shape the (line, text) of each read its copy_of shape admits in this file, else (); {call id: [its
+    lines]}). A shape whose kinds do not hold the file's kind finds nothing (round 5)."""
     records = []
-    for line in _lines(data):
+    for n, line in enumerate(_lines(data), 1):
         try:
-            records.append(json.loads(line))
+            records.append((n, json.loads(line)))
         except ValueError:
             continue
-    calls_of = []
+    calls_of, lines_of = [], []
     for shape in shapes:
-        calls = {}
-        for rec in records:
-            for node in _shape_nodes(rec, shape["call"]):
-                got = _shape_call(node, shape["call"])
-                if got is not None:
-                    calls.setdefault(node[shape["call"]["id"]], []).append(got)
+        calls, lines = {}, {}
+        if kind in shape["kinds"]:
+            for n, rec in records:
+                for node in _shape_nodes(rec, shape["call"]):
+                    got = _shape_call(node, shape["call"])
+                    if got is not None:
+                        calls.setdefault(node[shape["call"]["id"]], []).append(got)
+                        lines.setdefault(node[shape["call"]["id"]], []).append(n)
         calls_of.append(calls)
+        lines_of.append(lines)
     out = []
-    for shape, calls in zip(shapes, calls_of):
+    for shape, calls, lines in zip(shapes, calls_of, lines_of):
         sources = []
-        if shape["copy_of"] is not None:
-            src = shapes[shape["copy_of"]]
-            for rec in records:
-                sources += [s for s, _ in _shape_strings(rec, (src,), ((calls_of[shape["copy_of"]], ()),))]
-        out.append((calls, tuple(s for s in sources if s)))
+        if shape["copy_of"] is not None and kind in shape["kinds"]:
+            k = shape["copy_of"]
+            for n, rec in records:
+                sources += [(n, s) for s, _ in _shape_strings(rec, (shapes[k],), ((calls_of[k], (), lines_of[k]),))]
+        out.append((calls, tuple((n, s) for n, s in sources if s), lines))
     return out
 
 
-def _ruled_wrapped(argv, shells, flags) -> bool:
+def _ruled_wrapped(argv, shells, flags, lists_only=False) -> bool:
     """A shell wrapper OD57 admits: exactly [<one of `shells`, the exact path>, <one of `flags`>, <a script _ruled_bash
-    admits>], as an argument list or as its shell-quoted string."""
-    if isinstance(argv, str):
+    admits>], as an argument list or (unless lists_only, NIT 5) as its shell-quoted string."""
+    if isinstance(argv, str) and not lists_only:
         try:
             lex = shlex.shlex(argv, posix=True)
             lex.whitespace_split = True
@@ -795,7 +823,7 @@ def _reads_doc(tool, args) -> bool:
         return isinstance(arg, str) and (arg == _RULED_DOC or arg.endswith("/" + _RULED_DOC))
     if tool["kind"] == "script":
         return _ruled_bash(arg)
-    return _ruled_wrapped(arg, tool["shells"], tool["flags"])
+    return _ruled_wrapped(arg, tool["shells"], tool["flags"], tool["kind"] == "argv")
 
 
 def _shape_read(shape, calls, cid, name):
@@ -813,10 +841,44 @@ def _shape_read(shape, calls, cid, name):
     return tool if _reads_doc(tool, got[0][1]) else None
 
 
-def _shape_strings(rec, shapes, indexes) -> list:
-    """(text, tool entry) for every string a ruled read's result carries in this record, by the read shapes."""
+def _copy_hits(s, srcs, ruling) -> list:
+    """The ruled text once per distinct position of it in `s` that lies inside a verbatim copy of a source, or inside
+    one JSON string literal of a source (json.dumps, non-ASCII raw or escaped; its opening quote not escaped), the
+    position being a whole line of that source after _RULED_PREFIX (B17-17a, B17-18)."""
+    hits, seen = [], set()
+    for a in srcs:
+        found, at = [], 0
+        for ln in a.split("\n"):
+            f = _ruled_line(ln, ruling, None)
+            if f is not None:
+                found.append((at + len(ln) - len(f), f))
+            at += len(ln) + 1
+        for k, f in found:
+            spans = [(k, None)] + [(1 + len(json.dumps(a[:k], ensure_ascii=x)) - 2, json.dumps(a, ensure_ascii=x))
+                                   for x in (False, True)]
+            q = s.find(f)
+            while q != -1:
+                for kk, e in spans:
+                    p = q - kk
+                    if p < 0:
+                        continue
+                    if e is None:
+                        ok = s[p:p + len(a)] == a
+                    else:
+                        ok = s[p:p + len(e)] == e and (p == 0 or s[p - 1] != "\\") and json.loads(e) == a
+                    if ok:
+                        if q not in seen:
+                            seen.add(q)
+                            hits.append(f)
+                q = s.find(f, q + 1)
+    return hits
+
+
+def _shape_strings(rec, shapes, indexes, ruling=None, line=None) -> list:
+    """(text, tool entry) for every string a ruled read's result carries in this record, by the read shapes; a copy
+    result's text is its admitted positions (_copy_hits) among the reads of its own exec pair (B17-19)."""
     out = []
-    for shape, (calls, sources) in zip(shapes, indexes):
+    for shape, (calls, sources, call_lines) in zip(shapes, indexes):
         joined = shape["result"] is None
         spec = shape["call"] if joined else shape["result"]
         for node in _shape_nodes(rec, spec):
@@ -837,8 +899,11 @@ def _shape_strings(rec, shapes, indexes) -> list:
                     if tool["kind"] != "copy":
                         out.append((s, tool))
                         continue
-                    for a in sources:         # B17-16b: only the verbatim copies of an admitted read's text
-                        out += [(a, tool)] * s.count(a)
+                    cl = call_lines.get(node[spec["id"]])
+                    if ruling is None or line is None or not cl:
+                        continue
+                    srcs = [t for ln, t in sources if cl[0] < ln < line]
+                    out += [(f, tool) for f in _copy_hits(s, srcs, ruling)]
     return out
 
 
@@ -881,7 +946,7 @@ def _tool_result_strings(node, uses, out):
     return out
 
 
-def _ruled_text(body: bytes, ruling, uses, shapes=(), indexes=()) -> str | None:
+def _ruled_text(body: bytes, ruling, uses, shapes=(), indexes=(), line=None) -> str | None:
     """The ruled line's text when this JSON record carries it only as whole lines of ruled tools' results (a Read or
     admitted Bash result, or a ruled read by the read shapes), else None."""
     try:
@@ -889,7 +954,8 @@ def _ruled_text(body: bytes, ruling, uses, shapes=(), indexes=()) -> str | None:
     except ValueError:
         return None
     found, hits = None, 0
-    for s, tool in [(s, None) for s in _tool_result_strings(rec, uses, [])] + _shape_strings(rec, shapes, indexes):
+    for s, tool in [(s, None) for s in _tool_result_strings(rec, uses, [])] + _shape_strings(rec, shapes, indexes,
+                                                                                               ruling, line):
         lines = s.split("\n")
         for i, ln in enumerate(lines):
             text = _ruled_line(ln, ruling, _line_prefix(tool, lines, i))
@@ -919,7 +985,8 @@ def _ruled_findings(scanner, files, findings, shapes=()) -> tuple:
             lines = _lines(data)
             if f["line"] <= len(lines):
                 body = lines[f["line"] - 1].rstrip(b"\n")
-                text = _ruled_text(body, rulings[0], _tool_uses(data), shapes, _shape_calls(data, shapes))
+                text = _ruled_text(body, rulings[0], _tool_uses(data), shapes,
+                                   _shape_calls(data, shapes, kinds.get(f["path"])), f["line"])
                 if text is not None:
                     candidates.setdefault(f["path"], []).append((f, rulings[0], text))
                     continue
