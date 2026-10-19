@@ -32,7 +32,8 @@ TID = "00000000-0000-7000-8000-0000000000c1"
 MODEL = "gpt-6-luna"
 CLI = "0.162.1"
 UNMARKED = tpw.UNMARKED
-USAGE = {"input_tokens": 3, "cached_input_tokens": 0, "output_tokens": 2, "reasoning_output_tokens": 0}
+USAGE = {"input_tokens": 3, "cached_input_tokens": 0, "cache_write_input_tokens": 0, "output_tokens": 2,
+         "reasoning_output_tokens": 0}
 
 
 def setUpModule():

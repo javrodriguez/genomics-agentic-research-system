@@ -4134,7 +4134,8 @@ def _b19_config_problems(mod, tmp: Path) -> list:
                 out.append(f"B19.config: a gemini walk's config folder holds {names}, not .gemini/settings.json")
                 continue
             doc = json.loads((cfg / ".gemini" / "settings.json").read_text())
-            if doc.get("tools") != {"exclude": ["google_web_search", "web_fetch"]} or \
+            # Lane vendor-b14 round 2 (glitch-26's ruling R-B14-2): invoke_agent joins D8's excluded tools.
+            if doc.get("tools") != {"exclude": ["google_web_search", "web_fetch", "invoke_agent"]} or \
                     doc.get("model") != {"name": "gemini-3.8-flash"} or \
                     doc.get("security") != {"auth": {"selectedType": "gemini-api-key"},
                                             "folderTrust": {"enabled": False}} or \
