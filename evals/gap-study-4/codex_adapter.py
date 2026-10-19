@@ -128,7 +128,12 @@ LAUNCH_DISAGREES = "launch-differs-from-registered-invocation"
 _O_SHELLS = ("/bin/bash",)
 _O_TOOL = {"prefix": None, "opener": None}
 _O_WRAP = dict(_O_TOOL, kind="wrapped", arg=None, shells=_O_SHELLS, flags=("-lc", "-c"))
-_O_WRAP_LC = dict(_O_WRAP, flags=("-lc",))
+# Round 5 (glitch-26's B17-17 to B17-19 and NITs 2, 5 on review baef7c51): the CommandExecution's event is
+# item_completed (all 108 committed ones are) and its argv a list (kind "argv"); each shape names its file kind; the
+# exec output admits its own exec pair's reads, verbatim (gpt-6-luna, 32 of 36 committed) or as one JSON string literal
+# whose decode is the read's output exactly (gpt-6.1-sol, 60 of 72); the 16 lossy middle truncations stay refused
+# (lane-reports/B17-DESIGN-NOTE.md section 7).
+_O_WRAP_LC = dict(_O_WRAP, kind="argv", flags=("-lc",))
 _RESPONSE_ITEM = {"type": ("response_item",)}
 READ_SHAPES = (
     # the turn stream: a command_execution item, the call and its output in one object; `command` is
@@ -136,26 +141,29 @@ READ_SHAPES = (
     # and item.completed carry the same synthetic id (exec/src/event_processor_with_jsonl_output.rs:100-102, 162-181,
     # 327-341, 474-491), so every copy of an id must be the same call
     {"shape": "stream command_execution", "copies": "same", "tools": {"shell": _O_WRAP}, "result": None,
-     "copy_of": None,
-     "call": {"match": {"type": "command_execution"}, "at": ((("item",), {"type": ("item.started", "item.completed")}),),
+     "copy_of": None, "kinds": ("stream",),
+     "call": {"match": {"type": "command_execution"},
+              "at": ((("item",), {"type": ("item.started", "item.completed")}, None),),
               "id": "id", "name": {"value": "shell"}, "args": "command", "args_json": False,
               "text": (("aggregated_output",),)}},
     # the rollout: event_msg item_completed's CommandExecution item {id, command: argv, aggregated_output, source, ...}
     # (protocol/src/items.rs:243-281; core/src/tools/events.rs:561-589), the call and its output in one object
     {"shape": "rollout CommandExecution", "copies": "same", "tools": {"shell": _O_WRAP_LC}, "result": None,
-     "copy_of": None,
-     "call": {"match": {"type": "CommandExecution"}, "at": ((("payload", "item"), {"type": ("event_msg",)}),),
+     "copy_of": None, "kinds": ("session",),
+     "call": {"match": {"type": "CommandExecution"},
+              "at": ((("payload", "item"), {"type": ("event_msg",), "payload.type": ("item_completed",)}, None),),
               "id": "id", "name": {"value": "shell"}, "args": "command", "args_json": False,
               "text": (("aggregated_output",),)}},
     # the rollout: a custom_tool_call {name: "exec", call_id, input: the script} and its custom_tool_call_output
     # {call_id, output: [{type: input_text, text}]} (protocol/src/models.rs:1136-1171, 2096-2104, 2187-2265), the output
-    # admitted only where it copies an admitted CommandExecution's output (shape 1) verbatim
-    {"shape": "rollout exec output", "copies": "one", "copy_of": 1,
+    # admitted only where it copies, verbatim or as one exact JSON string literal, a CommandExecution (shape 1) that
+    # lies between this exec's call and output lines
+    {"shape": "rollout exec output", "copies": "one", "copy_of": 1, "kinds": ("session",),
      "tools": {"exec": dict(_O_TOOL, kind="copy", arg=None, shells=None, flags=None)},
-     "call": {"match": {"type": "custom_tool_call"}, "at": ((("payload",), _RESPONSE_ITEM),), "id": "call_id",
+     "call": {"match": {"type": "custom_tool_call"}, "at": ((("payload",), _RESPONSE_ITEM, None),), "id": "call_id",
               "name": {"key": "name"}, "args": "input", "args_json": False, "text": ()},
-     "result": {"match": {"type": "custom_tool_call_output"}, "at": ((("payload",), _RESPONSE_ITEM),), "id": "call_id",
-                "name": None, "text": (("output",), ("output", "*", "text"))}},
+     "result": {"match": {"type": "custom_tool_call_output"}, "at": ((("payload",), _RESPONSE_ITEM, None),),
+                "id": "call_id", "name": None, "text": (("output",), ("output", "*", "text"))}},
 )
 
 
