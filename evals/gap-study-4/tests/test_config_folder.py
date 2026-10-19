@@ -27,6 +27,14 @@ rulings R-C, R-CF, R-H2, R-H3, R-H4, R4 to R6 and R-OA of Mon 19 Oct 2026, on la
       48 files whose aggregate is the note's f5702460...
   C10 R-OA: <run tree>/.home missing, a file, a link, at another mode or owned by another uid refuses before any
       container runs.
+  C11 the drive's wiring (edit D, ruling R4-1): harness_adapter_for asks the driver for the take's record and hands
+      it to each O and G adapter; walk_driver binds TakeDriver.config_folder.
+  C12 the version probe (ruling R4-2): preflight's harness-version probe for codex and gemini, run by preflight.run on
+      a fake exec, starts the harness with its config home and HOME on one fresh, empty folder under the take's
+      /tmp (outside the config folder and the run tree), discards it, and leaves the config folder holding exactly
+      the placed set; the fake codex leaves the arg0 folder where its CODEX_HOME points. Four mutants go red: the
+      probe back on the config folder, its root in the config folder, the folder not discarded, HOME left on the
+      image's.
 
 The runtime is a fake that runs each operator step's own program (the -c source in its argv) in-process over the
 mounted folder, its fixed mount path replaced: the census and the reads are the real programs and the real host-side
@@ -682,6 +690,149 @@ class C11DriveWiring(Case):
                                               "lease": "LEASE-RECORD", "uid_map": ((10001, 1000, 1),),
                                               "caller_env": {"PATH": "/usr/bin"}})],
                          "R-CF.drive: the record is not built from the take's own facts")
+
+
+# ---------------------------------------------------------------------------------- C12 (the version probe, R4-2)
+VERSIONS = {"codex": "codex-cli 0.162.1\n", "gemini": "0.64.0\n"}
+HOME_NAMES = {"codex": "CODEX_HOME", "gemini": "GEMINI_CLI_HOME"}
+
+
+class ProbeBox(Box):
+    """Box, plus `docker exec` into the take for preflight's harness-version probe: /opt/cfg is the take's config
+    folder and /tmp its tmpfs (a scratch folder); a `python3 -I -B -c` program runs in-process with the exec's
+    variables as its environment, and the harness it starts is a fake. The fake codex does what arg0_dispatch does at
+    rust-v0.162.1 before clap's --version exit (arg0/src/lib.rs 158-162, 355-401): under its CODEX_HOME (else
+    HOME/.codex) it leaves tmp/arg0/codex-arg0XXXXXX with .lock and the four links. The fake gemini writes nothing.
+    Each records the variables it was given and what its homes held when it started."""
+
+    def __init__(self, take, harness):
+        super().__init__()
+        self.take, self.h = take, harness
+        self.tmp = take.base / "take-tmpfs"
+        self.tmp.mkdir()
+        self.image_home = take.base / "image-home"
+        self.image_home.mkdir()
+        self.started: list = []
+
+    def host(self, p: str) -> str:
+        for c, h in ((REAL_RT.CONFIG_MOUNT, self.take.cfg), ("/tmp", self.tmp)):
+            if p == c or p.startswith(c + "/"):
+                return str(h) + p[len(c):]
+        return p
+
+    def harness(self, argv, env):
+        homes = {n: env.get(n) for n in (HOME_NAMES[self.h], "HOME")}
+        self.started.append({"argv": list(argv), "homes": homes,
+                             "held": {n: sorted(os.listdir(v)) if v and os.path.isdir(v) else None
+                                      for n, v in homes.items()}})
+        if list(argv) != list(__import__("box.preflight", fromlist=["x"]).VERSION_COMMANDS[self.h]):
+            raise AssertionError(f"the fake harness refuses {argv}")
+        if self.h == "codex":
+            base = env.get("CODEX_HOME") or os.path.join(env["HOME"], ".codex")
+            d = Path(base) / "tmp" / "arg0" / "codex-arg0Xy12Zq"
+            d.mkdir(parents=True)
+            (d / ".lock").write_bytes(b"")
+            for n in ARG0:
+                os.symlink(CODEX_EXE, d / n)
+        return REAL_RT.Completed(0, VERSIONS[self.h], "")
+
+    def run(self, argv, *, env=None, timeout=None):
+        argv = list(argv)
+        if argv[1:2] != ["exec"]:
+            return super().run(argv, env=env, timeout=timeout)
+        self.calls.append(argv)
+        i, cenv = 2, {"HOME": str(self.image_home), "PATH": "/usr/local/bin:/usr/bin:/bin"}
+        while argv[i].startswith("-"):
+            if argv[i] == "-e":
+                k, _, v = argv[i + 1].partition("=")
+                cenv[k] = self.host(v)
+            i += 2
+        inner = argv[i + 1:]
+        if inner[:1] != ["python3"]:
+            return self.harness(inner, cenv)
+        c = inner.index("-c")
+        prog, args = inner[c + 1], [self.host(a) for a in inner[c + 2:]]
+        out, err, code = io.StringIO(), io.StringIO(), 0
+
+        def fake_run(cmd, *, env=None, **kw):
+            done = self.harness(cmd, dict(env or {}))
+            return subprocess.CompletedProcess(cmd, done.returncode, done.stdout.encode(), done.stderr.encode())
+        with mock.patch.object(sys, "argv", ["-c", *args]), mock.patch.dict(os.environ, cenv, clear=True), \
+                mock.patch.object(subprocess, "run", fake_run), contextlib.redirect_stdout(out), \
+                contextlib.redirect_stderr(err):
+            try:
+                exec(compile(prog, "<probe>", "exec"), {"__name__": "__main__"})
+            except SystemExit as e:
+                code = 0 if e.code in (None, 0) else (e.code if isinstance(e.code, int) else 1)
+        return REAL_RT.Completed(code, out.getvalue(), err.getvalue())
+
+
+def version_probe_problems(test, harness) -> list:
+    """Preflight's harness-version probe, as preflight.probes builds it, run by preflight.run on ProbeBox: [] when the
+    probe reads the version with its config home and HOME on one fresh, empty throwaway folder outside the config
+    folder and the run tree, discards that folder, and leaves the config folder holding exactly the placed set (the
+    per-turn check before turn 1 passes)."""
+    from box import preflight as pf
+    t = Take(test, harness)
+    box = ProbeBox(t, harness)
+    t.box = box
+    before = sorted(str(p.relative_to(t.cfg)) for p in t.cfg.rglob("*"))
+    spec = REAL_RT.TakeSpec(image=IMAGE, run_tree=str(t.tree), config_dir=str(t.cfg), network="a" * 64,
+                            memory_reservation=512 * 2 ** 20, memory=3 * 512 * 2 ** 20, cpus="2", pids_limit=256)
+    hosts = {h: f"api.{h.replace('-', '')}.invalid" for h in REAL_RT.LOGIN_VARIABLE}
+    probe = [p for p in pf.probes(spec, take_id="d" * 64, sidecar_id="c" * 64, harness=harness, hosts=hosts,
+                                  evidence_dir=str(t.base / "ev"), sidecar_image=IMAGE, proxy_id="b" * 64,
+                                  proxy_image=IMAGE) if p.id == "harness-version"]
+    raw = pf.run(box, probe)["harness-version"]
+    out = []
+    if (raw.get("returncode"), raw.get("stdout")) != (0, VERSIONS[harness]):
+        out.append(f"R4-2.version: {harness}: the probe read {raw}")
+    if len(box.started) != 1:
+        return out + [f"R4-2.version: {harness}: the harness ran {len(box.started)} times"]
+    homes, held = box.started[0]["homes"], box.started[0]["held"]
+    d = homes["HOME"]
+    if homes[HOME_NAMES[harness]] != d or not d:
+        out.append(f"R4-2.home: {harness}: {HOME_NAMES[harness]} and HOME are not one folder: {homes}")
+    for name, v in homes.items():
+        for under in (t.cfg, t.tree):
+            if v and (v == str(under) or v.startswith(str(under) + "/")):
+                out.append(f"R4-2.home: {harness}: {name} is in {under.name}: {v}")
+        if held.get(name) != []:
+            out.append(f"R4-2.fresh: {harness}: {name} held {held.get(name)} when the harness started")
+    if d and os.path.lexists(d):
+        out.append(f"R4-2.discard: {harness}: the probe's folder {d} was not discarded")
+    if os.listdir(box.tmp):
+        out.append(f"R4-2.discard: {harness}: the take's /tmp holds {os.listdir(box.tmp)}")
+    after = sorted(str(p.relative_to(t.cfg)) for p in t.cfg.rglob("*"))
+    if after != before:
+        out.append(f"R4-2.placed: {harness}: the config folder moved: {sorted(set(after) ^ set(before))}")
+    out += [f"R4-2.placed: {harness}: {p}" for p in t.problems(1)]
+    return out
+
+
+class C12VersionProbe(Case):
+    def test_the_version_probe_never_touches_the_config_folder(self):
+        for h in ("codex", "gemini"):
+            with self.subTest(harness=h):
+                self.assertEqual(version_probe_problems(self, h), [])
+
+    def test_each_mutant_of_the_probe_goes_red(self):
+        from box import preflight as pf
+        self.assertTrue(hasattr(pf, "VERSION_PROBE_HOMES") and hasattr(pf, "VERSION_PROBE_PROGRAM"),
+                        "R4-2: preflight has no throwaway-home version probe (VERSION_PROBE_HOMES)")
+        mutants = {
+            "back-on-the-config-folder": mock.patch.object(pf, "VERSION_PROBE_HOMES", {}),
+            "root-in-the-config-folder": mock.patch.object(pf, "VERSION_PROBE_ROOT", REAL_RT.CONFIG_MOUNT),
+            "not-discarded": mock.patch.object(pf, "VERSION_PROBE_PROGRAM",
+                                               pf.VERSION_PROBE_PROGRAM.replace("    shutil.rmtree(home)\n",
+                                                                                "    pass\n")),
+            "home-left-on-the-image": mock.patch.object(pf, "VERSION_PROBE_HOMES",
+                                                        {h: names[:1] for h, names in pf.VERSION_PROBE_HOMES.items()}),
+        }
+        for name, patch in mutants.items():
+            for h in ("codex", "gemini"):
+                with self.subTest(mutant=name, harness=h), patch:
+                    self.assertNotEqual(version_probe_problems(self, h), [], f"mutant {name} stayed green on {h}")
 
 
 # ------------------------------------------------------------------------------------------------- witnesses
