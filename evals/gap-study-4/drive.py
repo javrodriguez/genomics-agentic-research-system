@@ -2044,6 +2044,7 @@ class _Take:
         self.ownership_hold = None     # why the take's folders are kept for a human: no postflight, scan or commit
         self.settings = None           # {baseline, refused, checks}: the settings guard's record (settings-guard.json)
         self.settings_stop = None      # the problems that stopped the take before turn k > 1 (a ruling)
+        self.config_stop = None        # B11: the config folder's problems that stopped an O or G take before turn k > 1
 
 
 class TakeDriver:
@@ -2564,6 +2565,20 @@ class TakeDriver:
         except Exception as e:  # noqa: BLE001 - a sweep that fails is recorded, never a pass
             take.session_sweeps.append({"at": at, "refused": f"{type(e).__name__}: {str(e)[:200]}"})
 
+    def config_folder(self, take, lease=None):
+        """B11 (lane vendor-b11 round 3): the take's run_take.ConfigFolder for its O or G turns, through the box's
+        census and reads of the config folder (ownership.config_folder): the take image, run tree, config folder and
+        model, the codex lease's placement record (`lease`, the adapter's login: bound to the take's uid map; None
+        for gemini), and the take's uid map."""
+        harness = (take.row.get("agent") or {}).get("harness")
+        uid_map = self.uid_map
+        if callable(uid_map):                       # read at run time (the take container's own map), or given
+            uid_map = uid_map(take)
+        return self.ownership.config_folder(self.runtime, image=take.spec.image, harness=harness,
+                                            run_tree=take.spec.run_tree, config_dir=take.config_dir,
+                                            model=take.row["model"], lease=lease, uid_map=uid_map,
+                                            caller_env=self.caller_env)
+
     def config_view(self, take) -> tuple:
         """(lister(rel_dir), reader(rel_path)) over the take's config folder through the box's operator_list and
         operator_read (drive-wiring review MAJOR 1: the folder is the agent's during the take). A failure of either is
@@ -2822,6 +2837,13 @@ class TakeDriver:
                     take.adapter_ref = adapter
                     try:
                         turn = adapter.turn(line, first=(n == 1), budget_s=self.budget_s)
+                    except _run_take.ConfigFolderRefused as e:    # B11 (vendor-b11 R-CF): refused before its exec,
+                        if n == 1:                                # routed as the settings guard is: a rehearsal
+                            self._refused(take, e)
+                            ok = False
+                        else:                                     # after turn 1, a stop for a ruling
+                            take.config_stop = f"pre-{n}: the config folder: {'; '.join(e.problems)}"
+                        break
                     except _adapter.ExecutedTurnRefused as e:     # live harness 3a: the turn ran; account for it
                         unreadable += self._executed_refused(take, n, line, e)
                         after = self._settings_problems(take, f"post-{n}")   # review MINOR 2: this road too
@@ -2914,6 +2936,9 @@ class TakeDriver:
             if rebound:                       # replaced whole, in the ledger writer's own form
                 _run_take._write_json(path + ".partial", led)
                 os.replace(path + ".partial", path)
+        if take.config_stop is not None:          # B11 after turn 1, as the settings guard: cleaned and scanned
+            raise DriveRefused(f"{take.config_stop}: no further turn is sent; the take is kept for a human ruling "
+                               f"(no registered harness-error row reads it), never a re-run")
         if take.settings_stop is not None:        # the settings guard after turn 1: cleaned, recorded and scanned
             raise DriveRefused(f"{take.settings_stop}: no further turn is sent; the take is kept for a human ruling "
                                f"(no registered harness-error row reads it), never a re-run")
@@ -3596,7 +3621,7 @@ def claude_code_adapter_for(*, runtime, login_file: str, counters_for, pin_for, 
 
 
 def harness_adapter_for(*, runtime, login_file: str, counters_for, pin_for, clock,
-                        rollout_for=None, caller_env=None, config_view=None):
+                        rollout_for=None, caller_env=None, config_view=None, config_folder=None):
     """The three production adapters, with no default harness or invented evidence.
 
     Codex rollout_for(take, interaction_n) must retain and return the native
@@ -3617,7 +3642,11 @@ def harness_adapter_for(*, runtime, login_file: str, counters_for, pin_for, cloc
                       run_tree=take.launched.spec.run_tree, login_file=login_file_of(login_file, take),
                       model=row["model"], pin=pin_for(row),
                       stream_path_for=lambda n: stream_path(take, n),
-                      counters_for=lambda: counters_for(take), clock=clock, caller_env=caller_env)
+                      counters_for=lambda: counters_for(take), clock=clock, caller_env=caller_env,
+                      # B11 (vendor-b11 R-CF): the take's config folder record (walk_driver binds the driver's)
+                      config_folder=None)
+        if callable(config_folder):
+            common["config_folder"] = config_folder(take, common["login_file"] if harness == "codex" else None)
         if harness == "codex":
             if callable(rollout_for):
                 return _codex.CodexAdapter(**common, rollout_for=lambda n: rollout_for(take, n))
@@ -3851,7 +3880,8 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
         sidecar_for=sidecar_for, proxy=proxy, lock_path=lock_path, hosts=hosts,
         adapter_for=harness_adapter_for(runtime=runtime, login_file=login_file, counters_for=counters_for,
                                         pin_for=pin_for, clock=clock, rollout_for=rollout_for, caller_env=caller_env,
-                                        config_view=lambda take: bound["driver"].config_view(take)),
+                                        config_view=lambda take: bound["driver"].config_view(take),
+                                        config_folder=lambda take, lease: bound["driver"].config_folder(take, lease)),
         script_for=script_for, pin_for=pin_for,
         checker=take_checker(design_for=lambda row, take: design_for(row, take.launched.spec.run_tree),
                              records=records),
