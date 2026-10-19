@@ -1,4 +1,17 @@
-Status: running
+Status: needs-review
+
+ROUND 1 SUMMARY FOR REVIEW (cloud executor, 2026-10-19 03:14 EDT):
+- B15 (ruling B15, arm O, walk w-o3): red 31e1305b, test_codex_usage_source failures=3, first failure line "U1: read_stream refuses the pinned struct's turn.completed: turn.completed.usage carries key(s) with no entry: ['cache_write_input_tokens']". Green aa8c9ecf.
+- B15 source: openai/codex rust-v0.162.1 at 092d3acd, codex-rs/exec/src/exec_events.rs (sha256 dafa872d...). struct Usage is at lines 59-73, with fields input_tokens :63, cached_input_tokens :65, cache_write_input_tokens :68 (serde(default) at :67, which applies to deserializing only), output_tokens :70 and reasoning_output_tokens :72. No field has skip_serializing_if. The stream is written by serde_json::to_string (event_processor_with_jsonl_output.rs:108, sha256 bc296541...), and usage_from_last_total (:118-129) fills all five fields.
+- B15 table: all five keys are always present and required as counts. The present-when-set set is empty, so a line without cache_write_input_tokens refuses; an invented key refuses by name, and a non-count value refuses. codex_usage_sources.py cites each entry.
+- B15 exception status: transcript_codex.py and codex_adapter.py are in neither READER_SOURCES nor CODEX_SOURCES, so no named exception is needed.
+- B15 draft: the draft does not move (build_draft --check ok). costs.py prices Claude's token classes only; a Codex turn's usage goes into its turn record and is not priced.
+- B15 mutants: test_codex_usage_source --witnesses is 9/9 red, each mutant alone. The generated sweep of transcript_codex and codex_adapter ran 1024 mutants: 988 killed, 36 equivalent, 0 survivors. The witnesses are registered in checks.d/vendor-admission.txt and the new files are claimed in COPIED.d/vendor-admission.json.
+- Checks, all under env -i: every module that imports transcript_codex or codex_adapter, test_take_config, test_run_take, test_walk_builders, test_vendor_roads, test_env_allowlist and test_build_draft all pass (counts in Progress). The witness run of checks.d/vendor-admission.txt is 50/50 exit 0.
+- B14 (ruling B14, arm G, walk w-g5): lane-reports/B14-DESIGN-NOTE.md, read from the verified 0.64.0 tarball. The main conversation always requests the row's id. The other ids come from helper aliases (loop detection, compression, the codebase_investigator subagent, a pro-model helper that resolves to customtools), and stats.models is keyed by the server-reported modelVersion, so no setting can make it name only the row's id.
+- B14 recommendation: option C. Pin helpers by settings (disableLoopDetection, invoke_agent excluded, helper aliases repointed) and keep the identity check strict. Before any measured arm G walk, glitch-26 reads the held w-g5 record for the main turns' reported version; only if it is not the row's id, admit that one named server alias as a named difference in plan section 6.
+
+RESUME HERE: review stop (round 1)
 
 Clock: 2026-10-19 02:48 EDT (lane vendor-b14, cloud executor, branch from lane/vendor-admission at 00942460).
 
@@ -10,3 +23,4 @@ Progress:
 - 03:00 EDT: process note: the red commit was first made locally with a session link in its message; it was undone with a soft reset before any push and remade without it (31e1305b); nothing with a link was pushed.
 - 03:00 EDT: B14 (ruling B14) started: the pinned Gemini CLI tarball, read only.
 - 03:06 EDT: checks on the B15 green tree under env -i (PATH, HOME, LANG, TMPDIR only, TMPDIR outside the clone), all OK: test_codex_usage_source 3 (--witnesses 9/9), test_codex_adapter 55, test_codex_native 15, test_pending_codex_walk 11, test_codex_executed_refusal 5, test_codex_identity 5, test_codex_spend_texts 3, test_vendor_pins 5, test_vendor_record_binding 12, test_vendor_envelopes 5, test_vendor_session 5, test_vendor_check 26, test_vendor_body 11, test_vendor_walk_road 6, test_harness_bookkeeping 21, test_labelling 109, test_freeze_shapes 9, test_take_config 10, test_run_take 68, test_walk_builders 94, test_vendor_roads 13, test_env_allowlist 29, test_build_draft 49; build_draft, freeze, copy_manifest and vendor_check_fixtures --check ok. The lane's witness run, every line of checks.d/vendor-admission.txt (50 commands): 50 of 50 exit 0.
+- 2026-10-19 03:14 EDT: B14 note written (lane-reports/B14-DESIGN-NOTE.md), each claim with file and line, the load-bearing lines re-read; status needs-review.
