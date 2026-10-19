@@ -215,6 +215,11 @@
       "path": "codex_usage_sources.py",
       "status": "new",
       "reason": "Lane vendor-b14 round 1 B15 (glitch-26's ruling, Mon 19 Oct 2026; practice walk w-o3). Where each key of transcript_codex.USAGE_KEYS was read in the pinned Codex CLI (openai/codex rust-v0.162.1, commit 092d3acd): for each of struct Usage's five fields, codex-rs/exec/src/exec_events.rs's line and its text; both files' sha256; WHEN_SET, the fields serialized only when set, empty (no skip_serializing_if in the struct; cache_write_input_tokens's serde(default) is read only when deserializing); and the struct heads and the serializer road in event_processor_with_jsonl_output.rs. Read statically, never imported by a reader; kept apart from transcript_codex.py so its generated sweep mutates the table, not its documentation. Bound by tests/test_codex_usage_source.py (U2; --sources re-reads every cited line)."
+    },
+    {
+      "path": "tests/test_gemini_undeclared_args.py",
+      "status": "new",
+      "reason": "Lane vendor-b16 round 2 (glitch-26's ruling R-B16-2, Mon 19 Oct 2026; practice walk w-g7 held with StreamError \"tool_use: tool 'grep_search': argument keys with no entry: ['file_path']\"). A model-invented argument key on a known Gemini tool is read as named, ignored input only where the pinned Gemini CLI 0.64.0 schema leaves its properties open and the invocation reads only declared keys (transcript_gemini.OPEN_INPUT, each entry cited in gemini_tool_sources.OPEN_INPUT). U1 the held walk's synthetic shape on grep_search and its alias search_file_content passes check_record, GeminiParser and gemini_adapter.read_stream, with the undeclared keys named on the item (undeclared_args) and kept by a re-bound copy; U2 an unknown tool, a declared key off its type, a known tool with no OPEN_INPUT entry, a key the run reads (wait_for_previous) and a closed schema still refuse; U3 every OPEN_INPUT entry is cited from the pinned package. --witnesses runs three in-memory mutants (citation removed, closed schema assumed, name dropped from the item), each red alone; --sources re-reads every cited line on demand. Synthetic strings only. Claimed by glitch-26 on Javier's word b16-claim (OrgOS OD66, Mon 19 Oct 2026)."
     }
   ]
 }
