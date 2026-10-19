@@ -9,6 +9,7 @@ also run against in-memory mutants, printed with their red results.
 from __future__ import annotations
 
 import contextlib
+import copy
 import inspect
 import json
 import os
@@ -284,6 +285,73 @@ class TestR3Values(MutantCase):
                 R3_SOURCES["GEMINI_AUTH_SETTING"], line=14184)})),
             ("tools.exclude dropped", patched(tc, "GEMINI_SETTINGS", tc.GEMINI_SETTINGS[1:])),
         ])
+
+
+# Lane vendor-b14 round 2 (glitch-26's rulings R-B14-1 and R-B14-2, Mon 19 Oct 2026; practice walk w-g5 held on
+# result.stats.models naming helper models): every helper alias the pinned 0.64.0 reaches under arm G's settings is
+# repointed at the row's model through modelConfigs.customAliases, each restating its built-in entry's other fields,
+# and tools.exclude gains invoke_agent; loop detection stays on (no model.disableLoopDetection is written).
+B14_ALIASES = {"gemini-3-flash-base": {"extends": "base"}, "loop-detection-double-check": {"extends": "base"},
+               "chat-compression-3-flash": {}, "chat-compression-default": {}, "agent-history-provider-summarizer": {}}
+B14_ROW_ALIASES = {"gemini-3.8-flash": {}, "gemini-3.5-flash-lite": {"chat-compression-3.1-flash-lite": {}}}
+B14_EXCLUDE = ["google_web_search", "web_fetch", "invoke_agent"]
+
+
+def b14_aliases(row) -> dict:
+    """The customAliases a row's placed settings carry: R3's restated chat-base-3 and every helper alias, repointed."""
+    want = copy.deepcopy(R3_VALUES["GEMINI_THINKING"]["value"])
+    for alias, rest in dict(B14_ALIASES, **B14_ROW_ALIASES[row]).items():
+        want[alias] = dict(rest, modelConfig={"model": row})
+    return want
+
+
+class TestB14HelperPins(MutantCase):
+    """R-B14-1 and R-B14-2, per arm G row, on the settings take_config places (its real, sourced values)."""
+
+    def check(self):
+        out = []
+        with open(os.path.join(HERE, "prereg-draft.json"), encoding="utf-8") as fh:
+            rows = json.load(fh)["models"]["G"]
+        if sorted(rows) != sorted(B14_ROW_ALIASES):
+            out.append(f"arm G's rows are {rows}, not the rows these pins are read for")
+        for row in rows:
+            d = tempfile.mkdtemp(prefix="w-")
+            try:
+                tc.write(d, tc.GEMINI, model=row)
+                with open(os.path.join(d, ".gemini", "settings.json")) as fh:
+                    doc = json.load(fh)
+            except Exception as exc:
+                out.append(f"{row}: no settings placed ({type(exc).__name__}: {exc})")
+                continue
+            aliases = doc.get("modelConfigs", {}).get("customAliases", {})
+            for alias, entry in b14_aliases(row).items():
+                if aliases.get(alias) != entry:
+                    out.append(f"{row}: customAliases[{alias!r}] is {aliases.get(alias)!r}, not {entry!r}")
+            if set(aliases) != set(b14_aliases(row)):
+                out.append(f"{row}: customAliases carries {sorted(set(aliases) - set(b14_aliases(row)))} beyond the pins")
+            if doc.get("tools") != {"exclude": B14_EXCLUDE}:
+                out.append(f"{row}: tools is {doc.get('tools')!r}, not tools.exclude {B14_EXCLUDE}")
+            if "disableLoopDetection" in doc.get("model", {}):
+                out.append(f"{row}: loop detection is configured ({doc['model']}); R-B14-1 keeps the CLI as shipped")
+        sources = getattr(tc, "VALUE_SOURCES", {})
+        for name in ("GEMINI_HELPER_ALIASES", "GEMINI_AGENT_EXCLUSION"):
+            if name not in sources:
+                out.append(f"VALUE_SOURCES has no {name}")
+        try:
+            tc.files_for(tc.GEMINI, model="gemini-3-flash-preview")
+            out.append("a gemini config was placed for a model whose helper aliases are not read")
+        except tc.Refused:
+            pass
+        return out
+
+    def test_b14_helper_pins(self):
+        mutants = [(f"alias {alias} dropped", (lambda a: lambda: mock.patch.dict(
+            tc.GEMINI_HELPER_ALIASES, {k: v for k, v in tc.GEMINI_HELPER_ALIASES.items() if k != a}, clear=True))(
+            alias)) for alias in B14_ALIASES]
+        mutants += [("alias chat-compression-3.1-flash-lite dropped", lambda: mock.patch.dict(
+            tc.GEMINI_ROW_ALIASES, {"gemini-3.5-flash-lite": {}}))]
+        mutants += [("invoke_agent not excluded", patched(tc, "GEMINI_AGENT_EXCLUSION", ()))]
+        self.assert_green_then_red(self.check, mutants)
 
 
 class TestContents(MutantCase):
