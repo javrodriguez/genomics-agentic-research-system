@@ -196,11 +196,23 @@ R3_SOURCES = {
                                  check_file_sha256="19950cab8f7bd8b48ea89c4ede22418b2e5d836d9c1554baed62c9019d74810b",
                                  check_lines={"folder trust off: the check returns": 11129,
                                               "headless and untrusted: FatalUntrustedWorkspaceError (exit 55)": 11137},
+                                 exit55_file="bundle/chunk-NR7L3FXV.js",
+                                 exit55_file_sha256="d566e81b1df8d4d44a91bf7aeea96a58ec0e6c8934fa424315ef060507dcbb8c",
+                                 exit55_line=252702, running_check_file="bundle/gemini-Q2GRYIAK.js",
+                                 running_check_file_sha256=("7702da31cf099ca3e1d64fd195f15b7726b2c2829ec21e9"
+                                                            "55558eb9dbfba47da"),
+                                 running_check_lines={"folder trust off: the check returns": 11145,
+                                                      "headless and untrusted: FatalUntrustedWorkspaceError (exit 55)":
+                                                          11153},
+                                 unreached_exit55={"file": "bundle/chunk-J7SXW2FI.js", "line": 252715, "file_sha256":
+                                                   "e2aca15290b02dc9845704f3fed44c577919652508624f340974f0ff588f206e"},
                                  read="security.folderTrust.enabled defaults to true (settings.security?.folderTrust"
                                       "?.enabled ?? true), although docs/cli/trusted-folders.md calls the feature off "
                                       "by default; with it on, a headless run in an untrusted folder throws "
-                                      "FatalUntrustedWorkspaceError, exit 55 "
-                                      "(gemini-cli-core dist/src/utils/errors.js); "
+                                      "FatalUntrustedWorkspaceError, exit 55 (super(message, 55) at exit55_file "
+                                      "exit55_line, in the running bundle: bundle/gemini.js line 110 loads "
+                                      "gemini-Q2GRYIAK.js, which imports chunk-NR7L3FXV.js; check_file and "
+                                      "unreached_exit55 are a second copy no bundle file imports); "
                                       "set to false, the startup check returns before any trust lookup"),
 }
 R3_VALUES = {
