@@ -2,7 +2,7 @@
 
 Lane vendor-b19, round 1, cloud executor, Mon 19 Oct 2026. Rulings B19-1 (the goal), B19-2 (this note), B19-3 (the red
 tests) and B19-4 (batch.py unchanged this round). Read at lane/vendor-admission 7dc0cf9e; every line number below is
-that commit's. Nothing here has been built.
+that commit's. Nothing here has been built. (Round 2, under rulings B19-5 to B19-11, built it: section 10.)
 
 ## 1. Where this note lives, and why
 
@@ -242,6 +242,7 @@ The holds of 3.5, 3.7, 3.8 and 3.9 read only those two fields. Nothing is commit
 - Can move: publication. A ruled pause that today could share an event in its half-cell's count would count as its
   own; that can close a half-cell one event earlier in the published table. This is the one change here that reaches
   a published count, and it needs glitch-26's ruling before it is built.
+- A pause a ruling routes can count as its own event where a block run would have merged it with its block (B19-6).
 
 ### 5.4 Prose
 
@@ -328,3 +329,45 @@ check_results.py's rules of section 5.
   this note does not propose.
 - tests/test_batch_rolling.py is not yet claimed in COPIED.d (copy_manifest --check names it), and it turns
   test_round4's discovered battery red until the green lands, by design of B19-3.
+
+## 10. Rulings
+
+glitch-26's rulings on this note, Mon 19 Oct 2026 (round 2), and what each changed. Commits are on lane/vendor-b19.
+
+- **B19-5**: section 7's proposals 1 to 6 accepted as worded, with MAX_OPEN = 12: at most three drives at once
+  (BLOCK), at most twelve takes open (registered, outcome not committed). Changed in f477832f: batch.MAX_OPEN; the loop
+  of section 2 (waves, the tie rule, the holds of section 4, the closing half-cell hold of 3.9); the money gate per wave
+  (3.2); a register failure committing the open takes first (3.3); the window event as the pauses between two waits
+  (3.5); restart_waits over the last MAX_OPEN outcomes (3.6); the nightly stop carried by the last take launched (3.7);
+  takes.OPEN_LIMIT = MAX_OPEN, the live set that loses a row at its commit, and clean-tree registration but for the
+  open takes' folders (5.1, 5.2); batch.py's and takes.py's prose.
+- **B19-6** (proposal 7): accepted. The equal-duration equivalence also compares check_results' window problems,
+  window events and pause counts per half-cell with the block run's, read from 94963ea7; equal (22838d85). In f477832f
+  check_results.window_problems takes at most BLOCK pauses within at most MAX_OPEN consecutive outcomes (no slot twice,
+  no other event between), and pause_event counts a ruled pause as its own event, with STRICT_PAUSE_NOTE when another
+  pause of its half-cell carries a window event. 5.3 gains the sentence this ruling asks for.
+- **B19-7** (proposal 8): routing.json's pause-cap source prose describes the rolling window; build_draft.py run
+  again (996e767a). routing.json sha256 eccbb54d7bee09d3c10688c12bd33e9bee28b0e8b29c412c77f32a26d55f0c9b becomes
+  e69f468e94fd283defda9a7d535eced3b502be29f6363c46d4908c2754e43387; prereg-draft.json sha256
+  1a1aa53f37960a54fba61baedee7426bcf9c8f409d98709de70be0cd69a3a0d5 becomes
+  0aed2a2cd124266d2464f8d5d4a9181a66c81ddc56230ca8287859144b0257ae. No cap, value or unit moved.
+- **B19-8**: the green, f477832f. The three round 1 red tests are green and both equivalence tests stay green. Tests
+  re-pinned to the rulings: test_batch's fakes model equal durations (a wave's drives end together, its head first, and
+  a commit waits until none is in flight and SETTLE more), and its one unequal-ordering test checks row order over the
+  run, not per block; test_pipeline's live-set, MAX_OPEN and ruled-pause tests, and the mutants finishing-block,
+  past-max-open (was four-open), pause-count-refusal, pause-event-identity and pause-note-other-cell (was
+  pause-candidate-edges), each red under its mutant; test_spend_wiring's gate-never-called and gate-after-register
+  witnesses re-anchored on the wave.
+- **B19-9**: a run stopped with twelve takes open restarts owing exactly those takes, in row order, and waits for the
+  window (the old BLOCK span of restart_waits as a mutant, red); the open takes reach MAX_OPEN and never pass it while
+  three drives run (22838d85: red on 94963ea7, green at f477832f).
+- **B19-10**: tests/test_batch_rolling.py claimed in COPIED.d/vendor-admission.json (d8b9d8b9); copy_manifest's rules
+  ask no owner's word for a claim.
+- **B19-11**: this section.
+
+Where the build differs from sections 2 to 5 as first written (each within the rulings): a re-run joins the queue's
+front behind the re-runs already there, so re-runs keep commit order (3.4); the closing half-cell hold stops a wave
+before any row of such a half-cell, not only at the queue's head (3.9); the holds and the free lanes are counted from
+one reading of the finished drives, so a drive that ends between them frees no lane (an event keeps at most BLOCK
+pauses); and a register failure waits for the open takes and commits them before the wave's registered rows (3.3).
+Prose naming the block outside the three files is left as it was: costs.py line 13 and drive.py's TakeRepo docstring.
