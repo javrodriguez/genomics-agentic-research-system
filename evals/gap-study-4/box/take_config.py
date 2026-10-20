@@ -69,6 +69,13 @@ CODEX_PLUGINS = ("plugins", False)
 CODEX_FEATURES = (("hooks", False), CODEX_PLUGINS)
 CODEX_METRICS_EXPORTER = ("metrics_exporter", "none")
 CODEX_OTEL = (CODEX_METRICS_EXPORTER,)
+# Lane vendor-b22 (glitch-26's ruling B22-10, Tue 20 Oct 2026), R-B14-2's sibling: the study refuses delegation on the
+# vendor side, so arm O's collaboration tools are off as Gemini's invoke_agent is excluded (the Claude arm keeps its
+# Agent tool as a named difference). The model catalog gives both arm O models multi_agent_version v2 and [agents]
+# enabled defaults to true, so every committed GPT practice walk was offered spawn_agent, send_message, followup_task,
+# wait_agent, interrupt_agent and list_agents; enabled = false makes the config override Disabled ahead of the catalog
+# (VALUE_SOURCES; lane-reports/vendor-b22-DESIGN.md section 10).
+CODEX_AGENTS = (("enabled", False),)
 # R-H1 (glitch-26's ruling on the B11 design note, Mon 19 Oct 2026): the run tree trusted up front. At the pinned Codex
 # (rust-v0.162.1, commit 092d3acd) a thread start whose project has no trust_level, in a git checkout (the run tree's
 # .git, config/src/project_root_markers.rs), with the full access the bypass flag gives, persists
@@ -253,6 +260,28 @@ VALUE_SOURCES = {
                                "plugin load, and the plugin recommendations fetched from the backend, which the "
                                "developer message carries as its recommended_plugins section and the tool list as "
                                "request_plugin_install; set to false, none of them runs"),
+    "CODEX_AGENTS": dict(_CODEX_PKG, file="codex-rs/core/src/config/mod.rs",
+                         lines={"multi_agent_version_override: Disabled when agents_enabled is false": 1607,
+                                "multi_agent_version_for_model: the override before the model's version": 1629,
+                                "agents_enabled defaults to true": 3897},
+                         uses={"codex-rs/config/src/config_toml.rs": {"ConfigToml.agents": 481,
+                                                                      "AgentsToml.enabled": 756},
+                               "codex-rs/models-manager/models.json": {
+                                   "gpt-6.1-sol multi_agent_version v2": 194,
+                                   "gpt-6-luna multi_agent_version v2": 541},
+                               "codex-rs/features/src/lib.rs": {"multi_agent_v2 default_enabled false": 1424},
+                               "codex-rs/core/src/session/mod.rs": {
+                                   "the session's version: the override first, resumed threads too": 772},
+                               "codex-rs/core/src/tools/spec_plan.rs": {
+                                   "collab_tools_enabled is false for Disabled": 721,
+                                   "the collaboration handlers registered only then": 1376},
+                               "codex-rs/core/src/session/multi_agents.rs": {
+                                   "the usage hint only for V2": 16, "the mode section only for V2": 80}},
+                         read="[agents] enabled (default true) set to false makes the config override Disabled "
+                              "ahead of the model catalog's multi_agent_version v2 for both arm O models, on new, "
+                              "resumed and per-turn roads; the six collaboration tools (spawn_agent, send_message, "
+                              "followup_task, wait_agent, interrupt_agent, list_agents) are then not registered and "
+                              "the multi_agent_role and multi_agent_mode developer sections render nothing"),
     "CODEX_METRICS_EXPORTER": dict(_CODEX_PKG, file="codex-rs/core/src/config/otel.rs",
                                    lines={"otel.metrics_exporter defaults to Statsig": 21},
                                    uses={"codex-rs/config/src/config_toml.rs": {"the otel table": 547},
@@ -378,6 +407,8 @@ def _codex(model) -> dict:
              f"model_reasoning_effort = {_toml_value(effort)}"]
     lines += [f"{k} = {_toml_value(v)}" for k, v in CODEX_TOP]
     lines += ["", "[features]"] + [f"{k} = {_toml_value(v)}" for k, v in CODEX_FEATURES]
+    if CODEX_AGENTS:                                   # B22-10: arm O's collaboration tools off
+        lines += ["", "[agents]"] + [f"{k} = {_toml_value(v)}" for k, v in CODEX_AGENTS]
     if CODEX_OTEL:
         lines += ["", "[otel]"] + [f"{k} = {_toml_value(v)}" for k, v in CODEX_OTEL]
     return {CODEX_CONFIG: ("\n".join(lines) + "\n").encode("ascii")}
