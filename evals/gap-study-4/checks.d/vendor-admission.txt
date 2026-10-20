@@ -141,3 +141,8 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py B17 drive.py box/scan
 python3 -B -W ignore evals/gap-study-4/tests/test_config_folder.py C14SandboxMarker
 python3 -B -W ignore evals/gap-study-4/tests/test_scan_record.py TestB20GitReads
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/run_take.py box/scan_record.py gemini_adapter.py codex_adapter.py tests/test_config_folder.py tests/test_scan_record.py tests/test_gemini_adapter.py tests/test_codex_adapter.py checks.d/vendor-admission.txt
+# Lane vendor-b21 (glitch-26's B21-2 to B21-9, Tue 20 Oct 2026): codex and gemini promoted into harness_bookkeeping.TABLE
+# after 18 real walks (lane-reports/vendor-b21-DESIGN.md): w-o45's operator step, Evidence.load of a vendor take, the
+# excluded-path guard and the claude-code entry pinned; the witnesses are its 13 mutants, each red alone.
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_bookkeeping.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_bookkeeping.py --witnesses

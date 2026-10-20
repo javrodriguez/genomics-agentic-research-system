@@ -114,4 +114,10 @@ glitch-26's ruling B21-8 on round 2's held red, and the folds from REVIEW-vendor
   - F21-5: an ungraded, reported count of excluded `.home` changes per take, so writes through the agent HOME stay visible (the reviewer's O1). After round 4.
 - Not touched: box/, drive.py, graders/, the adapters, the sidecar, .git/hooks, the records clone and athena. Nothing pushed.
 
-RESUME HERE: review stop (B21-8 folded); athena's battery is glitch-26's.
+(B21-8's stop, superseded by the B21-9 line below: review stop (B21-8 folded))
+
+## B21-9 (local executor, Tue 20 Oct 2026, 14:13 EDT / 18:13 UTC)
+
+- **B21-9** (glitch-26, after athena's battery passed `45239b01`: run `gap4-t5-b21-45239b0-45239b0-20261020T165144Z`, ran 1303, battery 363/363): `checks.d/vendor-admission.txt` gains the two lines `python3 -B -W ignore evals/gap-study-4/tests/test_vendor_bookkeeping.py` and the same with `--witnesses`, under a lane comment. Every other line is unchanged, and nothing pins the list's length (copy_manifest and freeze hash no checks.d line count). On the Mac, run from the repository root under `bash -o pipefail` after light-ok (CPU speed limit 100): the module gave `Ran 5 tests in 0.423s`, `OK` (0.6 s); `--witnesses` gave `witnesses: 13/13 red` (0.6 s); copy_manifest --check gave `ok: 491 files from 60 fragment(s) ...` (12.6 s); freeze --check gave `freeze: 492 owned paths checked; no takes or freeze performed` (12.4 s). Note for glitch-26: test_round4.py discovers every tests/test_*.py, and a discovery of this file alone loads 5 tests, so the module's tests should already sit inside the battery's 1303; what no battery ran was the --witnesses line. Why the total equals B20's was not checked here.
+
+RESUME HERE: B21-9 committed; athena runs the two new lines in a walk pause.
