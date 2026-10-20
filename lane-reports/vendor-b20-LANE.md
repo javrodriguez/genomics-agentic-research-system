@@ -1,5 +1,75 @@
 Status: needs-review
 
+## ROUND 4 SUMMARY FOR REVIEW (local executor, 2026-10-20 14:30 UTC)
+
+glitch-26's rulings on REVIEW-vendor-b20-21fc1c7e (0 MAJOR, 1 MINOR, 2 NIT):
+- **B20-6 (MINOR-1):** bind the Codex rollout CommandExecution's `cwd` to the take's own repo, exactly, and refuse any other.
+  - A stream-only Codex git read has no `cwd` and is not admitted.
+  - Gemini: a directory argument already refuses; a test confirms no other route reaches another repo.
+- **B20-7 (NITs):** the header path is the doc's exact repo path. Only tested git forms are admitted; ranges and `git show -0` refuse. The ruled shapes are `git log -p -n 1 <commit>` and `git show <commit>`.
+
+Red commit `82a45e51` (tests only; TestB20GitReads rewritten, 17 tests): test_scan_record ran 203 tests, FAILED (failures=32), all in TestB20GitReads.
+- Among the reds is the reviewer's probe p3, rebuilt as a refusal: a rollout whose CommandExecution's cwd is another repo was admitted.
+
+Green commit `db4ce72b`:
+- **box/scan_record.py:**
+  - A shape may carry an optional `git` record, checked by `_git_ok` against a closed schema. A shape without one admits no git read.
+  - The `args` form: the call's arguments hold no key but the listed ones.
+  - The `cwd` form: the call node's folder is exactly prefix plus the absolute path at the meta key of the file's one meta record (`_git_meta`, `_git_bound`). A third element of each call entry carries that verdict.
+  - `_ruled_git` admits exactly `git log -p -n 1 <hex>` and `git show <hex>`, where `<hex>` is 7 to 40 lowercase hex digits.
+  - The header must be `diff --git a/gars/_references/environment.md b/gars/_references/environment.md`.
+- **The pinned Codex source:**
+  - SessionMeta.cwd is a PathBuf (protocol/src/protocol.rs:3171).
+  - CommandExecutionItem.cwd is a PathUri serialized as its URL (protocol/src/items.rs:265, utils/path-uri/src/lib.rs:689-695).
+  - The committed w-o14 rollout matches: session_meta `/tmp/run-b6ddc761`, CommandExecution `file:///tmp/run-b6ddc761`, with one `.../gars` cwd, which now refuses.
+- **gemini_adapter.py:** all three shapes carry `git` `{"args": ("command", "description")}`. dir_path, is_background or any other argument refuses.
+- **codex_adapter.py:**
+  - The rollout CommandExecution carries `{"cwd": "cwd", "prefix": "file://", "meta": ({"type": ("session_meta",)}, "payload.cwd")}`.
+  - The stream and the exec-output copy shapes carry none. The copy admits only its CommandExecution's bound reads.
+- **Re-pinned:** both adapters' READ_SHAPES pins, Gemini `d7060c34...` and Codex `68495914...`. The admission list's B20 source-list line now names both adapters and their tests.
+- B17's cat and grep reads keep their road, with no cwd asked; a test pins this.
+
+Tests, 17 in TestB20GitReads:
+- Admitted: the two forms, each prefix, on Gemini (stream, session) and the Codex rollout (verbatim and literal copies).
+- Refused:
+  - 13 output near misses, including `evil/_references/environment.md` and the cut path `_references/environment.md`;
+  - 31 commands, including the reviewer's p5 forms, `git show -0`, `git log -p`, `HEAD`, uppercase, 6 and 41 hex digits, and a trailing space;
+  - Gemini: dir_path (`/elsewhere` and `.`), is_background and `cwd` arguments, on the stream, the session entry and the function-response turn; `-C`, `--git-dir`, `--work-tree`, `cd`, `GIT_DIR=` and `env GIT_DIR=`;
+  - Codex: the stream; a cwd of another repo, a subfolder, the plain path, or a trailing slash; no session_meta, two session_metas, or a relative one;
+  - the Claude path;
+  - a cat read.
+- The schema test refuses six malformed `git` records.
+- An arms test pins each shape's binding.
+
+Mutants: 22 B20 mutants, each red alone; 137 in the file.
+- The forms: log, show, the commit, the show length, the log length.
+- The argument allow-list.
+- The bound folder; the stream binds no folder.
+- One session_meta; an absolute run tree; the file:// form.
+- A shell read only; only a git read.
+- One prefix; a hunk body; a diff header; the doc's diff; the doc's own path; one path both sides.
+- The wrapped script; the copy reads a git source as a diff; the git schema.
+
+The reviewer's probe on `db4ce72b`, run unchanged:
+- p3 (Codex cwd elsewhere), p2 (evil path) and p5's five forms now fail their "admitted" assertions, which means they are refused as ruled.
+- p1, p4 (23 commands) and p6 stay refused.
+- p0's second control (`git log -p HEAD`) is now refused, by B20-7.
+
+Counts, each run after light-ok with env -i and Python 3.13.2:
+- test_scan_record: 203 OK.
+- test_sidecar: 157 OK, 1 skipped; --process-check ok.
+- test_scan_witness: 10 OK.
+- test_gemini_adapter: 146 OK; --witnesses 114/114.
+- test_codex_adapter: 57 OK; --witnesses 16/16.
+- check_vendor_sources: B17 and the B20 line exit 0.
+- copy_manifest, build_draft and freeze --check: ok.
+- The three B20 admission lines: 3 of 3.
+
+Waiting (heavy; the Mac is booked from 11:59, so these go to the evening or athena): the full 69-line admission list, test_walk_launch and the drive suites, both adapters' generated mutation sweeps, and the athena suite.
+Also open, for athena: a w-g11 rescan, to confirm its real run_shell_command arguments are only command and description.
+
+RESUME HERE: review stop (round 4)
+
 ## ROUND 3 SUMMARY FOR REVIEW (local executor, 2026-10-20 14:20 UTC)
 
 glitch-26's ruling **B20-5**, made Tue 20 Oct 2026, is glitch-26's own: Javier ruled the line safe in OD57, and which commands may carry it is the implementation's scope.
@@ -83,7 +153,7 @@ Flagged, not fixed:
 - test_scan_record's module-level loop variable `_cls_from` is a TestCase class, so the loader runs that class twice. At the base that was TestB17Round5 (12 duplicates in "Ran 193"); now it is TestB17Round6 (5 duplicates in "Ran 199"). It is pre-existing, and the counts above include it.
 - Codex's CommandExecution `cwd` is not checked: the shapes hand `_reads_git` the argv only. The take's own repo is bound for Codex by the command alone (no `-C` or cd) and by the doc's diff header.
 
-RESUME HERE: review stop (round 3)
+(round 3's stop, superseded by round 4's line above: review stop (round 3))
 
 ## ROUND 2 SUMMARY FOR REVIEW (local executor, 2026-10-20 13:05 UTC)
 
