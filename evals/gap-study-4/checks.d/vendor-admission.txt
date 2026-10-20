@@ -151,3 +151,8 @@ python3 -B -W ignore evals/gap-study-4/tests/test_vendor_bookkeeping.py --witnes
 # mutants, each red on its own check.
 python3 -B -W ignore evals/gap-study-4/tests/test_codex_started_file_change.py
 python3 -B -W ignore evals/gap-study-4/tests/test_codex_started_file_change.py --witnesses
+# Lane vendor-b22 (glitch-26's B22-10 and B22-11, Tue 20 Oct 2026): arm O's config.toml writes [agents] enabled = false,
+# so the pinned Codex offers no collaboration (delegation) tools (lane-reports/vendor-b22-DESIGN.md section 10); the
+# witnesses are its 3 mutants, each red on its own check.
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_agents_off.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_agents_off.py --witnesses

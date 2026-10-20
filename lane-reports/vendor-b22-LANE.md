@@ -152,3 +152,5 @@ glitch-26's ruling on section 10e: build it as proposed, in box/take_config.py; 
 13 files: transcript_codex.py and box/take_config.py (product); prereg-draft.json (generated); the two new test modules and test_take_config.py; four COPIED.d fragments; checks.d/vendor-admission.txt; the two lane files. Gemini's and Claude Code's tables, configs and adapters are unchanged. Nothing was pushed, mirrored or run on athena.
 
 RESUME HERE (B22-10): review stop for the whole lane (B22-6 to B22-10).
+
+- **B22-11** (Tue 20 Oct 2026, 17:20 EDT): checks.d/vendor-admission.txt gains `python3 -B -W ignore evals/gap-study-4/tests/test_codex_agents_off.py` and the same with `--witnesses`, under a lane comment in the existing form. On the Mac after light-ok: the module `OK`, `--witnesses` `witnesses: 3/3 red`, copy_manifest --check `ok: 493 files from 60 fragment(s) ...`, freeze --check `freeze: 494 owned paths checked; no takes or freeze performed`.
