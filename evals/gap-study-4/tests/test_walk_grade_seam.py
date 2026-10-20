@@ -208,6 +208,16 @@ class TheGradingSeam(unittest.TestCase):
             print(f"\nSEAM {harness} {task}: {outcome} ({detail})", end=" ", file=sys.stderr, flush=True)
         self.assertEqual(problems, [])
 
+    def test_e_vendor_on_the_real_table_needs_no_synthetic_entries(self):
+        # B21-5 (glitch-26, lane vendor-b21, Tue 20 Oct 2026): codex and gemini are in harness_bookkeeping.TABLE, so
+        # the same seam reaches every vendor cell's grader with no patch; the patched test above stays as it is.
+        problems, seen = seam_problems(harnesses=("codex", "gemini"))
+        for (harness, task), (outcome, detail) in seen.items():
+            print(f"\nSEAM-REAL {harness} {task}: {outcome} ({detail})", end=" ", file=sys.stderr, flush=True)
+        self.assertEqual(problems, [])
+        self.assertEqual([k for k, (_, detail) in seen.items() if "has no bookkeeping entry" in detail], [])
+        self.assertEqual(len(seen), 18)
+
     def test_e_take_the_take_road_hands_lines(self):
         handed = []
 

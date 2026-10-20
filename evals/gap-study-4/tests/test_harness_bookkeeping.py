@@ -120,8 +120,9 @@ def refusal_problems(entry_fn) -> list:
 class TheTable(unittest.TestCase):
 
     def test_one_real_entry_named_as_the_adapter(self):
+        # B21-2 (glitch-26, lane vendor-b21): codex and gemini are promoted beside claude-code; this was [ADAPTER_NAME]
         self.assertEqual(hb.CLAUDE_CODE, ADAPTER_NAME)
-        self.assertEqual(sorted(hb.TABLE), [ADAPTER_NAME])
+        self.assertEqual(sorted(hb.TABLE), sorted((ADAPTER_NAME,) + CANDIDATE_NAMES))
         self.assertEqual(hb.check_table(), [])
 
     def test_grounded_in_round3_files(self):
@@ -385,17 +386,25 @@ def candidate_problems(table: dict) -> list:
         # R4-4 (glitch-26, lane vendor-b11 round 4): the agent's HOME is inside the run tree, snapshotted, not graded
         home_tree = (run_tree_home_name() + "/**",)
         if e.run_tree_paths != home_tree:
-            out.append(f"{name}: run_tree_paths {e.run_tree_paths} are not exactly {home_tree} (R4-4; the rest of the "
-                       f"run tree is unmeasured until a real walk)")
+            out.append(f"{name}: run_tree_paths {e.run_tree_paths} are not exactly {home_tree} (R4-4 and B21-7; 18 "
+                       f"real walks show no other run-tree furniture)")
         grounds = " ".join(e.grounds)
+        # B21-2 and B21-7 (glitch-26, lane vendor-b21): each grounds line names its walks and its pinned source lines
         for need in ({"codex": ["codex_adapter.py:41", "`$CODEX_HOME/sessions/.../rollout-*.jsonl`",
-                                "box/run_take.py:68", '"CODEX_HOME": CONFIG_MOUNT'],
+                                "box/run_take.py:68", '"CODEX_HOME": CONFIG_MOUNT', "092d3acd",
+                                "rollout/src/recorder.rs:1739-1762", "rollout/src/rollout_file_name.rs:62-73",
+                                "rollout/src/lib.rs:86", "12 of 12 codex walks", "w-o7 to w-o17, w-o45"],
                       "gemini": ["native_snapshot.py:20", "<home>/.gemini/tmp/*/chats", "native_snapshot.py:13",
                                  "native_snapshot.py:16-18", "assumed, not source-shown", "box/run_take.py:68",
-                                 '"GEMINI_CLI_HOME": CONFIG_MOUNT']}[name] + ["unmeasured until a real walk",
-                                                                              "R4-4", "box/sidecar.py"]):
+                                 '"GEMINI_CLI_HOME": CONFIG_MOUNT', "chunk-NR7L3FXV.js", "[C] 286708-286730",
+                                 "5 of 6 gemini walks", "w-g1, w-g3, w-g5, w-g7, w-g9, w-g11"]}[name]
+                     + ["R4-4", "B21-7", "box/sidecar.py", "rests on that ruling, not on measured furniture",
+                        "w-o15, w-o16, w-o17, w-o45, w-g11", "nothing appears under it in any snapshot",
+                        "no run-tree furniture of its own beyond COMMON_EXCLUSIONS"]):
             if need not in grounds:
                 out.append(f"{name}: the grounds do not say {need!r}")
+        if "unmeasured until a real walk" in grounds:
+            out.append(f"{name}: the grounds still say the run tree is unmeasured (B21 measured it)")
         if not any(path == tmp + "/" for path, _ in e.not_excluded):
             out.append(f"{name}: not_excluded does not name {tmp}/ (box/run_take.py:93, 153)")
         # R4-4: the agent's HOME (R-H5's .home) is excluded from grading now, so it is no longer named as kept in
@@ -439,7 +448,7 @@ class HomeExclusion(unittest.TestCase):
         return endstate.Evidence.is_excluded(ev, f"/srv/w/t/{rel}")
 
     def test_arms_o_and_g_exclude_the_agent_home_and_arm_a_does_not(self):
-        table = dict(hb.TABLE, **hb.VENDOR_CANDIDATES)
+        table = hb.TABLE                                   # B21-2: the production table, vendors promoted
         for rel, want in RUN_TREE_PATHS:
             for name in CANDIDATE_NAMES:
                 with self.subTest(harness=name, path=rel):
@@ -450,78 +459,89 @@ class HomeExclusion(unittest.TestCase):
 
     def test_a_vendor_candidate_without_the_home_exclusion_grades_it(self):
         for name in CANDIDATE_NAMES:
-            e = dataclasses.replace(hb.VENDOR_CANDIDATES[name], run_tree_paths=())
-            table = dict(hb.TABLE, **dict(hb.VENDOR_CANDIDATES, **{name: e}))
+            e = dataclasses.replace(hb.TABLE[name], run_tree_paths=())
+            table = dict(hb.TABLE, **{name: e})
             with self.subTest(harness=name):
                 self.assertFalse(self.excluded(name, ".home/.conda/envs/e/bin/python", table))
 
 
-class VendorCandidates(unittest.TestCase):
-    """Lane vendor-admission T2: hb.VENDOR_CANDIDATES holds Codex's and Gemini's bookkeeping candidates, grounded and
-    checked, and never promoted: TABLE stays claude-code alone, so production Evidence.load still refuses both."""
+def vendor_entries() -> dict:
+    """B21-2: the two promoted entries, read from the production TABLE (KeyError before the promotion)."""
+    return {name: hb.TABLE[name] for name in CANDIDATE_NAMES}
 
-    def test_candidates_are_beside_the_table_never_in_it(self):
-        self.assertEqual(sorted(hb.VENDOR_CANDIDATES), sorted(CANDIDATE_NAMES))
-        self.assertEqual(sorted(hb.TABLE), [ADAPTER_NAME])
+
+class VendorEntries(unittest.TestCase):
+    """Lane vendor-b21 (glitch-26's B21-2, Tue 20 Oct 2026; was VendorCandidates, lane vendor-admission T2): Codex's
+    and Gemini's entries are in TABLE, exactly the four measured and grounded patterns, and VENDOR_CANDIDATES is
+    gone (one source of truth), so production Evidence.load admits both."""
+
+    def test_entries_are_in_the_table_and_the_candidates_are_gone(self):
+        self.assertFalse(hasattr(hb, "VENDOR_CANDIDATES"), "B21-2: VENDOR_CANDIDATES still beside the table")
+        self.assertEqual(sorted(hb.TABLE), sorted((ADAPTER_NAME,) + CANDIDATE_NAMES))
         for name in CANDIDATE_NAMES:
-            with self.assertRaises(hb.UnknownHarness):
-                hb.entry(name)
+            self.assertIs(hb.entry(name), hb.TABLE[name])
 
-    def test_production_evidence_still_refuses_a_vendor_take(self):
+    def test_production_evidence_admits_a_vendor_take(self):
         from graders import endstate
         for name in CANDIDATE_NAMES:
             take = {"kind": "take", "model": "synthetic-model", "agent": {"harness": name, "version": "0.0.1"},
                     "run_tree": "", "home": None}
-            with self.assertRaises(endstate.EvidenceError) as cm:
-                endstate.agent_of(take)
-            self.assertIn("has no bookkeeping entry", str(cm.exception))
+            self.assertEqual(endstate.agent_of(take), (name, "0.0.1"))
 
-    def test_each_candidate_passes_check_table(self):
-        self.assertEqual(hb.check_table(dict(hb.TABLE, **hb.VENDOR_CANDIDATES)), [])
-        for name, e in hb.VENDOR_CANDIDATES.items():
+    def test_each_entry_passes_check_table(self):
+        self.assertEqual(hb.check_table(), [])
+        for name, e in vendor_entries().items():
             self.assertEqual(hb.check_table({ADAPTER_NAME: hb.TABLE[ADAPTER_NAME], name: e}), [], name)
 
-    def test_each_candidate_is_grounded_in_its_source_lines(self):
+    def test_each_entry_is_grounded_in_its_source_lines(self):
         self.assertEqual(derived_codex_pattern(), "sessions/**/rollout-*.jsonl")
         self.assertEqual(derived_gemini_pattern(), ".gemini/tmp/*/chats/session-*.jsonl")
         self.assertEqual(run_tree_tmp_name(), ".tmp")
-        self.assertEqual(candidate_problems(hb.VENDOR_CANDIDATES), [])
+        self.assertEqual(candidate_problems(vendor_entries()), [])
 
-    def test_a_widened_or_moved_candidate_goes_red(self):
+    def test_a_widened_or_moved_entry_goes_red(self):
+        entries = vendor_entries()
         widened = {"codex": ("sessions/**", "**/rollout-*.jsonl", "sessions/**/*.jsonl", "sessions/**/rollout-*",
                              "*/**/rollout-*.jsonl", "sessions/**/rollout-*.jsonl*"),
                    "gemini": (".gemini/**", ".gemini/tmp/**/session-*.jsonl", ".gemini/tmp/*/chats/*.jsonl",
                               ".gemini/tmp/*/*/session-*.jsonl", ".gemini/tmp/*/chats/**", ".gemini/*/*/chats/session-*")}
         for name, patterns in widened.items():
             for pattern in patterns:
-                for home in ((pattern,), (hb.VENDOR_CANDIDATES[name].home_paths[0], pattern)):
+                for home in ((pattern,), (entries[name].home_paths[0], pattern)):
                     with self.subTest(name=name, home=home):
-                        e = dataclasses.replace(hb.VENDOR_CANDIDATES[name], home_paths=home)
-                        self.assertNotEqual(candidate_problems(dict(hb.VENDOR_CANDIDATES, **{name: e})), [])
+                        e = dataclasses.replace(entries[name], home_paths=home)
+                        self.assertNotEqual(candidate_problems(dict(entries, **{name: e})), [])
         for name in CANDIDATE_NAMES:
-            base = hb.VENDOR_CANDIDATES[name]
+            base = entries[name]
             for what, e in {"a guessed run tree": dataclasses.replace(base, run_tree_paths=(".tmp/**",)),
                             "no grounds": dataclasses.replace(base, grounds=("TEST DATA",)),
                             ".tmp/ dropped": dataclasses.replace(base, not_excluded=()),
-                            # R4-4: the agent's HOME excluded from grading, exactly
+                            # R4-4 and B21-7: the agent's HOME excluded from grading, exactly
                             ".home/** dropped": dataclasses.replace(base, run_tree_paths=()),
                             ".home/** widened": dataclasses.replace(base, run_tree_paths=(".home/**", ".tmp/**")),
                             ".home/** narrowed": dataclasses.replace(base, run_tree_paths=(".home/*",)),
                             ".home/ still kept in": dataclasses.replace(base, not_excluded=base.not_excluded + (
-                                (".home/", "kept in"),))}.items():
+                                (".home/", "kept in"),)),
+                            # B21: the old candidate wording, unmeasured, goes red
+                            "still unmeasured": dataclasses.replace(base, grounds=base.grounds + (
+                                "the rest of the run tree: unmeasured until a real walk",))}.items():
                 with self.subTest(name=name, what=what):
-                    self.assertNotEqual(candidate_problems(dict(hb.VENDOR_CANDIDATES, **{name: e})), [])
-        self.assertNotEqual(candidate_problems({"codex": hb.VENDOR_CANDIDATES["codex"]}), [])
+                    self.assertNotEqual(candidate_problems(dict(entries, **{name: e})), [])
+        self.assertNotEqual(candidate_problems({"codex": entries["codex"]}), [])
 
-    def test_no_task_path_is_hidden_under_a_candidate(self):
-        self.assertEqual(candidate_conflicts(hb.VENDOR_CANDIDATES), [])
-        e = dataclasses.replace(hb.VENDOR_CANDIDATES["codex"], run_tree_paths=("data/**",))   # mutant: a guess
-        self.assertNotEqual(candidate_conflicts(dict(hb.VENDOR_CANDIDATES, codex=e)), [])
+    def test_no_task_path_is_hidden_under_an_entry(self):
+        self.assertEqual(candidate_conflicts(vendor_entries()), [])
+        e = dataclasses.replace(hb.TABLE["codex"], run_tree_paths=("data/**",))   # mutant: a guess
+        self.assertNotEqual(candidate_conflicts(dict(vendor_entries(), codex=e)), [])
 
-    def test_no_grader_types_a_candidate(self):
+    def test_check_task_check_8_on_the_production_table(self):
+        # the consumer that iterates TABLE (tasks/check_task.py check 8), run with no table: every harness, every task
+        self.assertEqual(candidate_conflicts({}), [])
+
+    def test_no_grader_types_a_vendor(self):
         graders = os.path.join(HERE, "graders")
         found = {}
-        with mock.patch.dict(TABLE, hb.VENDOR_CANDIDATES):
+        with mock.patch.dict(TABLE, vendor_entries()):
             for name in sorted(os.listdir(graders)):
                 if name.endswith(".py"):
                     with open(os.path.join(graders, name), encoding="utf-8") as fh:
