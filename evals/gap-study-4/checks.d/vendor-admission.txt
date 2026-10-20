@@ -156,3 +156,9 @@ python3 -B -W ignore evals/gap-study-4/tests/test_codex_started_file_change.py -
 # witnesses are its 3 mutants, each red on its own check.
 python3 -B -W ignore evals/gap-study-4/tests/test_codex_agents_off.py
 python3 -B -W ignore evals/gap-study-4/tests/test_codex_agents_off.py --witnesses
+# Lane vendor-b23 (glitch-26's rulings Q1 to Q6 and B23-2, Tue 20 Oct 2026): a Codex patch edit read as a shell edit
+# is (lane-reports/vendor-b23-DESIGN.md): the view keeps a cut patch as an unanswered call, the rollout reader and the
+# join read FileChange, reach reads it, and the T-8:file-change site hands in its reader; the witnesses are its 14
+# mutants, each red on its own check. (--walks needs the records clone and --unchanged a full history, so neither is here.)
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_patch_reads.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_patch_reads.py --witnesses
