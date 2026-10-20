@@ -25,3 +25,49 @@ glitch-26's ruling B23-1: design first, no code. Base `a76b4dd2` (B22, reviewed 
   - With no child threads both list formatters render empty, and the analytics fact is not model-visible, so 10c's conclusion stands.
   - B22's design note stays as written.
 - No code, test or fixture. No push, no mirror, no athena run.
+
+Status: review stop (round 2)
+
+## ROUND 2 (local executor, Tue 20 Oct 2026, 18:06 EDT / 22:06 UTC)
+
+glitch-26's rulings on e1a63311: Q1 option C; Q2 hold a rename; Q3 the row stays PENDING with its reader wired; Q4 delete stays refused; Q5 addendum first; Q6 no change to native_reader_registration.py; B23-3 built.
+
+Commits, each its own stage:
+- `c17292b8` Q5 addendum (design section 14, append-only).
+  No record carries a patch refused before Begin: arm O reaches apply_patch only inside an exec cell (both models' catalog tool_mode code_mode_only), a tool call emits no turn item, and executed-call metadata is off (0 of 989 metadata records in the 76 committed rollouts record a call).
+  So it became a named limitation, built in 522ebe26.
+- `5e4f80ba` red. test_codex_patch_reads on a76b4dd2's product: "Ran 13 tests", "FAILED (failures=10, errors=1)" (V1, V4 x2, N1, N2's move_path case, N3 x2, K1, K2, K3 red; the mutants not performable; V2 and V3 green).
+  test_codex_started_file_change: "Ran 5", "FAILED (failures=1, errors=1)", F3 "the started record maps to [], not to its one edit call".
+- `9e1d923a` green: transcript_codex.py, codex_native.py, check_take.py, three COPIED.d sentences.
+- `f8a87a72` witnesses: checks.d/vendor-admission.txt runs the test and its --witnesses.
+- `522ebe26` B23-3 and Q5: two parity_notes entries through build_draft.py; prereg-draft.json numstat "8 0", only those two entries.
+
+Runner lines at f8a87a72/522ebe26 (Mac, `env -i` PATH /usr/local/bin:/usr/bin:/bin, Python 3.13.2, `-B -W ignore`):
+- test_codex_patch_reads: "Ran 13 tests in 1.876s", "OK"; --witnesses: "witnesses: 14/14 red".
+  Each mutant was applied alone and turned its own check red. Two also redden checks downstream of the same guard: started-maps-to-nothing-again also reddens reset, changed and second-start; filechange-not-projected also reddens shape, join and join-refusal; reader-not-handed-in also reddens reader.
+- --walks against /Users/javrodher/aegis-builds/gap4-walk-records-20261019 (HEAD 45239b01, `git status --porcelain` 0 lines before and after): "walks: 76 streams of 31 walks, identical before and after", readings sha256 450946a3a7454492cc824d2c92f8c3561e457f2597cfb96768f1108a052ae43c (B22's value).
+- --unchanged (a76b4dd2's evals/gap-study-4, evals/*.py and evals/graders, by git archive into a scratch folder, against this tree): "unchanged: fixtures readings sha256 (this tree) ee1e19ff6d5cd4e7b5ad8c001fd1a29d8dcd87d55a1eed238720e3e9d2b95902; identical on a76b4dd2 and this tree".
+  It covers F1 (codex) and F2 (gemini): view, raw records, reach and the T-8 site; and the 15 codex-streams fixtures, items and view.
+- The Claude road: check_take.py's diff from a76b4dd2 has five hunks, at lines 3984, 4057, 4822, 4857 and 4866, all after the T4 vendor banner at 3750. transcript_view.py and claude_code_adapter.py are untouched.
+- test_codex_started_file_change: "Ran 5", "OK", "witnesses: 3/3 red". test_codex_native: "Ran 15", "OK". test_codex_adapter: "Ran 57", "OK", "test_codex_adapter witnesses: 16/16 red; registry 16". test_codex_agents_off: "Ran 4", "OK".
+- Under `mac_slot.py run --kind heavy --owner vendor-b23`:
+  - test_vendor_check "Ran 26", "OK"; test_vendor_body "Ran 11 tests in 46.670s", "OK"; test_take_checker_dispatch "Ran 5", "OK"; test_vendor_session "Ran 5", "OK"; test_vendor_entries "Ran 8", "OK";
+  - test_build_draft "Ran 49", "OK"; test_take_config "Ran 16", "OK"; test_preflight "Ran 59", "OK".
+- `copy_manifest.py --check` "ok: 494 files from 60 fragment(s) ..."; `build_draft.py --check` "ok: the committed draft is what build_draft.py builds"; `freeze.py --check` "freeze: 495 owned paths checked; no takes or freeze performed".
+- lint_language over the folder: "clean — 115 input(s) scanned, 25 excused line(s) on record".
+  lint_pooling over the folder: "2 finding(s)", COPIED.d/vendor-admission.json:247 (B22-10's reason) and w8b-holdout-digests.json:13. The same two are there without this lane's product edits (checked with the green edits stashed), so neither is new here. They are named for glitch-26.
+
+Deviations and corrections, flagged:
+- A completed file_change with no started record keeps its call and result. Design section 7 said it would refuse; the reason is in design section 14 (the D8 fixtures and exec's own fresh-id road).
+- join's result is unchanged, and the count is join_file_changes' return value. Design section 4 said join's result would gain `file_changes`; adding it would have changed test_codex_native's exact pin for no reader.
+- The test file changed between red and green:
+  - V3's first form stayed green under the no-reset mutant (hollow), so its first stream is now cut with its patch started;
+  - the witness rule reads "its own check red" (B22's rule), and two upstream guards also redden their downstream checks;
+  - N3 reads the count through join_file_changes;
+  - --unchanged also archives evals/*.py and evals/graders, which check_take imports.
+- Design section 14 cites core/src/tools/mod.rs:76-85; the function starts at :75.
+
+Open (Q3): T-8:file-change settles only from a RECORDED fixture, the first committed GPT walk that edits through the patch tool, with its rollout as committed. Until then its refusal is unchanged ("[transcript-unreadable] no vendor reader yet (T-8:file-change)").
+Held (Q4): a delete patch stays refused; such a walk holds and goes to glitch-26.
+check_vendor_sources: no piece line names this lane's files.
+No push, no mirror, no athena run.
