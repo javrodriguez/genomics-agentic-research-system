@@ -1,0 +1,80 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+This plan awaits user review. Nothing executes until the user approves it and the stage 03
+approval helper records that approval.
+
+## Goal
+Perform a PCA of the RNA-seq samples from gene counts, coloured by condition.
+Display PC1 versus PC2 with sample labels and explained variance to describe sample relationships.
+
+## Inputs
+Resolve both inputs again at execution time using `_system/resolve_artifact.py --project
+<project> --assay rnaseq_bulk --consumes counts_gene design`; stop if either cannot resolve.
+Paths below are relative to the project and reflect current resolution. Inputs are read-only.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper, native | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets, native | 01_samplesheets/rnaseq_bulk_design.csv |
+
+Current design: A1, A2, A3 are untreated; B1, B2, B3 are treated. The count matrix
+contains gene_id and gene_name annotation columns followed by sample columns.
+
+## Method
+1. After approval, write `scripts/sample_pca.py` and `scripts/submit.sh` inside this analysis.
+   Run all data processing and plotting in batch using Python in `gars-bio`, with pandas,
+   NumPy and Matplotlib from the existing environment. Use NumPy SVD for PCA; install nothing.
+2. Read the resolved TSV counts and CSV design. Use gene_id as the unique gene identifier;
+   exclude gene_name from numeric calculations. Require unique nonempty sample IDs, nonempty
+   condition labels, unique nonempty gene IDs, finite nonnegative counts and positive sample
+   totals. Require an exact match between count sample columns and design sample IDs, and
+   reorder metadata to the count columns. Stop with the actual error if validation fails.
+   Retain all six samples, with no automatic outlier removal.
+3. Compute library totals over all genes. Convert counts to counts per million (CPM) by
+   dividing each column by its total and multiplying by 1,000,000. Retain genes with CPM
+   >= 1 in at least 3 samples. Transform retained CPM with log2(CPM + 1), then remove genes
+   with zero variance across samples. Preserve fractional input counts without rounding.
+4. Use all retained variable genes, without selecting genes by condition or differential
+   expression. Transpose to samples by genes, mean-centre each gene across samples, and
+   perform full deterministic SVD (`numpy.linalg.svd`, `full_matrices=False`). Do not scale
+   genes to unit variance, correct batches or regress out condition. Require at least two
+   nonzero principal components; otherwise stop. Sample scores are U times singular values;
+   explained variance ratios are squared singular values divided by their sum.
+5. Plot PC1 against PC2 with untreated in blue (#0072B2) and treated in orange (#D55E00).
+   Label each point with sample_id, include a condition legend, and label axes with percent
+   variance explained. Save a 7 by 5 inch PNG at 300 dpi and a vector PDF. PCA signs are
+   arbitrary and do not affect sample relationships.
+6. Export scores for all components with sample_id and condition, and a variance table with
+   component, eigenvalue (singular value squared divided by n_samples - 1), explained variance
+   ratio and cumulative ratio. Write a brief Markdown report documenting input paths and
+   SHA-256 hashes, package versions, sample counts by condition, gene counts before and after
+   filtering, normalization, PCA parameters, and PC1/PC2 variance percentages. Limit the
+   report to this descriptive PCA; perform no significance tests or biological inference.
+7. On successful execution, run the stage 03 `verify` helper to check the declared outputs
+   and register completion, then append its returned history entry as required by the contract.
+
+## Outputs
+Paths are relative to this analysis directory. Types use the closed artifact vocabulary.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | Labelled PC1 versus PC2 plot coloured by condition, 300 dpi |
+| results/sample_pca.pdf | figure | Vector version of the same plot |
+| results/pca_scores.csv | table | Sample scores for all components with condition labels |
+| results/pca_variance.csv | table | Eigenvalues, explained variance ratios and cumulative ratios |
+| results/report.md | report | Reproducible method, validation summary and descriptive PCA statistics |
+
+## Execution
+Runs: batch
+
+After explicit user approval and successful `stage03_analysis.py approve`, submit
+`scripts/submit.sh` through `_system/executorlib.py submit --workspace <project> <script>`
+using the project's configured executor. Source `_system/gars-env.sh` and run with
+`$GARS_PY` in `gars-bio`. Request 1 CPU, 4 GB memory and 10 minutes wall time where supported
+by the configured executor. Expected computation: under 5 minutes; expected outputs: under
+10 MB, depending on input size. Capture stdout/stderr inside this analysis directory.
+If the required environment or packages are unavailable, stop and report the missing
+requirements without installing or substituting tools. On failure, record FAILED and report
+the error; any changed method requires a new plan. No analysis has been run at drafting time.
