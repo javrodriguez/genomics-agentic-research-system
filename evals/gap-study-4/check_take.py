@@ -3981,7 +3981,7 @@ CODEX_RESPONSE_RETURNED = ("function_call_output", "custom_tool_call_output", "t
 VENDOR_JSON_DOCUMENTS = {"codex": {"function_call": ("arguments",)}, "gemini": {}}
 # The fields of a mixed record that are what the tool returned: the command's output; the rest is what it was asked.
 VENDOR_RETURNED_FIELDS = {"command_execution": ("aggregated_output",), "CommandExecution": ("aggregated_output",),
-                          "toolCalls": ("result", "resultDisplay")}
+                          "toolCalls": ("result", "resultDisplay"), "FileChange": ("stdout", "stderr")}
 
 
 class VendorUnreadable(ValueError):
@@ -4054,6 +4054,12 @@ def _codex_rollout_records(raw: bytes, where: str) -> list:
         item = pay.get("item") if rec["type"] == "event_msg" and pay.get("type") == "item_completed" else None
         if isinstance(item, dict) and item.get("type") == "CommandExecution":
             out.append(_vendor_split(item, "CommandExecution", at))
+        # Lane vendor-b23 (glitch-26's ruling B23-2): a patch's FileChange item (read_rollout has checked its shape),
+        # every string of it read; its changes are a map keyed by path, and C's string walk reads values only
+        # (_tool_strings), so each path is handed over as a value beside its content, diff and rename target.
+        if isinstance(item, dict) and item.get("type") == "FileChange":
+            fc = dict(item, changes=[{"path": p, **c} for p, c in item["changes"].items()])
+            out.append(_vendor_split(fc, "FileChange", at))
         if rec["type"] != "response_item":
             continue
         kind = pay.get("type")
@@ -4813,9 +4819,43 @@ def vendor_nested_flag_problems(path, harness) -> list:
     return command_problems(vendor_shell_commands(Path(path).parent, harness)[0], harness)
 
 
+def vendor_file_change_reads(path) -> list:
+    """T-8:file-change's reader (lane vendor-b23, glitch-26's rulings Q2 and Q3, Tue 20 Oct 2026;
+    lane-reports/vendor-b23-DESIGN.md sections 5 and 6), run by vendor_pending once the row is settled: each turn's
+    completed exec-stream file changes joined to the last retained rollout's FileChange items
+    (codex_native.join_file_changes), so every patch the view shows is one whose content reach reads; a stream patch
+    the rollout does not hold, or one off it, is transcript-unreadable. A rename (a FileChange update with a move_path)
+    is held under its own transcript-unreadable reason: the exec stream prints only its source path, so the view would
+    read it as an edit of the old path (Q2)."""
+    try:
+        turns = _codex_native.read_rollout(_vendor_last_snapshot(path, _ledger_beside(Path(path))))["turns"]
+        streams = [_vendor_stream(path, env) for env in _vendor_envelopes(path)]
+    except _VENDOR_READ_ERRORS as e:
+        return [f"[{TRANSCRIPT_UNREADABLE}] the codex file changes cannot be read: {e}"]
+    if len(turns) != len(streams):
+        return [f"[{TRANSCRIPT_UNREADABLE}] the rollout holds {len(turns)} turn(s) for {len(streams)} exec stream(s), "
+                "so its file changes cannot be joined"]
+    out = []
+    for n, (turn, text) in enumerate(zip(turns, streams), 1):
+        try:
+            _codex_native.join_file_changes(turn, _codex_native.read_exec(text, model=turn["requested_model"]))
+        except _codex_native.JoinRefused as e:
+            out.append(f"[{TRANSCRIPT_UNREADABLE}] turn {n}: the stream's file changes do not join the rollout's: {e}")
+            continue
+        for o in turn["output"]:
+            if o["kind"] == "file_change":
+                for c in o["changes"]:
+                    if c["move_path"] is not None:
+                        out.append(f"[{TRANSCRIPT_UNREADABLE}] turn {n}: a rename through the patch tool "
+                                   f"({c['path']} -> {c['move_path']}): the exec stream names only the source path, "
+                                   "so the view would read it as an edit of the old path")
+    return out
+
+
 def vendor_file_change_problems(path, harness) -> list:
     """transcript-unreadable, codex file_change content (T-8:file-change): PENDING while any exec stream holds a
-    file_change item (its patch text is read by no reader yet; the cross-check refuses it too)."""
+    file_change item. Lane vendor-b23: its site hands in the row's reader, vendor_file_change_reads, which decides
+    once the row is settled on a RECORDED fixture (Q3); until then the refusal is the row's, as before."""
     if harness != "codex":
         return []
     try:
@@ -4823,7 +4863,7 @@ def vendor_file_change_problems(path, harness) -> list:
             for line in transcript_view.jsonl_lines(_vendor_stream(path, env)):
                 rec = _binding._json(line)
                 if isinstance(rec, dict) and (rec.get("item") or {}).get("type") == _tx_codex.FILE_CHANGE:
-                    return vendor_pending("codex", "T-8:file-change", None)
+                    return vendor_pending("codex", "T-8:file-change", vendor_file_change_reads, path)
     except _VENDOR_READ_ERRORS:
         return []                                  # the view refuses an unreadable stream
     return []

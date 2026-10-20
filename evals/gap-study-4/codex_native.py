@@ -21,6 +21,16 @@ Rollout (native JSONL), the initial supported subset:
   - item_completed items, TurnItem PascalCase tags (protocol/src/items.rs:46-78): UserMessage (one `text` input,
     protocol/src/user_input.rs:16-26), AgentMessage (its Text parts concatenated, items.rs:125-127), Reasoning (summary
     joined by newline) and CommandExecution (items.rs:244-281) are projected; every other tag refuses in this subset.
+  - FileChange (lane vendor-b23, glitch-26's rulings Q1 to Q4, Tue 20 Oct 2026; lane-reports/vendor-b23-DESIGN.md,
+    read at the pin 092d3acd): a patch's completed item, written by emit_patch_end with status, stdout and stderr set
+    and auto_approved None (core/src/tools/events.rs:599-619; protocol/src/items.rs:411-426, None fields skipped),
+    persisted unchanged by paginated history (rollout/src/policy.rs:249, 280; its started item is never persisted,
+    :201, 211). Its keys are exactly FILE_CHANGE_KEYS, status one of FILE_CHANGE_STATUSES (protocol.rs:3764-3770), and
+    changes a non-empty map from the source path to {type add, content} or {type update, unified_diff, move_path}
+    (protocol.rs:4228-4240; core/src/apply_patch.rs:64-90); a delete change refuses (Q-w11a-3, as in the exec stream).
+    It is projected as {kind "file_change", status, changes [{path, kind, move_path}] sorted by path}, the order exec
+    prints them in (app-server-protocol/src/protocol/item_builders.rs:342-353). move_path is a rename's target, which
+    the exec stream never prints (event_processor_with_jsonl_output.rs:194): check_take's T-8 reader holds such a take.
   - aggregated_output is kept as written; `marker_text` says only that the persistence marker's text occurs in it
     (policy.rs:17-19), which an agent can print too, so it is never read as proof that the writer truncated.
   - a blank or whitespace-only line anywhere but after the last record refuses (the writer frames every line as one
@@ -30,7 +40,8 @@ Rollout (native JSONL), the initial supported subset:
 
 Known false-refusal risks, for the first recorded pair to confirm (review nit N11; never admitted unseen): a
 whitespace-only Reasoning summary (above); a turn_aborted whose turn_id is null (TurnAbortedEvent.turn_id is
-Option<String>); and the line types the paginated policy persists but this subset refuses, world_state,
+Option<String>); a FileChange carrying auto_approved, a non-UTF-8 path (the stream's lossy string then differs from
+the key) or two hunks naming one file (lane vendor-b23); and the line types the paginated policy persists but this subset refuses, world_state,
 retained_context, security_risk_score, compacted, inter_agent_communication, inter_agent_communication_metadata and
 realtime_item: if a plain exec session writes any of them, every rollout of it refuses.
 
@@ -47,6 +58,9 @@ no model-facing tool result; its item ids are synthetic (`item_<n>`) and are nev
 presentation string and is not compared. A model reroute is an error item "model rerouted: <from> -> <to> (...)"
 (exec/src/event_processor_with_jsonl_output.rs:494-507), the only served-model evidence; without it the served model is
 unknown. An interrupted turn emits no terminal event and exits 1 (event_processor_with_jsonl_output.rs:559-563; exec/src/lib.rs:1341-1358 per the audit).
+A completed file_change (lane vendor-b23) joins the rollout turn's FileChange by order, as commands do: equal counts,
+equal paths and kinds, and its status completed for completed, failed for failed or declined (:201-203); its started
+item is skipped, as a command's is.
 """
 from __future__ import annotations
 
@@ -74,12 +88,16 @@ TURN_ITEMS = ("UserMessage", "FunctionCallOutput", "HookPrompt", "AgentMessage",
               "CommandExecution", "DynamicToolCall", "CollabAgentToolCall", "SubAgentActivity", "WebSearch", "ImageView",
               "Extension", "ImageGeneration", "EnteredReviewMode", "ExitedReviewMode", "FileChange", "McpToolCall",
               "ContextCompaction")
-PROJECTED_ITEMS = ("UserMessage", "AgentMessage", "Reasoning", "CommandExecution")
+PROJECTED_ITEMS = ("UserMessage", "AgentMessage", "Reasoning", "CommandExecution", "FileChange")
+FILE_CHANGE_KEYS = ("type", "id", "changes", "status", "stdout", "stderr")
+FILE_CHANGE_STATUSES = ("completed", "failed", "declined")
+FILE_CHANGE_KINDS = {"add": ("type", "content"), "update": ("type", "unified_diff", "move_path")}
+EXEC_FILE_CHANGE_STATUS = {"completed": "completed", "failed": "failed", "declined": "failed"}
 EXEC_EVENTS = ("thread.started", "turn.started", "turn.completed", "turn.failed", "item.started", "item.updated",
                "item.completed", "error")
 EXEC_ITEMS = ("agent_message", "reasoning", "command_execution", "file_change", "mcp_tool_call", "collab_tool_call",
               "web_search", "todo_list", "error")
-PROJECTED_EXEC_ITEMS = ("agent_message", "reasoning", "command_execution", "error")
+PROJECTED_EXEC_ITEMS = ("agent_message", "reasoning", "command_execution", "file_change", "error")
 TRUNCATION_MARKER = "\n... command output truncated for persistence ...\n"
 # The one reroute parser, shared with codex_adapter (Codex road review F1, F2): an item.completed error item whose
 # message is exactly format!("model rerouted: {} -> {} ({:?})", from, to, reason) (exec/src/event_processor_with_jsonl_
@@ -176,6 +194,8 @@ def _item(item, turn):
                                 "false-refusal risk, refused until a recorded pair shows it")
         if summary:
             turn["output"].append({"kind": "reasoning", "text": "\n".join(summary)})
+    elif kind == "FileChange":
+        turn["output"].append(_file_change(item))
     else:
         out = item.get("aggregated_output")
         if not (out is None or isinstance(out, str)) or not isinstance(item.get("status"), str) \
@@ -186,6 +206,37 @@ def _item(item, turn):
             raise ReaderRefused("a CommandExecution exit_code is an int or absent")
         turn["output"].append({"kind": "command", "status": item["status"], "exit_code": exit_code, "output": out,
                                "marker_text": isinstance(out, str) and TRUNCATION_MARKER in out})
+
+
+def _file_change(item: dict) -> dict:
+    """One FileChange item on its pinned shape (module docstring), projected; ReaderRefused otherwise."""
+    if set(item) != set(FILE_CHANGE_KEYS):
+        raise ReaderRefused(f"a FileChange item's keys are not exactly {list(FILE_CHANGE_KEYS)}")
+    if not (isinstance(item["id"], str) and item["id"]):
+        raise ReaderRefused("a FileChange item carries no id")
+    if item["status"] not in FILE_CHANGE_STATUSES:
+        raise ReaderRefused(f"a FileChange status is not one of {list(FILE_CHANGE_STATUSES)}")
+    if not (isinstance(item["stdout"], str) and isinstance(item["stderr"], str)):
+        raise ReaderRefused("a FileChange item's stdout and stderr are strings")
+    changes = item["changes"]
+    if not (isinstance(changes, dict) and changes):
+        raise ReaderRefused("a FileChange item's changes are a non-empty map")
+    out = []
+    for path, change in changes.items():
+        kind = change.get("type") if isinstance(change, dict) else None
+        if not (isinstance(path, str) and path):
+            raise ReaderRefused("a FileChange change names no path")
+        if kind == "delete":
+            raise ReaderRefused("a FileChange delete is refused (Q-w11a-3), as in the exec stream")
+        if kind not in FILE_CHANGE_KINDS or set(change) != set(FILE_CHANGE_KINDS[kind]):
+            raise ReaderRefused(f"a FileChange change is off its pinned shape ({kind!r})")
+        if kind == "add" and not isinstance(change["content"], str):
+            raise ReaderRefused("a FileChange add's content is a string")
+        if kind == "update" and not (isinstance(change["unified_diff"], str) and (
+                change["move_path"] is None or (isinstance(change["move_path"], str) and change["move_path"]))):
+            raise ReaderRefused("a FileChange update carries a diff string and a move_path that is a path or null")
+        out.append({"path": path, "kind": kind, "move_path": change.get("move_path")})
+    return {"kind": "file_change", "status": item["status"], "changes": sorted(out, key=lambda c: c["path"])}
 
 
 def read_rollout(raw) -> dict:
@@ -418,6 +469,7 @@ def join(turn: dict, exec_text: str, *, exit_code, session_id: str) -> dict:
             raise JoinRefused("command status or exit code disagrees")
         if not _output_agrees(nat["output"], s.get("aggregated_output")):
             raise JoinRefused("command output disagrees")
+    join_file_changes(turn, call)
     shown = call["terminal"]
     if shown is None and exit_code == 0:
         raise JoinRefused("no terminal event with exit 0: the call is incomplete")
@@ -431,3 +483,22 @@ def join(turn: dict, exec_text: str, *, exit_code, session_id: str) -> dict:
             "served_model": call["served_model"], "agent_texts": shown_text, "commands": len(shown_cmds),
             "marker_text": any(n["marker_text"] for n in native_cmds),
             "command_text": "presentation-derived, not compared"}
+
+
+def join_file_changes(turn: dict, call: dict) -> int:
+    """How many file changes one rollout turn (read_rollout) and its exec call (read_exec) hold, after matching them
+    by order (lane vendor-b23): JoinRefused unless the counts, each pair's paths and kinds (the stream's list against
+    the rollout's sorted map) and each pair's status agree. A rename's target is the rollout's alone."""
+    shown = [i for i in call["items"] if i.get("type") == "file_change"]
+    native = [o for o in turn["output"] if o["kind"] == "file_change"]
+    if len(shown) != len(native):
+        raise JoinRefused("file change count disagrees")
+    for s, nat in zip(shown, native):
+        got = s.get("changes") if isinstance(s.get("changes"), list) else []
+        if not all(isinstance(c, dict) for c in got):
+            raise JoinRefused("an exec file_change's changes are not objects")
+        if [(c.get("path"), c.get("kind")) for c in got] != [(c["path"], c["kind"]) for c in nat["changes"]]:
+            raise JoinRefused("file change paths or kinds disagree")
+        if s.get("status") != EXEC_FILE_CHANGE_STATUS[nat["status"]]:
+            raise JoinRefused("file change status disagrees")
+    return len(native)

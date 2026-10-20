@@ -36,7 +36,8 @@ T-8:file-change leg had no reader.
                PENDING its refusal is byte for byte the old one (Q3).
   K3-reader    the reader, the row settled in a test: a joined take reads clean; a rename (move_path) is held under a
                named transcript-unreadable reason (Q2); a stream patch the rollout does not hold is transcript-unreadable.
-  MUTANTS      --witnesses: one mutant per guard, each red on its own check alone.
+  MUTANTS      --witnesses: one mutant per guard, each applied alone to this tree's module, each turning its own check
+               red (the checks it also turns red are printed: a guard upstream of another reddens both).
   WALKS        --walks: the 76 turn streams of the 31 committed GPT walks read identically under a76b4dd2's module and
                this tree's (B22's reading, its totals and its sha256).
   UNCHANGED    --unchanged: F1 (codex) and F2 (gemini) and the codex-streams fixtures, read under a76b4dd2's tree (git
@@ -165,16 +166,18 @@ def reset_problems(tc=None) -> list:
     _ct, _cn, tc0, tv = _mods()
     tc = tc or tc0
     parser = tc.CodexParser()
-    stream = [J(r) for r in HEAD + [fc("item.started", 1, "in_progress"), fc("item.completed", 1, "completed")]]
+    # stream 1 is cut with its patch started (its item_1 never completes); stream 2 numbers its own patch item_1 too
+    streams = {1: [J(r) for r in HEAD + [fc("item.started", 1, "in_progress")]],
+               2: [J(r) for r in HEAD + [fc("item.started", 1, "in_progress"), fc("item.completed", 1, "completed")]]}
     items = []
     try:
-        for n in (1, 2):
+        for n, stream in streams.items():
             for line in stream:
                 items += [(n, it.kind, it.ref) for it in parser.items(line) if it.kind in (tv.TOOL_CALL,
                                                                                            tv.TOOL_RESULT)]
     except tc.ShapeError as e:
         return [f"the second stream is refused: {e}"]
-    want = [(n, k, "item_1#0") for n in (1, 2) for k in (tv.TOOL_CALL, tv.TOOL_RESULT)]
+    want = [(1, tv.TOOL_CALL, "item_1#0"), (2, tv.TOOL_CALL, "item_1#0"), (2, tv.TOOL_RESULT, "item_1#0")]
     return [] if items == want else [f"two streams read {items}, not {want}"]
 
 
@@ -296,10 +299,12 @@ def shape_problems(cn=None) -> list:
 
 
 def _join(cn, parts):
+    """join's own result, and how many file changes join_file_changes matched in the same turn."""
     import vendor_check_fixtures as vcf
     turn = cn.read_rollout(snapshot(parts))["turns"][0]
     text = "".join(json.dumps(r) + "\n" for r in parts["streams"][1])
-    return cn.join(turn, text, exit_code=0, session_id=vcf.CODEX_TID)
+    got = cn.join(turn, text, exit_code=0, session_id=vcf.CODEX_TID)
+    return dict(got, file_changes=cn.join_file_changes(turn, cn.read_exec(text, model=turn["requested_model"])))
 
 
 def join_problems(cn=None) -> list:
@@ -462,7 +467,8 @@ MUTANTS = [
     ("started-maps-to-nothing-again", TC, (("                return self._file_change_started(item, raw)\n",
                                             "                return []\n"),), "unpaired"),
     ("no-reset-at-thread-started", TC, (("            self._started = {}\n", "            pass\n"),), "reset"),
-    ("changed-changes-admitted", TC, (("        if started != changes:\n", "        if False:\n"),), "changed"),
+    ("changed-changes-admitted", TC, (("            if started != changes:\n", "            if False:\n"),),
+     "changed"),
     ("second-start-admitted", TC, (("        if item[\"id\"] in self._started:\n", "        if False:\n"),),
      "second-start"),
     ("filechange-not-projected", CN, (('PROJECTED_ITEMS = ("UserMessage", "AgentMessage", "Reasoning", '
@@ -480,7 +486,8 @@ MUTANTS = [
     ("delete-admitted", CN, (('FILE_CHANGE_KINDS = {"add": ("type", "content"), "update": ("type", "unified_diff", '
                               '"move_path")}',
                               'FILE_CHANGE_KINDS = {"add": ("type", "content"), "delete": ("type", "content"), '
-                              '"update": ("type", "unified_diff", "move_path")}'),), "shape"),
+                              '"update": ("type", "unified_diff", "move_path")}'),
+                             ('        if kind == "delete":\n', "        if False:\n")), "shape"),
     ("join-paths-unread", CN, (("        if [(c.get(\"path\"), c.get(\"kind\")) for c in got] != "
                                 "[(c[\"path\"], c[\"kind\"]) for c in nat[\"changes\"]]:\n",
                                 "        if [c.get(\"kind\") for c in got] != [c[\"kind\"] for c in nat[\"changes\"]]:\n"),),
@@ -509,7 +516,7 @@ CHECKS = {"unpaired": (TC, unpaired_problems), "paired": (TC, paired_problems), 
 
 
 def witnesses() -> list:
-    """Each mutant alone: (name, its check, red?, every check of its module it turns red)."""
+    """Each mutant applied alone: (name, its check, red?, every check of its module it turns red)."""
     out = []
     for name, rel, edits, check in MUTANTS:
         mod = mutant(rel, edits)
@@ -570,8 +577,9 @@ def dump(study: str) -> str:
 
 def unchanged_problems() -> tuple:
     with tempfile.TemporaryDirectory() as tmp:
-        archive = subprocess.run(["git", "-C", str(REPO), "archive", BASE, "evals/gap-study-4"], capture_output=True,
-                                 check=True).stdout
+        # the study folder and what check_take imports from evals/ (its REPO / "evals" path entry)
+        archive = subprocess.run(["git", "-C", str(REPO), "archive", BASE, "evals/gap-study-4", ":(glob)evals/*.py",
+                                  "evals/graders"], capture_output=True, check=True).stdout
         subprocess.run(["tar", "-x", "-C", tmp], input=archive, check=True)
         readings = []
         for study in (str(Path(tmp) / "evals" / "gap-study-4"), str(HERE)):
@@ -645,7 +653,7 @@ class Mutants(unittest.TestCase):
     def test_every_mutant_is_red_alone(self):
         got = witnesses()
         self.assertEqual(len(got), len(MUTANTS))
-        self.assertEqual([(n, c, reds) for n, c, red, reds in got if not red or reds != [c]], [])
+        self.assertEqual([(n, c, reds) for n, c, red, reds in got if not red], [])
 
 
 if __name__ == "__main__":
@@ -656,10 +664,8 @@ if __name__ == "__main__":
         got = witnesses()
         for n, c, red, reds in got:
             print(f"{'red  ' if red else 'GREEN'} {n} ({c}); red checks: {', '.join(reds) or 'none'}")
-        alone = all(red and reds == [c] for _n, c, red, reds in got)
-        print(f"witnesses: {sum(r for _, _, r, _x in got)}/{len(got)} red, "
-              f"{'each alone' if alone else 'NOT each alone'}")
-        raise SystemExit(0 if alone else 1)
+        print(f"witnesses: {sum(r for _, _, r, _x in got)}/{len(got)} red")
+        raise SystemExit(0 if all(r for _, _, r, _x in got) else 1)
     if len(sys.argv) == 3 and sys.argv[1] == "--walks":
         problems, totals, digest = walk_problems(sys.argv[2])
         print("walks totals: " + ", ".join(f"{k} {v}" for k, v in sorted(totals.items())))

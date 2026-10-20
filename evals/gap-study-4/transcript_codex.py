@@ -43,9 +43,18 @@ THE VIEW MAPPING (the brief's, item 2):
     reasoning          item.completed -> agent-reasoning
     command_execution  item.started -> tool-call shell {command}; item.completed -> its tool-result (aggregated_output)
     mcp_tool_call      item.started -> tool-call other {}; item.completed -> its tool-result
-    file_change        item.started -> nothing (B22-6: the completed record carries the call, so the started one never
-                       adds a call or shifts a call number); item.completed -> one tool-call per change (add -> write,
-                       update -> edit, {path}) and its result
+    file_change        item.started -> one tool-call per change (add -> write, update -> edit, {path}, ref <id>#<i>);
+                       item.completed -> each change's result (its status). Lane vendor-b23 (glitch-26's ruling Q1,
+                       option C, Tue 20 Oct 2026; replaces B22-6's "started -> nothing"): the pinned handler emits
+                       Begin before it runs the patch and Finish after it, both with the same changes
+                       (core/src/tools/handlers/apply_patch.rs:544, 572; core/src/tools/events.rs:241-263, 599-615), and
+                       exec closes every unfinished started item at turn end (exec/src/event_processor_with_jsonl_
+                       output.rs:370-385, 524), so a started patch with no completion is left only by a killed exec (a
+                       take's timeout): it stays an edit call with no result, as a killed command does. A completed
+                       file_change with no started record in its stream (exec gives it a fresh id, :337-341; the D8
+                       fixtures hold them) keeps its call and its result at the completion. The parser keeps one map
+                       per stream, reset at thread.started: a second start of one id, or a completion whose changes
+                       are not its start's, is refused.
     thread.started, turn.started, turn.completed, turn.failed, error -> harness
 The stream carries no operator line (the operator's line is exec's argument, not an event), so a view of a Codex
 stream alone numbers every event turn 0: how the seam slice puts the ledger's sent lines in is Q-w11a-2.
@@ -205,18 +214,24 @@ def decode(line: str) -> dict:
 
 
 class CodexParser:
-    """Codex's host-captured `codex exec --json` stream, one JSON record per line (never the rollout file)."""
+    """Codex's host-captured `codex exec --json` stream, one JSON record per line (never the rollout file). One parser
+    may read a take's streams one after another; each stream's started file changes are kept until thread.started."""
+
+    def __init__(self) -> None:
+        self._started: dict = {}       # exec id -> the started file_change's [(path, kind)], this stream only
 
     def items(self, line: str) -> list:
         rec = decode(line)
         t, it = check_record(rec)      # every key and value below has passed the tables
+        if t == THREAD_STARTED:
+            self._started = {}
         if t not in ITEM_EVENTS:
             return [tv.RawItem(t, tv.HARNESS, text=tv._joined({k: v for k, v in rec.items() if k != "type"}))]
         item = rec["item"]
         raw = f"{t}:{it}"
         if t == ITEM_STARTED:
             if it == FILE_CHANGE:
-                return []
+                return self._file_change_started(item, raw)
             if it == COMMAND_EXECUTION:
                 kind, args = tv.SHELL, {"command": item["command"], "background": False}
             else:
@@ -233,10 +248,27 @@ class CodexParser:
         return self._file_change(item, raw)
 
     @staticmethod
-    def _file_change(item: dict, raw: str) -> list:
+    def _changes(item: dict) -> list:
+        return [(ch["path"], ch["kind"]) for ch in item["changes"]]
+
+    def _file_change_started(self, item: dict, raw: str) -> list:
+        if item["id"] in self._started:
+            raise ShapeError(f"a second item.started for file_change {item['id']!r} in one stream")
+        self._started[item["id"]] = self._changes(item)
+        return [tv.RawItem(raw, tv.TOOL_CALL, tool=CHANGE_KINDS[kind], args={"path": path}, ref=f"{item['id']}#{i}")
+                for i, (path, kind) in enumerate(self._started[item["id"]])]
+
+    def _file_change(self, item: dict, raw: str) -> list:
+        started = self._started.pop(item["id"], None)
+        changes = self._changes(item)
+        if started is not None:
+            if started != changes:
+                raise ShapeError(f"file_change {item['id']!r} completes with changes that are not its start's")
+            return [tv.RawItem(raw, tv.TOOL_RESULT, text=item.get("status"), ref=f"{item['id']}#{i}")
+                    for i in range(len(changes))]
         out = []
-        for i, ch in enumerate(item["changes"]):
+        for i, (path, kind) in enumerate(changes):
             ref = f"{item['id']}#{i}"
-            out.append(tv.RawItem(raw, tv.TOOL_CALL, tool=CHANGE_KINDS[ch["kind"]], args={"path": ch["path"]}, ref=ref))
+            out.append(tv.RawItem(raw, tv.TOOL_CALL, tool=CHANGE_KINDS[kind], args={"path": path}, ref=ref))
             out.append(tv.RawItem(raw, tv.TOOL_RESULT, text=item.get("status"), ref=ref))
         return out
