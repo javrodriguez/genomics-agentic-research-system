@@ -180,3 +180,53 @@ Whether w-o38's rollout persists a FileChange item was not checked: its rollout 
 ## 9. Not touched
 
 No code, no test, no fixture. The records clone and athena were read only. No push, no mirror, no athena run.
+
+## 10. B22-10: switching off the GPT arm's delegation tools (design, appended Tue 20 Oct 2026, 17:08 EDT / 21:08 UTC)
+
+glitch-26's ruling B22-10: the study refuses delegation on the vendor side (Gemini's `invoke_agent` was excluded under R-B14-2, box/take_config.py:124-125; the Claude arm keeps its Agent tool as a named difference).
+Design only; no code until the ruling.
+Source: the same pin, 092d3acd (section 1). Rollout facts: the 31 committed GPT walks' 76 rollouts, counts and names only.
+
+### 10a. `[agents] enabled = false` gives Disabled ahead of the catalog's v2, for both arm O models
+
+- The key: `ConfigToml.agents: Option<AgentsToml>` (config/src/config_toml.rs:481), with `AgentsToml.enabled: Option<bool>` (config_toml.rs:753-756); `Config.agents_enabled` is that value, defaulting to true (core/src/config/mod.rs:3893-3897).
+- The override (mod.rs:1604-1611): `features.multi_agent_v2` on gives V2; else `!agents_enabled` gives `Some(Disabled)`; else None. The box's `[features]` holds only `hooks = false` and `plugins = false` (box/take_config.py:69), and `multi_agent_v2` defaults off (features/src/lib.rs:1421-1424), so the first branch is never taken and `enabled = false` gives `Some(Disabled)`.
+- `multi_agent_version_for_model(model_version)` is `override().or(model_version).unwrap_or_else(...)` (mod.rs:1624-1631): the override comes first, so Disabled stands ahead of the model catalog's `"multi_agent_version": "v2"` for gpt-6.1-sol (models-manager/models.json:194) and gpt-6-luna (:541) alike.
+- Every road a take's turn takes reads that override first:
+  - the session's version at start: `config.multi_agent_version_override().or_else(|| resolve_multi_agent_version(history, inherited))` (core/src/session/mod.rs:772-774), so a resumed thread (turn 2 onward, `codex exec resume`) is Disabled too, whatever its history says;
+  - the thread manager's spawn: `effective_multi_agent_version_for_spawn` returns the override before any history (core/src/thread_manager.rs:1760-1770);
+  - each turn's context: `resolve_multi_agent_version_for_model` (session/mod.rs:4155-4166) and the prewarm road (session/turn_context.rs:1286-1299) both go through `multi_agent_version_for_model`.
+
+### 10b. What disappears
+
+- **The six tools.** `collab_tools_enabled` is false for Disabled (core/src/tools/spec_plan.rs:719-731), so none of the collaboration handlers is registered (spec_plan.rs:1376-1470: SpawnAgentHandlerV2, SendMessageHandlerV2, FollowupTaskHandlerV2, WaitAgentHandlerV2, InterruptAgentHandler, ListAgentsHandlerV2), and the required child-management list is empty (spec_plan.rs:733-764).
+  These are exactly the six names the rollouts show: spawn_agent, send_message, followup_task, wait_agent, interrupt_agent, list_agents.
+- **Two developer-message sections**, both returning None unless the turn is V2 (core/src/session/multi_agents.rs:14-17, 82-84) and assembled at session/world_state.rs:351-358:
+  - the multi-agent role instructions (the `<multi_agent_role>` part, here the model catalog's text, `marked` because it is a catalog override; prompts/src/multi_agent_instructions.rs), which carries the shared usage hint naming the six tools and `functions.collaboration`;
+  - the multi-agent mode section (`<multi_agent_mode>`, protocol/src/protocol.rs:137-138): with no mode and no earlier state it renders nothing (context/world_state/multi_agent_mode.rs:61-80).
+  In the committed rollouts, of 228 developer messages and 384 content parts, 76 parts carry `<multi_agent_role>`, 76 `<multi_agent_mode>`, 76 `spawn_agent` and 76 `functions.collaboration`: one per rollout, in all 31 walks. After the switch, none should.
+- **The model catalog section** stays empty either way: it needs `model_catalog_in_context`, off by default (session/world_state.rs:377-392).
+
+### 10c. What else changes, and what does not
+
+- **The rollout's turn_context** records `multi_agent_version` (session/turn_context.rs:912, serialized snake_case, protocol.rs:3109-3116): all 167 committed turn_context records read `"v2"`; they will read `"disabled"`. session_meta carries none (76 of 76 None). No study reader reads that field: no non-test module under evals/gap-study-4 names `multi_agent` (grep).
+- **An interrupted turn's history marker** would be a contextual-user message rather than a developer one (tasks/mod.rs:85-97). It applies only when Codex itself records an interrupted turn; a take's timed-out exec is killed and leaves no turn record, so I expect no take to show it (not measured).
+- **The exec stream** is unchanged: collab_tool_call items can no longer occur, and no committed walk had one (0 in 76 streams). The other item types, the event types and the usage keys do not depend on the version.
+- **The other tools**: `exec` and `wait` (code mode) are not gated on the version. The collaboration tools are already absent from `functions.exec`'s `tools.*` namespace (the hint text, multi_agent_instructions.rs:9-15), so the exec tool's nested list should not change. I did not render the tool list to confirm this; the rollout records no tool specs.
+- **The prompt otherwise**: the base instructions do not name any delegation tool (the names appear in no other record of the 76 rollouts), and nothing else in the world-state assembly reads the version.
+- **The config's bytes and the pre-registration draft**: config.toml gains an `[agents]` table for arm O.
+  Its sha256 is pinned per model in prereg-draft.json's config templates (`config_templates`, build_draft.py:1020-1033; prereg-draft.json:23586 and :23595), so the green commit must rebuild the draft (`build_draft --check` goes red until then). Gemini's and Claude's entries stay byte-identical.
+
+### 10d. What it means for the practice walks already committed
+
+- Their offered list differs from every walk after the switch: they had the six collaboration tools and the two developer sections; later walks have neither. No committed walk called a delegation tool (0 direct calls, 0 collab_tool_call items).
+- Those practice walks are marked "Commit one walk; never counted", and every one read `pending-native-reader` and went ungraded (section 8), so no counted result changes. Their prompts are not byte-comparable with later walks' on these two sections; the lane file should say so beside the change, and the walk register needs no edit (it was not checked here).
+
+### 10e. Proposed change, for the ruling
+
+In box/take_config.py only:
+- `CODEX_AGENTS = (("enabled", False),)`, rendered by `_codex` as an `[agents]` table after `[features]` and before `[otel]`, for arm O only; a `VALUE_SOURCES["CODEX_AGENTS"]` entry citing config_toml.rs:753-756, mod.rs:1604-1611, 1624-1631 and 3893-3897, models.json:194 and :541, and spec_plan.rs:719-731; a comment naming B22-10 and R-B14-2 as its sibling.
+- Red first: a test that `files_for(CODEX, ...)` for each arm O model holds `[agents]` with `enabled = false` (red on the current tree, which writes no such table), and that Gemini's and Claude's files are byte-identical to `34f7340f`'s (sha256 pinned).
+- Green: the key, and the rebuilt prereg-draft.json (two codex sha256 pairs move; nothing else).
+- Witnesses: the key dropped and the key set true each go red alone; the table written for Gemini too goes red.
+- Existing pins to re-check: test_take_config's Codex cases, including its study-word check (line 909), which rejects certain config words.
