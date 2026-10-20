@@ -18,15 +18,16 @@ stream holds two, each followed by its item.completed (types, keys and counts on
   F2-status  a started file_change is admitted only with the table's keys and status exactly "in_progress": a status
              of "completed", "failed" or 5, no status, an extra key, or a `delete` change (B22-7) is refused; the
              completed record's status stays unpinned.
-  F3-view    through a COPY of PARSERS: the started record maps to no view item, so the view holds shell 1, edit 2,
-             shell 3, each with its one result, exactly as the completed-only stream reads (no phantom call).
+  F3-view    through a COPY of PARSERS: the view holds shell 1, edit 2, shell 3, each with its one result, exactly as
+             the completed-only stream reads (no phantom call). Lane vendor-b23 (glitch-26's ruling Q1, option C): the
+             started record maps to the edit call itself and its completion to the result, so a cut patch stays a call.
   F4-closed  B22-8: item.started carrying agent_message, reasoning, collab_tool_call, web_search, todo_list or error,
              and an item.updated, are still refused.
   WALKS      --walks: every turn stream of the committed GPT walks reads identically under 19c7a88f's module and this
              tree's: per stream the check outcome of every line, the parser's raw-type counts and the view's call list
              (byte-equal JSON); the totals are pinned to the design note's counts (31 walks, 76 streams).
-  MUTANTS    --witnesses: the type removed again, the status check removed, the empty mapping replaced by a call; each
-             turns its own check red alone.
+  MUTANTS    --witnesses: the type removed again, the status check removed, the started record mapped to nothing again
+             (B23); each turns its own check red alone.
 
 Every record here is synthetic (types and keys from the pinned source; paths invented); the --walks mode reads the
 committed records through `git show` and prints counts only, never a record's text.
@@ -175,8 +176,9 @@ def view_problems(mod=tc) -> list:
         raw = mod.CodexParser().items(J(fc("item.started", 1, "in_progress")))
     except mod.ShapeError as e:
         return out + [f"the parser refuses the started record: {e}"]
-    if raw != []:
-        out.append(f"the started record maps to {[(i.kind, i.tool) for i in raw]}, not to nothing")
+    # B23 (glitch-26's ruling Q1, option C): the started record carries the edit call, its completion the result.
+    if [(i.kind, i.tool, i.ref) for i in raw] != [(tv.TOOL_CALL, tv.EDIT, "item_1#0")]:
+        out.append(f"the started record maps to {[(i.kind, i.tool, i.ref) for i in raw]}, not to its one edit call")
     return out
 
 
@@ -234,7 +236,8 @@ MUTANTS = [
     ("status-check-removed", (("    if t == ITEM_STARTED and it == FILE_CHANGE and item.get(\"status\") != "
                                "STARTED_FILE_CHANGE_STATUS:\n",
                                "    if False:\n"),), "status"),
-    ("started-mapped-to-a-call", (("            if it == FILE_CHANGE:\n                return []\n", ""),), "view"),
+    ("started-maps-to-nothing", (("                return self._file_change_started(item, raw)\n",
+                                  "                return []\n"),), "view"),
 ]
 CHECKS = {"admit": admit_problems, "status": status_problems, "view": view_problems, "closed": closed_problems}
 

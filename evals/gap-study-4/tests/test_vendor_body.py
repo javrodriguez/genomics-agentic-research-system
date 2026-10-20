@@ -832,7 +832,8 @@ P2_WITNESSES = {
     "the nested switches unread": ((
         "    return command_problems(vendor_shell_commands(Path(path).parent, harness)[0], harness)\n",
         "    return []\n"), "a nested agent's session switch"),
-    "file_change read as clean": (('                    return vendor_pending("codex", "T-8:file-change", None)\n',
+    "file_change read as clean": (('                    return vendor_pending("codex", "T-8:file-change", '
+                                   'vendor_file_change_reads, path)\n',
                                    "                    return []\n"), "a file_change item"),
     "a PENDING refusal under an event id": ((
         "        return [f\"[{row['reason']}] no vendor reader yet ({key})\"]\n",
