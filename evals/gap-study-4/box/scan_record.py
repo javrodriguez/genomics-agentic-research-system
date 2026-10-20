@@ -785,12 +785,20 @@ def _shape_calls(data: bytes, shapes, kind=None) -> list:
         lines_of.append(lines)
     out = []
     for shape, calls, lines in zip(shapes, calls_of, lines_of):
-        sources = []
+        sources, out_lines = [], {}
         if shape["copy_of"] is not None and kind in shape["kinds"]:
+            for n, rec in records:
+                for node in _shape_nodes(rec, shape["result"]):
+                    out_lines.setdefault(node[shape["result"]["id"]], []).append(n)
+            # B17-21: an exec window is one call line and its one output line; a read counts only inside exactly one
+            windows = [(lines[c][0], out_lines[c][0]) for c in out_lines
+                       if len(lines.get(c) or ()) == 1 and len(out_lines[c]) == 1]
             k = shape["copy_of"]
             for n, rec in records:
-                sources += [(n, s) for s, _ in _shape_strings(rec, (shapes[k],), ((calls_of[k], (), lines_of[k]),))]
-        out.append((calls, tuple((n, s) for n, s in sources if s), lines))
+                if sum(1 for c, o in windows if c < n < o) == 1:
+                    sources += [(n, s) for s, _ in _shape_strings(rec, (shapes[k],),
+                                                                  ((calls_of[k], (), lines_of[k], {}),))]
+        out.append((calls, tuple((n, s) for n, s in sources if s), lines, out_lines))
     return out
 
 
@@ -841,10 +849,20 @@ def _shape_read(shape, calls, cid, name):
     return tool if _reads_doc(tool, got[0][1]) else None
 
 
+def _json_value_at(s, p) -> bool:
+    """Whether a JSON string literal starting at s[p] sits at a JSON value position: the first non-whitespace
+    character before it is `:`, `[` or `,` (B17-22)."""
+    j = p - 1
+    while j >= 0 and s[j] in " \t\r\n":
+        j -= 1
+    return j >= 0 and s[j] in ":[,"
+
+
 def _copy_hits(s, srcs, ruling) -> list:
     """The ruled text once per distinct position of it in `s` that lies inside a verbatim copy of a source, or inside
-    one JSON string literal of a source (json.dumps, non-ASCII raw or escaped; its opening quote not escaped), the
-    position being a whole line of that source after _RULED_PREFIX (B17-17a, B17-18)."""
+    the one JSON string literal of a source that `s` holds (json.dumps with non-ASCII raw, as JSON.stringify writes it;
+    exactly one such literal, at a JSON value position), the position being a whole line of that source after
+    _RULED_PREFIX (B17-17a, B17-18, B17-20, B17-22)."""
     hits, seen = [], set()
     for a in srcs:
         found, at = [], 0
@@ -853,19 +871,20 @@ def _copy_hits(s, srcs, ruling) -> list:
             if f is not None:
                 found.append((at + len(ln) - len(f), f))
             at += len(ln) + 1
+        e = json.dumps(a, ensure_ascii=False)
+        one = s.count(e) == 1
         for k, f in found:
-            spans = [(k, None)] + [(1 + len(json.dumps(a[:k], ensure_ascii=x)) - 2, json.dumps(a, ensure_ascii=x))
-                                   for x in (False, True)]
+            spans = [(k, None), (len(json.dumps(a[:k], ensure_ascii=False)) - 1, e)]
             q = s.find(f)
             while q != -1:
-                for kk, e in spans:
+                for kk, lit in spans:
                     p = q - kk
                     if p < 0:
                         continue
-                    if e is None:
+                    if lit is None:
                         ok = s[p:p + len(a)] == a
                     else:
-                        ok = s[p:p + len(e)] == e and (p == 0 or s[p - 1] != "\\") and json.loads(e) == a
+                        ok = one and s[p:p + len(e)] == e and _json_value_at(s, p) and json.loads(e) == a
                     if ok:
                         if q not in seen:
                             seen.add(q)
@@ -878,7 +897,7 @@ def _shape_strings(rec, shapes, indexes, ruling=None, line=None) -> list:
     """(text, tool entry) for every string a ruled read's result carries in this record, by the read shapes; a copy
     result's text is its admitted positions (_copy_hits) among the reads of its own exec pair (B17-19)."""
     out = []
-    for shape, (calls, sources, call_lines) in zip(shapes, indexes):
+    for shape, (calls, sources, call_lines, out_lines) in zip(shapes, indexes):
         joined = shape["result"] is None
         spec = shape["call"] if joined else shape["result"]
         for node in _shape_nodes(rec, spec):
@@ -901,6 +920,10 @@ def _shape_strings(rec, shapes, indexes, ruling=None, line=None) -> list:
                         continue
                     cl = call_lines.get(node[spec["id"]])
                     if ruling is None or line is None or not cl:
+                        continue
+                    if len(out_lines.get(node[spec["id"]]) or ()) != 1:
+                        continue              # B17-21: one output per exec call
+                    if len(cl) != 1:
                         continue
                     srcs = [t for ln, t in sources if cl[0] < ln < line]
                     out += [(f, tool) for f in _copy_hits(s, srcs, ruling)]

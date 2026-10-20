@@ -2352,7 +2352,9 @@ class TestB17Round4(TestB17Round3):
         # round 5 (B17-19): the call is found by its id twice, for its tool and for its line (the copy's window)
         with _mutant("_shape_read", ("got = calls.get(cid)", "got = next(iter(calls.values()), None)")), \
                 _mutant("_shape_strings", ('cl = call_lines.get(node[spec["id"]])',
-                                           "cl = next(iter(call_lines.values()), None)")):
+                                           "cl = next(iter(call_lines.values()), None)")), \
+                _mutant("_shape_calls", ("sum(1 for c, o in windows if c < n < o) == 1", "True")):
+            # round 6 (B17-21): the window is the call id's too
             self.assert_split("rollout.jsonl", body, "session", [3, 4], [])
         red("B17 16b the call id")
 
@@ -2438,9 +2440,12 @@ class TestB17Round5(TestB17Round4):
         for case, out in cases.items():
             with self.subTest(case):
                 self.assert_split("rollout.jsonl", self.code_mode(out=out), "session", [3], [4])
+        # round 6 (B17-22: one literal per read): the read's own literal once, beside a changed one holding the line
+        changed = json.dumps(stdout.replace("line after", "LINE AFTER"), ensure_ascii=False)
+        both = self.code_mode(out='{"a":' + lit + ',"b":' + changed + "}")
+        self.assert_split("rollout.jsonl", both, "session", [3], [4])
         with _mutant("_copy_hits", ("s[p:p + len(e)] == e", "True")):
-            self.assert_split("rollout.jsonl", self.code_mode(out=cases["a literal of a changed output"]), "session",
-                              [3, 4], [])
+            self.assert_split("rollout.jsonl", both, "session", [3, 4], [])
         red("B17 round 5 the escaped span is one exact literal")
 
     def test_codex_lossy_copy_refuses(self):
@@ -2496,7 +2501,9 @@ class TestB17Round5(TestB17Round4):
                    _cx_custom(4, "b", inp="text('x')"), _cx_custom_out(5, "b", go),
                    _cx_end(6, "c-0", ["/bin/bash", "-lc", grep], go))
         self.assert_split("rollout.jsonl", body, "session", [7], [6])
-        with _mutant("_shape_strings", ("cl[0] < ln < line", "True")):
+        # round 6 (B17-21): a read outside every window is no source either, so the witness drops both window checks
+        with _mutant("_shape_strings", ("cl[0] < ln < line", "True")), \
+                _mutant("_shape_calls", ("sum(1 for c, o in windows if c < n < o) == 1", "True")):
             self.assert_split("rollout.jsonl", body, "session", [6, 7], [])
         red("B17 round 5 the exec pair's window")
 
