@@ -1,5 +1,90 @@
 Status: needs-review
 
+## ROUND 3 SUMMARY FOR REVIEW (local executor, 2026-10-20 14:20 UTC)
+
+glitch-26's ruling **B20-5**, made Tue 20 Oct 2026, is glitch-26's own: Javier ruled the line safe in OD57, and which commands may carry it is the implementation's scope.
+Gemini practice walk w-g11 was held at the drive scan: generic-api-key three times on one string, OD57's line, which the agent printed with `git log -p -n 1 7bd5b8b` so it carried a `+` diff prefix.
+The ruling: admit OD57's exact line, matched by its content sha256, in git diff output with exactly one leading `+`, `-` or space. The read must be a `git log -p` or `git show` inside the take's own repo, in Gemini and Codex read output alike, through the one shared admission path. Nothing else widens.
+
+Red commit `43f304b4` (tests only): test_scan_record ran 199 tests, FAILED (failures=5, errors=14), every failure and error in the new TestB20GitReads.
+
+Green commit `460bf624`, box/scan_record.py:
+- `_ruled_git`:
+  - the command is `git log` with `-p` or `--patch`, or `git show`;
+  - words are split on single spaces;
+  - each option is `-p`, `--patch`, `-N`, `--max-count=N`, `-n N` or `--no-color`;
+  - each other word is a revision (no shell syntax, quotes, colon path form or redirection).
+  - So there is no `-C`, `--git-dir`, `--output`, `--ext-diff` or `--`, and no cd, pipe or environment prefix.
+- `_reads_git`: only shell tools (script, wrapped and argv kinds) count. A call whose arguments name a directory (`dir_path`, `workdir`, `cwd`, `directory`) refuses; that is "the take's own repo".
+- `_ruled_diff_line`: exactly one prefix and then the 80 ruled bytes.
+  - Only diff body lines may sit between the line and its `@@ ` hunk header.
+  - The nearest `diff --git a/P b/P` above it must name the doc, with the same P on both sides.
+- Wiring:
+  - `_shape_read` marks a git read;
+  - `_ruled_text` reads its lines as diff lines;
+  - the Codex copy rule reads a git source's lines the same way;
+  - `_ruled_wrapped` takes the script check as a parameter.
+- The Claude path (`_ruled_tool`, `_ruled_bash`) is unchanged.
+- Every B17 mutant anchor still matches once.
+- Fold found by the run: the sidecar's process check refused `re.fullmatch` in scan_record.py (`uses re.fullmatch, outside its allowlist`). The fix is a compiled `_GIT_COUNT`, with the one witness edit re-anchored to it.
+
+Fixture: w-g11's shape is rebuilt from the investigator's notes (scratchpad wg11-findings.md); no walk record was read.
+- Gemini stream `tool_use` and `tool_result.output`.
+- The session toolCalls entry's `resultDisplay`, holding the line once under the doc's diff header, with the functionResponse output truncated short of it.
+- The line is the doc's own (`_env_line`, hash-matched), never a copied value.
+
+TestB20GitReads, 13 tests:
+- Admitted:
+  - Gemini stream and session, each prefix (`+`, `-`, space), for `git log -p -n 1 7bd5b8b`, `git show 7bd5b8b`, `git log --patch -3 --no-color`, `git show --max-count=1 HEAD` and plain `git log -p`;
+  - Codex stream, and the rollout's CommandExecution with its exec output (verbatim and gpt-6.1-sol's literal).
+- Refused:
+  - 11 output near misses: another line, `++`, `+ `, no prefix, a tab, trailing text, a cut line, another file's hunk, a renamed side, no diff header, outside a hunk body;
+  - 16 commands: `git diff`, `blame`, `log` without `-p`, `-C`, `--output`, `--ext-diff`, a pipe, `cd &&`, a `GIT_DIR=` prefix, `show HEAD:path`, a double space, `-n x`, `cat-file`, `grep`, `/usr/bin/git`, a newline;
+  - a `dir_path` argument;
+  - Codex `++` and `git diff`;
+  - the Claude Bash git read;
+  - a cat read with a diff-shaped output.
+- 16 B20-5 mutants, each red alone:
+  - the subcommand;
+  - log needs a patch;
+  - the option list;
+  - a revision word;
+  - `-n` takes a number;
+  - git is the first word;
+  - the take's own folder;
+  - a shell read only;
+  - one prefix;
+  - a hunk body;
+  - a diff header;
+  - the doc's diff;
+  - one path both sides;
+  - only a git read;
+  - the wrapped script (Codex);
+  - the copy reads a git source as a diff (a behaviour test: the mutant loses the Codex exec output's admission).
+
+Counts. Each run used env -i with Python 3.13.2 and was preceded by light-ok, with heavy bookings for the long ones.
+- At `460bf624`'s tree:
+  - test_scan_record: Ran 199 OK, 131 mutants red, 16 of them B20-5's.
+  - test_sidecar: 157 OK, 1 skipped; --process-check ok.
+  - test_scan_witness: 10 OK.
+  - check_vendor_sources: the B17 line and the new P2 line exit 0.
+  - copy_manifest --check, build_draft --check and freeze --check: ok.
+  - The three new admission-list lines: 3 of 3 exit 0.
+- Before the compiled-pattern fold:
+  - test_gemini_adapter: 146 OK; --witnesses 114/114 red.
+  - test_codex_adapter: 57 OK; --witnesses 16/16 red.
+  - test_drive_commit 31, test_walk_runner 89, test_wave4_bindings 13, test_walk_layout 14, test_rules_scanner 9, test_drive_box_seams 6, test_native_reader_registration 7, test_drive_loop 27, test_walk_launch 49 and test_config_folder C14 8: each OK.
+  - The 66 earlier admission-list lines: 65 exit 0. The 66th is test_sidecar, the fold above, green after it.
+  - The fold changed one regex call form, so these were not re-run.
+- test_walk_launch ran 2,099 s inside a 20-minute heavy booking, so that booking overran.
+- All runs finished by 10:10 EDT, before 11:59.
+
+Flagged, not fixed:
+- test_scan_record's module-level loop variable `_cls_from` is a TestCase class, so the loader runs that class twice. At the base that was TestB17Round5 (12 duplicates in "Ran 193"); now it is TestB17Round6 (5 duplicates in "Ran 199"). It is pre-existing, and the counts above include it.
+- Codex's CommandExecution `cwd` is not checked: the shapes hand `_reads_git` the argv only. The take's own repo is bound for Codex by the command alone (no `-C` or cd) and by the doc's diff header.
+
+RESUME HERE: review stop (round 3)
+
 ## ROUND 2 SUMMARY FOR REVIEW (local executor, 2026-10-20 13:05 UTC)
 
 The rulings are glitch-26's, made Tue 20 Oct 2026 under Javier's standing delegation, on lane-reports/B20-DESIGN.md (round 1, `c1a90b2a`):
@@ -77,7 +162,7 @@ Left unrun (athena's): the 3 C7-bound witnesses and C7Shapes itself (Linux file 
 Not touched: athena and the w-o17 walk folder; what becomes of w-o17's held take is a human ruling.
 Not pushed.
 
-RESUME HERE: review stop (round 2)
+(round 2's stop, superseded by round 3's line above: review stop (round 2))
 
 ## ROUND 1 (local executor, 2026-10-20 12:35 UTC)
 
