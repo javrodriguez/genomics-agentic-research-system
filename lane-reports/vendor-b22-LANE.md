@@ -91,3 +91,64 @@ RESUME HERE (round 2): review stop; athena runs the sweep and battery; glitch-26
 - **B22-10 design** (`fcc97ce2`, vendor-b22-DESIGN.md section 10, appended): `[agents] enabled = false` in arm O's config.toml makes the override Disabled ahead of the catalog's v2 for both models, on new, resumed and per-turn roads. The six collaboration tools and the `<multi_agent_role>` and `<multi_agent_mode>` developer sections go (76 of 76 committed rollouts carry each now). turn_context's `multi_agent_version` goes from `"v2"` (167 of 167) to `"disabled"`, read by no study reader. The stream and the other tools do not change. prereg-draft.json's two codex config sha256 pairs move, so the green rebuilds the draft. The committed practice walks were offered the six tools, called none, and are uncounted.
 
 RESUME HERE (B22-10): design stop; waiting for glitch-26's ruling on section 10e before the red.
+
+## B22-10 (local executor, Tue 20 Oct 2026, 17:19 EDT / 21:19 UTC)
+
+Status: needs-review (the whole lane, B22-6 to B22-10). This supersedes the earlier status and RESUME lines above; no line above is edited.
+
+glitch-26's ruling on section 10e: build it as proposed, in box/take_config.py; red first; green with the rebuilt draft (only the two codex config hash pairs may move); three witnesses; test_take_config's Codex pins and study-word check re-run.
+
+### Red `b088add5` (tests and the new module's COPIED.d claim)
+
+- New `evals/gap-study-4/tests/test_codex_agents_off.py`:
+  - K1: each arm O model's config.toml holds `[agents]` with exactly `enabled = false`, between `[features]` and `[otel]`, and without that table is byte-identical to 34f7340f's (sha256 pinned per model);
+  - K2: Gemini's files (both draft models) and Claude Code's are byte-identical to 34f7340f's (build_draft's combined sha256, pinned);
+  - K3: `VALUE_SOURCES["CODEX_AGENTS"]` is the record of the pinned reads;
+  - three mutants (`--witnesses`).
+- `tests/test_take_config.py`, three edits to existing tests, each named here:
+  - TestContents' expected codex config.toml gains `"agents": {"enabled": False}`;
+  - TestR3Values' VALUE_SOURCES record gains `B22_SOURCES`, imported from the new module so the record is written once;
+  - TestB18CodexSwitches sets the `[agents]` table aside, as it does `otel`.
+- Runner on the unchanged writer:
+  - test_codex_agents_off: `Ran 4 tests`, `FAILED (failures=2, errors=1)`. K1 reads "gpt-6.1-sol: agents is None, not {'enabled': False}" and the same for gpt-6-luna; K3 reads "VALUE_SOURCES['CODEX_AGENTS'] is not the B22 record"; the mutants cannot patch the absent constant; K2 is green (the pins are the base's).
+  - test_take_config: `Ran 16 tests`, `FAILED (failures=2)` (TestContents, TestR3Values).
+- copy_manifest --check on the red tree: `ok: 493 files from 60 fragment(s) ...`.
+
+### Green `6c60fc0e`
+
+- box/take_config.py:
+  - `CODEX_AGENTS = (("enabled", False),)`, with a comment naming B22-10 as R-B14-2's sibling and the Claude arm's Agent tool as the named difference;
+  - `_codex` writes `[agents]` after `[features]` and before `[otel]`;
+  - `VALUE_SOURCES["CODEX_AGENTS"]` cites 092d3acd: core/src/config/mod.rs 1607, 1629, 3897; config_toml.rs 481, 756; models.json 194, 541; features/src/lib.rs 1424; session/mod.rs 772; spec_plan.rs 721, 1376; session/multi_agents.rs 16, 80. Each cited line was re-read at the pin before it was written.
+- prereg-draft.json, rebuilt by `build_draft.py` (`wrote prereg-draft.json: 1260 planned tries, 126 half-cells`; `pending inputs: 22; freeze closed`). `git diff HEAD~1 HEAD -- evals/gap-study-4/prereg-draft.json` changes 4 lines, the two codex hash pairs only:
+  - gpt-6.1-sol config.toml `6a2c7537...` -> `dcffae85...`, combined `e56a71d5...` -> `cd3eb17b...`;
+  - gpt-6-luna config.toml `41870f8a...` -> `99a064e0...`, combined `52a0fba5...` -> `df62f797...`.
+- COPIED.d: one B22 sentence each in the reasons for box/take_config.py and tests/test_take_config.py (w4b-cp2-runtake-preflight.json) and prereg-draft.json (w8b-holdout-digests.json).
+
+### Runner lines on the green tree (Mac, after light-ok, env -i, Python 3.13.2)
+
+- test_codex_agents_off: `Ran 4 tests`, `OK`.
+- `--witnesses`: `witnesses: 3/3 red`. Each mutant turns only its own check red: `key-dropped (table)`, `key-set-true (table)`, `gemini-gains-the-table (others)`.
+- test_take_config: `Ran 16 tests in 0.431s`, `OK`. Its Codex pins (TestContents, TestB18CodexSwitches, TestR3Values) and its study-word check (`test_b18`'s and line 909's mutants) all ran inside it.
+- build_draft --check, after the commit: `ok: the committed draft is what build_draft.py builds`. Before the commit it read FAIL because it compares against HEAD.
+- copy_manifest --check: `ok: 493 files from 60 fragment(s) ...`; freeze --check: `freeze: 494 owned paths checked; no takes or freeze performed`.
+- `check_vendor_sources.py P2 box/take_config.py tests/test_take_config.py tests/test_codex_agents_off.py prereg-draft.json`: exit 0.
+- Other readers of take_config, each under a 45 s cap: test_preflight `Ran 59` OK; test_live_box `Ran 38` OK; test_vendor_roads `Ran 13` OK (32 s); test_env_allowlist `Ran 37` OK; test_settings_guard `Ran 15` OK.
+- Under `mac_slot.py run --kind heavy --owner vendor-b22`: test_build_draft `Ran 49 tests in 38.463s`, `OK`; test_walk_builders `Ran 102 tests in 79.773s`, `FAILED (failures=2)`.
+- Three reds, each the same on an archive of 34f7340f (`git archive 34f7340f evals`), so none comes from this lane; all are Mac-only:
+  - test_walk_builders `B13Lease.test_the_driver_and_walkrepo_get_the_lease_secrets` and `B19VendorConfig.test_the_vendor_config_is_written_on_the_walk_road`: "the run tree '/tmp/tmp.../tree' is not its canonical path, so Codex's trust key would not match it" (macOS /tmp is a link to /private/tmp);
+  - test_config_folder `C7Shapes.test_shape_rules`: `OSError: [Errno 92] Illegal byte sequence` creating a non-UTF-8 file name (APFS refuses it).
+  These need athena's runner lines to be green.
+
+### For the review and athena
+
+- The practice walks: the 31 committed GPT walks were offered the six collaboration tools (spawn_agent, send_message, followup_task, wait_agent, interrupt_agent, list_agents) and the two developer-message sections (`<multi_agent_role>` and `<multi_agent_mode>`, one each in 76 of 76 rollouts). They called none (0 direct calls, 0 collab_tool_call items). From `6c60fc0e` on, a walk is offered neither, so the committed walks are not byte-comparable with later walks on those two sections. Their turn_context `multi_agent_version` reads `"v2"`; later walks' should read `"disabled"`, which the first walk on this head will show.
+- A correction to the design note (append-only, so recorded here): section 10b cites "session/multi_agents.rs:14-17, 82-84"; the mode gate is at line 80, as the VALUE_SOURCES record cites.
+- athena's lines, from the repository root: `python3 -B -W ignore evals/gap-study-4/tests/test_codex_agents_off.py` and the same with `--witnesses`; test_take_config, test_walk_builders, test_config_folder and test_build_draft; then the earlier list (test_codex_adapter `--generated-mutants`, test_codex_started_file_change and its `--witnesses`, test_pending_codex_walk, checks.d, the athena suite).
+- Proposed, not done: two checks.d/vendor-admission.txt lines for test_codex_agents_off and its `--witnesses`, as B22-9 did, on glitch-26's word.
+
+### The whole lane from 19c7a88f
+
+13 files: transcript_codex.py and box/take_config.py (product); prereg-draft.json (generated); the two new test modules and test_take_config.py; four COPIED.d fragments; checks.d/vendor-admission.txt; the two lane files. Gemini's and Claude Code's tables, configs and adapters are unchanged. Nothing was pushed, mirrored or run on athena.
+
+RESUME HERE (B22-10): review stop for the whole lane (B22-6 to B22-10).
