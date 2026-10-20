@@ -23,7 +23,15 @@ the pinned version re-tests it (ruling Q-3, glitch-2f, 12 Oct 2026). Two grades 
     thread.started.thread_id; turn.failed.error.message; error.message; every item's `id` and `type`;
     agent_message.text and reasoning.text; command_execution command, aggregated_output, exit_code, status;
     file_change changes[] of {path, kind} and status, with kind add or update (delete is refused, Q-w11a-3);
-    mcp_tool_call server, tool, arguments, result, error, status; which item types an item.started may carry.
+    mcp_tool_call server, tool, arguments, result, error, status.
+  READ FROM THE PINNED SOURCE (lane vendor-b22, glitch-26's ruling B22-6, Tue 20 Oct 2026; GPT walk w-o38, held on a
+  file_change item.started; lane-reports/vendor-b22-DESIGN.md):
+    item.started      exec prints every item map_item_with_id maps but agent_message and reasoning
+                      (exec/src/event_processor_with_jsonl_output.rs:343-351, 477-482); of those the tables admit
+                      command_execution, mcp_tool_call and file_change. A file_change is started at apply_patch's
+                      Begin stage with no status (core/src/tools/events.rs:241-263), printed as "in_progress"
+                      (app-server-protocol/src/protocol/v2/item.rs:1028-1035), so a started file_change is admitted
+                      only with that status. w-o38's turn 1 holds two, each followed by its item.completed.
 
 THE CLOSED RULE. A record type, item type or key that is not in these tables is refused (`ShapeError`), never read
 on a guess: the first recorded stream that carries one stops at the reader, and the tables grow only by a lane that
@@ -35,7 +43,9 @@ THE VIEW MAPPING (the brief's, item 2):
     reasoning          item.completed -> agent-reasoning
     command_execution  item.started -> tool-call shell {command}; item.completed -> its tool-result (aggregated_output)
     mcp_tool_call      item.started -> tool-call other {}; item.completed -> its tool-result
-    file_change        item.completed -> one tool-call per change (add -> write, update -> edit, {path}) and its result
+    file_change        item.started -> nothing (B22-6: the completed record carries the call, so the started one never
+                       adds a call or shifts a call number); item.completed -> one tool-call per change (add -> write,
+                       update -> edit, {path}) and its result
     thread.started, turn.started, turn.completed, turn.failed, error -> harness
 The stream carries no operator line (the operator's line is exec's argument, not an event), so a view of a Codex
 stream alone numbers every event turn 0: how the seam slice puts the ledger's sent lines in is Q-w11a-2.
@@ -92,8 +102,10 @@ ITEM_KEYS = {
                                                        "error", "status")),
 }
 ITEM_TYPES = tuple(ITEM_KEYS)
-# The item types an item.started may carry: the two whose call is open while it runs.
-STARTED_ITEM_TYPES = (COMMAND_EXECUTION, MCP_TOOL_CALL)
+# The item types an item.started may carry: the calls open while they run (B22-6 adds file_change, read from the
+# pinned source; see the docstring), and the one status a started file_change carries.
+STARTED_ITEM_TYPES = (COMMAND_EXECUTION, FILE_CHANGE, MCP_TOOL_CALL)
+STARTED_FILE_CHANGE_STATUS = "in_progress"
 # The item types that are the agent's completed output (text or a tool call): the seam's agent_output rule.
 OUTPUT_ITEM_TYPES = (AGENT_MESSAGE, COMMAND_EXECUTION, FILE_CHANGE, MCP_TOOL_CALL)
 TOOL_ITEM_TYPES = (COMMAND_EXECUTION, FILE_CHANGE, MCP_TOOL_CALL)
@@ -166,6 +178,9 @@ def check_record(rec) -> tuple:
         raise ShapeError(f"item {it}: its id is empty")
     if t == ITEM_STARTED and it not in STARTED_ITEM_TYPES:
         raise ShapeError(f"item.started carrying {it!r}: only {STARTED_ITEM_TYPES} are pre-registered there")
+    if t == ITEM_STARTED and it == FILE_CHANGE and item.get("status") != STARTED_FILE_CHANGE_STATUS:
+        raise ShapeError(f"item.started carrying file_change: its status must be {STARTED_FILE_CHANGE_STATUS!r}, "
+                         f"the only one the pinned exec prints there")
     if it == FILE_CHANGE:
         if not item["changes"]:
             raise ShapeError(f"item {it}: its changes are empty")
@@ -200,6 +215,8 @@ class CodexParser:
         item = rec["item"]
         raw = f"{t}:{it}"
         if t == ITEM_STARTED:
+            if it == FILE_CHANGE:
+                return []
             if it == COMMAND_EXECUTION:
                 kind, args = tv.SHELL, {"command": item["command"], "background": False}
             else:
