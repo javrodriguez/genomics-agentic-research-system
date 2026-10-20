@@ -242,7 +242,8 @@ class TestR3Values(MutantCase):
             if getattr(tc, name, None) != want:
                 out.append(f"{name} is {getattr(tc, name, None)!r}, not the sourced {want!r}")
         # Lane vendor-b14 round 2 (R-B14-1, R-B14-2): the record gains the helper aliases' and the exclusion's reads.
-        if getattr(tc, "VALUE_SOURCES", None) != dict(R3_SOURCES, **B14_SOURCES, **B18_SOURCES):
+        # Lane vendor-b22 (glitch-26's ruling B22-10): and the [agents] switch's read, recorded in its own test module.
+        if getattr(tc, "VALUE_SOURCES", None) != dict(R3_SOURCES, **B14_SOURCES, **B18_SOURCES, **B22_SOURCES):
             out.append("take_config.VALUE_SOURCES is not the record of R3's static reads")
         if tc.pending():
             out.append(f"still pending: {sorted(tc.pending())}")
@@ -549,6 +550,9 @@ B18_SOURCES = {
                                         "the analytics events queue and sets analytics_enabled in every model "
                                         "request's metadata, so it is not used"),
 }
+# Lane vendor-b22 (glitch-26's ruling B22-10): the [agents] switch's source record, kept beside its own test.
+sys.path.insert(0, os.path.join(HERE, "tests"))
+from test_codex_agents_off import B22_SOURCES  # noqa: E402
 # A Codex row's config.toml before B18: what every other key must still read.
 B18_BEFORE = {"web_search": "disabled", "check_for_update_on_startup": False, "forced_login_method": "chatgpt",
               "cli_auth_credentials_store": "file", "features": {"hooks": False}}
@@ -577,6 +581,7 @@ class TestB18CodexSwitches(MutantCase):
             rest = copy.deepcopy(doc)
             rest.get("features", {}).pop("plugins", None)
             rest.pop("otel", None)
+            rest.pop("agents", None)     # B22-10's [agents] switch, bound by tests/test_codex_agents_off.py
             want = dict(B18_BEFORE, model=row, model_reasoning_effort=R3_VALUES["CODEX_REASONING_EFFORT"][row],
                         projects={RUN_TREE: {"trust_level": "trusted"}})    # R-H1's trust table, B11's own key
             if rest != want:
@@ -614,6 +619,8 @@ class TestContents(MutantCase):
                 "forced_login_method": "chatgpt", "cli_auth_credentials_store": "file",
                 # Lane vendor-b18 (glitch-26's ruling B18-1): the CLI's plugins and its metrics export at exit off.
                 "features": {"hooks": False, "plugins": False}, "otel": {"metrics_exporter": "none"},
+                # Lane vendor-b22 (glitch-26's ruling B22-10): the CLI's collaboration (delegation) tools off.
+                "agents": {"enabled": False},
                 # R-H1: the run tree trusted up front, so Codex never rewrites the file
                 "projects": {RUN_TREE: {"trust_level": "trusted"}}}
         if doc != want:
