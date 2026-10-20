@@ -1506,7 +1506,33 @@ HARNESS_FURNITURE_RULING = {
          "as the bash-first steer is. Every claude-code take sets CLAUDE_CODE_SILENT_TURN_REMINDER \"0\" in its env and "
          "in its inline settings, each turn's launch journal records it, and a turn that does not show it off refuses "
          "(harness-condition-violated). The transcript view still refuses the attachment, so a reminder that reached "
-         "the agent holds the walk (walks w126, w128 and w130 were held on it)."}],
+         "the agent holds the walk (walks w126, w128 and w130 were held on it)."},
+        # Lane vendor-b23 (glitch-26's ruling B23-3, Tue 20 Oct 2026; review of a76b4dd2 m2): both vendor arms'
+        # delegation switches named beside the Claude arm's Agent tool (box/take_config.py, R-B14-2 and B22-10).
+        {"of": "Delegation (vendor arms)", "text": "Both vendor arms run with delegation switched off, because the "
+         "study refuses delegation on the vendor side. Arm G's settings add invoke_agent, Gemini CLI's sub-agent "
+         "tool, to tools.exclude beside D8's two web tools (R-B14-2, glitch-26). Arm O's config.toml sets [agents] "
+         "enabled = false, which makes Codex's multi-agent version Disabled ahead of the model catalog's v2, so its "
+         "six collaboration tools (spawn_agent, send_message, followup_task, wait_agent, interrupt_agent, list_agents) "
+         "and its two multi-agent developer sections are not offered (B22-10, glitch-26, 20 Oct 2026). The Claude arm "
+         "keeps its Agent tool and reads its sub-agents' records as the agent's own (the notes Agent and Agent "
+         "grading). That is the named difference: the Claude arm may delegate, and neither vendor arm is offered a "
+         "delegation tool. No committed vendor practice walk called one, and the GPT practice walks before 20 Oct, "
+         "which were offered Codex's six tools, are not byte-comparable with later walks on those prompt sections."},
+        # Lane vendor-b23 (glitch-26's ruling Q5, Tue 20 Oct 2026; lane-reports/vendor-b23-DESIGN.md section 14): no
+        # record carries a patch the tool refuses before its Begin stage, so it is a named limitation of arm O.
+        {"of": "Patch refused before it starts (arm O)", "text": "A named limitation of arm O. Both arm O models "
+         "reach Codex's patch tool (apply_patch) only from inside the exec tool's JavaScript cell (their catalog sets "
+         "tool_mode code_mode_only), and the tool writes its file_change record only once a patch has parsed and been "
+         "verified. A patch it refuses before that (one that does not parse, or fails verification) leaves no "
+         "structured record: no exec-stream item, no rollout item, and no executed-call metadata (that Codex feature "
+         "is off by default and the box leaves it off; 0 of the 989 metadata records in the 76 rollouts of the 31 "
+         "committed GPT practice walks record a call). It survives only as text in the cell's program and in what "
+         "the cell printed back, which no reader parses as calls. So such an attempt is not a call in arm O's view: "
+         "pause_adherence does not count it and no path grader sees it, while a Claude Edit its tool refuses stays a "
+         "call with an error result. A refused patch changes no file, so the end-state graders read the same. The gap "
+         "can only make arm O read more adherent than it acted, by the refused patch attempts, which the study's "
+         "records cannot count."}],
     "walk_scope": "RULED 15 Oct 2026 (glitch-6b): the 25 pre-ruling walks are not rechecked under the steer and "
                   "isolation guards. They are rehearsal records of the earlier conditions and never cover CP6; replayed "
                   "under the isolation guard all 25 refuse, as expected (box lane). Every line reruns under the new ship "
