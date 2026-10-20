@@ -60,7 +60,7 @@ Each run used env -i with Python 3.13.2, after `mac_slot.py light-ok`; these are
 - check_vendor_sources P2 over the changed files: exit 0.
 - Other modules that read TABLE: test_routing `Ran 297` OK (19 s); test_plan_gate `Ran 49` OK; test_task_scope_read `Ran 39` OK; test_task_confounded_design `Ran 84` OK; test_new_tasks `Ran 44` OK (31 s); test_vendor_admission `Ran 10` OK.
 
-### Held for a ruling (one red; resolved by B21-8, below)
+### Held for a ruling (one red)
 
 test_endstate: `Ran 88 tests in 0.438s`, `FAILED (failures=1)`, the failure being `Seam.test_endstate_types_no_harness`: "Lists differ: ['.home'] != []".
 - test_endstate is the other consumer that iterates TABLE (its `harness_strings`, test_endstate.py:527-539). It now takes each vendor's `.home` folder from `.home/**` and finds that text in graders/endstate.py. The four hits are attributes, not folders: `table).home_paths` (339), `take.home is null` (447), `self.home = run` (448), `self.home is not` (639).
@@ -82,10 +82,36 @@ These are longer than the Mac's 30-second bound, or were stopped by my 45-second
 
 The records clone and athena's folders (read only, round 1). box/run_take.py, the scanner, drive.py, preflight, postflight, the adapters, the snapshots and the sidecar. Nothing was pushed. No regrade.json exists for any vendor walk (round 1, section 8 of the design note).
 
-- **B21-8** (glitch-26's ruling on the hold): test_endstate's `harness_strings` now applies typed_harness's attribute rule to a dotted folder, and a new witness `AgentHomeWitness` asserts that a typed `"/srv/t/.home/x"` still goes red. This is not a Claude-arm behaviour change: the scan widened by itself when TABLE gained `.home/**`, and its hits were attribute names (`.home_paths`, `take.home`, `self.home`), so no grader, no Claude path and no other assertion moved. Runner lines: before `Ran 88 tests`, `FAILED (failures=1)`; after `Ran 89 tests`, `OK`. Witnesses: endstate.py with the path literal appended gives `Seam.test_endstate_types_no_harness` `FAILED (failures=1)` (['.home'] != []), and a rule that hides every dotted folder gives `AgentHomeWitness` `FAILED (failures=1)` ([] != ['.home']).
-
-RESUME HERE: review stop (round 2, B21-8 folded).
+(round 2's stop, superseded by the B21-8 section's line below: review stop (round 2))
 
 ## ROUND 1 (local executor, Tue 20 Oct 2026, 12:18 EDT)
 
 Design note lane-reports/vendor-b21-DESIGN.md, commit `444a0f1c`, design stop: 18 real walks were measured (paths and counts only); neither harness leaves run-tree furniture beyond COMMON_EXCLUSIONS; the four candidate patterns hold; the recommendation was option (a).
+
+## B21-8 (local executor, Tue 20 Oct 2026, 12:47 EDT / 16:47 UTC)
+
+glitch-26's ruling B21-8 on round 2's held red, and the folds from REVIEW-vendor-b21-8079cd7e.md (PASS: 0 MAJOR, 2 MINOR, 4 NIT).
+
+- **B21-8** (`8079cd7e`): test_endstate's `harness_strings` applies typed_harness's attribute rule to a dotted folder, and the new witness `AgentHomeWitness` keeps a typed `"/srv/t/.home/x"` red.
+  - This is not a Claude-arm behaviour change. The scan widened by itself when TABLE gained `.home/**`, and its hits were attribute names (`.home_paths`, `take.home`, `self.home`). No grader, no Claude path and no other assertion moved.
+  - Runner lines: before, `Ran 88 tests`, `FAILED (failures=1)`; after, `Ran 89 tests`, `OK`.
+  - Witnesses: endstate.py with the path literal appended gives `Seam.test_endstate_types_no_harness` `FAILED (failures=1)` (['.home'] != []). A rule that hides every dotted folder gives `AgentHomeWitness` `FAILED (failures=1)` ([] != ['.home']).
+- **MINOR-1** (fold): this file is append-only again. Line 63's heading is back to its `e0b88590` text, the B21-8 bullet is out of "Not touched", and only the RESUME HERE line moved, to the end.
+- **MINOR-2** (fold): COPIED.d/w2a-cp3-endstate.json's reason for tests/test_endstate.py gains one B21-8 sentence.
+- **NIT-3** (fold): each harness's grounds cite only its own walks. Codex's measured `.home` line names w-o15, w-o16, w-o17 and w-o45; gemini's names w-g11. candidate_problems' required strings now follow suit, per harness.
+- Runner lines on the folded tree, after light-ok (CPU speed limit 68):
+  - test_harness_bookkeeping: `Ran 24 tests in 1.701s`, `OK`.
+  - test_vendor_bookkeeping: `Ran 5 tests in 0.464s`, `OK`; `--witnesses`: `witnesses: 13/13 red`.
+  - test_endstate: `Ran 89 tests in 0.570s`, `OK`.
+  - harness_bookkeeping.py --check: `harness_bookkeeping: ok: 3 harness(es): claude-code, codex, gemini`.
+  - copy_manifest.py --check: `ok: 491 files from 60 fragment(s) ...` (14.6 s).
+  - freeze.py --check: `freeze: 492 owned paths checked; no takes or freeze performed` (15.3 s).
+- Follow-ups, recorded only:
+  - F21-1: CODEX_ALLOWED's sessions row cites `recorder.rs 984-1000`; at 092d3acd the layout is at 1739-1762. For the freeze's citation pass.
+  - F21-2: the red commit `b068c80a` missed its COPIED.d claim, which landed in the green commit `a65db53d`; next time the claim rides with the red.
+  - F21-3: rename `test_one_real_entry_named_as_the_adapter`, which now asserts three entries.
+  - F21-4: the w-o45 reproduction drives `TakeDriver._operator_step` on a stand-in self; the real TakeDriver path is covered by test_drive_ownership, test_drive_loop and test_drive_box_seams in athena's battery.
+  - F21-5: an ungraded, reported count of excluded `.home` changes per take, so writes through the agent HOME stay visible (the reviewer's O1). After round 4.
+- Not touched: box/, drive.py, graders/, the adapters, the sidecar, .git/hooks, the records clone and athena. Nothing pushed.
+
+RESUME HERE: review stop (B21-8 folded); athena's battery is glitch-26's.

@@ -126,8 +126,8 @@ TABLE: dict = {
             "round 4; B21-7): the agent HOME (R-H5's <run tree>/.home, box/run_take.py RUN_TREE_HOMEDIR) is inside the "
             "run tree, so the snapshots walk it (box/sidecar.py and the sidecar image stay byte-unchanged) but the "
             "end-state grader does not grade it; arm A's HOME is outside the run tree and its entry is untouched. "
-            "Measured: .home exists, empty, at pre-1 in the five walks launched after R-H5 (w-o15, w-o16, w-o17, "
-            "w-o45, w-g11), and nothing appears under it in any snapshot",
+            "Measured: .home exists, empty, at pre-1 in the four codex walks launched after R-H5 (w-o15, w-o16, "
+            "w-o17, w-o45), and nothing appears under it in any snapshot",
             "the rest of the run tree (B21-1): 12 codex walks, 25 turns and 14 operator gaps show no run-tree "
             "furniture of its own beyond COMMON_EXCLUSIONS (34 __pycache__ changes); every other change is the "
             "agent's task work under gars/projects/",
@@ -166,8 +166,8 @@ TABLE: dict = {
             "round 4; B21-7): the agent HOME (R-H5's <run tree>/.home, box/run_take.py RUN_TREE_HOMEDIR) is inside the "
             "run tree, so the snapshots walk it (box/sidecar.py and the sidecar image stay byte-unchanged) but the "
             "end-state grader does not grade it; arm A's HOME is outside the run tree and its entry is untouched. "
-            "Measured: .home exists, empty, at pre-1 in the five walks launched after R-H5 (w-o15, w-o16, w-o17, "
-            "w-o45, w-g11), and nothing appears under it in any snapshot",
+            "Measured: .home exists, empty, at pre-1 in the one gemini walk launched after R-H5 (w-g11), and "
+            "nothing appears under it in any snapshot",
             "the rest of the run tree (B21-1): 6 gemini walks, 8 turns and 2 operator gaps show no run-tree furniture "
             "of its own beyond COMMON_EXCLUSIONS (43 __pycache__ and .git/index changes); the one other change, "
             "w-g5's .tmp/run_stage00.py, is the agent's own script",

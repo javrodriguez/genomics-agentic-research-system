@@ -14,7 +14,7 @@
     {
       "path": "tests/test_endstate.py",
       "status": "new",
-      "reason": "Tests for graders/endstate.py (interface 3): the plan's CP3 fixtures and interface 8's seam tests with their mutants. Ownership transfer S7-gap4-1 (glitch-1b, Sun 11 Oct 2026): lane w6g-endstate-carries owns this file for S7's tests and whole-file witnesses; see COPIED.d/w6g-endstate-carries.json. Departure live-box-1: class Discoveries (every existing reading byte-identical with and without found.jsonl; closed shape and source; health required; folder round trip and link refusal)."
+      "reason": "Tests for graders/endstate.py (interface 3): the plan's CP3 fixtures and interface 8's seam tests with their mutants. Ownership transfer S7-gap4-1 (glitch-1b, Sun 11 Oct 2026): lane w6g-endstate-carries owns this file for S7's tests and whole-file witnesses; see COPIED.d/w6g-endstate-carries.json. Departure live-box-1: class Discoveries (every existing reading byte-identical with and without found.jsonl; closed shape and source; health required; folder round trip and link refusal). Lane vendor-b21 B21-8 (glitch-26, 20 Oct 2026): harness_strings reads a dotted folder attribute-aware (typed_harness's R4-4 rule, so endstate's .home_paths, take.home and self.home are no hits once codex and gemini's .home/** entered TABLE); witness AgentHomeWitness keeps a typed \"/srv/t/.home/x\" red."
     },
     {
       "path": "tests/test_harness_bookkeeping.py",

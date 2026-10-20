@@ -393,13 +393,14 @@ def candidate_problems(table: dict) -> list:
         for need in ({"codex": ["codex_adapter.py:41", "`$CODEX_HOME/sessions/.../rollout-*.jsonl`",
                                 "box/run_take.py:68", '"CODEX_HOME": CONFIG_MOUNT', "092d3acd",
                                 "rollout/src/recorder.rs:1739-1762", "rollout/src/rollout_file_name.rs:62-73",
-                                "rollout/src/lib.rs:86", "12 of 12 codex walks", "w-o7 to w-o17, w-o45"],
+                                "rollout/src/lib.rs:86", "12 of 12 codex walks", "w-o7 to w-o17, w-o45",
+                                "(w-o15, w-o16, w-o17, w-o45)"],
                       "gemini": ["native_snapshot.py:20", "<home>/.gemini/tmp/*/chats", "native_snapshot.py:13",
                                  "native_snapshot.py:16-18", "assumed, not source-shown", "box/run_take.py:68",
                                  '"GEMINI_CLI_HOME": CONFIG_MOUNT', "chunk-NR7L3FXV.js", "[C] 286708-286730",
-                                 "5 of 6 gemini walks", "w-g1, w-g3, w-g5, w-g7, w-g9, w-g11"]}[name]
+                                 "5 of 6 gemini walks", "w-g1, w-g3, w-g5, w-g7, w-g9, w-g11", "(w-g11)"]}[name]
                      + ["R4-4", "B21-7", "box/sidecar.py", "rests on that ruling, not on measured furniture",
-                        "w-o15, w-o16, w-o17, w-o45, w-g11", "nothing appears under it in any snapshot",
+                        "nothing appears under it in any snapshot",
                         "no run-tree furniture of its own beyond COMMON_EXCLUSIONS"]):
             if need not in grounds:
                 out.append(f"{name}: the grounds do not say {need!r}")
