@@ -131,3 +131,13 @@ python3 -B -W ignore evals/gap-study-4/tests/test_sidecar.py
 python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py
 python3 -B -W ignore evals/gap-study-4/tests/test_codex_adapter.py
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py B17 drive.py box/scan_record.py gemini_adapter.py codex_adapter.py tests/check_vendor_sources.py tests/test_scan_record.py tests/test_gemini_adapter.py tests/test_codex_adapter.py checks.d/vendor-admission.txt
+# Lane vendor-b20 (glitch-26's rulings B20-1 to B20-5, Tue 20 Oct 2026). B20-1 to B20-4 (GPT practice walk w-o17 held at
+# pre-2): the pinned Codex's .sandbox_migration marker admitted on codex's allow-list at its exact shape (b"v1\n", mode
+# 0600, one link, read and checked), its near misses refused, the multi-turn pre-2 road through run_turn, and the
+# Gemini, named, placed and harness tables pinned to the base; the witnesses are test_config_folder's registry, each red
+# alone. B20-5 (Gemini practice walk w-g11 held at the drive scan): OD57's line admitted with one diff prefix inside the
+# doc's hunk of a `git log -p` or `git show` read on both arms' read shapes (TestB20GitReads' mutants, each red alone);
+# the files both edit, against the native readers' source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_config_folder.py C14SandboxMarker
+python3 -B -W ignore evals/gap-study-4/tests/test_scan_record.py TestB20GitReads
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/run_take.py box/scan_record.py tests/test_config_folder.py tests/test_scan_record.py checks.d/vendor-admission.txt

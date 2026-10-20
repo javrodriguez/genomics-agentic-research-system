@@ -2786,7 +2786,7 @@ class TestB20GitReads(TestB17Round6):
                 ("the option list", "git log -p --ext-diff", ("not _GIT_OPTION.fullmatch(t)", "False")),
                 ("a revision word", "git log -p 7bd5b8b;id", ("not _GIT_WORD.fullmatch(t)", "False")),
                 ("-n takes a number", "git log -p -n --output=/tmp/x 7bd5b8b",
-                 ('not re.fullmatch(r"[0-9]+", tokens[i + 1])', "False")),
+                 ("not _GIT_COUNT.fullmatch(tokens[i + 1])", "False")),
                 ("git is the first word", "/usr/bin/git log -p", ('tokens[0] != "git"', "False"))):
             with self.subTest(label):
                 self.b20_witness(label, "turn-1.jsonl", self.gem_stream(_git_out(self.text), cmd), "stream", [3],

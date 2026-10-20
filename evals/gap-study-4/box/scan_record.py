@@ -587,6 +587,77 @@ def _ruled_bash(cmd) -> bool:
     return any(t == _RULED_DOC or t.endswith("/" + _RULED_DOC) for t in segments[i][1:])
 
 
+# B20-5 (glitch-26's ruling, lane vendor-b20, Tue 20 Oct 2026; Gemini practice walk w-g11): OD57's line, by its content
+# sha256, is also admitted where a git diff carries it: exactly one leading "+", "-" or " " before its 80 bytes, inside a
+# hunk of the ruled doc's own diff (`diff --git a/<doc> b/<doc>`, then a `@@ ` hunk header, then diff body lines only),
+# in the output of a `git log -p` or `git show` read run in the take's own folder: the command is exactly git and one of
+# those subcommands, words split on single spaces, each option from _GIT_OPTION (no -C, --git-dir, --output, --ext-diff,
+# no "--"), each other word a revision (no shell syntax, quoting, path form or redirection), and the call names no
+# directory of its own (_GIT_DIR_KEYS). Only through the read shapes (the Gemini and Codex arms' one shared path); the
+# Claude path (_ruled_tool) is unchanged. Nothing else widens.
+_GIT_READS = ("log", "show")
+_GIT_PATCH = ("-p", "--patch")
+_GIT_OPTION = re.compile(r"-p|--patch|-[0-9]+|--max-count=[0-9]+|--no-color")
+_GIT_WORD = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./^~@-]*")
+_GIT_COUNT = re.compile(r"[0-9]+")
+_GIT_DIR_KEYS = ("dir_path", "workdir", "cwd", "directory")
+_DIFF_PREFIXES = ("+", "-", " ")
+_GIT_HEADER = re.compile(r"diff --git a/(\S+) b/(\S+)")
+
+
+def _ruled_git(cmd) -> bool:
+    """A git read B20-5 admits: `git log` with -p or --patch, or `git show`, its options and words as above."""
+    if not isinstance(cmd, str):
+        return False
+    tokens = cmd.split(" ")
+    if len(tokens) < 2 or tokens[0] != "git" or tokens[1] not in _GIT_READS:
+        return False
+    if tokens[1] == "log" and not any(t in _GIT_PATCH for t in tokens[2:]):
+        return False
+    i = 2
+    while i < len(tokens):
+        t = tokens[i]
+        if not t.startswith("-"):
+            if not _GIT_WORD.fullmatch(t):
+                return False
+        elif t == "-n":
+            if i + 1 == len(tokens) or not _GIT_COUNT.fullmatch(tokens[i + 1]):
+                return False
+            i += 1
+        elif not _GIT_OPTION.fullmatch(t):
+            return False
+        i += 1
+    return True
+
+
+def _git_doc_header(line) -> bool:
+    """A `diff --git` header of the ruled doc, the same path on both sides (B20-5)."""
+    m = _GIT_HEADER.fullmatch(line)
+    return m is not None and m[1] == m[2] and (m[2] == _RULED_DOC or m[2].endswith("/" + _RULED_DOC))
+
+
+def _ruled_diff_line(lines, i, ruling):
+    """B20-5: the ruled text when line i of a git read's output is exactly one diff prefix and the ruled text, inside a
+    hunk of the ruled doc's own diff, else None."""
+    ln = lines[i]
+    if ln[:1] not in _DIFF_PREFIXES:
+        return None
+    rest = ln[1:].encode("utf-8", "surrogateescape")
+    if len(rest) != ruling["bytes"] or _sha(rest) != ruling["sha256"]:
+        return None
+    j = i - 1
+    while j >= 0 and not lines[j].startswith("@@ "):
+        if lines[j][:1] not in _DIFF_PREFIXES + ("\\",):
+            return None
+        j -= 1
+    k = j - 1
+    while k >= 0 and not lines[k].startswith("diff --git "):
+        k -= 1
+    if k < 0:
+        return None
+    return rest.decode() if _git_doc_header(lines[k]) else None
+
+
 def _ruled_tool(uses, tool_use_id) -> bool:
     """A Read, or a Bash command _ruled_bash admits: one tool_use with that id, no other."""
     got = uses.get(tool_use_id) if isinstance(tool_use_id, str) else None
@@ -796,13 +867,13 @@ def _shape_calls(data: bytes, shapes, kind=None) -> list:
             k = shape["copy_of"]
             for n, rec in records:
                 if sum(1 for c, o in windows if c < n < o) == 1:
-                    sources += [(n, s) for s, _ in _shape_strings(rec, (shapes[k],),
-                                                                  ((calls_of[k], (), lines_of[k], {}),))]
-        out.append((calls, tuple((n, s) for n, s in sources if s), lines, out_lines))
+                    sources += [(n, s, bool(t.get("git"))) for s, t in _shape_strings(
+                        rec, (shapes[k],), ((calls_of[k], (), lines_of[k], {}),))]
+        out.append((calls, tuple(x for x in sources if x[1]), lines, out_lines))
     return out
 
 
-def _ruled_wrapped(argv, shells, flags, lists_only=False) -> bool:
+def _ruled_wrapped(argv, shells, flags, lists_only=False, script=None) -> bool:
     """A shell wrapper OD57 admits: exactly [<one of `shells`, the exact path>, <one of `flags`>, <a script _ruled_bash
     admits>], as an argument list or (unless lists_only, NIT 5) as its shell-quoted string."""
     if isinstance(argv, str) and not lists_only:
@@ -815,7 +886,7 @@ def _ruled_wrapped(argv, shells, flags, lists_only=False) -> bool:
             return False
     if not (isinstance(argv, list) and len(argv) == 3 and all(isinstance(a, str) for a in argv)):
         return False
-    return argv[0] in shells and argv[1] in flags and _ruled_bash(argv[2])
+    return argv[0] in shells and argv[1] in flags and (script or _ruled_bash)(argv[2])   # B20-5: or _ruled_git
 
 
 def _reads_doc(tool, args) -> bool:
@@ -834,6 +905,19 @@ def _reads_doc(tool, args) -> bool:
     return _ruled_wrapped(arg, tool["shells"], tool["flags"], tool["kind"] == "argv")
 
 
+def _reads_git(tool, args) -> bool:
+    """B20-5: whether a call's arguments make its shell tool a git read _ruled_git admits, in the take's own folder."""
+    if isinstance(args, dict) and any(k in args for k in _GIT_DIR_KEYS):
+        return False
+    if tool["arg"] is None:
+        arg = args
+    else:
+        arg = args.get(tool["arg"]) if isinstance(args, dict) else None
+    if tool["kind"] in ("wrapped", "argv"):
+        return _ruled_wrapped(arg, tool["shells"], tool["flags"], tool["kind"] == "argv", _ruled_git)
+    return tool["kind"] == "script" and _ruled_git(arg)
+
+
 def _shape_read(shape, calls, cid, name):
     """The tool entry of the one read of the ruled doc that call id `cid` finds, or None: the id's copies (exactly one
     for copies "one"; every copy the same name and arguments: B17-6), the result's own name when it carries one, a
@@ -846,7 +930,9 @@ def _shape_read(shape, calls, cid, name):
     tool = shape["tools"].get(got[0][0])
     if tool is None or (name is not None and name != got[0][0]):
         return None
-    return tool if _reads_doc(tool, got[0][1]) else None
+    if _reads_doc(tool, got[0][1]):
+        return tool
+    return dict(tool, git=True) if _reads_git(tool, got[0][1]) else None   # B20-5: its output read as a diff
 
 
 def _json_value_at(s, p) -> bool:
@@ -858,16 +944,16 @@ def _json_value_at(s, p) -> bool:
     return j >= 0 and s[j] in ":[,"
 
 
-def _copy_hits(s, srcs, ruling) -> list:
+def _copy_hits(s, srcs, ruling, gits=()) -> list:
     """The ruled text once per distinct position of it in `s` that lies inside a verbatim copy of a source, or inside
     the one JSON string literal of a source that `s` holds (json.dumps with non-ASCII raw, as JSON.stringify writes it;
     exactly one such literal, at a JSON value position), the position being a whole line of that source after
     _RULED_PREFIX (B17-17a, B17-18, B17-20, B17-22)."""
     hits, seen = [], set()
     for a in srcs:
-        found, at = [], 0
-        for ln in a.split("\n"):
-            f = _ruled_line(ln, ruling, None)
+        found, at, lines_a, git = [], 0, a.split("\n"), a in gits
+        for i, ln in enumerate(lines_a):
+            f = _ruled_diff_line(lines_a, i, ruling) if git else _ruled_line(ln, ruling, None)
             if f is not None:
                 found.append((at + len(ln) - len(f), f))
             at += len(ln) + 1
@@ -925,8 +1011,9 @@ def _shape_strings(rec, shapes, indexes, ruling=None, line=None) -> list:
                         continue              # B17-21: one output per exec call
                     if len(cl) != 1:
                         continue
-                    srcs = [t for ln, t in sources if cl[0] < ln < line]
-                    out += [(f, tool) for f in _copy_hits(s, srcs, ruling)]
+                    srcs = [t for ln, t, _ in sources if cl[0] < ln < line]
+                    gits = {t for _, t, g in sources if g}            # B20-5: the git reads' outputs
+                    out += [(f, tool) for f in _copy_hits(s, srcs, ruling, gits)]
     return out
 
 
@@ -981,7 +1068,8 @@ def _ruled_text(body: bytes, ruling, uses, shapes=(), indexes=(), line=None) -> 
                                                                                                ruling, line):
         lines = s.split("\n")
         for i, ln in enumerate(lines):
-            text = _ruled_line(ln, ruling, _line_prefix(tool, lines, i))
+            text = (_ruled_diff_line(lines, i, ruling) if tool is not None and tool.get("git")
+                    else _ruled_line(ln, ruling, _line_prefix(tool, lines, i)))
             if text is not None:
                 found, hits = text, hits + 1
     if found is None:
