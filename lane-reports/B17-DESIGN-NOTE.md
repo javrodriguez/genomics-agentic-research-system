@@ -52,7 +52,8 @@ Four record shapes carry a tool's result:
   Each toolCalls entry holds the call and its result together: `{"id", "name", "args", "result", "status", "timestamp", "resultDisplay", "description", "displayName", "renderOutputAsMarkdown"[, "agentId"]}` (recordCompletedToolCalls :334058-334073, enriched at :286979-286986; harness gemini_projection.py:82-83).
   `result` is the call's response parts, each `{"functionResponse": {"id", "name", "response": {"output"}}}` (createFunctionResponsePart :289967-289975; harness gemini_projection.py:85).
   The text sits in `functionResponse.response.output` (the llmContent above) and, for a shell read, a second time in `resultDisplay` (the raw stdout).
-  A call's `result` may also hold its sibling calls' responses, each named by its own id (harness gemini_projection.py:58-61, from updateMessagesFromHistory), so a part is matched by its own `functionResponse.id`, never by the entry that holds it.
+  A call's `result` may also hold its sibling calls' responses, each named by its own id (harness gemini_projection.py:58-61, from updateMessagesFromHistory).
+  Amended in round 6 (glitch-26's ruling on review baef7c51's O25): a part inside an entry's `result` is admitted only when its `functionResponse.id` is that entry's own id (the position's anchor). A sibling's response held there is not admitted; see the known limit in section 7.
   This is the w-g9 session record shape (keys content, id, model, thoughts, timestamp, tokens, toolCalls, type).
   The same message is appended again on a later update (its tokens, :286950-286966, or more tool calls, :287007-287024), so one call id appears on several lines, each copy the same call.
 - G-S2, the function-response turn: `{"id", "timestamp", "type": "user", "content": [functionResponse parts]}` (recordSyntheticMessage for a function response, :333244-333252 and :333285; also appended by updateMessagesFromHistory, :287190-287196; harness gemini_projection.py:156-165).
@@ -184,3 +185,15 @@ Its aggregated_output was looked for in that pair's custom_tool_call_output item
 - Admitted (B17-17a): A, and B as one JSON string literal whose single `json.loads` decode equals the read's output exactly, its opening quote not escaped. C never occurs, so it is not admitted. D stays refused: a lossy copy cannot be shown to come from the read. That is a known limit, 16 of 108 committed outputs, all of them reads of other files.
 - B17-18: each position of the ruled line in an exec output counts once, however many sources match it.
 - B17-19: an exec output's sources are only the CommandExecutions that lie between its own exec call's line and its own line.
+
+Round 6 (glitch-26's B17-20 to B17-22 on review 8776055a):
+
+- B17-20: the literal is `json.dumps(read, ensure_ascii=False)` only, the JSON.stringify form. The doc holds 17 non-ASCII characters, and a gpt-6.1-sol fixture with non-ASCII text pins it.
+- B17-22: the ASCII-escaped form is refused, since no real record uses it. A source admits through its literal only when the output holds exactly one copy of that literal, and the literal's opening quote is preceded, after optional whitespace, by `:`, `[` or `,`.
+- B17-21: a CommandExecution is a source only when it lies in exactly one exec window, and an exec call with more than one output admits nothing.
+- The reviewer's swap census (review-b17r5.9sfX/census_r5r.py, run unchanged on round 6's code) gives the same counts as round 5.
+  - All 108 CommandExecutions sit in exactly one window, each exec has one call and one output, and every argv is [/bin/bash, -lc, script].
+  - Admitted by `_ruled_text` with a doc read swapped in: gpt-6-luna 28 of 32 verbatim (26 with a unique anchor, 2 with a short one) and gpt-6.1-sol 57 of 60 literals (31 and 26).
+  - The other 7 find their copy (copy hits 1) and are refused only because the census's short stand-in anchor recurs in the record, which is an artifact of the method.
+  - So 92 of 92 non-lossy outputs carry an admissible copy under the tightened rule.
+- Known limit (round 5, glitch-26): a toolCalls entry whose result holds a sibling's functionResponse with the line refuses, failing closed, until a real record shows it.
