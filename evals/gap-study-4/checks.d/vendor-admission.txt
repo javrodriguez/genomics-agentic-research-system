@@ -140,4 +140,4 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py B17 drive.py box/scan
 # the files both edit, against the native readers' source lists.
 python3 -B -W ignore evals/gap-study-4/tests/test_config_folder.py C14SandboxMarker
 python3 -B -W ignore evals/gap-study-4/tests/test_scan_record.py TestB20GitReads
-python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/run_take.py box/scan_record.py tests/test_config_folder.py tests/test_scan_record.py checks.d/vendor-admission.txt
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/run_take.py box/scan_record.py gemini_adapter.py codex_adapter.py tests/test_config_folder.py tests/test_scan_record.py tests/test_gemini_adapter.py tests/test_codex_adapter.py checks.d/vendor-admission.txt

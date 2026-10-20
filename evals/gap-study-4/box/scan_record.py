@@ -590,50 +590,78 @@ def _ruled_bash(cmd) -> bool:
 # B20-5 (glitch-26's ruling, lane vendor-b20, Tue 20 Oct 2026; Gemini practice walk w-g11): OD57's line, by its content
 # sha256, is also admitted where a git diff carries it: exactly one leading "+", "-" or " " before its 80 bytes, inside a
 # hunk of the ruled doc's own diff (`diff --git a/<doc> b/<doc>`, then a `@@ ` hunk header, then diff body lines only),
-# in the output of a `git log -p` or `git show` read run in the take's own folder: the command is exactly git and one of
-# those subcommands, words split on single spaces, each option from _GIT_OPTION (no -C, --git-dir, --output, --ext-diff,
-# no "--"), each other word a revision (no shell syntax, quoting, path form or redirection), and the call names no
-# directory of its own (_GIT_DIR_KEYS). Only through the read shapes (the Gemini and Codex arms' one shared path); the
-# Claude path (_ruled_tool) is unchanged. Nothing else widens.
-_GIT_READS = ("log", "show")
-_GIT_PATCH = ("-p", "--patch")
-_GIT_OPTION = re.compile(r"-p|--patch|-[0-9]+|--max-count=[0-9]+|--no-color")
-_GIT_WORD = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./^~@-]*")
-_GIT_COUNT = re.compile(r"[0-9]+")
-_GIT_DIR_KEYS = ("dir_path", "workdir", "cwd", "directory")
+# in the output of a git read of the take's own repo. Only through the read shapes (the Gemini and Codex arms' one shared
+# path); the Claude path (_ruled_tool) is unchanged. Nothing else widens.
+# B20-7 (glitch-26, round 4, on review 21fc1c7e's NITs 1 and 2): the read is exactly `git log -p -n 1 <commit>` or
+# `git show <commit>`, <commit> 7 to 40 lowercase hex digits, words split on single spaces; the diff header names the
+# doc's own repo path, gars/_references/environment.md, exactly, on both sides.
+# B20-6 (glitch-26, round 4, on the review's MINOR-1): the read's folder is bound by its shape's `git` record (an
+# optional shape key; a shape without it admits no git read): {"args": (key, ...)}, the call's arguments hold no key but
+# those (Gemini: command and description; any dir_path refuses), or {"cwd": node key, "prefix": str, "meta": (RECORD,
+# dotted key)}, the call node's folder is exactly prefix + the value at the dotted key of the file's one RECORD record
+# (arm O's rollout: a CommandExecution's cwd is file:// + session_meta's cwd, the run tree).
+_GIT_COMMIT = re.compile(r"[0-9a-f]{7,40}")
 _DIFF_PREFIXES = ("+", "-", " ")
 _GIT_HEADER = re.compile(r"diff --git a/(\S+) b/(\S+)")
+_RULED_GIT_PATH = "gars/" + _RULED_DOC
+GIT_KEYS = (("args",), ("cwd", "prefix", "meta"))
 
 
 def _ruled_git(cmd) -> bool:
-    """A git read B20-5 admits: `git log` with -p or --patch, or `git show`, its options and words as above."""
+    """A git read B20-5 and B20-7 admit: exactly `git log -p -n 1 <commit>` or `git show <commit>`."""
     if not isinstance(cmd, str):
         return False
-    tokens = cmd.split(" ")
-    if len(tokens) < 2 or tokens[0] != "git" or tokens[1] not in _GIT_READS:
+    t = cmd.split(" ")
+    if len(t) == 6 and t[:5] == ["git", "log", "-p", "-n", "1"]:
+        c = t[5]
+    elif len(t) == 3 and t[:2] == ["git", "show"]:
+        c = t[2]
+    else:
         return False
-    if tokens[1] == "log" and not any(t in _GIT_PATCH for t in tokens[2:]):
+    return _GIT_COMMIT.fullmatch(c) is not None
+
+
+def _git_ok(shape) -> bool:
+    """A shape's optional `git` record on its closed schema (B20-6)."""
+    if "git" not in shape:
+        return True
+    git = shape["git"]
+    if not (isinstance(git, dict) and tuple(sorted(git)) in tuple(tuple(sorted(k)) for k in GIT_KEYS)):
         return False
-    i = 2
-    while i < len(tokens):
-        t = tokens[i]
-        if not t.startswith("-"):
-            if not _GIT_WORD.fullmatch(t):
-                return False
-        elif t == "-n":
-            if i + 1 == len(tokens) or not _GIT_COUNT.fullmatch(tokens[i + 1]):
-                return False
-            i += 1
-        elif not _GIT_OPTION.fullmatch(t):
-            return False
-        i += 1
-    return True
+    if "args" in git:
+        return _strs_ok(git["args"])
+    meta = git["meta"]
+    return (isinstance(git["cwd"], str) and git["cwd"] != "" and isinstance(git["prefix"], str)
+            and isinstance(meta, tuple) and len(meta) == 2 and isinstance(meta[0], dict) and meta[0] != {}
+            and all(isinstance(k, str) and k and _strs_ok(v) for k, v in meta[0].items())
+            and isinstance(meta[1], str) and meta[1] != "")
+
+
+def _git_meta(records, shape):
+    """B20-6: the run tree a shape's `git` cwd binding names: the absolute path at its meta key in the file's one record
+    of its meta type, else None."""
+    git = shape.get("git") or {}
+    if "meta" not in git:
+        return None
+    record, key = git["meta"]
+    metas = [_record_value(rec, key) for _, rec in records
+             if isinstance(rec, dict) and all(_record_value(rec, k) in v for k, v in record.items())]
+    return metas[0] if len(metas) == 1 and isinstance(metas[0], str) and metas[0].startswith("/") else None
+
+
+def _git_bound(shape, node, meta):
+    """B20-6: True when a call node's folder is exactly the shape's prefix + the file's run tree; None when the shape
+    binds no folder or the file names no run tree."""
+    git = shape.get("git") or {}
+    if "cwd" not in git or meta is None:
+        return None
+    return node.get(git["cwd"]) == git["prefix"] + meta
 
 
 def _git_doc_header(line) -> bool:
-    """A `diff --git` header of the ruled doc, the same path on both sides (B20-5)."""
+    """A `diff --git` header of the ruled doc's own repo path, the same on both sides (B20-5, B20-7)."""
     m = _GIT_HEADER.fullmatch(line)
-    return m is not None and m[1] == m[2] and (m[2] == _RULED_DOC or m[2].endswith("/" + _RULED_DOC))
+    return m is not None and m[1] == m[2] and m[2] == _RULED_GIT_PATH
 
 
 def _ruled_diff_line(lines, i, ruling):
@@ -760,7 +788,8 @@ def _tool_ok(tool) -> bool:
 
 
 def _shape_ok(shape) -> bool:
-    if not (isinstance(shape, dict) and set(shape) == set(SHAPE_KEYS) and isinstance(shape["shape"], str)
+    if not (isinstance(shape, dict) and set(shape) - {"git"} == set(SHAPE_KEYS) and _git_ok(shape)
+            and isinstance(shape["shape"], str)
             and shape["copies"] in COPIES and isinstance(shape["tools"], dict) and shape["tools"]
             and all(isinstance(k, str) and _tool_ok(t) for k, t in shape["tools"].items())
             and _strs_ok(shape["kinds"]) and all(k in MASKABLE for k in shape["kinds"])):
@@ -833,7 +862,8 @@ def _shape_call(node, spec):
 
 
 def _shape_calls(data: bytes, shapes, kind=None) -> list:
-    """Per shape, ({call id: [(tool name, arguments)]} over every JSON record of one file: every copy of each call;
+    """Per shape, ({call id: [(tool name, arguments, folder bound: B20-6)]} over every JSON record of one file: every
+    copy of each call;
     for a copy shape the (line, text) of each read its copy_of shape admits in this file, else (); {call id: [its
     lines]}). A shape whose kinds do not hold the file's kind finds nothing (round 5)."""
     records = []
@@ -846,11 +876,12 @@ def _shape_calls(data: bytes, shapes, kind=None) -> list:
     for shape in shapes:
         calls, lines = {}, {}
         if kind in shape["kinds"]:
+            meta = _git_meta(records, shape)                    # B20-6: the run tree, for a cwd-bound shape
             for n, rec in records:
                 for node in _shape_nodes(rec, shape["call"]):
                     got = _shape_call(node, shape["call"])
                     if got is not None:
-                        calls.setdefault(node[shape["call"]["id"]], []).append(got)
+                        calls.setdefault(node[shape["call"]["id"]], []).append(got + (_git_bound(shape, node, meta),))
                         lines.setdefault(node[shape["call"]["id"]], []).append(n)
         calls_of.append(calls)
         lines_of.append(lines)
@@ -905,9 +936,14 @@ def _reads_doc(tool, args) -> bool:
     return _ruled_wrapped(arg, tool["shells"], tool["flags"], tool["kind"] == "argv")
 
 
-def _reads_git(tool, args) -> bool:
-    """B20-5: whether a call's arguments make its shell tool a git read _ruled_git admits, in the take's own folder."""
-    if isinstance(args, dict) and any(k in args for k in _GIT_DIR_KEYS):
+def _reads_git(shape, tool, call) -> bool:
+    """B20-5, B20-6: whether a call makes its shell tool a git read _ruled_git admits, its folder bound by the shape."""
+    _, args, bound = call
+    git = shape.get("git") or {}
+    if "args" in git:
+        if not (isinstance(args, dict) and set(args) <= set(git["args"])):
+            return False
+    elif bound is not True:
         return False
     if tool["arg"] is None:
         arg = args
@@ -932,7 +968,7 @@ def _shape_read(shape, calls, cid, name):
         return None
     if _reads_doc(tool, got[0][1]):
         return tool
-    return dict(tool, git=True) if _reads_git(tool, got[0][1]) else None   # B20-5: its output read as a diff
+    return dict(tool, git=True) if _reads_git(shape, tool, got[0]) else None   # B20-5: its output read as a diff
 
 
 def _json_value_at(s, p) -> bool:

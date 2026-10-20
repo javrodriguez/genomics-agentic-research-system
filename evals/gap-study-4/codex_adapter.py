@@ -135,6 +135,12 @@ _O_WRAP = dict(_O_TOOL, kind="wrapped", arg=None, shells=_O_SHELLS, flags=("-lc"
 # (lane-reports/B17-DESIGN-NOTE.md section 7).
 _O_WRAP_LC = dict(_O_WRAP, kind="argv", flags=("-lc",))
 _RESPONSE_ITEM = {"type": ("response_item",)}
+# B20-6 (glitch-26, lane vendor-b20, 20 Oct 2026, on review 21fc1c7e's MINOR-1): a git read is admitted only where its
+# folder is bound: the rollout CommandExecution's cwd (protocol/src/items.rs:265, a PathUri, serialized as its URL,
+# utils/path-uri/src/lib.rs:689-695) exactly file:// + session_meta's cwd (protocol/src/protocol.rs:3171, the run tree;
+# w-o14's rollout: '/tmp/run-b6ddc761' and 'file:///tmp/run-b6ddc761'). The stream's command_execution carries no cwd,
+# so it binds nothing and admits no git read; the exec output's copy reads only its CommandExecution's admitted reads.
+_O_GIT = {"cwd": "cwd", "prefix": "file://", "meta": ({"type": ("session_meta",)}, "payload.cwd")}
 READ_SHAPES = (
     # the turn stream: a command_execution item, the call and its output in one object; `command` is
     # redact_secrets(shlex_join(argv)) (app-server-protocol/src/protocol/item_builders.rs:54-61, 96-143); item.started
@@ -149,7 +155,7 @@ READ_SHAPES = (
     # the rollout: event_msg item_completed's CommandExecution item {id, command: argv, aggregated_output, source, ...}
     # (protocol/src/items.rs:243-281; core/src/tools/events.rs:561-589), the call and its output in one object
     {"shape": "rollout CommandExecution", "copies": "same", "tools": {"shell": _O_WRAP_LC}, "result": None,
-     "copy_of": None, "kinds": ("session",),
+     "copy_of": None, "kinds": ("session",), "git": _O_GIT,
      "call": {"match": {"type": "CommandExecution"},
               "at": ((("payload", "item"), {"type": ("event_msg",), "payload.type": ("item_completed",)}, None),),
               "id": "id", "name": {"value": "shell"}, "args": "command", "args_json": False,

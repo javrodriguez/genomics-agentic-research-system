@@ -455,12 +455,16 @@ _G_PARTS = ("toolCalls", "*", "result", "*", "functionResponse"), ("content", "*
 _G_RESPONSE_AT = ((_G_PARTS[0], _GEMINI, 2), (_G_PARTS[1], _USER, None),
                   (("$patch",) + _G_PARTS[0], {}, 3), (("$patch",) + _G_PARTS[1], {}, None),
                   (("$patch", "updates", "*") + _G_PARTS[0], {}, 5), (("$patch", "updates", "*") + _G_PARTS[1], {}, None))
+# B20-5, B20-6 (glitch-26, lane vendor-b20, 20 Oct 2026): a git read binds its folder by its arguments alone. A
+# run_shell_command runs in the target directory unless its dir_path names another ([C] 282009, PARAM_DIR_PATH), so the
+# call may carry only command and description ([C] 282001, 282005); any other key (dir_path, is_background, ...) refuses.
+_G_GIT = {"args": ("command", "description")}
 READ_SHAPES = (
     # the turn stream: tool_use {tool_name, tool_id, parameters} and tool_result {tool_id, status, output}, each a whole
     # line, its output the display string only (gemini-Q2GRYIAK.js:12223-12229, 12351-12361; 11830-11836,
     # 11846-11856), so only a shell read carries the doc's text there
     {"shape": "stream tool_result", "copies": "one", "tools": {"run_shell_command": _G_SHELL}, "copy_of": None,
-     "kinds": ("stream",),
+     "kinds": ("stream",), "git": _G_GIT,
      "call": {"match": {"type": "tool_use"}, "at": (((), {"type": ("tool_use",)}, None),), "id": "tool_id",
               "name": {"key": "tool_name"}, "args": "parameters", "args_json": False, "text": ()},
      "result": {"match": {"type": "tool_result"}, "at": (((), {"type": ("tool_result",)}, None),), "id": "tool_id",
@@ -468,12 +472,12 @@ READ_SHAPES = (
     # the session file: every functionResponse part {id, name, response: {output}} (createFunctionResponsePart
     # :289967-289975), in a toolCalls entry's result, a function-response user turn (:333244-333252, 333285) or a
     # $patch (:287199-287265, 287167-287182), found by its own id, its name the call's
-    {"shape": "session functionResponse", "copies": "same", "copy_of": None, "kinds": ("session",),
+    {"shape": "session functionResponse", "copies": "same", "copy_of": None, "kinds": ("session",), "git": _G_GIT,
      "tools": {"run_shell_command": _G_SHELL_OUT, "read_file": _G_READ}, "call": _G_SESSION_CALL,
      "result": {"match": {}, "at": _G_RESPONSE_AT, "id": "id", "name": "name", "text": (("response", "output"),)}},
     # the session file: a run_shell_command entry's own resultDisplay, the raw stdout (:334060-334061, 334070;
     # :326232-326233); read_file's display never carries the file's text (:254085-254093), so it is not read here
     # (B17-14)
     {"shape": "session resultDisplay", "copies": "same", "tools": {"run_shell_command": _G_SHELL}, "copy_of": None,
-     "kinds": ("session",), "call": dict(_G_SESSION_CALL, text=(("resultDisplay",),)), "result": None},
+     "kinds": ("session",), "call": dict(_G_SESSION_CALL, text=(("resultDisplay",),)), "result": None, "git": _G_GIT},
 )
