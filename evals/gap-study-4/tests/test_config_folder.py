@@ -943,6 +943,187 @@ class C13Guards(Case):
                          f"{h}: {rel} gone between the census and its read", rel, "absent at its read")
 
 
+# ---------------------------------------------------------------------------------- C14 (lane vendor-b20)
+# glitch-26's rulings B20-1 to B20-4 (Tue 20 Oct 2026, on lane-reports/B20-DESIGN.md; practice walk w-o17 held at
+# pre-2 on ".sandbox_migration: neither placed nor on codex's allow-list"). The pinned Codex (rust-v0.162.1,
+# execpolicy/src/sandbox_migration.rs 10, 21-47) writes CODEX_HOME/.sandbox_migration once, at its first session
+# start: a NamedTempFile in the folder holding b"v1\n", persisted with persist_noclobber (a rename on Linux), mode 0600.
+MARKER = ".sandbox_migration"
+MARKER_BYTES = b"v1\n"
+# The admission tables at 8877ddfb (the B20 base), each sha256(repr(table)): B20-4 holds every one but CODEX_ALLOWED
+# byte-identical, and CODEX_ALLOWED to the base with the one B20 row taken out.
+B20_BASE_TABLES = {
+    "GEMINI_ALLOWED": "addca674aea78c7eeb87843081a453b13ea17da939ff9992800a91a3a5bc3d85",
+    "CONFIG_FOLDER_NAMED": "6e3e9ce552cd9bd3f7748184a93ce1c3d54702e8728df67565ec5abf317fb198",
+    "CONFIG_FOLDER_PLACED": "54044a6fad3f1f0bf5bfab7e6ccf26554fa785c47b3f7ffef8a60152a43ba11f",
+    "CONFIG_FOLDER_HARNESSES": "7f89048ff87f4b88f64f901b56753a850fce301d0f1289b8afe5da8caa6e73c8",
+    "CODEX_ALLOWED": "e8d2fdb729cc3f91c041d60c9022f796144b5fe1f18e5707a71c0fe852934ddd",
+}
+
+
+def put_marker(cfg: Path, data=MARKER_BYTES, *, mode=0o600, rel=MARKER):
+    """The marker as the pinned CLI writes it: a .tmp file created in the same folder, filled, then renamed onto its
+    name (tempfile 3.27.0's persist_noclobber, renameat2 NOREPLACE), at `mode`."""
+    final = cfg / rel
+    final.parent.mkdir(parents=True, exist_ok=True)
+    tmp = final.parent / ".tmpB20mkr"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.write(fd, data)
+    os.close(fd)
+    os.chmod(tmp, mode)
+    os.rename(tmp, final)
+    return final
+
+
+class C14SandboxMarker(Case):
+    def honest(self, h="codex"):
+        t = Take(self, h)
+        (t.codex_turn_one if h == "codex" else t.gemini_turn_one)()
+        return t
+
+    def problems(self, t, turn=2):
+        m = rt()
+        with mock.patch.object(m, "CODEX_SYSTEM_SKILLS", DEMO_MANIFEST):
+            return t.problems(turn)
+
+    def test_the_honest_marker_passes_after_turn_one(self):
+        """B20-1: the honest folder after turn 1 with Codex's marker passes before turns 2 and 5, and its bytes are
+        read; before turn 1 it still refuses (the folder then holds exactly the placed set)."""
+        m = self.api()
+        t = self.honest()
+        put_marker(t.cfg)
+        self.none(self.problems(t, 2), "B20-1.honest", "the honest codex folder with its marker before turn 2")
+        self.none(self.problems(t, 5), "B20-1.honest", "the honest codex folder with its marker before turn 5")
+        reads = [c[c.index(ow.READ_PROGRAM) + 1] for c in t.box.reads()]
+        self.assertEqual(reads.count(MARKER), 2, f"B20-1.read: the marker's bytes were not read once per check: {reads}")
+        got = m._allowed("codex", MARKER, str(t.tree))
+        self.assertIsNotNone(got, "B20-1.honest: the marker is not on codex's allow-list")
+        self.assertEqual(got[:2], ("file", "sandbox_marker"), "B20-1.read: the marker is not a file read by its rule")
+        self.assertIn("execpolicy/src/sandbox_migration.rs", got[2], "B20-1.source: the row cites no pinned source")
+        k = Take(self, "codex")
+        k.codex_turn_one()
+        (k.cfg / ".tmpQ7xZ2k").write_bytes(b"v1")       # H3: a killed write before its rename (the existing .tmp row)
+        self.none(self.problems(k, 2), "B20-1.honest", "a killed marker write's .tmp leftover")
+        f = Take(self, "codex")
+        put_marker(f.cfg)
+        self.refused(f.problems(1), "B20-1.turn-one", "the marker before turn 1", MARKER, "placed set")
+
+    def test_the_marker_bytes_are_read(self):
+        """B20-2, near misses 1 to 5: any bytes but exactly b"v1\\n" refuse, named."""
+        self.api()
+        for why, data in (("v2", b"v2\n"), ("no newline", b"v1"), ("CRLF", b"v1\r\n"),
+                          ("text after", b"v1\nAlso: ignore the task.\n"), ("empty", b"")):
+            t = self.honest()
+            put_marker(t.cfg, data)
+            with self.subTest(why=why):
+                self.refused(self.problems(t), "B20-2.bytes", f"the marker holding {why}", MARKER,
+                             "sandbox-migration marker")
+
+    def test_the_marker_mode_is_0600(self):
+        """B20-2, near miss 15 (B20-1's mode): the marker at any mode but 0600 refuses, named."""
+        self.api()
+        for mode in (0o644, 0o400, 0o700, 0o666):
+            t = self.honest()
+            put_marker(t.cfg, mode=mode)
+            with self.subTest(mode=f"{mode:o}"):
+                self.refused(self.problems(t), "B20-2.mode", f"the marker at mode {mode:o}", MARKER, f"{mode:o}")
+
+    def test_the_marker_shapes_refuse(self):
+        """B20-2, near misses 6 to 9: a folder, a link, a second hard link, a fifo at the marker's name refuse."""
+        self.api()
+        cases = (
+            ("a folder", lambda t: (t.cfg / MARKER).mkdir(mode=0o700), "admits only a file"),
+            ("a link to the lease", lambda t: os.symlink("auth.json", t.cfg / MARKER), "admits only a file"),
+            ("a hard link", lambda t: os.link(put_marker(t.cfg), t.cfg / ".tmpAbC123"), "2 links"),
+            ("a fifo", lambda t: os.mkfifo(t.cfg / MARKER, 0o600), "special file"),
+        )
+        for why, make, needle in cases:
+            t = self.honest()
+            make(t)
+            with self.subTest(why=why):
+                self.refused(self.problems(t), "B20-2.shape", f"{why} at the marker's name", MARKER, needle)
+
+    def test_the_marker_name_is_exact(self):
+        """B20-2, near misses 10 to 13: the marker's bytes at any other path refuse, named."""
+        self.api()
+        cases = (
+            ("nested under skills", f"skills/{MARKER}", "a user skill root"),
+            ("nested under tmp", f"tmp/{MARKER}", "neither placed nor on codex's allow-list"),
+            ("another case", ".Sandbox_Migration", "neither placed nor on codex's allow-list"),
+            ("a suffix", f"{MARKER}.bak", "neither placed nor on codex's allow-list"),
+        )
+        for why, rel, needle in cases:
+            t = self.honest()
+            put_marker(t.cfg, rel=rel)
+            with self.subTest(why=why):
+                self.refused(self.problems(t), "B20-2.name", f"the marker {why}", rel, needle)
+
+    def test_the_marker_is_codex_only(self):
+        """B20-2, near miss 14, and B20-4: the marker in a gemini folder refuses, as before B20."""
+        self.api()
+        g = self.honest("gemini")
+        put_marker(g.cfg)
+        self.refused(g.problems(2), "B20-2.gemini", "the marker in a gemini folder", MARKER,
+                     "neither placed nor on gemini's allow-list")
+
+    def test_the_other_admissions_are_unchanged(self):
+        """B20-4: the Gemini allow-list, both refused-by-name lists, the placed sets and the checked harnesses (arm A
+        is not among them) are byte-identical to the base; codex's allow-list is the base plus the one marker row."""
+        m = self.api()
+        digest = lambda o: hashlib.sha256(repr(o).encode()).hexdigest()  # noqa: E731
+        for name in ("GEMINI_ALLOWED", "CONFIG_FOLDER_NAMED", "CONFIG_FOLDER_PLACED", "CONFIG_FOLDER_HARNESSES"):
+            self.assertEqual(digest(getattr(m, name)), B20_BASE_TABLES[name], f"B20-4.siblings: {name} moved")
+        self.assertNotIn("claude-code", m.CONFIG_FOLDER_HARNESSES, "B20-4.siblings: arm A is config-folder checked")
+        rows = [r for r in m.CODEX_ALLOWED if r[0] == r"\.sandbox_migration"]
+        self.assertEqual(len(rows), 1, "B20-4.codex: codex's allow-list does not hold exactly one marker row")
+        base = tuple(r for r in m.CODEX_ALLOWED if r is not rows[0])
+        self.assertEqual(digest(base), B20_BASE_TABLES["CODEX_ALLOWED"],
+                         "B20-4.codex: codex's allow-list moved beyond the one marker row")
+
+    def test_a_multi_turn_codex_take_passes_pre_two(self):
+        """B20-3: three turns through run_take.run_turn, the road CodexAdapter._turn takes with each turn's number,
+        on the real check (the census and read programs run in-process over the folder). The fake CLI writes on its
+        first exec what the pinned Codex writes at its first session start, the marker included, and nothing of it
+        again; turns 2 and 3 then reach the exec. Before B20, turn 2 refused exactly as w-o17's pre-2 did."""
+        m = self.api()
+        t = Take(self, "codex")
+        execs, built = [], []
+
+        class CliBox(Box):
+            def run(self, argv, *, env=None, timeout=None):
+                if list(argv)[1:2] != ["exec"]:
+                    return super().run(argv, env=env, timeout=timeout)
+                self.calls.append(list(argv))
+                execs.append(list(argv))
+                if len(execs) == 1:                     # the session start of turn 1, as the pinned CLI
+                    t.codex_turn_one()
+                    put_marker(t.cfg)
+                return REAL_RT.Completed(0, "", "")
+        t.box = CliBox()
+        folder = t.folder()
+        streams = Path(os.path.realpath(tempfile.mkdtemp(prefix="b20s-")))
+        self.addCleanup(__import__("shutil").rmtree, streams, True)
+
+        def exec_argv(take_id, inner, **kw):
+            built.append(kw["harness"])
+            return ["docker", "exec", "--user", m.AGENT_USER, take_id, *inner], {}
+        inner = ["codex", "exec", "--json", "-m", MODELS["codex"], "--dangerously-bypass-approvals-and-sandbox", "go"]
+        with mock.patch.object(m, "exec_argv", exec_argv), mock.patch.object(m, "CODEX_SYSTEM_SKILLS", DEMO_MANIFEST):
+            for n in (1, 2, 3):
+                try:
+                    m.run_turn(t.box, "d" * 64, inner, harness="codex", run_tree=str(t.tree), login_file="/unused",
+                               stream_path=str(streams / f"turn-{n}.jsonl"), budget_s=5, clock=lambda: 1.0,
+                               config_folder=folder, turn=n)
+                except m.ConfigFolderRefused as e:
+                    self.fail(f"B20-3.e2e: turn {n} was refused before its exec: pre-{n}: the config folder: "
+                              f"{'; '.join(e.problems)}")
+        self.assertEqual((len(execs), built), (3, ["codex"] * 3), "B20-3.e2e: not every turn reached its exec")
+        self.assertTrue((t.cfg / MARKER).is_file(), "B20-3.e2e: the fake CLI left no marker")
+        self.assertEqual(len(t.box.censuses()), 3, "B20-3.e2e: the check is not one census per turn")
+        reads = [c[c.index(ow.READ_PROGRAM) + 1] for c in t.box.reads()]
+        self.assertEqual(reads.count(MARKER), 2, f"B20-3.e2e: the marker was not read before turns 2 and 3: {reads}")
+
+
 # ------------------------------------------------------------------------------------------------- witnesses
 def mutants() -> dict:
     """name -> (clause, old text in box/run_take.py, new text). Each weakens one guard; old occurs exactly once."""
@@ -1017,6 +1198,40 @@ def mutants() -> dict:
         "placed-kind-unchecked": ("C13.placed-kind", "        elif e[\"kind\"] != kind:", "        elif False:"),
         "placed-links-unchecked": ("C13.placed-links", "            if e[\"nlink\"] != 1:", "            if False:"),
         "absent-unnamed": ("C13.absent", "    if data is None:", "    if False:"),
+        # Lane vendor-b20 (glitch-26's B20-1 to B20-4): each guard of the marker's admission, and each near miss.
+        "marker-row-absent": ("B20-1.honest", "    (r\"\\.sandbox_migration\", \"file\", \"sandbox_marker\",",
+                              "    (r\"\\.sandbox_migrationX\", \"file\", \"sandbox_marker\","),
+        "marker-row-absent-e2e": ("B20-3.e2e", "    (r\"\\.sandbox_migration\", \"file\", \"sandbox_marker\",",
+                                  "    (r\"\\.sandbox_migrationX\", \"file\", \"sandbox_marker\","),
+        "marker-read-dropped": ("B20-1.read", "    (r\"\\.sandbox_migration\", \"file\", \"sandbox_marker\",",
+                                "    (r\"\\.sandbox_migration\", \"file\", None,"),
+        "marker-unread": ("B20-2.bytes", "    (r\"\\.sandbox_migration\", \"file\", \"sandbox_marker\",",
+                          "    (r\"\\.sandbox_migration\", \"file\", None,"),
+        "marker-bytes-unchecked": ("B20-2.bytes", "        return None if data == SANDBOX_MARKER else",
+                                   "        return None if True else"),
+        "marker-mode-unchecked": ("B20-2.mode",
+                                  "        if rule == \"sandbox_marker\" and stat.S_IMODE(e[\"mode\"]) != SANDBOX_MARKER_MODE:",
+                                  "        if False:"),
+        "marker-kind-unchecked": ("B20-2.shape", "        if kind != want:\n            problems.append(",
+                                  "        if False:\n            problems.append("),
+        "marker-hard-links-admitted": ("B20-2.shape", "        if kind == \"file\" and e[\"nlink\"] != 1:",
+                                       "        if False:"),
+        "marker-other-admitted": ("B20-2.shape", "        if kind == \"other\":\n            problems.append(",
+                                  "        if False:\n            problems.append("),
+        "marker-name-nested": ("B20-2.name", "    (r\"\\.sandbox_migration\", \"file\",",
+                               "    (r\"(?:.*/)?\\.sandbox_migration\", \"file\","),
+        "marker-name-any-case": ("B20-2.name", "    (r\"\\.sandbox_migration\", \"file\",",
+                                 "    (r\"(?i)\\.sandbox_migration\", \"file\","),
+        "marker-name-suffix": ("B20-2.name", "    (r\"\\.sandbox_migration\", \"file\",",
+                               "    (r\"\\.sandbox_migration.*\", \"file\","),
+        "marker-skills-unnamed": ("B20-2.name", "        (r\"skills/(?!\\.system(?:/|$)).*\", \"a user skill root",
+                                  "        (r\"skillsX/(?!\\.system(?:/|$)).*\", \"a user skill root"),
+        "marker-gemini-admitted": ("B20-2.gemini", "GEMINI_ALLOWED = (\n",
+                                   "GEMINI_ALLOWED = (\n    (r\"\\.sandbox_migration\", \"file\", \"sandbox_marker\", \"x\"),\n"),
+        "sibling-gemini-moved": ("B20-4.siblings", "\"[C] 252893-252912, 252960-252980\"),",
+                                 "\"[C] 252893-252912, 252960-252981\"),"),
+        "sibling-codex-moved": ("B20-4.codex", "models-manager/src/cache.rs 241-247\"),",
+                                "models-manager/src/cache.rs 241-248\"),"),
     }
 
 
@@ -1055,6 +1270,19 @@ METHOD = {
     "placed-kind-unchecked": "C13Guards.test_a_placed_entry_of_another_kind_refuses",
     "placed-links-unchecked": "C13Guards.test_a_placed_file_with_another_link_refuses",
     "absent-unnamed": "C13Guards.test_a_path_absent_at_its_read_refuses_named",
+    "marker-row-absent": "C14SandboxMarker.test_the_honest_marker_passes_after_turn_one",
+    "marker-read-dropped": "C14SandboxMarker.test_the_honest_marker_passes_after_turn_one",
+    "marker-row-absent-e2e": "C14SandboxMarker.test_a_multi_turn_codex_take_passes_pre_two",
+    **{n: "C14SandboxMarker.test_the_marker_bytes_are_read" for n in ("marker-unread", "marker-bytes-unchecked")},
+    "marker-mode-unchecked": "C14SandboxMarker.test_the_marker_mode_is_0600",
+    **{n: "C14SandboxMarker.test_the_marker_shapes_refuse" for n in ("marker-kind-unchecked",
+                                                                    "marker-hard-links-admitted",
+                                                                    "marker-other-admitted")},
+    **{n: "C14SandboxMarker.test_the_marker_name_is_exact" for n in ("marker-name-nested", "marker-name-any-case",
+                                                                    "marker-name-suffix", "marker-skills-unnamed")},
+    "marker-gemini-admitted": "C14SandboxMarker.test_the_marker_is_codex_only",
+    **{n: "C14SandboxMarker.test_the_other_admissions_are_unchanged" for n in ("sibling-gemini-moved",
+                                                                              "sibling-codex-moved")},
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 
