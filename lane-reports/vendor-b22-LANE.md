@@ -84,3 +84,10 @@ From the repository root:
 - Not verified: the tool list the CLI actually sent (the rollout records the developer instructions, not the request's tool specs). The offer is read from the instructions text plus the source, not from a recorded tool list.
 
 RESUME HERE (round 2): review stop; athena runs the sweep and battery; glitch-26 rules on the checks.d lines and on a config lane for `[agents] enabled = false`.
+
+## B22-9 and B22-10 design (local executor, Tue 20 Oct 2026, 17:08 EDT / 21:08 UTC)
+
+- **B22-9** (`34f7340f`): checks.d/vendor-admission.txt gains `python3 -B -W ignore evals/gap-study-4/tests/test_codex_started_file_change.py` and the same with `--witnesses`, under a lane comment in the existing form (no blank line, as the blocks above). On the Mac after light-ok: the module `Ran 5 tests`, `OK`; `--witnesses` `witnesses: 3/3 red`; copy_manifest --check `ok: 492 files from 60 fragment(s) ...`; freeze --check `freeze: 493 owned paths checked; no takes or freeze performed`.
+- **B22-10 design** (`fcc97ce2`, vendor-b22-DESIGN.md section 10, appended): `[agents] enabled = false` in arm O's config.toml makes the override Disabled ahead of the catalog's v2 for both models, on new, resumed and per-turn roads. The six collaboration tools and the `<multi_agent_role>` and `<multi_agent_mode>` developer sections go (76 of 76 committed rollouts carry each now). turn_context's `multi_agent_version` goes from `"v2"` (167 of 167) to `"disabled"`, read by no study reader. The stream and the other tools do not change. prereg-draft.json's two codex config sha256 pairs move, so the green rebuilds the draft. The committed practice walks were offered the six tools, called none, and are uncounted.
+
+RESUME HERE (B22-10): design stop; waiting for glitch-26's ruling on section 10e before the red.
