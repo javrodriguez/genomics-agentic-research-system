@@ -2653,5 +2653,194 @@ for _cls_from in (TestOD57OtherArms, TestB17ReadShapes, TestB17Round3, TestB17Ro
     for _name in [n for n in vars(_cls_from) if n.startswith("test_")]:
         setattr(TestB17Round6, _name, None)  # each earlier class's tests run once, in their own class
 
+
+# ------------------------------------------------------------------------------------------------- B20-5
+# glitch-26's ruling B20-5 (lane vendor-b20, Tue 20 Oct 2026; Gemini practice walk w-g11 held at the drive scan): OD57's
+# line, by its content sha256, is admitted when a git diff carries it: exactly one leading "+", "-" or " " before the
+# 80 bytes, in a `git log -p` or `git show` read run in the take's own folder, in Gemini and Codex read output alike,
+# through the read shapes' shared path. Nothing else widens: another line, a doubled prefix, another git subcommand or
+# option, a partial match, another file's hunk, another directory, or the Claude path. w-g11's shape (from the
+# investigator's notes; no walk record read, the value never copied: the line is the doc's own, as OD57's tests take it):
+# run_shell_command {command: "git log -p -n 1 7bd5b8b"}, its stream tool_result `output` and its session toolCalls
+# entry's resultDisplay holding the line once with a "+" prefix under the doc's diff header; the functionResponse output
+# truncated short of it.
+GIT_CMD = "git log -p -n 1 7bd5b8b"
+GIT_SHA = "7bd5b8b" + "0" * 33
+DOC_PATH = "gars/" + DOC_REL
+
+
+def _git_out(text, prefix="+", doc=DOC_PATH, header=None, before=(), between=()):
+    """A `git log -p` of one commit: its header and message, then the diff of `doc` with one hunk holding
+    `prefix + text` (`header` replaces the diff header line; `between` lines sit between the hunk header and it)."""
+    return "\n".join([f"commit {GIT_SHA}", "Author: Agent <agent@example.invalid>",
+                      "Date:   Mon Oct 19 00:00:00 2026 +0000", "", "    record the pinned versions", "", *before,
+                      header or f"diff --git a/{doc} b/{doc}", "index 1111111..2222222 100644", f"--- a/{doc}",
+                      f"+++ b/{doc}", "@@ -172,6 +172,6 @@ heading", " line before", *between, "-an older line",
+                      prefix + text, " line after", ""])
+
+
+class TestB20GitReads(TestB17Round6):
+    """B20-5: the git read and its diff prefix, admitted on both arms by the one shared path; each guard with a witness
+    that goes red alone."""
+
+    def b20_witness(self, label, name, body, kind, lines, fn, *edits):
+        """Refused as is, on `lines`; admitted on exactly those lines with only `edits` made to sr.<fn>."""
+        self.assert_refused(name, body, kind, lines)
+        with _mutant(fn, *edits):
+            self.assert_admitted(name, body, kind, lines)
+        red(f"B20-5 {label}")
+
+    def gem_stream(self, out, command=GIT_CMD, params=None):
+        return _cc({"type": "init", "timestamp": TS, "session_id": "session-1", "model": "model-under-test"},
+                   _gem_use("call-g1", "run_shell_command", params or {"command": command, "description": "show it"}),
+                   _gem_result("call-g1", out))
+
+    def gem_session(self, out, command=GIT_CMD, args=None, name="run_shell_command"):
+        """w-g11's session record: the entry's resultDisplay holds the git output; its functionResponse output is
+        truncated short of the line."""
+        call = _gem_call("call-g1", name, args or {"command": command}, _gem_shell("commit " + GIT_SHA + "\n[truncated]"),
+                         out)
+        return _cc(GEM_HEAD, GEM_USER, _gem_message("msg-g1", [call]))
+
+    def cx_stream(self, out, command=GIT_CMD):
+        return _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
+                   _cx_item("item.started", "item_1", _cx_wrap(command), "", "in_progress"),
+                   _cx_item("item.completed", "item_1", _cx_wrap(command), out))
+
+    # ---- admitted: w-g11's shape on Gemini, and the same read on Codex, each prefix
+    def test_gemini_wg11_git_log_is_admitted(self):
+        self.assert_admitted("turn-1.jsonl", self.gem_stream(_git_out(self.text)), "stream", [3])
+        self.assert_admitted("native-turn-1.jsonl", self.gem_session(_git_out(self.text)), "session", [3])
+        for prefix in ("+", "-", " "):
+            for cmd in (GIT_CMD, "git show 7bd5b8b", "git log --patch -3 --no-color", "git show --max-count=1 HEAD"):
+                with self.subTest(prefix=prefix, cmd=cmd):
+                    self.assert_admitted("turn-1.jsonl", self.gem_stream(_git_out(self.text, prefix), cmd), "stream",
+                                         [3])
+
+    def test_codex_git_reads_are_admitted(self):
+        out = _git_out(self.text)
+        self.assert_admitted("turn-1.jsonl", self.cx_stream(out), "stream", [4])
+        self.assert_admitted("rollout.jsonl", self.code_mode(cmd=GIT_CMD, stdout=out), "session", [3, 4])
+        self.assert_admitted("rollout.jsonl", self.code_mode(cmd=GIT_CMD, stdout=out, out=_sol(out)), "session", [3, 4])
+
+    # ---- refused: nothing else widens
+    def test_gemini_git_near_misses_refuse(self):
+        t = self.text
+        outs = {
+            "another line": _git_out(_one_char_off(t)),
+            "a doubled prefix": _git_out(t, "++"),
+            "a plus and a space": _git_out(t, "+ "),
+            "no prefix": _git_out(t, ""),
+            "a tab prefix": _git_out(t, "\t"),
+            "a partial match": _git_out(t + " x"),
+            "a cut line": _git_out(t[:-1]),
+            "another file's hunk": _git_out(t, doc="gars/_references/other.md"),
+            "a renamed side": _git_out(t, header=f"diff --git a/gars/other.md b/{DOC_PATH}"),
+            "no diff header": "\n".join(["@@ -1,1 +1,1 @@", "+" + t, ""]),
+            "outside a hunk body": _git_out(t, between=(f"commit {GIT_SHA}",)),
+        }
+        for case, out in outs.items():
+            with self.subTest(case=case):
+                self.assert_refused("turn-1.jsonl", self.gem_stream(out), "stream", [3])
+        cmds = ("git diff", "git blame gars/_references/environment.md", "git log -n 1 7bd5b8b", "git log -p",
+                "git -C /elsewhere log -p", "git log -p --output=/tmp/x", "git log -p --ext-diff",
+                "git log -p -n 1 7bd5b8b | head", "cd /elsewhere && git log -p", "GIT_DIR=/x git log -p",
+                "git show HEAD:gars/_references/environment.md", "git log  -p", "git log -p -n x 7bd5b8b",
+                "git cat-file -p 7bd5b8b", "git grep -n Key", "/usr/bin/git log -p", "git log -p\nid")
+        for cmd in cmds:
+            with self.subTest(cmd=cmd):
+                want = [] if cmd == "git log -p" else [3]
+                if want:
+                    self.assert_refused("turn-1.jsonl", self.gem_stream(_git_out(self.text), cmd), "stream", [3])
+                else:
+                    self.assert_admitted("turn-1.jsonl", self.gem_stream(_git_out(self.text), cmd), "stream", [3])
+        self.assert_refused("native-turn-1.jsonl", self.gem_session(
+            _git_out(t), args={"command": GIT_CMD, "dir_path": "/elsewhere"}), "session", [3])
+
+    def test_codex_git_near_misses_refuse(self):
+        t = self.text
+        self.assert_refused("turn-1.jsonl", self.cx_stream(_git_out(t, "++")), "stream", [4])
+        self.assert_refused("turn-1.jsonl", self.cx_stream(_git_out(t), "git diff HEAD"), "stream", [4])
+        self.assert_split("rollout.jsonl", self.code_mode(cmd="git diff HEAD", stdout=_git_out(t)), "session", [],
+                          [3, 4])
+        self.assert_split("rollout.jsonl", self.code_mode(cmd=GIT_CMD, stdout=_git_out(t, "++")), "session", [],
+                          [3, 4])
+
+    def test_claude_git_read_refuses(self):
+        """The Claude path is not widened: a Bash git log -p of the doc's diff stays refused."""
+        p = self.write("transcript.jsonl", self.bash_record(GIT_CMD, _git_out(self.text)))
+        r, _ = self.scan([(p, "transcript")])
+        self.assertEqual(r["ruled"], [])
+        self.assertNotEqual(r["refused"], [])
+
+    def test_gemini_a_cat_read_takes_no_diff_prefix(self):
+        """A cat of the doc whose output holds a diff-shaped hunk: the prefix is a git read's only."""
+        self.assert_refused("turn-1.jsonl", self.gem_stream(_git_out(self.text), SHELL_READS[0][1]), "stream", [3])
+
+    # ---- one witness per guard, each red alone
+    def test_gemini_witnesses_the_command(self):
+        for label, cmd, edit in (
+                ("the subcommand", "git diff", ("tokens[1] not in _GIT_READS", "False")),
+                ("log needs a patch", "git log -n 1 7bd5b8b",
+                 ('tokens[1] == "log" and not any(t in _GIT_PATCH for t in tokens[2:])', "False")),
+                ("the option list", "git log -p --ext-diff", ("not _GIT_OPTION.fullmatch(t)", "False")),
+                ("a revision word", "git log -p 7bd5b8b;id", ("not _GIT_WORD.fullmatch(t)", "False")),
+                ("-n takes a number", "git log -p -n --output=/tmp/x 7bd5b8b",
+                 ('not re.fullmatch(r"[0-9]+", tokens[i + 1])', "False")),
+                ("git is the first word", "/usr/bin/git log -p", ('tokens[0] != "git"', "False"))):
+            with self.subTest(label):
+                self.b20_witness(label, "turn-1.jsonl", self.gem_stream(_git_out(self.text), cmd), "stream", [3],
+                                 "_ruled_git", edit)
+
+    def test_gemini_witness_the_directory(self):
+        self.b20_witness("the take's own folder", "native-turn-1.jsonl",
+                         self.gem_session(_git_out(self.text), args={"command": GIT_CMD, "dir_path": "/elsewhere"}),
+                         "session", [3], "_reads_git", ("any(k in args for k in _GIT_DIR_KEYS)", "False"))
+
+    def test_gemini_witness_a_git_read_is_a_shell_read(self):
+        call = _gem_call("call-g1", "read_file", {"file_path": GIT_CMD}, _git_out(self.text))
+        self.b20_witness("a shell read only", "native-turn-1.jsonl",
+                         _cc(GEM_HEAD, GEM_USER, _gem_message("msg-g1", [call])), "session", [3], "_reads_git",
+                         ('tool["kind"] == "script" and _ruled_git(arg)', "_ruled_git(arg)"))
+
+    def test_gemini_witnesses_the_diff(self):
+        t = self.text
+        for label, out, edit in (
+                ("one prefix", _git_out(t, "++"), ('ln[1:].encode("utf-8", "surrogateescape")',
+                                                   'ln.lstrip("+- ").encode("utf-8", "surrogateescape")')),
+                ("a hunk body", _git_out(t, between=(f"commit {GIT_SHA}",)),
+                 ('lines[j][:1] not in _DIFF_PREFIXES + ("\\\\",)', "False")),
+                ("a diff header", "\n".join(["@@ -1,1 +1,1 @@", "+" + t, f"diff --git a/{DOC_PATH} b/{DOC_PATH}"]),
+                 ("if k < 0:", "if False:")),
+                ("the doc's diff", _git_out(t, doc="gars/_references/other.md"),
+                 ("_git_doc_header(lines[k])", "True")),
+                ("one path both sides", _git_out(t, header=f"diff --git a/gars/other.md b/{DOC_PATH}"),
+                 ("m[1] == m[2]", "True"))):
+            with self.subTest(label):
+                fn = "_git_doc_header" if label == "one path both sides" else "_ruled_diff_line"
+                self.b20_witness(label, "turn-1.jsonl", self.gem_stream(out), "stream", [3], fn, edit)
+
+    def test_gemini_witness_the_prefix_is_a_git_reads(self):
+        self.b20_witness("only a git read", "turn-1.jsonl", self.gem_stream(_git_out(self.text), SHELL_READS[0][1]),
+                         "stream", [3], "_ruled_text", ('tool.get("git")', "True"))
+
+    def test_codex_witness_the_copy_keeps_the_git_read(self):
+        """A behaviour test: with the copy rule blind to a git source, the exec output's copy is lost."""
+        out = _git_out(self.text)
+        body = self.code_mode(cmd=GIT_CMD, stdout=out)
+        self.assert_split("rollout.jsonl", body, "session", [3, 4], [])
+        with _mutant("_copy_hits", ("_ruled_diff_line(lines_a, i, ruling) if git else", "None if git else")):
+            self.assert_split("rollout.jsonl", body, "session", [3], [4])
+        red("B20-5 the copy reads a git source as a diff")
+
+    def test_codex_witness_the_wrapped_git_read(self):
+        self.b20_witness("the wrapped script", "turn-1.jsonl", self.cx_stream(_git_out(self.text), "git diff HEAD"),
+                         "stream", [4], "_ruled_git", ("tokens[1] not in _GIT_READS", "False"))
+
+
+for _cls_from in (TestOD57OtherArms, TestB17ReadShapes, TestB17Round3, TestB17Round4, TestB17Round5, TestB17Round6):
+    for _name in [n for n in vars(_cls_from) if n.startswith("test_")]:
+        setattr(TestB20GitReads, _name, None)  # each earlier class's tests run once, in their own class
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
