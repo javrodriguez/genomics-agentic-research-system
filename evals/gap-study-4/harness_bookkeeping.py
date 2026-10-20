@@ -51,8 +51,14 @@ NOT excluded, each recorded in the entry's `not_excluded` with its line (lane w2
 Anything else Claude Code may write in its home (round 3's files do not name it) is not excluded here; it is an
 open question for CP2's box (lane report w2a-cp3-endstate).
 
-VENDOR_CANDIDATES (lane vendor-admission T2) holds Codex's and Gemini's grounded candidates BESIDE the table: `entry()`
-never reads them, so a codex or gemini take is still refused until a ruling promotes them after a real walk.
+THE `codex` AND `gemini` ENTRIES (lane vendor-b21, glitch-26's rulings B21-2 and B21-7, Tue 20 Oct 2026). Lane
+vendor-admission T2 held them beside the table as VENDOR_CANDIDATES until a real walk measured the run tree; B21-1's
+design note (lane-reports/vendor-b21-DESIGN.md) measured 18 real walks (12 codex, 6 gemini; paths and counts only), and
+B21-2 promoted exactly the four measured and grounded patterns into TABLE and removed VENDOR_CANDIDATES (one source
+of truth). Neither harness leaves run-tree furniture of its own beyond endstate's COMMON_EXCLUSIONS in 33 turns and 16
+operator gaps, so each run-tree list is R4-4's agent HOME alone; each home list is its native session file, inert
+while the evidence places the take's home at null (the config mount is not snapshotted). The config mount's other
+families were measured and left out on B21-2's ruling (option b refused: untestable on a real take, no effect today).
 
 No model, no network, stdlib only.
 """
@@ -99,43 +105,41 @@ TABLE: dict = {
                                            "anything appearing there was written in the take"),
         ),
     ),
-}
-
-
-# VENDOR CANDIDATES (lane vendor-admission T2, glitch-b5, 16 Oct 2026). Codex's and Gemini's bookkeeping, grounded in
-# this study's own files and held BESIDE the table, never in it: entry() never reads them, so production
-# Evidence.load still refuses a codex or gemini take ("has no bookkeeping entry"). Their run_tree_paths hold the agent
-# HOME alone (R4-4, glitch-26, lane vendor-b11 round 4: <run tree>/.home is snapshotted but not graded; arm A's HOME is
-# outside the run tree). Nothing else in the run tree is grounded yet: what Codex and Gemini leave there shows only in
-# a real walk's snapshots, and a guess would let harness furniture read as the agent's changes. Promotion into TABLE is
-# a later ruling, after a real walk measures the run tree and before any regrade.json is committed (promotion changes
-# regrade bytes).
-# Their home_paths are inert in production today: the driver records the take's home as None and the sidecar
-# snapshots only the run tree. tests/test_harness_bookkeeping.py VendorCandidates re-derives every pattern below.
-VENDOR_CANDIDATES: dict = {
+    # B21-2 and B21-7 (glitch-26, lane vendor-b21, Tue 20 Oct 2026): promoted from VENDOR_CANDIDATES (lane
+    # vendor-admission T2) after B21-1 measured 18 real walks; the measurement is lane-reports/vendor-b21-DESIGN.md.
     "codex": Entry(
         home_paths=("sessions/**/rollout-*.jsonl",),
         run_tree_paths=(".home/**",),
         grounds=(
             "evals/gap-study-4/codex_adapter.py:41: rollout    `$CODEX_HOME/sessions/.../rollout-*.jsonl` (`...` any "
             "folders: sessions/<year>/<month>/<day>/ as native_snapshot.py:84 spells it)",
+            "pinned source openai/codex 092d3acd (rust-v0.162.1): rollout/src/lib.rs:86 SESSIONS_SUBDIR = \"sessions\"; "
+            "rollout/src/recorder.rs:1739-1762 precompute_new_rollout_path: codex_home/sessions/<year>/<mm>/<dd>/; "
+            "rollout/src/rollout_file_name.rs:62-73: rollout-<ts>-<thread>.jsonl or rollout-<ts>-<thread>_<rollout>.jsonl",
+            "measured (B21-1): sessions/<yyyy>/<mm>/<dd>/rollout-*.jsonl in the config mount of 12 of 12 codex walks "
+            "(w-o7 to w-o17, w-o45; postflight listings and session-store sweeps, names only)",
             "evals/gap-study-4/box/run_take.py:68 and 169-171: CONFIG_MOUNT = \"/opt/cfg\"; TAKE_ENV[CODEX] sets "
             "\"CODEX_HOME\": CONFIG_MOUNT, so the pattern is relative to CODEX_HOME, the config mount; since R-H5 "
             "(glitch-26, 19 Oct 2026) the row's \"HOME\" is RUN_TREE_HOME, the run tree's .home, so the home a "
-            "codex take's evidence places these paths under is the config mount, not HOME",
-            "run_tree_paths: .home/** (R4-4, glitch-26, lane vendor-b11 round 4): the agent HOME (R-H5's <run "
-            "tree>/.home, box/run_take.py RUN_TREE_HOMEDIR) is inside the run tree, so the snapshots walk it "
-            "(box/sidecar.py and the sidecar image stay byte-unchanged) but the end-state grader does not grade it; "
-            "arm A's HOME is outside the run tree and its entry is untouched",
-            "the rest of the run tree: unmeasured until a real walk (what Codex leaves there shows only in a "
-            "walk's snapshots)",
+            "codex take's evidence places these paths under is the config mount, not HOME (null in every walk's evidence)",
+            "run_tree_paths: .home/** rests on that ruling, not on measured furniture (R4-4, glitch-26, lane vendor-b11 "
+            "round 4; B21-7): the agent HOME (R-H5's <run tree>/.home, box/run_take.py RUN_TREE_HOMEDIR) is inside the "
+            "run tree, so the snapshots walk it (box/sidecar.py and the sidecar image stay byte-unchanged) but the "
+            "end-state grader does not grade it; arm A's HOME is outside the run tree and its entry is untouched. "
+            "Measured: .home exists, empty, at pre-1 in the five walks launched after R-H5 (w-o15, w-o16, w-o17, "
+            "w-o45, w-g11), and nothing appears under it in any snapshot",
+            "the rest of the run tree (B21-1): 12 codex walks, 25 turns and 14 operator gaps show no run-tree "
+            "furniture of its own beyond COMMON_EXCLUSIONS (34 __pycache__ changes); every other change is the "
+            "agent's task work under gars/projects/",
         ),
         not_excluded=(
             (".tmp/", "box/run_take.py:93 and 153, 169-170: TMPDIR, TMP and TEMP point at the run tree's .tmp, which "
-                      "holds every tool's scratch, the agent's own included; a file Codex itself leaves there needs a "
-                      "pattern measured on a real walk"),
+                      "holds every tool's scratch, the agent's own included; no codex walk shows a file of Codex's own "
+                      "there (B21-1)"),
             ("the rest of CODEX_HOME", "box/run_take.py:169-171: the config mount also holds the login lease and "
-                                       "Codex's other files; none is grounded as bookkeeping until a real walk"),
+                                       "Codex's other files (measured by B21-1: state databases, caches, "
+                                       "skills/.system, .sandbox_migration); outside the snapshots, left out on "
+                                       "B21-2's ruling"),
         ),
     ),
     "gemini": Entry(
@@ -145,31 +149,41 @@ VENDOR_CANDIDATES: dict = {
             "evals/gap-study-4/native_snapshot.py:20: gemini_session_file reads under exactly "
             "<home>/.gemini/tmp/*/chats; native_snapshot.py:13: filename = session-<ISO minute>-<first 8 of the "
             "session id>.jsonl (or session-<minute>-<k>-<first 8>.jsonl)",
+            "pinned source @google/gemini-cli 0.64.0, bundle chunk-NR7L3FXV.js (sha256 d566e81b..., "
+            "box/run_take.py CONFIG_FOLDER_SOURCES) [C] 286708-286730: chatsDir = <project temp dir>/chats; a main "
+            "session's file is session-<ISO minute>-<first 8>.jsonl; a subagent's goes under chats/<parent id>/",
             "evals/gap-study-4/native_snapshot.py:16-18: assumed, not source-shown: the global temp dir is "
-            "<home>/.gemini/tmp, and SANDBOX is not \"sandbox-exec\" (which would move it to <home>/.cache/.gemini)",
+            "<home>/.gemini/tmp, and SANDBOX is not \"sandbox-exec\" (which would move it to <home>/.cache/.gemini); "
+            "now measured (B21-1): .gemini/tmp is under GEMINI_CLI_HOME in 6 of 6 gemini walks",
+            "measured (B21-1): .gemini/tmp/<project>/chats/session-*.jsonl in the config mount of 5 of 6 gemini walks "
+            "(w-g1, w-g3, w-g5, w-g7, w-g9, w-g11; w-g1 left no chats folder), names only",
             "evals/gap-study-4/box/run_take.py:68 and 172-174, native_snapshot.py:9: homedir() is $GEMINI_CLI_HOME; "
             "TAKE_ENV[GEMINI] sets \"GEMINI_CLI_HOME\": CONFIG_MOUNT, so the pattern is relative to GEMINI_CLI_HOME, "
             "the config mount; since R-H5 (glitch-26, 19 Oct 2026) the row's \"HOME\" is RUN_TREE_HOME, the run "
             "tree's .home, so the home a gemini take's evidence places these paths under is the config mount, not "
-            "HOME",
-            "run_tree_paths: .home/** (R4-4, glitch-26, lane vendor-b11 round 4): the agent HOME (R-H5's <run "
-            "tree>/.home, box/run_take.py RUN_TREE_HOMEDIR) is inside the run tree, so the snapshots walk it "
-            "(box/sidecar.py and the sidecar image stay byte-unchanged) but the end-state grader does not grade it; "
-            "arm A's HOME is outside the run tree and its entry is untouched",
-            "the rest of the run tree: unmeasured until a real walk (what Gemini leaves there shows only in a "
-            "walk's snapshots)",
+            "HOME (null in every walk's evidence)",
+            "run_tree_paths: .home/** rests on that ruling, not on measured furniture (R4-4, glitch-26, lane vendor-b11 "
+            "round 4; B21-7): the agent HOME (R-H5's <run tree>/.home, box/run_take.py RUN_TREE_HOMEDIR) is inside the "
+            "run tree, so the snapshots walk it (box/sidecar.py and the sidecar image stay byte-unchanged) but the "
+            "end-state grader does not grade it; arm A's HOME is outside the run tree and its entry is untouched. "
+            "Measured: .home exists, empty, at pre-1 in the five walks launched after R-H5 (w-o15, w-o16, w-o17, "
+            "w-o45, w-g11), and nothing appears under it in any snapshot",
+            "the rest of the run tree (B21-1): 6 gemini walks, 8 turns and 2 operator gaps show no run-tree furniture "
+            "of its own beyond COMMON_EXCLUSIONS (43 __pycache__ and .git/index changes); the one other change, "
+            "w-g5's .tmp/run_stage00.py, is the agent's own script",
         ),
         not_excluded=(
             (".tmp/", "box/run_take.py:93 and 153, 172-173: TMPDIR, TMP and TEMP point at the run tree's .tmp, which "
-                      "holds every tool's scratch, the agent's own included; a file Gemini itself leaves there needs "
-                      "a pattern measured on a real walk"),
-            ("<chats>/<parent id>/<id>.jsonl", "native_snapshot.py:14-15: a subagent's session file, never matched "
-                                               "by the pattern; unmeasured until a real walk"),
-            (".gemini/tmp/<project>/ other entries", "lane note harness-window2-resume-2026-10-14.md: Gemini's tmp "
-                                                     "folder may hold other entries a live walk shows; open"),
+                      "holds every tool's scratch, the agent's own included (w-g5's .tmp/run_stage00.py, B21-1)"),
+            ("<chats>/<parent id>/<id>.jsonl", "[C] 286708-286730 and native_snapshot.py:14-15: a subagent's session "
+                                               "file, never matched by the pattern; measured once (w-g5) in the config "
+                                               "mount, outside the snapshots, left out on B21-2's ruling"),
+            (".gemini/tmp/<project>/ other entries", "measured by B21-1 (logs/, tool-outputs/, .project_root) in the "
+                                                     "config mount, outside the snapshots, left out on B21-2's ruling"),
         ),
     ),
 }
+
 
 class UnknownHarness(ValueError):
     """A harness name this table holds no entry for (or no name at all). Never defaulted."""

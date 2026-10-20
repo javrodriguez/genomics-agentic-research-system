@@ -230,6 +230,11 @@
       "path": "tests/test_batch_rolling.py",
       "status": "new",
       "reason": "Lane vendor-b19 (glitch-26's rulings B19-1 to B19-10, Mon 19 Oct 2026; design note lane-reports/B19-DESIGN-NOTE.md). batch.py's rolling window on stub drives built on agent_adapter.ScriptedAdapter and test_batch's scenarios (no model, no container, no drive.py): at most three drives at once, the next row started as soon as a drive ends, registration and commits serial and in row order, re-runs requeued first; with equal drive durations the rolling run reproduces the block run's registrations, launches, commits, window waits and check_results' window events and pause counts per half-cell (B19-6), with a check that the comparison can fail. Round 2: check_results' window span and the ruled pause counted as its own event; takes.py's live set, MAX_OPEN and clean-tree registration on test_pipeline's scratch repositories; the open takes never past MAX_OPEN while three drives run; and a run stopped with twelve takes open restarting owing exactly those takes, in row order (B19-9), with the old BLOCK span of restart_waits as a mutant. Claimed under ruling B19-10."
+    },
+    {
+      "path": "tests/test_vendor_bookkeeping.py",
+      "status": "new",
+      "reason": "Lane vendor-b21 (glitch-26's rulings B21-2 to B21-7, Tue 20 Oct 2026; design note lane-reports/vendor-b21-DESIGN.md). codex and gemini in harness_bookkeeping.TABLE: w-o45's operator step (TakeDriver._operator_step, the box road stubbed) on a codex and a gemini row reaches the box write (it raised UnknownHarness on 28b46165); Evidence.load of measured-shape vendor evidence on the production table; the excluded-path guard still refuses a write into .home; the claude-code entry pinned to 28b46165's repr; 13 mutants, each red alone (--witnesses). Synthetic fixtures only; no walk's record is read."
     }
   ]
 }
