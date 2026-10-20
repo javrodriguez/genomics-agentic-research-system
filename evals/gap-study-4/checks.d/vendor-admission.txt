@@ -146,3 +146,8 @@ python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/run_take.py bo
 # excluded-path guard and the claude-code entry pinned; the witnesses are its 13 mutants, each red alone.
 python3 -B -W ignore evals/gap-study-4/tests/test_vendor_bookkeeping.py
 python3 -B -W ignore evals/gap-study-4/tests/test_vendor_bookkeeping.py --witnesses
+# Lane vendor-b22 (glitch-26's B22-6 to B22-9, Tue 20 Oct 2026): a file_change in item.started (GPT walk w-o38), admitted
+# only with status in_progress and mapped to no view call (lane-reports/vendor-b22-DESIGN.md); the witnesses are its 3
+# mutants, each red on its own check.
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_started_file_change.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_started_file_change.py --witnesses
