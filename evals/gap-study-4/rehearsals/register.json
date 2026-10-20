@@ -1,4 +1,15 @@
 {
   "schema": 1,
-  "walks": []
+  "walks": [
+    {
+      "walk": "w-o37",
+      "task": "plan-gate",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "O",
+      "model": "gpt-6-luna",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted",
+      "counted": false
+    }
+  ]
 }
