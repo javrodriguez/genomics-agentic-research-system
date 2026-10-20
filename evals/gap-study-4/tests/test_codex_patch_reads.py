@@ -28,7 +28,8 @@ T-8:file-change leg had no reader.
                status of in_progress or 5, no stdout, empty changes, a change without move_path or with a move_path of
                5, an add with an extra key.
   N3-join      read_exec reads a completed file_change and join matches it to the rollout's by order: equal counts,
-               paths and kinds; completed to completed, failed or declined to failed (on a76b4dd2: refused).
+               paths and kinds; completed to completed, failed or declined to failed (on a76b4dd2: refused). Each
+               disagreement is refused by join itself (review b0c917ff m1, mutant join-wiring-dropped).
   K1-reach     check_take's rollout records hold each FileChange as one tool record, its path keys handed over as
                values (C's string walk never reads a key), stdout and stderr as what it returned (on a76b4dd2: the
                rollout refuses).
@@ -298,12 +299,16 @@ def shape_problems(cn=None) -> list:
     return out
 
 
-def _join(cn, parts):
-    """join's own result, and how many file changes join_file_changes matched in the same turn."""
+def _join(cn, parts, *, count=True):
+    """join's own result, and (with `count`) how many file changes join_file_changes matched in the same turn. The
+    refusal cases pass count=False, so a refusal they see is join's own (review b0c917ff m1: join's call of
+    join_file_changes is the drive's cross-check road)."""
     import vendor_check_fixtures as vcf
     turn = cn.read_rollout(snapshot(parts))["turns"][0]
     text = "".join(json.dumps(r) + "\n" for r in parts["streams"][1])
     got = cn.join(turn, text, exit_code=0, session_id=vcf.CODEX_TID)
+    if not count:
+        return got
     return dict(got, file_changes=cn.join_file_changes(turn, cn.read_exec(text, model=turn["requested_model"])))
 
 
@@ -340,7 +345,7 @@ def join_refusal_problems(cn=None) -> list:
     out = []
     for what, kw in JOIN_REFUSALS.items():
         try:
-            _join(cn, take_parts(**kw))
+            _join(cn, take_parts(**kw), count=False)
         except cn.JoinRefused:
             continue
         except cn.ReaderRefused as e:
@@ -492,6 +497,7 @@ MUTANTS = [
                                 "[(c[\"path\"], c[\"kind\"]) for c in nat[\"changes\"]]:\n",
                                 "        if [c.get(\"kind\") for c in got] != [c[\"kind\"] for c in nat[\"changes\"]]:\n"),),
      "join-refusal"),
+    ("join-wiring-dropped", CN, (("    join_file_changes(turn, call)\n", ""),), "join-refusal"),
     ("declined-not-failed", CN, (('EXEC_FILE_CHANGE_STATUS = {"completed": "completed", "failed": "failed", '
                                   '"declined": "failed"}',
                                   'EXEC_FILE_CHANGE_STATUS = {"completed": "completed", "failed": "failed", '
