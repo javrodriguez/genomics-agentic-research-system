@@ -2368,7 +2368,13 @@ CODEX_ALLOWED = (
      "core/src/shell_snapshot.rs 263-272 (the .tmp- form is left by a killed turn, H3)"),
     (r"\.tmp" + _TEMP6, "file", None, "core/src/config/edit.rs 731-770 (config.toml's sibling, left by a killed "
                                       "write, H3)"),
+    (r"\.sandbox_migration", "file", "sandbox_marker",
+     "execpolicy/src/sandbox_migration.rs 10, 21-27, 32-47; core/src/session/mod.rs 649-664 (B20: the one-shot "
+     "marker, written once at the first session start: b'v1\\n', mode 0600, tempfile 3.27.0's persist_noclobber)"),
 )
+# B20 (glitch-26's B20-1, lane vendor-b20, on lane-reports/B20-DESIGN.md): the marker's exact bytes and mode.
+SANDBOX_MARKER = b"v1\n"
+SANDBOX_MARKER_MODE = 0o600
 # Gemini CLI 0.64.0 (bundle files as in CONFIG_FOLDER_SOURCES; [C] chunk-NR7L3FXV.js, [M] gemini-Q2GRYIAK.js).
 # {slug} is the run tree's basename lowercased, every other character than [a-z0-9] as "-" ([C] 253035-253040; a fresh
 # folder has no collision, so no "-N").
@@ -2585,6 +2591,10 @@ def config_folder_problems(folder, entries, *, turn: int) -> tuple:
         if kind == "file" and e["nlink"] != 1:
             problems.append(f"{rel}: a file with {e['nlink']} links")
             continue
+        if rule == "sandbox_marker" and stat.S_IMODE(e["mode"]) != SANDBOX_MARKER_MODE:
+            problems.append(f"{rel}: Codex's sandbox-migration marker at mode {stat.S_IMODE(e['mode']):o}, not "
+                            f"{SANDBOX_MARKER_MODE:o}")
+            continue
         if rule is not None:
             reads.append((rel, rule))
     return problems, reads
@@ -2603,6 +2613,8 @@ def _read_problem(folder, rel: str, rule: str):
         return f"{rel}: listed by the census, absent at its read"
     if rule == "placed":
         return None if data == folder.placed[rel] else f"{rel}: not byte-identical to take_config.files_for"
+    if rule == "sandbox_marker":
+        return None if data == SANDBOX_MARKER else f"{rel}: not Codex's sandbox-migration marker (exactly b'v1\\n')"
     if rule == "uuid":
         return None if re.fullmatch(_UUID, data.decode("ascii", "replace")) else f"{rel}: not one UUID"
     if rule == "project_root":
