@@ -524,6 +524,16 @@ class Seam(unittest.TestCase):
                 self.assertNotEqual(harness_strings(src + inserted), [])
 
 
+class AgentHomeWitness(unittest.TestCase):
+    """B21-8: the attribute rule hides attributes only; a typed agent-HOME path in endstate.py still goes red."""
+
+    def test_mutant_endstate_typing_the_agent_home_goes_red(self):
+        with open(ENDSTATE_SOURCE, encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertEqual(harness_strings(src + 'P = "/srv/t/.home/x"\n'), [".home"])
+        self.assertEqual(harness_strings(src + "x = take.home or self.home or f(a).home or b[0].home\n"), [])
+
+
 def harness_strings(src: str) -> list:
     """Any harness name or bookkeeping folder of any table entry, or the word claude in any case, in `src`."""
     found = []
@@ -534,7 +544,13 @@ def harness_strings(src: str) -> list:
             found.append(name)
         for p in e.home_paths + e.run_tree_paths:
             first = p.split("/")[0]
-            if first in src:
+            # B21-8 (glitch-26, lane vendor-b21): a dotted folder is not a hit where it reads as an attribute (an
+            # identifier, `)` or `]` right before it), the rule test_harness_bookkeeping's typed_harness uses for
+            # R4-4's `.home/**`: endstate's `.home_paths`, `take.home` and `self.home` type no folder.
+            if first.startswith("."):
+                if re.search(r"(?<![A-Za-z0-9_)\]])" + re.escape(first), src):
+                    found.append(first)
+            elif first in src:
                 found.append(first)
     return sorted(set(found))
 

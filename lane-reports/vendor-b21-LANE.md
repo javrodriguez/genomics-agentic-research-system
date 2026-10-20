@@ -60,7 +60,7 @@ Each run used env -i with Python 3.13.2, after `mac_slot.py light-ok`; these are
 - check_vendor_sources P2 over the changed files: exit 0.
 - Other modules that read TABLE: test_routing `Ran 297` OK (19 s); test_plan_gate `Ran 49` OK; test_task_scope_read `Ran 39` OK; test_task_confounded_design `Ran 84` OK; test_new_tasks `Ran 44` OK (31 s); test_vendor_admission `Ran 10` OK.
 
-### Held for a ruling (one red)
+### Held for a ruling (one red; resolved by B21-8, below)
 
 test_endstate: `Ran 88 tests in 0.438s`, `FAILED (failures=1)`, the failure being `Seam.test_endstate_types_no_harness`: "Lists differ: ['.home'] != []".
 - test_endstate is the other consumer that iterates TABLE (its `harness_strings`, test_endstate.py:527-539). It now takes each vendor's `.home` folder from `.home/**` and finds that text in graders/endstate.py. The four hits are attributes, not folders: `table).home_paths` (339), `take.home is null` (447), `self.home = run` (448), `self.home is not` (639).
@@ -82,7 +82,9 @@ These are longer than the Mac's 30-second bound, or were stopped by my 45-second
 
 The records clone and athena's folders (read only, round 1). box/run_take.py, the scanner, drive.py, preflight, postflight, the adapters, the snapshots and the sidecar. Nothing was pushed. No regrade.json exists for any vendor walk (round 1, section 8 of the design note).
 
-RESUME HERE: review stop (round 2). Waiting for glitch-26's ruling on test_endstate's harness_strings scan.
+- **B21-8** (glitch-26's ruling on the hold): test_endstate's `harness_strings` now applies typed_harness's attribute rule to a dotted folder, and a new witness `AgentHomeWitness` asserts that a typed `"/srv/t/.home/x"` still goes red. This is not a Claude-arm behaviour change: the scan widened by itself when TABLE gained `.home/**`, and its hits were attribute names (`.home_paths`, `take.home`, `self.home`), so no grader, no Claude path and no other assertion moved. Runner lines: before `Ran 88 tests`, `FAILED (failures=1)`; after `Ran 89 tests`, `OK`. Witnesses: endstate.py with the path literal appended gives `Seam.test_endstate_types_no_harness` `FAILED (failures=1)` (['.home'] != []), and a rule that hides every dotted folder gives `AgentHomeWitness` `FAILED (failures=1)` ([] != ['.home']).
+
+RESUME HERE: review stop (round 2, B21-8 folded).
 
 ## ROUND 1 (local executor, Tue 20 Oct 2026, 12:18 EDT)
 
