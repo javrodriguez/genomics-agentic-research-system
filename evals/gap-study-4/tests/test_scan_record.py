@@ -2567,5 +2567,84 @@ for _cls_from in (TestOD57OtherArms, TestB17ReadShapes, TestB17Round3, TestB17Ro
     for _name in [n for n in vars(_cls_from) if n.startswith("test_")]:
         setattr(TestB17Round5, _name, None)  # each earlier class's tests run once, in their own class
 
+
+# ------------------------------------------------------------------------------------------------- B17, round 6
+# glitch-26's rulings B17-20 to B17-22 on review REVIEW-vendor-b17-8776055a (19 Oct 2026): gpt-6.1-sol's literal keeps
+# non-ASCII raw, as JSON.stringify does and the doc needs (17 non-ASCII characters), and only that form is admitted; the
+# literal is exactly one per read and a JSON string value (after `:`, `[` or `,`); a CommandExecution counts only when it
+# lies in exactly one exec window, and an exec call with more than one output admits nothing.
+NON_ASCII = "versión — αβγ ✓"
+
+
+class TestB17Round6(TestB17Round5):
+    """Round 6: the non-ASCII literal, the literal's tokenization, and one window per read, each with a witness."""
+
+    def literal(self, stdout, ensure_ascii=False):
+        return json.dumps(stdout, ensure_ascii=ensure_ascii)
+
+    # ---- B17-20: the non-ASCII literal kept raw
+    def test_codex_sol_non_ascii_literal_is_admitted(self):
+        stdout = f"line before {NON_ASCII}\n{self.text}\nline after {NON_ASCII}\n"
+        body = self.code_mode(out=_sol(stdout), stdout=stdout)
+        self.assert_admitted("rollout.jsonl", body, "session", [3, 4])
+        with _mutant("_copy_hits", ("json.dumps(a, ensure_ascii=False)", "json.dumps(a, ensure_ascii=True)"),
+                     ("json.dumps(a[:k], ensure_ascii=False)", "json.dumps(a[:k], ensure_ascii=True)")):
+            self.assert_split("rollout.jsonl", body, "session", [3], [4])
+        red("B17 round 6 the literal keeps non-ASCII raw")
+
+    def test_codex_ascii_escaped_literal_refuses(self):
+        stdout = f"line before {NON_ASCII}\n{self.text}\nline after\n"
+        out = '{"exit_code":0,"output":' + self.literal(stdout, ensure_ascii=True) + "}"
+        self.assert_split("rollout.jsonl", self.code_mode(out=out, stdout=stdout), "session", [3], [4])
+
+    # ---- B17-22: one literal per read, at a JSON value position
+    def test_codex_literal_is_one_json_value(self):
+        stdout = self.stdout("cat")
+        lit = self.literal(stdout)
+        admitted = {"after a colon and a space": '{"output": ' + lit + "}",
+                    "in an array": "[" + lit + "]", "after a comma": '[1, ' + lit + "]"}
+        for case, out in admitted.items():
+            with self.subTest(admitted=case):
+                self.assert_admitted("rollout.jsonl", self.code_mode(out=out), "session", [3, 4])
+        refused = {"two literals of the read": '{"a":' + lit + ',"b":' + lit + "}",
+                   "after a previous string's closing quote": '"zz' + lit + "}",
+                   "after text": "output=" + lit}
+        for case, out in refused.items():
+            with self.subTest(refused=case):
+                self.assert_split("rollout.jsonl", self.code_mode(out=out), "session", [3], [4])
+        with _mutant("_copy_hits", ("_json_value_at(s, p)", "True")):
+            self.assert_split("rollout.jsonl", self.code_mode(out=refused["after text"]), "session", [3, 4], [])
+        red("B17 round 6 the literal is a JSON value")
+        with _mutant("_copy_hits", ("s.count(e) == 1", "True")):
+            self.assert_split("rollout.jsonl", self.code_mode(out=refused["two literals of the read"]), "session",
+                              [3, 4], [])
+        red("B17 round 6 one literal per read")
+
+    # ---- B17-21: one window per read, one output per call
+    def test_codex_read_in_two_windows_refuses(self):
+        cat, co = SHELL_READS[0][1], self.stdout("cat")
+        body = _cc(_cx_meta(), _cx_custom(1, "a", inp="text('x')"), _cx_custom(2, "b"),
+                   _cx_end(3, "b-0", ["/bin/bash", "-lc", cat], co), _cx_custom_out(4, "b", co),
+                   _cx_custom_out(5, "a", co))
+        self.assert_split("rollout.jsonl", body, "session", [4], [5, 6])
+        with _mutant("_shape_calls", ("sum(1 for c, o in windows if c < n < o) == 1", "True")):
+            self.assert_split("rollout.jsonl", body, "session", [4, 5, 6], [])
+        red("B17 round 6 one window per read")
+
+    def test_codex_call_with_two_outputs_refuses(self):
+        cat, co = SHELL_READS[0][1], self.stdout("cat")
+        body = _cc(_cx_meta(), _cx_custom(1, "a"), _cx_end(2, "a-0", ["/bin/bash", "-lc", cat], co),
+                   _cx_custom_out(3, "a", co), _cx_custom_out(4, "a", co))
+        self.assert_split("rollout.jsonl", body, "session", [3], [4, 5])
+        with _mutant("_shape_strings", ("len(out_lines.get(node[spec[\"id\"]]) or ()) != 1", "False")), \
+                _mutant("_shape_calls", ("len(out_lines[c]) == 1", "True")):
+            self.assert_split("rollout.jsonl", body, "session", [3, 4, 5], [])
+        red("B17 round 6 one output per call")
+
+
+for _cls_from in (TestOD57OtherArms, TestB17ReadShapes, TestB17Round3, TestB17Round4, TestB17Round5):
+    for _name in [n for n in vars(_cls_from) if n.startswith("test_")]:
+        setattr(TestB17Round6, _name, None)  # each earlier class's tests run once, in their own class
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
