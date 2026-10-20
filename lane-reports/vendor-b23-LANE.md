@@ -71,3 +71,30 @@ Open (Q3): T-8:file-change settles only from a RECORDED fixture, the first commi
 Held (Q4): a delete patch stays refused; such a walk holds and goes to glitch-26.
 check_vendor_sources: no piece line names this lane's files.
 No push, no mirror, no athena run.
+
+Status: fold stop (round 3)
+
+## ROUND 3 (local executor, Tue 20 Oct 2026, 18:25 EDT / 22:25 UTC): the fold of review b0c917ff (CHANGES)
+
+glitch-26's rulings on /Users/javrodher/aegis-builds/REVIEW-vendor-b23-b0c917ff.md: m1, m2, n1 and n2. This lane now lands B22 and B23 together.
+
+Commits:
+- `b1e8142f` m1: the join refusal cases call `join` alone (`_join(..., count=False)`), and the mutant `join-wiring-dropped` deletes `    join_file_changes(turn, call)\n` from codex_native.py. "Ran 13 tests", "OK"; "witnesses: 15/15 red", with join-wiring-dropped red on join-refusal alone. checks.d's comment says 15. COPIED.d: one sentence appended to the test's reason.
+- `12c82840` m2: B22's two phrases reworded so lint_pooling is clean. This breaks the old-text-as-prefix convention for these two reasons only, as ruled:
+  - COPIED.d/vendor-admission.json:247, tests/test_codex_agents_off.py's reason (B22 b088add5). Old phrase, verbatim: `(build_draft's combined sha256, pinned)`. New: `(build_draft's sha256 over each model's file list, pinned)`.
+  - COPIED.d/w8b-holdout-digests.json:13, prereg-draft.json's reason (B22 6c60fc0e). Old phrase, verbatim: `(each model's config.toml sha256 and its combined sha256)`. New: `(each model's config.toml sha256 and the sha256 over its file list)`.
+  - Why: lint_pooling bans "combined" (two rounds measured under different conditions are never added) and has no allowlist, so checks.d/w8e-lint-reds.txt:4 failed on B22's head and on b0c917ff. The value named is build_draft.config_templates' sha256 over the model's path and sha256 lines, so the new words say what the old one meant.
+- `405cff22` n1: the "Patch refused before it starts (arm O)" entry now reads "(one that does not parse, fails verification, or fails the tool's own pre-checks, such as an empty patch)", through build_draft.py. prereg-draft.json numstat "1 1", that entry only.
+
+Runner lines (Mac, `env -i`, Python 3.13.2):
+- checks.d/w8e-lint-reds.txt:4, run from the repository root: "clean — 115 input(s) scanned, 25 excused line(s) on record", "clean — 115 file(s) and 0 commit(s) scanned, no excusal path", line exit 0.
+  The other lint_* lines in checks.d (w4f-cp5-coverage.txt, over coverage_today.md): lint_language "clean — 1 input(s) scanned, 25 excused line(s) on record", lint_pooling "clean — 1 file(s) and 0 commit(s) scanned, no excusal path", each exit 0.
+- test_codex_patch_reads "Ran 13 tests in 1.336s", "OK"; "witnesses: 15/15 red". test_codex_native "Ran 15", "OK". test_codex_started_file_change "Ran 5", "OK". test_build_draft "Ran 49 tests in 34.337s", "OK" (heavy slot).
+- `build_draft.py --check` "ok: the committed draft is what build_draft.py builds"; `copy_manifest.py --check` "ok: 494 files from 60 fragment(s) ..."; `freeze.py --check` "freeze: 495 owned paths checked; no takes or freeze performed".
+
+Open items:
+- Q3: T-8:file-change settles only from a RECORDED fixture, the first committed GPT walk that edits through the patch tool, with its rollout as committed.
+- n2, beside Q3: a kill race. If exec is killed after core persisted the FileChange but before exec printed its item.completed, the settled T-8 reader holds the take as "file change count disagrees" (the view keeps the edit as an unanswered call). A command in the same race is not compared on the T-8 road. The take is held under a named reason, never misread, and the window is narrow.
+- Q4: a delete patch stays refused; such a walk holds and goes to glitch-26.
+- Not run on the Mac (athena's battery): `--generated-mutants` for transcript_codex.py, codex_native.py and check_take.py, and the full checks.d and suite.
+No push, no mirror, no athena run.
