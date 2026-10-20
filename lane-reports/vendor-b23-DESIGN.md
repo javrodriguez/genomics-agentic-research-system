@@ -238,3 +238,37 @@ B23-4's correction line about world_state.rs:108-138 and turn.rs:1294 is in lane
 No code, no test, no fixture.
 The records clone and athena were read only (athena: file names only).
 No push, no mirror, no athena run.
+
+## 14. Addendum (Q5, appended Tue 20 Oct 2026, 17:48 EDT / 21:48 UTC): which record carries a patch refused before Begin
+
+glitch-26's ruling Q5: if a record carries the attempt, read it as an edit call with a refused result in the view; if none does, it becomes a named limitation of arm O in the parity notes.
+Source: the same pin, read from the commit's tarball (`codeload.github.com/openai/codex/tar.gz/092d3acd...`, extracted in the session scratchpad and searched with grep).
+Counts: the 31 committed GPT walks' 76 rollouts in the records clone, read through `git show`, counts and key names only.
+
+**How arm O reaches the patch tool.**
+- Both arm O models' catalog entries set `"tool_mode": "code_mode_only"` and `"apply_patch_tool_type": "freeform"` (models-manager/models.json, gpt-6-luna and gpt-6.1-sol).
+- requested_tool_mode takes the model's tool_mode first (core/src/tools/mod.rs:76-85).
+- ApplyPatchHandler keeps the default exposure, Direct (codex-rs/tools/src/tool_executor.rs:113-115), which is available in code mode (:93-96).
+- Under code_mode_only, a nested-capable tool is hidden from the model's direct list (core/src/tools/spec_plan.rs:838-850).
+- So arm O calls apply_patch only from inside an `exec` cell's JavaScript. The rollouts agree: their 423 custom_tool_call records are all named `exec`.
+
+**What each record holds for a patch refused before Begin.** Begin is reached only after the patch parses and verifies (AP:322-381, then execute_verified_patch, Begin at AP:544).
+- Exec stream: nothing. A tool call emits no turn item of its own (core/src/stream_events_utils.rs:340-357: the call is dispatched; only non-tool items become turn items there). The handler returns its error to the cell before any emitter runs. No core/src/tools/code_mode file emits a turn item (grep for emit_turn_item over core/src: the emitters are the tool events, MCP, hooks, review, compaction, user shell and the named handlers; code mode, the router and the registry are not among them).
+- Rollout event_msg: nothing, for the same reason: no TurnItem exists to persist.
+- Rollout response_item metadata: the executed-call recorder (core/src/tools/executed_tool_calls.rs:490-593) would record a nested call's name and arguments. It is gated on Feature::ExecutedToolCallMetadata, `default_enabled: false` (features/src/lib.rs:1111-1114), and the box sets only hooks and plugins (box/take_config.py:69).
+  The committed rollouts confirm it: 989 of 1888 response_items carry metadata, with the key sets {client_authored, fallback_token_limit_override} (423, the exec outputs) and {client_authored, mcp_attribution, retained_source, user_input_order} or subsets (566, messages); none records a call.
+- Hooks: the one FunctionCallOutput turn item is a hook's (core/src/hook_runtime.rs:755), and hooks are off in the box.
+- What remains: the attempt survives only as text, inside the `exec` cell's JavaScript (the custom_tool_call input) and in whatever the cell printed back (its output). Reading that program as calls would be a guess at what code ran, which the closed rule refuses.
+
+**Conclusion.** No record carries a patch refused before Begin as a call, so per Q5 it is a named limitation of arm O, built as a second parity-note entry beside the delegation entry (B23-3).
+Text:
+
+```
+{"of": "Patch refused before it starts (arm O)", "text": "A named limitation of arm O. Both arm O models reach Codex's patch tool (apply_patch) only from inside the exec tool's JavaScript cell (their catalog sets tool_mode code_mode_only), and the tool writes its file_change record only once a patch has parsed and been verified. A patch it refuses before that (one that does not parse, or fails verification) leaves no structured record: no exec-stream item, no rollout item, and no executed-call metadata (that Codex feature is off by default and the box leaves it off; 0 of the 989 metadata records in the 76 rollouts of the 31 committed GPT practice walks record a call). It survives only as text in the cell's program and in what the cell printed back, which no reader parses as calls. So such an attempt is not a call in arm O's view: pause_adherence does not count it and no path grader sees it, while a Claude Edit its tool refuses stays a call with an error result. A refused patch changes no file, so the end-state graders read the same. The gap can only make arm O read more adherent than it acted, by the refused patch attempts, which the study's records cannot count."}
+```
+
+**One deviation from section 7, flagged.**
+- Section 7 proposed that a completed file_change whose id has no started record in its stream refuses. I am not building that.
+- Why: the committed D8 fixture `tests/fixtures/codex-streams/turn1-tools.jsonl` and test_vendor_body's file_change case hold completed-only file_changes. Exec itself prints a completed item with no started one under a fresh id (EP:337-341).
+- What I build instead: a completed file_change with no started record keeps today's mapping (its calls and results at the completion), so every existing reading stays byte-identical.
+- What still refuses: a completed file_change whose started record exists in the stream but whose changes differ, and a second item.started with the same id.
