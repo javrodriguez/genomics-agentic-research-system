@@ -274,7 +274,7 @@
     {
       "path": "tests/fixtures/od57-agreement/cases.json",
       "status": "new",
-      "reason": "Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the agreement corpus (57 cases), built by corpus.py; the aegis door runs a pinned byte copy."
+      "reason": "Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the agreement corpus (58 cases), built by corpus.py; the aegis door runs a pinned byte copy."
     }
   ]
 }

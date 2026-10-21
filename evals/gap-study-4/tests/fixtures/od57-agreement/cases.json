@@ -2283,6 +2283,120 @@
    "admit": [],
    "family": "g",
    "kind": "session",
+   "name": "g-grep-pattern-line",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "@OD57@"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 4 matches for pattern \"@OD57@\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL100: line 100\nL125: line 125\nL175: @OD57@\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 84",
+          "lineNumber": 84
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 100",
+          "lineNumber": 100
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 125",
+          "lineNumber": 125
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "@OD57@",
+          "lineNumber": 175
+         }
+        ],
+        "summary": "Found 4 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 4 matches for pattern \"@OD57@\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL100: line 100\nL125: line 125\nL175: @OD57@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "the model's pattern is the line, so line 0 (the tool's header) carries it too: never admitted text"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
    "name": "g-display-in-glob",
    "records": [
     {

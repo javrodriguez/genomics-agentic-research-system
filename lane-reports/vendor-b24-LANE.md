@@ -88,3 +88,49 @@ What the source says (bundle/chunk-NR7L3FXV.js):
   - RED  c-grep-doc-context                   expected admit=[2] refuse=[] got=([], [2])
   - cases 57: as expected 37, red 20
 - Runner, under a heavy slot: `python3.12 -B -m unittest tests.test_od57_agreement tests.test_rules_scanner` "Ran 20 tests", "FAILED (failures=21, errors=36)" (the errors: od57_rule, od57_shapes, rs.IGNORE_NAME and the 4-argument scan_argv do not exist yet).
+
+## Round 2, stages 2 and 3: green, the battery's affected modules, the re-scans (Wed 21 Oct 2026, 05:28 EDT)
+
+- Correction: stage 0's header says "03:48 to 03:52"; `date` printed 03:48:37 at that commit, and I wrote the end time without running `date`.
+- Rulings received mid-round and built: item 2 revised (grep_search's context lines admitted inside the window the call produced), T2 refined (provenance from grep's own labels, W167 kept as an admission).
+
+### What changed (green commit d9659683, plus this commit)
+
+- box/od57_rule.py, new: OD57's one rule set, stdlib only (hashlib, json, posixpath, re, shlex). Entry `ruled_text(body, ruling, data, shapes, kind, line)`.
+  - grep_search: `L175: ` attested by the call's own display entry (lineNumber 175, the exact line, absolutePath the run tree's doc); `L175- ` only inside the window (explicit context/before/after; else auto-context, 1 to 3 matches, 50 or 15 lines, bundle 321596-321635); the File: header joined to dir_path must normalise to gars/_references/environment.md with no `..`; arguments only pattern, dir_path, include_pattern, context, before, after.
+  - Claude: Read and Grep (content mode) bound to the doc's path (F-RS-4 closed); Bash through the shell read.
+  - Shell read (every arm): `[cd <dir> && | ;] grep|cat ...` then commands that name no file; grep unlabelled only with the doc as its single operand, labelled lines (several operands, -H, a recursive folder) admitted only when the line's own label resolves to the doc in a run tree (/tmp/run-<hex>/gars/... or relative), `:175:` under -n, `-` separators only with a context flag; no long option, no -Z/-b/-T, no input redirect; cat a single doc operand, `-n` gives `   175\t`.
+  - T1: a Write/Edit/MultiEdit/NotebookEdit, write_file/replace, Codex file_change (stream) or FileChange (rollout, shape inferred, not seen in any committed record) or an exec script calling apply_patch on the doc, at or before the record's line, disqualifies it.
+  - Every other rule kept as it was (B17 schema and copy rule, B20 git reads), moved verbatim except where named.
+- box/od57_shapes.py, new: the adapters' shapes, data only, plus "session grep display" and grep_search in the session functionResponse tools; Codex stream flag -lc only. gemini_adapter/codex_adapter re-export them as READ_SHAPES.
+- box/scan_record.py: imports od57_rule; keeps probe, listing, refusal (shlex import dropped).
+- box/rules_scanner.py (f): `--gitleaks-ignore-path` to `<report_dir>/no-rulings.gitleaksignore`, made with O_EXCL at build, checked plain and empty before every scan.
+- Tests changed to follow the rule (each named in COPIED.d): test_scan_record (mutants on od57_rule; Claude shell fixtures in a run tree; `grep -rn` on a folder moved from refused to admitted at the command level, its lines bound by labels; bash -c refused on the stream; the Codex two-positions case reads the doc once), test_sidecar (audit entries), the two READ_SHAPES pins.
+- Corpus: 58 cases (one added after green: g-grep-pattern-line, the model's pattern equal to the line).
+
+### Runner lines (Mac, Python 3.12.9; heavy slots for the long ones)
+
+- tests/test_od57_agreement.py: "Ran 7 tests", "OK" (every case's verdict; 30 RED_ALONE witnesses each flipped by its one guard's mutant; the -c flag as data; the blind probe admits the second key).
+- Per case (scratchpad percase.py): "cases 58: as expected 58, red 0".
+- tests/test_scan_record.py: "Ran 203 tests", "OK". tests/test_sidecar.py: "Ran 157 tests", "OK". tests/test_rules_scanner.py: "Ran 13 tests", "OK" (PlantedIgnoreFile ran the Mac's gitleaks 8.30.0: the argv without the flag found nothing, the module's argv found github-pat).
+- tests/test_gemini_adapter.py "Ran 146 tests" "OK"; tests/test_codex_adapter.py "Ran 64 tests" "OK" (new pins: gemini bc380138…ab849, codex 4dc0a95e…63759).
+- Also OK: test_drive_commit (31), test_walk_layout (14), test_vendor_roads (13), test_scan_witness (10), test_box_integration (61), test_wave4_bindings (13), test_live_box (38), test_drive_ownership (48), test_vendor_envelopes (7).
+- copy_manifest.py --check: "ok: 499 files from 60 fragment(s) ...".
+- Not green on this Mac, the same on the base: test_walk_builders "Ran 102 tests" "FAILED (failures=2)" (test_the_driver_and_walkrepo_get_the_lease_secrets, test_the_vendor_config_is_written_on_the_walk_road: "the run tree '/var/folders/...' is not its canonical path"), identical at d8ceb181 in a detached worktree (removed after); test_walk_launch's TestWitnesses.test_every_witness_is_red_by_its_own_clause runs past 600 s on both trees (one earlier run killed by pid at about 23 min, no traceback).
+- Not run here: athena's battery, run_checks, and the adapters' --generated-mutants (athena's; this round runs nothing on athena beyond item 6).
+
+### The re-scans, read-only (scratchpad rescan.py: scan_record.scan over each walk folder's .json/.jsonl, the arm's READ_SHAPES, the Mac's gitleaks 8.30.0 with an empty ignore file; w-g21 e2c30e0c, w-g20 1892dcec, w-o47 61a41792 from the records clone by `git archive`; w-g22 by `ssh athena tar -cf - .` of its walk folder into a private temp folder, removed after)
+
+- New rule: w-g21 30 files, ruled 5, refused 0 (native-turn-1 128, 129; native-turn-2 128, 129, 178), passed. w-g20 24 files, ruled 0, refused 0. w-o47 25 files, ruled 0, refused 0. w-g22 28 files, ruled 11, refused 0, passed: native-turn-1 198 (2), 199; native-turn-2 198 (2), 199, 272, 622 (2), 798 (2), the walk log's 11 exactly.
+- Base rule (d8ceb181): the same for w-g21, w-g20, w-o47; w-g22 ruled 0, refused 11 (the same 11), as the walk itself.
+- Temp folders removed: True (both runs).
+
+### Held for glitch-26
+
+1. The aegis door is unchanged (its pinned byte copies are the later aegis lane); until then the door still refuses grep_search, $patch, the stream tool_result, the shell resultDisplay and the exec copy, so a w-g22-like walk now commits on athena and is refused at the Mac's fetch.
+2. Claude walks beyond the local clones (w167, after w168, the measured Claude arm) were not checked for reads the new Read path binding or T2 would now refuse.
+3. T1's rollout FileChange and apply_patch-in-exec shapes are inferred from the pinned source, not seen in a committed record.
+4. Codex routes outside every rule (item 7): write_stdin into a live process, an MCP resource or tool, an image; none admitted, all fail closed.
+5. The two walk_builders failures and the slow walk_launch witness test are the same on the base on this Mac; athena's battery is the judge.
+6. The `find /` deviation of round 1 goes to Javier as a disclosure (glitch-26's ruling).
+- Stop for review.

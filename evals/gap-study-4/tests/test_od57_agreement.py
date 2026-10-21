@@ -113,6 +113,7 @@ RED_ALONE = {
     "g-grep-wrong-number": ("_grep_ruled_number", ("return 175", "return 176")),
     "g-grep-display-other-path": ("_abs_doc", ("return (", "return True or (")),
     "g-grep-dotdot-header": ("_grep_names_doc", ('if ".." in joined.split("/"):', "if False:")),
+    "g-grep-pattern-line": ("ruled_text", ("        return None\n    return found", "        pass\n    return found")),
     "g-grep-path-key": ("_grep_args_ok", ('_GREP_ARGS', '_GREP_ARGS + ("path",)')),
     "t1-gemini-write-then-read": ("ruled_text", ("if writes is not None and writes <= line:", "if False:")),
     "t1-gemini-replace-then-grep": ("ruled_text", ("if writes is not None and writes <= line:", "if False:")),

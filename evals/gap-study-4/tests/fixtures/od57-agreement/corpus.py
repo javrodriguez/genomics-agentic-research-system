@@ -270,6 +270,9 @@ def build() -> list:
              g_grep_records(GARGS, [("environment.md", [(175, ":", L), (176, ":", "api_key = ZZ9PLANTEDSECOND")])],
                             [g_match(175, L), g_match(176, "api_key = ZZ9PLANTEDSECOND")], replays=False), [],
              [3, 4], "a second key on the record (the probe refuses)"))
+    add(case("g-grep-pattern-line", "g", "session",
+             g_grep_records({"pattern": L, "dir_path": GDIR}, [DOC_BLOCK], FOUR, replays=False), [], [3, 4],
+             "the model's pattern is the line, so line 0 (the tool's header) carries it too: never admitted text"))
     add(case("g-display-in-glob", "g", "session",
              [G_HEAD, G_USER, g_msg("msg-g1", [g_call("call-g1", "glob", {"pattern": "*.md"}, "found 1 file",
                                                       g_display([g_match(175, L)]))])], [], [3],
