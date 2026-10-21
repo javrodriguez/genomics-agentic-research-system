@@ -219,3 +219,47 @@ Correction to that time: the red ran at 16:13:38-16:13:47 EDT (`date`).
 
 Green on the lane tree, one module at a time behind `light-ok`: test_stub_model_server 29 OK, test_stub_model_probe 35 OK, test_b27_reading 14 OK, test_stub_take 19 OK (16:15:06-16:15:16); test_b26_scanner 3 OK, test_b26_rewrites 43 OK, test_b25_real_shapes 18 OK, test_gemini_session_replay 3 OK, test_gemini_projection 8 OK, test_freeze_shapes 9 OK, test_walk_launch's test_l2_run, test_l4_bounds, test_l6_start and test_l7_env each OK (16:15:26-16:15:59).
 No new file; every changed file is already claimed in COPIED.d.
+
+### Stage 5 mutation check (scratch archive of 5e6fc97e, each mutant restored from a byte backup), 16:16:46-16:16:58 EDT
+
+- M3b, the reviewer's surviving mutant (an unscripted endpoint no longer refused), against MINOR 2's first test: "FAILED (failures=1)" (it survived the review's suite, 25 OK).
+- M3c, the reviewer's surviving mutant (skip ahead to a later matching entry), against MINOR 2's second test: "FAILED (failures=1)".
+- F1 leaked() back outside its own try: ReviewFold "FAILED (errors=1)".
+- F3 the probe exits 0 whatever happened: "FAILED (failures=1)".
+- F3b the stop not counted in scenario_problems: survived ("OK"). Named equivalent: every stop also leaves fewer processes than scripted (and a held stub, when that is the cause), each its own problem, so the exit and the summary do not change; the clause is kept for the record's words.
+- F4 the fresh-child guard admitting walk.exit: "FAILED (failures=1)"; F4b the guard dropped from probe_command: "FAILED (failures=1)".
+- F6 the git-checkout difference dropped from DEPARTURES: "FAILED (failures=1)"; F6b the GEMINI.md difference dropped from the reading: "FAILED (failures=1)".
+- N7 PATCH back to http.server's 501: "FAILED (failures=1)"; N8 an empty reason_contains matching any refusal: "FAILED (errors=1)".
+
+## Stage 6: what the review fold found further, the checks.d lines, and the plan's additions
+
+### A regression of stage 2, found by the heavy slot: three test_walk_launch witnesses could no longer be performed
+
+- The Mac's heavy slot was granted twice.
+  First at 16:17:07, for the whole tests.test_walk_launch on 5e6fc97e under an 840-second cap: 48 tests passed, then two "F", then the cap killed it at 16:31:09 (no verdict line).
+  Second at 16:34:21, verbose, on 29d432ea, with a 1,700-second cap: every test outside TestWitnesses passed, 48 "ok" (TestOD57ReturnRoad, TestRealReturnScan, TestSkipRule and TestTheRoad's eleven, test_l8_blobs included). TestWitnesses (62 witnesses, each running its whole check, the L8 ones heavy) was still running when the cap killed it at 17:02:43, so it has no verdict on the Mac.
+- The two "F" were TestWitnesses subtests: test_walk_launch's witness() requires each edit's text to occur exactly once in walk_launch.py, and stage 2 broke three: hold-dropped's text occurred 0 times (_held_command named its variable held_env), back-sha-unchecked's and pid-isdigit's twice each (fetch_probe and probe repeated fetch's and run's lines).
+  Lane review REVIEW-vendor-b27-25ffff5 did not run test_walk_launch whole, and neither did I before stage 5; this is the cost of skipping the heavy module, recorded plainly.
+- Fix, commit 29d432ea: _held_command keeps the local name walk_env, so the hold line's text is the original; fetch_probe's sha256 comparison and probe's pid check are spelled apart from fetch's and run's. No behaviour changed.
+- Red: b27witness.py (session scratchpad) on 5e6fc97e: "['hold-dropped: occurs 0 times', 'back-sha-unchecked: occurs 2 times', 'pid-isdigit: occurs 2 times']"; on the base 04c4e774 archive: none. The new light test WalkLaunchProbe.test_every_walk_launch_witness_edit_still_applies_once on a 5e6fc97e archive (16:34:00): "FAILED (failures=1)" with those three.
+- Green on 29d432ea (16:33:21-16:33:50): all 62 witness edits performable once; the ten L2-run, L6-start and L7-env witnesses each red on their own clause with the tree green; test_stub_model_probe 36 OK; test_walk_launch test_l2_run, test_l5_guards, test_l9_echo_and_env OK.
+- TestWitnesses as a whole waits for athena's battery on this head (ruling (5)-(8)).
+
+### checks.d (glitch-f1's word, 21 Oct 2026)
+
+- Athena's gars-gap4 battery runs only checks.d's lines; B26's final athena battery (371/371) covered checks.d, which named none of test_b25_real_shapes, test_b26_rewrites, test_b26_scanner or this lane's modules, so those reader tests have run on the Mac and in the reviews only.
+- checks.d/vendor-admission.txt gains six lines in its existing form (`python3 -B -W ignore evals/gap-study-4/tests/<module>.py`), under two comment lines naming the lanes: test_b25_real_shapes, test_b26_rewrites, test_b26_scanner; test_stub_model_server, test_stub_model_probe, test_b27_reading.
+- run_checks.py's own parser (`run_checks.commands()`, through b27checks.py in the session scratchpad; the whole battery was not run), 16:44:53: 377 commands with the battery (371 + 6), the six read at vendor-admission.txt:168-170 and :173-175, in order.
+- Those six lines only, exactly as written, from the repository root under `bash -o pipefail` with python3 3.13.2, 16:44:53-16:45:09: test_b25_real_shapes 18 OK; test_b26_rewrites 43 OK; test_b26_scanner 3 OK; test_stub_model_server 29 OK; test_stub_model_probe 36 OK; test_b27_reading 14 OK.
+- Athena's battery on this head will run them all.
+
+### The smoke-run plan's additions (REVIEW-vendor-b27-25ffff5 MINOR 5 and NIT 10; appended, the plan's text above is not rewritten)
+
+- A precondition before `ship`: athena's battery on this lane's head is green, including the whole test_walk_launch (its TestWitnesses has no Mac verdict) and the six checks.d lines above.
+- At step 1: the head `ship` prints must equal the reviewed head (this lane's final head after the stage-5 review, or its reviewed successor); otherwise stop before `probe`.
+- At step 2: `probe` now refuses by itself in a child that already holds walk.pid, walk.log or walk.exit (MINOR 4), so a second probe or walk needs a new `ship` and child.
+- At step 3: `status` exit=0 now means every scenario ran as scripted (MINOR 3); exit=1 means at least one scenario has problems, listed in summary.json and its probe.json. On a non-zero exit or `lost`, do not repeat: read walk.log's tail, then on athena `docker ps -a --no-trunc`, `docker network ls`, and /home/javier/gap4-walk-config for an `sp-*` scratch left (the restore records why).
+- At step 5: the reading's `--code` is a `git archive` of B26's reviewed head 9e91dd34417b18dbaffa4069f45a4e1f5e298bb6 (its gemini_session_replay.py is byte-identical to this lane's), evals/gap-study-4.
+- The evidence note of every reading names the workspace differences (ruling 3, MINOR 6): `.stub-probe/` and the synthetic files, the run tree not a git checkout, no GEMINI.md; stub_model_reading.py's first line prints them.
+
+## Stop for review: Wed 21 Oct 2026, after stage 6
