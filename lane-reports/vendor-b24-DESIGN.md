@@ -144,6 +144,11 @@ The shape of (A):
 
 Cost: the door's import surface grows by one reviewed module; test_sidecar's default-deny audit gains an entry for od57_rule.py (its imports are a subset of scan_record's today).
 
+Parity of the scanner call itself (added at 03:45 EDT on glitch-26's message; see §5a): agreement on the rule is worth nothing if one seat's gitleaks run can be silenced.
+The door's every content scan already passes `--ignore-gitleaks-allow` and `--gitleaks-ignore-path` to an emptied file of its own (`scan_flags`, athena_suite.py:1055-1059; `no-rulings.gitleaksignore` at :2167 and :2763), and walk_launch.py's own scans do the same (box/walk_launch.py:410-411).
+The twin's commit-time scanner does not (§5a); after (f) the two seats run gitleaks with the same allowance flags.
+The door's calls are left as they are.
+
 ## 4. B24-1(d): witnesses that must stay refused, and the red tests
 
 Red tests are written first and must fail on d8ceb181 (twin) and 4c2db58 (door) where the shape is new to that scanner.
@@ -192,6 +197,33 @@ Runs:
 - Study code: yes, athena's battery on the lane head, and a mirror, because the walks run this code inside the drive on athena (the twin is study code).
 - Door: the aegis suites on the Mac under heavy slots (`test_athena_od57`, `test_athena_rulings`, `test_athena_door_rule`, `test_athena_suite`), with the known 20 GB disk-floor failures read as before; no mirror.
 - Re-scans, read-only, at the end: w-g21 (five admissions unchanged), w-g22 from a copy of its walk folder (eleven admissions, both scanners), w-o47 and w-g20 (unchanged).
+
+## 5a. B24-1(f): the twin's gitleaks call reads a `.gitleaksignore` from its working folder
+
+Added Wed 21 Oct 2026 03:45 EDT, on glitch-26's message (its read-only check: a planted `.gitleaksignore` silenced a finding, found=[] on gitleaks 8.30.0 in a throwaway test).
+
+Where (verified by reading, nothing run): the call is `scan_argv` in `evals/gap-study-4/box/rules_scanner.py:49-54`, not in scan_record.py (scan_record only receives the built callable).
+It runs `[binary, "dir", path, "--no-banner", "--redact", "--ignore-gitleaks-allow", "--report-format", "json", "--report-path", report, "--exit-code", "0", "--log-level", "warn"]`, with no `--gitleaks-ignore-path`.
+gitleaks' default for that flag is `.` (8.30.0 `stdin --help` on this Mac: "path to .gitleaksignore file or folder containing one (default ".")"), so the runtime's working folder decides which ignore file applies.
+Which folder that is on athena (`runtime.run` in the drive) was not checked here.
+The scanner's environment is built from nothing (`run_take.runtime_env`, only RUNTIME_ENV_NAMES), so `GITLEAKS_CONFIG` and `GITLEAKS_CONFIG_TOML` do not reach it unless those names are in that list (not checked).
+
+The change:
+- `gitleaks_scanner` makes, once per build, an empty file of its own in its report folder (for example `report_dir/no-rulings.gitleaksignore`, created with exclusive create, mode 600, size 0 checked before each scan), and `scan_argv` takes it and passes `--gitleaks-ignore-path <that file>`.
+- The report folder's "must exist and be empty" check stays; the ignore file is created after it, and the report counter's names cannot collide with it.
+- Before each scan the file is checked to be a plain file (not a link) of 0 bytes; anything else refuses (ScannerRefused).
+- Files: box/rules_scanner.py; tests/test_rules_scanner.py (it binds scan_argv's argv); any test or pin that holds scan_argv's exact argv or rules_scanner.py's bytes (check_vendor_sources, test_sidecar's audit for rules_scanner.py, the stub-take record test) is updated in the same lane.
+  Study code: athena's battery and a mirror, as §5.
+
+Red tests (written first, failing on d8ceb181):
+- with a `.gitleaksignore` holding the finding's fingerprint in the scan's working folder, a planted canary key in a scanned file is still found (today: silenced);
+- the same with the ignore file in the scanned file's own folder;
+- `scan_argv`'s argv carries `--gitleaks-ignore-path` naming a file inside the report folder;
+- the ignore file replaced by a link, or written non-empty between scans: the next scan refuses;
+- these run the pinned binary where it exists (athena) and the same flags with the Mac's 8.30.0 locally, and are skipped nowhere silently: a missing binary is a named failure.
+
+Adjacent, not checked, raised for glitch-26: neither seat passes `--config`, and gitleaks' config precedence includes "(target path)/.gitleaks.toml" (same help text).
+For the twin's `dir <file>` and the door's `git <repo>` scans, whether a `.gitleaks.toml` planted in the scanned tree (a take could write one into its record folder or a commit) would replace the default rules is not verified; if it would, both seats need an explicit `--config` to a pinned file, with its own red test.
 
 ## 6. Held for glitch-26
 

@@ -18,3 +18,13 @@ Clone: /Users/javrodher/aegis-builds/vendor-b24-20261021, branch lane/vendor-b24
   The bundle was not in the node_modules folders I checked on the Mac or athena; the grep output format in the design comes from the committed records only (held item 5).
 - Held for glitch-26: the design's section 6 (items 1 to 7).
 - Stop for the ruling.
+
+## Round 1 addendum: Wed 21 Oct 2026 03:45 EDT (`date`), on glitch-26's message
+
+- Added §5a, B24-1(f), to the design, and the scanner-call parity paragraph to §3.
+- Correction to the message: the gitleaks call is `scan_argv` in box/rules_scanner.py:49-54, not in scan_record.py.
+- Raised, not checked: neither seat passes `--config`; a `.gitleaks.toml` in the scanned tree may replace the rules.
+
+## Round 2 start: Wed 21 Oct 2026 03:46 EDT (`date`), rulings B24-2 received
+
+- glitch-26 ruled the design (items 1 to 8) on 54337f3d. The find deviation goes to Javier as a disclosure; from now on no walk from / or ~, named folders only.
