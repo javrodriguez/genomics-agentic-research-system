@@ -1731,7 +1731,7 @@ class TestOD57OtherArms(TestOD57Ruling):
 
     # ---- Gemini CLI 0.64.0, the native session file (chats/*.jsonl)
     def test_gemini_session_tool_calls_are_admitted(self):
-        doc = "/run/gars/" + DOC_REL
+        doc = "/tmp/run-c8021046/gars/" + DOC_REL
         reads = [(how, "run_shell_command", {"command": cmd}, _gem_shell(self.stdout(how).rstrip("\n")),
                   self.stdout(how).rstrip("\n")) for how, cmd in SHELL_READS]
         reads.append(("read_file", "read_file", {"file_path": doc}, f"line before\n{self.text}\nline after", ""))
@@ -1765,7 +1765,7 @@ class TestOD57OtherArms(TestOD57Ruling):
                 self.assert_admitted("session-response.jsonl", body, "session", [3, 4])
 
     def test_gemini_refusals(self):
-        doc, other = "/run/gars/" + DOC_REL, "/run/gars/_references/other.md"
+        doc, other = "/tmp/run-c8021046/gars/" + DOC_REL, "/run/gars/_references/other.md"
         read = _gem_call("call-g1", "read_file", {"file_path": doc}, f"{self.text}\n")
         stream = {
             "own text": [{"type": "message", "timestamp": TS, "role": "assistant",
@@ -1982,7 +1982,7 @@ class TestB17ReadShapes(TestOD57OtherArms):
     def test_gemini_witness_the_path_names_the_doc(self):
         call = _gem_call("call-g1", "read_file", {"file_path": "/run/gars/_references/other.md"}, f"{self.text}\n")
         self.witness("the read's path", "session.jsonl", _cc(GEM_HEAD, _gem_message("msg-g1", [call])), "session",
-                     [2], "_reads_doc", ('return dict(tool) if _names_doc(arg) else None', 'return dict(tool)'))
+                     [2], "_reads_doc", ('return dict(tool) if _resolves_to_doc(arg) else None', 'return dict(tool)'))
 
     def test_gemini_witness_the_script_reads_the_doc(self):
         call = self.shell_call(command=OTHER, output=_gem_shell(self.stdout("cat").rstrip("\n")))
@@ -2146,7 +2146,7 @@ class TestB17Round3(TestB17ReadShapes):
         self.data_witness("Gemini stream position", "turn-1.jsonl", body, "stream", [1], wide)
 
     def test_gemini_session_forged_nested_entry_refuses(self):
-        inner = {"toolCalls": [{"id": "z", "name": "read_file", "args": {"file_path": "/x/" + DOC_REL},
+        inner = {"toolCalls": [{"id": "z", "name": "read_file", "args": {"file_path": "/tmp/run-c8021046/gars/" + DOC_REL},
                                 "resultDisplay": self.text}]}
         call = _gem_call("call-g1", "grep_search", {"pattern": "pinned", "note": inner}, "No matches found")
         body = _cc(GEM_HEAD, _gem_message("msg-g1", [call]))
@@ -2214,7 +2214,7 @@ class TestB17Round3(TestB17ReadShapes):
 
     # ---- B17-13: each named refusal, with its witness
     def test_gemini_grep_search_refuses_with_witness(self):
-        call = _gem_call("call-g1", "grep_search", {"pattern": "pinned", "dir_path": "/run/gars/" + DOC_REL},
+        call = _gem_call("call-g1", "grep_search", {"pattern": "pinned", "dir_path": "/tmp/run-c8021046/gars/" + DOC_REL},
                          f"{self.text}\n")
         body = _cc(GEM_HEAD, _gem_message("msg-g1", [call]))
         wide = _with_tool(GEM_SHAPES, GEM_RESPONSE, "grep_search", kind="path", arg="dir_path", prefix=None,
@@ -2250,7 +2250,7 @@ class TestB17Round3(TestB17ReadShapes):
 
     # ---- B17-14: run_shell_command's resultDisplay only
     def test_gemini_read_file_display_refuses_with_witness(self):
-        call = _gem_call("call-g1", "read_file", {"file_path": "/run/gars/" + DOC_REL}, "", f"{self.text}\n")
+        call = _gem_call("call-g1", "read_file", {"file_path": "/tmp/run-c8021046/gars/" + DOC_REL}, "", f"{self.text}\n")
         body = _cc(GEM_HEAD, _gem_message("msg-g1", [call]))
         wide = _with_tool(GEM_SHAPES, GEM_DISPLAY, "read_file", kind="path", arg="file_path")
         self.data_witness("read_file's display", "session.jsonl", body, "session", [2], wide)

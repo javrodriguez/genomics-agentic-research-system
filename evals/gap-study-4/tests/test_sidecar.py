@@ -2271,7 +2271,9 @@ BOX_MODULES = {
         "attrs": {
             'S', 'add', 'append', 'commenters', 'compile', 'count', 'decode', 'dumps', 'encode', 'endswith', 'find',
             'fullmatch', 'get', 'hexdigest', 'items', 'loads', 'normpath', 'pop', 'rstrip', 'setdefault', 'sha256',
-            'shlex', 'split', 'startswith', 'values', 'whitespace_split'},
+            'shlex', 'split', 'startswith', 'values', 'whitespace_split',
+            # round 3 (R3-3): T1 reads an apply_patch script's file headers
+            'finditer', 'strip'},
     },
     # lane vendor-b24: OD57's read shapes, data only
     "box/od57_shapes.py": {"imports": {}, "from": set(), "rebinds": set(), "names": {"dict"}, "attrs": set()},

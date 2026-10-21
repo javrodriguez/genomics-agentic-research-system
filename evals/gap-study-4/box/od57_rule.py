@@ -27,6 +27,21 @@ WHAT IS A READ (lane vendor-b24, glitch-26's rulings B24-2, 21 Oct 2026; lane-re
 - T1: a write of the doc (Write, Edit, MultiEdit, write_file, replace, a Codex file_change or apply_patch) at or before a
   record's line disqualifies every admission on that line and after it in the same file.
 
+PATHS (R3-1, glitch-26's round-3 ruling on review 7fcba34 MINOR-1): every path that binds a read to the doc (Claude
+Read and Grep, Gemini read_file, grep_search's File header joined to its dir_path and its display's absolutePath, a
+shell operand or label) goes through _resolves_to_doc: no `..`, normalised, then the run tree's absolute doc or the doc
+relative to the agent's folder. T1 alone reads a written path wider (_may_name_doc), since a write disqualifies.
+
+RESIDUALS (named, R3-5; none admits a byte other than the ruled line, and each is held by the digest and the probe):
+- the Claude path runs for every file kind, so a Claude-shaped Read record inside a Gemini session or a Codex stream
+  file is read as Claude's (the vendor CLIs write those files, not the model);
+- a Gemini shell read ignores the call's dir_path (the git read's argument rule, command and description only, is not
+  applied to cat and grep), so `cat _references/environment.md` with dir_path elsewhere is read as the doc;
+- the run tree is bound by its name only (/tmp/run-<hex>), so a model-made /tmp/run-dead/gars/... matches;
+- shell writes (cp, mv, tee, sed -i, a redirect) and a Claude Bash cwd kept across calls are not seen by T1;
+- grep_search's `context`, `before` or `after` present as 0 counts as an explicit window (fail-closed: it can only
+  refuse a context line the tool's auto-context would have made; the bundle's own test of the value is not cited).
+
 Standard library only (hashlib, json, posixpath, re, shlex). No process, no file access: bytes in, text out.
 """
 
@@ -84,11 +99,6 @@ def _is_ruled(text, ruling) -> bool:
     """Whether `text` is exactly the ruled line's bytes."""
     b = text.encode("utf-8", "surrogateescape") if isinstance(text, str) else b""
     return len(b) == ruling["bytes"] and _sha(b) == ruling["sha256"]
-
-
-def _names_doc(p) -> bool:
-    """A path that names the doc by its suffix (the path kind's rule)."""
-    return isinstance(p, str) and (p == _RULED_DOC or p.endswith("/" + _RULED_DOC))
 
 
 def _resolves_to_doc(path, cwd=None) -> bool:
@@ -162,11 +172,11 @@ def _claude_tool(uses, tool_use_id):
     if not isinstance(inp, dict):
         return None
     if name == "Read":
-        return "read" if _names_doc(inp.get("file_path")) else None
+        return "read" if _resolves_to_doc(inp.get("file_path")) else None
     if name == "Grep":
         if inp.get("output_mode") != "content":
             return None
-        return "grep" if _names_doc(inp.get("path")) else None
+        return "grep" if _resolves_to_doc(inp.get("path")) else None
     if name == "Bash":
         spec = _ruled_shell(inp.get("command"))
         return spec
@@ -343,6 +353,12 @@ def _grep_spec(args, cwd):
         return None
     single_doc = len(ops) == 1 and _resolves_to_doc(ops[0], cwd)
     labelled = "H" in flags or ("h" not in flags and (len(ops) > 1 or (recursive and not single_doc)))
+    # R3-2 (review of 7fcba34, MINOR-2): a label must be a name typed in the command, never one a filename on disk
+    # supplies (a recursive folder walk, or a glob the shell expands; a filename may hold a newline)
+    if labelled and recursive:
+        return None
+    if labelled and any(c in op for op in ops for c in "*?["):
+        return None
     if not labelled:
         if len(ops) != 1:                      # several files and -h: no label to bind them
             return None
@@ -595,9 +611,7 @@ def _grep_args_ok(args) -> bool:
 
 def _abs_doc(p) -> bool:
     """A display entry's absolutePath that is the run tree's doc."""
-    return (
-        isinstance(p, str) and p.startswith("/") and ".." not in p.split("/") and posixpath.normpath(p) == p
-        and p.endswith("/" + _RULED_GIT_PATH))
+    return isinstance(p, str) and p.startswith("/") and _resolves_to_doc(p)
 
 
 def _attests(m, text) -> bool:
@@ -610,11 +624,7 @@ def _grep_names_doc(dir_path, header) -> bool:
     """A File: header, joined to the call's dir_path, that names the doc (no `..` anywhere)."""
     if not isinstance(header, str) or not header or (dir_path is not None and not isinstance(dir_path, str)):
         return False
-    joined = header if header.startswith("/") else (dir_path or ".").rstrip("/") + "/" + header
-    if ".." in joined.split("/"):
-        return False
-    n = posixpath.normpath(joined)
-    return n == _RULED_GIT_PATH or n.endswith("/" + _RULED_GIT_PATH)
+    return _resolves_to_doc(header, dir_path or None)          # R3-1: the one run-tree check
 
 
 def _grep_window(args, matches, docs) -> bool:
@@ -884,7 +894,7 @@ def _reads_doc(tool, args, display=None):
         return dict(tool)
     arg = _tool_arg(tool, args)
     if tool["kind"] == "path":
-        return dict(tool) if _names_doc(arg) else None
+        return dict(tool) if _resolves_to_doc(arg) else None
     if tool["kind"] in ("grep", "grep-display"):
         if not _grep_args_ok(args):
             return None
@@ -1087,10 +1097,23 @@ def _line_text(lines, i, tool, ruling, extra):
 _WRITE_TOOLS = ("Write", "Edit", "MultiEdit", "NotebookEdit", "write_file", "replace")
 
 
+def _may_name_doc(p) -> bool:
+    """R3-3: a written path that may be the doc: normalised first (`./`, `//`, `..` resolved lexically), then the
+    doc's suffix. Wider than _resolves_to_doc on purpose (no run-tree binding, `..` allowed): a write disqualifies, so
+    a wider match fails closed."""
+    if not isinstance(p, str) or not p:
+        return False
+    n = posixpath.normpath(p)
+    return n == _RULED_DOC or n.endswith("/" + _RULED_DOC)
+
+
+_PATCH_FILE = re.compile(r"\*\*\* (?:Add|Update|Delete) File: (.+)|\*\*\* Move to: (.+)")
+
+
 def _writes_doc(name, args) -> bool:
     if name not in _WRITE_TOOLS or not isinstance(args, dict):
         return False
-    return any(_names_doc(args.get(k)) for k in ("file_path", "notebook_path"))
+    return any(_may_name_doc(args.get(k)) for k in ("file_path", "notebook_path"))
 
 
 def _change_paths(changes) -> list:
@@ -1119,17 +1142,18 @@ def _record_writes_doc(rec) -> bool:
         return True
     item = rec.get("item")
     if isinstance(item, dict) and item.get("type") == "file_change" \
-            and any(_names_doc(p) for p in _change_paths(item.get("changes"))):
+            and any(_may_name_doc(p) for p in _change_paths(item.get("changes"))):
         return True
     payload = rec.get("payload")
     if isinstance(payload, dict):
         pitem = payload.get("item")
         if isinstance(pitem, dict) and pitem.get("type") == "FileChange" \
-                and any(_names_doc(p) for p in _change_paths(pitem.get("changes"))):
+                and any(_may_name_doc(p) for p in _change_paths(pitem.get("changes"))):
             return True
         inp = payload.get("input")
         if payload.get("type") == "custom_tool_call" and isinstance(inp, str) and "apply_patch" in inp \
-                and _RULED_DOC in inp:
+                and (_RULED_DOC in inp or any(_may_name_doc((m[1] or m[2]).strip().strip("\\\"'"))
+                                              for m in _PATCH_FILE.finditer(inp))):
             return True
     return False
 
