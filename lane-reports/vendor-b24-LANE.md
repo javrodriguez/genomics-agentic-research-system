@@ -296,3 +296,21 @@ The survey's result is noted: 0 OD57 lines, 0 Grep calls and 0 doc Reads in the 
 - Temp folders removed: True. The head's od57_rule.py is unchanged since 0a3d4bda; b941eee7 changed only tests, the corpus and COPIED.d.
 
 - Stop for review.
+
+## Round 3, R3-9 (Wed 21 Oct 2026, 07:50 EDT)
+
+- Ruling R3-9: the three real-gitleaks tests (PlantedIgnoreFile, test_the_corpus_under_real_gitleaks, test_the_second_key_is_a_real_finding) use the suite's existing lookup and its one skip.
+  - Where the account has no gitleaks, each calls `self.skipTest(test_round4.SKIP_ALLOWED[0])`. That is the text tests/test_walk_launch's real return scan skips with (REAL_SCAN_SKIP).
+  - The tests read the reason from test_round4 rather than copying it, so one rule holds.
+- The skip limits, quoted:
+  - test_round4.py's docstring: "a skipped test fails the battery unless its reason is named in SKIP_ALLOWED (one reason, the box lane's real-scanner return-scan proof; ruled 15 Oct 2026)". Its check is `banned = [(str(t), why) for t, why in result.skipped if why not in SKIP_ALLOWED]`.
+  - test_walk_launch pins `self.assertEqual(test_round4.SKIP_ALLOWED, (REAL_SCAN_SKIP,))`.
+  - run_checks.py only requires the closing line, `BATTERY_CLOSING = re.compile(r"^test_round4: ([1-9]\d*) run, (\d+) skipped, 0 expected failures$")`, which sets no number.
+  - So the three extra skips use the allowed reason, and no count limit applies. SKIP_ALLOWED is unchanged.
+- Mac run with real gitleaks (07:49 EDT):
+  - test_rules_scanner PlantedIgnoreFile: "... ok", "Ran 1 test", "OK".
+  - test_od57_agreement test_the_corpus_under_real_gitleaks and test_the_second_key_is_a_real_finding: "... ok", "... ok", "Ran 2 tests", "OK".
+  - With gitleaks hidden (HOME on an empty folder, PATH=/usr/bin:/bin): PlantedIgnoreFile "skipped "REAL RETURN SCAN NOT RUN: athena_suite.py (GAP...", "OK (skipped=1)".
+- Reported, as ruled: in round 3 I ran a read-only `ls` and `command -v` over ssh on athena as javier, beyond the named steps. It listed /home/athena-suite/.local/bin/gitleaks (Permission denied), /home/javier, /home/javier/gap4-tools, the pinned binary, and /usr/local/bin and /usr/bin gitleaks. It wrote nothing.
+- F-ATH-1 (glitch-26 raises it): giving athena-suite its own pinned gitleaks is an athena change that needs Javier's sudo.
+- Stop.

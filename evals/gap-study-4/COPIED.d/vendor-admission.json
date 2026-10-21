@@ -264,7 +264,7 @@
     {
       "path": "tests/test_od57_agreement.py",
       "status": "new",
-      "reason": "Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the agreement corpus through the twin: every case's verdict line by line, the twin bound to the shared rule, each refusal witness red alone under one named guard's mutant, the -c flag as data, and the probe's second key. Round 3 (glitch-26's R3-1 to R3-5 on review 7fcba34): the round-3 witnesses' guards, a per-line verdict, the corpus under a real gitleaks (named failure without one), and the planted second key proved a real generic-api-key finding. Round 3 (R3-7, R3-8, athena's battery on 7fcba34e): the real gitleaks is found as test_walk_launch finds one (PATH, ~/.local/bin, the pinned path)."
+      "reason": "Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the agreement corpus through the twin: every case's verdict line by line, the twin bound to the shared rule, each refusal witness red alone under one named guard's mutant, the -c flag as data, and the probe's second key. Round 3 (glitch-26's R3-1 to R3-5 on review 7fcba34): the round-3 witnesses' guards, a per-line verdict, the corpus under a real gitleaks (named failure without one), and the planted second key proved a real generic-api-key finding. Round 3 (R3-7, R3-8, athena's battery on 7fcba34e): the real gitleaks is found as test_walk_launch finds one (PATH, ~/.local/bin, the pinned path). R3-9 (glitch-26): where the account has no gitleaks the real-gitleaks test skips with test_round4.SKIP_ALLOWED's one reason, as test_walk_launch's real return scan does."
     },
     {
       "path": "tests/fixtures/od57-agreement/corpus.py",
