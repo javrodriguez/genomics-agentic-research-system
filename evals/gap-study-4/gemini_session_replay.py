@@ -62,7 +62,8 @@ written and refuses):
     shape (user {id, timestamp, type, content}; gemini {id, timestamp, type, content, thoughts: [], tokens: null},
     :286910-286930); every update is a dead {id, toolCalls: [{id, result}]} write on a removed gemini message's own
     call (:287198-287229), verified and never applied to a fact; and the image check binds the run to the removed
-    state: one survivor per coalesced role run; per run, equal multisets of function-call (id, name) and of
+    state: one survivor per coalesced role run; per run, equal multisets of function calls in full (id, name and
+    arguments: the writer copies each call unchanged; glitch-f1's ruling 2 on REVIEW-vendor-b26-04c4e77 MINOR 2) and of
     function-response (id, name), where the first occurrence of a repeated `_response` id counts the concatenated
     toolCalls results of its base gemini message (the synthetic turn the CLI builds, :286158-286188; glitch-26's
     ruled deviation on ruling 5); every re-recorded response part equal to one of its id's originals or the masked
@@ -98,6 +99,26 @@ IGNORED_PREFIXES = ("/", "?", "<session_context>", "<hook_context>")
 JS_TRIM = ("\t\n\x0b\x0c\r \xa0            "
            "    　﻿")
 ORIGINAL, RESUME_COPY, RERECORDED = "original", "resume copy", "re-recorded copy"
+# Lane vendor-b26 fold (glitch-f1's ruling 4, REVIEW-vendor-b26-04c4e77 MINOR 4; the orchestrator's 14:08 ruling): four
+# resume $patch shapes the pinned writer can write (:287254-287265 writes each key only when it has entries) but no
+# committed walk shows. By :286764-286783 and :286120-286150 a resume writes a content update for every gemini message
+# carrying thoughts or tool calls, so each needs a take with neither. They stay refused, each by its own name, so a
+# survey counts them apart from corrupt files (the false-refusal residual, recorded in the lane file).
+UNOBSERVED_RESUME_SHAPES = {
+    frozenset({"orderIds"}): "writer-possible resume shape {orderIds} (a resume with no update), unobserved in any "
+                             "walk: refused by name (glitch-f1's ruling 4)",
+    frozenset({"orderIds", "removeIds"}): "writer-possible resume shape {orderIds, removeIds} (an ignored prompt "
+                                          "dropped, no update), unobserved in any walk: refused by name (glitch-f1's "
+                                          "ruling 4)",
+    frozenset({"removeIds", "updates"}): "writer-possible resume shape {removeIds, updates} inside a resume (an "
+                                         "ignored prompt dropped, the order unchanged), unobserved in any walk: "
+                                         "refused by name (glitch-f1's ruling 4)",
+    # glitch-f1's ruling on the fold's question (21 Oct 2026): {removeIds} alone inside a resume, writer-possible for
+    # the same reason (an ignored prompt dropped, no update, the order unchanged) and unseen in every walk.
+    frozenset({"removeIds"}): "writer-possible resume shape {removeIds} alone inside a resume (an ignored prompt "
+                              "dropped, no update, the order unchanged), unobserved in any walk: refused by name "
+                              "(glitch-f1's ruling 4)",
+}
 
 
 def _string(value):
@@ -208,14 +229,17 @@ def _text_parts(message):
 
 
 def _calls(message):
-    """A gemini message's (id, name) calls: its toolCalls, else its content's functionCall parts (a copy)."""
+    """A gemini message's calls in full, (id, name, arguments): its toolCalls, else its content's functionCall parts
+    (a copy). Lane vendor-b26 fold (glitch-f1's ruling 2, REVIEW-vendor-b26-04c4e77 MINOR 2): the arguments are bound
+    too, so a re-recorded copy can never carry arguments its original did not (the scanner reads the originals')."""
     if message["type"] != "gemini":
         return []
     if message.get("toolCalls"):
-        return [(t["id"], t.get("name")) for t in message["toolCalls"]]
+        return [(t["id"], t.get("name"), _canonical(t.get("args"))) for t in message["toolCalls"]]
     content = message.get("content")
-    return [(p["functionCall"].get("id"), p["functionCall"].get("name")) for p in content
-            if isinstance(p, dict) and isinstance(p.get("functionCall"), dict)] if isinstance(content, list) else []
+    return [(p["functionCall"].get("id"), p["functionCall"].get("name"), _canonical(p["functionCall"].get("args")))
+            for p in content if isinstance(p, dict) and isinstance(p.get("functionCall"), dict)
+            ] if isinstance(content, list) else []
 
 
 def _responses(message):
@@ -247,6 +271,8 @@ class _Replay:
         if keys & {"id", "content", "toolCalls"}:
             raise ReplayRefused("a direct-id native patch is never written by the pinned recorder "
                                 "(chunk-NR7L3FXV.js:287254-287265)")
+        if self.resume and frozenset(keys) in UNOBSERVED_RESUME_SHAPES:
+            raise ReplayRefused(UNOBSERVED_RESUME_SHAPES[frozenset(keys)])
         if keys == {"updates"}:
             _updates(self.live, patch["updates"])
         elif keys == {"orderIds", "updates"}:
@@ -255,8 +281,16 @@ class _Replay:
         elif keys == {"orderIds", "removeIds", "updates"}:
             if not self.resume:
                 raise ReplayRefused("native patch removes and reorders outside a resume")
-            _updates(self.live, patch["updates"])
+            # Lane vendor-b26 fold (glitch-f1's ruling 3): each removed id is checked first, then no update may name
+            # one, so the removed prompts read the same before and after the loader's updates (:286390-286399).
             self._ignored_prompts(patch["removeIds"])
+            if isinstance(patch["updates"], list) and any(
+                    isinstance(u, dict) and u.get("id") in patch["removeIds"] for u in patch["updates"]):
+                raise ReplayRefused("a resume updates the prompt it removes (the recorder writes content patches only "
+                                    "for history turns, chunk-NR7L3FXV.js:287167-287183, and a removed prompt is not "
+                                    "one)")
+            _updates(self.live, patch["updates"])
+            self._retire(patch["removeIds"])
             self._resume_order(patch["orderIds"])
             self.props["ignored_prompt_resumes"] += 1
         elif keys in ({"removeIds"}, {"removeIds", "updates"}):
@@ -264,6 +298,7 @@ class _Replay:
         else:
             raise ReplayRefused("unsupported native patch operation")
         self.since = []
+        self.resume = False       # the resume window closes at its $patch, whatever its shape (lane vendor-b26 fold)
 
     def _resume_order(self, order):
         _reorder(self.live, order)
@@ -298,6 +333,7 @@ class _Replay:
                 self.others.append(message)
 
     def _ignored_prompts(self, remove):
+        """Check every removed id is a live original ignored user prompt; the caller retires them."""
         if not isinstance(remove, list) or not remove or not all(_string(i) for i in remove) \
                 or len(set(remove)) != len(remove):
             raise ReplayRefused("native resume removeIds must be a nonempty array of distinct ids")
@@ -316,7 +352,6 @@ class _Replay:
                     and (not text or text.startswith(IGNORED_PREFIXES))):
                 raise ReplayRefused("a resume removes a message that is not an ignored user prompt "
                                     "(isIgnoredUserContent, chunk-NR7L3FXV.js:286096-286110)")
-        self._retire(remove)
 
     def _rerecord(self, patch):
         remove = patch["removeIds"]

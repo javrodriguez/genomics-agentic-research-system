@@ -102,3 +102,109 @@ Open for glitch-26 and glitch-f1:
 2. The rehearsal walk for the resume after a re-record (ruling 3) is glitch-26's; the replay refuses that road by name today.
 3. The modules listed as waiting for a heavy slot.
 4. The reader still refuses orderIds-only and {orderIds, removeIds} without updates, which the writer could write but no walk shows (a named false-refusal risk, as in the design).
+
+## The fold of REVIEW-vendor-b26-04c4e77 (VERDICT: CHANGES), stage 5 commit 75b7655d
+
+Fold builder: a Claude Opus 5.5 sub-agent of glitch-f1 (the Lane-orchestrator), under Javier's standing delegation; the lane's first builder released, this builder the only writer of the clone from 14:26 EDT Wed 21 Oct 2026.
+Rulings folded: glitch-f1's six on that review (21 Oct 2026), as briefed.
+Scratch: /private/tmp/claude-501/-Users-javrodher-glitch/de671dc9-9274-4a09-b079-1f80eb793658/scratchpad/fold (base/ and red/ are `git archive` copies of 04c4e774's evals/, head/ a copy of the working tree, walks/ `git archive` copies of the eight walk commits the review names).
+Nothing was written into the reviewer's clone, nothing run on athena, nothing pushed or merged.
+Every run below sat behind `mac_slot.py light-ok --work gap-study-r4` (rc 0), one module or class per process, each capped at 45 s.
+
+### What changed, ruling by ruling
+
+1. MAJOR 1 (the scanner witness): tests/test_b26_scanner.py, ScannerReadsEveryCopy, the reviewer's scratch witness folded in and tightened: every tool of every frozen original that carries toolCalls, every part of every dead re-record update, and every part of every copy tool-response turn must be read, each by the record's own `where`.
+   Claimed in COPIED.d/vendor-admission.json (one "new" entry appended after the last b26 entry; no line moved).
+   The stage-1 Scanner class stays as it was.
+2. MINOR 2 (calls in full): gemini_session_replay._calls returns (id, name, canonical arguments) for an original's toolCalls and a copy's functionCall parts, so the image's call multiset binds the arguments; module docstring updated.
+   Witness: test_b26_rewrites.FullCalls (a w-g47 re-recorded copy whose one call gains a synthetic argument: refused "function calls differ"; the three real fixtures still replay with one re-record each).
+3. MINOR 3 (shape B): the shape-B branch now checks the removed ids first, then refuses any update naming one: "a resume updates the prompt it removes (the recorder writes content patches only for history turns, chunk-NR7L3FXV.js:287167-287183, and a removed prompt is not one)"; then applies the updates and retires the removed prompts.
+   The ignored-prompt predicate therefore reads the removed prompt before the updates; with no update allowed on a removed id the two readings are the same message, and an update that would have turned a plain prompt into a "/"-leading one before its removal now refuses.
+   Witness: ShapeBUpdateOnRemoved (the reviewer's P5 on w-g14: refused, the reason carrying :287167-287183).
+4. MINOR 4 (the unobserved resume shapes): UNOBSERVED_RESUME_SHAPES, three named reasons, checked while the resume window is open: {orderIds} ("a resume with no update"), {orderIds, removeIds} ("an ignored prompt dropped, no update"), {removeIds, updates} inside a resume ("an ignored prompt dropped, the order unchanged"); each says "writer-possible ..., unobserved in any walk: refused by name (glitch-f1's ruling 4)".
+   Witnesses: UnobservedResumeShapes, one per shape, each cut from w-g14's shape-B patch.
+   Implementation choice, flagged: the resume window (`self.resume`) now closes at the resume's $patch whatever its shape; before, only a reordering patch closed it, so an updates-only resume patch would have left it open and this check would have refused a later masking re-record by the resume-shape name.
+   The module's own comment already defines the window as "after $set {sessionId}, before its $patch".
+   Over every Gemini walk's last snapshot (36, read from git blobs of the records clone, 14:29:03-14:29:07): 13 resume patches {orderIds, updates}, 1 {orderIds, removeIds, updates}, 0 updates-only, and all 3 re-records outside a resume, so the change moves no walk.
+   Witness: UnobservedResumeShapes.test_the_window_closes_at_the_resume_patch (an updates-only resume patch, then {orderIds}: refused "unsupported native patch operation", not the resume-shape name).
+5. MINOR 5 (the loop closing check): LoopFeedback's "another closing" case is now LOOP_OPEN, then len(LOOP_CLOSE) + 10 characters, then ". Other.", asserted longer than LOOP_OPEN + LOOP_CLOSE, so only the closing check refuses it.
+6. NIT 6 (the re-record listing cap): RerecordListingCap (a third listing of a twice-listed `_response` id appended to w-g14's re-record removeIds: refused "native re-record lists a <gemini id>_response turn more than twice").
+
+Changed test, with its reason: tests/test_b25_real_shapes.py test_every_other_patch_shape_refuses, case "orderIds without updates", now expects "writer-possible resume shape {orderIds} (a resume with no update)": that case sits inside w-g21's resume, so ruling 4 names it (the review's "orderIds-only admitted" mutant counted on this very case).
+
+### Recorded only (rulings NIT 7 and NIT 8, with the reviewer's reasoning)
+
+- NIT 7, shape B's ORIGINAL clause (gemini_session_replay.py, `self.kind[i] == ORIGINAL` in _ignored_prompts) is untested but outcome-neutral: dropping it leaves every test green, yet the only road to a removable re-recorded copy is the resume after a re-record, and that road records the retired context id first, which refuses ("a retired native message id is recorded again") before its $patch is read.
+- NIT 8, a dead update's toolCalls ids are not checked for uniqueness (the dead-update loop in _rerecord): the writer writes one entry per call id (:287219-287224), and it is outcome-neutral because dead results are never applied to a fact and the scanner reads every one of them.
+- NIT 9 (take properties per take via take_properties at the freeze) is the orchestrator's freeze checklist, not this fold.
+
+### The false-refusal residual (glitch-f1's ruling 4; the orchestrator's 14:08 ruling)
+
+Three resume $patch shapes the pinned writer can write (:287254-287265 writes each key only when it has entries) are seen in no committed walk and stay refused, now each by its own name so a survey counts them apart from corrupt files: {orderIds}, {orderIds, removeIds}, and {removeIds, updates} inside a resume.
+By :286764-286783 and :286120-286150 a resume writes a content update for every gemini message that carries thoughts or tool calls, so the update-less shapes need a take with neither, which no agent take in the study has shown (the review's finding 4).
+Noticed while folding, outside the rulings, for glitch-f1: {removeIds} alone inside a resume is writer-possible by the same reasoning (an ignored prompt dropped, no update, the order unchanged) and is also unseen in the 36 Gemini walks; it still refuses, but under the shape-A reason "native re-record leaves an older message live, ..." (probe on w-g14's shape-B patch cut to {removeIds}, 15:12:06), not by name.
+Not folded: naming it would be a fourth reason the rulings did not list; it is one line in UNOBSERVED_RESUME_SHAPES if glitch-f1 wants it.
+
+### Red before green (`date` at each step)
+
+- Red on 04c4e774 (the new tests laid over a `git archive` of 04c4e774's evals/), 14:32:25: test_b26_rewrites "Ran 42 tests", "FAILED (failures=5)": FullCalls.test_an_argument_changed_in_a_copy_only, ShapeBUpdateOnRemoved.test_an_update_on_the_removed_prompt, and the three UnobservedResumeShapes shape tests; every other test green there (the code they pin was already right).
+  test_b26_scanner on 04c4e774, 14:32:29: "Ran 3 tests", "OK" (the scanner code was right; its red is by mutant, as ruled).
+  The changed test_b25_real_shapes case expects a reason 04c4e774 does not give ("unsupported native patch operation" there), so it is red on the base by construction.
+- Red by mutant on this head (scratch head/ copy, identical to the working tree by `diff -rq` before and after; each mutant one edit, the named test in its own process, the file restored from its byte backup and its sha256 checked equal), 14:32:47-14:32:50:
+  - R1a the scanner reads `replayed["messages"]` instead of the timeline: test_b26_scanner "FAILED (failures=1)"; restored sha256 832c9a6f247c30ba... == before;
+  - R1b the scanner skips the dead-update results: "FAILED (failures=1)"; restored == before;
+  - R1c the scanner skips the copies: "FAILED (failures=1)"; restored == before;
+  - R2 calls compared by (id, name) only: FullCalls "FAILED (failures=1)"; restored sha256 f556600399f1dde1... == before;
+  - R3 the shape-B update check off: ShapeBUpdateOnRemoved "FAILED (failures=1)"; restored == before;
+  - R4a the named resume-shape check off: UnobservedResumeShapes "FAILED (failures=3)"; restored == before;
+  - R4b the resume window left open after a patch: UnobservedResumeShapes "FAILED (failures=1)"; restored == before;
+  - R5 `endswith(LOOP_CLOSE)` dropped: LoopFeedback "FAILED (failures=1)" (it survived at 04c4e774, the review's finding 5); restored sha256 b80cdfaebf360943... == before;
+  - R6 the re-record two-listing cap dropped: RerecordListingCap "FAILED (failures=1)"; restored == before.
+- Ruling 2 on the real walks (scratch tools/argscount.py, the image check wrapped to count, over the head code and `git archive` copies of the walks, 14:33:09): w-g14 84 image calls, w-g32 92, w-g47 104, 280 in all; 0 differ in full (id, name, arguments), 0 differ in (id, name); each replay admitted with the same properties as before (w-g14 {1, 20, 1}, w-g32 {1, 25, 0}, w-g47 {1, 40, 0}).
+
+### Green on this head (the working tree that became 75b7655d; only COPIED.d and test_b25_real_shapes changed after 14:33, and the modules they touch were re-run after)
+
+- 14:34:19-14:47:39: test_b26_scanner 3 OK; test_b26_rewrites 42 OK; test_gemini_projection 8 OK; test_gemini_stream_join 9 OK; test_gemini_session_replay 3 OK; test_codex_native 15 OK; test_native_history_record 3 OK; test_vendor_provenance 6 OK; test_vendor_take_records 4 OK; test_scan_record's 34 Gemini tests (`-k gemini -k Gemini`) OK; test_vendor_check 26 OK; test_take_checker_dispatch 5 OK; test_recheck_coverage 5 OK; test_vendor_constants 10 OK; test_codex_patch_reads 13 OK; test_codex_started_file_change 5 OK; test_vendor_envelopes 11 OK (30.9 s); test_vendor_admission 10 OK; test_vendor_admission_regrade 3 OK (35.4 s); test_walk_grade_seam 4 OK.
+  In that pass test_b25_real_shapes was "FAILED (failures=1)" (the ruling-4 reason change above) and test_freeze_shapes "FAILED (failures=1)" ("tests/test_b26_scanner.py is under evals/gap-study-4/ and no fragment in COPIED.d/ claims it"); both fixed before the commit.
+- 14:49:52-15:11:26, after those two fixes: test_b25_real_shapes 18 OK; test_freeze_shapes 9 OK (31.4 s); test_native_reader_registration CheckSession 4 OK and NoRecord 1 OK.
+  test_native_reader_registration ManifestClaim was stopped by its 45-second cap at 15:05:23 with no verdict (the Mac was thermally held at CPU speed limit 37 to 45 from about 14:44; it ran under the heavy slot at stage 2).
+- `git status --short` before the commit: only the five files committed.
+
+### The survey, eight walks, one walk per process, on this head
+
+`python3.12 -I -B survey26.py` (copied from /Users/javrodher/aegis-builds/glitch-26-carry-20261021/b26/survey26.py, sha256 0fd65dae8f555f452d440e486e81bdce82e0602d41bf63aedd08e7d6bac499ea as the lane records) over this head's evals/gap-study-4 and my own `git archive` copies of the eight walk commits the review names, 14:33:19-14:33:23:
+- w-g14 PASS, 4 interactions, history joined, floor met, {history_rewrites 1, tool_outputs_masked 20, ignored_prompt_resumes 1, loop_feedback_injected 0};
+- w-g32 PASS, 3, joined, floor, {1, 25, 0, 1};
+- w-g47 PASS, 2, joined, floor, {1, 40, 0, 0};
+- w-g24 DISAGREE, refused by name: "native interaction is incomplete: its last model message ends on tool calls" (history refused for the same reason);
+- w-g31 PASS 3, w-g13 PASS 3, w-g40 PASS 2, each joined and floor met, no properties printed (all zero);
+- w-o29 (Codex) PASS 5, joined, floor met.
+The same verdicts and properties as the reviewer's head run: Gemini 6 PASS, only w-g24 refused by name; Codex 1 PASS.
+The full 74-walk survey was not run: `mac_slot.py run --kind heavy --work gap-study-r4 --owner vendor-b26-fold --minutes 15 -- <archive all walks, then survey26>` at 14:33:37 returned rc 3, "busy: the machine is booked (.machine-reserved)" (the timed run booked until about midnight), as expected; the script is scratch tools/full74.sh.
+
+### Left for athena (heavier than light work allows; not run here)
+
+test_native_reader_registration ManifestClaim (and so that module whole), test_pending_walk, test_pending_codex_walk, test_walk_recheck, test_vendor_body, test_vendor_walk_road, the whole of test_scan_record, and lane vendor-b25's list (test_pipeline, test_agent_tool, test_egress, test_nested_agent, test_no_output_nudge, test_codex_adapter); athena's battery of the whole suite at this head covers them.
+The orchestrator's queued athena battery pins 04c4e774 and is untouched by these commits.
+
+## Stop for review of the fold: Wed 21 Oct 2026
+
+Head: stage 5 75b7655d, then this lane file as stage 6.
+Open for glitch-f1: the {removeIds}-alone resume shape (above), refused but not by name; the 74-walk survey and the heavy modules under a heavy slot or on athena.
+
+## Stage 7 commit dfdce120: the fourth unobserved resume shape named (glitch-f1's ruling on the fold's question, 21 Oct 2026)
+
+glitch-f1's ruling, as received: "yes, name it. A resume patch carrying only {removeIds} is writer-possible for the same reason as the three ruled shapes and unseen in every walk, so it gets its own named refusal reason in UNOBSERVED_RESUME_SHAPES, so a survey counts it."
+The same message accepted the flagged choice (the resume window closes at the resume's $patch, whatever its shape) as recorded, for the closure reviewer to check.
+
+The false-refusal residual is now four shapes, each refused by its own name while the resume window is open: {orderIds}, {orderIds, removeIds}, {removeIds, updates} inside a resume, and {removeIds} alone inside a resume ("writer-possible resume shape {removeIds} alone inside a resume (an ignored prompt dropped, no update, the order unchanged), unobserved in any walk: refused by name (glitch-f1's ruling 4)").
+Outside a resume, {removeIds} and {removeIds, updates} remain the masking re-record (shape A), unchanged.
+
+Evidence (`date`, each behind light-ok, one process each, 45-second cap):
+- Red on f7f868cf (the new test laid over a `git archive` of f7f868cf's evals/), 15:17:18: UnobservedResumeShapes "Ran 5 tests", "FAILED (failures=1)", test_remove_ids_alone_inside_a_resume, refused there as "native re-record leaves an older message live, or its survivors are not the messages recorded just before it".
+- Mutant on this head (the entry's key changed so it never matches; byte-backed scratch copy, restored, sha256 c6e2d85e9eb42098... == before; the copy identical to the working tree after by `diff -rq`), 15:17:19: UnobservedResumeShapes "FAILED (failures=1)".
+- Green on this head, 15:17:22-15:17:31: test_b26_rewrites 43 OK; test_b25_real_shapes 18 OK; test_gemini_session_replay 3 OK; test_b26_scanner 3 OK; test_gemini_projection 8 OK.
+- Eight-walk survey on this head, one walk per process, 15:17:38-15:20:49: unchanged; w-g14, w-g32, w-g47, w-g31, w-g13 and w-g40 PASS with the same properties; w-g24 refused by name; w-o29 PASS.
+- The 74-walk survey and the athena list are as in the stop above.
+
+## Stop: Wed 21 Oct 2026, head after this lane file (stage 8)

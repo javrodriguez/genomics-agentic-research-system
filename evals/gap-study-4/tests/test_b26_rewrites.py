@@ -14,6 +14,10 @@ STRUCTURE ONLY (lane vendor-b25's cutter and four more rules); no model text, pr
             its base gemini message's concatenated toolCalls results (glitch-26's ruled deviation);
   ruling 6  the Gemini history join requires each snapshot to be a byte prefix of the next;
   ruling 8  the $patch tightening: no top-level id, content or toolCalls; updates only in the writer's shape.
+
+The fold of REVIEW-vendor-b26-04c4e77 (glitch-f1's rulings, 21 Oct 2026; the scanner witness of its MAJOR 1 is
+tests/test_b26_scanner.py): FullCalls (ruling 2), ShapeBUpdateOnRemoved (ruling 3), UnobservedResumeShapes (ruling 4),
+the lengthened off-closing loop case (ruling 5), RerecordListingCap (NIT 6).
 """
 from __future__ import annotations
 
@@ -363,7 +367,11 @@ class LoopFeedback(Witness):
             bad = copy.deepcopy(self.recs)
             fn(bad[self.j])
             return jl(bad)
-        for why, fn in (("another closing", lambda m: m["content"][0].__setitem__("text", gp().LOOP_OPEN + "x. Other.")),
+        # Lane vendor-b26 fold (glitch-f1's ruling 5): longer than LOOP_OPEN + LOOP_CLOSE, so only the closing check
+        # refuses it.
+        other = gp().LOOP_OPEN + "x" * (len(gp().LOOP_CLOSE) + 10) + ". Other."
+        self.assertGreater(len(other), len(gp().LOOP_OPEN) + len(gp().LOOP_CLOSE))
+        for why, fn in (("another closing", lambda m: m["content"][0].__setitem__("text", other)),
                         ("two parts", lambda m: m["content"].append({"text": "more"})),
                         ("an added key", lambda m: m.__setitem__("displayContent", "x")),
                         ("an empty detail", lambda m: m["content"][0].__setitem__(
@@ -409,6 +417,98 @@ class B25ReviewGaps(Witness):
         bad = copy.deepcopy(recs)
         bad[k]["$patch"]["orderIds"].append(twice)
         self.refused(jl(bad), "more than twice")
+
+
+class FullCalls(Witness):
+    """glitch-f1's ruling 2 (REVIEW-vendor-b26-04c4e77 MINOR 2): the image binds each function call in full (id, name
+    and arguments). A re-recorded copy whose call differs from its original only in an argument is refused (red on
+    04c4e774: admitted, and the scanner never read that argument)."""
+
+    def test_an_argument_changed_in_a_copy_only(self):
+        recs = lines(fixture("w-g47-native-turn-2.jsonl"))
+        k = rerecord_index(recs)
+        gem = next(j for j in run_of(recs, k) if recs[j]["type"] == "gemini"
+                   and any("functionCall" in p for p in recs[j]["content"]))
+        bad = copy.deepcopy(recs)
+        call = next(p for p in bad[gem]["content"] if "functionCall" in p)["functionCall"]
+        call["args"] = dict(call.get("args") or {}, synthetic_canary="/synthetic/canary/path")
+        self.refused(jl(bad), "function calls differ")
+
+    def test_the_real_copies_carry_their_originals_arguments(self):
+        for walk, last in (("w-g47", 2), ("w-g14", 4), ("w-g32", 3)):
+            with self.subTest(walk=walk):
+                self.assertEqual(rm().replay(fixture(f"{walk}-native-turn-{last}.jsonl"))["properties"]
+                                 ["history_rewrites"], 1)
+
+
+class ShapeBUpdateOnRemoved(Witness):
+    """glitch-f1's ruling 3 (MINOR 3): shape B never updates the prompt it removes; the writer patches content only for
+    history turns (chunk-NR7L3FXV.js:287167-287183). Red on 04c4e774: admitted, the patched text frozen as `sent`."""
+
+    def test_an_update_on_the_removed_prompt(self):
+        recs = lines(fixture("w-g14-native-turn-4.jsonl"))
+        k = next(k for k, r in enumerate(recs) if "$patch" in r and set(r["$patch"]) == {
+            "orderIds", "removeIds", "updates"})
+        removed = recs[k]["$patch"]["removeIds"][0]
+        bad = copy.deepcopy(recs)
+        bad[k]["$patch"]["updates"].append({"id": removed, "content": [{"text": "/synthetic patched prompt"}]})
+        self.refused(jl(bad), "updates the prompt it removes")
+        self.refused(jl(bad), "287167-287183")
+
+
+class UnobservedResumeShapes(Witness):
+    """glitch-f1's ruling 4 (MINOR 4, the orchestrator's 14:08 ruling): the three writer-possible resume shapes no walk
+    shows stay refused, each by its own name, so a survey counts them (red on 04c4e774: generic or wrong reasons)."""
+
+    def setUp(self):
+        self.recs = lines(fixture("w-g14-native-turn-4.jsonl"))
+        self.k = next(k for k, r in enumerate(self.recs) if "$patch" in r and set(r["$patch"]) == {
+            "orderIds", "removeIds", "updates"})
+
+    def shape(self, drop):
+        bad = copy.deepcopy(self.recs)
+        for key in drop:
+            del bad[self.k]["$patch"][key]
+        return jl(bad)
+
+    def test_order_ids_alone(self):
+        self.refused(self.shape(("removeIds", "updates")), "writer-possible resume shape {orderIds} (a resume")
+
+    def test_order_ids_and_remove_ids(self):
+        self.refused(self.shape(("updates",)), "writer-possible resume shape {orderIds, removeIds}")
+
+    def test_remove_ids_and_updates_inside_a_resume(self):
+        self.refused(self.shape(("orderIds",)), "writer-possible resume shape {removeIds, updates} inside a resume")
+
+    def test_remove_ids_alone_inside_a_resume(self):
+        """glitch-f1's ruling on the fold's question: {removeIds} alone inside a resume is named too (red on f7f868cf:
+        the generic re-record reason)."""
+        self.refused(self.shape(("orderIds", "updates")), "writer-possible resume shape {removeIds} alone inside a resume")
+
+    def test_the_window_closes_at_the_resume_patch(self):
+        """An updates-only resume patch closes the resume window, so a later patch is never read as a resume shape."""
+        recs = [{"sessionId": "native-1", "projectHash": "project-1"},
+                {"id": "u1", "type": "user", "content": [{"text": "x"}]},
+                {"id": "a1", "type": "gemini", "content": [{"text": "y"}]},
+                {"$set": {"sessionId": "native-1"}},
+                {"$patch": {"updates": [{"id": "a1", "content": [{"text": "y"}]}]}},
+                {"$patch": {"orderIds": ["u1", "a1"]}}]
+        with self.assertRaises(rm().ReplayRefused) as cm:
+            rm().replay(jl(recs))
+        self.assertEqual(str(cm.exception), "unsupported native patch operation")
+
+
+class RerecordListingCap(Witness):
+    """NIT 6: inside a re-record a `_response` id is listed at most twice (gemini_session_replay.py, the re-record's
+    cap); w-g14's re-record lists repeats, and a third listing refuses by that cap's own reason."""
+
+    def test_a_third_listing_in_a_rerecord(self):
+        recs = lines(fixture("w-g14-native-turn-4.jsonl"))
+        k = rerecord_index(recs)
+        twice = next(i for i, n in Counter(recs[k]["$patch"]["removeIds"]).items() if n == 2)
+        bad = copy.deepcopy(recs)
+        bad[k]["$patch"]["removeIds"].append(twice)
+        self.refused(jl(bad), "native re-record lists a <gemini id>_response turn more than twice")
 
 
 class Scanner(unittest.TestCase):
