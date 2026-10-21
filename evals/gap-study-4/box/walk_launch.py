@@ -741,8 +741,18 @@ def probe_output(child: str, probe: str) -> str:
     return f"{_child(child)}/{PROBE_PREFIX}{probe}"
 
 
+def fresh_child_guard(child: str) -> str:
+    """One probe or walk per child (glitch-f1's ruling 2, made structural by REVIEW-vendor-b27-25ffff5 MINOR 4): the
+    probe's start refuses a child that already holds a walk's or a probe's process files, whose log and exit file it
+    would otherwise truncate. In probe_command only; run_command's string is byte-unchanged."""
+    _child(child)
+    return (f"if test -e {child}/walk.pid || test -e {child}/walk.log || test -e {child}/walk.exit; then "
+            f"echo 'the child already ran a walk or a probe' >&2; exit 1; fi; ")
+
+
 def probe_command(*, child: str, probe: str, scenarios: str, image: str, reason: str) -> str:
-    """The one remote command that starts the probe under its hold (the walk's start, _held_command)."""
+    """The one remote command that starts the probe under its hold (the walk's start, _held_command), behind
+    fresh_child_guard."""
     _child(child)
     hid = probe_hold_id(probe)
     if not isinstance(scenarios, str) or not PROBE_SCENARIOS.fullmatch(scenarios):
@@ -756,7 +766,7 @@ def probe_command(*, child: str, probe: str, scenarios: str, image: str, reason:
     argv = ["python3", "-B", f"{repo}/{PROBE_MODULE}", "--box", f"{repo}/evals/gap-study-4/box",
             "--scratch-parent", CONFIG_PARENT, "--output", probe_output(child, probe), "--gemini-image", image,
             "--scenarios", scenarios, "--reason", reason]
-    return _held_command(child=child, hid=hid, env=env, held_env=env, argv=argv)
+    return fresh_child_guard(child) + _held_command(child=child, hid=hid, env=env, held_env=env, argv=argv)
 
 
 def probe(runner: Runner, *, child: str, probe_id: str, scenarios: str, image: str, reason: str) -> int:

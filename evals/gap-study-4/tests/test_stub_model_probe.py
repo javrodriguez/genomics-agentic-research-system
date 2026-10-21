@@ -427,6 +427,69 @@ class StopsAndCrossCheck(unittest.TestCase):
             shutil.rmtree(d, ignore_errors=True)
 
 
+class ReviewFold(unittest.TestCase):
+    """REVIEW-vendor-b27-25ffff5 MINORs 1, 3 and 6 (glitch-f1's stage-5 word)."""
+
+    def test_a_failed_listing_after_teardown_still_restores_and_records(self):
+        # MINOR 1, the reviewer's reproduction: `docker ps --all` exits 1 once process 3 has run
+        class Box(FakeBox):
+            def run(self, argv, *, env=None, timeout=None):
+                a = list(argv)
+                if a[1:3] == ["ps", "--all"] and self.process >= 3:
+                    self.calls.append((a, {}))
+                    return rt.Completed(1, "", "listing failed")
+                return super().run(argv, env=env, timeout=timeout)
+        restores = []
+        real = ownership.restore
+
+        def spy(*a, **k):
+            restores.append(1)
+            return real(*a, **k)
+        d = tempfile.mkdtemp(prefix="b27m1-")
+        try:
+            parent, out = os.path.join(d, "parent"), os.path.join(d, "stub-probe-t")
+            os.mkdir(parent, 0o700)
+            os.mkdir(out)
+            with mock.patch.object(ownership, "restore", spy):
+                rec = smp.run_scenario(Box(out, "A1"), {"PATH": "/usr/bin"}, "A1", image=GEMINI_IMAGE,
+                                       scratch_parent=parent, out_root=out, resources=dict(RESOURCES))
+            self.assertEqual(len(restores), 1)
+            self.assertIn("error", rec["leaked_after_teardown"])
+            self.assertTrue(os.path.isfile(os.path.join(out, "A1", "probe.json")))
+            self.assertTrue(os.path.isfile(os.path.join(out, "A1", "ledger.json")))
+            self.assertTrue(smp.scenario_problems(rec))
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_a_clean_scenario_has_no_problem_and_a_stopped_one_has(self):
+        d, out, box, rec = run_fake("A1")
+        try:
+            self.assertEqual(smp.scenario_problems(rec), [])
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+        d, out, box, rec = run_fake("A1", held_after=1)
+        try:
+            self.assertTrue(smp.scenario_problems(rec))
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_the_probe_exits_non_zero_when_a_scenario_fails_its_checks(self):
+        # MINOR 3: walk.exit 0 means every scenario ran as scripted; summary.json stays the detail
+        for problems, rc in (([], 0), (["stopped after process 1"], 1)):
+            with self.subTest(problems=problems), tempfile.TemporaryDirectory() as d:
+                summary = {"scenarios": {"A1": {"failure": None, "problems": problems}}}
+                with mock.patch.object(smp, "run_probe", lambda a, names: summary), redirect_stdout(io.StringIO()):
+                    got = smp.main(["--box", BOX, "--scratch-parent", d, "--output", os.path.join(d, "stub-probe-q"),
+                                    "--gemini-image", GEMINI_IMAGE, "--scenarios", "A1"])
+                self.assertEqual(got, rc)
+
+    def test_the_departures_name_every_workspace_difference(self):
+        # MINOR 6 and glitch-f1's ruling 3
+        text = " ".join(smp.DEPARTURES)
+        for words in (".stub-probe/", "not a git checkout", "no GEMINI.md"):
+            self.assertIn(words, text)
+
+
 # ------------------------------------------------------------------------------------------- walk_launch
 _tw = importlib.util.spec_from_file_location("b27_test_walk_launch", STUDY / "tests" / "test_walk_launch.py")
 twl = importlib.util.module_from_spec(_tw)
@@ -449,6 +512,22 @@ class WalkLaunchProbe(unittest.TestCase):
         self.assertIn("os.O_EXCL", cmd)
         self.assertNotIn("GIT_AUTHOR_NAME", cmd)
         self.assertIn(f"echo $? > {CHILD}/walk.exit", cmd)
+
+    def test_a_child_that_already_ran_a_walk_or_a_probe_is_refused(self):
+        # REVIEW-vendor-b27-25ffff5 MINOR 4: the guard inside probe_command, run in a real sh over a stand-in child
+        cmd = wl.probe_command(child=CHILD, probe="smoke1", scenarios="A1", image=GEMINI_IMAGE, reason="r")
+        guard = wl.fresh_child_guard(CHILD)
+        self.assertTrue(cmd.startswith(guard))
+        import subprocess
+        for name in (None, "walk.pid", "walk.log", "walk.exit"):
+            with self.subTest(file=name), tempfile.TemporaryDirectory() as d:
+                if name:
+                    Path(d, name).write_text("1\n")
+                p = subprocess.run(["/bin/sh", "-c", guard.replace(CHILD, d) + "echo started"],
+                                   capture_output=True, text=True, timeout=10)
+                self.assertEqual(p.returncode == 0 and p.stdout.strip() == "started", name is None)
+        self.assertNotIn(guard, wl.run_command(child=CHILD, walk="w-test1", cell={
+            "task": "t", "half": "h", "wording": "w", "arm": "G", "model": "gemini-3.8-flash"}, reason="a reason"))
 
     def test_the_probe_command_refuses_off_its_shape(self):
         ok = dict(child=CHILD, probe="smoke1", scenarios="A1", image=GEMINI_IMAGE, reason="r")

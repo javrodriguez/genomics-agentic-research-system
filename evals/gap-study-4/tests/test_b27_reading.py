@@ -93,6 +93,24 @@ class Harness(unittest.TestCase):
         (probe / "A1" / "scenario.json").write_text(json.dumps(doc))
         self.assertEqual(smr.read_probe(probe, STUDY)[0]["marks"][2], "DIFFERS")
 
+    def test_a_refused_prediction_without_its_reason_is_never_met(self):
+        # REVIEW-vendor-b27-25ffff5 NIT 8
+        probe = make_probe(self.d)
+        doc = json.loads((probe / "A1" / "scenario.json").read_text())
+        doc["expect"]["snapshots"]["3"] = {"verdict": "refused"}
+        (probe / "A1" / "scenario.json").write_text(json.dumps(doc))
+        self.assertEqual(smr.read_probe(probe, STUDY)[0]["marks"][2], "DIFFERS (the prediction names no reason)")
+
+    def test_every_reading_names_the_workspace_differences(self):
+        # REVIEW-vendor-b27-25ffff5 MINOR 6 and glitch-f1's ruling 3
+        r = smr.read_probe(make_probe(self.d), STUDY)[0]
+        for words in (".stub-probe/", "not a git checkout", "no GEMINI.md"):
+            self.assertIn(words, r["workspace_differences"])
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            smr.main([str(make_probe(self.d / "x")), "--code", str(STUDY)])
+        self.assertTrue(buf.getvalue().splitlines()[0].startswith("workspace differences from a walk: "))
+
     def test_the_stub_log_is_placed_in_its_processes(self):
         stub = smr.read_probe(make_probe(self.d), STUDY)[0]["stub"]
         self.assertEqual(stub["masked"], "request 2 (process 1)")
@@ -123,7 +141,7 @@ class Harness(unittest.TestCase):
         buf = io.StringIO()
         with redirect_stdout(buf):
             smr.main([str(probe), "--code", str(STUDY)])
-        out = buf.getvalue().splitlines()
+        out = buf.getvalue().splitlines()[1:]          # the first line names the workspace differences (MINOR 6)
         self.assertEqual([x.split(":")[0] for x in out], ["A1", "B1"])
         self.assertIn("[as predicted]", out[0])
         self.assertIn("masked request 2 (process 1)", out[0])

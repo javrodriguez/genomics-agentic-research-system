@@ -177,6 +177,23 @@ class Refusals(unittest.TestCase):
         stub = sms.Stub(ONE_READ)
         self.assertEqual(stub.handle("POST", STREAM, req(fn_turn(["call_1"])))[0], 400)
 
+    def test_an_unscripted_endpoint_is_refused_even_with_the_next_entry_s_body(self):
+        # REVIEW-vendor-b27-25ffff5 MINOR 2 (the reviewer's M3b survived): the body matches entry 1 exactly
+        stub = sms.Stub(ONE_READ)
+        status, _c, _b = stub.handle("POST", "/v1beta/models/gemini-3.8-flash:countTokens", req(user("Read a.")))
+        self.assertEqual(status, 400)
+        self.assertIn("unscripted endpoint", stub.held)
+        self.assertEqual(stub.state()["next"], 1)
+
+    def test_a_request_matching_a_later_entry_is_refused(self):
+        # REVIEW-vendor-b27-25ffff5 MINOR 2 (the reviewer's M3c survived): no skipping ahead to a later match
+        s = script({"endpoint": "stream", "match": {"kind": "user_text", "text": "First."}, "respond": {"text": "1"}},
+                   {"endpoint": "stream", "match": {"kind": "user_text", "text": "Second."}, "respond": {"text": "2"}})
+        stub = sms.Stub(s)
+        self.assertEqual(stub.handle("POST", STREAM, req(user("Second.")))[0], 400)
+        self.assertIsNotNone(stub.held)
+        self.assertEqual(stub.state()["next"], 1)
+
     def test_a_request_after_the_last_entry_is_refused(self):
         stub = sms.Stub(ONE_READ)
         stub.handle("POST", STREAM, req(user("Read a.")))
@@ -283,6 +300,27 @@ class Server(unittest.TestCase):
                 server.shutdown()
                 server.server_close()
 
+    def test_every_verb_is_logged_and_holds_the_scenario(self):
+        # REVIEW-vendor-b27-25ffff5 NIT 7: HEAD, OPTIONS and PATCH reach the stub, not http.server's own 501
+        for verb in ("HEAD", "OPTIONS", "PATCH"):
+            with self.subTest(verb=verb), tempfile.TemporaryDirectory() as d:
+                stub = sms.Stub(ONE_READ, d)
+                server = sms.make_server(stub, 0)
+                t = threading.Thread(target=server.serve_forever, daemon=True)
+                t.start()
+                try:
+                    conn = http.client.HTTPConnection("127.0.0.1", server.server_address[1], timeout=10)
+                    conn.request(verb, STREAM, body=b"" if verb == "HEAD" else req(user("Read a.")))
+                    resp = conn.getresponse()
+                    resp.read()
+                    self.assertEqual(resp.status, 400)
+                    conn.close()
+                finally:
+                    server.shutdown()
+                    server.server_close()
+                self.assertEqual([r["method"] for r in stub.log], [verb])
+                self.assertIsNotNone(stub.held)
+
 
 def drive(doc) -> sms.Stub:
     """A client that reaches every entry in order (prompt texts, the previous calls' answers, helper prefixes)."""
@@ -334,6 +372,14 @@ class Scenarios(unittest.TestCase):
                 for e in doc["requests"]:
                     for c in e["respond"].get("calls") or []:
                         self.assertIn(c["args"]["file_path"].split("/")[-1], doc["files"])
+
+    def test_every_refused_prediction_names_its_reason(self):
+        # REVIEW-vendor-b27-25ffff5 NIT 8: "" is in every reason, so a refused prediction must carry reason_contains
+        for name, s in mk.SCENARIOS.items():
+            for k, v in s["expect"]["snapshots"].items():
+                if v["verdict"] != "PASS":
+                    with self.subTest(scenario=name, snapshot=k):
+                        self.assertTrue(v.get("reason_contains"))
 
     def test_every_call_names_a_distinct_file_and_every_text_is_distinct(self):
         for name, s in mk.SCENARIOS.items():

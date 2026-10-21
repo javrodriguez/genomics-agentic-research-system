@@ -345,10 +345,8 @@ def make_server(stub: Stub, port: int = 0):
             self.wfile.write(body)
             self.close_connection = True
 
-        do_POST = _serve
-        do_GET = _serve
-        do_PUT = _serve
-        do_DELETE = _serve
+        # every verb reaches the stub, so it is logged and holds the scenario (REVIEW-vendor-b27-25ffff5 NIT 7)
+        do_POST = do_GET = do_PUT = do_DELETE = do_HEAD = do_OPTIONS = do_PATCH = _serve
 
         def log_message(self, *args):   # the request log is requests.jsonl; nothing on stderr
             return

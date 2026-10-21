@@ -113,10 +113,19 @@ def compare(observed: list, expect: dict) -> list:
             out.append("unpredicted")
         elif want["verdict"] == "PASS":
             out.append("as predicted" if o["verdict"] == "PASS" else "DIFFERS")
+        elif not want.get("reason_contains"):        # "" is in every reason (REVIEW-vendor-b27-25ffff5 NIT 8)
+            out.append("DIFFERS (the prediction names no reason)")
         else:
-            ok = o["verdict"] == "refused" and want.get("reason_contains", "") in o.get("reason", "")
+            ok = o["verdict"] == "refused" and want["reason_contains"] in o.get("reason", "")
             out.append("as predicted" if ok else "DIFFERS")
     return out
+
+
+# glitch-f1's ruling 3 and REVIEW-vendor-b27-25ffff5 MINOR 6: every reading names the probe workspace's differences
+# from a walk's (box/stub_model_probe.py DEPARTURES says the same)
+WORKSPACE_DIFFERENCES = ("content only: the probe's run tree holds .stub-probe/ (the stub's copy, its script, its log) "
+                         "and the scenario's synthetic files; it is not a git checkout (a walk's is the pinned "
+                         "checkout); and it has no GEMINI.md (a walk places the instruction file)")
 
 
 def read_scenario(folder: Path, replay, nrr) -> dict:
@@ -132,7 +141,7 @@ def read_scenario(folder: Path, replay, nrr) -> dict:
     else:
         outcome = "refused: " + (last.get("reason") if last["verdict"] != "PASS" else history.get("reason", ""))
     return {"scenario": folder.name, "observed": observed, "history": history, "predicted": expect, "marks": marks,
-            "outcome": outcome, "stub": stub_places(folder),
+            "outcome": outcome, "stub": stub_places(folder), "workspace_differences": WORKSPACE_DIFFERENCES,
             "processes_expected": len(scenario.get("processes") or []), "snapshots_seen": len(observed)}
 
 
@@ -164,6 +173,8 @@ def main(argv=None) -> int:
     p.add_argument("--json", action="store_true")
     a = p.parse_args(argv)
     results = read_probe(Path(a.probe), Path(a.code))
+    if not a.json:
+        print(f"workspace differences from a walk: {WORKSPACE_DIFFERENCES}")
     for r in results:
         print(json.dumps(r, sort_keys=True, default=str) if a.json else line(r))
     return 0

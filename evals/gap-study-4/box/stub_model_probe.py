@@ -40,6 +40,9 @@ WHAT DOES NOT, AND WHY (each recorded in the output's `departures`):
     python3 -B evals/gap-study-4/box/stub_model_probe.py --box <box folder> --scratch-parent <owned folder>
         --output <.../stub-probe-<id>> --gemini-image sha256:<64> --scenarios A1[,A2,...|all] [--reason <why>]
         [--dry-run]
+It exits 1 when any scenario fails its own checks (scenario_problems: a failure, a stop, a non-zero process, an
+unretained snapshot, anything left after teardown, a failed restore), so walk.exit 0 means every scenario ran as
+scripted (REVIEW-vendor-b27-25ffff5 MINOR 3); summary.json and each probe.json keep the detail.
 With --dry-run it prints every container argv it would run (ownership, network, take, stub, version, each process)
 as JSON lines and runs nothing; it is the one mode that runs off Linux.
 """
@@ -370,7 +373,8 @@ def run_scenario(runtime, env: dict, name: str, *, image: str, scratch_parent: s
     rec = {"scenario": name, "road": doc["road"], "expect": doc["expect"], "started_at": time.time(), "image": image,
            "departures": list(DEPARTURES), "dummy_key": {"name": KEY_NAME, "value": DUMMY_KEY,
                                                          "note": "a fixed dummy string, never a credential"},
-           "scratch": {"base": base, "run_tree": run_tree, "config": cfg}, "processes": []}
+           "scratch": {"base": base, "run_tree": run_tree, "config": cfg}, "processes": [],
+           "processes_scripted": list(doc["processes"])}
     rec["config"] = take_config.write(cfg, HARNESS, model=doc["model"])
     fake_records = stub_model_server.fake_records(materialise(load_scenario(FAKE_OF), run_tree)) if fake else None
     build_run_tree(run_tree, doc, fake_records=fake_records)
@@ -444,17 +448,28 @@ def run_scenario(runtime, env: dict, name: str, *, image: str, scratch_parent: s
         run_take._teardown_partial(runtime, launched, None, base, env)
         rec["launch"] = launched.to_record()
         ids = launched.ids()
-        rec["leaked_after_teardown"] = run_take.leaked(runtime, ids, caller_env=env) if ids else []
+        # REVIEW-vendor-b27-25ffff5 MINOR 1: each check in its own try, so a failed listing (leaked() raises Refused on
+        # a non-zero `docker ps`; a listing can time out) is recorded and the restore and the records still follow
+        try:
+            rec["leaked_after_teardown"] = run_take.leaked(runtime, ids, caller_env=env) if ids else []
+        except Exception as e:  # noqa: BLE001 - recorded, never stops the restore
+            rec["leaked_after_teardown"] = {"error": f"{type(e).__name__}: {str(e)[:500]}"}
         if launched.network_id:
-            nets = runtime.run([run_take.RUNTIME_CLIENT, "network", "ls", "--no-trunc", "-q", "--filter",
-                                f"id={launched.network_id}"], env=env, timeout=60)
-            rec["network_left"] = nets.stdout.strip()
+            try:
+                nets = runtime.run([run_take.RUNTIME_CLIENT, "network", "ls", "--no-trunc", "-q", "--filter",
+                                    f"id={launched.network_id}"], env=env, timeout=60)
+                rec["network_left"] = nets.stdout.strip() if nets.returncode == 0 else \
+                    {"error": f"network ls exited {nets.returncode}"}
+            except Exception as e:  # noqa: BLE001 - recorded, never stops the restore
+                rec["network_left"] = {"error": f"{type(e).__name__}: {str(e)[:500]}"}
         try:
             rec["restore"] = ownership.restore(runtime, image=image, run_tree=run_tree, config_dir=cfg,
                                                evidence_dir=evidence, ids=ids, caller_env=env)
             restored = True
         except ownership.OwnershipError as e:
             rec["restore"] = {"error": str(e), **e.record}
+        except Exception as e:  # noqa: BLE001 - recorded; the scratch is kept for a human below
+            rec["restore"] = {"error": f"{type(e).__name__}: {str(e)[:500]}"}
     if restored:
         shutil.copytree(os.path.join(run_tree, STUB_OUT), os.path.join(out, "stub"))
         shutil.copyfile(os.path.join(run_tree, STUB_DIR, "scenario.json"), os.path.join(out, "scenario.json"))
@@ -470,6 +485,7 @@ def run_scenario(runtime, env: dict, name: str, *, image: str, scratch_parent: s
     _write_new(os.path.join(out, "ledger.json"), (json.dumps(labelled(ledger), indent=1, sort_keys=True) + "\n")
                .encode("utf-8"))
     rec["ended_at"] = time.time()
+    rec["problems"] = scenario_problems(rec)
     _write_new(os.path.join(out, "probe.json"), (json.dumps(labelled(rec), indent=1, sort_keys=True, default=str)
                                                  + "\n").encode("utf-8"))
     return rec
@@ -481,7 +497,42 @@ DEPARTURES = (
     "no proxy and no sidecar: the take container alone on a fresh --internal network; so run_take.launch and "
     "run_take.teardown are not used, and run_take._teardown_partial removes the take container and the network by id",
     "the exec argv is exec_argv's form built here (exec_argv reads a login file and refuses the base URL)",
+    # glitch-f1's ruling 3 and REVIEW-vendor-b27-25ffff5 MINOR 6: every difference from a walk's workspace, by name
+    "the workspace differs from a walk's in content only: it holds .stub-probe/ (the stub's read-only copy, its "
+    "materialised script, its log and state) and the scenario's synthetic files; the run tree is not a git checkout "
+    "(a walk's is the pinned checkout); and there is no GEMINI.md (a walk places the instruction file beside every "
+    "CLAUDE.md, walk_builders.place_instruction_file)",
 )
+
+
+def scenario_problems(rec: dict) -> list:
+    """What keeps a scenario from having run as scripted (REVIEW-vendor-b27-25ffff5 MINOR 3): a failure, a stop, a
+    process with a non-zero exit or an unretained snapshot, fewer processes than the script names, anything left after
+    teardown, a failed restore or a kept scratch. Empty means it ran as scripted; the reading judges the records."""
+    out = []
+    if rec.get("failure"):
+        out.append(f"failure: {rec['failure'].get('type')}")
+    if rec.get("stopped_after"):
+        out.append(f"stopped after process {rec['stopped_after'].get('process')}")
+    want = len(rec.get("processes_scripted") or [])
+    if want and len(rec.get("processes") or []) != want:
+        out.append(f"{len(rec.get('processes') or [])} of {want} processes ran")
+    for p in rec.get("processes") or []:
+        if p.get("returncode") != 0:
+            out.append(f"process {p.get('process')} exited {p.get('returncode')}")
+        if "file" not in (p.get("snapshot") or {}):
+            out.append(f"process {p.get('process')}: no snapshot retained")
+        if (p.get("stub_state") or {}).get("held"):
+            out.append(f"process {p.get('process')}: the stub is held")
+    if rec.get("leaked_after_teardown") not in ([], None):
+        out.append(f"after teardown: {rec['leaked_after_teardown']}")
+    if rec.get("network_left") not in ("", None):
+        out.append(f"network left: {rec['network_left']}")
+    if not isinstance(rec.get("restore"), dict) or rec["restore"].get("error") or not rec["restore"].get("ok", False):
+        out.append("the ownership restore failed or did not run")
+    if not rec.get("scratch_removed"):
+        out.append("the scratch is kept")
+    return out
 
 
 def manifest(out_root: str) -> dict:
@@ -512,6 +563,7 @@ def run_probe(a, names: list, *, runtime=None, env=None) -> dict:
         rec = run_scenario(runtime, env, name, image=a.gemini_image, scratch_parent=parent, out_root=a.output,
                            resources=resources)
         summary["scenarios"][name] = {"failure": rec.get("failure"), "stopped_after": rec.get("stopped_after"),
+                                      "problems": rec.get("problems"),
                                       "processes": [{"process": p["process"], "returncode": p["returncode"],
                                                      "snapshot": p.get("snapshot"), "stub": p.get("stub_state")}
                                                     for p in rec["processes"]]}
@@ -544,10 +596,13 @@ def main(argv=None) -> int:
         return 0
     check_output(a.output)
     summary = run_probe(a, names)
-    print(json.dumps({"record_kind": RECORD_KIND, "output": a.output,
+    problems = {n: s.get("problems") for n, s in summary["scenarios"].items() if s.get("problems")}
+    print(json.dumps({"record_kind": RECORD_KIND, "output": a.output, "problems": problems,
                       "failures": {n: s["failure"] for n, s in summary["scenarios"].items() if s["failure"]}},
                      sort_keys=True))
-    return 0
+    # REVIEW-vendor-b27-25ffff5 MINOR 3: exit 0 (walk.exit, `status` exit=0) only when every scenario ran as
+    # scripted; summary.json and each probe.json keep the detail
+    return 1 if problems else 0
 
 
 if __name__ == "__main__":
