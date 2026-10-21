@@ -1,0 +1,4 @@
+{"type": "init", "timestamp": "2026-10-21T03:28:40.280Z", "session_id": "9d6e08be-586f-4143-b4bb-cfbc60d5b09c", "model": "gemini-3.8-flash"}
+{"type": "message", "timestamp": "2026-10-21T03:28:40.281Z", "role": "user", "content": "synthetic text 285"}
+{"type": "message", "timestamp": "2026-10-21T03:28:47.292Z", "role": "assistant", "content": "synthetic text 286", "delta": true}
+{"type": "result", "timestamp": "2026-10-21T03:28:47.835Z", "status": "success", "stats": {"total_tokens": 85231, "input_tokens": 84387, "output_tokens": 115, "cached": 0, "input": 84387, "duration_ms": 7580, "tool_calls": 0, "models": {"gemini-3.8-flash": {"total_tokens": 85231, "input_tokens": 84387, "output_tokens": 115, "cached": 0, "input": 84387}}}}

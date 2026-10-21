@@ -48,8 +48,9 @@ def jl(records) -> str:
     return "".join(json.dumps(r) + "\n" for r in records)
 
 
-def rollout(turns: int, label: str = UNMARKED) -> bytes:
-    """A paginated 0.162.1 rollout of `turns` turns (codex_native's subset and codex_adapter's reading)."""
+def rollout(turns: int, label: str = UNMARKED, sents=None) -> bytes:
+    """A paginated 0.162.1 rollout of `turns` turns (codex_native's subset and codex_adapter's reading); turn k's
+    UserMessage is sents[k-1], the line the exec received (lane vendor-b25: the join now binds it), else "sent k"."""
     recs = []
 
     def add(type_, payload):
@@ -64,7 +65,7 @@ def rollout(turns: int, label: str = UNMARKED) -> bytes:
                           "collaboration_mode_kind": "default"})
         add("turn_context", {"turn_id": tid, "cwd": "/work/tree", "approval_policy": "never",
                              "sandbox_policy": {"type": "danger-full-access"}, "model": MODEL})
-        for item in ({"type": "UserMessage", "id": f"u{k}", "content": [{"type": "text", "text": f"sent {k}",
+        for item in ({"type": "UserMessage", "id": f"u{k}", "content": [{"type": "text", "text": sents[k - 1] if sents else f"sent {k}",
                                                                           "text_elements": []}]},
                      {"type": "CommandExecution", "id": f"c{k}", "command": ["ls"], "cwd": "/work/tree",
                       "parsed_cmd": [], "source": "agent", "status": "completed", "aggregated_output": f"out {k}",
@@ -103,7 +104,7 @@ class CodexBox(tbi.FakeBox):
 
     def __init__(self, *a, label=UNMARKED, **kw):
         super().__init__(*a, **kw)
-        self.turn_n, self.label = 0, label
+        self.turn_n, self.label, self.sents = 0, label, []
 
     def run(self, argv, env=None, timeout=None):
         a = list(argv)
@@ -116,10 +117,11 @@ class CodexBox(tbi.FakeBox):
                    and m.endswith("target=" + rt.CONFIG_MOUNT)][0]
             cfg = cfg[len("type=bind,source="):-len(",target=" + rt.CONFIG_MOUNT)]
             self.turn_n += 1
+            self.sents.append(a[-1])                     # the line the exec was given (codex_adapter: argv + [line])
             folder = Path(cfg) / "sessions" / "2026" / "10" / "14"
             with tbi.FakeBox.as_container(cfg):          # the agent writes its own config folder (the P4 road)
                 folder.mkdir(parents=True, exist_ok=True)
-                (folder / f"rollout-2026-10-14T05-00-00-{TID}.jsonl").write_bytes(rollout(self.turn_n, self.label))
+                (folder / f"rollout-2026-10-14T05-00-00-{TID}.jsonl").write_bytes(rollout(self.turn_n, self.label, self.sents))
             return rt.Completed(0, exec_stream(self.turn_n), "")
         return super().run(argv, env=env, timeout=timeout)
 
@@ -277,20 +279,22 @@ class CodexRegistration(unittest.TestCase):
     def test_the_coverage_floor_and_the_shared_join(self):
         import drive
         nrr = __import__("native_reader_registration")
-        good = nrr.codex_join_session(rollout(2), [exec_stream(1), exec_stream(2)], [0, 0])
+        bind = {"sent": ["sent 1", "sent 2"], "model": MODEL}
+        good = nrr.codex_join_session(rollout(2), [exec_stream(1), exec_stream(2)], [0, 0], **bind)
         self.assertEqual((good["status"], good["shapes"]["interactions"], good["shapes"]["command_round_trips"]),
                          ("PASS", 2, 2))
         for why, args in (("2 native turns for 1 streams", (rollout(2), [exec_stream(1)], [0])),
                           ("interaction 2", (rollout(2), [exec_stream(1), exec_stream(1)], [0, 0])),
-                          ("not one exit code per stream", (rollout(2), [exec_stream(1), exec_stream(2)], [0])),
+                          ("not one exit code and one sent line", (rollout(2), [exec_stream(1), exec_stream(2)], [0])),
                           ("interaction 2 is not complete", (open_rollout(2), [exec_stream(1), open_stream(2)], [0, 1]))):
             with self.subTest(why=why):
-                got = nrr.codex_join_session(*args)
+                got = nrr.codex_join_session(*args, sent=bind["sent"][:len(args[1])], model=MODEL)
                 self.assertEqual(got["status"], "DISAGREE")
                 self.assertIn(why, got["why"])
         self.assertEqual(nrr.floor_problem({"interactions": 1, "command_round_trips": 1}, nrr.CODEX_FLOOR),
                          "acceptance needs at least 2 interactions; the walk exercised 1")
-        self.assertEqual(drive.codex_cross_check("/nonexistent", [], [0], readers={})["status"], "pending")
+        self.assertEqual(drive.codex_cross_check("/nonexistent", [], [0], sent=["sent 1"], model=MODEL,
+                                                 readers={})["status"], "pending")
 
 
 def codex_fabricate(test, change):

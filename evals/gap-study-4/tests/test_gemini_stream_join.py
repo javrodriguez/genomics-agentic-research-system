@@ -160,12 +160,21 @@ class Join(unittest.TestCase):
             with self.subTest(why=why):
                 self.refused(recs, fact, why)
 
-    def test_an_absent_user_message_or_init_stays_unknown(self):
-        recs = [r for r in good_stream() if r["type"] not in ("init",) and r.get("role") != "user"]
+    def test_an_absent_user_message_stays_unknown(self):
+        recs = [r for r in good_stream() if r.get("role") != "user"]
         got = module().join(native_fact(), stream(*recs))
         self.assertIsNone(got["sent"])
-        self.assertIsNone(got["init_model"])
         self.assertTrue(got["complete"])
+
+    def test_an_absent_or_other_init_refuses_on_session_identity(self):
+        # Lane vendor-b25, glitch-26's ruling 5 (Gemini review MAJOR 3): the stream's init session_id is the only
+        # stream-side witness of session identity, so a stream without init (it used to stay unknown here) or with
+        # another id refuses, as the Codex join refuses another exec thread.
+        no_init = [r for r in good_stream() if r["type"] != "init"]
+        other = [dict(r, session_id="another-session") if r["type"] == "init" else r for r in good_stream()]
+        for why, recs in (("no init", no_init), ("another id", other)):
+            with self.subTest(why=why):
+                self.refused(recs, native_fact(), "session identity disagrees")
 
     def test_the_join_is_unregistered(self):
         import vendor_provenance

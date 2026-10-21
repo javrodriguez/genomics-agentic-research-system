@@ -44,6 +44,10 @@ class ReplayTests(unittest.TestCase):
 
     def test_destructive_unknown_and_identity_changes_refuse(self):
         m = self.module()
+        # Lane vendor-b25 (glitch-26's ruling 3): orderIds is admitted only as the pinned resume patch, exactly
+        # {orderIds, updates} with orderIds a permutation of the known ids (chunk-NR7L3FXV.js:287262-287265 writes it;
+        # :286415-286453 applies it). This one still refuses on both counts: no updates, and notice1 left out.
+        # The admitted shape and each off-shape variant: tests/test_b25_real_shapes.py GeminiResumePatch.
         bad = [{"$rewindTo": "u1"}, {"$patch": {"removeIds": ["u1"]}},
                {"$patch": {"orderIds": ["a1", "u1"]}}, {"$set": {"messages": []}},
                {"$set": {"memoryScratchpad": "unknown context"}}, {"$set": {"sessionId": "other"}},

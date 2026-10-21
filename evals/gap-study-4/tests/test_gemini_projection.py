@@ -227,8 +227,11 @@ class ProjectionTests(unittest.TestCase):
         records = self.native()
         extra = copy.deepcopy(records[2]); extra["id"] = "assistant-extra"
         self.assertIn("native tool call id reused", self.reason(m, records[:4] + [extra, self.round_trip("user-tool-2", ("call-1", "read_file"))] + records[4:]))
-        self.assertIn("no recorded answer text", self.reason(
-            m, records[:2] + [{"id": "a0", "type": "gemini", "content": ""}]))
+        # Lane vendor-b25, glitch-26's ruling 6 (Gemini review MAJOR 4, w-g13 turn 3): an interaction whose model
+        # messages record no text is no longer refused here; the join decides (both sides empty agrees, one side
+        # empty disagrees: test_b25_real_shapes.EmptyAnswer).
+        empty = m.project(self.raw(records[:2] + [{"id": "a0", "type": "gemini", "content": ""}]))
+        self.assertEqual([o for o in empty[0]["output"] if o["kind"] == "recorded-text"], [])
         self.assertIn("lacks an assistant message", self.reason(m, records[:2]))
         later = copy.deepcopy(records[2]); later["id"] = "assistant-later"
         self.assertIn("native tool call id reused", self.reason(
