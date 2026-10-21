@@ -55,8 +55,8 @@ def codex_rollout(turns=2, world=None, settings=None, *, world_at=None, settings
     shapes = codex_shapes()
     world = copy.deepcopy(shapes["world_state"][0]) if world is None else world
     pair = copy.deepcopy(shapes["thread_settings_applied"]) if settings is None else settings
-    for p in pair:
-        if isinstance(p, dict) and "thread_id" in p:
+    if settings is None:                            # a caller's own pair is used as given (its mutants included)
+        for p in pair:
             p["thread_id"] = tcn.TID
     recs = tcn.rollout(turns=turns)
     starts = [i for i, r in enumerate(recs) if r["payload"].get("type") == "task_started"]
@@ -221,7 +221,8 @@ class GeminiResumePatch(unittest.TestCase):
         recs = lines(fixture("w-g21-native-turn-2.jsonl"))
         got = replay_mod().replay(jl(recs))["messages"]
         order = recs[patch_line(recs)]["$patch"]["orderIds"]
-        self.assertEqual([m["id"] for m in got], order, "a permutation: the replayed order is orderIds")
+        self.assertEqual([m["id"] for m in got][:len(order)], order,
+                         "a permutation: the replayed order is orderIds, then what was recorded after the patch")
         copies = [k for k, m in enumerate(got) if m["id"].endswith("_response")]
         self.assertTrue(copies)
         for k in copies:
@@ -235,7 +236,7 @@ class GeminiResumePatch(unittest.TestCase):
         self.assertGreater(len(last), len(set(last)), "the fixture holds the second resume's repeated ids")
         got = replay_mod().replay(jl(recs))["messages"]
         first = list(dict.fromkeys(last))
-        self.assertEqual([m["id"] for m in got], first)
+        self.assertEqual([m["id"] for m in got][:len(first)], first)
 
     def test_every_other_patch_shape_refuses(self):
         r = replay_mod()

@@ -60,10 +60,18 @@ def skel(value, table: Table, key=None):
     return value
 
 
+CONTEXT = [{"text": ENV_OPEN + "synthetic context body\n" + ENV_CLOSE}]
+
+
 def gemini_record(rec: dict, table: Table) -> dict:
+    """The context turn keeps its pinned wrapper, as a record and in a resume patch's update of it (every real
+    resume rewrites it; each rewrite keeps the wrapper)."""
     out = skel(rec, table)
     if rec.get("id") == ENV_ID and rec.get("type") == "user":
-        out["content"] = [{"text": ENV_OPEN + "synthetic context body\n" + ENV_CLOSE}]
+        out["content"] = list(CONTEXT)
+    for k, update in enumerate((rec.get("$patch") or {}).get("updates") or []):
+        if update.get("id") == ENV_ID and "content" in update:
+            out["$patch"]["updates"][k]["content"] = list(CONTEXT)
     return out
 
 

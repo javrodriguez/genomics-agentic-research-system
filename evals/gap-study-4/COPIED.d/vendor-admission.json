@@ -275,6 +275,51 @@
       "path": "tests/fixtures/od57-agreement/cases.json",
       "status": "new",
       "reason": "Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the agreement corpus (58 cases), built by corpus.py; the aegis door runs a pinned byte copy. Round 3 (glitch-26's R3-1 to R3-5 on review 7fcba34): 69 cases. Round 3 (R3-7, R3-8, athena's battery on 7fcba34e): rebuilt with that line number."
+    },
+    {
+      "path": "tests/test_b25_real_shapes.py",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Codex: world_state and thread_settings_applied admitted on their pinned shapes, carrying no fact, each off-shape or off-place variant refused; the join binding sent and requested model, a replaced prompt or model DISAGREE. Gemini: the resume $patch {orderIds, updates} and byte-identical <id>_response copies, every other patch shape and non-identical copy refused; the session context turn only on its pinned shape; init session_id bound; an empty final answer agreeing only when both sides are empty."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/cut_structure.py",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: the generator, run by hand, that cut the fixtures below from committed walks as structure only (every string not an id, tool name, status, model name or pinned enum replaced by synthetic text); no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/PROVENANCE.json",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: each fixture's source walk file and its sha256; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/w-g21-native-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: w-g21's first native snapshot, structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/w-g21-native-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: w-g21's second native snapshot (the resume $patch {orderIds, updates} and its copies), structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/w-g21-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: w-g21's turn-1 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/w-g21-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: w-g21's turn-2 stream, structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/w-g31-native-turn-3.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: w-g31's third native snapshot (a second resume: orderIds listing each _response id twice), structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/w-o46-codex-records.json",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: w-o46's world_state and thread_settings_applied payloads, structure only; no model text, prompt, tool output or OD57 byte."
     }
   ]
 }

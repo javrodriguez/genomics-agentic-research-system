@@ -10,7 +10,8 @@ C's lines (the one statement of TakeDriver.drive right after the drive scan's `i
 `if` whose test requires the row's harness in VENDOR_HARNESSES, round 16) taken out must be, byte for byte, drive.py
 before edit B (PRE_EDIT_B_DRIVE_SHA256, its text at f628e9d8), so no other drive.py line moves. Edit D (lane vendor-b11
 round 4, glitch-26's ruling R4-1: EDIT_D_RULING) is recorded the same way: its hunks (EDIT_D) are taken out by their
-text before edits C and B, and drive.py after it is pinned whole (POST_EDIT_D_DRIVE_SHA256). Any such edit after
+text before edits C and B, and drive.py after it is pinned whole (POST_EDIT_D_DRIVE_SHA256). Edit E (lane vendor-b25,
+glitch-26's ruling 2: EDIT_E_RULING) is recorded as edit D is and taken out first (POST_EDIT_E_DRIVE_SHA256). Any such edit after
 Javier's acceptance commit makes production_readers refuse, so a piece naming one is a red check, never a note.
 
 Piece B17 (glitch-26's ruling B17-5, lane vendor-b17 round 2, Mon 19 Oct 2026: OD57's read shapes reach the drive
@@ -171,6 +172,52 @@ EDIT_D = (
 )
 
 
+# Edit E (lane vendor-b25, glitch-26's ruling 2, Wed 21 Oct 2026; the Codex reader review's M1): the production
+# Codex cross-check binds each rollout turn's recorded prompt and requested model to the launch side. Recorded as edit
+# D is: each hunk (before, after), `after` in drive.py exactly once; taken out first (it was made last), and drive.py
+# after it pinned whole (POST_EDIT_E_DRIVE_SHA256), so edit D's pin still holds drive.py with E taken out.
+EDIT_E_RULING = ("B25-2 (glitch-26, lane vendor-b25, ruling 2): drive.codex_cross_check takes `sent` (the ledger rows' "
+                 "sent lines) and `model` (the row's requested model) and hands them to "
+                 "native_reader_registration.codex_join_session, the one join acceptance also runs, so a rollout whose "
+                 "UserMessage or turn_context model is not the launched one is DISAGREE. A named exception on a native "
+                 "reader source, as edit D was: no reader acceptance exists yet, so no accepted bytes move.")
+POST_EDIT_E_DRIVE_SHA256 = "4a1835d7c1622ce79b80ee6df08450b8c1564e3fe9a6f7a57011e1bd44f25120"
+EDIT_E = (
+    ('                 else codex_cross_check(take.folder, take.native_snapshots, [t.exit_code for t in turns])\n',
+     '                 else codex_cross_check(take.folder, take.native_snapshots, [t.exit_code for t in turns],\n'
+     '                                        sent=[r.get("sent") for r in rows], model=row.get("model"))\n'),
+    ('def codex_cross_check(take_folder, refs, exit_codes, *, readers=None) -> dict:\n'
+     '    """Codex slice 3: D8\'s cross-check for a Codex take, through the ONE join the acceptance check also runs\n'
+     '    (native_reader_registration.codex_join_session): each turn\'s exec stream joined to that turn of the take\'s last\n'
+     '    retained rollout. `pending` without a registered Codex reader; `refused` on any disagreement, an extra or missing\n'
+     '    turn, or an incomplete turn; `agreed` only when every turn joins complete."""\n',
+     'def codex_cross_check(take_folder, refs, exit_codes, *, sent, model, readers=None) -> dict:\n'
+     '    """Codex slice 3: D8\'s cross-check for a Codex take, through the ONE join the acceptance check also runs\n'
+     '    (native_reader_registration.codex_join_session): each turn\'s exec stream joined to that turn of the take\'s last\n'
+     '    retained rollout, its recorded prompt to the line sent (`sent`, the ledger rows\') and its requested model to the\n'
+     '    take\'s (`model`; lane vendor-b25, Codex review M1). `pending` without a registered Codex reader; `refused` on any\n'
+     '    disagreement, an extra or missing turn, or an incomplete turn; `agreed` only when every turn joins complete."""\n'),
+    ('    got = _registration.codex_join_session(raw, streams, list(exit_codes))\n',
+     '    got = _registration.codex_join_session(raw, streams, list(exit_codes), sent=list(sent), model=model)\n'),
+)
+
+
+def without_edit_e(src: str) -> str:
+    """drive.py's text with edit E taken out, as without_edit_d does it; ValueError when a hunk is not there once."""
+    for k, (before, after) in enumerate(EDIT_E):
+        if src.count(after) != 1:
+            raise ValueError(f"edit E's hunk {k} is in drive.py {src.count(after)} times, not once")
+        src = src.replace(after, before)
+    return src
+
+
+def edit_e_problems(src: str) -> list:
+    """Edit E's pin: drive.py with piece B17's exact lines taken out has the sha256 recorded after edit E."""
+    got = hashlib.sha256(without_b17(src).encode("utf-8")).hexdigest()
+    return [] if got == POST_EDIT_E_DRIVE_SHA256 else [
+        f"edit E: drive.py's sha256 {got[:12]}... is not the one pinned after edit E ({POST_EDIT_E_DRIVE_SHA256[:12]}...)"]
+
+
 def edit_b_span(src: str):
     """(first, last), the 1-based lines of edit B in drive.py's text: every line of TakeDriver._take_records' first
     `if vendor:` branch after the branch's first statement (its cross_check), or None when the branch holds that
@@ -256,15 +303,18 @@ def without_edit_d(src: str) -> str:
 
 
 def without_edits(src: str) -> str:
-    """drive.py's text with piece B17's lines (by their spans), then edits D (by its text), C and B taken out: C before
-    B, as it lies below B, so B's lines do not move."""
-    return without_edit_b(without_edit_c(without_edit_d(without_b17(src))))
+    """drive.py's text with piece B17's lines (by their spans), then edits E and D (by their text), C and B taken out:
+    C before B, as it lies below B, so B's lines do not move."""
+    return without_edit_b(without_edit_c(without_edit_d(without_edit_e(without_b17(src)))))
 
 
 def edit_d_problems(src: str) -> list:
     """Edit D's pin: drive.py with piece B17's exact lines taken out has the sha256 recorded after edit D
     (POST_EDIT_D_DRIVE_SHA256); B17's lines are bound by b17_problems."""
-    got = hashlib.sha256(without_b17(src).encode("utf-8")).hexdigest()
+    try:
+        got = hashlib.sha256(without_edit_e(without_b17(src)).encode("utf-8")).hexdigest()
+    except ValueError as e:
+        return [f"edit E: {e}"]
     return [] if got == POST_EDIT_D_DRIVE_SHA256 else [
         f"edit D: drive.py's sha256 {got[:12]}... is not the one pinned after edit D ({POST_EDIT_D_DRIVE_SHA256[:12]}...)"]
 
@@ -276,6 +326,10 @@ def edit_b_problems(src: str) -> list:
     if b17:
         return b17
     src = without_b17(src)
+    try:
+        src = without_edit_e(src)
+    except ValueError as e:
+        return [f"edit E: {e}"]
     try:
         without_edit_d(src)
     except ValueError as e:
@@ -292,7 +346,8 @@ def edit_b_problems(src: str) -> list:
                    "there whose test requires the row's harness in VENDOR_HARNESSES)")
     if out:
         return out
-    if hashlib.sha256(without_edits(src).encode("utf-8")).hexdigest() != PRE_EDIT_B_DRIVE_SHA256:
+    if hashlib.sha256(without_edit_b(without_edit_c(without_edit_d(src))).encode("utf-8")).hexdigest() \
+            != PRE_EDIT_B_DRIVE_SHA256:
         return [f"edits B, C and D: drive.py outside lines {span[0]}-{span[1]} (the vendor branch), "
                 f"{span_c[0]}-{span_c[1]} (after the drive scan) and edit D's hunks is not drive.py before edit B"]
     return []
@@ -312,7 +367,7 @@ def problems(piece: str, files: list) -> list:
         text = (HERE / "drive.py").read_text(encoding="utf-8")
         if piece == "B17" and not b17_spans(text)[0]:
             out.append("piece B17: drive.py holds no B17 edit (scan_read_shapes and its three read_shapes lines)")
-        out += edit_b_problems(text) + edit_d_problems(text)
+        out += edit_b_problems(text) + edit_d_problems(text) + edit_e_problems(text)
     return out
 
 
