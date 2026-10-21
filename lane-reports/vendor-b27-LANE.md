@@ -175,3 +175,27 @@ After that, the reading step of the design's section 5: the manifest check (fetc
 11. Machine discipline, reported in stage 1: one 14:47-14:51 batch ran beside a `light-ok` that returned 1; two single-file greps at about 15:41 ran without a gate.
 
 ## Stop for review: Wed 21 Oct 2026
+
+## glitch-f1's rulings on the stage-4 questions (as received, 21 Oct 2026, word for word)
+
+(1) Teardown: accepted. run_take._teardown_partial (the take container, then the network, by recorded id), confirmed by leaked() and a network listing, is the right teardown for a probe with no proxy or sidecar.
+(2) One probe or walk per child: accepted. Name it in the smoke-run plan.
+(3) The stub in the run tree's .stub-probe/: accepted as a content-only difference. The reading must name it as a difference from a walk's workspace.
+(4) B1 against B2 is read from the structure tools and the stub log, not the verdict line: accepted.
+(5)-(8): as you recorded. The heavy test_walk_launch parts go to the athena battery on your head.
+
+Carried into the plan above, by this append (the plan's text is not rewritten):
+- Ruling 2: the smoke run and the full run each use a new athena child from their own `ship`; one probe or walk per child, never a second `probe` or `run` in a child that already ran one.
+- Ruling 3: the reading of every scenario names, beside its verdict line, that the probe's workspace holds `.stub-probe/` (the stub's copy, its script, its log) and the scenario's synthetic files, a content-only difference from a walk's workspace; stub_model_reading.py does not print this itself, so the evidence note states it once per reading.
+- Ruling 4: B1 against B2 is read from B26's structure tools and the stub log (where the two helper requests fall, the survivors of the compression re-record), not from the verdict line.
+
+## The merge of B26's reviewed head (glitch-f1's word, 21 Oct 2026)
+
+- B26's head 9e91dd34417b18dbaffa4069f45a4e1f5e298bb6 (lane/vendor-b26-20261021, closure review PASS, REVIEW-vendor-b26-9e91dd3.md), an extension of 04c4e774 (`merge-base --is-ancestor` true), fetched into this clone and merged with `git merge --no-ff` (no rebase): merge commit 76ed1c6e2df44b97646abe84b841cc1481b896e5, parents bb833b66 and 9e91dd34.
+- B26's changes since 04c4e774: COPIED.d/vendor-admission.json (+5), gemini_session_replay.py, tests/test_b25_real_shapes.py, tests/test_b26_rewrites.py, tests/test_b26_scanner.py (new), lane-reports/vendor-b26-LANE.md.
+- One conflict, COPIED.d/vendor-admission.json (both sides appended after the base's last entry). Resolved by taking B26's file and appending this lane's 15 entries, each taken byte for byte from this lane's head (the same claim script): 98 entries = B26's 83 + this lane's 15, B26's entries an unchanged prefix, 0 lines removed against B26's side and only additions against this lane's (B26's 5 lines before this lane's entries); no conflict marker left.
+- Runs on the merge tree, one module at a time behind `light-ok` (15:59:06-15:59:43 EDT): test_stub_model_server 25 OK; test_stub_model_probe 30 OK; test_b27_reading 12 OK (the harness loads the study folder's readers, so these ran against the merged gemini_session_replay: the w-g47 masking re-record still PASS, the retired-id snapshot still refused by name); test_stub_take 19 OK; test_b26_scanner 3 OK; test_b26_rewrites 43 OK; test_b25_real_shapes 18 OK; test_gemini_session_replay 3 OK; test_gemini_projection 8 OK; test_freeze_shapes 9 OK.
+- test_walk_launch as a whole under a heavy slot: refused at 15:59:57 (`mac_slot.py run --kind heavy --work gap-study-r4 --owner vendor-b27 --minutes 15`: "busy: second slot: CPU speed limit 47 is below 100", rc 3); left for athena's battery on this head, per ruling (5)-(8).
+- New for the reading, from the merged replay: B26's fold names further unobserved resume shapes, each refused by its own words (UNOBSERVED_RESUME_SHAPES, the orderIds-only and no-update forms, and a resume that updates the prompt it removes). A probe resume that writes one of them will show that reason and be marked DIFFERS against the scenario's prediction; that is evidence, not a fault of the probe, and the predictions are left as the design wrote them.
+
+## Stop: Wed 21 Oct 2026, after the merge
