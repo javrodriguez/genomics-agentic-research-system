@@ -410,6 +410,56 @@
       "path": "tests/fixtures/b26-rewrites/w-g32-turn-3.jsonl",
       "status": "new",
       "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g32's turn-3 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "box/stub_model_server.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe for the three refused Gemini history-rewrite roads. The scripted stub model: standard library only, 127.0.0.1 inside the take container, the SDK's SSE framing, every unscripted or out-of-order request refused with HTTP 400 and the scenario held, the request log, the bodies and a state file; and the same script as the CLI's --fake-responses file for ruling 4's cross-check. Never a model, never a study take."
+    },
+    {
+      "path": "box/stub_model_scenarios/make_scenarios.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe for the three refused Gemini history-rewrite roads. The generator of the seven scenario scripts (A1, A2, A3, B1, B2, C1, C2) of the design's section 3, run by hand; a test binds every JSON file to its output."
+    },
+    {
+      "path": "box/stub_model_scenarios/A1.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario A1 as data (make_scenarios.py's output): a masking re-record, then a resume after it; synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/A2.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario A2 as data (make_scenarios.py's output): F-B26-7's '/'-leading prompt inside a masking re-record, then a resume; synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/A3.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario A3 as data (make_scenarios.py's output): masking at a resume's first request, then a resume; synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/B1.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario B1 as data (make_scenarios.py's output): true chat compression in a resumed process, then a resume; synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/B2.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario B2 as data (make_scenarios.py's output): masking, a resume, compression, a resume (ruling 2's variant for road b); synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/C1.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario C1 as data (make_scenarios.py's output): a failed compression, a content-truncation re-record, a resume; synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/C2.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario C2 as data (make_scenarios.py's output): a truncation re-record that truncates nothing; synthetic text only."
+    },
+    {
+      "path": "tests/test_stub_model_server.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. The stub on fakes: the SSE framing under an independent responseLineRE check, the 400 and the held scenario, out-of-order refusals, the inflated count only where named, call_<n> ids, finish reasons, the fake-responses records, the scenario files bound to their generator and each reachable in order; a loopback server test."
     }
   ]
 }
