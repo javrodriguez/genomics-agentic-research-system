@@ -217,3 +217,82 @@ W167's shape stays an admission test. Add these refusal witnesses, each red alon
 
 The survey's result is noted: 0 OD57 lines, 0 Grep calls and 0 doc Reads in the 151 local Claude walks; w167 itself is not in any local clone. Carry on.
 ```
+
+## Round 3, stages 2 to 4: green, the battery's lints and gitleaks lookup, the Claude walks, the re-scans (Wed 21 Oct 2026, 07:47 EDT)
+
+### Commits
+
+- 0a3d4bda green (R3-1 to R3-3, R3-5's residuals); b941eee7 R3-7, R3-8 and R3-5's verbatim rulings; this entry.
+
+### What changed
+
+- R3-1: Claude Read and Grep, Gemini read_file, grep_search's File header joined to dir_path, and the display's absolutePath now all go through `_resolves_to_doc` (no `..`, normalised, the run tree's absolute doc or the doc relative to the agent's folder). The suffix-only `_names_doc` is gone.
+- R3-2: in labelled mode `_grep_spec` refuses -r/-R and any operand holding `*`, `?` or `[`. W167 stays admitted.
+- R3-3: T1 reads a written path through `_may_name_doc` (posixpath.normpath, then the suffix). The apply_patch check also reads the script's `*** Add/Update/Delete File:` and `*** Move to:` headers.
+  - Deviation, flagged: R3-1 lists T1 with the run-tree check, but a run-tree, `..`-refusing check would let a write of `<run>/gars/../gars/_references/environment.md` go unseen. So T1 normalises and then matches more widely, which fails closed. Named in `_may_name_doc`'s docstring.
+- R3-5: the residuals are named in od57_rule's docstring:
+  - Claude-shaped records in vendor files;
+  - a Gemini shell read that ignores dir_path;
+  - run-tree matching by name only;
+  - shell writes and a kept Bash cwd, invisible to T1;
+  - `context: 0`, which counts as an explicit window (fail-closed).
+- R3-7: the corpus's synthetic line `100` is now 101 everywhere: FOUR, DOC_BLOCK, the auto-three cases and the four-matches case. Every case keeps its meaning and verdict.
+- R3-8: both real-gitleaks lookups (test_rules_scanner, test_od57_agreement) are now test_walk_launch's: `shutil.which`, `~/.local/bin/gitleaks`, the pinned path. The environment variable is dropped. A missing binary is still a named failure.
+- Tests moved, each named in COPIED.d: Gemini read_file fixtures in test_scan_record now sit in a run tree (four `"/run/gars/" + DOC_REL` uses and the nested-entry `/x/` path).
+
+### Runner lines (Mac, Python 3.12.9)
+
+- Per case (fake scanner): "cases 69: as expected 69, red 0".
+- tests/test_od57_agreement.py: "Ran 9 tests", "OK".
+  - Every case under the fake scanner and under the Mac's real gitleaks 8.30.0.
+  - 41 RED_ALONE mutants.
+  - The second key is proved a real generic-api-key finding.
+- tests/test_scan_record.py: "Ran 203 tests", "OK".
+- tests/test_sidecar.py: "Ran 157 tests", "OK".
+- tests/test_rules_scanner.py: "Ran 13 tests", "OK".
+- At 0a3d4bda, under a heavy slot (the Mac was CPU-limited to 52-66 while it waited), OK:
+  - test_gemini_adapter (146), test_codex_adapter (64), test_drive_commit (31), test_walk_layout (14);
+  - test_vendor_roads (13), test_scan_witness (10), test_box_integration (61), test_wave4_bindings (13);
+  - test_live_box (38), test_drive_ownership (48), test_vendor_envelopes (7).
+- test_walk_builders: "FAILED (failures=2)", the same two as on the base (the Mac's /var/folders canonical path).
+- Both checks.d/w8e-lint-reds.txt lints, run on evals/gap-study-4/:
+  - lint_language: "clean — 116 input(s) scanned, 25 excused line(s) on record";
+  - lint_pooling: "clean — 116 file(s) and 0 commit(s) scanned, no excusal path".
+- copy_manifest.py --check: "ok: 499 files from 60 fragment(s) ...".
+
+### R3-8, held
+
+- On athena the battery runs as athena-suite. Read-only `ls` as javier shows:
+  - the pinned binary /home/javier/gap4-tools/gitleaks-8.30.1/gitleaks is `-rwx------ javier`, inside `drwx------` /home/javier;
+  - no /usr/bin or /usr/local/bin gitleaks;
+  - athena-suite's ~/.local/bin cannot be read from javier ("Permission denied").
+- The existing real-gitleaks tests skip there: test_hooks_gitleaks says "real gitleaks absent from PATH", and test_walk_launch's real return scan is the one allowed skip.
+- So, unless athena-suite has its own ~/.local/bin/gitleaks, these three tests stay named failures on athena:
+  - PlantedIgnoreFile;
+  - test_the_corpus_under_real_gitleaks;
+  - test_the_second_key_is_a_real_finding.
+- The fix needs a ruling: a gitleaks for athena-suite (an athena change), or an allowed skip reason.
+
+### R3-6: the committed Claude walks
+
+- Searched, read-only, by git only:
+  - this clone's history: `git log --all -- 'evals/gap-study-4/rehearsals/w1*'` gives 0 commits;
+  - the private mirror (https://github.com/javrodriguez/gars-cloud-mirror.git): all 74 heads fetched into a scratch bare repository (removed after). `git log --all` over `rehearsals/w1*` and `rehearsals/w[0-9]*` gives 0 commits, and over `takes` gives 0;
+  - every walk/ or gap4 ref of every named clone under /Users/javrodher/aegis-builds (`ls-tree`, no filesystem walk): 151 Claude walks, w001 to w168, all on walk refs of the seven gap4-walk-records clones already surveyed. w167 is on none of them.
+- Re-scanned all 151 (scratchpad rescan_claude.py: every .json/.jsonl of each walk folder by `git archive`, Claude path, the Mac's gitleaks with an empty ignore file, findings cached by file sha256):
+  - head: "totals {'walks': 151, 'ruled': 0, 'refused': 0}", every walk passed;
+  - base d8ceb181: the same; `diff` of the per-walk lines: "verdicts identical".
+  - These walks hold no gitleaks finding at all, so no verdict can change. Their tool use (1272 Reads, none of the doc; 0 Grep) never met the narrowed rules with the line.
+- Not found anywhere I can read: w167, and the measured Claude arm's takes (no `takes/` commit in the mirror, this clone or the records clone).
+
+### The four re-scans (scratchpad rescan.py, as in round 2)
+
+- Head 0a3d4bda's rule:
+  - w-g21: 30 files, ruled 5, refused 0 (native-turn-1 128, 129; native-turn-2 128, 129, 178);
+  - w-g20: 24 files, 0/0;
+  - w-o47: 25 files, 0/0;
+  - w-g22: 28 files, ruled 11, refused 0 (native-turn-1 198 ×2, 199; native-turn-2 198 ×2, 199, 272, 622 ×2, 798 ×2).
+- Base: the same for w-g21, w-g20 and w-o47; w-g22 ruled 0, refused 11.
+- Temp folders removed: True. The head's od57_rule.py is unchanged since 0a3d4bda; b941eee7 changed only tests, the corpus and COPIED.d.
+
+- Stop for review.
