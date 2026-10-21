@@ -33,17 +33,42 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent.parent
 
 
+READERS = ("gemini_session_replay", "native_reader_registration")
+
+
+def _from(module, folder: Path) -> bool:
+    f = getattr(module, "__file__", None)
+    return bool(f) and Path(f).resolve().parent == folder
+
+
 def load_readers(code: Path):
-    """gemini_session_replay and native_reader_registration from the study folder `code` (first on sys.path)."""
+    """gemini_session_replay and native_reader_registration from the study folder `code`, leaving the process's
+    sys.modules and sys.path exactly as they were (lane vendor-b27 stage 7: replacing the loaded readers in sys.modules
+    split one battery process into two copies of the registry, so drive's and a later test's no longer agreed).
+
+    When `code`'s readers are the ones already loaded, those same module objects are returned. Otherwise every module
+    loaded from a study folder (this one or `code`) is set aside, the readers are imported with `code` first on
+    sys.path, and sys.modules and sys.path are then restored; the returned modules keep their own copies of what they
+    imported."""
     code = Path(code).resolve()
-    for name in [m for m in list(sys.modules) if m.split(".")[0] in ("gemini_session_replay",
-                                                                   "native_reader_registration",
-                                                                   "vendor_provenance", "gemini_projection")]:
-        del sys.modules[name]
-    sys.path.insert(0, str(code))
-    replay = importlib.import_module("gemini_session_replay")
-    nrr = importlib.import_module("native_reader_registration")
-    if Path(replay.__file__).resolve().parent != code or Path(nrr.__file__).resolve().parent != code:
+    loaded = [sys.modules.get(n) for n in READERS]
+    if all(m is not None and _from(m, code) for m in loaded):
+        return tuple(loaded)
+    saved_modules, saved_path = dict(sys.modules), list(sys.path)
+    studies = {code, HERE.resolve()}
+    try:
+        for name, module in list(sys.modules.items()):
+            f = getattr(module, "__file__", None)
+            if f and any(Path(f).resolve().is_relative_to(s) for s in studies):
+                del sys.modules[name]
+        sys.path.insert(0, str(code))
+        replay = importlib.import_module("gemini_session_replay")
+        nrr = importlib.import_module("native_reader_registration")
+    finally:
+        sys.modules.clear()
+        sys.modules.update(saved_modules)
+        sys.path[:] = saved_path
+    if not _from(replay, code) or not _from(nrr, code):
         raise SystemExit(f"the readers did not load from {code}")
     return replay, nrr
 

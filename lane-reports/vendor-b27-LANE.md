@@ -263,3 +263,21 @@ No new file; every changed file is already claimed in COPIED.d.
 - The evidence note of every reading names the workspace differences (ruling 3, MINOR 6): `.stub-probe/` and the synthetic files, the run tree not a git checkout, no GEMINI.md; stub_model_reading.py's first line prints them.
 
 ## Stop for review: Wed 21 Oct 2026, after stage 6
+
+## Stage 7: athena's battery on 931f946a failed test_round4 (failures=5, errors=7 of 4843); root cause and fix (glitch-f1's word, 21 Oct 2026)
+
+Log: /Users/javrodher/aegis-builds/athena-suites/gap4-t5-b27-931f946-931f946-20261021T211045Z/run.log (the last traceback: test_vendor_envelopes.py:355, "the masked take is held: NativeCrossCheckPending: native cross-check pending (no reviewed native-session reader for gemini)").
+
+Root cause: box/stub_model_reading.load_readers (stage 3) deleted gemini_session_replay, native_reader_registration, vendor_provenance and gemini_projection from sys.modules and imported fresh copies.
+test_round4 runs every module in one process.
+drive.py binds `import native_reader_registration as _registration` when it is first imported (at discovery, by an earlier module), while test_vendor_envelopes, test_pending_walk, test_pending_codex_walk, test_vendor_admission and others import native_reader_registration lazily inside their tests and patch `production_readers` on it.
+Once test_b27_reading had run (alphabetically before them), those lazy imports got the new copy, the patch missed drive's old one, and drive found no reviewed reader, so each take was held as cross-check pending.
+Each module alone was green because no stale copy existed there.
+
+- Reproduced on the Mac, light (19:30:39-19:31:12... `date` read 18:30:39-18:31:12 EDT): `unittest tests.test_stub_take tests.test_b27_reading tests.test_vendor_envelopes` (test_stub_take imports drive at load, as the battery's earlier modules do): 2 errors and 2 failures in test_vendor_envelopes, each "native cross-check pending (no reviewed native-session reader for codex|gemini)". Control without test_b27_reading (18:31:26-18:31:56): "Ran 30 tests", "OK".
+- Red first (18:32:14): two new tests, tests/test_b27_reading.py Isolation: reading this study must return the already-loaded readers and leave sys.path as it was; reading another study folder (a copy of this one) must return that folder's readers and leave every sys.modules entry and sys.path exactly as before. "Ran 2 tests", "FAILED (failures=2)" (the copy's module left in sys.modules, which also broke the other test).
+- Fix: load_readers returns the loaded modules when they are `--code`'s own; otherwise it sets aside every module loaded from this study or `--code`, imports the readers with `--code` first on sys.path, and then restores sys.modules and sys.path exactly (the returned modules keep their own imports). Nothing else changed.
+- Green (18:32:41-18:33:15): test_b27_reading "Ran 16 tests", "OK"; the reproduction trio "Ran 46 tests", "OK".
+- The whole test_round4 on the Mac under a heavy slot (granted 18:33:24, `mac_slot.py run --kind heavy --work gap-study-r4 --owner vendor-b27 --minutes 60`, 3,500-second cap): 4,094 tests "ok" before the cap killed it at 19:31:47 (no closing line). Every affected module passed in that one process: test_b27_reading 16, test_pending_codex_walk 10, test_pending_walk 23, test_vendor_admission 10, test_vendor_envelopes 11, test_vendor_walk_road 5 ok. It did not reach test_walk_launch.
+  Three tests failed there, and each fails the same way alone on this Mac (19:32:42), so they are this Mac's environment, not this lane: test_run_take TestExecArgv.test_exec_argv and TestWalkLoginPlace.test_the_walk_login_place refuse because this agent session's environment holds a refused variable name (CLAUDE_CODE_MESSAGING_TOKEN, by name only; run_take reads the process's own environment), and test_config_folder C7Shapes.test_shape_rules errors because APFS refuses a non-UTF-8 file name ("[Errno 92] Illegal byte sequence"). Athena's battery does not have either condition.
+- Athena's battery on the new head is the verdict.

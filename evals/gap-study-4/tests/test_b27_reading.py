@@ -67,6 +67,40 @@ def make_probe(root: Path, *, expect_3="refused") -> Path:
     return probe
 
 
+class Isolation(unittest.TestCase):
+    """Stage 7 (athena's battery on 931f946a, 5 failures and 7 errors in test_round4): load_readers deleted the
+    readers from sys.modules and imported fresh copies, so in one battery process drive kept the old
+    native_reader_registration while later tests' lazy imports patched the new one, and their takes read as having no
+    reviewed reader. The harness must leave sys.modules and sys.path exactly as it found them."""
+
+    def test_reading_this_study_reuses_the_loaded_readers(self):
+        import native_reader_registration
+        import gemini_session_replay
+        before_path = list(sys.path)
+        replay, nrr = smr.load_readers(STUDY)
+        self.assertIs(nrr, native_reader_registration)
+        self.assertIs(replay, gemini_session_replay)
+        self.assertIs(sys.modules["native_reader_registration"], native_reader_registration)
+        self.assertEqual(sys.path, before_path)
+
+    def test_reading_another_study_folder_leaves_sys_modules_untouched(self):
+        import native_reader_registration
+        d = Path(tempfile.mkdtemp(prefix="b27i-"))
+        try:
+            other = d / "gap-study-4"
+            shutil.copytree(STUDY, other, ignore=shutil.ignore_patterns("tests", "rehearsals", "__pycache__"))
+            before = dict(sys.modules)
+            before_path = list(sys.path)
+            replay, nrr = smr.load_readers(other)
+            self.assertEqual(Path(nrr.__file__).resolve().parent, other.resolve())
+            self.assertEqual(Path(replay.__file__).resolve().parent, other.resolve())
+            self.assertIs(sys.modules["native_reader_registration"], native_reader_registration)
+            self.assertEqual({k: id(v) for k, v in sys.modules.items()}, {k: id(v) for k, v in before.items()})
+            self.assertEqual(sys.path, before_path)
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+
 class Harness(unittest.TestCase):
     def setUp(self):
         self.d = Path(tempfile.mkdtemp(prefix="b27r-"))
