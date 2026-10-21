@@ -480,6 +480,11 @@ class UnobservedResumeShapes(Witness):
     def test_remove_ids_and_updates_inside_a_resume(self):
         self.refused(self.shape(("orderIds",)), "writer-possible resume shape {removeIds, updates} inside a resume")
 
+    def test_remove_ids_alone_inside_a_resume(self):
+        """glitch-f1's ruling on the fold's question: {removeIds} alone inside a resume is named too (red on f7f868cf:
+        the generic re-record reason)."""
+        self.refused(self.shape(("orderIds", "updates")), "writer-possible resume shape {removeIds} alone inside a resume")
+
     def test_the_window_closes_at_the_resume_patch(self):
         """An updates-only resume patch closes the resume window, so a later patch is never read as a resume shape."""
         recs = [{"sessionId": "native-1", "projectHash": "project-1"},

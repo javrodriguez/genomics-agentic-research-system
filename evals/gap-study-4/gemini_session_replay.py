@@ -99,7 +99,7 @@ IGNORED_PREFIXES = ("/", "?", "<session_context>", "<hook_context>")
 JS_TRIM = ("\t\n\x0b\x0c\r \xa0            "
            "    　﻿")
 ORIGINAL, RESUME_COPY, RERECORDED = "original", "resume copy", "re-recorded copy"
-# Lane vendor-b26 fold (glitch-f1's ruling 4, REVIEW-vendor-b26-04c4e77 MINOR 4; the orchestrator's 14:08 ruling): three
+# Lane vendor-b26 fold (glitch-f1's ruling 4, REVIEW-vendor-b26-04c4e77 MINOR 4; the orchestrator's 14:08 ruling): four
 # resume $patch shapes the pinned writer can write (:287254-287265 writes each key only when it has entries) but no
 # committed walk shows. By :286764-286783 and :286120-286150 a resume writes a content update for every gemini message
 # carrying thoughts or tool calls, so each needs a take with neither. They stay refused, each by its own name, so a
@@ -113,6 +113,11 @@ UNOBSERVED_RESUME_SHAPES = {
     frozenset({"removeIds", "updates"}): "writer-possible resume shape {removeIds, updates} inside a resume (an "
                                          "ignored prompt dropped, the order unchanged), unobserved in any walk: "
                                          "refused by name (glitch-f1's ruling 4)",
+    # glitch-f1's ruling on the fold's question (21 Oct 2026): {removeIds} alone inside a resume, writer-possible for
+    # the same reason (an ignored prompt dropped, no update, the order unchanged) and unseen in every walk.
+    frozenset({"removeIds"}): "writer-possible resume shape {removeIds} alone inside a resume (an ignored prompt "
+                              "dropped, no update, the order unchanged), unobserved in any walk: refused by name "
+                              "(glitch-f1's ruling 4)",
 }
 
 
