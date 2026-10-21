@@ -55,6 +55,12 @@ B6-empty, B7-blank, B8-types, B9-record, B10-cut and B11-version bind each condi
 (W11A-R1-1 to R1-8, R1-10); A7 requires a RECORDED label's walk id and harness version (R1-9). The generated mutation
 sweep binds the class: every mutant killed or listed EQUIVALENT with its reason.
 
+Lane vendor-b23 round 4 (ruling B23-8): B15-fc-pair, B16-fc-second-start and B17-fc-changed bind B22's started
+file_change and its pairing: a start and its completion (a call and a result per change under the refs `<id>#<n>`, the
+completion's status as the text), a second start refused and each stream's ids new at thread.started, and a completion
+off its start's changes refused. Witnesses: started-file-change-unpaired, paired-result-text-dropped,
+file-change-second-start-admitted, file-change-changed-admitted.
+
 Fakes only: no model, vendor, network, container runtime, credential or holdout. setUpModule arms a process guard
 that refuses every process start, clears this process's environment to a fixed few names, and fills run_take's
 PENDING Codex billing-route names with an empty tuple for the fake only; tearDownModule undoes all of it and restores
@@ -1223,6 +1229,137 @@ def b13_native(mod, p):
         out.append(f"{p}: the located rollout does not read as this take's")
     return out
 
+
+# Lane vendor-b23 round 4 (glitch-26's ruling B23-8; athena battery gap4-t5-b23-a67b2b7, w11a-codex-adapter.txt:9):
+# B22's started file_change (check_record's started status, the items branch, CodexParser._file_change_started) and
+# B23's pairing in CodexParser._file_change, bound here so the generated sweep kills their mutants by these checks' own
+# lines. Every record is synthetic, in the keys transcript_codex.py's table admits for a file_change.
+FC_ID = "item_7"
+FC_CHANGES = ({"path": "notes/a.txt", "kind": "add"}, {"path": "src/b.py", "kind": "update"})
+
+
+def fc(event, status, changes=FC_CHANGES, i=FC_ID) -> str:
+    return json.dumps({"type": event, "item": {"id": i, "type": "file_change", "changes": [dict(c) for c in changes],
+                                                "status": status}})
+
+
+def fc_items(mod, recs) -> list:
+    """Each record's items through one parser, a list per record; a refusal reads as ("refused", its type name)."""
+    parser, out = mod.CodexParser(), []
+    for rec in recs:
+        try:
+            out.append(parser.items(rec if isinstance(rec, str) else json.dumps(rec)))
+        except Exception as e:  # noqa: BLE001 - read by the check as what the parser did instead
+            out.append(("refused", type(e).__name__))
+            break
+    return out
+
+
+def fc_want(event, kind, text=None, i=FC_ID, changes=FC_CHANGES) -> list:
+    tools = {"add": tv.WRITE, "update": tv.EDIT}
+    if kind == tv.TOOL_CALL:
+        return [tv.RawItem(f"{event}:file_change", tv.TOOL_CALL, tool=tools[c["kind"]], args={"path": c["path"]},
+                           ref=f"{i}#{n}") for n, c in enumerate(changes)]
+    return [tv.RawItem(f"{event}:file_change", tv.TOOL_RESULT, text=text, ref=f"{i}#{n}") for n in range(len(changes))]
+
+
+def fc_unpaired(items):
+    """A completion read with no start, without its refs' spelling (the joiner there is EQUIVALENT below, W11A's entry:
+    no logic reads it): (its items with no ref, whether each result's ref is its call's and each call's is its own)."""
+    if not isinstance(items, list) or not all(isinstance(it, tv.RawItem) for it in items):
+        return items
+    refs = [it.ref for it in items]
+    own = (len(refs) % 2 == 0 and all(isinstance(r, str) for r in refs) and refs[0::2] == refs[1::2]
+           and len(set(refs[0::2])) == len(refs) // 2)
+    return [tv.RawItem(it.raw_type, it.kind, it.text, it.tool, it.args, None) for it in items], own
+
+
+@guarded("B15-fc-pair", TC_API)
+def b15_fc_pair(mod, p):
+    """A started file_change is one call per change (its tool by kind, its path, the ref `<id>#<n>`), and its
+    completion is one result per change, under the same refs, with the completion's own status as the text; through
+    transcript_view.events each result answers its call. A started status other than in_progress is refused."""
+    out = []
+    started = fc("item.started", "in_progress")
+    try:
+        mod.decode(started)
+    except Exception as e:  # noqa: BLE001
+        out.append(f"{p}: the record check refused a started file_change ({type(e).__name__})")
+    for status in ("completed", "failed"):
+        got = fc_items(mod, [T_START, started, fc("item.completed", status)])
+        want = [fc_want("item.started", tv.TOOL_CALL), fc_want("item.completed", tv.TOOL_RESULT, status)]
+        if got[1:] != want:
+            out.append(f"{p}: a start paired with its {status} completion reads {got}")
+    try:
+        with mock.patch.dict(tv.PARSERS, {"codex": mod.CodexParser()}):
+            evs = tv.events("codex", [json.dumps(T_START), started, fc("item.completed", "completed"),
+                                      json.dumps(DONE)])
+        got = [(e.kind, e.tool, e.args, e.text, e.call) for e in evs]
+    except Exception as e:  # noqa: BLE001
+        got = f"refused ({type(e).__name__}: {str(e)[:120]})"
+    want = [(tv.TOOL_CALL, tv.WRITE, {"path": "notes/a.txt"}, None, 1),
+            (tv.TOOL_CALL, tv.EDIT, {"path": "src/b.py"}, None, 2),
+            (tv.TOOL_RESULT, tv.WRITE, None, "completed", 1), (tv.TOOL_RESULT, tv.EDIT, None, "completed", 2)]
+    if not isinstance(got, list) or got[1:5] != want:
+        out.append(f"{p}: the view reads the pair as {got}")
+    for status in ("completed", "failed", None):
+        rec = json.loads(started)
+        if status is None:
+            del rec["item"]["status"]
+        else:
+            rec["item"]["status"] = status
+        got = refusal(lambda: mod.check_record(rec), mod.ShapeError)
+        if got:
+            out.append(f"{p}: a started file_change with status {status!r}: the record check {got}")
+        if fc_items(mod, [rec]) != [("refused", "ShapeError")]:
+            out.append(f"{p}: a started file_change with status {status!r}: the parser reads {fc_items(mod, [rec])}")
+    return out
+
+
+@guarded("B16-fc-second-start", TC_API)
+def b16_fc_second_start(mod, p):
+    """A second item.started for one file_change id in one stream is refused; a thread.started begins a new stream,
+    whose ids are new (one parser reads a take's streams one after another)."""
+    out = []
+    started = fc("item.started", "in_progress")
+    got = fc_items(mod, [T_START, started, started])
+    if got[-1:] != [("refused", "ShapeError")] or len(got) != 3:
+        out.append(f"{p}: a second start of {FC_ID} in one stream reads {got}")
+    other = fc("item.started", "in_progress", i="item_8")
+    got = fc_items(mod, [T_START, started, other, fc("item.completed", "completed", i="item_8")])
+    if got[1:] != [fc_want("item.started", tv.TOOL_CALL), fc_want("item.started", tv.TOOL_CALL, i="item_8"),
+                   fc_want("item.completed", tv.TOOL_RESULT, "completed", i="item_8")]:
+        out.append(f"{p}: two ids started in one stream read {got[1:]}")
+    done = fc("item.completed", "completed")
+    got = fc_items(mod, [T_START, started, T_START, started, done])
+    if got[3:] != [fc_want("item.started", tv.TOOL_CALL), fc_want("item.completed", tv.TOOL_RESULT, "completed")]:
+        out.append(f"{p}: a start of {FC_ID} again after thread.started reads {got[3:]}")
+    got = fc_items(mod, [T_START, started, T_START, done])
+    call, res = fc_want("item.completed", tv.TOOL_CALL), fc_want("item.completed", tv.TOOL_RESULT, "completed")
+    if len(got) != 4 or fc_unpaired(got[3]) != fc_unpaired([call[0], res[0], call[1], res[1]]):
+        out.append(f"{p}: a completion in the next stream, its start in the last, reads {got[3:]}")
+    return out
+
+
+@guarded("B17-fc-changed", TC_API)
+def b17_fc_changed(mod, p):
+    """A completion whose changes are not its start's (another path, another kind, one more, one fewer, another
+    order) is refused; with no start, a completion is its own calls and results."""
+    out = []
+    a, b = FC_CHANGES
+    for what, changes in (("another path", ({"path": "notes/c.txt", "kind": "add"}, b)),
+                          ("another kind", ({"path": a["path"], "kind": "update"}, b)),
+                          ("one more", (a, b, {"path": "src/c.py", "kind": "add"})), ("one fewer", (a,)),
+                          ("another order", (b, a))):
+        got = fc_items(mod, [T_START, fc("item.started", "in_progress"), fc("item.completed", "completed", changes)])
+        if got[2:] != [("refused", "ShapeError")]:
+            out.append(f"{p}: a completion with {what} than its start reads {got[2:]}")
+    got = fc_items(mod, [T_START, fc("item.completed", "failed")])
+    call, res = fc_want("item.completed", tv.TOOL_CALL), fc_want("item.completed", tv.TOOL_RESULT, "failed")
+    if len(got) != 2 or fc_unpaired(got[1]) != fc_unpaired([call[0], res[0], call[1], res[1]]):
+        out.append(f"{p}: a completion with no start reads {got[1:]}")
+    return out
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestTheShapes(unittest.TestCase):
     def test_s1_an_unknown_event_is_refused(self):
@@ -1242,6 +1379,15 @@ class TestTheShapes(unittest.TestCase):
 
     def test_b8_a_value_off_its_type_is_refused(self):
         self.assertEqual(b8_types(tc), [])
+
+    def test_b15_a_started_file_change_pairs_with_its_completion(self):
+        self.assertEqual(b15_fc_pair(tc), [])
+
+    def test_b16_a_second_start_is_refused_and_each_stream_starts_again(self):
+        self.assertEqual(b16_fc_second_start(tc), [])
+
+    def test_b17_a_completion_off_its_start_is_refused(self):
+        self.assertEqual(b17_fc_changed(tc), [])
 
     def test_the_usage_keys_are_d8s_and_the_pinned_structs(self):
         self.assertEqual(tuple(getattr(tc, "USAGE_KEYS", ())), PINNED_USAGE)
@@ -1429,6 +1575,19 @@ WITNESSES = {
     "delete-as-write": ("tc", (("CHANGE_KINDS = {\"add\": tv.WRITE, \"update\": tv.EDIT}",
                                 "CHANGE_KINDS = {\"add\": tv.WRITE, \"update\": tv.EDIT, \"delete\": tv.WRITE}"),),
                         p1_view, "P1-view"),
+    # Lane vendor-b23 round 4 (ruling B23-8): the started file_change and its pairing, one witness per check.
+    "started-file-change-unpaired": ("tc", (("                return self._file_change_started(item, raw)\n",
+                                             "                return []\n"),), b15_fc_pair, "B15-fc-pair"),
+    "paired-result-text-dropped": ("tc", (("TOOL_RESULT, text=item.get(\"status\"), ref=f\"{item['id']}#{i}\")\n"
+                                           "                    for i in range(len(changes))]",
+                                           "TOOL_RESULT, text=None, ref=f\"{item['id']}#{i}\")\n"
+                                           "                    for i in range(len(changes))]"),), b15_fc_pair,
+                                   "B15-fc-pair"),
+    "file-change-second-start-admitted": ("tc", (("        if item[\"id\"] in self._started:\n",
+                                                  "        if False:\n"),), b16_fc_second_start,
+                                          "B16-fc-second-start"),
+    "file-change-changed-admitted": ("tc", (("            if started != changes:\n", "            if False:\n"),),
+                                     b17_fc_changed, "B17-fc-changed"),
     # codex_adapter.py
     "agent-text-as-error": ("ca", (("        if t == tc.ERROR:\n            api.append({\"status\": None, \"type\": t, "
                                     "\"text\": rec[\"message\"]})\n",
@@ -1495,6 +1654,18 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_delete_as_write(self):
         self.kill("delete-as-write")
 
+    def test_witness_started_file_change_unpaired(self):
+        self.kill("started-file-change-unpaired")
+
+    def test_witness_paired_result_text_dropped(self):
+        self.kill("paired-result-text-dropped")
+
+    def test_witness_file_change_second_start_admitted(self):
+        self.kill("file-change-second-start-admitted")
+
+    def test_witness_file_change_changed_admitted(self):
+        self.kill("file-change-changed-admitted")
+
     def test_witness_agent_text_as_error(self):
         self.kill("agent-text-as-error")
 
@@ -1529,7 +1700,8 @@ class TestWitnesses(unittest.TestCase):
         self.kill("shapes-recorded")
 
     def test_the_witnesses_are_named_and_each_anchor_occurs_once(self):
-        self.assertEqual(len(WITNESSES), 16)            # + subcommand-word-admitted (the box Codex-exec review's MAJOR)
+        # 16: + subcommand-word-admitted (the box Codex-exec review's MAJOR); 20: + B23-8's four file_change witnesses
+        self.assertEqual(len(WITNESSES), 20)
         for name, (target, edits, _, _) in WITNESSES.items():
             path = Path(TARGETS[target]().__file__)
             self.assertTrue(path.is_file(), f"{name}: {path.name} does not exist")
@@ -1585,7 +1757,8 @@ def b14_read_shapes(mod, p):
     return [] if got == READ_SHAPES_SHA256 else [f"{p}: READ_SHAPES is not the pinned records ({got[:12]})"]
 
 
-TC_CHECKS = (s1_event, s2_item, s3_key, p1_view, b3_required, b8_types)
+TC_CHECKS = (s1_event, s2_item, s3_key, p1_view, b3_required, b8_types, b15_fc_pair, b16_fc_second_start,
+             b17_fc_changed)
 CA_CHECKS = (a_stderr, a1_stream, a2_error, a3_usage, a4_argv, a5_model, a8_journal, a6_turn, a7_source, b1_end, b2_thread, b3_stream,
              b4_rollout, b5_usage, b6_empty, b7_blank, b9_record, b10_cut, b11_version, b12_executed, b13_native,
              b14_read_shapes)
