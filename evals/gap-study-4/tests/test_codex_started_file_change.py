@@ -210,14 +210,24 @@ class WitnessNotPerformed(RuntimeError):
     pass
 
 
+_ABSENT = object()
+
+
 def module_from(src: str, name: str) -> types.ModuleType:
     mod = types.ModuleType(name)
     mod.__file__ = str(HERE / "transcript_codex.py")
+    # Lane vendor-b23 round 4 (glitch-26's ruling B23-7): put back exactly what the exec changes, the path list and
+    # the prior module object under this name.
+    path, prior = list(sys.path), sys.modules.get(name, _ABSENT)
     sys.modules[name] = mod
     try:
         exec(compile(src, f"transcript_codex.py ({name})", "exec"), mod.__dict__)
     finally:
-        sys.modules.pop(name, None)
+        sys.path[:] = path
+        if prior is _ABSENT:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = prior
     return mod
 
 

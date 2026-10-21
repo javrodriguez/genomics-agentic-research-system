@@ -51,6 +51,7 @@ committed records through `git show` and prints counts only, never a record's te
 from __future__ import annotations
 
 import ast
+import contextlib
 import copy
 import hashlib
 import json
@@ -76,6 +77,21 @@ TID = "0199b2c4-5d6e-7f80-9a1b-2c3d4e5f6a7b"
 RUN = "/tmp/run-0a1b2c3d"
 PATH_A = f"{RUN}/gars/plan.md"
 PATH_B = f"{RUN}/gars/notes.md"
+_ABSENT = object()
+
+# Lane vendor-b23 round 4 (glitch-26's ruling B23-7; athena battery gap4-t5-b23-a67b2b7, test_round4): check_take.py puts
+# evals/ and the study folder on sys.path whenever its source runs (its first import here, and each of its mutants), and
+# test_confounded_design's contract-drift test, run later in the same process, refuses evals/ on the path. setUpModule
+# records sys.path and tearDownModule puts back exactly that list, in place; module_from and dump restore their own.
+_STACK = contextlib.ExitStack()
+
+
+def setUpModule():
+    _STACK.callback(sys.path.__setitem__, slice(None), list(sys.path))
+
+
+def tearDownModule():
+    _STACK.close()
 
 
 class WitnessNotPerformed(RuntimeError):
@@ -450,11 +466,16 @@ def module_from(src: str, name: str, file: Path) -> types.ModuleType:
     mod = types.ModuleType(name)
     mod.__file__ = str(file)
     mod.__source__ = src
+    path, prior = list(sys.path), sys.modules.get(name, _ABSENT)      # B23-7: put back exactly what the exec changes
     sys.modules[name] = mod
     try:
         exec(compile(src, f"{file.name} ({name})", "exec"), mod.__dict__)
     finally:
-        sys.modules.pop(name, None)
+        sys.path[:] = path
+        if prior is _ABSENT:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = prior
     return mod
 
 
@@ -550,6 +571,17 @@ def walk_problems(clone: str) -> tuple:
 def dump(study: str) -> str:
     """The readings of the committed vendor fixtures, read by the modules of `study` (a gap-study-4 folder); the
     fixtures are this tree's. Printed as one JSON document."""
+    path, modules = list(sys.path), dict(sys.modules)                  # B23-7: restored exactly, in place
+    try:
+        return _dump(study)
+    finally:
+        sys.path[:] = path
+        for name in [m for m in sys.modules if m not in modules]:
+            del sys.modules[name]
+        sys.modules.update(modules)
+
+
+def _dump(study: str) -> str:
     sys.path.insert(0, study)
     for m in ("check_take", "codex_native", "transcript_codex", "transcript_view", "vendor_record_binding"):
         sys.modules.pop(m, None)
