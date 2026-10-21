@@ -1,0 +1,39 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform a Principal Component Analysis (PCA) of the samples using gene expression counts, coloured by experimental condition, to visualize sample clustering and separation between groups.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. Run a Python script (`scripts/run_pca.py`) in the `gars-bio` environment.
+2. Read gene counts from `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` and sample design from `01_samplesheets/rnaseq_bulk_design.csv`.
+3. Filter low-count genes, apply log2 transformation (log2(count + 1)), transpose to have samples as rows and genes as features.
+4. Compute PCA using scikit-learn (`PCA`), extracting principal components and variance explained.
+5. Generate a PCA scatter plot coloured by `condition` using matplotlib/seaborn and save to `results/pca_plot.png`.
+6. Save sample PCA coordinates and variance explained to `results/pca_coordinates.csv`.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot.png | figure | PCA scatter plot of samples coloured by condition |
+| results/pca_coordinates.csv | table | Principal component coordinates per sample |
+
+## Execution
+Runs: batch
+Expected wall time: 5 minutes; expected output size: < 10MB.
