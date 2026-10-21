@@ -29,15 +29,18 @@ class ReplayTests(unittest.TestCase):
         m = self.module()
         records = self.records()
         earlier = m.replay(self.raw(records))
+        # Lane vendor-b26 (glitch-26's ruling 8): an update carries the writer's arrays only, the turn's parts as
+        # content and the user turn's parts as a result (chunk-NR7L3FXV.js:287168, :287182, :287227); a string refuses.
+        out = [{"functionResponse": {"id": "t1", "name": "read_file", "response": {"output": "native output"}}}]
         records += [{"id": "a1", "type": "gemini", "content": "replacement", "toolCalls": records[2]["toolCalls"]},
-                    {"$patch": {"updates": [{"id": "a1", "content": "final\u2029answer",
-                        "toolCalls": [{"id": "t1", "result": "native output"}]}]}},
+                    {"$patch": {"updates": [{"id": "a1", "content": [{"text": "final\u2029answer"}],
+                        "toolCalls": [{"id": "t1", "result": out}]}]}},
                     {"$set": {"sessionId": "native-1", "lastUpdated": "later"}}]
         result = m.replay(self.raw(records))
         self.assertEqual([r["id"] for r in result["messages"]], ["u1", "a1", "notice1"])
         self.assertNotIn("tokens", result["messages"][1])
-        self.assertEqual(result["messages"][1]["content"], "final\u2029answer")
-        self.assertEqual(result["messages"][1]["toolCalls"][0].get("result"), "native output")
+        self.assertEqual(result["messages"][1]["content"], [{"text": "final\u2029answer"}])
+        self.assertEqual(result["messages"][1]["toolCalls"][0].get("result"), out)
         self.assertEqual(result["metadata"]["lastUpdated"], "later")
         self.assertEqual(earlier["messages"][1]["content"], "draft")
         self.assertNotIn("result", earlier["messages"][1]["toolCalls"][0])
@@ -54,6 +57,9 @@ class ReplayTests(unittest.TestCase):
                {"$patch": {"id": "missing", "content": "x"}},
                {"$patch": {"id": "a1", "toolCalls": [{"id": "missing", "result": "x"}]}},
                {"$patch": {"updates": [{"id": "a1", "unknown": "x"}]}},
+               # lane vendor-b26 (glitch-26's ruling 8): a well-formed direct patch on a present message; the pinned
+               # writer's one $patch (chunk-NR7L3FXV.js:287254-287265) never carries a top-level id
+               {"$patch": {"id": "a1", "content": [{"text": "x"}]}},
                {"id": "u1", "type": "gemini", "content": "changed role"},
                {"sessionId": "native-1", "projectHash": "other"}, {"unknown": "record"},
                {"id": "x", "type": [], "content": "x"}]

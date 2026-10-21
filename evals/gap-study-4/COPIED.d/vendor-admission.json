@@ -320,6 +320,96 @@
       "path": "tests/fixtures/b25-real-shapes/w-o46-codex-records.json",
       "status": "new",
       "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: w-o46's world_state and thread_settings_applied payloads, structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/test_b26_rewrites.py",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. The witnesses: each road admitted on the real shapes, each off-shape variant and mutant refused or DISAGREE by name, the scanner reading masked originals, the snapshot byte-prefix invariant, the tightening."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/cut_structure.py",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: the generator, run by hand, extending lane vendor-b25's cutter (the context block, the masking wrapper, a leading / or ?, the loop template kept around synthetic text); no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/PROVENANCE.json",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: each fixture's source walk file and its sha256; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g47-native-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g47's first native snapshot, structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g47-native-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g47's second native snapshot (a masking re-record at turn 2's start), structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g14-native-turn-3.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g14's third native snapshot, structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g14-native-turn-4.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g14's fourth native snapshot (a second resume's repeats, the ignored-prompt resume, a masking re-record), structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g32-native-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g32's second native snapshot (the loop-recovery feedback), structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g32-native-turn-3.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g32's third native snapshot (a mid-turn masking re-record), structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g47-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g47's turn-1 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g47-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g47's turn-2 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g14-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g14's turn-1 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g14-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g14's turn-2 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g14-turn-3.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g14's turn-3 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g14-turn-4.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g14's turn-4 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g32-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g32's turn-1 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g32-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g32's turn-2 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g32-turn-3.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g32's turn-3 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
     }
   ]
 }

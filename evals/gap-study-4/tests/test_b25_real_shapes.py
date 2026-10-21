@@ -251,9 +251,12 @@ class GeminiResumePatch(unittest.TestCase):
             out[k] = {"$patch": patch}
             return jl(out)
         cases = (
-            ("removeIds (destructive)", dict(base, removeIds=[known[-1]]), "unsupported native patch operation"),
+            # lane vendor-b26 (glitch-26's ruling 1, shape B): removeIds beside orderIds and updates is admitted only
+            # inside a resume and only for an ignored user prompt; this one is neither
+            ("removeIds (destructive)", dict(base, removeIds=[known[-1]]), "a resume removes a message that is not"),
             ("orderIds without updates", {"orderIds": base["orderIds"]}, "unsupported native patch operation"),
-            ("orderIds with id", dict(base, id=known[0]), "unsupported native patch operation"),
+            # lane vendor-b26 (glitch-26's ruling 8): a top-level id is never written by the pinned recorder
+            ("orderIds with id", dict(base, id=known[0]), "direct-id native patch"),
             ("a known id left out", dict(base, orderIds=known[:-1]), "not a permutation"),
             ("an unknown id", dict(base, orderIds=known + ["no-such-message"]), "names an unknown message"),
             ("a repeated gemini id", dict(base, orderIds=known + [gemini]), "repeats an id that is not"),
