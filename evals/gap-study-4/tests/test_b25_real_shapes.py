@@ -254,7 +254,10 @@ class GeminiResumePatch(unittest.TestCase):
             # lane vendor-b26 (glitch-26's ruling 1, shape B): removeIds beside orderIds and updates is admitted only
             # inside a resume and only for an ignored user prompt; this one is neither
             ("removeIds (destructive)", dict(base, removeIds=[known[-1]]), "a resume removes a message that is not"),
-            ("orderIds without updates", {"orderIds": base["orderIds"]}, "unsupported native patch operation"),
+            # lane vendor-b26 fold (glitch-f1's ruling 4 on REVIEW-vendor-b26-04c4e77 MINOR 4): inside a resume this
+            # writer-possible, unobserved shape refuses by its own name
+            ("orderIds without updates", {"orderIds": base["orderIds"]},
+             "writer-possible resume shape {orderIds} (a resume with no update)"),
             # lane vendor-b26 (glitch-26's ruling 8): a top-level id is never written by the pinned recorder
             ("orderIds with id", dict(base, id=known[0]), "direct-id native patch"),
             ("a known id left out", dict(base, orderIds=known[:-1]), "not a permutation"),

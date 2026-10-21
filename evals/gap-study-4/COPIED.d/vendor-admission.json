@@ -410,6 +410,11 @@
       "path": "tests/fixtures/b26-rewrites/w-g32-turn-3.jsonl",
       "status": "new",
       "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g32's turn-3 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/test_b26_scanner.py",
+      "status": "new",
+      "reason": "Lane vendor-b26 fold (glitch-f1's ruling 1 on REVIEW-vendor-b26-04c4e77 MAJOR 1, 21 Oct 2026, under Javier's standing delegation): the reviewer's scanner witness folded in. check_take's copy of a re-recorded Gemini session reads every frozen original's toolCalls, every dead re-record update's results and every copy's tool-response turn, each pinned by the record's own location, so each one-line breakage of glitch-26's ruling 4 (the loader's live state read instead of the originals; the dead results skipped; the copies skipped) turns it red."
     }
   ]
 }
