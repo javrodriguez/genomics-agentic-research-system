@@ -250,6 +250,31 @@
       "path": "tests/test_codex_patch_reads.py",
       "status": "new",
       "reason": "Lane vendor-b23 (glitch-26's rulings Q1 to Q6 and B23-2, Tue 20 Oct 2026; design note lane-reports/vendor-b23-DESIGN.md). A Codex patch edit read as a shell edit is: V1 a patch the take's cut left unfinished is an edit call with no result in the view; V2 w-o38's shape and a completed-only stream read as on a76b4dd2; V3 one parser over two streams starts its exec ids again at thread.started; V4 a completed file_change whose changes differ from its started record, and a second start, refuse; N1 codex_native.read_rollout projects a FileChange on its pinned shape (openai/codex 092d3acd); N2 a delete change, an auto_approved key, an off status, missing stdout, empty changes or an off change refuse; N3 read_exec and join match file changes by order, declined to failed; K1 check_take's rollout records read each FileChange with its path keys as values; K2 the T-8:file-change site hands in vendor_file_change_reads, the PENDING refusal byte for byte; K3 the reader, the row settled in a test, reads a joined take clean, holds a rename and refuses an unjoined patch; 14 in-memory mutants each red alone (--witnesses); --walks re-reads the committed GPT walks under a76b4dd2 and this tree; --unchanged compares the vendor fixtures' readings under both trees. Synthetic records only. Review b0c917ff m1 (glitch-26, Tue 20 Oct 2026): the join refusals are now join's own (the test no longer calls join_file_changes for them), and a 15th mutant, join-wiring-dropped, deletes join's call and is red on join-refusal. Lane vendor-b23 round 4 (glitch-26's ruling B23-7, athena battery gap4-t5-b23-a67b2b7): setUpModule records sys.path and tearDownModule puts it back, module_from restores the path list and the prior module object around each mutant's exec, and dump restores sys.path and sys.modules exactly, so check_take's evals/ entry no longer outlives the module in test_round4's one process."
+    },
+    {
+      "path": "box/od57_rule.py",
+      "status": "new",
+      "reason": "Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): OD57's one rule set, shared by the harness twin and (as a byte copy pinned by sha256, in a later aegis lane) the door: the ruling, Claude Code's reads (Read and Grep bound to the doc, the shell read), the read-shape schema and engine (grep_search's lines and display, with the tool's own context window), the shell read's provenance by grep's labels (T2 as revised), and the doc-write guard (T1). Standard library only, no process, no file."
+    },
+    {
+      "path": "box/od57_shapes.py",
+      "status": "new",
+      "reason": "Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the Gemini and Codex read shapes, data only, moved from the adapters (which re-export them as READ_SHAPES), with Gemini's grep_search output and display shapes added and Codex's stream flag narrowed to -lc."
+    },
+    {
+      "path": "tests/test_od57_agreement.py",
+      "status": "new",
+      "reason": "Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the agreement corpus through the twin: every case's verdict line by line, the twin bound to the shared rule, each refusal witness red alone under one named guard's mutant, the -c flag as data, and the probe's second key."
+    },
+    {
+      "path": "tests/fixtures/od57-agreement/corpus.py",
+      "status": "new",
+      "reason": "Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the corpus builder (synthetic records in the committed walks' shapes, the ruled line as a placeholder); --write and --check."
+    },
+    {
+      "path": "tests/fixtures/od57-agreement/cases.json",
+      "status": "new",
+      "reason": "Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the agreement corpus (57 cases), built by corpus.py; the aegis door runs a pinned byte copy."
     }
   ]
 }

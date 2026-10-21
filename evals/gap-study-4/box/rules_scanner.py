@@ -21,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import stat
 
 from box import run_take
 from box import scan_record
@@ -32,6 +33,10 @@ GITLEAKS_SHA256 = "88f91962aa2f93ac6ab281d553b9e125f5197bbbce38f9f2437f7299c32e5
 GITLEAKS_PATH = "/home/javier/gap4-tools/gitleaks-8.30.1/gitleaks"
 SCAN_TIMEOUT_S = 120
 REPORT_FIELDS = {"line": "StartLine", "rule": "RuleID"}
+# B24-2 item 8 (lane vendor-b24, design section 5a; glitch-26's read-only check found a .gitleaksignore in the working
+# folder silenced a finding): every scan names an empty ignore file of its own, made fresh in its report folder at build
+# time and checked empty before each scan, as the aegis door's scans do (athena_suite.scan_flags).
+IGNORE_NAME = "no-rulings.gitleaksignore"
 
 
 class ScannerRefused(RuntimeError):
@@ -46,12 +51,33 @@ def _sha256_file(path: str) -> str:
     return h.hexdigest()
 
 
-def scan_argv(binary: str, path: str, report: str) -> list:
+def scan_argv(binary: str, path: str, report: str, ignore: str) -> list:
     # --ignore-gitleaks-allow (round-2 review R2-8; listed by the pinned 8.30.1's `dir --help`, kept in
     # lane-reports/stub-take-20261014/gitleaks-8.30.1-dir-help-20261014.txt): an agent-written `gitleaks:allow`
-    # comment never silences a finding in a take's records.
+    # comment never silences a finding in a take's records. --gitleaks-ignore-path (B24-2 item 8): the scan's own empty
+    # ignore file, never one gitleaks would find in the working folder (its default is ".").
     return [binary, "dir", path, "--no-banner", "--redact", "--ignore-gitleaks-allow", "--report-format", "json",
-            "--report-path", report, "--exit-code", "0", "--log-level", "warn"]
+            "--report-path", report, "--exit-code", "0", "--log-level", "warn", "--gitleaks-ignore-path", ignore]
+
+
+def _make_ignore(report_dir: str) -> str:
+    """The scan's own empty ignore file, created exclusively (never an existing one), mode 600."""
+    path = os.path.join(report_dir, IGNORE_NAME)
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    except OSError:
+        raise ScannerRefused("the scan's empty ignore file cannot be made in the report folder") from None
+    os.close(fd)
+    return path
+
+
+def _ignore_ok(path: str) -> bool:
+    """The ignore file is still a plain, empty file (no link, nothing written into it)."""
+    try:
+        st = os.lstat(path)
+    except OSError:
+        return False
+    return stat.S_ISREG(st.st_mode) and st.st_size == 0
 
 
 def gitleaks_scanner(runtime, report_dir: str, *, binary: str = GITLEAKS_PATH, caller_env=None):
@@ -68,6 +94,7 @@ def gitleaks_scanner(runtime, report_dir: str, *, binary: str = GITLEAKS_PATH, c
     v = runtime.run([binary, "version"], env=env, timeout=SCAN_TIMEOUT_S)
     if v.returncode != 0 or v.stdout.strip() != GITLEAKS_VERSION:
         raise ScannerRefused(f"gitleaks does not report version {GITLEAKS_VERSION}")
+    ignore = _make_ignore(report_dir)
     counter = [0]
 
     def scan(paths):
@@ -76,8 +103,10 @@ def gitleaks_scanner(runtime, report_dir: str, *, binary: str = GITLEAKS_PATH, c
             p = run_take._abs_path(p, "a scanned path")
             counter[0] += 1
             report = os.path.join(report_dir, f"gitleaks-{counter[0]}.json")
+            if not _ignore_ok(ignore):
+                raise ScannerRefused("the scan's empty ignore file is changed or gone")
             try:
-                c = runtime.run(scan_argv(binary, p, report), env=env, timeout=SCAN_TIMEOUT_S)
+                c = runtime.run(scan_argv(binary, p, report, ignore), env=env, timeout=SCAN_TIMEOUT_S)
             except TimeoutError:
                 raise ScannerRefused(f"gitleaks timed out on {p}") from None
             if c.returncode != 0:

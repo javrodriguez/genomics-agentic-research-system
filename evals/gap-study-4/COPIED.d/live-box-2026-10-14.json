@@ -69,12 +69,12 @@
     {
       "path": "box/rules_scanner.py",
       "status": "new",
-      "reason": "Lane live-box (glitch-06's ruling, 14 Oct 2026): the production rules scanner for scan_record.scan, the reviewed gitleaks adapter (one `gitleaks dir <file> --redact` per path) pinned to 8.30.1 by version line and binary sha256 at its athena path; it refuses on a mismatch and never reads a failed scan as clean."
+      "reason": "Lane live-box (glitch-06's ruling, 14 Oct 2026): the production rules scanner for scan_record.scan, the reviewed gitleaks adapter (one `gitleaks dir <file> --redact` per path) pinned to 8.30.1 by version line and binary sha256 at its athena path; it refuses on a mismatch and never reads a failed scan as clean. Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): (item 8, design section 5a) every scan passes --gitleaks-ignore-path to an empty file of its own, made fresh in its report folder and checked empty before each scan, so a .gitleaksignore in the working folder is never read."
     },
     {
       "path": "tests/test_rules_scanner.py",
       "status": "new",
-      "reason": "Lane live-box: the scanner with a fake runtime (argv, findings by path/line/rule, feeding scan_record), every refusal (sha, version, exit, missing or malformed report, used report folder), and the pin bound to the four stub takes' athena readings."
+      "reason": "Lane live-box: the scanner with a fake runtime (argv, findings by path/line/rule, feeding scan_record), every refusal (sha, version, exit, missing or malformed report, used report folder), and the pin bound to the four stub takes' athena readings. Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the argv test names the empty ignore file; EmptyIgnoreFile and PlantedIgnoreFile (a real gitleaks: a planted .gitleaksignore silences the argv without the flag and never the module's) are its red tests."
     },
     {
       "path": "box/settings_guard.py",

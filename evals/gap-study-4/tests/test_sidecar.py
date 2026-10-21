@@ -2220,26 +2220,25 @@ BOX_MODULES = {
     "box/scan_record.py": {
         "imports": {
             "hashlib": {"sha256"},
-            "json": {"dumps", "loads"},
+            "json": {"loads"},
             # OD57's probe (16 Oct 2026): its own temporary folder and file, removed after the rules scanner reads it
             "os": {"O_NOFOLLOW", "O_NONBLOCK", "O_RDONLY", "close", "fsync", "getuid", "lstat", "open",
                    "path.abspath", "path.basename", "path.dirname", "path.isabs", "path.join", "path.lexists",
                    "path.realpath", "read", "rmdir", "unlink"},
             "re": {"compile"},
             "scrub": {"NOTE"},
-            # OD57's Bash shapes (glitch-b5, 16 Oct 2026, after walk w167): the command is shell-tokenised
-            "shlex": {"shlex"},
             "stat": {"S_IMODE", "S_ISREG"},
             "sys": {"path", "path.insert"},
             "tempfile": {"mkdtemp"},
         },
-        "from": {("__future__", "annotations")},
+        # lane vendor-b24 (B24-2 item 1): OD57's rule set lives in box/od57_rule.py, audited below
+        "from": {("__future__", "annotations"), ("box", "od57_rule")},
         # builtin or dunder names the module may bind: closed and pinned, empty today (fold 5, W4C4-1)
         "rebinds": set(),
         "names": {
             'OSError', 'RuntimeError', 'UnicodeDecodeError', 'ValueError', '__file__', 'all', 'any', 'bool', 'bytes',
             'callable', 'dict', 'enumerate', 'int', 'isinstance', 'len', 'list', 'open', 'set', 'sorted', 'str',
-            'sum', 'tuple', 'type', 'zip'},
+            'tuple', 'type', 'zip'},
         "attrs": {
             'NOTE', 'O_NOFOLLOW', 'O_NONBLOCK', 'O_RDONLY', 'S_IMODE', 'S_ISREG', 'abspath', 'add', 'append',
             'close', 'compile', 'count', 'decode', 'dirname', 'encode', 'endswith', 'fileno', 'find', 'flush',
@@ -2247,12 +2246,35 @@ BOX_MODULES = {
             'realpath',
             'loads', 'lstat', 'open', 'path', 'read', 'setdefault', 'sha256', 'split', 'st_mode', 'st_uid',
             'truncate', 'write',
-            # OD57's exact ruling (16 Oct 2026)
-            'basename', 'dumps', 'end', 'get', 'match', 'mkdtemp', 'replace', 'rmdir', 'rstrip', 'unlink',
-            'values',
-            # OD57's Bash shapes (16 Oct 2026; the allow-list's sort check reads startswith)
-            'commenters', 'shlex', 'startswith', 'whitespace_split'},
+            # OD57's exact ruling (16 Oct 2026): the probe
+            'basename', 'get', 'mkdtemp', 'replace', 'rmdir', 'rstrip', 'unlink',
+            # lane vendor-b24: the names this module takes from box/od57_rule
+            'CALL_KEYS', 'COPIES', 'GIT_KEYS', 'RESULT_KEYS', 'RULED_LINES', 'SHAPE_KEYS', 'TOOL_KEYS', 'TOOL_KINDS',
+            '_CLAUDE_AT', '_ruled_bash', 'check_shapes', 'ruled_text'},
     },
+    # lane vendor-b24 (B24-2 item 1): OD57's one rule set, shared with the aegis door: no process, no file, no import
+    # but the standard library's text tools
+    "box/od57_rule.py": {
+        "imports": {
+            "hashlib": {"sha256"},
+            "json": {"dumps", "loads"},
+            "posixpath": {"normpath"},
+            "re": {"S", "compile", "fullmatch"},
+            "shlex": {"shlex"},
+        },
+        "from": {("__future__", "annotations")},
+        "rebinds": set(),
+        "names": {
+            'RuntimeError', 'ValueError', 'abs', 'all', 'any', 'bool', 'bytes', 'dict', 'enumerate', 'frozenset',
+            'int', 'isinstance', 'len', 'list', 'next', 'range', 'set', 'sorted', 'str', 'sum', 'tuple', 'type',
+            'zip'},
+        "attrs": {
+            'S', 'add', 'append', 'commenters', 'compile', 'count', 'decode', 'dumps', 'encode', 'endswith', 'find',
+            'fullmatch', 'get', 'hexdigest', 'items', 'loads', 'normpath', 'pop', 'rstrip', 'setdefault', 'sha256',
+            'shlex', 'split', 'startswith', 'values', 'whitespace_split'},
+    },
+    # lane vendor-b24: OD57's read shapes, data only
+    "box/od57_shapes.py": {"imports": {}, "from": set(), "rebinds": set(), "names": {"dict"}, "attrs": set()},
 }
 # The one subprocess call site of this lane's modules: (enclosing function, attribute).
 SUBPROCESS_SITES = {"box/sidecar.py": [("inotifywait_factory", "Popen")]}

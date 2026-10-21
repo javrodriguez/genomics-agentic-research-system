@@ -1206,7 +1206,8 @@ class TestOD57Ruling(Case):
 
     def setUp(self):
         self.text = _env_line()
-        self.doc = "/run/gars/_references/environment.md"
+        # lane vendor-b24 (B24-2 item 5 as revised): a shell read's absolute path resolves inside a run tree
+        self.doc = "/tmp/run-c8021046/gars/_references/environment.md"
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
 
@@ -1257,7 +1258,7 @@ class TestOD57Ruling(Case):
         for cmd, out, kind, side in (
                 (f"grep -n 'pinned' {self.doc}", f"175:{self.text}\n", "session", True),
                 (f"grep 'pinned' {self.doc}", f"{self.text}\n", "transcript", False),
-                (f"grep -rn pinned {self.doc}", f"/run/gars/_references/environment.md:175:{self.text}\n",
+                (f"grep -Hn pinned {self.doc}", f"{self.doc}:175:{self.text}\n",
                  "stream", False),
                 (f"cat -n {self.doc}", f"   174\tline before\n   175\t{self.text}\n", "session", True),
                 (f"cat {self.doc}", f"line before\n{self.text}\nline after\n", "transcript", False)):
@@ -1335,7 +1336,8 @@ class TestOD57Ruling(Case):
 
     def test_mutant_any_tool_goes_red(self):
         p = self.write("transcript.jsonl", self.bash_record(f"sed -n 175p {self.doc}", self.text + "\n"))
-        with mock.patch.object(sr, "_ruled_tool", lambda uses, uid: True):
+        from box import od57_rule
+        with mock.patch.object(od57_rule, "_claude_tool", lambda uses, uid: od57_rule._ruled_shell("cat " + DOC_REL)):
             r, _ = self.scan([(p, "transcript")])
         self.assertEqual(len(r["ruled"]), 1)
         red("the tool binding dropped (a sed result admitted)")
@@ -1371,15 +1373,18 @@ RAW_ELSEWHERE = "body.count(found.encode()) != hits"
 
 
 def _mutant(fn_name, *edits):
-    """sr.<fn_name> rebuilt from its source with each (old, new) edit applied once, as a mock patch."""
-    src = textwrap.dedent(inspect.getsource(getattr(sr, fn_name)))
+    """sr.<fn_name> (or, since lane vendor-b24 moved OD57's rule there, box/od57_rule.<fn_name>) rebuilt from its source
+    with each (old, new) edit applied once, as a mock patch on the module that defines it."""
+    from box import od57_rule
+    mod = sr if fn_name in vars(sr) and getattr(sr, fn_name).__module__ == sr.__name__ else od57_rule
+    src = textwrap.dedent(inspect.getsource(getattr(mod, fn_name)))
     for old, new in edits:
         if src.count(old) != 1:
             raise AssertionError(f"mutant edit {old!r} matches {src.count(old)} times in {fn_name}")
         src = src.replace(old, new)
-    ns = dict(vars(sr))
+    ns = dict(vars(mod))
     exec(compile(src, f"{fn_name}_mutant", "exec"), ns)
-    return mock.patch.object(sr, fn_name, ns[fn_name])
+    return mock.patch.object(mod, fn_name, ns[fn_name])
 
 
 class TestOD57Chain(TestOD57Ruling):
@@ -1400,8 +1405,11 @@ class TestOD57Chain(TestOD57Ruling):
 
     def test_the_bash_shapes(self):
         doc = "_references/environment.md"
-        admitted = [W167, "grep -n pinned " + doc, "cat " + doc, "cat -n /run/gars/" + doc,
-                    "cd /run/gars && grep -n Key " + doc + " | sort | uniq | wc -l",
+        admitted = [W167, "grep -n pinned " + doc, "cat " + doc, "cat -n /tmp/run-c8021046/gars/" + doc,
+                    "cd /tmp/run-c8021046/gars && grep -n Key " + doc + " | sort | uniq | wc -l",
+                    # B24-2 item 5 as revised: a recursive grep of a folder labels every line, and each admitted
+                    # line's own label must resolve to the doc (the line rule, test_od57_agreement's corpus)
+                    "grep -rn Key /tmp/run-c8021046/gars/_references",
                     "grep -n Key " + doc + " 2>&1 | head", "grep -n Key " + doc + " | tail -3",
                     "grep 'Key pinned' " + doc, 'grep -n "a\\|b" ' + doc]
         refused = ["cd x && sed -n 175p " + doc, "grep -n pinned _references/other.md", "echo $(cat " + doc + ")",
@@ -1409,7 +1417,7 @@ class TestOD57Chain(TestOD57Ruling):
                    "sh -c 'cat " + doc + "'", "bash -c 'grep -n Key " + doc + "'", "cat " + doc + " | sh -c 'cat y'",
                    'grep "unclosed ' + doc, "echo hi && grep -n Key " + doc, "cat <(" + doc + ")",
                    "grep -n Key " + doc + " &", "(cat " + doc + ")", "cd && grep -n Key " + doc,
-                   "grep -rn Key /run/gars/_references", "cat " + doc + "x", "cat " + doc + ".bak", "cat my" + doc,
+                   "cat " + doc + "x", "cat " + doc + ".bak", "cat my" + doc,
                    "", "&& cat " + doc, "xargs cat " + doc, None, 3,
                    # the allow-list (review of 41de680): one leading cd only, and no first word off the list
                    "cd /run/gars && cd gars && grep -n Key " + doc, "grep -n Key " + doc + "; echo done",
@@ -1452,25 +1460,29 @@ class TestOD57Chain(TestOD57Ruling):
 
     def test_mutation_witnesses_of_the_bash_shapes(self):
         LINE = self.text
+        # lane vendor-b24 moved the allow-list into box/od57_rule (_shell_tokens, _ruled_shell, _grep_spec,
+        # _filter_ok); each witness is the same refusal, its guard named where it now lives
         cases = (
             ("the doc path dropped", "grep -n pinned _references/other.md", "175:%s\n" % LINE,
-             ('return any(t == _RULED_DOC or t.endswith("/" + _RULED_DOC) for t in segments[i][1:])',
-              "return True")),
-            ("the grep-or-cat first word dropped", "cd x && head -200 _references/environment.md", LINE + "\n",
-             ('segments[i][0] not in ("grep", "cat")', "False")),
-            ("the substitution guard dropped", 'cat "$(cat x)/_references/environment.md"', LINE + "\n",
-             ('"$(", "`", ', "")),
+             "_grep_spec", ("if not _resolves_to_doc(ops[0], cwd):", "if False:")),
+            ("the grep-or-cat first word dropped", "cd gars && head -200 _references/environment.md", LINE + "\n",
+             "_ruled_shell", ("    else:\n        return None\n    if spec is None:",
+                              "    else:\n        spec = _cat_spec([a for a in read[1:] if a[:1] != '-'], cwd)\n"
+                              "    if spec is None:")),
+            ("the substitution guard dropped", 'grep "$(cat /tmp/p)" _references/environment.md', LINE + "\n",
+             "_shell_tokens", ('"$(", "`", ', "")),
             ("the allow-list dropped", "grep -n Key _references/environment.md; xargs cat /tmp/other",
-             "175:%s\n" % LINE, ("seg[0] not in _RULED_FIRST_WORDS", "False")),
-            ("the newline refusal dropped", "grep -n Key _references/environment.md\nxargs cat /tmp/other",
-             "175:%s\n" % LINE, (r'"\n", "\r", ', "")),
+             "175:%s\n" % LINE, "_filter_ok", ("if form is None:\n        return False",
+                                              "if form is None:\n        return True")),
+            ("the newline refusal dropped", "grep -n Key\n_references/environment.md",
+             "175:%s\n" % LINE, "_shell_tokens", (r'"\n", "\r", ', "")),
             ("the backslash refusal dropped", "\\grep -n Key _references/environment.md", "175:%s\n" % LINE,
-             ("if _ruled_unquoted_backslash(cmd):", "if False:")),
+             "_shell_tokens", ("if _ruled_unquoted_backslash(cmd):", "if False:")),
         )
-        for name, cmd, out, edit in cases:
+        for name, cmd, out, fn, edit in cases:
             with self.subTest(name):
                 self.assertFalse(self.admitted(self.bash_record(cmd, out)))
-                with _mutant("_ruled_bash", edit):
+                with _mutant(fn, edit):
                     self.assertTrue(self.admitted(self.bash_record(cmd, out)), f"{name}: the mutant still refuses")
                 red(f"OD57 w167: {name}")
 
@@ -1479,7 +1491,7 @@ class TestOD57Chain(TestOD57Ruling):
         # the # refusal: a # anywhere refuses, so a pattern holding one refuses; dropped, it admits
         benign = 'grep -n "#Key" _references/environment.md'
         self.assertFalse(sr._ruled_bash(benign))
-        with _mutant("_ruled_bash", ('"#", ', '')):
+        with _mutant("_shell_tokens", ('"#", ', '')):
             self.assertTrue(sr._ruled_bash(benign), "the # refusal dropped: still refused")
         red("OD57 #: the # refusal dropped")
         # the empty commenters: with the # refusal dropped, they alone still refuse the review's repros; with both
@@ -1487,9 +1499,9 @@ class TestOD57Chain(TestOD57Ruling):
         for repro in ("grep -n Key _references/environment.md x#; sh -c 'cat /tmp/other'", "cat _references/environment.md#;python3 -c 'print(1)'"):
             with self.subTest(repro=repro):
                 self.assertFalse(sr._ruled_bash(repro))
-                with _mutant("_ruled_bash", ('"#", ', '')):
+                with _mutant("_shell_tokens", ('"#", ', '')):
                     self.assertFalse(sr._ruled_bash(repro), "the empty commenters do not refuse it alone")
-                with _mutant("_ruled_bash", ('"#", ', ''), ('lex.commenters = ""', 'pass')):
+                with _mutant("_shell_tokens", ('"#", ', ''), ('lex.commenters = ""', 'pass')):
                     self.assertTrue(sr._ruled_bash(repro), "both dropped: still refused")
                 red("OD57 #: the empty commenters dropped too")
 
@@ -1527,7 +1539,7 @@ class TestOD57Chain(TestOD57Ruling):
         """Refuses as is; admits with only `conjunct` replaced by False."""
         with mock.patch.object(sr, "RULED_LINES", rulings or sr.RULED_LINES):
             self.assertFalse(self.admitted(body))
-            with _mutant("_ruled_text", (conjunct, "False")):
+            with _mutant("ruled_text", (conjunct, "False")):
                 self.assertTrue(self.admitted(body), f"the mutant still refuses: no witness of {conjunct!r}")
         red(f"OD57 nowhere-else: {conjunct}")
 
@@ -1536,7 +1548,7 @@ class TestOD57Chain(TestOD57Ruling):
         rec["message"]["content"].append({"type": "text", "text": f"please check this:\n{self.text}\n"})
         body = _cc(_use("toolu_R", "Read", {"file_path": self.doc}), rec)
         self.assertFalse(self.admitted(body))
-        with _mutant("_ruled_text", (NOT_ESCAPED, "False"), (DECODED_ELSEWHERE, "False"), (RAW_ELSEWHERE, "False")):
+        with _mutant("ruled_text", (NOT_ESCAPED, "False"), (DECODED_ELSEWHERE, "False"), (RAW_ELSEWHERE, "False")):
             self.assertTrue(self.admitted(body))
         red("OD57 nowhere-else: the whole guard")
 
@@ -1796,6 +1808,7 @@ class TestOD57OtherArms(TestOD57Ruling):
     def test_codex_stream_command_executions_are_admitted(self):
         # round 3 (glitch-26's B17-14): only the arm O image's shell, /bin/bash, wraps an admitted read; the zsh case of
         # rounds 1 and 2 is now TestB17Round3's refusal
+        # lane vendor-b24 (design section 2, F-RS-6): -c is no longer admitted (no committed record uses it)
         cases = [(how, _cx_wrap(cmd)) for how, cmd in SHELL_READS] + [("-c", "/bin/bash -c 'cat " + DOC_REL + "'")]
         for how, command in cases:
             with self.subTest(how=how):
@@ -1803,7 +1816,10 @@ class TestOD57OtherArms(TestOD57Ruling):
                 body = _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
                            _cx_item("item.started", "item_1", command, "", "in_progress"),
                            _cx_item("item.completed", "item_1", command, out))
-                self.assert_admitted(f"turn-1-{how}.jsonl", body, "stream", [4])
+                if how == "-c":
+                    self.assert_refused(f"turn-1-{how}.jsonl", body, "stream", [4])
+                else:
+                    self.assert_admitted(f"turn-1-{how}.jsonl", body, "stream", [4])
 
     # ---- Codex CLI 0.162.1, the native session file (the rollout)
     def test_codex_rollout_reads_are_admitted(self):
@@ -1961,18 +1977,18 @@ class TestB17ReadShapes(TestOD57OtherArms):
         body = _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
                    _cx_item("item.completed", "item_1", command, self.stdout("cat")))
         self.witness("the wrapper's flag", "turn-1.jsonl", body, "stream", [3], "_ruled_wrapped",
-                     ("argv[1] in flags", "True"))
+                     ("argv[1] not in flags", "False"))
 
     # ---- one witness per admission conjunct
     def test_gemini_witness_the_path_names_the_doc(self):
         call = _gem_call("call-g1", "read_file", {"file_path": "/run/gars/_references/other.md"}, f"{self.text}\n")
         self.witness("the read's path", "session.jsonl", _cc(GEM_HEAD, _gem_message("msg-g1", [call])), "session",
-                     [2], "_reads_doc", ('(arg == _RULED_DOC or arg.endswith("/" + _RULED_DOC))', "True"))
+                     [2], "_reads_doc", ('return dict(tool) if _names_doc(arg) else None', 'return dict(tool)'))
 
     def test_gemini_witness_the_script_reads_the_doc(self):
         call = self.shell_call(command=OTHER, output=_gem_shell(self.stdout("cat").rstrip("\n")))
         self.witness("the script", "session.jsonl", _cc(GEM_HEAD, _gem_message("msg-g1", [call])), "session", [2],
-                     "_reads_doc", ("return _ruled_bash(arg)", "return True"))
+                     "_reads_doc", ("spec = _ruled_shell(arg)", 'spec = _ruled_shell("cat " + _RULED_DOC)'))
 
     def test_codex_witness_the_wrapper_has_three_words(self):
         # round 3: a CommandExecution item's call is its function_call (B17-12), so the rollout carries it
@@ -1987,7 +2003,7 @@ class TestB17ReadShapes(TestOD57OtherArms):
                 body = _cc(_cx_meta(), _cx_call(1, "call-o1", SHELL_READS[0][1]),
                            _cx_end(2, "call-o1", [shell, "-lc", SHELL_READS[0][1]], self.stdout("cat")))
                 self.witness("the wrapper's shell", "rollout.jsonl", body, "session", [3], "_ruled_wrapped",
-                             ("argv[0] in shells", "True"))
+                             ("argv[0] not in shells", "False"))
 
     def test_gemini_witness_a_stream_call_is_found_once(self):
         use = _gem_use("call-g1", "run_shell_command", {"command": SHELL_READS[0][1]})
@@ -2168,15 +2184,16 @@ class TestB17Round3(TestB17ReadShapes):
 
     # ---- B17-11: the Claude path reads only the message records' own top-level blocks
     def test_claude_forged_nested_pair_refuses(self):
-        inp = {"x": {"type": "tool_use", "id": "z", "name": "Read", "input": {}},
+        inp = {"x": {"type": "tool_use", "id": "z", "name": "Read", "input": {"file_path": self.doc}},
                "y": {"type": "tool_result", "tool_use_id": "z", "content": self.text}}
         body = _cc({"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "toolu_1", "name": "Write",
                                                                   "input": inp}]}})
         p = self.write("transcript.jsonl", body)
         r = sr.scan([(p, "transcript")], SECRETS, rules_scanner=_Gitleaks(self.text[:40]))
         self.assertEqual((r["ruled"], [x["line"] for x in r["refused"]]), ([], [1]))
-        with mock.patch.object(sr, "_CLAUDE_AT", sr._CLAUDE_AT + (("message", "content", "*", "input", "x"),
-                                                                  ("message", "content", "*", "input", "y"))):
+        from box import od57_rule
+        with mock.patch.object(od57_rule, "_CLAUDE_AT", sr._CLAUDE_AT + (("message", "content", "*", "input", "x"),
+                                                                        ("message", "content", "*", "input", "y"))):
             r = sr.scan([(p, "transcript")], SECRETS, rules_scanner=_Gitleaks(self.text[:40]))
         self.assertEqual(([x["line"] for x in r["ruled"]], r["refused"]), ([1], []))
         red("B17 round 3 Claude position")
@@ -2209,9 +2226,9 @@ class TestB17Round3(TestB17ReadShapes):
         crlf = self.stdout("cat").replace("\n", "\r\n")
         body = _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
                    _cx_item("item.completed", "item_1", _cx_wrap(SHELL_READS[0][1]), crlf))
-        self.witness("a PTY's CRLF line", "turn-1.jsonl", body, "stream", [3], "_ruled_line",
-                     ('rest = form[m:].encode("utf-8", "surrogateescape")',
-                      'rest = form[m:].rstrip("\\r").encode("utf-8", "surrogateescape")'))
+        self.witness("a PTY's CRLF line", "turn-1.jsonl", body, "stream", [3], "_line_text",
+                     ('b = form.encode("utf-8", "surrogateescape")',
+                      'b = form.rstrip("\\r").encode("utf-8", "surrogateescape")'))
 
     def test_codex_tty_output_refuses_whatever_its_line_ending(self):
         """Round 4 (B17-16): a tty exec's output in the code-mode rollout is held by its CRLF bytes, in the
@@ -2311,7 +2328,7 @@ class TestB17Round4(TestB17Round3):
         cmd = SHELL_READS[0][1]
         self.witness("16a the CommandExecution's -lc", "rollout.jsonl",
                      self.code_mode(call=False, out=False, argv=["/bin/bash", "-c", cmd]), "session", [2],
-                     "_ruled_wrapped", ("argv[1] in flags", "True"))
+                     "_ruled_wrapped", ("argv[1] not in flags", "False"))
         for argv in (["/bin/bash", "-lc", OTHER], ["/bin/bash", "-lc", "sh -c '" + cmd + "'"]):
             with self.subTest(argv=argv[2]):
                 self.assert_refused("rollout.jsonl", self.code_mode(call=False, out=False, argv=argv), "session", [2])
@@ -2325,7 +2342,7 @@ class TestB17Round4(TestB17Round3):
 
     def test_codex_exec_output_needs_an_admitted_read(self):
         self.witness("16b an admitted read in the file", "rollout.jsonl", self.code_mode(ce=False), "session", [3],
-                     "_copy_hits", ("for a in srcs:", "for a in srcs + [s]:"))
+                     "_copy_hits", ("for a, tool in srcs:", 'for a, tool in srcs + [(s, {"kind": "exact"})]:'))
         self.assert_refused("rollout.jsonl", self.code_mode(cmd=OTHER), "session", [3, 4])
 
     def test_codex_exec_output_span_must_be_a_copy(self):
@@ -2362,7 +2379,7 @@ class TestB17Round4(TestB17Round3):
         stdout = self.stdout("cat")
         body = self.code_mode(out=f"Script completed\n{stdout}exit code 0\n{self.text}\n")
         self.assert_split("rollout.jsonl", body, "session", [3], [4])
-        with _mutant("_ruled_text", (DECODED_ELSEWHERE, "False"), (RAW_ELSEWHERE, "False")):
+        with _mutant("ruled_text", (DECODED_ELSEWHERE, "False"), (RAW_ELSEWHERE, "False")):
             self.assert_split("rollout.jsonl", body, "session", [3, 4], [])
         red("B17 16b nothing else in the output")
 
@@ -2486,7 +2503,7 @@ class TestB17Round5(TestB17Round4):
         red("B17 round 5 a position counts once")
 
     def test_codex_two_positions_count_twice(self):
-        script = SHELL_READS[0][1] + " " + DOC_REL
+        script = SHELL_READS[0][1]                 # B24-2 item 5: cat of the doc once (cat labels nothing)
         co = self.stdout("cat") * 2
         body = _cc(_cx_meta(), *self.pair("a", 1, [(script, co)], co))
         self.assert_admitted("rollout.jsonl", body, "session", [3, 4])
@@ -2863,6 +2880,9 @@ class TestB20GitReads(TestB17Round6):
         """B20-6: every Gemini shape binds by arguments (command and description only); arm O's rollout
         CommandExecution binds by its cwd to session_meta's; the stream and the copy shape bind nothing."""
         for s in GEM_SHAPES:
+            if s["shape"] == "session grep display":       # B24: a display of grep_search, no shell, no git read
+                self.assertNotIn("git", s)
+                continue
             self.assertEqual(s.get("git"), {"args": ("command", "description")}, s["shape"])
         got = {s["shape"]: s.get("git") for s in CODEX_SHAPES}
         self.assertEqual(got, {"stream command_execution": None, "rollout exec output": None,
@@ -2936,13 +2956,14 @@ class TestB20GitReads(TestB17Round6):
 
     def test_gemini_witness_the_prefix_is_a_git_reads(self):
         self.b20_witness("only a git read", "turn-1.jsonl", self.gem_stream(_git_out(self.text), SHELL_READS[0][1]),
-                         "stream", [3], "_ruled_text", ('tool.get("git")', "True"))
+                         "stream", [3], "_line_text", ('tool.get("git")', "True"))
 
     def test_codex_witness_the_copy_keeps_the_git_read(self):
         """A behaviour test: with the copy rule blind to a git source, the exec output's copy is lost."""
         body = self.cx_rollout(_git_out(self.text))
         self.assert_split("rollout.jsonl", body, "session", [3, 4], [])
-        with _mutant("_copy_hits", ("_ruled_diff_line(lines_a, i, ruling) if git else", "None if git else")):
+        with _mutant("_copy_hits", ("f = _line_text(lines_a, i, tool, ruling, None)",
+                                    'f = None if tool.get("git") else _line_text(lines_a, i, tool, ruling, None)')):
             self.assert_split("rollout.jsonl", body, "session", [3], [4])
         red("B20 the copy reads a git source as a diff")
 

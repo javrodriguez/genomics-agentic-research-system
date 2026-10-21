@@ -1746,7 +1746,7 @@ def a_stderr(mod, p):
 
 # Lane vendor-b17 round 2 (glitch-26's ruling B17-5, 19 Oct 2026): arm O's OD57 read shapes, pinned by their bytes so
 # the generated sweep kills every mutant of them; what they admit and refuse is tests/test_scan_record.py's.
-READ_SHAPES_SHA256 = "6849591410366a8fef337be440791f445f1dcbf4ce3938ab62ee215700f5498e"   # B20-6 (the git binding)
+READ_SHAPES_SHA256 = "4dc0a95edf555f6454693dd5c7827407fd241dd64d2d013b5ce6cc3d59063759"   # B24 (-lc only; box/od57_shapes)
 
 
 @guarded("B14-read-shapes", ("READ_SHAPES",))

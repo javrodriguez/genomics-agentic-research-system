@@ -102,75 +102,10 @@ _THREAD_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,127}")
 LAUNCH_DISAGREES = "launch-differs-from-registered-invocation"
 
 # ---- OD57's read shapes for arm O (lane vendor-b17 round 2, glitch-26's rulings B17-5 to B17-7, 19 Oct 2026) ---------
-# The records box/scan_record.py's read-shape schema reads (drive.scan_read_shapes passes them for an arm O row's scan),
-# each from the pinned source, openai/codex 092d3acd6bec3e3a14bdc7e7a2810ab628ab759d (rust-v0.162.1), cited as
-# codex-rs/<path>:<line> (lane-reports/B17-DESIGN-NOTE.md section 2). The one read tool is the shell: the pinned CLI
-# offers unified exec or none (protocol/src/openai_models.rs:316-320), exec_command {cmd, ...}
-# (core/src/tools/handlers/shell_spec.rs:24-114), run as exactly [<shell>, -lc | -c, <script>] (core/src/shell.rs:24-33).
-# write_stdin's output is not a read (glitch-26's B17-7), nor is a PTY's CRLF line (81 bytes, never the ruled 80).
-# Round 3 (glitch-26's B17-10, B17-12 to B17-14, on review a051f6e3): every node at its fixed record position (a stream
-# line's top-level `item`; a rollout line's `payload`, or its `payload.item`), never at any depth; the one shell is the
-# arm O image's, /bin/bash (box/codex/Dockerfile:18, `useradd ... --shell /bin/bash dana`: the agent user's login shell,
-# which Codex runs as [shell, -lc | -c, script], core/src/shell.rs:24-33), both as a wrapper's argv[0] and as
-# exec_command's `shell` argument (shell_spec.rs:65-72); and a call with `tty: true` (shell_spec.rs:47-53) is no read,
-# whatever its output's line ending.
-# Round 4 (glitch-26's B17-16a to B17-16d and NIT 2, on review dd2d0398's MAJOR 1): both arm O models run code mode
-# only. The pinned catalog marks gpt-6.1-sol and gpt-6-luna `"tool_mode": "code_mode_only"` (models-manager/models.json
-# lines 177/193 and 524/540; core/src/tools/mod.rs:75-97), which hides every tool but `exec` and `wait`
-# (core/src/tools/spec_plan.rs:838-850; code-mode-protocol/src/lib.rs:54-55, description.rs:262-263). So exec_command
-# is never a direct function_call, and the committed arm O rollouts (w-o7 to w-o14, by counts) hold 97 custom_tool_call
-# `exec` records and their 97 custom_tool_call_output records, no function_call and no function_call_output; the
-# function_call shapes of rounds 2 and 3 are removed. The rollout's CommandExecution (source unified_exec_startup) admits
-# on its own argv again, a joined shape (16a), pinned to [/bin/bash, -lc, script] as all 108 committed ones are; an exec
-# output admits only the verbatim copies of such a read's aggregated_output (16b). Each position names its record's
-# type (NIT 2). A tty exec's `tty` argument is inside the exec script's text, read by no shape: its output is held by
-# its CRLF bytes only (a known limit, as the stream's).
-_O_SHELLS = ("/bin/bash",)
-_O_TOOL = {"prefix": None, "opener": None}
-_O_WRAP = dict(_O_TOOL, kind="wrapped", arg=None, shells=_O_SHELLS, flags=("-lc", "-c"))
-# Round 5 (glitch-26's B17-17 to B17-19 and NITs 2, 5 on review baef7c51): the CommandExecution's event is
-# item_completed (all 108 committed ones are) and its argv a list (kind "argv"); each shape names its file kind; the
-# exec output admits its own exec pair's reads, verbatim (gpt-6-luna, 32 of 36 committed) or as one JSON string literal
-# whose decode is the read's output exactly (gpt-6.1-sol, 60 of 72); the 16 lossy middle truncations stay refused
-# (lane-reports/B17-DESIGN-NOTE.md section 7).
-_O_WRAP_LC = dict(_O_WRAP, kind="argv", flags=("-lc",))
-_RESPONSE_ITEM = {"type": ("response_item",)}
-# B20-6 (glitch-26, lane vendor-b20, 20 Oct 2026, on review 21fc1c7e's MINOR-1): a git read is admitted only where its
-# folder is bound: the rollout CommandExecution's cwd (protocol/src/items.rs:265, a PathUri, serialized as its URL,
-# utils/path-uri/src/lib.rs:689-695) exactly file:// + session_meta's cwd (protocol/src/protocol.rs:3171, the run tree;
-# w-o14's rollout: '/tmp/run-b6ddc761' and 'file:///tmp/run-b6ddc761'). The stream's command_execution carries no cwd,
-# so it binds nothing and admits no git read; the exec output's copy reads only its CommandExecution's admitted reads.
-_O_GIT = {"cwd": "cwd", "prefix": "file://", "meta": ({"type": ("session_meta",)}, "payload.cwd")}
-READ_SHAPES = (
-    # the turn stream: a command_execution item, the call and its output in one object; `command` is
-    # redact_secrets(shlex_join(argv)) (app-server-protocol/src/protocol/item_builders.rs:54-61, 96-143); item.started
-    # and item.completed carry the same synthetic id (exec/src/event_processor_with_jsonl_output.rs:100-102, 162-181,
-    # 327-341, 474-491), so every copy of an id must be the same call
-    {"shape": "stream command_execution", "copies": "same", "tools": {"shell": _O_WRAP}, "result": None,
-     "copy_of": None, "kinds": ("stream",),
-     "call": {"match": {"type": "command_execution"},
-              "at": ((("item",), {"type": ("item.started", "item.completed")}, None),),
-              "id": "id", "name": {"value": "shell"}, "args": "command", "args_json": False,
-              "text": (("aggregated_output",),)}},
-    # the rollout: event_msg item_completed's CommandExecution item {id, command: argv, aggregated_output, source, ...}
-    # (protocol/src/items.rs:243-281; core/src/tools/events.rs:561-589), the call and its output in one object
-    {"shape": "rollout CommandExecution", "copies": "same", "tools": {"shell": _O_WRAP_LC}, "result": None,
-     "copy_of": None, "kinds": ("session",), "git": _O_GIT,
-     "call": {"match": {"type": "CommandExecution"},
-              "at": ((("payload", "item"), {"type": ("event_msg",), "payload.type": ("item_completed",)}, None),),
-              "id": "id", "name": {"value": "shell"}, "args": "command", "args_json": False,
-              "text": (("aggregated_output",),)}},
-    # the rollout: a custom_tool_call {name: "exec", call_id, input: the script} and its custom_tool_call_output
-    # {call_id, output: [{type: input_text, text}]} (protocol/src/models.rs:1136-1171, 2096-2104, 2187-2265), the output
-    # admitted only where it copies, verbatim or as one exact JSON string literal, a CommandExecution (shape 1) that
-    # lies between this exec's call and output lines
-    {"shape": "rollout exec output", "copies": "one", "copy_of": 1, "kinds": ("session",),
-     "tools": {"exec": dict(_O_TOOL, kind="copy", arg=None, shells=None, flags=None)},
-     "call": {"match": {"type": "custom_tool_call"}, "at": ((("payload",), _RESPONSE_ITEM, None),), "id": "call_id",
-              "name": {"key": "name"}, "args": "input", "args_json": False, "text": ()},
-     "result": {"match": {"type": "custom_tool_call_output"}, "at": ((("payload",), _RESPONSE_ITEM, None),),
-                "id": "call_id", "name": None, "text": (("output",), ("output", "*", "text"))}},
-)
+# They live in box/od57_shapes.py since lane vendor-b24 (B24-2 item 1: one rule set, shared with the aegis door); the
+# drive still reads them here (drive.scan_read_shapes reads module.READ_SHAPES).
+from box import od57_shapes as _od57_shapes  # noqa: E402
+READ_SHAPES = _od57_shapes.CODEX
 
 
 class StreamError(ValueError):

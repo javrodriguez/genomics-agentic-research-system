@@ -1259,7 +1259,7 @@ def a14_journal(mod, p):
 
 # Lane vendor-b17 round 2 (glitch-26's ruling B17-5, 19 Oct 2026): arm G's OD57 read shapes, pinned by their bytes so
 # the generated sweep kills every mutant of them; what they admit and refuse is tests/test_scan_record.py's.
-READ_SHAPES_SHA256 = "d7060c34898729e9654d136bf84462422cc818fd43d17b2443c74e228686ee8a"   # B20-6 (the git binding)
+READ_SHAPES_SHA256 = "bc38013820d967cde1b3972c1e6b59250befc12e019cf518273b6e79777ab849"   # B24-2 (grep_search; box/od57_shapes)
 
 
 @guarded("A15-read-shapes", ("READ_SHAPES",))

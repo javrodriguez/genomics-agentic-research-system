@@ -8,8 +8,10 @@ the committed walks (lane-reports/vendor-b24-DESIGN.md section 2), every value i
 placeholder PLACEHOLDER, which a runner replaces by line 175 of the GARS doc it reads itself, so no copy of the line
 lives in this file or in the JSON.
 
-    python3 tests/od57_corpus.py --write     writes tests/fixtures/od57-agreement/cases.json from build()
-    python3 tests/od57_corpus.py --check     exits 1 unless the JSON on disk is build()'s output
+    python3 tests/fixtures/od57-agreement/corpus.py --write     writes cases.json beside it from build()
+    python3 tests/fixtures/od57-agreement/corpus.py --check     exits 1 unless the JSON on disk is build()'s output
+
+It lives in the fixture folder, not in tests/, because tests/ holds test modules only (test_round4.module_problems).
 
 Each case: {"name", "family" ("c" Claude, "g" Gemini, "o" Codex), "kind" (stream | session | transcript), "records"
 (one JSON value per line), "admit" (the 1-based lines admitted), "refuse" (the lines refused), "why" (one line)}. A line
@@ -25,7 +27,7 @@ import sys
 
 PLACEHOLDER = "@OD57@"
 HERE = os.path.dirname(os.path.abspath(__file__))
-JSON_PATH = os.path.join(HERE, "fixtures", "od57-agreement", "cases.json")
+JSON_PATH = os.path.join(HERE, "cases.json")
 L = PLACEHOLDER                                   # the ruled line, as it sits in a record
 TS = "2026-10-21T00:00:00.000Z"
 RUN = "/tmp/run-b24c0de5"                         # a run tree (the walks' form: /tmp/run-<8 hex>)
@@ -254,7 +256,8 @@ def build() -> list:
                             [("../gars/_references/environment.md", [(175, ":", L)])],
                             [g_match(175, L)], replays=False), [], [3, 4], "a header that climbs out with .."))
     add(case("g-grep-path-key", "g", "session",
-             g_grep_records({"pattern": "p", "dir_path": GDIR, "path": GDIR}, [DOC_BLOCK], FOUR, replays=False), [], [3, 4],
+             g_grep_records({"pattern": "p", "dir_path": GDIR, "path": GDIR}, [DOC_BLOCK], FOUR, replays=False),
+             [], [3, 4],
              "an argument key the rule does not admit (path)"))
     add(case("g-grep-alias", "g", "session",
              g_grep_records(GARGS, [DOC_BLOCK], FOUR, replays=False, name="search_file_content"), [], [3, 4],

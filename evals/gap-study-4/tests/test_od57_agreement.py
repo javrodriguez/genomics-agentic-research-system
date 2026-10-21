@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The OD57 agreement corpus through the harness twin (lane vendor-b24, glitch-26's rulings B24-2).
 
-tests/fixtures/od57-agreement/cases.json (built by tests/od57_corpus.py) holds one synthetic record set per read shape
+tests/fixtures/od57-agreement/cases.json (built by corpus.py beside it) holds one synthetic record set per read shape
 and the verdict, line by line, that both scanners must give it; the aegis door runs a byte copy of the same JSON in its
 own lane. Here every case runs through box/scan_record.scan with its arm's read shapes (the drive's own: the adapters'
 READ_SHAPES, which are box/od57_shapes's) and a fake rules scanner that flags generic-api-key on every line holding the
@@ -27,9 +27,12 @@ from unittest import mock
 sys.dont_write_bytecode = True
 STUDY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, STUDY)
-sys.path.insert(0, os.path.join(STUDY, "tests"))
 
-import od57_corpus  # noqa: E402
+import importlib.util  # noqa: E402
+_spec = importlib.util.spec_from_file_location(
+    "od57_corpus", os.path.join(STUDY, "tests", "fixtures", "od57-agreement", "corpus.py"))
+od57_corpus = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(od57_corpus)
 from box import scan_record as sr  # noqa: E402
 import gemini_adapter  # noqa: E402
 import codex_adapter  # noqa: E402
@@ -115,7 +118,7 @@ RED_ALONE = {
     "t1-gemini-replace-then-grep": ("ruled_text", ("if writes is not None and writes <= line:", "if False:")),
     "t1-claude-edit-then-read": ("ruled_text", ("if writes is not None and writes <= line:", "if False:")),
     "t1-codex-file-change-then-cat": ("ruled_text", ("if writes is not None and writes <= line:", "if False:")),
-    "t2-h-several": ("_grep_spec", ('if "h" in flags and len(ops) > 1:', "if False:")),
+    "t2-h-several": ("_grep_spec", ("if len(ops) != 1:", "if len(ops) < 1:")),
     "t2-other-label": ("_labelled_line", ("if not _resolves_to_doc(label, spec[\"cwd\"]):", "if False:")),
     "t2-label-wrong-number": ("_labelled_line", ('number = "175"', 'number = "176"')),
     "t2-label-outside-run-tree": ("_resolves_to_doc", ("return _DOC_ABS.fullmatch(n) is not None",
@@ -124,7 +127,7 @@ RED_ALONE = {
                                                                 '            continue\n        if t.startswith("--"):')),
     "t2-unlabelled-other-only": ("_grep_spec", ("if not _resolves_to_doc(ops[0], cwd):", "if False:")),
     "t2-cat-two": ("_cat_spec", ("if len(ops) != 1", "if len(ops) < 1")),
-    "t2-then-cat-other": ("_ruled_shell", ('if sep != "|":', "if False:")),
+    "t2-then-cat-other": ("_filter_ok", ("return not rest", "return True")),
     "t2-filter-with-file": ("_filter_ok", ("return not rest", "return True")),
     "t2-codex-c-flag": None,          # a shapes datum (the stream's flags), not a function: test_the_c_flag_is_data
     "c-read-other": ("_claude_tool", ('if name == "Read":\n        return "read" if _names_doc(',
