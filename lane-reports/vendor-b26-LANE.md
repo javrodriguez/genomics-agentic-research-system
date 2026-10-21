@@ -191,3 +191,20 @@ The orchestrator's queued athena battery pins 04c4e774 and is untouched by these
 
 Head: stage 5 75b7655d, then this lane file as stage 6.
 Open for glitch-f1: the {removeIds}-alone resume shape (above), refused but not by name; the 74-walk survey and the heavy modules under a heavy slot or on athena.
+
+## Stage 7 commit dfdce120: the fourth unobserved resume shape named (glitch-f1's ruling on the fold's question, 21 Oct 2026)
+
+glitch-f1's ruling, as received: "yes, name it. A resume patch carrying only {removeIds} is writer-possible for the same reason as the three ruled shapes and unseen in every walk, so it gets its own named refusal reason in UNOBSERVED_RESUME_SHAPES, so a survey counts it."
+The same message accepted the flagged choice (the resume window closes at the resume's $patch, whatever its shape) as recorded, for the closure reviewer to check.
+
+The false-refusal residual is now four shapes, each refused by its own name while the resume window is open: {orderIds}, {orderIds, removeIds}, {removeIds, updates} inside a resume, and {removeIds} alone inside a resume ("writer-possible resume shape {removeIds} alone inside a resume (an ignored prompt dropped, no update, the order unchanged), unobserved in any walk: refused by name (glitch-f1's ruling 4)").
+Outside a resume, {removeIds} and {removeIds, updates} remain the masking re-record (shape A), unchanged.
+
+Evidence (`date`, each behind light-ok, one process each, 45-second cap):
+- Red on f7f868cf (the new test laid over a `git archive` of f7f868cf's evals/), 15:17:18: UnobservedResumeShapes "Ran 5 tests", "FAILED (failures=1)", test_remove_ids_alone_inside_a_resume, refused there as "native re-record leaves an older message live, or its survivors are not the messages recorded just before it".
+- Mutant on this head (the entry's key changed so it never matches; byte-backed scratch copy, restored, sha256 c6e2d85e9eb42098... == before; the copy identical to the working tree after by `diff -rq`), 15:17:19: UnobservedResumeShapes "FAILED (failures=1)".
+- Green on this head, 15:17:22-15:17:31: test_b26_rewrites 43 OK; test_b25_real_shapes 18 OK; test_gemini_session_replay 3 OK; test_b26_scanner 3 OK; test_gemini_projection 8 OK.
+- Eight-walk survey on this head, one walk per process, 15:17:38-15:20:49: unchanged; w-g14, w-g32, w-g47, w-g31, w-g13 and w-g40 PASS with the same properties; w-g24 refused by name; w-o29 PASS.
+- The 74-walk survey and the athena list are as in the stop above.
+
+## Stop: Wed 21 Oct 2026, head after this lane file (stage 8)
