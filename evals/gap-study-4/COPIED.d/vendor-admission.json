@@ -460,6 +460,16 @@
       "path": "tests/test_stub_model_server.py",
       "status": "new",
       "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. The stub on fakes: the SSE framing under an independent responseLineRE check, the 400 and the held scenario, out-of-order refusals, the inflated count only where named, call_<n> ids, finish reasons, the fake-responses records, the scenario files bound to their generator and each reachable in order; a loopback server test."
+    },
+    {
+      "path": "box/stub_model_probe.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe for the three refused Gemini history-rewrite roads. A measurement road on athena's walk box, never a study take: the locked take-g image by id with --pull=never on a fresh --internal network with no proxy and no sidecar, the study's settings through take_config.write, the study argv through gemini_adapter.argv, exactly three environment changes from the arm G row (the stub's base URL on 127.0.0.1, a fixed dummy key, no HTTPS_PROXY), each native snapshot retained before the next process, teardown by recorded id, records labelled stub-model-probe in a stub-probe-* folder; a dry-run mode; run_take keeps refusing the base URL."
+    },
+    {
+      "path": "tests/test_stub_model_probe.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe on fakes: the three environment changes and every other difference refused, exec_argv's form, run_take still refusing the base URL, the internal network, --pull=never and the lock's image id, the order of snapshot and exec, a held stub stopping the scenario, the A1-fake cross-check, the ast bindings (no exec_argv, run_turn or read_login; no production import), the dry run; walk_launch's probe and fetch-probe entries and run_command byte-unchanged."
     }
   ]
 }
