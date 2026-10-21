@@ -26,6 +26,9 @@ import os
 import sys
 
 PLACEHOLDER = "@OD57@"
+# Round 3 (glitch-26's R3-4): the second key a real gitleaks 8.30 flags as generic-api-key, built by the runner at run
+# time (second_key()), never written here: a record holds this placeholder in its place.
+SECOND_PLACEHOLDER = "@SECOND@"
 HERE = os.path.dirname(os.path.abspath(__file__))
 JSON_PATH = os.path.join(HERE, "cases.json")
 L = PLACEHOLDER                                   # the ruled line, as it sits in a record
@@ -252,8 +255,8 @@ def build() -> list:
                             FOUR[:3] + [g_match(175, L, "/tmp/run-b24c0de5/gars/notes/environment.md")],
                             replays=False), [], [3, 4], "the display entry's absolutePath is another environment.md"))
     add(case("g-grep-dotdot-header", "g", "session",
-             g_grep_records({"pattern": "p", "dir_path": "tmp/x"},
-                            [("../gars/_references/environment.md", [(175, ":", L)])],
+             g_grep_records({"pattern": "p", "dir_path": "gars/x"},
+                            [("../_references/environment.md", [(175, ":", L)])],
                             [g_match(175, L)], replays=False), [], [3, 4], "a header that climbs out with .."))
     add(case("g-grep-path-key", "g", "session",
              g_grep_records({"pattern": "p", "dir_path": GDIR, "path": GDIR}, [DOC_BLOCK], FOUR, replays=False),
@@ -267,8 +270,8 @@ def build() -> list:
                                                          grep_out("p", "in path", [DOC_BLOCK])))], [], [3],
              "a $patch response whose id names no gemini call"))
     add(case("g-grep-second-key", "g", "session",
-             g_grep_records(GARGS, [("environment.md", [(175, ":", L), (176, ":", "api_key = ZZ9PLANTEDSECOND")])],
-                            [g_match(175, L), g_match(176, "api_key = ZZ9PLANTEDSECOND")], replays=False), [],
+             g_grep_records(GARGS, [("environment.md", [(175, ":", L), (176, ":", SECOND_PLACEHOLDER)])],
+                            [g_match(175, L), g_match(176, SECOND_PLACEHOLDER)], replays=False), [],
              [3, 4], "a second key on the record (the probe refuses)"))
     add(case("g-grep-pattern-line", "g", "session",
              g_grep_records({"pattern": L, "dir_path": GDIR}, [DOC_BLOCK], FOUR, replays=False), [], [3, 4],
@@ -391,6 +394,50 @@ def build() -> list:
     add(case("c-grep-other-file", "c", "transcript",
              c_grep({"pattern": "pinned", "path": RUN + "/notes.md", "output_mode": "content"}, L), [], [2],
              "Grep of another file"))
+    # ---------------------------------------------------------------- round 3 (glitch-26's R3-1 to R3-3)
+    # R3-1: every path binding is the one run-tree check (_resolves_to_doc)
+    add(case("c-read-dotdot", "c", "transcript", c_read(RUN + "/gars/../../evil/_references/environment.md"), [],
+             [2], "Read of a path with .. (it names the doc's suffix only)"))
+    add(case("c-read-lookalike-tmp", "c", "transcript", c_read("/tmp/evil/_references/environment.md"), [], [2],
+             "Read of an environment.md outside the run tree"))
+    add(case("c-read-relative-lookalike", "c", "transcript", c_read("x/_references/environment.md"), [], [2],
+             "Read of a relative look-alike"))
+    add(case("c-grep-dotdot", "c", "transcript",
+             c_grep({"pattern": "pinned", "path": RUN + "/gars/../gars/_references/environment.md",
+                     "output_mode": "content", "-n": True}, f"175:{L}"), [], [2], "Grep of a path with .."))
+    add(case("g-read-file-dotdot", "g", "session",
+             [G_HEAD, G_USER, g_msg("msg-g1", [g_call("call-g1", "read_file",
+                                                      {"file_path": RUN + "/gars/../gars/_references/environment.md"},
+                                                      lines3)])], [], [3], "read_file of a path with .."))
+    add(case("g-grep-lookalike-tree", "g", "session",
+             g_grep_records({"pattern": "pinned", "dir_path": "/tmp/evil/gars/_references"}, [DOC_BLOCK],
+                            FOUR[:3] + [g_match(175, L, "/tmp/evil/gars/_references/environment.md")],
+                            replays=False), [], [3, 4],
+             "grep_search over a look-alike tree outside the run tree, its display naming the same"))
+    # R3-2: in labelled mode no label may come from a filename on disk
+    add(case("t2-rgrep-newline-filename", "c", "transcript",
+             c_bash("grep -rn Key gars", f"gars/x\ngars/_references/environment.md:175:{L}\n"), [], [2],
+             "grep -r over a folder: a filename holding a newline forges the doc's label"))
+    add(case("t2-rgrep-newline-filename-gemini", "g", "session",
+             [G_HEAD, G_USER, g_msg("msg-g1", [g_call("call-g1", "run_shell_command",
+                                                      {"command": "grep -rn Key gars", "description": "r"},
+                                                      g_shell_out(f"gars/x\ngars/_references/environment.md:175:{L}"),
+                                                      f"gars/x\ngars/_references/environment.md:175:{L}")])],
+             [], [3], "the same through Gemini's shell"))
+    add(case("t2-glob-operand", "c", "transcript",
+             c_bash("grep -n Key gars/_references/* /dev/null", f"gars/_references/environment.md:175:{L}\n"),
+             [], [2], "a glob operand: the shell, not the command, names the files"))
+    # R3-3: T1 normalises the written path
+    add(case("t1-write-dot-segment", "g", "session",
+             [G_HEAD, G_USER, g_msg("msg-g0", [g_call("call-g0", "write_file",
+                                                      {"file_path": RUN + "/gars/_references/./environment.md",
+                                                       "content": "x"}, "ok")]),
+              g_msg("msg-g1", [g_call("call-g1", "read_file", {"file_path": DOC_ABS}, lines3)])], [], [4],
+             "write_file to _references/./environment.md, then read_file of the doc"))
+    add(case("t1-claude-write-doubleslash", "c", "transcript",
+             [c_use("toolu_W", "Write", {"file_path": RUN + "/gars/_references//environment.md", "content": "x"}),
+              c_result("toolu_W", "ok")] + c_read(DOC_ABS), [], [4],
+             "Write to _references//environment.md, then Read of the doc"))
     add(case("c-model-text", "c", "transcript",
              [{"type": "assistant", "message": {"content": [{"type": "text", "text": L}]}}], [], [1], "model text"))
     return cases

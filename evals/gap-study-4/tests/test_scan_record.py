@@ -1407,9 +1407,7 @@ class TestOD57Chain(TestOD57Ruling):
         doc = "_references/environment.md"
         admitted = [W167, "grep -n pinned " + doc, "cat " + doc, "cat -n /tmp/run-c8021046/gars/" + doc,
                     "cd /tmp/run-c8021046/gars && grep -n Key " + doc + " | sort | uniq | wc -l",
-                    # B24-2 item 5 as revised: a recursive grep of a folder labels every line, and each admitted
-                    # line's own label must resolve to the doc (the line rule, test_od57_agreement's corpus)
-                    "grep -rn Key /tmp/run-c8021046/gars/_references",
+
                     "grep -n Key " + doc + " 2>&1 | head", "grep -n Key " + doc + " | tail -3",
                     "grep 'Key pinned' " + doc, 'grep -n "a\\|b" ' + doc]
         refused = ["cd x && sed -n 175p " + doc, "grep -n pinned _references/other.md", "echo $(cat " + doc + ")",
@@ -1417,7 +1415,8 @@ class TestOD57Chain(TestOD57Ruling):
                    "sh -c 'cat " + doc + "'", "bash -c 'grep -n Key " + doc + "'", "cat " + doc + " | sh -c 'cat y'",
                    'grep "unclosed ' + doc, "echo hi && grep -n Key " + doc, "cat <(" + doc + ")",
                    "grep -n Key " + doc + " &", "(cat " + doc + ")", "cd && grep -n Key " + doc,
-                   "cat " + doc + "x", "cat " + doc + ".bak", "cat my" + doc,
+                   # B24 R3-2 (review of 7fcba34, MINOR-2): a recursive grep's labels come from filenames on disk
+                   "grep -rn Key /tmp/run-c8021046/gars/_references", "cat " + doc + "x", "cat " + doc + ".bak", "cat my" + doc,
                    "", "&& cat " + doc, "xargs cat " + doc, None, 3,
                    # the allow-list (review of 41de680): one leading cd only, and no first word off the list
                    "cd /run/gars && cd gars && grep -n Key " + doc, "grep -n Key " + doc + "; echo done",

@@ -134,3 +134,14 @@ What the source says (bundle/chunk-NR7L3FXV.js):
 5. The two walk_builders failures and the slow walk_launch witness test are the same on the base on this Mac; athena's battery is the judge.
 6. The `find /` deviation of round 1 goes to Javier as a disclosure (glitch-26's ruling).
 - Stop for review.
+
+## Round 3, stage 1: red (Wed 21 Oct 2026, 06:28 EDT); review CHANGES (0 MAJOR, 4 MINOR), rulings R3-1 to R3-6
+
+- Read /Users/javrodher/aegis-builds/REVIEW-vendor-b24-7fcba34.md in full.
+- Red tests added:
+  - Corpus (now 69 cases): c-read-dotdot, c-read-lookalike-tmp, c-read-relative-lookalike, c-grep-dotdot, g-read-file-dotdot, g-grep-lookalike-tree (R3-1); t2-rgrep-newline-filename (Claude and Gemini), t2-glob-operand (R3-2); t1-write-dot-segment, t1-claude-write-doubleslash (R3-3). Each has a RED_ALONE guard. g-grep-dotdot-header now joins `gars/x` + `../_references/environment.md`, so the one `..` refusal alone holds it.
+  - R3-4: the second key is the placeholder @SECOND@, filled at run time by `second_key()` (`api_key = ` and 32 letters and digits from a sha256 of a fixed phrase; never a real key). New tests: test_the_second_key_is_a_real_finding and test_the_corpus_under_real_gitleaks (rules_scanner.scan_argv, its own empty ignore file; a missing binary is a named failure). The verdict is now per line (a real gitleaks reports one finding per match).
+  - test_scan_record: `grep -rn Key /tmp/run-c8021046/gars/_references` back in test_the_bash_shapes' refused list.
+- Red on 7fcba34e's code, per case (fake scanner): "cases 69: as expected 58, red 11", exactly the 11 new witnesses, each admitted at that head.
+- test_od57_agreement on that code: "Ran 9 tests", "FAILED (failures=35, errors=2)": the 11 cases under both scanners, and the RED_ALONE edits that name round 3's code. With a real gitleaks 8.30.0, g-grep-second-key gets its verdict (refused [3, 4]); every older case gets its verdict too.
+- test_scan_record on that code: "Ran 203 tests", "FAILED (failures=1)", the refused row.

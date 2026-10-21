@@ -14,10 +14,14 @@ is not hollow, and no other guard holds it).
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import inspect
 import json
 import os
+import re
+import shutil
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -38,7 +42,16 @@ import gemini_adapter  # noqa: E402
 import codex_adapter  # noqa: E402
 
 ENV_DOC = os.path.join(os.path.dirname(STUDY), "..", "gars", "_references", "environment.md")
-SECOND = "ZZ9PLANTEDSECOND"
+
+def second_key() -> str:
+    """Round 3 (glitch-26's R3-4): a second key that a real gitleaks 8.30 flags as generic-api-key, built here at run
+    time from a fixed phrase (never a real key; test_the_second_key_is_a_real_finding proves the flag)."""
+    v = re.sub("[^A-Za-z0-9]", "", base64.b64encode(hashlib.sha256(b"vendor-b24 planted second key, round 3")
+                                                     .digest()).decode())[:32]
+    return "api_key = " + v
+
+
+SECOND = second_key()
 SECRETS = [("token", "FAKEVALUE-0123456789abcdef-PLANTED"), ("key", "FAKEKEY-fedcba9876543210-PLANTED-TOO")]
 RULE = "generic-api-key"
 
@@ -50,7 +63,7 @@ def _line() -> str:
 
 def _fill(node, text):
     if isinstance(node, str):
-        return node.replace(od57_corpus.PLACEHOLDER, text)
+        return node.replace(od57_corpus.PLACEHOLDER, text).replace(od57_corpus.SECOND_PLACEHOLDER, SECOND)
     if isinstance(node, list):
         return [_fill(v, text) for v in node]
     if isinstance(node, dict):
@@ -76,12 +89,45 @@ def shapes(family):
     return {"g": gemini_adapter.READ_SHAPES, "o": codex_adapter.READ_SHAPES, "c": ()}[family]
 
 
-def run_case(c, text, tmp):
+def real_gitleaks():
+    """The pinned gitleaks where it is (athena), else GAP4_GITLEAKS, else gitleaks on PATH; None names the gap."""
+    from box import rules_scanner as rs
+    for b in (rs.GITLEAKS_PATH, os.environ.get("GAP4_GITLEAKS"), shutil.which("gitleaks")):
+        if b and os.path.isfile(b) and os.access(b, os.X_OK):
+            return b
+    return None
+
+
+class RealScanner:
+    """The rules scanner the drive builds, run directly (rules_scanner.scan_argv, its own empty ignore file): the door
+    runs this corpus with a real gitleaks, so the twin must give the same verdicts with one too."""
+
+    def __init__(self, binary, work):
+        self.binary, self.work, self.n = binary, work, 0
+        self.ignore = os.path.join(work, "no-rulings.gitleaksignore")
+        open(self.ignore, "wb").close()
+
+    def __call__(self, paths):
+        from box import rules_scanner as rs
+        out = []
+        for p in paths:
+            self.n += 1
+            rep = os.path.join(self.work, f"report-{self.n}.json")
+            subprocess.run(rs.scan_argv(self.binary, p, rep, self.ignore), cwd=self.work, check=True,
+                           capture_output=True, timeout=120)
+            with open(rep) as fh:
+                out += [{"path": p, "line": f["StartLine"], "rule": f["RuleID"]} for f in json.load(fh) or []]
+        return out
+
+
+def run_case(c, text, tmp, scanner=None):
     p = os.path.join(tmp, f"{c['name']}.jsonl")
     with open(p, "wb") as fh:
         fh.write(b"".join(json.dumps(r, ensure_ascii=False).encode() + b"\n" for r in _fill(c["records"], text)))
-    r = sr.scan([(p, c["kind"])], SECRETS, rules_scanner=Scanner(text[:40]), read_shapes=shapes(c["family"]))
-    return sorted(x["line"] for x in r["ruled"]), sorted(x["line"] for x in r["refused"])
+    r = sr.scan([(p, c["kind"])], SECRETS, rules_scanner=scanner or Scanner(text[:40]),
+                read_shapes=shapes(c["family"]))
+    # the verdict is per line: a real gitleaks reports one finding per match, so a line can carry two
+    return sorted({x["line"] for x in r["ruled"]}), sorted({x["line"] for x in r["refused"]})
 
 
 def _mutant(fn_name, *edits):
@@ -111,8 +157,8 @@ RED_ALONE = {
     "g-grep-forged-block": ("_grep_line", ("if not any(_attests(m, text) for m in docs):",
                                            "if False:")),
     "g-grep-wrong-number": ("_grep_ruled_number", ("return 175", "return 176")),
-    "g-grep-display-other-path": ("_abs_doc", ("return (", "return True or (")),
-    "g-grep-dotdot-header": ("_grep_names_doc", ('if ".." in joined.split("/"):', "if False:")),
+    "g-grep-display-other-path": ("_abs_doc", ("return isinstance(p, str)", "return True or isinstance(p, str)")),
+    "g-grep-dotdot-header": ("_resolves_to_doc", ('if ".." in p.split("/"):', "if False:")),
     "g-grep-pattern-line": ("ruled_text", ("        return None\n    return found", "        pass\n    return found")),
     "g-grep-path-key": ("_grep_args_ok", ('_GREP_ARGS', '_GREP_ARGS + ("path",)')),
     "t1-gemini-write-then-read": ("ruled_text", ("if writes is not None and writes <= line:", "if False:")),
@@ -131,10 +177,25 @@ RED_ALONE = {
     "t2-then-cat-other": ("_filter_ok", ("return not rest", "return True")),
     "t2-filter-with-file": ("_filter_ok", ("return not rest", "return True")),
     "t2-codex-c-flag": None,          # a shapes datum (the stream's flags), not a function: test_the_c_flag_is_data
-    "c-read-other": ("_claude_tool", ('if name == "Read":\n        return "read" if _names_doc(',
-                                      'if name == "Read":\n        return "read" if True or _names_doc(')),
-    "c-grep-dir": ("_claude_tool", ('return "grep" if _names_doc(', 'return "grep" if True or _names_doc(')),
-    "c-grep-other-file": ("_claude_tool", ('return "grep" if _names_doc(', 'return "grep" if True or _names_doc(')),
+    "c-read-other": ("_claude_tool", ('return "read" if _resolves_to_doc(', 'return "read" if True or _resolves_to_doc(')),
+    "c-grep-dir": ("_claude_tool", ('return "grep" if _resolves_to_doc(', 'return "grep" if True or _resolves_to_doc(')),
+    "c-grep-other-file": ("_claude_tool", ('return "grep" if _resolves_to_doc(',
+                                           'return "grep" if True or _resolves_to_doc(')),
+    # round 3 (R3-1 to R3-3)
+    "c-read-dotdot": ("_claude_tool", ('return "read" if _resolves_to_doc(', 'return "read" if True or _resolves_to_doc(')),
+    "c-read-lookalike-tmp": ("_claude_tool", ('return "read" if _resolves_to_doc(',
+                                              'return "read" if True or _resolves_to_doc(')),
+    "c-read-relative-lookalike": ("_claude_tool", ('return "read" if _resolves_to_doc(',
+                                                   'return "read" if True or _resolves_to_doc(')),
+    "c-grep-dotdot": ("_claude_tool", ('return "grep" if _resolves_to_doc(', 'return "grep" if True or _resolves_to_doc(')),
+    "g-read-file-dotdot": ("_reads_doc", ("return dict(tool) if _resolves_to_doc(arg) else None", "return dict(tool)")),
+    "g-grep-lookalike-tree": ("_resolves_to_doc", ("return _DOC_ABS.fullmatch(n) is not None",
+                                                   "return n.endswith('/' + _RULED_GIT_PATH)")),
+    "t2-rgrep-newline-filename": ("_grep_spec", ("if labelled and recursive:", "if False:")),
+    "t2-rgrep-newline-filename-gemini": ("_grep_spec", ("if labelled and recursive:", "if False:")),
+    "t2-glob-operand": ("_grep_spec", ('if labelled and any(c in op for op in ops for c in "*?["):', "if False:")),
+    "t1-write-dot-segment": ("_may_name_doc", ("n = posixpath.normpath(p)", "n = p")),
+    "t1-claude-write-doubleslash": ("_may_name_doc", ("n = posixpath.normpath(p)", "n = p")),
 }
 
 
@@ -159,13 +220,34 @@ class Corpus(unittest.TestCase):
         for c in self.cases:
             with self.subTest(c["name"]):
                 flagged = [i for i, r in enumerate(c["records"], 1)
-                           if od57_corpus.PLACEHOLDER in json.dumps(r, ensure_ascii=False) or SECOND in json.dumps(r)]
+                           if od57_corpus.PLACEHOLDER in json.dumps(r, ensure_ascii=False)
+                           or od57_corpus.SECOND_PLACEHOLDER in json.dumps(r)]
                 self.assertEqual(sorted(c["admit"] + c["refuse"]), flagged)
 
     def test_every_case_gets_its_verdict(self):
         for c in self.cases:
             with self.subTest(c["name"]):
                 self.assertEqual(run_case(c, self.text, self.tmp.name), (c["admit"], c["refuse"]), c["why"])
+
+    def test_the_corpus_under_real_gitleaks(self):
+        """R3-4: every case gets its verdict with a real gitleaks too (a missing binary is a named failure)."""
+        binary = real_gitleaks()
+        self.assertIsNotNone(binary, "no gitleaks binary: set GAP4_GITLEAKS (named failure, never a skip)")
+        for c in self.cases:
+            with self.subTest(c["name"]):
+                work = tempfile.mkdtemp(dir=self.tmp.name)
+                self.assertEqual(run_case(c, self.text, self.tmp.name, RealScanner(binary, work)),
+                                 (c["admit"], c["refuse"]), c["why"])
+
+    def test_the_second_key_is_a_real_finding(self):
+        """R3-4: the planted second key is a finding of a real gitleaks's generic-api-key rule, alone on a line."""
+        binary = real_gitleaks()
+        self.assertIsNotNone(binary, "no gitleaks binary: set GAP4_GITLEAKS (named failure, never a skip)")
+        work = tempfile.mkdtemp(dir=self.tmp.name)
+        p = os.path.join(work, "second.jsonl")
+        with open(p, "w") as fh:
+            fh.write(json.dumps({"output": f"L176: {SECOND}"}) + "\n")
+        self.assertEqual([(f["line"], f["rule"]) for f in RealScanner(binary, work)([p])], [(1, RULE)])
 
     def test_the_twin_runs_the_shared_rule(self):
         from box import od57_rule, od57_shapes
