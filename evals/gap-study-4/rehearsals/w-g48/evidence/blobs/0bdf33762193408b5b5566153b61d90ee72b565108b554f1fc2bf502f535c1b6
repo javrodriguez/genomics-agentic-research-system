@@ -1,0 +1,39 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform principal component analysis (PCA) of the RNA-seq samples using gene-level counts to examine sample clustering and assess separation by experimental condition. This analysis evaluates overall variance across samples, computes principal component coordinates, and generates a PCA scatter plot colored by condition.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. Environment: Execute using Python in the `gars-bio` conda environment (`~/install/miniconda_clean/envs/gars-bio/bin/python`).
+2. Data Loading & Alignment: Load gene count matrix (`counts_gene`: `salmon.merged.gene_counts_length_scaled.tsv`) and sample metadata (`design`: `rnaseq_bulk_design.csv`). Extract sample count columns corresponding to sample IDs in the design table, ensuring sample alignment.
+3. Filtering & Transformation: Filter out unexpressed genes (genes with zero total counts across all samples), perform log2 transformation with a pseudo-count (`log2(counts + 1)`), and standardize features across samples (mean centering and unit variance scaling).
+4. Dimensionality Reduction: Perform Principal Component Analysis (PCA) via `scikit-learn` (`sklearn.decomposition.PCA`) to compute principal component coordinates (PC1, PC2) and percentage of variance explained for each component.
+5. Tabular Output: Merge PC coordinates with sample design annotations (`sample_id`, `condition`, `group`, `replicate`) and write the sample coordinates table to `results/pca_coordinates.csv`.
+6. Visualization: Generate a scatter plot of PC1 versus PC2 colored by `condition` using `matplotlib`/`seaborn`. Include axis labels displaying the percentage of variance explained by each PC and save the figure to `results/pca_plot.png`.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_coordinates.csv | table | Principal component coordinates and sample metadata |
+| results/pca_plot.png | figure | Scatter plot of PC1 vs PC2 colored by condition |
+
+## Execution
+Runs: batch
+Estimated wall time: < 5 minutes. Expected output size: < 5 MB.
