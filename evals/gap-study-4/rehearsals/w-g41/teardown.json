@@ -1,0 +1,46 @@
+{
+ "problems": [],
+ "quiescence_survivors": [],
+ "teardown": {
+  "ok": true,
+  "problems": [],
+  "steps": [
+   {
+    "argv_ok": true,
+    "returncode": 0,
+    "stdout": null,
+    "step": "take-rm"
+   },
+   {
+    "argv_ok": true,
+    "returncode": 0,
+    "stdout": "{\"ok\": true, \"command\": \"finish\", \"label\": null, \"taken_at\": null, \"rearmed_at\": null, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+    "step": "sidecar-finish"
+   },
+   {
+    "argv_ok": true,
+    "returncode": 0,
+    "stdout": null,
+    "step": "proxy-logs"
+   },
+   {
+    "argv_ok": true,
+    "returncode": 0,
+    "stdout": null,
+    "step": "sidecar-rm"
+   },
+   {
+    "argv_ok": true,
+    "returncode": 0,
+    "stdout": null,
+    "step": "proxy-rm"
+   },
+   {
+    "argv_ok": true,
+    "returncode": 0,
+    "stdout": null,
+    "step": "network-rm"
+   }
+  ]
+ }
+}
