@@ -140,3 +140,7 @@ Open for glitch-26:
 3. world_state with full: false (a patch, source-attested) is admitted by type but unseen in the 38 walks; thread_settings_applied's Managed or External permission profile and a Granular approval policy refuse (arm O runs only bypass).
 4. Codex floor count 25 against the review's 24 (above).
 5. The M2 fold (design above): merge, never cherry-pick; the second merge resolves register.json by appending both entries.
+
+## Correction, Wed 21 Oct 2026 12:51 EDT (`date`)
+
+Stage 4's "13 such updates across w-g13, w-g14 and w-g31" was read from a listing cut at ten lines. Counted in full over every Gemini snapshot file: 14 `$patch` updates of the context turn's id (w-g13 3, w-g14 5, w-g31 3, w-g32 2, w-g47 1), all 14 one text part with the pinned opening and closing.
