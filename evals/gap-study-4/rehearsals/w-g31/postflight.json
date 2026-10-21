@@ -1,0 +1,28 @@
+{
+ "checks": [
+  {
+   "detail": "no credential file",
+   "id": "no-credential-file",
+   "ok": true
+  }
+ ],
+ "ok": true,
+ "recorded": {
+  "admitted_credential": [],
+  "credential_files": [],
+  "listing": [
+   ".gemini",
+   ".gemini/history",
+   ".gemini/history/run-cfcdb600",
+   ".gemini/history/run-cfcdb600/.project_root",
+   ".gemini/projects.json",
+   ".gemini/settings.json",
+   ".gemini/tmp",
+   ".gemini/tmp/run-cfcdb600",
+   ".gemini/tmp/run-cfcdb600/.project_root",
+   ".gemini/tmp/run-cfcdb600/chats",
+   ".gemini/tmp/run-cfcdb600/chats/session-2026-10-21T05-55-d2b09610.jsonl",
+   ".gemini/tmp/run-cfcdb600/logs"
+  ]
+ }
+}
