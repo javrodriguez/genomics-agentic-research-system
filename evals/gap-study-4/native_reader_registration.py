@@ -175,12 +175,17 @@ def codex_reader(raw: bytes, ordinal: int) -> dict:
     return facts[ordinal - 1]
 
 
-def codex_join_session(raw: bytes, streams: list, exit_codes: list) -> dict:
+def codex_join_session(raw: bytes, streams: list, exit_codes: list, *, sent: list, model: str) -> dict:
     """THE Codex cross-check, shared by acceptance and production (drive.codex_cross_check): PASS only when the rollout
-    holds exactly one turn per exec stream, each joins its stream (codex_native.join) and each is complete; otherwise
-    DISAGREE with the reason."""
-    if not streams or len(streams) != len(exit_codes):
-        return {"status": "DISAGREE", "why": "no exec streams, or not one exit code per stream"}
+    holds exactly one turn per exec stream, each turn's recorded prompt (its UserMessage) is the line the driver sent
+    that turn (`sent`, one per stream) and its requested model (turn_context.model) is the take's requested `model`
+    (lane vendor-b25, Codex review M1: the exec stream carries neither, so the launch side is the only witness), each
+    turn joins its stream (codex_native.join) and each is complete; otherwise DISAGREE with the reason. cwd is read but
+    not compared: vendor_provenance.cross_check, the contract, binds session_id, sent, output and requested_model only."""
+    if not streams or len(streams) != len(exit_codes) or len(sent) != len(streams):
+        return {"status": "DISAGREE", "why": "no exec streams, or not one exit code and one sent line per stream"}
+    if not (isinstance(model, str) and model):
+        return {"status": "DISAGREE", "why": "no requested model to compare the rollout's against"}
     try:
         got = cn.read_rollout(raw)
     except cn.ReaderRefused as e:
@@ -190,6 +195,10 @@ def codex_join_session(raw: bytes, streams: list, exit_codes: list) -> dict:
         return {"status": "DISAGREE", "why": f"{len(turns)} native turns for {len(streams)} streams"}
     joined = []
     for n, (turn, text, code) in enumerate(zip(turns, streams, exit_codes), 1):
+        if turn["sent"] != sent[n - 1]:
+            return {"status": "DISAGREE", "why": f"interaction {n}: the rollout's sent prompt is not the line sent"}
+        if turn["requested_model"] != model:
+            return {"status": "DISAGREE", "why": f"interaction {n}: the rollout's requested model is not the take's"}
         try:
             j = cn.join(turn, text, exit_code=code, session_id=got["session_id"])
         except cn.JoinRefused as e:
@@ -208,7 +217,8 @@ def codex_check(native: bytes, streams: list, ledger: dict) -> dict:
     """The Codex acceptance check: the shared join, and (Codex road review F3) the driver ledger's served_model bound to
     each turn's own stream: unobserved with no value when it holds no reroute, stream-reroute with its `to` model when
     it does. A served model claimed in the ledger and not observed in its stream refuses."""
-    got = codex_join_session(native, streams, [t.get("exit") for t in ledger["turns"]])
+    got = codex_join_session(native, streams, [t.get("exit") for t in ledger["turns"]],
+                             sent=[t.get("sent") for t in ledger["turns"]], model=ledger.get("model_requested"))
     if got["status"] != "PASS":
         return got
     want = [{"value": None, "source": "unobserved"} if s is None else {"value": s, "source": "stream-reroute"}

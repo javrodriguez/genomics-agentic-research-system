@@ -154,7 +154,8 @@ def regrade_doc(walk: str, study: Path = HERE, *, readers=None, grade=None) -> d
         cross = (drive.gemini_cross_check(base, refs, len(ledger.get("streams") or []), readers=readers)
                  if harness == "gemini" else
                  drive.codex_cross_check(base, refs, [t.get("exit") for t in ledger.get("turns") or []],
-                                         readers=readers))
+                                         sent=[t.get("sent") for t in ledger.get("turns") or []],
+                                         model=ledger.get("model_requested"), readers=readers))
         if cross["status"] == "pending":
             raise RegradeRefused(f"no registered reader: {cross['why']}")
         doc = {"schema": 1, "walk": walk, "walk_commit": walk_commit(root, walk_rel), "supersedes": drive.WALK_GRADE,

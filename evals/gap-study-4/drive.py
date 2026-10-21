@@ -2614,7 +2614,8 @@ class TakeDriver:
                                          take.native_snapshots) if take.native_hook else None)
         joined = history is not None and history["status"] == "joined"
         cross = (gemini_cross_check(take.folder, take.native_snapshots, len(turns)) if harness == "gemini" and joined
-                 else codex_cross_check(take.folder, take.native_snapshots, [t.exit_code for t in turns])
+                 else codex_cross_check(take.folder, take.native_snapshots, [t.exit_code for t in turns],
+                                        sent=[r.get("sent") for r in rows], model=row.get("model"))
                  if harness == "codex" and joined else None)
         status = vendor_cross_check_status(harness, history, cross) if vendor else None
         if vendor:
@@ -3200,11 +3201,12 @@ def gemini_cross_check(take_folder, refs, n_turns: int, *, readers=None) -> dict
     return {"status": "agreed", "why": None}
 
 
-def codex_cross_check(take_folder, refs, exit_codes, *, readers=None) -> dict:
+def codex_cross_check(take_folder, refs, exit_codes, *, sent, model, readers=None) -> dict:
     """Codex slice 3: D8's cross-check for a Codex take, through the ONE join the acceptance check also runs
     (native_reader_registration.codex_join_session): each turn's exec stream joined to that turn of the take's last
-    retained rollout. `pending` without a registered Codex reader; `refused` on any disagreement, an extra or missing
-    turn, or an incomplete turn; `agreed` only when every turn joins complete."""
+    retained rollout, its recorded prompt to the line sent (`sent`, the ledger rows') and its requested model to the
+    take's (`model`; lane vendor-b25, Codex review M1). `pending` without a registered Codex reader; `refused` on any
+    disagreement, an extra or missing turn, or an incomplete turn; `agreed` only when every turn joins complete."""
     readers = _registration.production_readers() if readers is None else readers
     if readers.get("codex") is None:
         return {"status": "pending", "why": "no registered Codex native reader (no committed acceptance record)"}
@@ -3214,7 +3216,7 @@ def codex_cross_check(take_folder, refs, exit_codes, *, readers=None) -> dict:
         streams = [(folder / f"turn-{n}.jsonl").read_text(encoding="utf-8") for n in range(1, len(exit_codes) + 1)]
     except (IndexError, OSError, UnicodeError, _vendor_provenance.ProvenanceRefused) as e:
         return {"status": "refused", "why": f"{type(e).__name__}: {e}"}
-    got = _registration.codex_join_session(raw, streams, list(exit_codes))
+    got = _registration.codex_join_session(raw, streams, list(exit_codes), sent=list(sent), model=model)
     if got["status"] != "PASS":
         return {"status": "refused", "why": got["why"]}
     return {"status": "agreed", "why": None}

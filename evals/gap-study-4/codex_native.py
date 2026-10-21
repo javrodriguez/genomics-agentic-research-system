@@ -41,9 +41,22 @@ Rollout (native JSONL), the initial supported subset:
 Known false-refusal risks, for the first recorded pair to confirm (review nit N11; never admitted unseen): a
 whitespace-only Reasoning summary (above); a turn_aborted whose turn_id is null (TurnAbortedEvent.turn_id is
 Option<String>); a FileChange carrying auto_approved, a non-UTF-8 path (the stream's lossy string then differs from
-the key) or two hunks naming one file (lane vendor-b23); and the line types the paginated policy persists but this subset refuses, world_state,
+the key) or two hunks naming one file (lane vendor-b23); and the line types the paginated policy persists but this subset refuses,
 retained_context, security_risk_score, compacted, inter_agent_communication, inter_agent_communication_metadata and
 realtime_item: if a plain exec session writes any of them, every rollout of it refuses.
+
+Lane vendor-b25 (glitch-26's ruling 1, Wed 21 Oct 2026; the first recorded pair: all 38 committed arm-O walks write
+both): two records are admitted on closed shapes and carry NO fact into the projection.
+  - world_state, a RolloutItem line (history/src/rollout_payload.rs:57-59, persisted by policy.rs:45): its payload is
+    WorldStateItem, exactly {full: bool, state: object} (protocol/src/protocol.rs:3302-3307; state is a
+    Map<String, Value>, so its keys are open by the pinned type: the module that fills it,
+    core/src/context/world_state/, is named in the audit's tree listing but not retained, and nothing here reads it).
+    Admitted only inside an open turn, where every recorded one sits (turn 1, before its turn_context).
+  - event_msg thread_settings_applied (protocol.rs:1429, persisted by policy.rs:139): ThreadSettingsAppliedEvent
+    {thread_id, thread_settings} (protocol.rs:2228-2236), thread_id required here and equal to session_meta's id
+    (it is Option only for older histories); thread_settings is ThreadSettingsSnapshot (protocol.rs:2238-2267), its
+    keys exactly TSA_REQUIRED plus any of TSA_OPTIONAL, each value on the type _thread_settings checks (cited there).
+    Admitted only between turns, where every recorded one sits (two per resume).
 
 Command output in the join (review finding 3): the writer truncates aggregated_output only when it exceeds
 PERSISTED_COMMAND_OUTPUT_MAX_BYTES (64 KiB, policy.rs:16-17, 250-258), through codex_utils_string::
@@ -71,10 +84,24 @@ PINNED_CLI = "0.162.1"
 ROLLOUT_TYPES = ("session_meta", "response_item", "inter_agent_communication", "inter_agent_communication_metadata",
                  "compacted", "turn_context", "token_usage_record", "world_state", "retained_context",
                  "security_risk_score", "event_msg", "realtime_item")
-SUPPORTED_ROLLOUT_TYPES = ("session_meta", "turn_context", "event_msg", "response_item", "token_usage_record")
+SUPPORTED_ROLLOUT_TYPES = ("session_meta", "turn_context", "event_msg", "response_item", "token_usage_record",
+                           "world_state")
 PAGINATED_EVENTS = ("item_completed", "token_count", "thread_goal_updated", "thread_rolled_back", "turn_aborted",
                     "task_started", "task_complete", "thread_settings_applied")
-SUPPORTED_EVENTS = ("item_completed", "token_count", "turn_aborted", "task_started", "task_complete")
+SUPPORTED_EVENTS = ("item_completed", "token_count", "turn_aborted", "task_started", "task_complete",
+                    "thread_settings_applied")
+# Lane vendor-b25: ThreadSettingsSnapshot's keys (protocol.rs:2238-2267). Required: the fields with no skip; optional:
+# the ones serialized only when Some (skip_serializing_if = "Option::is_none"). disabled_plugin_ids has
+# #[serde(default)] and no skip, so it is always written.
+TSA_REQUIRED = ("model", "model_provider_id", "approval_policy", "approvals_reviewer", "permission_profile", "cwd",
+                "collaboration_mode", "disabled_plugin_ids")
+TSA_OPTIONAL = ("service_tier", "active_permission_profile", "runtime_workspace_roots", "reasoning_effort",
+                "reasoning_summary", "personality")
+APPROVAL_POLICIES = ("untrusted", "on-request", "never")      # AskForApproval, protocol.rs:1000-1025 (kebab-case; Granular refuses)
+APPROVALS_REVIEWERS = ("user", "auto_review")                 # config_types.rs:175-190 (the serialized names)
+REASONING_SUMMARIES = ("auto", "concise", "detailed", "none")  # config_types.rs:60-72 (lowercase)
+PERSONALITIES = ("none", "friendly", "pragmatic")              # config_types.rs:330-336 (lowercase)
+MODE_KINDS = ("plan", "default")                               # ModeKind, config_types.rs:673-684 (snake_case)
 LEGACY_ONLY_EVENTS = ("user_message", "agent_message", "agent_reasoning", "agent_reasoning_raw_content",
                       "entered_review_mode", "exited_review_mode", "patch_apply_end", "context_compacted",
                       "mcp_tool_call_end", "web_search_end", "image_generation_end", "sub_agent_activity")
@@ -239,6 +266,85 @@ def _file_change(item: dict) -> dict:
     return {"kind": "file_change", "status": item["status"], "changes": sorted(out, key=lambda c: c["path"])}
 
 
+def _world_state(pay: dict, n: int, current) -> None:
+    """Lane vendor-b25: a WorldStateItem on its pinned shape inside an open turn (module docstring); nothing carried."""
+    if current is None:
+        raise ReaderRefused(f"line {n}: a world_state outside an open turn")
+    if set(pay) != {"full", "state"} or not isinstance(pay["full"], bool) or not isinstance(pay["state"], dict):
+        raise ReaderRefused(f"line {n}: a world_state payload is exactly {{full: bool, state: object}} "
+                            f"(protocol.rs:3302-3307)")
+
+
+def _absolute(value) -> bool:
+    return isinstance(value, str) and value.startswith("/")
+
+
+def _thread_settings(s, n: int) -> None:
+    """ThreadSettingsSnapshot (protocol.rs:2238-2267), each value on its pinned type; ReaderRefused otherwise."""
+    def bad(what):
+        raise ReaderRefused(f"line {n}: thread_settings {what}")
+    if not isinstance(s, dict) or not set(TSA_REQUIRED) <= set(s) <= set(TSA_REQUIRED + TSA_OPTIONAL):
+        bad(f"keys are not exactly {list(TSA_REQUIRED)} plus any of {list(TSA_OPTIONAL)}")
+    if not (isinstance(s["model"], str) and s["model"]) or not (isinstance(s["model_provider_id"], str)
+                                                              and s["model_provider_id"]):
+        bad("model and model_provider_id are non-empty strings")
+    if "service_tier" in s and not isinstance(s["service_tier"], str):
+        bad("service_tier is a string")
+    if s["approval_policy"] not in APPROVAL_POLICIES:
+        bad(f"approval_policy is not one of {list(APPROVAL_POLICIES)} (a Granular policy is unread here)")
+    if s["approvals_reviewer"] not in APPROVALS_REVIEWERS:
+        bad(f"approvals_reviewer is not one of {list(APPROVALS_REVIEWERS)}")
+    # PermissionProfile (models.rs:418-435) is internally tagged by "type"; arm O runs only bypass (codex_adapter
+    # MODE_FLAGS), which is Disabled, a unit variant: {"type": "disabled"}. Managed and External carry nested
+    # file-system and network policies this lane did not read, so they refuse.
+    if s["permission_profile"] != {"type": "disabled"}:
+        bad('permission_profile is not {"type": "disabled"} (managed and external are unread here)')
+    ap = s.get("active_permission_profile")
+    if "active_permission_profile" in s and not (                       # models.rs:444-455
+            isinstance(ap, dict) and "id" in ap and set(ap) <= {"id", "extends"}
+            and all(isinstance(v, str) for v in ap.values())):
+        bad("active_permission_profile is {id: string, extends?: string}")
+    if not _absolute(s["cwd"]):
+        bad("cwd is an absolute path")                                   # AbsolutePathBuf
+    if "runtime_workspace_roots" in s and not (isinstance(s["runtime_workspace_roots"], list)
+                                               and all(_absolute(r) for r in s["runtime_workspace_roots"])):
+        bad("runtime_workspace_roots is a list of absolute paths")
+    # ReasoningEffort serializes as its wire string, any spelling through Custom(String) (openai_models.rs:60-73,
+    # 122-128, 144-156; blob 45654aa8, the pin's tree listing, fetched for this lane and hash-checked).
+    if "reasoning_effort" in s and not (isinstance(s["reasoning_effort"], str) and s["reasoning_effort"]):
+        bad("reasoning_effort is a non-empty string")
+    if "reasoning_summary" in s and s["reasoning_summary"] not in REASONING_SUMMARIES:
+        bad(f"reasoning_summary is not one of {list(REASONING_SUMMARIES)}")
+    if "personality" in s and s["personality"] not in PERSONALITIES:
+        bad(f"personality is not one of {list(PERSONALITIES)}")
+    cm = s["collaboration_mode"]                                         # config_types.rs:705-711, 778-784
+    if not (isinstance(cm, dict) and set(cm) == {"mode", "settings"} and cm["mode"] in MODE_KINDS
+            and isinstance(cm["settings"], dict)
+            and set(cm["settings"]) == {"model", "reasoning_effort", "developer_instructions"}
+            and isinstance(cm["settings"]["model"], str) and cm["settings"]["model"]
+            and (cm["settings"]["reasoning_effort"] is None
+                 or (isinstance(cm["settings"]["reasoning_effort"], str) and cm["settings"]["reasoning_effort"]))
+            and (cm["settings"]["developer_instructions"] is None
+                 or isinstance(cm["settings"]["developer_instructions"], str))):
+        bad(f"collaboration_mode is not {{mode: one of {list(MODE_KINDS)}, settings: {{model, reasoning_effort, "
+            f"developer_instructions}}}}")
+    if not (isinstance(s["disabled_plugin_ids"], list) and all(isinstance(i, str) for i in s["disabled_plugin_ids"])):
+        bad("disabled_plugin_ids is a list of strings")
+
+
+def _thread_settings_applied(pay: dict, n: int, current, session_id: str) -> None:
+    """Lane vendor-b25: a ThreadSettingsAppliedEvent on its pinned shape between turns, naming this thread
+    (module docstring); nothing carried."""
+    if current is not None:
+        raise ReaderRefused(f"line {n}: a thread_settings_applied inside an open turn")
+    if set(pay) != {"type", "thread_id", "thread_settings"}:
+        raise ReaderRefused(f"line {n}: a thread_settings_applied payload is exactly {{type, thread_id, "
+                            f"thread_settings}} (protocol.rs:2228-2236)")
+    if pay["thread_id"] != session_id:
+        raise ReaderRefused(f"line {n}: a thread_settings_applied names another thread")
+    _thread_settings(pay["thread_settings"], n)
+
+
 def read_rollout(raw) -> dict:
     """{session_id, version, turns: [{turn_id, terminal, sent, requested_model, cwd, output, error}]}, or refused."""
     records = _json_lines(raw, ReaderRefused)
@@ -284,6 +390,9 @@ def read_rollout(raw) -> dict:
             continue
         if t == "token_usage_record":
             continue
+        if t == "world_state":
+            _world_state(pay, n, current)
+            continue
         if t == "turn_context":
             if current is None or pay.get("turn_id", current["turn_id"]) != current["turn_id"]:
                 raise ReaderRefused(f"line {n}: a turn_context outside its open turn")
@@ -300,6 +409,9 @@ def read_rollout(raw) -> dict:
             raise ReaderRefused(f"line {n}: event {kind!r} is not one the pinned paginated policy persists")
         if kind not in SUPPORTED_EVENTS:
             raise ReaderRefused(f"line {n}: event {kind!r} is unsupported in this subset")
+        if kind == "thread_settings_applied":
+            _thread_settings_applied(pay, n, current, session_id)
+            continue
         if kind == "task_started":
             if current is not None:
                 raise ReaderRefused(f"line {n}: a turn opens before the previous one closes")
