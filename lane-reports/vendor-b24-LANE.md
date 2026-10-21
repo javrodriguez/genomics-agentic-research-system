@@ -57,3 +57,34 @@ What the source says (bundle/chunk-NR7L3FXV.js):
 ### Item 7
 
 - Delegated to a read-only sub-agent (pinned Codex source 092d3acd, files verified by blob sha); its answer goes in the next entry.
+
+## Round 2, stage 1: red tests (Wed 21 Oct 2026, 03:59 EDT)
+
+- Item 7, from the read-only sub-agent (29 files fetched at 092d3acd, each `git hash-object` equal to the pinned tree's blob):
+  code mode's JS has no fs and no imports (code-mode-runtime/src/runtime/globals.rs:17-48, runtime/module_loader.rs:177-236); every content read in the default tool set goes through exec_command, which always ends in a CommandExecution (unified_exec/process_manager.rs:584-592).
+  Exceptions, none admitted by any rule: write_stdin into a live process (its output reaches only the startup command's CommandExecution, whose command is not a ruled read), an MCP resource or tool when a server is configured (McpToolCall), and image files (view_image refuses text files, handlers/view_image.rs:174-186).
+  So the exec-copy rule needs no new source: an exec output admits only copies of a ruled CommandExecution read; anything else refuses (fail-closed).
+- New: tests/od57_corpus.py (the builder), tests/fixtures/od57-agreement/cases.json (57 cases, the ruled line as a placeholder), tests/test_od57_agreement.py (the corpus, the shared-rule binding, RED_ALONE mutants), and in tests/test_rules_scanner.py the (f) tests EmptyIgnoreFile and PlantedIgnoreFile plus the scan argv test's expected argv.
+- Red on d8ceb181's code, per case (scratchpad percase.py), 20 of 57 cases off their verdict:
+  - RED  g-grep-match                         expected admit=[3, 4, 5, 6] refuse=[] got=([], [3, 4, 5, 6])
+  - RED  g-grep-match-no-replay-abs-dir       expected admit=[3, 4] refuse=[] got=([], [3, 4])
+  - RED  g-grep-auto-one                      expected admit=[3, 4] refuse=[] got=([], [3, 4])
+  - RED  g-grep-auto-three                    expected admit=[3, 4] refuse=[] got=([], [3, 4])
+  - RED  g-grep-explicit-context              expected admit=[3, 4] refuse=[] got=([], [3, 4])
+  - RED  g-grep-explicit-after                expected admit=[3, 4] refuse=[] got=([], [3, 4])
+  - RED  t1-gemini-write-then-read            expected admit=[] refuse=[4] got=([4], [])
+  - RED  t1-claude-edit-then-read             expected admit=[] refuse=[4] got=([4], [])
+  - RED  t1-codex-file-change-then-cat        expected admit=[] refuse=[5] got=([5], [])
+  - RED  t2-h-several                         expected admit=[] refuse=[2] got=([2], [])
+  - RED  t2-label-wrong-number                expected admit=[] refuse=[2] got=([2], [])
+  - RED  t2-label-outside-run-tree            expected admit=[] refuse=[2] got=([2], [])
+  - RED  t2-label-flag                        expected admit=[] refuse=[2] got=([2], [])
+  - RED  t2-cat-two                           expected admit=[] refuse=[2] got=([2], [])
+  - RED  t2-then-cat-other                    expected admit=[] refuse=[2] got=([2], [])
+  - RED  t2-filter-with-file                  expected admit=[] refuse=[2] got=([2], [])
+  - RED  t2-codex-c-flag                      expected admit=[] refuse=[4] got=([4], [])
+  - RED  c-read-other                         expected admit=[] refuse=[2] got=([2], [])
+  - RED  c-grep-doc                           expected admit=[2] refuse=[] got=([], [2])
+  - RED  c-grep-doc-context                   expected admit=[2] refuse=[] got=([], [2])
+  - cases 57: as expected 37, red 20
+- Runner, under a heavy slot: `python3.12 -B -m unittest tests.test_od57_agreement tests.test_rules_scanner` "Ran 20 tests", "FAILED (failures=21, errors=36)" (the errors: od57_rule, od57_shapes, rs.IGNORE_NAME and the 4-argument scan_argv do not exist yet).

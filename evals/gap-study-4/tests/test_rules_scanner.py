@@ -6,6 +6,11 @@ sha256 in memory, inside each test.
 import hashlib
 import json
 import os
+import secrets
+import shutil
+import stat
+import string
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -72,7 +77,8 @@ class Adapter(Base):
         self.assertEqual(fake.calls[1], [self.bin, "dir", self.f, "--no-banner", "--redact", "--ignore-gitleaks-allow",
                                          "--report-format", "json",
                                          "--report-path", os.path.join(self.reports, "gitleaks-1.json"),
-                                         "--exit-code", "0", "--log-level", "warn"])
+                                         "--exit-code", "0", "--log-level", "warn",
+                                         "--gitleaks-ignore-path", os.path.join(self.reports, rs.IGNORE_NAME)])
 
     def test_a_clean_file_and_a_null_report(self):
         fake = Fake({self.f: None})
@@ -122,6 +128,80 @@ class Refusals(Base):
         Path(self.reports, "old.json").write_text("[]")
         with self.assertRaises(rs.ScannerRefused):
             self.scanner(Fake())
+
+
+class EmptyIgnoreFile(Base):
+    """B24-2 item 8, design section 5a (glitch-26's read-only check: a planted .gitleaksignore silenced a finding): the
+    scan passes --gitleaks-ignore-path to an empty file of its own, made fresh in its report folder, so no ignore file in
+    the working folder or beside the scanned file is ever read."""
+
+    def test_the_build_makes_an_empty_ignore_file_of_its_own(self):
+        self.scanner(Fake())
+        p = os.path.join(self.reports, rs.IGNORE_NAME)
+        st = os.lstat(p)
+        self.assertTrue(stat.S_ISREG(st.st_mode))
+        self.assertEqual((st.st_size, stat.S_IMODE(st.st_mode)), (0, 0o600))
+
+    def test_every_scan_names_it(self):
+        fake = Fake({self.f: []})
+        self.scanner(fake)([self.f, self.f])
+        for argv in fake.calls[1:]:
+            self.assertEqual(argv[argv.index("--gitleaks-ignore-path") + 1], os.path.join(self.reports, rs.IGNORE_NAME))
+
+    def test_a_changed_ignore_file_refuses_the_next_scan(self):
+        for how in ("written", "a link", "gone"):
+            self.reports = tempfile.mkdtemp(dir=self.d)
+            scan = self.scanner(Fake({self.f: []}))
+            p = os.path.join(self.reports, rs.IGNORE_NAME)
+            if how == "written":
+                Path(p).write_text(self.f + ":generic-api-key:1\n")
+            elif how == "a link":
+                os.unlink(p)
+                os.symlink(self.f, p)
+            else:
+                os.unlink(p)
+            with self.subTest(how=how), self.assertRaises(rs.ScannerRefused):
+                scan([self.f])
+
+
+def _real_gitleaks():
+    """The pinned binary where it is (athena), else GAP4_GITLEAKS, else gitleaks on PATH; None names the gap."""
+    for b in (rs.GITLEAKS_PATH, os.environ.get("GAP4_GITLEAKS"), shutil.which("gitleaks")):
+        if b and os.path.isfile(b) and os.access(b, os.X_OK):
+            return b
+    return None
+
+
+class PlantedIgnoreFile(unittest.TestCase):
+    """The same, through a real gitleaks binary (a missing binary is a named failure, never a skip): a .gitleaksignore
+    holding the finding's fingerprint, in the working folder and beside the scanned file, silences the argv without the
+    flag (so the planted file is real) and never the module's argv."""
+
+    def test_a_planted_ignore_file_no_longer_silences_a_finding(self):
+        binary = _real_gitleaks()
+        self.assertIsNotNone(binary, "no gitleaks binary: set GAP4_GITLEAKS (named failure, never a skip)")
+        d = tempfile.mkdtemp(prefix="rs-real-")
+        self.addCleanup(shutil.rmtree, d)
+        work, recs, reports = (os.path.join(d, x) for x in ("work", "recs", "reports"))
+        for x in (work, recs, reports):
+            os.mkdir(x)
+        canary = "ghp_" + "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(36))
+        f = os.path.join(recs, "turn-1.jsonl")
+        Path(f).write_text(json.dumps({"text": "token " + canary}) + "\n")
+        for folder in (work, recs):
+            Path(folder, ".gitleaksignore").write_text(f"{f}:github-pat:1\nturn-1.jsonl:github-pat:1\n")
+        ignore = os.path.join(reports, rs.IGNORE_NAME)
+        Path(ignore).write_bytes(b"")
+
+        def found(argv, report):
+            subprocess.run(argv, cwd=work, check=True, capture_output=True, timeout=120)
+            return [x["RuleID"] for x in json.loads(Path(report).read_text() or "[]") or []]
+
+        bare = rs.scan_argv(binary, f, os.path.join(reports, "bare.json"), ignore)
+        bare = bare[:bare.index("--gitleaks-ignore-path")]
+        self.assertEqual(found(bare, os.path.join(reports, "bare.json")), [])          # the hole, as found
+        self.assertEqual(found(rs.scan_argv(binary, f, os.path.join(reports, "own.json"), ignore),
+                               os.path.join(reports, "own.json")), ["github-pat"])
 
 
 if __name__ == "__main__":
