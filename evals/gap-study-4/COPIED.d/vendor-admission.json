@@ -470,6 +470,21 @@
       "path": "tests/test_stub_model_probe.py",
       "status": "new",
       "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe on fakes: the three environment changes and every other difference refused, exec_argv's form, run_take still refusing the base URL, the internal network, --pull=never and the lock's image id, the order of snapshot and exec, a held stub stopping the scenario, the A1-fake cross-check, the ast bindings (no exec_argv, run_turn or read_login; no production import), the dry run; walk_launch's probe and fetch-probe entries and run_command byte-unchanged."
+    },
+    {
+      "path": "box/stub_model_reading.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. The reader harness, Mac only: lane vendor-b26's readers, unchanged and loaded from a named study folder (a git archive of the reviewed B26 head), over each scenario of a fetched probe folder; one line per scenario with each snapshot's PASS or refusal reason, the history join, the design's prediction marked as predicted or DIFFERS, and the stub log's masked, truncated, snapshot and helper requests placed in their processes. It changes no reader and admits nothing."
+    },
+    {
+      "path": "tests/fixtures/b27-stub/cut_structure.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's ruling 3 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the b27 structure-only cutter for the probe's records, run by hand, extending lane vendor-b26's cutter (not edited): the content-truncation wrapper with its numbers and the <state_snapshot> wrapper kept around synthetic text, the CLI's acknowledgement kept verbatim; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/test_b27_reading.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 2 and 3 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the reader harness and the b27 cutter on synthetic probe folders (lane vendor-b26's committed w-g47 structure fixtures, and a snapshot recording a retired id again): verdicts beside predictions, a prediction not met marked, the stub log placed in its processes, the history join and its byte-prefix refusal; the cutter's two wrappers, the acknowledgement, no source text surviving, the prefix kept, the provenance."
     }
   ]
 }

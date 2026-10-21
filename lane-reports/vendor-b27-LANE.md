@@ -76,3 +76,38 @@ glitch-f1 may rule otherwise; nothing else depends on it.
 - test_walk_launch as a whole passed its 45-second cap (15:46:26-15:47:11, killed by the cap, no verdict); a heavy slot was refused at 15:47:22 (`mac_slot.py run --kind heavy ... --minutes 10`: "busy: first slot: CPU speed limit 77 is below 80", rc 3), so it is skipped and recorded.
   Run one test at a time instead (15:47:37-15:49:16): TestTheRoad test_l1_ship, test_l2_run, test_l3_fetch, test_l4_bounds, test_l5_guards, test_l6_start, test_l7_env, test_l9_echo_and_env, test_pinned_tree_is_variants, test_reserve_pin_is_the_runbooks, and TestSkipRule (2), each "OK"; test_l8_blobs and TestWitnesses each passed the 30-second cap with no verdict; TestOD57ReturnRoad and TestRealReturnScan were not run. They wait for a heavy slot or athena's battery.
 - Outside the gate, reported: two single-file reads by grep ran at about 15:41 without a `light-ok` first (test_walk_launch's FAKE_GITLEAKS and an `ls`); everything else in this stage ran behind the gate.
+
+### Stage 2 mutation check (scratch archive of 23a2795c, each mutant restored from a byte backup), 15:50:50-15:51:36 EDT
+
+Each against tests.test_stub_model_probe (P15 against its ProductionRoadStaysClosed class, P16 against Bindings):
+- P1 environment_changes accepts any difference: "FAILED (failures=3, errors=1)";
+- P2 HTTPS_PROXY kept in the CLI's environment: "FAILED (failures=5, errors=4)";
+- P3 the network made without `--internal`: "FAILED (failures=2)";
+- P4 `--pull=never` dropped from the take's create: "FAILED (failures=1)";
+- P5 no snapshot retained: "FAILED (failures=2)";
+- P6 every process run without `-r` (first=True): "FAILED (failures=2)";
+- P7 check_model dropped: "FAILED (failures=1)";
+- P8 a held stub does not stop the scenario: "FAILED (failures=1)";
+- P9 the probe's hold carries the walk's commit identity: "FAILED (failures=1)";
+- P10 fetch-probe skips the manifest: "FAILED (failures=1)";
+- P11 fetch-probe skips the scan: "FAILED (failures=1)";
+- P12 a link member admitted: "FAILED (errors=1)";
+- P13 a member outside the folder admitted: "FAILED (failures=1)";
+- P14 the factoring changes run_command (`set -e` dropped): "FAILED (failures=1)";
+- P15 run_take stops refusing GOOGLE_GEMINI_BASE_URL (dropped from GEMINI_PACKAGE_SWEEP_REFUSED): "FAILED (failures=1)";
+- P16 drive.py imports the probe: "FAILED (failures=1)".
+
+## Stage 3: the b27 cutter and the reader harness
+
+Built:
+- tests/fixtures/b27-stub/cut_structure.py (ruling 3): extends lane vendor-b26's cutter, loaded by path and not edited (its JOBS stay hard-coded); this one takes a fetched probe folder and one scenario and cuts every snapshot and stream of it, with PROVENANCE.json (each source's sha256 and the probe manifest's).
+  Two rules on top of B26's: formatTruncatedToolOutput's wrapper (:254171-254185, read in stage 1) with its three numbers kept around a synthetic head, tail and path; the `<state_snapshot>` wrapper kept around a synthetic body; and the acknowledgement "Got it. Thanks for the additional context!" (:337261) verbatim.
+  Run by hand only; there are no probe records yet, so no fixture is cut in this lane.
+- box/stub_model_reading.py (ruling 2's evidence, readers unchanged): loads gemini_session_replay and native_reader_registration from `--code` (a study folder; the design says a `git archive` of the reviewed B26 head), and per scenario prints one line: each snapshot's replay verdict (PASS with its properties, or the refusal reason) marked "as predicted" or "DIFFERS" against scenario.json's `expect`, the history join (gemini_history: the byte-prefix invariant and session_history_facts), the outcome (admitted only when the last snapshot passes and the history joins), and where the stub log puts the first masked, truncated and snapshot-carrying requests, the helper requests and any refused request, each placed in its CLI process by probe.json's process times; `--json` prints the whole record.
+- tests/test_b27_reading.py: 12 tests on synthetic probe folders built from lane vendor-b26's committed w-g47 structure fixtures (the masking re-record the reader admits) plus a third snapshot recording a retired id again (the shape the reader refuses by name), and on a synthetic C1 folder for the cutter.
+
+### Runs (`date` at each step)
+
+- Green, 15:54:05-15:54:07: "Ran 11 tests", "OK"; with the wrong-reason witness added, 15:54:33-15:54:35: "Ran 12 tests", "OK".
+- Red, 15:54:35-15:54:36: over a `git archive` of 23a2795c with the new test laid over: "Ran 1 test", "FAILED (errors=1)"; with the cutter laid over too: the same (the harness module is absent).
+- Gate before the commit: test_freeze_shapes 9 OK (15:55:09-15:55:30), with the three new files claimed in COPIED.d/vendor-admission.json.
