@@ -111,3 +111,67 @@ Built:
 - Green, 15:54:05-15:54:07: "Ran 11 tests", "OK"; with the wrong-reason witness added, 15:54:33-15:54:35: "Ran 12 tests", "OK".
 - Red, 15:54:35-15:54:36: over a `git archive` of 23a2795c with the new test laid over: "Ran 1 test", "FAILED (errors=1)"; with the cutter laid over too: the same (the harness module is absent).
 - Gate before the commit: test_freeze_shapes 9 OK (15:55:09-15:55:30), with the three new files claimed in COPIED.d/vendor-admission.json.
+
+### Stage 3 mutation check (scratch archive of 795fd7f5, each mutant restored from a byte backup), 15:55:47-15:56:07 EDT
+
+Each against tests.test_b27_reading:
+- R1 a refusal for any reason counts as predicted: "FAILED (failures=1)";
+- R2 "admitted" whatever the last snapshot says: "FAILED (failures=1)";
+- R3 the history join skipped: "FAILED (failures=1)";
+- R4 the stub log not placed in its processes: "FAILED (failures=2)";
+- R5 a PASS prediction marked met whatever the verdict: "FAILED (failures=1)";
+- C1 the cutter's truncation rule dropped: "FAILED (failures=1)";
+- C2 the acknowledgement made synthetic: "FAILED (failures=1)";
+- C3 the state-snapshot wrapper dropped: "FAILED (failures=1)";
+- C4 the truncation head kept raw: "FAILED (failures=2)".
+
+## Stage 4: the whole lane, the smoke-run plan for athena, and the open questions
+
+### What the lane holds (commits on lane/vendor-b27-20261021, base 04c4e774)
+
+- 94bf7966 stage 1: lane-reports/vendor-b27-DESIGN.md (byte copy, sha256 28b9d627…a39360 both sides), this lane file, box/stub_model_server.py, box/stub_model_scenarios/ (make_scenarios.py and A1 to C2 .json), tests/test_stub_model_server.py (25).
+- 23a2795c stage 2: box/stub_model_probe.py, box/walk_launch.py (probe, fetch-probe, the factoring), tests/test_stub_model_probe.py (30).
+- 795fd7f5 stage 3: tests/fixtures/b27-stub/cut_structure.py, box/stub_model_reading.py, tests/test_b27_reading.py (12).
+- This commit: this section.
+- COPIED.d: 15 "new" entries appended to vendor-admission.json (no line moved), and one sentence added to walk_launch.py's reason in live-box-2026-10-14.json.
+- No reader, record, register, lock, pinned constant or production take path changed; run_take.py and drive.py are untouched (`git diff 04c4e774 --stat` names only the files above).
+- B26's fold: glitch-f1 has not sent its final head in this session, so nothing is merged; the lane depends on no fold change.
+
+Red and green: every stage's tests were red on the archive of the stage before (stage 1 and 3: module absent; stage 2: also with the probe laid over the base walk_launch, every walk_launch probe test red) and green on the lane tree; 32 mutants across the three stages each turned their module red.
+The Mac dry run of the real script (15:56:19, `python3.12 -I -B box/stub_model_probe.py ... --scenarios all --dry-run`, rc 0, 119 lines, session scratchpad b27-dryrun.jsonl): every scenario's argv, A1's network `docker network create --internal n…`, the take `docker create --pull=never --network <id> --user 10003:10003 --cap-drop ALL ...` with the take-g lock's image id, process 2 ending `-r dry-run-session-0000`, and the process environment exactly PATH, HOME (<run tree>/.home), LANG, TMPDIR/TMP/TEMP, GEMINI_CLI_HOME (/opt/cfg), GEMINI_API_KEY (the dummy) and GOOGLE_GEMINI_BASE_URL, no HTTPS_PROXY.
+
+### The smoke-run plan for athena (what glitch-f1 runs, in order)
+
+Preconditions: this lane reviewed by a fresh reviewer (opus-medium) and its findings folded; B26's fold merged in (`git merge`, never a rebase) if its head is final by then; athena free of any battery (the design's order: the B26 battery, the M2 fold and Javier's acceptance sitting first); one run per gap, never beside a battery.
+If the auto-mode classifier refuses a new launcher command, only Javier can add an allow rule (design section 4); the operator stops and asks, never rewords or re-routes.
+
+1. Mac: `python3 evals/gap-study-4/box/walk_launch.py ship --repo /Users/javrodher/aegis-builds/vendor-b27-20261021 --ref lane/vendor-b27-20261021 --suite <athena_suite.py> --reserve <athena-reserve> --gitleaks <binary> --work <new Mac folder>`; it prints the child and the head.
+2. Mac: `python3 evals/gap-study-4/box/walk_launch.py probe --child <child> --probe smoke1 --scenarios A1 --image sha256:d10aa00b5958b00d1c719be1f0572967c04f30bfe381a427107c9e9a3f16b013 --reason "B27 smoke run, A1 only"` (the image is box/gemini/image.lock's image_id); it prints the pid.
+3. Mac: `walk_launch.py status --child <child>` until `exit=0` (about 15 minutes at most by the design; A1 is three short processes).
+4. Mac: `walk_launch.py fetch-probe --child <child> --probe smoke1 --out <Mac folder>/stub-probe-smoke1 --gitleaks <binary> --work <new Mac folder>`.
+5. Mac, light: `python3 -I -B evals/gap-study-4/box/stub_model_reading.py <Mac folder>/stub-probe-smoke1 --code <git archive of the reviewed B26 head>/evals/gap-study-4`.
+
+Expected from the smoke run (the design's section 3, A1):
+- summary.json: no failure; A1's probe.json: cli_version 0.64.0, environment changes exactly {added GOOGLE_GEMINI_BASE_URL, removed HTTPS_PROXY, replaced GEMINI_API_KEY}, three processes with exit 0, three snapshots retained, leaked_after_teardown [], network_left "", scratch_removed true.
+- The reading line: `A1: refused: a retired native message id is recorded again ... | snapshots: 1 PASS {history_rewrites 1, tool_outputs_masked > 0, ...} [as predicted]; 2 refused: a retired native message id is recorded again ... [as predicted]; 3 refused: (the same) [as predicted] | history: refused | stub: masked request <n> (process 1)`, with the first masked request about request 8 (the request after the seventh read; section 3's arithmetic), no helper request, no refused request.
+- What the smoke run decides: whether every request the CLI makes is scripted (a held stub names the request and why: then the script is corrected with the reason recorded here and the smoke run repeated under a new probe id), where masking really falls, and whether the stub's assumptions hold (below).
+
+Then, in the next gap: `probe --probe full1 --scenarios all`, then fetch-probe and the reading as above.
+Expected lines (scenario.json `expect`, the design's predictions): A1 [PASS, retired id, retired id]; A2 [PASS, PASS, the resume after a history re-record]; A3 [PASS, PASS, the same]; B1 [PASS, native chat compression (the context turn survives a re-record), the same]; B2 [PASS, the resume after a history re-record, the same]; C1 [PASS, neither one of its originals nor masked (content truncation), the same]; C2 [PASS, PASS (shape A with zero masked parts)]; A1-fake as A1, with zero stub requests (the fake road bypasses HTTP).
+After that, the reading step of the design's section 5: the manifest check (fetch-probe already did it), B26's structure tools (allpatch.py, classify.py, detail.py) over every $patch, the stub's request log beside them, the cutter for any fixture, then glitch-f1's ruling per road under ruling 2.
+
+### Open questions (the design's "not checked" items, and what this lane added)
+
+1. Ruling 1's "teardown": the probe uses run_take._teardown_partial, because run_take.teardown needs the proxy and the sidecar ruling 1 excludes (stage 2); glitch-f1 to confirm.
+2. walk_launch's probe reuses the walk's process files in the child (walk.pid, walk.log, walk.exit), so `status` reads it unchanged; one probe or walk per child.
+3. The stub's files sit in the run tree's `.stub-probe/` (the design's placement), so the CLI's workspace context will list that folder and the synthetic files; content only, no structure, but it is a difference from a walk's run tree.
+4. Unverified until the smoke run (the stub fails loudly on each): that the real API's call-id form is what the CLI records (the stub sends `call_<n>`, the CLI prefixes `read_file__`, :333878-333880); that a `-p` line arrives as one text part equal to the line (the user_text match); that read_file accepts the absolute paths the scripts name; that no unscripted helper call happens (next-speaker check off by default, the LLM loop check after 30 requests, no countTokens under the API key); that masking falls where section 3's arithmetic puts it (A1 about request 8; A3 at process 2's first request; C1 not at all before the truncation).
+5. The design's R10: a system-wide settings file in the take-g image was never read; the probe records `gemini --version` and the smoke run shows the thresholds through where masking falls.
+6. The `--daemon` start inside `docker exec` (fork, setsid, the three standard streams on /dev/null) is expected to return at once, as stub_take.py's background-writer did on 14 Oct; seen only at the smoke run.
+7. Ruling 2's B1-versus-B2 comparison: in B2 the B26 reader refuses snapshot 2 at the resume after the masking re-record, before the compression re-record is reached, so "B2 shows the same shape as B1" must be read from the records with the structure tools and the stub log (where the two helper requests fall, the survivors' structure), not from the reader's verdict line.
+8. The A1-fake records use a fixed promptTokenCount of 1000 where the stub would compute one, and the fake road bypasses the SDK and ModelMappingContentGenerator (the design's R9); the comparison is of record structure, ids and timestamps aside.
+9. The predictions for A2's and A3's second snapshots (PASS) and B2's refusal reason are my reading of B26's replay order, not run.
+10. Not run on the Mac (each past the light cap, a heavy slot refused at 15:47:22): test_walk_launch's test_l8_blobs, TestWitnesses, TestOD57ReturnRoad and TestRealReturnScan, and the whole suite; athena's battery after review covers them.
+11. Machine discipline, reported in stage 1: one 14:47-14:51 batch ran beside a `light-ok` that returned 1; two single-file greps at about 15:41 ran without a gate.
+
+## Stop for review: Wed 21 Oct 2026
