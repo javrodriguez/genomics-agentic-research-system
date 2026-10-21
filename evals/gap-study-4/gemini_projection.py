@@ -97,6 +97,26 @@ sha256 d566e81b..., the chunk bundle/gemini.js:10 imports):
     segment is no longer refused here; the join compares the segments with the
     stream's normalized responses, so both empty agrees and one side empty
     disagrees.
+
+Lane vendor-b26 (glitch-26's rulings 1 and 2 on the B26 design):
+  * Facts are read from gemini_session_replay's `timeline`, the original
+    messages at their state before any removal took them out of the loader's
+    state, never from a resume copy or a re-recorded copy (verified in the
+    replay). A tool-output masking re-record therefore changes no fact.
+  * The loop-recovery feedback. GeminiClient._recoverFromLoop
+    (chunk-NR7L3FXV.js:348601-348609) sends `System: Potential loop detected.
+    Details: <detail>. Please take a step back ... without new results.`
+    (:348603) as a new user message when the loop detector first fires
+    (:348275-348285, :348355-348357); the stream has no line for it (only a
+    repeated loop writes one, gemini-Q2GRYIAK.js:12232-12242). On its exact shape
+    (keys id, timestamp, type, content; one text part, the pinned opening and
+    closing around a non-empty detail; directly after a tool-response turn of
+    the same interaction) it continues the interaction, is never a sent line and
+    is never compared to the stream; any other message opening with the
+    template refuses.
+  * project_with_properties also returns the take properties: the replay's
+    history rewrites, masked tool outputs and ignored-prompt resumes, and the
+    loop feedback messages injected. They are properties, never facts.
 """
 from __future__ import annotations
 
@@ -120,6 +140,10 @@ ENV_CONTEXT_ID = hashlib.sha256(b"environment-context").hexdigest()[:32]
 ENV_CONTEXT_OPEN = ("<session_context>\nThis is the Gemini CLI. We are setting up the context for our chat.\n")
 ENV_CONTEXT_CLOSE = "</session_context>"
 RESPONSE_SUFFIX = "_response"       # chunk-NR7L3FXV.js:286182
+LOOP_OPEN = "System: Potential loop detected. Details: "                 # chunk-NR7L3FXV.js:348603
+LOOP_CLOSE = (". Please take a step back and confirm you're making forward progress. If not, take a step back, analyze "
+              "your previous actions and rethink how you're approaching the problem. Avoid repeating the same tool calls "
+              "or responses without new results.")
 GEMINI_KEYS = {"id", "timestamp", "type", "content", "thoughts", "tokens", "model", "toolCalls"}
 TOOL_KEYS = {"id", "name", "args", "result", "status", "timestamp", "resultDisplay", "description",
              "displayName", "renderOutputAsMarkdown"}
@@ -347,20 +371,52 @@ def _resumed_copy(message, gemini, following) -> bool:
             and _serialized(following["content"]) == _serialized(message["content"]))
 
 
+def _loop_opening(message) -> bool:
+    content = message.get("content")
+    text = content if isinstance(content, str) else "".join(
+        p.get("text", "") for p in content if isinstance(p, dict) and isinstance(p.get("text"), str)) \
+        if isinstance(content, list) else ""
+    return message.get("type") == "user" and text.startswith(LOOP_OPEN)
+
+
+def _loop_feedback(message) -> bool:
+    """The loop-recovery message on its exact pinned shape (module docstring), its position aside."""
+    content = message.get("content")
+    return (set(message) == {"id", "timestamp", "type", "content"} and isinstance(content, list) and len(content) == 1
+            and isinstance(content[0], dict) and set(content[0]) == {"text"} and isinstance(content[0]["text"], str)
+            and content[0]["text"].startswith(LOOP_OPEN) and content[0]["text"].endswith(LOOP_CLOSE)
+            and len(content[0]["text"]) > len(LOOP_OPEN) + len(LOOP_CLOSE))
+
+
 def project(raw):
     """Every user-delimited interaction of one retained native snapshot, or ProjectionRefused."""
+    return project_with_properties(raw)[0]
+
+
+def project_with_properties(raw):
+    """(project's facts, the take properties): history_rewrites, tool_outputs_masked, ignored_prompt_resumes and
+    loop_feedback_injected, counted on this snapshot. Properties are never facts."""
     try:
         replayed = replay_mod.replay(raw)
     except replay_mod.ReplayRefused as exc:
         raise ProjectionRefused(f"native replay refused: {exc}") from None
     _finite(replayed)
     session_id = replayed["metadata"]["sessionId"]
-    messages = list(replayed["messages"])
+    messages = list(replayed["timeline"])
+    loops = 0
     if messages and _session_context(messages[0]):
         messages = messages[1:]                    # the session context turn: never an interaction
     groups, previous = [], None
     for k, message in enumerate(messages):
         answered = _tool_response_turn(message) if message["type"] == "user" else None
+        if answered is None and _loop_opening(message):
+            if not (_loop_feedback(message) and groups and previous is not None and previous["type"] == "user"
+                    and _tool_response_turn(previous) is not None):
+                raise ProjectionRefused("a loop-recovery feedback message is off its pinned shape or place "
+                                        "(chunk-NR7L3FXV.js:348601-348609)")
+            loops += 1
+            previous = message
+            continue                                   # the interaction continues; never a sent line
         if answered is not None and message["id"].endswith(RESPONSE_SUFFIX):
             following = messages[k + 1] if k + 1 < len(messages) else None
             if not _resumed_copy(message, previous, following):
@@ -397,4 +453,4 @@ def project(raw):
         if not replies:
             raise ProjectionRefused("native interaction lacks an assistant message")
         out.append(_interaction(session_id, user, replies, seen_ids))
-    return out
+    return out, dict(replayed["properties"], loop_feedback_injected=loops)

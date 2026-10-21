@@ -145,7 +145,38 @@ def join_session(raw: bytes, streams: list, reader) -> dict:
         pass
     else:
         return {"status": "DISAGREE", "why": f"more native interactions for {len(streams)} streams"}
-    return {"status": "PASS", "interactions": len(facts), "shapes": _shapes(facts)}
+    return {"status": "PASS", "interactions": len(facts), "shapes": _shapes(facts), "properties": take_properties(raw)}
+
+
+def take_properties(raw: bytes):
+    """Lane vendor-b26 (glitch-26's rulings 1 and 2): the take's named properties, never facts: history_rewrites and
+    tool_outputs_masked (the CLI's tool-output masking re-recorded the history, chunk-NR7L3FXV.js:348251), the
+    ignored-prompt resumes (:286096-286110) and loop_feedback_injected (:348601-348609), counted on the snapshot the
+    join read. None when the Gemini projection does not read the snapshot (a reader other than gemini_reader)."""
+    try:
+        return gp.project_with_properties(raw)[1]
+    except gp.ProjectionRefused:
+        return None
+
+
+def gemini_snapshot_prefixes(folder: Path, refs: list) -> None:
+    """Lane vendor-b26 (glitch-26's ruling 6): inside the Gemini history join, each retained snapshot is a byte prefix
+    of the next one. The recorder only appends (appendRecord), so a re-record's retired originals stay in every later
+    snapshot's bytes; a later snapshot that is not an extension of the earlier one refuses (vp.ProvenanceRefused).
+    vendor_provenance's contract is unchanged: this runs beside session_history_facts, never inside it."""
+    previous = None
+    for ref in refs:
+        raw = vp.referenced_bytes(Path(folder), ref)
+        if previous is not None and not raw.startswith(previous):
+            raise vp.ProvenanceRefused("a later Gemini native snapshot is not a byte extension of the one before it")
+        previous = raw
+
+
+def gemini_history(folder: Path, refs: list, *, reader=None) -> list:
+    """The Gemini history join: the byte-prefix invariant, then vendor_provenance.session_history_facts."""
+    gemini_snapshot_prefixes(folder, refs)
+    return vp.session_history_facts(HARNESS, Path(folder), [dict(r) for r in refs],
+                                    readers={HARNESS: reader or gemini_reader})
 
 
 def check_session(native: bytes, streams: list) -> dict:
@@ -550,6 +581,8 @@ def acceptance_problems(record, study: Path = HERE, harness: str = HARNESS) -> N
         if floor:
             raise RegistrationRefused(floor)
         try:
+            if harness == HARNESS:
+                gemini_snapshot_prefixes(base / "session", [dict(s) for s in snaps])
             vp.session_history_facts(harness, base / "session", [dict(s) for s in snaps],
                                      readers={harness: prof["reader"]})
         except (vp.ProvenanceRefused, vp.ProvenancePending) as e:

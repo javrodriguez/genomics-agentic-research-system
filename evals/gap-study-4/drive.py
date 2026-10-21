@@ -3251,6 +3251,8 @@ def native_history_record(harness: str, session_dir, refs, *, readers=None) -> d
     readers = _registration.production_readers() if readers is None else readers
     try:
         facts = _vendor_provenance.session_history_facts(harness, Path(session_dir), list(refs), readers=readers)
+        if harness == "gemini":
+            _registration.gemini_snapshot_prefixes(Path(session_dir), list(refs))
     except _vendor_provenance.ProvenancePending as e:
         return {"status": "pending", "why": str(e), "interactions": None, "basis": NATIVE_HISTORY_BASIS}
     except _vendor_provenance.ProvenanceRefused as e:

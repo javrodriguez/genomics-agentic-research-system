@@ -34,7 +34,48 @@ holds twice by construction (convertSessionToClientHistory, :286099-286194: the
 synthetic `${msg.id}_response` turn at :286180-286188, and the stored message of
 that id read back as a user turn at :286105-286117). removeIds (destructive),
 orderIds without updates, and any other duplicate or unknown id refuse.
+
+Lane vendor-b26 (glitch-26's rulings on the B26 design, lane-reports/vendor-b26-DESIGN.md; same pinned chunk):
+the two-layer replay. Layer 1 replays as the loader does and labels every message: original (recorded live), resume
+copy (a `<gemini id>_response` record first written inside a resume, after `$set {sessionId}`), or re-recorded copy.
+Layer 2, `timeline`, is every original message at its state just before it left the loader's state (or at the end),
+in first-record order; the projection reads facts from it only, never from a copy. Admitted `$patch` payloads are the
+writer's only (:287254-287265: keys updates, removeIds, orderIds; a top-level id, content or toolCalls is never
+written and refuses):
+  * {updates}: content or tool-result changes only. Each update is the writer's getOrCreatePatch object
+    (:287159-287166): {id} with content (the turn's parts array, :287168, :287182) and/or toolCalls (a list of
+    {id, result}, result the user turn's parts array, :287202, :287223-287228); ids unique; each names a live message.
+  * {orderIds, updates}: the resume reorder (lane vendor-b25), after which every live resume copy must sit directly
+    after its gemini message and directly before a byte-identical original round trip, and the originals must keep
+    their first-record order.
+  * {orderIds, removeIds, updates} (shape B), inside a resume: removeIds names live original user prompts the resume
+    dropped as ignored content (isIgnoredUserContent, :286096-286098, :286105-286110: the text, trimmed, empty or
+    starting "/", "?", "<session_context>" or "<hook_context>"); applied in the loader's order (updates, removeIds,
+    orderIds, :286390-286453). The removed prompt's fact state is frozen; it stays in the timeline.
+  * {removeIds} or {removeIds, updates} (shape A): the re-record. GeminiClient.processTurn runs tryMaskToolOutputs
+    before every model request (:348251, :348592-348597); a masking pass hands GeminiChat.setHistory the whole history
+    without ids, coalesced (:333696-333712, :334192-334213), and setHistory records every turn again through
+    recordSyntheticMessage (:333750-333762, :286934-286941) before updateMessagesFromHistory removes every older id
+    (:287236, :287259-287261). Admitted only when: removeIds' first occurrences are the loader's state minus the
+    survivors, in order, a repeat only of a `_response` id (the writer's messageOrder after a second resume); the
+    survivors are exactly the messages first recorded since the previous `$patch`, at its end, each on the synthetic
+    shape (user {id, timestamp, type, content}; gemini {id, timestamp, type, content, thoughts: [], tokens: null},
+    :286910-286930); every update is a dead {id, toolCalls: [{id, result}]} write on a removed gemini message's own
+    call (:287198-287229), verified and never applied to a fact; and the image check binds the run to the removed
+    state: one survivor per coalesced role run; per run, equal multisets of function-call (id, name) and of
+    function-response (id, name), where the first occurrence of a repeated `_response` id counts the concatenated
+    toolCalls results of its base gemini message (the synthetic turn the CLI builds, :286158-286188; glitch-26's
+    ruled deviation on ruling 5); every re-recorded response part equal to one of its id's originals or the masked
+    form ({output} holding "<tool_output_masked", :344663, :344871-344877); equal user text parts and non-empty model
+    text parts, in order. The removed originals' fact states are frozen as they stood before the patch.
+Refused by name, until a rehearsal observes them (glitch-26's ruling 3): the resume after a re-record (a retired id
+recorded again, or a resume dropping a re-recorded copy), true chat compression (the context turn survives a
+re-record, :337254-337292, :348563-348580), and content truncation (a re-recorded response neither original nor
+masked). `properties` counts each road per snapshot: re-records, masked parts, ignored-prompt resumes.
 """
+import hashlib
+import json
+from collections import Counter
 from copy import deepcopy
 
 import transcript_view as tv
@@ -47,6 +88,16 @@ class ReplayRefused(ValueError):
 
 METADATA_KEYS = {"sessionId", "projectHash", "startTime", "lastUpdated", "kind", "directories", "summary"}
 MESSAGE_KINDS = {"user", "gemini", "info", "error", "warning"}
+RESPONSE_SUFFIX = "_response"        # convertSessionToClientHistory's synthetic turn id, chunk-NR7L3FXV.js:286182
+CONTEXT_ID = hashlib.sha256(b"environment-context").hexdigest()[:32]   # deriveStableId, :286041-286044, :336369
+SYNTHETIC_USER_KEYS = {"id", "timestamp", "type", "content"}
+SYNTHETIC_GEMINI_KEYS = {"id", "timestamp", "type", "content", "thoughts", "tokens"}
+MASK_TAG = "<tool_output_masked"     # MASKING_INDICATOR_TAG, :344663
+IGNORED_PREFIXES = ("/", "?", "<session_context>", "<hook_context>")
+# JavaScript's String.prototype.trim: WhiteSpace and LineTerminator code points (as gemini_projection spells it).
+JS_TRIM = ("\t\n\x0b\x0c\r \xa0            "
+           "    　﻿")
+ORIGINAL, RESUME_COPY, RERECORDED = "original", "resume copy", "re-recorded copy"
 
 
 def _string(value):
@@ -66,6 +117,7 @@ def _tools(message):
 
 
 def _patch(messages, patch):
+    """One writer patch object (module docstring): {id} with content and/or toolCalls, arrays only."""
     if (not isinstance(patch, dict) or not set(patch) <= {"id", "content", "toolCalls"}
             or not _string(patch.get("id")) or not ({"content", "toolCalls"} & set(patch))):
         raise ReplayRefused("unknown or empty native message patch")
@@ -73,6 +125,9 @@ def _patch(messages, patch):
     if target is None:
         raise ReplayRefused("native message patch target is absent")
     if "content" in patch:
+        if not isinstance(patch["content"], list):
+            raise ReplayRefused("native patch content is not a part array (the recorder writes the turn's parts, "
+                                "chunk-NR7L3FXV.js:287168, :287182)")
         target["content"] = deepcopy(patch["content"])
     if "toolCalls" in patch:
         if target["type"] != "gemini" or not isinstance(patch["toolCalls"], list):
@@ -82,19 +137,25 @@ def _patch(messages, patch):
             if (not isinstance(change, dict) or set(change) != {"id", "result"}
                     or not _string(change["id"]) or change["id"] not in tools):
                 raise ReplayRefused("native tool-result patch target or shape is unknown")
+            if not isinstance(change["result"], list):
+                raise ReplayRefused("native tool-result patch result is not a part array (the recorder writes the "
+                                    "user turn's parts, chunk-NR7L3FXV.js:287202, :287227)")
             tools[change["id"]]["result"] = deepcopy(change["result"])
 
 
-RESPONSE_SUFFIX = "_response"        # convertSessionToClientHistory's synthetic turn id, chunk-NR7L3FXV.js:286182
-
-
-def _resume_patch(messages, patch):
-    """The resume-time {$patch: {orderIds, updates}} (module docstring): the updates, then the reorder, in place."""
-    if not isinstance(patch["updates"], list) or not patch["updates"]:
+def _updates(messages, updates):
+    if not isinstance(updates, list) or not updates:
         raise ReplayRefused("native patch updates must be a nonempty array")
-    for update in patch["updates"]:
+    ids = [u.get("id") if isinstance(u, dict) else None for u in updates]
+    if len(set(map(str, ids))) != len(ids):
+        raise ReplayRefused("native patch updates name one message twice (one patch per id, chunk-NR7L3FXV.js:287158-287166)")
+    for update in updates:
         _patch(messages, update)
-    order = patch["orderIds"]
+
+
+def _reorder(messages, order):
+    """The resume's orderIds (lane vendor-b25): a permutation of the known messages, a repeat only of a
+    `<gemini id>_response` id; the first occurrence keeps its place."""
     if not isinstance(order, list) or not order or not all(_string(i) for i in order):
         raise ReplayRefused("native orderIds must be a nonempty array of ids")
     if any(i not in messages for i in order):
@@ -103,11 +164,8 @@ def _resume_patch(messages, patch):
         raise ReplayRefused("native orderIds is not a permutation of the known messages")
     seen = set()
     for i in order:
-        if i in seen:
-            base = i[:-len(RESPONSE_SUFFIX)] if i.endswith(RESPONSE_SUFFIX) else None
-            if not (base and messages[i]["type"] == "user" and base in messages
-                    and messages[base]["type"] == "gemini"):
-                raise ReplayRefused("native orderIds repeats an id that is not a <gemini id>_response turn")
+        if i in seen and not _response_of_gemini(messages, i):
+            raise ReplayRefused("native orderIds repeats an id that is not a <gemini id>_response turn")
         seen.add(i)
     reordered = {}
     for i in order:
@@ -117,8 +175,277 @@ def _resume_patch(messages, patch):
     messages.update(reordered)
 
 
+def _response_of_gemini(messages, i):
+    base = i[:-len(RESPONSE_SUFFIX)] if i.endswith(RESPONSE_SUFFIX) else None
+    return bool(base and messages[i]["type"] == "user" and base in messages and messages[base]["type"] == "gemini")
+
+
+def _tool_response_turn(message):
+    content = message.get("content")
+    return (message.get("type") == "user" and isinstance(content, list) and bool(content)
+            and all(isinstance(p, dict) and set(p) == {"functionResponse"} for p in content))
+
+
+def _serialized(value):
+    return json.dumps(value, ensure_ascii=False, allow_nan=False)
+
+
+def _canonical(value):
+    return json.dumps(value, sort_keys=True, ensure_ascii=False, allow_nan=False)
+
+
+def _text_parts(message):
+    content = message.get("content")
+    if isinstance(content, str):
+        return [content]
+    return [p["text"] for p in content if isinstance(p, dict) and isinstance(p.get("text"), str)
+            and not p.get("thought")] if isinstance(content, list) else []
+
+
+def _calls(message):
+    """A gemini message's (id, name) calls: its toolCalls, else its content's functionCall parts (a copy)."""
+    if message["type"] != "gemini":
+        return []
+    if message.get("toolCalls"):
+        return [(t["id"], t.get("name")) for t in message["toolCalls"]]
+    content = message.get("content")
+    return [(p["functionCall"].get("id"), p["functionCall"].get("name")) for p in content
+            if isinstance(p, dict) and isinstance(p.get("functionCall"), dict)] if isinstance(content, list) else []
+
+
+def _responses(message):
+    content = message.get("content")
+    return [p["functionResponse"] for p in content if isinstance(p, dict) and isinstance(p.get("functionResponse"), dict)
+            ] if message["type"] == "user" and isinstance(content, list) else []
+
+
+class _Replay:
+    def __init__(self, metadata):
+        self.metadata = metadata
+        self.live = {}            # the loader's state, Map order
+        self.kind = {}            # id -> ORIGINAL | RESUME_COPY | RERECORDED
+        self.first = {}           # id -> record number of its first write
+        self.frozen = {}          # original id -> its fact state when it left the loader's state
+        self.retired = set()      # every id a removal took out
+        self.since = []           # ids first written since the last $patch
+        self.resume = False       # inside a resume: after $set {sessionId}, before its $patch
+        self.others = []          # every non-original message that left the loader's state (for the scanner)
+        self.dead = []            # every dead re-record update's tool results (for the scanner)
+        self.props = Counter()
+        self.verified = set()     # resume copies checked at their resume's reorder
+
+    # ---- the patches ------------------------------------------------------------------------------------------------
+    def patch(self, patch):
+        if not isinstance(patch, dict) or not patch:
+            raise ReplayRefused("unsupported native patch operation")
+        keys = set(patch)
+        if keys & {"id", "content", "toolCalls"}:
+            raise ReplayRefused("a direct-id native patch is never written by the pinned recorder "
+                                "(chunk-NR7L3FXV.js:287254-287265)")
+        if keys == {"updates"}:
+            _updates(self.live, patch["updates"])
+        elif keys == {"orderIds", "updates"}:
+            _updates(self.live, patch["updates"])
+            self._resume_order(patch["orderIds"])
+        elif keys == {"orderIds", "removeIds", "updates"}:
+            if not self.resume:
+                raise ReplayRefused("native patch removes and reorders outside a resume")
+            _updates(self.live, patch["updates"])
+            self._ignored_prompts(patch["removeIds"])
+            self._resume_order(patch["orderIds"])
+            self.props["ignored_prompt_resumes"] += 1
+        elif keys in ({"removeIds"}, {"removeIds", "updates"}):
+            self._rerecord(patch)
+        else:
+            raise ReplayRefused("unsupported native patch operation")
+        self.since = []
+
+    def _resume_order(self, order):
+        _reorder(self.live, order)
+        self.resume = False
+        ids = list(self.live)
+        for k, i in enumerate(ids):
+            if self.kind[i] != RESUME_COPY:
+                continue
+            gemini = self.live[ids[k - 1]] if k else None
+            following = self.live[ids[k + 1]] if k + 1 < len(ids) else None
+            copy = self.live[i]
+            if not (gemini is not None and gemini["type"] == "gemini" and i == gemini["id"] + RESPONSE_SUFFIX
+                    and _tool_response_turn(copy) and following is not None
+                    and self.kind[following["id"]] == ORIGINAL and _tool_response_turn(following)
+                    and set(following) == set(copy) and _serialized(following["content"]) == _serialized(copy["content"])):
+                raise ReplayRefused("a <gemini id>_response turn is not the resumed copy of the round trip that "
+                                    "follows it (byte-identical, directly after its gemini message)")
+            self.verified.add(i)
+        originals = [i for i in ids if self.kind[i] == ORIGINAL]
+        if originals != sorted(originals, key=self.first.get):
+            raise ReplayRefused("the native order of original messages changed")
+
+    def _retire(self, ids):
+        for i in ids:
+            if i not in self.live:
+                continue
+            message = self.live.pop(i)
+            self.retired.add(i)
+            if self.kind[i] == ORIGINAL:
+                self.frozen[i] = message
+            else:
+                self.others.append(message)
+
+    def _ignored_prompts(self, remove):
+        if not isinstance(remove, list) or not remove or not all(_string(i) for i in remove) \
+                or len(set(remove)) != len(remove):
+            raise ReplayRefused("native resume removeIds must be a nonempty array of distinct ids")
+        for i in remove:
+            message = self.live.get(i)
+            if message is None:
+                raise ReplayRefused("native resume removes an unknown message")
+            text = "".join(_text_parts(message)).strip(JS_TRIM)
+            if self.kind[i] == RERECORDED and message["type"] == "user" and text.startswith("<session_context>"):
+                raise ReplayRefused("the resume after a history re-record (it drops the re-recorded context turn): "
+                                    "source-predicted, unobserved; refused by name (glitch-26's ruling 3)")
+            content = message.get("content")
+            if not (self.kind[i] == ORIGINAL and message["type"] == "user" and i != CONTEXT_ID
+                    and isinstance(content, list) and content
+                    and all(isinstance(p, dict) and set(p) == {"text"} and isinstance(p["text"], str) for p in content)
+                    and (not text or text.startswith(IGNORED_PREFIXES))):
+                raise ReplayRefused("a resume removes a message that is not an ignored user prompt "
+                                    "(isIgnoredUserContent, chunk-NR7L3FXV.js:286096-286110)")
+        self._retire(remove)
+
+    def _rerecord(self, patch):
+        remove = patch["removeIds"]
+        if not isinstance(remove, list) or not remove or not all(_string(i) for i in remove):
+            raise ReplayRefused("native re-record removeIds must be a nonempty array of ids")
+        if any(i not in self.live for i in remove):
+            raise ReplayRefused("native re-record removes an unknown message")
+        counts = Counter(remove)
+        if any(n > 1 and not _response_of_gemini(self.live, i) for i, n in counts.items()):
+            raise ReplayRefused("native re-record repeats an id that is not a <gemini id>_response turn")
+        survivors = [i for i in self.live if i not in counts]
+        if list(dict.fromkeys(remove)) != [i for i in self.live if i in counts]:
+            raise ReplayRefused("native re-record's removeIds is not the loader's order")
+        run_ok = bool(survivors) and survivors == self.since[-len(survivors):]
+        if not run_ok and survivors and survivors[0] == CONTEXT_ID and len(survivors) > 1 \
+                and survivors[1:] == self.since[-(len(survivors) - 1):]:
+            raise ReplayRefused("native chat compression (the context turn survives a re-record): source-predicted, "
+                                "unobserved; refused by name (glitch-26's ruling 3)")
+        if not run_ok:
+            raise ReplayRefused("native re-record leaves an older message live, or its survivors are not the messages "
+                                "recorded just before it")
+        run = [self.live[i] for i in survivors]
+        for m in run:
+            keys = SYNTHETIC_USER_KEYS if m["type"] == "user" else SYNTHETIC_GEMINI_KEYS
+            if (m["type"] not in ("user", "gemini") or set(m) != keys or not isinstance(m["content"], list)
+                    or (m["type"] == "gemini" and (m["thoughts"] != [] or m["tokens"] is not None))):
+                raise ReplayRefused("a re-recorded message is not on the recordSyntheticMessage shape "
+                                    "(chunk-NR7L3FXV.js:286910-286941)")
+        if "updates" in patch and (not isinstance(patch["updates"], list) or not patch["updates"]):
+            raise ReplayRefused("native patch updates must be a nonempty array")
+        dead = []
+        for update in patch.get("updates", []):
+            target = self.live.get(update.get("id")) if isinstance(update, dict) else None
+            if (target is None or set(update) != {"id", "toolCalls"} or update["id"] not in counts
+                    or target["type"] != "gemini" or not isinstance(update["toolCalls"], list) or not update["toolCalls"]):
+                raise ReplayRefused("a re-record update is not a dead toolCalls write on a removed gemini message")
+            own = {t["id"] for t in _tools(target)}
+            for change in update["toolCalls"]:
+                if (not isinstance(change, dict) or set(change) != {"id", "result"} or change.get("id") not in own
+                        or not isinstance(change["result"], list)):
+                    raise ReplayRefused("a re-record update names a call its message lacks, or is off its shape")
+                dead.append({"id": change["id"], "result": deepcopy(change["result"])})
+        masked = self._image(remove, counts, run)
+        self.dead += dead
+        self._retire(list(counts))
+        for i in survivors:
+            self.kind[i] = RERECORDED
+        self.props["history_rewrites"] += 1
+        self.props["tool_outputs_masked"] += masked
+
+    def _image(self, remove, counts, run):
+        """The image check (module docstring); returns the number of masked parts."""
+        pre = [self.live[i] for i in remove]
+        if any(m["type"] not in ("user", "gemini") for m in pre):
+            raise ReplayRefused("native re-record removes a message that is neither user nor gemini")
+        groups = []
+        for m in pre:
+            if not groups or groups[-1][0] != m["type"]:
+                groups.append((m["type"], []))
+            groups[-1][1].append(m)
+        if [g[0] for g in groups] != [m["type"] for m in run]:
+            raise ReplayRefused("native re-record image: its coalesced role runs differ")
+        masked, seen = 0, set()
+        for (role, messages), image in zip(groups, run):
+            expected = []
+            for m in messages:
+                if m["id"].endswith(RESPONSE_SUFFIX) and counts[m["id"]] > 1 and m["id"] not in seen:
+                    base = self.live[m["id"][:-len(RESPONSE_SUFFIX)]]
+                    expected += [p["functionResponse"] for t in base.get("toolCalls") or []
+                                 for p in t.get("result") or [] if isinstance(p, dict) and "functionResponse" in p]
+                else:
+                    expected += _responses(m)
+                seen.add(m["id"])
+            got = _responses(image)
+            if Counter(_calls(image)) != Counter(c for m in messages for c in _calls(m)):
+                raise ReplayRefused("native re-record image: a run's function calls differ")
+            pair = lambda r: (r.get("id"), r.get("name"))
+            if Counter(map(pair, got)) != Counter(map(pair, expected)):
+                raise ReplayRefused("native re-record image: a run's function responses differ in id or count")
+            originals = {}
+            for r in expected:
+                originals.setdefault(r.get("id"), set()).add(_canonical(r))
+            for r in got:
+                if _canonical(r) in originals.get(r.get("id"), ()):
+                    continue
+                out = r.get("response")
+                if set(r) == {"id", "name", "response"} and isinstance(out, dict) and set(out) == {"output"} \
+                        and isinstance(out["output"], str) and MASK_TAG in out["output"]:
+                    masked += 1
+                    continue
+                raise ReplayRefused("a re-recorded function response is neither one of its originals nor masked "
+                                    "(content truncation stays refused by name until observed)")
+        users = lambda ms: [t for m in ms if m["type"] == "user" for t in _text_parts(m)]
+        models = lambda ms: [t for m in ms if m["type"] == "gemini" for t in _text_parts(m) if t]
+        if users(run) != users(pre):
+            raise ReplayRefused("native re-record image: the user text differs")
+        if models(run) != models(pre):
+            raise ReplayRefused("native re-record image: the model text differs")
+        return masked
+
+    # ---- the records -----------------------------------------------------------------------------------------------
+    def message(self, n, record):
+        i = record["id"]
+        if i in self.retired:
+            raise ReplayRefused("a retired native message id is recorded again (the resume after a history "
+                                "re-record: source-predicted, unobserved; refused by name, glitch-26's ruling 3)")
+        previous = self.live.get(i)
+        if previous is not None and previous["type"] != record["type"]:
+            raise ReplayRefused("native message role changed under the same id")
+        _tools(record)
+        if i not in self.kind:
+            self.kind[i] = RESUME_COPY if self.resume and i.endswith(RESPONSE_SUFFIX) else ORIGINAL
+            self.first[i] = n
+            self.since.append(i)
+        # Python dict assignment mirrors Map.set: replacing a value retains order.
+        self.live[i] = record
+
+    def result(self):
+        if any(k == RESUME_COPY and i not in self.verified for i, k in self.kind.items()):
+            raise ReplayRefused("a <gemini id>_response turn is not the resumed copy of the round trip that follows it "
+                                "(no resume reorder placed it)")
+        facts = dict(self.frozen)
+        facts.update({i: m for i, m in self.live.items() if self.kind[i] == ORIGINAL})
+        timeline = [facts[i] for i in sorted(facts, key=self.first.get)]
+        others = [m for i, m in self.live.items() if self.kind[i] != ORIGINAL] + self.others
+        return {"metadata": self.metadata, "messages": list(self.live.values()), "timeline": timeline,
+                "copies": others, "dead_results": self.dead,
+                "properties": {k: self.props[k] for k in ("history_rewrites", "tool_outputs_masked",
+                                                          "ignored_prompt_resumes")}}
+
+
 def replay(raw):
-    """Replay one retained native snapshot; no prompt/output/terminal claims."""
+    """Replay one retained native snapshot; no prompt/output/terminal claims. `messages` is the loader's state,
+    `timeline` the original messages the projection reads (module docstring)."""
     if not isinstance(raw, bytes):
         raise ReplayRefused("native replay requires retained bytes")
     try:
@@ -131,8 +458,8 @@ def replay(raw):
     if (not isinstance(metadata, dict) or not set(metadata) <= METADATA_KEYS
             or not all(_string(metadata.get(k)) for k in ("sessionId", "projectHash"))):
         raise ReplayRefused("native session must begin with identity metadata")
-    messages = {}
-    for record in records[1:]:
+    state = _Replay(metadata)
+    for n, record in enumerate(records[1:], 2):
         if not isinstance(record, dict):
             raise ReplayRefused("native session record is not an object")
         controls = [key for key in record if key.startswith("$")]
@@ -148,31 +475,15 @@ def replay(raw):
                 if update.get("sessionId", metadata["sessionId"]) != metadata["sessionId"]:
                     raise ReplayRefused("native session identity changed")
                 metadata.update(update)
+                if "sessionId" in update:
+                    state.resume = True
             elif "$patch" in record:
-                patch = record["$patch"]
-                if isinstance(patch, dict) and set(patch) == {"orderIds", "updates"}:
-                    _resume_patch(messages, patch)
-                    continue
-                if not isinstance(patch, dict) or not patch or not set(patch) <= {"id", "content", "toolCalls", "updates"}:
-                    raise ReplayRefused("unsupported native patch operation")
-                direct = {key: value for key, value in patch.items() if key != "updates"}
-                if direct:
-                    _patch(messages, direct)
-                if "updates" in patch:
-                    if not isinstance(patch["updates"], list) or not patch["updates"]:
-                        raise ReplayRefused("native patch updates must be a nonempty array")
-                    for update in patch["updates"]:
-                        _patch(messages, update)
+                state.patch(record["$patch"])
             else:
                 raise ReplayRefused("unsupported destructive or unknown native operation")
         else:
             if (not _string(record.get("id")) or not isinstance(record.get("type"), str)
                     or record["type"] not in MESSAGE_KINDS or "content" not in record):
                 raise ReplayRefused("unknown native message record")
-            previous = messages.get(record["id"])
-            if previous is not None and previous["type"] != record["type"]:
-                raise ReplayRefused("native message role changed under the same id")
-            _tools(record)
-            # Python dict assignment mirrors Map.set: replacing a value retains order.
-            messages[record["id"]] = record
-    return {"metadata": metadata, "messages": list(messages.values())}
+            state.message(n, record)
+    return state.result()

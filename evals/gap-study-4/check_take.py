@@ -4090,19 +4090,26 @@ def _gemini_snapshot_records(raw: bytes, where: str) -> list:
     """Source 2: every toolCalls entry (asked: args; returned: result and resultDisplay) of the snapshot
     gemini_projection accepts, and every functionResponse part of each tool-response user turn (returned: the
     CLI-written copy of the tool's result the model was sent; round 9 ruling 1, review 89ee5a8 MINOR 1), so every
-    copy of a tool result the session file holds is read, as C reads every tool_result."""
+    copy of a tool result the session file holds is read, as C reads every tool_result.
+    Lane vendor-b26 (glitch-26's ruling 4): after a tool-output masking re-record the loader's state holds only masked
+    copies, so the originals are read from the replay's timeline (their state before the re-record retired them), and
+    so are every resume or re-recorded copy and every dead re-record update's results: a masked output never hides
+    what the original held."""
     try:
         _gemini_projection.project(raw)
-        messages = _gemini_replay.replay(raw)["messages"]
+        replayed = _gemini_replay.replay(raw)
     except (_gemini_projection.ProjectionRefused, _gemini_replay.ReplayRefused) as e:
         raise VendorUnreadable(f"{where}: the native session reader refuses it: {e}") from None
     out = []
-    for message in messages:
+    for message in replayed["timeline"] + replayed["copies"]:
         for i, tool in enumerate(message.get("toolCalls") or [] if message.get("type") == "gemini" else []):
             out.append(_vendor_split(tool, "toolCalls", f"{where} message {message.get('id')!r} tool {i + 1}"))
         if message.get("type") == "user" and _gemini_projection._tool_response_turn(message) is not None:
             for i, part in enumerate(message["content"]):
                 out.append((f"{where} message {message.get('id')!r} response {i + 1}", {}, part))
+    for k, dead in enumerate(replayed["dead_results"], 1):
+        for i, part in enumerate(dead["result"]):
+            out.append((f"{where} re-record update {k} call {dead['id']!r} response {i + 1}", {}, part))
     return out
 
 

@@ -421,8 +421,10 @@ class EditD(unittest.TestCase):
         # are bound by check_vendor_sources.b17_problems), as edit_d_problems reads it
         self.assertEqual(cvs.b17_problems(src), [], "piece B17's drive.py lines are off their exact form")
         # lane vendor-b25: edit E came after edit D, so edit D's pin holds drive.py with edit E taken out too
+        # lane vendor-b26: and edit F after E, taken out first
         self.assertEqual(getattr(cvs, "POST_EDIT_D_DRIVE_SHA256", None),
-                         hashlib.sha256(cvs.without_edit_e(cvs.without_b17(src)).encode("utf-8")).hexdigest(),
+                         hashlib.sha256(cvs.without_edit_e(cvs.without_edit_f(cvs.without_b17(src))).encode("utf-8")
+                                        ).hexdigest(),
                          "drive.py after edit D is not pinned")
         self.assertEqual(cvs.problems("EB", ["drive.py"]), [])
         self.assertEqual(hashlib.sha256(cvs.without_edits(src).encode("utf-8")).hexdigest(),
@@ -449,7 +451,9 @@ class EditE(unittest.TestCase):
         src = drive_source()
         self.assertTrue(isinstance(getattr(cvs, "EDIT_E", None), tuple) and cvs.EDIT_E)
         self.assertIn("B25-2", getattr(cvs, "EDIT_E_RULING", ""), "edit E does not name its ruling")
-        self.assertEqual(cvs.POST_EDIT_E_DRIVE_SHA256, hashlib.sha256(cvs.without_b17(src).encode("utf-8")).hexdigest(),
+        # lane vendor-b26: edit F came after edit E, so edit E's pin holds drive.py with edit F taken out
+        self.assertEqual(cvs.POST_EDIT_E_DRIVE_SHA256,
+                         hashlib.sha256(cvs.without_edit_f(cvs.without_b17(src)).encode("utf-8")).hexdigest(),
                          "drive.py after edit E is not pinned")
         self.assertEqual(cvs.edit_e_problems(src), [])
         self.assertEqual(cvs.problems("EB", ["drive.py"]), [])
@@ -464,6 +468,30 @@ class EditE(unittest.TestCase):
                                     f"piece EB admitted drive.py without edit E's hunk {k}")
         moved = src.replace("def codex_cross_check(", "# moved\ndef codex_cross_check(", 1)
         self.assertNotEqual(cvs.edit_e_problems(moved), [], "the pinned sha256 admitted a moved drive.py")
+
+
+class EditF(unittest.TestCase):
+    """Lane vendor-b26, glitch-26's ruling 6: the production Gemini history join's byte-prefix invariant."""
+
+    def test_ef_record_edit_f_is_pinned_and_named(self):
+        src = drive_source()
+        self.assertTrue(isinstance(getattr(cvs, "EDIT_F", None), tuple) and cvs.EDIT_F)
+        self.assertIn("B26-6", getattr(cvs, "EDIT_F_RULING", ""), "edit F does not name its ruling")
+        self.assertEqual(cvs.POST_EDIT_F_DRIVE_SHA256, hashlib.sha256(cvs.without_b17(src).encode("utf-8")).hexdigest(),
+                         "drive.py after edit F is not pinned")
+        self.assertEqual(cvs.edit_f_problems(src), [])
+        self.assertEqual(cvs.problems("EB", ["drive.py"]), [])
+
+    def test_ef_record_a_partial_or_moved_edit_f_fails_piece_eb(self):
+        src = drive_source()
+        for k, (before, after) in enumerate(cvs.EDIT_F):
+            with self.subTest(hunk=k):
+                self.assertEqual(src.count(after), 1, f"edit F hunk {k} is not in drive.py exactly once")
+                partial = src.replace(after, before)
+                self.assertNotEqual(cvs.edit_b_problems(partial) + cvs.edit_f_problems(partial), [],
+                                    f"piece EB admitted drive.py without edit F's hunk {k}")
+        moved = src.replace("def native_history_record(", "# moved\ndef native_history_record(", 1)
+        self.assertNotEqual(cvs.edit_f_problems(moved), [], "the pinned sha256 admitted a moved drive.py")
 
 
 if __name__ == "__main__":

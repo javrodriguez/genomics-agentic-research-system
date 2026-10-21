@@ -11,7 +11,9 @@ C's lines (the one statement of TakeDriver.drive right after the drive scan's `i
 before edit B (PRE_EDIT_B_DRIVE_SHA256, its text at f628e9d8), so no other drive.py line moves. Edit D (lane vendor-b11
 round 4, glitch-26's ruling R4-1: EDIT_D_RULING) is recorded the same way: its hunks (EDIT_D) are taken out by their
 text before edits C and B, and drive.py after it is pinned whole (POST_EDIT_D_DRIVE_SHA256). Edit E (lane vendor-b25,
-glitch-26's ruling 2: EDIT_E_RULING) is recorded as edit D is and taken out first (POST_EDIT_E_DRIVE_SHA256). Any such edit after
+glitch-26's ruling 2: EDIT_E_RULING) is recorded as edit D is and taken out first (POST_EDIT_E_DRIVE_SHA256). Edit F (lane
+vendor-b26, glitch-26's ruling 6: EDIT_F_RULING) is recorded the same way and taken out before E (POST_EDIT_F_DRIVE_SHA256).
+Any such edit after
 Javier's acceptance commit makes production_readers refuse, so a piece naming one is a red check, never a note.
 
 Piece B17 (glitch-26's ruling B17-5, lane vendor-b17 round 2, Mon 19 Oct 2026: OD57's read shapes reach the drive
@@ -202,6 +204,41 @@ EDIT_E = (
 )
 
 
+# Edit F (lane vendor-b26, glitch-26's ruling 6 on the B26 design, Wed 21 Oct 2026): the production Gemini history
+# join (native_history_record) also requires each retained snapshot to be a byte prefix of the next one. Recorded as
+# edit E is; taken out first (it was made last), and drive.py after it pinned whole (POST_EDIT_F_DRIVE_SHA256), so
+# edit E's pin still holds drive.py with F taken out.
+EDIT_F_RULING = ("B26-6 (glitch-26, lane vendor-b26, ruling 6): drive.native_history_record runs "
+                 "native_reader_registration.gemini_snapshot_prefixes after the history join for a Gemini take, so a "
+                 "later native snapshot that is not a byte extension of the one before it is refused; the recorder only "
+                 "appends, which is what lets the reader read a re-record's retired originals. vendor_provenance's "
+                 "contract is unchanged. A named exception on a native reader source, as edits D and E were: no reader "
+                 "acceptance exists yet, so no accepted bytes move.")
+POST_EDIT_F_DRIVE_SHA256 = "4f86970184f246f35dd688a9c30a38473725a6100dc97d856c4006b95145777f"
+EDIT_F = (
+    ('        facts = _vendor_provenance.session_history_facts(harness, Path(session_dir), list(refs), readers=readers)\n',
+     '        facts = _vendor_provenance.session_history_facts(harness, Path(session_dir), list(refs), readers=readers)\n'
+     '        if harness == "gemini":\n'
+     '            _registration.gemini_snapshot_prefixes(Path(session_dir), list(refs))\n'),
+)
+
+
+def without_edit_f(src: str) -> str:
+    """drive.py's text with edit F taken out, as without_edit_e does it; ValueError when a hunk is not there once."""
+    for k, (before, after) in enumerate(EDIT_F):
+        if src.count(after) != 1:
+            raise ValueError(f"edit F's hunk {k} is in drive.py {src.count(after)} times, not once")
+        src = src.replace(after, before)
+    return src
+
+
+def edit_f_problems(src: str) -> list:
+    """Edit F's pin: drive.py with piece B17's exact lines taken out has the sha256 recorded after edit F."""
+    got = hashlib.sha256(without_b17(src).encode("utf-8")).hexdigest()
+    return [] if got == POST_EDIT_F_DRIVE_SHA256 else [
+        f"edit F: drive.py's sha256 {got[:12]}... is not the one pinned after edit F ({POST_EDIT_F_DRIVE_SHA256[:12]}...)"]
+
+
 def without_edit_e(src: str) -> str:
     """drive.py's text with edit E taken out, as without_edit_d does it; ValueError when a hunk is not there once."""
     for k, (before, after) in enumerate(EDIT_E):
@@ -212,8 +249,11 @@ def without_edit_e(src: str) -> str:
 
 
 def edit_e_problems(src: str) -> list:
-    """Edit E's pin: drive.py with piece B17's exact lines taken out has the sha256 recorded after edit E."""
-    got = hashlib.sha256(without_b17(src).encode("utf-8")).hexdigest()
+    """Edit E's pin: drive.py with piece B17's exact lines and edit F taken out has the sha256 recorded after edit E."""
+    try:
+        got = hashlib.sha256(without_edit_f(without_b17(src)).encode("utf-8")).hexdigest()
+    except ValueError as e:
+        return [f"edit F: {e}"]
     return [] if got == POST_EDIT_E_DRIVE_SHA256 else [
         f"edit E: drive.py's sha256 {got[:12]}... is not the one pinned after edit E ({POST_EDIT_E_DRIVE_SHA256[:12]}...)"]
 
@@ -305,16 +345,16 @@ def without_edit_d(src: str) -> str:
 def without_edits(src: str) -> str:
     """drive.py's text with piece B17's lines (by their spans), then edits E and D (by their text), C and B taken out:
     C before B, as it lies below B, so B's lines do not move."""
-    return without_edit_b(without_edit_c(without_edit_d(without_edit_e(without_b17(src)))))
+    return without_edit_b(without_edit_c(without_edit_d(without_edit_e(without_edit_f(without_b17(src))))))
 
 
 def edit_d_problems(src: str) -> list:
     """Edit D's pin: drive.py with piece B17's exact lines taken out has the sha256 recorded after edit D
     (POST_EDIT_D_DRIVE_SHA256); B17's lines are bound by b17_problems."""
     try:
-        got = hashlib.sha256(without_edit_e(without_b17(src)).encode("utf-8")).hexdigest()
+        got = hashlib.sha256(without_edit_e(without_edit_f(without_b17(src))).encode("utf-8")).hexdigest()
     except ValueError as e:
-        return [f"edit E: {e}"]
+        return [f"edit E or F: {e}"]
     return [] if got == POST_EDIT_D_DRIVE_SHA256 else [
         f"edit D: drive.py's sha256 {got[:12]}... is not the one pinned after edit D ({POST_EDIT_D_DRIVE_SHA256[:12]}...)"]
 
@@ -327,7 +367,7 @@ def edit_b_problems(src: str) -> list:
         return b17
     src = without_b17(src)
     try:
-        src = without_edit_e(src)
+        src = without_edit_e(without_edit_f(src))
     except ValueError as e:
         return [f"edit E: {e}"]
     try:
@@ -367,7 +407,7 @@ def problems(piece: str, files: list) -> list:
         text = (HERE / "drive.py").read_text(encoding="utf-8")
         if piece == "B17" and not b17_spans(text)[0]:
             out.append("piece B17: drive.py holds no B17 edit (scan_read_shapes and its three read_shapes lines)")
-        out += edit_b_problems(text) + edit_d_problems(text) + edit_e_problems(text)
+        out += edit_b_problems(text) + edit_d_problems(text) + edit_e_problems(text) + edit_f_problems(text)
     return out
 
 
