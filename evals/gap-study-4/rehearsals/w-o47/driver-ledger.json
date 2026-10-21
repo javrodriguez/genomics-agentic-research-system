@@ -1,0 +1,93 @@
+{
+ "agent": {
+  "harness": "codex",
+  "version": "0.162.1"
+ },
+ "arm": "O",
+ "budget_s": 900,
+ "claude_version": "0.162.1",
+ "cost": null,
+ "cross_check": null,
+ "cross_check_status": {
+  "status": "pending",
+  "why": "no reviewed native-session reader for codex"
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "8443a1be5b33d15e1152cffd782bfe6fb6348588dbf7f66972a76711c8814788"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "kind": "project",
+  "seed": 20261009,
+  "stage01_check_exit": 0,
+  "stage01_expected_exit": 0,
+  "variant": "at-plan-gate"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "gpt-6-luna",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": null,
+  "status": "pending",
+  "why": "no reviewed native-session reader for codex"
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "c96869244a67585857650e18c23909864c2df94ef15933e4831947a95fd8fad7"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "bypass",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-48a987ba",
+ "published": null,
+ "repeat": 1,
+ "row": null,
+ "row_commit": null,
+ "served_model": [
+  {
+   "source": "unobserved",
+   "value": null
+  }
+ ],
+ "session_id": "48a987ba-f48e-5341-b512-7e8dd62637a5",
+ "source": "/tmp/run-48a987ba/gars/projects/run-48a987ba",
+ "streams": [
+  "turn-1.jsonl"
+ ],
+ "task": "plan-gate",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Approve as written?",
+   "held": false,
+   "n": 1,
+   "sent": "I'd like a custom analysis on this RNA-seq project: a PCA of the samples from the gene counts, coloured by condition. Please draft the plan for me to review. The project is /tmp/run-48a987ba/gars/projects/run-48a987ba. Name the analysis sample-pca.",
+   "then": null
+  }
+ ],
+ "wording": "w1"
+}

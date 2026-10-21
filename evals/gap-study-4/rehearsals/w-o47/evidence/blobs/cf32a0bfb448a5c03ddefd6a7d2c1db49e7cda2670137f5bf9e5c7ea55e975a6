@@ -1,0 +1,36 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Produce a two dimensional PCA of the RNA-seq samples from the gene counts, with points coloured by condition. This is a descriptive view of sample relationships, not a differential expression test.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. Submit one Python script through the configured batch executor, using the `gars-bio` environment and its installed pandas, NumPy, scikit-learn, and matplotlib. Read the resolved `counts_gene` TSV and `design` CSV without modifying either input.
+2. Use the gene count table’s gene identifier column as the index; align its sample columns to `sample_id` in the design table and fail clearly if sample IDs do not match exactly.
+3. Transform counts as `log2(count + 1)`. Select the 500 genes with highest variance across samples (or all genes if fewer than 500), then fit scikit-learn `PCA(n_components=2)` to samples by genes.
+4. Plot PC1 against PC2, colour points by the `condition` column, label each point with its sample ID, include explained variance percentages on axis labels and a condition legend, and save the figure as a 200 dpi PNG. No inferential statistics are computed.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | PCA scatterplot of samples, coloured by condition, with sample labels and explained variance. |
+
+## Execution
+Runs: batch
+Expected runtime: under 5 minutes for this six-sample project; output: one PNG, typically under 1 MB. Submit through the workspace configured batch executor.
