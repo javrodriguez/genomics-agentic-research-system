@@ -167,6 +167,11 @@ def _reorder(messages, order):
         if i in seen and not _response_of_gemini(messages, i):
             raise ReplayRefused("native orderIds repeats an id that is not a <gemini id>_response turn")
         seen.add(i)
+    # Lane vendor-b26 (B25 review MINOR 3): at most two listings. A resumed history holds a `_response` id once as the
+    # synthetic turn (:286180-286188) and once as the stored copy read back as a user turn (:286105-286117); the
+    # recorder's map keeps one message per id, so no later resume can list it a third time.
+    if any(n > 2 for n in Counter(order).values()):
+        raise ReplayRefused("native orderIds lists a <gemini id>_response turn more than twice")
     reordered = {}
     for i in order:
         if i not in reordered:                     # Map.set on a present key keeps its first place
@@ -322,6 +327,8 @@ class _Replay:
         counts = Counter(remove)
         if any(n > 1 and not _response_of_gemini(self.live, i) for i, n in counts.items()):
             raise ReplayRefused("native re-record repeats an id that is not a <gemini id>_response turn")
+        if any(n > 2 for n in counts.values()):
+            raise ReplayRefused("native re-record lists a <gemini id>_response turn more than twice")
         survivors = [i for i in self.live if i not in counts]
         if list(dict.fromkeys(remove)) != [i for i in self.live if i in counts]:
             raise ReplayRefused("native re-record's removeIds is not the loader's order")

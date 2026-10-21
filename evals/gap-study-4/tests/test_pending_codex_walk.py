@@ -48,7 +48,7 @@ def jl(records) -> str:
     return "".join(json.dumps(r) + "\n" for r in records)
 
 
-def rollout(turns: int, label: str = UNMARKED, sents=None) -> bytes:
+def rollout(turns: int, label: str = UNMARKED, sents=None, model: str = MODEL) -> bytes:
     """A paginated 0.162.1 rollout of `turns` turns (codex_native's subset and codex_adapter's reading); turn k's
     UserMessage is sents[k-1], the line the exec received (lane vendor-b25: the join now binds it), else "sent k"."""
     recs = []
@@ -64,7 +64,7 @@ def rollout(turns: int, label: str = UNMARKED, sents=None) -> bytes:
         add("event_msg", {"type": "task_started", "turn_id": tid, "model_context_window": None,
                           "collaboration_mode_kind": "default"})
         add("turn_context", {"turn_id": tid, "cwd": "/work/tree", "approval_policy": "never",
-                             "sandbox_policy": {"type": "danger-full-access"}, "model": MODEL})
+                             "sandbox_policy": {"type": "danger-full-access"}, "model": model})
         for item in ({"type": "UserMessage", "id": f"u{k}", "content": [{"type": "text", "text": sents[k - 1] if sents else f"sent {k}",
                                                                           "text_elements": []}]},
                      {"type": "CommandExecution", "id": f"c{k}", "command": ["ls"], "cwd": "/work/tree",
@@ -102,9 +102,10 @@ class CodexBox(tbi.FakeBox):
     """FakeBox that also answers `codex --version` and a `codex exec --json` turn, growing the rollout under the
     take's config folder (CODEX_HOME), one turn per exec."""
 
-    def __init__(self, *a, label=UNMARKED, **kw):
+    def __init__(self, *a, label=UNMARKED, skew=None, **kw):
         super().__init__(*a, **kw)
         self.turn_n, self.label, self.sents = 0, label, []
+        self.skew = skew              # lane vendor-b26 (B25 review MINOR 1): "sent" or "model" written off the launch
 
     def run(self, argv, env=None, timeout=None):
         a = list(argv)
@@ -121,7 +122,10 @@ class CodexBox(tbi.FakeBox):
             folder = Path(cfg) / "sessions" / "2026" / "10" / "14"
             with tbi.FakeBox.as_container(cfg):          # the agent writes its own config folder (the P4 road)
                 folder.mkdir(parents=True, exist_ok=True)
-                (folder / f"rollout-2026-10-14T05-00-00-{TID}.jsonl").write_bytes(rollout(self.turn_n, self.label, self.sents))
+                sents = [x + " (not the line launched)" for x in self.sents] if self.skew == "sent" else self.sents
+                model = MODEL + "-other" if self.skew == "model" else MODEL
+                (folder / f"rollout-2026-10-14T05-00-00-{TID}.jsonl").write_bytes(
+                    rollout(self.turn_n, self.label, sents, model=model))
             return rt.Completed(0, exec_stream(self.turn_n), "")
         return super().run(argv, env=env, timeout=timeout)
 
@@ -382,6 +386,32 @@ class CodexCrossCheckInTheDriver(unittest.TestCase):
         self.assertEqual(ledger["cross_check_status"], {"status": "agreed", "why": None})
         self.assertEqual(ledger["cross_check"], [])
         self.assertEqual(checked, [2], "the checker read the take")
+
+
+class CodexCrossCheckRefusesInTheDriver(unittest.TestCase):
+    """Lane vendor-b26 (B25 review MINOR 1, drive.py's edit E forwarding of the ledger rows' sent and the row's model):
+    a rollout whose UserMessage, or whose turn_context model, is not what the driver launched ends refused in the
+    driver, so a drive.py that handed the join the rollout's own values would go red here, not only on the byte pin."""
+
+    def test_a_skewed_rollout_is_refused_in_the_driver(self):
+        import native_reader_registration as nrr
+        import test_codex_adapter as tca
+        for skew, why in (("sent", "sent"), ("model", "model")):
+            with self.subTest(skew=skew):
+                road = tpw.Road(self, harness="codex", box=CodexBox(skew=skew), run_turn=tca.stub_run_turn,
+                                row={"arm": "O", "model": MODEL, "agent": {"harness": "codex", "version": CLI}})
+                road.driver.checker = lambda row, take, turns: tbi.checker_record()
+                row = dict(road.row)
+                with mock.patch.object(nrr, "production_readers", lambda study=None: {"codex": nrr.codex_reader}), \
+                        tbi.spying(road.rig.spy):
+                    cid = road.driver.launch(row)
+                    try:
+                        road.driver.drive(row, cid)
+                    finally:
+                        road.driver.remove(cid)
+                ledger = json.loads((road.folder / "driver-ledger.json").read_text())
+                self.assertEqual(ledger["cross_check_status"]["status"], "refused", ledger["cross_check_status"])
+                self.assertIn(why, ledger["cross_check_status"]["why"])
 
 
 class CodexRegrade(unittest.TestCase):

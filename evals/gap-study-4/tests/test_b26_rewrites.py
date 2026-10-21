@@ -377,6 +377,40 @@ class LoopFeedback(Witness):
         self.refused(jl(bad), "loop-recovery feedback message is off its pinned shape or place")
 
 
+class B25ReviewGaps(Witness):
+    """B25's review (REVIEW-vendor-b25-a76d86f.md) MINORs 2 and 3, on this lane's replay, where the copy check now lives."""
+
+    def test_minor_2_an_original_with_a_key_its_copy_lacks(self):
+        recs = lines((B25 / "w-g21-native-turn-2.jsonl").read_bytes())
+        k = next(j for j, r in enumerate(recs) if r.get("id", "").endswith("_response") and "type" in r)
+        original = next(j for j, r in enumerate(recs) if r.get("type") == "user" and r is not recs[k]
+                        and not r["id"].endswith("_response") and r.get("content") == recs[k]["content"])
+        bad = copy.deepcopy(recs)
+        bad[original]["displayContent"] = "synthetic text"
+        self.refused(jl(bad), "not the resumed copy")
+
+    def test_minor_3_the_base_must_be_a_gemini_message(self):
+        fr = [{"functionResponse": {"id": "c1", "name": "read_file", "response": {}}}]
+        recs = [{"sessionId": "native-1", "projectHash": "project-1"},
+                {"id": "u1", "type": "user", "content": [{"text": "x"}]},
+                {"id": "u1_response", "type": "user", "content": fr},
+                {"$patch": {"orderIds": ["u1", "u1_response", "u1_response"],
+                            "updates": [{"id": "u1", "content": [{"text": "x"}]}]}}]
+        with self.assertRaises(rm().ReplayRefused) as cm:
+            rm().replay(jl(recs))
+        self.assertIn("repeats an id that is not a <gemini id>_response turn", str(cm.exception))
+
+    def test_minor_3_a_response_id_listed_at_most_twice(self):
+        recs = lines((B25 / "w-g31-native-turn-3.jsonl").read_bytes())
+        k = max(j for j, r in enumerate(recs) if "$patch" in r)
+        order = recs[k]["$patch"]["orderIds"]
+        twice = next(i for i, n in Counter(order).items() if n == 2)
+        self.assertEqual(len(gp().project(jl(recs))), 3, "the real second resume, two listings, still reads")
+        bad = copy.deepcopy(recs)
+        bad[k]["$patch"]["orderIds"].append(twice)
+        self.refused(jl(bad), "more than twice")
+
+
 class Scanner(unittest.TestCase):
     """Ruling 4: check_take's copy of the session reads the original a re-record masked (base: VendorUnreadable)."""
 
