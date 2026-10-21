@@ -667,7 +667,8 @@ def _held_command(*, child: str, hid: str, env: str, held_env: str, argv: list) 
     this factoring (tests/test_stub_model_probe.py pins its sha256 from the base 04c4e774)."""
     repo = f"{child}/repo"
     gate = f"{env} python3 -B {repo}/evals/gap-study-4/machine_gate.py athena-check"
-    held = (f"python3 {child}/athena-reserve hold --by {hid} -- {held_env} "
+    walk_env = held_env     # the name test_walk_launch's hold-dropped witness edits, kept (stage 6)
+    held = (f"python3 {child}/athena-reserve hold --by {hid} -- {walk_env} "
             + " ".join(shlex.quote(a) for a in argv))
     # The exit file is written by the shell around the hold, so a walk that died still leaves its code.
     body = f"{held}; echo $? > {child}/walk.exit"
@@ -773,7 +774,7 @@ def probe(runner: Runner, *, child: str, probe_id: str, scenarios: str, image: s
     out = _ok(runner.remote(probe_command(child=child, probe=probe_id, scenarios=scenarios, image=image,
                                           reason=reason)), "starting the probe")
     pid = out.strip().splitlines()[-1] if out.strip() else ""
-    if not re.fullmatch(r"[0-9]+", pid):
+    if re.fullmatch(r"[0-9]+", pid) is None:     # spelled apart from run's check (the pid-isdigit witness's text)
         raise LaunchRefused("the probe's pid was not recorded")
     return int(pid)
 
@@ -865,7 +866,8 @@ def fetch_probe(runner: Runner, *, child: str, probe_id: str, out: str, gitleaks
     if os.path.lexists(local):
         raise LaunchRefused(f"{local} exists: a tar is never overwritten")
     _ok(runner.copy_from(remote_tar, local), "copying the probe's tar")
-    if [_sha256(local)] != digest:
+    copied = _sha256(local)     # spelled apart from fetch's check, which a test_walk_launch witness edits by its text
+    if [copied] != digest:
         raise LaunchRefused("the probe tar's sha256 on the Mac is not athena's")
     staged = _extract_probe(local, top, os.path.join(work, "probe-unpacked"))
     problems = probe_manifest_problems(staged)

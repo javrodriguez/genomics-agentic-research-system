@@ -513,6 +513,14 @@ class WalkLaunchProbe(unittest.TestCase):
         self.assertNotIn("GIT_AUTHOR_NAME", cmd)
         self.assertIn(f"echo $? > {CHILD}/walk.exit", cmd)
 
+    def test_every_walk_launch_witness_edit_still_applies_once(self):
+        # stage 6: the probe's additions must leave test_walk_launch's WITNESSES performable (its TestWitnesses is
+        # heavy; this is its light precondition, red on 5e6fc97e: hold-dropped 0, back-sha-unchecked 2, pid-isdigit 2)
+        src = Path(wl.__file__).read_text(encoding="utf-8")
+        bad = [f"{name}: {src.count(old)}" for name, (edits, _c) in twl.WITNESSES.items() for old, _n in edits
+               if src.count(old) != 1]
+        self.assertEqual(bad, [])
+
     def test_a_child_that_already_ran_a_walk_or_a_probe_is_refused(self):
         # REVIEW-vendor-b27-25ffff5 MINOR 4: the guard inside probe_command, run in a real sh over a stand-in child
         cmd = wl.probe_command(child=CHILD, probe="smoke1", scenarios="A1", image=GEMINI_IMAGE, reason="r")
