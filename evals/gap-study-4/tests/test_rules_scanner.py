@@ -165,11 +165,15 @@ class EmptyIgnoreFile(Base):
 
 
 def _real_gitleaks():
-    """The pinned binary where it is (athena), else GAP4_GITLEAKS, else gitleaks on PATH; None names the gap."""
-    for b in (rs.GITLEAKS_PATH, os.environ.get("GAP4_GITLEAKS"), shutil.which("gitleaks")):
+    """A real gitleaks, found as tests/test_walk_launch._real_gitleaks finds one (round 3, R3-8: no new environment
+    requirement): on PATH, in ~/.local/bin, or the pinned binary on athena; None names the gap (a named failure)."""
+    for b in (shutil.which("gitleaks"), os.path.expanduser("~/.local/bin/gitleaks"), rs.GITLEAKS_PATH):
         if b and os.path.isfile(b) and os.access(b, os.X_OK):
             return b
     return None
+
+
+NO_GITLEAKS = ("no gitleaks binary on PATH, in ~/.local/bin or at the pinned path (named failure, never a skip)")
 
 
 class PlantedIgnoreFile(unittest.TestCase):
@@ -179,7 +183,7 @@ class PlantedIgnoreFile(unittest.TestCase):
 
     def test_a_planted_ignore_file_no_longer_silences_a_finding(self):
         binary = _real_gitleaks()
-        self.assertIsNotNone(binary, "no gitleaks binary: set GAP4_GITLEAKS (named failure, never a skip)")
+        self.assertIsNotNone(binary, NO_GITLEAKS)
         d = tempfile.mkdtemp(prefix="rs-real-")
         self.addCleanup(shutil.rmtree, d)
         work, recs, reports = (os.path.join(d, x) for x in ("work", "recs", "reports"))

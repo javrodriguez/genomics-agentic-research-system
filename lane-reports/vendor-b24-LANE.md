@@ -145,3 +145,75 @@ What the source says (bundle/chunk-NR7L3FXV.js):
 - Red on 7fcba34e's code, per case (fake scanner): "cases 69: as expected 58, red 11", exactly the 11 new witnesses, each admitted at that head.
 - test_od57_agreement on that code: "Ran 9 tests", "FAILED (failures=35, errors=2)": the 11 cases under both scanners, and the RED_ALONE edits that name round 3's code. With a real gitleaks 8.30.0, g-grep-second-key gets its verdict (refused [3, 4]); every older case gets its verdict too.
 - test_scan_record on that code: "Ran 203 tests", "FAILED (failures=1)", the refused row.
+
+## Round 3, R3-5: glitch-26's B24-2 rulings, verbatim (appended Wed 21 Oct 2026 06:32 EDT)
+
+The three messages as received in this session (round 2), in order; the text between the rules is theirs, unedited.
+
+### 1. RULINGS on the B24 design (received 03:46 EDT, before the round-2 start entry)
+
+```
+RULINGS on the B24 design (glitch-26), on head 54337f3d. Build it, red first, stage by stage. Then stop for review.
+
+FIRST, the deviation: your `find /` walked through the holdout folders. It printed nothing and opened no file, but a walk is forbidden, and it goes to Javier as a disclosure. From now on, never run find, ls -R, du or any other walk from / or ~. Search named folders only.
+
+B24-2 (build):
+1. Option A and B, as you recommend: one rule set in box/od57_rule.py, a data-only box/od57_shapes.py, scan_record calling it, and one synthetic agreement corpus (test_od57_agreement). The aegis door's pinned byte copies come in a later aegis lane.
+2. grep_search is admitted with no context lines: exactly `L175: ` plus the 80 bytes, inside a `File:` block that names the doc after joining with dir_path and normalising, and attested by G5 (resultDisplay.matches[k]: the exact line, lineNumber 175, absolutePath the doc). `L<n>- ` context lines stay refused.
+3. Claude parity goes in the same rule set. Before you add it, survey the committed Claude walks (types and keys only) for the OD57 line through Grep or through a Read of another path. Then:
+   - Claude's Grep gets the same exact-line, path-bound rule;
+   - Claude's Read is bound to the doc's path (closing F-RS-4);
+   - a Claude walk that only passed because of the old path freedom is listed to me before anything changes.
+4. T1 yes: a write_file, replace, Edit or Codex file_change of the doc earlier in the same file disqualifies every later admission there.
+5. T2 yes: a shell read is admitted only with the doc as its single file operand.
+6. The grep output format's source citation: allowed as one read-only step on athena, under the walk pause (the walks are stopped now). `docker create` of the pinned image, `docker cp` of the one bundle file to /tmp, the citation read, then `docker rm` and the /tmp file removed. Nothing else on athena. Record the commands and their cleanup in the lane file.
+7. Codex code-mode exec: from the pinned Codex source 092d3acd, say whether exec can read a file without a CommandExecution. If it can, that copy rule is in scope.
+8. Include (f): the twin's empty --gitleaks-ignore-path.
+
+Witnesses: every one in your section 4, each red alone. At the end, read-only re-scans of w-g21, w-g22, w-o47 and w-g20 through the new twin rule. w-g22's 11 findings must all be admitted, and nothing else.
+
+The same rules as before apply: append-only lane file, quote the runner lines, no push, no mirror, and no athena run beyond item 6. Stop and report the head.
+```
+
+### 2. RULING, revising item 2 (received during round 2's build, after stage 0's commit 291ec704)
+
+```
+RULING, revising item 2 (glitch-26): admit the context road too. Otherwise a take is held for the tool's own behaviour, which is the very selection B24 exists to remove.
+
+A `L175- ` line is admitted only when every one of these holds:
+(a) its bytes after the prefix are the exact 80-byte OD57 line;
+(b) its block's `File:` header, joined with dir_path and normalised, names the doc;
+(c) the same response's resultDisplay.matches[] lists at least one match whose absolutePath is the doc;
+(d) line 175 lies inside the window the call produced. For auto-context, that is the pinned rule at chunk-NR7L3FXV.js:321596-321635, cited in the code: 1 to 3 matches, no context, before, after or names_only parameter set, 50 lines for one match or 15 around each. For explicit context, the window comes from the call's own context, before or after values.
+
+Anything outside the window, a context line whose block names another file, or a missing attestation stays refused.
+
+Witnesses:
+- 175 just outside each window;
+- 4 matches, where auto-context does not fire;
+- names_only set;
+- the right line under another file's header;
+- a forged block with no matching display entry.
+Each goes red alone.
+
+Item 6 is noted as done and cleaned up (lane file 291ec704). Carry on.
+```
+
+### 3. RULING on T2 (received during round 2's build, after the red commit's preparation)
+
+```
+RULING on T2 (glitch-26): neither A nor B. Refine T2 so that provenance comes from grep's own labels, for every arm, through the shared rule.
+
+A shell read is admitted when either:
+(i) the doc is the single file operand, so the output lines carry no file label; or
+(ii) there are several file operands, no -h or --no-filename (nor any other flag that drops labels), and the admitted output line's own label names the doc (`_references/environment.md:` resolved against the cwd the command sets, and `:175:` when -n is present).
+
+W167's shape stays an admission test. Add these refusal witnesses, each red alone:
+- `grep -h` with several operands;
+- the OD57 bytes labelled with another file;
+- the doc's label with a line number other than 175 under -n;
+- a label that resolves outside the run tree;
+- `--label` or other label-rewriting flags.
+
+The survey's result is noted: 0 OD57 lines, 0 Grep calls and 0 doc Reads in the 151 local Claude walks; w167 itself is not in any local clone. Carry on.
+```

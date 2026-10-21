@@ -135,8 +135,8 @@ def g_grep_records(args, blocks, matches, replays=True, name="grep_search"):
     return recs
 
 
-FOUR = [g_match(84, "line 84"), g_match(100, "line 100"), g_match(125, "line 125"), g_match(175, L)]
-DOC_BLOCK = ("environment.md", [(84, ":", "line 84"), (100, ":", "line 100"), (125, ":", "line 125"),
+FOUR = [g_match(84, "line 84"), g_match(101, "line 101"), g_match(125, "line 125"), g_match(175, L)]
+DOC_BLOCK = ("environment.md", [(84, ":", "line 84"), (101, ":", "line 101"), (125, ":", "line 125"),
                                 (175, ":", L)])
 GARGS = {"pattern": "pinned|deseq", "dir_path": GDIR}
 
@@ -206,8 +206,8 @@ def build() -> list:
              g_grep_records(GARGS, [ctx_block([140])], [g_match(140, "line 140")], replays=False), [3, 4], [],
              "auto-context, one match at 140: 50 lines each side (321598-321599), 175 inside"))
     add(case("g-grep-auto-three", "g", "session",
-             g_grep_records(GARGS, [ctx_block([100, 160, 300])],
-                            [g_match(100, "line 100"), g_match(160, "line 160"), g_match(300, "line 300")],
+             g_grep_records(GARGS, [ctx_block([101, 160, 300])],
+                            [g_match(101, "line 101"), g_match(160, "line 160"), g_match(300, "line 300")],
                             replays=False), [3, 4], [], "auto-context, three matches: 15 lines each side, 175-160=15"))
     add(case("g-grep-explicit-context", "g", "session",
              g_grep_records(dict(GARGS, context=20), [ctx_block([160])], [g_match(160, "line 160")],
@@ -220,8 +220,8 @@ def build() -> list:
              g_grep_records(GARGS, [ctx_block([124])], [g_match(124, "line 124")], replays=False), [], [3, 4],
              "175 is 51 lines after the one match: outside the 50-line auto window"))
     add(case("g-grep-auto-three-outside", "g", "session",
-             g_grep_records(GARGS, [ctx_block([100, 159, 300])],
-                            [g_match(100, "line 100"), g_match(159, "line 159"), g_match(300, "line 300")],
+             g_grep_records(GARGS, [ctx_block([101, 159, 300])],
+                            [g_match(101, "line 101"), g_match(159, "line 159"), g_match(300, "line 300")],
                             replays=False), [], [3, 4], "175 is 16 after the nearest of three matches"))
     add(case("g-grep-explicit-outside", "g", "session",
              g_grep_records(dict(GARGS, context=14), [ctx_block([160])], [g_match(160, "line 160")],
@@ -230,8 +230,8 @@ def build() -> list:
              g_grep_records(dict(GARGS, context=30, after=14), [ctx_block([160])], [g_match(160, "line 160")],
                             replays=False), [], [3, 4], "after 14 overrides context 30 on that side"))
     add(case("g-grep-four-matches-no-auto", "g", "session",
-             g_grep_records(GARGS, [ctx_block([100, 120, 160, 300])],
-                            [g_match(n, f"line {n}") for n in (100, 120, 160, 300)], replays=False), [], [3, 4],
+             g_grep_records(GARGS, [ctx_block([101, 120, 160, 300])],
+                            [g_match(n, f"line {n}") for n in (101, 120, 160, 300)], replays=False), [], [3, 4],
              "four matches: auto-context does not fire, so a context line has no window"))
     add(case("g-grep-names-only", "g", "session",
              g_grep_records(dict(GARGS, names_only=True), [ctx_block([160])], [g_match(160, "line 160")],

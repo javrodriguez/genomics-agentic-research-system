@@ -90,9 +90,10 @@ def shapes(family):
 
 
 def real_gitleaks():
-    """The pinned gitleaks where it is (athena), else GAP4_GITLEAKS, else gitleaks on PATH; None names the gap."""
+    """A real gitleaks, found as tests/test_walk_launch._real_gitleaks finds one (round 3, R3-8): on PATH, in
+    ~/.local/bin, or the pinned binary on athena; None names the gap (a named failure, never a skip)."""
     from box import rules_scanner as rs
-    for b in (rs.GITLEAKS_PATH, os.environ.get("GAP4_GITLEAKS"), shutil.which("gitleaks")):
+    for b in (shutil.which("gitleaks"), os.path.expanduser("~/.local/bin/gitleaks"), rs.GITLEAKS_PATH):
         if b and os.path.isfile(b) and os.access(b, os.X_OK):
             return b
     return None
@@ -230,9 +231,9 @@ class Corpus(unittest.TestCase):
                 self.assertEqual(run_case(c, self.text, self.tmp.name), (c["admit"], c["refuse"]), c["why"])
 
     def test_the_corpus_under_real_gitleaks(self):
-        """R3-4: every case gets its verdict with a real gitleaks too (a missing binary is a named failure)."""
+        """R3-4: every case gets its verdict with a real gitleaks too (a missing binary is a named failure, never a skip)."""
         binary = real_gitleaks()
-        self.assertIsNotNone(binary, "no gitleaks binary: set GAP4_GITLEAKS (named failure, never a skip)")
+        self.assertIsNotNone(binary, "no gitleaks binary on PATH, in ~/.local/bin or at the pinned path (named failure, never a skip)")
         for c in self.cases:
             with self.subTest(c["name"]):
                 work = tempfile.mkdtemp(dir=self.tmp.name)
@@ -242,7 +243,7 @@ class Corpus(unittest.TestCase):
     def test_the_second_key_is_a_real_finding(self):
         """R3-4: the planted second key is a finding of a real gitleaks's generic-api-key rule, alone on a line."""
         binary = real_gitleaks()
-        self.assertIsNotNone(binary, "no gitleaks binary: set GAP4_GITLEAKS (named failure, never a skip)")
+        self.assertIsNotNone(binary, "no gitleaks binary on PATH, in ~/.local/bin or at the pinned path (named failure, never a skip)")
         work = tempfile.mkdtemp(dir=self.tmp.name)
         p = os.path.join(work, "second.jsonl")
         with open(p, "w") as fh:

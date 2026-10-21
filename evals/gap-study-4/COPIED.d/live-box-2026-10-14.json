@@ -74,7 +74,7 @@
     {
       "path": "tests/test_rules_scanner.py",
       "status": "new",
-      "reason": "Lane live-box: the scanner with a fake runtime (argv, findings by path/line/rule, feeding scan_record), every refusal (sha, version, exit, missing or malformed report, used report folder), and the pin bound to the four stub takes' athena readings. Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the argv test names the empty ignore file; EmptyIgnoreFile and PlantedIgnoreFile (a real gitleaks: a planted .gitleaksignore silences the argv without the flag and never the module's) are its red tests."
+      "reason": "Lane live-box: the scanner with a fake runtime (argv, findings by path/line/rule, feeding scan_record), every refusal (sha, version, exit, missing or malformed report, used report folder), and the pin bound to the four stub takes' athena readings. Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the argv test names the empty ignore file; EmptyIgnoreFile and PlantedIgnoreFile (a real gitleaks: a planted .gitleaksignore silences the argv without the flag and never the module's) are its red tests. Round 3 (R3-7, R3-8, athena's battery on 7fcba34e): PlantedIgnoreFile finds the real gitleaks as test_walk_launch does (PATH, ~/.local/bin, the pinned path), no environment variable; still a named failure when none is there."
     },
     {
       "path": "box/settings_guard.py",
