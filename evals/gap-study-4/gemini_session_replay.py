@@ -12,6 +12,28 @@ Supports complete message upserts and ordinary content/tool-result patches.
 Destructive history operations and unknown control records fail closed. Unlike
 the vendor's recovery-oriented loader, malformed JSON and unknown patch targets
 are never silently ignored.
+
+Lane vendor-b25 (glitch-26's ruling 3; Gemini review BLOCKER 1): the resume
+reorder. Read from the pinned package itself (@google/gemini-cli 0.64.0, tarball
+sha256 891a794e..., bundle/chunk-NR7L3FXV.js sha256 d566e81b..., the chunk the
+running CLI imports: bundle/gemini.js:10): on every chat start
+GeminiChat.initialize calls ChatRecordingService.updateMessagesFromHistory
+(chunk-NR7L3FXV.js:287151-287298), whose only $patch write is
+appendRecord({$patch: patchPayload}) at :287265, patchPayload holding `updates`
+(:287256-287258), `removeIds` (:287259-287261) and `orderIds`, the whole
+history's ids in order (:287262-287264). The loader
+(createJsonlRecordAccumulator, :286309-286455) applies a $patch in a fixed order:
+the direct id patch, then `updates` (:286390-286399), then `removeIds`
+(:286400-286414), then `orderIds` (:286415-286453): ids it lists move, in that
+order, behind every id it does not list; an id listed twice keeps its first
+place (Map.set on a present key, :286450-286452). Admitted here: exactly
+{orderIds, updates}, every orderIds entry a string naming a known message, every
+known message listed (a permutation, so no prefix is left), and an id listed
+twice only when it is a `<gemini id>_response` id, which the resumed history
+holds twice by construction (convertSessionToClientHistory, :286099-286194: the
+synthetic `${msg.id}_response` turn at :286180-286188, and the stored message of
+that id read back as a user turn at :286105-286117). removeIds (destructive),
+orderIds without updates, and any other duplicate or unknown id refuse.
 """
 from copy import deepcopy
 
@@ -63,6 +85,38 @@ def _patch(messages, patch):
             tools[change["id"]]["result"] = deepcopy(change["result"])
 
 
+RESPONSE_SUFFIX = "_response"        # convertSessionToClientHistory's synthetic turn id, chunk-NR7L3FXV.js:286182
+
+
+def _resume_patch(messages, patch):
+    """The resume-time {$patch: {orderIds, updates}} (module docstring): the updates, then the reorder, in place."""
+    if not isinstance(patch["updates"], list) or not patch["updates"]:
+        raise ReplayRefused("native patch updates must be a nonempty array")
+    for update in patch["updates"]:
+        _patch(messages, update)
+    order = patch["orderIds"]
+    if not isinstance(order, list) or not order or not all(_string(i) for i in order):
+        raise ReplayRefused("native orderIds must be a nonempty array of ids")
+    if any(i not in messages for i in order):
+        raise ReplayRefused("native orderIds names an unknown message")
+    if set(order) != set(messages):
+        raise ReplayRefused("native orderIds is not a permutation of the known messages")
+    seen = set()
+    for i in order:
+        if i in seen:
+            base = i[:-len(RESPONSE_SUFFIX)] if i.endswith(RESPONSE_SUFFIX) else None
+            if not (base and messages[i]["type"] == "user" and base in messages
+                    and messages[base]["type"] == "gemini"):
+                raise ReplayRefused("native orderIds repeats an id that is not a <gemini id>_response turn")
+        seen.add(i)
+    reordered = {}
+    for i in order:
+        if i not in reordered:                     # Map.set on a present key keeps its first place
+            reordered[i] = messages[i]
+    messages.clear()
+    messages.update(reordered)
+
+
 def replay(raw):
     """Replay one retained native snapshot; no prompt/output/terminal claims."""
     if not isinstance(raw, bytes):
@@ -96,6 +150,9 @@ def replay(raw):
                 metadata.update(update)
             elif "$patch" in record:
                 patch = record["$patch"]
+                if isinstance(patch, dict) and set(patch) == {"orderIds", "updates"}:
+                    _resume_patch(messages, patch)
+                    continue
                 if not isinstance(patch, dict) or not patch or not set(patch) <= {"id", "content", "toolCalls", "updates"}:
                     raise ReplayRefused("unsupported native patch operation")
                 direct = {key: value for key, value in patch.items() if key != "updates"}

@@ -20,6 +20,9 @@ during a tool run from an answer). A failed result is kept and reported (complet
 Tool facts compare by id, name, order and status: every tool_use has exactly one tool_result of its id, ids are never
 reused, and the stream's (id, name, status) list must equal the native tool facts' (id, name, emitted_status).
 The sent text and the init model are compared when both sides have them, and stay None when the stream lacks them.
+Session identity (lane vendor-b25, glitch-26's ruling 5; Gemini review MAJOR 3), as the Codex join binds the exec
+thread: the stream's init session_id must equal the native session's sessionId; a stream with no init, or another id,
+refuses.
 Every disagreement, and every shape the stream tables refuse (transcript_gemini.check_record), refuses (JoinRefused).
 Unregistered: vendor_provenance's NATIVE_SESSION_READERS stays empty until a real recorded session is reviewed.
 """
@@ -56,6 +59,7 @@ def _records(text: str) -> list:
 def read_call(text: str) -> dict:
     """One call's stream, read for the join: sent, init model, per-response raw texts, tools, errors, terminal."""
     sent, init_model, responses, tools, results, errors, terminal = None, None, [[]], [], {}, [], None
+    init_session = None
     params = {}
     after_result = False
     for rec in _records(text):
@@ -65,7 +69,7 @@ def read_call(text: str) -> dict:
         if t == tg.INIT:
             if init_model is not None:
                 raise JoinRefused("two init records in one call")
-            init_model = rec["model"]
+            init_model, init_session = rec["model"], rec["session_id"]
         elif t == tg.MESSAGE and rec["role"] == tg.USER:
             if sent is not None:
                 raise JoinRefused("two user messages in one call")
@@ -100,7 +104,7 @@ def read_call(text: str) -> dict:
     missing = [i for i, _ in tools if i not in results]
     if missing:
         raise JoinRefused(f"no tool_result for tool_use {missing}")
-    return {"sent": sent, "init_model": init_model, "responses": ["".join(r) for r in responses],
+    return {"sent": sent, "init_model": init_model, "init_session": init_session, "responses": ["".join(r) for r in responses],
             "tools": [(i, n, results.get(i)) for i, n in tools], "args": [params[i] for i, _ in tools],
             "errors": errors, "terminal": terminal}
 
@@ -130,6 +134,8 @@ def join(fact: dict, stream_text: str) -> dict:
     """The joined interaction, or JoinRefused. `fact` is one element of gemini_projection.project's list."""
     native_texts, native_tools = _native(fact)
     call = read_call(stream_text)
+    if call["init_session"] is None or call["init_session"] != fact.get("session_id"):
+        raise JoinRefused("session identity disagrees: the stream's init session_id is not the native sessionId")
     segments = [s for s in (gp.recorder_normalize(r) for r in call["responses"]) if s]
     if segments != native_texts:
         raise JoinRefused("recorded text disagrees: the stream's normalized responses are not the native segments")

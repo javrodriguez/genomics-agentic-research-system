@@ -64,6 +64,39 @@ refuses. Still a named false-refusal risk: multi-part user content (an @-include
 prompt), and the binary-injection road's synthetic thought and info messages.
 A refusal is a reader result only: it never erases an executed record or
 authorizes a replacement take.
+
+Lane vendor-b25 (glitch-26's rulings 3, 4 and 6), read from the pinned package
+(@google/gemini-cli 0.64.0, tarball sha256 891a794e..., bundle/chunk-NR7L3FXV.js
+sha256 d566e81b..., the chunk bundle/gemini.js:10 imports):
+  * The session context message is not an interaction. GeminiClient.startChat
+    (:348055-348079) builds the history with getInitialChatHistory
+    (:336356-336377), whose first turn is a user turn with id
+    deriveStableId(["environment-context"]) (:336357, :336369; deriveStableId is
+    sha256 of the sorted ids joined by "|", first 32 hex digits, :286041-286044)
+    and one text part, getEnvironmentContext's block (:336332-336355), which
+    begins "<session_context>\nThis is the Gemini CLI. We are setting up the
+    context for our chat.\n" and ends "</session_context>" (:336343-336352,
+    trimmed). The recorder writes it as newMessage("user", parts, undefined, id)
+    (:286901-286909): keys id, timestamp, type, content. It is recognised only as
+    the first replayed message, with exactly that id, those keys and that one
+    wrapped text part (ENV_CONTEXT_ID, _session_context); anything else stays an
+    interaction.
+  * The resumed duplicate of a tool round trip. On resume,
+    convertSessionToClientHistory (:286099-286194) emits after each tool-calling
+    model turn a synthetic user turn `${msg.id}_response` holding its calls'
+    results (:286156-286188), then the stored round-trip message read back as a
+    user turn (:286105-286117); updateMessagesFromHistory appends the synthetic
+    one as a new message (:286190-286196) and orders both behind the model turn
+    (orderIds, :287262-287264). So after a tool-calling gemini message G there
+    may be the copy (id G.id + "_response") and then the original; the copy is
+    admitted only directly after G, only when the original follows it at once,
+    and only when the two are byte-identical (same keys; content equal as
+    serialized JSON); the original then counts as G's round trip and the copy as
+    nothing. Any other repeated round trip still refuses.
+  * An empty final answer (ruling 6): an interaction with no recorded text
+    segment is no longer refused here; the join compares the segments with the
+    stream's normalized responses, so both empty agrees and one side empty
+    disagrees.
 """
 from __future__ import annotations
 
@@ -73,11 +106,20 @@ import re
 import gemini_session_replay as replay_mod
 
 
+import hashlib
+import json
+
+
 class ProjectionRefused(ValueError):
     """The retained native session is outside the reviewed projection subset."""
 
 
 USER_KEYS = {"id", "timestamp", "type", "content", "displayContent"}
+# deriveStableId(["environment-context"]) (chunk-NR7L3FXV.js:286041-286044, :336369).
+ENV_CONTEXT_ID = hashlib.sha256(b"environment-context").hexdigest()[:32]
+ENV_CONTEXT_OPEN = ("<session_context>\nThis is the Gemini CLI. We are setting up the context for our chat.\n")
+ENV_CONTEXT_CLOSE = "</session_context>"
+RESPONSE_SUFFIX = "_response"       # chunk-NR7L3FXV.js:286182
 GEMINI_KEYS = {"id", "timestamp", "type", "content", "thoughts", "tokens", "model", "toolCalls"}
 TOOL_KEYS = {"id", "name", "args", "result", "status", "timestamp", "resultDisplay", "description",
              "displayName", "renderOutputAsMarkdown"}
@@ -277,11 +319,32 @@ def _interaction(session_id, user, replies, seen_ids):
         raise ProjectionRefused("native interaction is incomplete: its last model message ends on tool calls")
     if len(models) > 1:
         raise ProjectionRefused("contradictory native models within one interaction")
-    if not segments:
-        raise ProjectionRefused("native interaction has no recorded answer text")
     return {"session_id": session_id, "requested_model": models.pop() if models else None,
             "version": None, "cwd": None, "permission_mode": None, "sent": sent,
             "output": segments + tools}
+
+
+def _session_context(message) -> bool:
+    """The first message is the session context turn on its exact pinned shape (module docstring)."""
+    content = message.get("content")
+    return (message.get("type") == "user" and message.get("id") == ENV_CONTEXT_ID
+            and set(message) == {"id", "timestamp", "type", "content"} and isinstance(content, list)
+            and len(content) == 1 and isinstance(content[0], dict) and set(content[0]) == {"text"}
+            and isinstance(content[0]["text"], str) and content[0]["text"].startswith(ENV_CONTEXT_OPEN)
+            and content[0]["text"].endswith(ENV_CONTEXT_CLOSE))
+
+
+def _serialized(value) -> str:
+    return json.dumps(value, ensure_ascii=False, allow_nan=False)
+
+
+def _resumed_copy(message, gemini, following) -> bool:
+    """`message` is the resume-time copy of `gemini`'s round trip (module docstring): its id is gemini's plus
+    "_response", and the original that follows it at once is byte-identical to it (same keys, same content)."""
+    return (gemini is not None and gemini["type"] == "gemini" and message["id"] == gemini["id"] + RESPONSE_SUFFIX
+            and following is not None and following["type"] == "user" and following["id"] != message["id"]
+            and _tool_response_turn(following) is not None and set(following) == set(message)
+            and _serialized(following["content"]) == _serialized(message["content"]))
 
 
 def project(raw):
@@ -292,9 +355,18 @@ def project(raw):
         raise ProjectionRefused(f"native replay refused: {exc}") from None
     _finite(replayed)
     session_id = replayed["metadata"]["sessionId"]
+    messages = list(replayed["messages"])
+    if messages and _session_context(messages[0]):
+        messages = messages[1:]                    # the session context turn: never an interaction
     groups, previous = [], None
-    for message in replayed["messages"]:
+    for k, message in enumerate(messages):
         answered = _tool_response_turn(message) if message["type"] == "user" else None
+        if answered is not None and message["id"].endswith(RESPONSE_SUFFIX):
+            following = messages[k + 1] if k + 1 < len(messages) else None
+            if not _resumed_copy(message, previous, following):
+                raise ProjectionRefused("a <gemini id>_response turn is not the resumed copy of the round trip that "
+                                        "follows it (byte-identical, directly after its gemini message)")
+            continue                                   # the copy counts as nothing; the original is the round trip
         if answered is not None:
             # Batch-5 review finding 1: GeminiChat records one round trip per tool-calling model message, holding the
             # responses to exactly that message's calls; so the turn must follow that message and answer each of its
