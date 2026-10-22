@@ -488,10 +488,15 @@ def description_problems(d):
     names = sorted({entry["name"] for item in d["image_locks"] for entry in (item["lock"]["users"] or {}).values() if "name" in entry})
     # Lane freeze-gates-fix (glitch-f1's ruling (2), 21 Oct 2026): the walks are committed, so the session check is the
     # registered state, read from the committed sessions themselves: every one read, by name, and none voided.
+    # OD112 (Javier, Thu 22 Oct 2026; merge-fix2): every one read but the unread set, which is exactly
+    # leak_grep.KNOWN_UNREADABLE, itself exactly rehearsals/w-g24 (Description.test_sessions_unread_is_bound).
     import leak_grep
     held = sorted(str(p.parent.relative_to(HERE)) for p in leak_grep.sessions())
     ca = d["checked_against"]
-    need(d["box_users"] == names and held and ca.get("status") == "read" and ca.get("sessions_read") == len(held)
+    unread = sorted(u.get("session") for u in ca.get("sessions_unread") or [])
+    need(d["box_users"] == names and held and ca.get("status") == "read"
+         and unread == sorted(leak_grep.KNOWN_UNREADABLE) == ["rehearsals/w-g24"]
+         and ca.get("sessions_read") == len(set(held) - set(unread))
          and sorted(s.get("session") for s in ca.get("sessions") or []) == held
          and all(s.get("words_the_checker_would_void_on") == [] for s in ca["sessions"]), "R9.sessions")
     need(d["not_poolable"]["rounds"] == ["evals/gap-study", "evals/gap-study-2", "evals/gap-study-3"] and
@@ -678,6 +683,25 @@ class Description(unittest.TestCase):
         for name, (clause, path, value) in DESCRIPTION_MUTANTS.items():
             with self.subTest(name=name):
                 self.assertIn(clause, description_problems(changed(d, path, value)))
+
+    def test_sessions_unread_is_bound(self):
+        """OD112 (Javier, 22 Oct 2026; merge-fix2): R9.sessions takes held minus the unread set only while that set is
+        exactly KNOWN_UNREADABLE, rehearsals/w-g24; each other shape of the read stays red."""
+        d = self.get()
+        self.assertNotIn("R9.sessions", description_problems(d))
+        ca = d["checked_against"]
+        n, unread = ca["sessions_read"], ca["sessions_unread"]
+        second = next(s["session"] for s in ca["sessions"] if s["session"] != "rehearsals/w-g24")
+        read, named = ("checked_against", "sessions_read"), ("checked_against", "sessions_unread")
+        for case, mutant in (
+                # the count kept at held minus the unread set, so only the set is wrong
+                ("a second unread walk", changed(changed(d, named, unread + [{"session": second, "why": "fake"}]),
+                                                 read, n - 1)),
+                ("the unread walk counted as read", changed(d, read, n + 1)),
+                ("a dropped unread name", changed(d, named, [])),
+                ("a count short of held", changed(d, read, n - 1))):
+            with self.subTest(case=case):
+                self.assertIn("R9.sessions", description_problems(mutant))
 
     def test_predictions_read_no_counts(self):
         self.get()
