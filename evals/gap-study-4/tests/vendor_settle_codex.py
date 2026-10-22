@@ -421,7 +421,13 @@ NC_PLANTS = {
         (O46, ct.vendor_billing_route_partial, (), ((ct._run_take.TAKE_ENV, "codex", {"OPENAI_BASE_URL": "x"}),)),
         (O46, ct.vendor_billing_route_partial, (lambda: _payload_edit(
             LAST_O46, lambda r: r.get("type") == "session_meta", lambda r: r["payload"].update(model_provider="oss")),),
-         ())],
+         ()),
+        # stage V, glitch-f1's amendment: a non-null credential_source on one vendor turn, and a reported one
+        (O46, ct.vendor_billing_route_partial, (lambda: vp.replace_bytes(
+            "environment.json", '"n": 2,\n        "recovery": false,\n        "exit": 0,\n        "apiKeySource": null',
+            '"n": 2,\n        "recovery": false,\n        "exit": 0,\n        "apiKeySource": "ChatGPT"'),), ()),
+        (O46, ct.vendor_billing_route_partial, (lambda: vp.replace_bytes(
+            "environment.json", '"reported": null', '"reported": "ChatGPT"'),), ())],
     "T-18": [(O47, ct.vendor_codex_tools_partial, (lambda: _payload_edit(
         "session/native-turn-1.jsonl", _message_with("developer", "<skills_instructions>"),
         lambda r: r["payload"]["content"].append(
@@ -707,6 +713,17 @@ class CNotComparable(unittest.TestCase):
                 got = nc_t8() if key == "T-8:file-change" else [p for run in _nc_runs_hollow(key) for p in run]
                 self.assertFalse([p for p in got if p.startswith("[")], f"the hollow {name} still fired: {got}")
 
+    def test_c_nc_t17_credential_source_leg_is_its_own(self):
+        # stage V, glitch-f1's amendment: the two credential_source plants fire through the leg alone; with the leg
+        # hollowed (vendor_credential_source_problems returning []) they read clean
+        for fixture, reader, edits, patches in NC_PLANTS["T-17:billing-route"][3:]:
+            with self.subTest(plant=len(edits)):
+                got = _partial(fixture, reader, *[e() for e in edits], patches=patches)
+                self.assertEqual(len(got), 1, got)
+                self.assertIn("credential_source", got[0])
+                with unittest.mock.patch.object(ct, "vendor_credential_source_problems", lambda rec, reason="x": []):
+                    self.assertEqual(_partial(fixture, reader, *[e() for e in edits], patches=patches), [])
+
     def test_c_nc_rulings_are_glitch_f1s_text(self):
         for key in list(NC_PLANTS) + ["T-8:file-change"]:
             row = ct.VENDOR_PENDING_ROWS["codex"][key]
@@ -726,14 +743,14 @@ class CNotComparable(unittest.TestCase):
 
 
 # The adopted rulings' texts (vendor-settle-NC-RULINGS-2026-10-21.md, arm O, each section's heading and body lines
-# joined by newlines): sha256 read from that file (whole-file sha256 3deef4c1..., after glitch-f1's 22 Oct
-# T-12:memory amendment) by the stage V builder.
+# joined by newlines): sha256 read from that file (whole-file sha256 ac577323..., after glitch-f1's 22 Oct
+# amendments: T-12:memory's settings leg dropped, T-17's credential_source sentence) by the stage V builder.
 RULING_SHA256 = {
     "T-8:file-change": "eced9dca49a48c3537cca198527a72da53eba7356705d970c4825eb2abec06b6",
     "T-12:offered-context": "99c5adece7e13365c3a7980f7e48a64413b0e0c8fc777e4532b55df957a6111f",
     "T-12:memory": "4a5938863abef5753e365b02d9fc036ee953d5c11f657a524d781f0b45cf7204",
     "T-13": "e1745e15da6a96eda73eb04d37ee1ae5250c4c27ffb058bdcb2092b27bc83276",
-    "T-17:billing-route": "4b2bff13f08acffe332f9c1fd4f4f0abf0a1d5337cef24b58ef1ba2d60282d29",
+    "T-17:billing-route": "53228989c2e9a3d9de554cd67b27c866c2e58354917579b2e0996d93f1db53d4",
     "T-18": "bb8046f7f9098935406d6a87f87833b90d31751124b93153f9426e2489a71cfa",
 }
 

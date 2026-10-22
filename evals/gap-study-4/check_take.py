@@ -3821,8 +3821,9 @@ VENDOR_PENDING_ROWS = {
     "codex": {
         # Lane vendor-settle stage C: 6 SAME rows on the RECORDED w-o46 take, 6 NOT COMPARABLE rows whose "ruling" is
         # glitch-f1's adopted text verbatim (plans/gap-study-round-4/vendor-settle-NC-RULINGS-2026-10-21.md in the
-        # Glitch Brain, sha256 3deef4c14668ea48040ada6247601de7fc888c44ef415327b775aad64bc49f5a after glitch-f1's
-        # 22 Oct amendment of the T-12:memory text, copied by stage V).
+        # Glitch Brain, sha256 ac57732311ef8e8cfffc9ce58fcc2dc42d85139fcf6199b38d59c4f589ae7386 after glitch-f1's
+        # 22 Oct amendments, the Codex T-12:memory text and both T-17 texts' credential_source sentence, copied by
+        # stage V).
         "T-5": {"reason": "unknown-harness-origin", "state": "SAME",
             "fixture": "recorded-codex-w-o46/transcript.jsonl",
             "reader": "vendor_codex_origin_reads"},
@@ -3925,6 +3926,8 @@ VENDOR_PENDING_ROWS = {
                      " records the OpenAI provider and a ChatGPT plan (38 of 38).\n"
                      "Its test adds `CODEX_ACCESS_TOKEN`, patches the launch environment, or changes the provider;"
                      " each must fire.\n"
+                     "The environment record's credential_source is null on every vendor turn (the driver writes"
+                     " Claude Code's fields only), so it shows nothing about the vendor's credential.\n"
                      "A reader may conclude these routes were refused before launch, not observed absent in-session."),
         },
         "T-18": {"reason": HARNESS_CONDITION_VIOLATED, "state": "NOT COMPARABLE",
@@ -4022,6 +4025,8 @@ VENDOR_PENDING_ROWS = {
                 "set covers all (run_take.py:963-973); the pinned auth setting is the API key "
                 "(take_config.py:110-112).\n"
                 "Its test adds `GOOGLE_CLOUD_ACCESS_TOKEN`, which must fire.\n"
+                "The environment record's credential_source is null on every vendor turn (the driver writes Claude "
+                "Code's fields only), so it shows nothing about the vendor's credential.\n"
                 "A reader may conclude these routes were refused before launch, not observed absent in-session.")},
         "T-18": {"reason": HARNESS_CONDITION_VIOLATED, "state": "NOT COMPARABLE",
             "reader": "vendor_gemini_tools_partial", "ruling": (
@@ -6079,6 +6084,25 @@ def vendor_codex_recorded_mode_reads(path, design, arm) -> list:
     return out
 
 
+def vendor_credential_source_problems(rec, reason: str = "environment-record") -> list:
+    """T-17:billing-route's credential leg, both arms (glitch-f1's amendment of both T-17 rulings, Thu 22 Oct 2026,
+    from GAP4-PREFREEZE-RESIDUALS-20261022.md item 3): the environment record's credential_source is Claude Code's
+    stream field (system/init.apiKeySource), which the driver writes null for a vendor take, so it must be null on every
+    vendor turn (each per_turn apiKeySource and the reported value); a non-null value is a credential source the study
+    cannot place. Survey: null on all 74 vendor walks."""
+    cs = rec.get("credential_source") if isinstance(rec, dict) else None
+    turns = cs.get("per_turn") if isinstance(cs, dict) else None
+    if not (isinstance(cs, dict) and isinstance(turns, list) and turns and all(isinstance(t, dict) for t in turns)):
+        return [f"[{reason}] the environment record's credential_source is not one per_turn list, so its null on every "
+                "vendor turn cannot be shown"]
+    out = [f"[{reason}] the environment record's credential_source names {t.get('apiKeySource')!r} for turn "
+           f"{t.get('n')!r}, not null: a credential source on a vendor turn the study does not place"
+           for t in turns if t.get("apiKeySource") is not None]
+    if cs.get("reported") is not None:
+        out.append(f"[{reason}] the environment record's credential_source reports {cs['reported']!r}, not null")
+    return out
+
+
 def vendor_billing_route_partial(path, harness, pre) -> list:
     """environment-record, T-17:billing-route (NOT COMPARABLE; glitch-f1's adopted rulings, both arms; a harness
     argument, so stage G may call it): (1) the environment record's named variables hold no name of the harness's
@@ -6086,7 +6110,8 @@ def vendor_billing_route_partial(path, harness, pre) -> list:
     (drive.py:656); (2) the launch environment (run_take.TAKE_ENV) holds none and the refused set
     (run_take.refused_variables) covers all (run_take.py:963-973); (3) codex: session_meta's model_provider is
     "openai" and every token_count records a plan (rate_limits.plan_type non-null, at least one); gemini: the pinned
-    auth setting is the API key (take_config.GEMINI_AUTH_SETTING, take_config.py:110-112)."""
+    auth setting is the API key (take_config.GEMINI_AUTH_SETTING, take_config.py:110-112); and (stage V, glitch-f1's
+    amendment) the record's credential_source null on every vendor turn (vendor_credential_source_problems)."""
     reason = "environment-record"
     harness = _vendor_harness(harness)
     names = set(_run_take.VENDOR_BILLING_ROUTE_VARIABLES[harness])
@@ -6098,6 +6123,8 @@ def vendor_billing_route_partial(path, harness, pre) -> list:
     except (OSError, ValueError, KeyError, TypeError, AttributeError) as e:
         present = None
         out.append(f"[{reason}] the environment record's named variables cannot be read ({type(e).__name__})")
+    else:
+        out += vendor_credential_source_problems(rec, reason)
     if present is not None and present & names:
         out.append(f"[{reason}] the environment record names {sorted(present & names)}, of the {harness} billing "
                    "routes")
@@ -6560,7 +6587,8 @@ def vendor_gemini_checkout_partial(path) -> list:
 def vendor_gemini_billing_route_partial(path) -> list:
     """T-17:billing-route's partial check, three legs: environment.json's named variables hold no Gemini billing-route
     name (only key- or token-shaped names are visible there, drive.py:656); the launch environment holds none and the
-    refused set covers all (run_take.py:963-973); the pinned auth setting is the API key (take_config.py:110-112)."""
+    refused set covers all (run_take.py:963-973); the pinned auth setting is the API key (take_config.py:110-112); and
+    (stage V, glitch-f1's amendment) the record's credential_source null on every turn (vendor_credential_source_problems)."""
     names = tuple(_settle_g_run_take.VENDOR_BILLING_ROUTE_VARIABLES.get("gemini") or ())
     out = []
     if not names or isinstance(names, str):
@@ -6571,6 +6599,8 @@ def vendor_gemini_billing_route_partial(path) -> list:
     except (OSError, ValueError, KeyError, TypeError) as e:
         present = None
         out.append(f"[environment-record] the environment record's named variables cannot be read ({type(e).__name__})")
+    else:
+        out += vendor_credential_source_problems(rec)                 # stage V: glitch-f1's amendment (both T-17s)
     if present is not None and present & set(names):
         out.append(f"[environment-record] the environment record names the Gemini billing-route variable(s) "
                    f"{sorted(present & set(names))}")

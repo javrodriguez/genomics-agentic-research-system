@@ -101,7 +101,7 @@ RULING_SHA256 = {
     "T-12:prompt-snapshot": "afe373c7b0a72505ce7e210ae4ddd258c11a1c4a7ed8d274ce4071837a60e665",
     "T-12:memory": "3f88136649de1daef4ba548e7399d958b316dc54507d9b249b4178edcae5ad89",
     "T-13": "f1e759baf77ae401ea87c701ef1c5f8ccd9c794768d22d4348b1a2941be2f9c2",
-    "T-17:billing-route": "676b111686e64899d5d33e341ee4717f9cd98136072e644d040cedf49371d8b2",
+    "T-17:billing-route": "30776c74d686d5477b38fed87c27991aa5f8fe2fbb1cd3a66341c7f0ad074d03",   # stage V: amended
     "T-18": "9d1f302de600646e84c7dad23bcfecb8d9c061e2dbca3b75d5ebe9fc7dee2760",
 }
 SAME_READERS = {"T-4": "vendor_gemini_run_tree_reads", "T-10": "vendor_gemini_loaded_context_reads",
@@ -653,6 +653,24 @@ class GCases(unittest.TestCase):
                 got, want = case()
                 self.assertEqual(got, want)
                 self.assertEqual(want, [])
+
+    def test_g_nc_t17_credential_source_leg(self):
+        # stage V, glitch-f1's amendment of both T-17 rulings: a non-null credential_source on one vendor turn, and a
+        # reported one, each fires the credential line alone; the clean copy carries none
+        with vendor_plant.planted(G21) as clean:
+            self.assertEqual(ct.vendor_gemini_billing_route_partial(clean.path), [])
+        for old, new in (('"n": 2,\n        "recovery": false,\n        "exit": 0,\n        "apiKeySource": null',
+                          '"n": 2,\n        "recovery": false,\n        "exit": 0,\n        "apiKeySource": "oauth"'),
+                         ('"reported": null', '"reported": "oauth"')):
+            with self.subTest(plant=new[-40:]), vendor_plant.planted(G21, vendor_plant.replace_bytes(
+                    "environment.json", old, new)) as plant:
+                got = ct.vendor_gemini_billing_route_partial(plant.path)
+                self.assertEqual(len(got), 1, got)
+                self.assertTrue(got[0].startswith("[environment-record] ") and "credential_source" in got[0], got)
+            with self.subTest(hollow=new[-40:]), vendor_plant.planted(G21, vendor_plant.replace_bytes(
+                    "environment.json", old, new)) as plant, \
+                    mock.patch.object(ct, "vendor_credential_source_problems", lambda rec, reason="x": []):
+                self.assertEqual(ct.vendor_gemini_billing_route_partial(plant.path), [])
 
     def test_g_nc_cases(self):
         for (h, key), case in NC_CASES.items():
