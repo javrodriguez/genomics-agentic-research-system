@@ -1,0 +1,1 @@
+{"type": "harness-turn", "harness": "gemini", "session_id": "db0c1000-e938-567b-9036-4901b07f6c66", "vendor_session_id": "d1f056dc-11de-4176-8236-963014fc3dd4", "n": 1, "sent": "Run stage 01 for the project at /tmp/run-db0c1000/gars/projects/run-db0c1000", "stream": "turn-1.jsonl", "sha256": "2b39b90dd064a2439c2cf43e44ae4ee2d5d213143581293057a50d613bf1b7cc"}
