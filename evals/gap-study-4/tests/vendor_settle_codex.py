@@ -428,7 +428,13 @@ def nc_t8() -> list:
 NC_PLANTS = {
     "T-12:offered-context": [(O46, ct.vendor_codex_offered_partial, (lambda: _payload_edit(
         LAST_O46, lambda r: r.get("type") == "session_meta",
-        lambda r: r["payload"]["runtime_workspace_roots"].append("/root/outside")),), ())],
+        lambda r: r["payload"]["runtime_workspace_roots"].append("/root/outside")),), ()),
+        # review 0df1437 MINOR 2 (glitch-f1's ruling): session_meta.dynamic_tools (recorder.rs:970-974, absent in all
+        # 89 native turns of the 38 walks) names a tool offered to the session
+        (O46, ct.vendor_codex_offered_partial, (lambda: _payload_edit(
+            LAST_O46, lambda r: r.get("type") == "session_meta",
+            lambda r: r["payload"].update(dynamic_tools=[{"name": "web_fetch", "description": "x",
+                                                          "inputSchema": {}}])),), ())],
     "T-12:memory": [(O46, ct.vendor_codex_memory_partial, (lambda: _payload_edit(
         LAST_O46, lambda r: r.get("type") == "world_state", lambda r: r["payload"]["state"].update(memories={})),), ()),
                     (O46, ct.vendor_codex_memory_partial, (lambda: _payload_edit(
