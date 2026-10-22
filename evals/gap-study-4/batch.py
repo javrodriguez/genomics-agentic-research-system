@@ -675,7 +675,7 @@ class Batch:
         deferred_go_records() when it offers one (read at HEAD, as history() is), else prereg.committed_go_records.
         An arm with a go record that passes prereg.go_record_problems is released; every other deferred arm's rows,
         by arm or by its registered model, are refused in row_problems. Not in takes.commit_registration: the
-        rehearsal registers take_order[0], a G row about 29% of the time."""
+        rehearsal registers take_order[0], which is often a G row (arm G holds 360 of the 1,260 rows)."""
         import prereg
         try:
             arms = prereg.deferred_arms()

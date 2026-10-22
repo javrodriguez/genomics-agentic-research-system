@@ -69,8 +69,8 @@ DEFERRED_G = {
     "blind_sample": "The original report's blind draw covers the five run models (arm A's three, arm O's two) with the "
                     "registered per-cell share: each (arm, harness, model) cell keeps the share of about_n it has in "
                     "the full seven-model design. A follow-up, only after a committed go record, draws the two arm G "
-                    "cells under the same design and the same shares; labelling/sample.py leaves the deferred arm's "
-                    "models out of the original draw.",
+                    "cells under the same design and the same shares; labelling/sample.py withholds the deferred arm's "
+                    "models from the original draw.",
     "analysis": "The original report adjusts the three per-harness contrasts with Holm at m = 3, arm G's contrast "
                 "untested and still counted in m. If arm G runs later, the follow-up prints the full-family values "
                 "(arm G tested) beside the original adjusted values, labelled the registered full-design computation, "

@@ -149,7 +149,7 @@ def deferred_arms(pre: dict | None = None) -> dict:
 
 
 def deferred_models(pre: dict | None = None) -> dict:
-    """model -> its arm's deferral label, for every model of a deferred arm (the design's `models`)."""
+    """model -> its arm's deferral label, for each model of a deferred arm (the design's `models`)."""
     pre = load() if pre is None else pre
     table = pre.get("models") if isinstance(pre.get("models"), dict) else {}
     out = {}
