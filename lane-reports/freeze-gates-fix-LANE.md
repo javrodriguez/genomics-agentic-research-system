@@ -156,3 +156,18 @@ mode_binding ok 225; fixture_walk ok 225 (1 by the printed exception); walk_regr
 ### For athena
 
 test_vendor_walk_road R9Witnesses, test_native_reader_registration whole, test_build_draft whole, test_scaffold, test_box_integration, test_round4, walk_register --check, run.py --walks --check.
+
+## S9 (glitch-f1's rulings, Thu 22 Oct 2026)
+
+### Allowlist retired (fe25636c), a recorded departure
+
+Ruling: retire round 4's allowlist check and its derivation file. Reasons, as ruled: `--allowedTools` was retired for the box by C15-2 (claude_code_adapter.py:17); no round 4 walk's argv carries it (0 of 225); no check reads the file; it is not a freeze_rehearsal command; ci.yml runs the check for round 3 only. Round 3's copies stay untouched.
+Done: `git rm` of evals/gap-study-4/allowlist.py and allowlist-derivation.json, and their two identical-copy entries in COPIED.d/w1a-cp1-scaffold.json (copy_manifest has no retired status, and a fragment cannot claim a missing file); the departure is recorded in COPIED.d/freeze-gates-fix.json and here. tests/test_scaffold.py used allowlist.py as an identical-copy stand-in (test_a_copy_that_differs_without_an_edited_entry_is_refused); ci_conclusion.py, still a w1a identical copy, stands in now (review_kit/ files avoided: the review-kit port edits them).
+Checks at fe25636c: copy_manifest --check ok (528 files, 61 fragments); freeze.py --check "529 owned paths checked"; TheManifest's two affected cases OK (114.3 s); mode_binding ok 225, fixture_walk ok 225 (1 by the printed exception), walk_regrade ok (120.4 s), build_draft ok, lint clean, test_rehearsals 9 OK, native_reader_registration verify rc 0 (fgf/s9-head.json).
+Note for the fold: the review-kit port (8c3c95ae) also edits tests/test_scaffold.py near line 145; expect a textual conflict there at the merge.
+
+### test_freeze_shapes, the committed draft's legs
+
+Cause: a pre-acceptance expectation, not settlement and not a missing leg. TheFreezeGateHasThreeLegs.test_fs_check_the_committed_draft_names_every_leg required "leg iii" for both arms; leg (iii) is "production_readers() holds the harness" (freeze.py:352-362), which holds for both since 5457e75e, so freeze.unrecorded_shapes_problem names legs (i) and (ii) only (read at the head: leg i and leg ii present for both arms, T-11 present, leg iii absent for both).
+Fix: the test (renamed ..._names_every_open_leg) keeps legs (i) and (ii) and the T-11 line, and requires the registry to hold both readers, registration_problems to be empty for both harnesses, and no leg iii line. Leg (iii)'s refusals stay bound on synthetic registries (FS-check's main cases, CHECK_WITNESSES "leg iii deleted" and "leg iii's OSError refusal deleted", run in Witnesses).
+Red first: the old test at fe25636c FAILED ("'arm O (codex): leg iii:' not found"). Green: TheFreezeGateHasThreeLegs and Witnesses, 4 OK (92.7 s). Legs (i) and (ii) stay named for stage V (settlement).

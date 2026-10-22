@@ -307,13 +307,21 @@ class TheFreezeGateHasThreeLegs(unittest.TestCase):
     def test_fs_check_each_leg_refuses_and_all_three_pass(self):
         self.assertEqual(check_problems(freeze), [])
 
-    def test_fs_check_the_committed_draft_names_every_leg(self):
+    def test_fs_check_the_committed_draft_names_every_open_leg(self):
+        # Lane freeze-gates-fix S9 (glitch-f1's ruling, 22 Oct 2026): since Javier's acceptance commit (5457e75e) the
+        # production registry holds both vendor readers, so leg (iii) holds on this tree for both arms and is not
+        # named; legs (i) and (ii) stay open until the vendor settlement (stage V) and are named. Leg (iii)'s refusals
+        # are bound on synthetic registries by FS-check's main cases and CHECK_WITNESSES.
+        import native_reader_registration as nrr
         committed = json.loads((HERE / "prereg-draft.json").read_text())
         got = freeze.unrecorded_shapes_problem(committed)
         for words in ("arm O (codex): leg i:", "arm G (gemini): leg i:", "arm O (codex): leg ii:",
-                      "arm G (gemini): leg ii:", "arm O (codex): leg iii:", "arm G (gemini): leg iii:",
-                      "arm G (gemini): leg ii: T-11 inherited-context is PENDING"):
+                      "arm G (gemini): leg ii:", "arm G (gemini): leg ii: T-11 inherited-context is PENDING"):
             self.assertIn(words, got)
+        self.assertEqual(nrr.production_readers(), {"codex": nrr.codex_reader, "gemini": nrr.gemini_reader})
+        for arm, harness in (("O", "codex"), ("G", "gemini")):
+            self.assertEqual(freeze.registration_problems(harness), [], harness)
+            self.assertNotIn(f"arm {arm} ({harness}): leg iii:", got)
 
 
 def mutant(old: str, new: str):
