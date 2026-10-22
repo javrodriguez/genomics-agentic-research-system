@@ -6393,8 +6393,15 @@ GEMINI_CONTEXT_TAGS = ("session_context", "loaded_context", "project_context")
 GEMINI_INSTRUCTION_FILE = "GEMINI.md"
 # The ruling's denied tools (take_config.py:94 GEMINI_SETTINGS tools.exclude, :132 GEMINI_AGENT_EXCLUSION, :444-446).
 GEMINI_DENIED_TOOLS = ("google_web_search", "web_fetch", "invoke_agent")
-# The CLI's two system-prompt override variables (box/run_take.py:508, 511, in GEMINI_PACKAGE_SWEEP_REFUSED).
+# The CLI's prompt override variable GEMINI_SYSTEM_MD ([C] 336149, 336178-336190) and its prompt-dump variable
+# GEMINI_WRITE_SYSTEM_MD, which writes the final prompt out to a file ([C] 336273, 336285-336292), both in
+# GEMINI_PACKAGE_SWEEP_REFUSED (box/run_take.py:508, 511); and the section switches GEMINI_PROMPT_<SECTION>, which drop
+# a prompt section on 0 or false ([C] 336004-336008), named at run time so no literal list holds them (GEMINI-S0-READ,
+# stage Z). [C] is bundle/chunk-NR7L3FXV.js of the pinned gemini-cli 0.64.0.
 GEMINI_PROMPT_OVERRIDES = ("GEMINI_SYSTEM_MD", "GEMINI_WRITE_SYSTEM_MD")
+GEMINI_PROMPT_VARIABLE_WHAT = {"GEMINI_SYSTEM_MD": "replaces Gemini CLI's system prompt with a file",
+                               "GEMINI_WRITE_SYSTEM_MD": "makes Gemini CLI write its final system prompt to a file"}
+GEMINI_PROMPT_SECTION_PREFIX = "GEMINI_PROMPT_"
 # The pinned API-key auth setting (box/take_config.py:110-112).
 GEMINI_AUTH_RULED = {"path": "security.auth.selectedType", "value": "gemini-api-key"}
 
@@ -6689,18 +6696,22 @@ def _gemini_pinned_settings(path):
 
 def vendor_gemini_prompt_partial(path, design) -> list:
     """T-12:prompt-snapshot's partial check, input side only: the launch environment (run_take.TAKE_ENV) carries
-    neither prompt-override variable, both are in the refused set (run_take.refused_variables), and every turn's
-    launch command is the adapter's own invocation rebuilt for the ledger's arm."""
+    neither the prompt override GEMINI_SYSTEM_MD nor the prompt-dump GEMINI_WRITE_SYSTEM_MD, and no
+    GEMINI_PROMPT_<SECTION> switch (a prefix test, stage Z); both literal names are in the refused set
+    (run_take.refused_variables); and every turn's launch command is the adapter's own invocation rebuilt for the
+    ledger's arm."""
     out = []
     env = _settle_g_run_take.TAKE_ENV.get("gemini") or {}
     refused = _settle_g_run_take.refused_variables("gemini")
     for name in GEMINI_PROMPT_OVERRIDES:
         if name in env:
-            out.append(f"[inherited-context] the launch environment carries {name}, which replaces Gemini CLI's "
-                       "system prompt")
+            out.append(f"[inherited-context] the launch environment carries {name}, which "
+                       f"{GEMINI_PROMPT_VARIABLE_WHAT[name]}")
         if name not in refused:
-            out.append(f"[inherited-context] {name} is not in the refused set, so a system-prompt override could "
-                       "reach the session")
+            out.append(f"[inherited-context] {name} is not in the refused set, so it could reach the session "
+                       f"({GEMINI_PROMPT_VARIABLE_WHAT[name]})")
+    out += [f"[inherited-context] the launch environment carries {name}, a section switch that can drop part of Gemini "
+            "CLI's system prompt" for name in sorted(env) if name.startswith(GEMINI_PROMPT_SECTION_PREFIX)]
     try:
         envelopes = _vendor_envelopes(path)
         arm = _gemini_ledger(path).get("arm")
