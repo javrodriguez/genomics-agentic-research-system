@@ -367,6 +367,33 @@ def split_reply_marker(parts):
     recs[k:k + 1] = [dict(recs[k], content=text[:cut]), dict(recs[k], content=text[cut:])]
 
 
+def split_reply_across_tool(parts, k=None):
+    """gemini DECOY (Gemini review 0df1437 MINOR 1): turn k's reply (the last turn by default) written as two delta
+    chunks with a tool call and its result between them, split inside the marker: two messages, never one, so the
+    join must not make the marker whole."""
+    k = max(parts["streams"]) if k is None else k
+    recs = parts["streams"][k]
+    i = max(j for j, r in enumerate(recs) if r.get("type") == "message" and r.get("role") == "assistant")
+    text = recs[i]["content"]
+    cut = len("Synthetic reply. ") + max(1, (len(text) - len("Synthetic reply. ")) // 2)
+    ts = recs[i].get("timestamp")
+    tool = [{"type": "tool_use", "timestamp": ts, "tool_name": "read_file", "tool_id": f"decoy-{k}",
+             "parameters": {"file_path": "notes.txt"}},
+            {"type": "tool_result", "timestamp": ts, "tool_id": f"decoy-{k}", "status": "success", "output": "x"}]
+    recs[i:i + 1] = [dict(recs[i], content=text[:cut]), *tool, dict(recs[i], content=text[cut:])]
+
+
+def case_marker_split_across_tool(t):
+    return (lambda parts: split_reply_across_tool(parts, 1)), None        # turn 1's reply, a further line after it
+
+
+def case_stop_marker_split_across_tool(t):
+    stopped(t)
+    t.lines.pop()
+    t.replies.pop()
+    return split_reply_across_tool, None
+
+
 def case_stop_held_marker_split(t):
     # glitch-f1's stage W ruling 3: required_steps reads gemini's joined view, as continuation_problems does; read
     # unjoined, the held marker looks absent and the stop reads proven (the passing direction)
@@ -580,6 +607,10 @@ CASES = {
     "a stop at a held marker split across delta chunks": (("gemini",), case_stop_held_marker_split,
                                                            {"stop-at-held-marker": 1}, None),
     "a held marker split across delta chunks before the next line": (("gemini",), case_reply_marker_split, {}, None),
+    # Gemini review 0df1437 MINOR 1: DECOYS, a marker split across a tool call is two messages, never joined
+    "a marker split across a tool call before the next line": (("gemini",), case_marker_split_across_tool,
+                                                               {"continued-past-unheld-marker": 1}, None),
+    "a stop marker split across a tool call": (("gemini",), case_stop_marker_split_across_tool, {}, None),
     "an operator line off the script": (("codex", "gemini"), case_line_off_script, {"operator-lines": 2}, None),
     "a reply missing its step's marker": (("codex", "gemini"), case_reply_without_marker,
                                           {"continued-past-unheld-marker": 1}, None),

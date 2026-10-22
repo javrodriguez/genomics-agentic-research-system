@@ -904,6 +904,110 @@ def walk_check(walk: str) -> list:
     return out + ct.vendor_round4_problems(path, design, arm=row["arm"])
 
 
+# ---- one plant per published leg (Gemini review 0df1437 MINOR 2): each fires through its leg alone ----------------
+def _settings_patch(change):
+    tc = ct._settle_g_take_config
+    real = tc.files_for
+
+    def files_for(harness, **kw):
+        out = dict(real(harness, **kw))
+        doc = json.loads(out[tc.GEMINI_SETTINGS_PATH])
+        change(doc)
+        out[tc.GEMINI_SETTINGS_PATH] = json.dumps(doc).encode("utf-8")
+        return out
+    return mock.patch.object(tc, "files_for", files_for)
+
+
+def _refused_without(name):
+    real = ct._settle_g_run_take.refused_variables
+    return mock.patch.object(ct._settle_g_run_take, "refused_variables", lambda h: set(real(h)) - {name})
+
+
+def _sub_in_snapshots(pattern, repl):
+    """A regex substitution in every retained snapshot of w-g21 (at least one change in each)."""
+    def edit(folder):
+        for rel in SNAPS[G21]:
+            f = folder / rel
+            data = f.read_text(encoding="utf-8")
+            new = re.sub(pattern, repl, data)
+            if new == data:
+                raise vendor_plant.PlantRefused(f"{rel}: {pattern} not found")
+            f.write_text(new, encoding="utf-8")
+    return edit
+
+
+def _journal(k, change):
+    def edit(folder):
+        f = folder / f"turn-{k}.jsonl.launch.json"
+        doc = json.loads(f.read_text(encoding="utf-8"))
+        change(doc)
+        f.write_text(json.dumps(doc, separators=(",", ":")) + "\n", encoding="utf-8")
+    return edit
+
+
+HC = ct.HARNESS_CONDITION_VIOLATED
+# (leg, reason, reader(path, design) -> problems, plant edits, a patch context factory or None)
+G_LEG_PLANTS = [
+    ("T-17: the pinned auth setting is not the API key (the constant)", "environment-record",
+     lambda p, d: ct.vendor_gemini_billing_route_partial(p), [],
+     lambda: mock.patch.object(ct._settle_g_take_config, "GEMINI_AUTH_SETTING",
+                               {"path": "security.auth.selectedType", "value": "oauth-personal"})),
+    ("T-17: the built settings select another auth type", "environment-record",
+     lambda p, d: ct.vendor_gemini_billing_route_partial(p), [],
+     lambda: _settings_patch(lambda doc: doc["security"]["auth"].update(selectedType="oauth-personal"))),
+    ("T-18: web_fetch missing from the pinned exclude list", HC,
+     lambda p, d: ct.vendor_gemini_tools_partial(p), [],
+     lambda: _settings_patch(lambda doc: doc["tools"].update(
+         exclude=[x for x in doc["tools"]["exclude"] if x != "web_fetch"]))),
+    ("T-18: a denied tool in the turn stream alone", HC,
+     lambda p, d: ct.vendor_gemini_tools_partial(p), [_rename_edit("turn-1.jsonl", True)], None),
+    # the session's copies alone (toolCalls, functionCall and functionResponse; the stream untouched): the projection
+    # refuses a session whose toolCalls entry and functionCall part disagree (a single-copy rename reads
+    # transcript-unreadable), so the two session legs always see a denied call together
+    ("T-18: a denied tool in the session's copies alone", HC,
+     lambda p, d: ct.vendor_gemini_tools_partial(p), [_rename_edit(rel, False) for rel in SNAPS[G21]], None),
+    ("T-18: a single session copy renamed is refused upstream (fail-closed)", "transcript-unreadable",
+     lambda p, d: ct.vendor_gemini_tools_partial(p),
+     [_sub_in_snapshots(r'(?<!"functionCall":)\{"id":"' + CALL + r'","name":"read_file","args"',
+                        '{"id":"' + CALL + '","name":"web_fetch","args"')], None),
+    ("T-12:memory: the pinned settings carry a context block", "inherited-context",
+     lambda p, d: ct.vendor_gemini_memory_partial(p), [],
+     lambda: _settings_patch(lambda doc: doc.update(context={"fileName": ["MEMORY.md"]}))),
+    ("T-12:memory: a loaded file outside the workspace directory", "inherited-context",
+     lambda p, d: ct.vendor_gemini_memory_partial(p),
+     list(in_snapshots(G21, f"Context from: {TREE21}/GEMINI.md ---", "Context from: /opt/cfg/.gemini/GEMINI.md ---",
+                       count=2)), None),
+    ("T-12:prompt-snapshot: GEMINI_SYSTEM_MD out of the refused set", "inherited-context",
+     lambda p, d: ct.vendor_gemini_prompt_partial(p, d), [], lambda: _refused_without("GEMINI_SYSTEM_MD")),
+    ("T-12:prompt-snapshot: a launch argv the adapter never writes", "inherited-context",
+     lambda p, d: ct.vendor_gemini_prompt_partial(p, d),
+     [_journal(1, lambda doc: doc["argv"].extend(["--extra-flag"]))], None),
+    ("T-4: the listing root alone", "readers-disagree",
+     lambda p, d: ct.vendor_gemini_run_tree_reads(p, d),
+     list(in_snapshots(G21, raw(f"\n\n{TREE21}/\n"), raw("\n\n/tmp/run-0f0f0f0f/\n"))), None),
+    ("T-4: one launch journal's cwd alone", "readers-disagree",
+     lambda p, d: ct.vendor_gemini_run_tree_reads(p, d), [_journal(2, lambda doc: doc.update(cwd="/tmp/other"))], None),
+]
+
+
+class GLegs(unittest.TestCase):
+    """Gemini review 0df1437 MINOR 2: each leg a published text names fires alone on its own scratch copy."""
+
+    def test_g_legs_each_plant_fires_through_its_leg(self):
+        _, design = design_for(G21)
+        with vendor_plant.planted(G21) as clean:
+            for name, reason, read, edits, patch in G_LEG_PLANTS:
+                self.assertEqual(read(clean.path, design), [], name)
+        for name, reason, read, edits, patch in G_LEG_PLANTS:
+            with self.subTest(leg=name), contextlib.ExitStack() as stack:
+                if patch is not None:
+                    stack.enter_context(patch())
+                plant = stack.enter_context(vendor_plant.planted(G21, *edits))
+                got = read(plant.path, design)
+                self.assertTrue(got, f"{name}: the plant reads clean")
+                self.assertTrue(all(x.startswith(f"[{reason}] ") for x in got), got)
+
+
 class GConstants(unittest.TestCase):
     def test_g_constants_read_the_mode_from_the_launch_argv(self):
         # stage V ruling (c): T-24's permission-mode leg reads every turn's launch argv (mode_binding.argv_mode, input
@@ -939,6 +1043,12 @@ class GT7(unittest.TestCase):
             self.assertTrue(any("Reply with a comma-separated list of IDs" in t["text"] for t in joined
                                 if t["role"] == "assistant"))
             self.assertEqual(ct.vendor_continuation_turns(clean.path, "codex", ["x"]), ["x"])
+            # Gemini review 0df1437 MINOR 1: a view whose agent texts are not the chunks one for one comes back as it is
+            view = ct._vendor_turns(ct.vendor_take_view(clean.path, H)["events"] or [])
+            off = [dict(t, text=t["text"] + " (edited)") if t["role"] == "assistant" else t for t in view]
+            self.assertEqual(ct.vendor_continuation_turns(clean.path, H, off), off)
+            short = [t for t in view if not (t["role"] == "assistant" and t is view[-1])]
+            self.assertEqual(ct.vendor_continuation_turns(clean.path, H, short), short)
 
 
 class GLegI(unittest.TestCase):
