@@ -5230,6 +5230,49 @@ def vendor_nested_flag_problems(path, harness) -> list:
     return command_problems(vendor_shell_commands(Path(path).parent, harness)[0], harness)
 
 
+# Stage Z2 (glitch-f1 on CODEX-S0-READ-20261022.md): the two other patch roads of codex-cli 0.162.1. A code-mode exec
+# script can call tools.apply_patch (core/src/tools/code_mode/mod.rs:337-373; both arm O models run code_mode_only),
+# which writes a FileChange only through the patch path; and a shell command can run the apply_patch alias Codex puts
+# on PATH (arg0/src/lib.rs:325-340), which leaves only a CommandExecution. Measured over the 38 GPT walks: 0 of 216
+# exec calls name tools.apply_patch, 0 of 226 CommandExecutions run the alias.
+_CODEX_SCRIPT_TOOL = re.compile(r"tools\.([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+_CODEX_APPLY_PATCH_ALIAS = re.compile(r"(?:^|[\s;&|()`])(?:apply_patch|applypatch)(?=\s|$|<|')")
+CODEX_SCRIPT_SHELL_TOOLS = ("exec_command",)       # the one nested tool the 216 recorded exec scripts call (226 times)
+
+
+def _codex_rollout_turn_records(path) -> list:
+    """[[record]] of the last retained rollout, one list per turn (a task_started event opens each); raises one of
+    _VENDOR_READ_ERRORS."""
+    turns: list = []
+    for _line, rec in _vendor_codex_lines(path):
+        if rec["type"] == "event_msg" and rec["payload"].get("type") == "task_started":
+            turns.append([])
+        if turns:
+            turns[-1].append(rec)
+    return turns
+
+
+def codex_patch_roads(path) -> list:
+    """[(turn, what)] of the patch roads the join cannot see: an exec call whose script calls tools.apply_patch in a
+    turn that records no FileChange, and a CommandExecution running the apply_patch alias. Raises on an unreadable
+    rollout."""
+    out = []
+    for n, recs in enumerate(_codex_rollout_turn_records(path), 1):
+        changes = sum(1 for r in recs if r["type"] == "event_msg" and r["payload"].get("type") == "item_completed"
+                      and (r["payload"].get("item") or {}).get("type") == "FileChange")
+        for r in recs:
+            pay = r["payload"]
+            if (r["type"] == "response_item" and pay.get("type") == "custom_tool_call" and not changes
+                    and "apply_patch" in _CODEX_SCRIPT_TOOL.findall(pay.get("input") or "")):
+                out.append((n, "an exec call's script calls tools.apply_patch and the turn records no FileChange"))
+            item = pay.get("item") or {} if isinstance(pay, dict) else {}
+            if (r["type"] == "event_msg" and pay.get("type") == "item_completed" and item.get("type") == "CommandExecution"
+                    and _CODEX_APPLY_PATCH_ALIAS.search(" ".join(x for x in item.get("command") or []
+                                                                 if isinstance(x, str)))):
+                out.append((n, "a shell command runs the apply_patch alias, which leaves no FileChange"))
+    return out
+
+
 def vendor_file_change_reads(path) -> list:
     """T-8:file-change's reader (lane vendor-b23, glitch-26's rulings Q2 and Q3, Tue 20 Oct 2026;
     lane-reports/vendor-b23-DESIGN.md sections 5 and 6), run by vendor_pending once the row is settled: each turn's
@@ -5247,6 +5290,11 @@ def vendor_file_change_reads(path) -> list:
         return [f"[{TRANSCRIPT_UNREADABLE}] the rollout holds {len(turns)} turn(s) for {len(streams)} exec stream(s), "
                 "so its file changes cannot be joined"]
     out = []
+    try:                                                       # stage Z2: the patch roads the join cannot see
+        out += [f"[{TRANSCRIPT_UNREADABLE}] turn {n}: {what}, so the view cannot show the edit"
+                for n, what in codex_patch_roads(path)]
+    except _VENDOR_READ_ERRORS as e:
+        return [f"[{TRANSCRIPT_UNREADABLE}] the codex patch roads cannot be read: {e}"]
     for n, (turn, text) in enumerate(zip(turns, streams), 1):
         try:
             _codex_native.join_file_changes(turn, _codex_native.read_exec(text, model=turn["requested_model"]))
@@ -5271,13 +5319,18 @@ def vendor_file_change_problems(path, harness) -> list:
     if harness != "codex":
         return []
     try:
-        for env in _vendor_envelopes(path):
-            for line in transcript_view.jsonl_lines(_vendor_stream(path, env)):
-                rec = _binding._json(line)
-                if isinstance(rec, dict) and (rec.get("item") or {}).get("type") == _tx_codex.FILE_CHANGE:
-                    return vendor_pending("codex", "T-8:file-change", vendor_file_change_reads, path)
+        seen = any(isinstance(rec, dict) and (rec.get("item") or {}).get("type") == _tx_codex.FILE_CHANGE
+                   for env in _vendor_envelopes(path)
+                   for rec in map(_binding._json, transcript_view.jsonl_lines(_vendor_stream(path, env))))
     except _VENDOR_READ_ERRORS:
         return []                                  # the view refuses an unreadable stream
+    if not seen:
+        try:                                       # stage Z2: a patch road the exec stream does not show
+            seen = bool(codex_patch_roads(path))
+        except _VENDOR_READ_ERRORS:
+            return []                              # the rollout readers refuse an unreadable rollout
+    if seen:
+        return vendor_pending("codex", "T-8:file-change", vendor_file_change_reads, path)
     return []
 
 
@@ -6018,6 +6071,14 @@ def vendor_codex_offered_partial(path) -> list:
                 and rec["payload"].get("type") == "additional_tools")
     if extra:
         out.append(f"[{reason}] the rollout holds {extra} additional_tools item(s): tools added to the session")
+    # stage Z2: output side, every recorded exec script calls only the shell tool (216 calls, 226 exec_command, 0 other)
+    for _line, rec in lines:
+        pay = rec["payload"]
+        if rec["type"] == "response_item" and pay.get("type") == "custom_tool_call":
+            other = sorted(set(_CODEX_SCRIPT_TOOL.findall(pay.get("input") or "")) - set(CODEX_SCRIPT_SHELL_TOOLS))
+            if other:
+                out.append(f"[{reason}] an exec call's script calls the tool(s) {other}, beyond the shell commands it "
+                           "runs: a tool was offered to the session")
     # review 0df1437 MINOR 2: session_meta.dynamic_tools, written whenever a dynamic tool is offered (recorder.rs:970-974,
     # omitted when empty; absent in all 89 native turns of the 38 walks)
     if "dynamic_tools" in meta:
@@ -6303,6 +6364,22 @@ def vendor_billing_route_partial(path, harness, pre) -> list:
         provider = _vc_meta(lines).get("model_provider")
         if provider != CODEX_MODEL_PROVIDER:
             out.append(f"[{reason}] the session records the provider {provider!r}, not {CODEX_MODEL_PROVIDER!r}")
+        # stage Z2: the pinned config forces the ChatGPT login road (take_config.py:61; enforced when codex exec starts,
+        # exec/src/lib.rs:657), and the launcher refuses CODEX_HOME/.env, which Codex loads into the process for any
+        # non-CODEX_ name (arg0/src/lib.rs:297-327; box/run_take.py CONFIG_FOLDER_NAMED, the row's fourth leg)
+        try:
+            ledger_model = (_ledger_beside(Path(path)) or {}).get("model_requested")
+            cfg = _tomllib.loads(_take_config.files_for("codex", model=ledger_model)[_take_config.CODEX_CONFIG]
+                                 .decode("ascii"))
+            if cfg.get("forced_login_method") != "chatgpt":
+                out.append(f"[{reason}] the take's pinned config.toml sets forced_login_method "
+                           f"{cfg.get('forced_login_method')!r}, not \"chatgpt\": another login road could carry the take")
+        except Exception as e:  # noqa: BLE001 - a config the writer cannot write is a refusal, never a pass
+            out.append(f"[{reason}] the take's pinned config.toml cannot be rebuilt ({type(e).__name__}), so its login "
+                       "road cannot be shown")
+        if not any(re.fullmatch(pat, ".env") for pat, _why in _run_take.CONFIG_FOLDER_NAMED.get(_run_take.CODEX, ())):
+            out.append(f"[{reason}] the launcher no longer refuses CODEX_HOME/.env, which Codex loads into the process "
+                       "(arg0/src/lib.rs:297-327): a billing variable could reach the session")
         plans = [((rec["payload"].get("rate_limits") or {}) if isinstance(rec["payload"].get("rate_limits"), dict)
                   else {}).get("plan_type") for _line, rec in lines
                  if rec["type"] == "event_msg" and rec["payload"].get("type") == "token_count"]
@@ -6339,6 +6416,13 @@ def vendor_codex_tools_partial(path) -> list:
                    "plugin-install tool (take_config.py:255-262)")
     if any(rec["type"] == "response_item" and rec["payload"].get("type") == "additional_tools" for _l, rec in lines):
         out.append(f"[{reason}] the rollout holds an additional_tools item: tools were added to the session")
+    # stage Z2: the collaboration state every turn_context records (protocol.rs:3353): "disabled" with agents off;
+    # anything else means the collaboration tools were offered (v2 on 31 walks, disabled on 7, as the sections say)
+    versions = sorted({str(rec["payload"].get("multi_agent_version")) for _l, rec in lines
+                       if rec["type"] == "turn_context" and rec["payload"].get("multi_agent_version") != "disabled"})
+    if versions:
+        out.append(f"[{reason}] a turn_context records multi_agent_version {versions}, not \"disabled\": the "
+                   "collaboration tools were offered")
     for ws in _vc_world_states(lines):
         for key in ("apps_instructions", "plugins_instructions"):
             if ws.get(key) is not False:

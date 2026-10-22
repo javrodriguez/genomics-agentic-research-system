@@ -542,9 +542,9 @@ MUTANTS = [
                                      "            fc = dict(item)\n"),), "reach"),
     ("filechange-not-in-reach", CT, (('        if isinstance(item, dict) and item.get("type") == "FileChange":\n',
                                       "        if False:\n"),), "reach"),
-    ("reader-not-handed-in", CT, (('                    return vendor_pending("codex", "T-8:file-change", '
+    ("reader-not-handed-in", CT, (('        return vendor_pending("codex", "T-8:file-change", '
                                    'vendor_file_change_reads, path)\n',
-                                   '                    return vendor_pending("codex", "T-8:file-change", None)\n'),),
+                                   '        return vendor_pending("codex", "T-8:file-change", None)\n'),),
      "site"),
     ("rename-hold-dropped", CT, (("                    if c[\"move_path\"] is not None:\n",
                                   "                    if False:\n"),), "reader"),

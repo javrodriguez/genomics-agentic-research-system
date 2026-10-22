@@ -140,7 +140,8 @@ def codex_parts(lines=None, replies=None, *, cwd: str = RUN_TREE, model: str = C
                            "collaboration_mode_kind": "default"}),
             *(codex_context(cwd, model, instructions) if k == 1 else []),
             ("turn_context", {"turn_id": tid, "cwd": cwd, "approval_policy": "never",
-                              "sandbox_policy": {"type": "danger-full-access"}, "model": model}),
+                              "sandbox_policy": {"type": "danger-full-access"}, "model": model,
+                              "multi_agent_version": "disabled"}),     # stage Z2: the agents-off record (T-18)
             ("response_item", {"type": "message", "role": "user", "content": [{"type": "input_text",
                                                                                "text": line}]}),
             done({"type": "UserMessage", "id": f"u{k}", "content": [{"type": "text", "text": line,

@@ -749,9 +749,11 @@ class CNotComparable(unittest.TestCase):
                 self.assertEqual(reader(plant.path), [], reader.__name__)
             self.assertEqual(ct.vendor_billing_route_partial(plant.path, "codex", pre), [])
             t18 = ct.vendor_codex_tools_partial(plant.path)
-        self.assertEqual([p.split(" section")[0] for p in t18],
+        self.assertEqual([p.split(" section")[0].split(" [")[0] for p in t18],
                          ["[harness-condition-violated] the rollout carries the multi_agent_role",
-                          "[harness-condition-violated] the rollout carries the multi_agent_mode"])
+                          "[harness-condition-violated] the rollout carries the multi_agent_mode",
+                          # stage Z2: the turn_context record says the same directly
+                          "[harness-condition-violated] a turn_context records multi_agent_version"])
         with vp.planted(O47) as plant:
             self.assertEqual(ct.vendor_codex_tools_partial(plant.path), [])
         with vp.planted(O7) as plant:     # the recommended_plugins section: both rows' checks read it
