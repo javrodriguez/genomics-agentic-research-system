@@ -134,6 +134,33 @@ class CReach(unittest.TestCase):
         self.assertTrue(all(x.endswith("/run-0123abcd/notes.md") for x in got["outside"]), got["outside"])
 
 
+    # ---- stage V ruling (b): a truncated JSON body after the CLI's "Warning: truncated output" header ----------------
+    # glitch-f1's ruling on stage C's hand-back: w-o12 losing its false event to C1 is accepted (named in the lane
+    # notes); for w-o11, w-o13 and w-o26 the returned text opens with the header and its JSON body was cut, so it does
+    # not decode, and an undecodable truncated body is read with its literal backslash-n unescaped before the paths are
+    # taken. w-o30's five events name a real temp file outside the run tree and stay.
+    def walk_reach(self, walk):
+        path = HERE / "rehearsals" / walk / "transcript.jsonl"            # the committed walk, read in place
+        return ct.vendor_reach(path, "codex", run_tree=ct.vendor_session_cwd(path, "codex"))
+
+    def test_c_reach_a_truncated_listing_in_the_run_tree_reads_no_outside_path(self):
+        for walk in ("w-o11", "w-o13", "w-o26"):
+            with self.subTest(walk=walk):
+                self.assertEqual(self.walk_reach(walk)["outside"], [])
+        self.assertEqual(len(self.walk_reach("w-o30")["outside"]), 5)
+
+    def test_c_reach_an_outside_path_in_a_truncated_body_fires(self):
+        head = "Warning: truncated output (original token count: 9000)\nTotal output lines: 40\n\n"
+        body = '{"output":"/tmp/run-0123abcd\\nCLAUDE.md\\n/root/secret.txt\\nDEVELOPMENT.md'      # cut mid-document
+        got = ct.vendor_codex_returned_documents({"type": "custom_tool_call_output", "output": [
+            {"type": "input_text", "text": head + body}]})["output"][0]["text"]
+        self.assertIn("\n/root/secret.txt\n", got)
+        self.assertNotIn("\\n", got)
+        # a text without the header, or a body that decodes, is read as before
+        plain = ct.vendor_codex_returned_documents({"output": [{"type": "input_text", "text": body}]})
+        self.assertEqual(plain["output"][0]["text"], body)
+
+
 # ---- the production walk check on a scratch copy ---------------------------------------------------------------------
 _REGISTER = HERE / "rehearsals" / "register.json"
 
