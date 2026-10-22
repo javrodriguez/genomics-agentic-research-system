@@ -4145,7 +4145,8 @@ def _codex_rollout_records(raw: bytes, where: str) -> list:
             raise VendorUnreadable(f"{at}: a response_item {kind}, which the vendor readers refuse")
         if kind in CODEX_RESPONSE_READ:
             got = _vendor_split(pay, kind, at, VENDOR_JSON_DOCUMENTS["codex"].get(kind, ()))
-            out.append((at, {}, {**got[1], **got[2]}) if kind in CODEX_RESPONSE_RETURNED else got)
+            out.append((at, {}, vendor_codex_returned_documents({**got[1], **got[2]}))
+                       if kind in CODEX_RESPONSE_RETURNED else got)      # lane vendor-settle C1 (K's open point 2)
         elif kind not in CODEX_RESPONSE_NOT_TOOL:
             raise VendorUnreadable(f"{at}: a response_item {kind!r} outside the readers' partition")
     return out
@@ -5406,6 +5407,48 @@ def vendor_agent_summary(path, harness) -> dict:
 # between this banner and the line "END SETTLE: CODEX READERS", and nowhere else in this span; each is a plain function
 # (never a class or an imported name, vendor_row_problem) handed in at its row's one vendor_pending site.
 # =====================================================================================================================
+
+# ---- C1. RETURNED TOOL TEXTS READ DECODED (K's open point 2, ruled by glitch-f1 in the stage C brief) -----------------
+# A code-mode exec's output reaches the model as input_text parts of a custom_tool_call_output, and a part's text is
+# whatever the agent's script printed: in the 38 committed GPT walks, 216 outputs of 439 parts, 124 of them a JSON object
+# (the agent printed a tool result with JSON.stringify) and 5 opening with a brace that is no JSON. Read as that encoded text, an escaped newline is two
+# characters, so the clean w-o46 copy's run-tree listing ("<run tree>\\nCLAUDE.md\\n...") was read as ONE path outside
+# the run tree (a false read-outside-the-checkout), and an outside path written after an escaped newline was never
+# matched (the path readers need a non-path character before a root). The same family as review MAJOR 3 and stage K2.
+# So a returned text that parses as a JSON object or array is read as its decoded keys and values, a duplicated key's
+# every copy kept, in place of the encoded text; any other text is read as written.
+def _vendor_json_leaves(node):
+    """A decoded JSON document as nested lists the reach readers walk: an object as [key, value] pairs (C's string
+    walk reads values only, so every key is handed over as a value too), an array as a list, scalars as they are."""
+    if isinstance(node, _AllPairs):
+        return [[k, _vendor_json_leaves(v)] for k, v in node]
+    if isinstance(node, list):
+        return [_vendor_json_leaves(x) for x in node]
+    return node
+
+
+def _vendor_document_or_text(text):
+    if not isinstance(text, str) or text.lstrip()[:1] not in ("{", "["):
+        return text
+    try:
+        doc = json.loads(text, object_pairs_hook=_AllPairs)
+    except ValueError:
+        return text
+    return _vendor_json_leaves(doc) if isinstance(doc, list) else text
+
+
+def vendor_codex_returned_documents(rec: dict) -> dict:
+    """A RETURNED rollout record (CODEX_RESPONSE_RETURNED) with each returned text that is a JSON object or array read
+    decoded: a custom_tool_call_output's output parts' `text`, and a string `output` (function_call_output,
+    tool_search_output)."""
+    out = dict(rec)
+    value = out.get("output")
+    if isinstance(value, str):
+        out["output"] = _vendor_document_or_text(value)
+    elif isinstance(value, list):
+        out["output"] = [dict(part, text=_vendor_document_or_text(part["text"]))
+                         if isinstance(part, dict) and isinstance(part.get("text"), str) else part for part in value]
+    return out
 
 
 # ---- END SETTLE: CODEX READERS --------------------------------------------------------------------------------------

@@ -120,8 +120,10 @@ class CReach(unittest.TestCase):
         with vp.planted(O46, vp.replace_bytes(LAST_O46, LISTING, OUTSIDE)) as plant:
             self.assertEqual(independent_outside_count(plant.folder), 1)
             got = self.reach(plant)
-        self.assertEqual(len(got["outside"]), 1, got)
-        self.assertTrue(got["outside"][0].startswith("<tmp>/run-0123abcd/notes.md"), got["outside"])
+        # one path, read by both legs that judge another take's run tree (the home-and-temp leg and the temp leg), as
+        # C's readers count a Claude Code take's
+        self.assertTrue(got["outside"], got)
+        self.assertTrue(all(x.endswith("/run-0123abcd/notes.md") for x in got["outside"]), got["outside"])
 
 
 SAME_FIRES: dict = {}
