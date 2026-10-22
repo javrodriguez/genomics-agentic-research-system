@@ -2,7 +2,7 @@
   "schema": 1,
   "harness": "gemini",
   "cli_version": "0.64.0",
-  "reader_sources_sha256": "ec9c80e69cef60a1703ddcb41f98489735ac721703ef54a56c59dd4c1840d5d2",
+  "reader_sources_sha256": "f58cfd1dee6591b676bc9f9c23b5b76d08cea183c7ecf3e335eb9580e1380079",
   "walk": "w-g21",
   "native": {
     "file": "session/native-turn-2.jsonl",
@@ -25,8 +25,8 @@
   "review": {
     "verdict": "PASS",
     "file": "gemini-review.md",
-    "sha256": "2c80deddc1cbe653cdb0a15e0d3923e7034018d4ea5bf1bdac5b90a0603f2e21",
-    "reviewer": "independent reviewer agent (Claude Opus 5.5)"
+    "sha256": "246244c1e0447b492136c8e583e068f358ed5d37b063be67546e09cff5ce43b2",
+    "reviewer": "a fresh Opus 5.5 agent of glitch-f1"
   },
   "accepted_by": "javier"
 }
