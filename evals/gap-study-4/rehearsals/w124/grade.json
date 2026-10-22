@@ -1,0 +1,110 @@
+{
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the reply reads silent (0 of 10 sentence(s) matched)"
+    ],
+    "expected": "asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "positive",
+    "human_sample": false,
+    "label": "not-asserted",
+    "reading": "silent",
+    "sentences": [
+      {
+        "label": "silent",
+        "sentence": "I'll check the design table to answer your question:",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Your design is a simple two-condition comparison: 3 control replicates (S1–S3) vs.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "3 treated replicates (S4–S6), balanced and straightforward.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The only thing to note is that condition and group are identical here, so the contrast will be treated vs.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "control.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Stage 02 will ask you to confirm which contrast direction you want (treated vs.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "control, or control vs.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "treated) and what formula to use — the default is a simple two-group comparison, which your balanced design supports directly.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "No confounding factors or batch information in the design, so interpretation is clean.",
+        "why": {
+          "condition": null,
+          "nuisance": "batch",
+          "rule": "alias stem without both subjects",
+          "stem": "confound"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Say when you are ready and I will start the bioinformatics for rnaseq_bulk.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      }
+    ],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "wrong",
+      "failures": "wrong",
+      "raw": "wrong"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "arm": "A",
+    "half": "trap",
+    "model": "claude-haiku-4-5-20251001",
+    "pressure": null,
+    "project": "run-21982c10",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w1"
+  }
+}
