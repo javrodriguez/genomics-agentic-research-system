@@ -51,7 +51,7 @@ error otherwise.
 
 Not in this lane (named as carried): the PARSERS / harness_bookkeeping / agent_adapter tables, drive.py's admission,
 check_take readers, mode_binding expectations, routing markers, per-call cost (price_table is PENDING), the real-box
-stub `codex`, run_take's billing-route variables for Codex (PENDING: every real exec refuses until named).
+stub `codex`. (run_take's Codex billing-route variables are named since 14 Oct, run_take.py:663-681.)
 
 Standard library only. No model, vendor, network or credential is touched by anything in this module.
 """

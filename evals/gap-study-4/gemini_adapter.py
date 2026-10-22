@@ -56,7 +56,7 @@ end_reason: timed-out when the call timed out; end_turn only on exit 0 with exac
 
 Not in this lane (named as carried): the PARSERS / harness_bookkeeping / agent_adapter tables, drive.py's admission,
 check_take readers, mode_binding expectations, routing markers, per-call cost (price_table is PENDING), the real-box
-stub `gemini`, run_take's billing-route variables for Gemini (PENDING: every real exec refuses until named), and the
+stub `gemini` (run_take's Gemini billing-route variables are named since 14 Oct, run_take.py:682), and the
 freeze's refusal of an arm whose adapter is not re-tested on a recorded stream.
 
 Standard library only. No model, vendor, network or credential is touched by anything in this module.

@@ -4483,13 +4483,16 @@ def vendor_reach(path, harness, repo: Path | None = None, *, run_tree: str | Non
 # to the ledger's `sent`), first bound to the CLI-written user record of every turn (vendor_operator_problems,
 # readers-disagree, run before the view so a differing gemini stream reads readers-disagree, never
 # transcript-unreadable); the agent's text per turn is the bound view's; reach is P1's raw readers with the home and
-# temp legs on the session's own working directory (codex: the rollout's turn_context.cwd, T-11; gemini: none, T-4 and
-# T-11 are PENDING, so its legs admit no tree, which errs strict; no vendor temp or home path is masked). Section 1b's
-# readings are vendor_round4_problems: the run tree (T-4), the mode (T-16), the denied tools (T-18), stream lines no
-# parser read, nested-agent switches in the CLI's own commands, and codex file_change content (T-8). Every PENDING leg
-# is raised through vendor_pending at its one site, its harness and key written as literals (VP-keys), with no reader
-# yet. P3 adds the entries that hold check4's preamble and lift the event lines (study, email, outside); P4 the session
-# store and binding legs 1-5; P5 the model, the environment record and the merged constants.
+# temp legs on the session's own working directory (codex: the rollout's turn_context.cwd, T-11; gemini: the one
+# workspace directory its <session_context> records, lane vendor-settle stage G's MINOR 5; no vendor temp or home path
+# is masked). Section 1b's readings are vendor_round4_problems: the run tree (T-4), the mode (T-16), the denied tools
+# (T-18), stream lines no parser read, nested-agent switches in the CLI's own commands, and codex file_change content
+# (T-8). Every table row these legs read is raised through vendor_pending at its one site, its harness and key written
+# as literals (VP-keys); lane vendor-settle (stages C, G and V, 21-22 Oct 2026) settled every row, SAME with its
+# reader or NOT COMPARABLE with glitch-f1's ruling and its partial check, so each site now hands in its row's reader
+# (the PENDING refusal stays the road for a row put back). P3 adds the entries that hold check4's preamble and lift
+# the event lines (study, email, outside); P4 the session store and binding legs 1-5; P5 the model, the environment
+# record and the merged constants.
 import codex_adapter as _codex_adapter  # noqa: E402
 import gemini_adapter as _gemini_adapter  # noqa: E402
 import gemini_stream_join as _gemini_join  # noqa: E402
@@ -4649,9 +4652,9 @@ def vendor_continuation_turns(path, harness, turns) -> list:
 
 
 def vendor_origin_problems(path, harness, design) -> list:
-    """unknown-harness-origin (T-5): codex PENDING (the rollout's response_item messages are read by no reader yet);
-    gemini's non-operator user record is an extra interaction or a `sent` mismatch, vendor_operator_problems'
-    readers-disagree. (Stage K widened the signature for the settled reader; `path` and `design` are unread here.)"""
+    """unknown-harness-origin (T-5): codex SAME, vendor_codex_origin_reads (lane vendor-settle stage C: the rollout's
+    user and developer message parts placed); gemini's non-operator user record is an extra interaction or a `sent`
+    mismatch, vendor_operator_problems' readers-disagree. (`design` is unread here.)"""
     if harness == "codex":
         return vendor_pending("codex", "T-5", vendor_codex_origin_reads, path)
     return []
@@ -4731,9 +4734,10 @@ def vendor_leak_problems(ops, pre) -> list:
 
 
 def vendor_loaded_context_problems(path, harness, design) -> list:
-    """leak-in-loaded-context (T-10): PENDING for both until a recorded walk shows the instruction and environment
-    records the CLI loads (R-6's files are placed by walk_builders.build_run_tree). (Stage K widened the signature for
-    the settled readers; `path` and `design` are unread here.)"""
+    """leak-in-loaded-context (T-10): SAME for both (lane vendor-settle stages C and G): context_leaks over the decoded
+    text of the context records the CLI wrote, codex's session_meta, world_state, developer sections and AGENTS.md and
+    environment parts (vendor_codex_loaded_context_reads), gemini's every <session_context> version
+    (vendor_gemini_loaded_context_reads)."""
     if harness == "codex":
         return vendor_pending("codex", "T-10", vendor_codex_loaded_context_reads, path, design.pre)
     else:
@@ -4759,8 +4763,8 @@ def vendor_session_cwd(path, harness):
 
 def vendor_inherited_cwd_problems(path, harness, design) -> list:
     """inherited-context, the working directory (T-11): codex, the rollout records one working directory for the
-    session, or what it loaded cannot be placed; gemini PENDING (no native cwd). (Stage K widened the signature for
-    the settled reader; `design` is unread here.)"""
+    session, or what it loaded cannot be placed; gemini SAME, every <session_context> version records exactly one
+    workspace directory (vendor_gemini_cwd_reads, lane vendor-settle stage G). (`design` is unread here.)"""
     if harness != "codex":
         return vendor_pending("gemini", "T-11", vendor_gemini_cwd_reads, path)
     if vendor_session_cwd(path, harness) is None:
@@ -4785,8 +4789,9 @@ def _vendor_after(argv: list, token: str):
 
 
 def vendor_offered_context_problems(path, harness, design, arm) -> list:
-    """inherited-context, the extra directories and tool servers offered (T-12:offered-context): PENDING for the
-    session-side record; its input-side leg runs: every turn has the box's launch journal (its harness, its stream
+    """inherited-context, the extra directories and tool servers offered (T-12:offered-context): NOT COMPARABLE for
+    both (glitch-f1's adopted rulings), the session-side partial check its row's reader (vendor_codex_offered_partial,
+    vendor_gemini_offered_partial); its input-side leg runs: every turn has the box's launch journal (its harness, its stream
     turn-<k>.jsonl), and the journal's argv is exactly the adapter's own invocation (codex_adapter.argv or
     gemini_adapter.argv) for the envelope's line, the journal's model and resumed id and the arm's pinned mode, so a
     directory, a tool server or any other option the adapter never writes refuses. Which id is resumed, and the model,
@@ -4827,9 +4832,9 @@ def vendor_offered_context_problems(path, harness, design, arm) -> list:
 
 
 def vendor_instruction_file_problems(path, harness, design) -> list:
-    """inherited-context, the instruction files the CLI loaded (T-12:instruction-files): PENDING (R-6's files are
-    placed by walk_builders.build_run_tree; which the CLI loaded is a session-side record not yet seen). (Stage K
-    widened the signature for the settled readers; `path` and `design` are unread here.)"""
+    """inherited-context, the instruction files the CLI loaded (T-12:instruction-files): SAME for both (lane
+    vendor-settle stages C and G), every recorded instruction file inside the session folder: codex's AGENTS.md parts
+    and world_state.agents_md, gemini's loaded files in every <session_context> version. (`design` is unread here.)"""
     if harness == "codex":
         return vendor_pending("codex", "T-12:instruction-files", vendor_codex_instruction_files_reads, path)
     else:
@@ -4970,7 +4975,9 @@ def vendor_environment_problems(path, harness, ledger, pre, row_index, walk_id) 
     """environment-record (T-17): the driver's environment.json, which drive._environment writes for every harness in
     round 3's schema, read by environment_problems as for a Claude Code take (P5: the take's row commit on the take
     road; on the walk road none, and a record naming a ledger row refuses, as check_walk's); then the billing-route
-    leg, PENDING for both (the record carries Claude Code's billing-route names, never the vendor's)."""
+    leg, NOT COMPARABLE for both (glitch-f1's adopted rulings: the record carries Claude Code's billing-route names,
+    never the vendor's), its partial check the row's reader (vendor_billing_route_partial,
+    vendor_gemini_billing_route_partial)."""
     if walk_id is None:
         row_commit = takes_mod.row_commits().get(row_index) if row_index is not None else None
         out = environment_problems(Path(path), ledger, pre, row_commit)
@@ -5058,9 +5065,10 @@ def vendor_model_problems(path, harness, ledger, row_index, walk_id) -> list:
 
 
 def vendor_checkout_problems(path, harness, design) -> list:
-    """checkout-binding (T-13, the session's own git status; T-14, the instruction files it loaded): PENDING for
-    both; the driver's checkout record is never their source. (Stage K widened the signature for the settled readers
-    and gave each key its own statement; `path` and `design` are unread here.)"""
+    """checkout-binding (T-13, the session's own git status; T-14, the instruction files it loaded): T-13 NOT
+    COMPARABLE for both (glitch-f1's adopted rulings; partial checks vendor_codex_checkout_partial and
+    vendor_gemini_checkout_partial), T-14 SAME for both (each recorded instruction file equals the pinned CLAUDE.md
+    beside it); the driver's checkout record is never their source."""
     if harness == "codex":
         out = vendor_pending("codex", "T-13", vendor_codex_checkout_partial, path)
         out += vendor_pending("codex", "T-14", vendor_codex_instruction_content_reads, path, design)
@@ -5071,9 +5079,9 @@ def vendor_checkout_problems(path, harness, design) -> list:
 
 
 def vendor_prompt_problems(path, harness, design) -> list:
-    """inherited-context, the prompt snapshot and the memory folder (T-12:prompt-snapshot, T-12:memory): PENDING for
-    both until a recorded walk shows a session-side record of either. (Stage K widened the signature for the settled
-    readers and gave each key its own statement; `path` and `design` are unread here.)"""
+    """inherited-context, the prompt snapshot and the memory folder (T-12:prompt-snapshot, T-12:memory): codex's prompt
+    snapshot SAME (session_meta.base_instructions), gemini's NOT COMPARABLE (input side); T-12:memory NOT COMPARABLE
+    for both (glitch-f1's adopted rulings), each partial check its row's reader."""
     if harness == "codex":
         out = vendor_pending("codex", "T-12:prompt-snapshot", vendor_codex_prompt_reads, path)
         out += vendor_pending("codex", "T-12:memory", vendor_codex_memory_partial, path)
@@ -5147,7 +5155,8 @@ def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_scrip
 def vendor_design_tree_problems(path, harness, design) -> list:
     """readers-disagree, the run tree (T-4; design_tree_problems' reading): codex, every rollout turn's
     turn_context.cwd, and every turn's launch journal cwd as a second leg, against the run tree the design was built
-    with; gemini PENDING (no native cwd)."""
+    with; gemini SAME, every <session_context> version's workspace directory and listing root and every launch journal
+    cwd (vendor_gemini_run_tree_reads, lane vendor-settle stage G)."""
     if harness != "codex":
         return vendor_pending("gemini", "T-4", vendor_gemini_run_tree_reads, path, design)
     out = []
@@ -5170,19 +5179,21 @@ def vendor_design_tree_problems(path, harness, design) -> list:
 
 
 def vendor_recorded_mode_problems(path, harness, design, arm) -> list:
-    """constant-binding, the permission mode the session recorded (T-16): codex PENDING (turn_context.approval_policy
-    is carried raw and never accepted); gemini NOT COMPARABLE (no session-side mode record; the mode's flags are bound
-    as submitted by vendor_offered_context_problems' rebuilt invocation). (Stage K widened the signature for the
-    settled reader; `path`, `design` and `arm` are unread here, and `arm` is None where vendor_round4_problems is
-    called without one.)"""
+    """constant-binding, the permission mode the session recorded (T-16): codex SAME (vendor_codex_recorded_mode_reads,
+    lane vendor-settle stage C: every turn_context and thread_settings record against the pinned mode); gemini NOT
+    COMPARABLE (no session-side mode record; the mode's flags are bound
+    as submitted by vendor_offered_context_problems' rebuilt invocation, and the constants read it by mode_binding's
+    argv reading, vendor_constant_problems). `arm` is None where vendor_round4_problems is called without one; the
+    codex reader then reads the ledger's arm."""
     if harness == "codex":
         return vendor_pending("codex", "T-16", vendor_codex_recorded_mode_reads, path, design, arm)
     return []
 
 
 def vendor_denied_tool_problems(path, harness, design) -> list:
-    """harness-condition-violated, the tools the CLI really offers (T-18): PENDING for both. (Stage K widened the
-    signature for the settled readers; `path` and `design` are unread here.)"""
+    """harness-condition-violated, the tools the CLI really offers (T-18): NOT COMPARABLE for both (glitch-f1's
+    adopted rulings; partial checks vendor_codex_tools_partial and vendor_gemini_tools_partial). (`design` is unread
+    here.)"""
     if harness == "codex":
         return vendor_pending("codex", "T-18", vendor_codex_tools_partial, path)
     else:
@@ -5240,9 +5251,10 @@ def vendor_file_change_reads(path) -> list:
 
 
 def vendor_file_change_problems(path, harness) -> list:
-    """transcript-unreadable, codex file_change content (T-8:file-change): PENDING while any exec stream holds a
-    file_change item. Lane vendor-b23: its site hands in the row's reader, vendor_file_change_reads, which decides
-    once the row is settled on a RECORDED fixture (Q3); until then the refusal is the row's, as before."""
+    """transcript-unreadable, codex file_change content (T-8:file-change), read while any exec stream holds a
+    file_change item. Lane vendor-b23: its site hands in the row's reader, vendor_file_change_reads; lane vendor-settle
+    settled the row NOT COMPARABLE (glitch-f1's adopted ruling: no committed walk used the patch tool), the reader its
+    partial check (Q3); with the row PENDING the refusal is the row's, as before."""
     if harness != "codex":
         return []
     try:
