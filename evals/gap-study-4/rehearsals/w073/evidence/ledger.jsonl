@@ -1,0 +1,5 @@
+{"agent": {"harness": "claude-code", "version": "2.1.296"}, "home": null, "kind": "take", "model": "claude-haiku-4-5-20251001", "run_tree": ""}
+{"ended_at": 1792125350.9068968, "kind": "turn", "n": 1, "started_at": 1792125333.3426247}
+{"ended_at": 1792125360.723912, "kind": "turn", "n": 2, "started_at": 1792125351.323055}
+{"ended_at": 1792125367.8773105, "kind": "turn", "n": 3, "started_at": 1792125361.1402645}
+{"ended_at": 1792125372.7616615, "kind": "turn", "n": 4, "started_at": 1792125368.2922077}
