@@ -67,3 +67,68 @@ Proof no verdict changes: /private/tmp/claude-501/-Users-javrodher-glitch/de671d
 Digest after K2: checker_constants_sha256 `b08b5496fe2831c950b200bde0c2bd230d16489cd55ac2bb9c8ff1af93327f1b`, both vendor digests unchanged ("DIGESTS BYTE-EQUAL (K2)").
 
 Open for glitch-f1: prereg-draft.json's edited_text_file departure says the sweep reads the "raw line with only the snippet's value cut" (test_e_draft_names_the_leak_scope pins that wording); still true of the cut, but the draft does not yet say the cut is then decoded. I did not touch the draft (a build_draft output); a wording addendum is yours to rule. The freeze rehearsal must re-run on the new tree (check_take.py is pinned, freeze.py:131-132).
+
+## Stage C: the Codex rows (arm O)
+
+Builder: an Opus 5.5 medium lane agent of glitch-f1 under Javier's standing delegation, sole writer of clone /Users/javrodher/aegis-builds/vendor-settle-c-20261021, branch `lane/vendor-settle-c` from `e350601fb100cf62f245a5ca18ed49cf8949a5e6` (Wed 21 Oct 23:12 to Thu 22 Oct 00:25 EDT, clock read with `date`).
+Never pushed.
+Every check ran after `mac_slot.py light-ok --work gap-study-r4` exit 0 (a wait loop, never an override); no heavy run, no whole suite.
+
+Commits:
+- C1 red `c40bcf93`, C1 `04b5c045`: K's open point 2 (below).
+- `482bd786`: lane freeze-gates-fix S1 cherry-picked (`git cherry-pick -x d05e226430201ebec1a947e2921f9405518d84c3`, fetched by exact SHA from /Users/javrodher/aegis-builds/freeze-gates-fix-20261021 on glitch-f1's adjustment; no conflict): mode_binding.codex_mode_records and CODEX_MODE_RECORD, which T-16 reuses.
+- C2 `6daeb5c1`: the 12 rows, readers, sites, the 15 READER items.
+- C3 `bec24e15`: leg i prepared, checks.d/vendor-settle-c.txt, COPIED.d/vendor-settle-c.json.
+
+### Rows (check_take.py VENDOR_PENDING_ROWS codex block; readers in the Codex span)
+
+SAME, fixture `recorded-codex-w-o46/transcript.jsonl`; each has a SAME_FIRES plant (scoped: adds only its reason, no sibling), a clean case against the test's own plain-json reading, and a hollow-reader witness (red):
+- T-5 `vendor_codex_origin_reads`: user parts = operator lines in order + one AGENTS.md + one environment_context; developer tags in the closed six. Plant: an extra part beside turn 2's "skip".
+- T-10 `vendor_codex_loaded_context_reads(path, pre)`: context_leaks over `_decoded_text` (MAJOR 3) of session_meta, world_state, developer messages, AGENTS.md and environment parts. Plant: " eval" in collaboration_mode.
+- T-12:instruction-files `vendor_codex_instruction_files_reads`: AGENTS.md header directory and world_state.agents_md.directory inside the session folder. Plant: header names /opt/cfg.
+- T-12:prompt-snapshot `vendor_codex_prompt_reads`: base_instructions.text non-empty. Plant: text "".
+- T-14 `vendor_codex_instruction_content_reads(path, design)`: both AGENTS.md copies equal the pinned CLAUDE.md of their directory (design.instructions). Plant: one word in world_state.agents_md.text.
+- T-16 `vendor_codex_recorded_mode_reads(path, design, arm)`: mode_binding.codex_mode_records (one reading, not re-spelled), one turn_context per turn with CODEX_MODE_RECORD's pair, plus thread_settings approval_policy and permission_profile.type "disabled" (MAJOR 2, codex_native.py:96-99); arm None reads the ledger's arm. Plant: turn 2's approval "on-request"; extra tests fire on a thread_settings approval and a turn_context sandbox; a test proves the mode_binding reading is the one used.
+
+NOT COMPARABLE, `ruling` = glitch-f1's adopted text verbatim (sha256 of the ruling file when copied: ddc65e14d17b019c02869e42578694d894a6dc21521b8ab7214d332ce871642e; equality checked by script against the file); each plant the ruling names fires its reason only, and the partial replaced by `return []` goes red:
+- T-8:file-change `vendor_file_change_reads` (existing): synthetic unjoined patch and rename through the settled site.
+- T-12:offered-context `vendor_codex_offered_partial`: every root list exactly [cwd], app/plugin sections off, no recommended_plugins, no additional_tools, skills only from /opt/cfg/skills/.system. Plant: an outside root in session_meta.
+- T-12:memory `vendor_codex_memory_partial`: world_state key sets, no memory-named key (SessionMeta.memory_mode, protocol.rs:3210, included), sections within the six. Plants: a `memories` key; a `<memories>` section.
+- T-13 `vendor_codex_checkout_partial`: one git {branch, commit_hash}, branch "main" (drive.py:381), 40-hex hash. Plants: git null; branch "other".
+- T-17:billing-route `vendor_billing_route_partial(path, harness, pre)` (shared; stage G may call it): environment record names, TAKE_ENV and refused set, Codex provider and plan (Gemini: the pinned auth setting). Plants: CODEX_ACCESS_TOKEN in names_present; TAKE_ENV patched; provider "oss".
+- T-18 `vendor_codex_tools_partial`: no multi-agent or recommended_plugins section, no additional_tools, sections off, rebuilt config.toml turns agents, plugins and web search off. Plant: multi_agent_role into w-o47.
+
+Over the 38 committed GPT walks (rehearsals/w-o*, read in place): every SAME reader reads [] on 38/38; T-18 fires on 31 (every pre-B22 walk, w-o46 included, as ruled); T-12:offered-context and T-18 also read the recommended_plugins section on w-o7 and w-o8 (the adopted amendment; the design's open call 3 is reversed by it).
+check4_walk_vendor on the 38: 38 carry `[constant-binding] the take ran in permission mode 'unrecorded'` (check_take.constant_problems on the ledger, not a stage C row), 31 harness-condition-violated, 2 inherited-context.
+
+### K's open point 2 (ruled in the C brief)
+
+It is the escaped-text family: w-o46 native-turn-3 line 16 is a code-mode custom_tool_call_output whose part text is a JSON document; read encoded, `<run tree>\nCLAUDE.md\n...` was one path outside the run tree, and an outside path after an escaped newline was unseen.
+Fix (red first, c40bcf93 then 04b5c045): `_codex_rollout_records` hands RETURNED records through `vendor_codex_returned_documents`, which reads a returned text that parses as a JSON object or array as its decoded keys and values.
+vendor_reach over all 38 GPT walks, base e350601f (git archive) against C1: 36 identical; w-o46 and w-o12 each lose the same false event (their listings sit in the run tree); nothing gains an event.
+NOT fixed, for glitch-f1: w-o11, w-o13 and w-o26 keep the same-class false event, from a text that opens with the CLI's `Warning: truncated output (original token count: N)\nTotal output lines: M\n\n` header and whose JSON body was cut, so it does not decode; w-o30's 5 events name a real /tmp file outside the run tree.
+
+### Leg i (prepared; stage V flips)
+
+CLegI drives codex_adapter.CodexAdapter on the RECORDED w-o46 streams and rollouts (three resumed turns) and w-o47 (gpt-6-luna) through test_codex_adapter's FakeRuntime and stubbed run_turn; text, end reason, agent output, thread ids, usage and requested context equal plain-json values.
+For V: copy w-o46 turn-1..3.jsonl, session/native-turn-1..3.jsonl and w-o47 session/native-turn-1.jsonl flat into tests/fixtures/codex-streams (labels "RECORDED at walk w-o46, codex-cli 0.162.1." / w-o47), flip SHAPES_SOURCE, rename test_a7, rewrite the shapes-recorded witness.
+Docstring text for codex_adapter.py lines 9-14, proposed: "SHAPES_SOURCE. The stream and rollout shapes this module reads were re-tested on the streams and rollouts recorded at walk w-o46 (codex-cli 0.162.1, three resumed turns) and the rollout of walk w-o47 (gpt-6-luna), listed in tests/fixtures/codex-streams/README.md, against values derived independently with plain json (tests/vendor_settle_codex.py CLegI); the adapter reports the word in its harness record and in every turn record, and freeze leg i reads it." (it must not contain the literal assignment text, NIT 1). Line 54's "run_take's billing-route variables for Codex (PENDING ...)" is stale since 14 Oct (run_take.py:663-686).
+
+### READER items
+
+All 15 Codex items name `recorded-codex-w-o46/transcript.jsonl`; each item's own reader on the clean copy equals the test's reading (T-8 also its record count; T-15 also on w-o47).
+Re-planted on the recorded copy and firing: T-3, T-4, T-9, T-15, T-24; the other ten F3 re-runs are left for lane R.
+
+### Source read (S0, Codex)
+
+Pinned retained source /Users/javrodher/aegis-builds/gap4-codex-rollout-audit-20261014/src (commit 092d3acd): bypass sets SandboxMode::DangerFullAccess (exec/src/lib.rs:343-347) and exec sets AskForApproval::Never (:591); SandboxPolicy "danger-full-access" (protocol.rs:1088-1091).
+No memory setting is named in the retained tree (no config crate retained); SessionMeta.memory_mode (protocol.rs:3210) is thread memory-generation metadata, read by the memory-key leg. So T-12:memory's settings leg is dropped, and the adopted text's "(else that leg is dropped and this text says so)" needs glitch-f1's amended wording.
+No line upgrades T-12:offered-context (the connector-rendering code is not in the retained tree).
+
+### Tests
+
+vendor_settle_codex.py run directly: 16 OK; with test_codex_adapter (64 OK), test_mode_binding (12 OK) and test_vendor_roads (13 OK) in one process: 105 OK, environment unchanged, sys.path order moved only by test_mode_binding (freeze-gates-fix's own module, alone too).
+test_take_checker_dispatch 5 OK, test_checker_constants 27 OK, copy_manifest --check ok (663 files, 63 fragments), check_vendor_sources P2 exit 0 (no READER_SOURCES or CODEX_SOURCES file changed).
+Red by design until stage V rewrites them (each pins every row PENDING or every item None, or runs synthetic F1 takes that carry none of the CLI records the settled readers read): test_vendor_check VPRows (2 tests), VPHelper pending (12 subtests), VPFixtures recorded-shapes count, VPReaderItems unrecorded-here, VPSameFires settled-row (its synthetic map meets the live SAME rows); test_vendor_body 9; test_vendor_entries 4; test_codex_patch_reads K2Site (expects the PENDING text).
+Digest after C: checker constants unchanged `b08b5496fe2831c950b200bde0c2bd230d16489cd55ac2bb9c8ff1af93327f1b`; vendor codex `c03837df0258ea0dfd2bf89018511378b5e7ad1c29c2f1623eedaf0f85e74959` (was d045bef4..., moved by the settled rows as designed); gemini unchanged.
+Left for V: the shared site docstrings still say "PENDING ... unread" (shared lines, not edited here).
