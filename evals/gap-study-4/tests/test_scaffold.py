@@ -143,7 +143,8 @@ class TheManifest(unittest.TestCase):
         # Departure w7d-1 (lane w7d, ruling W7D-gap4-1 moved review_kit/rounds.py to w7d as an edited copy):
         # review_kit/launch.py, an identical copy this lane still claims, stands in for it. Departure review-kit-port-1
         # (lane review-kit-port moved review_kit/launch.py there as an edited copy): review_kit/build_kit.py stands in.
-        for name in ("denials.py", "allowlist.py", "lexicons/permission-stop.json", "review_kit/build_kit.py"):
+        # Departure review-kit-port-2 (build_kit.py moved there too): smoke_run_tree.py stands in.
+        for name in ("denials.py", "allowlist.py", "lexicons/permission-stop.json", "smoke_run_tree.py"):
             mutated = lambda path, name=name: real(path) + (b" " if path == name else b"")
             bad = cm.problems(pinned=False, read=mutated)
             self.assertIn(f"{name} ({LANE}) differs from evals/gap-study-3/{name} at {cm.SOURCE_COMMIT} and has no "

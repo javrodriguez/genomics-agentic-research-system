@@ -16,7 +16,16 @@ and a reviewer that runs only light checks and reads the remote runner's outputs
                and uses the stop rule's classes
   K5.light     every light command the brief names exists and takes the flag the brief gives it, and none of them is
                a heavy gate
-  K6.public    the brief and why.md carry no absolute path and name no person, by commit_review.py's own patterns
+  K6.public    the brief, why.md and the operator notes carry no absolute path and name no person, by
+               commit_review.py's own patterns
+  K7.model     the reviewer is claude-opus-5-5 and the review commit's co-author line says so; no Fable anywhere in
+               the kit's code (glitch-f1's fold 1: the agent-engine policy, and the plan's fresh Opus reviewers)
+  K8.athena    build_kit.py takes athena/ itself (--athena, required) and copies it into the kit folder before any
+               row can hash it: regular files only, flat, none empty, each naming the commit the clone is at
+               (glitch-f1's fold 2)
+  K9.smoke     the operator notes require a one-turn skills smoke before round 1 and say what it must show
+
+Folds of glitch-f1's rulings on the first hand-back (Wed 21 Oct 2026): K7, K8 and K9 were written red first.
 
 Reads committed files only; no model, network, container or take. Interpreter state (sys.modules, sys.path,
 os.environ, cwd) is left as found.
@@ -26,11 +35,14 @@ bound test to fail by an AssertionError carrying its clause token.
 """
 from __future__ import annotations
 
+import atexit  # noqa: F401  (TemporaryDirectory's weakref.finalize imports it lazily; loaded here so no test adds a module)
 import importlib.util
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -38,7 +50,8 @@ HERE = Path(__file__).resolve().parent.parent
 KIT = HERE / "review_kit"
 REPO = HERE.parent.parent
 FILES = {"brief": KIT / "BRIEF.md", "why": KIT / "why.md", "blindness": KIT / "blindness.py",
-         "launch": KIT / "launch.py", "rehearsal": HERE / "freeze_rehearsal.py"}
+         "launch": KIT / "launch.py", "rehearsal": HERE / "freeze_rehearsal.py",
+         "commit_review": KIT / "commit_review.py", "build_kit": KIT / "build_kit.py", "readme": KIT / "README.md"}
 MUTATED: dict[str, str] = {}
 
 ROUND3_MARKERS = ("gars-eval-v4", "gap-study-3", "round 3", "gars-eval-v3", "gap-study-2", "round 2",
@@ -178,10 +191,104 @@ class Light(unittest.TestCase):
 class Public(unittest.TestCase):
     def test_no_absolute_path_and_no_person(self):
         cr = load_isolated(KIT / "commit_review.py", "review_kit_commit_review_for_test")
-        for key in ("brief", "why"):
+        for key in ("brief", "why", "readme"):
             t = text(key)
             self.assertIsNone(cr.ABS_PATH.search(t), f"K6.public: {key}")
             self.assertIsNone(cr.PERSON.search(t), f"K6.public: {key}")
+
+
+class Model(unittest.TestCase):
+    def test_the_reviewer_is_opus_5_5(self):
+        launch = text("launch")
+        self.assertIsNotNone(re.search(r'^MODEL = "claude-opus-5-5"$', launch, re.M), "K7.model")
+        self.assertIn('"--model", MODEL', launch, "K7.model")
+        self.assertIn("Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>", text("commit_review"), "K7.model")
+        for key in ("launch", "commit_review", "build_kit", "blindness"):
+            self.assertIsNone(re.search(r"fable", text(key), re.I), f"K7.model: {key}")
+
+
+def build_kit_module():
+    """build_kit.py as the tests read it: the file, or a witness's mutated text, executed in isolation."""
+    if "build_kit" not in MUTATED:
+        return load_isolated(FILES["build_kit"], "review_kit_build_kit_for_test")
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / "build_kit.py"
+        p.write_text(MUTATED["build_kit"])
+        saved = list(sys.path)
+        sys.path.insert(0, str(HERE))
+        try:
+            return load_isolated(p, "review_kit_build_kit_mutant")
+        finally:
+            sys.path[:] = saved
+
+
+class Athena(unittest.TestCase):
+    HEAD = "0123456789abcdef0123456789abcdef01234567"
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.src = self.root / "outputs"
+        self.src.mkdir()
+        self.dest = self.root / "kit"
+        self.dest.mkdir()
+        self.bk = build_kit_module()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def put(self, name: str, body: str) -> None:
+        (self.src / name).write_text(body)
+
+    def test_the_outputs_are_copied_in(self):
+        self.put("run_checks.txt", f"command: run_checks.py\ncommit: {self.HEAD}\nrun_checks: 9 of 9 commands passed\n")
+        self.put("freeze-check.txt", f"commit {self.HEAD}\nfreeze: 531 owned paths checked\n")
+        problems, copied = self.bk.copy_athena(self.src, self.dest, self.HEAD)
+        self.assertEqual(problems, [], "K8.athena")
+        self.assertEqual(sorted(copied), ["freeze-check.txt", "run_checks.txt"], "K8.athena")
+        for name in copied:
+            self.assertEqual((self.dest / "athena" / name).read_bytes(), (self.src / name).read_bytes(), "K8.athena")
+
+    def test_what_cannot_be_evidence_at_this_commit_is_refused(self):
+        cases = {
+            "missing": lambda: None,
+            "empty folder": lambda: None,
+            "other commit": lambda: self.put("a.txt", "commit " + "f" * 40 + "\nok\n"),
+            "empty file": lambda: self.put("a.txt", ""),
+            "nested folder": lambda: ((self.src / "sub").mkdir(), self.put("sub/b.txt", self.HEAD)),
+            "link": lambda: (self.put("real.txt", self.HEAD), os.symlink(self.src / "real.txt", self.src / "l.txt")),
+        }
+        for case, arrange in cases.items():
+            with self.subTest(case=case):
+                for p in sorted(self.src.rglob("*"), reverse=True):
+                    p.unlink() if (p.is_file() or p.is_symlink()) else p.rmdir()
+                shutil_rm(self.dest / "athena")
+                arrange()
+                src = self.root / "absent" if case == "missing" else self.src
+                problems, copied = self.bk.copy_athena(src, self.dest, self.HEAD)
+                self.assertTrue(problems, f"K8.athena: {case} was accepted")
+                self.assertFalse((self.dest / "athena").exists(), f"K8.athena: {case} left a partial athena/")
+
+    def test_main_requires_the_outputs(self):
+        src = text("build_kit")
+        self.assertIsNotNone(re.search(r'add_argument\("--athena",[^)]*required=True', src), "K8.athena")
+        main = src.split("def main()", 1)[1]
+        self.assertLess(main.index("copy_athena("), main.index("folder.mkdir("), "K8.athena: checked after the folder exists")
+
+
+def shutil_rm(p: Path) -> None:
+    if p.exists():
+        shutil.rmtree(p)
+
+
+class Smoke(unittest.TestCase):
+    def test_the_operator_notes_require_the_skills_smoke(self):
+        r = text("readme")
+        self.assertIn("## Before round 1: the skills smoke", r, "K9.smoke")
+        section = r.split("## Before round 1: the skills smoke", 1)[1].split("\n## ", 1)[0]
+        for must in ("one turn", "launch.py", "blindness.py", "skill", "UNEXPLAINED", "lane-orchestrator",
+                     "does not open"):
+            self.assertIn(must, section, f"K9.smoke: {must}")
 
 
 def mutants():
@@ -213,6 +320,17 @@ def mutants():
                            "   - `python3 evals/gap-study-4/prereg.py --status`\n",
                            "   - `python3 evals/gap-study-4/prereg.py --status`\n"
                            "   - `python3 evals/gap-study-4/run.py --check`\n"),
+        "model-fable": ("Model.test_the_reviewer_is_opus_5_5", "K7.model", "launch",
+                        'MODEL = "claude-opus-5-5"', 'MODEL = "claude-fable-5-1"'),
+        "coauthor-fable": ("Model.test_the_reviewer_is_opus_5_5", "K7.model", "commit_review",
+                           "Co-Authored-By: Claude Opus 5.5", "Co-Authored-By: Claude Fable 5.1"),
+        "athena-other-commit": ("Athena.test_what_cannot_be_evidence_at_this_commit_is_refused", "K8.athena",
+                                "build_kit", "if head not in body:", "if False:"),
+        "athena-optional": ("Athena.test_main_requires_the_outputs", "K8.athena", "build_kit",
+                            'ap.add_argument("--athena", type=Path, required=True)',
+                            'ap.add_argument("--athena", type=Path, required=False)'),
+        "smoke-dropped": ("Smoke.test_the_operator_notes_require_the_skills_smoke", "K9.smoke", "readme",
+                          "## Before round 1: the skills smoke", "## Before round 1"),
         "person-named": ("Public.test_no_absolute_path_and_no_person", "K6.public", "why",
                          "The adversarial reader's first lens is this page.",
                          "The adversarial reader's first lens is this page, written for Javier."),

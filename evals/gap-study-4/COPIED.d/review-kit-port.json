@@ -23,22 +23,39 @@
       "path": "review_kit/launch.py",
       "status": "edited",
       "source": "evals/gap-study-3/review_kit/launch.py",
-      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). The two usage lines name evals/gap-study-4/, and the docstring names the athena/ inputs the operator adds before the row is registered (ruling F5). No code line changed. Bound by tests/test_review_kit.py K1."
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). The two usage lines name evals/gap-study-4/, and the docstring names the athena/ inputs the operator adds before the row is registered (ruling F5). No code line changed. Bound by tests/test_review_kit.py K1. Fold 1 (glitch-f1, Wed 21 Oct 2026): MODEL is claude-opus-5-5 in place of round 3's Fable (the study plan's fresh Opus reviewers; the agent-engine policy); no effort flag is passed, as before. Bound by K7."
     },
     {
       "path": "tests/test_review_kit.py",
       "status": "new",
-      "reason": "Lane review-kit-port: K1.port, K2.markers, K3.nested, K4.brief, K5.light, K6.public over the ported kit; --witnesses runs eleven mutants in process, each required to fail its bound test with its clause token. Reads committed files only; interpreter state left as found."
+      "reason": "Lane review-kit-port: K1.port, K2.markers, K3.nested, K4.brief, K5.light, K6.public over the ported kit; --witnesses runs eleven mutants in process, each required to fail its bound test with its clause token. Reads committed files only; interpreter state left as found. Folds of glitch-f1's rulings (Wed 21 Oct 2026), written red first: K7.model, K8.athena, K9.smoke; K6.public also reads review_kit/README.md; sixteen mutants in all."
     },
     {
       "path": "COPIED.d/review-kit-port.json",
       "status": "new",
-      "reason": "This lane's copy-record fragment. Transfer (lane review-kit-port, under glitch-f1's freeze-path rulings, Wed 21 Oct 2026): review_kit/BRIEF.md, why.md, blindness.py and launch.py from lane w1a-cp1-scaffold, named in that lane's self-entry."
+      "reason": "This lane's copy-record fragment. Transfer (lane review-kit-port, under glitch-f1's freeze-path rulings, Wed 21 Oct 2026): review_kit/BRIEF.md, why.md, blindness.py and launch.py from lane w1a-cp1-scaffold, named in that lane's self-entry. Transfer (glitch-f1's folds 1 and 2, Wed 21 Oct 2026): review_kit/build_kit.py and review_kit/commit_review.py from lane w1a-cp1-scaffold, named in that lane's self-entry."
     },
     {
       "path": "checks.d/review-kit-port.txt",
       "status": "new",
       "reason": "This lane's local checks: tests/test_review_kit.py, its --witnesses, and review_kit/rounds.py --check."
+    },
+    {
+      "path": "review_kit/build_kit.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/review_kit/build_kit.py",
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). Fold 2 (glitch-f1, Wed 21 Oct 2026; ruling F5): --athena is required, and copy_athena checks the remote runner's outputs before the kit folder is made and again as it copies them to athena/ (regular files only, flat, none empty, each naming the full sha of the commit the clone is at), so rounds.py --add hashes them with the rest. The usage line names evals/gap-study-4/. Bound by tests/test_review_kit.py K8."
+    },
+    {
+      "path": "review_kit/commit_review.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/review_kit/commit_review.py",
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). Fold 1 (glitch-f1, Wed 21 Oct 2026): the review commit's co-author line names Claude Opus 5.5, the reviewer launch.py opens, in place of Fable; the usage line names evals/gap-study-4/. Bound by tests/test_review_kit.py K7."
+    },
+    {
+      "path": "review_kit/README.md",
+      "status": "new",
+      "reason": "Lane review-kit-port, glitch-f1's ruling on question 3 (Wed 21 Oct 2026): the operator notes, the order of a round, and the one-turn skills smoke required before round 1 with what it must show. The reviewer is never handed this file. Bound by tests/test_review_kit.py K9 and K6."
     }
   ]
 }

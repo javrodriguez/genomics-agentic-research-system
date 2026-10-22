@@ -49,7 +49,10 @@ HERE = Path(__file__).resolve().parent
 STUDY_DIR = HERE.parent
 REPO = STUDY_DIR.parent.parent
 
-MODEL = "claude-fable-5-1"
+# ROUND 4 (lane review-kit-port, glitch-f1's fold 1, Wed 21 Oct 2026): round 3 launched another model. The reviewer is now
+# claude-opus-5-5: the study plan's CP6 asks for fresh Opus reviewers, and the agent-engine policy waits on
+# the owner's word for any other. No effort flag is passed (argv_for), so the reviewer runs at the client's default, as round 3's did.
+MODEL = "claude-opus-5-5"
 PROMPT = "Read BRIEF.md in this folder and follow it exactly."
 RESUME_PROMPT = ("Your session was interrupted by a rate limit and has been resumed. Continue exactly where you "
                  "were: follow BRIEF.md in this folder to completion, and write the report it asks for.")
