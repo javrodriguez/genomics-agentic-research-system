@@ -840,7 +840,10 @@ def furniture_problems(d) -> list:
         for e, line in zip(sr.furniture_positions(h), got[1:]):
             if not line.startswith(f"{e['file']} | {e['record']} | ") or \
                     (f"account-{e['account']}" in line) != bool(e["account"]) or \
-                    not all(("rehearsals/" + x) in line for x in e["evidence"]):
+                    not all((x if x.startswith("transcript_view.py:") else "rehearsals/" + x) in line
+                            for x in e["evidence"]) or \
+                    (all(x.startswith("transcript_view.py:") for x in e["evidence"])
+                     != ("admitted by the view, carried by no walk" in line)):
                 out.append(f"{h}: the line for {e['record']} does not render its entry")
     if (CODEX, GEMINI) != ("codex", "gemini") or "0.162.1" not in d["furniture"][CODEX][0] or \
             "0.64.0" not in d["furniture"][GEMINI][0]:
@@ -934,7 +937,7 @@ def fold2_problems(d) -> list:
     finding = d["box_residuals"][0].get("finding")
     if not isinstance(finding, str) or finding.startswith("PENDING") or not all(
             w in finding for w in ("claude-code: visible", "gemini: visible", "10 of the 36", "codex:",
-                                   "inferred", "none of the 38")):
+                                   "inferred", "0 of the 38 GPT walks")):   # closure c1: Stage8Recount binds the counts
         out.append("box_residuals[0].finding is not the per-harness finding")
     if "/box_residuals/0/finding" in d["pending"]:
         out.append("the token finding is still pending")
@@ -943,6 +946,82 @@ def fold2_problems(d) -> list:
             and "mitigation 1" in tier["text"]):
         out.append("the arm G tier residual does not carry the owner's fact, its source and D8 mitigation 1")
     return out
+
+
+def stage8_recount() -> dict:
+    """Closure c1/c2 (glitch-f1, 22 Oct 2026): every count and list stage 8 published, re-derived from the walks."""
+    reh = HERE / "rehearsals"
+    key = "GEMINI_API_KEY="
+
+    def snaps(w):
+        return sorted((w / "session").glob("native-turn-*.jsonl"), key=lambda p: int(re.findall(r"[0-9]+", p.name)[0]))
+    gem = sorted((w for w in reh.glob("w-g*") if re.fullmatch(r"w-g[0-9]+", w.name)), key=lambda p: int(p.name[3:]))
+    cod = [w for w in reh.glob("w-o*") if re.fullmatch(r"w-o[0-9]+", w.name)]
+    cla = [w for w in reh.glob("w*") if re.fullmatch(r"w[0-9]+", w.name)]
+    walks, final, streams, calls = [], 0, 0, []
+    for w in gem:
+        fin = snaps(w)[-1].read_text().count(key)
+        st = sum(f.read_text().count(key) for f in w.glob("turn-*.jsonl"))
+        final, streams = final + fin, streams + st
+        if fin or st or any(f.read_text().count(key) for f in snaps(w)):
+            walks.append(w.name)
+        seen = set()
+        for ln in snaps(w)[-1].read_text().split("\n"):
+            if ln:
+                for tc in json.loads(ln).get("toolCalls") or []:
+                    if tc["id"] not in seen and key in json.dumps(tc.get("result")):
+                        seen.add(tc["id"])
+                        calls.append((w.name, tc["name"], tc.get("args", {}).get("command", "").strip()))
+
+    def agent_files(w):
+        return list(w.glob("turn-*.jsonl")) + list((w / "session").glob("*.jsonl")) + \
+            ([w / "transcript.jsonl"] if (w / "transcript.jsonl").is_file() else [])
+    phrase = {h: sorted(w.name for w in ws if any("gap study" in f.read_text().lower() for f in agent_files(w)))
+              for h, ws in (("gemini", gem), ("codex", cod), ("claude", cla))}
+    auth = sorted(w.name for w in cod if any("auth.json" in f.read_text() for f in agent_files(w)))
+    return {"gemini_walks": len(gem), "codex_walks": len(cod), "claude_walks": len(cla), "key_walks": walks,
+            "final": final, "streams": streams, "calls": calls, "phrase": phrase, "auth": auth}
+
+
+def stage8_phrases(c) -> list:
+    """The exact phrases the published text must carry, rendered from the recount."""
+    env = [x for x in c["calls"] if x[2] == "env"]
+    grep = [x for x in c["calls"] if x[2] == "env | grep -i gemini"]
+    other = [x for x in c["calls"] if x not in env and x not in grep]
+    total = c["gemini_walks"] + c["codex_walks"] + c["claude_walks"]
+    seen = sum(len(v) for v in c["phrase"].values())
+    return [f"in {len(c['key_walks'])} of the {c['gemini_walks']} Gemini walks ({', '.join(c['key_walks'])})",
+            f"{len(c['calls'])} tool calls returned it to the agent: {len(env)} env listings, {len(grep)} filtered env "
+            f"listings (env | grep -i gemini) and {len(other)} script's output ("
+            + "; ".join(f"{cmd}, {w}" for w, _, cmd in other) + ")",
+            f"the walks' final session snapshots hold {c['final']} occurrences",
+            f"the per-turn streams hold {c['streams']}",
+            f"{len(c['auth'])} of the {c['codex_walks']} GPT walks' streams, rollouts or transcripts name auth.json",
+            f"In {seen} of the {total} walks",
+            f"{len(c['phrase']['claude'])} of the {c['claude_walks']} Claude and {len(c['phrase']['codex'])} of the "
+            f"{c['codex_walks']} Codex walks carry the phrase"] + [f"{w} (arm G)" for w in c["phrase"]["gemini"]]
+
+
+class Stage8Recount(unittest.TestCase):
+    def test_published_counts_are_the_walks(self):
+        c = stage8_recount()
+        d = json.loads((HERE / "prereg-draft.json").read_text())
+        text = d["box_residuals"][0]["finding"] + " " + d["run_tree_residual"]["round_4"]["observed"]
+        built = b.TOKEN_VISIBILITY_FINDING + " " + b.RUN_TREE_ROUND_4["observed"]
+        for ph in stage8_phrases(c):
+            with self.subTest(phrase=ph):
+                self.assertIn(ph, text)
+                self.assertIn(ph, built)
+
+    def test_witnesses(self):
+        c = stage8_recount()
+        text = b.TOKEN_VISIBILITY_FINDING + " " + b.RUN_TREE_ROUND_4["observed"]
+        for old, new in (("hold 45 occurrences", "hold 46 occurrences"), ("0 of the 38 Codex", "0 of the 37 Codex"),
+                         ("(w-g12, w-g14", "(w-g14")):
+            with self.subTest(mutant=old):
+                self.assertIn(old, text)
+                bad = text.replace(old, new)
+                self.assertFalse(all(ph in bad for ph in stage8_phrases(c)))
 
 
 class Fold2(unittest.TestCase):

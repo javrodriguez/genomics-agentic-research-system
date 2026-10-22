@@ -286,8 +286,10 @@ FURNITURE = {
          "evidence": ("transcript_view.py:278",)},
         {"file": "session", "record": "ai-title", "fields": ("type", "sessionId"), "account": None,
          "evidence": ("transcript_view.py:304",)},
-        {"file": "session", "record": "system", "fields": ("*",), "account": None,
-         "evidence": ("transcript_view.py:305",)},
+        # closure NIT: no walk carries a session system record, which can carry an operator's slash command; its
+        # content is left out until one is seen
+        {"file": "session", "record": "system", "fields": ("type", "subtype", "level", "timestamp", "uuid", "sessionId"),
+         "account": None, "evidence": ("transcript_view.py:305",)},
         {"file": "session", "record": "user:no-visible-output-nudge", "fields": ("*",), "account": None,
          "evidence": ("transcript_view.py:331",)},
         {"file": "session", "record": "user:scheduled-wakeup", "fields": _CC_ENVELOPE + ("isSidechain", "isMeta",
