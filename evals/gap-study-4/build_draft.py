@@ -1273,7 +1273,8 @@ def owner_value_missing(value, kind):
             and re.fullmatch(r"[0-9a-f]{64}", value["source_sentence_sha256"])
             and isinstance(value["commitment"], dict) and commitment_value(value["commitment"]))
     if kind == "list" and isinstance(value, list):
-        return not all(supplied_text(v) for v in value)
+        # lane d8-furniture fold (glitch-f1, 22 Oct 2026): an empty list is missing (all() of nothing was a pass)
+        return not value or not all(supplied_text(v) for v in value)
     if kind == "setting" and isinstance(value, dict):
         # Gemini's measured setting is its path and value, not a string.
         return not (set(value) == {"path", "value"} and supplied_text(value["path"])

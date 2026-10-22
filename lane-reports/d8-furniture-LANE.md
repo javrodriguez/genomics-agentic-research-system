@@ -84,3 +84,9 @@ New from this lane:
 - Heavy slot (`mac_slot.py run --kind heavy --owner d8-furniture`, acquired 00:23, about 20 minutes): test_awareness + test_build_draft (whole) + test_prereg_order + test_prereg_status + test_agent_tool in one process, 100 tests, **1 failure: test_build_draft Description.test_commitments, clause R9.sessions**.
   It is **pre-existing at the base**: `description_problems(describe())` returns `['R9.sessions']` in a detached worktree at d5c0f798 too (worktree removed after).
   R9.sessions expects `checked_against` to read 0 sessions, and describe() at this tree reads 225 (the walks merged into dry/all-225); the same staleness as the base draft's `checked_against`, so it belongs with lane freeze-gates-fix, not here.
+
+## Fold (glitch-f1, Thu 22 Oct 2026): the list owner slot refuses an empty list
+
+- `build_draft.owner_value_missing(value, "list")` now reads an empty list as missing (before: `all()` of nothing passed).
+- `tests/test_build_draft.py` `list_slot_problems()` and two OwnerSlots tests: the three `/furniture/<harness>` slots (the only list-kind slots) refuse an empty list and a missing one, and the committed draft's three lists are non-empty and supplied. Red first (3 problems, one per harness), then green; the witness (the old rule patched back) goes red. `test_structured_inputs_retain_their_types` now supplies a one-line list instead of `[]`.
+- FURNITURE is non-empty for every harness in the committed tree (codex 24 entries, gemini 12, claude-code 35; TestFurniture's shape check requires non-empty). `build_draft.py --check` still passes: the draft is unchanged.

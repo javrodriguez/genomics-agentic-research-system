@@ -1688,6 +1688,30 @@ def setUpModule():
     else:
         OWNER_SETUP()
 
+def list_slot_problems() -> list:
+    """Lane d8-furniture fold (glitch-f1, 22 Oct 2026): every list-kind owner slot (the per-harness furniture lists)
+    refuses an empty list and a missing one, and the committed draft's lists are non-empty and supplied."""
+    out = []
+    fake = fill_fake(json.loads((HERE / "prereg-draft.json").read_text()))   # the committed draft, no 40 s build
+    slots = [ptr for ptr, kind in b.OWNER_SLOTS.items() if kind == "list"]
+    if sorted(slots) != sorted(f"/furniture/{h}" for h in (CLAUDE, CODEX, GEMINI)):
+        out.append(f"the list slots are not the three furniture lists: {slots}")
+    for ptr in slots:
+        path = tuple(ptr.split("/")[1:])
+        if not b.owner_value_missing([], "list") or ptr not in b.pending(changed(fake, path, [])):
+            out.append(f"{ptr}: an empty list reads as supplied")
+        erased = copy.deepcopy(fake)
+        del erased[path[0]][path[1]]
+        if ptr not in b.pending(erased):
+            out.append(f"{ptr}: a missing list reads as supplied")
+    committed = json.loads((HERE / "prereg-draft.json").read_text())
+    for h in (CLAUDE, CODEX, GEMINI):
+        lines = committed["furniture"].get(h)
+        if not isinstance(lines, list) or len(lines) < 2 or b.owner_value_missing(lines, "list"):
+            out.append(f"the committed furniture list for {h} is empty or not supplied")
+    return out
+
+
 class OwnerSlots(unittest.TestCase):
     def test_narrative_words_and_keys_keep_closed(self):
         fake = fill_fake(b.build())
@@ -1747,7 +1771,8 @@ class OwnerSlots(unittest.TestCase):
         fake = fill_fake(b.build())
         quote = {"source": "fake source", "source_sentence_sha256": "a"*64,
                  "commitment": {"arrived": True, "mode": "fake", "count": 0}}
-        cases = [(OWNER_PATHS[0], quote), (("furniture", CODEX), []),
+        # lane d8-furniture fold (glitch-f1, 22 Oct 2026): an empty list is no longer supplied (ListSlots)
+        cases = [(OWNER_PATHS[0], quote), (("furniture", CODEX), ["fake furniture line"]),
                  (("furniture", GEMINI), ["fake marker"]),   # round 17 B7 (ruling M): was routing_marker_inputs
                  (("effort", GEMINI, MODELS["G"][0]), {"path": "fake.level", "value": 0}),
                  (("config_templates", CODEX, MODELS["O"][0]),
@@ -1758,6 +1783,19 @@ class OwnerSlots(unittest.TestCase):
         for key in quote:
             missing = dict(quote); del missing[key]
             self.assertIn("/pause_questions/0/answer", b.pending(changed(fake, OWNER_PATHS[0], missing)))
+
+    def test_list_slots_refuse_an_empty_or_missing_list(self):
+        self.assertEqual(list_slot_problems(), [])
+
+    def test_witness_the_old_list_rule_goes_red(self):
+        # the rule before the fold: every item supplied, which an empty list passes (all() of nothing)
+        original = b.owner_value_missing
+        def hollow(value, kind):
+            if kind == "list" and isinstance(value, list):
+                return not all(b.supplied_text(v) for v in value)
+            return original(value, kind)
+        with mock.patch.object(b, "owner_value_missing", hollow):
+            self.assertTrue(list_slot_problems())
 
     def test_required_set_is_independent_of_input(self):
         self.assertTrue(hasattr(b, "OWNER_SLOTS"), "the required owner pointers are a module constant")
