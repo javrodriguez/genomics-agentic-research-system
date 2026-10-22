@@ -93,3 +93,9 @@ Values: python `/usr/local/bin/python3.13`, `--suite`, `--reserve`, `--gitleaks`
 6. fetch: `walk_launch.py fetch-probe --child <child> --probe hookctl1 --out /Users/javrodher/aegis-builds/hookctl-<date>/stub-probe-hookctl1 --gitleaks ... --work /Users/javrodher/aegis-builds/hookctl-<date>/fetch-work`, then the athena gate again.
 7. Read: summary.json's `verdict` (PASS, INCONCLUSIVE or FAIL, with each arm's reasons and each run's events); `exit=0` only on PASS with no run problem. Write RUNLOG.md beside the fetched folder in B27's form, and the labelled note lane-reports/hook-control-<date>.md (verdict, the manifest's sha256, each twin's twin_sha256 and study_sha256) for the pre-freeze reviewers.
 8. If both C0 and C1 on twins are silent, the verdict is INCONCLUSIVE and C2 is glitch-f1's new ruling; if any off twin fired, FAIL holds that arm's counted runs until a fix and a rerun.
+
+## Close of the build (head 51506c662f68c6d95aa294ba15cc1734034f450b, `git rev-parse HEAD`)
+
+- One process on that head, 23:26:43-23:27:05 EDT: tests.test_holdout_digests, test_hook_control_probe, test_identity_evidence, test_stub_agents, test_stub_model_probe, test_stub_model_server, test_stub_take: "Ran 189 tests", "OK".
+- Not pushed (push URL `DISABLED-no-push`). Next, not this lane agent's: the fresh review, athena's battery on the head, then the operator's plan above; the merge onto lane/vendor-b28 after B27's.
+- Open for glitch-f1 (not ruled in the brief, left as they were): the design's open calls 8 (the records scan of the committed walks) and 13 (the stale settings_guard.py:221 text); open call 7 is recorded descriptively (census_names), never a gate.
