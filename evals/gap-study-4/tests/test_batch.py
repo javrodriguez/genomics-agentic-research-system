@@ -941,6 +941,90 @@ class TestStartGate(unittest.TestCase):
         self.assertEqual({o["state"] for o in out}, {labels4.FAILED})
 
 
+class TestDeferredArm(unittest.TestCase):
+    """Lane gemini-defer, ruling R5 (glitch-f1, 22 Oct 2026): a row of an arm in the frozen deferred_arms is refused by
+    name unless a committed go record exists (prereg.GO_KEYS, modelled on costs.py's "caps trimmed" record)."""
+
+    def design(self):
+        import prereg
+        d = copy.deepcopy(prereg.load())
+        d["deferred_arms"] = {"G": {"status": "deferred", "by": "Javier", "models": [PIN["model"]],
+                                    "words": "Javier's reply \"gemini-defer yes\", Thu 22 Oct 2026 09:19:59 EDT"}}
+        d["models"] = dict(d["models"], G=["gemini-3.8-flash", "gemini-3.5-flash-lite"])
+        return d
+
+    def go(self, **changes):
+        return dict({"kind": "deferred arm go", "arm": "G", "by": "Javier", "decision": "OD-synthetic",
+                     "ask": "synthetic-go", "at": "2026-12-01T14:00:00Z"}, **changes)
+
+    def held(self, records, row_list):
+        import prereg
+        d = self.design()
+        with mock.patch.object(prereg, "load", lambda: d), \
+                mock.patch.object(prereg, "committed_go_records", lambda *a: list(records)):
+            return run(1, row_list=row_list)
+
+    def test_a_deferred_arms_row_is_refused_by_name(self):
+        g_row = [dict(r, arm="G") for r in rows(2)]
+        for records in ([], [self.go(by="glitch-f1")], [self.go(arm="O")], [self.go(kind="caps trimmed")],
+                        [dict(self.go(), extra=1)]):
+            with self.subTest(records=records), \
+                    self.assertRaisesRegex(batch.BatchConfigError,
+                                           r"row 1: arm G is deferred \(Javier, 22 Oct 2026\) in the frozen "
+                                           r"deferred_arms, and no committed 'deferred arm go' record"):
+                self.held(records, g_row)
+        # by its registered model too, when a row names no arm
+        gemini = [dict(r, model="gemini-3.8-flash") for r in rows(1)]
+        with self.assertRaisesRegex(batch.BatchConfigError, r"row 1: arm G is deferred"):
+            self.held([], gemini)
+
+    def test_a_committed_go_lets_the_row_run(self):
+        b, out, *_ = self.held([self.go()], [dict(r, arm="G") for r in rows(2)])
+        self.assertEqual(len(out), 2)
+
+    def test_other_arms_and_an_undeferred_design_run(self):
+        b, out, *_ = self.held([], [dict(r, arm="A") for r in rows(2)])
+        self.assertEqual(len(out), 2)
+        import prereg
+        undeferred = {k: v for k, v in self.design().items() if k != "deferred_arms"}
+        with mock.patch.object(prereg, "load", lambda: undeferred), \
+                mock.patch.object(prereg, "committed_go_records", lambda *a: self.fail("read with nothing deferred")):
+            b, out, *_ = run(1, row_list=[dict(r, arm="G") for r in rows(2)])
+        self.assertEqual(len(out), 2)
+
+    def test_the_repo_supplies_its_go_records_and_only_a_deferred_row_reads_them(self):
+        import prereg
+        d, reads = self.design(), []
+        class GoRepo(FakeRepo):
+            def deferred_go_records(inner):
+                reads.append(1)
+                return [self.go()]
+        with mock.patch.object(prereg, "load", lambda: d), \
+                mock.patch.object(prereg, "committed_go_records", lambda *a: self.fail("the repo offers its own")):
+            w = World()
+            b = batch.Batch(FakeDriver(w, None), GoRepo(w), FakeWindow(w), table=test_table())
+            self.assertEqual(b.row_problems([dict(r, arm="A") for r in rows(2)]), [])
+            self.assertEqual(reads, [])
+            self.assertEqual(b.row_problems([dict(r, arm="G") for r in rows(2)]), [])
+            self.assertEqual(reads, [1])
+
+    def test_the_deferral_is_asked_once_per_row(self):
+        # review NIT-4: row_problems calls deferral_problem once per row, refused or not
+        import prereg
+        d, calls = self.design(), []
+        with mock.patch.object(prereg, "load", lambda: d), \
+                mock.patch.object(prereg, "committed_go_records", lambda *a: []):
+            w = World()
+            b = batch.Batch(FakeDriver(w, None), FakeRepo(w), FakeWindow(w), table=test_table())
+            ask = b.deferral_problem
+            b.deferral_problem = lambda r: calls.append(r["slot"]) or ask(r)
+            got = b.row_problems([dict(r, arm="G") for r in rows(2)] + [dict(r, arm="A") for r in rows(3)[2:]])
+        self.assertEqual(len(got), 2)
+        self.assertTrue(all("arm G is deferred" in p for p in got))
+        self.assertEqual(sorted(calls), sorted({r["slot"] for r in rows(3)}))
+        self.assertEqual(len(calls), 3)
+
+
 class TrustingBatch(batch.Batch):
     """Mutant: trusts the driver's pin model instead of the registered row's."""
 

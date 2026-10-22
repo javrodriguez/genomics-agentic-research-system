@@ -1214,6 +1214,40 @@ class Reporting(unittest.TestCase):
         with mock.patch.object(completeness, "pair_count", lambda pre: 10):
             self.assertEqual(completeness.summarize(pre, [], {}, [])["task_pairs"], 10)
 
+    def test_a_deferred_arms_half_cells_read_deferred(self):
+        # Lane gemini-defer, ruling R3 (glitch-f1, 22 Oct 2026): a deferred arm's unmeasured half-cells read the frozen
+        # deferral, "deferred (Javier, 22 Oct 2026)", never "no takes"; other arms keep "no takes".
+        pre = pre_registration(("synthetic-a", "synthetic-b"))
+        pre["rows"][1].update(arm="G", half_cell="c-g")
+        pre["deferred_arms"] = {"G": {"status": "deferred", "by": "Javier",
+                                      "words": "Javier's reply \"gemini-defer yes\", Thu 22 Oct 2026 09:19:59 EDT"}}
+        cells = {c["arm"]: c for c in completeness.summarize(pre, [], {}, [])["cells"]}
+        self.assertEqual(cells["G"]["state"], "deferred (Javier, 22 Oct 2026)")
+        self.assertIn("deferred_arms", cells["G"]["reason"])
+        self.assertEqual(cells["A"]["state"], stats.NO_TAKES)
+        self.assertEqual(cells["A"]["reason"], "no committed graded take")
+        self.assertIn("| deferred (Javier, 22 Oct 2026) |", completeness.render({"task_pairs": 2,
+                                                                                 "cells": list(cells.values())}))
+        # a committed mechanical state keeps its precedence
+        states = {"c-g": {"state": labels4.INCOMPLETE_MECHANICAL, "reason": "synthetic committed state"}}
+        cells = {c["arm"]: c for c in completeness.summarize(pre, [], states, [])["cells"]}
+        self.assertEqual(cells["G"]["state"], labels4.INCOMPLETE_MECHANICAL)
+        # review NIT-2: after Javier's committed go, a G half-cell with no take yet reads "no takes", not "deferred";
+        # a record that is not his go for arm G changes nothing
+        go = {"kind": "deferred arm go", "arm": "G", "by": "Javier", "decision": "OD-synthetic",
+              "ask": "synthetic-go", "at": "2026-12-01T14:00:00Z"}
+        cells = {c["arm"]: c for c in completeness.summarize(pre, [], {}, [], go_records=[go])["cells"]}
+        self.assertEqual(cells["G"]["state"], stats.NO_TAKES)
+        self.assertEqual(cells["G"]["reason"], "no committed graded take")
+        for bad in ([], [dict(go, arm="O")], [dict(go, by="glitch-f1")]):
+            with self.subTest(records=bad):
+                cells = {c["arm"]: c for c in completeness.summarize(pre, [], {}, [], go_records=bad)["cells"]}
+                self.assertEqual(cells["G"]["state"], "deferred (Javier, 22 Oct 2026)")
+        import prereg
+        with mock.patch.object(prereg, "committed_go_records", lambda *a: [go]):
+            cells = {c["arm"]: c for c in completeness.summarize(pre, [], {}, [])["cells"]}
+        self.assertEqual(cells["G"]["state"], stats.NO_TAKES)
+
     def test_mechanical_state_read_even_without_a_graded_record(self):
         pre = pre_registration()
         states = {"c1": {"state": labels4.INCOMPLETE_MECHANICAL, "reason": "synthetic committed state"}}
@@ -1356,12 +1390,15 @@ class CostAccounting(unittest.TestCase):
 
     def test_round_caps_use_all_months_and_all_models(self):
         self.api()
-        self.assertEqual(costs.CAPS, {"openai": Decimal(260), "google": Decimal(140)})
+        # Javier's "gcap-220 yes" (OD107, Thu 22 Oct 2026 14:43:19Z, ask gcap-220): Google 220, OpenAI 180 (arm O runs
+        # on the Codex subscription and spends nothing), the 400 total unchanged. The spends keep each vendor one
+        # step under its cap, so the projection passes the total by one, as with the 260 and 140 caps before.
+        self.assertEqual(costs.CAPS, {"openai": Decimal(180), "google": Decimal(220)})
         self.assertEqual(costs.TOTAL_CAP, Decimal(400))
         start = datetime(2026, 9, 1, tzinfo=timezone.utc)
         spend = [{"vendor": "openai", "at": "2026-09-10T00:00:00Z", "usd": "100"},
-                 {"vendor": "openai", "at": "2026-10-01T00:00:00Z", "usd": "150"},
-                 {"vendor": "google", "at": "2026-10-01T00:00:00Z", "usd": "139"},
+                 {"vendor": "openai", "at": "2026-10-01T00:00:00Z", "usd": "70"},
+                 {"vendor": "google", "at": "2026-10-01T00:00:00Z", "usd": "219"},
                  {"vendor": "google", "at": "2026-08-01T00:00:00Z", "usd": "900"}]
         walks = [{"vendor": "openai", "model": "synthetic-one", "agent": row()["agent"],
                   "cost_per_try": "1", "tries_left": 11},
@@ -1547,6 +1584,41 @@ class FreezeCoverage(unittest.TestCase):
                 got = self.rehearsal_command(clone, ("check_results.py", *flags))
                 self.assertEqual(got.returncode, 1, got.stdout + got.stderr)
                 self.assertIn("never a placeholder", got.stdout)
+
+    def test_frozen_content_reads_the_drafts_amendment_dict(self):
+        # Lane gemini-defer, ruling R7 (glitch-f1, 22 Oct 2026): the draft's `amendments` is a dict keyed by arm
+        # (build_draft.assemble), and frozen_content_problems sliced it as a list (KeyError slice(None, 2, None)).
+        # The draft's own shape compared with itself is no change; every refusal still holds on the dict.
+        draft = json.loads((HERE / "prereg-draft.json").read_text())
+        self.assertIsInstance(draft["amendments"], dict)
+        self.assertEqual(cr.frozen_content_problems(draft, copy.deepcopy(draft)), [])
+        edited = copy.deepcopy(draft)
+        edited["amendments"]["O"] = "synthetic edit"
+        self.assertIn("an amendment present at the freeze was edited or removed",
+                      cr.frozen_content_problems(draft, edited))
+        removed = copy.deepcopy(draft)
+        del removed["amendments"]["G"]
+        self.assertIn("an amendment present at the freeze was edited or removed",
+                      cr.frozen_content_problems(draft, removed))
+        as_list = dict(copy.deepcopy(draft), amendments=list(draft["amendments"].values()))
+        self.assertIn("an amendment present at the freeze was edited or removed",
+                      cr.frozen_content_problems(draft, as_list))
+        # A pinned file that moves after the freeze: refused bare, accepted when a new dict entry chains it.
+        frozen = dict(copy.deepcopy(draft), pinned_files=[{"path": "x.py", "sha256": "a" * 64}])
+        moved = dict(copy.deepcopy(frozen), pinned_files=[{"path": "x.py", "sha256": "b" * 64}])
+        self.assertIn("x.py: its pinned sha256 moved after the freeze and no amendment records it",
+                      cr.frozen_content_problems(frozen, moved))
+        moved["amendments"]["synthetic-1"] = {"files": [{"path": "x.py", "sha256_before": "a" * 64,
+                                                         "sha256_after": "b" * 64}]}
+        self.assertEqual(cr.frozen_content_problems(frozen, moved), [])
+        moved["amendments"]["synthetic-1"]["files"][0]["sha256_after"] = "c" * 64
+        self.assertIn("x.py: the last amendment's sha256_after is not the pin in force",
+                      cr.frozen_content_problems(frozen, moved))
+        # The list shape keeps its own reading.
+        listed = {"amendments": [{"files": []}], "pinned_files": []}
+        self.assertEqual(cr.frozen_content_problems(listed, copy.deepcopy(listed)), [])
+        self.assertIn("an amendment present at the freeze was edited or removed",
+                      cr.frozen_content_problems(listed, {"amendments": [], "pinned_files": []}))
 
     def test_rehearsal_mode_refuses_any_other_record(self):
         self.assertIn("rehearsal_plan", inspect.signature(cr.check_frozen_content).parameters)
@@ -1875,6 +1947,41 @@ class RuntimeTiming(unittest.TestCase):
             commit(repo.root, [study.rel("prereg.json"), study.rel("takes.json")], "Freeze synthetic outputs")
             with mock.patch.object(cr, "REPO", repo.root):
                 self.assertTrue(cr.runtime_timing_problems())
+
+    def test_a_go_record_before_or_with_the_freeze_is_refused(self):
+        # Review MINOR-1 on lane gemini-defer (glitch-f1, 22 Oct 2026): a deferred arm's go record committed before or
+        # with the freeze would release the arm with the first counted run, so it is refused like any run output;
+        # one committed after the freeze is allowed.
+        import prereg
+        self.assertIn(prereg.GO_RECORD.name, cr.RUNTIME_PATHS)
+        with repository() as repo:
+            root = repo.root / study.STUDY_REL
+            root.mkdir(parents=True)
+            (root / "prereg.json").write_text("{}\n")
+            (root / prereg.GO_RECORD.name).write_text("[]\n")
+            commit(repo.root, [study.rel("prereg.json"), study.rel(prereg.GO_RECORD.name)], "Freeze with a go record")
+            with mock.patch.object(cr, "REPO", repo.root):
+                got = cr.runtime_timing_problems()
+                self.assertEqual(len(got), 1)
+                self.assertIn("run output committed before or with the freeze", got[0])
+        with repository() as repo:
+            root = repo.root / study.STUDY_REL
+            root.mkdir(parents=True)
+            (root / prereg.GO_RECORD.name).write_text("[]\n")
+            commit(repo.root, [study.rel(prereg.GO_RECORD.name)], "Record a go before the freeze")
+            (root / "prereg.json").write_text("{}\n")
+            commit(repo.root, [study.rel("prereg.json")], "Freeze synthetic design")
+            with mock.patch.object(cr, "REPO", repo.root):
+                self.assertTrue(cr.runtime_timing_problems())
+        with repository() as repo:
+            root = repo.root / study.STUDY_REL
+            root.mkdir(parents=True)
+            (root / "prereg.json").write_text("{}\n")
+            commit(repo.root, [study.rel("prereg.json")], "Freeze synthetic design")
+            (root / prereg.GO_RECORD.name).write_text("[]\n")
+            commit(repo.root, [study.rel(prereg.GO_RECORD.name)], "Record a go after the freeze")
+            with mock.patch.object(cr, "REPO", repo.root):
+                self.assertEqual(cr.runtime_timing_problems(), [])
 
     def test_pre_freeze_outputs_refused_even_when_removed_before_freeze(self):
         self.assertTrue(callable(getattr(cr, "runtime_timing_problems", None)),

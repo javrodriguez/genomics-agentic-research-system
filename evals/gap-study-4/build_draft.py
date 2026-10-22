@@ -125,6 +125,54 @@ def version_pins(locks, table):
     return result
 
 
+# Lane gemini-defer, ruling R1 (glitch-f1 under Javier's standing delegation, 22 Oct 2026): arm G stays registered
+# unchanged (its rows, models, counts, stats_design_inputs and analysis text are untouched) and its counted run is
+# deferred by Javier's decision OD105 on ask gemini-defer. Not optional_arms (an arm that runs only if given rows) and
+# not amendments (the letters that admitted O and G). R4's blind-sample split and R6's multiplicity reading are
+# pre-registered here, before any counted take; the caveat is the map's section 6 sentence.
+DEFERRED_ARMS = {"G": {
+    "status": "deferred",
+    "by": "Javier",
+    "words": "Javier's reply \"gemini-defer yes\", Thu 22 Oct 2026 09:19:59 EDT",
+    "records": {"decision": "OD105", "ask": "gemini-defer"},
+    "starts_only_on": "a later recorded owner go, after the Claude and Codex results",
+    "if_go": "runs exactly as registered here, published as a follow-up he chose after seeing those results",
+    "design_changed": False,
+    "caveat": ("Gemini CLI stays pinned at the registered version, but the model Google serves under "
+               "`gemini-3.8-flash` and `gemini-3.5-flash-lite` can change on Google's side between the freeze and a "
+               "later run; arm G's served model is verified by name only (D8:310), so a deferred G result measures "
+               "what Google served on its run dates, not necessarily what it served at the freeze."),
+    "blind_sample": ("The original report's blind draw covers the five run models (arm A's three, arm O's two) with "
+                     "the registered per-cell share: each (arm, harness, model) cell keeps the share of about_n it "
+                     "has in the full seven-model design. A follow-up, only after a committed go record, draws the "
+                     "two arm G cells under the same design and the same shares; labelling/sample.py withholds "
+                     "the deferred arm's models from the original draw."),
+    "analysis": ("The original report adjusts the three per-harness contrasts with Holm at m = 3, arm G's contrast "
+                 "untested and still counted in m. If arm G runs later, the follow-up prints the full-family values "
+                 "(arm G tested) beside the original adjusted values, labelled the registered full-design "
+                 "computation, never a correction; the original report's values stand as published."),
+    # glitch-f1's stage after OD107 (Javier's "gcap-220 yes"): the Google cap a go needs, registered at the freeze;
+    # costs.CAPS holds the same figure (tests/test_build_draft.py R13.deferred binds the two).
+    "registered_cap": {"vendor": "google", "usd": 220, "decision": "OD107", "ask": "gcap-220",
+                       "words": "Javier's reply \"gcap-220 yes\", Thu 22 Oct 2026 10:43:19 EDT",
+                       "why": "the Google cap a later go needs is registered at the freeze, so the go runs exactly as "
+                              "registered"},
+}}
+
+# Review MAJOR-1 on lane gemini-defer (glitch-f1's ruling, 22 Oct 2026): the frozen file itself records Javier's
+# decision OD107 beside `caps`. The quoted commitment `commitments.caps` (req line 57, OpenAI $260, Google $140) is
+# hash-bound to its source sentence and stays quoted byte for byte; this entry says it is superseded and by what.
+CAPS_DECISION = {
+    "decision": "OD107", "ask": "gcap-220", "by": "Javier",
+    "words": "Javier's reply \"gcap-220 yes\", Thu 22 Oct 2026 10:43:19 EDT", "at": "2026-10-22T14:43:19+00:00",
+    "vendors": {"openai": 180, "google": 220}, "total": 400,
+    "supersedes": {"commitment": "commitments.caps",
+                   "source": "plans/gap-study-round-4/CP5-requirements.md line 57",
+                   "vendors": {"openai": 260, "google": 140}, "total": 400,
+                   "why": "written before OD107, it stays quoted byte for byte as its source requires; the caps in "
+                          "force are `caps` and costs.CAPS"}}
+
+
 def identity_id(prefix, values):
     # JSON arrays are unambiguous; full sha256, not truncated or based on order.
     return prefix + "-" + sha(json.dumps(values, separators=(",", ":"), ensure_ascii=True).encode())
@@ -151,6 +199,8 @@ def assemble(root=None):
             "models": {a: list(ms) for a, ms in MODELS.items()}, "arms": list(study.ARMS),
             "optional_arms": {"C": {"model": "claude-fable-5-1", "status": "optional (D2 B)",
                                     "cut": "first cut if the freeze slips (plan 345)", "rows": 0, "tries": 0}},
+            "deferred_arms": {a: dict(copy.deepcopy(e), rows=sum(r["arm"] == a for r in rows), models=list(MODELS[a]))
+                              for a, e in DEFERRED_ARMS.items()},
             "amendments": {a: "Javier's letter \"D8: B2\", Tue 6 Oct 2026 23:43:50 EDT" for a in ("O", "G")},
             "n": variants.TRIES_PER_HALF, "wordings": variants.N_WORDINGS, "repeats": variants.REPEATS,
             "rows": rows, "counts": {"pairs": len(tasks), "by_arm": dict(collections.Counter(r["arm"] for r in rows)),
@@ -995,6 +1045,7 @@ def describe(root=None):
                           "rule": copy.deepcopy(d["commitments"]["not_poolable"]),
                           "enforced_by": [study.rel("lint_pooling.py"), study.rel("result.py")]}
     d["caps"] = {"vendors": {k: int(v) for k, v in costs.CAPS.items()}, "total": int(costs.TOTAL_CAP)}
+    d["caps_decision"] = copy.deepcopy(CAPS_DECISION)
     d["blind_sample_models"] = len({r["model"] for r in d["rows"]})
     d["unused_labels"] = [labels4.FLAGGED_THEN_ACTED]
     d["pause_questions"] = [

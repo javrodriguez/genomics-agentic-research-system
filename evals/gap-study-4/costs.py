@@ -28,7 +28,10 @@ import batch
 import prereg
 import study
 
-CAPS = {"openai": Decimal(260), "google": Decimal(140)}
+# Javier's "gcap-220 yes" (decision OD107, ask gcap-220, Thu 22 Oct 2026 14:43:19Z): Google 220 so a later go of the
+# deferred arm G runs exactly as registered; OpenAI 180 (arm O runs on the Codex subscription and spends nothing); the
+# 400 total unchanged. Before: OpenAI 260, Google 140.
+CAPS = {"openai": Decimal(180), "google": Decimal(220)}
 TOTAL_CAP = Decimal(400)
 STOP_FOR_WORD = "stop for Javier's word"
 PROCEED = "within round caps"

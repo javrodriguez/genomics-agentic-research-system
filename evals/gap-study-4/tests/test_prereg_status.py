@@ -94,13 +94,16 @@ class StatusIsRound4(unittest.TestCase):
         self.assertEqual(code, 0, "S1.arms")
         planned = [a for a in d["arms"] if a in d["models"]]
         self.assertEqual(planned, ["A", "O", "G"], "S1.arms")
-        self.assertIn(f"arms     : {len(planned)} planned ({', '.join(planned)}); optional: C", lines, "S1.arms")
+        held = prereg.deferred_arms(d)          # lane gemini-defer (R2): empty until the draft carries the key
+        self.assertIn(f"arms     : {len(planned)} planned ({', '.join(planned)}); optional: C"
+                      + (f"; deferred: {', '.join(a for a in planned if a in held)}" if held else ""), lines, "S1.arms")
         self.assertFalse(any(line.startswith("models") for line in lines), "S1.arms")
         for arm in planned:
             harness = {r["agent"]["harness"] for r in d["rows"] if r["arm"] == arm}
             self.assertEqual(len(harness), 1, "S1.arms")
             want = (f"  arm {arm}  {harness.pop()}: {len(d['models'][arm])} models, "
-                    f"{sum(r['arm'] == arm for r in d['rows'])} rows: {', '.join(d['models'][arm])}")
+                    f"{sum(r['arm'] == arm for r in d['rows'])} rows: {', '.join(d['models'][arm])}"
+                    + (f"; {prereg.deferral_label(held[arm])}" if arm in held else ""))
             self.assertIn(want, lines, "S1.arms")
         self.assertIn("  arm C  optional: claude-fable-5-1, 0 rows; optional (D2 B)", lines, "S1.arms")
         self.assertFalse(any("((" in line or "))" in line for line in lines), "S1.arms")
@@ -140,10 +143,12 @@ class StatusIsRound4(unittest.TestCase):
                     running = prereg.running_models()
                     reasons = {m: prereg.not_run_reason(m) for m in prereg.models()}
                 planned = {r["model"] for r in d["rows"]}
-                self.assertEqual(running, [m for m in reasons if m in planned], "S4.running")
-                self.assertEqual(len(running), 7, "S4.running")
+                held = prereg.deferred_models(d)    # lane gemini-defer (R2): a deferred arm's models never run
+                self.assertEqual(running, [m for m in reasons if m in planned and m not in held], "S4.running")
+                self.assertEqual(len(running), 7 - len(held), "S4.running")
                 self.assertNotIn("claude-fable-5-1", running, "S4.running")
-                self.assertEqual([m for m, why in reasons.items() if why], ["claude-fable-5-1"], "S4.running")
+                self.assertEqual([m for m, why in reasons.items() if why],
+                                 [m for m in reasons if m in held or m == "claude-fable-5-1"], "S4.running")
                 self.assertIn("no planned rows", reasons["claude-fable-5-1"], "S4.running")
         # a design with one model's rows removed: that model stops running, with the reason
         d = committed()
@@ -151,6 +156,106 @@ class StatusIsRound4(unittest.TestCase):
         with mock.patch.object(prereg, "load", lambda: d):
             self.assertNotIn("gpt-6-luna", prereg.running_models(), "S4.running")
             self.assertIn("no planned rows", prereg.not_run_reason("gpt-6-luna") or "", "S4.running")
+
+
+DEFERRED_G = "deferred (Javier, 22 Oct 2026)"
+
+
+def deferred_design():
+    """The committed draft carrying build_draft's own deferred_arms (lane gemini-defer, R1): what the regenerated draft
+    holds, read from the builder rather than retyped."""
+    import build_draft
+    d = committed()
+    d["deferred_arms"] = build_draft.assemble()["deferred_arms"]
+    return d
+
+
+def go(**changes):
+    return dict({"kind": "deferred arm go", "arm": "G", "by": "Javier", "decision": "OD-synthetic",
+                 "ask": "synthetic-go", "at": "2026-12-01T14:00:00Z"}, **changes)
+
+
+class DeferredArm(unittest.TestCase):
+    """Lane gemini-defer, ruling R2 (glitch-f1, 22 Oct 2026): arm G prints deferred, never running, never absent."""
+
+    def test_status_prints_the_deferral(self):
+        d = deferred_design()
+        code, text = status(d)
+        lines = text.splitlines()
+        self.assertEqual(code, 0, "D1.status")
+        self.assertIn("arms     : 3 planned (A, O, G); optional: C; deferred: G", lines, "D1.status")
+        self.assertIn("  arm G  gemini: 2 models, 360 rows: gemini-3.8-flash, gemini-3.5-flash-lite; " + DEFERRED_G,
+                      lines, "D1.status")
+        self.assertIn("rows     : 1260 planned rows (n = 10 tries per half), 126 half-cells", lines, "D1.status")
+        for arm in ("A", "O"):
+            self.assertFalse(any(line.startswith(f"  arm {arm} ") and DEFERRED_G in line for line in lines),
+                             "D1.status")
+
+    def test_no_empty_deferred_list(self):
+        # review NIT-3: a deferred arm with no planned arm in the design never leaves an empty "; deferred: " behind
+        d = deferred_design()
+        d["deferred_arms"] = {"Z": copy.deepcopy(d["deferred_arms"]["G"])}
+        code, text = status(d)
+        arms = [line for line in text.splitlines() if line.startswith("arms     :")]
+        self.assertEqual(code, 0, "D1.status")
+        self.assertEqual(arms, ["arms     : 3 planned (A, O, G); optional: C"], "D1.status")
+
+    def test_not_run_reason_names_the_deferral(self):
+        d = deferred_design()
+        with mock.patch.object(prereg, "load", lambda: d):
+            running = prereg.running_models()
+            reasons = {m: prereg.not_run_reason(m) for m in prereg.models()}
+            listed = prereg.models()
+        self.assertEqual(len(listed), 8, "D2.reason")                  # never absent
+        for model in ("gemini-3.8-flash", "gemini-3.5-flash-lite"):
+            self.assertIn(model, listed, "D2.reason")
+            self.assertNotIn(model, running, "D2.reason")
+            self.assertEqual(reasons[model], DEFERRED_G, "D2.reason")
+        self.assertEqual(len(running), 5, "D2.reason")
+        self.assertEqual({m for m, why in reasons.items() if why},
+                         {"gemini-3.8-flash", "gemini-3.5-flash-lite", "claude-fable-5-1"}, "D2.reason")
+
+    def test_a_deferral_without_who_or_when_is_refused(self):
+        d = deferred_design()
+        for field, value in (("status", "optional"), ("by", ""), ("words", "his reply, undated")):
+            bad = copy.deepcopy(d)
+            bad["deferred_arms"]["G"][field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                prereg.deferred_arms(bad)
+
+    def test_go_record_is_closed(self):
+        self.assertEqual(prereg.go_record_problems(go(), "G"), [], "D3.go")
+        self.assertTrue(prereg.deferred_arm_go("G", [go()]), "D3.go")
+        self.assertFalse(prereg.deferred_arm_go("G", []), "D3.go")
+        for bad in (go(kind="caps trimmed"), go(arm="O"), go(by="glitch-f1"), go(decision=""), go(ask=" "),
+                    go(at="tomorrow"), go(at="2026-12-01T14:00:00"), dict(go(), extra=1),
+                    {k: v for k, v in go().items() if k != "ask"}, "go", None):
+            with self.subTest(record=bad):
+                self.assertTrue(prereg.go_record_problems(bad, "G"), "D3.go")
+                self.assertFalse(prereg.deferred_arm_go("G", [bad]), "D3.go")
+
+    def test_go_record_is_read_committed(self):
+        import subprocess
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(prereg.committed_go_records(root), [], "D3.go")      # no git at all: none
+            git = lambda *a: subprocess.run(["git", "-C", tmp, *a], check=True, capture_output=True)
+            git("init", "-q")
+            git("config", "user.email", "synthetic@example.invalid")
+            git("config", "user.name", "synthetic")
+            (root / "other.txt").write_text("x\n")
+            git("add", "other.txt")
+            git("commit", "-q", "-m", "synthetic base")
+            (root / prereg.GO_RECORD.name).write_text(json.dumps([go()]))
+            self.assertEqual(prereg.committed_go_records(root), [], "D3.go")      # written, not committed
+            git("add", prereg.GO_RECORD.name)
+            # review NIT-1 (its M07 survivor): staged in the index, not committed, is still no go
+            self.assertEqual(prereg.committed_go_records(root), [], "D3.go")
+            git("commit", "-q", "-m", "synthetic go")
+            self.assertEqual(prereg.committed_go_records(root), [go()], "D3.go")
+            self.assertTrue(prereg.deferred_arm_go("G", prereg.committed_go_records(root)), "D3.go")
+        self.assertEqual(prereg.committed_go_records(), [], "D3.go")      # this tree commits no go record
 
 
 BOUND = {"S1.arms": "test_arms_are_named_as_arms", "S2.rows": "test_rows_are_counted_from_the_rows",

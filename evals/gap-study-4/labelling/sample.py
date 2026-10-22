@@ -62,6 +62,7 @@ HERE = _HERE
 STUDY = _STUDY
 FRAME = os.path.join(HERE, "frame.json")
 SAMPLE = os.path.join(HERE, "sample.json")
+SAMPLE_FOLLOWUP = os.path.join(HERE, "sample-followup.json")      # lane gemini-defer, R4
 PREREG = os.path.join(STUDY, "prereg.json")
 DRAFT = os.path.join(STUDY, "prereg-draft.json")
 RESULTS = os.path.join(STUDY, "records")
@@ -74,6 +75,8 @@ OVERSAMPLE_FIELDS = ("failure", "disagree")
 ENTRY_FIELDS = ("take", "readers", "record")
 STRICT_VIEW = "failures"
 FAILED = "wrong"
+ORIGINAL, FOLLOWUP = "original", "followup"                         # lane gemini-defer, R4: the two parts of a draw
+DEFERRED = "deferred"
 TAKE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,127}")
 # The proposed design (glitch-2f's to rule at the freeze; Q-w11d-1). The seed is a date, chosen before any take exists.
 PROPOSED = {"seed": 20261012, "about_n": 80, "oversample": {"failure": 3, "disagree": 3}, "strata": list(STRATA)}
@@ -131,8 +134,9 @@ def design_pin(d) -> str:
     return f"seed {d['seed']}\nstrata {', '.join(d['strata'])}\ndesign {canonical(d)}\nsha256 {design_sha(d)}"
 
 
-def validate_frame(frame, design) -> list:
-    """The frame's entries, or SampleError."""
+def validate_frame(frame, design, exempt=()) -> list:
+    """The frame's entries, or SampleError. `exempt` names design models that may have no take (lane gemini-defer:
+    a deferred arm's models in the original draw, the run models in a follow-up)."""
     if not isinstance(frame, list):
         raise SampleError("the frame is a list of entries")
     models = {m: h for h, ms in design["harness_models"].items() for m in ms}
@@ -159,7 +163,7 @@ def validate_frame(frame, design) -> list:
         stats.check_records([e["record"] for e in frame])
     except stats.StatsError as err:
         raise SampleError(str(err)) from err
-    missing = sorted(set(models) - {e["record"]["model"] for e in frame})
+    missing = sorted(set(models) - set(exempt) - {e["record"]["model"] for e in frame})
     if missing:
         raise SampleError(f"no take in the frame for {missing}: the sample is stratified over every design model")
     return frame
@@ -214,20 +218,60 @@ def split(quota: int, weights: dict, caps: dict) -> dict:
     return out
 
 
-def draw(frame, design) -> dict:
-    """The sample document for this frame and design (validated); the same inputs give the same bytes."""
+# A DEFERRED ARM (lane gemini-defer, ruling R4, glitch-f1 under Javier's standing delegation, 22 Oct 2026). An arm in
+# the frozen pre-registration's `deferred_arms` (arm G, deferred by Javier on 22 Oct 2026) is registered in full and not
+# run in the original report. Its cells are withheld: the quota is still computed over every (arm, harness, model) cell
+# of the full design (the frame's cells and the withheld ones, steps 1 above unchanged), so each run cell keeps the share
+# it has in the full seven-model design, and only the run cells are drawn (part "original"). A follow-up, only after a
+# committed go record (prereg.GO_KEYS, read at HEAD), draws the withheld cells under the same design and the same quota
+# (part "followup", written to sample-followup.json; --check reads it beside sample.json once a go exists). With nothing
+# deferred the draw and its bytes are exactly as before.
+def deferred_cells(doc: dict, design: dict) -> tuple:
+    """The (arm, harness, model) cells of the pre-registration's deferred arms (lane gemini-defer, R4), sorted; each
+    model of a deferred arm (the design's `models[arm]`, else the entry's own `models`) must be a design model."""
+    table = doc.get("deferred_arms") or {}
+    if not isinstance(table, dict):
+        raise SampleError("deferred_arms maps an arm to its deferral")
+    harness_of = {m: h for h, ms in design["harness_models"].items() for m in ms}
+    arms = doc.get("models") if isinstance(doc.get("models"), dict) else {}
+    out = set()
+    for arm, entry in table.items():
+        if not isinstance(entry, dict) or entry.get("status") != DEFERRED:
+            raise SampleError(f"deferred_arms.{arm} is not a deferral")
+        models = arms.get(arm) or entry.get("models")
+        if not models:
+            raise SampleError(f"the deferred arm {arm} names no models")
+        for m in models:
+            if m not in harness_of:
+                raise SampleError(f"the deferred model {m!r} is not in the design")
+            out.add((arm, harness_of[m], m))
+    return tuple(sorted(out))
+
+
+def draw(frame, design, deferred=(), part=ORIGINAL) -> dict:
+    """The sample document for this frame and design (validated); the same inputs give the same bytes.
+
+    `deferred` (lane gemini-defer, R4) names the withheld (arm, harness, model) cells: the quota covers them as cells
+    of the full design, the original part draws every other cell and the follow-up part only them."""
     validate_design(design)
-    validate_frame(frame, design)
+    deferred = tuple(sorted(tuple(c) for c in deferred))
+    if part not in (ORIGINAL, FOLLOWUP) or (part == FOLLOWUP and not deferred):
+        raise SampleError(f"a draw is the original part, or a follow-up of deferred cells; got {part!r}")
+    held_models = {c[2] for c in deferred}
+    run_models = {m for ms in design["harness_models"].values() for m in ms} - held_models
+    validate_frame(frame, design, exempt=held_models if part == ORIGINAL else run_models)
     rng = random.Random(design["seed"])
     groups = {}
     for e in frame:
         groups.setdefault(stratum(e), []).append(e["take"])
-    cells = sorted({k[:3] for k in groups})
+    cells = sorted({k[:3] for k in groups} | set(deferred))
     quota = {c: design["about_n"] // len(cells) for c in cells}
     for c in rng.sample(cells, design["about_n"] % len(cells)):
         quota[c] += 1
+    drawn = [c for c in cells if (c in deferred) == (part == FOLLOWUP)]
+    groups = {k: v for k, v in groups.items() if k[:3] in drawn}
     counts = {}
-    for c in cells:
+    for c in drawn:
         keys = [k for k in groups if k[:3] == c]
         counts.update(split(quota[c], {k: len(groups[k]) * factor(k, design) for k in keys},
                             {k: len(groups[k]) for k in keys}))
@@ -237,7 +281,10 @@ def draw(frame, design) -> dict:
     rng.shuffle(picked)
     items = [{"sheet_id": f"L{i:03d}", "take": t, "stratum": dict(zip(STRATA, k)),
               "frame": len(groups[k]), "drawn": counts[k]} for i, (t, k) in enumerate(picked, start=1)]
-    return {"design_sha256": design_sha(design), "seed": design["seed"], "strata": list(STRATA), "items": items}
+    doc = {"design_sha256": design_sha(design), "seed": design["seed"], "strata": list(STRATA), "items": items}
+    if deferred:
+        doc.update(part=part, withheld=[list(c) for c in deferred])
+    return doc
 
 
 def render(doc: dict) -> str:
@@ -249,19 +296,33 @@ def _read(path):
         return json.load(fh)
 
 
-def read_design(prereg=None) -> dict:
+def read_prereg(prereg=None) -> tuple:
+    """(the labelling design, the deferred cells) from the frozen pre-registration."""
     prereg = PREREG if prereg is None else prereg
     if not os.path.isfile(prereg):
         raise SampleError("no frozen pre-registration (prereg.json): the labelling design is pinned at the freeze")
     d = _read(prereg)
     if DESIGN_KEY not in d:
         raise SampleError(f"prereg.json carries no {DESIGN_KEY}")
-    return validate_design(d[DESIGN_KEY])
+    design = validate_design(d[DESIGN_KEY])
+    return design, deferred_cells(d, design)
 
 
-def derive(frame_path=None, prereg=None, results=None):
+def read_design(prereg=None) -> dict:
+    return read_prereg(prereg)[0]
+
+
+def released(deferred, go=None) -> bool:
+    """True when every deferred arm has a committed go record (prereg.deferred_arm_go); `go` None reads the records
+    committed at HEAD (prereg.committed_go_records)."""
+    import prereg as prereg_door
+    return bool(deferred) and all(prereg_door.deferred_arm_go(arm, go) for arm in {c[0] for c in deferred})
+
+
+def derive(frame_path=None, prereg=None, results=None, part=ORIGINAL, go=None):
     """(frame, design, sample document), or None when there is no frame and no results: nothing to draw from.
-    A path left None is the study's own (the module's FRAME, PREREG and RESULTS, read when called)."""
+    A path left None is the study's own (the module's FRAME, PREREG and RESULTS, read when called). The follow-up
+    part (lane gemini-defer, R4) is refused until every deferred arm has a committed go record."""
     frame_path = FRAME if frame_path is None else frame_path
     recs = stats.load_results(RESULTS if results is None else results)
     if not os.path.isfile(frame_path) and not recs:
@@ -269,17 +330,42 @@ def derive(frame_path=None, prereg=None, results=None):
     if not os.path.isfile(frame_path):
         raise SampleError("results are committed and no frame is: frame.json binds the sample to them")
     frame = _read(frame_path)
-    design = read_design(prereg)
-    validate_frame(frame, design)
+    design, deferred = read_prereg(prereg)
+    if part == FOLLOWUP and not released(deferred, go):
+        raise SampleError("the follow-up draw of the deferred arm waits for a committed go record by Javier "
+                          "(deferred-arm-go.json)")
+    # the frame's shape before it is bound; draw() then requires the part's own models
+    validate_frame(frame, design, exempt={c[2] for c in deferred})
     bad = frame_problems(frame, recs)
     if bad:
         raise SampleError("; ".join(bad))
-    return frame, design, draw(frame, design)
+    return frame, design, draw(frame, design, deferred, part)
 
 
-def check(frame_path=None, prereg=None, results=None, sample_path=None) -> int:
+def check_followup(frame_path, prereg, results, followup_path, go) -> int:
+    """Lane gemini-defer, R4: once a go is committed, sample-followup.json must be the follow-up draw."""
     try:
-        got = derive(frame_path, prereg, results)
+        doc = derive(frame_path, prereg, results, FOLLOWUP, go)[2]
+    except (SampleError, stats.StatsError, TypeError) as err:
+        print(f"sample: FAIL follow-up: {err}")
+        return 1
+    followup_path = SAMPLE_FOLLOWUP if followup_path is None else followup_path
+    if not os.path.isfile(followup_path):
+        print("sample: FAIL a go record is committed and there is no sample-followup.json; draw it with "
+              "--write-followup")
+        return 1
+    with open(followup_path, encoding="utf-8") as fh:
+        held = fh.read()
+        if held != render(doc):
+            print("sample: FAIL sample-followup.json differs from the follow-up draw")
+            return 1
+    print(f"sample: follow-up ok, {len(doc['items'])} takes drawn from the deferred cells")
+    return 0
+
+
+def check(frame_path=None, prereg=None, results=None, sample_path=None, go=None, followup_path=None) -> int:
+    try:
+        got = derive(frame_path, prereg, results, go=go)
     except (SampleError, stats.StatsError) as err:
         print(f"sample: FAIL {err}")
         return 1
@@ -300,6 +386,9 @@ def check(frame_path=None, prereg=None, results=None, sample_path=None) -> int:
             print("sample: FAIL sample.json differs from the draw the frame and the design give")
             return 1
     print(f"sample: ok, {len(doc['items'])} takes drawn as the design gives them")
+    deferred = [tuple(c) for c in doc.get("withheld") or []]
+    if released(deferred, go):              # False at once when nothing is deferred: no go record is read
+        return check_followup(frame_path, prereg, results, followup_path, go)
     return 0
 
 
@@ -309,6 +398,7 @@ def main(argv=None) -> int:
     g.add_argument("--pin", action="store_true")
     g.add_argument("--check", action="store_true")
     g.add_argument("--write", action="store_true")
+    g.add_argument("--write-followup", action="store_true")       # lane gemini-defer, R4
     args = ap.parse_args(argv)
     if args.pin:
         design = dict(PROPOSED, harness_models=_read(DRAFT)["stats_design_inputs"]["harness_models"])
@@ -317,14 +407,14 @@ def main(argv=None) -> int:
     if args.check:
         return check()
     try:
-        got = derive()
+        got = derive(part=FOLLOWUP if args.write_followup else ORIGINAL)
     except (SampleError, stats.StatsError) as err:
         print(f"sample: FAIL {err}")
         return 1
     if got is None:
         print("sample: no takes; nothing drawn or written")
         return 1
-    with open(SAMPLE, "w", encoding="utf-8") as fh:
+    with open(SAMPLE_FOLLOWUP if args.write_followup else SAMPLE, "w", encoding="utf-8") as fh:
         fh.write(render(got[2]))
     print(f"sample: wrote {len(got[2]['items'])} takes; seed {got[2]['seed']}")
     return 0

@@ -622,6 +622,7 @@ class Batch:
         problems = start_problems(self.table)
         if problems:
             raise BatchConfigError("routing.json is not ready: " + "; ".join(problems))
+        self._read_deferral()
         self.outcomes: list[dict] = []
         self._block_trim: dict = {}         # W7C-R1-3: the gated wave's trim, for each paid launch's re-check
         self.containers: dict = {}           # (slot, attempt) -> recorded container id
@@ -666,6 +667,43 @@ class Batch:
             raise BatchConfigError(f"{NIGHTLY_STOP}: {self.night_counts['harness_error']} harness-errors are committed "
                                    f"since the last night ruling; the run waits for a committed night ruling naming "
                                    f"(slot, attempt) {self.night_reaching!r}")
+
+    def _read_deferral(self) -> None:
+        """Lane gemini-defer, ruling R5 (glitch-f1, 22 Oct 2026): the frozen design's deferred arms (prereg.deferred_arms,
+        a pure read of the design in force). The committed go records are read only when a row of a deferred arm is
+        handed to the loop (deferral_problem), so no other run gains a git read: from the repo's own
+        deferred_go_records() when it offers one (read at HEAD, as history() is), else prereg.committed_go_records.
+        An arm with a go record that passes prereg.go_record_problems is released; every other deferred arm's rows,
+        by arm or by its registered model, are refused in row_problems. Not in takes.commit_registration: the
+        rehearsal registers take_order[0], which is often a G row (arm G holds 360 of the 1,260 rows)."""
+        import prereg
+        try:
+            arms = prereg.deferred_arms()
+            table = prereg.load().get("models") or {}
+        except ValueError as exc:
+            raise BatchConfigError(f"the deferred arms cannot be read: {exc}") from exc
+        self.deferred = {a: prereg.deferral_label(e) for a, e in arms.items()}
+        self.deferred_models = {m: a for a, e in arms.items() for m in (table.get(a) or e.get("models") or [])}
+        self._go_records = None
+
+    def _released(self, arm: str) -> bool:
+        import prereg
+        if self._go_records is None:
+            read = getattr(self.repo, "deferred_go_records", None)
+            try:
+                self._go_records = list(read() if callable(read) else prereg.committed_go_records())
+            except (ValueError, TypeError, OSError) as exc:
+                raise BatchConfigError(f"the committed go records cannot be read: {exc}") from exc
+        return prereg.deferred_arm_go(arm, self._go_records)
+
+    def deferral_problem(self, r: dict) -> str | None:
+        arm = r.get("arm") if r.get("arm") in self.deferred else self.deferred_models.get(r.get("model"))
+        if arm is None or self._released(arm):
+            return None
+        import prereg
+        return (f"row {r['slot']}: arm {arm} is {self.deferred[arm]} in the frozen deferred_arms, and no committed "
+                f"'{prereg.GO_KIND}' record for arm {arm} exists ({prereg.GO_RECORD.name}, Javier's go): never driven "
+                f"while deferred")
 
     # ---------------------------------------------------------------------------- the history
     @classmethod
@@ -892,6 +930,8 @@ class Batch:
         for r in rows:
             if not isinstance(r, dict) or not all(k in r for k in ("slot", "half_cell", "model")):
                 p.append(f"row {r!r} must name slot, half_cell and model")
+            elif deferral := self.deferral_problem(r):   # lane gemini-defer, R5: before the pins, the money and the cells
+                p.append(deferral)                     # (review NIT-4: called once per row)
             elif agent_problems(r):
                 p += agent_problems(r)
             elif r["model"] not in self.table["pin_profiles"].get(r["agent"]["harness"], {}):

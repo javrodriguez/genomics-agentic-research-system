@@ -624,6 +624,118 @@ def c1_check(sm, sh, ag):
     return out
 
 
+def r4_deferred(sm, sh, ag):
+    """Lane gemini-defer, ruling R4 (glitch-f1, 22 Oct 2026), on a synthetic deferral of arm O (m-gamma): the original
+    draw covers the run models with the share each cell has in the full design; a follow-up, only after a committed
+    go record, draws the deferred cells under the same design and shares."""
+    out = []
+    held = (("O", "codex", "m-gamma"),)
+    run_frame = [e for e in FRAME if e["record"]["model"] != "m-gamma"]
+    per = lambda doc: {m: sum(i["stratum"]["model"] == m for i in doc["items"]) for m in ("m-alpha", "m-beta", "m-gamma")}
+    for n in (12, 13, 14):
+        full = per(sm.draw(FRAME, design(about_n=n)))
+        original = sm.draw(run_frame, design(about_n=n), deferred=held)
+        if per(original) != dict(full, **{"m-gamma": 0}):
+            out.append(f"R4: about_n {n}: the original draw's shares {per(original)} are not the full design's {full}")
+        if original.get("part") != "original" or original.get("withheld") != [list(c) for c in held]:
+            out.append(f"R4: the original draw does not name its part and withheld cells: {original.get('part')!r}")
+        if sm.draw(FRAME, design(about_n=n), deferred=held)["items"] != original["items"]:
+            out.append("R4: the original draw moves when the deferred cells' takes are in the frame")
+        follow = sm.draw(FRAME, design(about_n=n), deferred=held, part="followup")
+        if per(follow) != {"m-alpha": 0, "m-beta": 0, "m-gamma": full["m-gamma"]} or follow.get("part") != "followup":
+            out.append(f"R4: about_n {n}: the follow-up draws {per(follow)}, not the deferred cell's share")
+    out += refused("R4", lambda: sm.draw(run_frame, DESIGN), sm.SampleError, "a frame missing a model with nothing deferred")
+    out += refused("R4", lambda: sm.draw(FRAME, DESIGN, part="followup"), sm.SampleError, "a follow-up with nothing deferred")
+    out += refused("R4", lambda: sm.draw(run_frame, DESIGN, deferred=held, part="followup"), sm.SampleError,
+                   "a follow-up whose deferred cell has no take")
+    if sm.draw(FRAME, DESIGN, deferred=()) != sm.draw(FRAME, DESIGN):
+        out.append("R4: an empty deferral changes the draw")
+    entry = {"status": "deferred", "by": "Javier", "models": ["m-gamma"],
+             "words": "Javier's reply \"gemini-defer yes\", Thu 22 Oct 2026 09:19:59 EDT"}
+    go = {"kind": "deferred arm go", "arm": "O", "by": "Javier", "decision": "OD-synthetic", "ask": "synthetic-go",
+          "at": "2026-12-01T14:00:00Z"}
+    with tempfile.TemporaryDirectory(prefix="w11d-r4-") as t:
+        t = Path(t)
+        p = _tree(t / "deferred", frame_=run_frame, write_sample=False)
+        doc = {"labelling_design": DESIGN, "deferred_arms": {"O": entry}}
+        Path(p["prereg"]).write_text(json.dumps(doc))
+        if sm.deferred_cells(doc, DESIGN) != held:
+            out.append(f"R4: deferred_cells reads {sm.deferred_cells(doc, DESIGN)!r}")
+        Path(p["sample_path"]).write_text(sm.render(sm.draw(run_frame, DESIGN, deferred=held)))
+        rc, text = out_of(sm.check, go=[], **p)
+        if rc != 0 or "sample: ok, 8 takes drawn" not in text:
+            out.append(f"R4: the original check over the deferred design: rc {rc} {text[-120:]!r}")
+        out += refused("R4", lambda: sm.derive(**{k: v for k, v in p.items() if k != "sample_path"}, part="followup",
+                                               go=[]), sm.SampleError, "a follow-up draw with no go record")
+        out += refused("R4", lambda: sm.derive(**{k: v for k, v in p.items() if k != "sample_path"}, part="followup",
+                                               go=[dict(go, by="glitch-f1")]), sm.SampleError, "a go record not by Javier")
+        # after a go: the frame holds every take; the original sample stands, and the follow-up is checked beside it
+        q = _tree(t / "go", write_sample=False)
+        Path(q["prereg"]).write_text(json.dumps(doc))
+        Path(q["sample_path"]).write_text(sm.render(sm.draw(FRAME, DESIGN, deferred=held)))
+        rc, text = out_of(sm.check, go=[go], **q)
+        if rc != 1 or "no sample-followup.json" not in text:
+            out.append(f"R4: a go with no follow-up sample is not refused: rc {rc} {text[-120:]!r}")
+        got = sm.derive(**{k: v for k, v in q.items() if k != "sample_path"}, part="followup", go=[go])
+        (t / "go" / "sample-followup.json").write_text(sm.render(got[2]))
+        rc, text = out_of(sm.check, go=[go], followup_path=str(t / "go" / "sample-followup.json"), **q)
+        if rc != 0 or "follow-up ok, 4 takes" not in text:
+            out.append(f"R4: the follow-up check after a go: rc {rc} {text[-160:]!r}")
+        # the command line: --write-followup is refused while no go record is committed (this tree commits none)
+        with _patched(sm, sh, ag, t / "deferred", p):
+            rc, text = out_of(sm.main, ["--write-followup"])
+        if rc != 1 or "waits for a committed go record" not in text or (t / "deferred" / "sample-followup.json").exists():
+            out.append(f"R4: --write-followup without a go: rc {rc} {text[-120:]!r}")
+        import prereg as door
+        with _patched(sm, sh, ag, t / "go", q), mock.patch.object(door, "committed_go_records", lambda *a: [go]):
+            before = Path(q["sample_path"]).read_text()
+            rc, text = out_of(sm.main, ["--write-followup"])
+            if rc != 0 or Path(q["sample_path"]).read_text() != before or \
+                    (t / "go" / "sample-followup.json").read_text() != sm.render(got[2]):
+                out.append(f"R4: --write-followup after a go: rc {rc} {text[-120:]!r}")
+            if not sm.released(held) or sm.released((), [go]) or sm.released(held, []):
+                out.append("R4: released does not read the committed go records, or releases nothing deferred")
+        # the follow-up check's own refusals: a drifted follow-up sample, and a follow-up the frame cannot give
+        (t / "go" / "sample-followup.json").write_text("{}")
+        rc, text = out_of(sm.check, go=[go], followup_path=str(t / "go" / "sample-followup.json"), **q)
+        if rc != 1 or not text.endswith("sample: FAIL sample-followup.json differs from the follow-up draw\n"):
+            out.append(f"R4: a drifted follow-up sample: rc {rc} {text[-120:]!r}")
+        rc, text = out_of(sm.check, go=[go], **p)
+        if rc != 1 or not text.endswith("sample: FAIL follow-up: no take in the frame for ['m-gamma']: the sample is "
+                                        "stratified over every design model\n"):
+            out.append(f"R4: a follow-up the frame cannot give: rc {rc} {text[-160:]!r}")
+        g_only = _tree(t / "gonly", frame_=[e for e in FRAME if e["record"]["model"] == "m-gamma"], write_sample=False)
+        Path(g_only["prereg"]).write_text(json.dumps(doc))
+        out += refused("R4", lambda: sm.derive(**{k: v for k, v in g_only.items() if k != "sample_path"},
+                                               part="followup", go=[go]), sm.SampleError,
+                       "a follow-up frame without the run models")
+        # nothing deferred: no go record is read at all
+        plain = _tree(t / "plain")
+        with mock.patch.object(door, "committed_go_records", lambda *a: (_ for _ in ()).throw(AssertionError("read"))):
+            rc, text = out_of(sm.check, **plain)
+        if rc != 0:
+            out.append(f"R4: a design with nothing deferred read the go records: rc {rc} {text[-120:]!r}")
+        if sm.read_design(plain["prereg"]) != DESIGN or sm.read_design(p["prereg"]) != DESIGN:
+            out.append("R4: read_design does not return the design")
+    # the deferral's own shape
+    if sm.draw(run_frame, DESIGN, deferred=[list(held[0])]) != sm.draw(run_frame, DESIGN, deferred=held):
+        out.append("R4: a deferral given as lists draws differently")
+    out += refused("R4", lambda: sm.draw(FRAME, DESIGN, deferred=held, part="other"), sm.SampleError, "an unknown part")
+    for what, bad in (("not a dict", ["O"]), ("an entry not a dict", {"O": "deferred"}),
+                      ("a status off deferral", {"O": dict(entry, status="optional")}),
+                      ("no models", {"O": dict(entry, models=[])}),
+                      ("a model off the design", {"O": dict(entry, models=["m-delta"])})):
+        out += refused("R4", lambda: sm.deferred_cells({"deferred_arms": bad}, DESIGN), sm.SampleError, what)
+    if sm.deferred_cells({"deferred_arms": {"O": dict(entry, models=["m-beta"])}, "models": {"O": ["m-gamma"]}},
+                         DESIGN) != held:
+        out.append("R4: deferred_cells does not read the design's own models for the arm first")
+    if sm.deferred_cells({"deferred_arms": {"O": entry}, "models": ["m-alpha"]}, DESIGN) != held:
+        out.append("R4: deferred_cells does not fall back to the entry's models")
+    if sm.deferred_cells({}, DESIGN) != ():
+        out.append("R4: nothing deferred is not an empty deferral")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ sheet.py checks
 SENT = {"model": "zqmodelq-1", "harness": "zqharnessq", "arm": "zqarmq", "wording": "zqwordingq", "label": "zqlabelq",
         "version": "zqversionq", "take": "zqtakeq"}
@@ -1552,6 +1664,7 @@ def _patched(sm, sh, ag, root: Path, kw: dict):
     try:                     # a patch that fails (a mutant without the name) unwinds the ones before it, or they leak
         for mod, name, value in ((sm, "FRAME", kw["frame_path"]), (sm, "PREREG", kw["prereg"]),
                                  (sm, "RESULTS", kw["results"]), (sm, "SAMPLE", kw["sample_path"]),
+                                 (sm, "SAMPLE_FOLLOWUP", str(root / "sample-followup.json")),   # gemini-defer, R4
                                  (sh, "DEFINITIONS", str(root / "definitions.json")),
                                  (sh, "grader_labels", lambda t: GL[t]),
                                  (ag, "LABELS", str(root / "labels.json")), (ag, "PAGE", str(root / "AGREEMENT.md"))):
@@ -1704,6 +1817,7 @@ def g8_cli(sm, sh, ag):
 def n1_names(sm, sh, ag):
     """Each module's own paths and names: what the CLIs read when no path is given."""
     want = [(sm, "FRAME", str(LAB / "frame.json")), (sm, "SAMPLE", str(LAB / "sample.json")),
+            (sm, "SAMPLE_FOLLOWUP", str(LAB / "sample-followup.json")),          # lane gemini-defer, R4
             (sm, "PREREG", str(HERE / "prereg.json")), (sm, "DRAFT", str(HERE / "prereg-draft.json")),
             (sm, "RESULTS", str(HERE / "records")), (sm, "DESIGN_KEY", "labelling_design"),
             (sm, "HERE", str(LAB)), (sm, "STUDY", str(HERE)),
@@ -1737,7 +1851,7 @@ def x1_script(sm, sh, ag):
 
 
 SAMPLE_CHECKS = (d1_design, f1_frame, b1_bind, a1_split, s1_seed, o1_over, m1_models, w1_weights, p1_pin, c1_check,
-                 c2_cli)
+                 c2_cli, r4_deferred)
 SHEET_CHECKS = (k1_blind, k2_mask, k3_defs, k3r_real_graders, k4_content, k5_render, k6_write, k7_cli)
 AGREE_CHECKS = (g1_labels, g2_rows, g3_back, g4_pool, g9_small_rows, g5_check, g6_history, g6r_real_git, g7_unmeasured, g8_cli,
                 l1_lint, x1_script, n1_names)
@@ -1950,10 +2064,11 @@ WITNESSES = {
     "cap-ignored": _w("sm", a1_split, ("capped = [k for k in open_ if give[k] >= caps[k]]", "capped = []")),
     "sheet-order-unshuffled": _w("sm", s1_seed, ("rng.shuffle(picked)", "pass")),
     "frame-size-wrong": _w("sm", w1_weights, ('"frame": len(groups[k])', '"frame": counts[k]')),
-    "draw-design-unvalidated": _w("sm", s1_seed, ("    validate_design(design)\n    validate_frame(frame, design)\n",
-                                                  "    validate_frame(frame, design)\n")),
-    "derive-frame-unvalidated": _w("sm", c1_check, ("    validate_frame(frame, design)\n    bad = frame_problems",
-                                                    "    bad = frame_problems")),
+    # lane gemini-defer (R4): the anchors follow the draw's and derive's deferral lines, the same clause removed
+    "draw-design-unvalidated": _w("sm", s1_seed, ("    validate_design(design)\n    deferred = tuple(sorted(",
+                                                  "    deferred = tuple(sorted(")),
+    "derive-frame-unvalidated": _w("sm", c1_check, ("    validate_frame(frame, design, exempt={c[2] for c in deferred})\n"
+                                                    "    bad = frame_problems", "    bad = frame_problems")),
     "sample-check-uncompared": _w("sm", c1_check, ("if fh.read() != render(doc):", "if False:")),
     # ---- sheet.py
     "take-id-as-sheet-id": _w("sh", k1_blind, ('items.append({"sheet_id": it["sheet_id"]',
@@ -2054,7 +2169,7 @@ EQUIVALENT = {
     'sample: if-false L56 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'sample: cmp-negate#0 L56 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'sample: stmt-delete L57 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sample: return-none L268 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
+    'sample: return-none L329 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
     'sample: int-change L57 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'sheet: stmt-delete L49 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
     'sheet: stmt-delete L62 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),

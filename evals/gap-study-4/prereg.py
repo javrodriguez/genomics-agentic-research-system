@@ -114,13 +114,103 @@ def models() -> list[str]:
     return out
 
 
+# Lane gemini-defer (rulings R2 and R5, glitch-f1 under Javier's standing delegation, 22 Oct 2026). An arm in the
+# design's `deferred_arms` stays registered in full (its rows, models and counts are unchanged) and is not run: it
+# prints as "deferred (<who>, <date>)", never as running and never as absent. Its run starts only on a committed go
+# record (GO_RECORD, closed GO_KEYS, modelled on costs.month_turn_allowed's "caps trimmed" record), which batch.py
+# reads before driving a row of the arm and labelling/sample.py reads before a follow-up draw.
+DEFERRED = "deferred"
+DEFERRAL_DATE = re.compile(r"\b(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b")
+GO_RECORD = HERE / "deferred-arm-go.json"
+GO_KIND = "deferred arm go"
+GO_KEYS = ("kind", "arm", "by", "decision", "ask", "at")
+GO_BY = "Javier"
+
+
+def deferral_label(entry: dict) -> str:
+    """"deferred (Javier, 22 Oct 2026)": who deferred the arm and the date of his words, read from the entry."""
+    found = DEFERRAL_DATE.search(entry.get("words") or "") if isinstance(entry, dict) else None
+    if not found or not isinstance(entry.get("by"), str) or not entry["by"].strip():
+        raise ValueError(f"a deferred arm names who deferred it and the dated words: {entry!r}")
+    return f"{DEFERRED} ({entry['by']}, {found.group(1)} {found.group(2)} {found.group(3)})"
+
+
+def deferred_arms(pre: dict | None = None) -> dict:
+    """arm -> its `deferred_arms` entry in the design in force; an entry that is not a deferral is refused."""
+    pre = load() if pre is None else pre
+    table = pre.get("deferred_arms") or {}
+    if not isinstance(table, dict):
+        raise ValueError("deferred_arms maps an arm to its deferral")
+    for arm, entry in table.items():
+        if not isinstance(entry, dict) or entry.get("status") != DEFERRED:
+            raise ValueError(f"deferred_arms.{arm} is not a deferral (status {DEFERRED!r})")
+        deferral_label(entry)
+    return dict(table)
+
+
+def deferred_models(pre: dict | None = None) -> dict:
+    """model -> its arm's deferral label, for each model of a deferred arm (the design's `models`)."""
+    pre = load() if pre is None else pre
+    table = pre.get("models") if isinstance(pre.get("models"), dict) else {}
+    out = {}
+    for arm, entry in deferred_arms(pre).items():
+        for model in table.get(arm) or entry.get("models") or []:
+            out[model] = deferral_label(entry)
+    return out
+
+
+def go_record_problems(record, arm: str) -> list[str]:
+    """Why this record is not Javier's committed go for the deferred arm (empty when it is)."""
+    import datetime
+    if not isinstance(record, dict) or set(record) != set(GO_KEYS):
+        return [f"a go record holds exactly {GO_KEYS}"]
+    p = []
+    if record["kind"] != GO_KIND:
+        p.append(f"kind is {record['kind']!r}, not {GO_KIND!r}")
+    if record["arm"] != arm:
+        p.append(f"arm is {record['arm']!r}, not {arm!r}")
+    if record["by"] != GO_BY:
+        p.append(f"by is {record['by']!r}, not {GO_BY!r}")
+    for k in ("decision", "ask"):
+        if not isinstance(record[k], str) or not record[k].strip():
+            p.append(f"{k} names the record of his go")
+    try:
+        at = datetime.datetime.fromisoformat(str(record["at"]).replace("Z", "+00:00"))
+        if at.tzinfo is None:
+            p.append("at carries its UTC offset")
+    except ValueError:
+        p.append(f"at {record['at']!r} is not an ISO time")
+    return p
+
+
+def committed_go_records(root: Path | None = None) -> list:
+    """The go records committed at HEAD (git show HEAD:./deferred-arm-go.json), never the working copy; none when
+    the file is not committed or no git history can be read, so a deferred arm stays deferred (fail closed)."""
+    import subprocess
+    root = HERE if root is None else Path(root)
+    got = subprocess.run(["git", "-C", str(root), "show", "HEAD:./" + GO_RECORD.name], capture_output=True)
+    if got.returncode != 0:
+        return []
+    doc = json.loads(got.stdout)
+    if not isinstance(doc, list):
+        raise ValueError(f"{GO_RECORD.name} is a list of go records")
+    return doc
+
+
+def deferred_arm_go(arm: str, records: list | None = None) -> bool:
+    """True when a committed go record for this arm passes go_record_problems."""
+    records = committed_go_records() if records is None else records
+    return any(not go_record_problems(r, arm) for r in records)
+
+
 def running_models() -> list[str]:
-    """The models a take will actually be driven on: those the design plans rows for (W7A-R1-2). A design without
-    rows (round 3's shape) falls back to its model_status."""
+    """The models a take will actually be driven on: those the design plans rows for (W7A-R1-2), less a deferred
+    arm's (lane gemini-defer, R2). A design without rows (round 3's shape) falls back to its model_status."""
     pre = load()
     if isinstance(pre.get("rows"), list):
         planned = {r.get("model") for r in pre["rows"]}
-        return [m for m in models() if m in planned]
+        held = deferred_models(pre)
+        return [m for m in models() if m in planned and m not in held]
     status = pre.get("model_status") or {}
     return [m for m in models() if status.get(m, {}).get("runs", True)]
 
@@ -131,6 +221,9 @@ def not_run_reason(model: str) -> str | None:
     if isinstance(pre.get("rows"), list):
         if model in running_models():
             return None
+        held = deferred_models(pre)
+        if model in held:
+            return held[model]
         why = [f"{o.get('status')}, {o.get('cut')}" for o in (pre.get("optional_arms") or {}).values()
                if isinstance(o, dict) and o.get("model") == model]
         return "; ".join(why + [f"no planned rows in {pre.get('_source', 'the design')}"])
@@ -162,13 +255,16 @@ def status_lines(pre: dict) -> list[str]:
     planned = [a for a in arms if a in table]
     by_arm = collections.Counter(r.get("arm") for r in rows)
     extra = [a for a in arms if a not in table and a in optional]
+    held = deferred_arms(pre)
+    shown = [a for a in planned if a in held]          # review NIT-3: never an empty "; deferred: "
     out = [f"{ARMS_LABEL:9}: {len(planned)} planned ({', '.join(planned)})"
-           + (f"; optional: {', '.join(extra)}" if extra else "")]
+           + (f"; optional: {', '.join(extra)}" if extra else "")
+           + (f"; deferred: {', '.join(shown)}" if shown else "")]
     for arm in arms:
         if arm in table:
             harnesses = sorted({str(r["agent"]["harness"]) for r in rows if r.get("arm") == arm}) or ["no rows"]
             out.append(f"  arm {arm}  {'/'.join(harnesses)}: {len(table[arm])} models, {by_arm[arm]} rows: "
-                       f"{', '.join(table[arm])}")
+                       f"{', '.join(table[arm])}" + (f"; {deferral_label(held[arm])}" if arm in held else ""))
         elif arm in optional:
             o = optional[arm]
             out.append(f"  arm {arm}  optional: {o.get('model')}, {by_arm[arm]} rows; {o.get('status')}")
