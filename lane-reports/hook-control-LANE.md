@@ -139,3 +139,7 @@ Next: the reviewer's short closure, then the HG-only trip (`--scenarios HG`, Gem
 PreCompress also matches its trigger by exact string (firePreCompressEvent passes `{ trigger }` as the context, chunk-NR7L3FXV.js:365807 in the verified pin, sha256 prefix d566e81b1df8d4d4 re-read at the fold), so its `.*` could never fire; it now carries `"matcher": ""` with SessionStart and SessionEnd (GEMINI_TRIGGER_EVENTS).
 The HG stub script never compresses, so PreCompress is armed but not exercised by this control.
 Red, 04:47:04 EDT (the extended tests with the module fold stashed): "Ran 65 tests", "FAILED (failures=3)"; green, 04:47:19: "Ran 65 tests", "OK".
+
+## Correction to stage 5's closure-NIT section (after the HG2 trip on 41796301)
+
+"The HG stub script never compresses, so PreCompress is armed but not exercised by this control" is wrong: in HG2's G-on, PreCompress fired 3 times, each line directly before a BeforeModel line (/Users/javrodher/aegis-builds/hookctl-20261022/stub-probe-hookctl2/HG/G-on/fired-after-teardown.log lines 4, 10 and 18, read with `grep -n`). The CLI fires the event without a real compression, so PreCompress is armed and exercised; the empty matcher is what let it fire. HG2 PASSED (glitch-f1's relay; /Users/javrodher/aegis-builds/hookctl-20261022/RUNLOG.md, HG2).
