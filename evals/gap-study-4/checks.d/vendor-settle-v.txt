@@ -13,5 +13,8 @@ python3 -B -W ignore evals/gap-study-4/tests/test_freeze_shapes.py
 python3 -B -W ignore evals/gap-study-4/tests/test_codex_adapter.py
 python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py
 python3 -B -W ignore evals/gap-study-4/tests/test_edited_text_file.py
+python3 -B -W ignore evals/gap-study-4/tests/test_leak_grep_vendor.py
+python3 -B -W ignore evals/gap-study-4/tests/test_context_sweep.py
+python3 -B -W ignore evals/gap-study-4/leak_grep.py --check
 python3 -B evals/gap-study-4/tests/vendor_check_fixtures.py --check
 python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 check_take.py codex_adapter.py gemini_adapter.py build_draft.py tests/test_vendor_check.py tests/test_vendor_body.py tests/vendor_check_fixtures.py tests/vendor_settle_codex.py tests/vendor_settle_gemini.py
