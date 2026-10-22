@@ -295,14 +295,28 @@ def frozen_content_problems(frozen: dict, now: dict) -> list[str]:
     after the freeze that no amendment records.
     """
     problems: list[str] = []
+    # Lane gemini-defer, ruling R7 (glitch-f1, 22 Oct 2026): the draft writes `amendments` as a dict keyed by arm
+    # (build_draft.assemble), so both shapes are read. A dict keeps every key present at the freeze with its value
+    # and adds new keys after it; a list keeps the freeze's entries as its head. A change of shape is an edit.
     frozen_amendments = frozen.get("amendments") or []
     amendments = now.get("amendments") or []
-    if amendments[:len(frozen_amendments)] != frozen_amendments:
+    later: list = []
+    if isinstance(frozen_amendments, dict) and isinstance(amendments, dict):
+        if any(k not in amendments or amendments[k] != v for k, v in frozen_amendments.items()):
+            problems.append("an amendment present at the freeze was edited or removed")
+        later = [v for k, v in amendments.items() if k not in frozen_amendments]
+    elif isinstance(frozen_amendments, list) and isinstance(amendments, list):
+        if amendments[:len(frozen_amendments)] != frozen_amendments:
+            problems.append("an amendment present at the freeze was edited or removed")
+        later = amendments[len(frozen_amendments):]
+    elif not frozen_amendments and isinstance(amendments, (dict, list)):
+        later = list(amendments.values()) if isinstance(amendments, dict) else amendments
+    else:
         problems.append("an amendment present at the freeze was edited or removed")
 
     chain: dict[str, list[tuple[str, str]]] = {}
-    for a in amendments[len(frozen_amendments):]:
-        for f in a.get("files") or []:
+    for a in later:
+        for f in (a.get("files") if isinstance(a, dict) else None) or []:
             chain.setdefault(f["path"], []).append((f.get("sha256_before"), f.get("sha256_after")))
 
     frozen_pins = {x["path"]: x for x in frozen.get("pinned_files") or []}

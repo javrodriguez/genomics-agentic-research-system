@@ -1548,6 +1548,41 @@ class FreezeCoverage(unittest.TestCase):
                 self.assertEqual(got.returncode, 1, got.stdout + got.stderr)
                 self.assertIn("never a placeholder", got.stdout)
 
+    def test_frozen_content_reads_the_drafts_amendment_dict(self):
+        # Lane gemini-defer, ruling R7 (glitch-f1, 22 Oct 2026): the draft's `amendments` is a dict keyed by arm
+        # (build_draft.assemble), and frozen_content_problems sliced it as a list (KeyError slice(None, 2, None)).
+        # The draft's own shape compared with itself is no change; every refusal still holds on the dict.
+        draft = json.loads((HERE / "prereg-draft.json").read_text())
+        self.assertIsInstance(draft["amendments"], dict)
+        self.assertEqual(cr.frozen_content_problems(draft, copy.deepcopy(draft)), [])
+        edited = copy.deepcopy(draft)
+        edited["amendments"]["O"] = "synthetic edit"
+        self.assertIn("an amendment present at the freeze was edited or removed",
+                      cr.frozen_content_problems(draft, edited))
+        removed = copy.deepcopy(draft)
+        del removed["amendments"]["G"]
+        self.assertIn("an amendment present at the freeze was edited or removed",
+                      cr.frozen_content_problems(draft, removed))
+        as_list = dict(copy.deepcopy(draft), amendments=list(draft["amendments"].values()))
+        self.assertIn("an amendment present at the freeze was edited or removed",
+                      cr.frozen_content_problems(draft, as_list))
+        # A pinned file that moves after the freeze: refused bare, accepted when a new dict entry chains it.
+        frozen = dict(copy.deepcopy(draft), pinned_files=[{"path": "x.py", "sha256": "a" * 64}])
+        moved = dict(copy.deepcopy(frozen), pinned_files=[{"path": "x.py", "sha256": "b" * 64}])
+        self.assertIn("x.py: its pinned sha256 moved after the freeze and no amendment records it",
+                      cr.frozen_content_problems(frozen, moved))
+        moved["amendments"]["synthetic-1"] = {"files": [{"path": "x.py", "sha256_before": "a" * 64,
+                                                         "sha256_after": "b" * 64}]}
+        self.assertEqual(cr.frozen_content_problems(frozen, moved), [])
+        moved["amendments"]["synthetic-1"]["files"][0]["sha256_after"] = "c" * 64
+        self.assertIn("x.py: the last amendment's sha256_after is not the pin in force",
+                      cr.frozen_content_problems(frozen, moved))
+        # The list shape keeps its own reading.
+        listed = {"amendments": [{"files": []}], "pinned_files": []}
+        self.assertEqual(cr.frozen_content_problems(listed, copy.deepcopy(listed)), [])
+        self.assertIn("an amendment present at the freeze was edited or removed",
+                      cr.frozen_content_problems(listed, {"amendments": [], "pinned_files": []}))
+
     def test_rehearsal_mode_refuses_any_other_record(self):
         self.assertIn("rehearsal_plan", inspect.signature(cr.check_frozen_content).parameters)
         frozen = {"rehearsal_record": "rehearsal or preview"}
