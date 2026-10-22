@@ -3963,6 +3963,7 @@ VENDOR_PENDING_ROWS = {
             "reader": "vendor_gemini_cwd_reads", "fixture": "recorded-gemini-w-g21/transcript.jsonl"},
         "T-12:offered-context": {"reason": "inherited-context", "state": "NOT COMPARABLE",
             "reader": "vendor_gemini_offered_partial", "ruling": (
+                "### T-12:offered-context (inherited-context): extra directories and tool servers\n"
                 "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
                 "letters.\n"
                 "Gemini CLI records its workspace directories: exactly one, the launch folder, in every recorded "
@@ -3978,6 +3979,7 @@ VENDOR_PENDING_ROWS = {
             "reader": "vendor_gemini_instruction_files_reads", "fixture": "recorded-gemini-w-g21/transcript.jsonl"},
         "T-12:prompt-snapshot": {"reason": "inherited-context", "state": "NOT COMPARABLE",
             "reader": "vendor_gemini_prompt_partial", "ruling": (
+                "### T-12:prompt-snapshot (inherited-context): the system prompt\n"
                 "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
                 "letters.\n"
                 "Gemini CLI 0.64.0 writes no system-prompt record in its session log or stream: no prompt or "
@@ -3991,6 +3993,7 @@ VENDOR_PENDING_ROWS = {
                 "A reader may conclude no prompt override was allowed in; not what prompt the model saw.")},
         "T-12:memory": {"reason": "inherited-context", "state": "NOT COMPARABLE",
             "reader": "vendor_gemini_memory_partial", "ruling": (
+                "### T-12:memory (inherited-context): memory offered to the session\n"
                 "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
                 "letters; it stands unless the build cites a pinned-source line that upgrades the row.\n"
                 "Gemini CLI 0.64.0 wrote no memory record in any committed walk: no memory tag or key, no "
@@ -4003,6 +4006,7 @@ VENDOR_PENDING_ROWS = {
                 "reached the model.")},
         "T-13": {"reason": "checkout-binding", "state": "NOT COMPARABLE",
             "reader": "vendor_gemini_checkout_partial", "ruling": (
+                "### T-13 (checkout-binding): the checkout's git state\n"
                 "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
                 "letters.\n"
                 "Claude Code's check reads the session's own git status: identity, a clean tree, one commit with the "
@@ -4019,6 +4023,7 @@ VENDOR_PENDING_ROWS = {
             "reader": "vendor_gemini_instruction_content_reads", "fixture": "recorded-gemini-w-g21/transcript.jsonl"},
         "T-17:billing-route": {"reason": "environment-record", "state": "NOT COMPARABLE",
             "reader": "vendor_gemini_billing_route_partial", "ruling": (
+                "### T-17:billing-route (environment-record): Gemini's billing-route variables\n"
                 "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
                 "letters.\n"
                 "The environment record the driver writes lists Claude Code's 18 billing names only; no Gemini billing "
@@ -4035,6 +4040,7 @@ VENDOR_PENDING_ROWS = {
                 "A reader may conclude these routes were refused before launch, not observed absent in-session.")},
         "T-18": {"reason": HARNESS_CONDITION_VIOLATED, "state": "NOT COMPARABLE",
             "reader": "vendor_gemini_tools_partial", "ruling": (
+                "### T-18 (harness-condition-violated): denied tools\n"
                 "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
                 "letters.\n"
                 "Gemini CLI records which tools were called, not which were offered: no offered-tool list in any of "
