@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -470,12 +471,15 @@ def description_problems(d):
     old = b.prior_metadata()
     need(len(old["limitations_lines"]) == 11 and d["limitations"] == [
         {"text": line, "round_4_reading": reading} for line,reading in zip(old["limitations_lines"],expected_readings())], "R8.carried")
+    # lane d8-furniture fold 2 (glitch-f1, 22 Oct 2026): the token finding filled from walk evidence, and the arm G
+    # project tier residual (D8 mitigation 1) added
     need(d["box_residuals"][:4] == [
-        {"text": "the token is visible to child processes if preflight says so", "conditional_on_preflight": True, "finding": "PENDING"},
+        {"text": "the token is visible to child processes if preflight says so", "conditional_on_preflight": True,
+         "finding": b.TOKEN_VISIBILITY_FINDING},
         {"text": "model weights behind an id are not pinnable"}, MODE_RESIDUAL, NEW_FOLDER_RESIDUAL]
-         and len(d["box_residuals"]) == 8
+         and len(d["box_residuals"]) == 9
          and [r.get("name") for r in d["box_residuals"][4:]] == ["read-only root", "W-3b", "arm O egress host",
-                                                                 "arm O and G HOME"],
+                                                                 "arm O and G HOME", "arm G project tier"],
          "R8.residuals")   # + the read-only root and W-3b (16 Oct), arm O's egress host (R1, 18 Oct), R-H5 (19 Oct)
     need(d.get("final_stop") == FINAL_STOP, "R8.final-stop")
     need(d["leak_words"] == old["leak_words"] + [study.STUDY, "round 4"] and len(old["leak_words"]) == 23 and
@@ -702,7 +706,9 @@ class Description(unittest.TestCase):
 
     def test_mode_residual_is_bound(self):
         d = self.get()
-        self.assertEqual(len(d["box_residuals"]), 8, "R8.mode-residual")   # 4th: the new-folder gap; then the read-only root, W-3b, arm O's egress host and arm O and G's HOME
+        # 4th: the new-folder gap; then the read-only root, W-3b, arm O's egress host, arm O and G's HOME and (lane
+        # d8-furniture fold 2, 22 Oct 2026) the arm G project tier
+        self.assertEqual(len(d["box_residuals"]), 9, "R8.mode-residual")
         self.assertEqual(d["box_residuals"][2], MODE_RESIDUAL, "R8.mode-residual")
         endstate_tests = (HERE / MODE_CHECK[0]).read_text()
         self.assertIn(f"class {MODE_CHECK[1]}(", endstate_tests, "R8.mode-residual")
@@ -800,8 +806,11 @@ def ready_problems(d):
                                    GEMINI: [take_config.INSTRUCTION_FILES[GEMINI]]}, "R15.instructions")
     import routing as _routing                   # D-INT-2: arm O's served-model rule is routing's own sentence
     need(d["price_table"] == "PENDING" and d["served_model_rule"][CODEX] == _routing.SERVED_MODEL_LIMIT and
-         all(v == "PENDING" for h, v in d["served_model_rule"].items() if h != CODEX) and
-         all(v == "PENDING" for v in d["furniture"].values()), "R15.values")
+         all(v == "PENDING" for h, v in d["served_model_rule"].items() if h != CODEX), "R15.values")
+    # lane d8-furniture (21 Oct 2026): each harness's furniture list, from box/scan_record.FURNITURE under the pinned CLI
+    need(furniture_problems(d) == [], "R15.furniture")
+    # glitch-f1's ruling (21 Oct 2026): rounds 1-3's deterministic-layer note carried, with round 4's line per arm
+    need(layer_note_problems(d) == [], "R34.hooks")
     # claude-code's per-take config is ready since the bypass acceptance was RULED not required in -p (glitch-06,
     # 14 Oct 2026; box lane). Round 17 B6 (glitch-b5's ruling R3, Sun 18 Oct 2026; this assertion moved by it from
     # "codex's and gemini's stay PENDING"): codex's effort and gemini's thinking and auth settings are sourced from the
@@ -820,7 +829,235 @@ def ready_problems(d):
     return bad
 
 
+def furniture_problems(d) -> list:
+    from box import scan_record as sr
+    out = []
+    locks = {item["lock"]["image"]: item["lock"]["harness"] for item in d["image_locks"]}
+    walk_version = {}
+    for h, walk in ((CODEX, "w-o46"), (CODEX, "w-o47"), (GEMINI, "w-g21"), (CLAUDE, "w168")):
+        led = json.loads((HERE / "rehearsals" / walk / "driver-ledger.json").read_text())
+        walk_version.setdefault(h, set()).add(led["agent"]["version"] if "agent" in led else led["claude_version"])
+    for h, image in ((CLAUDE, "take-a"), (CODEX, "take-o"), (GEMINI, "take-g")):
+        got = d["furniture"].get(h)
+        if not isinstance(got, list) or len(got) != 1 + len(sr.furniture_positions(h)):
+            out.append(f"{h}: not one version line plus one line per FURNITURE entry")
+            continue
+        pkg = f"{locks[image]['package']} {locks[image]['version']}"
+        # the version named is the one the walks actually ran (their ledgers), and the image lock's
+        if not got[0].startswith(pkg + " ") or walk_version[h] != {locks[image]["version"]}:
+            out.append(f"{h}: the version line does not name {pkg}, the walks' version {sorted(walk_version[h])}")
+        for e, line in zip(sr.furniture_positions(h), got[1:]):
+            if not line.startswith(f"{e['file']} | {e['record']} | ") or \
+                    (f"account-{e['account']}" in line) != bool(e["account"]) or \
+                    not all((x if x.startswith("transcript_view.py:") else "rehearsals/" + x) in line
+                            for x in e["evidence"]) or \
+                    (all(x.startswith("transcript_view.py:") for x in e["evidence"])
+                     != ("admitted by the view, carried by no walk" in line)):
+                out.append(f"{h}: the line for {e['record']} does not render its entry")
+    if (CODEX, GEMINI) != ("codex", "gemini") or "0.162.1" not in d["furniture"][CODEX][0] or \
+            "0.64.0" not in d["furniture"][GEMINI][0]:
+        # the brief's named pins (gemini-cli 0.64.0, codex-cli 0.162.1), the versions the walks ran
+        out.append("the furniture lists do not name codex 0.162.1 and gemini-cli 0.64.0")
+    return out
+
+
+def layer_note_problems(d) -> list:
+    out = []
+    note = d.get("deterministic_layer_note")
+    if not isinstance(note, dict) or set(note) != {"carried", "round_4"}:
+        return ["no deterministic_layer_note with carried and round_4"]
+    for name in ("gap-study", "gap-study-2", "gap-study-3"):
+        prior = json.loads((HERE.parent / name / "prereg.json").read_text())
+        if note["carried"].get("text") != prior["driver_constants"]["deterministic_layer_note"]:
+            out.append(f"the carried text is not {name}'s deterministic_layer_note")
+    r4 = note["round_4"]
+    if set(r4) != {CLAUDE, CODEX, GEMINI}:
+        return out + ["round_4 does not name the three arms"]
+    if not all(w in r4[CLAUDE] for w in ("151 committed Claude walks", "348 turn launches", "project,local",
+                                         "gars/.claude/settings.json", "no stream or transcript record carries a hook")):
+        out.append("arm A's line does not carry its evidence")
+    if r4[CODEX].get("switch") != "the per-take config.toml: [features] hooks = false" or \
+            ("hooks", False) not in take_config.CODEX_FEATURES:
+        out.append("arm O's switch is not take_config's [features] hooks = false")
+    if r4[GEMINI].get("switch") != "the per-take settings.json: hooksConfig.enabled = false" or \
+            ("hooksConfig.enabled", False) not in take_config.GEMINI_SETTINGS:
+        out.append("arm G's switch is not take_config's hooksConfig.enabled = false")
+    for h in (CODEX, GEMINI):
+        if r4[h].get("evidence") == "PENDING" and f"/deterministic_layer_note/round_4/{h}/evidence" not in d["pending"]:
+            out.append(f"{h}'s hook-control evidence is PENDING but not in the pending map")
+    return out
+
+
+def arm_a_hook_counts() -> dict:
+    """Recount arm A's line over the 151 committed Claude walks (w001-w168): data, never the note's own words."""
+    walks = launches = root = hooks = 0
+    sources, baselines = set(), set()
+
+    def keys(o):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                yield k
+                yield from keys(v)
+        elif isinstance(o, list):
+            for v in o:
+                yield from keys(v)
+    for w in sorted((HERE / "rehearsals").glob("w[0-9]*")):
+        if not re.fullmatch(r"w[0-9]+", w.name) or int(w.name[1:]) > 168:
+            continue
+        walks += 1
+        for launch in w.glob("turn-*.jsonl.launch.json"):
+            text = launch.read_text()
+            launches += 1
+            root += bool(re.search(r'"cwd":\s*"/tmp/run-[0-9a-f]{8}"', text))
+            m = re.search(r'"--setting-sources",\s*"([^"]+)"', text)
+            sources.add(m.group(1) if m else None)
+        for f in list(w.glob("turn-*.jsonl")) + [w / "transcript.jsonl"]:
+            for ln in f.read_text().split("\n"):
+                if ln:
+                    r = json.loads(ln)
+                    hooks += any("hook" in k.lower() for k in keys(r)) or "hook" in str(r.get("type", "")).lower() \
+                        or "hook" in str(r.get("subtype", "")).lower()
+        baselines.add(tuple(sorted(json.loads((w / "settings-guard.json").read_text())["baseline"])))
+    return {"walks": walks, "launches": launches, "root": root, "hooks": hooks, "sources": sources,
+            "baselines": baselines}
+
+
+def fold2_problems(d) -> list:
+    """Lane d8-furniture fold 2 (glitch-f1's rulings, 22 Oct 2026; GAP4-PREFREEZE-RESIDUALS-20261022.md)."""
+    out = []
+    r3 = json.loads((HERE.parent / "gap-study-3" / "prereg.json").read_text())["run_location"]
+    r2 = json.loads((HERE.parent / "gap-study-2" / "prereg.json").read_text())["run_location"]
+    res = d.get("run_tree_residual")
+    if not isinstance(res, dict) or set(res) != {"carried", "round_4"}:
+        return ["no run_tree_residual with carried and round_4"]
+    for key in ("residual", "permitted_sweep_files", "permitted_sweep_files_rule"):
+        if res["carried"].get(key) != r3[key] or r3[key] != r2[key]:
+            out.append(f"run_tree_residual.carried.{key} is not rounds 2-3's")
+    r4 = res["round_4"]
+    if [f["path"] for f in res["carried"].get("permitted_sweep_files", [])] != ["README.md", "docs/RESULTS.md"]:
+        out.append("the permitted sweep files are not README.md and docs/RESULTS.md")
+    if not ("w-g17" in r4.get("observed", "") and "native-turn-1.jsonl lines 123-153" in r4["observed"]
+            and "1 of the 225" in r4["observed"]):
+        out.append("w-g17 is not named as the one observed case, with its lines")
+    if not all(w in r4.get("awareness_caveat", "") for w in ("gap study", "agent-text", "tool-call", "README.md")):
+        out.append("the awareness caveat is missing")
+    if "D8-non-claude-arms.md" not in r4.get("d8_addendum", "") or "line 349" not in r4["d8_addendum"]:
+        out.append("the D8 addendum correcting line 349 is not cited")
+    finding = d["box_residuals"][0].get("finding")
+    if not isinstance(finding, str) or finding.startswith("PENDING") or not all(
+            w in finding for w in ("claude-code: visible", "gemini: visible", "10 of the 36", "codex:",
+                                   "inferred", "0 of the 38 GPT walks")):   # closure c1: Stage8Recount binds the counts
+        out.append("box_residuals[0].finding is not the per-harness finding")
+    if "/box_residuals/0/finding" in d["pending"]:
+        out.append("the token finding is still pending")
+    (tier,) = [r for r in d["box_residuals"] if r.get("name") == "arm G project tier"] or [{}]
+    if not ("Google Paid, cap $140" in tier.get("text", "") and "plans/gap-study-round-4.md line 2129" in tier["text"]
+            and "mitigation 1" in tier["text"]):
+        out.append("the arm G tier residual does not carry the owner's fact, its source and D8 mitigation 1")
+    return out
+
+
+def stage8_recount() -> dict:
+    """Closure c1/c2 (glitch-f1, 22 Oct 2026): every count and list stage 8 published, re-derived from the walks."""
+    reh = HERE / "rehearsals"
+    key = "GEMINI_API_KEY="
+
+    def snaps(w):
+        return sorted((w / "session").glob("native-turn-*.jsonl"), key=lambda p: int(re.findall(r"[0-9]+", p.name)[0]))
+    gem = sorted((w for w in reh.glob("w-g*") if re.fullmatch(r"w-g[0-9]+", w.name)), key=lambda p: int(p.name[3:]))
+    cod = [w for w in reh.glob("w-o*") if re.fullmatch(r"w-o[0-9]+", w.name)]
+    cla = [w for w in reh.glob("w*") if re.fullmatch(r"w[0-9]+", w.name)]
+    walks, final, streams, calls = [], 0, 0, []
+    for w in gem:
+        fin = snaps(w)[-1].read_text().count(key)
+        st = sum(f.read_text().count(key) for f in w.glob("turn-*.jsonl"))
+        final, streams = final + fin, streams + st
+        if fin or st or any(f.read_text().count(key) for f in snaps(w)):
+            walks.append(w.name)
+        seen = set()
+        for ln in snaps(w)[-1].read_text().split("\n"):
+            if ln:
+                for tc in json.loads(ln).get("toolCalls") or []:
+                    if tc["id"] not in seen and key in json.dumps(tc.get("result")):
+                        seen.add(tc["id"])
+                        calls.append((w.name, tc["name"], tc.get("args", {}).get("command", "").strip()))
+
+    def agent_files(w):
+        return list(w.glob("turn-*.jsonl")) + list((w / "session").glob("*.jsonl")) + \
+            ([w / "transcript.jsonl"] if (w / "transcript.jsonl").is_file() else [])
+    phrase = {h: sorted(w.name for w in ws if any("gap study" in f.read_text().lower() for f in agent_files(w)))
+              for h, ws in (("gemini", gem), ("codex", cod), ("claude", cla))}
+    auth = sorted(w.name for w in cod if any("auth.json" in f.read_text() for f in agent_files(w)))
+    return {"gemini_walks": len(gem), "codex_walks": len(cod), "claude_walks": len(cla), "key_walks": walks,
+            "final": final, "streams": streams, "calls": calls, "phrase": phrase, "auth": auth}
+
+
+def stage8_phrases(c) -> list:
+    """The exact phrases the published text must carry, rendered from the recount."""
+    env = [x for x in c["calls"] if x[2] == "env"]
+    grep = [x for x in c["calls"] if x[2] == "env | grep -i gemini"]
+    other = [x for x in c["calls"] if x not in env and x not in grep]
+    total = c["gemini_walks"] + c["codex_walks"] + c["claude_walks"]
+    seen = sum(len(v) for v in c["phrase"].values())
+    return [f"in {len(c['key_walks'])} of the {c['gemini_walks']} Gemini walks ({', '.join(c['key_walks'])})",
+            f"{len(c['calls'])} tool calls returned it to the agent: {len(env)} env listings, {len(grep)} filtered env "
+            f"listings (env | grep -i gemini) and {len(other)} script's output ("
+            + "; ".join(f"{cmd}, {w}" for w, _, cmd in other) + ")",
+            f"the walks' final session snapshots hold {c['final']} occurrences",
+            f"the per-turn streams hold {c['streams']}",
+            f"{len(c['auth'])} of the {c['codex_walks']} GPT walks' streams, rollouts or transcripts name auth.json",
+            f"In {seen} of the {total} walks",
+            f"{len(c['phrase']['claude'])} of the {c['claude_walks']} Claude and {len(c['phrase']['codex'])} of the "
+            f"{c['codex_walks']} Codex walks carry the phrase"] + [f"{w} (arm G)" for w in c["phrase"]["gemini"]]
+
+
+class Stage8Recount(unittest.TestCase):
+    def test_published_counts_are_the_walks(self):
+        c = stage8_recount()
+        d = json.loads((HERE / "prereg-draft.json").read_text())
+        text = d["box_residuals"][0]["finding"] + " " + d["run_tree_residual"]["round_4"]["observed"]
+        built = b.TOKEN_VISIBILITY_FINDING + " " + b.RUN_TREE_ROUND_4["observed"]
+        for ph in stage8_phrases(c):
+            with self.subTest(phrase=ph):
+                self.assertIn(ph, text)
+                self.assertIn(ph, built)
+
+    def test_witnesses(self):
+        c = stage8_recount()
+        text = b.TOKEN_VISIBILITY_FINDING + " " + b.RUN_TREE_ROUND_4["observed"]
+        for old, new in (("hold 45 occurrences", "hold 46 occurrences"), ("0 of the 38 Codex", "0 of the 37 Codex"),
+                         ("(w-g12, w-g14", "(w-g14")):
+            with self.subTest(mutant=old):
+                self.assertIn(old, text)
+                bad = text.replace(old, new)
+                self.assertFalse(all(ph in bad for ph in stage8_phrases(c)))
+
+
+class Fold2(unittest.TestCase):
+    def test_the_committed_draft_carries_the_three_rulings(self):
+        self.assertEqual(fold2_problems(json.loads((HERE / "prereg-draft.json").read_text())), [])
+
+    def test_witnesses(self):
+        d = json.loads((HERE / "prereg-draft.json").read_text())
+        for path, value in ((("run_tree_residual", "carried", "residual"), "fake"),
+                            (("box_residuals", 0, "finding"), "PENDING"),
+                            (("run_tree_residual", "round_4", "observed"), "fake")):
+            with self.subTest(path=path):
+                self.assertTrue(fold2_problems(changed(d, path, value)))
+
+
+class LayerNote(unittest.TestCase):
+    def test_arm_a_counts_are_the_walks(self):
+        got = arm_a_hook_counts()
+        self.assertEqual(got, {"walks": 151, "launches": 348, "root": 348, "hooks": 0, "sources": {"project,local"},
+                               "baselines": {("gars/.claude/settings.json",)}})
+
+
 READY_MUTANTS = {
+    "furniture-pending": ("R15.furniture", ("furniture", CODEX), "PENDING"),
+    "furniture-version": ("R15.furniture", ("furniture", GEMINI, 0), "@google/gemini-cli 0.63.0 (fake)"),
+    "hooks-note-text": ("R34.hooks", ("deterministic_layer_note", "carried", "text"), "fake"),
+    "hooks-note-switch": ("R34.hooks", ("deterministic_layer_note", "round_4", CODEX, "switch"), "fake"),
     "contrast-missing": ("R17.families", ("stats_design_inputs", "stronger_weaker", CODEX), []),
     "design-values": ("R17.values", ("stats_design_inputs", "alpha"), "0.1"),
     "open-design": ("R32.closed", (stats.DESIGN_KEY,), {}),
@@ -1590,6 +1827,30 @@ def setUpModule():
     else:
         OWNER_SETUP()
 
+def list_slot_problems() -> list:
+    """Lane d8-furniture fold (glitch-f1, 22 Oct 2026): every list-kind owner slot (the per-harness furniture lists)
+    refuses an empty list and a missing one, and the committed draft's lists are non-empty and supplied."""
+    out = []
+    fake = fill_fake(json.loads((HERE / "prereg-draft.json").read_text()))   # the committed draft, no 40 s build
+    slots = [ptr for ptr, kind in b.OWNER_SLOTS.items() if kind == "list"]
+    if sorted(slots) != sorted(f"/furniture/{h}" for h in (CLAUDE, CODEX, GEMINI)):
+        out.append(f"the list slots are not the three furniture lists: {slots}")
+    for ptr in slots:
+        path = tuple(ptr.split("/")[1:])
+        if not b.owner_value_missing([], "list") or ptr not in b.pending(changed(fake, path, [])):
+            out.append(f"{ptr}: an empty list reads as supplied")
+        erased = copy.deepcopy(fake)
+        del erased[path[0]][path[1]]
+        if ptr not in b.pending(erased):
+            out.append(f"{ptr}: a missing list reads as supplied")
+    committed = json.loads((HERE / "prereg-draft.json").read_text())
+    for h in (CLAUDE, CODEX, GEMINI):
+        lines = committed["furniture"].get(h)
+        if not isinstance(lines, list) or len(lines) < 2 or b.owner_value_missing(lines, "list"):
+            out.append(f"the committed furniture list for {h} is empty or not supplied")
+    return out
+
+
 class OwnerSlots(unittest.TestCase):
     def test_narrative_words_and_keys_keep_closed(self):
         fake = fill_fake(b.build())
@@ -1649,7 +1910,8 @@ class OwnerSlots(unittest.TestCase):
         fake = fill_fake(b.build())
         quote = {"source": "fake source", "source_sentence_sha256": "a"*64,
                  "commitment": {"arrived": True, "mode": "fake", "count": 0}}
-        cases = [(OWNER_PATHS[0], quote), (("furniture", CODEX), []),
+        # lane d8-furniture fold (glitch-f1, 22 Oct 2026): an empty list is no longer supplied (ListSlots)
+        cases = [(OWNER_PATHS[0], quote), (("furniture", CODEX), ["fake furniture line"]),
                  (("furniture", GEMINI), ["fake marker"]),   # round 17 B7 (ruling M): was routing_marker_inputs
                  (("effort", GEMINI, MODELS["G"][0]), {"path": "fake.level", "value": 0}),
                  (("config_templates", CODEX, MODELS["O"][0]),
@@ -1660,6 +1922,19 @@ class OwnerSlots(unittest.TestCase):
         for key in quote:
             missing = dict(quote); del missing[key]
             self.assertIn("/pause_questions/0/answer", b.pending(changed(fake, OWNER_PATHS[0], missing)))
+
+    def test_list_slots_refuse_an_empty_or_missing_list(self):
+        self.assertEqual(list_slot_problems(), [])
+
+    def test_witness_the_old_list_rule_goes_red(self):
+        # the rule before the fold: every item supplied, which an empty list passes (all() of nothing)
+        original = b.owner_value_missing
+        def hollow(value, kind):
+            if kind == "list" and isinstance(value, list):
+                return not all(b.supplied_text(v) for v in value)
+            return original(value, kind)
+        with mock.patch.object(b, "owner_value_missing", hollow):
+            self.assertTrue(list_slot_problems())
 
     def test_required_set_is_independent_of_input(self):
         self.assertTrue(hasattr(b, "OWNER_SLOTS"), "the required owner pointers are a module constant")

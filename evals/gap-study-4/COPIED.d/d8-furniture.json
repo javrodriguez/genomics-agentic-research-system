@@ -1,0 +1,15 @@
+{
+  "lane": "d8-furniture",
+  "files": [
+    {
+      "path": "box/harness_furniture.py",
+      "status": "new",
+      "reason": "The per-harness furniture tables (what each CLI writes itself into its stream or session file, with account positions), data only, moved from box/scan_record.py by glitch-f1's ruling of 22 Oct 2026 so scan_record stays harness-agnostic (checks.d/w4c-cp2-sidecar-scan.txt line 11); scan_record reads them generically."
+    },
+    {
+      "path": "COPIED.d/d8-furniture.json",
+      "status": "new",
+      "reason": "Lane d8-furniture (glitch-f1, 22 Oct 2026): this lane's copy record. Its edits to files other lanes own (box/scan_record.py, box/preflight.py, awareness_furniture.py, build_draft.py and their tests) are recorded in the lane file, lane-reports/d8-furniture-LANE.md."
+    }
+  ]
+}

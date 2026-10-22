@@ -670,18 +670,22 @@ class TestLoginBinding5Round1(unittest.TestCase):
 # ------------------------------------------------------------------------------------------------- PENDING values
 class TestPending(unittest.TestCase):
     # RULES_SCANNER FILLED 14 Oct 2026 (glitch-06, box row 8): the reviewed box/rules_scanner.py (TestRulesScannerFilled).
+    # FURNITURE FILLED 21 Oct 2026 (lane d8-furniture, glitch-f1 under Javier's delegation): the per-harness
+    # positions read from the walks (TestFurniture); nothing is PENDING in this module now.
     def test_the_pending_set(self):
-        self.assertEqual(set(sr.pending()), {"furniture"})
-        self.assertEqual(sr.FURNITURE, "PENDING")
+        self.assertEqual(sr.pending(), {})
+        self.assertNotEqual(sr.FURNITURE, "PENDING")
         self.assertNotEqual(sr.RULES_SCANNER, "PENDING")
 
     def test_each_refuses_a_real_use(self):
         with mock.patch.object(sr, "RULES_SCANNER", sr.PENDING):
             with self.assertRaises(sr.NotReady):
                 sr.real_rules_scanner()
-            self.assertEqual(set(sr.pending()), {"rules_scanner", "furniture"})
-        with self.assertRaises(sr.NotReady):
-            sr.furniture_positions("a-harness")
+            self.assertEqual(set(sr.pending()), {"rules_scanner"})
+        with mock.patch.object(sr, "FURNITURE", sr.PENDING):
+            with self.assertRaises(sr.NotReady):
+                sr.furniture_positions("a-harness")
+            self.assertEqual(set(sr.pending()), {"furniture"})
         with mock.patch.object(sr, "FURNITURE", {"a-harness": [("session", "line 1")]}):
             self.assertEqual(sr.furniture_positions("a-harness"), [("session", "line 1")])
             self.assertEqual(set(sr.pending()), set())
@@ -709,6 +713,92 @@ class TestPending(unittest.TestCase):
         with mock.patch.object(sr, "RULES_SCANNER", lambda paths: [{"path": paths[0], "line": 1, "rule": "x"}]):
             with self.assertRaises(sr.NotReady):
                 sr.scan(c.files(), SECRETS, rules_scanner=None)
+
+
+# ------------------------------------------------------------------------------------------------- FURNITURE
+# Lane d8-furniture (21 Oct 2026): the per-harness positions of what each CLI writes itself into its stream or session
+# file, read from the walks (D8-READ-w-o46-20261021.md, D8-READ-w-g21-20261021.md; the lane's survey of all 225 walks).
+# The binding of each entry's evidence to the walk line it names is test_awareness_furniture's (it holds the
+# record-kind rule); here, the shape and the account positions.
+HARNESS_NAMES = {"claude-code", "codex", "gemini"}
+CODEX_IDENTIFYING = {("session", "session_meta", "payload.creator_user_id"),
+                     ("session", "session_meta", "payload.creator_account_id")}
+CODEX_PLAN = {("session", "event_msg/token_count", f)
+              for f in ("payload.rate_limits.plan_type", "payload.rate_limits.credits.has_credits",
+                        "payload.rate_limits.credits.unlimited", "payload.rate_limits.credits.balance")}
+_EVIDENCE = re.compile(r"(w\d+|w-[og]\d+)/[A-Za-z0-9._/-]+\.jsonl:[1-9]\d*|transcript_view\.py:[1-9]\d*")
+
+
+def furniture_shape_problems(furniture) -> list:
+    out = []
+    if not isinstance(furniture, dict) or set(furniture) != HARNESS_NAMES:
+        return [f"FURNITURE is not keyed by exactly {sorted(HARNESS_NAMES)}"]
+    for h, entries in furniture.items():
+        if not isinstance(entries, tuple) or not entries:
+            out.append(f"{h}: not a non-empty tuple")
+            continue
+        seen = set()
+        for i, e in enumerate(entries):
+            where = f"{h}[{i}]"
+            if not isinstance(e, dict) or set(e) != set(sr.FURNITURE_KEYS):
+                out.append(f"{where}: keys are not exactly {sr.FURNITURE_KEYS}")
+                continue
+            if e["file"] not in ("session", "stream"):
+                out.append(f"{where}: file {e['file']!r}")
+            if not isinstance(e["record"], str) or not e["record"]:
+                out.append(f"{where}: record")
+            if not isinstance(e["fields"], tuple) or not e["fields"] or \
+                    not all(isinstance(f, str) and f for f in e["fields"]):
+                out.append(f"{where}: fields")
+            if e["account"] not in sr.ACCOUNT_CLASSES:
+                out.append(f"{where}: account {e['account']!r}")
+            if e["account"] and "*" in e["fields"]:
+                out.append(f"{where}: an account entry names its fields, never the whole record")
+            if not isinstance(e["evidence"], tuple) or not e["evidence"] or \
+                    not all(isinstance(x, str) and _EVIDENCE.fullmatch(x) for x in e["evidence"]):
+                out.append(f"{where}: evidence is not walk folder/file:line strings")
+            if h != "claude-code" and any(x.startswith("transcript_view.py:") for x in e["evidence"]):
+                out.append(f"{where}: a vendor entry cites no walk")
+            key = (e["file"], e["record"], e["account"])
+            if key in seen:
+                out.append(f"{where}: a second entry for {key}")
+            seen.add(key)
+    return out
+
+
+class TestFurniture(unittest.TestCase):
+    def test_the_shape(self):
+        self.assertEqual(furniture_shape_problems(sr.FURNITURE), [])
+
+    def test_codex_account_positions(self):
+        got = {(e["file"], e["record"], f, e["account"]) for e in sr.account_positions("codex") for f in e["fields"]}
+        self.assertEqual(got, {k + ("identifying",) for k in CODEX_IDENTIFYING} | {k + ("plan",) for k in CODEX_PLAN})
+
+    def test_gemini_has_no_account_field_and_claude_none_identifying(self):
+        # Gemini's one candidate, projectHash, is sha256 of the run-tree path (36 of 36 walks, the lane's survey).
+        self.assertEqual(sr.account_positions("gemini"), ())
+        self.assertFalse([e for e in sr.account_positions("claude-code") if e["account"] == "identifying"])
+        self.assertTrue(sr.account_positions("claude-code"))
+
+    def test_the_account_positions_are_furniture_positions(self):
+        for h in HARNESS_NAMES:
+            self.assertTrue(set(map(id, sr.account_positions(h))) <= set(map(id, sr.furniture_positions(h))))
+
+    def test_the_codex_developer_entry_cites_a_pre_and_a_post_b22_walk(self):
+        (dev,) = [e for e in sr.FURNITURE["codex"] if e["record"] == "response_item/message/developer"]
+        self.assertTrue(any(x.startswith("w-o46/") for x in dev["evidence"]))
+        self.assertTrue(any(x.startswith("w-o47/") for x in dev["evidence"]))
+
+    def test_mutants_go_red(self):
+        extra = {"file": "session", "record": "x", "fields": ("*",), "account": "identifying",
+                 "evidence": ("w-o46/a.jsonl:1",)}
+        self.assertTrue(furniture_shape_problems(dict(sr.FURNITURE, codex=sr.FURNITURE["codex"] + (extra,))))
+        red("an account entry naming the whole record")
+        self.assertTrue(furniture_shape_problems({h: v for h, v in sr.FURNITURE.items() if h != "gemini"}))
+        red("a harness dropped from FURNITURE")
+        bad = dict(sr.FURNITURE, gemini=tuple(dict(e, evidence=("operator words",)) for e in sr.FURNITURE["gemini"]))
+        self.assertTrue(furniture_shape_problems(bad))
+        red("evidence that is not a walk line")
 
 
 from box import rules_scanner as _rs  # noqa: E402

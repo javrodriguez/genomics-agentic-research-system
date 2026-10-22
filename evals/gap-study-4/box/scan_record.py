@@ -28,8 +28,9 @@ other than a masked one is written back byte for byte, every line that was JSON 
 proved gone from the written bytes, and each file's sha256 before and after is recorded. Each masked hit is one
 event (`events`, which the drive step adds into agent_adapter.BOX_KEYS' outside_reach_events), and carries its
 line and its byte offset within the line, so the drive step can later tell harness furniture from the agent
-(FURNITURE is PENDING: an email or account field a CLI writes itself into its stream or session file would
-inflate the count; measured per harness on the stub take).
+(FURNITURE, filled 21 Oct 2026 from the walks: the positions of what each CLI writes itself into its stream or session
+file; account_positions(harness) names the fields that carry account data, which a scan masks or excludes by position
+and never prints).
 
 REFUSED. A hit in any other kind (the ledger, the evidence, a snapshot, a blob whose name is its own sha256, the
 preflight record, the proxy log, the launch record) cannot be masked and is refused, as is every rules-scanner
@@ -129,7 +130,14 @@ PENDING = "PENDING"
 RULES_SCANNER = {"adapter": "box.rules_scanner", "factory": "gitleaks_scanner", "version": "8.30.1",
                  "sha256": "88f91962aa2f93ac6ab281d553b9e125f5197bbbce38f9f2437f7299c32e5509",
                  "binary": "/home/javier/gap4-tools/gitleaks-8.30.1/gitleaks"}
-FURNITURE = PENDING
+# FILLED 21 Oct 2026 (lane d8-furniture; D8 lines 352, 472, 481, 494): the per-harness positions of what each CLI
+# writes itself into its stream or session file, held in box/harness_furniture.py (CP2's rule: this module names no
+# harness) and read here generically; the shape and its meaning are documented there.
+from box import harness_furniture as _furniture  # noqa: E402
+
+FURNITURE_KEYS = _furniture.FURNITURE_KEYS
+ACCOUNT_CLASSES = _furniture.ACCOUNT_CLASSES
+FURNITURE = _furniture.FURNITURE
 _PENDING_WHY = {
     "rules_scanner": "the real rules scanner: gitleaks' rules on athena, over the take's record folder only (never "
                      "the Brain root); its adapter and pinned version are measured there",
@@ -171,10 +179,17 @@ def real_rules_scanner() -> dict:
 
 
 def furniture_positions(harness: str):
-    """Where `harness` writes its own account fields: refused while FURNITURE is PENDING."""
+    """What `harness` writes itself into its stream or session file (FURNITURE's entries): refused while FURNITURE is
+    PENDING."""
     if FURNITURE == PENDING:
         raise NotReady("the per-harness furniture positions are PENDING (measured on the stub take)")
     return FURNITURE[harness]
+
+
+def account_positions(harness: str):
+    """The entries of furniture_positions(harness) whose fields carry account data ("identifying" or "plan"): a scan
+    masks or excludes these positions and never prints their values."""
+    return tuple(e for e in furniture_positions(harness) if e["account"])
 
 
 # ------------------------------------------------------------------------------------------------- login files

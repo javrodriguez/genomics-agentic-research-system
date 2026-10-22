@@ -1019,9 +1019,11 @@ class TestPending(MutantCase):
         if rec["recorded"]["token_visible_to_children"] != pf.PENDING:
             out.append("token visibility was judged, not recorded PENDING")
         g = World(rt.GEMINI)
+        # lane d8-furniture fold 2 (glitch-f1, 22 Oct 2026): the tier is the owner's recorded fact, with its source
         with filled():
-            if g.evaluate()["recorded"]["google_project_tier"] != pf.PENDING:
-                out.append("the Google tier was not recorded PENDING")
+            if g.evaluate()["recorded"]["google_project_tier"] != pf.GOOGLE_PROJECT_TIER or \
+                    "Google Paid, cap $140" not in pf.GOOGLE_PROJECT_TIER or "google_project_tier" in pf.RECORDED_PENDING:
+                out.append("the Google tier is not the owner's recorded fact")
         return out
 
     def test_pending(self):
