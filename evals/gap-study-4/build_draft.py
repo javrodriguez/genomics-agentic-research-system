@@ -138,6 +138,19 @@ DEFERRED_ARMS = {"G": {
                               "registered"},
 }}
 
+# Review MAJOR-1 on lane gemini-defer (glitch-f1's ruling, 22 Oct 2026): the frozen file itself records Javier's
+# decision OD107 beside `caps`. The quoted commitment `commitments.caps` (req line 57, OpenAI $260, Google $140) is
+# hash-bound to its source sentence and stays quoted byte for byte; this entry says it is superseded and by what.
+CAPS_DECISION = {
+    "decision": "OD107", "ask": "gcap-220", "by": "Javier",
+    "words": "Javier's reply \"gcap-220 yes\", Thu 22 Oct 2026 10:43:19 EDT", "at": "2026-10-22T14:43:19+00:00",
+    "vendors": {"openai": 180, "google": 220}, "total": 400,
+    "supersedes": {"commitment": "commitments.caps",
+                   "source": "plans/gap-study-round-4/CP5-requirements.md line 57",
+                   "vendors": {"openai": 260, "google": 140}, "total": 400,
+                   "why": "written before OD107, it stays quoted byte for byte as its source requires; the caps in "
+                          "force are `caps` and costs.CAPS"}}
+
 
 def identity_id(prefix, values):
     # JSON arrays are unambiguous; full sha256, not truncated or based on order.
@@ -1004,6 +1017,7 @@ def describe(root=None):
                           "rule": copy.deepcopy(d["commitments"]["not_poolable"]),
                           "enforced_by": [study.rel("lint_pooling.py"), study.rel("result.py")]}
     d["caps"] = {"vendors": {k: int(v) for k, v in costs.CAPS.items()}, "total": int(costs.TOTAL_CAP)}
+    d["caps_decision"] = copy.deepcopy(CAPS_DECISION)
     d["blind_sample_models"] = len({r["model"] for r in d["rows"]})
     d["unused_labels"] = [labels4.FLAGGED_THEN_ACTED]
     d["pause_questions"] = [

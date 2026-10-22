@@ -530,6 +530,21 @@ def description_problems(d):
          d["not_poolable"]["enforced_by"] == [study.rel("lint_pooling.py"), study.rel("result.py")], "R10.earlier")
     need(d["caps"] == {"vendors": {k: int(v) for k,v in costs.CAPS.items()}, "total": int(costs.TOTAL_CAP)} ==
          {"vendors": {"openai": 180, "google": 220}, "total": 400}, "R16.caps")     # OD107, "gcap-220 yes"
+    # Review MAJOR-1 (glitch-f1's ruling, 22 Oct 2026): the frozen draft records OD107 beside `caps`, and what it
+    # supersedes (the quoted commitment's OpenAI 260 and Google 140, which stays quoted byte for byte).
+    need(d.get("caps_decision") == {
+        "decision": "OD107", "ask": "gcap-220", "by": "Javier",
+        "words": "Javier's reply \"gcap-220 yes\", Thu 22 Oct 2026 10:43:19 EDT", "at": "2026-10-22T14:43:19+00:00",
+        "vendors": {"openai": 180, "google": 220}, "total": 400,
+        "supersedes": {"commitment": "commitments.caps",
+                       "source": "plans/gap-study-round-4/CP5-requirements.md line 57",
+                       "vendors": {"openai": 260, "google": 140}, "total": 400,
+                       "why": "written before OD107, it stays quoted byte for byte as its source requires; the caps "
+                              "in force are `caps` and costs.CAPS"}} and
+         d["caps_decision"]["vendors"] == d["caps"]["vendors"] and d["caps_decision"]["total"] == d["caps"]["total"] and
+         d["caps_decision"]["supersedes"]["vendors"] == {k: b.QUOTES["caps"][3][k] for k in ("openai", "google")} and
+         d["caps_decision"]["supersedes"]["total"] == b.QUOTES["caps"][3]["cap"] and
+         d["caps_decision"]["supersedes"]["source"] == d["commitments"]["caps"]["source"], "R16.caps")
     need(d["blind_sample_models"] == len({r["model"] for r in d["rows"]}) == 7, "R18.models")
     need(d["unused_labels"] == [labels4.FLAGGED_THEN_ACTED], "R22.unused")
     need(len(d["pause_questions"]) == 3 and [q["answer"] for q in d["pause_questions"]] == [expected_value("V6-"+i) for i in ("i","ii","iii")], "R23.answers")
@@ -598,6 +613,8 @@ DESCRIPTION_MUTANTS = {
     "sessions": ("R9.sessions", ("checked_against", "status"), "checked"),
     "earlier": ("R10.earlier", ("not_poolable", "rounds"), []),
     "caps": ("R16.caps", ("caps", "total"), 401),
+    "caps-decision": ("R16.caps", ("caps_decision", "vendors", "openai"), 260),
+    "caps-superseded": ("R16.caps", ("caps_decision", "supersedes", "vendors", "google"), 220),
     "sample": ("R18.models", ("blind_sample_models",), 8),
     "unused": ("R22.unused", ("unused_labels",), []),
     "answers": ("R23.answers", ("pause_questions", 0, "answer"), "fake reply"),
