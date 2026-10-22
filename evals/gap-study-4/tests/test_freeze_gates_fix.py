@@ -238,11 +238,13 @@ def witness_module(real: types.ModuleType, edits: tuple) -> types.ModuleType:
         src = src.replace(old, new)
     mod = types.ModuleType(real.__name__ + "_fgf_witness")
     mod.__file__ = real.__file__
-    path = list(sys.path)
+    path, modules = list(sys.path), set(sys.modules)
     try:
         exec(compile(src, real.__file__ + " (witness)", "exec"), mod.__dict__)
     finally:
         sys.path[:] = path             # the module's own top-level sys.path.insert, undone
+        for name in set(sys.modules) - modules:     # S14: an import the compile re-registered (a module an
+            del sys.modules[name]                   # earlier test dropped), undone, so no second copy stays
     return mod
 
 

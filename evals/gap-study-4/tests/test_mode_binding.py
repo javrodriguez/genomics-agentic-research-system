@@ -377,11 +377,13 @@ def witness_module(edits: tuple) -> types.ModuleType:
     mod = types.ModuleType(name)
     mod.__file__ = mb.__file__
     sys.modules[name] = mod
-    path = list(sys.path)
+    path, modules = list(sys.path), set(sys.modules)
     try:
         exec(compile(src, mb.__file__ + " (witness)", "exec"), mod.__dict__)
     finally:
         sys.modules.pop(name, None)
+        for added in set(sys.modules) - modules:    # lane freeze-gates-fix S14: an import the compile
+            del sys.modules[added]                  # re-registered, undone
         sys.path[:] = path             # lane freeze-gates-fix: the module's own top-level sys.path.insert, undone
     return mod
 
