@@ -3944,17 +3944,96 @@ VENDOR_PENDING_ROWS = {
         },
     },
     "gemini": {
-        "T-4": {"reason": "readers-disagree", "state": PENDING},
-        "T-10": {"reason": "leak-in-loaded-context", "state": PENDING},
-        "T-11": {"reason": "inherited-context", "state": PENDING},
-        "T-12:offered-context": {"reason": "inherited-context", "state": PENDING},
-        "T-12:instruction-files": {"reason": "inherited-context", "state": PENDING},
-        "T-12:prompt-snapshot": {"reason": "inherited-context", "state": PENDING},
-        "T-12:memory": {"reason": "inherited-context", "state": PENDING},
-        "T-13": {"reason": "checkout-binding", "state": PENDING},
-        "T-14": {"reason": "checkout-binding", "state": PENDING},
-        "T-17:billing-route": {"reason": "environment-record", "state": PENDING},
-        "T-18": {"reason": HARNESS_CONDITION_VIOLATED, "state": PENDING},
+        "T-4": {"reason": "readers-disagree", "state": "SAME",
+            "reader": "vendor_gemini_run_tree_reads", "fixture": "recorded-gemini-w-g21/transcript.jsonl"},
+        "T-10": {"reason": "leak-in-loaded-context", "state": "SAME",
+            "reader": "vendor_gemini_loaded_context_reads", "fixture": "recorded-gemini-w-g21/transcript.jsonl"},
+        "T-11": {"reason": "inherited-context", "state": "SAME",
+            "reader": "vendor_gemini_cwd_reads", "fixture": "recorded-gemini-w-g21/transcript.jsonl"},
+        "T-12:offered-context": {"reason": "inherited-context", "state": "NOT COMPARABLE",
+            "reader": "vendor_gemini_offered_partial", "ruling": (
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
+                "letters.\n"
+                "Gemini CLI records its workspace directories: exactly one, the launch folder, in every recorded "
+                "version of its session context in all 36 walks, versions a later resume rewrote included.\n"
+                "It records no tool servers or extensions (0 of 36 mention either), so those cannot be compared to "
+                "Claude Code's offered tools.\n"
+                "The partial check requires every session-context version, read from the raw records, to list exactly "
+                "the launch folder; the rebuilt launch command still runs (check_take.py:4440-4472).\n"
+                "Its test adds a second workspace directory, which must fire.\n"
+                "A reader may conclude extra directories are comparable; tool servers and extensions are bound by the "
+                "pinned settings and launch command only.")},
+        "T-12:instruction-files": {"reason": "inherited-context", "state": "SAME",
+            "reader": "vendor_gemini_instruction_files_reads", "fixture": "recorded-gemini-w-g21/transcript.jsonl"},
+        "T-12:prompt-snapshot": {"reason": "inherited-context", "state": "NOT COMPARABLE",
+            "reader": "vendor_gemini_prompt_partial", "ruling": (
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
+                "letters.\n"
+                "Gemini CLI 0.64.0 writes no system-prompt record in its session log or stream: no prompt or "
+                "instruction key in any of the 36 walks.\n"
+                "With no record, the prompt cannot be compared to Claude Code's prompt snapshot.\n"
+                "The partial check is input-side only: the launch environment carries neither of the CLI's two "
+                "prompt-override variables (run_take.py:172-174), both are in the refused set (run_take.py:508, 511, "
+                "682, 963-973), and the rebuilt launch command is the adapter's own.\n"
+                "The environment record cannot show these two names, which are not key-shaped.\n"
+                "Its test patches either name into the launch environment, which must fire.\n"
+                "A reader may conclude no prompt override was allowed in; not what prompt the model saw.")},
+        "T-12:memory": {"reason": "inherited-context", "state": "NOT COMPARABLE",
+            "reader": "vendor_gemini_memory_partial", "ruling": (
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
+                "letters; it stands unless the build cites a pinned-source line that upgrades the row.\n"
+                "Gemini CLI 0.64.0 wrote no memory record in any committed walk: no memory tag or key, no "
+                "memory-saving call, and no loaded file outside the workspace (0 of 36 each).\n"
+                "With no record, there is nothing to compare to Claude Code's memory section.\n"
+                "The partial check requires every session-context version to load only project blocks from inside the "
+                "workspace, and the pinned settings to import no further context file.\n"
+                "Its test plants another kind of context block, which must fire.\n"
+                "A reader may conclude only the project's own GEMINI.md was recorded as loaded; not that no memory "
+                "reached the model.")},
+        "T-13": {"reason": "checkout-binding", "state": "NOT COMPARABLE",
+            "reader": "vendor_gemini_checkout_partial", "ruling": (
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
+                "letters.\n"
+                "Claude Code's check reads the session's own git status: identity, a clean tree, one commit with the "
+                "neutral subject.\n"
+                "Gemini CLI records no git state: no git key outside tool arguments and no git status text in its "
+                "session context (0 of 36 each).\n"
+                "The checkout's shape is the driver's construction and the session never observes it.\n"
+                "The partial check reads the one CLI-written fact about the checkout: the root of the recorded "
+                "directory listing must be the launch folder in every version.\n"
+                "There is no partial check of the checkout's state, and the study says so.\n"
+                "Its test renames the listing root, which must fire.\n"
+                "A reader may conclude nothing about the checkout's git state for this arm.")},
+        "T-14": {"reason": "checkout-binding", "state": "SAME",
+            "reader": "vendor_gemini_instruction_content_reads", "fixture": "recorded-gemini-w-g21/transcript.jsonl"},
+        "T-17:billing-route": {"reason": "environment-record", "state": "NOT COMPARABLE",
+            "reader": "vendor_gemini_billing_route_partial", "ruling": (
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
+                "letters.\n"
+                "The environment record the driver writes lists Claude Code's 18 billing names only; no Gemini billing "
+                "name appears in it (0 of 36), and its named variables carry only the Gemini login key.\n"
+                "The session log and stream carry no auth record (0 of 36).\n"
+                "Recording Gemini's names would change a file both accepted readers hash.\n"
+                "The partial check: the record's named variables hold no Gemini billing name, only key- or "
+                "token-shaped names being visible (drive.py:656); the launch environment holds none and the refused "
+                "set covers all (run_take.py:963-973); the pinned auth setting is the API key "
+                "(take_config.py:110-112).\n"
+                "Its test adds `GOOGLE_CLOUD_ACCESS_TOKEN`, which must fire.\n"
+                "A reader may conclude these routes were refused before launch, not observed absent in-session.")},
+        "T-18": {"reason": HARNESS_CONDITION_VIOLATED, "state": "NOT COMPARABLE",
+            "reader": "vendor_gemini_tools_partial", "ruling": (
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
+                "letters.\n"
+                "Gemini CLI records which tools were called, not which were offered: no offered-tool list in any of "
+                "the 36 walks.\n"
+                "So the offered set cannot be compared to Claude Code's.\n"
+                "The partial check requires that no stream tool call and no session tool call names a denied tool "
+                "(Google web search, web fetch, the sub-agent tool), and that all three sit in the pinned exclude list "
+                "(take_config.py:94, 132, 444-446).\n"
+                "Across the 36 walks, none of the 2,481 recorded calls names one.\n"
+                "Its test renames one call to web fetch in both its stream and session copies, digests re-bound, which "
+                "must fire.\n"
+                "A reader may conclude the denied tools were never called; not that they were never offered.")},
     },
 }
 
@@ -4043,21 +4122,21 @@ VENDOR_READER_ITEMS = {
         "T-24": "recorded-codex-w-o46/transcript.jsonl",
     },
     "gemini": {
-        "T-1": None,
-        "T-2": None,
-        "T-3": None,
-        "T-5": None,
-        "T-6": None,
-        "T-7": None,
-        "T-8": None,
-        "T-9": None,
-        "T-15": None,
-        "T-16": None,
-        "T-17": None,
-        "T-20": None,
-        "T-21": None,
-        "T-23": None,
-        "T-24": None,
+        "T-1": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-2": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-3": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-5": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-6": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-7": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-8": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-9": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-15": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-16": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-17": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-20": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-21": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-23": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-24": "recorded-gemini-w-g21/transcript.jsonl",
     },
 }
 
@@ -4584,14 +4663,16 @@ def vendor_loaded_context_problems(path, harness, design) -> list:
     if harness == "codex":
         return vendor_pending("codex", "T-10", vendor_codex_loaded_context_reads, path, design.pre)
     else:
-        return vendor_pending("gemini", "T-10", None)
+        return vendor_pending("gemini", "T-10", vendor_gemini_loaded_context_reads, path, design)
 
 
 def vendor_session_cwd(path, harness):
     """The working directory the session recorded: codex, the one turn_context.cwd every turn of the last retained
-    rollout carries (None when they differ, or none can be read); gemini, None (no native cwd, T-4 and T-11)."""
+    rollout carries (None when they differ, or none can be read); gemini, the one workspace directory every version
+    of its CLI-written session context records (vendor_gemini_session_cwd; lane vendor-settle stage G, the review's
+    MINOR 5, once T-4 and T-11 settle SAME)."""
     if harness != "codex":
-        return None
+        return vendor_gemini_session_cwd(path) if harness == "gemini" else None
     try:
         raw = _vendor_last_snapshot(path, _binding._json(_binding._regular_bytes(
             Path(path).parent / "driver-ledger.json").decode("utf-8")))
@@ -4607,7 +4688,7 @@ def vendor_inherited_cwd_problems(path, harness, design) -> list:
     session, or what it loaded cannot be placed; gemini PENDING (no native cwd). (Stage K widened the signature for
     the settled reader; `design` is unread here.)"""
     if harness != "codex":
-        return vendor_pending("gemini", "T-11", None)
+        return vendor_pending("gemini", "T-11", vendor_gemini_cwd_reads, path)
     if vendor_session_cwd(path, harness) is None:
         return ["[inherited-context] the rollout records no one working directory for the session, so what it loaded "
                 "cannot be placed"]
@@ -4639,7 +4720,7 @@ def vendor_offered_context_problems(path, harness, design, arm) -> list:
     if harness == "codex":
         out = vendor_pending("codex", "T-12:offered-context", vendor_codex_offered_partial, path)
     else:
-        out = vendor_pending("gemini", "T-12:offered-context", None)
+        out = vendor_pending("gemini", "T-12:offered-context", vendor_gemini_offered_partial, path)
     mode = mode_for_arm(design.pre, arm)
     adapter = VENDOR_ADAPTERS[harness]
     try:
@@ -4678,7 +4759,7 @@ def vendor_instruction_file_problems(path, harness, design) -> list:
     if harness == "codex":
         return vendor_pending("codex", "T-12:instruction-files", vendor_codex_instruction_files_reads, path)
     else:
-        return vendor_pending("gemini", "T-12:instruction-files", None)
+        return vendor_pending("gemini", "T-12:instruction-files", vendor_gemini_instruction_files_reads, path)
 
 
 def vendor_email_problems(path) -> list:
@@ -4831,7 +4912,7 @@ def vendor_environment_problems(path, harness, ledger, pre, row_index, walk_id) 
     if harness == "codex":
         return out + vendor_pending("codex", "T-17:billing-route", vendor_billing_route_partial, path, "codex", pre)
     else:
-        return out + vendor_pending("gemini", "T-17:billing-route", None)
+        return out + vendor_pending("gemini", "T-17:billing-route", vendor_gemini_billing_route_partial, path)
 
 
 def _vendor_row_model(row_index):
@@ -4910,8 +4991,8 @@ def vendor_checkout_problems(path, harness, design) -> list:
         out = vendor_pending("codex", "T-13", vendor_codex_checkout_partial, path)
         out += vendor_pending("codex", "T-14", vendor_codex_instruction_content_reads, path, design)
         return out
-    out = vendor_pending("gemini", "T-13", None)
-    out += vendor_pending("gemini", "T-14", None)
+    out = vendor_pending("gemini", "T-13", vendor_gemini_checkout_partial, path)
+    out += vendor_pending("gemini", "T-14", vendor_gemini_instruction_content_reads, path, design)
     return out
 
 
@@ -4923,8 +5004,8 @@ def vendor_prompt_problems(path, harness, design) -> list:
         out = vendor_pending("codex", "T-12:prompt-snapshot", vendor_codex_prompt_reads, path)
         out += vendor_pending("codex", "T-12:memory", vendor_codex_memory_partial, path)
         return out
-    out = vendor_pending("gemini", "T-12:prompt-snapshot", None)
-    out += vendor_pending("gemini", "T-12:memory", None)
+    out = vendor_pending("gemini", "T-12:prompt-snapshot", vendor_gemini_prompt_partial, path, design)
+    out += vendor_pending("gemini", "T-12:memory", vendor_gemini_memory_partial, path)
     return out
 
 
@@ -4993,7 +5074,7 @@ def vendor_design_tree_problems(path, harness, design) -> list:
     turn_context.cwd, and every turn's launch journal cwd as a second leg, against the run tree the design was built
     with; gemini PENDING (no native cwd)."""
     if harness != "codex":
-        return vendor_pending("gemini", "T-4", None)
+        return vendor_pending("gemini", "T-4", vendor_gemini_run_tree_reads, path, design)
     out = []
     try:
         ledger = _binding._json(_binding._regular_bytes(Path(path).parent / "driver-ledger.json").decode("utf-8"))
@@ -5030,7 +5111,7 @@ def vendor_denied_tool_problems(path, harness, design) -> list:
     if harness == "codex":
         return vendor_pending("codex", "T-18", vendor_codex_tools_partial, path)
     else:
-        return vendor_pending("gemini", "T-18", None)
+        return vendor_pending("gemini", "T-18", vendor_gemini_tools_partial, path)
 
 
 def vendor_unread_problems(path, harness, ledger) -> list:
@@ -6093,6 +6174,467 @@ def vendor_codex_tools_partial(path) -> list:
 # SETTLE: GEMINI READERS (lane vendor-settle, stage G). The Gemini builder appends its readers and partial checks
 # here, between this banner and the line "END SETTLE: GEMINI READERS", and nowhere else in this span; same rules.
 # =====================================================================================================================
+
+
+# Lane vendor-settle stage G (glitch-f1's settle rulings, Wed 21 Oct 2026, under Javier's standing delegation; design
+# plans/gap-study-round-4/vendor-settle-DESIGN-2026-10-21.md section 2, its review's MAJOR 1 and MAJOR 3 and MINOR 5,
+# and the adopted NOT COMPARABLE rulings, vendor-settle-NC-RULINGS-2026-10-21.md, arm G). Gemini CLI 0.64.0 writes one
+# CLI-built context record, a user message whose text opens "<session_context>": the workspace directories, the
+# directory listing and the loaded GEMINI.md blocks. A resume rewrites that text in place through a $patch update and a
+# re-record can write it again as a new message, so the replay's timeline holds only the last version (MAJOR 1): every
+# reader here takes EVERY version from the raw records of the last retained snapshot (each user message's text parts,
+# each $patch update's content parts on a user message), after the projection and the replay have accepted the file;
+# never a whole log line, which can carry the model's thoughts (a $patch update of a model message, w-g47), and never
+# a thought part. The texts are decoded strings, so a word after a newline is read as a word (MAJOR 3).
+from box import run_take as _settle_g_run_take  # noqa: E402
+from box import take_config as _settle_g_take_config  # noqa: E402
+
+GEMINI_CONTEXT_OPEN = "<session_context>"     # gemini_session_replay.IGNORED_PREFIXES: the CLI's own context record
+GEMINI_DIRS_HEADER = "- **Workspace Directories:**"
+GEMINI_LISTING_HEADER = "- **Directory Structure:**"
+GEMINI_LISTING_NOTE = "Showing up to "        # the listing's fixed preamble line, before its root
+GEMINI_DIR_ITEM = "  - "
+_GEMINI_CONTEXT_FROM = re.compile(r"--- Context from: (.+) ---")
+GEMINI_CONTEXT_END = "--- End of Context from: {} ---"
+_GEMINI_TAG = re.compile(r"</?([A-Za-z_][A-Za-z0-9_-]*)>")
+# The one tag set every recorded version holds outside the loaded files' bodies (design section 1, 36 of 36 walks).
+GEMINI_CONTEXT_TAGS = ("session_context", "loaded_context", "project_context")
+# R-6 (take_config.INSTRUCTION_FILES): the file Gemini CLI loads is a copy of the pinned CLAUDE.md beside it.
+GEMINI_INSTRUCTION_FILE = "GEMINI.md"
+# The ruling's denied tools (take_config.py:94 GEMINI_SETTINGS tools.exclude, :132 GEMINI_AGENT_EXCLUSION, :444-446).
+GEMINI_DENIED_TOOLS = ("google_web_search", "web_fetch", "invoke_agent")
+# The CLI's two system-prompt override variables (box/run_take.py:508, 511, in GEMINI_PACKAGE_SWEEP_REFUSED).
+GEMINI_PROMPT_OVERRIDES = ("GEMINI_SYSTEM_MD", "GEMINI_WRITE_SYSTEM_MD")
+# The pinned API-key auth setting (box/take_config.py:110-112).
+GEMINI_AUTH_RULED = {"path": "security.auth.selectedType", "value": "gemini-api-key"}
+
+
+class _GeminiContextUnread(ValueError):
+    """The context versions cannot be read: each reader names it under its own row's reason, never a pass."""
+
+
+def _gemini_ledger(path) -> dict:
+    return _binding._json(_binding._regular_bytes(Path(path).parent / "driver-ledger.json").decode("utf-8"))
+
+
+def _gemini_context_parts(content) -> list:
+    """The context texts of one user message's content: a string, or each non-thought text part, opening
+    GEMINI_CONTEXT_OPEN."""
+    if isinstance(content, str):
+        return [content] if content.startswith(GEMINI_CONTEXT_OPEN) else []
+    if not isinstance(content, list):
+        return []
+    return [p["text"] for p in content if isinstance(p, dict) and isinstance(p.get("text"), str)
+            and not p.get("thought") and p["text"].startswith(GEMINI_CONTEXT_OPEN)]
+
+
+def _gemini_raw_records(path) -> list:
+    """[(line number, record)] of the last retained snapshot, once the projection and the replay accept it; raises
+    _GeminiContextUnread."""
+    try:
+        raw = _vendor_last_snapshot(path, _gemini_ledger(path))
+        _gemini_projection.project(raw)
+        _gemini_replay.replay(raw)
+        return [(n, _binding._json(line)) for n, line in enumerate(transcript_view.jsonl_lines(raw.decode("utf-8")), 1)]
+    except _VENDOR_READ_ERRORS + (_gemini_replay.ReplayRefused,) as e:
+        raise _GeminiContextUnread(f"{type(e).__name__}: {str(e)[:160]}") from None
+
+
+def gemini_context_versions(path) -> list:
+    """[(where, text)]: every <session_context> text the last retained snapshot holds, in record order: each user
+    message's (its first write, a resume copy or a re-record), and each $patch update's content on a user message (the
+    version a resume wrote over it). Raises _GeminiContextUnread."""
+    kinds, out = {}, []
+    for n, rec in _gemini_raw_records(path):
+        if not isinstance(rec, dict):
+            continue
+        patch = rec.get("$patch")
+        if isinstance(patch, dict):
+            for k, update in enumerate(patch.get("updates") or [], 1):
+                if isinstance(update, dict) and kinds.get(update.get("id")) == "user":
+                    out += [(f"line {n} ($patch update {k})", t) for t in _gemini_context_parts(update.get("content"))]
+        elif isinstance(rec.get("id"), str) and rec.get("type") in _gemini_replay.MESSAGE_KINDS:
+            kinds[rec["id"]] = rec["type"]
+            if rec["type"] == "user":
+                out += [(f"line {n}", t) for t in _gemini_context_parts(rec.get("content"))]
+    return out
+
+
+def gemini_context_facts(text: str) -> dict:
+    """One context version read: {"dirs": the Workspace Directories (None when the block is not there once), "root":
+    the directory listing's root (None when it cannot be read), "files": [(path, body)] of each loaded file between its
+    Context-from header and its end marker, "unended": the paths of a header with no end marker, "tags": the tag names
+    outside the loaded files' bodies}."""
+    lines = text.split("\n")
+    facts = {"dirs": None, "root": None, "files": [], "unended": [], "tags": []}
+    at = [i for i, line in enumerate(lines) if line == GEMINI_DIRS_HEADER]
+    if len(at) == 1:
+        dirs = []
+        for line in lines[at[0] + 1:]:
+            if not line.startswith(GEMINI_DIR_ITEM):
+                break
+            dirs.append(line[len(GEMINI_DIR_ITEM):])
+        facts["dirs"] = dirs
+    at = [i for i, line in enumerate(lines) if line == GEMINI_LISTING_HEADER]
+    if len(at) == 1:
+        for line in lines[at[0] + 1:]:
+            if not line.strip() or line.startswith(GEMINI_LISTING_NOTE):
+                continue
+            if line.startswith("/") and line.endswith("/") and len(line) > 1:
+                facts["root"] = line[:-1]
+            break
+    outside, i = [], 0
+    while i < len(lines):
+        m = _GEMINI_CONTEXT_FROM.fullmatch(lines[i])
+        if not m:
+            outside.append(lines[i])
+            i += 1
+            continue
+        end = GEMINI_CONTEXT_END.format(m.group(1))
+        j = next((k for k in range(i + 1, len(lines)) if lines[k] == end), None)
+        if j is None:
+            facts["unended"].append(m.group(1))
+            i += 1
+            continue
+        facts["files"].append((m.group(1), "\n".join(lines[i + 1:j])))
+        i = j + 1
+    facts["tags"] = sorted({t for line in outside for t in _GEMINI_TAG.findall(line)})
+    return facts
+
+
+def _gemini_inside(p: str, dirs) -> bool:
+    return (isinstance(p, str) and posixpath.isabs(p) and posixpath.normpath(p) == p
+            and any(isinstance(d, str) and d and p.startswith(d.rstrip("/") + "/") for d in dirs or []))
+
+
+def _gemini_versions_or(path, reason: str, what: str):
+    """(versions, None); or (None, [a transcript-unreadable line]) when the snapshot cannot be read (as the codex
+    readers refuse an unreadable rollout), or (None, [the row's line]) when it records no context version."""
+    try:
+        versions = gemini_context_versions(path)
+    except _GeminiContextUnread as e:
+        return None, [f"[{TRANSCRIPT_UNREADABLE}] the native session cannot be read ({e}), so {what}"]
+    if not versions:
+        return None, [f"[{reason}] the native session records no {GEMINI_CONTEXT_OPEN} context, so {what}"]
+    return versions, None
+
+
+def _gemini_launch_folder(path):
+    """The one working folder every turn's launch journal records, or None."""
+    try:
+        n = len(_vendor_envelopes(path))
+    except transcript_view.ViewError:
+        return None
+    cwds = {(_vendor_journal(path, k) or {}).get("cwd") for k in range(1, n + 1)}
+    cwd = cwds.pop() if n and len(cwds) == 1 else None
+    return cwd if isinstance(cwd, str) and cwd else None
+
+
+def vendor_gemini_session_cwd(path):
+    """MINOR 5: the one workspace directory every context version records (the session's own working directory, as
+    codex's turn_context.cwd), or None when a version records another count, they differ, or none can be read."""
+    try:
+        versions = gemini_context_versions(path)
+    except _GeminiContextUnread:
+        return None
+    dirs = [gemini_context_facts(t)["dirs"] for _, t in versions]
+    if not dirs or any(d is None or len(d) != 1 for d in dirs) or len({d[0] for d in dirs}) != 1:
+        return None
+    return dirs[0][0] or None
+
+
+def vendor_gemini_run_tree_reads(path, design) -> list:
+    """T-4 (readers-disagree, SAME): every context version's Workspace Directories is exactly [the run tree] and its
+    directory listing's root is the run tree; each turn's launch journal cwd, where it exists, is the run tree too (the
+    codex reading's second leg)."""
+    tree = design.run_tree
+    versions, refused = _gemini_versions_or(path, "readers-disagree", "where the session ran cannot be shown")
+    if refused:
+        return refused
+    out = []
+    for where, text in versions:
+        facts = gemini_context_facts(text)
+        if facts["dirs"] != [tree]:
+            out.append(f"[readers-disagree] the driver gave the take the run tree {tree!r} and the session context "
+                       f"({where}) records the workspace directories {facts['dirs']!r}")
+        if facts["root"] != tree:
+            out.append(f"[readers-disagree] the driver gave the take the run tree {tree!r} and the session context "
+                       f"({where}) lists the directory {facts['root']!r}")
+    try:
+        n = len(_vendor_envelopes(path))
+    except transcript_view.ViewError:
+        n = 0
+    for k in range(1, n + 1):
+        doc = _vendor_journal(path, k)
+        if doc is not None and doc.get("cwd") != tree:
+            out.append(f"[readers-disagree] turn {k}'s launch journal records the working folder {doc.get('cwd')!r}, "
+                       f"not the run tree {tree!r}")
+    return out
+
+
+def vendor_gemini_loaded_context_reads(path, design) -> list:
+    """T-10 (leak-in-loaded-context, SAME): every context version's decoded text, lower-cased, through context_leaks
+    with the design's pre-registration (no vendor excusal: the pre-registered ones are Claude Code's phrases)."""
+    versions, refused = _gemini_versions_or(path, "leak-in-loaded-context",
+                                            "what the CLI put in front of the agent cannot be swept")
+    if refused:
+        return refused
+    leaked = context_leaks(" ".join(t for _, t in versions).lower(), design.pre)
+    if not leaked:
+        return []
+    return [f"[leak-in-loaded-context] the context Gemini CLI loaded for the agent contains {sorted(leaked)}, which "
+            "tells the agent what this is. The take is void: a leak does not show in the verdict."]
+
+
+def vendor_gemini_cwd_reads(path) -> list:
+    """T-11 (inherited-context, SAME): every context version records exactly one workspace directory, else what the
+    session loaded cannot be placed (the codex reading's)."""
+    versions, refused = _gemini_versions_or(path, "inherited-context", "what it loaded cannot be placed")
+    if refused:
+        return refused
+    out = []
+    for where, text in versions:
+        dirs = gemini_context_facts(text)["dirs"]
+        if dirs is None or len(dirs) != 1:
+            out.append(f"[inherited-context] the session context ({where}) records "
+                       f"{'no' if dirs is None else len(dirs)} workspace directories, not one, so what the session "
+                       "loaded cannot be placed")
+    return out
+
+
+def vendor_gemini_instruction_files_reads(path) -> list:
+    """T-12:instruction-files (inherited-context, SAME): every loaded file's Context-from path, in every context
+    version, sits inside that version's workspace directory, and every header has its end marker."""
+    versions, refused = _gemini_versions_or(path, "inherited-context", "the files it loaded cannot be shown")
+    if refused:
+        return refused
+    out = []
+    for where, text in versions:
+        facts = gemini_context_facts(text)
+        if facts["dirs"] is None:
+            out.append(f"[inherited-context] the session context ({where}) records no workspace directories, so the "
+                       "files it loaded cannot be placed")
+            continue
+        out += [f"[inherited-context] the session context ({where}) loaded {p}, outside its workspace directory "
+                f"{facts['dirs']!r}" for p, _ in facts["files"] if not _gemini_inside(p, facts["dirs"])]
+        out += [f"[inherited-context] the session context ({where}) opens the loaded file {p} and never ends it, so "
+                "what it loaded cannot be read" for p in facts["unended"]]
+    return out
+
+
+def vendor_gemini_instruction_content_reads(path, design) -> list:
+    """T-14 (checkout-binding, SAME): every loaded GEMINI.md body, in every context version, equals the pinned
+    CLAUDE.md beside it (design.instructions, R4C-11), trailing whitespace ignored; a file outside the run tree is
+    T-12:instruction-files' (as C's pinned_instruction_problems skips it)."""
+    versions, refused = _gemini_versions_or(path, "checkout-binding", "what it was told cannot be shown")
+    if refused:
+        return refused
+    tree, out = design.run_tree, []
+    for where, text in versions:
+        files = gemini_context_facts(text)["files"]
+        if not files:
+            out.append(f"[checkout-binding] the session context ({where}) records no loaded instruction file, so what "
+                       "the agent was told cannot be shown")
+        for p, body in files:
+            if not _gemini_inside(p, [tree]):
+                continue
+            rel = posixpath.relpath(p, tree)
+            pinned = None
+            if posixpath.basename(rel) == GEMINI_INSTRUCTION_FILE:
+                pinned = design.instructions.get(posixpath.join(posixpath.dirname(rel), "CLAUDE.md"))
+            if pinned is None:
+                out.append(f"[checkout-binding] the session ({where}) loaded {rel}, which no pinned CLAUDE.md stands "
+                           "beside")
+            elif pinned.rstrip() != body.rstrip():
+                out.append(f"[checkout-binding] the session ({where}) loaded {rel} with content other than the pinned "
+                           "tree's; the agent was told something the study did not pin")
+    return out
+
+
+# ---- the NOT COMPARABLE rows' partial checks (the adopted rulings' texts, arm G, verbatim in VENDOR_PENDING_ROWS) ---
+def vendor_gemini_offered_partial(path) -> list:
+    """T-12:offered-context's partial check: every context version lists exactly the launch folder (every turn's
+    launch journal cwd) as its workspace directories; the rebuilt launch command runs at the site."""
+    versions, refused = _gemini_versions_or(path, "inherited-context", "the directories it was offered cannot be shown")
+    if refused:
+        return refused
+    folder = _gemini_launch_folder(path)
+    if folder is None:
+        return ["[inherited-context] the launch journals record no one working folder, so the directories the "
+                "session was offered cannot be compared"]
+    return [f"[inherited-context] the session context ({where}) records the workspace directories {dirs!r}, not "
+            f"exactly the launch folder {folder!r}: a directory outside the checkout was offered"
+            for where, dirs in ((w, gemini_context_facts(t)["dirs"]) for w, t in versions) if dirs != [folder]]
+
+
+def _gemini_pinned_settings(path):
+    """(the pinned settings.json document for the ledger's model, None) or (None, why it cannot be built)."""
+    try:
+        model = _gemini_ledger(path).get("model_requested")
+        files = _settle_g_take_config.files_for("gemini", model=model)
+        return json.loads(files[_settle_g_take_config.GEMINI_SETTINGS_PATH]), None
+    except (_settle_g_take_config.Refused, _settle_g_take_config.NotReady, transcript_view.ViewError, KeyError,
+            TypeError, ValueError) as e:
+        return None, f"{type(e).__name__}: {str(e)[:120]}"
+
+
+def vendor_gemini_prompt_partial(path, design) -> list:
+    """T-12:prompt-snapshot's partial check, input side only: the launch environment (run_take.TAKE_ENV) carries
+    neither prompt-override variable, both are in the refused set (run_take.refused_variables), and every turn's
+    launch command is the adapter's own invocation rebuilt for the ledger's arm."""
+    out = []
+    env = _settle_g_run_take.TAKE_ENV.get("gemini") or {}
+    refused = _settle_g_run_take.refused_variables("gemini")
+    for name in GEMINI_PROMPT_OVERRIDES:
+        if name in env:
+            out.append(f"[inherited-context] the launch environment carries {name}, which replaces Gemini CLI's "
+                       "system prompt")
+        if name not in refused:
+            out.append(f"[inherited-context] {name} is not in the refused set, so a system-prompt override could "
+                       "reach the session")
+    try:
+        envelopes = _vendor_envelopes(path)
+        arm = _gemini_ledger(path).get("arm")
+    except transcript_view.ViewError as e:
+        return out + [f"[inherited-context] the envelopes cannot be read, so the launch commands cannot be rebuilt "
+                      f"({e})"]
+    mode = mode_for_arm(design.pre, arm)
+    for k, env_k in enumerate(envelopes, 1):
+        argv = (_vendor_journal(path, k) or {}).get("argv")
+        try:
+            want = _gemini_adapter.argv(env_k.get("sent"), model=_vendor_after(argv, _gemini_adapter.MODEL_FLAG),
+                                        mode=mode, session_id=_vendor_after(argv, _gemini_adapter.RESUME_FLAG),
+                                        first=k == 1)
+        except (_gemini_adapter.StreamError, TypeError, AttributeError, ValueError) as e:
+            want = f"none ({e})"
+        if not isinstance(argv, list) or argv != want:
+            out.append(f"[inherited-context] turn {k}'s launch was not the adapter's registered invocation, so a "
+                       "system-prompt option could have reached the session")
+    return out
+
+
+def vendor_gemini_memory_partial(path) -> list:
+    """T-12:memory's partial check: every context version loads only project blocks (no tag outside the loaded files'
+    bodies but GEMINI_CONTEXT_TAGS), each loaded file from inside its workspace directory; the pinned settings import
+    no further context file (no `context` block)."""
+    versions, refused = _gemini_versions_or(path, "inherited-context", "what memory it loaded cannot be shown")
+    if refused:
+        return refused
+    out = []
+    for where, text in versions:
+        facts = gemini_context_facts(text)
+        other = [t for t in facts["tags"] if t not in GEMINI_CONTEXT_TAGS]
+        if other:
+            out.append(f"[inherited-context] the session context ({where}) holds the block(s) {other}, beside the "
+                       "project's own: a context the study did not place")
+        out += [f"[inherited-context] the session context ({where}) loaded {p}, which is no project block inside its "
+                "workspace directory" for p, _ in facts["files"] if not _gemini_inside(p, facts["dirs"])]
+    settings, why = _gemini_pinned_settings(path)
+    if settings is None:
+        out.append(f"[inherited-context] the pinned settings cannot be built ({why}), so a context import cannot be "
+                   "ruled out")
+    elif "context" in settings:
+        out.append("[inherited-context] the pinned settings carry a context block, which can import a further context "
+                   "file")
+    return out
+
+
+def vendor_gemini_checkout_partial(path) -> list:
+    """T-13's partial check: the one CLI-written fact about the checkout, the directory listing's root, is the launch
+    folder in every context version. No partial check covers the checkout's git state (the ruling says so)."""
+    versions, refused = _gemini_versions_or(path, "checkout-binding", "the checkout it listed cannot be shown")
+    if refused:
+        return refused
+    folder = _gemini_launch_folder(path)
+    if folder is None:
+        return ["[checkout-binding] the launch journals record no one working folder, so the listed checkout cannot "
+                "be compared"]
+    return [f"[checkout-binding] the session context ({where}) lists the directory {root!r}, not the launch folder "
+            f"{folder!r}" for where, root in ((w, gemini_context_facts(t)["root"]) for w, t in versions)
+            if root != folder]
+
+
+def vendor_gemini_billing_route_partial(path) -> list:
+    """T-17:billing-route's partial check, three legs: environment.json's named variables hold no Gemini billing-route
+    name (only key- or token-shaped names are visible there, drive.py:656); the launch environment holds none and the
+    refused set covers all (run_take.py:963-973); the pinned auth setting is the API key (take_config.py:110-112)."""
+    names = tuple(_settle_g_run_take.VENDOR_BILLING_ROUTE_VARIABLES.get("gemini") or ())
+    out = []
+    if not names or isinstance(names, str):
+        return ["[environment-record] run_take names no Gemini billing-route variables, so none can be ruled out"]
+    try:
+        rec = json.loads((Path(path).parent / "environment.json").read_text(encoding="utf-8"))
+        present = {x["name"] for x in rec["names_present"]}
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        present = None
+        out.append(f"[environment-record] the environment record's named variables cannot be read ({type(e).__name__})")
+    if present is not None and present & set(names):
+        out.append(f"[environment-record] the environment record names the Gemini billing-route variable(s) "
+                   f"{sorted(present & set(names))}")
+    env = set(_settle_g_run_take.TAKE_ENV.get("gemini") or {})
+    if env & set(names):
+        out.append(f"[environment-record] the launch environment carries {sorted(env & set(names))}")
+    missing = sorted(set(names) - _settle_g_run_take.refused_variables("gemini"))
+    if missing:
+        out.append(f"[environment-record] the refused set misses the billing-route variable(s) {missing[:5]}")
+    settings, why = _gemini_pinned_settings(path)
+    if _settle_g_take_config.GEMINI_AUTH_SETTING != GEMINI_AUTH_RULED:
+        out.append(f"[environment-record] the pinned auth setting is {_settle_g_take_config.GEMINI_AUTH_SETTING!r}, "
+                   "not the API key")
+    elif settings is None:
+        out.append(f"[environment-record] the pinned settings cannot be built ({why})")
+    else:
+        node = settings
+        for part in GEMINI_AUTH_RULED["path"].split("."):
+            node = node.get(part) if isinstance(node, dict) else None
+        if node != GEMINI_AUTH_RULED["value"]:
+            out.append(f"[environment-record] the pinned settings select the auth type {node!r}, not the API key")
+    return out
+
+
+def _gemini_called_names(path) -> list:
+    """[(where, tool name)] of every call the take's records hold: each turn stream's tool_use, and in the last
+    retained snapshot each toolCalls entry and each functionCall part (a message's content or a $patch update's)."""
+    out = []
+    for k, env in enumerate(_vendor_envelopes(path), 1):
+        for n, line in enumerate(transcript_view.jsonl_lines(_vendor_stream(path, env)), 1):
+            rec = _binding._json(line)
+            if isinstance(rec, dict) and rec.get("type") == "tool_use":
+                out.append((f"turn-{k}.jsonl line {n}", rec.get("tool_name")))
+    for n, rec in _gemini_raw_records(path):
+        if not isinstance(rec, dict):
+            continue
+        patch = rec.get("$patch")
+        messages = [u for u in patch.get("updates") or [] if isinstance(u, dict)] if isinstance(patch, dict) else [rec]
+        for m in messages:
+            for t in m.get("toolCalls") or [] if isinstance(m.get("toolCalls"), list) else []:
+                if isinstance(t, dict) and "name" in t:
+                    out.append((f"session line {n} toolCalls", t.get("name")))
+            for p in m.get("content") if isinstance(m.get("content"), list) else []:
+                if isinstance(p, dict) and isinstance(p.get("functionCall"), dict):
+                    out.append((f"session line {n} functionCall", p["functionCall"].get("name")))
+    return out
+
+
+def vendor_gemini_tools_partial(path) -> list:
+    """T-18's partial check: no stream tool call and no session tool call names a denied tool, and all three sit in
+    the pinned exclude list (the settings take_config writes for the ledger's model)."""
+    out = []
+    try:
+        calls = _gemini_called_names(path)
+    except _VENDOR_READ_ERRORS + (_GeminiContextUnread,) as e:
+        return [f"[{TRANSCRIPT_UNREADABLE}] the take's tool calls cannot be read ({type(e).__name__}), so a denied "
+                "tool's call cannot be ruled out"]
+    denied = [(w, name) for w, name in calls if name in GEMINI_DENIED_TOOLS]
+    if denied:
+        out.append(f"[{HARNESS_CONDITION_VIOLATED}] the take called the denied tool(s) "
+                   f"{sorted({n for _, n in denied})} ({len(denied)} record(s); first: {denied[0][0]})")
+    settings, why = _gemini_pinned_settings(path)
+    excluded = ((settings or {}).get("tools") or {}).get("exclude") if isinstance(settings, dict) else None
+    if not isinstance(excluded, list) or not set(GEMINI_DENIED_TOOLS) <= set(excluded):
+        out.append(f"[{HARNESS_CONDITION_VIOLATED}] the pinned exclude list {excluded!r} does not hold every denied "
+                   f"tool {list(GEMINI_DENIED_TOOLS)}" + (f" ({why})" if why else ""))
+    return out
 
 
 # ---- END SETTLE: GEMINI READERS -------------------------------------------------------------------------------------
