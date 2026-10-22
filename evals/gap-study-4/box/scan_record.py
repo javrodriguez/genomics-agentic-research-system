@@ -28,8 +28,9 @@ other than a masked one is written back byte for byte, every line that was JSON 
 proved gone from the written bytes, and each file's sha256 before and after is recorded. Each masked hit is one
 event (`events`, which the drive step adds into agent_adapter.BOX_KEYS' outside_reach_events), and carries its
 line and its byte offset within the line, so the drive step can later tell harness furniture from the agent
-(FURNITURE is PENDING: an email or account field a CLI writes itself into its stream or session file would
-inflate the count; measured per harness on the stub take).
+(FURNITURE, filled 21 Oct 2026 from the walks: the positions of what each CLI writes itself into its stream or session
+file; account_positions(harness) names the fields that carry account data, which a scan masks or excludes by position
+and never prints).
 
 REFUSED. A hit in any other kind (the ledger, the evidence, a snapshot, a blob whose name is its own sha256, the
 preflight record, the proxy log, the launch record) cannot be masked and is refused, as is every rules-scanner
@@ -129,7 +130,196 @@ PENDING = "PENDING"
 RULES_SCANNER = {"adapter": "box.rules_scanner", "factory": "gitleaks_scanner", "version": "8.30.1",
                  "sha256": "88f91962aa2f93ac6ab281d553b9e125f5197bbbce38f9f2437f7299c32e5509",
                  "binary": "/home/javier/gap4-tools/gitleaks-8.30.1/gitleaks"}
-FURNITURE = PENDING
+# FILLED 21 Oct 2026 (lane d8-furniture, glitch-f1 under Javier's standing delegation; D8 lines 352, 472, 481, 494): what
+# each CLI writes itself into its stream (`stream`: the per-turn turn-N.jsonl) or its session file (`session`: Claude
+# Code's transcript.jsonl; Codex's rollout and Gemini CLI's chat file, retained as session/native-turn-N.jsonl, each a
+# byte prefix of the next), read end to end on w-o46 and w-g21 (D8-READ-w-o46-20261021.md, D8-READ-w-g21-20261021.md)
+# and surveyed by record kind and key path over all 225 walks at d5c0f798 (lane-reports/d8-furniture-LANE.md). Never
+# the operator's or the model's words: a field that copies them (Codex task_complete's last_agent_message, Gemini's
+# $patch contents, Claude's last-prompt and result text) is left out of `fields`.
+#   file       "session" or "stream"
+#   record     the record kind, by awareness_furniture.record_kind's rule: Codex type[/payload.type][/role], a
+#              CLI-injected user message as response_item/message/user:injected; Gemini type, user:session_context,
+#              $set:<keys>, $patch, <header>; Claude type[/subtype] and attachment:<type>
+#   fields     dotted paths whose string leaves the CLI wrote ("[]" every list item, "[n]" one, "*" the whole record
+#              less the record's account positions)
+#   account    None; "identifying" (names the account: a scan masks or excludes it, never prints it); "plan" (describes
+#              the account's plan or credit: excluded the same way)
+#   evidence   walk folder/file:line under rehearsals/ where the record kind stands (read, never edited)
+# Codex at 0.162.1: w-o46 predates lane B22's [agents] enabled = false (take_config.py:72-78, 280-284) and carries three
+# developer records (skills/permissions/collaboration, multi_agent.role_instructions, multi_agent.mode_instructions);
+# the post-B22 walks (w-o39..w-o44, w-o47) carry one, and their session_meta and turn_context multi_agent_version read
+# "disabled" (pre-B22: absent and "v2"), with world_state's multi_agent_mode and multi_agent_usage_hint gone. The kinds
+# below hold for both; the record counts differ. Gemini at 0.64.0 writes no account field: its header's projectHash is
+# sha256 of the run-tree path (36 of 36 walks). Claude Code at 2.1.296 writes plan fields only.
+FURNITURE_KEYS = ("file", "record", "fields", "account", "evidence")
+ACCOUNT_CLASSES = (None, "identifying", "plan")
+_O46, _O47 = "w-o46/session/native-turn-3.jsonl:", "w-o47/session/native-turn-1.jsonl:"
+_O46S, _O47S = "w-o46/turn-1.jsonl:", "w-o47/turn-1.jsonl:"
+_G21, _G21S = "w-g21/session/native-turn-2.jsonl:", "w-g21/turn-1.jsonl:"
+_C, _CS = "w168/transcript.jsonl:", "w168/turn-1.jsonl:"
+_CODEX_META = ("timestamp", "payload.id", "payload.internal_chat_message_metadata_passthrough", "metadata")
+_CC_ENVELOPE = ("type", "uuid", "parentUuid", "timestamp", "sessionId", "cwd", "entrypoint", "gitBranch", "userType",
+                "version", "promptId", "requestId")
+FURNITURE = {
+    "codex": (
+        {"file": "session", "record": "session_meta", "fields": ("*",), "account": None,
+         "evidence": (_O46 + "1", _O47 + "1")},
+        {"file": "session", "record": "session_meta", "fields": ("payload.creator_user_id", "payload.creator_account_id"),
+         "account": "identifying", "evidence": (_O46 + "1", _O47 + "1")},
+        {"file": "session", "record": "response_item/message/developer", "fields": ("*",), "account": None,
+         "evidence": (_O46 + "3", _O46 + "4", _O46 + "5", _O47 + "3")},
+        {"file": "session", "record": "response_item/message/user:injected", "fields": ("*",), "account": None,
+         "evidence": (_O46 + "6", _O47 + "4")},
+        {"file": "session", "record": "world_state", "fields": ("*",), "account": None,
+         "evidence": (_O46 + "7", _O47 + "5")},
+        {"file": "session", "record": "turn_context", "fields": ("*",), "account": None,
+         "evidence": (_O46 + "8", _O47 + "6")},
+        {"file": "session", "record": "event_msg/task_started", "fields": ("*",), "account": None,
+         "evidence": (_O46 + "2", _O47 + "2")},
+        {"file": "session", "record": "event_msg/thread_settings_applied", "fields": ("*",), "account": None,
+         "evidence": (_O46 + "40", _O46 + "41")},
+        {"file": "session", "record": "event_msg/task_complete",
+         "fields": ("timestamp", "type", "payload.type", "payload.turn_id", "payload.root_turn_id"), "account": None,
+         "evidence": (_O46 + "39", _O47 + "62")},
+        {"file": "session", "record": "token_usage_record", "fields": ("*",), "account": None,
+         "evidence": (_O46 + "14", _O47 + "12")},
+        {"file": "session", "record": "event_msg/token_count", "fields": ("*",), "account": None,
+         "evidence": (_O46 + "17", _O47 + "15")},
+        {"file": "session", "record": "event_msg/token_count",
+         "fields": ("payload.rate_limits.plan_type", "payload.rate_limits.credits.has_credits",
+                    "payload.rate_limits.credits.unlimited", "payload.rate_limits.credits.balance"),
+         "account": "plan", "evidence": (_O46 + "17", _O47 + "15")},
+        {"file": "session", "record": "event_msg/item_completed",
+         "fields": ("timestamp", "type", "payload.type", "payload.thread_id", "payload.turn_id", "payload.item.id",
+                    "payload.item.type", "payload.item.cwd", "payload.item.source", "payload.item.status",
+                    "payload.item.process_id", "payload.item.phase"), "account": None,
+         "evidence": (_O46 + "10", _O47 + "8")},
+        {"file": "session", "record": "response_item/message/assistant", "fields": _CODEX_META + ("payload.phase",),
+         "account": None, "evidence": (_O46 + "12", _O47 + "10")},
+        {"file": "session", "record": "response_item/message/user", "fields": _CODEX_META, "account": None,
+         "evidence": (_O46 + "9", _O47 + "7")},
+        {"file": "session", "record": "response_item/reasoning", "fields": _CODEX_META, "account": None,
+         "evidence": (_O46 + "54", _O47 + "17")},
+        {"file": "session", "record": "response_item/custom_tool_call",
+         "fields": _CODEX_META + ("payload.call_id", "payload.name", "payload.status"), "account": None,
+         "evidence": (_O46 + "13", _O47 + "11")},
+        {"file": "session", "record": "response_item/custom_tool_call_output",
+         "fields": _CODEX_META + ("payload.call_id", "payload.output[0].text"), "account": None,
+         "evidence": (_O46 + "16", _O47 + "14")},
+        {"file": "stream", "record": "thread.started", "fields": ("*",), "account": None,
+         "evidence": (_O46S + "1", _O47S + "1")},
+        {"file": "stream", "record": "turn.started", "fields": ("*",), "account": None,
+         "evidence": (_O46S + "2", _O47S + "2")},
+        {"file": "stream", "record": "turn.completed", "fields": ("*",), "account": None,
+         "evidence": (_O46S + "14", _O47S + "20")},
+        {"file": "stream", "record": "item.started/command_execution", "fields": ("item.id", "item.type", "item.status"),
+         "account": None, "evidence": (_O46S + "4", _O47S + "4")},
+        {"file": "stream", "record": "item.completed/command_execution",
+         "fields": ("item.id", "item.type", "item.status"), "account": None, "evidence": (_O46S + "5", _O47S + "5")},
+        {"file": "stream", "record": "item.completed/agent_message", "fields": ("item.id", "item.type"),
+         "account": None, "evidence": (_O46S + "3", _O47S + "3")},
+    ),
+    "gemini": (
+        {"file": "session", "record": "<header>", "fields": ("*",), "account": None, "evidence": (_G21 + "1",)},
+        {"file": "session", "record": "$set:lastUpdated", "fields": ("*",), "account": None,
+         "evidence": (_G21 + "3",)},
+        {"file": "session", "record": "$set:sessionId", "fields": ("*",), "account": None,
+         "evidence": (_G21 + "153",)},
+        {"file": "session", "record": "$patch", "fields": ("$patch.orderIds", "$patch.removeIds", "$patch.updates[].id"),
+         "account": None, "evidence": (_G21 + "183", "w-g14/session/native-turn-4.jsonl:515")},
+        {"file": "session", "record": "user:session_context", "fields": ("type", "id", "timestamp", "content[0].text"),
+         "account": None, "evidence": (_G21 + "2", "w-g14/session/native-turn-4.jsonl:517")},
+        {"file": "session", "record": "user",
+         "fields": ("type", "id", "timestamp", "content[].functionResponse.id", "content[].functionResponse.name"),
+         "account": None, "evidence": (_G21 + "4", _G21 + "9")},
+        {"file": "session", "record": "gemini",
+         "fields": ("type", "id", "timestamp", "model", "tokens", "thoughts[].timestamp", "toolCalls[].id",
+                    "toolCalls[].status", "toolCalls[].timestamp", "toolCalls[].displayName",
+                    "toolCalls[].description", "toolCalls[].resultDisplay", "toolCalls[].renderOutputAsMarkdown",
+                    "toolCalls[].result[].functionResponse.id", "toolCalls[].result[].functionResponse.name"),
+         "account": None, "evidence": (_G21 + "6", _G21 + "8")},
+        {"file": "stream", "record": "init", "fields": ("*",), "account": None, "evidence": (_G21S + "1",)},
+        {"file": "stream", "record": "result", "fields": ("*",), "account": None, "evidence": (_G21S + "78",)},
+        {"file": "stream", "record": "message", "fields": ("type", "timestamp", "role", "delta"), "account": None,
+         "evidence": (_G21S + "2",)},
+        {"file": "stream", "record": "tool_use", "fields": ("type", "timestamp", "tool_id"), "account": None,
+         "evidence": (_G21S + "3",)},
+        {"file": "stream", "record": "tool_result", "fields": ("type", "timestamp", "tool_id", "status", "error"),
+         "account": None, "evidence": (_G21S + "7",)},
+    ),
+    "claude-code": (
+        {"file": "session", "record": "attachment:agent_listing_delta", "fields": ("*",), "account": None,
+         "evidence": (_C + "7",)},
+        {"file": "session", "record": "attachment:date", "fields": ("*",), "account": None, "evidence": (_C + "13",)},
+        {"file": "session", "record": "attachment:deferred_tools_delta", "fields": ("*",), "account": None,
+         "evidence": (_C + "6",)},
+        {"file": "session", "record": "attachment:edited_text_file", "fields": ("*",), "account": None,
+         "evidence": ("w142/transcript.jsonl:82",)},
+        {"file": "session", "record": "attachment:environment", "fields": ("*",), "account": None,
+         "evidence": (_C + "4",)},
+        {"file": "session", "record": "attachment:instructions", "fields": ("*",), "account": None,
+         "evidence": (_C + "11",)},
+        {"file": "session", "record": "attachment:model", "fields": ("*",), "account": None, "evidence": (_C + "5",)},
+        {"file": "session", "record": "attachment:nested_memory", "fields": ("*",), "account": None,
+         "evidence": ("w002/transcript.jsonl:47",)},
+        {"file": "session", "record": "attachment:prompt_snapshot", "fields": ("*",), "account": None,
+         "evidence": (_C + "15",)},
+        {"file": "session", "record": "attachment:queued_command", "fields": ("*",), "account": None,
+         "evidence": ("w003/transcript.jsonl:69",)},
+        {"file": "session", "record": "attachment:remote_session_change", "fields": ("*",), "account": None,
+         "evidence": (_C + "14",)},
+        {"file": "session", "record": "attachment:session_context", "fields": ("*",), "account": None,
+         "evidence": (_C + "12",)},
+        {"file": "session", "record": "attachment:skill_listing", "fields": ("*",), "account": None,
+         "evidence": (_C + "8",)},
+        {"file": "session", "record": "attachment:task_reminder", "fields": ("*",), "account": None,
+         "evidence": ("w001/transcript.jsonl:54",)},
+        {"file": "session", "record": "attachment:total_tokens_reminder", "fields": ("*",), "account": None,
+         "evidence": (_C + "9",)},
+        {"file": "session", "record": "queue-operation", "fields": ("type", "operation", "timestamp", "sessionId"),
+         "account": None, "evidence": (_C + "1",)},
+        {"file": "session", "record": "last-prompt", "fields": ("type", "sessionId"), "account": None,
+         "evidence": (_C + "16",)},
+        {"file": "session", "record": "atis-latch", "fields": ("*",), "account": None, "evidence": (_C + "10",)},
+        {"file": "session", "record": "cost-state", "fields": ("*",), "account": None, "evidence": (_C + "72",)},
+        {"file": "session", "record": "mode", "fields": ("*",), "account": None,
+         "evidence": ("w001/transcript.jsonl:80",)},
+        {"file": "session", "record": "user", "fields": _CC_ENVELOPE + ("isSidechain",), "account": None,
+         "evidence": (_C + "3",)},
+        {"file": "session", "record": "assistant",
+         "fields": _CC_ENVELOPE + ("message.id", "message.model", "message.type", "message.role",
+                                   "message.stop_reason", "message.usage"), "account": None,
+         "evidence": (_C + "18",)},
+        {"file": "stream", "record": "system/init", "fields": ("*",), "account": None, "evidence": (_CS + "1",)},
+        {"file": "stream", "record": "system/init", "fields": ("apiKeySource",), "account": "plan",
+         "evidence": (_CS + "1",)},
+        {"file": "stream", "record": "rate_limit_event", "fields": ("*",), "account": None, "evidence": (_CS + "4",)},
+        {"file": "stream", "record": "rate_limit_event", "fields": ("rate_limit_info",), "account": "plan",
+         "evidence": (_CS + "4",)},
+        {"file": "stream", "record": "system/thinking_tokens", "fields": ("*",), "account": None,
+         "evidence": (_CS + "15",)},
+        {"file": "stream", "record": "system/task_started", "fields": ("*",), "account": None,
+         "evidence": ("w003/turn-1.jsonl:38",)},
+        {"file": "stream", "record": "system/task_updated", "fields": ("*",), "account": None,
+         "evidence": ("w003/turn-1.jsonl:40",)},
+        {"file": "stream", "record": "system/task_notification", "fields": ("*",), "account": None,
+         "evidence": ("w003/turn-1.jsonl:41",)},
+        {"file": "stream", "record": "system/background_tasks_changed", "fields": ("*",), "account": None,
+         "evidence": ("w003/turn-1.jsonl:37",)},
+        {"file": "stream", "record": "command_lifecycle", "fields": ("*",), "account": None,
+         "evidence": ("w033/turn-1.jsonl:86",)},
+        {"file": "stream", "record": "result/success",
+         "fields": ("type", "subtype", "uuid", "session_id", "stop_reason", "terminal_reason", "fast_mode_state",
+                    "fast_mode_disabled_reason", "usage", "origin", "permission_denials"), "account": None,
+         "evidence": (_CS + "41",)},
+        {"file": "stream", "record": "assistant",
+         "fields": ("type", "uuid", "session_id", "parent_tool_use_id", "message.id", "message.model",
+                    "message.usage"), "account": None, "evidence": (_CS + "2",)},
+        {"file": "stream", "record": "user", "fields": ("type", "uuid", "session_id", "parent_tool_use_id", "timestamp"),
+         "account": None, "evidence": (_CS + "5",)},
+    ),
+}
 _PENDING_WHY = {
     "rules_scanner": "the real rules scanner: gitleaks' rules on athena, over the take's record folder only (never "
                      "the Brain root); its adapter and pinned version are measured there",
@@ -171,10 +361,17 @@ def real_rules_scanner() -> dict:
 
 
 def furniture_positions(harness: str):
-    """Where `harness` writes its own account fields: refused while FURNITURE is PENDING."""
+    """What `harness` writes itself into its stream or session file (FURNITURE's entries): refused while FURNITURE is
+    PENDING."""
     if FURNITURE == PENDING:
         raise NotReady("the per-harness furniture positions are PENDING (measured on the stub take)")
     return FURNITURE[harness]
+
+
+def account_positions(harness: str):
+    """The entries of furniture_positions(harness) whose fields carry account data ("identifying" or "plan"): a scan
+    masks or excludes these positions and never prints their values."""
+    return tuple(e for e in furniture_positions(harness) if e["account"])
 
 
 # ------------------------------------------------------------------------------------------------- login files
