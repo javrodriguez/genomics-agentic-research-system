@@ -200,7 +200,9 @@ def marker_command(fired_path: str, event: str) -> str:
 # (bundle/chunk-NR7L3FXV.js:365647-365648 and 365666-365668, read in the pinned copy whose sha256 is d566e81b...), so a
 # regex matcher such as ".*" matches no trigger; an empty matcher matches every one (365637-365639: `!entry.matcher`).
 # The per-turn events keep ".*", which the tool-name road reads as a regex (365655-365662). Codex keeps GARS's shape.
-GEMINI_TRIGGER_EVENTS = ("SessionStart", "SessionEnd")
+# PreCompress matches its trigger the same way (365807; the closure review of d07561f6): armed, never exercised,
+# since the stub never compresses.
+GEMINI_TRIGGER_EVENTS = ("SessionStart", "SessionEnd", "PreCompress")
 
 
 def _entry(fired_path: str, event: str, matcher: str = ".*") -> list:

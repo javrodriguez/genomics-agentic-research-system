@@ -133,3 +133,9 @@ Fix: Gemini SessionStart and SessionEnd entries carry `"matcher": ""` (GEMINI_TR
 - Red, 04:43:49-04:43:58: a new test reading the generated settings of both twins (SessionStart and SessionEnd matcher `""`, the rest `.*`) plus the updated hooks-document test: "Ran 65 tests", "FAILED (failures=5)".
 - Green, 04:44:11-04:44:23: "Ran 65 tests", "OK"; B27's test_stub_model_probe "OK".
 Next: the reviewer's short closure, then the HG-only trip (`--scenarios HG`, Gemini image only) after the furniture battery, shipped from the B26 clone as before.
+
+## Stage 5, the closure's NIT (the closure of d07561f6 PASSED with one NIT)
+
+PreCompress also matches its trigger by exact string (firePreCompressEvent passes `{ trigger }` as the context, chunk-NR7L3FXV.js:365807 in the verified pin, sha256 prefix d566e81b1df8d4d4 re-read at the fold), so its `.*` could never fire; it now carries `"matcher": ""` with SessionStart and SessionEnd (GEMINI_TRIGGER_EVENTS).
+The HG stub script never compresses, so PreCompress is armed but not exercised by this control.
+Red, 04:47:04 EDT (the extended tests with the module fold stashed): "Ran 65 tests", "FAILED (failures=3)"; green, 04:47:19: "Ran 65 tests", "OK".

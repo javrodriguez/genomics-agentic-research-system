@@ -111,7 +111,7 @@ class HooksDoc(unittest.TestCase):
         self.assertEqual(sorted(doc), sorted(hcp.GEMINI_EVENTS))
         self.assertEqual(len(hcp.GEMINI_EVENTS), 11)
         for ev, defs in doc.items():
-            m = "" if ev in ("SessionStart", "SessionEnd") else ".*"
+            m = "" if ev in ("SessionStart", "SessionEnd", "PreCompress") else ".*"
             self.assertEqual(defs, [{"matcher": m, "hooks": [{"type": "command",
                                                                "command": hcp.marker_command(FIRED, ev)}]}])
 
@@ -124,10 +124,10 @@ class HooksDoc(unittest.TestCase):
         t = hcp.hook_twins(rt.GEMINI, study, fired_path=FIRED)
         for twin in ("off", "on"):
             hooks = json.loads(t[twin][take_config.GEMINI_SETTINGS_PATH])["hooks"]
-            for ev in ("SessionStart", "SessionEnd"):
+            for ev in ("SessionStart", "SessionEnd", "PreCompress"):
                 with self.subTest(twin=twin, event=ev):
                     self.assertEqual([d.get("matcher") for d in hooks[ev]], [""])
-            for ev in set(hcp.GEMINI_EVENTS) - {"SessionStart", "SessionEnd"}:
+            for ev in set(hcp.GEMINI_EVENTS) - {"SessionStart", "SessionEnd", "PreCompress"}:
                 with self.subTest(twin=twin, event=ev):
                     self.assertEqual([d.get("matcher") for d in hooks[ev]], [".*"])
 
