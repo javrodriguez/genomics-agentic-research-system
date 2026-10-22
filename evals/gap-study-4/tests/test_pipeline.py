@@ -1214,6 +1214,25 @@ class Reporting(unittest.TestCase):
         with mock.patch.object(completeness, "pair_count", lambda pre: 10):
             self.assertEqual(completeness.summarize(pre, [], {}, [])["task_pairs"], 10)
 
+    def test_a_deferred_arms_half_cells_read_deferred(self):
+        # Lane gemini-defer, ruling R3 (glitch-f1, 22 Oct 2026): a deferred arm's unmeasured half-cells read the frozen
+        # deferral, "deferred (Javier, 22 Oct 2026)", never "no takes"; other arms keep "no takes".
+        pre = pre_registration(("synthetic-a", "synthetic-b"))
+        pre["rows"][1].update(arm="G", half_cell="c-g")
+        pre["deferred_arms"] = {"G": {"status": "deferred", "by": "Javier",
+                                      "words": "Javier's reply \"gemini-defer yes\", Thu 22 Oct 2026 09:19:59 EDT"}}
+        cells = {c["arm"]: c for c in completeness.summarize(pre, [], {}, [])["cells"]}
+        self.assertEqual(cells["G"]["state"], "deferred (Javier, 22 Oct 2026)")
+        self.assertIn("deferred_arms", cells["G"]["reason"])
+        self.assertEqual(cells["A"]["state"], stats.NO_TAKES)
+        self.assertEqual(cells["A"]["reason"], "no committed graded take")
+        self.assertIn("| deferred (Javier, 22 Oct 2026) |", completeness.render({"task_pairs": 2,
+                                                                                 "cells": list(cells.values())}))
+        # a committed mechanical state keeps its precedence
+        states = {"c-g": {"state": labels4.INCOMPLETE_MECHANICAL, "reason": "synthetic committed state"}}
+        cells = {c["arm"]: c for c in completeness.summarize(pre, [], states, [])["cells"]}
+        self.assertEqual(cells["G"]["state"], labels4.INCOMPLETE_MECHANICAL)
+
     def test_mechanical_state_read_even_without_a_graded_record(self):
         pre = pre_registration()
         states = {"c1": {"state": labels4.INCOMPLETE_MECHANICAL, "reason": "synthetic committed state"}}
