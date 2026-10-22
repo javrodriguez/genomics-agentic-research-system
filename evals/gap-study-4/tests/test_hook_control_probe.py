@@ -111,8 +111,25 @@ class HooksDoc(unittest.TestCase):
         self.assertEqual(sorted(doc), sorted(hcp.GEMINI_EVENTS))
         self.assertEqual(len(hcp.GEMINI_EVENTS), 11)
         for ev, defs in doc.items():
-            self.assertEqual(defs, [{"matcher": ".*", "hooks": [{"type": "command",
-                                                                  "command": hcp.marker_command(FIRED, ev)}]}])
+            m = "" if ev in ("SessionStart", "SessionEnd") else ".*"
+            self.assertEqual(defs, [{"matcher": m, "hooks": [{"type": "command",
+                                                               "command": hcp.marker_command(FIRED, ev)}]}])
+
+    def test_gemini_session_entries_match_every_trigger(self):
+        # glitch-f1's ruling after the 22 Oct HG trip: 0.64.0 matches a SessionStart or SessionEnd entry against its
+        # trigger by exact string equality (chunk-NR7L3FXV.js:365647-365648, 365666-365668), so a regex such as ".*"
+        # matches no trigger; only an empty matcher, none or "*" matches all (365640-365643). Read from the generated
+        # settings, the way the probe writes them.
+        study = study_files(rt.GEMINI)
+        t = hcp.hook_twins(rt.GEMINI, study, fired_path=FIRED)
+        for twin in ("off", "on"):
+            hooks = json.loads(t[twin][take_config.GEMINI_SETTINGS_PATH])["hooks"]
+            for ev in ("SessionStart", "SessionEnd"):
+                with self.subTest(twin=twin, event=ev):
+                    self.assertEqual([d.get("matcher") for d in hooks[ev]], [""])
+            for ev in set(hcp.GEMINI_EVENTS) - {"SessionStart", "SessionEnd"}:
+                with self.subTest(twin=twin, event=ev):
+                    self.assertEqual([d.get("matcher") for d in hooks[ev]], [".*"])
 
     def test_codex_plants_session_start_and_pre_tool_use_in_gars_shape(self):
         doc = hcp.hooks_doc(rt.CODEX, FIRED)

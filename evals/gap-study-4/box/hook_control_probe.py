@@ -196,14 +196,21 @@ def marker_command(fired_path: str, event: str) -> str:
     return f'{MARKER_PYTHON} -I -S -c "{MARKER_PROGRAM}" {fired_path} {event}'
 
 
-def _entry(fired_path: str, event: str) -> list:
-    return [{"matcher": ".*", "hooks": [{"type": "command", "command": marker_command(fired_path, event)}]}]
+# Gemini CLI 0.64.0 matches a SessionStart or SessionEnd entry against its trigger by exact string equality
+# (bundle/chunk-NR7L3FXV.js:365647-365648 and 365666-365668, read in the pinned copy whose sha256 is d566e81b...), so a
+# regex matcher such as ".*" matches no trigger; an empty matcher matches every one (365637-365639: `!entry.matcher`).
+# The per-turn events keep ".*", which the tool-name road reads as a regex (365655-365662). Codex keeps GARS's shape.
+GEMINI_TRIGGER_EVENTS = ("SessionStart", "SessionEnd")
+
+
+def _entry(fired_path: str, event: str, matcher: str = ".*") -> list:
+    return [{"matcher": matcher, "hooks": [{"type": "command", "command": marker_command(fired_path, event)}]}]
 
 
 def hooks_doc(harness: str, fired_path: str) -> dict:
     """Gemini: settings.json's `hooks` value, all eleven events; Codex: hooks.json, SessionStart and PreToolUse."""
     if harness == GEMINI:
-        return {ev: _entry(fired_path, ev) for ev in GEMINI_EVENTS}
+        return {ev: _entry(fired_path, ev, "" if ev in GEMINI_TRIGGER_EVENTS else ".*") for ev in GEMINI_EVENTS}
     if harness == CODEX:
         return {"hooks": {ev: _entry(fired_path, ev) for ev in CODEX_EVENTS}}
     raise HookRefused(f"no hook control for {harness!r}")
