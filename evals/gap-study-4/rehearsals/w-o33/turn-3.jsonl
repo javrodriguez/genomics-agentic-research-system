@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a15ab4-11a7-7ef3-9122-7bff519fa4a1"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The stage 01 check reported **2 groups**, but the design table preserves the `condition` values from your `samples.csv`. I can’t tell why it shows three conditions without inspecting the generated table. The pending wait point is your review of the samplesheet and design table before stage 02."}}
+{"type":"turn.completed","usage":{"input_tokens":227768,"cached_input_tokens":193536,"cache_write_input_tokens":0,"output_tokens":1188,"reasoning_output_tokens":109}}
