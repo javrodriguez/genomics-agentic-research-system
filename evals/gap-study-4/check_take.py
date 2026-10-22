@@ -6839,6 +6839,48 @@ def _gemini_called_names(path) -> list:
     return out
 
 
+# Stage Z (2b), GEMINI-S0-READ: Gemini CLI 0.64.0 has no memory tool ("There is no `save_memory` tool", [C] 335232,
+# 335872); it saves memory by editing the memory files with write_file or replace (or a shell command), so a
+# memory-saving call is one of those naming GEMINI.md outside the workspace or a /memory/ path under the config folder
+# (GEMINI_CLI_HOME, the take's config mount; the global file and the private project memory, [C] 363483-363518).
+GEMINI_MEMORY_WRITE_TOOLS = {"write_file": "file_path", "replace": "file_path", "run_shell_command": "command"}
+_GEMINI_PATHLIKE = re.compile(r"[~A-Za-z0-9_./-]*(?:GEMINI\.md|/memory/)[A-Za-z0-9_./-]*")
+
+
+def _gemini_resolved(p: str, workspace) -> str:
+    if p.startswith("~/") or p == "~":
+        return posixpath.normpath(SWEEP_CONFIG_MOUNT + p[1:])
+    if not p.startswith("/"):
+        return posixpath.normpath(posixpath.join(workspace or "/", p))
+    return posixpath.normpath(p)
+
+
+def gemini_memory_file_writes(path) -> list:
+    """[(where, tool, the path)] of every write_file, replace and run_shell_command call in the take's turn streams
+    whose path names GEMINI.md outside the workspace (the launch folder) or a /memory/ path under the config folder.
+    Raises on an unreadable stream (as the stream readers do)."""
+    workspace = _gemini_launch_folder(path)
+    cfg = SWEEP_CONFIG_MOUNT.rstrip("/") + "/"
+    out = []
+    for k, env in enumerate(_vendor_envelopes(path), 1):
+        for n, line in enumerate(transcript_view.jsonl_lines(_vendor_stream(path, env)), 1):
+            rec = _binding._json(line)
+            if not (isinstance(rec, dict) and rec.get("type") == "tool_use"
+                    and rec.get("tool_name") in GEMINI_MEMORY_WRITE_TOOLS):
+                continue
+            arg = (rec.get("parameters") or {}).get(GEMINI_MEMORY_WRITE_TOOLS[rec["tool_name"]])
+            if not isinstance(arg, str):
+                continue
+            named = [arg] if rec["tool_name"] != "run_shell_command" else _GEMINI_PATHLIKE.findall(arg)
+            for p in named:
+                full = _gemini_resolved(p, workspace)
+                outside = not (workspace and (full == workspace or full.startswith(workspace.rstrip("/") + "/")))
+                if (posixpath.basename(full) == "GEMINI.md" and outside) or (
+                        "/memory/" in full + "/" and full.startswith(cfg)):
+                    out.append((f"turn-{k}.jsonl line {n}", rec["tool_name"], p))
+    return out
+
+
 def vendor_gemini_tools_partial(path) -> list:
     """T-18's partial check: no stream tool call and no session tool call names a denied tool, and all three sit in
     the pinned exclude list (the settings take_config writes for the ledger's model)."""
