@@ -1,0 +1,91 @@
+{
+ "harness": "gemini",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     ".gemini/tmp/run-2877839e",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-2877839e/.project_root",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-2877839e/chats",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-2877839e/chats/session-2026-10-21T07-06-70148a99.jsonl",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-2877839e/logs",
+     "dir"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     ".gemini/tmp/run-2877839e",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-2877839e/.project_root",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-2877839e/chats",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-2877839e/chats/session-2026-10-21T07-06-70148a99.jsonl",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-2877839e/logs",
+     "dir"
+    ]
+   ]
+  }
+ ],
+ "nested_cli_calls": 0,
+ "root": ".gemini/tmp",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-2877839e",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/.gemini/tmp/run-2877839e/chats/session-2026-10-21T07-06-70148a99.jsonl",
+     "gemini",
+     "70148a99-2a47-45e8-a5b4-80d0d59bd36f"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-2877839e",
+    "/var/tmp"
+   ],
+   "scanned": 436,
+   "truncated": false,
+   "unreadable": []
+  }
+ ],
+ "unread_stream_lines": 0
+}
