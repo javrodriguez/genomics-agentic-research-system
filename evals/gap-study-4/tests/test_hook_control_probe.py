@@ -521,6 +521,19 @@ class Verdict(unittest.TestCase):
                        liveness=[{"exit_class": "exec-failed", "first_type": None}])
         self.assertEqual(self.v(dead)["arms"]["O"]["verdict"], "INCONCLUSIVE")
 
+    def test_a_missing_run_on_another_road_still_blocks_a_pass(self):
+        # stage 4 mutant V6: C1 passes, but C0's O-off-study never ran
+        units = [u for u in good_units(("HO-C0", "HO-C1")) if (u["scenario"], u["run"]) != ("HO-C0", "O-off-study")]
+        self.assertEqual(self.v(units)["arms"]["O"]["verdict"], "INCONCLUSIVE")
+
+    def test_a_docker_exec_failure_is_never_live_even_matched(self):
+        # stage 4 mutant L3: the off twin's exec failed exactly as its on twin's did
+        failed = [{"exit_class": "exec-failed", "first_type": None}]
+        units = good_units()
+        for run in ("O-on-bypass", "O-off-bypass", "O-off-study"):
+            units = replace(units, run, liveness=failed)
+        self.assertEqual(self.v(units)["arms"]["O"]["verdict"], "INCONCLUSIVE")
+
     def test_an_off_twin_counts_as_silent_only_when_live(self):
         # REVIEW M1: an off twin whose CLI never got as far as its on twin is no evidence for the switch
         for run, live in (("O-off-bypass", [{"exit_class": "exec-failed", "first_type": None}]),
