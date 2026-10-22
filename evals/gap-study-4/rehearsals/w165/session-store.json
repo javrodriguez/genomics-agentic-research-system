@@ -1,0 +1,73 @@
+{
+ "harness": "claude-code",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "projects/-tmp-run-0690bdc0",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-0690bdc0/0690bdc0-e394-5fa3-9a66-0598d08dcd30.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-2",
+   "entries": [
+    [
+     "projects/-tmp-run-0690bdc0",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-0690bdc0/0690bdc0-e394-5fa3-9a66-0598d08dcd30.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "projects/-tmp-run-0690bdc0",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-0690bdc0/0690bdc0-e394-5fa3-9a66-0598d08dcd30.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "root": "projects",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "files": [
+    [
+     "/opt/cfg/projects/-tmp-run-0690bdc0/0690bdc0-e394-5fa3-9a66-0598d08dcd30.jsonl",
+     "claude",
+     "0690bdc0-e394-5fa3-9a66-0598d08dcd30"
+    ]
+   ],
+   "scanned": 1411,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-2",
+   "files": [
+    [
+     "/opt/cfg/projects/-tmp-run-0690bdc0/0690bdc0-e394-5fa3-9a66-0598d08dcd30.jsonl",
+     "claude",
+     "0690bdc0-e394-5fa3-9a66-0598d08dcd30"
+    ]
+   ],
+   "scanned": 1411,
+   "truncated": false,
+   "unreadable": []
+  }
+ ]
+}
