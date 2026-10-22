@@ -1064,6 +1064,19 @@ class CZ2(unittest.TestCase):
         self.assertTrue(got and all(x.startswith(f"[{ct.TRANSCRIPT_UNREADABLE}] ") for x in got), got)
         self.assertTrue(any("apply_patch" in x for x in got), got)
 
+    def test_z2_t8_a_path_qualified_apply_patch_alias_refuses(self):
+        # Codex closure NIT: the alias matched by its basename wherever a command word can stand
+        for cmd in ("/usr/local/bin/apply_patch < /tmp/p.diff", "cd x && ./apply_patch < p.diff",
+                    "true; /opt/codex/tmp/arg0/codex-arg0abc123/applypatch <<'EOF'"):
+            with self.subTest(cmd=cmd), vp.planted(O46, _first_command_execution(lambda r: r["payload"]["item"].update(
+                    command=["/bin/bash", "-lc", cmd]))()) as plant:
+                got = ct.vendor_file_change_problems(plant.path, "codex")
+                self.assertTrue(any("apply_patch alias" in x for x in got), got)
+        for cmd in ("cat docs/apply_patch.md", "grep apply_patch_x notes.txt"):   # not a command word
+            with self.subTest(cmd=cmd), vp.planted(O46, _first_command_execution(lambda r: r["payload"]["item"].update(
+                    command=["/bin/bash", "-lc", cmd]))()) as plant:
+                self.assertEqual(ct.vendor_file_change_problems(plant.path, "codex"), [])
+
     def test_z2_offered_an_exec_script_calling_another_tool_fires(self):
         with vp.planted(O46, _first_exec_call(lambda r: r["payload"].update(
                 input=r["payload"]["input"] + '; text(await tools.web_run({q: "x"}))'))()) as plant:
