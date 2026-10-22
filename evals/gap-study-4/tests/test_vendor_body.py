@@ -533,7 +533,7 @@ CASES = {
                                                   {"transcript-unreadable": 2, "inherited-context": 5,
                                                    "unknown-harness-origin": 1, "leak-in-loaded-context": 1,
                                                    "environment-record": 1, "checkout-binding": 2,
-                                                   "constant-binding": 1, "harness-condition-violated": 1}, None),
+                                                   "constant-binding": 3, "harness-condition-violated": 1}, None),
     "a gemini snapshot the ledger does not bind": (("gemini",), case_snapshot_unbound, {"transcript-unreadable": 10},
                                                    None),
     # no-first-agent-turn (T-1); the replies' markers go with the output
@@ -562,7 +562,8 @@ CASES = {
                                               None),
     "a turn with no launch journal": (("codex", "gemini"), case_no_journal,
                                       {"codex": {"inherited-context": 1},
-                                       "gemini": {"inherited-context": 3, "checkout-binding": 1}}, None),
+                                       "gemini": {"inherited-context": 3, "checkout-binding": 1,
+                                                  "constant-binding": 1}}, None),
     "a launch journal naming another turn's stream": (("codex", "gemini"), case_journal_of_another_turn,
                                                       {"inherited-context": 1}, None),
     # account-email (T-9): one event per take
@@ -623,7 +624,11 @@ CASES = {
     # constant-binding (T-24)
     "another turn budget": (("codex", "gemini"), case_budget, {"constant-binding": 1}, None),
     # transcript-unreadable (T-23): a stream in the folder no envelope binds, its line off the tables
-    "a turn stream line no parser read": (("codex", "gemini"), case_unread_stream, {"transcript-unreadable": 1}, None),
+    # stage V ruling (c): gemini's mode is read from every turn stream's launch journal (mode_binding.argv_mode walks
+    # the folder's turn-N.jsonl), and the stray stream has none
+    "a turn stream line no parser read": (("codex", "gemini"), case_unread_stream,
+                                          {"codex": {"transcript-unreadable": 1},
+                                           "gemini": {"transcript-unreadable": 1, "constant-binding": 1}}, None),
     # nested-agent (T-21)
     "a nested agent's session switch": (("codex",), edits(tool_command("codex exec --ephemeral hi"), None),
                                         {"nested-agent": 1}, None),
@@ -818,8 +823,10 @@ P2_WITNESSES = {
                               "the CLI wrote no session id"),
     "the stop problems dropped": (("        problems += stop_problems\n", ""), "a stop at a held marker"),
     "the operator lines dropped": (("        problems += line_problems\n", ""), "an operator line off the script"),
+    # stage V ruling (a): the call reads gemini's joined delta chunks (vendor_continuation_turns)
     "the continuation dropped": ((
-        "            problems += continuation_problems(turns, required, [], expected_project, expected_source)\n",
+        "            problems += continuation_problems(vendor_continuation_turns(path, harness, turns), required, [],\n"
+        "                                              expected_project, expected_source)\n",
         "            pass\n"),
         "a reply missing its step's marker"),
     "the fixture binding dropped": (("    problems += fixture_binding_problems(path, half, False)[0]\n", ""),
@@ -874,8 +881,9 @@ P2_WITNESSES = {
     "the walk binding dropped": ((
         "        problems += vendor_walk_binding_problems(path, task_id, half_name, walk_id, sid)\n", "        pass\n"),
         "a walk whose session id is not its walk's"),
-    "the constants dropped": (("    problems += constant_problems(ledger, pre)              # the ledger's budget, mode "
-                               "and gars tree (T-24)\n", ""), "another turn budget"),
+    # stage V ruling (c): the vendor road's constants read the mode from the harness's own record
+    "the constants dropped": (("    problems += vendor_constant_problems(path, harness, ledger, pre)   # budget, gars "
+                               "tree; mode from its record (T-24)\n", ""), "another turn budget"),
     "the session cwd unchecked": (("    if vendor_session_cwd(path, harness) is None:\n", "    if False:\n"),
                                   "a rollout turn in another working directory"),
     "the rollout cwd unchecked": (("        if cwd != design.run_tree:\n", "        if False:\n"),

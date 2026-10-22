@@ -676,8 +676,27 @@ class CSame(unittest.TestCase):
             name = ct.VENDOR_PENDING_ROWS["codex"][key]["reader"]
             with self.subTest(key=key), unittest.mock.patch.object(ct, name, _hollow(name)):
                 got = SAME_FIRES[("codex", key)](vp.fixture_folder(O46))
+                # stage V ruling (c): T-24's constants read the same rollout mode record (vendor_constant_problems,
+                # its lines naming their source), so T-16's hollow witness reads past those lines
                 self.assertFalse([p for p in vp.added_lines(clean_check(O46), got)
-                                  if p.startswith(f"[{reason}] ")], f"the hollow {name} still fired")
+                                  if p.startswith(f"[{reason}] ") and ct._mode_binding.CODEX_SOURCE not in p],
+                                 f"the hollow {name} still fired")
+
+    def test_c_constants_read_the_mode_from_the_rollout(self):
+        # stage V ruling (c): T-24's permission-mode leg reads mode_binding's rollout record, never the ledger's
+        # "unrecorded" (all 38 GPT ledgers); the clean copy binds, a turn_context off the pin fires naming its source
+        self.assertFalse([p for p in clean_check(O46) if "permission mode" in p])
+        with vp.planted(O46) as plant:
+            design = walk_design(plant)[1]
+            ledger = json.loads((plant.folder / "driver-ledger.json").read_text(encoding="utf-8"))
+            self.assertEqual(ledger["permission_mode"], "unrecorded")
+            self.assertEqual(ct.vendor_constant_problems(plant.path, "codex", ledger, design.pre), [])
+        with vp.planted(O46, _payload_edit(LAST_O46, _nth("turn_context", 2),
+                                           lambda r: r["payload"].update(sandbox_policy={"type": "workspace-write"}))
+                        ) as plant:
+            got = ct.vendor_constant_problems(plant.path, "codex", ledger, design.pre)
+        self.assertTrue(got and all(p.startswith("[constant-binding] ") and ct._mode_binding.CODEX_SOURCE in p
+                                    for p in got), got)
 
     def test_c_same_t16_thread_settings_and_sandbox_legs_fire(self):
         # review MAJOR 2: thread_settings carries approval_policy and permission_profile, turn_context the sandbox

@@ -894,6 +894,21 @@ def walk_check(walk: str) -> list:
     return out + ct.vendor_round4_problems(path, design, arm=row["arm"])
 
 
+class GConstants(unittest.TestCase):
+    def test_g_constants_read_the_mode_from_the_launch_argv(self):
+        # stage V ruling (c): T-24's permission-mode leg reads every turn's launch argv (mode_binding.argv_mode, input
+        # side), never the ledger's "unrecorded" (all 36 Gemini ledgers); a journal's mode flag removed fires
+        _, design = design_for(G21)
+        with vendor_plant.planted(G21) as clean:
+            ledger = _ledger(clean.folder)
+            self.assertEqual(ledger["permission_mode"], "unrecorded")
+            self.assertEqual(ct.vendor_constant_problems(clean.path, H, ledger, design.pre), [])
+            self.assertFalse([p for p in whole_check(G21, clean.path) if "permission mode" in p])
+        with vendor_plant.planted(G21, vendor_plant.replace_bytes("turn-1.jsonl.launch.json", ',"--approval-mode","yolo"]', ']')) as p:
+            got = ct.vendor_constant_problems(p.path, H, ledger, design.pre)
+        self.assertTrue(got and all(x.startswith("[constant-binding] ") and "input side" in x for x in got), got)
+
+
 class GT7(unittest.TestCase):
     def test_g_t7_a_marker_split_across_delta_chunks_reads_held(self):
         for walk in T7_SPLIT_WALKS:

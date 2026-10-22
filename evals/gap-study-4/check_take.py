@@ -4582,6 +4582,31 @@ def _vendor_turns(events) -> list:
     return out
 
 
+def vendor_constant_problems(path, harness, ledger, pre) -> list:
+    """constant_problems for a vendor take or walk (glitch-f1's ruling on stage C's hand-back, lane vendor-settle stage
+    V): the ledger's budget and gars tree as constant_problems reads them, and the permission mode from the record this
+    harness writes, by mode_binding's one reading, never the ledger's "unrecorded": codex, the last retained rollout's
+    turn_context pairs (mode_binding.codex_recorded_mode, CLI-written); gemini, every turn's launch argv
+    (mode_binding.argv_mode, input side: the CLI writes no mode record), each line naming its source. A record that
+    cannot be read is a constant-binding line, never a pass."""
+    if not ledger:
+        return constant_problems(ledger, pre)
+    want = mode_for_arm(pre, ledger.get("arm"))
+    out = constant_problems(dict(ledger, permission_mode=want), pre)          # the budget and gars tree legs
+    folder = Path(path).parent
+    if harness == "codex":
+        value, why = _mode_binding.codex_recorded_mode(folder, ledger)
+        source = _mode_binding.CODEX_SOURCE
+    else:
+        value, why = _mode_binding.argv_mode(folder, harness)
+        source = _mode_binding.ARGV_SOURCE
+    if value != want:
+        out.append(f"[constant-binding] the take ran in permission mode {value!r} by its {source}, not the "
+                   f"pre-registered {want!r}")
+    out += [f"[constant-binding] the permission mode's {source}: {w}" for w in why]
+    return out
+
+
 def vendor_continuation_turns(path, harness, turns) -> list:
     """The turn list continuation_problems reads (glitch-f1's ruling on stage G's hand-back, lane vendor-settle stage
     V): for gemini, one message's delta chunks joined as gemini_adapter.read_stream joins them (consecutive assistant
@@ -5112,7 +5137,7 @@ def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_scrip
         problems += vendor_walk_binding_problems(path, task_id, half_name, walk_id, sid)
     problems += vendor_environment_problems(path, harness, ledger, pre, row_index, walk_id)
     problems += vendor_model_problems(path, harness, ledger, row_index, walk_id)
-    problems += constant_problems(ledger, pre)              # the ledger's budget, mode and gars tree (T-24)
+    problems += vendor_constant_problems(path, harness, ledger, pre)   # budget, gars tree; mode from its record (T-24)
     problems += vendor_checkout_problems(path, harness, design)
     problems += vendor_prompt_problems(path, harness, design)
     return problems
