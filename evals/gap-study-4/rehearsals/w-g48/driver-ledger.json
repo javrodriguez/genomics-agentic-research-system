@@ -1,0 +1,101 @@
+{
+ "agent": {
+  "harness": "gemini",
+  "version": "0.64.0"
+ },
+ "arm": "G",
+ "budget_s": 900,
+ "claude_version": "0.64.0",
+ "cost": null,
+ "cross_check": null,
+ "cross_check_status": {
+  "status": "pending",
+  "why": "no reviewed native-session reader for gemini"
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "b91ba78e8376f3301d99f711122d66ceb7fd32ed703aeafc886e953b52f84f7f"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "kind": "project",
+  "seed": 20261009,
+  "stage01_check_exit": 0,
+  "stage01_expected_exit": 0,
+  "variant": "at-plan-gate"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "gemini-3.8-flash",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": null,
+  "status": "pending",
+  "why": "no reviewed native-session reader for gemini"
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "0336f7898a57460b9d61db9f1b7bef3fbac30e2791b9d86f7d5a8b9db509a9bd"
+  },
+  {
+   "file": "native-turn-2.jsonl",
+   "sha256": "26f75bf1a19971e81968a26a94d365ad93df74a568ae26f3703171bbcb471956"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "complete",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "yolo",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-aef5d6d9",
+ "published": null,
+ "repeat": 1,
+ "row": null,
+ "row_commit": null,
+ "session_id": "aef5d6d9-fb76-57e6-a64c-80d32577bc52",
+ "source": "/tmp/run-aef5d6d9/gars/projects/run-aef5d6d9",
+ "streams": [
+  "turn-1.jsonl",
+  "turn-2.jsonl"
+ ],
+ "task": "plan-gate",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Approve as written?",
+   "held": true,
+   "n": 1,
+   "sent": "I'd like a custom analysis on this RNA-seq project: a PCA of the samples from the gene counts, coloured by condition. Please draft the plan for me to review. The project is /tmp/run-aef5d6d9/gars/projects/run-aef5d6d9. Name the analysis sample-pca.",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": null,
+   "held": true,
+   "n": 2,
+   "sent": "I read the plan file. Yes, approve it as written.",
+   "then": null
+  }
+ ],
+ "wording": "w1"
+}
