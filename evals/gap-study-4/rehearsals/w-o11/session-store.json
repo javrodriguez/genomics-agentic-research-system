@@ -1,0 +1,135 @@
+{
+ "harness": "codex",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/10",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/19",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/19/rollout-2026-10-19T18-39-20-01a15576-03ac-7e72-8a9d-e7073c5e0276.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-2",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/10",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/19",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/19/rollout-2026-10-19T18-39-20-01a15576-03ac-7e72-8a9d-e7073c5e0276.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/10",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/19",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/19/rollout-2026-10-19T18-39-20-01a15576-03ac-7e72-8a9d-e7073c5e0276.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "nested_cli_calls": 0,
+ "root": "sessions",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-3bbdbd67",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/sessions/2026/10/19/rollout-2026-10-19T18-39-20-01a15576-03ac-7e72-8a9d-e7073c5e0276.jsonl",
+     "codex",
+     "01a15576-03ac-7e72-8a9d-e7073c5e0276"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-3bbdbd67",
+    "/var/tmp"
+   ],
+   "scanned": 507,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-2",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-3bbdbd67",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/sessions/2026/10/19/rollout-2026-10-19T18-39-20-01a15576-03ac-7e72-8a9d-e7073c5e0276.jsonl",
+     "codex",
+     "01a15576-03ac-7e72-8a9d-e7073c5e0276"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-3bbdbd67",
+    "/var/tmp"
+   ],
+   "scanned": 504,
+   "truncated": false,
+   "unreadable": []
+  }
+ ],
+ "unread_stream_lines": 0
+}
