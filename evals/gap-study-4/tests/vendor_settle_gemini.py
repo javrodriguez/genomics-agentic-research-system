@@ -869,6 +869,43 @@ class GItems(unittest.TestCase):
         self.assertEqual(sorted(set(ITEM_PLANTS) | set(INPUT_PLANTS)), sorted(ITEMS))
 
 
+# ---- T-7, Gemini delta chunks (glitch-f1's ruling on stage G's hand-back, stage V) ---------------------------------
+# The bound view writes each assistant delta chunk as its own agent-text event (transcript_gemini.py, a READER_SOURCES
+# file, unchanged), so continuation_problems, which joins agent texts with newlines, read a marker the CLI streamed
+# across two chunks as absent: a false [continued-past-unheld-marker] on w-g14 turn 1 while its ledger says held.
+# Ruled: check_take joins one message's delta chunks as gemini_adapter.read_stream does (no separator), for
+# continuation_problems only.
+T7_SPLIT_WALKS = ("w-g14", "w-g31", "w-g39")       # stage G's survey: the three turns whose marker spans two chunks
+
+
+def walk_check(walk: str) -> list:
+    """vendor_check and vendor_round4_problems on the committed walk folder rehearsals/<walk> (read in place, never
+    written), through the walk road, as whole_check runs a RECORDED copy."""
+    folder = HERE / "rehearsals" / walk
+    register = json.loads((HERE / "rehearsals" / "register.json").read_text(encoding="utf-8"))
+    entry = [e for e in register["walks"] if e.get("walk") == walk]
+    ledger = json.loads((folder / "driver-ledger.json").read_text(encoding="utf-8"))
+    row = dict(run_mod.walk_row(entry[0], ledger), walk=walk, slot=walk)
+    tree = json.loads((folder / "turn-1.jsonl.launch.json").read_text(encoding="utf-8"))["cwd"]
+    design = walk_regrade.production_design(row, tree)
+    path = folder / "transcript.jsonl"
+    out = ct.vendor_check(path, row["task"], row["half"], None, wording_script=design.script, design=design,
+                          arm=row["arm"], walk_id=row["walk"])
+    return out + ct.vendor_round4_problems(path, design, arm=row["arm"])
+
+
+class GT7(unittest.TestCase):
+    def test_g_t7_a_marker_split_across_delta_chunks_reads_held(self):
+        for walk in T7_SPLIT_WALKS:
+            with self.subTest(walk=walk):
+                ledger = json.loads((HERE / "rehearsals" / walk / "driver-ledger.json").read_text(encoding="utf-8"))
+                self.assertTrue(ledger["turns"][0]["held"])                       # the driver saw it held
+                self.assertEqual([p for p in walk_check(walk) if p.startswith("[continued-past-unheld-marker]")],
+                                 [])
+        with vendor_plant.planted(G14) as clean:
+            self.assertEqual(stop_and_marker_problems(G14, clean.path), [])
+
+
 class GLegI(unittest.TestCase):
     def test_g_legi_read_stream_on_the_recorded_streams(self):
         self.assertEqual(legi_problems(), [])
