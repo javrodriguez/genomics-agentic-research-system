@@ -1,0 +1,24 @@
+{
+ "baseline": {
+  "gars/.claude/settings.json": "a6e4de3a2e760a6008e9edfce01afed8d7094f1da1b9eb7b15c25c3bb41891c2"
+ },
+ "checks": [
+  {
+   "problems": [],
+   "snapshot": "pre-1"
+  },
+  {
+   "problems": [],
+   "snapshot": "post-1"
+  },
+  {
+   "problems": [],
+   "snapshot": "pre-2"
+  },
+  {
+   "problems": [],
+   "snapshot": "post-2"
+  }
+ ],
+ "refused": null
+}
