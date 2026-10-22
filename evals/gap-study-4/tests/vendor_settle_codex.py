@@ -433,8 +433,8 @@ NC_PLANTS = {
         LAST_O46, lambda r: r.get("type") == "world_state", lambda r: r["payload"]["state"].update(memories={})),), ()),
                     (O46, ct.vendor_codex_memory_partial, (lambda: _payload_edit(
                         LAST_O46, _message_with("developer", "<skills_instructions>"),
-                        lambda r: r["payload"]["content"].append(
-                            {"type": "input_text", "text": "<memories>Remember the user's project.</memories>"})),),
+                        lambda r: r["payload"]["content"].append(           # the shape the CLI writes (review NIT 3)
+                            {"type": "input_text", "text": "## Memory\n\nYou have access to a memory folder."})),),
                      ())],
     "T-13": [(O46, ct.vendor_codex_checkout_partial, (lambda: _payload_edit(
         LAST_O46, lambda r: r.get("type") == "session_meta", lambda r: r["payload"].update(git=None)),), ()),
@@ -780,21 +780,44 @@ class CNotComparable(unittest.TestCase):
                 self.assertIn("A reader may conclude", row["ruling"])
                 self.assertEqual(hashlib.sha256(row["ruling"].encode("utf-8")).hexdigest(), RULING_SHA256[key])
 
-    def test_c_memory_ruling_has_no_settings_leg(self):
-        # glitch-f1's amendment (22 Oct, NC-RULINGS line 54): the retained pin names no memory setting, so the
-        # partial check has no settings leg, and the text says so.
+    def test_c_memory_settings_leg_and_memory_mode(self):
+        # glitch-f1's re-amendment (22 Oct 02:37, review 0df1437 MAJOR 1): the pin has features.memories (off by
+        # default, features/src/lib.rs:1230-1235), so the check reads the rebuilt pinned config.toml and fires when it
+        # turns the feature on; memory_mode "disabled" (recorder.rs:976, the record of generation off) is consistent;
+        # any other memory-named key still fires
         text = ct.VENDOR_PENDING_ROWS["codex"]["T-12:memory"]["ruling"]
-        self.assertIn("names no memory setting, so this check has no settings leg.", text)
-        self.assertNotIn("only if the build's pinned-source read", text)
+        self.assertIn("features.memories", text)
+        self.assertNotIn("names no memory setting", text)
+        real = ct._take_config.files_for
+
+        def memories_on(harness, **kw):
+            out = dict(real(harness, **kw))
+            cfg = out[ct._take_config.CODEX_CONFIG].decode("ascii")
+            out[ct._take_config.CODEX_CONFIG] = cfg.replace("[features]\n", "[features]\nmemories = true\n").encode()
+            return out
+        with vp.planted(O46) as clean:
+            self.assertEqual(ct.vendor_codex_memory_partial(clean.path), [])
+            with unittest.mock.patch.object(ct._take_config, "files_for", memories_on):
+                got = ct.vendor_codex_memory_partial(clean.path)
+        self.assertTrue(got and all(p.startswith("[inherited-context] ") for p in got), got)
+        self.assertTrue(any("features.memories" in p for p in got), got)
+        disabled = _payload_edit(LAST_O46, lambda r: r.get("type") == "session_meta",
+                                 lambda r: r["payload"].update(memory_mode="disabled"))
+        with vp.planted(O46, disabled) as plant:
+            self.assertEqual(ct.vendor_codex_memory_partial(plant.path), [])
+        other = _payload_edit(LAST_O46, lambda r: r.get("type") == "session_meta",
+                              lambda r: r["payload"].update(memory_mode="enabled"))
+        with vp.planted(O46, other) as plant:
+            self.assertTrue(ct.vendor_codex_memory_partial(plant.path))
 
 
 # The adopted rulings' texts (vendor-settle-NC-RULINGS-2026-10-21.md, arm O, each section's heading and body lines
-# joined by newlines): sha256 read from that file (whole-file sha256 ac577323..., after glitch-f1's 22 Oct
-# amendments: T-12:memory's settings leg dropped, T-17's credential_source sentence) by the stage V builder.
+# joined by newlines): sha256 read from that file (whole-file sha256 72b4fdf3..., after glitch-f1's 22 Oct
+# amendments: T-17's credential_source sentence; T-12:memory's settings leg and T-8's reader by name, 02:37) by the stage V builder.
 RULING_SHA256 = {
-    "T-8:file-change": "eced9dca49a48c3537cca198527a72da53eba7356705d970c4825eb2abec06b6",
+    "T-8:file-change": "707e046999d1b9121a2d745522f82c347f786a153c84a6a4eadcdd606858155a",
     "T-12:offered-context": "99c5adece7e13365c3a7980f7e48a64413b0e0c8fc777e4532b55df957a6111f",
-    "T-12:memory": "4a5938863abef5753e365b02d9fc036ee953d5c11f657a524d781f0b45cf7204",
+    "T-12:memory": "81e214a2f2e42c0d520452d9b48843c03c4e80b417afc43c5fe81ce8ce1f4869",
     "T-13": "e1745e15da6a96eda73eb04d37ee1ae5250c4c27ffb058bdcb2092b27bc83276",
     "T-17:billing-route": "53228989c2e9a3d9de554cd67b27c866c2e58354917579b2e0996d93f1db53d4",
     "T-18": "bb8046f7f9098935406d6a87f87833b90d31751124b93153f9426e2489a71cfa",
