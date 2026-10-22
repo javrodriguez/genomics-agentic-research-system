@@ -56,6 +56,18 @@ GEMINI_STATS = {"total_tokens": 3, "input_tokens": 2, "output_tokens": 1, "cache
                 "tool_calls": 1, "models": {GEMINI_MODEL: {"total_tokens": 3, "input_tokens": 2, "output_tokens": 1,
                                                            "cached": 0, "input": 2}}}
 LABEL = "SYNTHETIC, written by tests/vendor_check_fixtures.py from the documented shapes, not a recorded take."
+# Lane vendor-settle stage V (S6): the CLI-written context records the settled vendor readers read, in the shapes the
+# RECORDED w-o46 (codex-cli 0.162.1) and w-g21 (gemini-cli 0.64.0) takes hold, SYNTHETIC values only. The instruction
+# file's text: P2's takes pass the design's pinned CLAUDE.md (R-6: AGENTS.md and GEMINI.md are its byte copies).
+INSTRUCTIONS = "# Synthetic orientation\n\nA short synthetic instruction file.\n"
+CODEX_COMMIT = "0" * 39 + "f"                          # session_meta.git's commit_hash (40 lower-case hex)
+CODEX_PLAN = "plus"                                    # every token_count's rate_limits.plan_type (non-null)
+# world_state's keys: the first of check_take.CODEX_WORLD_STATE_KEYS' two sets (the walks' set without the usage hint)
+CODEX_WS_FILLER = {"collaboration_mode": {"mode": "default"}, "context_window_guidance": "", "environments_instructions":
+                   False, "git_attribution": False, "host_skills": {"body": ""}, "managed_developer_instructions": {},
+                   "model_catalog": "synthetic", "multi_agent_mode": {"mode": "explicitRequestOnly"},
+                   "permissions": {"instructions": "synthetic"}, "persistent_mode": {}, "realtime": {"active": False},
+                   "skills": {"includeInstructions": True}}
 # T4 P4: where each CLI's own session sits in the take's config folder (native_snapshot's codex_rollout_rel and
 # gemini_session_rel name it), the store root the drive lists (check_take.SESSION_STORE_ROOTS), and the read-write
 # mounts a take container has (box/run_take.sweep_roots, which check_take.sweep_expected recomputes).
@@ -79,9 +91,35 @@ def _lines_replies(lines, replies) -> tuple:
     return lines, replies
 
 
-def codex_parts(lines=None, replies=None, *, cwd: str = RUN_TREE, model: str = CODEX_MODEL) -> dict:
+def codex_context(cwd: str, model: str, instructions: str) -> list:
+    """Turn 1's CLI-written context records, before its turn_context (the RECORDED w-o46 order, SYNTHETIC values):
+    two developer sections of the closed six, one user message holding the AGENTS.md part and the environment-context
+    part, and one full world_state (its agents_md the same file)."""
+    def dev(tag):
+        return ("response_item", {"type": "message", "role": "developer", "content": [
+            {"type": "input_text", "text": f"<{tag}>synthetic</{tag}>"}]})
+    agents = f"# AGENTS.md instructions for {cwd}\n\n<INSTRUCTIONS>\n{instructions}\n</INSTRUCTIONS>"
+    env = (f"<environment_context>\n  <cwd>{cwd}</cwd>\n  <shell>bash</shell>\n  <workspace_roots><root>{cwd}</root>"
+           "</workspace_roots>\n</environment_context>")
+    state = dict(CODEX_WS_FILLER, agents_md={"directory": cwd, "text": instructions}, apps_instructions=False,
+                 plugins_instructions=False, model=model, environments={"environments": {"local": {"cwd": cwd}}})
+    return [dev("permissions instructions"), dev("collaboration_mode"),
+            ("response_item", {"type": "message", "role": "user", "content": [
+                {"type": "input_text", "text": agents}, {"type": "input_text", "text": env}]}),
+            ("world_state", {"full": True, "state": state})]
+
+
+def codex_token_count() -> tuple:
+    return ("event_msg", {"type": "token_count", "info": {"total_token_usage": dict(CODEX_USAGE, total_tokens=5),
+                                                          "last_token_usage": dict(CODEX_USAGE, total_tokens=5)},
+                          "rate_limits": {"limit_id": "codex", "plan_type": CODEX_PLAN}})
+
+
+def codex_parts(lines=None, replies=None, *, cwd: str = RUN_TREE, model: str = CODEX_MODEL,
+                instructions: str = INSTRUCTIONS) -> dict:
     """{"streams": {k: [exec records]}, "meta": session_meta payload, "rollout": {k: [(line type, payload)]},
-    "lines", "model", "cwd"}: one turn per line, its agent message the reply."""
+    "lines", "model", "cwd"}: one turn per line, its agent message the reply; turn 1 opens with the CLI's context
+    records (codex_context) and every turn records a token_count with its plan."""
     lines, replies = _lines_replies(lines, replies)
     streams, rollout = {}, {}
     for k, (line, reply) in enumerate(zip(lines, replies), 1):
@@ -100,6 +138,7 @@ def codex_parts(lines=None, replies=None, *, cwd: str = RUN_TREE, model: str = C
         rollout[k] = [
             ("event_msg", {"type": "task_started", "turn_id": tid, "model_context_window": None,
                            "collaboration_mode_kind": "default"}),
+            *(codex_context(cwd, model, instructions) if k == 1 else []),
             ("turn_context", {"turn_id": tid, "cwd": cwd, "approval_policy": "never",
                               "sandbox_policy": {"type": "danger-full-access"}, "model": model}),
             ("response_item", {"type": "message", "role": "user", "content": [{"type": "input_text",
@@ -111,6 +150,7 @@ def codex_parts(lines=None, replies=None, *, cwd: str = RUN_TREE, model: str = C
             done({"type": "CommandExecution", "id": f"c{k}", "command": ["ls"], "cwd": cwd, "parsed_cmd": [],
                   "source": "agent", "status": "completed", "aggregated_output": f"out {k}", "exit_code": 0}),
             ("response_item", {"type": "function_call_output", "call_id": f"call_{k}", "output": f"out {k}"}),
+            codex_token_count(),
             ("response_item", {"type": "message", "role": "assistant", "content": [{"type": "output_text",
                                                                                     "text": reply}]}),
             done({"type": "AgentMessage", "id": f"m{k}", "content": [{"type": "Text", "text": reply}],
@@ -119,7 +159,8 @@ def codex_parts(lines=None, replies=None, *, cwd: str = RUN_TREE, model: str = C
         ]
     meta = {"session_id": CODEX_TID, "id": CODEX_TID, "timestamp": "2026-10-14T05:00:00.000Z", "cwd": cwd,
             "originator": "codex_exec", "cli_version": CODEX_CLI, "source": "exec", "model_provider": "openai",
-            "base_instructions": {"text": "synthetic"}, "history_mode": "paginated"}
+            "base_instructions": {"text": "synthetic"}, "history_mode": "paginated",
+            "runtime_workspace_roots": [cwd], "git": {"commit_hash": CODEX_COMMIT, "branch": "main"}}
     return {"streams": streams, "meta": meta, "rollout": rollout, "lines": lines, "model": model, "cwd": cwd}
 
 
@@ -130,9 +171,25 @@ def gemini_tool_call(k: int) -> dict:
             "result": [{"functionResponse": {"id": cid, "name": "read_file", "response": {"output": "x"}}}]}
 
 
-def gemini_parts(lines=None, replies=None, *, model: str = GEMINI_MODEL) -> dict:
+def gemini_session_context(run_tree: str, instructions: str) -> str:
+    """The CLI's one context record's text (a user message opening <session_context>, the RECORDED w-g21 shape,
+    SYNTHETIC values): the workspace directory and the listing's root the run tree, the GEMINI.md block the
+    instruction file."""
+    return "\n".join([
+        "<session_context>", "This is the Gemini CLI. We are setting up the context for our chat.",
+        "My operating system is: linux", "- **Workspace Directories:**", f"  - {run_tree}",
+        "- **Directory Structure:**", "", "Showing up to 200 items (files + folders).", "", f"{run_tree}/",
+        "\u251c\u2500\u2500\u2500CLAUDE.md", "\u2514\u2500\u2500\u2500GEMINI.md", "", "<loaded_context>",
+        "<project_context>", f"--- Context from: {run_tree}/GEMINI.md ---", instructions.rstrip("\n"),
+        f"--- End of Context from: {run_tree}/GEMINI.md ---", "</project_context>", "</loaded_context>",
+        "</session_context>"])
+
+
+def gemini_parts(lines=None, replies=None, *, model: str = GEMINI_MODEL, run_tree: str = RUN_TREE,
+                 instructions: str = INSTRUCTIONS) -> dict:
     """{"streams": {k: [stream records]}, "meta": the snapshot's metadata record, "native": {k: [messages]}, "lines",
-    "model"}: one interaction per line, its last response the reply."""
+    "model"}: one interaction per line, its last response the reply; the first interaction opens with the CLI's
+    <session_context> user record (gemini_session_context)."""
     lines, replies = _lines_replies(lines, replies)
     stats = copy.deepcopy(GEMINI_STATS)
     stats["models"] = {model: stats["models"][GEMINI_MODEL]}
@@ -153,6 +210,9 @@ def gemini_parts(lines=None, replies=None, *, model: str = GEMINI_MODEL) -> dict
                      {"id": f"rt{k}", "type": "user", "content": [
                          {"functionResponse": {"id": f"call-{k}", "name": "read_file", "response": {"output": "x"}}}]},
                      {"id": f"b{k}", "type": "gemini", "model": model, "content": reply}]
+    import gemini_projection                       # the context turn's pinned id (gemini_projection._session_context)
+    native[1].insert(0, {"id": gemini_projection.ENV_CONTEXT_ID, "timestamp": GEMINI_TS, "type": "user",
+                         "content": [{"text": gemini_session_context(run_tree, instructions)}]})
     meta = {"sessionId": GEMINI_SID, "projectHash": "project-1", "summary": "synthetic"}
     return {"streams": streams, "meta": meta, "native": native, "lines": lines, "model": model}
 

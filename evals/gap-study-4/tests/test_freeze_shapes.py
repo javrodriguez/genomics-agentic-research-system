@@ -143,17 +143,21 @@ def settled(*, legs=("i", "ii", "rows", "items", "iii"), registry=None, **arms):
         if "ii" in legs:
             stack.enter_context(mock.patch.dict(check_take.VENDOR_CHECK_SHAPES_SOURCE,
                                                 {h: "recorded" for h in harnesses}))
-        if "rows" in legs:
-            rows = copy.deepcopy(check_take.VENDOR_PENDING_ROWS)
-            for h in harnesses:
+        # lane vendor-settle stage V (S6): the live map is settled, so a leg left out is put in its unsettled state
+        # here (rows PENDING, items unrecorded), and the map is always a patched copy: a case's edit never writes the
+        # live one (the "a row unsettled" edit used to)
+        rows = copy.deepcopy(check_take.VENDOR_PENDING_ROWS)
+        for h in harnesses:
+            if "rows" in legs:
                 rows[h] = {k: {"reason": r["reason"], "state": "SAME", "fixture": f"vendor-check/recorded-{h}.jsonl",
                                "reader": "synthetic_reader"} for k, r in rows[h].items()}
-            stack.enter_context(mock.patch.object(check_take, "VENDOR_PENDING_ROWS", rows))
-        if "items" in legs:
-            items = copy.deepcopy(getattr(check_take, "VENDOR_READER_ITEMS", {}))
-            for h in harnesses:
-                items[h] = dict.fromkeys(items.get(h, {}), f"vendor-check/recorded-{h}.jsonl")
-            stack.enter_context(mock.patch.object(check_take, "VENDOR_READER_ITEMS", items, create=True))
+            else:
+                rows[h] = {k: {"reason": r["reason"], "state": "PENDING"} for k, r in rows[h].items()}
+        stack.enter_context(mock.patch.object(check_take, "VENDOR_PENDING_ROWS", rows))
+        items = copy.deepcopy(getattr(check_take, "VENDOR_READER_ITEMS", {}))
+        for h in harnesses:
+            items[h] = dict.fromkeys(items.get(h, {}), f"vendor-check/recorded-{h}.jsonl" if "items" in legs else None)
+        stack.enter_context(mock.patch.object(check_take, "VENDOR_READER_ITEMS", items, create=True))
         if registry is not None:
             stack.enter_context(mock.patch.object(native_reader_registration, "production_readers", registry))
         elif "iii" in legs:

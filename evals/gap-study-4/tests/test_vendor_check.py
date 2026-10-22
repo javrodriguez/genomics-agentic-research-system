@@ -6,7 +6,9 @@ PF, the freeze gate's half in check_take.py (plan section 7; review 36ce125 MINO
 
   VP-rows      check_take.VENDOR_PENDING_ROWS holds, per harness, exactly the PENDING keys of the comparability table
                (lane-reports/vendor-T4-TABLE.md, its key list), each with its row's reason id (a reason of routing.json's
-               operator_reasons) and the state PENDING on this head; VENDOR_CHECK_SHAPES_SOURCE is "documented".
+               operator_reasons) and, since lane vendor-settle stage V, its settled state (TABLE_STATES: SAME or NOT
+               COMPARABLE, each row on its shape), so vendor_rows_problems is [] for both harnesses; a row put back to
+               PENDING (TEST DATA) is named again.
   VP-helper    vendor_pending(harness, key, reader, ...) returns the row's refusal ("[<reason id>] no vendor reader yet
                (<key>)") while the key is PENDING, raises KeyError for an unknown harness or key, and once a key is
                settled calls the reader the row names and returns its problems; a settled key with no reader, another
@@ -123,6 +125,18 @@ TABLE_KEYS = {
                "T-18": "harness-condition-violated"},
 }
 NO_READER = "no vendor reader yet"
+# Lane vendor-settle stage V (S6): each table key's settled state (stage C's Codex rows and stage G's Gemini rows, as
+# their lane notes and glitch-f1's adopted rulings settle them).
+TABLE_STATES = {
+    "codex": {"T-5": "SAME", "T-8:file-change": "NOT COMPARABLE", "T-10": "SAME",
+              "T-12:offered-context": "NOT COMPARABLE", "T-12:instruction-files": "SAME",
+              "T-12:prompt-snapshot": "SAME", "T-12:memory": "NOT COMPARABLE", "T-13": "NOT COMPARABLE",
+              "T-14": "SAME", "T-16": "SAME", "T-17:billing-route": "NOT COMPARABLE", "T-18": "NOT COMPARABLE"},
+    "gemini": {"T-4": "SAME", "T-10": "SAME", "T-11": "SAME", "T-12:offered-context": "NOT COMPARABLE",
+               "T-12:instruction-files": "SAME", "T-12:prompt-snapshot": "NOT COMPARABLE",
+               "T-12:memory": "NOT COMPARABLE", "T-13": "NOT COMPARABLE", "T-14": "SAME",
+               "T-17:billing-route": "NOT COMPARABLE", "T-18": "NOT COMPARABLE"},
+}
 # The table's rows a vendor reader reads, per harness (every row but the PENDING ones, row 19's N/A and row 22's
 # refusal-only NOT COMPARABLE; rows 15 for O and 16 for G are NOT COMPARABLE rows whose partial check is a reader).
 TABLE_READER_ITEMS = {
@@ -164,6 +178,24 @@ def none_reader(*args, **kwargs):
 # TEST DATA: the readers settled() patches into check_take stand for functions defined there (round 8 ruling 2 admits
 # only a function whose module is check_take); another_reader is never patched in and stays foreign.
 synthetic_reader.__module__ = none_reader.__module__ = ct.__name__
+
+
+@contextlib.contextmanager
+def pending(*keys):
+    """The live map with each (harness, key) of `keys` put back to PENDING (TEST DATA, patched in), or every key of
+    both harnesses with no argument (the all-PENDING map of the T4 head), and the READER items unrecorded with it."""
+    rows = copy.deepcopy(ct.VENDOR_PENDING_ROWS)
+    keys = keys or tuple((h, k) for h, block in rows.items() for k in block)
+    for h, k in keys:
+        rows[h][k] = {"reason": rows[h][k]["reason"], "state": ct.PENDING}
+    patches = [mock.patch.object(ct, "VENDOR_PENDING_ROWS", rows)]
+    if len(keys) == sum(len(b) for b in rows.values()):
+        patches.append(mock.patch.object(ct, "VENDOR_READER_ITEMS", {h: dict.fromkeys(block)
+                                                                      for h, block in ct.VENDOR_READER_ITEMS.items()}))
+    with contextlib.ExitStack() as stack:
+        for x in patches:
+            stack.enter_context(x)
+        yield rows
 
 
 @contextlib.contextmanager
@@ -249,14 +281,18 @@ class VPRows(unittest.TestCase):
         got = {h: {k: row["reason"] for k, row in block.items()} for h, block in ct.VENDOR_PENDING_ROWS.items()}
         self.assertEqual(got, TABLE_KEYS)
 
-    def test_vp_rows_every_reason_is_of_the_vocabulary_and_pending_here(self):
+    def test_vp_rows_every_reason_is_of_the_vocabulary_and_settled_here(self):
+        # lane vendor-settle stage V: every row is settled to its TABLE_STATES state and on its shape (a SAME row's
+        # RECORDED fixture and reader, a NOT COMPARABLE row's ruling and reader); none is PENDING
         vocabulary = routing.load_table()["operator_reasons"]
+        self.assertEqual({h: {k: row["state"] for k, row in block.items()}
+                          for h, block in ct.VENDOR_PENDING_ROWS.items()}, TABLE_STATES)
         for h, block in ct.VENDOR_PENDING_ROWS.items():
             for k, row in block.items():
                 with self.subTest(harness=h, key=k):
                     self.assertIn(row["reason"], vocabulary)
-                    self.assertEqual(row, {"reason": row["reason"], "state": ct.PENDING})
-                    self.assertIsNone(ct.vendor_row_problem(h, k, row) if row["state"] != ct.PENDING else None)
+                    self.assertEqual(set(row), ct.VENDOR_ROW_KEYS[row["state"]])
+                    self.assertIsNone(ct.vendor_row_problem(h, k, row))
         self.assertEqual(ct.VENDOR_CHECK_SHAPES_SOURCE, {"codex": "documented", "gemini": "documented"})
 
     def test_vp_rows_no_event_id_is_a_pending_reason(self):
@@ -267,19 +303,27 @@ class VPRows(unittest.TestCase):
 
     def test_vp_rows_unsettled_names_each_pending_row(self):
         for h in TABLE_KEYS:
-            got = ct.vendor_rows_problems(h)
-            self.assertEqual(len(got), len(TABLE_KEYS[h]), got)
-            for k, reason in TABLE_KEYS[h].items():
-                self.assertIn(f"{k} {reason} is PENDING", got)
+            self.assertEqual(ct.vendor_rows_problems(h), [], h)                  # the settled map
+        with pending():                                                         # TEST DATA: the T4 head's map
+            for h in TABLE_KEYS:
+                got = ct.vendor_rows_problems(h)
+                self.assertEqual(len(got), len(TABLE_KEYS[h]), got)
+                for k, reason in TABLE_KEYS[h].items():
+                    self.assertIn(f"{k} {reason} is PENDING", got)
+        for h, block in TABLE_KEYS.items():                                     # one row put back is named alone
+            for k, reason in block.items():
+                with self.subTest(harness=h, key=k), pending((h, k)):
+                    self.assertEqual(ct.vendor_rows_problems(h), [f"{k} {reason} is PENDING"])
         with self.assertRaises(KeyError):
             ct.vendor_rows_problems("synthetic-harness")
 
 
 class VPHelper(unittest.TestCase):
     def test_vp_helper_a_pending_key_refuses_under_its_reason(self):
+        # every key put back to PENDING (TEST DATA): the refusal stands whatever reader the site hands in
         for h, block in TABLE_KEYS.items():
             for k, reason in block.items():
-                with self.subTest(harness=h, key=k):
+                with self.subTest(harness=h, key=k), pending((h, k)):
                     self.assertEqual(ct.vendor_pending(h, k, None), [f"[{reason}] {NO_READER} ({k})"])
                     # a reader handed in for a PENDING key is never called: the key's refusal stands
                     self.assertEqual(ct.vendor_pending(h, k, another_reader, 1, a=2), [f"[{reason}] {NO_READER} ({k})"])
@@ -332,12 +376,23 @@ class VPHelper(unittest.TestCase):
             self.assertIsNone(ct.vendor_row_problem("codex", "T-5", ct.VENDOR_PENDING_ROWS["codex"]["T-5"]))
 
     def test_vp_helper_settling_a_key_closes_its_row_for_the_freeze(self):
-        with settled("gemini", "T-4"):
+        with pending(), settled("gemini", "T-4"):                              # from the all-PENDING map
             got = ct.vendor_rows_problems("gemini")
             self.assertNotIn("T-4 readers-disagree is PENDING", got)
             self.assertEqual(len(got), len(TABLE_KEYS["gemini"]) - 1)
         with settled("gemini", "T-4", fixture=None):
             self.assertTrue(any("T-4" in p for p in ct.vendor_rows_problems("gemini")))
+        for h, block in ct.VENDOR_PENDING_ROWS.items():                        # each live row off its shape
+            for k, row in block.items():
+                drop = "fixture" if row["state"] == "SAME" else "ruling"
+                with self.subTest(harness=h, key=k):
+                    rows = copy.deepcopy(ct.VENDOR_PENDING_ROWS)
+                    live = copy.deepcopy(row)
+                    del live[drop]
+                    rows[h][k] = live
+                    with mock.patch.object(ct, "VENDOR_PENDING_ROWS", rows):
+                        self.assertTrue(any(p.startswith(f"{k} ") and "PENDING" not in p
+                                            for p in ct.vendor_rows_problems(h)))
 
 
 class VPKeys(unittest.TestCase):
@@ -412,26 +467,37 @@ class VPFixtures(unittest.TestCase):
                     self.assertIsNotNone(ct.vendor_row_problem("codex", "T-5", ct.VENDOR_PENDING_ROWS["codex"]["T-5"]))
 
     def test_vp_fixtures_recorded_shapes_need_every_row_settled(self):
-        self.assertEqual(ct.vendor_shapes_problems("codex"), [])          # "documented": nothing to bind yet
-        with mock.patch.dict(ct.VENDOR_CHECK_SHAPES_SOURCE, {"codex": "recorded"}):
-            got = ct.vendor_shapes_problems("codex")
-            # round 8 ruling 3 (P2): every unsettled row, and now every READER item without its RECORDED fixture
-            self.assertEqual(len(got), len(TABLE_KEYS["codex"]) + len(TABLE_READER_ITEMS["codex"]), got)
-        with mock.patch.dict(ct.VENDOR_CHECK_SHAPES_SOURCE, {"codex": "observed"}):
-            self.assertNotEqual(ct.vendor_shapes_problems("codex"), [])
+        for h in TABLE_KEYS:
+            with mock.patch.dict(ct.VENDOR_CHECK_SHAPES_SOURCE, {h: "documented"}):
+                self.assertEqual(ct.vendor_shapes_problems(h), [])           # "documented": nothing to bind
+            with mock.patch.dict(ct.VENDOR_CHECK_SHAPES_SOURCE, {h: "recorded"}):
+                self.assertEqual(ct.vendor_shapes_problems(h), [], h)        # the settled map binds "recorded"
+                with pending():                                             # TEST DATA: the T4 head's map
+                    got = ct.vendor_shapes_problems(h)
+                    # round 8 ruling 3 (P2): every unsettled row, and every READER item without its RECORDED fixture
+                    self.assertEqual(len(got), len(TABLE_KEYS[h]) + len(TABLE_READER_ITEMS[h]), got)
+            with mock.patch.dict(ct.VENDOR_CHECK_SHAPES_SOURCE, {h: "observed"}):
+                self.assertNotEqual(ct.vendor_shapes_problems(h), [])
 
 
 class VPReaderItems(unittest.TestCase):
     """Round 8 ruling 3: plan section 7's other half, with P2's READER items."""
 
-    def test_vp_reader_items_are_the_tables_reader_rows_unrecorded_here(self):
+    def test_vp_reader_items_are_the_tables_reader_rows_recorded_here(self):
+        # lane vendor-settle stage V: every item names its harness's RECORDED fixture (stages C and G); unrecorded
+        # (TEST DATA) each is named again
         self.assertEqual({h: tuple(block) for h, block in ct.VENDOR_READER_ITEMS.items()}, TABLE_READER_ITEMS)
-        self.assertTrue(all(v is None for block in ct.VENDOR_READER_ITEMS.values() for v in block.values()))
+        self.assertEqual({h: set(block.values()) for h, block in ct.VENDOR_READER_ITEMS.items()},
+                         {"codex": {"recorded-codex-w-o46/transcript.jsonl"},
+                          "gemini": {"recorded-gemini-w-g21/transcript.jsonl"}})
         for h in TABLE_READER_ITEMS:
-            self.assertEqual(len(ct.vendor_reader_items_problems(h)), len(TABLE_READER_ITEMS[h]))
+            self.assertEqual(ct.vendor_reader_items_problems(h), [], h)
+        with pending():
+            for h in TABLE_READER_ITEMS:
+                self.assertEqual(len(ct.vendor_reader_items_problems(h)), len(TABLE_READER_ITEMS[h]))
 
     def test_vp_reader_items_recorded_needs_every_item_on_a_recorded_fixture(self):
-        with settled("codex", "T-5") as rows:
+        with pending(), settled("codex", "T-5") as rows:
             for k in rows["codex"]:
                 rows["codex"][k] = dict(rows["codex"]["T-5"], reason=rows["codex"][k]["reason"])
             items = {h: dict.fromkeys(block, "vendor-check/recorded-codex.jsonl")
@@ -476,12 +542,16 @@ class VPSameFires(unittest.TestCase):
         self.assertEqual(same_fires_problems(ct.VENDOR_PENDING_ROWS, SAME_FIRES), [])
 
     def test_vp_same_fires_a_settled_row_needs_its_case(self):
-        with settled("gemini", "T-4") as rows:
+        with pending(), settled("gemini", "T-4") as rows:                     # the one SAME row of the map
             self.assertNotEqual(same_fires_problems(rows, {}), [])
             self.assertEqual(same_fires_problems(rows, {("gemini", "T-4"): lambda f: [
                 f"[readers-disagree] fired on {f.name}"]}), [])
             self.assertNotEqual(same_fires_problems(rows, {("gemini", "T-4"): lambda f: [
                 "[transcript-unreadable] another reason"]}), [])
+        for h, k in SAME_FIRES:                                                # each live SAME row without its case
+            with self.subTest(harness=h, key=k):
+                self.assertEqual(same_fires_problems({h: {k: ct.VENDOR_PENDING_ROWS[h][k]}}, {}),
+                                 [f"{h} {k} is SAME and has no firing case on its RECORDED fixture"])
 
 
 # ---- VP-settle, VP-provenance, VP-plant (lane vendor-settle stage K) -----------------------------------------------

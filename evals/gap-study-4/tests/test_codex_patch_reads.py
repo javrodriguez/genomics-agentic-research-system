@@ -34,7 +34,9 @@ T-8:file-change leg had no reader.
                values (C's string walk never reads a key), stdout and stderr as what it returned (on a76b4dd2: the
                rollout refuses).
   K2-site      the T-8:file-change site hands vendor_pending its reader, vendor_file_change_reads, and while the row is
-               PENDING its refusal is byte for byte the old one (Q3).
+               PENDING its refusal is byte for byte the old one (Q3); since lane vendor-settle stage V the live row is
+               settled (NOT COMPARABLE), so the PENDING reading is taken on the row put back (TEST DATA), and the live
+               row reads a joined patch clean and holds a rename.
   K3-reader    the reader, the row settled in a test: a joined take reads clean; a rename (move_path) is held under a
                named transcript-unreadable reason (Q2); a stream patch the rollout does not hold is transcript-unreadable.
   MUTANTS      --witnesses: one mutant per guard, each applied alone to this tree's module, each turning its own check
@@ -420,11 +422,23 @@ def site_problems(ct=None) -> list:
                    "vendor_file_change_reads")
     if [ast.dump(a) for a in call.args[3:]] != [ast.dump(ast.Name("path", ast.Load()))]:
         out.append("the T-8:file-change site does not hand the reader the take's path")
+    # lane vendor-settle stage V (S6): the live row is settled (NOT COMPARABLE, glitch-f1's adopted T-8 ruling), so
+    # the PENDING reading is taken with the row put back to PENDING (TEST DATA), and the live row runs the reader
+    pending = copy.deepcopy(ct.VENDOR_PENDING_ROWS)
+    pending["codex"]["T-8:file-change"] = {"reason": ct.TRANSCRIPT_UNREADABLE, "state": ct.PENDING}
     with tempfile.TemporaryDirectory() as tmp:
         path = write_take(take_parts(), Path(tmp))
-        got = ct.vendor_file_change_problems(path, "codex")
+        with mock.patch.object(ct, "VENDOR_PENDING_ROWS", pending):
+            got = ct.vendor_file_change_problems(path, "codex")
+        live = ct.vendor_file_change_problems(path, "codex")
+        renamed = write_take(take_parts(file_change_item(move_path=PATH_B)), Path(tmp) / "renamed")
+        live_rename = ct.vendor_file_change_problems(renamed, "codex")
     if got != PENDING_TEXT:
         out.append(f"the PENDING row reads {got}, not {PENDING_TEXT}")
+    if live != []:
+        out.append(f"the settled row reads a joined patch as {live}, not clean")
+    if not any(p.startswith(f"[{ct.TRANSCRIPT_UNREADABLE}] ") and "rename" in p for p in live_rename):
+        out.append(f"the settled row does not hold a rename through the patch tool: {live_rename}")
     return out
 
 

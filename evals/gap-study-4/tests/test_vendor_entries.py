@@ -5,7 +5,8 @@ vendor entries check4_vendor and check4_walk_vendor, and checker_for admitting t
 
   P3-clean    a clean codex or gemini take (take road) and walk (walk road) read through its entry: the routable
               reasons are exactly the PENDING refusals vendor_check and vendor_round4_problems raise (P2), and every
-              event count is 0.
+              event count is 0; since lane vendor-settle stage V no row is PENDING, so nothing is routed, and the map
+              with every row put back to PENDING (TEST DATA) routes exactly their refusals.
   P3-pre      check4's CheckRefused preamble holds for both entries: a script that is not a non-empty list, a design
               that is not a Design, no half or no script, a harness that is not a vendor's (claude-code included), a
               PENDING constant, another task or half, another script, no run tree, and routing ids other than the
@@ -342,7 +343,9 @@ def for_problems(mod) -> list:
 class P3Entries(unittest.TestCase):
     def test_p3_clean_take_and_walk_route_exactly_their_pending_refusals(self):
         with world() as ct:
-            self.assertEqual(clean_problems(ct), [])
+            self.assertEqual(clean_problems(ct), [])        # the settled map: nothing routed (lane vendor-settle V)
+            with tvb.pending_rows(ct):                      # TEST DATA: every row PENDING routes its refusal
+                self.assertEqual(clean_problems(ct), [])
 
     def test_p3_the_preamble_refuses_before_any_reader(self):
         with world() as ct:

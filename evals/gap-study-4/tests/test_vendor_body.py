@@ -10,7 +10,12 @@ check_take.vendor_round4_problems (section 1b).
 
   P2-clean    a clean take of either vendor carries exactly the PENDING refusals of its harness's
               VENDOR_PENDING_ROWS keys (every key but codex T-8:file-change, which fires only on a file_change item),
-              each raised through vendor_pending: no vendor take passes while a PENDING row stands.
+              each raised through vendor_pending: no vendor take passes while a PENDING row stands. Lane vendor-settle
+              stage V (S6): every row is settled, so a clean take, whose folder now carries the CLI-written context
+              records the settled readers read (vendor_check_fixtures: codex_context, gemini_session_context, the
+              design's pinned CLAUDE.md as the instruction file), carries none; the PENDING road is read on TEST DATA,
+              the module's map with rows put back to PENDING (pending_rows; the event-id witness and each site's
+              deletion). Where a settled reader also reads a case's defect, the case's want names it per harness.
   P2-cases    one F3 case per reason, each adding exactly its reason(s) to the clean take's refusals: the CLI's own
               user record differing from the envelopes, or holding an extra turn (readers-disagree; a differing gemini
               stream reads readers-disagree, never transcript-unreadable); no agent output; no CLI session id; a
@@ -146,10 +151,15 @@ class Take:
         self.row_model = self.model        # the pre-registered row's model (review e-71a2b94 finding 3)
 
     def build(self, parts_edit=None, folder_edit=None):
+        # lane vendor-settle stage V (S6): the CLI's context records carry the design's pinned CLAUDE.md as the
+        # instruction file (R-6), so the settled T-14 readers read a clean take clean
+        text = self.design.instructions.get("CLAUDE.md", vcf.INSTRUCTIONS)
         if self.harness == "codex":
-            self.parts = vcf.codex_parts(self.lines, self.replies, cwd=self.run_tree, model=self.model)
+            self.parts = vcf.codex_parts(self.lines, self.replies, cwd=self.run_tree, model=self.model,
+                                         instructions=text)
         else:
-            self.parts = vcf.gemini_parts(self.lines, self.replies, model=self.model)
+            self.parts = vcf.gemini_parts(self.lines, self.replies, model=self.model, run_tree=self.run_tree,
+                                          instructions=text)
         if parts_edit:
             parts_edit(self.parts)
         turns = self.turns if self.turns is not None else [
@@ -194,7 +204,7 @@ def tags(problems) -> collections.Counter:
 def pending_lines(mod, harness) -> list:
     """The clean take's refusals: one per PENDING key of the harness, codex's file_change leg aside."""
     return sorted(f"[{row['reason']}] {NO_READER} ({key})" for key, row in mod.VENDOR_PENDING_ROWS[harness].items()
-                  if key != "T-8:file-change")
+                  if key != "T-8:file-change" and row["state"] == mod.PENDING)
 
 
 # ---- the F3 cases: (name, harnesses, edit(take) -> (parts_edit, folder_edit), the reasons it adds) -----------------
@@ -209,13 +219,19 @@ def codex_rollout_user(parts, k, text):
 
 
 def codex_extra_turn(parts):
-    extra = copy.deepcopy(parts["rollout"][1])
+    # lane vendor-settle stage V (S6): the extra turn repeats turn 1's records, never the CLI's context records
+    # (written once, at the session's start) and carries the extra line in its user message too
+    extra = [copy.deepcopy(x) for x in parts["rollout"][1]
+             if x[0] != "world_state" and not (x[1].get("type") == "message" and x[1].get("role") in ("user", "developer")
+                                               and x[1]["content"][0]["text"] != parts["lines"][0])]
     for t, pay in extra:
         for key in ("turn_id",):
             if pay.get(key) == "t1":
                 pay[key] = "t9"
         if (pay.get("item") or {}).get("type") == "UserMessage":
             pay["item"]["content"][0]["text"] = "an extra line"
+        if pay.get("type") == "message" and pay.get("role") == "user":
+            pay["content"][0]["text"] = "an extra line"
     parts["rollout"][len(parts["rollout"])] += extra
 
 
@@ -501,13 +517,24 @@ CASES = {
                                                          {"readers-disagree": 1}, None),
     "the gemini snapshot's interaction differs from the envelopes": (("gemini",), case_snapshot_differs,
                                                                      {"readers-disagree": 1}, None),
-    "the CLI's record holds an extra turn": (("codex", "gemini"), case_extra_turn, {"readers-disagree": 1}, None),
+    # lane vendor-settle stage V (S6): a per-harness want where a settled reader also reads the case's defect, each
+    # extra line named: codex's extra turn is also an operator part of unknown origin (T-5) and a turn_context no
+    # stream ran (T-16)
+    "the CLI's record holds an extra turn": (("codex", "gemini"), case_extra_turn,
+                                             {"codex": {"readers-disagree": 1, "unknown-harness-origin": 1,
+                                                        "constant-binding": 1}, "gemini": {"readers-disagree": 1}},
+                                             None),
     "the ledger's sent line differs from the envelopes": (("codex", "gemini"), case_ledger_sent_differs,
                                                           {"readers-disagree": 1}, None),
-    # the last retained snapshot the ledger does not bind: no reader of it stands (codex's cwd and run tree too)
+    # the last retained snapshot the ledger does not bind: no reader of it stands (codex's cwd and run tree too; since
+    # stage V every settled reader of the snapshot refuses it too, each under its row's reason for codex and as
+    # transcript-unreadable for gemini; none passes)
     "a codex snapshot the ledger does not bind": (("codex",), case_snapshot_unbound,
-                                                  {"transcript-unreadable": 2, "inherited-context": 1}, None),
-    "a gemini snapshot the ledger does not bind": (("gemini",), case_snapshot_unbound, {"transcript-unreadable": 1},
+                                                  {"transcript-unreadable": 2, "inherited-context": 5,
+                                                   "unknown-harness-origin": 1, "leak-in-loaded-context": 1,
+                                                   "environment-record": 1, "checkout-binding": 2,
+                                                   "constant-binding": 1, "harness-condition-violated": 1}, None),
+    "a gemini snapshot the ledger does not bind": (("gemini",), case_snapshot_unbound, {"transcript-unreadable": 10},
                                                    None),
     # no-first-agent-turn (T-1); the replies' markers go with the output
     "no agent output": (("codex", "gemini"), edits(no_agent_output, None),
@@ -528,9 +555,14 @@ CASES = {
     # leak-in-operator-turn (T-6)
     "a leak word in an operator line": (("codex", "gemini"), case_leak, {"leak-in-operator-turn": 1}, None),
     # inherited-context, the input-side legs (T-12:offered-context)
+    # stage V: gemini's T-12:prompt-snapshot partial rebuilds the launch too; its T-12:offered-context and T-13
+    # partials need one launch folder over every turn
     "a launch argv the adapter never writes": (("codex", "gemini"), edits(None, extra_journal_option),
-                                              {"inherited-context": 1}, None),
-    "a turn with no launch journal": (("codex", "gemini"), case_no_journal, {"inherited-context": 1}, None),
+                                              {"codex": {"inherited-context": 1}, "gemini": {"inherited-context": 2}},
+                                              None),
+    "a turn with no launch journal": (("codex", "gemini"), case_no_journal,
+                                      {"codex": {"inherited-context": 1},
+                                       "gemini": {"inherited-context": 3, "checkout-binding": 1}}, None),
     "a launch journal naming another turn's stream": (("codex", "gemini"), case_journal_of_another_turn,
                                                       {"inherited-context": 1}, None),
     # account-email (T-9): one event per take
@@ -555,10 +587,15 @@ CASES = {
     # round 14, review e-71a2b94 finding 3: the take road binds the pre-registered row's model, never the ledger's alone
     "the pre-registered row on another model": (("codex", "gemini"), case_row_on_another_model, {"model-binding": 2},
                                                 None),
+    # stage V: the pinned config (codex T-18) and settings (gemini T-12:memory, T-17, T-18) are rebuilt for the
+    # ledger's model, so no model refuses them too; T-17's partial reads environment.json's named variables
     "no requested model in the ledger": (("codex", "gemini"), case_no_requested_model,
-                                         {"model-binding": 1, "environment-record": 1}, None),
+                                         {"codex": {"model-binding": 1, "environment-record": 1,
+                                                    "harness-condition-violated": 1},
+                                          "gemini": {"model-binding": 1, "environment-record": 2,
+                                                     "inherited-context": 1, "harness-condition-violated": 1}}, None),
     "no environment record": (("codex", "gemini"), edits(None, lambda path: (path.parent / "environment.json").unlink()),
-                              {"environment-record": 1}, None),
+                              {"environment-record": 2}, None),
     "an environment record edited after the take": (("codex", "gemini"), edits(None, environment_edited),
                                                     {"environment-record": 1}, None),
     # outcome-binding (T-24)
@@ -625,8 +662,9 @@ def case_problems(mod, names=None) -> list:
                 continue
             added = tags(got) - tags(clean)
             removed = collections.Counter(clean) - collections.Counter(got)
-            if added != collections.Counter(want) or removed:
-                out.append(f"{harness} {name}: added {dict(added)}, removed {dict(removed)}, not {want}: "
+            mine = want[harness] if set(want) and set(want) <= set(VENDORS) else want   # per-harness (stage V)
+            if added != collections.Counter(mine) or removed:
+                out.append(f"{harness} {name}: added {dict(added)}, removed {dict(removed)}, not {mine}: "
                            f"{[p[:140] for p in got if p not in clean]}")
     return out
 
@@ -728,6 +766,23 @@ class P2Keys(unittest.TestCase):
 
 
 # ---- the witnesses --------------------------------------------------------------------------------------------------
+# Lane vendor-settle stage V (S6): every row is settled, so the PENDING road is exercised on TEST DATA, the map with
+# rows put back to PENDING in the module under test (its vendor_pending reads that module's map).
+PENDING_MAP = "the clean takes on the map with every row PENDING"
+
+
+@contextlib.contextmanager
+def pending_rows(mod, keys=None):
+    """mod.VENDOR_PENDING_ROWS with each (harness, key) of `keys` (every key when None) put back to PENDING."""
+    rows = copy.deepcopy(mod.VENDOR_PENDING_ROWS)
+    for h, block in rows.items():
+        for k in block:
+            if keys is None or (h, k) in keys:
+                block[k] = {"reason": block[k]["reason"], "state": mod.PENDING}
+    with mock.patch.object(mod, "VENDOR_PENDING_ROWS", rows):
+        yield rows
+
+
 def pending_call_sites(source: str) -> list:
     """The source text of every vendor_pending(<harness>, <key>, None) call, with its harness: one mutant each."""
     out = []
@@ -837,14 +892,18 @@ P2_WITNESSES = {
                                    "                    return []\n"), "a file_change item"),
     "a PENDING refusal under an event id": ((
         "        return [f\"[{row['reason']}] no vendor reader yet ({key})\"]\n",
-        "        return [f\"[{EVENT_STUDY}] no vendor reader yet ({key})\"]\n"), None),
+        "        return [f\"[{EVENT_STUDY}] no vendor reader yet ({key})\"]\n"), PENDING_MAP),
 }
 
 
 def witness_red(mod, target) -> list:
-    """The witness's own failures: its target case, or the clean takes when it names none."""
+    """The witness's own failures: its target case, or the clean takes when it names none, or (PENDING_MAP) the clean
+    takes read with every row put back to PENDING."""
     if target is None:
         return clean_problems(mod)
+    if target == PENDING_MAP:
+        with pending_rows(mod):
+            return clean_problems(mod)
     if target == "the run tree not handed to the reach":
         return tree_admitted_problems(mod)
     return case_problems(mod, {target})
@@ -864,14 +923,22 @@ class P2Witnesses(unittest.TestCase):
         self.assertNotEqual(tree_admitted_problems(tcb.witness_module((edit,))), [])
 
     def test_p2_witness_each_pending_refusal_deleted_goes_red(self):
+        # stage V: each site's row put back to PENDING (TEST DATA) in the module under test; the clean take (the
+        # file_change case for T-8) carries the row's refusal, and the site deleted loses it
         source = Path(tcb.ct.__file__).read_text(encoding="utf-8")
         sites = pending_call_sites(source)
         self.assertEqual(len(sites), sum(len(b) for b in tcb.ct.VENDOR_PENDING_ROWS.values()))
         for harness, text in sites:
+            key = ast.parse(text).body[0].value.args[1].value
             with self.subTest(site=text):
-                mod = tcb.witness_module(((text, "[]"),))
-                got = case_problems(mod, {"a file_change item"}) if "T-8:file-change" in text else clean_problems(mod)
-                self.assertNotEqual(got, [], f"deleting {text} stayed green")
+                for mod in (tcb.ct, tcb.witness_module(((text, "[]"),))):
+                    with pending_rows(mod, {(harness, key)}):
+                        got = (case_problems(mod, {"a file_change item"}) if key == "T-8:file-change"
+                               else clean_problems(mod))
+                    if mod is tcb.ct:
+                        self.assertEqual(got, [], f"{text}: the PENDING row's take is red on check_take.py")
+                    else:
+                        self.assertNotEqual(got, [], f"deleting {text} stayed green")
 
 
 if __name__ == "__main__":
