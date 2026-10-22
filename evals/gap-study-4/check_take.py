@@ -5975,7 +5975,8 @@ def vendor_codex_offered_partial(path) -> list:
     """inherited-context, T-12:offered-context (NOT COMPARABLE; glitch-f1's adopted ruling): every recorded workspace
     root list (session_meta, each thread_settings that writes one, the environment context's and world_state's
     filesystem blocks) is exactly [the session folder]; world_state's app and plugin sections off; no
-    recommended_plugins section; no additional_tools item; every skill root the pinned system folder."""
+    recommended_plugins section; no additional_tools item and no session_meta.dynamic_tools (review 0df1437 MINOR 2);
+    every skill root the pinned system folder."""
     reason = "inherited-context"
     try:
         lines = _vendor_codex_lines(path)
@@ -6011,6 +6012,11 @@ def vendor_codex_offered_partial(path) -> list:
                 and rec["payload"].get("type") == "additional_tools")
     if extra:
         out.append(f"[{reason}] the rollout holds {extra} additional_tools item(s): tools added to the session")
+    # review 0df1437 MINOR 2: session_meta.dynamic_tools, written whenever a dynamic tool is offered (recorder.rs:970-974,
+    # omitted when empty; absent in all 89 native turns of the 38 walks)
+    if "dynamic_tools" in meta:
+        out.append(f"[{reason}] session_meta records dynamic_tools {str(meta['dynamic_tools'])[:120]}: tools offered to "
+                   "the session")
     for _line, pay in _vc_messages(lines, "developer"):
         for t in map(_vc_part_text, _vc_parts(pay)):
             for root in _CODEX_SKILL_ROOT.findall(t or ""):
