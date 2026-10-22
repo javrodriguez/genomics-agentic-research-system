@@ -77,6 +77,31 @@ def snippet(ctx: str, word: str, width: int = 90) -> str:
     return "…" + ctx[lo:m.end() + width // 2].replace("\n", " ") + "…"
 
 
+VENDOR_HARNESSES = ("codex", "gemini")
+
+
+def session_context(ct, s) -> dict:
+    """One session's loaded context, as the take checker will read it (glitch-f1's stage W ruling 2, lane
+    vendor-settle, Thu 22 Oct 2026): a codex or gemini session (its driver ledger's agent.harness) through
+    check_take.vendor_loaded_context_text, the text that harness's settled T-10 reader sweeps; any other session
+    through context_text, Claude Code's attachment sweep. {harness, reader, ctx, unreadable}: an unreadable vendor
+    session reads "" and names why, never a clean 0."""
+    harness = None
+    try:
+        ledger = json.loads((Path(s).parent / "driver-ledger.json").read_text(encoding="utf-8"))
+        harness = (ledger.get("agent") or {}).get("harness") if isinstance(ledger, dict) else None
+    except (OSError, ValueError):
+        pass
+    if harness not in VENDOR_HARNESSES:
+        return {"harness": harness, "reader": "context_text", "ctx": ct.context_text(s), "unreadable": None}
+    reader = f"vendor_loaded_context_text ({harness})"
+    try:
+        return {"harness": harness, "reader": reader, "ctx": ct.vendor_loaded_context_text(s, harness),
+                "unreadable": None}
+    except Exception as e:  # noqa: BLE001 - a session the reader refuses is named, never read as clean
+        return {"harness": harness, "reader": reader, "ctx": "", "unreadable": f"{type(e).__name__}: {str(e)[:200]}"}
+
+
 def derive() -> dict:
     ct = checker()
     pre = prereg.load()
@@ -86,7 +111,8 @@ def derive() -> dict:
                                  for w in words}
     per_session = []
     for s in found:
-        ctx = ct.context_text(s)
+        read = session_context(ct, s)
+        ctx = read["ctx"]
         flagged = {w.lower() for w in ct.context_leaks(ctx, pre)}
         hits = []
         for w in words:
@@ -99,10 +125,13 @@ def derive() -> dict:
             if w.lower() in flagged:
                 rec["still_flagged_in"] += 1
             hits.append(w)
-        per_session.append({"session": str(s.parent.relative_to(HERE)),
-                            "context_records_bytes": len(ctx),
-                            "words_present": sorted(hits),
-                            "words_the_checker_would_void_on": sorted(flagged)})
+        entry = {"session": str(s.parent.relative_to(HERE)),
+                 "context_records_bytes": len(ctx),
+                 "words_present": sorted(hits),
+                 "words_the_checker_would_void_on": sorted(flagged)}
+        if read["harness"] in VENDOR_HARNESSES:                    # stage W: which reader read it, and any refusal
+            entry.update(harness=read["harness"], reader=read["reader"], context_unreadable=read["unreadable"])
+        per_session.append(entry)
     return {
         "role": "Every pre-registered leak word, grepped against the loaded context of every real session "
                 "this study has recorded, through the take checker's own readers.",

@@ -5930,6 +5930,20 @@ def vendor_codex_origin_reads(path) -> list:
     return out
 
 
+def vendor_codex_loaded_context_text(path) -> str:
+    """The text T-10 sweeps for a codex take, lower-cased: the DECODED text (_decoded_text, keys included) of
+    session_meta, every world_state and developer message, and the AGENTS.md and environment-context user parts, joined
+    by spaces. Raises one of _VENDOR_READ_ERRORS. leak_grep (the prereg draft's checked_against, stage W) reads it too."""
+    lines = _vendor_codex_lines(path)
+    ctx = [_decoded_text(lines[0][0])]
+    ctx += [_decoded_text(line) for line, rec in lines if rec["type"] == "world_state"]
+    ctx += [_decoded_text(line) for line, _pay in _vc_messages(lines, "developer")]
+    for _line, pay in _vc_messages(lines, "user"):
+        ctx += [t for t in map(_vc_part_text, _vc_parts(pay))
+                if t and t.startswith((CODEX_AGENTS_PREFIX, CODEX_ENVIRONMENT_PREFIX))]
+    return " ".join(ctx).lower()
+
+
 def vendor_codex_loaded_context_reads(path, pre) -> list:
     """leak-in-loaded-context (T-10, SAME): context_leaks over the DECODED text (review MAJOR 3; _decoded_text, keys
     included) of what the CLI put in front of the model: session_meta (base_instructions, the system-prompt record, as
@@ -5937,16 +5951,10 @@ def vendor_codex_loaded_context_reads(path, pre) -> list:
     environment-context user parts (never an operator line, T-6's). Survey: 0 of 38."""
     reason = "leak-in-loaded-context"
     try:
-        lines = _vendor_codex_lines(path)
+        text = vendor_codex_loaded_context_text(path)
     except _VENDOR_READ_ERRORS as e:
         return _vc_unreadable(reason, e)
-    ctx = [_decoded_text(lines[0][0])]
-    ctx += [_decoded_text(line) for line, rec in lines if rec["type"] == "world_state"]
-    ctx += [_decoded_text(line) for line, _pay in _vc_messages(lines, "developer")]
-    for _line, pay in _vc_messages(lines, "user"):
-        ctx += [t for t in map(_vc_part_text, _vc_parts(pay))
-                if t and t.startswith((CODEX_AGENTS_PREFIX, CODEX_ENVIRONMENT_PREFIX))]
-    leaked = sorted(context_leaks(" ".join(ctx).lower(), pre))
+    leaked = sorted(context_leaks(text, pre))
     if not leaked:
         return []
     return [f"[{reason}] the context Codex loaded for the session contains {leaked}, which tells the agent what this "
@@ -6503,6 +6511,25 @@ def vendor_gemini_run_tree_reads(path, design) -> list:
     return out
 
 
+def vendor_gemini_loaded_context_text(path, versions=None) -> str:
+    """The text T-10 sweeps for a gemini take, lower-cased: every <session_context> version's decoded text, joined by
+    spaces. Raises _GeminiContextUnread; a session with no version is a ValueError (never an empty clean text).
+    leak_grep (the prereg draft's checked_against, stage W) reads it too."""
+    versions = gemini_context_versions(path) if versions is None else versions
+    if not versions:
+        raise ValueError(f"the native session records no {GEMINI_CONTEXT_OPEN} context")
+    return " ".join(t for _, t in versions).lower()
+
+
+def vendor_loaded_context_text(path, harness) -> str:
+    """The loaded-context text the harness's settled T-10 reader sweeps (codex or gemini), for leak_grep's derive and
+    so build_draft's checked_against (glitch-f1's stage W ruling 2). Raises on an unreadable session, never ""."""
+    harness = _vendor_harness(harness)
+    if harness == "codex":
+        return vendor_codex_loaded_context_text(path)
+    return vendor_gemini_loaded_context_text(path)
+
+
 def vendor_gemini_loaded_context_reads(path, design) -> list:
     """T-10 (leak-in-loaded-context, SAME): every context version's decoded text, lower-cased, through context_leaks
     with the design's pre-registration (no vendor excusal: the pre-registered ones are Claude Code's phrases)."""
@@ -6510,7 +6537,7 @@ def vendor_gemini_loaded_context_reads(path, design) -> list:
                                             "what the CLI put in front of the agent cannot be swept")
     if refused:
         return refused
-    leaked = context_leaks(" ".join(t for _, t in versions).lower(), design.pre)
+    leaked = context_leaks(vendor_gemini_loaded_context_text(path, versions), design.pre)
     if not leaked:
         return []
     return [f"[leak-in-loaded-context] the context Gemini CLI loaded for the agent contains {sorted(leaked)}, which "
