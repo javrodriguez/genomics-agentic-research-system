@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "harness": "gemini",
+  "cli_version": "0.64.0",
+  "reader_sources_sha256": "ec9c80e69cef60a1703ddcb41f98489735ac721703ef54a56c59dd4c1840d5d2",
+  "walk": "w-g21",
+  "native": {
+    "file": "session/native-turn-2.jsonl",
+    "sha256": "92ca8f1eef4d636380920297b64728f98371acf3a441f80b78a4bb171256edb2"
+  },
+  "streams": [
+    {
+      "file": "turn-1.jsonl",
+      "sha256": "e11b4c22a5fb4ee8d7a13fcb97e401838d8f73deb821ec8e3b7e4a3c8c3360fa"
+    },
+    {
+      "file": "turn-2.jsonl",
+      "sha256": "64ec94e36a7e764e63851412b6b46ebe3d9566d06de5b5f0fe85181d1c523c19"
+    }
+  ],
+  "join": {
+    "status": "PASS",
+    "interactions": 2
+  },
+  "review": {
+    "verdict": "PASS",
+    "file": "gemini-review.md",
+    "sha256": "2c80deddc1cbe653cdb0a15e0d3923e7034018d4ea5bf1bdac5b90a0603f2e21",
+    "reviewer": "independent reviewer agent (Claude Opus 5.5)"
+  },
+  "accepted_by": "javier"
+}
