@@ -75,3 +75,12 @@ New from this lane:
 - **`checked_against` reads 0 context-record bytes on vendor sessions** (regenerated draft: every `rehearsals/w-g*` and `w-o*` session shows `context_records_bytes` 0), so the leak check sees none of the vendor CLIs' instruction furniture (build_draft `checked_sessions` / check_take).
 - `owner_value_missing([], "list")` reads an empty list as supplied (`build_draft.py`, tested so in `test_structured_inputs_retain_their_types`); `furniture_lists` never renders an empty one, but the slot would accept it.
 - The box user name `dana` is agent-visible through `ls -la` (w-g21 read item 8); it is box furniture, not CLI, and already in the prereg's `box_users`.
+
+## Checks run (all behind `mac_slot.py light-ok`, or the heavy slot where named)
+
+- Touched modules, red first then green: test_scan_record (209 tests), test_awareness_furniture (18), test_build_draft's Readiness clauses on one fresh build (R15.furniture, R34.hooks, four mutants red), test_auto_mode (6), test_sidecar TestFold3Ast and TestFold5 (12).
+- `build_draft.py --check`: "ok: the committed draft is what build_draft.py builds".
+- One-process hazard check, light: test_awareness + test_awareness_furniture + test_b25_real_shapes (55, 0 failures); test_scaffold + test_scan_record + test_scan_witness (268, 0 failures); test_awareness + test_scan_record + test_scan_witness (238, 0 failures).
+- Heavy slot (`mac_slot.py run --kind heavy --owner d8-furniture`, acquired 00:23, about 20 minutes): test_awareness + test_build_draft (whole) + test_prereg_order + test_prereg_status + test_agent_tool in one process, 100 tests, **1 failure: test_build_draft Description.test_commitments, clause R9.sessions**.
+  It is **pre-existing at the base**: `description_problems(describe())` returns `['R9.sessions']` in a detached worktree at d5c0f798 too (worktree removed after).
+  R9.sessions expects `checked_against` to read 0 sessions, and describe() at this tree reads 225 (the walks merged into dry/all-225); the same staleness as the base draft's `checked_against`, so it belongs with lane freeze-gates-fix, not here.
