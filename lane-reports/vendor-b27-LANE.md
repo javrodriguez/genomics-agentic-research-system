@@ -303,3 +303,19 @@ Green (21:25:52-21:25:55): "Ran 47 tests", "OK".
 Mutants, each against the new tests, the file restored from a byte backup after each (cmp clean): the leading-record check dropped, the empty-group check dropped, the coverage check dropped, the text check loosened to a count, the run path naming process 1's file for every process, the dry run's up-front check dropped: each "FAILED".
 Mac, light-ok (21:26:41-21:26:56): test_stub_model_server 29 OK; test_stub_model_probe 47 OK; test_b27_reading 16 OK; the single-process hazard check, `unittest tests.test_stub_agents tests.test_stub_model_probe tests.test_stub_take` in one process from evals/gap-study-4: "Ran 84 tests", "OK".
 Next, not this lane agent's: a closure review, then A1 and A1-fake rerun together on athena.
+
+## Closure-review fold (REVIEW-vendor-b27-49c350a MINOR 1, NITs 1-3), made in lane vendor-b28 after the merge of 49c350a9 (glitch-f1's ruling O2, 21 Oct 2026)
+
+Ruling O2's words (night log, "B27 DECISION", Wed 21 Oct 21:48 EDT): "B27's code merges with the batch (stage 8 passed its closure), its MINOR 1 and NITs 1-3 folded on the b28 branch right after the merge, recorded in B27's lane file".
+Where: /Users/javrodher/aegis-builds/vendor-b28-20261021, branch lane/vendor-b28, merge commit ae63e925 (B27's 49c350a9b008e3ea15f83f3873fe62b3766722fe onto 5457e75e by exact SHA; `git diff --stat` of the merge against 5457e75e equals 9e91dd34..49c350a9's, compared with diff).
+
+- MINOR 1 (main's check_fake bound by no test): tests/test_stub_model_probe.py B27ClosureFold.test_main_refuses_a_bad_split_before_the_run and ...before_the_dry_run call smp.main with load_scenario patched to an out-of-order script, run_probe, check_output or dry_run patched to fail if reached, and assert ProbeRefused with nothing written under the scratch folder.
+- NIT 1 (a refused split in run_scenario left <out>/A1-fake and an sp-* folder): run_scenario takes the fake split (fake_groups of A1's unmaterialised script; materialise only fills ${RUN_TREE}, so the indices are the same) before os.mkdir(out); B27ClosureFold.test_a_refused_split_in_run_scenario_leaves_nothing_behind.
+- NIT 2 (the prefix-boundary test red under m2 only by a KeyError): B27ClosureFold.test_a_prefix_match_with_a_decoy_text_is_still_not_a_boundary gives the prefix entry a decoy `text` equal to the missing prompt, so a rule that counts prefix matches as boundaries fails by assertion; the original test stays.
+- NIT 3: the defect's line numbers in stage 8 above (":264, :353, :411") are lines of box/stub_model_probe.py at 82da1830, not at 49c350a9 or later.
+
+Red, a `git archive` of ae63e925 with only the new test file laid over (21:52:46-21:52:50 EDT, `date`): "Ran 51 tests", "FAILED (failures=1)": the NIT 1 test, "Tuples differ: (['sp-9un90gld'], ['A1-fake']) != ([], [])". (Two earlier tries at 21:52:21 and 21:52:34 went red by an incidental KeyError 'road' and a ScriptError from fake_records; the test's script gained "road" and "expect" and fake_records is patched, so the red is the assertion.)
+The MINOR 1 tests pass on ae63e925, as they must (main's check is there); their witness is mutant m9.
+Green, lane tree (21:53:02-21:53:07): "Ran 51 tests", "OK".
+Mutants on a scratch copy, restored from a byte backup and checked with cmp after each: m9 (main's check_fake removed) "FAILED (failures=2)", the two MINOR 1 tests; m2 (prefix matches counted as boundaries) "FAILED (failures=1, errors=1)", the decoy test by "ProbeRefused not raised" and the original by KeyError 'text'; the NIT 1 change reverted (split after mkdir) "FAILED (failures=1)".
+Single-process hazard check (21:53:27-21:53:37): `unittest tests.test_stub_agents tests.test_stub_model_probe tests.test_stub_take` in one process: "Ran 88 tests", "OK".

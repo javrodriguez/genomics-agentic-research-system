@@ -411,6 +411,9 @@ def run_scenario(runtime, env: dict, name: str, *, image: str, scratch_parent: s
     retained before the next exec, then teardown, restore and the records copied into <out_root>/<name>."""
     doc = load_scenario(name)
     fake = name == FAKE
+    # REVIEW-vendor-b27-49c350a NIT 1 (folded in vendor-b28): the fake split is taken before anything is made, so a
+    # refused split leaves neither <out_root>/<name> nor an sp-* scratch folder behind
+    groups = fake_groups(load_scenario(FAKE_OF)) if fake else None
     out = os.path.join(out_root, name)
     os.mkdir(out, 0o755)
     base = tempfile.mkdtemp(prefix="sp-", dir=scratch_parent)
@@ -427,7 +430,7 @@ def run_scenario(runtime, env: dict, name: str, *, image: str, scratch_parent: s
     if fake:
         script = materialise(load_scenario(FAKE_OF), run_tree)
         records = stub_model_server.fake_records(script)
-        fake_records = [[records[i] for i in g] for g in fake_groups(script)]
+        fake_records = [[records[i] for i in g] for g in groups]
     build_run_tree(run_tree, doc, fake_records=fake_records)
     launched = run_take.Launched(config_dir=cfg)
     restored = False

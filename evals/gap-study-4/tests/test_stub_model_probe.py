@@ -520,6 +520,59 @@ class FakeSplit(unittest.TestCase):
         smp.check_fake(["A1", "A1-fake"])                 # the committed A1 splits
 
 
+class B27ClosureFold(unittest.TestCase):
+    """REVIEW-vendor-b27-49c350a MINOR 1 and NITs 1-2, folded in lane vendor-b28 (glitch-f1's ruling O2)."""
+
+    BAD = {"processes": ["one", "two", "three"], "model": "gemini-3.8-flash", "road": "a", "expect": {},
+           "requests": [_req("user_text", "one"), _req("user_text", "three"), _req("user_text", "two")]}
+
+    def _argv(self, out, *extra):
+        return ["--box", BOX, "--scratch-parent", out, "--output", os.path.join(out, "stub-probe-x"),
+                "--gemini-image", GEMINI_IMAGE, "--scenarios", "A1,A1-fake", *extra]
+
+    def test_main_refuses_a_bad_split_before_the_run(self):
+        # MINOR 1: main's own check_fake (not a direct call) refuses before run_probe or the output folder
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(smp, "load_scenario", lambda n: dict(self.BAD)), \
+                mock.patch.object(smp, "run_probe", side_effect=AssertionError("run_probe was reached")), \
+                mock.patch.object(smp, "check_output", side_effect=AssertionError("check_output was reached")):
+            with self.assertRaises(smp.ProbeRefused) as cm:
+                smp.main(self._argv(tmp))
+            self.assertIn("out of order", str(cm.exception))
+            self.assertEqual(os.listdir(tmp), [])
+
+    def test_main_refuses_a_bad_split_before_the_dry_run(self):
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(smp, "load_scenario", lambda n: dict(self.BAD)), \
+                mock.patch.object(smp, "dry_run", side_effect=AssertionError("dry_run was reached")), \
+                self.assertRaises(smp.ProbeRefused):
+            smp.main(self._argv(tmp, "--dry-run"))
+
+    def test_a_refused_split_in_run_scenario_leaves_nothing_behind(self):
+        # NIT 1: run_scenario's own split refuses before <out_root>/A1-fake or an sp-* scratch folder exists
+        with tempfile.TemporaryDirectory() as tmp:
+            scratch, out = os.path.join(tmp, "s"), os.path.join(tmp, "o")
+            os.mkdir(scratch)
+            os.mkdir(out)
+            with mock.patch.object(smp, "load_scenario", lambda n: dict(self.BAD)), \
+                    mock.patch.object(sms, "fake_records", lambda s: [{}] * len(s["requests"])), \
+                    self.assertRaises(smp.ProbeRefused):
+                smp.run_scenario(object(), {}, "A1-fake", image=GEMINI_IMAGE, scratch_parent=scratch, out_root=out,
+                                 resources=dict(RESOURCES))
+            self.assertEqual((os.listdir(scratch), os.listdir(out)), ([], []))
+
+    def test_a_prefix_match_with_a_decoy_text_is_still_not_a_boundary(self):
+        # NIT 2: the prefix entry also carries a `text` equal to the missing prompt, so a rule that counted prefix
+        # matches as boundaries would see a clean split and fail this test by its assertion, not by a KeyError
+        reqs = [_req("user_text", "one"),
+                {"endpoint": "stream", "match": {"kind": "user_text_prefix", "prefix": "t", "text": "two"},
+                 "respond": {"text": "ok"}},
+                _req("user_text", "three")]
+        with self.assertRaises(smp.ProbeRefused) as cm:
+            smp.fake_groups({"processes": ["one", "two", "three"], "requests": reqs})
+        self.assertIn("missing boundary", str(cm.exception))
+
+
 class ReviewFold(unittest.TestCase):
     """REVIEW-vendor-b27-25ffff5 MINORs 1, 3 and 6 (glitch-f1's stage-5 word)."""
 
