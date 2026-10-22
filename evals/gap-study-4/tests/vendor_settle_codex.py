@@ -830,6 +830,161 @@ RULING_SHA256 = {
 }
 
 
+# ---- one plant per leg (review 0df1437 MINOR 1): each leg of the published partial checks and SAME readers has a
+# plant that fires through that leg alone, so a mutant dropping the leg goes red ------------------------------------
+TREE46 = "/tmp/run-8617d222"
+
+
+def _sess(change):
+    return lambda: _payload_edit(LAST_O46, lambda r: r.get("type") == "session_meta", change)
+
+
+def _ws(change):
+    return lambda: _payload_edit(LAST_O46, lambda r: r.get("type") == "world_state", change)
+
+
+def _dev(prefix, fn):
+    return lambda: _payload_edit(LAST_O46, _message_with("developer", "<skills_instructions>"), _set_part(prefix, fn))
+
+
+def _user(prefix, fn):
+    return lambda: _payload_edit(LAST_O46, _message_with("user", prefix), _set_part(prefix, fn))
+
+
+def _config_with(old, new):
+    real = ct._take_config.files_for
+
+    def files_for(harness, **kw):
+        out = dict(real(harness, **kw))
+        cfg = out[ct._take_config.CODEX_CONFIG].decode("ascii")
+        if cfg.count(old) != 1:
+            raise AssertionError(f"config plant {old!r} occurs {cfg.count(old)} times")
+        out[ct._take_config.CODEX_CONFIG] = cfg.replace(old, new).encode("ascii")
+        return out
+    return unittest.mock.patch.object(ct._take_config, "files_for", files_for)
+
+
+def _refused_missing(name):
+    real = ct._run_take.refused_variables
+    return unittest.mock.patch.object(ct._run_take, "refused_variables",
+                                      lambda h: [v for v in real(h) if v != name])
+
+
+ROOT_OUT = f"<root>{TREE46}</root><root>/root/outside</root>"
+LEAK_W = "evaluation"
+# (leg, reason, reader(plant, design) -> problems, plant edits, a patch context or None)
+LEG_PLANTS = [
+    ("M1 offered: the environment context's roots", "inherited-context",
+     lambda p, d: ct.vendor_codex_offered_partial(p.path),
+     [_user(ct.CODEX_ENVIRONMENT_PREFIX, lambda t: t.replace(f"<root>{TREE46}</root>", ROOT_OUT))], None),
+    ("M2 offered: world_state's filesystem roots", "inherited-context",
+     lambda p, d: ct.vendor_codex_offered_partial(p.path),
+     [_ws(lambda r: r["payload"]["state"]["environments"].update(filesystem=r["payload"]["state"]["environments"][
+         "filesystem"].replace(f"<root>{TREE46}</root>", ROOT_OUT)))], None),
+    ("M3 offered: a thread_settings snapshot's roots", "inherited-context",
+     lambda p, d: ct.vendor_codex_offered_partial(p.path),
+     [lambda: _payload_edit(LAST_O46, _nth_event("thread_settings_applied", 2),
+                            lambda r: r["payload"]["thread_settings"]["runtime_workspace_roots"].append("/root/out"))],
+     None),
+    ("M4 offered: world_state's apps section on", "inherited-context",
+     lambda p, d: ct.vendor_codex_offered_partial(p.path),
+     [_ws(lambda r: r["payload"]["state"].update(apps_instructions=True))], None),
+    ("M21 T-18: world_state's apps section on", ct.HARNESS_CONDITION_VIOLATED,
+     lambda p, d: [x for x in ct.vendor_codex_tools_partial(p.path) if "apps_instructions" in x],
+     [_ws(lambda r: r["payload"]["state"].update(apps_instructions=True))], None),
+    ("M6 offered: a skill root outside the pinned folder", "inherited-context",
+     lambda p, d: ct.vendor_codex_offered_partial(p.path),
+     [_dev("<skills_instructions>", lambda t: t.replace("- `r0` = `/opt/cfg/skills/.system`",
+                                                        "- `r0` = `/root/skills`", 1))], None),
+    ("M7 memory: world_state's key set", "inherited-context",
+     lambda p, d: ct.vendor_codex_memory_partial(p.path),
+     [_ws(lambda r: r["payload"]["state"].update(extra_section={}))], None),
+    ("M8 memory: a memory-named key in session_meta", "inherited-context",
+     lambda p, d: ct.vendor_codex_memory_partial(p.path),
+     [_sess(lambda r: r["payload"].update(memory_root="/opt/cfg/memories"))], None),
+    ("M9 memory: a memory-named key in a turn_context", "inherited-context",
+     lambda p, d: ct.vendor_codex_memory_partial(p.path),
+     [lambda: _payload_edit(LAST_O46, _nth("turn_context", 2), lambda r: r["payload"].update(memories={}))], None),
+    ("M9 memory: a memory-named key in a thread_settings snapshot", "inherited-context",
+     lambda p, d: ct.vendor_codex_memory_partial(p.path),
+     [lambda: _payload_edit(LAST_O46, _nth_event("thread_settings_applied", 2),
+                            lambda r: r["payload"]["thread_settings"].update(memories={}))], None),
+    ("M11 T-13: the commit hash off its shape", "checkout-binding",
+     lambda p, d: ct.vendor_codex_checkout_partial(p.path),
+     [_sess(lambda r: r["payload"]["git"].update(commit_hash="HEAD"))], None),
+    ("M13 T-17: the refused set misses a billing route", "environment-record",
+     lambda p, d: ct.vendor_billing_route_partial(p.path, "codex", d.pre), [],
+     lambda: _refused_missing("CODEX_ACCESS_TOKEN")),
+    ("M15 T-17: a token_count with no plan", "environment-record",
+     lambda p, d: ct.vendor_billing_route_partial(p.path, "codex", d.pre),
+     [lambda: _payload_edit(LAST_O46, _nth_event("token_count", 2),
+                            lambda r: r["payload"]["rate_limits"].update(plan_type=None))], None),
+    ("M18 T-17: an empty per_turn credential list", "environment-record",
+     lambda p, d: ct.vendor_billing_route_partial(p.path, "codex", d.pre),
+     [lambda: vp.replace_bytes("environment.json", '"per_turn": [', '"per_turn": [], "per_turn_was": [')], None),
+    ("M19 T-18: the pinned config turns agents on", ct.HARNESS_CONDITION_VIOLATED,
+     lambda p, d: [x for x in ct.vendor_codex_tools_partial(p.path) if "config.toml" in x], [],
+     lambda: _config_with("[agents]\nenabled = false\n", "[agents]\nenabled = true\n")),
+    ("M23 T-5: a second AGENTS.md part", "unknown-harness-origin",
+     lambda p, d: ct.vendor_codex_origin_reads(p.path),
+     [lambda: _payload_edit(LAST_O46, _message_with("user", ct.CODEX_AGENTS_PREFIX),
+                            lambda r: r["payload"]["content"].append(dict(r["payload"]["content"][0])))], None),
+    ("M24 T-5: an operator line missing from the rollout", "unknown-harness-origin",
+     lambda p, d: ct.vendor_codex_origin_reads(p.path),
+     [lambda: _payload_edit(LAST_O46, lambda r: _is(r, "response_item", type="message", role="user") and [
+         c.get("text") for c in r["payload"]["content"]] == ["skip"],
+         lambda r: r["payload"].update(content=[]))], None),
+    ("M25 T-10: a leak word in world_state", "leak-in-loaded-context",
+     lambda p, d: ct.vendor_codex_loaded_context_reads(p.path, d.pre),
+     [_ws(lambda r: r["payload"]["state"]["persistent_mode"].update(note=LEAK_W))], None),
+    ("M26 T-10: a leak word in the environment context part", "leak-in-loaded-context",
+     lambda p, d: ct.vendor_codex_loaded_context_reads(p.path, d.pre),
+     [_user(ct.CODEX_ENVIRONMENT_PREFIX, lambda t: t.replace("<shell>bash</shell>", f"<shell>bash {LEAK_W}</shell>"))],
+     None),
+    ("M26 T-10: a leak word in the AGENTS.md message body", "leak-in-loaded-context",
+     lambda p, d: ct.vendor_codex_loaded_context_reads(p.path, d.pre),
+     [_user(ct.CODEX_AGENTS_PREFIX, lambda t: t.replace("</INSTRUCTIONS>", f"{LEAK_W}\n</INSTRUCTIONS>"))], None),
+    ("M27 T-10: a leak word in session_meta", "leak-in-loaded-context",
+     lambda p, d: ct.vendor_codex_loaded_context_reads(p.path, d.pre),
+     [_sess(lambda r: r["payload"]["base_instructions"].update(
+         text=r["payload"]["base_instructions"]["text"] + " " + LEAK_W))], None),
+    ("M28 T-10: a leak word after an escaped newline in a developer section", "leak-in-loaded-context",
+     lambda p, d: ct.vendor_codex_loaded_context_reads(p.path, d.pre),
+     [_dev("<collaboration_mode>", lambda t: t + "\n" + LEAK_W)], None),
+    ("M29 T-12:instruction-files: world_state's agents_md outside the session folder", "inherited-context",
+     lambda p, d: ct.vendor_codex_instruction_files_reads(p.path),
+     [_ws(lambda r: r["payload"]["state"]["agents_md"].update(directory="/opt/cfg"))], None),
+    ("M30 T-14: one word of the AGENTS.md message copy", "checkout-binding",
+     lambda p, d: ct.vendor_codex_instruction_content_reads(p.path, d),
+     [_user(ct.CODEX_AGENTS_PREFIX, lambda t: t.replace("repository orientation", "repository introduction", 1))],
+     None),
+    ("M36 offered: session_meta.dynamic_tools", "inherited-context",
+     lambda p, d: ct.vendor_codex_offered_partial(p.path),
+     [_sess(lambda r: r["payload"].update(dynamic_tools=[{"name": "web_fetch"}]))], None),
+]
+
+
+class CLegs(unittest.TestCase):
+    """Review 0df1437 MINOR 1: each leg fires alone on its own scratch copy of the RECORDED w-o46 take."""
+
+    def test_c_legs_each_plant_fires_through_its_leg(self):
+        import contextlib
+        with vp.planted(O46) as clean:
+            design = walk_design(clean)[1]
+        for name, reason, read, edits, patch in LEG_PLANTS:
+            with self.subTest(leg=name), contextlib.ExitStack() as stack:
+                if patch is not None:
+                    stack.enter_context(patch())
+                plant = stack.enter_context(vp.planted(O46, *[e() for e in edits]))
+                got = read(plant, design)
+                self.assertTrue(got, f"{name}: the plant reads clean")
+                if reason is not None:
+                    self.assertTrue(all(p.startswith(f"[{reason}] ") for p in got), got)
+        with vp.planted(O46) as clean:                         # every leg read here is silent on the clean copy
+            for name, reason, read, edits, patch in LEG_PLANTS:   # (T-18's own legs filtered to their lines above)
+                self.assertEqual(read(clean, design), [], name)
+
+
 class CItems(unittest.TestCase):
     """The 15 Codex READER items on the RECORDED w-o46 copy (T-15 also on w-o47's gpt-6-luna), each against the test's
     own reading, and five items' violations re-planted on the recorded copy."""
