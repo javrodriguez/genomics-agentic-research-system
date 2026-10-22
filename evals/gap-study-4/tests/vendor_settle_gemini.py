@@ -1083,6 +1083,27 @@ class GLegs(unittest.TestCase):
                 self.assertTrue(all(x.startswith(f"[{reason}] ") for x in got), got)
 
 
+class GLegsW14(unittest.TestCase):
+    """Gemini closure MINOR C1: the session toolCalls leg of T-18 is not equivalent. 2,222 of the walks' 2,744 session
+    toolCalls entries carry no functionCall part; on the RECORDED w-g14 copy, read_file__call_710162 is one (last
+    snapshot only), so a denied name planted in its session copies (the stream untouched) is accepted by the projection
+    and caught only through the toolCalls leg."""
+
+    def test_g_legs_an_unpaired_session_toolcalls_entry_fires(self):
+        call = "read_file__call_710162"
+        rename = vendor_plant.replace_bytes(
+            "session/native-turn-4.jsonl", f'"id":"{call}","name":"read_file"', f'"id":"{call}","name":"web_fetch"',
+            count=3)
+        with vendor_plant.planted(G14) as clean:
+            self.assertEqual(ct.vendor_gemini_tools_partial(clean.path), [])
+        with vendor_plant.planted(G14, rename) as plant:
+            self.assertEqual(ct.vendor_take_view(plant.path, H)["problems"], [])
+            where = [w for w, n in ct._gemini_called_names(plant.path) if n == "web_fetch"]
+            got = ct.vendor_gemini_tools_partial(plant.path)
+        self.assertEqual([w.split(" ")[-1] for w in where], ["toolCalls"])      # that leg alone reads it
+        self.assertTrue(got and all(x.startswith(f"[{HC}] ") for x in got), got)
+
+
 class GConstants(unittest.TestCase):
     def test_g_constants_read_the_mode_from_the_launch_argv(self):
         # stage V ruling (c): T-24's permission-mode leg reads every turn's launch argv (mode_binding.argv_mode, input
