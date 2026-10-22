@@ -93,7 +93,8 @@ class LGSynthetic(unittest.TestCase):
             self.assertEqual([s["words_the_checker_would_void_on"] for s in rec["per_session"]], [[WORD], [WORD]])
             with mock.patch.object(leak_grep, "sessions", lambda base=None: list(paths)), \
                     mock.patch.object(leak_grep, "checker", lambda: CT), mock.patch.object(leak_grep, "HERE", Path(d)), \
-                    self.assertRaises(ValueError):
+                    mock.patch.object(leak_grep, "KNOWN_UNREADABLE", {}), \
+                    self.assertRaisesRegex(ValueError, "would void"):
                 build_draft.checked_sessions(prereg.load())
 
     def test_lg_witness_the_vendor_leg_removed_reads_the_plant_clean(self):
@@ -101,6 +102,42 @@ class LGSynthetic(unittest.TestCase):
             rec = derive_on(takes(Path(d), PLANTED), Path(d))
         self.assertEqual(rec["words_that_would_void_a_session"], [])
         self.assertEqual([s["context_records_bytes"] for s in rec["per_session"]], [0, 0])
+
+
+class LGUnread(unittest.TestCase):
+    """Review 0df1437 MINOR 3 (glitch-f1's ruling): sessions_read counts only sessions read with more than 0
+    characters; the unreadable ones are named and must equal the known set, else checked_sessions refuses; a ledger that
+    cannot be read refuses, never falling back to Claude Code's reader."""
+
+    def test_lg_unread_the_live_count_and_the_known_set(self):
+        rec = leak_grep.derive()
+        read = [s for s in rec["per_session"] if s["context_records_bytes"] > 0]
+        self.assertEqual(rec["sessions_read"], len(read))
+        self.assertEqual(sorted(u["session"] for u in rec["sessions_unread"]), sorted(leak_grep.KNOWN_UNREADABLE))
+        self.assertEqual(sorted(leak_grep.KNOWN_UNREADABLE), ["rehearsals/w-g24"])
+        self.assertEqual(rec["sessions_found"], rec["sessions_read"] + len(rec["sessions_unread"]))
+        got = build_draft.checked_sessions(prereg.load())
+        self.assertEqual((got["status"], got["sessions_read"]), ("read", rec["sessions_read"]))
+        self.assertEqual([u["session"] for u in got["sessions_unread"]], ["rehearsals/w-g24"])
+
+    def test_lg_unread_an_unknown_unread_session_refuses(self):
+        with mock.patch.object(leak_grep, "KNOWN_UNREADABLE", {}), self.assertRaisesRegex(ValueError, "w-g24"):
+            build_draft.checked_sessions(prereg.load())
+        # a reader regression that reads no vendor session: every one unread, the check refuses
+        with mock.patch.object(leak_grep, "session_context",
+                               lambda ct, s: {"harness": "codex", "reader": "x", "ctx": "", "unreadable": "broken"}), \
+                self.assertRaisesRegex(ValueError, "cannot be read"):
+            build_draft.checked_sessions(prereg.load())
+
+    def test_lg_unread_an_unreadable_ledger_refuses(self):
+        with tempfile.TemporaryDirectory() as d:
+            paths = takes(Path(d))
+            (paths[0].parent / "driver-ledger.json").write_text("{not json", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "driver-ledger"):
+                derive_on(paths, Path(d))
+            (paths[0].parent / "driver-ledger.json").unlink()
+            with self.assertRaisesRegex(ValueError, "driver-ledger"):
+                derive_on(paths, Path(d))
 
 
 class LGLive(unittest.TestCase):
