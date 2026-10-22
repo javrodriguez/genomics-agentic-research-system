@@ -1,0 +1,239 @@
+{
+ "harness": "codex",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/10",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/20",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/20/rollout-2026-10-20T20-20-41-01a15af9-2b3d-7303-ab4d-3c66f5f99402.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-2",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/10",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/20",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/20/rollout-2026-10-20T20-20-41-01a15af9-2b3d-7303-ab4d-3c66f5f99402.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-3",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/10",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/20",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/20/rollout-2026-10-20T20-20-41-01a15af9-2b3d-7303-ab4d-3c66f5f99402.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-4",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/10",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/20",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/20/rollout-2026-10-20T20-20-41-01a15af9-2b3d-7303-ab4d-3c66f5f99402.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/10",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/20",
+     "dir"
+    ],
+    [
+     "sessions/2026/10/20/rollout-2026-10-20T20-20-41-01a15af9-2b3d-7303-ab4d-3c66f5f99402.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "nested_cli_calls": 0,
+ "root": "sessions",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-2f4e55c1",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/sessions/2026/10/20/rollout-2026-10-20T20-20-41-01a15af9-2b3d-7303-ab4d-3c66f5f99402.jsonl",
+     "codex",
+     "01a15af9-2b3d-7303-ab4d-3c66f5f99402"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-2f4e55c1",
+    "/var/tmp"
+   ],
+   "scanned": 481,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-2",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-2f4e55c1",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/sessions/2026/10/20/rollout-2026-10-20T20-20-41-01a15af9-2b3d-7303-ab4d-3c66f5f99402.jsonl",
+     "codex",
+     "01a15af9-2b3d-7303-ab4d-3c66f5f99402"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-2f4e55c1",
+    "/var/tmp"
+   ],
+   "scanned": 486,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-3",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-2f4e55c1",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/sessions/2026/10/20/rollout-2026-10-20T20-20-41-01a15af9-2b3d-7303-ab4d-3c66f5f99402.jsonl",
+     "codex",
+     "01a15af9-2b3d-7303-ab4d-3c66f5f99402"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-2f4e55c1",
+    "/var/tmp"
+   ],
+   "scanned": 486,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-4",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-2f4e55c1",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/sessions/2026/10/20/rollout-2026-10-20T20-20-41-01a15af9-2b3d-7303-ab4d-3c66f5f99402.jsonl",
+     "codex",
+     "01a15af9-2b3d-7303-ab4d-3c66f5f99402"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-2f4e55c1",
+    "/var/tmp"
+   ],
+   "scanned": 489,
+   "truncated": false,
+   "unreadable": []
+  }
+ ],
+ "unread_stream_lines": 0
+}
