@@ -22628,9 +22628,1662 @@
     "eli"
   ],
   "checked_against": {
-    "sessions_read": 0,
-    "sessions": [],
-    "status": "PENDING"
+    "sessions_read": 225,
+    "sessions": [
+      {
+        "session": "rehearsals/w-g12",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g13",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g14",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g15",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g16",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g17",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g18",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g19",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g20",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g21",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g23",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g24",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g25",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g26",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g27",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g28",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g29",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g30",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g31",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g32",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g33",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g34",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g35",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g36",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g37",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g38",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g39",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g40",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g41",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g42",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g43",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g44",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g45",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g46",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g47",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-g48",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o10",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o11",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o12",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o13",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o14",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o15",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o16",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o18",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o19",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o20",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o21",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o22",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o23",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o24",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o25",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o26",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o27",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o28",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o29",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o30",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o31",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o32",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o33",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o34",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o35",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o36",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o37",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o39",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o40",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o41",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o42",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o43",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o44",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o46",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o47",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o7",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o8",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w-o9",
+        "context_records_bytes": 0,
+        "words_present": [],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w001",
+        "context_records_bytes": 156169,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w002",
+        "context_records_bytes": 165596,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w003",
+        "context_records_bytes": 157271,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w004",
+        "context_records_bytes": 166713,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w005",
+        "context_records_bytes": 161460,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w008",
+        "context_records_bytes": 152043,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w009",
+        "context_records_bytes": 155430,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w010",
+        "context_records_bytes": 157185,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w011",
+        "context_records_bytes": 147030,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w012",
+        "context_records_bytes": 154383,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w015",
+        "context_records_bytes": 150803,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w016",
+        "context_records_bytes": 153798,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w017",
+        "context_records_bytes": 160036,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w018",
+        "context_records_bytes": 151741,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w019",
+        "context_records_bytes": 156015,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w022",
+        "context_records_bytes": 151736,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w023",
+        "context_records_bytes": 161562,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w024",
+        "context_records_bytes": 158935,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w025",
+        "context_records_bytes": 165632,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w026",
+        "context_records_bytes": 151741,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w027",
+        "context_records_bytes": 156015,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w028",
+        "context_records_bytes": 167997,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w029",
+        "context_records_bytes": 153213,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w030",
+        "context_records_bytes": 168597,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w031",
+        "context_records_bytes": 158866,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w033",
+        "context_records_bytes": 156600,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w034",
+        "context_records_bytes": 159855,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w035",
+        "context_records_bytes": 167793,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w036",
+        "context_records_bytes": 166371,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w037",
+        "context_records_bytes": 166623,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w038",
+        "context_records_bytes": 166038,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w039",
+        "context_records_bytes": 152737,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w040",
+        "context_records_bytes": 155688,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w042",
+        "context_records_bytes": 161025,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w043",
+        "context_records_bytes": 154364,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w044",
+        "context_records_bytes": 147139,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w045",
+        "context_records_bytes": 153784,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w046",
+        "context_records_bytes": 144799,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w047",
+        "context_records_bytes": 170516,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w048",
+        "context_records_bytes": 159586,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w049",
+        "context_records_bytes": 158663,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w050",
+        "context_records_bytes": 167938,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w051",
+        "context_records_bytes": 144214,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w052",
+        "context_records_bytes": 161610,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w054",
+        "context_records_bytes": 157465,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w055",
+        "context_records_bytes": 173514,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w056",
+        "context_records_bytes": 166215,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w057",
+        "context_records_bytes": 147402,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w058",
+        "context_records_bytes": 146817,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w059",
+        "context_records_bytes": 155693,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w060",
+        "context_records_bytes": 165687,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w061",
+        "context_records_bytes": 164268,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w062",
+        "context_records_bytes": 147402,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w063",
+        "context_records_bytes": 145384,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w064",
+        "context_records_bytes": 160440,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w065",
+        "context_records_bytes": 144799,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w066",
+        "context_records_bytes": 146554,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w067",
+        "context_records_bytes": 162195,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w068",
+        "context_records_bytes": 159855,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w069",
+        "context_records_bytes": 157767,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w070",
+        "context_records_bytes": 157767,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w071",
+        "context_records_bytes": 158352,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w072",
+        "context_records_bytes": 162195,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w073",
+        "context_records_bytes": 151567,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w074",
+        "context_records_bytes": 151840,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w075",
+        "context_records_bytes": 153784,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w076",
+        "context_records_bytes": 148572,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w077",
+        "context_records_bytes": 145969,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w078",
+        "context_records_bytes": 154954,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w079",
+        "context_records_bytes": 165196,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w080",
+        "context_records_bytes": 150680,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w081",
+        "context_records_bytes": 147402,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w082",
+        "context_records_bytes": 145969,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w084",
+        "context_records_bytes": 158306,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w085",
+        "context_records_bytes": 155048,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w086",
+        "context_records_bytes": 151315,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w087",
+        "context_records_bytes": 152152,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w089",
+        "context_records_bytes": 148057,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w090",
+        "context_records_bytes": 155054,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w091",
+        "context_records_bytes": 161943,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w092",
+        "context_records_bytes": 168622,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w093",
+        "context_records_bytes": 160440,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w094",
+        "context_records_bytes": 161025,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w095",
+        "context_records_bytes": 169494,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w096",
+        "context_records_bytes": 160440,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w097",
+        "context_records_bytes": 150397,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w098",
+        "context_records_bytes": 162989,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w099",
+        "context_records_bytes": 144799,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w100",
+        "context_records_bytes": 161025,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w101",
+        "context_records_bytes": 147139,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w102",
+        "context_records_bytes": 154696,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w103",
+        "context_records_bytes": 147139,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w104",
+        "context_records_bytes": 156635,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w105",
+        "context_records_bytes": 153784,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w106",
+        "context_records_bytes": 166361,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w107",
+        "context_records_bytes": 164868,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w108",
+        "context_records_bytes": 156050,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w109",
+        "context_records_bytes": 158371,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w110",
+        "context_records_bytes": 156050,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w111",
+        "context_records_bytes": 150095,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w112",
+        "context_records_bytes": 147402,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w113",
+        "context_records_bytes": 151265,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w114",
+        "context_records_bytes": 149227,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w115",
+        "context_records_bytes": 154369,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w116",
+        "context_records_bytes": 156531,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w117",
+        "context_records_bytes": 153784,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w118",
+        "context_records_bytes": 147987,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w119",
+        "context_records_bytes": 163726,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w120",
+        "context_records_bytes": 161725,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w121",
+        "context_records_bytes": 153322,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w122",
+        "context_records_bytes": 153655,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w123",
+        "context_records_bytes": 154434,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w124",
+        "context_records_bytes": 172128,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w125",
+        "context_records_bytes": 94947,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w127",
+        "context_records_bytes": 96717,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w129",
+        "context_records_bytes": 111174,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w131",
+        "context_records_bytes": 100078,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w132",
+        "context_records_bytes": 96717,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w134",
+        "context_records_bytes": 93514,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w135",
+        "context_records_bytes": 97550,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w137",
+        "context_records_bytes": 94952,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w138",
+        "context_records_bytes": 100753,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w139",
+        "context_records_bytes": 113255,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w140",
+        "context_records_bytes": 100758,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w141",
+        "context_records_bytes": 100158,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w142",
+        "context_records_bytes": 106622,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w143",
+        "context_records_bytes": 97068,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w144",
+        "context_records_bytes": 98140,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w145",
+        "context_records_bytes": 97550,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w146",
+        "context_records_bytes": 100163,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w147",
+        "context_records_bytes": 93097,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w148",
+        "context_records_bytes": 94963,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w149",
+        "context_records_bytes": 98156,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w150",
+        "context_records_bytes": 100179,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w151",
+        "context_records_bytes": 110405,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w152",
+        "context_records_bytes": 112197,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w153",
+        "context_records_bytes": 99497,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w154",
+        "context_records_bytes": 102505,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w155",
+        "context_records_bytes": 98151,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w156",
+        "context_records_bytes": 98741,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w157",
+        "context_records_bytes": 100426,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w158",
+        "context_records_bytes": 103977,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w159",
+        "context_records_bytes": 93545,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w160",
+        "context_records_bytes": 97484,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w161",
+        "context_records_bytes": 98156,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w162",
+        "context_records_bytes": 97566,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w163",
+        "context_records_bytes": 97566,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w164",
+        "context_records_bytes": 100174,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w165",
+        "context_records_bytes": 157751,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w166",
+        "context_records_bytes": 148325,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      },
+      {
+        "session": "rehearsals/w168",
+        "context_records_bytes": 98119,
+        "words_present": [
+          "allowlist"
+        ],
+        "words_the_checker_would_void_on": []
+      }
+    ],
+    "status": "read"
   },
   "not_poolable": {
     "rounds": [
@@ -23917,7 +25570,6 @@
   },
   "pending": {
     "/box_residuals/0/finding": "R8 plan 830: the real box supplies the conditional preflight finding.",
-    "/checked_against/status": "R9 plan 831, PL-4: the first committed walk supplies the session check.",
     "/effort/claude-code/claude-haiku-4-5-20251001": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
     "/effort/claude-code/claude-opus-5-5": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
     "/effort/claude-code/claude-sonnet-5-5": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
@@ -23942,7 +25594,6 @@
   "stats_design": {
     "PENDING": [
       "/box_residuals/0/finding",
-      "/checked_against/status",
       "/effort/claude-code/claude-haiku-4-5-20251001",
       "/effort/claude-code/claude-opus-5-5",
       "/effort/claude-code/claude-sonnet-5-5",
