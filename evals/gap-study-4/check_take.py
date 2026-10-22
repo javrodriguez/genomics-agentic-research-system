@@ -5672,7 +5672,29 @@ def _vendor_json_leaves(node):
     return node
 
 
+# Stage V ruling (b) (glitch-f1 on stage C's hand-back): a returned text that opens with the CLI's truncation header
+# and whose JSON body was cut does not decode, so its listing ("<run tree>\\nCLAUDE.md\\n...") was still read as one
+# path outside the run tree (w-o11, w-o13, w-o26). An undecodable body after the header is read with its literal
+# backslash-n unescaped (and nothing else changed) before the paths are taken.
+_CODEX_TRUNCATED_HEADER = re.compile(r"Warning: truncated output \(original token count: [0-9]+\)\nTotal output lines: "
+                                     r"[0-9]+\n\n")
+
+
+def _vendor_truncated_body_unescaped(text):
+    m = _CODEX_TRUNCATED_HEADER.match(text) if isinstance(text, str) else None
+    body = text[m.end():] if m else ""
+    if not m or body.lstrip()[:1] not in ("{", "["):
+        return text
+    try:
+        json.loads(body)
+    except ValueError:
+        return text[:m.end()] + body.replace("\\n", "\n")
+    return text
+
+
 def _vendor_document_or_text(text):
+    if isinstance(text, str) and _CODEX_TRUNCATED_HEADER.match(text):
+        return _vendor_truncated_body_unescaped(text)
     if not isinstance(text, str) or text.lstrip()[:1] not in ("{", "["):
         return text
     try:
