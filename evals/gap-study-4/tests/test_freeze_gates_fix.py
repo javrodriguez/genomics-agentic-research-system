@@ -16,8 +16,9 @@ delegation; lane-reports/freeze-gates-fix-LANE.md): two of the walk gates read t
   F4-exception (S8, glitch-f1's ruling 1 on the hand-back) fixture_walk's recorded per-walk exception applies only to
              its walk and path while every transcript line naming the path is a recorded line with its recorded bytes
              and command; it is reported in replay's recorded_exceptions; one that matches no committed transcript is
-             named by stale_exception_problems. Witnesses: exception-unbound (the line's bytes unchecked),
-             stale-silent (a stale exception never named).
+             named by stale_exception_problems; an exception never excuses a study (leak) path. Witnesses:
+             exception-unbound (the line's bytes unchecked), stale-silent (a stale exception never named),
+             exception-excuses-leak (S10). F2 also refuses a linked journal: witness linked-journal-read (S10).
 
 Synthetic folders in temporary directories only: no walk record, model, network, container or credential.
 check_take.agent_summary is replaced for the duration of one call by mock.patch.object, restored on exit. No module
@@ -65,9 +66,15 @@ def walk_folder(root: Path, name: str, *, ledger: dict, journals: dict, said: st
     folder.mkdir(parents=True)
     (folder / "driver-ledger.json").write_text(json.dumps(ledger))
     for k, cwd in journals.items():
+        link = isinstance(cwd, str) and cwd.startswith("LINK:")
+        cwd = cwd.removeprefix("LINK:") if link else cwd
         text = cwd if isinstance(cwd, str) and cwd.startswith("RAW:") else json.dumps(
             {"schema": 1, "harness": "claude-code", "argv": ["claude", "-p", "x"], "cwd": cwd})
-        (folder / f"turn-{k}.jsonl.launch.json").write_text(text.removeprefix("RAW:"))
+        if link:
+            (root / f"{name}-journal-{k}.json").write_text(text)
+            (folder / f"turn-{k}.jsonl.launch.json").symlink_to(root / f"{name}-journal-{k}.json")
+        else:
+            (folder / f"turn-{k}.jsonl.launch.json").write_text(text.removeprefix("RAW:"))
     rec = {"type": "assistant", "message": {"content": [{"type": "text", "text": f"I read {said} next."}]}}
     (folder / "transcript.jsonl").write_text(json.dumps(rec) + "\n")
     return folder / "transcript.jsonl"
@@ -93,6 +100,8 @@ def f2_runtree(mod, p):
             "a journal that is not JSON": ({"project": "run-0a1b2c3d"}, {1: tree, 2: "RAW:{not json"}, None,
                                            "unplaced"),
             "a relative journal cwd": ({"project": "run-0a1b2c3d"}, {1: "run-0a1b2c3d"}, None, "unplaced"),
+            # S10 (review m2, J4): a linked journal is no record, even one naming the same folder
+            "a symlinked journal": ({"project": "run-0a1b2c3d"}, {1: tree, 2: "LINK:" + tree}, None, "unplaced"),
         }
         for i, (what, (ledger, journals, want_tree, want_verdict)) in enumerate(cases.items()):
             t = walk_folder(root, f"w{i:03d}", ledger=ledger, journals=journals, said=path)
@@ -148,6 +157,21 @@ def f4_exception(mod, p):
                 out.append(f"{p}: {what}: the exception is not reported: {rec.get('recorded_exceptions')}")
             if bool(stale) != (want != "excepted"):
                 out.append(f"{p}: {what}: stale_exception_problems gave {stale}")
+        # S10 (review m2, R4): a recorded exception never excuses a path inside the study; the walk still leaks
+        leak = str(mod.REPO / "evals" / "gap-study-4" / "prereg-draft.json")
+        folder = root / "w905"
+        folder.mkdir()
+        (folder / "driver-ledger.json").write_text(json.dumps({"project": "run-0a1b2c3d"}))
+        (folder / "turn-1.jsonl.launch.json").write_text(json.dumps({"cwd": tree}))
+        line = json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": f"cat {leak} now"}]}})
+        (folder / "transcript.jsonl").write_text(line + "\n")
+        exc = {"walk": "w905", "path": leak, "lines": {1: hashlib.sha256(line.encode()).hexdigest()},
+               "command": f"cat {leak}", "reason": "synthetic", "ruling": "synthetic"}
+        with mock.patch.object(mod, "RECORDED_EXCEPTIONS", (exc,)):
+            rec = mod.replay(folder / "transcript.jsonl")
+        if rec["verdict"] != "leaks" or rec.get("recorded_exceptions"):
+            out.append(f"{p}: an exception naming a study path: verdict {rec['verdict']!r}, "
+                       f"exceptions {rec.get('recorded_exceptions')}")
     return out
 
 
@@ -232,9 +256,15 @@ WITNESSES = {
                                   "    if False:\n        derived = dict(derived)"),
                                  ("    if \"nested_cli_calls\" in check:\n        recorded[\"nested_cli_calls\"]",
                                   "    if True:\n        recorded[\"nested_cli_calls\"]")), f3_nested, "F3-nested"),
-    "exception-unbound": (fw, (("            if hashlib.sha256(raw).hexdigest() != sha or json.dumps",
-                                "            if False and hashlib.sha256(raw).hexdigest() != sha or json.dumps"),),
+    "exception-unbound": (fw, (("            if hashlib.sha256(raw).hexdigest() != sha:",
+                                "            if False and hashlib.sha256(raw).hexdigest() != sha:"),),
                           f4_exception, "F4-exception"),
+    # S10 (the lane review's survivors R4 and J4)
+    "exception-excuses-leak": (fw, (('if r["kind"] == "elsewhere" and (exc :=',
+                                     'if r["kind"] in ("elsewhere", "study") and (exc :='),), f4_exception,
+                               "F4-exception"),
+    "linked-journal-read": (fw, (("        if p.is_symlink() or not p.is_file():", "        if not p.is_file():"),),
+                            f2_runtree, "F2-runtree"),
     "stale-silent": (fw, (("            out.append(f\"the recorded exception for {exc['walk']}",
                            "            0 and out.append(f\"the recorded exception for {exc['walk']}"),),
                      f4_exception, "F4-exception"),
@@ -275,9 +305,16 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_stale_silent(self):
         self.kill("stale-silent")
 
+    def test_witness_exception_excuses_leak(self):
+        self.kill("exception-excuses-leak")
+
+    def test_witness_linked_journal_read(self):
+        self.kill("linked-journal-read")
+
     def test_the_witnesses_are_named(self):
-        self.assertEqual(sorted(WITNESSES), ["absent-key-compared", "absent-key-unbound", "exception-unbound",
-                                             "ledger-only", "project-unbound", "stale-silent"])
+        self.assertEqual(sorted(WITNESSES), ["absent-key-compared", "absent-key-unbound", "exception-excuses-leak",
+                                             "exception-unbound", "ledger-only", "linked-journal-read",
+                                             "project-unbound", "stale-silent"])
 
 
 if __name__ == "__main__":

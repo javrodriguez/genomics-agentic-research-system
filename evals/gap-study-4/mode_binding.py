@@ -213,7 +213,8 @@ def codex_recorded_mode(folder: Path, ledger: dict) -> tuple[str, list]:
     """(the mode the walk's last retained rollout records, problems). The rollout is the last of the ledger's
     native_snapshots under session/, its sha256 checked against the ledger's; the mode is the pin name whose
     CODEX_MODE_RECORD pair every turn_context carries (and every thread_settings_applied approval_policy agrees),
-    with one turn_context per turn."""
+    with one turn_context per turn and as many turns as the walk has turn streams (turn-N.jsonl beside the ledger;
+    lane freeze-gates-fix S10, review m1), so an earlier snapshot covering fewer turns is never read as the walk's."""
     snaps = ledger.get("native_snapshots")
     last = snaps[-1] if isinstance(snaps, list) and snaps and isinstance(snaps[-1], dict) else {}
     name = last.get("file")
@@ -234,6 +235,9 @@ def codex_recorded_mode(folder: Path, ledger: dict) -> tuple[str, list]:
     problems = []
     if got["turns"] < 1 or len(got["turn_contexts"]) != got["turns"]:
         problems.append(f"the rollout records {len(got['turn_contexts'])} turn_context(s) for {got['turns']} turn(s)")
+    streams = turn_streams(folder)
+    if got["turns"] != len(streams):
+        problems.append(f"the rollout records {got['turns']} turn(s) and the walk holds {len(streams)} turn stream(s)")
     if len(pairs) != 1:
         return "unread", problems + [f"the rollout's turn_contexts record {len(pairs)} distinct mode pairs: {pairs}"]
     approval, sandbox = pairs[0]
@@ -245,47 +249,93 @@ def codex_recorded_mode(folder: Path, ledger: dict) -> tuple[str, list]:
     return (names[0] if names else f"approval_policy={approval}, sandbox_policy={sandbox}"), problems
 
 
-def argv_mode(folder: Path, harness: str) -> tuple[str, list]:
+def turn_streams(folder: Path) -> list[int]:
+    """The walk's turn numbers, from its turn streams turn-N.jsonl (never a link)."""
+    return sorted(int(m.group(1)) for p in Path(folder).iterdir()
+                  if (m := _STREAM.fullmatch(p.name)) and not p.is_symlink() and p.is_file())
+
+
+def _take_record(folder: Path) -> tuple:
+    """(the take container's id, its working folder) from the box's launch.json: take_id and the take-inspect step's
+    Config.WorkingDir; None for either the record does not hold."""
+    try:
+        launch = json.loads((Path(folder) / "launch.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None, None
+    steps = launch.get("steps") if isinstance(launch, dict) else None
+    dirs = [((s.get("inspect") or {}).get("Config") or {}).get("WorkingDir") for s in steps or []
+            if isinstance(s, dict) and s.get("step") == "take-inspect"]
+    return launch.get("take_id"), dirs[0] if len(dirs) == 1 else None
+
+
+def _envelopes(folder: Path) -> dict:
+    """{turn n: the driver's harness-turn envelope} from transcript.jsonl."""
+    out = {}
+    try:
+        lines = (Path(folder) / "transcript.jsonl").read_text(errors="replace").split("\n")
+    except OSError:
+        return out
+    for line in lines:
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(rec, dict) and rec.get("type") == "harness-turn" and isinstance(rec.get("n"), int):
+            out[rec["n"]] = rec
+    return out
+
+
+def argv_mode(folder: Path, ledger: dict, pin) -> tuple[str, list]:
     """(the mode every turn's launch journal submits, problems): input side, for a CLI that writes no mode record.
-    Per turn stream turn-N.jsonl, its journal turn-N.jsonl.launch.json must name the harness and carry the adapter's
-    flags for one pinned mode exactly once with no other approval flag (the adapter's own MODE_FLAGS and
-    OTHER_MODE_FLAGS, as its submitted_mode reads them)."""
+    Each turn stream turn-N.jsonl has its journal turn-N.jsonl.launch.json, read by the adapter's own
+    submitted_mode (lane freeze-gates-fix S10, review m3), which requires the pinned mode's flags exactly once with no
+    other approval flag AND the whole journal to be the registered invocation (vendor_provenance.launch_facts). The
+    invocation is rebuilt from records other than the journal: the take container's id and working folder from
+    launch.json, the model from the ledger, the line sent and the resumed session from the transcript's envelopes, the
+    mode from the pin."""
+    harness = ledger_harness(ledger)
     if harness != "gemini":
         return "unread", [f"no argv reading is spelled for harness {harness!r}"]
+    if not isinstance(pin, str) or pin == PENDING:
+        return "unread", ["no pinned mode, so the registered invocation cannot be rebuilt"]
     import gemini_adapter as adapter                    # imported here: the transcript path needs none of it
-    turns = sorted(int(m.group(1)) for p in Path(folder).iterdir() if (m := _STREAM.fullmatch(p.name)))
+    import vendor_provenance as vp
+    turns = turn_streams(folder)
     if not turns:
         return "unread", ["the walk holds no turn stream, so no launch journal is read"]
+    take_id, run_tree = _take_record(folder)
+    envelopes = _envelopes(folder)
     modes, problems = [], []
     for k in turns:
-        try:
-            doc = json.loads((Path(folder) / f"turn-{k}.jsonl.launch.json").read_text(encoding="utf-8"))
+        journal = Path(folder) / f"turn-{k}.jsonl.launch.json"
+        env = envelopes.get(k) or {}
+        try:            # only the stream path is read here; submitted_mode reads the journal itself (no link)
+            doc = json.loads(journal.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError):
-            problems.append(f"turn {k}'s launch journal is missing or not JSON")
+            doc = None
+        if not isinstance(doc, dict) or not isinstance(doc.get("stream"), str) \
+                or Path(doc["stream"]).name != f"turn-{k}.jsonl":
+            problems.append(f"turn {k}'s launch journal is missing, not JSON, or names another turn's stream")
             continue
-        argv = doc.get("argv") if isinstance(doc, dict) else None
-        if not isinstance(argv, list) or doc.get("harness") != harness:
-            problems.append(f"turn {k}'s launch journal holds no {harness} argv")
-            continue
-        found = [pin for pin, flags in adapter.MODE_FLAGS.items()
-                 if sum(tuple(argv[i:i + len(flags)]) == flags for i in range(len(argv) - len(flags) + 1)) == 1]
-        approvals = [a for a in argv if a in adapter.OTHER_MODE_FLAGS]
-        modes.append(found[0] if len(found) == 1 and len(approvals) == 1 else
-                     adapter.MODE_ABSENT if not approvals else adapter.MODE_CONTRADICTED)
-    distinct = sorted(set(modes))
+        want = {"harness": harness, "container_id": take_id, "model": ledger.get("model_requested"), "mode": pin,
+                "run_tree": run_tree, "stream": doc["stream"], "sent": env.get("sent"),
+                "vendor_session_id": vp.FIRST_TURN if k == 1 else env.get("vendor_session_id"), "ordinal": k}
+        got = adapter.submitted_mode(str(journal), want)
+        modes.append(got.get("value") if got.get("value") is not None else got.get("source"))
+    distinct = sorted(set(map(str, modes)))
     if len(distinct) != 1:
         return "unread", problems + [f"the turns' launch journals submit {distinct}"]
     return distinct[0], problems
 
 
-def harness_reading(folder: Path, ledger: dict, transcript_mode: str) -> dict:
+def harness_reading(folder: Path, ledger: dict, transcript_mode: str, pin=None) -> dict:
     """{value, source, problems}: the mode the pin is compared with, from the record this harness writes."""
     harness = ledger_harness(ledger)
     if harness == "codex":
         value, problems = codex_recorded_mode(folder, ledger)
         return {"value": value, "source": CODEX_SOURCE, "problems": problems}
     if harness in ARGV_ONLY_HARNESSES:
-        value, problems = argv_mode(folder, harness)
+        value, problems = argv_mode(folder, ledger, pin)
         return {"value": value, "source": ARGV_SOURCE, "problems": problems}
     return {"value": transcript_mode, "source": CLAUDE_SOURCE, "problems": []}
 
@@ -368,7 +418,7 @@ def rows(walks: bool = False, base: Path | None = None, table: dict | None = Non
         ledger = json.loads(ledger_path.read_text()) if ledger_path.is_file() else {}
         model = ledger.get("model_requested") or "?"
         derived = mode_of(t)
-        reading = harness_reading(t.parent, ledger, derived)
+        reading = harness_reading(t.parent, ledger, derived, exp.get((ledger_harness(ledger), model)))
         superseded, problems = judge(ledger, derived, exp, walks, reading)
         recorded = ledger.get("permission_mode_recorded")
         out.append({

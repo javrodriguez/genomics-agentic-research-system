@@ -20,6 +20,10 @@ Lane freeze-gates-fix (glitch-f1's ruling (2), Wed 21 Oct 2026, under Javier's s
             named input-side in the output; neither reads `unrecorded`, and a missing, altered or contradicting record
             is a problem, never a pass. Witnesses: approval-only (the sandbox policy unread, so `never` alone passes),
             argv-unread (the Gemini reading returns the pin without reading a journal).
+            S10 (the lane review's m1 and m3): the Codex rollout's turns equal the walk's turn streams, with a
+            two-snapshot walk; the Gemini journals are read by gemini_adapter.submitted_mode, so a journal that is not
+            the registered invocation, names another harness or is a link is a problem (the adapter's own refusals, so
+            no local copy of them is kept to mutate). Witness: first-snapshot.
 
 Fakes and synthetic strings only: no model, vendor, network, credential or holdout. setUpModule arms a process guard
 that refuses every process start before mode_binding.py is imported.
@@ -118,33 +122,64 @@ def _rollout(pairs, settings=("never",), turns=None):
     return raw, hashlib.sha256(raw).hexdigest()
 
 
+SESSION = "1a2b3c4d-0000-4000-8000-00000000abcd"
+TAKE_ID, RUN_TREE = "c" * 64, "/tmp/run-synthetic"
+
+
+def gemini_argv(k, model="m-g"):
+    import gemini_adapter
+    return gemini_adapter.argv(f"sent {k}", model=model, mode="yolo", session_id=SESSION, first=k == 1)
+
+
 def vendor_walks(walks: list) -> Path:
-    """A synthetic study folder of rehearsals/<walk>/ vendor walks. Each walk is (harness, model, spec): a Codex spec
-    is {pairs, settings?, turns?, sha?, snapshot?}; a Gemini spec is {argvs: [argv per turn], journals?}."""
+    """A synthetic study folder of rehearsals/<walk>/ vendor walks. Each walk is (harness, model, spec).
+    Codex: {snapshots: [pairs per retained snapshot], settings?, turns?, sha?, snapshot?, streams?}; the walk holds
+    `streams` turn streams (default: the last snapshot's turns). Gemini: {turns, argv?: {k: argv}, journals?,
+    harness_field?, symlink?}: launch.json (take_id, the take-inspect working folder), one harness-turn envelope and one
+    journal per turn, each argv the adapter's own invocation unless `argv` replaces it."""
     base = Path(tempfile.mkdtemp(dir=SCRATCH))
     for i, (harness, model, spec) in enumerate(walks, 1):
         folder = base / "rehearsals" / f"w-v{i:02d}"     # zero-padded: rows() reads them sorted
         folder.mkdir(parents=True)
-        (folder / "transcript.jsonl").write_text(json.dumps({"type": "turn", "text": "a synthetic line"}) + "\n")
         ledger = {"agent": {"harness": harness, "version": "0.0.1"}, "model_requested": model,
                   "permission_mode": "unrecorded", "permission_mode_recorded": "unrecorded"}
+        envs = []
         if harness == "codex":
-            raw, sha = _rollout(spec["pairs"], spec.get("settings", ("never",)), spec.get("turns"))
+            snaps = spec.get("snapshots") or [spec["pairs"]]
+            ledger["native_snapshots"] = []
             if spec.get("snapshot", True):
                 (folder / "session").mkdir()
-                (folder / "session" / "native-turn-1.jsonl").write_bytes(raw)
-            ledger["native_snapshots"] = [{"file": "native-turn-1.jsonl", "sha256": spec.get("sha", sha)}]
-        else:
-            for k, argv in enumerate(spec["argvs"], 1):
+            for n, pairs in enumerate(snaps, 1):
+                last_turns = spec.get("turns") if n == len(snaps) else None
+                raw, sha = _rollout(pairs, spec.get("settings", ("never",)), last_turns)
+                if spec.get("snapshot", True):
+                    (folder / "session" / f"native-turn-{n}.jsonl").write_bytes(raw)
+                ledger["native_snapshots"].append({"file": f"native-turn-{n}.jsonl", "sha256": spec.get("sha", sha)})
+            streams = spec.get("streams", spec.get("turns") or len(snaps[-1]))
+            for k in range(1, streams + 1):
                 (folder / f"turn-{k}.jsonl").write_text("{}\n")
-                if k in spec.get("journals", range(1, len(spec["argvs"]) + 1)):
-                    (folder / f"turn-{k}.jsonl.launch.json").write_text(json.dumps(
-                        {"schema": 1, "harness": "gemini", "argv": argv, "cwd": "/tmp/run-synthetic"}))
+        else:
+            (folder / "launch.json").write_text(json.dumps({"take_id": TAKE_ID, "steps": [
+                {"step": "take-inspect", "inspect": {"Config": {"WorkingDir": RUN_TREE}}}]}))
+            for k in range(1, spec["turns"] + 1):
+                stream = folder / f"turn-{k}.jsonl"
+                stream.write_text("{}\n")
+                envs.append({"type": "harness-turn", "n": k, "sent": f"sent {k}", "vendor_session_id": SESSION})
+                if k not in spec.get("journals", range(1, spec["turns"] + 1)):
+                    continue
+                doc = {"schema": 1, "harness": spec.get("harness_field", "gemini"), "container_id": TAKE_ID,
+                       "argv": spec.get("argv", {}).get(k) or gemini_argv(k, model), "cwd": RUN_TREE,
+                       "stream": str(stream), "started_at": 1.0}
+                journal = folder / f"turn-{k}.jsonl.launch.json"
+                if k == spec.get("symlink"):
+                    (folder / f"real-{k}.json").write_text(json.dumps(doc))
+                    journal.symlink_to(folder / f"real-{k}.json")
+                else:
+                    journal.write_text(json.dumps(doc))
+        (folder / "transcript.jsonl").write_text("".join(json.dumps(e) + "\n" for e in envs)
+                                                 or json.dumps({"type": "turn", "text": "a synthetic line"}) + "\n")
         (folder / "driver-ledger.json").write_text(json.dumps(ledger))
     return base
-
-
-GOOD_ARGV = ["gemini", "-p", "a synthetic line", "-o", "stream-json", "-m", "m-g", "--approval-mode", "yolo"]
 
 
 def run_main(mod, base, table, *argv):
@@ -222,8 +257,13 @@ def m4_vendor(mod, p):
     """Lane freeze-gates-fix: the vendor walks' own records, and the source named beside each reading."""
     out = []
     good = ("never", "danger-full-access")
+    no_flag = [a for a in gemini_argv(1) if a not in ("--approval-mode", "yolo")]
     cases = {
         "codex recorded bypass": (("codex", "m-o", {"pairs": [good, good], "settings": ("never", "never")}), False),
+        "codex two snapshots, the last covering both turns": (("codex", "m-o", {"snapshots": [[good], [good, good]]}),
+                                                             False),
+        "codex the last snapshot short of the walk's turns": (("codex", "m-o", {"snapshots": [[good], [good, good]],
+                                                                                "streams": 3}), True),
         "codex approval never, sandbox read-only": (("codex", "m-o", {"pairs": [("never", "read-only")]}), True),
         "codex one turn of two in another mode": (("codex", "m-o", {"pairs": [good, ("on-request",
                                                                                      "danger-full-access")]}), True),
@@ -231,11 +271,15 @@ def m4_vendor(mod, p):
         "codex a turn without its turn_context": (("codex", "m-o", {"pairs": [good], "turns": 2}), True),
         "codex snapshot hash differs": (("codex", "m-o", {"pairs": [good], "sha": "0" * 64}), True),
         "codex snapshot missing": (("codex", "m-o", {"pairs": [good], "snapshot": False}), True),
-        "gemini argv submits yolo": (("gemini", "m-g", {"argvs": [GOOD_ARGV, GOOD_ARGV]}), False),
-        "gemini argv without the flag": (("gemini", "m-g", {"argvs": [GOOD_ARGV[:-2]]}), True),
-        "gemini argv with a second approval flag": (("gemini", "m-g", {"argvs": [GOOD_ARGV + ["--yolo"]]}), True),
-        "gemini a turn's journal missing": (("gemini", "m-g", {"argvs": [GOOD_ARGV, GOOD_ARGV], "journals": (1,)}),
-                                            True),
+        "gemini argv submits yolo": (("gemini", "m-g", {"turns": 2}), False),
+        "gemini argv without the flag": (("gemini", "m-g", {"turns": 1, "argv": {1: no_flag}}), True),
+        "gemini argv with a second approval flag": (("gemini", "m-g", {"turns": 1, "argv": {1: gemini_argv(1)
+                                                                                         + ["--yolo"]}}), True),
+        "gemini argv not the registered invocation": (("gemini", "m-g", {"turns": 1, "argv": {
+            1: gemini_argv(1) + ["--include-directories", "/elsewhere"]}}), True),
+        "gemini a turn's journal missing": (("gemini", "m-g", {"turns": 2, "journals": (1,)}), True),
+        "gemini a journal naming another harness": (("gemini", "m-g", {"turns": 1, "harness_field": "codex"}), True),
+        "gemini a symlinked journal": (("gemini", "m-g", {"turns": 2, "symlink": 2}), True),
     }
     base = vendor_walks([w for w, _ in cases.values()])
     got = mod.rows(walks=True, base=base, table=VTABLE)
@@ -324,7 +368,8 @@ WITNESSES = {
     "approval-only": ((("    names = [pin for pin, pair in CODEX_MODE_RECORD.items() if pair == (approval, sandbox)]",
                         "    names = [pin for pin, pair in CODEX_MODE_RECORD.items() if pair[0] == approval]"),),
                       m4_vendor, "M4-vendor"),
-    "argv-unread": ((("        value, problems = argv_mode(folder, harness)",
+    "first-snapshot": ((("    last = snaps[-1] if", "    last = snaps[0] if"),), m4_vendor, "M4-vendor"),
+    "argv-unread": ((("        value, problems = argv_mode(folder, ledger, pin)",
                       "        value, problems = \"yolo\", []"),), m4_vendor, "M4-vendor"),
 }
 
@@ -354,8 +399,12 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_argv_unread(self):
         self.kill("argv-unread")
 
+    def test_witness_first_snapshot(self):
+        self.kill("first-snapshot")
+
     def test_the_witnesses_are_named(self):
-        self.assertEqual(sorted(WITNESSES), ["approval-only", "argv-unread", "model-only", "top-level-harness"])
+        self.assertEqual(sorted(WITNESSES), ["approval-only", "argv-unread", "first-snapshot", "model-only",
+                                             "top-level-harness"])
 
 
 if __name__ == "__main__":

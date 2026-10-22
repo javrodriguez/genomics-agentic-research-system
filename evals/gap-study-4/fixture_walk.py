@@ -140,8 +140,11 @@ HARNESS_TASK_OUTPUT = re.compile(r"^/private/tmp/claude-\d+/[^/]+/[^/]+/tasks/")
 # those bytes; it is printed whenever it applies, and one that matches nothing is itself a failure, so an exception can
 # never go stale silently.
 RECORDED_EXCEPTIONS = (
-    {"walk": "w023", "path": "/tmp/finalize.log", "lines": {74: "b77ae1ee39129fc39bf0058e0d0ead94821e6ae546a0c0aeedd4543e517ed904"},
-     "command": "python3 _system/stage00_register.py finalize --project projects/run-f742f2d1 --model \"claude-haiku-4-5-20251001\" 2>&1 | tee /tmp/finalize.log",
+    {"walk": "w023", "path": "/tmp/finalize.log",
+     "lines": {74: "b77ae1ee39129fc39bf0058e0d0ead94821e6ae546a0c0aeedd4543e517ed904"},
+     "command": ("python3 _system/stage00_register.py finalize --project projects/run-f742f2d1"
+                 " --model \"claude-haiku-4-5-20251001\""
+                 " 2>&1 | tee /tmp/finalize.log"),
      "reason": "a file the session itself created (the agent's own tee of its finalize output), not a fixture read: "
                "it names nothing of the study",
      "ruling": "glitch-f1, ruling 1 on lane freeze-gates-fix's hand-back, Wed 21 Oct 2026"},
@@ -150,7 +153,8 @@ RECORDED_EXCEPTIONS = (
 
 def _exception_for(transcript: Path, path: str) -> dict | None:
     """The recorded exception covering `path` in this walk's transcript, or None. Every line naming the path must be
-    one of the exception's lines, with the recorded bytes, and that line must carry the recorded command."""
+    one of the exception's lines, with the recorded bytes (which carry the recorded command; S10, review n2: the
+    sha256 binds it, so no separate text check is kept)."""
     walk = transcript.parent.name
     for exc in RECORDED_EXCEPTIONS:
         if exc["walk"] != walk or exc["path"] != path:
@@ -164,7 +168,7 @@ def _exception_for(transcript: Path, path: str) -> dict | None:
             return None
         for n, sha in exc["lines"].items():
             raw = lines[n - 1]
-            if hashlib.sha256(raw).hexdigest() != sha or json.dumps(exc["command"])[1:-1].encode() not in raw:
+            if hashlib.sha256(raw).hexdigest() != sha:       # the line's bytes, and so the command on it
                 return None
         return exc
     return None
@@ -215,8 +219,9 @@ def run_tree_of(transcript: Path) -> str | None:
     committed Claude walk ledgers carry none, and every turn of a walk records its working folder in its launch
     journal (`turn-N.jsonl.launch.json` `cwd`), so the run tree is that folder when every journal beside the
     transcript names the same absolute path and that folder's name is the ledger's `project` (read from the records:
-    in all 225 walks committed at d5c0f798 the journals name one folder, named for the project). Journals that disagree, name another project's
-    folder, or are absent leave it unrecorded (None), so the paths stay unplaced."""
+    in all 225 walks committed at d5c0f798 the journals name one folder, named for the project). Journals that
+    disagree, name another project's folder, are a link, or are absent leave it unrecorded (None), so the paths stay
+    unplaced."""
     ledger = transcript.parent / "driver-ledger.json"
     if not ledger.is_file():
         return None
@@ -229,8 +234,10 @@ def run_tree_of(transcript: Path) -> str | None:
         return None
     seen = set()
     for p in sorted(transcript.parent.iterdir()):
-        if not LAUNCH_JOURNAL.fullmatch(p.name) or p.is_symlink() or not p.is_file():
+        if not LAUNCH_JOURNAL.fullmatch(p.name):
             continue
+        if p.is_symlink() or not p.is_file():          # S10 (review m2, J4): a linked journal is no record
+            return None
         try:
             doc = json.loads(p.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError):

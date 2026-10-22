@@ -294,7 +294,8 @@ def agent_summary_problems(check: dict, transcript: Path, harness=None) -> list:
               if rec_sub.get(k) != derived["subagents"].get(k)] if isinstance(recorded["subagents"], dict)
              else ["subagents"])                  # review r13 NIT 1: every mismatched field named
         named = ", ".join(f"{f} (recorded {_field(recorded, f)!r}, derived {_field(derived, f)!r})" for f in fields)
-        return out + [f"check.json's agent_calls and subagents are not the committed walk folder's reading: {named}"[:600]]
+        return out + [f"check.json's agent_calls and subagents are not the committed walk folder's reading: "
+                      f"{named}"[:600]]
     return out
 
 

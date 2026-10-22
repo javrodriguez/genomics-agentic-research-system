@@ -5,3 +5,7 @@ python3 -B -W ignore evals/gap-study-4/tests/test_mode_binding.py
 python3 -B -W ignore evals/gap-study-4/tests/test_freeze_gates_fix.py
 python3 -B -W ignore evals/gap-study-4/tests/test_rehearsals.py
 python3 -B -W ignore evals/gap-study-4/lint_language.py evals/gap-study-4/native-readers/codex-review.md evals/gap-study-4/native-readers/gemini-review.md
+python3 -B -W ignore evals/gap-study-4/tests/test_native_history_record.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_admission.py
+python3 -B -W ignore evals/gap-study-4/tests/test_native_reader_registration.py
+python3 -B -W ignore evals/gap-study-4/tests/test_freeze_shapes.py
