@@ -158,10 +158,13 @@ PENDING_WHY = {
     "STUDY_PATHS": "the pre-registered list of study folders absent from the run tree: CP5's.",
     "LEAK_WORDS": "the round's own leak words: CP5's (it adds the box users' names, image.lock users.*.name).",
 }
+# Lane d8-furniture fold 2 (glitch-f1, 22 Oct 2026): arm G's Google project tier is the owner's own account fact,
+# recorded as given with its source (D8 mitigation 1 rests on it alone; measuring it needs an API call with the key).
+GOOGLE_PROJECT_TIER = ("Google Paid, cap $140 (Javier's own words, 8 Oct 2026, plans/gap-study-round-4.md line 2129; "
+                       "the owner's account fact, not measured)")
 RECORDED_PENDING = {
     "token_visible_to_children": "whether the login reaches the agent's child processes: measured at the first "
                                  "walk, so the secret scan is sized to it.",
-    "google_project_tier": "arm G's Google project tier (D8 B2 item 9): it needs the key.",
     "watcher_holds_capability": "whether a non-root watcher holds its added capability in its effective set: the "
                                 "watcher-capability check passes only when it does.",
     "internal_resolver": "whether an --internal network's resolver refuses outside names: the names check measures "
@@ -903,7 +906,7 @@ def evaluate(raw: dict, *, spec, lock: dict, sidecar_expect: dict, harness: str,
     recorded = {"harness": harness,
                 "harness_version_output": (raw.get("harness-version") or {}).get("stdout"),
                 "token_visible_to_children": PENDING,
-                "google_project_tier": PENDING if harness == run_take.GEMINI else "not-applicable",
+                "google_project_tier": GOOGLE_PROJECT_TIER if harness == run_take.GEMINI else "not-applicable",
                 "watcher_processes": _safe(lambda: _json_out(raw, "watcher-caps")),
                 "take_processes": _safe(lambda: _json_out(raw, "processes"))}
     ok = len(checks) == len(PREFLIGHT_CHECKS) and all(c["ok"] for c in checks)

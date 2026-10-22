@@ -471,12 +471,15 @@ def description_problems(d):
     old = b.prior_metadata()
     need(len(old["limitations_lines"]) == 11 and d["limitations"] == [
         {"text": line, "round_4_reading": reading} for line,reading in zip(old["limitations_lines"],expected_readings())], "R8.carried")
+    # lane d8-furniture fold 2 (glitch-f1, 22 Oct 2026): the token finding filled from walk evidence, and the arm G
+    # project tier residual (D8 mitigation 1) added
     need(d["box_residuals"][:4] == [
-        {"text": "the token is visible to child processes if preflight says so", "conditional_on_preflight": True, "finding": "PENDING"},
+        {"text": "the token is visible to child processes if preflight says so", "conditional_on_preflight": True,
+         "finding": b.TOKEN_VISIBILITY_FINDING},
         {"text": "model weights behind an id are not pinnable"}, MODE_RESIDUAL, NEW_FOLDER_RESIDUAL]
-         and len(d["box_residuals"]) == 8
+         and len(d["box_residuals"]) == 9
          and [r.get("name") for r in d["box_residuals"][4:]] == ["read-only root", "W-3b", "arm O egress host",
-                                                                 "arm O and G HOME"],
+                                                                 "arm O and G HOME", "arm G project tier"],
          "R8.residuals")   # + the read-only root and W-3b (16 Oct), arm O's egress host (R1, 18 Oct), R-H5 (19 Oct)
     need(d.get("final_stop") == FINAL_STOP, "R8.final-stop")
     need(d["leak_words"] == old["leak_words"] + [study.STUDY, "round 4"] and len(old["leak_words"]) == 23 and
@@ -905,6 +908,54 @@ def arm_a_hook_counts() -> dict:
         baselines.add(tuple(sorted(json.loads((w / "settings-guard.json").read_text())["baseline"])))
     return {"walks": walks, "launches": launches, "root": root, "hooks": hooks, "sources": sources,
             "baselines": baselines}
+
+
+def fold2_problems(d) -> list:
+    """Lane d8-furniture fold 2 (glitch-f1's rulings, 22 Oct 2026; GAP4-PREFREEZE-RESIDUALS-20261022.md)."""
+    out = []
+    r3 = json.loads((HERE.parent / "gap-study-3" / "prereg.json").read_text())["run_location"]
+    r2 = json.loads((HERE.parent / "gap-study-2" / "prereg.json").read_text())["run_location"]
+    res = d.get("run_tree_residual")
+    if not isinstance(res, dict) or set(res) != {"carried", "round_4"}:
+        return ["no run_tree_residual with carried and round_4"]
+    for key in ("residual", "permitted_sweep_files", "permitted_sweep_files_rule"):
+        if res["carried"].get(key) != r3[key] or r3[key] != r2[key]:
+            out.append(f"run_tree_residual.carried.{key} is not rounds 2-3's")
+    r4 = res["round_4"]
+    if [f["path"] for f in res["carried"].get("permitted_sweep_files", [])] != ["README.md", "docs/RESULTS.md"]:
+        out.append("the permitted sweep files are not README.md and docs/RESULTS.md")
+    if not ("w-g17" in r4.get("observed", "") and "native-turn-1.jsonl lines 123-153" in r4["observed"]
+            and "1 of the 225" in r4["observed"]):
+        out.append("w-g17 is not named as the one observed case, with its lines")
+    if not all(w in r4.get("awareness_caveat", "") for w in ("gap study", "agent-text", "tool-call", "README.md")):
+        out.append("the awareness caveat is missing")
+    if "D8-non-claude-arms.md" not in r4.get("d8_addendum", "") or "line 349" not in r4["d8_addendum"]:
+        out.append("the D8 addendum correcting line 349 is not cited")
+    finding = d["box_residuals"][0].get("finding")
+    if not isinstance(finding, str) or finding.startswith("PENDING") or not all(
+            w in finding for w in ("claude-code: visible", "gemini: visible", "10 of the 36", "codex:",
+                                   "inferred", "none of the 38")):
+        out.append("box_residuals[0].finding is not the per-harness finding")
+    if "/box_residuals/0/finding" in d["pending"]:
+        out.append("the token finding is still pending")
+    (tier,) = [r for r in d["box_residuals"] if r.get("name") == "arm G project tier"] or [{}]
+    if not ("Google Paid, cap $140" in tier.get("text", "") and "plans/gap-study-round-4.md line 2129" in tier["text"]
+            and "mitigation 1" in tier["text"]):
+        out.append("the arm G tier residual does not carry the owner's fact, its source and D8 mitigation 1")
+    return out
+
+
+class Fold2(unittest.TestCase):
+    def test_the_committed_draft_carries_the_three_rulings(self):
+        self.assertEqual(fold2_problems(json.loads((HERE / "prereg-draft.json").read_text())), [])
+
+    def test_witnesses(self):
+        d = json.loads((HERE / "prereg-draft.json").read_text())
+        for path, value in ((("run_tree_residual", "carried", "residual"), "fake"),
+                            (("box_residuals", 0, "finding"), "PENDING"),
+                            (("run_tree_residual", "round_4", "observed"), "fake")):
+            with self.subTest(path=path):
+                self.assertTrue(fold2_problems(changed(d, path, value)))
 
 
 class LayerNote(unittest.TestCase):
