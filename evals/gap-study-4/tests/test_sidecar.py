@@ -2232,7 +2232,8 @@ BOX_MODULES = {
             "tempfile": {"mkdtemp"},
         },
         # lane vendor-b24 (B24-2 item 1): OD57's rule set lives in box/od57_rule.py, audited below
-        "from": {("__future__", "annotations"), ("box", "od57_rule")},
+        # lane d8-furniture (glitch-f1's ruling, 22 Oct 2026): the per-harness furniture tables, data only
+        "from": {("__future__", "annotations"), ("box", "od57_rule"), ("box", "harness_furniture")},
         # builtin or dunder names the module may bind: closed and pinned, empty today (fold 5, W4C4-1)
         "rebinds": set(),
         "names": {
@@ -2250,8 +2251,12 @@ BOX_MODULES = {
             'basename', 'get', 'mkdtemp', 'replace', 'rmdir', 'rstrip', 'unlink',
             # lane vendor-b24: the names this module takes from box/od57_rule
             'CALL_KEYS', 'COPIES', 'GIT_KEYS', 'RESULT_KEYS', 'RULED_LINES', 'SHAPE_KEYS', 'TOOL_KEYS', 'TOOL_KINDS',
-            '_CLAUDE_AT', '_ruled_bash', 'check_shapes', 'ruled_text'},
+            '_CLAUDE_AT', '_ruled_bash', 'check_shapes', 'ruled_text',
+            # lane d8-furniture: the names this module takes from box/harness_furniture
+            'ACCOUNT_CLASSES', 'FURNITURE', 'FURNITURE_KEYS'},
     },
+    # lane d8-furniture (glitch-f1's ruling, 22 Oct 2026): the per-harness furniture tables, data only
+    "box/harness_furniture.py": {"imports": {}, "from": set(), "rebinds": set(), "names": set(), "attrs": set()},
     # lane vendor-b24 (B24-2 item 1): OD57's one rule set, shared with the aegis door: no process, no file, no import
     # but the standard library's text tools
     "box/od57_rule.py": {

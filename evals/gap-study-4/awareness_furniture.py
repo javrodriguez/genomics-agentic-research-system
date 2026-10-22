@@ -53,13 +53,14 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+import mode_binding  # noqa: E402  (WALKS_DIR: the walks' one record-root name, test_walk_layout L1)
 import transcript_view as view  # noqa: E402
 from box import scan_record  # noqa: E402
 from graders import awareness  # noqa: E402
 
 REPO = HERE.parent.parent
 ROUND3_TRANSCRIPTS = REPO / "evals" / "gap-study-3" / "transcripts"
-REHEARSALS = HERE / "rehearsals"
+REHEARSALS = HERE / mode_binding.WALKS_DIR
 WALK_PREFIX = {"codex": "w-o", "gemini": "w-g"}
 NATIVE = re.compile(r"native-turn-([1-9][0-9]*)\.jsonl")
 # Codex's CLI-injected user message (D8-READ-w-o46 section 3 item 5): every content item of one of these kinds, and no
