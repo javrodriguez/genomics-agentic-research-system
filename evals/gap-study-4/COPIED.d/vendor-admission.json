@@ -415,6 +415,81 @@
       "path": "tests/test_b26_scanner.py",
       "status": "new",
       "reason": "Lane vendor-b26 fold (glitch-f1's ruling 1 on REVIEW-vendor-b26-04c4e77 MAJOR 1, 21 Oct 2026, under Javier's standing delegation): the reviewer's scanner witness folded in. check_take's copy of a re-recorded Gemini session reads every frozen original's toolCalls, every dead re-record update's results and every copy's tool-response turn, each pinned by the record's own location, so each one-line breakage of glitch-26's ruling 4 (the loader's live state read instead of the originals; the dead results skipped; the copies skipped) turns it red."
+    },
+    {
+      "path": "box/stub_model_server.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe for the three refused Gemini history-rewrite roads. The scripted stub model: standard library only, 127.0.0.1 inside the take container, the SDK's SSE framing, every unscripted or out-of-order request refused with HTTP 400 and the scenario held, the request log, the bodies and a state file; and the same script as the CLI's --fake-responses file for ruling 4's cross-check. Never a model, never a study take."
+    },
+    {
+      "path": "box/stub_model_scenarios/make_scenarios.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe for the three refused Gemini history-rewrite roads. The generator of the seven scenario scripts (A1, A2, A3, B1, B2, C1, C2) of the design's section 3, run by hand; a test binds every JSON file to its output."
+    },
+    {
+      "path": "box/stub_model_scenarios/A1.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario A1 as data (make_scenarios.py's output): a masking re-record, then a resume after it; synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/A2.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario A2 as data (make_scenarios.py's output): F-B26-7's '/'-leading prompt inside a masking re-record, then a resume; synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/A3.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario A3 as data (make_scenarios.py's output): masking at a resume's first request, then a resume; synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/B1.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario B1 as data (make_scenarios.py's output): true chat compression in a resumed process, then a resume; synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/B2.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario B2 as data (make_scenarios.py's output): masking, a resume, compression, a resume (ruling 2's variant for road b); synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/C1.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario C1 as data (make_scenarios.py's output): a failed compression, a content-truncation re-record, a resume; synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/C2.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario C2 as data (make_scenarios.py's output): a truncation re-record that truncates nothing; synthetic text only."
+    },
+    {
+      "path": "tests/test_stub_model_server.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. The stub on fakes: the SSE framing under an independent responseLineRE check, the 400 and the held scenario, out-of-order refusals, the inflated count only where named, call_<n> ids, finish reasons, the fake-responses records, the scenario files bound to their generator and each reachable in order; a loopback server test."
+    },
+    {
+      "path": "box/stub_model_probe.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe for the three refused Gemini history-rewrite roads. A measurement road on athena's walk box, never a study take: the locked take-g image by id with --pull=never on a fresh --internal network with no proxy and no sidecar, the study's settings through take_config.write, the study argv through gemini_adapter.argv, exactly three environment changes from the arm G row (the stub's base URL on 127.0.0.1, a fixed dummy key, no HTTPS_PROXY), each native snapshot retained before the next process, teardown by recorded id, records labelled stub-model-probe in a stub-probe-* folder; a dry-run mode; run_take keeps refusing the base URL."
+    },
+    {
+      "path": "tests/test_stub_model_probe.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe on fakes: the three environment changes and every other difference refused, exec_argv's form, run_take still refusing the base URL, the internal network, --pull=never and the lock's image id, the order of snapshot and exec, a held stub stopping the scenario, the A1-fake cross-check, the ast bindings (no exec_argv, run_turn or read_login; no production import), the dry run; walk_launch's probe and fetch-probe entries and run_command byte-unchanged."
+    },
+    {
+      "path": "box/stub_model_reading.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. The reader harness, Mac only: lane vendor-b26's readers, unchanged and loaded from a named study folder (a git archive of the reviewed B26 head), over each scenario of a fetched probe folder; one line per scenario with each snapshot's PASS or refusal reason, the history join, the design's prediction marked as predicted or DIFFERS, and the stub log's masked, truncated, snapshot and helper requests placed in their processes. It changes no reader and admits nothing."
+    },
+    {
+      "path": "tests/fixtures/b27-stub/cut_structure.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's ruling 3 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the b27 structure-only cutter for the probe's records, run by hand, extending lane vendor-b26's cutter (not edited): the content-truncation wrapper with its numbers and the <state_snapshot> wrapper kept around synthetic text, the CLI's acknowledgement kept verbatim; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/test_b27_reading.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 2 and 3 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the reader harness and the b27 cutter on synthetic probe folders (lane vendor-b26's committed w-g47 structure fixtures, and a snapshot recording a retired id again): verdicts beside predictions, a prediction not met marked, the stub log placed in its processes, the history join and its byte-prefix refusal; the cutter's two wrappers, the acknowledgement, no source text surviving, the prefix kept, the provenance."
     }
   ]
 }

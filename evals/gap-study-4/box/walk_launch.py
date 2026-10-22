@@ -48,6 +48,19 @@ the Claude1 file already on athena (run_take.WALK_LOGIN_FILES), read there by th
         fetched into the records clone as refs/heads/walk/<child name>. A walk that made no
         commit has nothing to fetch and says so.
 
+    python3 .../walk_launch.py probe --child <athena child> --probe <id> --scenarios <A1,...|all>
+                                     --image sha256:<64> --reason <why>
+        Lane vendor-b27 (glitch-f1's ruling 1, 21 Oct 2026): the stub-model probe (box/stub_model_probe.py, a
+        measurement, never a walk) started exactly as `run` starts a walk: the O_EXCL claim under the hold id
+        gap4-probe-<id>, the athena gate, then the probe under `athena-reserve hold` with nohup, the pid and the exit
+        file (the same walk.pid, walk.log and walk.exit, so `status` reads it). Its output is <child>/stub-probe-<id>.
+
+    python3 .../walk_launch.py fetch-probe --child <athena child> --probe <id> --out <Mac folder>/stub-probe-<id>
+                                           --gitleaks <binary> --work <Mac folder>
+        Once the probe is not running: <child>/stub-probe-<id> tarred on athena, copied, its sha256 read on both sides,
+        unpacked by this code (regular files and folders only, under that one folder), checked against the probe's
+        manifest, every file scanned with no allowance (canary_scan), then moved to --out. Nothing reaches a clone.
+
 Every remote and local command goes through one Runner, so tests drive the whole road on fakes.
 """
 
@@ -633,16 +646,30 @@ def run_command(*, child: str, walk: str, cell: dict, reason: str) -> str:
     if not isinstance(reason, str) or not reason.strip():
         raise LaunchRefused("a walk is run for a reason")
     repo = f"{child}/repo"
-    env = (f"env {machine_gate.ENV_ACCOUNT}={SUITE_ACCOUNT} {machine_gate.ENV_RESERVATION}={RESERVATION} "
-           f"{machine_gate.ENV_HOLD}={hid} {machine_gate.ENV_SLOTS}={machine_gate.SLOTS} {CONFIG_PARENT_ENV}={CONFIG_PARENT}")
+    env = _gate_env(hid)
     walk_env = f"{env} {COMMIT_IDENTITY}"
     walk_argv = ["python3", "-B", f"{repo}/evals/gap-study-4/walk_runner.py", "--walk", walk]
     for k in CELL:
         walk_argv += [f"--{k}", cell[k]]
     walk_argv += ["--reason", reason]
+    return _held_command(child=child, hid=hid, env=env, held_env=walk_env, argv=walk_argv)
+
+
+def _gate_env(hid: str) -> str:
+    """The athena gate's variables under hold `hid` (the walk's and the probe's own hold), and the config parent."""
+    return (f"env {machine_gate.ENV_ACCOUNT}={SUITE_ACCOUNT} {machine_gate.ENV_RESERVATION}={RESERVATION} "
+            f"{machine_gate.ENV_HOLD}={hid} {machine_gate.ENV_SLOTS}={machine_gate.SLOTS} {CONFIG_PARENT_ENV}={CONFIG_PARENT}")
+
+
+def _held_command(*, child: str, hid: str, env: str, held_env: str, argv: list) -> str:
+    """The claim, the gate, then `argv` under `athena-reserve hold --by <hid>` with nohup, the pid and the exit file
+    (the walk's start, shared by the stub-model probe's: lane vendor-b27). run_command's string is byte-unchanged by
+    this factoring (tests/test_stub_model_probe.py pins its sha256 from the base 04c4e774)."""
+    repo = f"{child}/repo"
     gate = f"{env} python3 -B {repo}/evals/gap-study-4/machine_gate.py athena-check"
+    walk_env = held_env     # the name test_walk_launch's hold-dropped witness edits, kept (stage 6)
     held = (f"python3 {child}/athena-reserve hold --by {hid} -- {walk_env} "
-            + " ".join(shlex.quote(a) for a in walk_argv))
+            + " ".join(shlex.quote(a) for a in argv))
     # The exit file is written by the shell around the hold, so a walk that died still leaves its code.
     body = f"{held}; echo $? > {child}/walk.exit"
     # The claim (the review's NIT 7): the reservation is created with O_EXCL, carrying this walk's own hold id, so a
@@ -685,6 +712,182 @@ def status(runner: Runner, *, child: str) -> str:
     if not re.fullmatch(r"running|lost|exit=[0-9]{1,3}", state):
         raise LaunchRefused("the walk's state cannot be read (not one of its closed forms)")
     return state
+
+
+# ------------------------------------------------------------------------------------------- the stub-model probe
+# Lane vendor-b27 (glitch-f1's ruling 1 on the B27 design, 21 Oct 2026): box/stub_model_probe.py runs on athena through
+# this road, never a walk: `probe` starts it under its own hold (the walk's claim, gate, hold, nohup, pid and exit file,
+# _held_command), and `fetch-probe` copies its one output folder back. `ship` and `status` serve it unchanged. The
+# probe commits nothing, so it carries no commit identity, and its output folder lives in the child, outside the clone.
+PROBE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,39}")
+PROBE_SCENARIOS = re.compile(r"all|[A-Z][A-Za-z0-9-]{0,15}(,[A-Z][A-Za-z0-9-]{0,15}){0,15}")
+PROBE_IMAGE = re.compile(r"sha256:[0-9a-f]{64}")
+PROBE_MODULE = "evals/gap-study-4/box/stub_model_probe.py"
+PROBE_PREFIX = "stub-probe-"
+PROBE_MAX_FILES = 20000
+PROBE_MAX_BYTES = 512 * 1024 * 1024
+
+
+def probe_hold_id(probe: str) -> str:
+    if not isinstance(probe, str) or not PROBE_ID.fullmatch(probe):
+        raise LaunchRefused(f"the probe id {probe!r} is not one short path segment")
+    hid = f"gap4-probe-{probe}"
+    if not machine_gate.HOLD_ID.match(hid):
+        raise LaunchRefused(f"the hold id {hid!r} is not one athena-reserve accepts (BY_RE, 64 characters)")
+    return hid
+
+
+def probe_output(child: str, probe: str) -> str:
+    probe_hold_id(probe)
+    return f"{_child(child)}/{PROBE_PREFIX}{probe}"
+
+
+def fresh_child_guard(child: str) -> str:
+    """One probe or walk per child (glitch-f1's ruling 2, made structural by REVIEW-vendor-b27-25ffff5 MINOR 4): the
+    probe's start refuses a child that already holds a walk's or a probe's process files, whose log and exit file it
+    would otherwise truncate. In probe_command only; run_command's string is byte-unchanged."""
+    _child(child)
+    return (f"if test -e {child}/walk.pid || test -e {child}/walk.log || test -e {child}/walk.exit; then "
+            f"echo 'the child already ran a walk or a probe' >&2; exit 1; fi; ")
+
+
+def probe_command(*, child: str, probe: str, scenarios: str, image: str, reason: str) -> str:
+    """The one remote command that starts the probe under its hold (the walk's start, _held_command), behind
+    fresh_child_guard."""
+    _child(child)
+    hid = probe_hold_id(probe)
+    if not isinstance(scenarios, str) or not PROBE_SCENARIOS.fullmatch(scenarios):
+        raise LaunchRefused("the scenarios are a comma list of scenario names, or all")
+    if not isinstance(image, str) or not PROBE_IMAGE.fullmatch(image):
+        raise LaunchRefused("the gemini image is a full image id, sha256:<64 hex>")
+    if not isinstance(reason, str) or not reason.strip():
+        raise LaunchRefused("a probe is run for a reason")
+    repo = f"{child}/repo"
+    env = _gate_env(hid)
+    argv = ["python3", "-B", f"{repo}/{PROBE_MODULE}", "--box", f"{repo}/evals/gap-study-4/box",
+            "--scratch-parent", CONFIG_PARENT, "--output", probe_output(child, probe), "--gemini-image", image,
+            "--scenarios", scenarios, "--reason", reason]
+    return fresh_child_guard(child) + _held_command(child=child, hid=hid, env=env, held_env=env, argv=argv)
+
+
+def probe(runner: Runner, *, child: str, probe_id: str, scenarios: str, image: str, reason: str) -> int:
+    out = _ok(runner.remote(probe_command(child=child, probe=probe_id, scenarios=scenarios, image=image,
+                                          reason=reason)), "starting the probe")
+    pid = out.strip().splitlines()[-1] if out.strip() else ""
+    if re.fullmatch(r"[0-9]+", pid) is None:     # spelled apart from run's check (the pid-isdigit witness's text)
+        raise LaunchRefused("the probe's pid was not recorded")
+    return int(pid)
+
+
+def _probe_members(tar, top: str) -> list:
+    """Every member of the probe's tar: a regular file or a folder under `top`/, no link, device, absolute path or
+    `..`; within PROBE_MAX_FILES and PROBE_MAX_BYTES. Refuses anything else, naming the rule, never a member's bytes."""
+    members, total = tar.getmembers(), 0
+    if len(members) > PROBE_MAX_FILES:
+        raise LaunchRefused(f"the probe's tar holds more than {PROBE_MAX_FILES} members")
+    for m in members:
+        name = m.name
+        parts = name.split("/")
+        if name.startswith("/") or ".." in parts or parts[0] != top or "\\" in name:
+            raise LaunchRefused("a member of the probe's tar sits outside its one output folder")
+        if not (m.isfile() or m.isdir()):
+            raise LaunchRefused("a member of the probe's tar is not a regular file or a folder")
+        total += m.size
+        if total > PROBE_MAX_BYTES:
+            raise LaunchRefused(f"the probe's tar holds more than {PROBE_MAX_BYTES} bytes")
+    return members
+
+
+def _extract_probe(tar_path: str, top: str, into: str) -> str:
+    """The tar's files written under `into` (a new folder) by this code, never tarfile's extractall."""
+    import tarfile
+    os.mkdir(into, 0o700)
+    with tarfile.open(tar_path, "r:") as tar:
+        for m in _probe_members(tar, top):
+            dst = os.path.join(into, *m.name.split("/"))
+            if m.isdir():
+                os.makedirs(dst, mode=0o700, exist_ok=True)
+                continue
+            os.makedirs(os.path.dirname(dst), mode=0o700, exist_ok=True)
+            src = tar.extractfile(m)
+            fd = os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "wb") as fh:
+                for block in iter(lambda: src.read(CHUNK), b""):
+                    fh.write(block)
+    return os.path.join(into, top)
+
+
+def probe_manifest_problems(folder: str) -> list:
+    """The probe's manifest.json against the folder: every listed file present with its sha256 and size, and every
+    file listed (manifest.json aside)."""
+    try:
+        with open(os.path.join(folder, "manifest.json"), encoding="utf-8") as fh:
+            doc = json.load(fh)
+        listed = doc["files"]
+        if doc.get("record_kind") != "stub-model-probe" or not isinstance(listed, dict):
+            raise ValueError
+    except (OSError, ValueError, KeyError, TypeError):
+        return ["the probe's manifest.json is missing or off its shape"]
+    out, seen = [], set()
+    for b, dirs, fs in os.walk(folder):
+        for f in fs:
+            rel = os.path.relpath(os.path.join(b, f), folder)
+            if rel != "manifest.json":
+                seen.add(rel)
+    for rel in sorted(seen - set(listed)):
+        out.append(f"{rel}: not in the manifest")
+    for rel, want in sorted(listed.items()):
+        p = os.path.join(folder, rel)
+        if rel not in seen:
+            out.append(f"{rel}: listed, absent")
+        elif _sha256(p) != want.get("sha256") or os.path.getsize(p) != want.get("bytes"):
+            out.append(f"{rel}: its sha256 or size is not the manifest's")
+    return out
+
+
+def fetch_probe(runner: Runner, *, child: str, probe_id: str, out: str, gitleaks: str, work: str) -> dict:
+    """The probe's output folder back to the Mac: tarred on athena, copied, its sha256 read on both sides, unpacked by
+    this code into the work folder, checked against its manifest, scanned with no allowance (canary_scan over a flat
+    copy of every file, each carrying its canary), and only then moved to `out` (a new folder)."""
+    import shutil
+    _child(child)
+    probe_hold_id(probe_id)
+    top = f"{PROBE_PREFIX}{probe_id}"
+    if not isinstance(out, str) or not os.path.isabs(out) or os.path.basename(out) != top or os.path.lexists(out):
+        raise LaunchRefused(f"the Mac folder is a new absolute path named {top}")
+    st = status(runner, child=child)
+    if st == "running":
+        raise LaunchRefused("the probe is still running; nothing is fetched")
+    remote_tar = f"{child}/{top}.tar"
+    _ok(runner.remote(f"test -d {child}/{top} && tar -C {child} -cf {remote_tar} {top}"), "the probe's tar")
+    digest = _ok(runner.remote(f"sha256sum {remote_tar}"), "the probe tar's sha256").split()[:1]
+    os.makedirs(work, exist_ok=True)
+    local = os.path.join(work, f"{top}.tar")
+    if os.path.lexists(local):
+        raise LaunchRefused(f"{local} exists: a tar is never overwritten")
+    _ok(runner.copy_from(remote_tar, local), "copying the probe's tar")
+    copied = _sha256(local)     # spelled apart from fetch's check, which a test_walk_launch witness edits by its text
+    if [copied] != digest:
+        raise LaunchRefused("the probe tar's sha256 on the Mac is not athena's")
+    staged = _extract_probe(local, top, os.path.join(work, "probe-unpacked"))
+    problems = probe_manifest_problems(staged)
+    if problems:
+        raise LaunchRefused(f"the probe's folder does not match its manifest ({len(problems)} problem(s)): "
+                            f"{'; '.join(problems[:5])}")
+    scan_src = os.path.join(work, "probe-scan")
+    os.mkdir(scan_src, 0o700)
+    n = 0
+    for b, dirs, fs in os.walk(staged):
+        dirs.sort()
+        for f in sorted(fs):
+            n += 1
+            shutil.copyfile(os.path.join(b, f), os.path.join(scan_src, f"{n:05d}-{f}"))
+    found = canary_scan(gitleaks, scan_src, work)
+    if found:
+        raise LaunchRefused(f"the probe's scan refused {len(found)} file(s): "
+                            f"{', '.join(sorted({name for name, _why in found})[:10])}; nothing is moved")
+    os.rename(staged, out)
+    return {"state": st, "fetched": out, "files": n, "tar_sha256": digest[0]}
 
 
 # ------------------------------------------------------------------------------------------------ fetch
@@ -788,6 +991,12 @@ def main(argv=None) -> int:
     f = sub.add_parser("fetch")
     for k in ("child", "head", "ref", "records", "gitleaks", "work", "suite"):
         f.add_argument(f"--{k}", required=True)
+    pr = sub.add_parser("probe")
+    for k in ("child", "probe", "scenarios", "image", "reason"):
+        pr.add_argument(f"--{k}", required=True)
+    fp = sub.add_parser("fetch-probe")
+    for k in ("child", "probe", "out", "gitleaks", "work"):
+        fp.add_argument(f"--{k}", required=True)
     a = ap.parse_args(argv)
     runner = Runner()
     try:
@@ -799,6 +1008,11 @@ def main(argv=None) -> int:
                               reason=a.reason)}
         elif a.verb == "status":
             out = {"state": status(runner, child=a.child)}
+        elif a.verb == "probe":
+            out = {"pid": probe(runner, child=a.child, probe_id=a.probe, scenarios=a.scenarios, image=a.image,
+                                reason=a.reason)}
+        elif a.verb == "fetch-probe":
+            out = fetch_probe(runner, child=a.child, probe_id=a.probe, out=a.out, gitleaks=a.gitleaks, work=a.work)
         else:
             out = fetch(runner, child=a.child, head=a.head, ref=a.ref, records=a.records, gitleaks=a.gitleaks,
                         work=a.work, suite=a.suite)
