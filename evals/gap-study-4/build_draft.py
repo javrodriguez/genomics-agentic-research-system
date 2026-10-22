@@ -686,7 +686,11 @@ def checked_sessions(draft):
         result = leak_grep.derive()
     if result["words_that_would_void_a_session"]:
         raise ValueError("the leak list would void a recorded session")
-    return {"sessions_read": result["sessions_read"], "sessions": result["per_session"], "status": "read"}
+    problem = leak_grep.unread_problem(result)       # review 0df1437 MINOR 3: an unread session is never read as clean
+    if problem:
+        raise ValueError(problem)
+    return {"sessions_read": result["sessions_read"], "sessions": result["per_session"],
+            "sessions_unread": result["sessions_unread"], "status": "read"}
 
 
 # glitch-f3's section 14 values, accepted 10 Oct 2026. Accepted answer and

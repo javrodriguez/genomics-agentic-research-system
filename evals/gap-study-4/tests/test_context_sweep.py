@@ -123,6 +123,9 @@ def callers_problems(ct) -> list:
     with tempfile.TemporaryDirectory() as d:
         p = Path(d) / "transcript.jsonl"
         p.write_text("\n".join([json.dumps(OP), line]) + "\n", encoding="utf-8")
+        # lane vendor-settle stage X (review 0df1437 MINOR 3): leak_grep reads a session's ledger for its harness and
+        # refuses one it cannot read, so the synthetic Claude Code session carries one
+        (Path(d) / "driver-ledger.json").write_text(json.dumps({"agent": {"harness": "claude-code"}}), encoding="utf-8")
         with mock.patch.object(leak_grep, "sessions", lambda base=None: [p]), \
                 mock.patch.object(leak_grep, "checker", lambda: ct), \
                 mock.patch.object(leak_grep, "HERE", Path(d)):
