@@ -227,6 +227,26 @@ class DiffRule(unittest.TestCase):
             with self.subTest(name):
                 self._refused(rt.CODEX, study, study, o, on, road="C0")
 
+    def test_the_flipped_line_must_sit_under_features(self):
+        study = {"config.toml": b'model = "m"\n\n[features]\nhooks = false\n\n[other]\nhooks = false\n'}
+        planted = (json.dumps(hcp.hooks_doc(rt.CODEX, FIRED), indent=2, sort_keys=True) + "\n").encode()
+        off = dict(study, **{"hooks.json": planted})
+        on = dict(off, **{"config.toml": b'model = "m"\n\n[features]\nhooks = false\n\n[other]\nhooks = true\n'})
+        self._refused(rt.CODEX, study, study, off, on, road="C0", words="[features]")
+        good = dict(off, **{"config.toml": b'model = "m"\n\n[features]\nhooks = true\n\n[other]\nhooks = false\n'})
+        self.assertEqual(hcp.check_twins(rt.CODEX, study, study, off, good, hooks=hcp.hooks_doc(rt.CODEX, FIRED),
+                                         road="C0")["line"], 4)
+
+    def test_the_on_twin_s_switch_must_be_true(self):
+        study = study_files(rt.GEMINI)
+        rel = take_config.GEMINI_SETTINGS_PATH
+        t = hcp.hook_twins(rt.GEMINI, study, fired_path=FIRED)
+        for value in (None, "true", 1):
+            on = json.loads(t["on"][rel])
+            on["hooksConfig"]["enabled"] = value
+            with self.subTest(value=value):
+                self._refused(rt.GEMINI, study, study, t["off"], {rel: take_config._json_bytes(on)})
+
     def test_a_c1_base_with_anything_else_refuses(self):
         study = study_files(rt.CODEX)
         t = hcp.hook_twins(rt.CODEX, study, fired_path=FIRED, road="C1")
