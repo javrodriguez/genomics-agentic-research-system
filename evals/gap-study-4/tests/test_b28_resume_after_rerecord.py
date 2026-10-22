@@ -54,6 +54,7 @@ EXACTLY_ONE = "a resume after a re-record must drop exactly one re-recorded cont
 NOT_IGNORED = "a resume after a re-record removes a re-recorded copy that is not ignored content"
 RESUME_SHAPE = "writer-possible resume shape {removeIds, updates} inside a resume"
 UNOBSERVED_OR = "writer-possible resume shape {orderIds, removeIds}"
+SET_PENDING = "a $set between a re-entered context turn and its resume's patch"
 
 
 def setUpModule():
@@ -249,6 +250,24 @@ class RoadAMutants(Witness):
     def test_m3f_reentry_part_with_an_extra_key(self):
         self.refused(self.mutate(lambda r: self.text(r).__setitem__("thought", False)), OFF_SHAPE)
 
+    def test_m3h_reentry_wrapper_second_line_altered(self):
+        """REVIEW-vendor-b28-eeeed34 MINOR 2: the whole opening line pair of the wrapper is bound, not its first tag."""
+        def alter(r):
+            t = self.text(r)["text"]
+            self.assertIn("This is the Gemini CLI.", t)
+            self.text(r)["text"] = t.replace("This is the Gemini CLI.", "This is the Gemini KLI.", 1)
+        self.refused(self.mutate(alter), OFF_SHAPE)
+
+    def test_m15_a_second_set_session_after_the_reentry(self):
+        """REVIEW-vendor-b28-eeeed34 NIT 4 (glitch-f1: default deny): the writer writes the re-entry and its patch in one
+        initialize call, so no $set falls between them."""
+        sid = self.a1[0]["sessionId"]
+        self.refused(self.mutate(lambda r: r.insert(self.c + 1, {"$set": {"sessionId": sid}})), SET_PENDING)
+
+    def test_m15b_a_set_last_updated_right_before_the_patch(self):
+        ts = self.a1[self.c]["timestamp"]
+        self.refused(self.mutate(lambda r: r.insert(self.p, {"$set": {"lastUpdated": ts}})), SET_PENDING)
+
     def test_m4_the_context_record_twice_in_one_resume(self):
         self.refused(self.mutate(lambda r: r.insert(self.c + 1, copy.deepcopy(r[self.c]))), AGAIN)
 
@@ -329,6 +348,42 @@ class RoadAMutants(Witness):
             r[p]["$patch"]["orderIds"] = [i for i in r[p]["$patch"]["orderIds"] if i != fr]
         self.refused(self.mutate(more, recs), NOT_IGNORED)
 
+    def test_a2_a_gemini_copy_whose_text_starts_with_a_slash_stays_admitted(self):
+        """REVIEW-vendor-b28-eeeed34 MINOR 2: convertSessionToClientHistory drops only user messages with ignored text
+        (:286105-286110), so a re-recorded gemini copy whose model text starts with "/" is kept and must not be demanded
+        by the completeness rule. The text is changed consistently in every record holding it, so the re-records'
+        image checks still hold."""
+        recs, p, ctx, slash = self._a2()
+        k = max(j for j in range(p) if "$patch" in recs[j] and set(recs[j]["$patch"]) <= {"removeIds", "updates"})
+        prev = max(j for j in range(k) if "$patch" in recs[j])
+        removed = set(recs[k]["$patch"]["removeIds"])
+        live_at_p = set(recs[p]["$patch"]["orderIds"])
+        copy_rec = next(recs[j] for j in range(prev + 1, k) if "id" in recs[j] and recs[j]["id"] not in removed
+                        and recs[j]["id"] in live_at_p and recs[j]["type"] == "gemini"
+                        and isinstance(recs[j]["content"], list) and recs[j]["content"]
+                        and all(set(x) == {"text"} and x["text"] for x in recs[j]["content"]))
+        old = copy_rec["content"][0]["text"]
+
+        def swap(v):
+            if isinstance(v, dict):
+                return {k2: swap(x) for k2, x in v.items()}
+            if isinstance(v, list):
+                return [swap(x) for x in v]
+            return "/" + old if v == old else v
+        bad = [swap(r) for r in recs]
+        self.assertEqual(sum(json.dumps(r).count(json.dumps("/" + old)) for r in bad) >= 2, True)
+        self.assertEqual(props(jl(bad)), (2, 5, 0, 1))
+
+    def test_ignored_copy_reads_user_copies_with_text_only(self):
+        """REVIEW-vendor-b28-eeeed34 MINOR 2, each conjunct of _ignored_copy on its own: a user copy with no content
+        and a gemini copy with ignored-looking text are not content the CLI drops; a user "/" copy is."""
+        r = rm._Replay({"sessionId": "s", "projectHash": "p"})
+        r.live = {"empty": {"id": "empty", "type": "user", "content": []},
+                  "model": {"id": "model", "type": "gemini", "content": [{"text": "/srv is the path"}]},
+                  "slash": {"id": "slash", "type": "user", "content": [{"text": "/srv is the path"}]}}
+        r.kind = {i: rm.RERECORDED for i in r.live}
+        self.assertEqual([r._ignored_copy(i) for i in ("empty", "model", "slash")], [False, False, True])
+
     def test_m13_a_retired_copy_id_reappended_inside_the_window(self):
         """A1 snapshot 3: the second resume (re-entry at record 113); the re-record at 106 retired the first resume's
         `_response` copy (record 71), which is re-appended inside the open window, right after the re-entry."""
@@ -369,7 +424,7 @@ class StillRefused(Witness):
 
 
 class FB269(Witness):
-    """F-B26-9 (glitch-26's 15:45 ruling): the B26 closure reviewer's construction, $set {sessionId} inserted after the
+    """F-B26-9 (glitch-f1's 15:45 ruling, 21 Oct): the B26 closure reviewer's construction, $set {sessionId} inserted after the
     last $patch before the re-record, on the three real fixtures (red on 5457e75e: the resume-shape name). The inserted
     record changes nothing: the window closes at the next new turn."""
 

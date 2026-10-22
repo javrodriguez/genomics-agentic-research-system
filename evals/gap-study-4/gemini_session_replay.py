@@ -93,8 +93,9 @@ resumed copy is live"), any other patch while it waits ("not consumed by its res
 patch"; a re-record shape runs the re-record's checks first, so true compression keeps its name), the patch's removals
 off the rule ("not ignored content", "exactly one re-recorded context copy", "keeps a re-recorded copy the CLI drops"),
 the context turn off the front ("not first after the resume's reorder") and a snapshot ending before the patch
-("without its resume's patch").
-F-B26-9 (glitch-26's 15:45 ruling): inside a resume the writer appends only the context turn and `<gemini id>_response`
+("without its resume's patch"), and any $set between the re-entry and its patch ("a $set between a re-entered
+context turn and its resume's patch": the writer writes both in one initialize call, :333190-333192).
+F-B26-9 (glitch-f1's 15:45 ruling, 21 Oct): inside a resume the writer appends only the context turn and `<gemini id>_response`
 turns (:287190-287196 with :286099-286194), so any other message record closes the resume window.
 
 Still refused by name (glitch-26's ruling 3 and glitch-f1's B27 rulings 1 and 2): a retired id other than the context
@@ -102,6 +103,10 @@ turn recorded again; true chat compression (the context turn survives a re-recor
 both observed key sets: B1's {removeIds, updates} with the context turn live, and B2's {removeIds} after a road (a)
 re-entry; and content truncation (a re-recorded response neither original nor masked). `properties` counts each road
 per snapshot: re-records, masked parts, ignored-prompt resumes, resumes after a re-record.
+The precedence before lane vendor-b28 (5457e75e), kept as history: B1 was refused by the unobserved resume-shape rule
+({removeIds, updates} inside a resume) before the compression rule, and B2 by the retired-id rule at its re-entry;
+now B1 meets the compression name through F-B26-9's close alone, and B2 through its road (a) re-entry, that close and
+the re-record's checks run before the pending-patch refusal.
 """
 import hashlib
 import json
@@ -540,7 +545,7 @@ class _Replay:
     # ---- the records -----------------------------------------------------------------------------------------------
     def message(self, n, record):
         i = record["id"]
-        # F-B26-9 (glitch-26's 15:45 ruling, lane vendor-b28): inside a resume the writer appends only the context turn
+        # F-B26-9 (glitch-f1's 15:45 ruling, 21 Oct; lane vendor-b28): inside a resume the writer appends only the context turn
         # and `<gemini id>_response` turns (chunk-NR7L3FXV.js:287190-287196 with :286099-286194), so any other record
         # closes the window.
         if self.resume and i != CONTEXT_ID and not i.endswith(RESPONSE_SUFFIX):
@@ -626,6 +631,9 @@ def replay(raw):
             if len(record) != 1:
                 raise ReplayRefused("mixed native control record")
             if "$set" in record:
+                if state.ctx_pending:
+                    raise ReplayRefused("a $set between a re-entered context turn and its resume's patch (the writer "
+                                        "writes both in one initialize call, chunk-NR7L3FXV.js:333190-333192)")
                 update = record["$set"]
                 if not isinstance(update, dict) or not update or not set(update) <= {"sessionId", "lastUpdated"}:
                     raise ReplayRefused("unsupported native metadata update")
