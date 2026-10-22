@@ -4611,8 +4611,8 @@ def vendor_constant_problems(path, harness, ledger, pre) -> list:
 
 
 def vendor_continuation_turns(path, harness, turns) -> list:
-    """The turn list continuation_problems reads (glitch-f1's ruling on stage G's hand-back, lane vendor-settle stage
-    V): for gemini, one message's delta chunks joined as gemini_adapter.read_stream joins them (consecutive assistant
+    """The turn list required_steps' stop reading and continuation_problems read (glitch-f1's ruling on stage G's
+    hand-back, lane vendor-settle stage V, and stage W ruling 3): for gemini, one message's delta chunks joined as gemini_adapter.read_stream joins them (consecutive assistant
     chunks with delta true, no separator; any other record ends the run), since the bound view writes each chunk as its
     own agent-text event (transcript_gemini.py, a READER_SOURCES file, left as it is) and continuation_problems joins
     agent texts with newlines, which read a marker streamed across two chunks as absent (w-g14, w-g31, w-g39 turn 1).
@@ -5118,13 +5118,15 @@ def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_scrip
         return problems
     expected_source = design.source(expected_project)
     if bound:
-        required, stop_problems = required_steps(script, path, turns, False, expected_project, expected_source, ())
+        # stage V ruling (a) and stage W ruling 3: the stop and the marker readings read one view, gemini's delta
+        # chunks joined as read_stream joins them (the operator lines are the same in both)
+        joined = vendor_continuation_turns(path, harness, turns)
+        required, stop_problems = required_steps(script, path, joined, False, expected_project, expected_source, ())
         problems += stop_problems
         line_problems = operator_line_problems(ops, required, expected_project, expected_source)
         problems += line_problems
-        if not line_problems:                   # stage V ruling (a): gemini's delta chunks joined for this reading
-            problems += continuation_problems(vendor_continuation_turns(path, harness, turns), required, [],
-                                              expected_project, expected_source)
+        if not line_problems:
+            problems += continuation_problems(joined, required, [], expected_project, expected_source)
     problems += fixture_binding_problems(path, half, False)[0]
     if bound:
         problems += vendor_leak_problems(ops, pre)

@@ -381,11 +381,12 @@ def stop_and_marker_problems(fixture: str, path: Path) -> list:
     ops = [t["text"] for t in turns if t["role"] == "user"]
     project = ct.neutral_name(_ledger(path.parent)["session_id"])
     source = design.source(project)
-    required, out = ct.required_steps(design.script, path, turns, False, project, source, ())
+    joined = ct.vendor_continuation_turns(path, H, turns)          # stage W ruling 3: one view for both readings
+    required, out = ct.required_steps(design.script, path, joined, False, project, source, ())
     lines = ct.operator_line_problems(ops, required, project, source)
     out += lines
     if not lines:                               # stage V ruling (a): the turns vendor_check hands continuation
-        out += ct.continuation_problems(ct.vendor_continuation_turns(path, H, turns), required, [], project, source)
+        out += ct.continuation_problems(joined, required, [], project, source)
     return out
 
 

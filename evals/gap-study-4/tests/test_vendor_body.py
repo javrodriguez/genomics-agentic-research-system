@@ -16,6 +16,8 @@ check_take.vendor_round4_problems (section 1b).
               design's pinned CLAUDE.md as the instruction file), carries none; the PENDING road is read on TEST DATA,
               the module's map with rows put back to PENDING (pending_rows; the event-id witness and each site's
               deletion). Where a settled reader also reads a case's defect, the case's want names it per harness.
+              Stage W ruling 3: gemini's stop reading and marker reading read one joined view (a held marker the
+              CLI streamed across two delta chunks reads held in both; witness: the stop read unjoined).
   P2-cases    one F3 case per reason, each adding exactly its reason(s) to the clean take's refusals: the CLI's own
               user record differing from the envelopes, or holding an extra turn (readers-disagree; a differing gemini
               stream reads readers-disagree, never transcript-unreadable); no agent output; no CLI session id; a
@@ -854,11 +856,16 @@ P2_WITNESSES = {
     "no-session-id dropped": (("    problems += vendor_session_id_problems(path, harness)\n", ""),
                               "the CLI wrote no session id"),
     "the stop problems dropped": (("        problems += stop_problems\n", ""), "a stop at a held marker"),
+    # stage W ruling 3: the stop reading on the unjoined view misses a held marker split across chunks
+    "the stop read unjoined": ((
+        "        required, stop_problems = required_steps(script, path, joined, False, expected_project, "
+        "expected_source, ())\n",
+        "        required, stop_problems = required_steps(script, path, turns, False, expected_project, "
+        "expected_source, ())\n"), "a stop at a held marker split across delta chunks"),
     "the operator lines dropped": (("        problems += line_problems\n", ""), "an operator line off the script"),
     # stage V ruling (a): the call reads gemini's joined delta chunks (vendor_continuation_turns)
     "the continuation dropped": ((
-        "            problems += continuation_problems(vendor_continuation_turns(path, harness, turns), required, [],\n"
-        "                                              expected_project, expected_source)\n",
+        "            problems += continuation_problems(joined, required, [], expected_project, expected_source)\n",
         "            pass\n"),
         "a reply missing its step's marker"),
     "the fixture binding dropped": (("    problems += fixture_binding_problems(path, half, False)[0]\n", ""),
