@@ -6231,7 +6231,16 @@ def vendor_codex_recorded_mode_reads(path, design, arm) -> list:
     return out
 
 
-def vendor_credential_source_problems(rec, reason: str = "environment-record") -> list:
+def _vendor_turn_count(path):
+    """The take's turn count, its envelopes'; None when they cannot be read (the turn tie then reads nothing, and the
+    envelope readers refuse the take on their own)."""
+    try:
+        return len(_vendor_envelopes(path))
+    except _VENDOR_READ_ERRORS:
+        return None
+
+
+def vendor_credential_source_problems(rec, reason: str = "environment-record", turn_count=None) -> list:
     """T-17:billing-route's credential leg, both arms (glitch-f1's amendment of both T-17 rulings, Thu 22 Oct 2026,
     from GAP4-PREFREEZE-RESIDUALS-20261022.md item 3): the environment record's credential_source is Claude Code's
     stream field (system/init.apiKeySource), which the driver writes null for a vendor take, so it must be null on every
@@ -6242,7 +6251,11 @@ def vendor_credential_source_problems(rec, reason: str = "environment-record") -
     if not (isinstance(cs, dict) and isinstance(turns, list) and turns and all(isinstance(t, dict) for t in turns)):
         return [f"[{reason}] the environment record's credential_source is not one per_turn list, so its null on every "
                 "vendor turn cannot be shown"]
-    out = [f"[{reason}] the environment record's credential_source names {t.get('apiKeySource')!r} for turn "
+    out = []
+    if turn_count is not None and len(turns) != turn_count:     # Gemini review 0df1437 NIT: one entry per turn
+        out.append(f"[{reason}] the environment record's credential_source holds {len(turns)} per_turn "
+                   f"entr(ies) for the take's {turn_count} turn(s), so a turn's credential source is not shown null")
+    out += [f"[{reason}] the environment record's credential_source names {t.get('apiKeySource')!r} for turn "
            f"{t.get('n')!r}, not null: a credential source on a vendor turn the study does not place"
            for t in turns if t.get("apiKeySource") is not None]
     if cs.get("reported") is not None:
@@ -6271,7 +6284,7 @@ def vendor_billing_route_partial(path, harness, pre) -> list:
         present = None
         out.append(f"[{reason}] the environment record's named variables cannot be read ({type(e).__name__})")
     else:
-        out += vendor_credential_source_problems(rec, reason)
+        out += vendor_credential_source_problems(rec, reason, _vendor_turn_count(path))
     if present is not None and present & names:
         out.append(f"[{reason}] the environment record names {sorted(present & names)}, of the {harness} billing "
                    "routes")
@@ -6765,8 +6778,8 @@ def vendor_gemini_billing_route_partial(path) -> list:
     except (OSError, ValueError, KeyError, TypeError) as e:
         present = None
         out.append(f"[environment-record] the environment record's named variables cannot be read ({type(e).__name__})")
-    else:
-        out += vendor_credential_source_problems(rec)                 # stage V: glitch-f1's amendment (both T-17s)
+    else:                                                        # stage V: glitch-f1's amendment (both T-17s)
+        out += vendor_credential_source_problems(rec, "environment-record", _vendor_turn_count(path))
     if present is not None and present & set(names):
         out.append(f"[environment-record] the environment record names the Gemini billing-route variable(s) "
                    f"{sorted(present & set(names))}")

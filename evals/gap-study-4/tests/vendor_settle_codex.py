@@ -773,7 +773,7 @@ class CNotComparable(unittest.TestCase):
                 got = _partial(fixture, reader, *[e() for e in edits], patches=patches)
                 self.assertEqual(len(got), 1, got)
                 self.assertIn("credential_source", got[0])
-                with unittest.mock.patch.object(ct, "vendor_credential_source_problems", lambda rec, reason="x": []):
+                with unittest.mock.patch.object(ct, "vendor_credential_source_problems", lambda *a, **k: []):
                     self.assertEqual(_partial(fixture, reader, *[e() for e in edits], patches=patches), [])
 
     def test_c_nc_rulings_are_glitch_f1s_text(self):

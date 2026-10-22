@@ -622,11 +622,11 @@ CASES = {
     # round 14, review e-71a2b94 finding 3: the take road binds the pre-registered row's model, never the ledger's alone
     "the pre-registered row on another model": (("codex", "gemini"), case_row_on_another_model, {"model-binding": 2},
                                                 None),
-    # stage V: the pinned config (codex T-18) and settings (gemini T-12:memory, T-17, T-18) are rebuilt for the
-    # ledger's model, so no model refuses them too; T-17's partial reads environment.json's named variables
+    # stage V: the pinned config (codex T-18, and since stage X codex T-12:memory's settings leg) and settings (gemini
+    # T-12:memory, T-17, T-18) are rebuilt for the ledger's model, so no model refuses them too; T-17's partial reads environment.json's named variables
     "no requested model in the ledger": (("codex", "gemini"), case_no_requested_model,
                                          {"codex": {"model-binding": 1, "environment-record": 1,
-                                                    "harness-condition-violated": 1},
+                                                    "harness-condition-violated": 1, "inherited-context": 1},
                                           "gemini": {"model-binding": 1, "environment-record": 2,
                                                      "inherited-context": 1, "harness-condition-violated": 1}}, None),
     "no environment record": (("codex", "gemini"), edits(None, lambda path: (path.parent / "environment.json").unlink()),

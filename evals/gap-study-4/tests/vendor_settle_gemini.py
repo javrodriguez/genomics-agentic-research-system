@@ -679,7 +679,7 @@ class GCases(unittest.TestCase):
                 self.assertTrue(got[0].startswith("[environment-record] ") and "credential_source" in got[0], got)
             with self.subTest(hollow=new[-40:]), vendor_plant.planted(G21, vendor_plant.replace_bytes(
                     "environment.json", old, new)) as plant, \
-                    mock.patch.object(ct, "vendor_credential_source_problems", lambda rec, reason="x": []):
+                    mock.patch.object(ct, "vendor_credential_source_problems", lambda *a, **k: []):
                 self.assertEqual(ct.vendor_gemini_billing_route_partial(plant.path), [])
 
     def test_g_nc_cases(self):
