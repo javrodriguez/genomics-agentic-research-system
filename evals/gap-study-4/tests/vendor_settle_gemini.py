@@ -1008,6 +1008,23 @@ G_LEG_PLANTS = [
 ]
 
 
+class GPromptSwitches(unittest.TestCase):
+    def test_g_prompt_section_switch_in_the_launch_environment_fires(self):
+        # glitch-f1's stage Z (1), GEMINI-S0-READ: isSectionEnabled reads GEMINI_PROMPT_<SECTION> and drops that section
+        # on 0 or false ([C] 336004-336008); names built at run time, so a prefix test beside the two literal names
+        _, design = design_for(G21)
+        with vendor_plant.planted(G21) as clean:
+            self.assertEqual(ct.vendor_gemini_prompt_partial(clean.path, design), [])
+            with mock.patch.dict(run_take.TAKE_ENV[H], {"GEMINI_PROMPT_COREMANDATES": "0"}):
+                got = ct.vendor_gemini_prompt_partial(clean.path, design)
+        self.assertTrue(got and all(x.startswith("[inherited-context] ") for x in got), got)
+        self.assertTrue(any("GEMINI_PROMPT_COREMANDATES" in x for x in got), got)
+        # GEMINI_WRITE_SYSTEM_MD is the prompt-dump variable, never called an override
+        with vendor_plant.planted(G21) as clean, mock.patch.dict(run_take.TAKE_ENV[H], {"GEMINI_WRITE_SYSTEM_MD": "1"}):
+            got = ct.vendor_gemini_prompt_partial(clean.path, design)
+        self.assertTrue(got and not any("replaces Gemini CLI's system prompt" in x for x in got), got)
+
+
 class GLegs(unittest.TestCase):
     """Gemini review 0df1437 MINOR 2: each leg a published text names fires alone on its own scratch copy."""
 
