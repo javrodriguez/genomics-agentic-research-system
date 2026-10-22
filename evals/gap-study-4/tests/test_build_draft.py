@@ -482,7 +482,14 @@ def description_problems(d):
          d["leak_context_excusals"] == old["leak_context_excusals"] and len(d["leak_context_excusals"]) == 3 and
          d["leak_word_dropped"] == old["leak_word_dropped"], "R9.words")
     names = sorted({entry["name"] for item in d["image_locks"] for entry in (item["lock"]["users"] or {}).values() if "name" in entry})
-    need(d["box_users"] == names and d["checked_against"] == {"sessions_read": 0, "sessions": [], "status": "PENDING"}, "R9.sessions")
+    # Lane freeze-gates-fix (glitch-f1's ruling (2), 21 Oct 2026): the walks are committed, so the session check is the
+    # registered state, read from the committed sessions themselves: every one read, by name, and none voided.
+    import leak_grep
+    held = sorted(str(p.parent.relative_to(HERE)) for p in leak_grep.sessions())
+    ca = d["checked_against"]
+    need(d["box_users"] == names and held and ca.get("status") == "read" and ca.get("sessions_read") == len(held)
+         and sorted(s.get("session") for s in ca.get("sessions") or []) == held
+         and all(s.get("words_the_checker_would_void_on") == [] for s in ca["sessions"]), "R9.sessions")
     need(d["not_poolable"]["rounds"] == ["evals/gap-study", "evals/gap-study-2", "evals/gap-study-3"] and
          d["not_poolable"]["rule"] == d["commitments"]["not_poolable"] and
          d["not_poolable"]["enforced_by"] == [study.rel("lint_pooling.py"), study.rel("result.py")], "R10.earlier")
