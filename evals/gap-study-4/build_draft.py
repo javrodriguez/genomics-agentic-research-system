@@ -25,7 +25,7 @@ sys.path.insert(0, str(HERE))
 import study
 import variants
 import harness_bookkeeping
-from box import image_lock, run_take, take_config
+from box import image_lock, run_take, scan_record, take_config
 
 PENDING = run_take.PENDING
 CLAUDE = harness_bookkeeping.CLAUDE_CODE
@@ -54,6 +54,27 @@ def prior_metadata():
                          capture_output=True, check=True)
     source = json.loads(got.stdout)
     return {key: source[key] for key in PRIOR_KEYS}
+
+
+# Lane d8-furniture (glitch-f1's ruling of 21 Oct 2026): rounds 1-3 each pre-registered the same deterministic-layer
+# note (round 1's review finding F4: GARS's hooks are not active, because the session opens at the checkout's root);
+# round 4 carries it forward, read from the frozen files at PRIOR_COMMIT (named frozen metadata, as prior_metadata),
+# never retyped, and refused unless the three rounds agree byte for byte.
+LAYER_NOTE_FILES = ("evals/gap-study/prereg.json", "evals/gap-study-2/prereg.json", PRIOR_FILE)
+LAYER_NOTE_KEY = ("driver_constants", "deterministic_layer_note")
+
+
+def prior_layer_note():
+    texts = []
+    for name in LAYER_NOTE_FILES:
+        got = subprocess.run(["git", "-C", str(REPO), "show", f"{PRIOR_COMMIT}:{name}"], capture_output=True, check=True)
+        node = json.loads(got.stdout)
+        for key in LAYER_NOTE_KEY:
+            node = node[key]
+        texts.append(node)
+    if len(set(texts)) != 1 or not isinstance(texts[0], str) or not texts[0].strip():
+        raise ValueError("rounds 1-3 do not carry one deterministic_layer_note")
+    return texts[0]
 
 
 def source_tasks(root):
@@ -1014,7 +1035,64 @@ PENDING_REASONS = {
     "routing_markers": "R15 CP5-req 55: the routing owner rules the marker status.",
     "routing_marker_inputs": "R15 CP5-req 55: CP2 adds each vendor's markers with its adapter.",
     "furniture": "R15 CP5-req 56: CP6 walks supply each harness's list.",
+    "deterministic_layer_note": "D8 lines 339-345: the hook positive control's record supplies the vendor arms' evidence.",
 }
+
+
+# Lane d8-furniture (21 Oct 2026; D8 lines 352, 472, 481): each harness's furniture list, rendered from
+# box/scan_record.FURNITURE (the one source; never edited here) under the pinned CLI and its version, read from the
+# take image's lock and bound to version_pins.
+FURNITURE_READ_AT = ("the walks committed at d5c0f7989083990f0eb76308b8eb79f86e41d7e4, read end to end on w-o46 and "
+                     "w-g21 and surveyed over all 225 (lane-reports/d8-furniture-LANE.md)")
+
+
+def furniture_lists(locks, pins):
+    images = dict(zip(HARNESSES.values(), image_lock.TAKE_IMAGES))
+    out = {}
+    for h in HARNESSES.values():
+        (lock,) = [item["lock"] for item in locks if item["lock"]["image"] == images[h]]
+        versions = {pin["agent_version"] for pin in pins[h].values()}
+        if versions != {lock["harness"]["version"]}:
+            out[h] = PENDING
+            continue
+        lines = [f"{lock['harness']['package']} {lock['harness']['version']} (the pinned CLI: image {images[h]}, "
+                 f"version_pins). Each line below is one record kind this CLI writes itself into its stream or session "
+                 f"file: the file, the record kind, its CLI-written fields, and the walk lines that show it, read at "
+                 f"{FURNITURE_READ_AT}. Never the operator's or the model's words."]
+        for e in scan_record.furniture_positions(h):
+            line = f"{e['file']} | {e['record']} | {', '.join(e['fields'])}"
+            if e["account"]:
+                line += (f" | account-{e['account']}: a scan masks or excludes these fields by position and never "
+                         f"prints them")
+            lines.append(line + " | evidence " + ", ".join("rehearsals/" + x for x in e["evidence"]))
+        out[h] = lines
+    return out
+
+
+# Lane d8-furniture (glitch-f1's ruling of 21 Oct 2026): the deterministic-layer note, carried from rounds 1-3, with
+# round 4's evidence per arm. Arm A's counts were read over the 151 committed Claude walks (w001-w168) at d5c0f798 by
+# the lane and by /Users/javrodher/aegis-builds/ARM-A-HOOKS-20261021.md, and test_build_draft recounts them; the vendor
+# arms' switches are read from take_config, and their evidence is the hook positive control's record (PENDING).
+ARM_A_HOOKS = ("As in rounds 1-3: every arm A launch opens the session at the run tree's root, which has no .claude/ "
+               "directory, with --setting-sources project,local, so gars/.claude/settings.json and its hooks are not "
+               "active. Over the 151 committed Claude walks (w001-w168) and their 348 turn launches: every cwd is the "
+               "run tree's root, every --setting-sources value is project,local, every settings-guard baseline is "
+               "exactly gars/.claude/settings.json, and no stream or transcript record carries a hook key, type or "
+               "subtype. Nothing in arm A switches hooks off: if the root ever gained a .claude/ directory, the "
+               "settings guard refuses the take.")
+
+
+def layer_note():
+    (codex_hooks,) = [v for k, v in take_config.CODEX_FEATURES if k == "hooks"]
+    (gemini_hooks,) = [v for k, v in take_config.GEMINI_SETTINGS if k == "hooksConfig.enabled"]
+    return {"carried": {"from": list(LAYER_NOTE_FILES), "key": "/".join(LAYER_NOTE_KEY), "at": PRIOR_COMMIT,
+                        "origin": "round 1's review finding F4", "text": prior_layer_note()},
+            "round_4": {CLAUDE: ARM_A_HOOKS,
+                        CODEX: {"switch": f"the per-take config.toml: [features] hooks = {json.dumps(codex_hooks)}",
+                                "evidence": PENDING},
+                        GEMINI: {"switch": f"the per-take settings.json: hooksConfig.enabled = "
+                                           f"{json.dumps(gemini_hooks)}",
+                                 "evidence": PENDING}}}
 
 
 def config_templates():
@@ -1140,6 +1218,8 @@ OWNER_SLOTS = {
     **{f"/wave3/plan_questions/{i}/answer": "narrative" for i in range(2)},
     **{f"/{key}/{h}": kind for key, kind in (("served_model_rule", "narrative"),
        ("furniture", "list")) for h in HARNESSES.values()},
+    # lane d8-furniture (glitch-f1, 21 Oct 2026): the hook positive control's record, per vendor arm
+    **{f"/deterministic_layer_note/round_4/{h}/evidence": "text" for h in (CODEX, GEMINI)},
     **{f"/{key}/{h}/{m}": kind for key, kind in (("config_templates", "template"),
        ("effort", "setting")) for a,h in HARNESSES.items() for m in MODELS[a]},
     # B7-F1 (glitch-b5, 18 Oct 2026): the four /routing_marker_inputs/<codex|gemini>/<kind> slots are dropped, since
@@ -1563,7 +1643,8 @@ def build(root=None):
     # this field only, the harness lane's narrow extension): arm O's rule is routing's own sentence, read from routing.
     import routing as _routing
     d["served_model_rule"][CODEX] = _routing.SERVED_MODEL_LIMIT
-    d["furniture"] = {h: PENDING for h in HARNESSES.values()}
+    d["furniture"] = furniture_lists(d["image_locks"], d["version_pins"])     # lane d8-furniture (21 Oct 2026)
+    d["deterministic_layer_note"] = layer_note()                                # glitch-f1's ruling (21 Oct 2026)
     d["price_table"] = PENDING
     table = json.loads((root / "routing.json").read_text())
     kinds = ("rate_limit_markers", "spend_cap_markers")

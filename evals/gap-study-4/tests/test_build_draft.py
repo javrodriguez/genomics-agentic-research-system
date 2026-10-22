@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -793,8 +794,11 @@ def ready_problems(d):
                                    GEMINI: [take_config.INSTRUCTION_FILES[GEMINI]]}, "R15.instructions")
     import routing as _routing                   # D-INT-2: arm O's served-model rule is routing's own sentence
     need(d["price_table"] == "PENDING" and d["served_model_rule"][CODEX] == _routing.SERVED_MODEL_LIMIT and
-         all(v == "PENDING" for h, v in d["served_model_rule"].items() if h != CODEX) and
-         all(v == "PENDING" for v in d["furniture"].values()), "R15.values")
+         all(v == "PENDING" for h, v in d["served_model_rule"].items() if h != CODEX), "R15.values")
+    # lane d8-furniture (21 Oct 2026): each harness's furniture list, from box/scan_record.FURNITURE under the pinned CLI
+    need(furniture_problems(d) == [], "R15.furniture")
+    # glitch-f1's ruling (21 Oct 2026): rounds 1-3's deterministic-layer note carried, with round 4's line per arm
+    need(layer_note_problems(d) == [], "R34.hooks")
     # claude-code's per-take config is ready since the bypass acceptance was RULED not required in -p (glitch-06,
     # 14 Oct 2026; box lane). Round 17 B6 (glitch-b5's ruling R3, Sun 18 Oct 2026; this assertion moved by it from
     # "codex's and gemini's stay PENDING"): codex's effort and gemini's thinking and auth settings are sourced from the
@@ -813,7 +817,108 @@ def ready_problems(d):
     return bad
 
 
+def furniture_problems(d) -> list:
+    from box import scan_record as sr
+    out = []
+    locks = {item["lock"]["image"]: item["lock"]["harness"] for item in d["image_locks"]}
+    walk_version = {}
+    for h, walk in ((CODEX, "w-o46"), (CODEX, "w-o47"), (GEMINI, "w-g21"), (CLAUDE, "w168")):
+        led = json.loads((HERE / "rehearsals" / walk / "driver-ledger.json").read_text())
+        walk_version.setdefault(h, set()).add(led["agent"]["version"] if "agent" in led else led["claude_version"])
+    for h, image in ((CLAUDE, "take-a"), (CODEX, "take-o"), (GEMINI, "take-g")):
+        got = d["furniture"].get(h)
+        if not isinstance(got, list) or len(got) != 1 + len(sr.furniture_positions(h)):
+            out.append(f"{h}: not one version line plus one line per FURNITURE entry")
+            continue
+        pkg = f"{locks[image]['package']} {locks[image]['version']}"
+        # the version named is the one the walks actually ran (their ledgers), and the image lock's
+        if not got[0].startswith(pkg + " ") or walk_version[h] != {locks[image]["version"]}:
+            out.append(f"{h}: the version line does not name {pkg}, the walks' version {sorted(walk_version[h])}")
+        for e, line in zip(sr.furniture_positions(h), got[1:]):
+            if not line.startswith(f"{e['file']} | {e['record']} | ") or \
+                    (f"account-{e['account']}" in line) != bool(e["account"]) or \
+                    not all(("rehearsals/" + x) in line for x in e["evidence"]):
+                out.append(f"{h}: the line for {e['record']} does not render its entry")
+    if (CODEX, GEMINI) != ("codex", "gemini") or "0.162.1" not in d["furniture"][CODEX][0] or \
+            "0.64.0" not in d["furniture"][GEMINI][0]:
+        # the brief's named pins (gemini-cli 0.64.0, codex-cli 0.162.1), the versions the walks ran
+        out.append("the furniture lists do not name codex 0.162.1 and gemini-cli 0.64.0")
+    return out
+
+
+def layer_note_problems(d) -> list:
+    out = []
+    note = d.get("deterministic_layer_note")
+    if not isinstance(note, dict) or set(note) != {"carried", "round_4"}:
+        return ["no deterministic_layer_note with carried and round_4"]
+    for name in ("gap-study", "gap-study-2", "gap-study-3"):
+        prior = json.loads((HERE.parent / name / "prereg.json").read_text())
+        if note["carried"].get("text") != prior["driver_constants"]["deterministic_layer_note"]:
+            out.append(f"the carried text is not {name}'s deterministic_layer_note")
+    r4 = note["round_4"]
+    if set(r4) != {CLAUDE, CODEX, GEMINI}:
+        return out + ["round_4 does not name the three arms"]
+    if not all(w in r4[CLAUDE] for w in ("151 committed Claude walks", "348 turn launches", "project,local",
+                                         "gars/.claude/settings.json", "no stream or transcript record carries a hook")):
+        out.append("arm A's line does not carry its evidence")
+    if r4[CODEX].get("switch") != "the per-take config.toml: [features] hooks = false" or \
+            ("hooks", False) not in take_config.CODEX_FEATURES:
+        out.append("arm O's switch is not take_config's [features] hooks = false")
+    if r4[GEMINI].get("switch") != "the per-take settings.json: hooksConfig.enabled = false" or \
+            ("hooksConfig.enabled", False) not in take_config.GEMINI_SETTINGS:
+        out.append("arm G's switch is not take_config's hooksConfig.enabled = false")
+    for h in (CODEX, GEMINI):
+        if r4[h].get("evidence") == "PENDING" and f"/deterministic_layer_note/round_4/{h}/evidence" not in d["pending"]:
+            out.append(f"{h}'s hook-control evidence is PENDING but not in the pending map")
+    return out
+
+
+def arm_a_hook_counts() -> dict:
+    """Recount arm A's line over the 151 committed Claude walks (w001-w168): data, never the note's own words."""
+    walks = launches = root = hooks = 0
+    sources, baselines = set(), set()
+
+    def keys(o):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                yield k
+                yield from keys(v)
+        elif isinstance(o, list):
+            for v in o:
+                yield from keys(v)
+    for w in sorted((HERE / "rehearsals").glob("w[0-9]*")):
+        if not re.fullmatch(r"w[0-9]+", w.name) or int(w.name[1:]) > 168:
+            continue
+        walks += 1
+        for launch in w.glob("turn-*.jsonl.launch.json"):
+            text = launch.read_text()
+            launches += 1
+            root += bool(re.search(r'"cwd":\s*"/tmp/run-[0-9a-f]{8}"', text))
+            m = re.search(r'"--setting-sources",\s*"([^"]+)"', text)
+            sources.add(m.group(1) if m else None)
+        for f in list(w.glob("turn-*.jsonl")) + [w / "transcript.jsonl"]:
+            for ln in f.read_text().split("\n"):
+                if ln:
+                    r = json.loads(ln)
+                    hooks += any("hook" in k.lower() for k in keys(r)) or "hook" in str(r.get("type", "")).lower() \
+                        or "hook" in str(r.get("subtype", "")).lower()
+        baselines.add(tuple(sorted(json.loads((w / "settings-guard.json").read_text())["baseline"])))
+    return {"walks": walks, "launches": launches, "root": root, "hooks": hooks, "sources": sources,
+            "baselines": baselines}
+
+
+class LayerNote(unittest.TestCase):
+    def test_arm_a_counts_are_the_walks(self):
+        got = arm_a_hook_counts()
+        self.assertEqual(got, {"walks": 151, "launches": 348, "root": 348, "hooks": 0, "sources": {"project,local"},
+                               "baselines": {("gars/.claude/settings.json",)}})
+
+
 READY_MUTANTS = {
+    "furniture-pending": ("R15.furniture", ("furniture", CODEX), "PENDING"),
+    "furniture-version": ("R15.furniture", ("furniture", GEMINI, 0), "@google/gemini-cli 0.63.0 (fake)"),
+    "hooks-note-text": ("R34.hooks", ("deterministic_layer_note", "carried", "text"), "fake"),
+    "hooks-note-switch": ("R34.hooks", ("deterministic_layer_note", "round_4", CODEX, "switch"), "fake"),
     "contrast-missing": ("R17.families", ("stats_design_inputs", "stronger_weaker", CODEX), []),
     "design-values": ("R17.values", ("stats_design_inputs", "alpha"), "0.1"),
     "open-design": ("R32.closed", (stats.DESIGN_KEY,), {}),
