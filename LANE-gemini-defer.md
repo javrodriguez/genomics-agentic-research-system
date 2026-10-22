@@ -15,6 +15,8 @@ No push, no mirror, no athena dispatch; no committed record, walk record, holdou
 | `2b540d6a` | R3 | `completeness.py` reads G's unmeasured half-cells as "deferred (Javier, 22 Oct 2026)" |
 | `7e79861e` | R4 | `labelling/sample.py`: the original draw withholds G at its full-design share; a follow-up draws G only after a go |
 | `81c84b4d` | (lint) | three wordings so every added line passes `lint_language.py` |
+| `9118a6eb` | | this file |
+| `987c8030` | OD107 stage | `costs.CAPS` openai 180, google 220, total 400; `deferred_arms.G.registered_cap` |
 
 ## The rulings, quoted, and what changed per file
 
@@ -55,7 +57,15 @@ No push, no mirror, no athena dispatch; no committed record, walk record, holdou
 - `evals/gap-study-4/tests/test_pipeline.py`: `FreezeCoverage.test_frozen_content_reads_the_drafts_amendment_dict` on the real `prereg-draft.json` (no change on itself; an edited, removed or list-shaped amendment refused; a moved pin refused bare, accepted when a new dict entry chains it, refused when the chain ends wrong; the list shape unchanged).
 - `check_results.py --ledger` end to end was not run: it needs a frozen `prereg.json`, which does not exist on this line.
 
-**R8.** freeze.py is not changed. Untouched, as are `costs.py`, `stats.py`, `takes.py`, D8 and the launcher.
+**The OD107 stage** (glitch-f1, relayed mid-lane: Javier's "gcap-220 yes", decision OD107, ask gcap-220, his turn Thu 22 Oct 2026 14:43:19Z): "costs.CAPS becomes {"openai": 180, "google": 220} with TOTAL_CAP 400 unchanged ... with a test pinning the new caps and the total, the draft regenerated so its caps mirror costs.py, and deferred_arms.G noting the registered Google cap (220 dollars, OD107) so a later go runs exactly as registered. Nothing else in costs.py changes."
+
+- `evals/gap-study-4/costs.py`: the one `CAPS` line (and its comment); nothing else.
+- `evals/gap-study-4/build_draft.py`: `deferred_arms.G.registered_cap` {vendor google, usd 220, decision OD107, ask gcap-220, his words, why}; the `caps` key already derives from `costs.CAPS` (`build()` now gives openai 180, google 220, total 400).
+- Tests: `test_pipeline` CostAccounting pins the caps and total (spends moved so each vendor stays one step under its cap and the projection passes the total by one, as before); `test_build_draft` R16.caps pins 180, 220, 400 and R13.deferred binds `registered_cap.usd` to `costs.CAPS["google"]`; `test_spend_wiring`'s synthetic "caps trimmed" figures move from openai 200 to 150 (a trim above the cap is refused by design).
+- Red: `{'openai': Decimal('260'), 'google': Decimal('140')} != {'openai': Decimal('180'), 'google': Decimal('220')}`; Assembly `['R13.deferred']`; test_commitments `['R9.sessions', 'R16.caps']`. Green: CostAccounting 11, test_spend_wiring 25, test_batch 122, test_prereg_status 9, test_claude_code_adapter 28 OK; Assembly 5 OK; test_commitments red on R9.sessions only.
+- Not done: the draft regeneration (the same reason as R1). Left as it stands: the requirements quote `caps` in build_draft's QUOTES (req line 57, "The cap is $400 (OpenAI $260, Google $140).", with its structured 260 and 140), because it is a quoted source sentence; whether it needs an amendment note beside it is glitch-f1's call, with the D8 addendum.
+
+**R8.** freeze.py is not changed. Untouched, as are `stats.py`, `takes.py`, D8 and the launcher.
 
 ## Red, then green
 
@@ -80,11 +90,11 @@ Module runs on the Mac (light gate read before each batch; `run_named.py` is a s
 - test_freeze_shapes: 9 run, 1 failure, `test_fs_check_the_committed_draft_names_every_leg` ("'arm O (codex): leg iii:' not found"): the same failure on 5292df49 (run there), since both readers are accepted on this line; not this lane's.
 - test_vendor_checker_road: 2 failures, 3 errors (the process guard refuses `git rev-parse --show-toplevel`): the same on 5292df49; not this lane's.
 - test_build_draft `Description.test_commitments`: red on R9.sessions only, as on 5292df49 (see R1's deviation).
-- test_pipeline and test_build_draft, whole: queued under a heavy Mac slot (`mac_slot.py run --kind heavy`), waiting on the thermal gate when this file was first committed; results follow in a later commit, or go to athena's battery.
+- test_pipeline and test_build_draft, whole: NOT run on the Mac. test_build_draft alone ran past 14 minutes in a light attempt (stopped by pid); two `mac_slot.py run --kind heavy` tries (the second with --wait 1500) never got a slot: "busy: first slot: CPU speed limit 50 is below 80", exit 3. Their touched classes ran (above); the whole modules, the labelling 16-shard sweep and the witness runs go to athena's battery.
 
 ## For glitch-f1
 
 1. The draft regeneration is the open step for R1: at the ruled single regeneration after vendor-settle merges, `deferred_arms` enters the draft from build_draft.py; then `build_draft.py --check` and R9.sessions are the regeneration's to turn green.
 2. When it lands, `prereg.py --status` prints G deferred, `running_models` drops to five, completeness and the blind draw withhold G, and batch refuses G rows; the counted-run launcher's repo can offer `deferred_go_records()` (read at HEAD, as `history()` is), else batch reads `prereg.committed_go_records`.
 3. A go record is `evals/gap-study-4/deferred-arm-go.json`, a JSON list of `{kind: "deferred arm go", arm: "G", by: "Javier", decision, ask, at}`, committed after his go.
-4. Not built here, as briefed: the launcher's A+O queue and the ledger's no-G rule, the Google cap (costs.py), and the D8 addendum.
+4. Not built here, as briefed: the launcher's A+O queue and the ledger's no-G rule, and the D8 addendum.
