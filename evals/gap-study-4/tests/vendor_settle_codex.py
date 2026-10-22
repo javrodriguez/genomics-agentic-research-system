@@ -43,6 +43,12 @@ sys.path[:0] = _ADDED
 try:
     import check_take as ct  # noqa: E402
     import vendor_plant as vp  # noqa: E402
+    # imported here, once, so no test imports a module that edits sys.path (tests leave interpreter state as found)
+    import codex_adapter  # noqa: E402,F401
+    import run  # noqa: E402,F401
+    import walk_regrade  # noqa: E402,F401
+    import test_codex_adapter  # noqa: E402,F401
+    import test_codex_patch_reads  # noqa: E402,F401
 finally:
     for _p in _ADDED:
         sys.path.remove(_p)
@@ -729,6 +735,85 @@ class CItems(unittest.TestCase):
             with self.subTest(item=item):
                 got = item_fire(item)
                 self.assertTrue(got and all(p.startswith(f"[{reason}] ") for p in got), got)
+
+
+class CLegI(unittest.TestCase):
+    """Freeze leg i for the Codex adapter, prepared for stage V (which copies the streams into
+    tests/fixtures/codex-streams, flips codex_adapter.SHAPES_SOURCE and rewrites its docstring): codex_adapter's
+    CodexAdapter drives the RECORDED w-o46 turn streams and rollouts (three turns, resumed) and w-o47's one-turn
+    gpt-6-luna take through test_codex_adapter's FakeRuntime and its stubbed run_turn, and every reading equals the
+    value this test derives with plain json: the agent's text, the end reason, agent output, the thread id, the usage,
+    and the rollout's requested context (model, approval policy, CLI version)."""
+
+    def drive(self, fixture, model):
+        saved = list(sys.path)                 # test_codex_adapter's tearDownModule writes sys.path back; keep ours
+        try:
+            return self._drive(fixture, model)
+        finally:
+            sys.path[:] = saved
+
+    def _drive(self, fixture, model):
+        sys.path.insert(0, str(HERE / "tests"))
+        try:
+            import codex_adapter
+            import test_codex_adapter as tca
+        finally:
+            sys.path.remove(str(HERE / "tests"))
+        with vp.planted(fixture) as plant:
+            envs, streams = _streams(plant.folder)
+            ledger = json.loads((plant.folder / "driver-ledger.json").read_text(encoding="utf-8"))
+            texts = [(plant.folder / e["stream"]).read_text(encoding="utf-8") for e in envs]
+            rollouts = [(plant.folder / "session" / s["file"]).read_text(encoding="utf-8")
+                        for s in ledger["native_snapshots"]]
+            want = []
+            for st, ro in zip(streams, rollouts):
+                recs = [json.loads(x) for x in ro.split("\n") if x]
+                tc = [r["payload"] for r in recs if r["type"] == "turn_context"][-1]
+                want.append({
+                    "text": "\n".join(x["item"]["text"] for x in st if x["type"] == "item.completed"
+                                      and x["item"]["type"] == "agent_message"),
+                    "thread_ids": [x["thread_id"] for x in st if x["type"] == "thread.started"],
+                    "usage": [x for x in st if x["type"] == "turn.completed"][0]["usage"],
+                    "context": {"model": tc["model"], "permission_mode": tc["approval_policy"],
+                                "version": recs[0]["payload"]["cli_version"]}})
+            tca.setUpModule()
+            try:
+                with unittest.mock.patch.object(tca, "MODEL", model):
+                    box = tca.FakeRuntime(texts, version_out="codex-cli 0.162.1\n",
+                                          exit_codes=[t["exit"] for t in ledger["turns"]])
+                    a = tca.adapter(codex_adapter, box, rollouts=rollouts)
+                    a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+                    results = [a.turn(e["sent"], first=k == 0, budget_s=60) for k, e in enumerate(envs)]
+                    records = list(a.turn_records)
+            finally:
+                tca.tearDownModule()
+        return want, results, records
+
+    def check(self, fixture, model, turns):
+        import os
+        before = (list(sys.path), dict(os.environ), ct._run_take.VENDOR_BILLING_ROUTE_VARIABLES,
+                  ct._run_take.run_turn)
+        want, results, records = self.drive(fixture, model)
+        self.assertEqual((list(sys.path), dict(os.environ), ct._run_take.VENDOR_BILLING_ROUTE_VARIABLES,
+                          ct._run_take.run_turn), before, "the drive left interpreter state changed")
+        self.assertEqual(len(results), turns)
+        for k, (w, r, rec) in enumerate(zip(want, results, records), 1):
+            with self.subTest(fixture=fixture, turn=k):
+                self.assertEqual(r.text, w["text"])
+                self.assertEqual(r.end_reason, "end_turn")
+                self.assertIs(r.agent_output, True)
+                self.assertEqual(rec["thread_ids"], w["thread_ids"])
+                self.assertEqual(rec["usage"], w["usage"])
+                self.assertEqual(rec["requested_context"], w["context"])
+                self.assertEqual(rec["requested_context"], {"model": model, "permission_mode": "never",
+                                                            "version": "0.162.1"})
+                self.assertEqual((rec["completed"], rec["failed"], rec["undecoded"]), (1, 0, 0))
+
+    def test_c_leg_i_w_o46_three_resumed_turns(self):
+        self.check(O46, "gpt-6.1-sol", 3)
+
+    def test_c_leg_i_w_o47_post_b22_luna(self):
+        self.check(O47, "gpt-6-luna", 1)
 
 
 def _nc_runs_hollow(key) -> list:
