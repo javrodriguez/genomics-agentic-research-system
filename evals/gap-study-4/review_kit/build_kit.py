@@ -12,9 +12,16 @@ committed.
 ROUND 4 (lane review-kit-port, glitch-f1's ruling F5 and fold 2, Wed 21 Oct 2026): the reviewer runs only light checks
 and reads the heavy gates from `athena/` (BRIEF.md step 3). This builder takes that folder itself (--athena, required)
 and copies it in, so the operator never adds it by hand and `rounds.py --add` hashes it with everything else. It is
-checked before the kit folder is made and again as it is copied: regular files only, no subfolder or link, none
-empty, and every file naming the full sha of the commit the clone is at. A gate run at another commit is not
-evidence about this one.
+checked before the kit folder is made and again as it is copied: regular files only, no subfolder, link or dotfile,
+none empty, and every file carrying its own line `commit: <the full sha the clone is at>`. A gate run at another
+commit is not evidence about this one, and a sha mentioned elsewhere in a log does not say where it ran.
+The review of the port (MINOR 2) adds: the reviewer reads and quotes these files, and its report is refused for an
+absolute path or a person's name (commit_review.py's ABS_PATH and PERSON), so a file carrying either is refused here,
+and so is one carrying an operator marker (blindness.py's MARKERS). One named rule admits markers: a marker that is a
+study folder under evals/ in this repository (`gap-study-4`, `gap-study-3`, ...) is admitted, because the clone the
+reviewer is handed carries those names in every path and hiding them in athena/ would hide nothing.
+athena_outputs.py writes files that meet these rules, masking by the same rules. If the second check refuses, the
+half-built folder this run made is removed, so a rerun is not refused for a folder that already exists.
 
 stdlib only, no model.
 """
@@ -22,6 +29,7 @@ stdlib only, no model.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import shutil
 import subprocess
 import sys
@@ -36,6 +44,24 @@ import scratch_git  # noqa: E402
 ATHENA = "athena"
 
 
+def _load(name: str):
+    spec = importlib.util.spec_from_file_location(f"review_kit_{name}_for_build_kit", HERE / f"{name}.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+_blindness = _load("blindness")
+_commit_review = _load("commit_review")
+ABS_PATH = _commit_review.ABS_PATH
+PERSON = _commit_review.PERSON
+
+
+def athena_markers() -> list[str]:
+    """blindness.py's markers, less the named rule's: a marker that is a study folder under evals/ here."""
+    return [w for _, w in _blindness.MARKERS if not (REPO / "evals" / w).is_dir()]
+
+
 def copy_athena(src: Path, dest: Path | None, head: str) -> tuple[list[str], list[str]]:
     """(problems, names copied). With dest None, or with any problem, nothing is written."""
     problems: list[str] = []
@@ -45,7 +71,9 @@ def copy_athena(src: Path, dest: Path | None, head: str) -> tuple[list[str], lis
     if not entries:
         problems.append("the athena outputs folder is empty: the heavy gates were not handed in")
     for p in entries:
-        if p.is_symlink():
+        if p.name.startswith("."):
+            problems.append(f"{p.name} is a dotfile; athena/ holds one visible file per command")
+        elif p.is_symlink():
             problems.append(f"{p.name} is a link; only regular files are copied")
         elif p.is_dir():
             problems.append(f"{p.name} is a folder; athena/ is flat, one file per command")
@@ -55,9 +83,18 @@ def copy_athena(src: Path, dest: Path | None, head: str) -> tuple[list[str], lis
             body = p.read_text(errors="replace")
             if not body.strip():
                 problems.append(f"{p.name} is empty")
-            elif head not in body:
-                problems.append(f"{p.name} does not name the commit the clone is at ({head[:12]}); a gate run at "
-                                f"another commit is not evidence about this one")
+            else:
+                if f"commit: {head}" not in body.splitlines():
+                    problems.append(f"{p.name} has no line `commit: {head[:12]}...`; a gate run at another commit is "
+                                    f"not evidence about this one, and a sha named elsewhere does not say where it ran")
+                if ABS_PATH.search(body):
+                    problems.append(f"{p.name} carries an absolute path; the reviewer's report may carry none")
+                if PERSON.search(body):
+                    problems.append(f"{p.name} names a person or an account")
+                low = body.lower()
+                for m in athena_markers():
+                    if m.lower() in low:
+                        problems.append(f"{p.name} carries the operator marker {m!r}")
     if problems or dest is None:
         return problems, []
     out = dest / ATHENA
@@ -111,7 +148,9 @@ def main() -> int:
     (folder / "COMMIT").write_text(head + "\n")
     problems, copied = copy_athena(athena, folder, head)
     if problems:
-        print("refusing: the athena outputs changed while the kit was built: " + "; ".join(problems))
+        shutil.rmtree(folder)
+        print("refusing: the athena outputs changed while the kit was built, so the half-built folder was removed: "
+              + "; ".join(problems))
         return 2
     print(f"built {folder}: review {args.n} at {head[:12]}, clone without a remote, "
           f"{'previous bytes included' if args.previous else 'no previous bytes'}, {len(copied)} athena file(s)")

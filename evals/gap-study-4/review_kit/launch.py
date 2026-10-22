@@ -5,21 +5,29 @@
     python3 evals/gap-study-4/review_kit/launch.py <review folder> <session id> --resume
 
 The folder is built by build_kit.py: BRIEF.md, why.md, prereg.json, the previous review's bytes if any, and `study/`,
-a full-history clone of this repository with NO remote. ROUND 4 (lane review-kit-port, ruling F5 of the freeze path):
-before the row is registered the operator adds `athena/`, the remote runner's outputs of the heavy gates at the
-commit in COMMIT (run_checks.py, each command of freeze_rehearsal.py's COMMANDS run directly, freeze.py --check), one
-file per command naming the command, the commit and the tail of its output. BRIEF.md has the reviewer read them and
-run only the light checks; `rounds.py --add` hashes the whole folder, so the row binds them. This launcher:
+a full-history clone of this repository with NO remote, plus COMMIT and `athena/`. ROUND 4 (lane review-kit-port,
+ruling F5 of the freeze path): `athena/` holds the remote runner's outputs of the heavy gates at the commit in COMMIT,
+written by athena_outputs.py and copied in by build_kit.py --athena, whose refusals (a commit line equal to the head,
+no dotfile, no absolute home path, person or operator marker) a folder filled by hand would skip. BRIEF.md has the
+reviewer read them and run only the light checks; `rounds.py --add` hashes the whole folder, so the row binds them.
+This launcher:
 
   - refuses a folder whose `study/` clone has a remote: the reviewer runs with no prompts and this machine's git
     credentials sit in the keychain, so a clone with a remote is a clone the reviewer could push from
     (TheReviewerCannotPush);
   - refuses a folder under the Brain or under this repository: the reviewer must not be able to see either;
-  - runs `claude -p` with the driver's own isolation flags and environment (drive.ISOLATION_FLAGS, drive.child_env()),
-    plus ENABLE_CLAUDEAI_MCP_SERVERS=false and CLAUDE_CODE_DISABLE_AUTO_MEMORY=1, so what the reviewer is given is what
-    a take is given (TheReviewKitMatchesTheDriver). Never an Agent sub-agent: those boot with the operator's memory.
-  - records the session id it opened, the folder's listing at launch, the stream, stderr and the exit code beside
-    the folder, so blindness.py can read the reviewer's own session file afterwards.
+  - refuses a folder with no `athena/` or no COMMIT: build_kit.py writes both, so their absence is a folder this
+    kit did not build;
+  - runs `claude -p` with the driver's own isolation flags (drive.ISOLATION_FLAGS), `--effort medium`, and an
+    environment built from ALLOWED_ENV plus ENABLE_CLAUDEAI_MCP_SERVERS=false and CLAUDE_CODE_DISABLE_AUTO_MEMORY=1.
+    ROUND 4 (the review of the port, MAJOR 1): round 3's reviewer took the driver's take environment, which stripped
+    the operator pane's session names; round 4's driver strips nothing (its takes get their environment inside the
+    container), so a reviewer launched from an operator pane inherited that pane's effort, session id and messaging
+    socket and token. The environment is now an allowlist, default deny, and never the driver's or the caller's.
+    Never an Agent sub-agent: those boot with the operator's memory.
+  - records the session id it opened, the folder's listing at launch, the NAMES of the environment it passed
+    (env-names.txt, never a value), the stream, stderr and the exit code beside the folder, so blindness.py can read
+    the reviewer's own session file afterwards.
 
 A SESSION CUT OFF AFTER ITS FIRST AGENT TURN AND BEFORE ITS REPORT IS RESUMED, NOT RE-LAUNCHED. The
 subscription's session limit ended round 3's reviewer at its 39th turn with no report written. Its id is
@@ -51,17 +59,37 @@ REPO = STUDY_DIR.parent.parent
 
 # ROUND 4 (lane review-kit-port, glitch-f1's fold 1, Wed 21 Oct 2026): round 3 launched another model. The reviewer is now
 # claude-opus-5-5: the study plan's CP6 asks for fresh Opus reviewers, and the agent-engine policy waits on
-# the owner's word for any other. No effort flag is passed (argv_for), so the reviewer runs at the client's default, as round 3's did.
+# the owner's word for any other.
 MODEL = "claude-opus-5-5"
+# ROUND 4 (the review of the port, MAJOR 1; agent-engine policy OD56: Opus 5.5 at medium for reviewers). Passed on
+# launch and on resume, so the effort is stated by the kit and recorded in the session, never left to the client's
+# version or to an inherited CLAUDE_EFFORT (which ALLOWED_ENV no longer lets through).
+EFFORT = "medium"
 PROMPT = "Read BRIEF.md in this folder and follow it exactly."
 RESUME_PROMPT = ("Your session was interrupted by a rate limit and has been resumed. Continue exactly where you "
                  "were: follow BRIEF.md in this folder to completion, and write the report it asks for.")
 REVIEWER_ENV = {"ENABLE_CLAUDEAI_MCP_SERVERS": "false", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
+# The only names the reviewer's environment takes from the caller's, each with the reason the headless client needs
+# it. Everything else is dropped: every CLAUDE* / CLAUDE_CODE_* name of the operator's session, any API key, any
+# CLAUDE_CONFIG_DIR that would point the client at another config. If the skills smoke (README.md) shows the client
+# cannot run without a further name, that name is added here with its reason, as a reviewed change.
+ALLOWED_ENV = {
+    "PATH": "finds the claude client and git",
+    "HOME": "the client finds its own login and config under it; settings beyond project and local are excluded by "
+            "--setting-sources",
+    "USER": "the account name the client's login lookup and git read",
+    "LOGNAME": "the same account name, as some system calls read it",
+    "SHELL": "the shell the client's own command tool starts",
+    "LANG": "the text encoding of the reviewer's commands and their output",
+    "LC_ALL": "the same, when the machine sets it",
+    "LC_CTYPE": "the same, when the machine sets it",
+    "TMPDIR": "the per-user temporary folder the operating system assigns",
+}
 
 
 def load_drive():
-    """This study's driver, by path: its isolation constants and child_env are the ones the reviewer inherits."""
-    spec = importlib.util.spec_from_file_location("gap_study_2_drive_for_launch", STUDY_DIR / "drive.py")
+    """This study's driver, by path: only its isolation flags reach the reviewer (its take environment does not)."""
+    spec = importlib.util.spec_from_file_location("gap_study_4_drive_for_launch", STUDY_DIR / "drive.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -78,6 +106,10 @@ def folder_problems(folder: Path) -> list[str]:
         r = subprocess.run(["git", "-C", str(study), "remote"], capture_output=True, text=True)
         if r.returncode != 0 or r.stdout.strip():
             problems.append(f"the study clone has a remote ({r.stdout.strip() or 'unreadable'}); the reviewer could push")
+    if not (folder / "athena").is_dir() or not any((folder / "athena").iterdir()):
+        problems.append("no athena/ outputs in the folder (build_kit.py --athena copies them in)")
+    if not (folder / "COMMIT").is_file():
+        problems.append("no COMMIT in the folder (build_kit.py writes it)")
     resolved = folder.resolve()
     for root, name in ((REPO.resolve(), "this repository"), (Path.home() / "glitch", "the Brain")):
         try:
@@ -90,17 +122,28 @@ def folder_problems(folder: Path) -> list[str]:
 
 def argv_for(session_id: str, drive) -> list[str]:
     return ["claude", "-p", PROMPT, "--model", MODEL, "--permission-mode", "auto", "--permission-prompts", "none",
-            *drive.ISOLATION_FLAGS, "--output-format", "stream-json", "--verbose", "--session-id", session_id]
+            *drive.ISOLATION_FLAGS, "--effort", EFFORT, "--output-format", "stream-json", "--verbose",
+            "--session-id", session_id]
 
 
 def resume_argv_for(session_id: str, drive) -> list[str]:
     """The same flags, the same model, the same id -- continued with the harness's --resume, never re-opened."""
     return ["claude", "-p", RESUME_PROMPT, "--model", MODEL, "--permission-mode", "auto", "--permission-prompts",
-            "none", *drive.ISOLATION_FLAGS, "--output-format", "stream-json", "--verbose", "--resume", session_id]
+            "none", *drive.ISOLATION_FLAGS, "--effort", EFFORT, "--output-format", "stream-json", "--verbose",
+            "--resume", session_id]
 
 
-def env_for(drive) -> dict:
-    return {**drive.child_env(), **REVIEWER_ENV}
+def env_for(source=None) -> dict:
+    """The reviewer's environment: the ALLOWED_ENV names present in `source` (the caller's environment by default),
+    plus REVIEWER_ENV. Default deny: nothing else is passed."""
+    source = os.environ if source is None else source
+    env = {k: source[k] for k in ALLOWED_ENV if k in source}
+    return {**env, **REVIEWER_ENV}
+
+
+def record_env_names(side: Path, env: dict, name: str = "env-names.txt") -> None:
+    """The names passed, one per line, sorted; never a value."""
+    (side / name).write_text("".join(f"{k}\n" for k in sorted(env)))
 
 
 def resume(folder: Path, sid: str, drive) -> int:
@@ -111,7 +154,8 @@ def resume(folder: Path, sid: str, drive) -> int:
               f"session this folder was launched under and no other.")
         return 2
     n = 1 + len(list(side.glob("stream-resume-*.jsonl")))
-    env = env_for(drive)
+    env = env_for()
+    record_env_names(side, env, f"env-names-resume-{n}.txt")
     argv = resume_argv_for(sid, drive)
     t0 = time.time()
     with open(side / f"stream-resume-{n}.jsonl", "w") as out, open(side / f"stderr-resume-{n}.txt", "w") as err:
@@ -153,7 +197,8 @@ def main() -> int:
     (side / "SESSION").write_text(sid + "\n")
     (side / "FOLDER").write_text(str(folder) + "\n")
     (side / "folder-at-launch.txt").write_text("\n".join(sorted(os.listdir(folder))) + "\n")
-    env = env_for(drive)
+    env = env_for()
+    record_env_names(side, env)
     argv = argv_for(sid, drive)
     t0 = time.time()
     with open(side / "stream.jsonl", "w") as out, open(side / "stderr.txt", "w") as err:
