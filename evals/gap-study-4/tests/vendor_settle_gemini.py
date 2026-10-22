@@ -1065,6 +1065,32 @@ class GMemoryWrites(unittest.TestCase):
                 self.assertEqual(len(ct.gemini_memory_file_writes(plant.path)), want)
 
 
+class GTexts(unittest.TestCase):
+    """The adopted texts' legs (Gemini text review): T-12:memory's "no memory-file write" and T-17's launch-environment
+    and refused-set legs, each with a firing plant."""
+
+    def test_g_texts_memory_partial_counts_a_memory_file_write(self):
+        write = _tool_use_plant("write_file", {"file_path": "/opt/cfg/.gemini/GEMINI.md", "content": "Remember x."})
+        with vendor_plant.planted(G21, write) as plant:
+            got = ct.vendor_gemini_memory_partial(plant.path)
+        self.assertTrue(got and all(x.startswith("[inherited-context] ") for x in got), got)
+        self.assertTrue(any("GEMINI.md" in x for x in got), got)
+
+    def test_g_texts_t17_launch_environment_and_refused_set_legs_fire(self):
+        names = sorted(ct._settle_g_run_take.VENDOR_BILLING_ROUTE_VARIABLES["gemini"])
+        name = "GOOGLE_GENAI_USE_VERTEXAI" if "GOOGLE_GENAI_USE_VERTEXAI" in names else names[0]
+        with vendor_plant.planted(G21) as clean:
+            self.assertEqual(ct.vendor_gemini_billing_route_partial(clean.path), [])
+            with mock.patch.dict(run_take.TAKE_ENV[H], {name: "true"}):
+                got = ct.vendor_gemini_billing_route_partial(clean.path)
+            self.assertEqual(len(got), 1, got)
+            self.assertTrue(got[0].startswith("[environment-record] the launch environment carries"), got)
+            with _refused_without(name):
+                got = ct.vendor_gemini_billing_route_partial(clean.path)
+            self.assertEqual(len(got), 1, got)
+            self.assertTrue(got[0].startswith("[environment-record] the refused set misses"), got)
+
+
 class GLegs(unittest.TestCase):
     """Gemini review 0df1437 MINOR 2: each leg a published text names fires alone on its own scratch copy."""
 
