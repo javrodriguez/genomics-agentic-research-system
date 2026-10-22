@@ -1230,6 +1230,16 @@
       "model": "claude-haiku-4-5-20251001",
       "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted",
       "counted": false
+    },
+    {
+      "walk": "w059",
+      "task": "confounded-design",
+      "half": "normal",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted",
+      "counted": false
     }
   ]
 }
