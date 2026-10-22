@@ -396,6 +396,69 @@ class RoadAMutants(Witness):
         self.refused(self.mutate(lambda r: r.insert(c + 1, copy.deepcopy(rec)), a1), RETIRED)
 
 
+class F4Witnesses(Witness):
+    """REVIEW-b28-gemini-reader-854f6c3 MINOR 1 and NITs 2-3 (the F4 reviewer's witnesses, scratch wit_f4.py, folded):
+    each binds one default-deny conjunct no other test reached."""
+
+    def setUp(self):
+        self.a1 = lines(snaps("A1")[1])
+        self.s, self.c, self.p = road_a(self.a1)
+
+    def state(self, live, kinds):
+        r = rm._Replay({"sessionId": "s", "projectHash": "p"})
+        r.live, r.kind, r.ctx_pending = live, kinds, True
+        return r
+
+    def test_w22_a_set_last_updated_between_the_set_session_and_the_reentry(self):
+        """resume_at comes from $set {sessionId} alone (the writer writes S then A-ctx, EN)."""
+        r = copy.deepcopy(self.a1)
+        r.insert(self.c, {"$set": {"lastUpdated": self.a1[self.c]["timestamp"]}})
+        self.refused(jl(r), NOT_FIRST_RECORD)
+
+    def test_w3_two_context_copies_removed(self):
+        """The upper bound of "exactly one re-recorded context copy" (design section 3: "drops ... two")."""
+        st = self.state({"c1": {"id": "c1", "type": "user", "content": [{"text": "<session_context>\na"}]},
+                         "c2": {"id": "c2", "type": "user", "content": [{"text": "<session_context>\nb"}]}},
+                        {"c1": rm.RERECORDED, "c2": rm.RERECORDED})
+        with self.assertRaises(rm.ReplayRefused) as cm:
+            st._context_copies(["c1", "c2"])
+        self.assertIn(EXACTLY_ONE, str(cm.exception))
+
+    def test_w19_a_pending_patch_still_checks_removed_originals(self):
+        st = self.state({"o": {"id": "o", "type": "user", "content": [{"text": "a real prompt"}]},
+                         "c1": {"id": "c1", "type": "user", "content": [{"text": "<session_context>\na"}]}},
+                        {"o": rm.ORIGINAL, "c1": rm.RERECORDED})
+        with self.assertRaises(rm.ReplayRefused) as cm:
+            st._ignored_prompts(["c1", "o"])
+        self.assertIn("a resume removes a message that is not an ignored user prompt", str(cm.exception))
+
+    def test_w13_w15_ignored_copy_part_keys_and_whitespace(self):
+        """W13: a part with an extra key is not ignored content; W15 (NIT 2): whitespace-only text is, as
+        isIgnoredUserContent reads a trimmed length of 0 (:286096-286098)."""
+        st = self.state({"x": {"id": "x", "type": "user", "content": [{"text": "/x", "thoughtSignature": "s"}]},
+                         "w": {"id": "w", "type": "user", "content": [{"text": " \n "}]}},
+                        {"x": rm.RERECORDED, "w": rm.RERECORDED})
+        self.assertEqual((st._ignored_copy("x"), st._ignored_copy("w")), (False, True))
+
+    def test_w17_reentry_text_part_not_a_string(self):
+        """NIT 2: refused by name, never a crash."""
+        r = copy.deepcopy(self.a1)
+        r[self.c]["content"] = [{"text": 5}]
+        self.refused(jl(r), OFF_SHAPE)
+
+    def test_w18_an_original_context_upsert_reads_as_before_the_batch(self):
+        """NIT 2: the live-copy guard is for the CONTEXT_COPY only; an upsert of the ORIGINAL context id is admitted
+        exactly as at 5457e75e (a replace, Map.set)."""
+        ctx = next(x for x in self.a1 if x.get("id") == CONTEXT_ID)
+        rm.replay(jl([self.a1[0], ctx, copy.deepcopy(ctx)]))
+
+    def test_w27_an_updates_patch_while_pending_refuses_by_the_pending_name(self):
+        """NIT 3: without the pending refusal an {updates} patch would end refused only at the snapshot's end."""
+        r = copy.deepcopy(self.a1)
+        r[self.p]["$patch"] = {"updates": r[self.p]["$patch"]["updates"]}
+        self.refused(jl(r), NOT_CONSUMED)
+
+
 class StillRefused(Witness):
     """Roads (b) and (c) stay refused by name (glitch-f1's B27 rulings 1 and 2)."""
 
