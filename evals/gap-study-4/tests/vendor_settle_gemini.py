@@ -94,15 +94,16 @@ SNAPS = {G21: ("session/native-turn-1.jsonl", "session/native-turn-2.jsonl"),
                "session/native-turn-4.jsonl")}
 MODEL = "gemini-3.8-flash"                      # the register entry of both walks (rehearsals/register.json)
 TREE21 = "/tmp/run-752c6e21"                    # w-g21's turn-1.jsonl.launch.json cwd
-# The adopted rulings' texts (vendor-settle-NC-RULINGS-2026-10-21.md, arm G, each section's body lines joined by
-# newlines): sha256 read from that file on Wed 21 Oct 2026 by the stage G builder.
+# The adopted rulings' texts (vendor-settle-NC-RULINGS-2026-10-21.md, arm G, each section's heading and body lines
+# joined by newlines, the Codex rows' form, review 0df1437 NIT 2): sha256 read from that file (whole-file sha256
+# 72b4fdf3...) by the stage X builder.
 RULING_SHA256 = {
-    "T-12:offered-context": "968faa76077da9cbc6f3d118fe094f10180405ad647a2e6897c896d0c2096540",
-    "T-12:prompt-snapshot": "afe373c7b0a72505ce7e210ae4ddd258c11a1c4a7ed8d274ce4071837a60e665",
-    "T-12:memory": "3f88136649de1daef4ba548e7399d958b316dc54507d9b249b4178edcae5ad89",
-    "T-13": "f1e759baf77ae401ea87c701ef1c5f8ccd9c794768d22d4348b1a2941be2f9c2",
-    "T-17:billing-route": "30776c74d686d5477b38fed87c27991aa5f8fe2fbb1cd3a66341c7f0ad074d03",   # stage V: amended
-    "T-18": "9d1f302de600646e84c7dad23bcfecb8d9c061e2dbca3b75d5ebe9fc7dee2760",
+    "T-12:offered-context": "38459c8f370a56c2c2bc1bad62ce9d5868ebc5c208e0ead5798abc24e7bbba1a",
+    "T-12:prompt-snapshot": "10783f6fd3488d4bbaa78ac696f58216c8ce2a5d0cb144d23cb95ccd246282bc",
+    "T-12:memory": "8b16a2a39b257dcba4f11320429ef1114e90916ada3b51abe39ae44536bb0060",
+    "T-13": "bb9df8a2763db8f3aa9860407acbc0192b61e16d57f0fcbbad466c583703916c",
+    "T-17:billing-route": "cacd29aa37ac66a4ec3550dfc975a9bc3a07279e14143620cd60423125a21546",
+    "T-18": "3db3238eb5db2707426b61ae075b447304cfc9433e7254514a857db0d4ce5e5b",
 }
 SAME_READERS = {"T-4": "vendor_gemini_run_tree_reads", "T-10": "vendor_gemini_loaded_context_reads",
                 "T-11": "vendor_gemini_cwd_reads", "T-12:instruction-files": "vendor_gemini_instruction_files_reads",
