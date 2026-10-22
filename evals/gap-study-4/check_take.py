@@ -5609,8 +5609,8 @@ CODEX_CHECKOUT_BRANCH = "main"
 # TSA_REQUIRED), and the bypass flag runs PermissionProfile::Disabled, a unit variant written {"type": "disabled"}
 # (models.rs:418-435 as codex_native._thread_settings cites it).
 CODEX_THREAD_PERMISSION_PROFILE = {"bypass": "disabled"}
-# T-17 leg 3: the provider and plan the 38 walks record (session_meta.model_provider "openai" 38/38; every token_count
-# rate_limits.plan_type non-null 38/38, probe5): the ChatGPT sign-in road.
+# T-17 leg 3: the provider and plan the 38 walks record (session_meta.model_provider "openai" 38 of 38; every token_count
+# rate_limits.plan_type non-null 38 of 38, probe5): the ChatGPT sign-in road.
 CODEX_MODEL_PROVIDER = "openai"
 
 
@@ -5692,7 +5692,7 @@ def vendor_codex_origin_reads(path) -> list:
     """unknown-harness-origin (T-5, SAME): in the last rollout every user-role message part is the turn's operator line
     (the envelopes' `sent`, in order), or the one `# AGENTS.md instructions for <dir>` part, or the one
     `<environment_context>` part; every developer part opens with one of CODEX_DEVELOPER_SECTIONS; and no message has
-    another role. Survey: 38/38, 89 operator parts for 89 turns, 38 and 38."""
+    another role. Survey: 38 of 38, 89 operator parts for 89 turns, 38 and 38."""
     reason = "unknown-harness-origin"
     try:
         lines = _vendor_codex_lines(path)
@@ -5744,7 +5744,7 @@ def vendor_codex_loaded_context_reads(path, pre) -> list:
     """leak-in-loaded-context (T-10, SAME): context_leaks over the DECODED text (review MAJOR 3; _decoded_text, keys
     included) of what the CLI put in front of the model: session_meta (base_instructions, the system-prompt record, as
     C's context includes its prompt snapshot), world_state, every developer message, and the AGENTS.md and
-    environment-context user parts (never an operator line, T-6's). Survey: 0/38."""
+    environment-context user parts (never an operator line, T-6's). Survey: 0 of 38."""
     reason = "leak-in-loaded-context"
     try:
         lines = _vendor_codex_lines(path)
@@ -5820,7 +5820,7 @@ def _vc_inside(directory, cwd) -> bool:
 def vendor_codex_instruction_files_reads(path) -> list:
     """inherited-context, T-12:instruction-files (SAME): every AGENTS.md the session recorded (each AGENTS.md user
     part's header directory and world_state.agents_md.directory) sits inside the session folder, as C's
-    inherited_context requires of every instruction file it loaded. Survey: 38/38 (each the session folder itself)."""
+    inherited_context requires of every instruction file it loaded. Survey: 38 of 38 (each the session folder itself)."""
     reason = "inherited-context"
     try:
         lines = _vendor_codex_lines(path)
@@ -5839,7 +5839,7 @@ def vendor_codex_instruction_files_reads(path) -> list:
 def vendor_codex_prompt_reads(path) -> list:
     """inherited-context, T-12:prompt-snapshot (SAME): the rollout's one session_meta (read_rollout refuses a second)
     carries base_instructions with a non-empty text, Codex's record of its system prompt, as C requires its prompt
-    snapshot. Survey: 38/38."""
+    snapshot. Survey: 38 of 38."""
     reason = "inherited-context"
     try:
         lines = _vendor_codex_lines(path)
@@ -5899,7 +5899,7 @@ def vendor_codex_memory_partial(path) -> list:
 def vendor_codex_checkout_partial(path) -> list:
     """checkout-binding, T-13 (NOT COMPARABLE; glitch-f1's adopted ruling): exactly one git record, session_meta.git
     {branch, commit_hash}, the branch `main` (CODEX_CHECKOUT_BRANCH, drive.py:381) and a 40-character lower-case hex
-    commit hash. Survey: 38/38."""
+    commit hash. Survey: 38 of 38."""
     reason = "checkout-binding"
     try:
         lines = _vendor_codex_lines(path)
@@ -5924,7 +5924,7 @@ def vendor_codex_instruction_content_reads(path, design) -> list:
     <INSTRUCTIONS> wrapper, and world_state.agents_md.text) equals the pinned CLAUDE.md of its directory (R-6:
     walk_builders places AGENTS.md byte-identical beside every CLAUDE.md), trailing whitespace aside
     (pinned_instruction_problems' rule); a file outside the session folder is T-12:instruction-files', skipped here.
-    Survey: 38/38 both copies equal the pinned root CLAUDE.md."""
+    Survey: 38 of 38 both copies equal the pinned root CLAUDE.md."""
     reason = "checkout-binding"
     try:
         lines = _vendor_codex_lines(path)
@@ -5962,7 +5962,7 @@ def vendor_codex_recorded_mode_reads(path, design, arm) -> list:
     (mode_binding.codex_mode_records): one turn_context per turn, each carrying mode_binding.CODEX_MODE_RECORD's
     (approval_policy, sandbox_policy.type); each thread_settings snapshot (two per resume; a one-turn take has none,
     where this leg reads nothing) its approval_policy and permission_profile.type (CODEX_THREAD_PERMISSION_PROFILE).
-    Survey: 89 turn_context records "never"/danger-full-access, 38/38; thread_settings in the 25 multi-turn walks."""
+    Survey: 89 turn_context records "never"/danger-full-access, 38 of 38; thread_settings in the 25 multi-turn walks."""
     reason = "constant-binding"
     try:
         lines = _vendor_codex_lines(path)
@@ -6078,7 +6078,7 @@ def vendor_codex_tools_partial(path) -> list:
               and (cfg.get("features") or {}).get("plugins") is False)
     except Exception as e:  # noqa: BLE001 - a config the writer cannot write is a refusal, never a pass
         ok = False
-        out.append(f"[{reason}] the take's pinned config.toml cannot be rebuilt ({type(e).__name__}: {str(e)[:100]})")
+        out.append(f"[{reason}] the take's pinned config.toml cannot be rebuilt ({type(e).__name__}: {str(e)[:160]})")
     else:
         if not ok:
             out.append(f"[{reason}] the take's pinned config.toml does not turn agents, plugins and web search off")
