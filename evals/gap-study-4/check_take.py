@@ -5236,7 +5236,10 @@ def vendor_nested_flag_problems(path, harness) -> list:
 # on PATH (arg0/src/lib.rs:325-340), which leaves only a CommandExecution. Measured over the 38 GPT walks: 0 of 216
 # exec calls name tools.apply_patch, 0 of 226 CommandExecutions run the alias.
 _CODEX_SCRIPT_TOOL = re.compile(r"tools\.([A-Za-z_][A-Za-z0-9_]*)\s*\(")
-_CODEX_APPLY_PATCH_ALIAS = re.compile(r"(?:^|[\s;&|()`])(?:apply_patch|applypatch)(?=\s|$|<|')")
+# the alias by its basename wherever a command word can stand: at the start, or after a shell separator or an opening
+# bracket, optionally path-qualified (/usr/local/bin/apply_patch, ./apply_patch; Codex closure NIT)
+_CODEX_APPLY_PATCH_ALIAS = re.compile(r"(?:^|[;&|()`\n]|&&|\|\|)\s*(?:[^\s;&|()`<>'\"]*/)?(?:apply_patch|applypatch)"
+                                      r"(?=\s|$|<|'|\"|;|&|\|)")
 CODEX_SCRIPT_SHELL_TOOLS = ("exec_command",)       # the one nested tool the 216 recorded exec scripts call (226 times)
 
 
@@ -5267,8 +5270,8 @@ def codex_patch_roads(path) -> list:
                 out.append((n, "an exec call's script calls tools.apply_patch and the turn records no FileChange"))
             item = pay.get("item") or {} if isinstance(pay, dict) else {}
             if (r["type"] == "event_msg" and pay.get("type") == "item_completed" and item.get("type") == "CommandExecution"
-                    and _CODEX_APPLY_PATCH_ALIAS.search(" ".join(x for x in item.get("command") or []
-                                                                 if isinstance(x, str)))):
+                    and any(_CODEX_APPLY_PATCH_ALIAS.search(x) for x in item.get("command") or []
+                            if isinstance(x, str))):     # each argv word, so the shell's script is read from its start
                 out.append((n, "a shell command runs the apply_patch alias, which leaves no FileChange"))
     return out
 
