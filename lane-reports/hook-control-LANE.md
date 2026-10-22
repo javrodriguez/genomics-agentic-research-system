@@ -54,3 +54,42 @@ Inference to watch on athena (not verified here): the study's config.toml carrie
 - Green, 22:57:55-22:58:02: "Ran 52 tests", "OK".
 - B27's own tests on this tree, 23:00:15: test_stub_model_probe "Ran 47 tests", "OK".
 - Dry run, 23:00:15-23:00:23: `hook_control_probe.py ... --codex-image sha256:21b21415... --scenarios HO-C1 --dry-run` exit 0; O-on-bypass's twins row reads diff {"line": 10, "switch": "features.hooks", "off": false, "on": true, "planted": "hooks.json"} and walk_census_refuses [["hooks.json", "hook config (hooks/src/engine/discovery.rs 339-343)"]]; process 2's argv ends `resume --dangerously-bypass-hook-trust <thread id> Thanks.`.
+- Correction to stage 2's deviation 2: the no-login check in run_take.launcher_argv sits at run_take.py:1018-1027 (`if login == NO_LOGIN:` at 1018, "the no-login launcher's values must be exactly the Codex row's names" at 1027, read with `grep -n`), not 1021-1029.
+
+## Stage 3: mutants, the hazard check, checks.d and COPIED.d
+
+### Mutation check (scratch archive of 6cb1e827, each mutant restored from a byte backup), 23:12:33-23:15:39 EDT
+
+`hcmut.py` (session scratchpad) applied each mutant to box/hook_control_probe.py in a `git archive` copy, ran tests/test_hook_control_probe.py, and restored the file's bytes (sha256 bfd0ab2913430bf19c98cfa703d22d141dbcd386923e8880c87e6d8374246241 asserted equal after each):
+- the verdict rule: V1 an off twin's events ignored "FAILED (failures=4)"; V2 the self-test line accepted as the pass event "FAILED (failures=2)"; V3 the on twin's self-test not required "FAILED (failures=4)"; V4 a silent on twin not counted (the looser reading) "FAILED (failures=7)"; V5 FAIL no longer outranks INCONCLUSIVE "FAILED (failures=2)"; V6 a missing run not counted "FAILED (failures=3)"; V7 the informational run counted as an on twin "FAILED (failures=6)"; V8 the overall verdict the best arm "FAILED (failures=7)"; V9 a rewritten log trusted as silent "FAILED (failures=1)"; V10 an off twin's failed self-test not counted "FAILED (failures=4)".
+- the diff rule: D1 the Gemini change set loosened "FAILED (failures=1)"; D5 the Codex one-line count loosened "FAILED (failures=3)"; D6 the [features] section check dropped "FAILED (failures=1)"; D7 the road's base derivation unchecked "FAILED (failures=3)"; D8 the Codex hooks file unchecked "FAILED (failures=1)"; D9 the on twin's switch value unchecked "FAILED (failures=3)".
+  Survivors on that run: D2 (the Gemini off twin no longer held to the study's settings), D3 (the Gemini off twin's hook not required), D4 (the Codex off config no longer the base's bytes).
+- the marker pre-check: P1 any non-empty log accepted "FAILED (failures=6)"; P2 no log accepted "FAILED (failures=2)"; P3 the run ignores the pre-check "FAILED (failures=1)"; P4 a log that starts with the self-test accepted "FAILED (failures=2)".
+- the Codex argv: T1 the trust flag on every run "FAILED (failures=4, errors=1)".
+- D6 and D9 were already killed by two tests added before this run (commit 6cb1e827: the flipped line must sit under [features]; the on twin's switch must be exactly true), found missing while writing the mutant list.
+- D2 and D4 survived because every refused mutant twin had changed one twin only, so the change-set check caught it first; a new test mirrors one change into both twins (Gemini telemetry.enabled, Codex web_search), so only the study-bytes check can refuse it. Rerun 23:16:08-23:16:38 with that test: "Ran 55 tests", "OK" on the tree; D2 "FAILED (failures=1)", D4 "FAILED (failures=1)", D3 "OK".
+- D3, named equivalent, no test: an off twin whose `hooks` is not the planted document is already refused either by the on-twin hook check (when the on twin lacks it too) or by the change-set check (when the on twin has it, the flattened diff holds the hooks paths); the clause stays as the rule written down.
+
+### The one-process hazard check, 23:16:54-23:17:12 EDT
+
+The two changed test modules with a neighbour before and after each, in one process from evals/gap-study-4 (`unittest.defaultTestLoader.loadTestsFromNames`): tests.test_holdout_digests, tests.test_hook_control_probe, tests.test_identity_evidence, tests.test_stub_agents, tests.test_stub_model_probe, tests.test_stub_take: "Ran 160 tests", "OK"; `sys.platform` read "darwin" afterwards (the fake runs patch it to linux inside a mock context only).
+
+### checks.d, COPIED.d, the battery's rules
+
+- evals/gap-study-4/checks.d/hook-control.txt: one command, `python3 -B -W ignore evals/gap-study-4/tests/test_hook_control_probe.py`; run_checks.file_problems over checks.d read `[]` and its commands list holds `hook-control.txt:5` (23:17:45).
+- evals/gap-study-4/COPIED.d/hook-control.json: the two new files, the lane's own checks file and fragment, and the edits without transfer named in the fragment's entry (box/walk_launch.py, lane live-box-2026-10-14's; tests/test_stub_model_probe.py, lane vendor-admission's). `copy_manifest.py --check`, 23:18:53-23:19:15: rc 0, "ok: 546 files from 61 fragment(s) ...".
+- test_round4 fails any skip whose reason is not in SKIP_ALLOWED (test_round4.py:14-16, :104-106), so the real-bash marker test no longer carries a skip (athena's Debian has /usr/bin/python3 and /bin/bash); green 23:19:36-23:19:44 "Ran 55 tests", "OK", and loaded the battery's way (discover with top_level_dir tests/) 23:21:02-23:21:09: "Ran 55 tests", "OK", skipped [].
+- Not run on the Mac: the whole battery (about 13 GB free; never a whole suite here) and test_walk_launch's heavy TestWitnesses (its light precondition, every witness text occurring once, is a test in both B27's and this lane's module and is green). Athena's battery on the head is the verdict.
+
+## The operator's athena plan (a later operator's step; nothing here has run on athena)
+
+Preconditions: a fresh review of this lane's head (opus-medium, adversarial first lens per the design's section 2) and athena's battery green on that head, both as glitch-f1 schedules them; then `athena_suite.py active` reads `athena free lower_may_start=true`, and `mac_slot.py light-ok --work gap-study-r4` exits 0.
+Values: python `/usr/local/bin/python3.13`, `--suite`, `--reserve`, `--gitleaks` as B27's smoke run used them (/Users/javrodher/aegis-builds/b27-smoke-20261021/RUNLOG.md, from lane-reports/first-walk-runbook-2026-10-15.md section 3); images from the committed locks, Gemini sha256:d10aa00b5958b00d1c719be1f0572967c04f30bfe381a427107c9e9a3f16b013 (box/gemini/image.lock) and Codex sha256:21b214159e4eb02d5e73f78ccdf5ee047da2fc6944808f9a454a6b0f427dd381 (box/codex/image.lock), each re-read from the lock at the run; `<date>` from `date +%Y%m%d` at the run.
+1. Mac, optional and light: `python3 -B .../evals/gap-study-4/box/hook_control_probe.py --box .../evals/gap-study-4/box --scratch-parent /nonexistent --output /nonexistent/stub-probe-hookctl1 --gemini-image <G> --codex-image <O> --scenarios HG,HO-C0,HO-C1 --dry-run` (prints every argv per run, runs nothing).
+2. ship: `walk_launch.py ship --repo /Users/javrodher/aegis-builds/hook-control-20261021 --ref lane/hook-control --suite ... --reserve ... --gitleaks ... --work /Users/javrodher/aegis-builds/hookctl-<date>/ship-work`; the printed head must equal the reviewed head.
+3. athena gate: `athena_suite.py active` reads free.
+4. start: `walk_launch.py probe-hooks --child <child from ship> --probe hookctl1 --scenarios HG,HO-C0,HO-C1 --gemini-image <G> --codex-image <O> --reason "D8 hook positive control, arms O and G"` (one athena trip: HG, then C0 and C1, glitch-f1's ruling 4).
+5. `walk_launch.py status --child <child>` until it reads `exit=<n>`; worst case about 16-20 minutes of probe time (eight Codex runs at up to 120 s per process).
+6. fetch: `walk_launch.py fetch-probe --child <child> --probe hookctl1 --out /Users/javrodher/aegis-builds/hookctl-<date>/stub-probe-hookctl1 --gitleaks ... --work /Users/javrodher/aegis-builds/hookctl-<date>/fetch-work`, then the athena gate again.
+7. Read: summary.json's `verdict` (PASS, INCONCLUSIVE or FAIL, with each arm's reasons and each run's events); `exit=0` only on PASS with no run problem. Write RUNLOG.md beside the fetched folder in B27's form, and the labelled note lane-reports/hook-control-<date>.md (verdict, the manifest's sha256, each twin's twin_sha256 and study_sha256) for the pre-freeze reviewers.
+8. If both C0 and C1 on twins are silent, the verdict is INCONCLUSIVE and C2 is glitch-f1's new ruling; if any off twin fired, FAIL holds that arm's counted runs until a fix and a rerun.

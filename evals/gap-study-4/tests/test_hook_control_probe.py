@@ -95,8 +95,7 @@ class Marker(unittest.TestCase):
     def test_run_for_real_it_appends_exactly_its_event(self):
         # the image's python3 is /usr/bin/python3; this Mac and athena both have one, so the command's own quoting is
         # proved through a real bash -c, the way Gemini spawns a command hook (chunk-NR7L3FXV.js:365194-365212)
-        if not (os.path.exists("/usr/bin/python3") and os.path.exists("/bin/bash")):
-            self.skipTest("no /usr/bin/python3 or /bin/bash here")
+        # (never a skip: round 4's battery fails a skip whose reason is not in its SKIP_ALLOWED)
         with tempfile.TemporaryDirectory() as d:
             log = os.path.join(os.path.realpath(d), "fired.log")
             for ev in (hcp.SELFTEST, "SessionStart"):
@@ -226,6 +225,23 @@ class DiffRule(unittest.TestCase):
                             "web_search = \"disabled\"", "web_search = \"live\"").encode()}))):
             with self.subTest(name):
                 self._refused(rt.CODEX, study, study, o, on, road="C0")
+
+    def test_a_change_mirrored_into_both_twins_refuses(self):
+        # the twins differ by the switch alone, but both left the study's bytes (mutants D2 and D4 of stage 3)
+        rel = take_config.GEMINI_SETTINGS_PATH
+        study = study_files(rt.GEMINI)
+        t = hcp.hook_twins(rt.GEMINI, study, fired_path=FIRED)
+        o, n = json.loads(t["off"][rel]), json.loads(t["on"][rel])
+        for doc in (o, n):
+            doc["telemetry"]["enabled"] = True
+        self._refused(rt.GEMINI, study, study, {rel: take_config._json_bytes(o)}, {rel: take_config._json_bytes(n)},
+                      words="study's settings")
+        study = study_files(rt.CODEX)
+        t = hcp.hook_twins(rt.CODEX, study, fired_path=FIRED, road="C0")
+        off, on = (dict(t[k], **{"config.toml": t[k]["config.toml"].replace(b'web_search = "disabled"',
+                                                                             b'web_search = "live"')})
+                   for k in ("off", "on"))
+        self._refused(rt.CODEX, study, study, off, on, road="C0", words="base's bytes")
 
     def test_the_flipped_line_must_sit_under_features(self):
         study = {"config.toml": b'model = "m"\n\n[features]\nhooks = false\n\n[other]\nhooks = false\n'}
