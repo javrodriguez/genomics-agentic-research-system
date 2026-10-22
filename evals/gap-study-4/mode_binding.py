@@ -236,6 +236,7 @@ def codex_recorded_mode(folder: Path, ledger: dict) -> tuple[str, list]:
     if got["turns"] < 1 or len(got["turn_contexts"]) != got["turns"]:
         problems.append(f"the rollout records {len(got['turn_contexts'])} turn_context(s) for {got['turns']} turn(s)")
     streams = turn_streams(folder)
+    problems += linked_stream_problems(folder)
     if got["turns"] != len(streams):
         problems.append(f"the rollout records {got['turns']} turn(s) and the walk holds {len(streams)} turn stream(s)")
     if len(pairs) != 1:
@@ -253,6 +254,14 @@ def turn_streams(folder: Path) -> list[int]:
     """The walk's turn numbers, from its turn streams turn-N.jsonl (never a link)."""
     return sorted(int(m.group(1)) for p in Path(folder).iterdir()
                   if (m := _STREAM.fullmatch(p.name)) and not p.is_symlink() and p.is_file())
+
+
+def linked_stream_problems(folder: Path) -> list:
+    """Lane freeze-gates-fix S11 (closure NIT C11): a name turn-N.jsonl that is a link or not a file is refused,
+    never counted or skipped quietly."""
+    named = sorted(int(m.group(1)) for p in Path(folder).iterdir() if (m := _STREAM.fullmatch(p.name)))
+    real = turn_streams(folder)
+    return [] if named == real else [f"turn stream(s) {sorted(set(named) - set(real))} are links or not files"]
 
 
 def _take_record(folder: Path) -> tuple:
@@ -305,7 +314,7 @@ def argv_mode(folder: Path, ledger: dict, pin) -> tuple[str, list]:
         return "unread", ["the walk holds no turn stream, so no launch journal is read"]
     take_id, run_tree = _take_record(folder)
     envelopes = _envelopes(folder)
-    modes, problems = [], []
+    modes, problems = [], linked_stream_problems(folder)
     for k in turns:
         journal = Path(folder) / f"turn-{k}.jsonl.launch.json"
         env = envelopes.get(k) or {}
