@@ -82,7 +82,7 @@ START = "2026-10-01T00:00:00Z"
 IN_HOLD = "2026-10-31T23:45:00Z"          # after 23:30 UTC on October's last day
 OUT_OF_HOLD = "2026-10-15T12:00:00Z"
 TRIMMED = {"kind": "caps trimmed", "by": "Javier", "month": "2026-11", "at": "2026-10-31T23:40:00Z",
-           "figures": {"openai": "200", "google": "100"}}
+           "figures": {"openai": "150", "google": "100"}}     # each at or under its cap (OpenAI 180 since OD107)
 
 # The three lines batch.py --check printed at 82cf6ae9 (lane w7c's base), in order: what the spend-status gate still
 # gives on routing.json with its spend status set back to the base's PENDING wording (P3-ruled).

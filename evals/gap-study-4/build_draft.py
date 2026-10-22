@@ -130,6 +130,12 @@ DEFERRED_ARMS = {"G": {
                  "untested and still counted in m. If arm G runs later, the follow-up prints the full-family values "
                  "(arm G tested) beside the original adjusted values, labelled the registered full-design "
                  "computation, never a correction; the original report's values stand as published."),
+    # glitch-f1's stage after OD107 (Javier's "gcap-220 yes"): the Google cap a go needs, registered at the freeze;
+    # costs.CAPS holds the same figure (tests/test_build_draft.py R13.deferred binds the two).
+    "registered_cap": {"vendor": "google", "usd": 220, "decision": "OD107", "ask": "gcap-220",
+                       "words": "Javier's reply \"gcap-220 yes\", Thu 22 Oct 2026 10:43:19 EDT",
+                       "why": "the Google cap a later go needs is registered at the freeze, so the go runs exactly as "
+                              "registered"},
 }}
 
 

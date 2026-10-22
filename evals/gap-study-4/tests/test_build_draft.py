@@ -75,6 +75,10 @@ DEFERRED_G = {
                 "untested and still counted in m. If arm G runs later, the follow-up prints the full-family values "
                 "(arm G tested) beside the original adjusted values, labelled the registered full-design computation, "
                 "never a correction; the original report's values stand as published.",
+    "registered_cap": {"vendor": "google", "usd": 220, "decision": "OD107", "ask": "gcap-220",
+                       "words": "Javier's reply \"gcap-220 yes\", Thu 22 Oct 2026 10:43:19 EDT",
+                       "why": "the Google cap a later go needs is registered at the freeze, so the go runs exactly as "
+                              "registered"},
     "rows": 360,
     "models": ["gemini-3.8-flash", "gemini-3.5-flash-lite"],
 }
@@ -122,7 +126,8 @@ def core_problems(d):
     need(d.get("deferred_arms") == {"G": DEFERRED_G} and list(d).index("deferred_arms") == list(d).index("optional_arms") + 1
          and "G" not in d["optional_arms"] and all(isinstance(v, str) for v in d["amendments"].values())
          and d["counts"]["by_arm"]["G"] == DEFERRED_G["rows"] and d["models"]["G"] == DEFERRED_G["models"]
-         and "G" in d["arms"] and sum(r["arm"] == "G" for r in rows) == 360, "R13.deferred")
+         and "G" in d["arms"] and sum(r["arm"] == "G" for r in rows) == 360
+         and DEFERRED_G["registered_cap"]["usd"] == int(costs.CAPS["google"]), "R13.deferred")
     need("confounded-design-unprompted" not in ids and all(r["task"] in ids for r in rows), "R19.tasks")
     need(d["counts"] == {"pairs": len(ids), "by_arm": {a: sum(r["arm"] == a for r in rows) for a in MODELS},
          "tries": len(rows), "half_cells": len(cells)} and d["counts"] ==
@@ -524,7 +529,7 @@ def description_problems(d):
          d["not_poolable"]["rule"] == d["commitments"]["not_poolable"] and
          d["not_poolable"]["enforced_by"] == [study.rel("lint_pooling.py"), study.rel("result.py")], "R10.earlier")
     need(d["caps"] == {"vendors": {k: int(v) for k,v in costs.CAPS.items()}, "total": int(costs.TOTAL_CAP)} ==
-         {"vendors": {"openai": 260, "google": 140}, "total": 400}, "R16.caps")
+         {"vendors": {"openai": 180, "google": 220}, "total": 400}, "R16.caps")     # OD107, "gcap-220 yes"
     need(d["blind_sample_models"] == len({r["model"] for r in d["rows"]}) == 7, "R18.models")
     need(d["unused_labels"] == [labels4.FLAGGED_THEN_ACTED], "R22.unused")
     need(len(d["pause_questions"]) == 3 and [q["answer"] for q in d["pause_questions"]] == [expected_value("V6-"+i) for i in ("i","ii","iii")], "R23.answers")

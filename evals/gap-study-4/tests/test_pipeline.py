@@ -1375,12 +1375,15 @@ class CostAccounting(unittest.TestCase):
 
     def test_round_caps_use_all_months_and_all_models(self):
         self.api()
-        self.assertEqual(costs.CAPS, {"openai": Decimal(260), "google": Decimal(140)})
+        # Javier's "gcap-220 yes" (OD107, Thu 22 Oct 2026 14:43:19Z, ask gcap-220): Google 220, OpenAI 180 (arm O runs
+        # on the Codex subscription and spends nothing), the 400 total unchanged. The spends keep each vendor one
+        # step under its cap, so the projection passes the total by one, as with the 260 and 140 caps before.
+        self.assertEqual(costs.CAPS, {"openai": Decimal(180), "google": Decimal(220)})
         self.assertEqual(costs.TOTAL_CAP, Decimal(400))
         start = datetime(2026, 9, 1, tzinfo=timezone.utc)
         spend = [{"vendor": "openai", "at": "2026-09-10T00:00:00Z", "usd": "100"},
-                 {"vendor": "openai", "at": "2026-10-01T00:00:00Z", "usd": "150"},
-                 {"vendor": "google", "at": "2026-10-01T00:00:00Z", "usd": "139"},
+                 {"vendor": "openai", "at": "2026-10-01T00:00:00Z", "usd": "70"},
+                 {"vendor": "google", "at": "2026-10-01T00:00:00Z", "usd": "219"},
                  {"vendor": "google", "at": "2026-08-01T00:00:00Z", "usd": "900"}]
         walks = [{"vendor": "openai", "model": "synthetic-one", "agent": row()["agent"],
                   "cost_per_try": "1", "tries_left": 11},
