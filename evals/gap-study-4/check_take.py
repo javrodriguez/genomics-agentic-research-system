@@ -3863,11 +3863,43 @@ def vendor_rows_problems(harness: str) -> list:
 # but its PENDING ones, row 19's N/A and row 22's refusal-only NOT COMPARABLE; rows 15 for O and 16 for G are NOT
 # COMPARABLE rows whose partial check is a reader), each naming the RECORDED fixture its reader was re-tested on
 # (plan section 8: its reading equal to an independent expected value on a named recorded record), or None until then.
+# Lane vendor-settle stage K: one literal line per item, so the Codex builder edits only "codex" lines and the Gemini
+# builder only "gemini" lines (each value a "<folder>/<file>" RECORDED fixture once its item is re-tested).
 VENDOR_READER_ITEMS = {
-    "codex": dict.fromkeys(("T-1", "T-2", "T-3", "T-4", "T-6", "T-7", "T-8", "T-9", "T-11", "T-15", "T-17", "T-20",
-                            "T-21", "T-23", "T-24")),
-    "gemini": dict.fromkeys(("T-1", "T-2", "T-3", "T-5", "T-6", "T-7", "T-8", "T-9", "T-15", "T-16", "T-17", "T-20",
-                             "T-21", "T-23", "T-24")),
+    "codex": {
+        "T-1": None,
+        "T-2": None,
+        "T-3": None,
+        "T-4": None,
+        "T-6": None,
+        "T-7": None,
+        "T-8": None,
+        "T-9": None,
+        "T-11": None,
+        "T-15": None,
+        "T-17": None,
+        "T-20": None,
+        "T-21": None,
+        "T-23": None,
+        "T-24": None,
+    },
+    "gemini": {
+        "T-1": None,
+        "T-2": None,
+        "T-3": None,
+        "T-5": None,
+        "T-6": None,
+        "T-7": None,
+        "T-8": None,
+        "T-9": None,
+        "T-15": None,
+        "T-16": None,
+        "T-17": None,
+        "T-20": None,
+        "T-21": None,
+        "T-23": None,
+        "T-24": None,
+    },
 }
 
 
@@ -4303,11 +4335,13 @@ def _vendor_turns(events) -> list:
     return out
 
 
-def vendor_origin_problems(harness) -> list:
+def vendor_origin_problems(path, harness, design) -> list:
     """unknown-harness-origin (T-5): codex PENDING (the rollout's response_item messages are read by no reader yet);
     gemini's non-operator user record is an extra interaction or a `sent` mismatch, vendor_operator_problems'
-    readers-disagree."""
-    return vendor_pending("codex", "T-5", None) if harness == "codex" else []
+    readers-disagree. (Stage K widened the signature for the settled reader; `path` and `design` are unread here.)"""
+    if harness == "codex":
+        return vendor_pending("codex", "T-5", None)
+    return []
 
 
 def vendor_first_turn_problems(events) -> list:
@@ -4383,10 +4417,14 @@ def vendor_leak_problems(ops, pre) -> list:
             "is void: a leak does not show in the verdict, it simply looks like a pass."]
 
 
-def vendor_loaded_context_problems(harness) -> list:
+def vendor_loaded_context_problems(path, harness, design) -> list:
     """leak-in-loaded-context (T-10): PENDING for both until a recorded walk shows the instruction and environment
-    records the CLI loads (R-6's files are placed by walk_builders.build_run_tree)."""
-    return vendor_pending("codex", "T-10", None) if harness == "codex" else vendor_pending("gemini", "T-10", None)
+    records the CLI loads (R-6's files are placed by walk_builders.build_run_tree). (Stage K widened the signature for
+    the settled readers; `path` and `design` are unread here.)"""
+    if harness == "codex":
+        return vendor_pending("codex", "T-10", None)
+    else:
+        return vendor_pending("gemini", "T-10", None)
 
 
 def vendor_session_cwd(path, harness):
@@ -4404,9 +4442,10 @@ def vendor_session_cwd(path, harness):
     return cwd if isinstance(cwd, str) and cwd else None
 
 
-def vendor_inherited_cwd_problems(path, harness) -> list:
+def vendor_inherited_cwd_problems(path, harness, design) -> list:
     """inherited-context, the working directory (T-11): codex, the rollout records one working directory for the
-    session, or what it loaded cannot be placed; gemini PENDING (no native cwd)."""
+    session, or what it loaded cannot be placed; gemini PENDING (no native cwd). (Stage K widened the signature for
+    the settled reader; `design` is unread here.)"""
     if harness != "codex":
         return vendor_pending("gemini", "T-11", None)
     if vendor_session_cwd(path, harness) is None:
@@ -4437,8 +4476,10 @@ def vendor_offered_context_problems(path, harness, design, arm) -> list:
     gemini_adapter.argv) for the envelope's line, the journal's model and resumed id and the arm's pinned mode, so a
     directory, a tool server or any other option the adapter never writes refuses. Which id is resumed, and the model,
     are P4's and P5's to bind."""
-    out = (vendor_pending("codex", "T-12:offered-context", None) if harness == "codex"
-           else vendor_pending("gemini", "T-12:offered-context", None))
+    if harness == "codex":
+        out = vendor_pending("codex", "T-12:offered-context", None)
+    else:
+        out = vendor_pending("gemini", "T-12:offered-context", None)
     mode = mode_for_arm(design.pre, arm)
     adapter = VENDOR_ADAPTERS[harness]
     try:
@@ -4470,11 +4511,14 @@ def vendor_offered_context_problems(path, harness, design, arm) -> list:
     return out
 
 
-def vendor_instruction_file_problems(harness) -> list:
+def vendor_instruction_file_problems(path, harness, design) -> list:
     """inherited-context, the instruction files the CLI loaded (T-12:instruction-files): PENDING (R-6's files are
-    placed by walk_builders.build_run_tree; which the CLI loaded is a session-side record not yet seen)."""
-    return (vendor_pending("codex", "T-12:instruction-files", None) if harness == "codex"
-            else vendor_pending("gemini", "T-12:instruction-files", None))
+    placed by walk_builders.build_run_tree; which the CLI loaded is a session-side record not yet seen). (Stage K
+    widened the signature for the settled readers; `path` and `design` are unread here.)"""
+    if harness == "codex":
+        return vendor_pending("codex", "T-12:instruction-files", None)
+    else:
+        return vendor_pending("gemini", "T-12:instruction-files", None)
 
 
 def vendor_email_problems(path) -> list:
@@ -4624,8 +4668,10 @@ def vendor_environment_problems(path, harness, ledger, pre, row_index, walk_id) 
             rec = None
         if isinstance(rec, dict) and any(rec.get(k) is not None for k in ("row", "row_commit")):
             out.append("[environment-record] the vendor walk's environment record names a ledger row; a walk has none")
-    return out + (vendor_pending("codex", "T-17:billing-route", None) if harness == "codex"
-                  else vendor_pending("gemini", "T-17:billing-route", None))
+    if harness == "codex":
+        return out + vendor_pending("codex", "T-17:billing-route", None)
+    else:
+        return out + vendor_pending("gemini", "T-17:billing-route", None)
 
 
 def _vendor_row_model(row_index):
@@ -4696,20 +4742,30 @@ def vendor_model_problems(path, harness, ledger, row_index, walk_id) -> list:
     return out
 
 
-def vendor_checkout_problems(harness) -> list:
+def vendor_checkout_problems(path, harness, design) -> list:
     """checkout-binding (T-13, the session's own git status; T-14, the instruction files it loaded): PENDING for
-    both; the driver's checkout record is never their source."""
+    both; the driver's checkout record is never their source. (Stage K widened the signature for the settled readers
+    and gave each key its own statement; `path` and `design` are unread here.)"""
     if harness == "codex":
-        return vendor_pending("codex", "T-13", None) + vendor_pending("codex", "T-14", None)
-    return vendor_pending("gemini", "T-13", None) + vendor_pending("gemini", "T-14", None)
+        out = vendor_pending("codex", "T-13", None)
+        out += vendor_pending("codex", "T-14", None)
+        return out
+    out = vendor_pending("gemini", "T-13", None)
+    out += vendor_pending("gemini", "T-14", None)
+    return out
 
 
-def vendor_prompt_problems(harness) -> list:
+def vendor_prompt_problems(path, harness, design) -> list:
     """inherited-context, the prompt snapshot and the memory folder (T-12:prompt-snapshot, T-12:memory): PENDING for
-    both until a recorded walk shows a session-side record of either."""
+    both until a recorded walk shows a session-side record of either. (Stage K widened the signature for the settled
+    readers and gave each key its own statement; `path` and `design` are unread here.)"""
     if harness == "codex":
-        return vendor_pending("codex", "T-12:prompt-snapshot", None) + vendor_pending("codex", "T-12:memory", None)
-    return vendor_pending("gemini", "T-12:prompt-snapshot", None) + vendor_pending("gemini", "T-12:memory", None)
+        out = vendor_pending("codex", "T-12:prompt-snapshot", None)
+        out += vendor_pending("codex", "T-12:memory", None)
+        return out
+    out = vendor_pending("gemini", "T-12:prompt-snapshot", None)
+    out += vendor_pending("gemini", "T-12:memory", None)
+    return out
 
 
 def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_script, design, arm: str,
@@ -4726,7 +4782,7 @@ def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_scrip
     bound = view["events"] is not None
     turns = _vendor_turns(view["events"] or [])
     ops = [t["text"] for t in turns if t["role"] == "user"]
-    problems += vendor_origin_problems(harness)
+    problems += vendor_origin_problems(path, harness, design)
     if bound:
         problems += vendor_first_turn_problems(view["events"])
     problems += vendor_session_id_problems(path, harness)
@@ -4748,10 +4804,10 @@ def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_scrip
     problems += fixture_binding_problems(path, half, False)[0]
     if bound:
         problems += vendor_leak_problems(ops, pre)
-    problems += vendor_loaded_context_problems(harness)
-    problems += vendor_inherited_cwd_problems(path, harness)
+    problems += vendor_loaded_context_problems(path, harness, design)
+    problems += vendor_inherited_cwd_problems(path, harness, design)
     problems += vendor_offered_context_problems(path, harness, design, arm)
-    problems += vendor_instruction_file_problems(harness)
+    problems += vendor_instruction_file_problems(path, harness, design)
     problems += vendor_email_problems(path)
     problems += completion_problems(path, ledger, pre)
     problems += vendor_turn_end_problems(path, harness, ledger)
@@ -4766,8 +4822,8 @@ def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_scrip
     problems += vendor_environment_problems(path, harness, ledger, pre, row_index, walk_id)
     problems += vendor_model_problems(path, harness, ledger, row_index, walk_id)
     problems += constant_problems(ledger, pre)              # the ledger's budget, mode and gars tree (T-24)
-    problems += vendor_checkout_problems(harness)
-    problems += vendor_prompt_problems(harness)
+    problems += vendor_checkout_problems(path, harness, design)
+    problems += vendor_prompt_problems(path, harness, design)
     return problems
 
 
@@ -4797,16 +4853,24 @@ def vendor_design_tree_problems(path, harness, design) -> list:
     return out
 
 
-def vendor_recorded_mode_problems(harness) -> list:
+def vendor_recorded_mode_problems(path, harness, design, arm) -> list:
     """constant-binding, the permission mode the session recorded (T-16): codex PENDING (turn_context.approval_policy
     is carried raw and never accepted); gemini NOT COMPARABLE (no session-side mode record; the mode's flags are bound
-    as submitted by vendor_offered_context_problems' rebuilt invocation)."""
-    return vendor_pending("codex", "T-16", None) if harness == "codex" else []
+    as submitted by vendor_offered_context_problems' rebuilt invocation). (Stage K widened the signature for the
+    settled reader; `path`, `design` and `arm` are unread here, and `arm` is None where vendor_round4_problems is
+    called without one.)"""
+    if harness == "codex":
+        return vendor_pending("codex", "T-16", None)
+    return []
 
 
-def vendor_denied_tool_problems(harness) -> list:
-    """harness-condition-violated, the tools the CLI really offers (T-18): PENDING for both."""
-    return vendor_pending("codex", "T-18", None) if harness == "codex" else vendor_pending("gemini", "T-18", None)
+def vendor_denied_tool_problems(path, harness, design) -> list:
+    """harness-condition-violated, the tools the CLI really offers (T-18): PENDING for both. (Stage K widened the
+    signature for the settled readers; `path` and `design` are unread here.)"""
+    if harness == "codex":
+        return vendor_pending("codex", "T-18", None)
+    else:
+        return vendor_pending("gemini", "T-18", None)
 
 
 def vendor_unread_problems(path, harness, ledger) -> list:
@@ -4876,12 +4940,14 @@ def vendor_file_change_problems(path, harness) -> list:
     return []
 
 
-def vendor_round4_problems(path, design) -> list:
-    """Plan section 1b's readings for a vendor take or walk, in check4's order."""
+def vendor_round4_problems(path, design, arm=None) -> list:
+    """Plan section 1b's readings for a vendor take or walk, in check4's order. `arm` (stage K) is the arm the take is
+    read as, handed to the T-16 site; _vendor_road passes it."""
     harness = _vendor_harness(getattr(design, "harness", None))
     ledger = _ledger_beside(Path(path))
-    return (vendor_design_tree_problems(path, harness, design) + vendor_recorded_mode_problems(harness)
-            + vendor_denied_tool_problems(harness) + vendor_unread_problems(path, harness, ledger)
+    return (vendor_design_tree_problems(path, harness, design)
+            + vendor_recorded_mode_problems(path, harness, design, arm)
+            + vendor_denied_tool_problems(path, harness, design) + vendor_unread_problems(path, harness, ledger)
             + vendor_nested_flag_problems(path, harness) + vendor_file_change_problems(path, harness))
 
 
@@ -4949,7 +5015,7 @@ def _vendor_road(path, task_id, half_name, *, wording_script, arm, design, table
                                f"{sorted(counts)}")
         problems = vendor_check(path, task_id, half_name, row_index, wording_script=wording_script, design=design,
                                 arm=arm, walk_id=walk_id)
-        problems += vendor_round4_problems(path, design)
+        problems += vendor_round4_problems(path, design, arm=arm)
         problems += vendor_session_problems(path, harness)
     finally:
         _PRE_IN_FORCE.reset(token)
@@ -5287,6 +5353,26 @@ def vendor_agent_summary(path, harness) -> dict:
     cmds, _ = vendor_shell_commands(Path(path).parent, _vendor_harness(harness))
     return {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0},
             "nested_cli_calls": sum(len(nested_cli_mentions(c)) for c in cmds)}
+
+
+# =====================================================================================================================
+# SETTLE: CODEX READERS (lane vendor-settle, stage C). The Codex builder appends its readers and partial checks here,
+# between this banner and the line "END SETTLE: CODEX READERS", and nowhere else in this span; each is a plain function
+# (never a class or an imported name, vendor_row_problem) handed in at its row's one vendor_pending site.
+# =====================================================================================================================
+
+
+# ---- END SETTLE: CODEX READERS --------------------------------------------------------------------------------------
+# (spacer: the two spans stay apart so the Codex and Gemini appends never touch the same lines)
+#
+#
+# =====================================================================================================================
+# SETTLE: GEMINI READERS (lane vendor-settle, stage G). The Gemini builder appends its readers and partial checks
+# here, between this banner and the line "END SETTLE: GEMINI READERS", and nowhere else in this span; same rules.
+# =====================================================================================================================
+
+
+# ---- END SETTLE: GEMINI READERS -------------------------------------------------------------------------------------
 
 
 if __name__ == "__main__":
