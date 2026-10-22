@@ -173,3 +173,7 @@ python3 -B -W ignore evals/gap-study-4/tests/test_b26_scanner.py
 python3 -B -W ignore evals/gap-study-4/tests/test_stub_model_server.py
 python3 -B -W ignore evals/gap-study-4/tests/test_stub_model_probe.py
 python3 -B -W ignore evals/gap-study-4/tests/test_b27_reading.py
+# Lane vendor-b28 (glitch-f1's B27 rulings 3 and 5, B27 DECISION and the rulings on REVIEW-vendor-b28-DESIGN, 21 Oct
+# 2026): road (a), the resume after a masking re-record, on the raw probe fixtures, its mutants, F-B26-9 and the
+# refusals that stay.
+python3 -B -W ignore evals/gap-study-4/tests/test_b28_resume_after_rerecord.py
