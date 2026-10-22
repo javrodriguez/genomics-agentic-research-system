@@ -1,0 +1,43 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Visualize overall sample relationships through principal component analysis (PCA) of gene expression counts. Generate a biplot showing samples in PC space, colored by treatment status (treated vs untreated) to assess treatment effect and sample clustering patterns.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+
+## Method
+1. Load gene counts matrix from the resolved counts_gene artifact (TSV format).
+2. Filter genes: retain only genes with mean count ≥ 1 across all samples to reduce noise.
+3. Normalize counts using log2(count + 1) transformation to stabilize variance.
+4. Perform PCA on the normalized gene-by-sample matrix using scikit-learn (n_components=2).
+5. Load sample metadata from the project's samples.csv to extract condition labels (treated vs untreated).
+6. Generate a scatter plot in matplotlib showing PC1 vs PC2, with points colored by condition (red for treated, blue for untreated). Add sample labels, explained variance annotations on axes, and a legend.
+7. Save the plot as a high-resolution PNG (300 dpi) to results/pca_plot.png.
+8. Write a brief summary table (results/pca_summary.csv) listing each sample, its condition, PC1 and PC2 coordinates, and total variance explained by the first two PCs.
+All steps run in the gars-bio conda environment.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot.png | figure | PCA biplot (PC1 vs PC2) colored by treatment condition (treated vs untreated). |
+| results/pca_summary.csv | table | Sample coordinates in PC space with condition labels and variance explained. |
+
+## Execution
+Runs: batch
+
+Expected wall time: < 2 minutes.
+Expected output size: ~2 MB (PNG image + CSV summary table).
