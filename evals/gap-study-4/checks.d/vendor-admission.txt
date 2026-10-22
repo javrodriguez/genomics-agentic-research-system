@@ -162,3 +162,18 @@ python3 -B -W ignore evals/gap-study-4/tests/test_codex_agents_off.py --witnesse
 # mutants, each red on its own check. (--walks needs the records clone and --unchanged a full history, so neither is here.)
 python3 -B -W ignore evals/gap-study-4/tests/test_codex_patch_reads.py
 python3 -B -W ignore evals/gap-study-4/tests/test_codex_patch_reads.py --witnesses
+# Lanes vendor-b25 and vendor-b26 (glitch-26's rulings, 21 Oct 2026; added by lane vendor-b27 on glitch-f1's word): the
+# native readers on the real walk shapes and the Gemini history-rewrite roads, their witnesses and mutants, and the
+# scanner witness of B26's fold; until now these ran on the Mac and in the reviews only, never in athena's battery.
+python3 -B -W ignore evals/gap-study-4/tests/test_b25_real_shapes.py
+python3 -B -W ignore evals/gap-study-4/tests/test_b26_rewrites.py
+python3 -B -W ignore evals/gap-study-4/tests/test_b26_scanner.py
+# Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design and REVIEW-vendor-b27-25ffff5's fold, 21 Oct 2026): the
+# stub-model probe on fakes: the scripted stub, the probe and its walk_launch entries, the reader harness and the cutter.
+python3 -B -W ignore evals/gap-study-4/tests/test_stub_model_server.py
+python3 -B -W ignore evals/gap-study-4/tests/test_stub_model_probe.py
+python3 -B -W ignore evals/gap-study-4/tests/test_b27_reading.py
+# Lane vendor-b28 (glitch-f1's B27 rulings 3 and 5, B27 DECISION and the rulings on REVIEW-vendor-b28-DESIGN, 21 Oct
+# 2026): road (a), the resume after a masking re-record, on the raw probe fixtures, its mutants, F-B26-9 and the
+# refusals that stay.
+python3 -B -W ignore evals/gap-study-4/tests/test_b28_resume_after_rerecord.py

@@ -1,0 +1,267 @@
+{
+ "expect": {
+  "snapshots": {
+   "1": {
+    "verdict": "PASS"
+   },
+   "2": {
+    "reason_contains": "the resume after a history re-record",
+    "verdict": "refused"
+   },
+   "3": {
+    "reason_contains": "the resume after a history re-record",
+    "verdict": "refused"
+   }
+  },
+  "stub_log": "masked requests from process 1; the two helper requests in process 2"
+ },
+ "fake_cross_check": false,
+ "files": {
+  "r01.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r02.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r03.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r04.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r05.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r06.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r07.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r08.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "s03.txt": {
+   "kind": "small",
+   "lines": 20,
+   "width": 30
+  }
+ },
+ "model": "gemini-3.8-flash",
+ "processes": [
+  "Read the files r01.txt to r08.txt one by one.",
+  "Read s03.txt.",
+  "Thanks."
+ ],
+ "requests": [
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "user_text",
+    "text": "Read the files r01.txt to r08.txt one by one."
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r01.txt"
+      },
+      "name": "read_file"
+     }
+    ],
+    "thought": {
+     "description": "Reading r01.txt next, as asked.",
+     "subject": "Reading the files"
+    }
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r02.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r03.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r04.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r05.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r06.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r07.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "text": "I read seven of the files; each is a numbered list of synthetic lines."
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "user_text",
+    "text": "Read s03.txt."
+   },
+   "note": "promptTokenCount 600,000: the next request compresses",
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/s03.txt"
+      },
+      "name": "read_file"
+     }
+    ],
+    "prompt_tokens": 600000,
+    "thought": {
+     "description": "Reading s03.txt next, as asked.",
+     "subject": "Reading s03"
+    }
+   }
+  },
+  {
+   "endpoint": "generate",
+   "match": {
+    "kind": "user_text_prefix",
+    "prefix": "Generate a new <state_snapshot> based on the provided history."
+   },
+   "note": "the compression summary",
+   "respond": {
+    "text": "<state_snapshot>Seven heavy files were read; s03.txt is being read.</state_snapshot>"
+   }
+  },
+  {
+   "endpoint": "generate",
+   "match": {
+    "kind": "user_text_prefix",
+    "prefix": "Critically evaluate the <state_snapshot> you just generated."
+   },
+   "note": "the summary's verification",
+   "respond": {
+    "text": "<state_snapshot>Seven heavy files were read; s03.txt is being read.</state_snapshot>"
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "text": "s03.txt is read after the seven heavy files."
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "user_text",
+    "text": "Thanks."
+   },
+   "respond": {
+    "text": "Happy to help with the files."
+   }
+  }
+ ],
+ "road": "the realistic interleave: A1's masking re-record in process 1, then B1's compression in a resumed process 2, then a resume",
+ "scenario": "B2",
+ "schema": 1
+}
