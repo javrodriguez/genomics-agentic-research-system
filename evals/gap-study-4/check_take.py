@@ -3807,7 +3807,9 @@ def _drop(p) -> None:
 # =====================================================================================================================
 
 VENDOR_HARNESSES = ("codex", "gemini")
-VENDOR_CHECK_SHAPES_SOURCE = {"codex": "documented", "gemini": "documented"}
+# Lane vendor-settle stage V (glitch-f1's settle rulings, Thu 22 Oct 2026): "recorded" for both harnesses, every row
+# settled and every READER item on its RECORDED take (vendor_shapes_problems [] for both).
+VENDOR_CHECK_SHAPES_SOURCE = {"codex": "recorded", "gemini": "recorded"}
 VENDOR_SHAPES_SOURCES = ("documented", "recorded")
 VENDOR_ROW_STATES = (PENDING, "SAME", "NOT COMPARABLE")
 VENDOR_ROW_KEYS = {PENDING: {"reason", "state"}, "SAME": {"reason", "state", "fixture", "reader"},

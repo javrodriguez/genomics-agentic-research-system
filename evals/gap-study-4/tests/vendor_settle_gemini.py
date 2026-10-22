@@ -627,7 +627,7 @@ class GRows(unittest.TestCase):
                 self.assertEqual(hashlib.sha256(rows[key]["ruling"].encode("utf-8")).hexdigest(), RULING_SHA256[key])
                 self.assertIsNone(ct.vendor_row_problem(H, key, rows[key]))
         self.assertEqual(ct.vendor_rows_problems(H), [])
-        self.assertEqual(ct.VENDOR_CHECK_SHAPES_SOURCE[H], "documented")     # stage V flips it, nowhere else
+        self.assertEqual(ct.VENDOR_CHECK_SHAPES_SOURCE[H], "recorded")       # stage V flipped it
 
     def test_g_rows_every_item_names_the_recorded_fixture(self):
         self.assertEqual(ct.VENDOR_READER_ITEMS[H], dict.fromkeys(ITEMS, FIXTURE))
@@ -854,7 +854,7 @@ class GItems(unittest.TestCase):
 class GLegI(unittest.TestCase):
     def test_g_legi_read_stream_on_the_recorded_streams(self):
         self.assertEqual(legi_problems(), [])
-        self.assertEqual(gemini_adapter.SHAPES_SOURCE, "documented")
+        self.assertEqual(gemini_adapter.SHAPES_SOURCE, "recorded")           # stage V flipped it
 
 
 if __name__ == "__main__":

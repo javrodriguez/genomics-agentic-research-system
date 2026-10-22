@@ -6,12 +6,12 @@ kept-alive take container (box/run_take.run_turn), the turn's `codex exec --json
 driver's stream path, and a `TurnResult` read from that stream's harness-side records and the rollout file's per-turn
 context. It never calls a model itself: every test drives it on a fake runtime with synthetic streams.
 
-SHAPES_SOURCE. Every stream and rollout shape this module reads is DOCUMENTED, never recorded: no Codex stream can be
-recorded before J3's keys (D8:113-115). Ruling Q-3 (glitch-2f, 12 Oct 2026): build on the documented shapes now; the
-freeze refuses any arm whose adapter has not been re-tested on a stream recorded at its first real walk. So
-`SHAPES_SOURCE` is "documented", the adapter reports it in its harness record and in every turn record, and a test
-holds it at "documented" while no recorded-stream fixture exists. Lane vendor-admission T3 (glitch-b5): freeze.py now
-refuses a design row of this harness (arm O) while SHAPES_SOURCE is not "recorded" (freeze.unrecorded_shapes_problem).
+SHAPES_SOURCE. The stream and rollout shapes this module reads were re-tested on the streams and rollouts recorded at
+walk w-o46 (codex-cli 0.162.1, three resumed turns) and the rollout of walk w-o47 (gpt-6-luna), listed in
+tests/fixtures/codex-streams/README.md, against values derived independently with plain json
+(tests/vendor_settle_codex.py CLegI); the adapter reports the word in its harness record and in every turn record, and
+freeze leg i reads it. Lane vendor-admission T3 (glitch-b5): freeze.py now refuses a design row of this harness (arm O)
+while SHAPES_SOURCE is not "recorded" (freeze.unrecorded_shapes_problem); stage V of lane vendor-settle flipped it.
 
 THE ARGV (D8:107-112):
 
@@ -87,7 +87,7 @@ VERSION_ARGV = (CLIENT, "--version")
 VERSION_FORM = re.compile(r"codex-cli ([0-9]+\.[0-9]+\.[0-9]+)")
 # The routing pin's permission mode for arm O -> the exec's approvals and sandbox flags (D8:110-112).
 MODE_FLAGS = {"bypass": ("--dangerously-bypass-approvals-and-sandbox",)}
-SHAPES_SOURCE = "documented"
+SHAPES_SOURCE = "recorded"
 SHAPES_SOURCES = ("documented", "recorded")
 
 # The rollout file's records (NOT in D8; Q-w11a-1).

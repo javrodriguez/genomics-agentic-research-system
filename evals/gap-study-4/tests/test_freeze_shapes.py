@@ -167,7 +167,30 @@ def settled(*, legs=("i", "ii", "rows", "items", "iii"), registry=None, **arms):
         yield
 
 
+@contextlib.contextmanager
+def at_documented():
+    """TEST DATA: the T4 head's state for both vendor harnesses, which FS-main and FS-check start from (lane
+    vendor-settle stage V flipped the live tree to "recorded"): both adapters' SHAPES_SOURCE and check_take's
+    VENDOR_CHECK_SHAPES_SOURCE "documented", every VENDOR_PENDING_ROWS row PENDING, every READER item unrecorded."""
+    rows = {h: {k: {"reason": r["reason"], "state": "PENDING"} for k, r in block.items()}
+            for h, block in check_take.VENDOR_PENDING_ROWS.items()}
+    items = {h: dict.fromkeys(block) for h, block in check_take.VENDOR_READER_ITEMS.items()}
+    with contextlib.ExitStack() as stack:
+        for module in ADAPTERS.values():
+            stack.enter_context(mock.patch.object(module, "SHAPES_SOURCE", "documented"))
+        stack.enter_context(mock.patch.dict(check_take.VENDOR_CHECK_SHAPES_SOURCE,
+                                            {h: "documented" for h in HARNESS.values()}))
+        stack.enter_context(mock.patch.object(check_take, "VENDOR_PENDING_ROWS", rows))
+        stack.enter_context(mock.patch.object(check_take, "VENDOR_READER_ITEMS", items))
+        yield
+
+
 def main_problems(mod) -> list:
+    with at_documented():
+        return _main_problems(mod)
+
+
+def _main_problems(mod) -> list:
     out = []
     for arms in (("A", "O"), ("A", "G"), ("A", "O", "G"), ("O",), ("G",)):
         vendors = [a for a in arms if a in ADAPTERS]
@@ -202,16 +225,20 @@ def main_problems(mod) -> list:
 
 
 class TheFreezeRefusesDocumentedShapes(unittest.TestCase):
-    def test_fs_the_adapters_are_documented_on_this_head(self):
-        self.assertEqual((codex_adapter.SHAPES_SOURCE, gemini_adapter.SHAPES_SOURCE), ("documented", "documented"))
+    def test_fs_the_adapters_are_recorded_on_this_head(self):
+        # lane vendor-settle stage V flipped both (glitch-f1's settle rulings, Thu 22 Oct 2026)
+        self.assertEqual((codex_adapter.SHAPES_SOURCE, gemini_adapter.SHAPES_SOURCE), ("recorded", "recorded"))
+        self.assertEqual(check_take.VENDOR_CHECK_SHAPES_SOURCE, {"codex": "recorded", "gemini": "recorded"})
 
     def test_fs_draft_the_committed_draft_names_both_arms(self):
         committed = json.loads((HERE / "prereg-draft.json").read_text())
-        got = freeze.unrecorded_shapes_problem(committed)
+        self.assertIsNone(freeze.unrecorded_shapes_problem(committed))      # stage V: the live tree passes all legs
+        with at_documented():
+            got = freeze.unrecorded_shapes_problem(committed)
         self.assertIsNotNone(got)
         for words in ("arm O (codex)", "arm G (gemini)", "'documented'", "recorded"):
             self.assertIn(words, got)
-        with settled(O=True, G=True):
+        with at_documented(), settled(O=True, G=True):
             self.assertIsNone(freeze.unrecorded_shapes_problem(committed))
         self.assertIsNone(freeze.unrecorded_shapes_problem(draft(("A",))))
         self.assertIsNone(freeze.unrecorded_shapes_problem({"tasks": []}))
@@ -271,6 +298,11 @@ CHECK_CASES = (
 
 
 def check_problems(mod) -> list:
+    with at_documented():
+        return _check_problems(mod)
+
+
+def _check_problems(mod) -> list:
     out = []
     for name, legs, registry, edit, words in CHECK_CASES:
         for arms in (("A", "O"), ("A", "G"), ("A", "O", "G")):
@@ -312,8 +344,12 @@ class TheFreezeGateHasThreeLegs(unittest.TestCase):
         self.assertEqual(check_problems(freeze), [])
 
     def test_fs_check_the_committed_draft_names_every_leg(self):
+        # stage V: the live tree passes; the T4 head's state with no native reader registered names every leg (leg
+        # iii no longer fired on the registered dry line, a red stage K recorded as pre-existing)
         committed = json.loads((HERE / "prereg-draft.json").read_text())
-        got = freeze.unrecorded_shapes_problem(committed)
+        self.assertIsNone(freeze.unrecorded_shapes_problem(committed))
+        with at_documented(), mock.patch.object(native_reader_registration, "production_readers", lambda *a, **k: {}):
+            got = freeze.unrecorded_shapes_problem(committed)
         for words in ("arm O (codex): leg i:", "arm G (gemini): leg i:", "arm O (codex): leg ii:",
                       "arm G (gemini): leg ii:", "arm O (codex): leg iii:", "arm G (gemini): leg iii:",
                       "arm G (gemini): leg ii: T-11 inherited-context is PENDING"):

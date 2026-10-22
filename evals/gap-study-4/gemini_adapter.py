@@ -6,12 +6,12 @@ kept-alive take container (box/run_take.run_turn), the turn's `gemini -p ... -o 
 at the driver's stream path, and a `TurnResult` read from that stream's harness-side records. It never calls a model
 itself: every test drives it on a fake runtime with synthetic streams.
 
-SHAPES_SOURCE. Every stream shape this module reads is DOCUMENTED, never recorded: no Gemini CLI stream can be recorded
-before J3's keys (D8:131-133). Ruling Q-3 (glitch-2f, 12 Oct 2026): build on the documented shapes now; the freeze
-refuses any arm whose adapter has not been re-tested on a stream recorded at its first real walk. So `SHAPES_SOURCE`
-is "documented", the adapter reports it in its harness record and in every turn record, and a test holds it at
-"documented" while no recorded-stream fixture exists. Lane vendor-admission T3 (glitch-b5): freeze.py now refuses a
-design row of this harness (arm G) while SHAPES_SOURCE is not "recorded" (freeze.unrecorded_shapes_problem).
+SHAPES_SOURCE. The stream shapes this module reads were first written from the documentation (D8 section 1) and are now
+re-tested on streams recorded at walk w-g21 (gemini-cli 0.64.0, both turns) and w-g24 (turn 1, timed out with no result
+record), listed in gemini-streams/README.md, against values derived independently with plain json (test R-recorded;
+lane vendor-settle stage G's G-legi). The adapter reports the source in its harness record and in every turn record.
+Lane vendor-admission T3 (glitch-b5): freeze.py now refuses a design row of this harness (arm G) while SHAPES_SOURCE is
+not "recorded" (freeze.unrecorded_shapes_problem); stage V of lane vendor-settle flipped it.
 
 THE ARGV (D8:134-141):
 
@@ -90,7 +90,7 @@ MODE_FLAGS = {"yolo": ("--approval-mode", "yolo")}
 # D8:137's exit codes and what each means.
 TURN_LIMIT = "turn-limit"
 EXIT_MEANINGS = {0: "success", 1: "general-or-api-error", 42: "input-error", 53: TURN_LIMIT}
-SHAPES_SOURCE = "documented"
+SHAPES_SOURCE = "recorded"
 SHAPES_SOURCES = ("documented", "recorded")
 NO_INIT_MODE = "the Gemini stream records no permission mode (Q-w11b-2)"
 # A session id: never one of -r's non-id selectors, `latest` in any case or an index (D8:138; W11B-R1-8, w11b-close-1).

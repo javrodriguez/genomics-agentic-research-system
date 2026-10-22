@@ -7,8 +7,8 @@ PF, the freeze gate's half in check_take.py (plan section 7; review 36ce125 MINO
   VP-rows      check_take.VENDOR_PENDING_ROWS holds, per harness, exactly the PENDING keys of the comparability table
                (lane-reports/vendor-T4-TABLE.md, its key list), each with its row's reason id (a reason of routing.json's
                operator_reasons) and, since lane vendor-settle stage V, its settled state (TABLE_STATES: SAME or NOT
-               COMPARABLE, each row on its shape), so vendor_rows_problems is [] for both harnesses; a row put back to
-               PENDING (TEST DATA) is named again.
+               COMPARABLE, each row on its shape), so vendor_rows_problems is [] for both harnesses and
+               VENDOR_CHECK_SHAPES_SOURCE reads "recorded" for both; a row put back to PENDING (TEST DATA) is named.
   VP-helper    vendor_pending(harness, key, reader, ...) returns the row's refusal ("[<reason id>] no vendor reader yet
                (<key>)") while the key is PENDING, raises KeyError for an unknown harness or key, and once a key is
                settled calls the reader the row names and returns its problems; a settled key with no reader, another
@@ -293,7 +293,7 @@ class VPRows(unittest.TestCase):
                     self.assertIn(row["reason"], vocabulary)
                     self.assertEqual(set(row), ct.VENDOR_ROW_KEYS[row["state"]])
                     self.assertIsNone(ct.vendor_row_problem(h, k, row))
-        self.assertEqual(ct.VENDOR_CHECK_SHAPES_SOURCE, {"codex": "documented", "gemini": "documented"})
+        self.assertEqual(ct.VENDOR_CHECK_SHAPES_SOURCE, {"codex": "recorded", "gemini": "recorded"})   # stage V
 
     def test_vp_rows_no_event_id_is_a_pending_reason(self):
         # plan line 15: a PENDING refusal is never written under an event id (check4 lifts those into events)
