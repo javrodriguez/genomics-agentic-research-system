@@ -2360,6 +2360,33 @@ class WitnessEvidence(unittest.TestCase):
                 self.assertEqual(self.outcome(name, self.fake_run([method], text=text))[0], expected)
 
 
+# Lane freeze-gates-fix S13 (glitch-f1's ruling 2 on the S12 hand-back, Thu 22 Oct 2026): the draft's session read,
+# pinned per process. Since the walks were merged, every build() runs leak_grep.derive over the 225 committed sessions
+# (build_draft.checked_sessions), about 23 s a build on the Mac, nearly all of it the leak-word regexes; this file builds
+# the draft about 19 times, so a whole-file run took 887 s on athena (about 25 s before the merge) and every witness ran
+# past run_witnesses' 180 s timeout. Here derive's result is memoised on exactly what it reads: the draft's leak_words
+# and leak_context_excusals (the only draft fields derive and check_take.context_leaks read; checked_sessions hands the
+# draft in as prereg.load()) and each committed session's path, size and mtime. A draft whose leak words or excusals
+# differ is derived afresh, so no test reads a stale result; the sessions are committed records this file never writes.
+PIN_SETUP = setUpModule
+
+
+def setUpModule():
+    PIN_SETUP()
+    import leak_grep
+    real_derive, memo = leak_grep.derive, {}
+
+    def derive():
+        pre = leak_grep.prereg.load()
+        stats_ = [(str(p), p.stat().st_size, p.stat().st_mtime_ns) for p in leak_grep.sessions()]
+        key = json.dumps([pre["leak_words"], pre.get("leak_context_excusals", []), stats_], sort_keys=True)
+        if key not in memo:
+            memo[key] = real_derive()
+        return copy.deepcopy(memo[key])
+    patch = mock.patch.object(leak_grep, "derive", derive)
+    patch.start(); PATCHES.append(patch)
+
+
 if __name__ == "__main__":
     if "--witnesses" in sys.argv:
         index = sys.argv.index("--witnesses")
