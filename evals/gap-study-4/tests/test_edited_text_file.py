@@ -29,7 +29,9 @@ exists; CLAUDE_CODE_DISABLE_ATTACHMENTS would drop kinds round 3 carries. Round 
   E-raw        review r6 MINOR 1 (glitch-b5, 16 Oct 2026): the sweep reads the RAW line with only the snippet's value
                removed, never a re-serialised parse, so a duplicated key (top-level, or an earlier duplicate
                "attachment" object) cannot hide a word the raw line shows; a snippet written with escapes is removed
-               whole; a line whose "snippet" key is not found exactly once is swept whole (fail closed).
+               whole; a line whose "snippet" key is not found exactly once is swept whole (fail closed). Stage K2
+               (glitch-f1's ruling "CONTEXT-SWEEP GAP read", 21 Oct 2026, option A): that cut is
+               check_take._cut_attachment_line, and the sweep reads its decoded text (tests/test_context_sweep.py).
 
 Every fixture here is synthetic; the vocabulary record is read, never written.
 """
@@ -267,8 +269,10 @@ def raw_problems(ct=None) -> list:
             got = ct.context_leaks(ct.context_text(p), pre)
         if got != want:
             out.append(f"E-raw {name}: the sweep names {sorted(got)}, not {sorted(want)}")
+    # Stage K2 (glitch-f1's ruling "CONTEXT-SWEEP GAP read", 21 Oct 2026, option A): the sweep decodes the cut line, so
+    # the raw-cut contract these lines pin is check_take._cut_attachment_line's (the cut itself is unchanged).
     line, _ = RAW_CASES["a top-level snippet key beside the attachment's"]
-    if ct._swept_attachment_line(json.loads(line), line) != line:
+    if ct._cut_attachment_line(json.loads(line), line) != line:
         out.append("E-raw: a line whose snippet key occurs twice is not swept whole")
     # review r7: lines the cut must leave whole even where no word would show the difference (the output itself)
     whole = {
@@ -282,10 +286,10 @@ def raw_problems(ct=None) -> list:
             '"filename":"f.py","snippet":"same","snipp\\u0065t":"same"}}',
     }
     for name, line in whole.items():
-        if ct._swept_attachment_line(json.loads(line), line) != line:
+        if ct._cut_attachment_line(json.loads(line), line) != line:        # stage K2: the raw cut's contract
             out.append(f"E-raw: {name}: cut, not swept whole")
     line, _ = RAW_CASES["an escaped snippet is removed whole"]
-    swept = ct._swept_attachment_line(json.loads(line), line)
+    swept = ct._cut_attachment_line(json.loads(line), line)                # stage K2: the raw cut's contract
     if json.loads(swept)["attachment"] != {"type": "edited_text_file", "filename": "/a/HISTORY.md", "snippet": ""}:
         out.append(f"E-raw: the escaped snippet's removal left {swept!r}")
     return out

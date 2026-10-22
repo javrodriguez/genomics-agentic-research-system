@@ -155,7 +155,7 @@ WITNESSES = (
      "    return _cut_attachment_line(rec, line)\n"),
     ("keys dropped from the decoded text", "            out.append(key)\n", "            pass\n"),
     ("a duplicated key's last copy only", "        doc = json.loads(line, object_pairs_hook=_AllPairs)\n",
-     "        doc = _AllPairs(json.loads(line).items())\n"),
+     "        doc = json.loads(line, object_pairs_hook=lambda pairs: _AllPairs(dict(pairs).items()))\n"),
 )
 
 

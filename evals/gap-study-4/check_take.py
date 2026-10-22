@@ -2821,11 +2821,57 @@ def denied_tool_problems(path: Path) -> list[str]:
 #   text can also close another key (`"x\"snippet":`) and miss an escaped spelling of the real key, so the cut is kept
 #   only when it removes exactly the parsed snippet from a line without duplicate keys (three guards below). In every
 #   other case the line is swept whole: fail closed.
+#   STAGE K2 (glitch-f1's ruling "CONTEXT-SWEEP GAP read", Wed 21 Oct 2026, 22:26 EDT, option A, under Javier's
+#   standing delegation; lane vendor-settle; evidence /Users/javrodher/aegis-builds/CTX-SWEEP-GAP-20261021.md). In the
+#   raw line a newline is the two characters `\n`, so a word at a line start read `nword` and context_leaks' word
+#   boundary never saw it (34,481 such word starts in the 151 Claude walks, none before a leak word). The cut above is
+#   unchanged (_cut_attachment_line, the raw line with only the snippet's value emptied, every guard kept); the sweep
+#   now reads its DECODED text (_decoded_text): every key and every value, strings decoded, a duplicated key's every
+#   copy kept, so nothing the raw line shows is lost and an escaped word start is a word start. context_text's own
+#   lines (round 3's, w6j's banner) are untouched; tests/test_context_sweep.py plants the escaped cases.
 _SNIPPET_KEY = re.compile(r'"snippet"\s*:\s*(?=")')
 
 
 def _swept_attachment_line(rec: dict, line: str) -> str:
-    """The text context_text sweeps for one attachment record: the raw line, with an admitted edited_text_file's
+    """The text context_text sweeps for one attachment record (stage K2): the decoded text of the raw line with an
+    admitted edited_text_file's snippet value (and only it) emptied, or of the whole line otherwise."""
+    return _decoded_text(_cut_attachment_line(rec, line))
+
+
+class _AllPairs(list):
+    """A JSON object read as its (key, value) pairs in order, every duplicated key's copies kept (never a dict)."""
+
+
+def _decoded_text(line: str) -> str:
+    """Every key and every value of the JSON line `line`, in order, joined by spaces: strings decoded (an escaped
+    newline is a newline, `\\u0065` is `e`), other scalars as JSON spells them, a duplicated key's every copy kept. A
+    line that does not parse as JSON is returned as it is (context_text sweeps only lines that parse)."""
+    try:
+        doc = json.loads(line, object_pairs_hook=_AllPairs)
+    except ValueError:
+        return line
+    out: list = []
+    stack = [doc]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, _AllPairs):
+            for key, value in reversed(node):
+                stack.append(value)
+                stack.append(("key", key))
+        elif isinstance(node, list):
+            stack.extend(reversed(node))
+        elif isinstance(node, tuple):
+            key = node[1]
+            out.append(key)
+        elif isinstance(node, str):
+            out.append(node)
+        else:
+            out.append(json.dumps(node))
+    return " ".join(out)
+
+
+def _cut_attachment_line(rec: dict, line: str) -> str:
+    """The raw line the sweep decodes for one attachment record: the raw line, with an admitted edited_text_file's
     snippet value (and only it) replaced by an empty string; anything else, or a snippet not located once, whole."""
     att = rec.get("attachment")
     if not (isinstance(att, dict) and transcript_view.is_edited_text_file(att)):
