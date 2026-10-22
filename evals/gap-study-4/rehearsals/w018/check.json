@@ -1,0 +1,11 @@
+{
+  "checked": true,
+  "checker_constants_sha256": "8fd8c39b2baf1050d9fbe6253dbfab2e3c93030f93da8059730be45ce4f37d7e",
+  "checker_reasons": [],
+  "events": {
+    "outside_reach": 0
+  },
+  "route": "graded",
+  "route_refused": null,
+  "walk": "w018"
+}
