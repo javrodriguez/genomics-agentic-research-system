@@ -3819,7 +3819,8 @@ VENDOR_PENDING_ROWS = {
     "codex": {
         # Lane vendor-settle stage C: 6 SAME rows on the RECORDED w-o46 take, 6 NOT COMPARABLE rows whose "ruling" is
         # glitch-f1's adopted text verbatim (plans/gap-study-round-4/vendor-settle-NC-RULINGS-2026-10-21.md in the
-        # Glitch Brain, sha256 ddc65e14d17b019c02869e42578694d894a6dc21521b8ab7214d332ce871642e when copied).
+        # Glitch Brain, sha256 3deef4c14668ea48040ada6247601de7fc888c44ef415327b775aad64bc49f5a after glitch-f1's
+        # 22 Oct amendment of the T-12:memory text, copied by stage V).
         "T-5": {"reason": "unknown-harness-origin", "state": "SAME",
             "fixture": "recorded-codex-w-o46/transcript.jsonl",
             "reader": "vendor_codex_origin_reads"},
@@ -3877,9 +3878,9 @@ VENDOR_PENDING_ROWS = {
                      " of 38).\n"
                      "With no record, there is nothing to compare to Claude Code's memory section.\n"
                      "The partial check requires the world-state keys to stay within the two key sets the walks hold,"
-                     " no memory-named key anywhere, no instruction section beyond the six recorded kinds, and, only"
-                     " if the build's pinned-source read names Codex 0.162.1's memory setting, the pinned settings"
-                     " not to enable it (else that leg is dropped and this text says so).\n"
+                     " no memory-named key anywhere, and no instruction section beyond the six recorded kinds; the"
+                     " retained pin of codex-cli 0.162.1 names no memory setting, so this check has no settings"
+                     " leg.\n"
                      "Its test plants a memory key, and separately a memory section; each must fire.\n"
                      "A reader may conclude no memory section was recorded; not that none reached the model."),
         },

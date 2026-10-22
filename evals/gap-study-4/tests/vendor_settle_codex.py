@@ -30,6 +30,7 @@ written. No take, model, container or network.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 import unittest
@@ -714,6 +715,27 @@ class CNotComparable(unittest.TestCase):
                 self.assertTrue(row["ruling"].startswith(f"### {key} ("), row["ruling"][:60])
                 self.assertIn("glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026", row["ruling"])
                 self.assertIn("A reader may conclude", row["ruling"])
+                self.assertEqual(hashlib.sha256(row["ruling"].encode("utf-8")).hexdigest(), RULING_SHA256[key])
+
+    def test_c_memory_ruling_has_no_settings_leg(self):
+        # glitch-f1's amendment (22 Oct, NC-RULINGS line 54): the retained pin names no memory setting, so the
+        # partial check has no settings leg, and the text says so.
+        text = ct.VENDOR_PENDING_ROWS["codex"]["T-12:memory"]["ruling"]
+        self.assertIn("names no memory setting, so this check has no settings leg.", text)
+        self.assertNotIn("only if the build's pinned-source read", text)
+
+
+# The adopted rulings' texts (vendor-settle-NC-RULINGS-2026-10-21.md, arm O, each section's heading and body lines
+# joined by newlines): sha256 read from that file (whole-file sha256 3deef4c1..., after glitch-f1's 22 Oct
+# T-12:memory amendment) by the stage V builder.
+RULING_SHA256 = {
+    "T-8:file-change": "eced9dca49a48c3537cca198527a72da53eba7356705d970c4825eb2abec06b6",
+    "T-12:offered-context": "99c5adece7e13365c3a7980f7e48a64413b0e0c8fc777e4532b55df957a6111f",
+    "T-12:memory": "4a5938863abef5753e365b02d9fc036ee953d5c11f657a524d781f0b45cf7204",
+    "T-13": "e1745e15da6a96eda73eb04d37ee1ae5250c4c27ffb058bdcb2092b27bc83276",
+    "T-17:billing-route": "4b2bff13f08acffe332f9c1fd4f4f0abf0a1d5337cef24b58ef1ba2d60282d29",
+    "T-18": "bb8046f7f9098935406d6a87f87833b90d31751124b93153f9426e2489a71cfa",
+}
 
 
 class CItems(unittest.TestCase):
