@@ -1,0 +1,660 @@
+{
+ "lane": "vendor-settle-k",
+ "files": [
+  {
+   "path": "COPIED.d/vendor-settle-k.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. This fragment: the files stage K adds."
+  },
+  {
+   "path": "checks.d/vendor-settle-k.txt",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Its battery lines: test_vendor_check, the source-list check and the lint of the RECORDED folders."
+  },
+  {
+   "path": "tests/vendor_plant.py",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. The shared plant helper: one planted violation on a scratch copy of a RECORDED take folder, every digest the driver wrote over an edited file re-bound; the committed fixture is never written."
+  },
+  {
+   "path": "tests/vendor_settle_codex.py",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. The Codex rows' SAME_FIRES, clean and NOT COMPARABLE case tables, empty at stage K; stage C is its only writer."
+  },
+  {
+   "path": "tests/vendor_settle_gemini.py",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. The Gemini rows' SAME_FIRES, clean and NOT COMPARABLE case tables, empty at stage K; stage G is its only writer."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/README.md",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: the RECORDED label list of walk w-o46's byte copy (codex-cli 0.162.1), in the form check_take and the adapter tests read."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/PROVENANCE.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: each copied file's source path in rehearsals/w-o46/, git blob id and sha256, and the walk ref and commit (walk ref commits and blob ids only, never a dry merge sha)."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/check.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/check.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/driver-ledger.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/driver-ledger.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/environment.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/environment.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/evidence-ledger-copy.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/evidence-ledger-copy.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/grade.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/grade.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/launch.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/ownership-grant.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/ownership-grant.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/ownership-restore.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/ownership-restore.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/postflight.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/postflight.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/preflight.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/preflight.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/proxy.log",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/proxy.log (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/read-only-errors.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/read-only-errors.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/session-store.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/session-store.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/session/native-turn-1.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/session/native-turn-1.jsonl (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/session/native-turn-2.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/session/native-turn-2.jsonl (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/session/native-turn-3.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/session/native-turn-3.jsonl (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/settings-guard.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/settings-guard.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/teardown.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/teardown.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/transcript.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/transcript.jsonl (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/turn-1.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/turn-1.jsonl (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/turn-1.jsonl.launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/turn-1.jsonl.launch.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/turn-2.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/turn-2.jsonl (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/turn-2.jsonl.launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/turn-2.jsonl.launch.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/turn-3.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/turn-3.jsonl (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o46/turn-3.jsonl.launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o46/turn-3.jsonl.launch.json (codex-cli 0.162.1, walk ref walk/w-kbm1P3ZO at ae6bec92aa9a), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/README.md",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: the RECORDED label list of walk w-o47's byte copy (codex-cli 0.162.1), in the form check_take and the adapter tests read."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/PROVENANCE.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: each copied file's source path in rehearsals/w-o47/, git blob id and sha256, and the walk ref and commit (walk ref commits and blob ids only, never a dry merge sha)."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/check.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/check.json (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/driver-ledger.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/driver-ledger.json (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/environment.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/environment.json (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/evidence-ledger-copy.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/evidence-ledger-copy.json (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/grade.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/grade.json (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/launch.json (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/ownership-grant.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/ownership-grant.json (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/ownership-restore.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/ownership-restore.json (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/postflight.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/postflight.json (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/preflight.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/preflight.json (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/proxy.log",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/proxy.log (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/read-only-errors.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/read-only-errors.json (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/session-store.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/session-store.json (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/session/native-turn-1.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/session/native-turn-1.jsonl (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/settings-guard.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/settings-guard.json (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/teardown.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/teardown.json (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/transcript.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/transcript.jsonl (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/turn-1.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/turn-1.jsonl (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o47/turn-1.jsonl.launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o47/turn-1.jsonl.launch.json (codex-cli 0.162.1, walk ref walk/w-PhMO8vDv at 61a4179234bb), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/README.md",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: the RECORDED label list of walk w-o7's byte copy (codex-cli 0.162.1), in the form check_take and the adapter tests read."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/PROVENANCE.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: each copied file's source path in rehearsals/w-o7/, git blob id and sha256, and the walk ref and commit (walk ref commits and blob ids only, never a dry merge sha)."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/check.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/check.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/driver-ledger.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/driver-ledger.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/environment.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/environment.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/evidence-ledger-copy.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/evidence-ledger-copy.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/grade.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/grade.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/launch.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/ownership-grant.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/ownership-grant.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/ownership-restore.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/ownership-restore.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/postflight.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/postflight.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/preflight.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/preflight.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/proxy.log",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/proxy.log (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/read-only-errors.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/read-only-errors.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/session-store.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/session-store.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/session/native-turn-1.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/session/native-turn-1.jsonl (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/session/native-turn-2.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/session/native-turn-2.jsonl (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/settings-guard.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/settings-guard.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/teardown.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/teardown.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/transcript.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/transcript.jsonl (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/turn-1.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/turn-1.jsonl (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/turn-1.jsonl.launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/turn-1.jsonl.launch.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/turn-2.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/turn-2.jsonl (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-codex-w-o7/turn-2.jsonl.launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-o7/turn-2.jsonl.launch.json (codex-cli 0.162.1, walk ref walk/w-OMeE6P4y at 68fff362c00e), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/README.md",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: the RECORDED label list of walk w-g14's byte copy (gemini-cli 0.64.0), in the form check_take and the adapter tests read."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/PROVENANCE.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: each copied file's source path in rehearsals/w-g14/, git blob id and sha256, and the walk ref and commit (walk ref commits and blob ids only, never a dry merge sha)."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/check.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/check.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/driver-ledger.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/driver-ledger.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/environment.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/environment.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/evidence-ledger-copy.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/evidence-ledger-copy.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/grade.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/grade.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/launch.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/ownership-grant.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/ownership-grant.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/ownership-restore.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/ownership-restore.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/postflight.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/postflight.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/preflight.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/preflight.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/proxy.log",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/proxy.log (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/read-only-errors.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/read-only-errors.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/session-store.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/session-store.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/session/native-turn-1.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/session/native-turn-1.jsonl (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/session/native-turn-2.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/session/native-turn-2.jsonl (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/session/native-turn-3.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/session/native-turn-3.jsonl (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/session/native-turn-4.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/session/native-turn-4.jsonl (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/settings-guard.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/settings-guard.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/teardown.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/teardown.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/transcript.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/transcript.jsonl (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/turn-1.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/turn-1.jsonl (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/turn-1.jsonl.launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/turn-1.jsonl.launch.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/turn-2.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/turn-2.jsonl (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/turn-2.jsonl.launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/turn-2.jsonl.launch.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/turn-3.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/turn-3.jsonl (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/turn-3.jsonl.launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/turn-3.jsonl.launch.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/turn-4.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/turn-4.jsonl (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g14/turn-4.jsonl.launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g14/turn-4.jsonl.launch.json (gemini-cli 0.64.0, walk ref walk/w-GDVAbBBf at ef903febc5ed), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/README.md",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: the RECORDED label list of walk w-g21's byte copy (gemini-cli 0.64.0), in the form check_take and the adapter tests read."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/PROVENANCE.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: each copied file's source path in rehearsals/w-g21/, git blob id and sha256, and the walk ref and commit (walk ref commits and blob ids only, never a dry merge sha)."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/check.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/check.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/driver-ledger.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/driver-ledger.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/environment.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/environment.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/evidence-ledger-copy.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/evidence-ledger-copy.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/grade.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/grade.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/launch.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/ownership-grant.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/ownership-grant.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/ownership-restore.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/ownership-restore.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/postflight.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/postflight.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/preflight.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/preflight.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/proxy.log",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/proxy.log (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/read-only-errors.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/read-only-errors.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/session-store.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/session-store.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/session/native-turn-1.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/session/native-turn-1.jsonl (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/session/native-turn-2.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/session/native-turn-2.jsonl (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/settings-guard.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/settings-guard.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/teardown.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/teardown.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/transcript.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/transcript.jsonl (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/turn-1.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/turn-1.jsonl (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/turn-1.jsonl.launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/turn-1.jsonl.launch.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/turn-2.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/turn-2.jsonl (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  },
+  {
+   "path": "tests/fixtures/recorded-gemini-w-g21/turn-2.jsonl.launch.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K (glitch-f1's settle-design rulings and the review's split, Wed 21 Oct 2026, under Javier's standing delegation): the shared skeleton for the parallel Codex and Gemini settlement builders. Fixture: a byte copy of the committed walk record rehearsals/w-g21/turn-2.jsonl.launch.json (gemini-cli 0.64.0, walk ref walk/w-vNjKNXbo at e2c30e0c1ab3), never edited; the vendor readers are re-tested on it."
+  }
+ ]
+}
