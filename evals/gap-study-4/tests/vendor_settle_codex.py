@@ -1012,6 +1012,88 @@ class CLegs(unittest.TestCase):
                 self.assertEqual(read(clean, design), [], name)
 
 
+# ---- stage Z2 (glitch-f1's rulings on CODEX-S0-READ-20261022.md) --------------------------------------------------
+APPLY_PATCH = 'text(await tools.apply_patch("*** Begin Patch\\n*** Add File: notes.md\\n+x\\n*** End Patch"))'
+
+
+def _first_exec_call(change):
+    return lambda: _payload_edit(LAST_O46, _nth_custom_call(1), change)
+
+
+def _nth_custom_call(n):
+    seen = [0]
+
+    def match(rec):
+        if not _is(rec, "response_item", type="custom_tool_call"):
+            return False
+        seen[0] += 1
+        return seen[0] == n
+    return match
+
+
+def _first_command_execution(change):
+    seen = [0]
+
+    def match(rec):
+        if not (_is(rec, "event_msg", type="item_completed") and rec["payload"]["item"].get("type") == "CommandExecution"):
+            return False
+        seen[0] += 1
+        return seen[0] == 1
+    return lambda: _payload_edit(LAST_O46, match, change)
+
+
+class CZ2(unittest.TestCase):
+    def test_z2_t8_an_apply_patch_script_with_no_file_change_refuses(self):
+        # code_mode/mod.rs:337-373: a code-mode exec script calls tools.apply_patch; with no joined FileChange the
+        # patch is invisible to the view, so the T-8 site reads it and refuses (0 of 216 recorded calls name it)
+        with vp.planted(O46) as clean:
+            self.assertEqual(ct.vendor_file_change_problems(clean.path, "codex"), [])
+        with vp.planted(O46, _first_exec_call(lambda r: r["payload"].update(
+                input=r["payload"]["input"] + "; " + APPLY_PATCH))()) as plant:
+            got = ct.vendor_file_change_problems(plant.path, "codex")
+        self.assertTrue(got and all(x.startswith(f"[{ct.TRANSCRIPT_UNREADABLE}] ") for x in got), got)
+        self.assertTrue(any("apply_patch" in x for x in got), got)
+
+    def test_z2_t8_the_apply_patch_shell_alias_refuses(self):
+        # arg0/src/lib.rs:325-340: a shell command running the apply_patch alias leaves only a CommandExecution
+        with vp.planted(O46, _first_command_execution(lambda r: r["payload"]["item"].update(
+                command=["/bin/bash", "-lc", "apply_patch < /tmp/p.diff"]))()) as plant:
+            got = ct.vendor_file_change_problems(plant.path, "codex")
+        self.assertTrue(got and all(x.startswith(f"[{ct.TRANSCRIPT_UNREADABLE}] ") for x in got), got)
+        self.assertTrue(any("apply_patch" in x for x in got), got)
+
+    def test_z2_offered_an_exec_script_calling_another_tool_fires(self):
+        with vp.planted(O46, _first_exec_call(lambda r: r["payload"].update(
+                input=r["payload"]["input"] + '; text(await tools.web_run({q: "x"}))'))()) as plant:
+            got = ct.vendor_codex_offered_partial(plant.path)
+        self.assertTrue(got and all(x.startswith("[inherited-context] ") for x in got), got)
+        self.assertTrue(any("web_run" in x for x in got), got)
+
+    def test_z2_t17_forced_login_method_and_the_env_refusal(self):
+        with vp.planted(O46) as clean:
+            design = walk_design(clean)[1]
+            self.assertEqual(ct.vendor_billing_route_partial(clean.path, "codex", design.pre), [])
+            with _config_with('forced_login_method = "chatgpt"\n', ""):
+                got = ct.vendor_billing_route_partial(clean.path, "codex", design.pre)
+            self.assertTrue(got and all(x.startswith("[environment-record] ") for x in got), got)
+            self.assertTrue(any("forced_login_method" in x for x in got), got)
+            named = {h: tuple(x for x in v if x[0] != r"\.env") for h, v in ct._run_take.CONFIG_FOLDER_NAMED.items()}
+            with unittest.mock.patch.object(ct._run_take, "CONFIG_FOLDER_NAMED", named):
+                got = ct.vendor_billing_route_partial(clean.path, "codex", design.pre)
+            self.assertTrue(got and any(".env" in x for x in got), got)
+
+    def test_z2_t18_multi_agent_version_read_directly(self):
+        with vp.planted(O47) as clean:
+            self.assertEqual(ct.vendor_codex_tools_partial(clean.path), [])
+        v2 = _payload_edit("session/native-turn-1.jsonl", lambda r: r.get("type") == "turn_context",
+                           lambda r: r["payload"].update(multi_agent_version="v2"))
+        with vp.planted(O47, v2) as plant:
+            got = ct.vendor_codex_tools_partial(plant.path)
+        # the new leg alone catches it: no multi-agent section was rendered, so the section proxy is silent
+        self.assertEqual([x for x in got if "multi_agent_version" not in x], [], got)
+        self.assertTrue(any("multi_agent_version" in x for x in got), got)
+
+
 class CItems(unittest.TestCase):
     """The 15 Codex READER items on the RECORDED w-o46 copy (T-15 also on w-o47's gpt-6-luna), each against the test's
     own reading, and five items' violations re-planted on the recorded copy."""
