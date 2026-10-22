@@ -361,8 +361,10 @@ def freeze_commit() -> str | None:
     return shas[0] if code == 0 and shas else None
 
 
+# Review MINOR-1 on lane gemini-defer (glitch-f1, 22 Oct 2026): Javier's go record for a deferred arm
+# (prereg.GO_RECORD) is run output too, so one committed before or with the freeze cannot release the arm.
 RUNTIME_PATHS = ("takes.json", "outcomes.json", "rulings.json", "records",
-                 "RESULT.md", "cost-calls.json", "COSTS.md")
+                 "RESULT.md", "cost-calls.json", "COSTS.md", "deferred-arm-go.json")
 
 
 def runtime_timing_problems() -> list[str]:

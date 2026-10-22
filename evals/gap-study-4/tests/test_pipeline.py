@@ -1933,6 +1933,41 @@ class RuntimeTiming(unittest.TestCase):
             with mock.patch.object(cr, "REPO", repo.root):
                 self.assertTrue(cr.runtime_timing_problems())
 
+    def test_a_go_record_before_or_with_the_freeze_is_refused(self):
+        # Review MINOR-1 on lane gemini-defer (glitch-f1, 22 Oct 2026): a deferred arm's go record committed before or
+        # with the freeze would release the arm with the first counted run, so it is refused like any run output;
+        # one committed after the freeze is allowed.
+        import prereg
+        self.assertIn(prereg.GO_RECORD.name, cr.RUNTIME_PATHS)
+        with repository() as repo:
+            root = repo.root / study.STUDY_REL
+            root.mkdir(parents=True)
+            (root / "prereg.json").write_text("{}\n")
+            (root / prereg.GO_RECORD.name).write_text("[]\n")
+            commit(repo.root, [study.rel("prereg.json"), study.rel(prereg.GO_RECORD.name)], "Freeze with a go record")
+            with mock.patch.object(cr, "REPO", repo.root):
+                got = cr.runtime_timing_problems()
+                self.assertEqual(len(got), 1)
+                self.assertIn("run output committed before or with the freeze", got[0])
+        with repository() as repo:
+            root = repo.root / study.STUDY_REL
+            root.mkdir(parents=True)
+            (root / prereg.GO_RECORD.name).write_text("[]\n")
+            commit(repo.root, [study.rel(prereg.GO_RECORD.name)], "Record a go before the freeze")
+            (root / "prereg.json").write_text("{}\n")
+            commit(repo.root, [study.rel("prereg.json")], "Freeze synthetic design")
+            with mock.patch.object(cr, "REPO", repo.root):
+                self.assertTrue(cr.runtime_timing_problems())
+        with repository() as repo:
+            root = repo.root / study.STUDY_REL
+            root.mkdir(parents=True)
+            (root / "prereg.json").write_text("{}\n")
+            commit(repo.root, [study.rel("prereg.json")], "Freeze synthetic design")
+            (root / prereg.GO_RECORD.name).write_text("[]\n")
+            commit(repo.root, [study.rel(prereg.GO_RECORD.name)], "Record a go after the freeze")
+            with mock.patch.object(cr, "REPO", repo.root):
+                self.assertEqual(cr.runtime_timing_problems(), [])
+
     def test_pre_freeze_outputs_refused_even_when_removed_before_freeze(self):
         self.assertTrue(callable(getattr(cr, "runtime_timing_problems", None)),
                         "the publication checker must inspect output commit timing")
