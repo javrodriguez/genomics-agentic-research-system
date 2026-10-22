@@ -820,15 +820,15 @@ class CNotComparable(unittest.TestCase):
 
 
 # The adopted rulings' texts (vendor-settle-NC-RULINGS-2026-10-21.md, arm O, each section's heading and body lines
-# joined by newlines): sha256 read from that file (whole-file sha256 72b4fdf3..., after glitch-f1's 22 Oct
+# joined by newlines): sha256 read from that file (whole-file sha256 3c29d72b..., after glitch-f1's 22 Oct
 # amendments: T-17's credential_source sentence; T-12:memory's settings leg and T-8's reader by name, 02:37) by the stage V builder.
 RULING_SHA256 = {
-    "T-8:file-change": "707e046999d1b9121a2d745522f82c347f786a153c84a6a4eadcdd606858155a",
-    "T-12:offered-context": "99c5adece7e13365c3a7980f7e48a64413b0e0c8fc777e4532b55df957a6111f",
-    "T-12:memory": "81e214a2f2e42c0d520452d9b48843c03c4e80b417afc43c5fe81ce8ce1f4869",
-    "T-13": "e1745e15da6a96eda73eb04d37ee1ae5250c4c27ffb058bdcb2092b27bc83276",
-    "T-17:billing-route": "53228989c2e9a3d9de554cd67b27c866c2e58354917579b2e0996d93f1db53d4",
-    "T-18": "bb8046f7f9098935406d6a87f87833b90d31751124b93153f9426e2489a71cfa",
+    "T-8:file-change": "92b0d31a12200d0c0000f9f23f05a6fc51cbbf63ba3ef76af3ecf2978e629598",
+    "T-12:offered-context": "8493792afbe9e5307991e57bc057ee07106048fd45eb92f9b38a02904e2c0ca8",
+    "T-12:memory": "da5a7b9d12e8792129fa31f013260b7b86b53c6cc4f8d936511f503c791387fa",
+    "T-13": "1f64ec3c648c0ef3358e8052569bf49ef63388128a5504685286d56cc43cd6e6",
+    "T-17:billing-route": "c10a5062685940ccbc4fdf020a812747646ef7bafcb30c966062818018e498d9",
+    "T-18": "1372fe564a387a651d001ec73214a7dd8623b10d50e73e7c30db936026d365bb",
 }
 
 

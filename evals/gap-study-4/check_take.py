@@ -3821,9 +3821,8 @@ VENDOR_PENDING_ROWS = {
     "codex": {
         # Lane vendor-settle stage C: 6 SAME rows on the RECORDED w-o46 take, 6 NOT COMPARABLE rows whose "ruling" is
         # glitch-f1's adopted text verbatim (plans/gap-study-round-4/vendor-settle-NC-RULINGS-2026-10-21.md in the
-        # Glitch Brain, sha256 ac57732311ef8e8cfffc9ce58fcc2dc42d85139fcf6199b38d59c4f589ae7386 after glitch-f1's
-        # 22 Oct amendments, the Codex T-12:memory text and both T-17 texts' credential_source sentence, copied by
-        # stage V).
+        # Glitch Brain, sha256 3c29d72b7bcf090ce4bcc45c57c6c3ad004f19bfa36edab248796de8f9d76945 after glitch-f1's
+        # 22 Oct amendments and the adopted text batch after the two source reads, copied by stage V's last step).
         "T-5": {"reason": "unknown-harness-origin", "state": "SAME",
             "fixture": "recorded-codex-w-o46/transcript.jsonl",
             "reader": "vendor_codex_origin_reads"},
@@ -3831,19 +3830,19 @@ VENDOR_PENDING_ROWS = {
             "reader": "vendor_file_change_reads",
             "ruling": (
                      "### T-8:file-change (transcript-unreadable): file edits through Codex's patch tool\n"
-                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his "
-                     "freeze-gate letters.\n"
-                     "Codex records a patch-tool edit twice: a file_change item in its exec stream and a FileChange "
-                     "item in its rollout.\n"
-                     "No committed GPT walk used the patch tool (0 of 38 hold either record; all 216 tool calls "
-                     "were shell commands), so no recorded bytes can settle the reader.\n"
-                     "The partial check is the reader built for this row (check_take.py, vendor_file_change_reads): "
-                     "it joins each stream file change to its rollout item and refuses an unjoined change or a "
-                     "rename.\n"
-                     "Its test feeds a synthetic unjoined change and a rename, both must refuse, and a reader that "
-                     "returns nothing goes red.\n"
-                     "A reader may conclude that shell-command edits are read comparably; not that patch-tool "
-                     "reading was proven on real sessions."),
+                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after "
+                     "the settlement review and the source reads, subject to his freeze-gate letters.\n"
+                     "Codex 0.162.1 records a patch-tool edit as a file_change stream item and a FileChange rollout "
+                     "item and, in code mode, as tools.apply_patch in the exec script "
+                     "(core/src/tools/code_mode/mod.rs:337-373, openai/codex 092d3acd).\n"
+                     "No GPT walk holds any of them (0 of 38): 216 exec calls ran 226 shell commands and no other "
+                     "tool, none naming apply_patch.\n"
+                     "The partial check (check_take.py, vendor_file_change_reads) refuses an unjoined change, a "
+                     "rename, an unjoined tools.apply_patch script, and a command naming the apply_patch alias, which "
+                     "leaves no patch record (arg0/src/lib.rs:325-340).\n"
+                     "Its synthetic tests, one per case, must each refuse; an empty reader goes red.\n"
+                     "A reader may conclude no walk edited files through the patch tool or its alias; not that "
+                     "patch-tool reading was proven on real sessions."),
         },
         "T-10": {"reason": "leak-in-loaded-context", "state": "SAME",
             "fixture": "recorded-codex-w-o46/transcript.jsonl",
@@ -3852,18 +3851,19 @@ VENDOR_PENDING_ROWS = {
             "reader": "vendor_codex_offered_partial",
             "ruling": (
                      "### T-12:offered-context (inherited-context): extra directories and offered connector tools\n"
-                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate"
-                     " letters; it stands unless the build cites a pinned-source line that upgrades the row.\n"
-                     "Codex records its workspace roots, equal to the session folder in 38 of 38 walks, and its app"
-                     " and plugin sections, off in 38 of 38, with no added tools (0 of 38).\n"
-                     "It records no list of offered tools, so connector tools cannot be compared to Claude Code's.\n"
-                     "The partial check requires every recorded root list to be exactly the session folder, both"
-                     " sections off, no recommended_plugins section (it brings a plugin-install tool,"
-                     " take_config.py:255-262), no added tool, and skills only from the pinned system folder; the"
-                     " rebuilt launch command still runs.\n"
-                     "Its test adds an outside folder to the recorded roots, which must fire.\n"
-                     "A reader may conclude extra directories are comparable; connector tools are bound by recorded"
-                     " sections and pinned settings only."),
+                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after "
+                     "the settlement review and the source reads, subject to his freeze-gate letters.\n"
+                     "Codex 0.162.1 records its workspace roots (the session folder, 38 of 38 walks), added and "
+                     "dynamic tools (0 of 38 each), but no list of its built-in tools.\n"
+                     "Its apps section reads off for these models whatever is offered; the apps feature is on by "
+                     "default (core/src/session/world_state.rs:287-302; features/src/lib.rs:1462-1466; openai/codex "
+                     "092d3acd).\n"
+                     "The partial check requires every root list be the session folder, no recommended_plugins "
+                     "section (take_config.py:231-262), no added or dynamic tool, only system-folder skills, and no "
+                     "exec script calling a non-shell tool (0 of 216 do).\n"
+                     "Its tests plant an outside root, a dynamic tool or a non-shell call, each firing.\n"
+                     "A reader may conclude extra directories are comparable and no connector tool was called; not "
+                     "that none was offered."),
         },
         "T-12:instruction-files": {"reason": "inherited-context", "state": "SAME",
             "fixture": "recorded-codex-w-o46/transcript.jsonl",
@@ -3876,37 +3876,36 @@ VENDOR_PENDING_ROWS = {
             "ruling": (
                      "### T-12:memory (inherited-context): memory offered to the session\n"
                      "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after "
-                     "the settlement review (REVIEW-vendor-settle-codex-0df1437.md MAJOR 1), subject to his "
-                     "freeze-gate letters.\n"
-                     "Codex 0.162.1 has a memory feature, features.memories, off by default "
-                     "(features/src/lib.rs:1230-1235, openai/codex 092d3acd); the pinned configuration leaves it "
-                     "off.\n"
-                     "Memory generation ran at its default, on: memory_mode, written only when it is off "
-                     "(rollout/src/recorder.rs:976), is absent in all 38 walks; no walk holds a memory section, so "
-                     "nothing compares to Claude Code's.\n"
-                     "The partial check requires features.memories off in the pinned configuration, world-state "
-                     "keys within the two recorded sets, no memory-named key but memory_mode \"disabled\", and no "
-                     "instruction section beyond the six recorded kinds.\n"
-                     "Its tests turn features.memories on, and plant a \"## Memory\" developer section; each must "
-                     "fire.\n"
-                     "A reader may conclude the feature was off and no memory section recorded; not that none "
-                     "reached the model."),
+                     "the settlement review and the source reads, subject to his freeze-gate letters.\n"
+                     "Codex 0.162.1's features.memories is off by default (features/src/lib.rs:1230-1235, "
+                     "openai/codex 092d3acd) and in the pinned configuration.\n"
+                     "Its memory-generation setting kept its default, on (config/src/types.rs:376-381): memory_mode, "
+                     "written only if off (rollout/src/recorder.rs:976), is absent in 38 of 38 walks; generation runs "
+                     "only with the feature on (memories/write/src/start.rs:33-38).\n"
+                     "No walk holds a memory section (0 of 38): nothing compares.\n"
+                     "The partial check requires the feature off, world-state keys within the two recorded sets, no "
+                     "memory-named key but memory_mode \"disabled\", and no instruction section beyond the six "
+                     "recorded kinds.\n"
+                     "Its tests turn the feature on or plant a \"## Memory\" developer section; each must fire.\n"
+                     "A reader may conclude the feature was off and no memory section recorded; not that none reached "
+                     "the model."),
         },
         "T-13": {"reason": "checkout-binding", "state": "NOT COMPARABLE",
             "reader": "vendor_codex_checkout_partial",
             "ruling": (
                      "### T-13 (checkout-binding): the checkout's git state\n"
-                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate"
-                     " letters.\n"
-                     "Claude Code's check reads the session's own git status: identity, a clean tree, one commit with"
-                     " the neutral subject.\n"
-                     "Codex records only the commit it opened on and the branch (38 of 38, always `main`); none of"
-                     " the 38 hashes appears in any other file of its walk, so it cannot be tied to the driver's"
-                     " checkout.\n"
-                     "Status, identity and subject are not recorded.\n"
-                     "The partial check requires exactly one git record, branch `main` (the driver's own literal,"
-                     " drive.py:381), and a 40-character commit hash.\n"
-                     "Its test sets the record to empty, or the branch to another name; each must fire.\n"
+                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after "
+                     "the settlement review and the source reads, subject to his freeze-gate letters.\n"
+                     "Claude Code's check reads the session's own git status: identity, a clean tree, one commit with "
+                     "the neutral subject.\n"
+                     "Codex 0.162.1 records only the commit and branch it reads itself (git-utils/src/info.rs:77-122, "
+                     "openai/codex 092d3acd): `main` and a 40-character hash in 38 of 38, no origin URL (0 of 38); no "
+                     "hash appears elsewhere in its walk, so none ties to the driver's checkout.\n"
+                     "It reads the tree's dirty state (core/src/turn_metadata.rs:573-597), recorded nowhere (0 of "
+                     "38).\n"
+                     "The partial check requires exactly one git record, branch `main` (drive.py:381), and a "
+                     "40-character hash.\n"
+                     "Its test empties the record, or renames the branch; each must fire.\n"
                      "A reader may conclude the session opened on `main`; not that the checkout was clean or neutral."),
         },
         "T-14": {"reason": "checkout-binding", "state": "SAME",
@@ -3919,39 +3918,39 @@ VENDOR_PENDING_ROWS = {
             "reader": "vendor_billing_route_partial",
             "ruling": (
                      "### T-17:billing-route (environment-record): Codex's billing-route variables\n"
-                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate"
-                     " letters.\n"
-                     "The environment record the driver writes lists Claude Code's 18 billing names only; no Codex"
-                     " name appears in it (0 of 38).\n"
-                     "Recording Codex's names would change a file both accepted readers hash, so the record cannot"
-                     " settle it.\n"
-                     "The partial check has three legs: the record's named variables hold no Codex billing name,"
-                     " though only key- or token-shaped names are visible there (drive.py:656); the launch"
-                     " environment holds none and the refused set covers all (run_take.py:963-973); and every session"
-                     " records the OpenAI provider and a ChatGPT plan (38 of 38).\n"
-                     "Its test adds `CODEX_ACCESS_TOKEN`, patches the launch environment, or changes the provider;"
-                     " each must fire.\n"
-                     "The environment record's credential_source is null on every vendor turn (the driver writes"
-                     " Claude Code's fields only), so it shows nothing about the vendor's credential.\n"
-                     "A reader may conclude these routes were refused before launch, not observed absent in-session."),
+                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after "
+                     "the settlement review and the source reads, subject to his freeze-gate letters.\n"
+                     "The driver's environment record lists only Claude Code's 18 billing names (Codex's 0 of 38; "
+                     "credential_source null each vendor turn); recording Codex's would change a file both accepted "
+                     "readers hash.\n"
+                     "Five partial-check legs: the record names no Codex billing variable, only key- or token-shaped "
+                     "names showing (drive.py:656); the launch environment holds none and the refused set covers all "
+                     "(run_take.py:963-973); the launcher refuses CODEX_HOME/.env, which could set them in-process "
+                     "(run_take.py:2413); forced_login_method = \"chatgpt\" (take_config.py:61) logs out an API-key "
+                     "or Bedrock login (login/src/auth/manager.rs:1351-1371, openai/codex 092d3acd); every session "
+                     "records the OpenAI provider and a ChatGPT plan (38 of 38).\n"
+                     "Its tests break each leg; each must fire.\n"
+                     "A reader may conclude these routes were refused before launch; not observed absent in-session."),
         },
         "T-18": {"reason": HARNESS_CONDITION_VIOLATED, "state": "NOT COMPARABLE",
             "reader": "vendor_codex_tools_partial",
             "ruling": (
                      "### T-18 (harness-condition-violated): denied tools\n"
-                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate"
-                     " letters.\n"
-                     "Codex records no offered-tool list (0 of 38).\n"
-                     "It renders two multi-agent sections exactly when its six collaboration tools are offered"
-                     " (take_config.py:263-284), and a plugin-recommendation section that comes with a plugin-install"
-                     " tool (take_config.py:255-262).\n"
-                     "The partial check requires neither section, no added tool, app and plugin sections off, and"
-                     " pinned settings turning agents, plugins and web search off (take_config.py:61-69, 409-411).\n"
-                     "It fires on the 31 walks run before agents were turned off (w-o46 included), which were offered"
-                     " those tools, and is silent on the other 7.\n"
-                     "Its test plants the multi-agent section into w-o47, which must fire.\n"
-                     "A reader may conclude no collaboration or plugin tool was offered after that change; web search"
-                     " is bound by settings only."),
+                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after "
+                     "the settlement review and the source reads, subject to his freeze-gate letters.\n"
+                     "Codex 0.162.1 records no offered-tool list (0 of 38), but each turn context records "
+                     "multi_agent_version (protocol/src/protocol.rs:3353, openai/codex 092d3acd): v2 in 31 walks, "
+                     "disabled in 7.\n"
+                     "For these models it renders two multi-agent sections exactly when its six collaboration tools "
+                     "are offered (take_config.py:263-284), and a plugin-recommendation section with a plugin-install "
+                     "tool (take_config.py:231-262).\n"
+                     "The partial check requires multi_agent_version disabled, neither section, no added tool, and "
+                     "pinned settings turning agents, plugins and web search off (take_config.py:61, 67-69, 78, "
+                     "406-411).\n"
+                     "It fires on the 31 walks before agents were turned off.\n"
+                     "Its tests plant the section or v2 into w-o47, each firing.\n"
+                     "A reader may conclude no collaboration or plugin tool was offered after that change; web search "
+                     "is bound by settings only."),
         },
     },
     "gemini": {
@@ -3964,80 +3963,90 @@ VENDOR_PENDING_ROWS = {
         "T-12:offered-context": {"reason": "inherited-context", "state": "NOT COMPARABLE",
             "reader": "vendor_gemini_offered_partial", "ruling": (
                 "### T-12:offered-context (inherited-context): extra directories and tool servers\n"
-                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
-                "letters.\n"
-                "Gemini CLI records its workspace directories: exactly one, the launch folder, in every recorded "
-                "version of its session context in all 36 walks, versions a later resume rewrote included.\n"
-                "It records no tool servers or extensions (0 of 36 mention either), so those cannot be compared to "
-                "Claude Code's offered tools.\n"
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after the "
+                "settlement review and the source reads, subject to his freeze-gate letters.\n"
+                "Gemini CLI 0.64.0 records its workspace directories from any source "
+                "(chunk-NR7L3FXV.js:336318-336340): exactly the launch folder in every session-context version, "
+                "resumes included, in 36 of 36 walks.\n"
+                "It records no tool servers or extensions (0 of 36).\n"
                 "The partial check requires every session-context version, read from the raw records, to list exactly "
-                "the launch folder; the rebuilt launch command still runs (check_take.py:4440-4472).\n"
-                "Its test adds a second workspace directory, which must fire.\n"
-                "A reader may conclude extra directories are comparable; tool servers and extensions are bound by the "
-                "pinned settings and launch command only.")},
+                "the launch folder; the rebuilt launch command runs (check_take.py, "
+                "vendor_offered_context_problems).\n"
+                "Its test, a second workspace directory, must fire.\n"
+                "Servers and extensions are bound by the pinned settings, launch command, config-folder check "
+                "(run_take.py:2381-2437) and workspace guard (settings_guard.py:83-86); the walks' image holds no "
+                "overriding /etc/gemini-cli settings (chunk-FLKY6NH5.js:16335-16346).\n"
+                "Two built-in skills are offered, unrecorded (chunk-NR7L3FXV.js:366405-366415).\n"
+                "A reader may conclude extra directories are comparable; not which servers, extensions or skills were "
+                "offered.")},
         "T-12:instruction-files": {"reason": "inherited-context", "state": "SAME",
             "reader": "vendor_gemini_instruction_files_reads", "fixture": "recorded-gemini-w-g21/transcript.jsonl"},
         "T-12:prompt-snapshot": {"reason": "inherited-context", "state": "NOT COMPARABLE",
             "reader": "vendor_gemini_prompt_partial", "ruling": (
                 "### T-12:prompt-snapshot (inherited-context): the system prompt\n"
-                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
-                "letters.\n"
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after the "
+                "settlement review and the source reads, subject to his freeze-gate letters.\n"
                 "Gemini CLI 0.64.0 writes no system-prompt record in its session log or stream: no prompt or "
                 "instruction key in any of the 36 walks.\n"
-                "With no record, the prompt cannot be compared to Claude Code's prompt snapshot.\n"
-                "The partial check is input-side only: the launch environment carries neither of the CLI's two "
-                "prompt-override variables (run_take.py:172-174), both are in the refused set (run_take.py:508, 511, "
-                "682, 963-973), and the rebuilt launch command is the adapter's own.\n"
-                "The environment record cannot show these two names, which are not key-shaped.\n"
-                "Its test patches either name into the launch environment, which must fire.\n"
-                "A reader may conclude no prompt override was allowed in; not what prompt the model saw.")},
+                "So the prompt cannot be compared to Claude Code's prompt snapshot.\n"
+                "The partial check is input-side only: the launch environment (run_take.py:172-174) carries no "
+                "prompt-changing variable, not the override GEMINI_SYSTEM_MD (chunk-NR7L3FXV.js:336178-336190), not "
+                "the prompt-dump GEMINI_WRITE_SYSTEM_MD (both refused, run_take.py:508, 511, 963-973), and no "
+                "GEMINI_PROMPT_ section switch (chunk-NR7L3FXV.js:336004-336008), checked by prefix; the rebuilt "
+                "launch command is the adapter's own.\n"
+                "The environment record cannot show these names, which are not key-shaped.\n"
+                "Its tests patch each kind into the launch environment; each must fire.\n"
+                "A reader may conclude no prompt-changing variable was allowed in; not what prompt the model saw.")},
         "T-12:memory": {"reason": "inherited-context", "state": "NOT COMPARABLE",
             "reader": "vendor_gemini_memory_partial", "ruling": (
                 "### T-12:memory (inherited-context): memory offered to the session\n"
-                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
-                "letters; it stands unless the build cites a pinned-source line that upgrades the row.\n"
-                "Gemini CLI 0.64.0 wrote no memory record in any committed walk: no memory tag or key, no "
-                "memory-saving call, and no loaded file outside the workspace (0 of 36 each).\n"
-                "With no record, there is nothing to compare to Claude Code's memory section.\n"
-                "The partial check requires every session-context version to load only project blocks from inside the "
-                "workspace, and the pinned settings to import no further context file.\n"
-                "Its test plants another kind of context block, which must fire.\n"
-                "A reader may conclude only the project's own GEMINI.md was recorded as loaded; not that no memory "
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after the "
+                "settlement review and the source reads, subject to his freeze-gate letters.\n"
+                "Gemini CLI 0.64.0 has no memory tool; it saves memory by editing files (chunk-NR7L3FXV.js:335872).\n"
+                "The walks hold no memory tag or key, no loaded file outside the workspace and no memory-file write "
+                "(0 of 36 each).\n"
+                "Global and private-project memory would enter the unrecorded system instruction "
+                "(chunk-NR7L3FXV.js:381811-381831), so nothing compares to Claude Code's.\n"
+                "The partial check requires in-workspace project blocks only in every session-context version, no "
+                "context import in the pinned settings, the config-folder check refusing both memory files "
+                "(run_take.py:2429-2430), and no memory-file write.\n"
+                "Its tests plant another context block, each memory file, and a memory-file write, each firing.\n"
+                "A reader may conclude only the project's GEMINI.md was recorded as loaded; not that no memory "
                 "reached the model.")},
         "T-13": {"reason": "checkout-binding", "state": "NOT COMPARABLE",
             "reader": "vendor_gemini_checkout_partial", "ruling": (
                 "### T-13 (checkout-binding): the checkout's git state\n"
-                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
-                "letters.\n"
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after the "
+                "settlement review and the source reads, subject to his freeze-gate letters.\n"
                 "Claude Code's check reads the session's own git status: identity, a clean tree, one commit with the "
                 "neutral subject.\n"
-                "Gemini CLI records no git state: no git key outside tool arguments and no git status text in its "
+                "Gemini CLI 0.64.0 records no git state: no git key outside tool arguments, no git status text in its "
                 "session context (0 of 36 each).\n"
-                "The checkout's shape is the driver's construction and the session never observes it.\n"
-                "The partial check reads the one CLI-written fact about the checkout: the root of the recorded "
-                "directory listing must be the launch folder in every version.\n"
-                "There is no partial check of the checkout's state, and the study says so.\n"
+                "The CLI checks for a git folder, adding a fixed section to its unrecorded prompt "
+                "(chunk-NR7L3FXV.js:336254), and runs `git rev-parse --show-toplevel` (gemini-Q2GRYIAK.js:8682), "
+                "recording neither.\n"
+                "The partial check reads the one CLI-written fact: the recorded listing's root must be the launch "
+                "folder in every version.\n"
+                "No partial check covers the checkout's state, and the study says so.\n"
                 "Its test renames the listing root, which must fire.\n"
-                "A reader may conclude nothing about the checkout's git state for this arm.")},
+                "A reader may conclude nothing about the checkout's git state.")},
         "T-14": {"reason": "checkout-binding", "state": "SAME",
             "reader": "vendor_gemini_instruction_content_reads", "fixture": "recorded-gemini-w-g21/transcript.jsonl"},
         "T-17:billing-route": {"reason": "environment-record", "state": "NOT COMPARABLE",
             "reader": "vendor_gemini_billing_route_partial", "ruling": (
                 "### T-17:billing-route (environment-record): Gemini's billing-route variables\n"
-                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
-                "letters.\n"
-                "The environment record the driver writes lists Claude Code's 18 billing names only; no Gemini billing "
-                "name appears in it (0 of 36), and its named variables carry only the Gemini login key.\n"
-                "The session log and stream carry no auth record (0 of 36).\n"
-                "Recording Gemini's names would change a file both accepted readers hash.\n"
-                "The partial check: the record's named variables hold no Gemini billing name, only key- or "
-                "token-shaped names being visible (drive.py:656); the launch environment holds none and the refused "
-                "set covers all (run_take.py:963-973); the pinned auth setting is the API key "
-                "(take_config.py:110-112).\n"
-                "Its test adds `GOOGLE_CLOUD_ACCESS_TOKEN`, which must fire.\n"
-                "The environment record's credential_source is null on every vendor turn (the driver writes Claude "
-                "Code's fields only), so it shows nothing about the vendor's credential.\n"
-                "A reader may conclude these routes were refused before launch, not observed absent in-session.")},
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after the "
+                "settlement review and the source reads, subject to his freeze-gate letters.\n"
+                "The driver's environment record, which both accepted readers hash, lists only Claude Code's 18 "
+                "billing names (Gemini's 0 of 36); its named variables hold only the Gemini login key, its "
+                "credential_source null each vendor turn; session log and stream hold no auth record (0 of 36).\n"
+                "The partial check: the record names none, only key- or token-shaped names showing (drive.py:656); "
+                "the launch environment holds none and the refused set covers all (run_take.py:963-973), "
+                "GOOGLE_GEMINI_BASE_URL included (chunk-NR7L3FXV.js:312898-312902); the pinned auth setting is the "
+                "API key (take_config.py:110-112), read before the environment (gemini-Q2GRYIAK.js:16848).\n"
+                "No overriding /etc/gemini-cli settings (chunk-FLKY6NH5.js:16335-16346) are in the walks' image.\n"
+                "Each leg has a firing test.\n"
+                "A reader may conclude these routes were refused before launch; not observed absent in-session.")},
         "T-18": {"reason": HARNESS_CONDITION_VIOLATED, "state": "NOT COMPARABLE",
             "reader": "vendor_gemini_tools_partial", "ruling": (
                 "### T-18 (harness-condition-violated): denied tools\n"
@@ -4047,11 +4056,11 @@ VENDOR_PENDING_ROWS = {
                 "the 36 walks.\n"
                 "So the offered set cannot be compared to Claude Code's.\n"
                 "The partial check requires that no stream tool call and no session tool call names a denied tool "
-                "(Google web search, web fetch, the sub-agent tool), and that all three sit in the pinned exclude list "
-                "(take_config.py:94, 132, 444-446).\n"
+                "(Google web search, web fetch, the sub-agent tool), and that all three sit in the pinned exclude "
+                "list (take_config.py:94, 132, 444-446).\n"
                 "Across the 36 walks, none of the 2,481 recorded calls names one.\n"
-                "Its test renames one call to web fetch in both its stream and session copies, digests re-bound, which "
-                "must fire.\n"
+                "Its test renames one call to web fetch in both its stream and session copies, digests re-bound, "
+                "which must fire.\n"
                 "A reader may conclude the denied tools were never called; not that they were never offered.")},
     },
 }

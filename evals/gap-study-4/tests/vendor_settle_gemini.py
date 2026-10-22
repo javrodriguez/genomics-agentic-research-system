@@ -96,13 +96,13 @@ MODEL = "gemini-3.8-flash"                      # the register entry of both wal
 TREE21 = "/tmp/run-752c6e21"                    # w-g21's turn-1.jsonl.launch.json cwd
 # The adopted rulings' texts (vendor-settle-NC-RULINGS-2026-10-21.md, arm G, each section's heading and body lines
 # joined by newlines, the Codex rows' form, review 0df1437 NIT 2): sha256 read from that file (whole-file sha256
-# 72b4fdf3...) by the stage X builder.
+# 3c29d72b...) by the stage V builder (last copy).
 RULING_SHA256 = {
-    "T-12:offered-context": "38459c8f370a56c2c2bc1bad62ce9d5868ebc5c208e0ead5798abc24e7bbba1a",
-    "T-12:prompt-snapshot": "10783f6fd3488d4bbaa78ac696f58216c8ce2a5d0cb144d23cb95ccd246282bc",
-    "T-12:memory": "8b16a2a39b257dcba4f11320429ef1114e90916ada3b51abe39ae44536bb0060",
-    "T-13": "bb9df8a2763db8f3aa9860407acbc0192b61e16d57f0fcbbad466c583703916c",
-    "T-17:billing-route": "cacd29aa37ac66a4ec3550dfc975a9bc3a07279e14143620cd60423125a21546",
+    "T-12:offered-context": "6f25807077b7caaecc43c7f4d012a589b0c0d2cc8632e6931d243ac457a6998a",
+    "T-12:prompt-snapshot": "bc7d5500c4d5e29e2c34f63237108751e18baf14d0fadc76bf1e6e93e2eee68a",
+    "T-12:memory": "7481bfa7792b88d6b4c8529ece5304114718dbc5364201239748d428c222e299",
+    "T-13": "6f2018c26831baf57aa36598c40592dd591405314b5dcea4f0d10b5cc75fd632",
+    "T-17:billing-route": "8e6b496e8962b7cec74485fdbb7b26394a4f067e6d017217ef11d850aeafc024",
     "T-18": "3db3238eb5db2707426b61ae075b447304cfc9433e7254514a857db0d4ce5e5b",
 }
 SAME_READERS = {"T-4": "vendor_gemini_run_tree_reads", "T-10": "vendor_gemini_loaded_context_reads",
