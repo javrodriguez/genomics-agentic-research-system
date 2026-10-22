@@ -474,6 +474,22 @@ class C6Refused(Case):
                 with self.subTest(h=h, rel=rel), mock.patch.object(m, "CODEX_SYSTEM_SKILLS", DEMO_MANIFEST):
                     self.refused(t.problems(2), "C6.refused", f"{h}: {rel}", needle)
 
+    def test_gemini_tier1_memory_files_refuse(self):
+        # lane vendor-settle stage Z (2a), GEMINI-S0-READ: Gemini CLI 0.64.0 loads two memory files into its UNRECORDED
+        # system instruction, the global <home>/.gemini/GEMINI.md and the private project memory <project temp>/memory/
+        # ([C] 363483-363518, 381811-381831); in a take <home> is the config folder, so R-CF must refuse each before the
+        # next turn (T-12:memory's ruling leans on this). The take's own slug is planted, as the CLI would write it.
+        for rel in (".gemini/GEMINI.md", "{slug}/memory/MEMORY.md", "{slug}/memory/GEMINI.md", "{slug}/memory"):
+            g = Take(self, "gemini")
+            g.gemini_turn_one()
+            path = rel.replace("{slug}", f".gemini/tmp/{g.slug()}")
+            if path.endswith("/memory"):
+                g.put(path + "/x.md")
+            else:
+                g.put(path)
+            with self.subTest(rel=path):
+                self.refused(g.problems(2), "Z.tier1", f"gemini: {path}", "memory" if "memory" in path else "GEMINI.md")
+
     def test_r4_r5_r6_are_named(self):
         m = self.api()
         for rel, rule in (("plugins/cache/m/x", "R4"), ("cloud-config-bundle-cache.json", "R5"),
