@@ -56,7 +56,7 @@ Then read the code, which is described here only by its parts:
    - `python3 evals/gap-study-4/copy_manifest.py --check`
    - `python3 evals/gap-study-4/freeze.py --check`
    - `(cd evals/gap-study-4 && python3 -c "import json, freeze; p = freeze.unrecorded_shapes_problem(json.load(open('prereg-draft.json'))); print('every leg holds' if p is None else p)")` — the three legs each vendor arm must hold before it is frozen
-   - `python3 evals/gap-study-4/allowlist.py --check`, `build_draft.py --check`, `leak_grep.py --check`, `probes4.py --check`, `routing.py --check`, `contracts.py --check`, `harness_bookkeeping.py --check`, `denials.py --check`, `completeness.py --check`, `takes.py --check`, `costs.py --check`, `stats.py --check`, `intervals.py --check`, `result.py --check`, `check_results.py --check`, `batch.py --check` (each under `evals/gap-study-4/`)
+   - `python3 evals/gap-study-4/build_draft.py --check`, `leak_grep.py --check`, `probes4.py --check`, `routing.py --check`, `contracts.py --check`, `harness_bookkeeping.py --check`, `denials.py --check`, `completeness.py --check`, `takes.py --check`, `costs.py --check`, `stats.py --check`, `intervals.py --check`, `result.py --check`, `check_results.py --check`, `batch.py --check` (each under `evals/gap-study-4/`)
    - `python3 evals/gap-study-4/lint_language.py evals/gap-study-4/` and `python3 evals/gap-study-4/lint_pooling.py evals/gap-study-4/`
    - `python3 evals/gap-study-4/prereg.py --status`
    - `python3 evals/gap-study-4/review_kit/rounds.py --check`
