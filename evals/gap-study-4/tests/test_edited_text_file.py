@@ -378,6 +378,16 @@ class TheEditedTextFileAttachment(unittest.TestCase):
                      "raw line with only the snippet's value cut", "swept whole"):
             self.assertIn(word, dep["text"])
 
+    def test_e_builder_names_the_decoded_cut(self):
+        # lane vendor-settle stage V, glitch-f1's ruling (d): the departure's wording says the cut line is then decoded
+        # (stage K2's sweep), in build_draft's own text; the committed draft takes it when build_draft regenerates it
+        import build_draft
+        (dep,) = [d for d in build_draft.HARNESS_FURNITURE_RULING["departures"] if d["of"] == KIND]
+        for word in ("raw line with only the snippet's value cut", "the cut line is then decoded",
+                     "every copy of a duplicated key kept", "a word after an escaped newline is read as a word",
+                     "swept whole"):
+            self.assertIn(word, dep["text"])
+
     def test_e_witnesses(self):
         for name, old, new in MUTANTS:
             with self.subTest(clause=name):
