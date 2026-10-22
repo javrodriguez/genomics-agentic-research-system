@@ -1,0 +1,8 @@
+# Lane vendor-settle stage C (glitch-f1's settle-design rulings, the review's MAJORs 2 and 3, the adopted NOT COMPARABLE
+# rulings and the stage C brief, Wed 21-Thu 22 Oct 2026, under Javier's standing delegation): the Codex rows settled
+# (6 SAME on the RECORDED w-o46 take, 6 NOT COMPARABLE with glitch-f1's ruling texts), their readers handed in at their
+# sites, the 15 Codex READER items on w-o46, leg i's recorded drive of codex_adapter prepared for stage V, and K's open
+# point 2 (a returned JSON text read decoded by the reach). One command per line, run from the repository root; RECORDED
+# copies and synthetic records only, no take, model, container or network.
+python3 -B -W ignore evals/gap-study-4/tests/vendor_settle_codex.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 check_take.py mode_binding.py tests/vendor_settle_codex.py tests/test_mode_binding.py

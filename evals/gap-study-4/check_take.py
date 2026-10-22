@@ -2821,11 +2821,57 @@ def denied_tool_problems(path: Path) -> list[str]:
 #   text can also close another key (`"x\"snippet":`) and miss an escaped spelling of the real key, so the cut is kept
 #   only when it removes exactly the parsed snippet from a line without duplicate keys (three guards below). In every
 #   other case the line is swept whole: fail closed.
+#   STAGE K2 (glitch-f1's ruling "CONTEXT-SWEEP GAP read", Wed 21 Oct 2026, 22:26 EDT, option A, under Javier's
+#   standing delegation; lane vendor-settle; evidence /Users/javrodher/aegis-builds/CTX-SWEEP-GAP-20261021.md). In the
+#   raw line a newline is the two characters `\n`, so a word at a line start read `nword` and context_leaks' word
+#   boundary never saw it (34,481 such word starts in the 151 Claude walks, none before a leak word). The cut above is
+#   unchanged (_cut_attachment_line, the raw line with only the snippet's value emptied, every guard kept); the sweep
+#   now reads its DECODED text (_decoded_text): every key and every value, strings decoded, a duplicated key's every
+#   copy kept, so nothing the raw line shows is lost and an escaped word start is a word start. context_text's own
+#   lines (round 3's, w6j's banner) are untouched; tests/test_context_sweep.py plants the escaped cases.
 _SNIPPET_KEY = re.compile(r'"snippet"\s*:\s*(?=")')
 
 
 def _swept_attachment_line(rec: dict, line: str) -> str:
-    """The text context_text sweeps for one attachment record: the raw line, with an admitted edited_text_file's
+    """The text context_text sweeps for one attachment record (stage K2): the decoded text of the raw line with an
+    admitted edited_text_file's snippet value (and only it) emptied, or of the whole line otherwise."""
+    return _decoded_text(_cut_attachment_line(rec, line))
+
+
+class _AllPairs(list):
+    """A JSON object read as its (key, value) pairs in order, every duplicated key's copies kept (never a dict)."""
+
+
+def _decoded_text(line: str) -> str:
+    """Every key and every value of the JSON line `line`, in order, joined by spaces: strings decoded (an escaped
+    newline is a newline, `\\u0065` is `e`), other scalars as JSON spells them, a duplicated key's every copy kept. A
+    line that does not parse as JSON is returned as it is (context_text sweeps only lines that parse)."""
+    try:
+        doc = json.loads(line, object_pairs_hook=_AllPairs)
+    except ValueError:
+        return line
+    out: list = []
+    stack = [doc]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, _AllPairs):
+            for key, value in reversed(node):
+                stack.append(value)
+                stack.append(("key", key))
+        elif isinstance(node, list):
+            stack.extend(reversed(node))
+        elif isinstance(node, tuple):
+            key = node[1]
+            out.append(key)
+        elif isinstance(node, str):
+            out.append(node)
+        else:
+            out.append(json.dumps(node))
+    return " ".join(out)
+
+
+def _cut_attachment_line(rec: dict, line: str) -> str:
+    """The raw line the sweep decodes for one attachment record: the raw line, with an admitted edited_text_file's
     snippet value (and only it) replaced by an empty string; anything else, or a snippet not located once, whole."""
     att = rec.get("attachment")
     if not (isinstance(att, dict) and transcript_view.is_edited_text_file(att)):
@@ -3761,7 +3807,9 @@ def _drop(p) -> None:
 # =====================================================================================================================
 
 VENDOR_HARNESSES = ("codex", "gemini")
-VENDOR_CHECK_SHAPES_SOURCE = {"codex": "documented", "gemini": "documented"}
+# Lane vendor-settle stage V (glitch-f1's settle rulings, Thu 22 Oct 2026): "recorded" for both harnesses, every row
+# settled and every READER item on its RECORDED take (vendor_shapes_problems [] for both).
+VENDOR_CHECK_SHAPES_SOURCE = {"codex": "recorded", "gemini": "recorded"}
 VENDOR_SHAPES_SOURCES = ("documented", "recorded")
 VENDOR_ROW_STATES = (PENDING, "SAME", "NOT COMPARABLE")
 VENDOR_ROW_KEYS = {PENDING: {"reason", "state"}, "SAME": {"reason", "state", "fixture", "reader"},
@@ -3771,31 +3819,249 @@ VENDOR_ROW_KEYS = {PENDING: {"reason", "state"}, "SAME": {"reason", "state", "fi
 VENDOR_FIXTURE_CLI = {"codex": "codex-cli", "gemini": "gemini-cli"}
 VENDOR_PENDING_ROWS = {
     "codex": {
-        "T-5": {"reason": "unknown-harness-origin", "state": PENDING},
-        "T-8:file-change": {"reason": TRANSCRIPT_UNREADABLE, "state": PENDING},
-        "T-10": {"reason": "leak-in-loaded-context", "state": PENDING},
-        "T-12:offered-context": {"reason": "inherited-context", "state": PENDING},
-        "T-12:instruction-files": {"reason": "inherited-context", "state": PENDING},
-        "T-12:prompt-snapshot": {"reason": "inherited-context", "state": PENDING},
-        "T-12:memory": {"reason": "inherited-context", "state": PENDING},
-        "T-13": {"reason": "checkout-binding", "state": PENDING},
-        "T-14": {"reason": "checkout-binding", "state": PENDING},
-        "T-16": {"reason": "constant-binding", "state": PENDING},
-        "T-17:billing-route": {"reason": "environment-record", "state": PENDING},
-        "T-18": {"reason": HARNESS_CONDITION_VIOLATED, "state": PENDING},
+        # Lane vendor-settle stage C: 6 SAME rows on the RECORDED w-o46 take, 6 NOT COMPARABLE rows whose "ruling" is
+        # glitch-f1's adopted text verbatim (plans/gap-study-round-4/vendor-settle-NC-RULINGS-2026-10-21.md in the
+        # Glitch Brain, sha256 3c29d72b7bcf090ce4bcc45c57c6c3ad004f19bfa36edab248796de8f9d76945 after glitch-f1's
+        # 22 Oct amendments and the adopted text batch after the two source reads, copied by stage V's last step).
+        "T-5": {"reason": "unknown-harness-origin", "state": "SAME",
+            "fixture": "recorded-codex-w-o46/transcript.jsonl",
+            "reader": "vendor_codex_origin_reads"},
+        "T-8:file-change": {"reason": TRANSCRIPT_UNREADABLE, "state": "NOT COMPARABLE",
+            "reader": "vendor_file_change_reads",
+            "ruling": (
+                     "### T-8:file-change (transcript-unreadable): file edits through Codex's patch tool\n"
+                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after "
+                     "the settlement review and the source reads, subject to his freeze-gate letters.\n"
+                     "Codex 0.162.1 records a patch-tool edit as a file_change stream item and a FileChange rollout "
+                     "item and, in code mode, as tools.apply_patch in the exec script "
+                     "(core/src/tools/code_mode/mod.rs:337-373, openai/codex 092d3acd).\n"
+                     "No GPT walk holds any of them (0 of 38): 216 exec calls ran 226 shell commands and no other "
+                     "tool, none naming apply_patch.\n"
+                     "The partial check (check_take.py, vendor_file_change_reads) refuses an unjoined change, a "
+                     "rename, an unjoined tools.apply_patch script, and a command naming the apply_patch alias, which "
+                     "leaves no patch record (arg0/src/lib.rs:325-340).\n"
+                     "Its synthetic tests, one per case, must each refuse; an empty reader goes red.\n"
+                     "A reader may conclude no walk edited files through the patch tool or its alias; not that "
+                     "patch-tool reading was proven on real sessions."),
+        },
+        "T-10": {"reason": "leak-in-loaded-context", "state": "SAME",
+            "fixture": "recorded-codex-w-o46/transcript.jsonl",
+            "reader": "vendor_codex_loaded_context_reads"},
+        "T-12:offered-context": {"reason": "inherited-context", "state": "NOT COMPARABLE",
+            "reader": "vendor_codex_offered_partial",
+            "ruling": (
+                     "### T-12:offered-context (inherited-context): extra directories and offered connector tools\n"
+                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after "
+                     "the settlement review and the source reads, subject to his freeze-gate letters.\n"
+                     "Codex 0.162.1 records its workspace roots (the session folder, 38 of 38 walks), added and "
+                     "dynamic tools (0 of 38 each), but no list of its built-in tools.\n"
+                     "Its apps section reads off for these models whatever is offered; the apps feature is on by "
+                     "default (core/src/session/world_state.rs:287-302; features/src/lib.rs:1462-1466; openai/codex "
+                     "092d3acd).\n"
+                     "The partial check requires every root list be the session folder, no recommended_plugins "
+                     "section (take_config.py:231-262), no added or dynamic tool, only system-folder skills, and no "
+                     "exec script calling a non-shell tool (0 of 216 do).\n"
+                     "Its tests plant an outside root, a dynamic tool or a non-shell call, each firing.\n"
+                     "A reader may conclude extra directories are comparable and no connector tool was called; not "
+                     "that none was offered."),
+        },
+        "T-12:instruction-files": {"reason": "inherited-context", "state": "SAME",
+            "fixture": "recorded-codex-w-o46/transcript.jsonl",
+            "reader": "vendor_codex_instruction_files_reads"},
+        "T-12:prompt-snapshot": {"reason": "inherited-context", "state": "SAME",
+            "fixture": "recorded-codex-w-o46/transcript.jsonl",
+            "reader": "vendor_codex_prompt_reads"},
+        "T-12:memory": {"reason": "inherited-context", "state": "NOT COMPARABLE",
+            "reader": "vendor_codex_memory_partial",
+            "ruling": (
+                     "### T-12:memory (inherited-context): memory offered to the session\n"
+                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after "
+                     "the settlement review and the source reads, subject to his freeze-gate letters.\n"
+                     "Codex 0.162.1's features.memories is off by default (features/src/lib.rs:1230-1235, "
+                     "openai/codex 092d3acd) and in the pinned configuration.\n"
+                     "Its memory-generation setting kept its default, on (config/src/types.rs:376-381): memory_mode, "
+                     "written only if off (rollout/src/recorder.rs:976), is absent in 38 of 38 walks; generation runs "
+                     "only with the feature on (memories/write/src/start.rs:33-38).\n"
+                     "No walk holds a memory section (0 of 38): nothing compares.\n"
+                     "The partial check requires the feature off, world-state keys within the two recorded sets, no "
+                     "memory-named key but memory_mode \"disabled\", and no instruction section beyond the six "
+                     "recorded kinds.\n"
+                     "Its tests turn the feature on or plant a \"## Memory\" developer section; each must fire.\n"
+                     "A reader may conclude the feature was off and no memory section recorded; not that none reached "
+                     "the model."),
+        },
+        "T-13": {"reason": "checkout-binding", "state": "NOT COMPARABLE",
+            "reader": "vendor_codex_checkout_partial",
+            "ruling": (
+                     "### T-13 (checkout-binding): the checkout's git state\n"
+                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after "
+                     "the settlement review and the source reads, subject to his freeze-gate letters.\n"
+                     "Claude Code's check reads the session's own git status: identity, a clean tree, one commit with "
+                     "the neutral subject.\n"
+                     "Codex 0.162.1 records only the commit and branch it reads itself (git-utils/src/info.rs:77-122, "
+                     "openai/codex 092d3acd): `main` and a 40-character hash in 38 of 38, no origin URL (0 of 38); no "
+                     "hash appears elsewhere in its walk, so none ties to the driver's checkout.\n"
+                     "It reads the tree's dirty state (core/src/turn_metadata.rs:573-597), recorded nowhere (0 of "
+                     "38).\n"
+                     "The partial check requires exactly one git record, branch `main` (drive.py:381), and a "
+                     "40-character hash.\n"
+                     "Its test empties the record, or renames the branch; each must fire.\n"
+                     "A reader may conclude the session opened on `main`; not that the checkout was clean or neutral."),
+        },
+        "T-14": {"reason": "checkout-binding", "state": "SAME",
+            "fixture": "recorded-codex-w-o46/transcript.jsonl",
+            "reader": "vendor_codex_instruction_content_reads"},
+        "T-16": {"reason": "constant-binding", "state": "SAME",
+            "fixture": "recorded-codex-w-o46/transcript.jsonl",
+            "reader": "vendor_codex_recorded_mode_reads"},
+        "T-17:billing-route": {"reason": "environment-record", "state": "NOT COMPARABLE",
+            "reader": "vendor_billing_route_partial",
+            "ruling": (
+                     "### T-17:billing-route (environment-record): Codex's billing-route variables\n"
+                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after "
+                     "the settlement review and the source reads, subject to his freeze-gate letters.\n"
+                     "The driver's environment record lists only Claude Code's 18 billing names (Codex's 0 of 38; "
+                     "credential_source null each vendor turn); recording Codex's would change a file both accepted "
+                     "readers hash.\n"
+                     "Five partial-check legs: the record names no Codex billing variable, only key- or token-shaped "
+                     "names showing (drive.py:656); the launch environment holds none and the refused set covers all "
+                     "(run_take.py:963-973); the launcher refuses CODEX_HOME/.env, which could set them in-process "
+                     "(run_take.py:2413); forced_login_method = \"chatgpt\" (take_config.py:61) logs out an API-key "
+                     "or Bedrock login (login/src/auth/manager.rs:1351-1371, openai/codex 092d3acd); every session "
+                     "records the OpenAI provider and a ChatGPT plan (38 of 38).\n"
+                     "Its tests break each leg; each must fire.\n"
+                     "A reader may conclude these routes were refused before launch; not observed absent in-session."),
+        },
+        "T-18": {"reason": HARNESS_CONDITION_VIOLATED, "state": "NOT COMPARABLE",
+            "reader": "vendor_codex_tools_partial",
+            "ruling": (
+                     "### T-18 (harness-condition-violated): denied tools\n"
+                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after "
+                     "the settlement review and the source reads, subject to his freeze-gate letters.\n"
+                     "Codex 0.162.1 records no offered-tool list (0 of 38), but each turn context records "
+                     "multi_agent_version (protocol/src/protocol.rs:3353, openai/codex 092d3acd): v2 in 31 walks, "
+                     "disabled in 7.\n"
+                     "For these models it renders two multi-agent sections exactly when its six collaboration tools "
+                     "are offered (take_config.py:263-284), and a plugin-recommendation section with a plugin-install "
+                     "tool (take_config.py:231-262).\n"
+                     "The partial check requires multi_agent_version disabled, neither section, no added tool, and "
+                     "pinned settings turning agents, plugins and web search off (take_config.py:61, 67-69, 78, "
+                     "406-411).\n"
+                     "It fires on the 31 walks before agents were turned off.\n"
+                     "Its tests plant the section or v2 into w-o47, each firing.\n"
+                     "A reader may conclude no collaboration or plugin tool was offered after that change; web search "
+                     "is bound by settings only."),
+        },
     },
     "gemini": {
-        "T-4": {"reason": "readers-disagree", "state": PENDING},
-        "T-10": {"reason": "leak-in-loaded-context", "state": PENDING},
-        "T-11": {"reason": "inherited-context", "state": PENDING},
-        "T-12:offered-context": {"reason": "inherited-context", "state": PENDING},
-        "T-12:instruction-files": {"reason": "inherited-context", "state": PENDING},
-        "T-12:prompt-snapshot": {"reason": "inherited-context", "state": PENDING},
-        "T-12:memory": {"reason": "inherited-context", "state": PENDING},
-        "T-13": {"reason": "checkout-binding", "state": PENDING},
-        "T-14": {"reason": "checkout-binding", "state": PENDING},
-        "T-17:billing-route": {"reason": "environment-record", "state": PENDING},
-        "T-18": {"reason": HARNESS_CONDITION_VIOLATED, "state": PENDING},
+        "T-4": {"reason": "readers-disagree", "state": "SAME",
+            "reader": "vendor_gemini_run_tree_reads", "fixture": "recorded-gemini-w-g21/transcript.jsonl"},
+        "T-10": {"reason": "leak-in-loaded-context", "state": "SAME",
+            "reader": "vendor_gemini_loaded_context_reads", "fixture": "recorded-gemini-w-g21/transcript.jsonl"},
+        "T-11": {"reason": "inherited-context", "state": "SAME",
+            "reader": "vendor_gemini_cwd_reads", "fixture": "recorded-gemini-w-g21/transcript.jsonl"},
+        "T-12:offered-context": {"reason": "inherited-context", "state": "NOT COMPARABLE",
+            "reader": "vendor_gemini_offered_partial", "ruling": (
+                "### T-12:offered-context (inherited-context): extra directories and tool servers\n"
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after the "
+                "settlement review and the source reads, subject to his freeze-gate letters.\n"
+                "Gemini CLI 0.64.0 records its workspace directories from any source "
+                "(chunk-NR7L3FXV.js:336318-336340): exactly the launch folder in every session-context version, "
+                "resumes included, in 36 of 36 walks.\n"
+                "It records no tool servers or extensions (0 of 36).\n"
+                "The partial check requires every session-context version, read from the raw records, to list exactly "
+                "the launch folder; the rebuilt launch command runs (check_take.py, "
+                "vendor_offered_context_problems).\n"
+                "Its test, a second workspace directory, must fire.\n"
+                "Servers and extensions are bound by the pinned settings, launch command, config-folder check "
+                "(run_take.py:2381-2437) and workspace guard (settings_guard.py:83-86); the walks' image holds no "
+                "overriding /etc/gemini-cli settings (chunk-FLKY6NH5.js:16335-16346).\n"
+                "Two built-in skills are offered, unrecorded (chunk-NR7L3FXV.js:366405-366415).\n"
+                "A reader may conclude extra directories are comparable; not which servers, extensions or skills were "
+                "offered.")},
+        "T-12:instruction-files": {"reason": "inherited-context", "state": "SAME",
+            "reader": "vendor_gemini_instruction_files_reads", "fixture": "recorded-gemini-w-g21/transcript.jsonl"},
+        "T-12:prompt-snapshot": {"reason": "inherited-context", "state": "NOT COMPARABLE",
+            "reader": "vendor_gemini_prompt_partial", "ruling": (
+                "### T-12:prompt-snapshot (inherited-context): the system prompt\n"
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after the "
+                "settlement review and the source reads, subject to his freeze-gate letters.\n"
+                "Gemini CLI 0.64.0 writes no system-prompt record in its session log or stream: no prompt or "
+                "instruction key in any of the 36 walks.\n"
+                "So the prompt cannot be compared to Claude Code's prompt snapshot.\n"
+                "The partial check is input-side only: the launch environment (run_take.py:172-174) carries no "
+                "prompt-changing variable, not the override GEMINI_SYSTEM_MD (chunk-NR7L3FXV.js:336178-336190), not "
+                "the prompt-dump GEMINI_WRITE_SYSTEM_MD (both refused, run_take.py:508, 511, 963-973), and no "
+                "GEMINI_PROMPT_ section switch (chunk-NR7L3FXV.js:336004-336008), checked by prefix; the rebuilt "
+                "launch command is the adapter's own.\n"
+                "The environment record cannot show these names, which are not key-shaped.\n"
+                "Its tests patch each kind into the launch environment; each must fire.\n"
+                "A reader may conclude no prompt-changing variable was allowed in; not what prompt the model saw.")},
+        "T-12:memory": {"reason": "inherited-context", "state": "NOT COMPARABLE",
+            "reader": "vendor_gemini_memory_partial", "ruling": (
+                "### T-12:memory (inherited-context): memory offered to the session\n"
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after the "
+                "settlement review and the source reads, subject to his freeze-gate letters.\n"
+                "Gemini CLI 0.64.0 has no memory tool; it saves memory by editing files (chunk-NR7L3FXV.js:335872).\n"
+                "The walks hold no memory tag or key, no loaded file outside the workspace and no memory-file write "
+                "(0 of 36 each).\n"
+                "Global and private-project memory would enter the unrecorded system instruction "
+                "(chunk-NR7L3FXV.js:381811-381831), so nothing compares to Claude Code's.\n"
+                "The partial check requires in-workspace project blocks only in every session-context version, no "
+                "context import in the pinned settings, the config-folder check refusing both memory files "
+                "(run_take.py:2429-2430), and no memory-file write.\n"
+                "Its tests plant another context block, each memory file, and a memory-file write, each firing.\n"
+                "A reader may conclude only the project's GEMINI.md was recorded as loaded; not that no memory "
+                "reached the model.")},
+        "T-13": {"reason": "checkout-binding", "state": "NOT COMPARABLE",
+            "reader": "vendor_gemini_checkout_partial", "ruling": (
+                "### T-13 (checkout-binding): the checkout's git state\n"
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after the "
+                "settlement review and the source reads, subject to his freeze-gate letters.\n"
+                "Claude Code's check reads the session's own git status: identity, a clean tree, one commit with the "
+                "neutral subject.\n"
+                "Gemini CLI 0.64.0 records no git state: no git key outside tool arguments, no git status text in its "
+                "session context (0 of 36 each).\n"
+                "The CLI checks for a git folder, adding a fixed section to its unrecorded prompt "
+                "(chunk-NR7L3FXV.js:336254), and runs `git rev-parse --show-toplevel` (gemini-Q2GRYIAK.js:8682), "
+                "recording neither.\n"
+                "The partial check reads the one CLI-written fact: the recorded listing's root must be the launch "
+                "folder in every version.\n"
+                "No partial check covers the checkout's state, and the study says so.\n"
+                "Its test renames the listing root, which must fire.\n"
+                "A reader may conclude nothing about the checkout's git state.")},
+        "T-14": {"reason": "checkout-binding", "state": "SAME",
+            "reader": "vendor_gemini_instruction_content_reads", "fixture": "recorded-gemini-w-g21/transcript.jsonl"},
+        "T-17:billing-route": {"reason": "environment-record", "state": "NOT COMPARABLE",
+            "reader": "vendor_gemini_billing_route_partial", "ruling": (
+                "### T-17:billing-route (environment-record): Gemini's billing-route variables\n"
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after the "
+                "settlement review and the source reads, subject to his freeze-gate letters.\n"
+                "The driver's environment record, which both accepted readers hash, lists only Claude Code's 18 "
+                "billing names (Gemini's 0 of 36); its named variables hold only the Gemini login key, its "
+                "credential_source null each vendor turn; session log and stream hold no auth record (0 of 36).\n"
+                "The partial check: the record names none, only key- or token-shaped names showing (drive.py:656); "
+                "the launch environment holds none and the refused set covers all (run_take.py:963-973), "
+                "GOOGLE_GEMINI_BASE_URL included (chunk-NR7L3FXV.js:312898-312902); the pinned auth setting is the "
+                "API key (take_config.py:110-112), read before the environment (gemini-Q2GRYIAK.js:16848).\n"
+                "No overriding /etc/gemini-cli settings (chunk-FLKY6NH5.js:16335-16346) are in the walks' image.\n"
+                "Each leg has a firing test.\n"
+                "A reader may conclude these routes were refused before launch; not observed absent in-session.")},
+        "T-18": {"reason": HARNESS_CONDITION_VIOLATED, "state": "NOT COMPARABLE",
+            "reader": "vendor_gemini_tools_partial", "ruling": (
+                "### T-18 (harness-condition-violated): denied tools\n"
+                "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate "
+                "letters.\n"
+                "Gemini CLI records which tools were called, not which were offered: no offered-tool list in any of "
+                "the 36 walks.\n"
+                "So the offered set cannot be compared to Claude Code's.\n"
+                "The partial check requires that no stream tool call and no session tool call names a denied tool "
+                "(Google web search, web fetch, the sub-agent tool), and that all three sit in the pinned exclude "
+                "list (take_config.py:94, 132, 444-446).\n"
+                "Across the 36 walks, none of the 2,481 recorded calls names one.\n"
+                "Its test renames one call to web fetch in both its stream and session copies, digests re-bound, "
+                "which must fire.\n"
+                "A reader may conclude the denied tools were never called; not that they were never offered.")},
     },
 }
 
@@ -3863,11 +4129,43 @@ def vendor_rows_problems(harness: str) -> list:
 # but its PENDING ones, row 19's N/A and row 22's refusal-only NOT COMPARABLE; rows 15 for O and 16 for G are NOT
 # COMPARABLE rows whose partial check is a reader), each naming the RECORDED fixture its reader was re-tested on
 # (plan section 8: its reading equal to an independent expected value on a named recorded record), or None until then.
+# Lane vendor-settle stage K: one literal line per item, so the Codex builder edits only "codex" lines and the Gemini
+# builder only "gemini" lines (each value a "<folder>/<file>" RECORDED fixture once its item is re-tested).
 VENDOR_READER_ITEMS = {
-    "codex": dict.fromkeys(("T-1", "T-2", "T-3", "T-4", "T-6", "T-7", "T-8", "T-9", "T-11", "T-15", "T-17", "T-20",
-                            "T-21", "T-23", "T-24")),
-    "gemini": dict.fromkeys(("T-1", "T-2", "T-3", "T-5", "T-6", "T-7", "T-8", "T-9", "T-15", "T-16", "T-17", "T-20",
-                             "T-21", "T-23", "T-24")),
+    "codex": {
+        "T-1": "recorded-codex-w-o46/transcript.jsonl",
+        "T-2": "recorded-codex-w-o46/transcript.jsonl",
+        "T-3": "recorded-codex-w-o46/transcript.jsonl",
+        "T-4": "recorded-codex-w-o46/transcript.jsonl",
+        "T-6": "recorded-codex-w-o46/transcript.jsonl",
+        "T-7": "recorded-codex-w-o46/transcript.jsonl",
+        "T-8": "recorded-codex-w-o46/transcript.jsonl",
+        "T-9": "recorded-codex-w-o46/transcript.jsonl",
+        "T-11": "recorded-codex-w-o46/transcript.jsonl",
+        "T-15": "recorded-codex-w-o46/transcript.jsonl",
+        "T-17": "recorded-codex-w-o46/transcript.jsonl",
+        "T-20": "recorded-codex-w-o46/transcript.jsonl",
+        "T-21": "recorded-codex-w-o46/transcript.jsonl",
+        "T-23": "recorded-codex-w-o46/transcript.jsonl",
+        "T-24": "recorded-codex-w-o46/transcript.jsonl",
+    },
+    "gemini": {
+        "T-1": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-2": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-3": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-5": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-6": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-7": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-8": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-9": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-15": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-16": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-17": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-20": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-21": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-23": "recorded-gemini-w-g21/transcript.jsonl",
+        "T-24": "recorded-gemini-w-g21/transcript.jsonl",
+    },
 }
 
 
@@ -4067,7 +4365,8 @@ def _codex_rollout_records(raw: bytes, where: str) -> list:
             raise VendorUnreadable(f"{at}: a response_item {kind}, which the vendor readers refuse")
         if kind in CODEX_RESPONSE_READ:
             got = _vendor_split(pay, kind, at, VENDOR_JSON_DOCUMENTS["codex"].get(kind, ()))
-            out.append((at, {}, {**got[1], **got[2]}) if kind in CODEX_RESPONSE_RETURNED else got)
+            out.append((at, {}, vendor_codex_returned_documents({**got[1], **got[2]}))
+                       if kind in CODEX_RESPONSE_RETURNED else got)      # lane vendor-settle C1 (K's open point 2)
         elif kind not in CODEX_RESPONSE_NOT_TOOL:
             raise VendorUnreadable(f"{at}: a response_item {kind!r} outside the readers' partition")
     return out
@@ -4204,13 +4503,16 @@ def vendor_reach(path, harness, repo: Path | None = None, *, run_tree: str | Non
 # to the ledger's `sent`), first bound to the CLI-written user record of every turn (vendor_operator_problems,
 # readers-disagree, run before the view so a differing gemini stream reads readers-disagree, never
 # transcript-unreadable); the agent's text per turn is the bound view's; reach is P1's raw readers with the home and
-# temp legs on the session's own working directory (codex: the rollout's turn_context.cwd, T-11; gemini: none, T-4 and
-# T-11 are PENDING, so its legs admit no tree, which errs strict; no vendor temp or home path is masked). Section 1b's
-# readings are vendor_round4_problems: the run tree (T-4), the mode (T-16), the denied tools (T-18), stream lines no
-# parser read, nested-agent switches in the CLI's own commands, and codex file_change content (T-8). Every PENDING leg
-# is raised through vendor_pending at its one site, its harness and key written as literals (VP-keys), with no reader
-# yet. P3 adds the entries that hold check4's preamble and lift the event lines (study, email, outside); P4 the session
-# store and binding legs 1-5; P5 the model, the environment record and the merged constants.
+# temp legs on the session's own working directory (codex: the rollout's turn_context.cwd, T-11; gemini: the one
+# workspace directory its <session_context> records, lane vendor-settle stage G's MINOR 5; no vendor temp or home path
+# is masked). Section 1b's readings are vendor_round4_problems: the run tree (T-4), the mode (T-16), the denied tools
+# (T-18), stream lines no parser read, nested-agent switches in the CLI's own commands, and codex file_change content
+# (T-8). Every table row these legs read is raised through vendor_pending at its one site, its harness and key written
+# as literals (VP-keys); lane vendor-settle (stages C, G and V, 21-22 Oct 2026) settled every row, SAME with its
+# reader or NOT COMPARABLE with glitch-f1's ruling and its partial check, so each site now hands in its row's reader
+# (the PENDING refusal stays the road for a row put back). P3 adds the entries that hold check4's preamble and lift
+# the event lines (study, email, outside); P4 the session store and binding legs 1-5; P5 the model, the environment
+# record and the merged constants.
 import codex_adapter as _codex_adapter  # noqa: E402
 import gemini_adapter as _gemini_adapter  # noqa: E402
 import gemini_stream_join as _gemini_join  # noqa: E402
@@ -4303,11 +4605,80 @@ def _vendor_turns(events) -> list:
     return out
 
 
-def vendor_origin_problems(harness) -> list:
-    """unknown-harness-origin (T-5): codex PENDING (the rollout's response_item messages are read by no reader yet);
-    gemini's non-operator user record is an extra interaction or a `sent` mismatch, vendor_operator_problems'
-    readers-disagree."""
-    return vendor_pending("codex", "T-5", None) if harness == "codex" else []
+def vendor_constant_problems(path, harness, ledger, pre) -> list:
+    """constant_problems for a vendor take or walk (glitch-f1's ruling on stage C's hand-back, lane vendor-settle stage
+    V): the ledger's budget and gars tree as constant_problems reads them, and the permission mode from the record this
+    harness writes, by mode_binding's one reading, never the ledger's "unrecorded": codex, the last retained rollout's
+    turn_context pairs (mode_binding.codex_recorded_mode, CLI-written); gemini, every turn's launch argv
+    (mode_binding.argv_mode, input side: the CLI writes no mode record), each line naming its source. A record that
+    cannot be read is a constant-binding line, never a pass."""
+    if not ledger:
+        return constant_problems(ledger, pre)
+    want = mode_for_arm(pre, ledger.get("arm"))
+    out = constant_problems(dict(ledger, permission_mode=want), pre)          # the budget and gars tree legs
+    folder = Path(path).parent
+    if harness == "codex":
+        value, why = _mode_binding.codex_recorded_mode(folder, ledger)
+        source = _mode_binding.CODEX_SOURCE
+    else:
+        # glitch-f1's merge-5 ruling (a): lane freeze-gates-fix S10's one reading of the registered invocation
+        value, why = _mode_binding.argv_mode(folder, ledger, want)
+        source = _mode_binding.ARGV_SOURCE
+    if value != want:
+        out.append(f"[constant-binding] the take ran in permission mode {value!r} by its {source}, not the "
+                   f"pre-registered {want!r}")
+    out += [f"[constant-binding] the permission mode's {source}: {w}" for w in why]
+    return out
+
+
+def vendor_continuation_turns(path, harness, turns) -> list:
+    """The turn list required_steps' stop reading and continuation_problems read (glitch-f1's ruling on stage G's
+    hand-back, lane vendor-settle stage V, and stage W ruling 3): for gemini, one message's delta chunks joined as gemini_adapter.read_stream joins them (consecutive assistant
+    chunks with delta true, no separator; any other record ends the run), since the bound view writes each chunk as its
+    own agent-text event (transcript_gemini.py, a READER_SOURCES file, left as it is) and continuation_problems joins
+    agent texts with newlines, which read a marker streamed across two chunks as absent (w-g14, w-g31, w-g39 turn 1).
+    The streams are read as the envelopes bind them; when their assistant chunks are not the view's agent texts one for
+    one, or a stream cannot be read, the view's turns are returned as they are (unjoined: never a pass the view's own
+    reading would not give). codex: the turns unchanged."""
+    if harness != "gemini":
+        return turns
+    chunks = []                                            # (text, continues the chunk before it)
+    try:
+        for env in _vendor_envelopes(path):
+            open_run = False
+            for line in _vendor_stream(path, env).split("\n"):
+                if not line.strip():
+                    continue
+                r = json.loads(line)
+                if r.get("type") == "message" and r.get("role") == "assistant":
+                    chunks.append((r.get("content"), r.get("delta") is True and open_run))
+                    open_run = r.get("delta") is True
+                else:
+                    open_run = False
+    except _VENDOR_READ_ERRORS + (ValueError, KeyError, TypeError, AttributeError):
+        return turns
+    if [t["text"] for t in turns if t["role"] == "assistant"] != [c for c, _ in chunks]:
+        return turns
+    out, k = [], 0
+    for t in turns:
+        if t["role"] != "assistant":
+            out.append(t)
+            continue
+        if chunks[k][1] and out and out[-1]["role"] == "assistant":
+            out[-1] = {"role": "assistant", "text": out[-1]["text"] + t["text"]}
+        else:
+            out.append(dict(t))
+        k += 1
+    return out
+
+
+def vendor_origin_problems(path, harness, design) -> list:
+    """unknown-harness-origin (T-5): codex SAME, vendor_codex_origin_reads (lane vendor-settle stage C: the rollout's
+    user and developer message parts placed); gemini's non-operator user record is an extra interaction or a `sent`
+    mismatch, vendor_operator_problems' readers-disagree. (`design` is unread here.)"""
+    if harness == "codex":
+        return vendor_pending("codex", "T-5", vendor_codex_origin_reads, path)
+    return []
 
 
 def vendor_first_turn_problems(events) -> list:
@@ -4383,17 +4754,24 @@ def vendor_leak_problems(ops, pre) -> list:
             "is void: a leak does not show in the verdict, it simply looks like a pass."]
 
 
-def vendor_loaded_context_problems(harness) -> list:
-    """leak-in-loaded-context (T-10): PENDING for both until a recorded walk shows the instruction and environment
-    records the CLI loads (R-6's files are placed by walk_builders.build_run_tree)."""
-    return vendor_pending("codex", "T-10", None) if harness == "codex" else vendor_pending("gemini", "T-10", None)
+def vendor_loaded_context_problems(path, harness, design) -> list:
+    """leak-in-loaded-context (T-10): SAME for both (lane vendor-settle stages C and G): context_leaks over the decoded
+    text of the context records the CLI wrote, codex's session_meta, world_state, developer sections and AGENTS.md and
+    environment parts (vendor_codex_loaded_context_reads), gemini's every <session_context> version
+    (vendor_gemini_loaded_context_reads)."""
+    if harness == "codex":
+        return vendor_pending("codex", "T-10", vendor_codex_loaded_context_reads, path, design.pre)
+    else:
+        return vendor_pending("gemini", "T-10", vendor_gemini_loaded_context_reads, path, design)
 
 
 def vendor_session_cwd(path, harness):
     """The working directory the session recorded: codex, the one turn_context.cwd every turn of the last retained
-    rollout carries (None when they differ, or none can be read); gemini, None (no native cwd, T-4 and T-11)."""
+    rollout carries (None when they differ, or none can be read); gemini, the one workspace directory every version
+    of its CLI-written session context records (vendor_gemini_session_cwd; lane vendor-settle stage G, the review's
+    MINOR 5, once T-4 and T-11 settle SAME)."""
     if harness != "codex":
-        return None
+        return vendor_gemini_session_cwd(path) if harness == "gemini" else None
     try:
         raw = _vendor_last_snapshot(path, _binding._json(_binding._regular_bytes(
             Path(path).parent / "driver-ledger.json").decode("utf-8")))
@@ -4404,11 +4782,12 @@ def vendor_session_cwd(path, harness):
     return cwd if isinstance(cwd, str) and cwd else None
 
 
-def vendor_inherited_cwd_problems(path, harness) -> list:
+def vendor_inherited_cwd_problems(path, harness, design) -> list:
     """inherited-context, the working directory (T-11): codex, the rollout records one working directory for the
-    session, or what it loaded cannot be placed; gemini PENDING (no native cwd)."""
+    session, or what it loaded cannot be placed; gemini SAME, every <session_context> version records exactly one
+    workspace directory (vendor_gemini_cwd_reads, lane vendor-settle stage G). (`design` is unread here.)"""
     if harness != "codex":
-        return vendor_pending("gemini", "T-11", None)
+        return vendor_pending("gemini", "T-11", vendor_gemini_cwd_reads, path)
     if vendor_session_cwd(path, harness) is None:
         return ["[inherited-context] the rollout records no one working directory for the session, so what it loaded "
                 "cannot be placed"]
@@ -4431,14 +4810,17 @@ def _vendor_after(argv: list, token: str):
 
 
 def vendor_offered_context_problems(path, harness, design, arm) -> list:
-    """inherited-context, the extra directories and tool servers offered (T-12:offered-context): PENDING for the
-    session-side record; its input-side leg runs: every turn has the box's launch journal (its harness, its stream
+    """inherited-context, the extra directories and tool servers offered (T-12:offered-context): NOT COMPARABLE for
+    both (glitch-f1's adopted rulings), the session-side partial check its row's reader (vendor_codex_offered_partial,
+    vendor_gemini_offered_partial); its input-side leg runs: every turn has the box's launch journal (its harness, its stream
     turn-<k>.jsonl), and the journal's argv is exactly the adapter's own invocation (codex_adapter.argv or
     gemini_adapter.argv) for the envelope's line, the journal's model and resumed id and the arm's pinned mode, so a
     directory, a tool server or any other option the adapter never writes refuses. Which id is resumed, and the model,
     are P4's and P5's to bind."""
-    out = (vendor_pending("codex", "T-12:offered-context", None) if harness == "codex"
-           else vendor_pending("gemini", "T-12:offered-context", None))
+    if harness == "codex":
+        out = vendor_pending("codex", "T-12:offered-context", vendor_codex_offered_partial, path)
+    else:
+        out = vendor_pending("gemini", "T-12:offered-context", vendor_gemini_offered_partial, path)
     mode = mode_for_arm(design.pre, arm)
     adapter = VENDOR_ADAPTERS[harness]
     try:
@@ -4470,11 +4852,14 @@ def vendor_offered_context_problems(path, harness, design, arm) -> list:
     return out
 
 
-def vendor_instruction_file_problems(harness) -> list:
-    """inherited-context, the instruction files the CLI loaded (T-12:instruction-files): PENDING (R-6's files are
-    placed by walk_builders.build_run_tree; which the CLI loaded is a session-side record not yet seen)."""
-    return (vendor_pending("codex", "T-12:instruction-files", None) if harness == "codex"
-            else vendor_pending("gemini", "T-12:instruction-files", None))
+def vendor_instruction_file_problems(path, harness, design) -> list:
+    """inherited-context, the instruction files the CLI loaded (T-12:instruction-files): SAME for both (lane
+    vendor-settle stages C and G), every recorded instruction file inside the session folder: codex's AGENTS.md parts
+    and world_state.agents_md, gemini's loaded files in every <session_context> version. (`design` is unread here.)"""
+    if harness == "codex":
+        return vendor_pending("codex", "T-12:instruction-files", vendor_codex_instruction_files_reads, path)
+    else:
+        return vendor_pending("gemini", "T-12:instruction-files", vendor_gemini_instruction_files_reads, path)
 
 
 def vendor_email_problems(path) -> list:
@@ -4611,7 +4996,9 @@ def vendor_environment_problems(path, harness, ledger, pre, row_index, walk_id) 
     """environment-record (T-17): the driver's environment.json, which drive._environment writes for every harness in
     round 3's schema, read by environment_problems as for a Claude Code take (P5: the take's row commit on the take
     road; on the walk road none, and a record naming a ledger row refuses, as check_walk's); then the billing-route
-    leg, PENDING for both (the record carries Claude Code's billing-route names, never the vendor's)."""
+    leg, NOT COMPARABLE for both (glitch-f1's adopted rulings: the record carries Claude Code's billing-route names,
+    never the vendor's), its partial check the row's reader (vendor_billing_route_partial,
+    vendor_gemini_billing_route_partial)."""
     if walk_id is None:
         row_commit = takes_mod.row_commits().get(row_index) if row_index is not None else None
         out = environment_problems(Path(path), ledger, pre, row_commit)
@@ -4624,8 +5011,10 @@ def vendor_environment_problems(path, harness, ledger, pre, row_index, walk_id) 
             rec = None
         if isinstance(rec, dict) and any(rec.get(k) is not None for k in ("row", "row_commit")):
             out.append("[environment-record] the vendor walk's environment record names a ledger row; a walk has none")
-    return out + (vendor_pending("codex", "T-17:billing-route", None) if harness == "codex"
-                  else vendor_pending("gemini", "T-17:billing-route", None))
+    if harness == "codex":
+        return out + vendor_pending("codex", "T-17:billing-route", vendor_billing_route_partial, path, "codex", pre)
+    else:
+        return out + vendor_pending("gemini", "T-17:billing-route", vendor_gemini_billing_route_partial, path)
 
 
 def _vendor_row_model(row_index):
@@ -4696,20 +5085,31 @@ def vendor_model_problems(path, harness, ledger, row_index, walk_id) -> list:
     return out
 
 
-def vendor_checkout_problems(harness) -> list:
-    """checkout-binding (T-13, the session's own git status; T-14, the instruction files it loaded): PENDING for
-    both; the driver's checkout record is never their source."""
+def vendor_checkout_problems(path, harness, design) -> list:
+    """checkout-binding (T-13, the session's own git status; T-14, the instruction files it loaded): T-13 NOT
+    COMPARABLE for both (glitch-f1's adopted rulings; partial checks vendor_codex_checkout_partial and
+    vendor_gemini_checkout_partial), T-14 SAME for both (each recorded instruction file equals the pinned CLAUDE.md
+    beside it); the driver's checkout record is never their source."""
     if harness == "codex":
-        return vendor_pending("codex", "T-13", None) + vendor_pending("codex", "T-14", None)
-    return vendor_pending("gemini", "T-13", None) + vendor_pending("gemini", "T-14", None)
+        out = vendor_pending("codex", "T-13", vendor_codex_checkout_partial, path)
+        out += vendor_pending("codex", "T-14", vendor_codex_instruction_content_reads, path, design)
+        return out
+    out = vendor_pending("gemini", "T-13", vendor_gemini_checkout_partial, path)
+    out += vendor_pending("gemini", "T-14", vendor_gemini_instruction_content_reads, path, design)
+    return out
 
 
-def vendor_prompt_problems(harness) -> list:
-    """inherited-context, the prompt snapshot and the memory folder (T-12:prompt-snapshot, T-12:memory): PENDING for
-    both until a recorded walk shows a session-side record of either."""
+def vendor_prompt_problems(path, harness, design) -> list:
+    """inherited-context, the prompt snapshot and the memory folder (T-12:prompt-snapshot, T-12:memory): codex's prompt
+    snapshot SAME (session_meta.base_instructions), gemini's NOT COMPARABLE (input side); T-12:memory NOT COMPARABLE
+    for both (glitch-f1's adopted rulings), each partial check its row's reader."""
     if harness == "codex":
-        return vendor_pending("codex", "T-12:prompt-snapshot", None) + vendor_pending("codex", "T-12:memory", None)
-    return vendor_pending("gemini", "T-12:prompt-snapshot", None) + vendor_pending("gemini", "T-12:memory", None)
+        out = vendor_pending("codex", "T-12:prompt-snapshot", vendor_codex_prompt_reads, path)
+        out += vendor_pending("codex", "T-12:memory", vendor_codex_memory_partial, path)
+        return out
+    out = vendor_pending("gemini", "T-12:prompt-snapshot", vendor_gemini_prompt_partial, path, design)
+    out += vendor_pending("gemini", "T-12:memory", vendor_gemini_memory_partial, path)
+    return out
 
 
 def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_script, design, arm: str,
@@ -4726,7 +5126,7 @@ def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_scrip
     bound = view["events"] is not None
     turns = _vendor_turns(view["events"] or [])
     ops = [t["text"] for t in turns if t["role"] == "user"]
-    problems += vendor_origin_problems(harness)
+    problems += vendor_origin_problems(path, harness, design)
     if bound:
         problems += vendor_first_turn_problems(view["events"])
     problems += vendor_session_id_problems(path, harness)
@@ -4739,19 +5139,22 @@ def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_scrip
         return problems
     expected_source = design.source(expected_project)
     if bound:
-        required, stop_problems = required_steps(script, path, turns, False, expected_project, expected_source, ())
+        # stage V ruling (a) and stage W ruling 3: the stop and the marker readings read one view, gemini's delta
+        # chunks joined as read_stream joins them (the operator lines are the same in both)
+        joined = vendor_continuation_turns(path, harness, turns)
+        required, stop_problems = required_steps(script, path, joined, False, expected_project, expected_source, ())
         problems += stop_problems
         line_problems = operator_line_problems(ops, required, expected_project, expected_source)
         problems += line_problems
         if not line_problems:
-            problems += continuation_problems(turns, required, [], expected_project, expected_source)
+            problems += continuation_problems(joined, required, [], expected_project, expected_source)
     problems += fixture_binding_problems(path, half, False)[0]
     if bound:
         problems += vendor_leak_problems(ops, pre)
-    problems += vendor_loaded_context_problems(harness)
-    problems += vendor_inherited_cwd_problems(path, harness)
+    problems += vendor_loaded_context_problems(path, harness, design)
+    problems += vendor_inherited_cwd_problems(path, harness, design)
     problems += vendor_offered_context_problems(path, harness, design, arm)
-    problems += vendor_instruction_file_problems(harness)
+    problems += vendor_instruction_file_problems(path, harness, design)
     problems += vendor_email_problems(path)
     problems += completion_problems(path, ledger, pre)
     problems += vendor_turn_end_problems(path, harness, ledger)
@@ -4765,9 +5168,9 @@ def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_scrip
         problems += vendor_walk_binding_problems(path, task_id, half_name, walk_id, sid)
     problems += vendor_environment_problems(path, harness, ledger, pre, row_index, walk_id)
     problems += vendor_model_problems(path, harness, ledger, row_index, walk_id)
-    problems += constant_problems(ledger, pre)              # the ledger's budget, mode and gars tree (T-24)
-    problems += vendor_checkout_problems(harness)
-    problems += vendor_prompt_problems(harness)
+    problems += vendor_constant_problems(path, harness, ledger, pre)   # budget, gars tree; mode from its record (T-24)
+    problems += vendor_checkout_problems(path, harness, design)
+    problems += vendor_prompt_problems(path, harness, design)
     return problems
 
 
@@ -4775,9 +5178,10 @@ def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_scrip
 def vendor_design_tree_problems(path, harness, design) -> list:
     """readers-disagree, the run tree (T-4; design_tree_problems' reading): codex, every rollout turn's
     turn_context.cwd, and every turn's launch journal cwd as a second leg, against the run tree the design was built
-    with; gemini PENDING (no native cwd)."""
+    with; gemini SAME, every <session_context> version's workspace directory and listing root and every launch journal
+    cwd (vendor_gemini_run_tree_reads, lane vendor-settle stage G)."""
     if harness != "codex":
-        return vendor_pending("gemini", "T-4", None)
+        return vendor_pending("gemini", "T-4", vendor_gemini_run_tree_reads, path, design)
     out = []
     try:
         ledger = _binding._json(_binding._regular_bytes(Path(path).parent / "driver-ledger.json").decode("utf-8"))
@@ -4797,16 +5201,26 @@ def vendor_design_tree_problems(path, harness, design) -> list:
     return out
 
 
-def vendor_recorded_mode_problems(harness) -> list:
-    """constant-binding, the permission mode the session recorded (T-16): codex PENDING (turn_context.approval_policy
-    is carried raw and never accepted); gemini NOT COMPARABLE (no session-side mode record; the mode's flags are bound
-    as submitted by vendor_offered_context_problems' rebuilt invocation)."""
-    return vendor_pending("codex", "T-16", None) if harness == "codex" else []
+def vendor_recorded_mode_problems(path, harness, design, arm) -> list:
+    """constant-binding, the permission mode the session recorded (T-16): codex SAME (vendor_codex_recorded_mode_reads,
+    lane vendor-settle stage C: every turn_context and thread_settings record against the pinned mode); gemini NOT
+    COMPARABLE (no session-side mode record; the mode's flags are bound
+    as submitted by vendor_offered_context_problems' rebuilt invocation, and the constants read it by mode_binding's
+    argv reading, vendor_constant_problems). `arm` is None where vendor_round4_problems is called without one; the
+    codex reader then reads the ledger's arm."""
+    if harness == "codex":
+        return vendor_pending("codex", "T-16", vendor_codex_recorded_mode_reads, path, design, arm)
+    return []
 
 
-def vendor_denied_tool_problems(harness) -> list:
-    """harness-condition-violated, the tools the CLI really offers (T-18): PENDING for both."""
-    return vendor_pending("codex", "T-18", None) if harness == "codex" else vendor_pending("gemini", "T-18", None)
+def vendor_denied_tool_problems(path, harness, design) -> list:
+    """harness-condition-violated, the tools the CLI really offers (T-18): NOT COMPARABLE for both (glitch-f1's
+    adopted rulings; partial checks vendor_codex_tools_partial and vendor_gemini_tools_partial). (`design` is unread
+    here.)"""
+    if harness == "codex":
+        return vendor_pending("codex", "T-18", vendor_codex_tools_partial, path)
+    else:
+        return vendor_pending("gemini", "T-18", vendor_gemini_tools_partial, path)
 
 
 def vendor_unread_problems(path, harness, ledger) -> list:
@@ -4826,6 +5240,52 @@ def vendor_nested_flag_problems(path, harness) -> list:
     return command_problems(vendor_shell_commands(Path(path).parent, harness)[0], harness)
 
 
+# Stage Z2 (glitch-f1 on CODEX-S0-READ-20261022.md): the two other patch roads of codex-cli 0.162.1. A code-mode exec
+# script can call tools.apply_patch (core/src/tools/code_mode/mod.rs:337-373; both arm O models run code_mode_only),
+# which writes a FileChange only through the patch path; and a shell command can run the apply_patch alias Codex puts
+# on PATH (arg0/src/lib.rs:325-340), which leaves only a CommandExecution. Measured over the 38 GPT walks: 0 of 216
+# exec calls name tools.apply_patch, 0 of 226 CommandExecutions run the alias.
+_CODEX_SCRIPT_TOOL = re.compile(r"tools\.([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+# the alias by its basename wherever a command word can stand: at the start, or after a shell separator or an opening
+# bracket, optionally path-qualified (/usr/local/bin/apply_patch, ./apply_patch; Codex closure NIT)
+_CODEX_APPLY_PATCH_ALIAS = re.compile(r"(?:^|[;&|()`\n]|&&|\|\|)\s*(?:[^\s;&|()`<>'\"]*/)?(?:apply_patch|applypatch)"
+                                      r"(?=\s|$|<|'|\"|;|&|\|)")
+CODEX_SCRIPT_SHELL_TOOLS = ("exec_command",)       # the one nested tool the 216 recorded exec scripts call (226 times)
+
+
+def _codex_rollout_turn_records(path) -> list:
+    """[[record]] of the last retained rollout, one list per turn (a task_started event opens each); raises one of
+    _VENDOR_READ_ERRORS."""
+    turns: list = []
+    for _line, rec in _vendor_codex_lines(path):
+        if rec["type"] == "event_msg" and rec["payload"].get("type") == "task_started":
+            turns.append([])
+        if turns:
+            turns[-1].append(rec)
+    return turns
+
+
+def codex_patch_roads(path) -> list:
+    """[(turn, what)] of the patch roads the join cannot see: an exec call whose script calls tools.apply_patch in a
+    turn that records no FileChange, and a CommandExecution running the apply_patch alias. Raises on an unreadable
+    rollout."""
+    out = []
+    for n, recs in enumerate(_codex_rollout_turn_records(path), 1):
+        changes = sum(1 for r in recs if r["type"] == "event_msg" and r["payload"].get("type") == "item_completed"
+                      and (r["payload"].get("item") or {}).get("type") == "FileChange")
+        for r in recs:
+            pay = r["payload"]
+            if (r["type"] == "response_item" and pay.get("type") == "custom_tool_call" and not changes
+                    and "apply_patch" in _CODEX_SCRIPT_TOOL.findall(pay.get("input") or "")):
+                out.append((n, "an exec call's script calls tools.apply_patch and the turn records no FileChange"))
+            item = pay.get("item") or {} if isinstance(pay, dict) else {}
+            if (r["type"] == "event_msg" and pay.get("type") == "item_completed" and item.get("type") == "CommandExecution"
+                    and any(_CODEX_APPLY_PATCH_ALIAS.search(x) for x in item.get("command") or []
+                            if isinstance(x, str))):     # each argv word, so the shell's script is read from its start
+                out.append((n, "a shell command runs the apply_patch alias, which leaves no FileChange"))
+    return out
+
+
 def vendor_file_change_reads(path) -> list:
     """T-8:file-change's reader (lane vendor-b23, glitch-26's rulings Q2 and Q3, Tue 20 Oct 2026;
     lane-reports/vendor-b23-DESIGN.md sections 5 and 6), run by vendor_pending once the row is settled: each turn's
@@ -4843,6 +5303,11 @@ def vendor_file_change_reads(path) -> list:
         return [f"[{TRANSCRIPT_UNREADABLE}] the rollout holds {len(turns)} turn(s) for {len(streams)} exec stream(s), "
                 "so its file changes cannot be joined"]
     out = []
+    try:                                                       # stage Z2: the patch roads the join cannot see
+        out += [f"[{TRANSCRIPT_UNREADABLE}] turn {n}: {what}, so the view cannot show the edit"
+                for n, what in codex_patch_roads(path)]
+    except _VENDOR_READ_ERRORS as e:
+        return [f"[{TRANSCRIPT_UNREADABLE}] the codex patch roads cannot be read: {e}"]
     for n, (turn, text) in enumerate(zip(turns, streams), 1):
         try:
             _codex_native.join_file_changes(turn, _codex_native.read_exec(text, model=turn["requested_model"]))
@@ -4860,28 +5325,36 @@ def vendor_file_change_reads(path) -> list:
 
 
 def vendor_file_change_problems(path, harness) -> list:
-    """transcript-unreadable, codex file_change content (T-8:file-change): PENDING while any exec stream holds a
-    file_change item. Lane vendor-b23: its site hands in the row's reader, vendor_file_change_reads, which decides
-    once the row is settled on a RECORDED fixture (Q3); until then the refusal is the row's, as before."""
+    """transcript-unreadable, codex file_change content (T-8:file-change), read while any exec stream holds a
+    file_change item. Lane vendor-b23: its site hands in the row's reader, vendor_file_change_reads; lane vendor-settle
+    settled the row NOT COMPARABLE (glitch-f1's adopted ruling: no committed walk used the patch tool), the reader its
+    partial check (Q3); with the row PENDING the refusal is the row's, as before."""
     if harness != "codex":
         return []
     try:
-        for env in _vendor_envelopes(path):
-            for line in transcript_view.jsonl_lines(_vendor_stream(path, env)):
-                rec = _binding._json(line)
-                if isinstance(rec, dict) and (rec.get("item") or {}).get("type") == _tx_codex.FILE_CHANGE:
-                    return vendor_pending("codex", "T-8:file-change", vendor_file_change_reads, path)
+        seen = any(isinstance(rec, dict) and (rec.get("item") or {}).get("type") == _tx_codex.FILE_CHANGE
+                   for env in _vendor_envelopes(path)
+                   for rec in map(_binding._json, transcript_view.jsonl_lines(_vendor_stream(path, env))))
     except _VENDOR_READ_ERRORS:
         return []                                  # the view refuses an unreadable stream
+    if not seen:
+        try:                                       # stage Z2: a patch road the exec stream does not show
+            seen = bool(codex_patch_roads(path))
+        except _VENDOR_READ_ERRORS:
+            return []                              # the rollout readers refuse an unreadable rollout
+    if seen:
+        return vendor_pending("codex", "T-8:file-change", vendor_file_change_reads, path)
     return []
 
 
-def vendor_round4_problems(path, design) -> list:
-    """Plan section 1b's readings for a vendor take or walk, in check4's order."""
+def vendor_round4_problems(path, design, arm=None) -> list:
+    """Plan section 1b's readings for a vendor take or walk, in check4's order. `arm` (stage K) is the arm the take is
+    read as, handed to the T-16 site; _vendor_road passes it."""
     harness = _vendor_harness(getattr(design, "harness", None))
     ledger = _ledger_beside(Path(path))
-    return (vendor_design_tree_problems(path, harness, design) + vendor_recorded_mode_problems(harness)
-            + vendor_denied_tool_problems(harness) + vendor_unread_problems(path, harness, ledger)
+    return (vendor_design_tree_problems(path, harness, design)
+            + vendor_recorded_mode_problems(path, harness, design, arm)
+            + vendor_denied_tool_problems(path, harness, design) + vendor_unread_problems(path, harness, ledger)
             + vendor_nested_flag_problems(path, harness) + vendor_file_change_problems(path, harness))
 
 
@@ -4949,7 +5422,7 @@ def _vendor_road(path, task_id, half_name, *, wording_script, arm, design, table
                                f"{sorted(counts)}")
         problems = vendor_check(path, task_id, half_name, row_index, wording_script=wording_script, design=design,
                                 arm=arm, walk_id=walk_id)
-        problems += vendor_round4_problems(path, design)
+        problems += vendor_round4_problems(path, design, arm=arm)
         problems += vendor_session_problems(path, harness)
     finally:
         _PRE_IN_FORCE.reset(token)
@@ -5287,6 +5760,1254 @@ def vendor_agent_summary(path, harness) -> dict:
     cmds, _ = vendor_shell_commands(Path(path).parent, _vendor_harness(harness))
     return {"agent_calls": 0, "subagents": {"calls": [], "models": [], "stream_file_differences": 0},
             "nested_cli_calls": sum(len(nested_cli_mentions(c)) for c in cmds)}
+
+
+# =====================================================================================================================
+# SETTLE: CODEX READERS (lane vendor-settle, stage C). The Codex builder appends its readers and partial checks here,
+# between this banner and the line "END SETTLE: CODEX READERS", and nowhere else in this span; each is a plain function
+# (never a class or an imported name, vendor_row_problem) handed in at its row's one vendor_pending site.
+# =====================================================================================================================
+
+# ---- C1. RETURNED TOOL TEXTS READ DECODED (K's open point 2, ruled by glitch-f1 in the stage C brief) ---------------
+# A code-mode exec's output reaches the model as input_text parts of a custom_tool_call_output, and a part's text is
+# whatever the agent's script printed: in the 38 committed GPT walks, 216 outputs of 439 parts, 124 of them a JSON
+# object (the agent printed a tool result with JSON.stringify) and 5 opening with a brace that is no JSON. Read as that
+# encoded text, an escaped newline is two characters, so the clean w-o46 copy's run-tree listing
+# ("<run tree>\\nCLAUDE.md\\n...") was read as ONE path outside the run tree (a false read-outside-the-checkout), and
+# an outside path written after an escaped newline was never matched (the path readers need a non-path character
+# before a root). The same family as review MAJOR 3 and stage K2.
+# So a returned text that parses as a JSON object or array is read as its decoded keys and values, a duplicated key's
+# every copy kept, in place of the encoded text; any other text is read as written.
+def _vendor_json_leaves(node):
+    """A decoded JSON document as nested lists the reach readers walk: an object as [key, value] pairs (C's string
+    walk reads values only, so every key is handed over as a value too), an array as a list, scalars as they are."""
+    if isinstance(node, _AllPairs):
+        return [[k, _vendor_json_leaves(v)] for k, v in node]
+    if isinstance(node, list):
+        return [_vendor_json_leaves(x) for x in node]
+    return node
+
+
+# Stage V ruling (b) (glitch-f1 on stage C's hand-back): a returned text that opens with the CLI's truncation header
+# and whose JSON body was cut does not decode, so its listing ("<run tree>\\nCLAUDE.md\\n...") was still read as one
+# path outside the run tree (w-o11, w-o13, w-o26). An undecodable body after the header is read with its literal
+# backslash-n unescaped (and nothing else changed) before the paths are taken.
+_CODEX_TRUNCATED_HEADER = re.compile(r"Warning: truncated output \(original token count: [0-9]+\)\nTotal output lines: "
+                                     r"[0-9]+\n\n")
+
+
+def _vendor_truncated_body_unescaped(text):
+    m = _CODEX_TRUNCATED_HEADER.match(text) if isinstance(text, str) else None
+    body = text[m.end():] if m else ""
+    if not m or body.lstrip()[:1] not in ("{", "["):
+        return text
+    try:
+        json.loads(body)
+    except ValueError:
+        return text[:m.end()] + body.replace("\\n", "\n")
+    return text
+
+
+def _vendor_document_or_text(text):
+    if isinstance(text, str) and _CODEX_TRUNCATED_HEADER.match(text):
+        return _vendor_truncated_body_unescaped(text)
+    if not isinstance(text, str) or text.lstrip()[:1] not in ("{", "["):
+        return text
+    try:
+        doc = json.loads(text, object_pairs_hook=_AllPairs)
+    except ValueError:
+        return text
+    return _vendor_json_leaves(doc) if isinstance(doc, list) else text
+
+
+def vendor_codex_returned_documents(rec: dict) -> dict:
+    """A RETURNED rollout record (CODEX_RESPONSE_RETURNED) with each returned text that is a JSON object or array read
+    decoded: a custom_tool_call_output's output parts' `text`, and a string `output` (function_call_output,
+    tool_search_output)."""
+    out = dict(rec)
+    value = out.get("output")
+    if isinstance(value, str):
+        out["output"] = _vendor_document_or_text(value)
+    elif isinstance(value, list):
+        out["output"] = [dict(part, text=_vendor_document_or_text(part["text"]))
+                         if isinstance(part, dict) and isinstance(part.get("text"), str) else part for part in value]
+    return out
+
+
+# ---- C2. THE CODEX ROWS' READERS AND PARTIAL CHECKS (design vendor-settle-DESIGN-2026-10-21.md section 2, its review's
+# MAJORs 2 and 3 and MINORs, glitch-f1's adopted NOT COMPARABLE rulings vendor-settle-NC-RULINGS-2026-10-21.md) -------
+# Every reader takes the take's transcript.jsonl and reads the last retained rollout the ledger binds
+# (_vendor_last_snapshot, digest checked), after codex_native.read_rollout accepts it; a rollout that cannot be read is
+# the row's own refusal, never a pass. The counts cited are the design's survey over the 38 committed GPT walks,
+# re-read by stage C over the same walks (lane notes).
+import mode_binding as _mode_binding  # noqa: E402  (lane freeze-gates-fix S1: the one Codex mode-record reading)
+import tomllib as _tomllib  # noqa: E402
+from box import run_take as _run_take  # noqa: E402
+from box import take_config as _take_config  # noqa: E402
+
+# The developer-section opening tags the 38 walks hold, a closed set (survey: skills_instructions 38, permissions
+# instructions 38, collaboration_mode 38, multi_agent_role 31, multi_agent_mode 31, recommended_plugins 2).
+CODEX_DEVELOPER_SECTIONS = ("skills_instructions", "permissions instructions", "collaboration_mode",
+                            "multi_agent_role", "multi_agent_mode", "recommended_plugins")
+# The sections Codex renders only when its collaboration tools are offered (take_config.py:263-284, B22-10), and the one
+# that comes with the plugin-install tool (take_config.py:255-262; review MINOR 3).
+CODEX_COLLAB_SECTIONS = ("multi_agent_role", "multi_agent_mode")
+CODEX_PLUGIN_SECTION = "recommended_plugins"
+CODEX_AGENTS_PREFIX = "# AGENTS.md instructions for "
+CODEX_ENVIRONMENT_PREFIX = "<environment_context>"
+_CODEX_SECTION_TAG = re.compile(r"\s*<([a-z_ ]+)>")
+_CODEX_SKILL_ROOT = re.compile(r"^- `r[0-9]+` = `([^`]*)`", re.M)
+_CODEX_WORKSPACE_ROOT = re.compile(r"<root>([^<]*)</root>")
+# The skills Codex installs into CODEX_HOME/skills/.system (box/run_take.py:2267), CODEX_HOME being the box's config
+# mount (run_take.TAKE_ENV codex, SWEEP_CONFIG_MOUNT): the only skill root a take's config allows.
+CODEX_SYSTEM_SKILLS_ROOT = SWEEP_CONFIG_MOUNT + "/skills/.system"
+# world_state's two key sets in the 38 walks (survey-summary.txt line 26: with and without multi_agent_usage_hint).
+_CODEX_WS_COMMON = ("agents_md", "apps_instructions", "collaboration_mode", "context_window_guidance", "environments",
+                    "environments_instructions", "git_attribution", "host_skills", "managed_developer_instructions",
+                    "model", "model_catalog", "multi_agent_mode", "permissions", "persistent_mode",
+                    "plugins_instructions", "realtime", "skills")
+CODEX_WORLD_STATE_KEYS = (frozenset(_CODEX_WS_COMMON), frozenset(_CODEX_WS_COMMON + ("multi_agent_usage_hint",)))
+_CODEX_MEMORY_KEY = re.compile(r"memor", re.I)
+# session_meta.memory_mode's one value, written only when memory generation is off (rollout/src/recorder.rs:976,
+# protocol.rs:3209-3210 skip it when None): the record of the safe setting (review 0df1437 MAJOR 1).
+CODEX_MEMORY_MODE_OFF = "disabled"
+# T-13: the branch the driver's checkout is built on, a literal in drive.clean_run_tree (drive.py:381, `symbolic-ref
+# HEAD refs/heads/main`; review MINOR 4: no named constant exists, and drive.py is a hashed file).
+CODEX_CHECKOUT_BRANCH = "main"
+# T-16 (review MAJOR 2): beyond mode_binding.CODEX_MODE_RECORD's turn_context pair (approval_policy,
+# sandbox_policy.type;
+# exec/src/lib.rs:343-347 and 589-591, protocol.rs:1088-1091 at the pin), each thread_settings snapshot's
+# permission_profile.type for the pin: ThreadSettingsSnapshot carries no sandbox_policy (codex_native.py:96-99,
+# TSA_REQUIRED), and the bypass flag runs PermissionProfile::Disabled, a unit variant written {"type": "disabled"}
+# (models.rs:418-435 as codex_native._thread_settings cites it).
+CODEX_THREAD_PERMISSION_PROFILE = {"bypass": "disabled"}
+# T-17 leg 3: the provider and plan the 38 walks record (session_meta.model_provider "openai" 38 of 38; every token_count
+# rate_limits.plan_type non-null 38 of 38, probe5): the ChatGPT sign-in road.
+CODEX_MODEL_PROVIDER = "openai"
+
+
+def _vendor_codex_lines(path) -> list:
+    """[(raw line, record)] of the last retained rollout the ledger binds, once read_rollout accepts it; raises one of
+    _VENDOR_READ_ERRORS."""
+    path = Path(path)
+    ledger = _binding._json(_binding._regular_bytes(path.parent / "driver-ledger.json").decode("utf-8"))
+    raw = _vendor_last_snapshot(path, ledger)
+    _codex_native.read_rollout(raw)
+    text = raw.decode("utf-8")
+    lines = [x for x in text.split("\n")]
+    if lines and lines[-1] == "":
+        lines = lines[:-1]
+    records = _codex_native._json_lines(raw, VendorUnreadable)
+    if len(records) != len(lines):
+        raise VendorUnreadable("the rollout's lines and records differ in number")
+    return list(zip(lines, records))
+
+
+def _vc_unreadable(reason: str, e) -> list:
+    return [f"[{reason}] the codex rollout cannot be read, so this row's record cannot be shown "
+            f"({type(e).__name__}: {str(e)[:160]})"]
+
+
+def _vc_messages(lines, role: str) -> list:
+    return [(line, rec["payload"]) for line, rec in lines if rec["type"] == "response_item"
+            and rec["payload"].get("type") == "message" and rec["payload"].get("role") == role]
+
+
+def _vc_parts(payload) -> list:
+    content = payload.get("content")
+    return content if isinstance(content, list) else [content]
+
+
+def _vc_part_text(part):
+    return part.get("text") if isinstance(part, dict) and isinstance(part.get("text"), str) else None
+
+
+def _vc_sections(lines) -> list:
+    """The opening tag of every developer message part (None for a part that opens with none)."""
+    out = []
+    for _line, pay in _vc_messages(lines, "developer"):
+        for part in _vc_parts(pay):
+            m = _CODEX_SECTION_TAG.match(_vc_part_text(part) or "")
+            out.append(m.group(1) if m else None)
+    return out
+
+
+def _vc_meta(lines) -> dict:
+    return lines[0][1]["payload"]
+
+
+def _vc_world_states(lines) -> list:
+    return [rec["payload"]["state"] for _line, rec in lines if rec["type"] == "world_state"]
+
+
+def _vc_thread_settings(lines) -> list:
+    return [rec["payload"]["thread_settings"] for _line, rec in lines
+            if rec["type"] == "event_msg" and rec["payload"].get("type") == "thread_settings_applied"]
+
+
+def _vc_agents_messages(lines) -> list:
+    """[(directory, body or None)] of every AGENTS.md user-message part: the directory its header names, and the text
+    inside its <INSTRUCTIONS> wrapper (None when the part is off that shape)."""
+    out = []
+    for _line, pay in _vc_messages(lines, "user"):
+        for part in _vc_parts(pay):
+            text = _vc_part_text(part) or ""
+            if not text.startswith(CODEX_AGENTS_PREFIX):
+                continue
+            head, _, rest = text.partition("\n")
+            m = re.fullmatch(r"\n<INSTRUCTIONS>\n(.*)\n</INSTRUCTIONS>\s*", rest, re.S)
+            out.append((head[len(CODEX_AGENTS_PREFIX):], m.group(1) if m else None))
+    return out
+
+
+def vendor_codex_origin_reads(path) -> list:
+    """unknown-harness-origin (T-5, SAME): in the last rollout every user-role message part is the turn's operator line
+    (the envelopes' `sent`, in order), or the one `# AGENTS.md instructions for <dir>` part, or the one
+    `<environment_context>` part; every developer part opens with one of CODEX_DEVELOPER_SECTIONS; and no message has
+    another role. Survey: 38 of 38, 89 operator parts for 89 turns, 38 and 38."""
+    reason = "unknown-harness-origin"
+    try:
+        lines = _vendor_codex_lines(path)
+        sent = [env["sent"] for env in _vendor_envelopes(path)]
+    except _VENDOR_READ_ERRORS as e:
+        return _vc_unreadable(reason, e)
+    out, operator, agents, env = [], [], 0, 0
+    for _line, rec in lines:
+        pay = rec["payload"]
+        if rec["type"] != "response_item" or pay.get("type") != "message":
+            continue
+        role = pay.get("role")
+        if role not in ("user", "developer", "assistant"):
+            out.append(f"[{reason}] the rollout holds a {role!r} message, a role no reader places")
+            continue
+        if role == "assistant":
+            continue
+        for part in _vc_parts(pay):
+            text = _vc_part_text(part)
+            if role == "developer":
+                m = _CODEX_SECTION_TAG.match(text or "")
+                if not (isinstance(part, dict) and part.get("type") == "input_text" and m
+                        and m.group(1) in CODEX_DEVELOPER_SECTIONS):
+                    out.append(f"[{reason}] a developer message part opens with "
+                               f"{(m.group(1) if m else (text or '')[:40])!r}, not one of the sections Codex was "
+                               "seen to write: text of unknown origin reached the model")
+                continue
+            if not (isinstance(part, dict) and part.get("type") == "input_text" and text is not None):
+                out.append(f"[{reason}] a user message part is not one input_text: content of unknown origin")
+            elif len(operator) < len(sent) and text == sent[len(operator)]:
+                operator.append(text)
+            elif text.startswith(CODEX_AGENTS_PREFIX):
+                agents += 1
+            elif text.startswith(CODEX_ENVIRONMENT_PREFIX):
+                env += 1
+            else:
+                out.append(f"[{reason}] a user message part is neither the turn's operator line, the AGENTS.md "
+                           f"message nor the environment context: {text[:60]!r}")
+    if operator != sent:
+        out.append(f"[{reason}] the rollout's operator parts are {len(operator)} of the envelopes' {len(sent)} sent "
+                   "lines, in order")
+    if (agents, env) != (1, 1):
+        out.append(f"[{reason}] the rollout holds {agents} AGENTS.md part(s) and {env} environment-context part(s), "
+                   "not one of each")
+    return out
+
+
+def vendor_codex_loaded_context_text(path) -> str:
+    """The text T-10 sweeps for a codex take, lower-cased: the DECODED text (_decoded_text, keys included) of
+    session_meta, every world_state and developer message, and the AGENTS.md and environment-context user parts, joined
+    by spaces. Raises one of _VENDOR_READ_ERRORS. leak_grep (the prereg draft's checked_against, stage W) reads it too."""
+    lines = _vendor_codex_lines(path)
+    ctx = [_decoded_text(lines[0][0])]
+    ctx += [_decoded_text(line) for line, rec in lines if rec["type"] == "world_state"]
+    ctx += [_decoded_text(line) for line, _pay in _vc_messages(lines, "developer")]
+    for _line, pay in _vc_messages(lines, "user"):
+        ctx += [t for t in map(_vc_part_text, _vc_parts(pay))
+                if t and t.startswith((CODEX_AGENTS_PREFIX, CODEX_ENVIRONMENT_PREFIX))]
+    return " ".join(ctx).lower()
+
+
+def vendor_codex_loaded_context_reads(path, pre) -> list:
+    """leak-in-loaded-context (T-10, SAME): context_leaks over the DECODED text (review MAJOR 3; _decoded_text, keys
+    included) of what the CLI put in front of the model: session_meta (base_instructions, the system-prompt record, as
+    C's context includes its prompt snapshot), world_state, every developer message, and the AGENTS.md and
+    environment-context user parts (never an operator line, T-6's). Survey: 0 of 38."""
+    reason = "leak-in-loaded-context"
+    try:
+        text = vendor_codex_loaded_context_text(path)
+    except _VENDOR_READ_ERRORS as e:
+        return _vc_unreadable(reason, e)
+    leaked = sorted(context_leaks(text, pre))
+    if not leaked:
+        return []
+    return [f"[{reason}] the context Codex loaded for the session contains {leaked}, which tells the agent what this "
+            "is"]
+
+
+def vendor_codex_offered_partial(path) -> list:
+    """inherited-context, T-12:offered-context (NOT COMPARABLE; glitch-f1's adopted ruling): every recorded workspace
+    root list (session_meta, each thread_settings that writes one, the environment context's and world_state's
+    filesystem blocks) is exactly [the session folder]; world_state's app and plugin sections off; no
+    recommended_plugins section; no additional_tools item and no session_meta.dynamic_tools (review 0df1437 MINOR 2);
+    every skill root the pinned system folder."""
+    reason = "inherited-context"
+    try:
+        lines = _vendor_codex_lines(path)
+    except _VENDOR_READ_ERRORS as e:
+        return _vc_unreadable(reason, e)
+    meta = _vc_meta(lines)
+    cwd = meta.get("cwd")
+    out = []
+    roots = [("session_meta", meta.get("runtime_workspace_roots"))]
+    roots += [("a thread_settings snapshot", s["runtime_workspace_roots"]) for s in _vc_thread_settings(lines)
+              if "runtime_workspace_roots" in s]
+    for _line, pay in _vc_messages(lines, "user"):
+        for t in map(_vc_part_text, _vc_parts(pay)):
+            if t and t.startswith(CODEX_ENVIRONMENT_PREFIX) and "<workspace_roots>" in t:
+                roots.append(("the environment context", _CODEX_WORKSPACE_ROOT.findall(t)))
+    for ws in _vc_world_states(lines):
+        fs = (ws.get("environments") or {}).get("filesystem") if isinstance(ws.get("environments"), dict) else None
+        if isinstance(fs, str) and "<workspace_roots>" in fs:
+            roots.append(("world_state's environments", _CODEX_WORKSPACE_ROOT.findall(fs)))
+    for where, got in roots:
+        if got != [cwd]:
+            out.append(f"[{reason}] {where} records the workspace roots {got!r}, not exactly the session folder: a "
+                       "directory outside the checkout was offered")
+    for ws in _vc_world_states(lines):
+        for key in ("apps_instructions", "plugins_instructions"):
+            if ws.get(key) is not False:
+                out.append(f"[{reason}] world_state's {key} is {ws.get(key)!r}, not off: connector or plugin tools "
+                           "may have been offered")
+    if CODEX_PLUGIN_SECTION in _vc_sections(lines):
+        out.append(f"[{reason}] the rollout carries the {CODEX_PLUGIN_SECTION} section, which comes with a "
+                   "plugin-install tool (take_config.py:255-262)")
+    extra = sum(1 for _line, rec in lines if rec["type"] == "response_item"
+                and rec["payload"].get("type") == "additional_tools")
+    if extra:
+        out.append(f"[{reason}] the rollout holds {extra} additional_tools item(s): tools added to the session")
+    # stage Z2: output side, every recorded exec script calls only the shell tool (216 calls, 226 exec_command, 0 other)
+    for _line, rec in lines:
+        pay = rec["payload"]
+        if rec["type"] == "response_item" and pay.get("type") == "custom_tool_call":
+            other = sorted(set(_CODEX_SCRIPT_TOOL.findall(pay.get("input") or "")) - set(CODEX_SCRIPT_SHELL_TOOLS))
+            if other:
+                out.append(f"[{reason}] an exec call's script calls the tool(s) {other}, beyond the shell commands it "
+                           "runs: a tool was offered to the session")
+    # review 0df1437 MINOR 2: session_meta.dynamic_tools, written whenever a dynamic tool is offered (recorder.rs:970-974,
+    # omitted when empty; absent in all 89 native turns of the 38 walks)
+    if "dynamic_tools" in meta:
+        out.append(f"[{reason}] session_meta records dynamic_tools {str(meta['dynamic_tools'])[:120]}: tools offered to "
+                   "the session")
+    for _line, pay in _vc_messages(lines, "developer"):
+        for t in map(_vc_part_text, _vc_parts(pay)):
+            for root in _CODEX_SKILL_ROOT.findall(t or ""):
+                if root != CODEX_SYSTEM_SKILLS_ROOT:
+                    out.append(f"[{reason}] a skill root {root!r} is not the pinned system folder "
+                               f"{CODEX_SYSTEM_SKILLS_ROOT!r}")
+    return out
+
+
+def _vc_inside(directory, cwd) -> bool:
+    return isinstance(directory, str) and isinstance(cwd, str) and (directory == cwd
+                                                                    or directory.startswith(cwd.rstrip("/") + "/"))
+
+
+def vendor_codex_instruction_files_reads(path) -> list:
+    """inherited-context, T-12:instruction-files (SAME): every AGENTS.md the session recorded (each AGENTS.md user
+    part's header directory and world_state.agents_md.directory) sits inside the session folder, as C's
+    inherited_context requires of every instruction file it loaded. Survey: 38 of 38 (each the session folder itself)."""
+    reason = "inherited-context"
+    try:
+        lines = _vendor_codex_lines(path)
+    except _VENDOR_READ_ERRORS as e:
+        return _vc_unreadable(reason, e)
+    cwd = _vc_meta(lines).get("cwd")
+    dirs = [("an AGENTS.md message", d) for d, _body in _vc_agents_messages(lines)]
+    for ws in _vc_world_states(lines):
+        if "agents_md" in ws:
+            got = ws["agents_md"].get("directory") if isinstance(ws["agents_md"], dict) else None
+            dirs.append(("world_state's agents_md", got))
+    return [f"[{reason}] {where} names the directory {d!r}, outside the session folder: an instruction file from "
+            "outside the checkout was loaded" for where, d in dirs if not _vc_inside(d, cwd)]
+
+
+def vendor_codex_prompt_reads(path) -> list:
+    """inherited-context, T-12:prompt-snapshot (SAME): the rollout's one session_meta (read_rollout refuses a second)
+    carries base_instructions with a non-empty text, Codex's record of its system prompt, as C requires its prompt
+    snapshot. Survey: 38 of 38."""
+    reason = "inherited-context"
+    try:
+        lines = _vendor_codex_lines(path)
+    except _VENDOR_READ_ERRORS as e:
+        return _vc_unreadable(reason, e)
+    base = _vc_meta(lines).get("base_instructions")
+    text = base.get("text") if isinstance(base, dict) else None
+    if isinstance(text, str) and text.strip():
+        return []
+    return [f"[{reason}] the session_meta carries no base_instructions text, so the prompt the session ran under is "
+            "not recorded"]
+
+
+def _vc_memory_keys(node, where: str) -> list:
+    out, stack = [], [node]
+    while stack:
+        x = stack.pop()
+        if isinstance(x, dict):
+            out += [f"{where}: {k}" for k in x if isinstance(k, str) and _CODEX_MEMORY_KEY.search(k)]
+            stack.extend(x.values())
+        elif isinstance(x, list):
+            stack.extend(x)
+    return out
+
+
+def vendor_codex_memory_partial(path) -> list:
+    """inherited-context, T-12:memory (NOT COMPARABLE; glitch-f1's adopted ruling, re-amended 22 Oct after review
+    0df1437 MAJOR 1): the settings leg, the take's rebuilt pinned config.toml (take_config's own writer for the ledger's
+    model) must not turn on features.memories (Feature::MemoryTool, key "memories", default off, features/src/lib.rs:
+    1230-1235 at openai/codex 092d3acd); world_state's keys are one of the two sets the walks hold; no memory-named key
+    in session_meta, world_state, turn_context or thread_settings, except session_meta.memory_mode "disabled"
+    (CODEX_MEMORY_MODE_OFF: written only when memory generation is off, rollout/src/recorder.rs:976, so it is the record
+    of the safe setting; absent in all 38 walks); no developer section beyond the six recorded kinds (the CLI's memory
+    instructions are a tagless "## Memory" section, which reads as one)."""
+    reason = "inherited-context"
+    try:
+        lines = _vendor_codex_lines(path)
+        model = (_ledger_beside(Path(path)) or {}).get("model_requested")
+    except _VENDOR_READ_ERRORS as e:
+        return _vc_unreadable(reason, e)
+    out = []
+    try:
+        cfg = _tomllib.loads(_take_config.files_for("codex", model=model)[_take_config.CODEX_CONFIG].decode("ascii"))
+        memories = (cfg.get("features") or {}).get("memories", False)
+    except Exception as e:  # noqa: BLE001 - a config the writer cannot write is a refusal, never a pass
+        out.append(f"[{reason}] the take's pinned config.toml cannot be rebuilt ({type(e).__name__}: {str(e)[:160]}), "
+                   "so features.memories cannot be shown off")
+    else:
+        if memories is not False:
+            out.append(f"[{reason}] the take's pinned config.toml sets features.memories to {memories!r}: Codex's "
+                       "memory feature (features/src/lib.rs:1230-1235) may have offered memory to the session")
+    for ws in _vc_world_states(lines):
+        if frozenset(ws) not in CODEX_WORLD_STATE_KEYS:
+            out.append(f"[{reason}] world_state's keys {sorted(ws)} are not one of the two sets the committed walks "
+                       "hold: a section no walk recorded may have reached the model")
+    meta = _vc_meta(lines)
+    found = _vc_memory_keys({k: v for k, v in meta.items() if not (k == "memory_mode" and v == CODEX_MEMORY_MODE_OFF)},
+                            "session_meta")
+    for _line, rec in lines:
+        pay = rec["payload"]
+        if rec["type"] == "world_state":
+            found += _vc_memory_keys(pay, "world_state")
+        elif rec["type"] == "turn_context":
+            found += _vc_memory_keys(pay, "turn_context")
+    for s in _vc_thread_settings(lines):
+        found += _vc_memory_keys(s, "thread_settings")
+    out += [f"[{reason}] a memory-named key ({f}): memory may have been offered to the session" for f in found]
+    out += [f"[{reason}] a developer section {tag!r} beyond the six recorded kinds: memory or other instructions "
+            "may have reached the model" for tag in _vc_sections(lines) if tag not in CODEX_DEVELOPER_SECTIONS]
+    return out
+
+
+def vendor_codex_checkout_partial(path) -> list:
+    """checkout-binding, T-13 (NOT COMPARABLE; glitch-f1's adopted ruling): exactly one git record, session_meta.git
+    {branch, commit_hash}, the branch `main` (CODEX_CHECKOUT_BRANCH, drive.py:381) and a 40-character lower-case hex
+    commit hash. Survey: 38 of 38."""
+    reason = "checkout-binding"
+    try:
+        lines = _vendor_codex_lines(path)
+    except _VENDOR_READ_ERRORS as e:
+        return _vc_unreadable(reason, e)
+    git = _vc_meta(lines).get("git")
+    if not (isinstance(git, dict) and set(git) == {"branch", "commit_hash"}):
+        return [f"[{reason}] the session_meta's git record is {type(git).__name__} "
+                f"{sorted(git) if isinstance(git, dict) else ''}, not one {{branch, commit_hash}}: the commit the "
+                "session opened on is not recorded"]
+    out = []
+    if git["branch"] != CODEX_CHECKOUT_BRANCH:
+        out.append(f"[{reason}] the session opened on branch {git['branch']!r}, not the driver's "
+                   f"{CODEX_CHECKOUT_BRANCH!r} (drive.py:381)")
+    if not (isinstance(git["commit_hash"], str) and re.fullmatch(r"[0-9a-f]{40}", git["commit_hash"])):
+        out.append(f"[{reason}] the session's commit hash is not 40 lower-case hex characters")
+    return out
+
+
+def vendor_codex_instruction_content_reads(path, design) -> list:
+    """checkout-binding, T-14 (SAME): every AGENTS.md the session recorded (each AGENTS.md user part's body inside its
+    <INSTRUCTIONS> wrapper, and world_state.agents_md.text) equals the pinned CLAUDE.md of its directory (R-6:
+    walk_builders places AGENTS.md byte-identical beside every CLAUDE.md), trailing whitespace aside
+    (pinned_instruction_problems' rule); a file outside the session folder is T-12:instruction-files', skipped here.
+    Survey: 38 of 38 both copies equal the pinned root CLAUDE.md."""
+    reason = "checkout-binding"
+    try:
+        lines = _vendor_codex_lines(path)
+    except _VENDOR_READ_ERRORS as e:
+        return _vc_unreadable(reason, e)
+    cwd = _vc_meta(lines).get("cwd")
+    files = [("an AGENTS.md message", d, body) for d, body in _vc_agents_messages(lines)]
+    for ws in _vc_world_states(lines):
+        if "agents_md" in ws:
+            a = ws["agents_md"] if isinstance(ws["agents_md"], dict) else {}
+            files.append(("world_state's agents_md", a.get("directory"), a.get("text")))
+    if not files:
+        return [f"[{reason}] the session recorded no instruction file, so what it was told cannot be shown"]
+    out = []
+    for where, d, text in files:
+        if not _vc_inside(d, cwd):
+            continue
+        rel = posixpath.relpath(d, cwd)
+        pinned_rel = "CLAUDE.md" if rel == "." else f"{rel}/CLAUDE.md"
+        shown = "AGENTS.md" if rel == "." else f"{rel}/AGENTS.md"
+        pinned = design.instructions.get(pinned_rel)
+        if not isinstance(text, str):
+            out.append(f"[{reason}] {where} for {shown} carries no readable text")
+        elif pinned is None:
+            out.append(f"[{reason}] the session loaded {shown}, and the pinned tree carries no {pinned_rel} beside it")
+        elif pinned.rstrip() != text.rstrip():
+            out.append(f"[{reason}] {where}: the session loaded {shown} with content other than the pinned tree's "
+                       f"{pinned_rel}; the agent was told something the study did not pin")
+    return out
+
+
+def vendor_codex_recorded_mode_reads(path, design, arm) -> list:
+    """constant-binding, T-16 (SAME; review MAJOR 2): the arm's pinned mode (mode_for_arm; the ledger's arm where the
+    site has none) read from the CLI-written records by lane freeze-gates-fix's one reading
+    (mode_binding.codex_mode_records): one turn_context per turn, each carrying mode_binding.CODEX_MODE_RECORD's
+    (approval_policy, sandbox_policy.type); each thread_settings snapshot (two per resume; a one-turn take has none,
+    where this leg reads nothing) its approval_policy and permission_profile.type (CODEX_THREAD_PERMISSION_PROFILE).
+    Survey: 89 turn_context records "never"/danger-full-access, 38 of 38; thread_settings in the 25 multi-turn walks."""
+    reason = "constant-binding"
+    try:
+        lines = _vendor_codex_lines(path)
+        raw = "\n".join(line for line, _rec in lines) + "\n"
+        got = _mode_binding.codex_mode_records(raw)
+        turns = len(_vendor_envelopes(path))
+        if arm is None:
+            arm = (_ledger_beside(Path(path)) or {}).get("arm")
+    except _VENDOR_READ_ERRORS + (ValueError,) as e:
+        return _vc_unreadable(reason, e)
+    mode = mode_for_arm(design.pre, arm)
+    pair = _mode_binding.CODEX_MODE_RECORD.get(mode) if isinstance(mode, str) else None
+    profile = CODEX_THREAD_PERMISSION_PROFILE.get(mode) if isinstance(mode, str) else None
+    if pair is None or profile is None:
+        return [f"[{reason}] arm {arm!r} pins the mode {mode!r}, which maps to no recorded Codex mode, so the "
+                "session's mode records cannot be bound"]
+    out = []
+    if not (len(got["turn_contexts"]) == got["turns"] == turns):
+        out.append(f"[{reason}] the rollout holds {len(got['turn_contexts'])} turn_context record(s) for "
+                   f"{got['turns']} turn(s) and {turns} turn stream(s): a turn's mode is not recorded")
+    for k, tc in enumerate(got["turn_contexts"], 1):
+        if tuple(tc) != tuple(pair):
+            out.append(f"[{reason}] turn_context {k} records approval {tc[0]!r} and sandbox {tc[1]!r}, not the pinned "
+                       f"{mode!r} mode's {pair[0]!r} and {pair[1]!r}")
+    for k, s in enumerate(_vc_thread_settings(lines), 1):
+        pp = s.get("permission_profile")
+        if s.get("approval_policy") != pair[0] or not (isinstance(pp, dict) and pp.get("type") == profile):
+            out.append(f"[{reason}] thread_settings snapshot {k} records approval {s.get('approval_policy')!r} and "
+                       f"permission profile {pp!r}, not the pinned {mode!r} mode's {pair[0]!r} and {profile!r}")
+    return out
+
+
+def _vendor_turn_count(path):
+    """The take's turn count, its envelopes'; None when they cannot be read (the turn tie then reads nothing, and the
+    envelope readers refuse the take on their own)."""
+    try:
+        return len(_vendor_envelopes(path))
+    except _VENDOR_READ_ERRORS:
+        return None
+
+
+def vendor_credential_source_problems(rec, reason: str = "environment-record", turn_count=None) -> list:
+    """T-17:billing-route's credential leg, both arms (glitch-f1's amendment of both T-17 rulings, Thu 22 Oct 2026,
+    from GAP4-PREFREEZE-RESIDUALS-20261022.md item 3): the environment record's credential_source is Claude Code's
+    stream field (system/init.apiKeySource), which the driver writes null for a vendor take, so it must be null on every
+    vendor turn (each per_turn apiKeySource and the reported value); a non-null value is a credential source the study
+    cannot place. Survey: null on all 74 vendor walks."""
+    cs = rec.get("credential_source") if isinstance(rec, dict) else None
+    turns = cs.get("per_turn") if isinstance(cs, dict) else None
+    if not (isinstance(cs, dict) and isinstance(turns, list) and turns and all(isinstance(t, dict) for t in turns)):
+        return [f"[{reason}] the environment record's credential_source is not one per_turn list, so its null on every "
+                "vendor turn cannot be shown"]
+    out = []
+    if turn_count is not None and len(turns) != turn_count:     # Gemini review 0df1437 NIT: one entry per turn
+        out.append(f"[{reason}] the environment record's credential_source holds {len(turns)} per_turn "
+                   f"entr(ies) for the take's {turn_count} turn(s), so a turn's credential source is not shown null")
+    out += [f"[{reason}] the environment record's credential_source names {t.get('apiKeySource')!r} for turn "
+           f"{t.get('n')!r}, not null: a credential source on a vendor turn the study does not place"
+           for t in turns if t.get("apiKeySource") is not None]
+    if cs.get("reported") is not None:
+        out.append(f"[{reason}] the environment record's credential_source reports {cs['reported']!r}, not null")
+    return out
+
+
+def vendor_billing_route_partial(path, harness, pre) -> list:
+    """environment-record, T-17:billing-route (NOT COMPARABLE; glitch-f1's adopted rulings, both arms; a harness
+    argument, so stage G may call it): (1) the environment record's named variables hold no name of the harness's
+    vendor billing list (run_take.VENDOR_BILLING_ROUTE_VARIABLES), only key- or token-shaped names being visible there
+    (drive.py:656); (2) the launch environment (run_take.TAKE_ENV) holds none and the refused set
+    (run_take.refused_variables) covers all (run_take.py:963-973); (3) codex: session_meta's model_provider is
+    "openai" and every token_count records a plan (rate_limits.plan_type non-null, at least one); gemini: the pinned
+    auth setting is the API key (take_config.GEMINI_AUTH_SETTING, take_config.py:110-112); and (stage V, glitch-f1's
+    amendment) the record's credential_source null on every vendor turn (vendor_credential_source_problems)."""
+    reason = "environment-record"
+    harness = _vendor_harness(harness)
+    names = set(_run_take.VENDOR_BILLING_ROUTE_VARIABLES[harness])
+    out = []
+    try:
+        rec = json.loads((Path(path).parent / ((pre.get("environment_record") or {}).get("file")
+                                                or "environment.json")).read_text(encoding="utf-8"))
+        present = {x.get("name") for x in rec["names_present"]}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as e:
+        present = None
+        out.append(f"[{reason}] the environment record's named variables cannot be read ({type(e).__name__})")
+    else:
+        out += vendor_credential_source_problems(rec, reason, _vendor_turn_count(path))
+    if present is not None and present & names:
+        out.append(f"[{reason}] the environment record names {sorted(present & names)}, of the {harness} billing "
+                   "routes")
+    env = _run_take.TAKE_ENV.get(harness) or {}
+    if set(env) & names:
+        out.append(f"[{reason}] the {harness} launch environment holds {sorted(set(env) & names)}, of its billing "
+                   "routes")
+    missing = names - set(_run_take.refused_variables(harness))
+    if missing:
+        out.append(f"[{reason}] the refused set misses {sorted(missing)}, of the {harness} billing routes")
+    if harness == "codex":
+        try:
+            lines = _vendor_codex_lines(path)
+        except _VENDOR_READ_ERRORS as e:
+            return out + _vc_unreadable(reason, e)
+        provider = _vc_meta(lines).get("model_provider")
+        if provider != CODEX_MODEL_PROVIDER:
+            out.append(f"[{reason}] the session records the provider {provider!r}, not {CODEX_MODEL_PROVIDER!r}")
+        # stage Z2: the pinned config forces the ChatGPT login road (take_config.py:61; enforced when codex exec starts,
+        # exec/src/lib.rs:657), and the launcher refuses CODEX_HOME/.env, which Codex loads into the process for any
+        # non-CODEX_ name (arg0/src/lib.rs:297-327; box/run_take.py CONFIG_FOLDER_NAMED, the row's fourth leg)
+        try:
+            ledger_model = (_ledger_beside(Path(path)) or {}).get("model_requested")
+            cfg = _tomllib.loads(_take_config.files_for("codex", model=ledger_model)[_take_config.CODEX_CONFIG]
+                                 .decode("ascii"))
+            if cfg.get("forced_login_method") != "chatgpt":
+                out.append(f"[{reason}] the take's pinned config.toml sets forced_login_method "
+                           f"{cfg.get('forced_login_method')!r}, not \"chatgpt\": another login road could carry the take")
+        except Exception as e:  # noqa: BLE001 - a config the writer cannot write is a refusal, never a pass
+            out.append(f"[{reason}] the take's pinned config.toml cannot be rebuilt ({type(e).__name__}), so its login "
+                       "road cannot be shown")
+        if not any(re.fullmatch(pat, ".env") for pat, _why in _run_take.CONFIG_FOLDER_NAMED.get(_run_take.CODEX, ())):
+            out.append(f"[{reason}] the launcher no longer refuses CODEX_HOME/.env, which Codex loads into the process "
+                       "(arg0/src/lib.rs:297-327): a billing variable could reach the session")
+        plans = [((rec["payload"].get("rate_limits") or {}) if isinstance(rec["payload"].get("rate_limits"), dict)
+                  else {}).get("plan_type") for _line, rec in lines
+                 if rec["type"] == "event_msg" and rec["payload"].get("type") == "token_count"]
+        if not plans or any(p is None for p in plans):
+            out.append(f"[{reason}] the session's token_count records ({len(plans)}) do not all record a ChatGPT "
+                       "plan")
+    elif _take_config.GEMINI_AUTH_SETTING != {"path": "security.auth.selectedType", "value": "gemini-api-key"}:
+        out.append(f"[{reason}] the pinned Gemini auth setting is {_take_config.GEMINI_AUTH_SETTING!r}, not the API "
+                   "key")
+    return out
+
+
+def vendor_codex_tools_partial(path) -> list:
+    """harness-condition-violated, T-18 (NOT COMPARABLE; glitch-f1's adopted ruling): neither multi-agent section
+    (rendered exactly when the six collaboration tools are offered, take_config.py:263-284) nor the recommended_plugins
+    section (with the plugin-install tool, take_config.py:255-262), no additional_tools item, world_state's app and
+    plugin sections off; input side, the take's pinned config.toml (take_config's own writer for the ledger's model)
+    turns agents, plugins and web search off (take_config.py:61-69, 409-411). It fires on the 31 walks run before
+    B22-10 (w-o46 among them), which were offered those tools."""
+    reason = HARNESS_CONDITION_VIOLATED
+    try:
+        lines = _vendor_codex_lines(path)
+        model = (_ledger_beside(Path(path)) or {}).get("model_requested")
+    except _VENDOR_READ_ERRORS as e:
+        return _vc_unreadable(reason, e)
+    out = []
+    sections = _vc_sections(lines)
+    for tag in CODEX_COLLAB_SECTIONS:
+        if tag in sections:
+            out.append(f"[{reason}] the rollout carries the {tag} section, which Codex renders only when its six "
+                       "collaboration tools are offered (take_config.py:263-284): denied tools were offered")
+    if CODEX_PLUGIN_SECTION in sections:
+        out.append(f"[{reason}] the rollout carries the {CODEX_PLUGIN_SECTION} section, which comes with the "
+                   "plugin-install tool (take_config.py:255-262)")
+    if any(rec["type"] == "response_item" and rec["payload"].get("type") == "additional_tools" for _l, rec in lines):
+        out.append(f"[{reason}] the rollout holds an additional_tools item: tools were added to the session")
+    # stage Z2: the collaboration state every turn_context records (protocol.rs:3353): "disabled" with agents off;
+    # anything else means the collaboration tools were offered (v2 on 31 walks, disabled on 7, as the sections say)
+    versions = sorted({str(rec["payload"].get("multi_agent_version")) for _l, rec in lines
+                       if rec["type"] == "turn_context" and rec["payload"].get("multi_agent_version") != "disabled"})
+    if versions:
+        out.append(f"[{reason}] a turn_context records multi_agent_version {versions}, not \"disabled\": the "
+                   "collaboration tools were offered")
+    for ws in _vc_world_states(lines):
+        for key in ("apps_instructions", "plugins_instructions"):
+            if ws.get(key) is not False:
+                out.append(f"[{reason}] world_state's {key} is {ws.get(key)!r}, not off")
+    try:
+        cfg = _tomllib.loads(_take_config.files_for("codex", model=model)[_take_config.CODEX_CONFIG].decode("ascii"))
+        ok = ((cfg.get("agents") or {}).get("enabled") is False and cfg.get("web_search") == "disabled"
+              and (cfg.get("features") or {}).get("plugins") is False)
+    except Exception as e:  # noqa: BLE001 - a config the writer cannot write is a refusal, never a pass
+        ok = False
+        out.append(f"[{reason}] the take's pinned config.toml cannot be rebuilt ({type(e).__name__}: {str(e)[:160]})")
+    else:
+        if not ok:
+            out.append(f"[{reason}] the take's pinned config.toml does not turn agents, plugins and web search off")
+    return out
+
+
+# ---- END SETTLE: CODEX READERS --------------------------------------------------------------------------------------
+# (spacer: the two spans stay apart so the Codex and Gemini appends never touch the same lines)
+#
+#
+# =====================================================================================================================
+# SETTLE: GEMINI READERS (lane vendor-settle, stage G). The Gemini builder appends its readers and partial checks
+# here, between this banner and the line "END SETTLE: GEMINI READERS", and nowhere else in this span; same rules.
+# =====================================================================================================================
+
+
+# Lane vendor-settle stage G (glitch-f1's settle rulings, Wed 21 Oct 2026, under Javier's standing delegation; design
+# plans/gap-study-round-4/vendor-settle-DESIGN-2026-10-21.md section 2, its review's MAJOR 1 and MAJOR 3 and MINOR 5,
+# and the adopted NOT COMPARABLE rulings, vendor-settle-NC-RULINGS-2026-10-21.md, arm G). Gemini CLI 0.64.0 writes one
+# CLI-built context record, a user message whose text opens "<session_context>": the workspace directories, the
+# directory listing and the loaded GEMINI.md blocks. A resume rewrites that text in place through a $patch update and a
+# re-record can write it again as a new message, so the replay's timeline holds only the last version (MAJOR 1): every
+# reader here takes EVERY version from the raw records of the last retained snapshot (each user message's text parts,
+# each $patch update's content parts on a user message), after the projection and the replay have accepted the file;
+# never a whole log line, which can carry the model's thoughts (a $patch update of a model message, w-g47), and never
+# a thought part. The texts are decoded strings, so a word after a newline is read as a word (MAJOR 3).
+from box import run_take as _settle_g_run_take  # noqa: E402
+from box import take_config as _settle_g_take_config  # noqa: E402
+
+GEMINI_CONTEXT_OPEN = "<session_context>"     # gemini_session_replay.IGNORED_PREFIXES: the CLI's own context record
+GEMINI_DIRS_HEADER = "- **Workspace Directories:**"
+GEMINI_LISTING_HEADER = "- **Directory Structure:**"
+GEMINI_LISTING_NOTE = "Showing up to "        # the listing's fixed preamble line, before its root
+GEMINI_DIR_ITEM = "  - "
+_GEMINI_CONTEXT_FROM = re.compile(r"--- Context from: (.+) ---")
+GEMINI_CONTEXT_END = "--- End of Context from: {} ---"
+_GEMINI_TAG = re.compile(r"</?([A-Za-z_][A-Za-z0-9_-]*)>")
+# The one tag set every recorded version holds outside the loaded files' bodies (design section 1, 36 of 36 walks).
+GEMINI_CONTEXT_TAGS = ("session_context", "loaded_context", "project_context")
+# R-6 (take_config.INSTRUCTION_FILES): the file Gemini CLI loads is a copy of the pinned CLAUDE.md beside it.
+GEMINI_INSTRUCTION_FILE = "GEMINI.md"
+# The ruling's denied tools (take_config.py:94 GEMINI_SETTINGS tools.exclude, :132 GEMINI_AGENT_EXCLUSION, :444-446).
+GEMINI_DENIED_TOOLS = ("google_web_search", "web_fetch", "invoke_agent")
+# The CLI's prompt override variable GEMINI_SYSTEM_MD ([C] 336149, 336178-336190) and its prompt-dump variable
+# GEMINI_WRITE_SYSTEM_MD, which writes the final prompt out to a file ([C] 336273, 336285-336292), both in
+# GEMINI_PACKAGE_SWEEP_REFUSED (box/run_take.py:508, 511); and the section switches GEMINI_PROMPT_<SECTION>, which drop
+# a prompt section on 0 or false ([C] 336004-336008), named at run time so no literal list holds them (GEMINI-S0-READ,
+# stage Z). [C] is bundle/chunk-NR7L3FXV.js of the pinned gemini-cli 0.64.0.
+GEMINI_PROMPT_OVERRIDES = ("GEMINI_SYSTEM_MD", "GEMINI_WRITE_SYSTEM_MD")
+GEMINI_PROMPT_VARIABLE_WHAT = {"GEMINI_SYSTEM_MD": "replaces Gemini CLI's system prompt with a file",
+                               "GEMINI_WRITE_SYSTEM_MD": "makes Gemini CLI write its final system prompt to a file"}
+GEMINI_PROMPT_SECTION_PREFIX = "GEMINI_PROMPT_"
+# The pinned API-key auth setting (box/take_config.py:110-112).
+GEMINI_AUTH_RULED = {"path": "security.auth.selectedType", "value": "gemini-api-key"}
+
+
+class _GeminiContextUnread(ValueError):
+    """The context versions cannot be read: each reader names it under its own row's reason, never a pass."""
+
+
+def _gemini_ledger(path) -> dict:
+    return _binding._json(_binding._regular_bytes(Path(path).parent / "driver-ledger.json").decode("utf-8"))
+
+
+def _gemini_context_parts(content) -> list:
+    """The context texts of one user message's content: a string, or each non-thought text part, opening
+    GEMINI_CONTEXT_OPEN."""
+    if isinstance(content, str):
+        return [content] if content.startswith(GEMINI_CONTEXT_OPEN) else []
+    if not isinstance(content, list):
+        return []
+    return [p["text"] for p in content if isinstance(p, dict) and isinstance(p.get("text"), str)
+            and not p.get("thought") and p["text"].startswith(GEMINI_CONTEXT_OPEN)]
+
+
+def _gemini_raw_records(path) -> list:
+    """[(line number, record)] of the last retained snapshot, once the projection and the replay accept it; raises
+    _GeminiContextUnread."""
+    try:
+        raw = _vendor_last_snapshot(path, _gemini_ledger(path))
+        _gemini_projection.project(raw)
+        _gemini_replay.replay(raw)
+        return [(n, _binding._json(line)) for n, line in enumerate(transcript_view.jsonl_lines(raw.decode("utf-8")), 1)]
+    except _VENDOR_READ_ERRORS + (_gemini_replay.ReplayRefused,) as e:
+        raise _GeminiContextUnread(f"{type(e).__name__}: {str(e)[:160]}") from None
+
+
+def gemini_context_versions(path) -> list:
+    """[(where, text)]: every <session_context> text the last retained snapshot holds, in record order: each user
+    message's (its first write, a resume copy or a re-record), and each $patch update's content on a user message (the
+    version a resume wrote over it). Raises _GeminiContextUnread."""
+    kinds, out = {}, []
+    for n, rec in _gemini_raw_records(path):
+        if not isinstance(rec, dict):
+            continue
+        patch = rec.get("$patch")
+        if isinstance(patch, dict):
+            for k, update in enumerate(patch.get("updates") or [], 1):
+                if isinstance(update, dict) and kinds.get(update.get("id")) == "user":
+                    out += [(f"line {n} ($patch update {k})", t) for t in _gemini_context_parts(update.get("content"))]
+        elif isinstance(rec.get("id"), str) and rec.get("type") in _gemini_replay.MESSAGE_KINDS:
+            kinds[rec["id"]] = rec["type"]
+            if rec["type"] == "user":
+                out += [(f"line {n}", t) for t in _gemini_context_parts(rec.get("content"))]
+    return out
+
+
+def gemini_context_facts(text: str) -> dict:
+    """One context version read: {"dirs": the Workspace Directories (None when the block is not there once), "root":
+    the directory listing's root (None when it cannot be read), "files": [(path, body)] of each loaded file between its
+    Context-from header and its end marker, "unended": the paths of a header with no end marker, "tags": the tag names
+    outside the loaded files' bodies}."""
+    lines = text.split("\n")
+    facts = {"dirs": None, "root": None, "files": [], "unended": [], "tags": []}
+    at = [i for i, line in enumerate(lines) if line == GEMINI_DIRS_HEADER]
+    if len(at) == 1:
+        dirs = []
+        for line in lines[at[0] + 1:]:
+            if not line.startswith(GEMINI_DIR_ITEM):
+                break
+            dirs.append(line[len(GEMINI_DIR_ITEM):])
+        facts["dirs"] = dirs
+    at = [i for i, line in enumerate(lines) if line == GEMINI_LISTING_HEADER]
+    if len(at) == 1:
+        for line in lines[at[0] + 1:]:
+            if not line.strip() or line.startswith(GEMINI_LISTING_NOTE):
+                continue
+            if line.startswith("/") and line.endswith("/") and len(line) > 1:
+                facts["root"] = line[:-1]
+            break
+    outside, i = [], 0
+    while i < len(lines):
+        m = _GEMINI_CONTEXT_FROM.fullmatch(lines[i])
+        if not m:
+            outside.append(lines[i])
+            i += 1
+            continue
+        end = GEMINI_CONTEXT_END.format(m.group(1))
+        j = next((k for k in range(i + 1, len(lines)) if lines[k] == end), None)
+        if j is None:
+            facts["unended"].append(m.group(1))
+            i += 1
+            continue
+        facts["files"].append((m.group(1), "\n".join(lines[i + 1:j])))
+        i = j + 1
+    facts["tags"] = sorted({t for line in outside for t in _GEMINI_TAG.findall(line)})
+    return facts
+
+
+def _gemini_inside(p: str, dirs) -> bool:
+    return (isinstance(p, str) and posixpath.isabs(p) and posixpath.normpath(p) == p
+            and any(isinstance(d, str) and d and p.startswith(d.rstrip("/") + "/") for d in dirs or []))
+
+
+def _gemini_versions_or(path, reason: str, what: str):
+    """(versions, None); or (None, [a transcript-unreadable line]) when the snapshot cannot be read (as the codex
+    readers refuse an unreadable rollout), or (None, [the row's line]) when it records no context version."""
+    try:
+        versions = gemini_context_versions(path)
+    except _GeminiContextUnread as e:
+        return None, [f"[{TRANSCRIPT_UNREADABLE}] the native session cannot be read ({e}), so {what}"]
+    if not versions:
+        return None, [f"[{reason}] the native session records no {GEMINI_CONTEXT_OPEN} context, so {what}"]
+    return versions, None
+
+
+def _gemini_launch_folder(path):
+    """The one working folder every turn's launch journal records, or None."""
+    try:
+        n = len(_vendor_envelopes(path))
+    except transcript_view.ViewError:
+        return None
+    cwds = {(_vendor_journal(path, k) or {}).get("cwd") for k in range(1, n + 1)}
+    cwd = cwds.pop() if n and len(cwds) == 1 else None
+    return cwd if isinstance(cwd, str) and cwd else None
+
+
+def vendor_gemini_session_cwd(path):
+    """MINOR 5: the one workspace directory every context version records (the session's own working directory, as
+    codex's turn_context.cwd), or None when a version records another count, they differ, or none can be read."""
+    try:
+        versions = gemini_context_versions(path)
+    except _GeminiContextUnread:
+        return None
+    dirs = [gemini_context_facts(t)["dirs"] for _, t in versions]
+    if not dirs or any(d is None or len(d) != 1 for d in dirs) or len({d[0] for d in dirs}) != 1:
+        return None
+    return dirs[0][0] or None
+
+
+def vendor_gemini_run_tree_reads(path, design) -> list:
+    """T-4 (readers-disagree, SAME): every context version's Workspace Directories is exactly [the run tree] and its
+    directory listing's root is the run tree; each turn's launch journal cwd, where it exists, is the run tree too (the
+    codex reading's second leg)."""
+    tree = design.run_tree
+    versions, refused = _gemini_versions_or(path, "readers-disagree", "where the session ran cannot be shown")
+    if refused:
+        return refused
+    out = []
+    for where, text in versions:
+        facts = gemini_context_facts(text)
+        if facts["dirs"] != [tree]:
+            out.append(f"[readers-disagree] the driver gave the take the run tree {tree!r} and the session context "
+                       f"({where}) records the workspace directories {facts['dirs']!r}")
+        if facts["root"] != tree:
+            out.append(f"[readers-disagree] the driver gave the take the run tree {tree!r} and the session context "
+                       f"({where}) lists the directory {facts['root']!r}")
+    try:
+        n = len(_vendor_envelopes(path))
+    except transcript_view.ViewError:
+        n = 0
+    for k in range(1, n + 1):
+        doc = _vendor_journal(path, k)
+        if doc is not None and doc.get("cwd") != tree:
+            out.append(f"[readers-disagree] turn {k}'s launch journal records the working folder {doc.get('cwd')!r}, "
+                       f"not the run tree {tree!r}")
+    return out
+
+
+def vendor_gemini_loaded_context_text(path, versions=None) -> str:
+    """The text T-10 sweeps for a gemini take, lower-cased: every <session_context> version's decoded text, joined by
+    spaces. Raises _GeminiContextUnread; a session with no version is a ValueError (never an empty clean text).
+    leak_grep (the prereg draft's checked_against, stage W) reads it too."""
+    versions = gemini_context_versions(path) if versions is None else versions
+    if not versions:
+        raise ValueError(f"the native session records no {GEMINI_CONTEXT_OPEN} context")
+    return " ".join(t for _, t in versions).lower()
+
+
+def vendor_loaded_context_text(path, harness) -> str:
+    """The loaded-context text the harness's settled T-10 reader sweeps (codex or gemini), for leak_grep's derive and
+    so build_draft's checked_against (glitch-f1's stage W ruling 2). Raises on an unreadable session, never ""."""
+    harness = _vendor_harness(harness)
+    if harness == "codex":
+        return vendor_codex_loaded_context_text(path)
+    return vendor_gemini_loaded_context_text(path)
+
+
+def vendor_gemini_loaded_context_reads(path, design) -> list:
+    """T-10 (leak-in-loaded-context, SAME): every context version's decoded text, lower-cased, through context_leaks
+    with the design's pre-registration (no vendor excusal: the pre-registered ones are Claude Code's phrases)."""
+    versions, refused = _gemini_versions_or(path, "leak-in-loaded-context",
+                                            "what the CLI put in front of the agent cannot be swept")
+    if refused:
+        return refused
+    leaked = context_leaks(vendor_gemini_loaded_context_text(path, versions), design.pre)
+    if not leaked:
+        return []
+    return [f"[leak-in-loaded-context] the context Gemini CLI loaded for the agent contains {sorted(leaked)}, which "
+            "tells the agent what this is. The take is void: a leak does not show in the verdict."]
+
+
+def vendor_gemini_cwd_reads(path) -> list:
+    """T-11 (inherited-context, SAME): every context version records exactly one workspace directory, else what the
+    session loaded cannot be placed (the codex reading's)."""
+    versions, refused = _gemini_versions_or(path, "inherited-context", "what it loaded cannot be placed")
+    if refused:
+        return refused
+    out = []
+    for where, text in versions:
+        dirs = gemini_context_facts(text)["dirs"]
+        if dirs is None or len(dirs) != 1:
+            out.append(f"[inherited-context] the session context ({where}) records "
+                       f"{'no' if dirs is None else len(dirs)} workspace directories, not one, so what the session "
+                       "loaded cannot be placed")
+    return out
+
+
+def vendor_gemini_instruction_files_reads(path) -> list:
+    """T-12:instruction-files (inherited-context, SAME): every loaded file's Context-from path, in every context
+    version, sits inside that version's workspace directory, and every header has its end marker."""
+    versions, refused = _gemini_versions_or(path, "inherited-context", "the files it loaded cannot be shown")
+    if refused:
+        return refused
+    out = []
+    for where, text in versions:
+        facts = gemini_context_facts(text)
+        if facts["dirs"] is None:
+            out.append(f"[inherited-context] the session context ({where}) records no workspace directories, so the "
+                       "files it loaded cannot be placed")
+            continue
+        out += [f"[inherited-context] the session context ({where}) loaded {p}, outside its workspace directory "
+                f"{facts['dirs']!r}" for p, _ in facts["files"] if not _gemini_inside(p, facts["dirs"])]
+        out += [f"[inherited-context] the session context ({where}) opens the loaded file {p} and never ends it, so "
+                "what it loaded cannot be read" for p in facts["unended"]]
+    return out
+
+
+def vendor_gemini_instruction_content_reads(path, design) -> list:
+    """T-14 (checkout-binding, SAME): every loaded GEMINI.md body, in every context version, equals the pinned
+    CLAUDE.md beside it (design.instructions, R4C-11), trailing whitespace ignored; a file outside the run tree is
+    T-12:instruction-files' (as C's pinned_instruction_problems skips it)."""
+    versions, refused = _gemini_versions_or(path, "checkout-binding", "what it was told cannot be shown")
+    if refused:
+        return refused
+    tree, out = design.run_tree, []
+    for where, text in versions:
+        files = gemini_context_facts(text)["files"]
+        if not files:
+            out.append(f"[checkout-binding] the session context ({where}) records no loaded instruction file, so what "
+                       "the agent was told cannot be shown")
+        for p, body in files:
+            if not _gemini_inside(p, [tree]):
+                continue
+            rel = posixpath.relpath(p, tree)
+            pinned = None
+            if posixpath.basename(rel) == GEMINI_INSTRUCTION_FILE:
+                pinned = design.instructions.get(posixpath.join(posixpath.dirname(rel), "CLAUDE.md"))
+            if pinned is None:
+                out.append(f"[checkout-binding] the session ({where}) loaded {rel}, which no pinned CLAUDE.md stands "
+                           "beside")
+            elif pinned.rstrip() != body.rstrip():
+                out.append(f"[checkout-binding] the session ({where}) loaded {rel} with content other than the pinned "
+                           "tree's; the agent was told something the study did not pin")
+    return out
+
+
+# ---- the NOT COMPARABLE rows' partial checks (the adopted rulings' texts, arm G, verbatim in VENDOR_PENDING_ROWS) ---
+def vendor_gemini_offered_partial(path) -> list:
+    """T-12:offered-context's partial check: every context version lists exactly the launch folder (every turn's
+    launch journal cwd) as its workspace directories; the rebuilt launch command runs at the site."""
+    versions, refused = _gemini_versions_or(path, "inherited-context", "the directories it was offered cannot be shown")
+    if refused:
+        return refused
+    folder = _gemini_launch_folder(path)
+    if folder is None:
+        return ["[inherited-context] the launch journals record no one working folder, so the directories the "
+                "session was offered cannot be compared"]
+    return [f"[inherited-context] the session context ({where}) records the workspace directories {dirs!r}, not "
+            f"exactly the launch folder {folder!r}: a directory outside the checkout was offered"
+            for where, dirs in ((w, gemini_context_facts(t)["dirs"]) for w, t in versions) if dirs != [folder]]
+
+
+def _gemini_pinned_settings(path):
+    """(the pinned settings.json document for the ledger's model, None) or (None, why it cannot be built)."""
+    try:
+        model = _gemini_ledger(path).get("model_requested")
+        files = _settle_g_take_config.files_for("gemini", model=model)
+        return json.loads(files[_settle_g_take_config.GEMINI_SETTINGS_PATH]), None
+    except (_settle_g_take_config.Refused, _settle_g_take_config.NotReady, transcript_view.ViewError, KeyError,
+            TypeError, ValueError) as e:
+        return None, f"{type(e).__name__}: {str(e)[:120]}"
+
+
+def vendor_gemini_prompt_partial(path, design) -> list:
+    """T-12:prompt-snapshot's partial check, input side only: the launch environment (run_take.TAKE_ENV) carries
+    neither the prompt override GEMINI_SYSTEM_MD nor the prompt-dump GEMINI_WRITE_SYSTEM_MD, and no
+    GEMINI_PROMPT_<SECTION> switch (a prefix test, stage Z); both literal names are in the refused set
+    (run_take.refused_variables); and every turn's launch command is the adapter's own invocation rebuilt for the
+    ledger's arm."""
+    out = []
+    env = _settle_g_run_take.TAKE_ENV.get("gemini") or {}
+    refused = _settle_g_run_take.refused_variables("gemini")
+    for name in GEMINI_PROMPT_OVERRIDES:
+        if name in env:
+            out.append(f"[inherited-context] the launch environment carries {name}, which "
+                       f"{GEMINI_PROMPT_VARIABLE_WHAT[name]}")
+        if name not in refused:
+            out.append(f"[inherited-context] {name} is not in the refused set, so it could reach the session "
+                       f"({GEMINI_PROMPT_VARIABLE_WHAT[name]})")
+    out += [f"[inherited-context] the launch environment carries {name}, a section switch that can drop part of Gemini "
+            "CLI's system prompt" for name in sorted(env) if name.startswith(GEMINI_PROMPT_SECTION_PREFIX)]
+    try:
+        envelopes = _vendor_envelopes(path)
+        arm = _gemini_ledger(path).get("arm")
+    except transcript_view.ViewError as e:
+        return out + [f"[inherited-context] the envelopes cannot be read, so the launch commands cannot be rebuilt "
+                      f"({e})"]
+    mode = mode_for_arm(design.pre, arm)
+    for k, env_k in enumerate(envelopes, 1):
+        argv = (_vendor_journal(path, k) or {}).get("argv")
+        try:
+            want = _gemini_adapter.argv(env_k.get("sent"), model=_vendor_after(argv, _gemini_adapter.MODEL_FLAG),
+                                        mode=mode, session_id=_vendor_after(argv, _gemini_adapter.RESUME_FLAG),
+                                        first=k == 1)
+        except (_gemini_adapter.StreamError, TypeError, AttributeError, ValueError) as e:
+            want = f"none ({e})"
+        if not isinstance(argv, list) or argv != want:
+            out.append(f"[inherited-context] turn {k}'s launch was not the adapter's registered invocation, so a "
+                       "system-prompt option could have reached the session")
+    return out
+
+
+def vendor_gemini_memory_partial(path) -> list:
+    """T-12:memory's partial check: every context version loads only project blocks (no tag outside the loaded files'
+    bodies but GEMINI_CONTEXT_TAGS), each loaded file from inside its workspace directory; the pinned settings import
+    no further context file (no `context` block)."""
+    versions, refused = _gemini_versions_or(path, "inherited-context", "what memory it loaded cannot be shown")
+    if refused:
+        return refused
+    out = []
+    for where, text in versions:
+        facts = gemini_context_facts(text)
+        other = [t for t in facts["tags"] if t not in GEMINI_CONTEXT_TAGS]
+        if other:
+            out.append(f"[inherited-context] the session context ({where}) holds the block(s) {other}, beside the "
+                       "project's own: a context the study did not place")
+        out += [f"[inherited-context] the session context ({where}) loaded {p}, which is no project block inside its "
+                "workspace directory" for p, _ in facts["files"] if not _gemini_inside(p, facts["dirs"])]
+    try:                                    # the adopted text: no memory-file write (gemini_memory_file_writes)
+        writes = gemini_memory_file_writes(path)
+    except _VENDOR_READ_ERRORS as e:
+        writes = None
+        out.append(f"[inherited-context] the take's tool calls cannot be read ({type(e).__name__}), so a memory-file "
+                   "write cannot be ruled out")
+    out += [f"[inherited-context] {where}: {tool} names the memory file {p!r}: memory may have been written for the "
+            "session" for where, tool, p in writes or []]
+    settings, why = _gemini_pinned_settings(path)
+    if settings is None:
+        out.append(f"[inherited-context] the pinned settings cannot be built ({why}), so a context import cannot be "
+                   "ruled out")
+    elif "context" in settings:
+        out.append("[inherited-context] the pinned settings carry a context block, which can import a further context "
+                   "file")
+    return out
+
+
+def vendor_gemini_checkout_partial(path) -> list:
+    """T-13's partial check: the one CLI-written fact about the checkout, the directory listing's root, is the launch
+    folder in every context version. No partial check covers the checkout's git state (the ruling says so)."""
+    versions, refused = _gemini_versions_or(path, "checkout-binding", "the checkout it listed cannot be shown")
+    if refused:
+        return refused
+    folder = _gemini_launch_folder(path)
+    if folder is None:
+        return ["[checkout-binding] the launch journals record no one working folder, so the listed checkout cannot "
+                "be compared"]
+    return [f"[checkout-binding] the session context ({where}) lists the directory {root!r}, not the launch folder "
+            f"{folder!r}" for where, root in ((w, gemini_context_facts(t)["root"]) for w, t in versions)
+            if root != folder]
+
+
+def vendor_gemini_billing_route_partial(path) -> list:
+    """T-17:billing-route's partial check, three legs: environment.json's named variables hold no Gemini billing-route
+    name (only key- or token-shaped names are visible there, drive.py:656); the launch environment holds none and the
+    refused set covers all (run_take.py:963-973); the pinned auth setting is the API key (take_config.py:110-112); and
+    (stage V, glitch-f1's amendment) the record's credential_source null on every turn (vendor_credential_source_problems)."""
+    names = tuple(_settle_g_run_take.VENDOR_BILLING_ROUTE_VARIABLES.get("gemini") or ())
+    out = []
+    if not names or isinstance(names, str):
+        return ["[environment-record] run_take names no Gemini billing-route variables, so none can be ruled out"]
+    try:
+        rec = json.loads((Path(path).parent / "environment.json").read_text(encoding="utf-8"))
+        present = {x["name"] for x in rec["names_present"]}
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        present = None
+        out.append(f"[environment-record] the environment record's named variables cannot be read ({type(e).__name__})")
+    else:                                                        # stage V: glitch-f1's amendment (both T-17s)
+        out += vendor_credential_source_problems(rec, "environment-record", _vendor_turn_count(path))
+    if present is not None and present & set(names):
+        out.append(f"[environment-record] the environment record names the Gemini billing-route variable(s) "
+                   f"{sorted(present & set(names))}")
+    env = set(_settle_g_run_take.TAKE_ENV.get("gemini") or {})
+    if env & set(names):
+        out.append(f"[environment-record] the launch environment carries {sorted(env & set(names))}")
+    missing = sorted(set(names) - _settle_g_run_take.refused_variables("gemini"))
+    if missing:
+        out.append(f"[environment-record] the refused set misses the billing-route variable(s) {missing[:5]}")
+    settings, why = _gemini_pinned_settings(path)
+    if _settle_g_take_config.GEMINI_AUTH_SETTING != GEMINI_AUTH_RULED:
+        out.append(f"[environment-record] the pinned auth setting is {_settle_g_take_config.GEMINI_AUTH_SETTING!r}, "
+                   "not the API key")
+    elif settings is None:
+        out.append(f"[environment-record] the pinned settings cannot be built ({why})")
+    else:
+        node = settings
+        for part in GEMINI_AUTH_RULED["path"].split("."):
+            node = node.get(part) if isinstance(node, dict) else None
+        if node != GEMINI_AUTH_RULED["value"]:
+            out.append(f"[environment-record] the pinned settings select the auth type {node!r}, not the API key")
+    return out
+
+
+def _gemini_called_names(path) -> list:
+    """[(where, tool name)] of every call the take's records hold: each turn stream's tool_use, and in the last
+    retained snapshot each toolCalls entry and each functionCall part (a message's content or a $patch update's)."""
+    out = []
+    for k, env in enumerate(_vendor_envelopes(path), 1):
+        for n, line in enumerate(transcript_view.jsonl_lines(_vendor_stream(path, env)), 1):
+            rec = _binding._json(line)
+            if isinstance(rec, dict) and rec.get("type") == "tool_use":
+                out.append((f"turn-{k}.jsonl line {n}", rec.get("tool_name")))
+    for n, rec in _gemini_raw_records(path):
+        if not isinstance(rec, dict):
+            continue
+        patch = rec.get("$patch")
+        messages = [u for u in patch.get("updates") or [] if isinstance(u, dict)] if isinstance(patch, dict) else [rec]
+        for m in messages:
+            for t in m.get("toolCalls") or [] if isinstance(m.get("toolCalls"), list) else []:
+                if isinstance(t, dict) and "name" in t:
+                    out.append((f"session line {n} toolCalls", t.get("name")))
+            for p in m.get("content") if isinstance(m.get("content"), list) else []:
+                if isinstance(p, dict) and isinstance(p.get("functionCall"), dict):
+                    out.append((f"session line {n} functionCall", p["functionCall"].get("name")))
+    return out
+
+
+# Stage Z (2b), GEMINI-S0-READ: Gemini CLI 0.64.0 has no memory tool ("There is no `save_memory` tool", [C] 335232,
+# 335872); it saves memory by editing the memory files with write_file or replace (or a shell command), so a
+# memory-saving call is one of those naming GEMINI.md outside the workspace or a /memory/ path under the config folder
+# (GEMINI_CLI_HOME, the take's config mount; the global file and the private project memory, [C] 363483-363518).
+GEMINI_MEMORY_WRITE_TOOLS = {"write_file": "file_path", "replace": "file_path", "run_shell_command": "command"}
+_GEMINI_PATHLIKE = re.compile(r"[~A-Za-z0-9_./-]*(?:GEMINI\.md|/memory/)[A-Za-z0-9_./-]*")
+
+
+def _gemini_resolved(p: str, workspace) -> str:
+    if p.startswith("~/") or p == "~":
+        return posixpath.normpath(SWEEP_CONFIG_MOUNT + p[1:])
+    if not p.startswith("/"):
+        return posixpath.normpath(posixpath.join(workspace or "/", p))
+    return posixpath.normpath(p)
+
+
+def gemini_memory_file_writes(path) -> list:
+    """[(where, tool, the path)] of every write_file, replace and run_shell_command call in the take's turn streams
+    whose path names GEMINI.md outside the workspace (the launch folder) or a /memory/ path under the config folder.
+    Raises on an unreadable stream (as the stream readers do)."""
+    workspace = _gemini_launch_folder(path)
+    cfg = SWEEP_CONFIG_MOUNT.rstrip("/") + "/"
+    out = []
+    for k, env in enumerate(_vendor_envelopes(path), 1):
+        for n, line in enumerate(transcript_view.jsonl_lines(_vendor_stream(path, env)), 1):
+            rec = _binding._json(line)
+            if not (isinstance(rec, dict) and rec.get("type") == "tool_use"
+                    and rec.get("tool_name") in GEMINI_MEMORY_WRITE_TOOLS):
+                continue
+            arg = (rec.get("parameters") or {}).get(GEMINI_MEMORY_WRITE_TOOLS[rec["tool_name"]])
+            if not isinstance(arg, str):
+                continue
+            named = [arg] if rec["tool_name"] != "run_shell_command" else _GEMINI_PATHLIKE.findall(arg)
+            for p in named:
+                full = _gemini_resolved(p, workspace)
+                outside = not (workspace and (full == workspace or full.startswith(workspace.rstrip("/") + "/")))
+                if (posixpath.basename(full) == "GEMINI.md" and outside) or (
+                        "/memory/" in full + "/" and full.startswith(cfg)):
+                    out.append((f"turn-{k}.jsonl line {n}", rec["tool_name"], p))
+    return out
+
+
+def vendor_gemini_tools_partial(path) -> list:
+    """T-18's partial check: no stream tool call and no session tool call names a denied tool, and all three sit in
+    the pinned exclude list (the settings take_config writes for the ledger's model)."""
+    out = []
+    try:
+        calls = _gemini_called_names(path)
+    except _VENDOR_READ_ERRORS + (_GeminiContextUnread,) as e:
+        return [f"[{TRANSCRIPT_UNREADABLE}] the take's tool calls cannot be read ({type(e).__name__}), so a denied "
+                "tool's call cannot be ruled out"]
+    denied = [(w, name) for w, name in calls if name in GEMINI_DENIED_TOOLS]
+    if denied:
+        out.append(f"[{HARNESS_CONDITION_VIOLATED}] the take called the denied tool(s) "
+                   f"{sorted({n for _, n in denied})} ({len(denied)} record(s); first: {denied[0][0]})")
+    settings, why = _gemini_pinned_settings(path)
+    excluded = ((settings or {}).get("tools") or {}).get("exclude") if isinstance(settings, dict) else None
+    if not isinstance(excluded, list) or not set(GEMINI_DENIED_TOOLS) <= set(excluded):
+        out.append(f"[{HARNESS_CONDITION_VIOLATED}] the pinned exclude list {excluded!r} does not hold every denied "
+                   f"tool {list(GEMINI_DENIED_TOOLS)}" + (f" ({why})" if why else ""))
+    return out
+
+
+# ---- END SETTLE: GEMINI READERS -------------------------------------------------------------------------------------
 
 
 if __name__ == "__main__":

@@ -707,7 +707,11 @@ def checked_sessions(draft):
         result = leak_grep.derive()
     if result["words_that_would_void_a_session"]:
         raise ValueError("the leak list would void a recorded session")
-    return {"sessions_read": result["sessions_read"], "sessions": result["per_session"], "status": "read"}
+    problem = leak_grep.unread_problem(result)       # review 0df1437 MINOR 3: an unread session is never read as clean
+    if problem:
+        raise ValueError(problem)
+    return {"sessions_read": result["sessions_read"], "sessions": result["per_session"],
+            "sessions_unread": result["sessions_unread"], "status": "read"}
 
 
 # glitch-f3's section 14 values, accepted 10 Oct 2026. Accepted answer and
@@ -1589,8 +1593,10 @@ HARNESS_FURNITURE_RULING = {
          "the loaded-context leak sweep (check_take.context_text), as content read from the repository is; its "
          "type and filename stay in the sweep, and no check reads repository content for leak words. A record that "
          "is not of the closed shape is refused and never left out. The sweep reads the raw line with only the "
-         "snippet's value cut, never a re-serialised parse, so a duplicated key cannot hide a word; where the snippet "
-         "key is not found exactly once, the line is swept whole (review r6, 16 Oct)."},
+         "snippet's value cut, never a re-serialised parse, so a duplicated key cannot hide a word; the cut line is then "
+         "decoded, every key and value in order with its strings decoded and every copy of a duplicated key kept, so a "
+         "word after an escaped newline is read as a word (RULED 21 Oct, glitch-f1, lane vendor-settle stage K2); where "
+         "the snippet key is not found exactly once, the line is swept whole (review r6, 16 Oct)."},
         # glitch-b5's ruling 3 (16 Oct 2026; CP6 walk w053, Haiku, held on transcript line 107).
         {"of": "no-visible-output-nudge", "text": "Claude Code 2.1.296 writes a user record carrying isMeta true and "
          "turnCompanion true, whose content is exactly \"[Your previous response had no visible output. Please "

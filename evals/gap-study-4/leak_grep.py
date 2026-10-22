@@ -77,6 +77,46 @@ def snippet(ctx: str, word: str, width: int = 90) -> str:
     return "…" + ctx[lo:m.end() + width // 2].replace("\n", " ") + "…"
 
 
+VENDOR_HARNESSES = ("codex", "gemini")
+# Review 0df1437 MINOR 3 (glitch-f1's ruling): the recorded sessions the take checker's reader refuses, each named with
+# why; checked_against refuses when the unread set is any other (build_draft.checked_sessions, unread_problem).
+KNOWN_UNREADABLE = {"rehearsals/w-g24": "a turn that timed out: the Gemini native session reader refuses the "
+                                        "incomplete interaction (lane vendor-b27/b28's road; w-g24 is graded false)"}
+
+
+def session_context(ct, s) -> dict:
+    """One session's loaded context, as the take checker will read it (glitch-f1's stage W ruling 2, lane
+    vendor-settle, Thu 22 Oct 2026): a codex or gemini session (its driver ledger's agent.harness) through
+    check_take.vendor_loaded_context_text, the text that harness's settled T-10 reader sweeps; any other session
+    through context_text, Claude Code's attachment sweep. {harness, reader, ctx, unreadable}: an unreadable vendor
+    session reads "" and names why, never a clean 0."""
+    try:
+        ledger = json.loads((Path(s).parent / "driver-ledger.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:              # review 0df1437 MINOR 3: never a fall back to context_text
+        raise ValueError(f"{Path(s).parent.name}/driver-ledger.json cannot be read ({type(e).__name__}), so the "
+                         "session's harness, and so its reader, is unknown") from None
+    if not isinstance(ledger, dict):
+        raise ValueError(f"{Path(s).parent.name}/driver-ledger.json is not one JSON object")
+    harness = (ledger.get("agent") or {}).get("harness")
+    if harness not in VENDOR_HARNESSES:
+        return {"harness": harness, "reader": "context_text", "ctx": ct.context_text(s), "unreadable": None}
+    reader = f"vendor_loaded_context_text ({harness})"
+    try:
+        return {"harness": harness, "reader": reader, "ctx": ct.vendor_loaded_context_text(s, harness),
+                "unreadable": None}
+    except Exception as e:  # noqa: BLE001 - a session the reader refuses is named, never read as clean
+        return {"harness": harness, "reader": reader, "ctx": "", "unreadable": f"{type(e).__name__}: {str(e)[:200]}"}
+
+
+def unread_problem(rec: dict) -> str | None:
+    """None when the unread sessions are exactly KNOWN_UNREADABLE; else why the measurement does not stand."""
+    got = sorted(u["session"] for u in rec["sessions_unread"])
+    if got != sorted(KNOWN_UNREADABLE):
+        return (f"{len(got)} session(s) cannot be read by the take checker's reader ({got[:5]}), not exactly the known "
+                f"{sorted(KNOWN_UNREADABLE)}: the leak list was not grepped against them")
+    return None
+
+
 def derive() -> dict:
     ct = checker()
     pre = prereg.load()
@@ -84,9 +124,10 @@ def derive() -> dict:
     found = sessions()
     per_word: dict[str, dict] = {w: {"word": w, "sessions_hit": 0, "still_flagged_in": 0, "first": ""}
                                  for w in words}
-    per_session = []
+    per_session, unread = [], []
     for s in found:
-        ctx = ct.context_text(s)
+        read = session_context(ct, s)
+        ctx = read["ctx"]
         flagged = {w.lower() for w in ct.context_leaks(ctx, pre)}
         hits = []
         for w in words:
@@ -99,15 +140,22 @@ def derive() -> dict:
             if w.lower() in flagged:
                 rec["still_flagged_in"] += 1
             hits.append(w)
-        per_session.append({"session": str(s.parent.relative_to(HERE)),
-                            "context_records_bytes": len(ctx),
-                            "words_present": sorted(hits),
-                            "words_the_checker_would_void_on": sorted(flagged)})
+        entry = {"session": str(s.parent.relative_to(HERE)),
+                 "context_records_bytes": len(ctx),
+                 "words_present": sorted(hits),
+                 "words_the_checker_would_void_on": sorted(flagged)}
+        if read["harness"] in VENDOR_HARNESSES:                    # stage W: which reader read it, and any refusal
+            entry.update(harness=read["harness"], reader=read["reader"], context_unreadable=read["unreadable"])
+        if not ctx:                                                 # review 0df1437 MINOR 3: 0 characters is unread
+            unread.append({"session": entry["session"], "why": read["unreadable"] or "0 characters read"})
+        per_session.append(entry)
     return {
         "role": "Every pre-registered leak word, grepped against the loaded context of every real session "
                 "this study has recorded, through the take checker's own readers.",
         "leak_words": len(words),
-        "sessions_read": len(found),
+        "sessions_found": len(found),
+        "sessions_read": len(found) - len(unread),
+        "sessions_unread": unread,
         "words_present_in_some_session": sorted(w for w, r in per_word.items() if r["sessions_hit"]),
         "words_that_would_void_a_session": sorted(w for w, r in per_word.items()
                                                   if r["still_flagged_in"]),
@@ -126,6 +174,7 @@ def main() -> int:
         print(json.dumps(rec, indent=2))
     else:
         print(f"{rec['leak_words']} leak word(s), read against {rec['sessions_read']} recorded session(s) "
+              f"({len(rec['sessions_unread'])} unread: {[u['session'] for u in rec['sessions_unread']]}) "
               f"through the take checker's own readers.\n")
         for s in rec["per_session"]:
             print(f"  {s['session']:42} context {s['context_records_bytes']:>8} bytes  "
@@ -142,6 +191,10 @@ def main() -> int:
         print("\nok, having read 0 sessions: none is recorded yet, so this list has been grepped against "
               "nothing and its green says nothing. Not a pass for the freeze.")
         return 1 if args.check else 0
+    problem = unread_problem(rec)
+    if problem:
+        print(f"\nFAIL {problem}")
+        return 1
     bad = rec["words_that_would_void_a_session"]
     if bad:
         print(f"\nFAIL {bad} would void a real session. Either the word is this study's own name reaching "

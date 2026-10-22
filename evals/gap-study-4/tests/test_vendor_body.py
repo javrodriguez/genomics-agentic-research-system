@@ -10,7 +10,14 @@ check_take.vendor_round4_problems (section 1b).
 
   P2-clean    a clean take of either vendor carries exactly the PENDING refusals of its harness's
               VENDOR_PENDING_ROWS keys (every key but codex T-8:file-change, which fires only on a file_change item),
-              each raised through vendor_pending: no vendor take passes while a PENDING row stands.
+              each raised through vendor_pending: no vendor take passes while a PENDING row stands. Lane vendor-settle
+              stage V (S6): every row is settled, so a clean take, whose folder now carries the CLI-written context
+              records the settled readers read (vendor_check_fixtures: codex_context, gemini_session_context, the
+              design's pinned CLAUDE.md as the instruction file), carries none; the PENDING road is read on TEST DATA,
+              the module's map with rows put back to PENDING (pending_rows; the event-id witness and each site's
+              deletion). Where a settled reader also reads a case's defect, the case's want names it per harness.
+              Stage W ruling 3: gemini's stop reading and marker reading read one joined view (a held marker the
+              CLI streamed across two delta chunks reads held in both; witness: the stop read unjoined).
   P2-cases    one F3 case per reason, each adding exactly its reason(s) to the clean take's refusals: the CLI's own
               user record differing from the envelopes, or holding an extra turn (readers-disagree; a differing gemini
               stream reads readers-disagree, never transcript-unreadable); no agent output; no CLI session id; a
@@ -146,10 +153,15 @@ class Take:
         self.row_model = self.model        # the pre-registered row's model (review e-71a2b94 finding 3)
 
     def build(self, parts_edit=None, folder_edit=None):
+        # lane vendor-settle stage V (S6): the CLI's context records carry the design's pinned CLAUDE.md as the
+        # instruction file (R-6), so the settled T-14 readers read a clean take clean
+        text = self.design.instructions.get("CLAUDE.md", vcf.INSTRUCTIONS)
         if self.harness == "codex":
-            self.parts = vcf.codex_parts(self.lines, self.replies, cwd=self.run_tree, model=self.model)
+            self.parts = vcf.codex_parts(self.lines, self.replies, cwd=self.run_tree, model=self.model,
+                                         instructions=text)
         else:
-            self.parts = vcf.gemini_parts(self.lines, self.replies, model=self.model)
+            self.parts = vcf.gemini_parts(self.lines, self.replies, model=self.model, run_tree=self.run_tree,
+                                          instructions=text)
         if parts_edit:
             parts_edit(self.parts)
         turns = self.turns if self.turns is not None else [
@@ -164,6 +176,13 @@ class Take:
         (folder / "environment.json").write_bytes(raw)
         path = vcf.write(folder, self.harness, self.parts, sid=self.sid, ledger=ledger, run_tree=self.journal_cwd,
                          mode=self.mode)
+        if self.harness == "gemini":
+            # glitch-f1's merge-5 ruling (a): mode_binding.argv_mode (lane freeze-gates-fix S10) rebuilds the registered
+            # invocation from the box's launch.json take record (take_id, the take-inspect working folder), as the
+            # box writes it; the synthetic take carries it, read from its own first launch journal
+            first = json.loads((Path(path).parent / "turn-1.jsonl.launch.json").read_text(encoding="utf-8"))
+            (Path(path).parent / "launch.json").write_text(json.dumps({"take_id": first["container_id"], "steps": [
+                {"step": "take-inspect", "inspect": {"Config": {"WorkingDir": first["cwd"]}}}]}))
         if folder_edit:
             folder_edit(path)
         return path
@@ -194,7 +213,7 @@ def tags(problems) -> collections.Counter:
 def pending_lines(mod, harness) -> list:
     """The clean take's refusals: one per PENDING key of the harness, codex's file_change leg aside."""
     return sorted(f"[{row['reason']}] {NO_READER} ({key})" for key, row in mod.VENDOR_PENDING_ROWS[harness].items()
-                  if key != "T-8:file-change")
+                  if key != "T-8:file-change" and row["state"] == mod.PENDING)
 
 
 # ---- the F3 cases: (name, harnesses, edit(take) -> (parts_edit, folder_edit), the reasons it adds) -----------------
@@ -209,13 +228,19 @@ def codex_rollout_user(parts, k, text):
 
 
 def codex_extra_turn(parts):
-    extra = copy.deepcopy(parts["rollout"][1])
+    # lane vendor-settle stage V (S6): the extra turn repeats turn 1's records, never the CLI's context records
+    # (written once, at the session's start) and carries the extra line in its user message too
+    extra = [copy.deepcopy(x) for x in parts["rollout"][1]
+             if x[0] != "world_state" and not (x[1].get("type") == "message" and x[1].get("role") in ("user", "developer")
+                                               and x[1]["content"][0]["text"] != parts["lines"][0])]
     for t, pay in extra:
         for key in ("turn_id",):
             if pay.get(key) == "t1":
                 pay[key] = "t9"
         if (pay.get("item") or {}).get("type") == "UserMessage":
             pay["item"]["content"][0]["text"] = "an extra line"
+        if pay.get("type") == "message" and pay.get("role") == "user":
+            pay["content"][0]["text"] = "an extra line"
     parts["rollout"][len(parts["rollout"])] += extra
 
 
@@ -336,6 +361,61 @@ def case_stop_held_marker(t):
     t.lines.pop()
     t.replies.pop()
     return None, None
+
+
+def split_reply_marker(parts):
+    """gemini: the last turn's reply streamed as two delta chunks, split inside its marker (as the CLI streamed w-g14,
+    w-g31 and w-g39 turn 1); the snapshot keeps the whole reply."""
+    recs = parts["streams"][max(parts["streams"])]
+    k = max(i for i, r in enumerate(recs) if r.get("type") == "message" and r.get("role") == "assistant")
+    text = recs[k]["content"]
+    marker = text[len("Synthetic reply. "):]
+    cut = len("Synthetic reply. ") + max(1, len(marker) // 2)
+    recs[k:k + 1] = [dict(recs[k], content=text[:cut]), dict(recs[k], content=text[cut:])]
+
+
+def split_reply_across_tool(parts, k=None):
+    """gemini DECOY (Gemini review 0df1437 MINOR 1): turn k's reply (the last turn by default) written as two delta
+    chunks with a tool call and its result between them, split inside the marker: two messages, never one, so the
+    join must not make the marker whole."""
+    k = max(parts["streams"]) if k is None else k
+    recs = parts["streams"][k]
+    i = max(j for j, r in enumerate(recs) if r.get("type") == "message" and r.get("role") == "assistant")
+    text = recs[i]["content"]
+    cut = len("Synthetic reply. ") + max(1, (len(text) - len("Synthetic reply. ")) // 2)
+    ts = recs[i].get("timestamp")
+    tool = [{"type": "tool_use", "timestamp": ts, "tool_name": "read_file", "tool_id": f"decoy-{k}",
+             "parameters": {"file_path": "notes.txt"}},
+            {"type": "tool_result", "timestamp": ts, "tool_id": f"decoy-{k}", "status": "success", "output": "x"}]
+    recs[i:i + 1] = [dict(recs[i], content=text[:cut]), *tool, dict(recs[i], content=text[cut:])]
+
+
+def case_marker_split_across_tool(t):
+    return (lambda parts: split_reply_across_tool(parts, 1)), None        # turn 1's reply, a further line after it
+
+
+def case_stop_marker_split_across_tool(t):
+    stopped(t)
+    t.lines.pop()
+    t.replies.pop()
+    return split_reply_across_tool, None
+
+
+def case_stop_held_marker_split(t):
+    # glitch-f1's stage W ruling 3: required_steps reads gemini's joined view, as continuation_problems does; read
+    # unjoined, the held marker looks absent and the stop reads proven (the passing direction)
+    stopped(t)
+    t.lines.pop()
+    t.replies.pop()
+    return split_reply_marker, None
+
+
+def case_reply_marker_split(t):
+    # ruling (a) on a SYNTHETIC take: a held marker split across chunks adds no continued-past-unheld-marker line
+    def edit(parts):
+        for k in sorted(parts["streams"])[:-1]:                 # every reply followed by a further line
+            split_reply_marker({"streams": {k: parts["streams"][k]}})
+    return edit, None
 
 
 def case_line_off_script(t):
@@ -501,13 +581,26 @@ CASES = {
                                                          {"readers-disagree": 1}, None),
     "the gemini snapshot's interaction differs from the envelopes": (("gemini",), case_snapshot_differs,
                                                                      {"readers-disagree": 1}, None),
-    "the CLI's record holds an extra turn": (("codex", "gemini"), case_extra_turn, {"readers-disagree": 1}, None),
+    # lane vendor-settle stage V (S6): a per-harness want where a settled reader also reads the case's defect, each
+    # extra line named: codex's extra turn is also an operator part of unknown origin (T-5) and a turn_context no
+    # stream ran (T-16)
+    # codex constant-binding 2: freeze-gates-fix S10's turn-stream count in codex_recorded_mode (glitch-f1
+    # ruling 22 Oct, merge 5)
+    "the CLI's record holds an extra turn": (("codex", "gemini"), case_extra_turn,
+                                             {"codex": {"readers-disagree": 1, "unknown-harness-origin": 1,
+                                                        "constant-binding": 2}, "gemini": {"readers-disagree": 1}},
+                                             None),
     "the ledger's sent line differs from the envelopes": (("codex", "gemini"), case_ledger_sent_differs,
                                                           {"readers-disagree": 1}, None),
-    # the last retained snapshot the ledger does not bind: no reader of it stands (codex's cwd and run tree too)
+    # the last retained snapshot the ledger does not bind: no reader of it stands (codex's cwd and run tree too; since
+    # stage V every settled reader of the snapshot refuses it too, each under its row's reason for codex and as
+    # transcript-unreadable for gemini; none passes)
     "a codex snapshot the ledger does not bind": (("codex",), case_snapshot_unbound,
-                                                  {"transcript-unreadable": 2, "inherited-context": 1}, None),
-    "a gemini snapshot the ledger does not bind": (("gemini",), case_snapshot_unbound, {"transcript-unreadable": 1},
+                                                  {"transcript-unreadable": 2, "inherited-context": 5,
+                                                   "unknown-harness-origin": 1, "leak-in-loaded-context": 1,
+                                                   "environment-record": 1, "checkout-binding": 2,
+                                                   "constant-binding": 3, "harness-condition-violated": 1}, None),
+    "a gemini snapshot the ledger does not bind": (("gemini",), case_snapshot_unbound, {"transcript-unreadable": 10},
                                                    None),
     # no-first-agent-turn (T-1); the replies' markers go with the output
     "no agent output": (("codex", "gemini"), edits(no_agent_output, None),
@@ -519,6 +612,14 @@ CASES = {
     "a stop at a line with no wait point": (("codex", "gemini"), case_stop_no_wait_point,
                                             {"stop-without-a-wait-point": 1}, None),
     "a stop at a held marker": (("codex", "gemini"), case_stop_held_marker, {"stop-at-held-marker": 1}, None),
+    # stage W ruling 3 and stage V ruling (a): a marker the CLI streamed across two delta chunks reads as held
+    "a stop at a held marker split across delta chunks": (("gemini",), case_stop_held_marker_split,
+                                                           {"stop-at-held-marker": 1}, None),
+    "a held marker split across delta chunks before the next line": (("gemini",), case_reply_marker_split, {}, None),
+    # Gemini review 0df1437 MINOR 1: DECOYS, a marker split across a tool call is two messages, never joined
+    "a marker split across a tool call before the next line": (("gemini",), case_marker_split_across_tool,
+                                                               {"continued-past-unheld-marker": 1}, None),
+    "a stop marker split across a tool call": (("gemini",), case_stop_marker_split_across_tool, {}, None),
     "an operator line off the script": (("codex", "gemini"), case_line_off_script, {"operator-lines": 2}, None),
     "a reply missing its step's marker": (("codex", "gemini"), case_reply_without_marker,
                                           {"continued-past-unheld-marker": 1}, None),
@@ -528,11 +629,22 @@ CASES = {
     # leak-in-operator-turn (T-6)
     "a leak word in an operator line": (("codex", "gemini"), case_leak, {"leak-in-operator-turn": 1}, None),
     # inherited-context, the input-side legs (T-12:offered-context)
+    # stage V: gemini's T-12:prompt-snapshot partial rebuilds the launch too; its T-12:offered-context and T-13
+    # partials need one launch folder over every turn
+    # gemini constant-binding 2: T-24's S10 registered-invocation reading, argv_mode (glitch-f1 ruling 22 Oct, merge 5)
     "a launch argv the adapter never writes": (("codex", "gemini"), edits(None, extra_journal_option),
-                                              {"inherited-context": 1}, None),
-    "a turn with no launch journal": (("codex", "gemini"), case_no_journal, {"inherited-context": 1}, None),
+                                              {"codex": {"inherited-context": 1},
+                                               "gemini": {"inherited-context": 2, "constant-binding": 2}},
+                                              None),
+    "a turn with no launch journal": (("codex", "gemini"), case_no_journal,
+                                      {"codex": {"inherited-context": 1},
+                                       "gemini": {"inherited-context": 3, "checkout-binding": 1,
+                                                  "constant-binding": 1}}, None),
+    # gemini constant-binding 1: T-24's S10 registered-invocation reading, argv_mode (glitch-f1 ruling 22 Oct, merge 5)
     "a launch journal naming another turn's stream": (("codex", "gemini"), case_journal_of_another_turn,
-                                                      {"inherited-context": 1}, None),
+                                                      {"codex": {"inherited-context": 1},
+                                                       "gemini": {"inherited-context": 1, "constant-binding": 1}},
+                                                      None),
     # account-email (T-9): one event per take
     "the email marker in a turn stream": (("codex", "gemini"), edits(marker_in("stream"), None),
                                           {"account-email": 1}, None),
@@ -555,10 +667,19 @@ CASES = {
     # round 14, review e-71a2b94 finding 3: the take road binds the pre-registered row's model, never the ledger's alone
     "the pre-registered row on another model": (("codex", "gemini"), case_row_on_another_model, {"model-binding": 2},
                                                 None),
+    # stage V: the pinned config (codex T-18, since stage X codex T-12:memory's settings leg, since stage Z2 codex T-17's
+    # forced_login_method leg) and settings (gemini
+    # T-12:memory, T-17, T-18) are rebuilt for the ledger's model, so no model refuses them too; T-17's partial reads environment.json's named variables
     "no requested model in the ledger": (("codex", "gemini"), case_no_requested_model,
-                                         {"model-binding": 1, "environment-record": 1}, None),
+                                         {"codex": {"model-binding": 1, "environment-record": 2,
+                                                    "harness-condition-violated": 1, "inherited-context": 1},
+                                          # gemini constant-binding 1: T-24's S10 registered-invocation reading,
+                                          # argv_mode (glitch-f1 ruling 22 Oct, merge 5)
+                                          "gemini": {"model-binding": 1, "environment-record": 2,
+                                                     "inherited-context": 1, "harness-condition-violated": 1,
+                                                     "constant-binding": 1}}, None),
     "no environment record": (("codex", "gemini"), edits(None, lambda path: (path.parent / "environment.json").unlink()),
-                              {"environment-record": 1}, None),
+                              {"environment-record": 2}, None),
     "an environment record edited after the take": (("codex", "gemini"), edits(None, environment_edited),
                                                     {"environment-record": 1}, None),
     # outcome-binding (T-24)
@@ -586,7 +707,13 @@ CASES = {
     # constant-binding (T-24)
     "another turn budget": (("codex", "gemini"), case_budget, {"constant-binding": 1}, None),
     # transcript-unreadable (T-23): a stream in the folder no envelope binds, its line off the tables
-    "a turn stream line no parser read": (("codex", "gemini"), case_unread_stream, {"transcript-unreadable": 1}, None),
+    # stage V ruling (c): gemini's mode is read from every turn stream's launch journal (mode_binding.argv_mode walks
+    # the folder's turn-N.jsonl), and the stray stream has none
+    "a turn stream line no parser read": (("codex", "gemini"), case_unread_stream,
+                                          # codex constant-binding 1: freeze-gates-fix S10's turn-stream count in
+                                          # codex_recorded_mode (glitch-f1 ruling 22 Oct, merge 5)
+                                          {"codex": {"transcript-unreadable": 1, "constant-binding": 1},
+                                           "gemini": {"transcript-unreadable": 1, "constant-binding": 1}}, None),
     # nested-agent (T-21)
     "a nested agent's session switch": (("codex",), edits(tool_command("codex exec --ephemeral hi"), None),
                                         {"nested-agent": 1}, None),
@@ -625,8 +752,9 @@ def case_problems(mod, names=None) -> list:
                 continue
             added = tags(got) - tags(clean)
             removed = collections.Counter(clean) - collections.Counter(got)
-            if added != collections.Counter(want) or removed:
-                out.append(f"{harness} {name}: added {dict(added)}, removed {dict(removed)}, not {want}: "
+            mine = want[harness] if set(want) and set(want) <= set(VENDORS) else want   # per-harness (stage V)
+            if added != collections.Counter(mine) or removed:
+                out.append(f"{harness} {name}: added {dict(added)}, removed {dict(removed)}, not {mine}: "
                            f"{[p[:140] for p in got if p not in clean]}")
     return out
 
@@ -728,6 +856,23 @@ class P2Keys(unittest.TestCase):
 
 
 # ---- the witnesses --------------------------------------------------------------------------------------------------
+# Lane vendor-settle stage V (S6): every row is settled, so the PENDING road is exercised on TEST DATA, the map with
+# rows put back to PENDING in the module under test (its vendor_pending reads that module's map).
+PENDING_MAP = "the clean takes on the map with every row PENDING"
+
+
+@contextlib.contextmanager
+def pending_rows(mod, keys=None):
+    """mod.VENDOR_PENDING_ROWS with each (harness, key) of `keys` (every key when None) put back to PENDING."""
+    rows = copy.deepcopy(mod.VENDOR_PENDING_ROWS)
+    for h, block in rows.items():
+        for k in block:
+            if keys is None or (h, k) in keys:
+                block[k] = {"reason": block[k]["reason"], "state": mod.PENDING}
+    with mock.patch.object(mod, "VENDOR_PENDING_ROWS", rows):
+        yield rows
+
+
 def pending_call_sites(source: str) -> list:
     """The source text of every vendor_pending(<harness>, <key>, None) call, with its harness: one mutant each."""
     out = []
@@ -762,9 +907,16 @@ P2_WITNESSES = {
     "no-session-id dropped": (("    problems += vendor_session_id_problems(path, harness)\n", ""),
                               "the CLI wrote no session id"),
     "the stop problems dropped": (("        problems += stop_problems\n", ""), "a stop at a held marker"),
+    # stage W ruling 3: the stop reading on the unjoined view misses a held marker split across chunks
+    "the stop read unjoined": ((
+        "        required, stop_problems = required_steps(script, path, joined, False, expected_project, "
+        "expected_source, ())\n",
+        "        required, stop_problems = required_steps(script, path, turns, False, expected_project, "
+        "expected_source, ())\n"), "a stop at a held marker split across delta chunks"),
     "the operator lines dropped": (("        problems += line_problems\n", ""), "an operator line off the script"),
+    # stage V ruling (a): the call reads gemini's joined delta chunks (vendor_continuation_turns)
     "the continuation dropped": ((
-        "            problems += continuation_problems(turns, required, [], expected_project, expected_source)\n",
+        "            problems += continuation_problems(joined, required, [], expected_project, expected_source)\n",
         "            pass\n"),
         "a reply missing its step's marker"),
     "the fixture binding dropped": (("    problems += fixture_binding_problems(path, half, False)[0]\n", ""),
@@ -819,8 +971,9 @@ P2_WITNESSES = {
     "the walk binding dropped": ((
         "        problems += vendor_walk_binding_problems(path, task_id, half_name, walk_id, sid)\n", "        pass\n"),
         "a walk whose session id is not its walk's"),
-    "the constants dropped": (("    problems += constant_problems(ledger, pre)              # the ledger's budget, mode "
-                               "and gars tree (T-24)\n", ""), "another turn budget"),
+    # stage V ruling (c): the vendor road's constants read the mode from the harness's own record
+    "the constants dropped": (("    problems += vendor_constant_problems(path, harness, ledger, pre)   # budget, gars "
+                               "tree; mode from its record (T-24)\n", ""), "another turn budget"),
     "the session cwd unchecked": (("    if vendor_session_cwd(path, harness) is None:\n", "    if False:\n"),
                                   "a rollout turn in another working directory"),
     "the rollout cwd unchecked": (("        if cwd != design.run_tree:\n", "        if False:\n"),
@@ -832,19 +985,23 @@ P2_WITNESSES = {
     "the nested switches unread": ((
         "    return command_problems(vendor_shell_commands(Path(path).parent, harness)[0], harness)\n",
         "    return []\n"), "a nested agent's session switch"),
-    "file_change read as clean": (('                    return vendor_pending("codex", "T-8:file-change", '
+    "file_change read as clean": (('        return vendor_pending("codex", "T-8:file-change", '
                                    'vendor_file_change_reads, path)\n',
-                                   "                    return []\n"), "a file_change item"),
+                                   "        return []\n"), "a file_change item"),
     "a PENDING refusal under an event id": ((
         "        return [f\"[{row['reason']}] no vendor reader yet ({key})\"]\n",
-        "        return [f\"[{EVENT_STUDY}] no vendor reader yet ({key})\"]\n"), None),
+        "        return [f\"[{EVENT_STUDY}] no vendor reader yet ({key})\"]\n"), PENDING_MAP),
 }
 
 
 def witness_red(mod, target) -> list:
-    """The witness's own failures: its target case, or the clean takes when it names none."""
+    """The witness's own failures: its target case, or the clean takes when it names none, or (PENDING_MAP) the clean
+    takes read with every row put back to PENDING."""
     if target is None:
         return clean_problems(mod)
+    if target == PENDING_MAP:
+        with pending_rows(mod):
+            return clean_problems(mod)
     if target == "the run tree not handed to the reach":
         return tree_admitted_problems(mod)
     return case_problems(mod, {target})
@@ -864,14 +1021,22 @@ class P2Witnesses(unittest.TestCase):
         self.assertNotEqual(tree_admitted_problems(tcb.witness_module((edit,))), [])
 
     def test_p2_witness_each_pending_refusal_deleted_goes_red(self):
+        # stage V: each site's row put back to PENDING (TEST DATA) in the module under test; the clean take (the
+        # file_change case for T-8) carries the row's refusal, and the site deleted loses it
         source = Path(tcb.ct.__file__).read_text(encoding="utf-8")
         sites = pending_call_sites(source)
         self.assertEqual(len(sites), sum(len(b) for b in tcb.ct.VENDOR_PENDING_ROWS.values()))
         for harness, text in sites:
+            key = ast.parse(text).body[0].value.args[1].value
             with self.subTest(site=text):
-                mod = tcb.witness_module(((text, "[]"),))
-                got = case_problems(mod, {"a file_change item"}) if "T-8:file-change" in text else clean_problems(mod)
-                self.assertNotEqual(got, [], f"deleting {text} stayed green")
+                for mod in (tcb.ct, tcb.witness_module(((text, "[]"),))):
+                    with pending_rows(mod, {(harness, key)}):
+                        got = (case_problems(mod, {"a file_change item"}) if key == "T-8:file-change"
+                               else clean_problems(mod))
+                    if mod is tcb.ct:
+                        self.assertEqual(got, [], f"{text}: the PENDING row's take is red on check_take.py")
+                    else:
+                        self.assertNotEqual(got, [], f"deleting {text} stayed green")
 
 
 if __name__ == "__main__":

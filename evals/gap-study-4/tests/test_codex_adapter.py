@@ -47,8 +47,11 @@ transcript_codex.py compiled in memory (the registry pattern of lane w6j):
   A6-turn      end reasons (end_turn, error on exit 1, error on exit 0 with turn.failed, timed-out), the counters'
                rise, and a later turn naming another thread refused. Witnesses: failed-as-end-turn,
                other-thread-resumed.
-  A7-source    SHAPES_SOURCE is "documented" while no fixture is labelled RECORDED, every fixture carries a label,
-               and the adapter reports it in its harness record and every turn record. Witness: shapes-recorded.
+  A7-source    SHAPES_SOURCE is one of the two words and reads "recorded" only while a fixture is labelled RECORDED
+               with its walk and CLI version (lane vendor-settle stage V: it reads "recorded"), every fixture carries a
+               label, and the adapter reports it in its harness record and every turn record. Witness: shapes-off-word.
+  R-recorded   stage V: the seven RECORDED files (w-o46's three streams and rollouts, w-o47's rollout) are byte copies of
+               their walk records in rehearsals/, and read_stream, end_reason and read_rollout read them as plain json.
 
 Review round 1 fold (ruling w11a-R1-fold): B1-end, B2-thread, B3-required and B3-stream, B4-rollout, B5-usage,
 B6-empty, B7-blank, B8-types, B9-record, B10-cut and B11-version bind each condition and clause one case at a time
@@ -1454,7 +1457,10 @@ class TestTheAdapter(unittest.TestCase):
     def test_a6_a_turn_on_the_fake_runtime(self):
         self.assertEqual(a6_turn(ca), [])
 
-    def test_a7_the_shapes_source_is_documented(self):
+    def test_a7_the_shapes_source_is_recorded(self):
+        # lane vendor-settle stage V: the RECORDED w-o46 and w-o47 copies are labelled with their walk and CLI version,
+        # so the source reads "recorded" (R-recorded below binds the copies and reads them)
+        self.assertEqual(ca.SHAPES_SOURCE, "recorded")
         self.assertEqual(a7_source(ca), [])
 
     def test_b1_each_end_reason_condition(self):
@@ -1616,7 +1622,9 @@ WITNESSES = {
                                    "    if exit_code == 0:"),), a6_turn, "A6-turn"),
     "other-thread-resumed": ("ca", (("        elif read[\"thread_ids\"] and read[\"thread_ids\"] != [self.thread_id]:",
                                      "        elif False:"),), a6_turn, "A6-turn"),
-    "shapes-recorded": ("ca", (("SHAPES_SOURCE = \"documented\"\n", "SHAPES_SOURCE = \"recorded\"\n"),), a7_source,
+    # lane vendor-settle stage V (design section 5, review finding 10): the source reads "recorded", so the witness
+    # moves to the new anchor as "shapes-off-word", red on A7's two-words check
+    "shapes-off-word": ("ca", (("SHAPES_SOURCE = \"recorded\"\n", "SHAPES_SOURCE = \"observed\"\n"),), a7_source,
                         "A7-source"),
 }
 TARGETS = {"tc": lambda: tc, "ca": lambda: ca}
@@ -1697,7 +1705,7 @@ class TestWitnesses(unittest.TestCase):
         self.kill("other-thread-resumed")
 
     def test_witness_shapes_recorded(self):
-        self.kill("shapes-recorded")
+        self.kill("shapes-off-word")
 
     def test_the_witnesses_are_named_and_each_anchor_occurs_once(self):
         # 16: + subcommand-word-admitted (the box Codex-exec review's MAJOR); 20: + B23-8's four file_change witnesses
@@ -2006,6 +2014,52 @@ class TestGeneratedMutantRegistry(unittest.TestCase):
         self.assertGreater(len([m for m in muts if m[1] == "ca"]), 100)
         self.assertEqual(sorted(k for k in EQUIVALENT if k not in {m[0] for m in muts}), [])
         self.assertTrue(all(isinstance(r, str) and len(r) > 20 for r in EQUIVALENT.values()))
+
+
+# ---- R-recorded (lane vendor-settle stage V, freeze leg i; glitch-f1's settle rulings, Thu 22 Oct 2026) ------------
+# Each RECORDED file of codex-streams is a byte copy of a committed walk record in this tree, and read_stream,
+# end_reason and read_rollout read the copies as plain json does.
+def recorded_source(name: str) -> Path:
+    walk, kind, k = re.fullmatch(r"(w-o[0-9]+)-(turn|rollout)-([0-9]+)\.jsonl", name).groups()
+    return HERE / "rehearsals" / walk / (f"turn-{k}.jsonl" if kind == "turn" else f"session/native-turn-{k}.jsonl")
+
+
+def r_recorded_problems() -> list:
+    out = []
+    recorded = sorted(f for f, (kind, _rest) in labels().items() if kind == "RECORDED")
+    if recorded != sorted([f"w-o46-turn-{k}.jsonl" for k in (1, 2, 3)] + [f"w-o46-rollout-{k}.jsonl" for k in (1, 2, 3)]
+                          + ["w-o47-rollout-1.jsonl"]):
+        out.append(f"the RECORDED files are {recorded}")
+    for name in recorded:
+        if (FIXTURES / name).read_bytes() != recorded_source(name).read_bytes():
+            out.append(f"{name} is not byte for byte {recorded_source(name).relative_to(HERE)}")
+    turns = json.loads((HERE / "rehearsals" / "w-o46" / "driver-ledger.json").read_text(encoding="utf-8"))["turns"]
+    for k in (1, 2, 3):
+        st = [json.loads(x) for x in fixture(f"w-o46-turn-{k}.jsonl").split("\n") if x.strip()]
+        want = {"thread_ids": list(dict.fromkeys(x["thread_id"] for x in st if x["type"] == "thread.started")),
+                "agent_text": "\n".join(x["item"]["text"] for x in st if x["type"] == "item.completed"
+                                        and x["item"]["type"] == "agent_message"),
+                "usage": [x for x in st if x["type"] == "turn.completed"][0]["usage"],
+                "completed": sum(x["type"] == "turn.completed" for x in st), "failed": 0, "undecoded": 0}
+        got = ca.read_stream(fixture(f"w-o46-turn-{k}.jsonl"))
+        out += [f"w-o46 turn {k}: read_stream's {key} is {str(got.get(key))[:60]!r}, the stream's {str(v)[:60]!r}"
+                for key, v in want.items() if got.get(key) != v]
+        if ca.end_reason(turns[k - 1]["exit"], False, got) != turns[k - 1]["end"]:
+            out.append(f"w-o46 turn {k}: end_reason is not the ledger's {turns[k - 1]['end']!r}")
+    for name, seen in [(f"w-o46-rollout-{k}.jsonl", k - 1) for k in (1, 2, 3)] + [("w-o47-rollout-1.jsonl", 0)]:
+        recs = [json.loads(x) for x in fixture(name).split("\n") if x.strip()]
+        tc = [r["payload"] for r in recs if r["type"] == "turn_context"]
+        want = {"model": tc[-1]["model"], "permission_mode": tc[-1]["approval_policy"],
+                "version": recs[0]["payload"]["cli_version"]}
+        got = ca.read_rollout(fixture(name), seen=seen)
+        if (got["init"], got["turn_contexts"]) != (want, len(tc)):
+            out.append(f"{name}: read_rollout gives {got}, plain json {want} over {len(tc)} turn_context(s)")
+    return out
+
+
+class RRecorded(unittest.TestCase):
+    def test_r_recorded_the_copies_read_as_plain_json(self):
+        self.assertEqual(r_recorded_problems(), [])
 
 
 if __name__ == "__main__":

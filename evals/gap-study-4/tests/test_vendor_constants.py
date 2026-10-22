@@ -122,7 +122,9 @@ def rows_problems(mod) -> list:
         base = mod.vendor_checker_constants_sha256(harness)
         rows = mod.VENDOR_PENDING_ROWS[harness]
         key = sorted(rows)[0]
-        changes = {"the reason": {"reason": "synthetic-other-reason"}, "the state": {"state": "SAME"},
+        # lane vendor-settle stage V (S6): the row is settled now, so "the state changed" is a state other than its own
+        other = "NOT COMPARABLE" if rows[key]["state"] == "SAME" else "SAME"
+        changes = {"the reason": {"reason": "synthetic-other-reason"}, "the state": {"state": other},
                    "a reader": {"reader": "vendor_check"}, "a fixture": {"fixture": "synthetic-fixture"},
                    "a ruling": {"ruling": "synthetic ruling"}}
         for name, change in changes.items():

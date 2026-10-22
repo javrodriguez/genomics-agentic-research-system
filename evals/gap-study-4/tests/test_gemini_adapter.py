@@ -50,8 +50,12 @@ and load-bearing assignment has a whole-file witness of gemini_adapter.py or tra
   A8-turn    end reasons (end_turn; error on exit 1, on exit 53 even with a successful result, on exit 0 with a
              failed result or none; timed-out), each exit's meaning kept (53 -> turn-limit), an exit code off D8's
              four (or a bool) refused, a timed-out call never refused for its exit, the counters' rise, the version.
-  A9-source  SHAPES_SOURCE is "documented" while no fixture is labelled RECORDED, every fixture carries the brief's
-             label, and the adapter reports it in its harness record and every turn record.
+  A9-source  SHAPES_SOURCE is one of the two words and reads "recorded" only while a fixture is labelled RECORDED
+             with its walk and CLI version (lane vendor-settle stage V: it reads "recorded"), every fixture carries the
+             brief's label, and the adapter reports it in its harness record and every turn record. Witness:
+             shapes-off-word.
+  R-recorded stage V: the three RECORDED streams (w-g21's two turns, w-g24's timed-out turn with no result record) are
+             byte copies of their walk records in rehearsals/, and read_stream and end_reason read them as plain json.
 
 Fakes only: no model, vendor, network, container runtime, credential or holdout. setUpModule arms a process guard
 that refuses every process start, clears this process's environment to a fixed few names, and fills run_take's
@@ -962,7 +966,7 @@ def a8_turn(mod, p):
     want_first = {"n": 1, "first": True, "exit_code": 0, "exit_meaning": "success", "timed_out": False,
                   "init_model": MODEL, "session_id": SID, "status": "success", "stats": STATS,
                   "served_models": [MODEL], "tool_ids": ["tool-1", "tool-2", "tool-3"], "undecoded": 0,
-                  "why_no_init": getattr(mod, "NO_INIT_MODE", None), "shapes_source": "documented"}
+                  "why_no_init": getattr(mod, "NO_INIT_MODE", None), "shapes_source": "recorded"}
     if a.turn_records[:1] != [want_first]:
         out.append(f"{p}: turn 1's record is {a.turn_records[:1]}")
     want_second = dict(want_first, n=2, first=False, exit_code=1, exit_meaning="general-or-api-error", status="error",
@@ -1321,7 +1325,9 @@ class TestTheAdapter(unittest.TestCase):
     def test_a8_a_turn_on_the_fake_runtime(self):
         self.assertEqual(a8_turn(ga), [])
 
-    def test_a9_the_shapes_source_is_documented(self):
+    def test_a9_the_shapes_source_is_recorded(self):
+        # lane vendor-settle stage V: the RECORDED w-g21 and w-g24 copies carry their labels (R-recorded reads them)
+        self.assertEqual(ga.SHAPES_SOURCE, "recorded")
         self.assertEqual(a9_source(ga), [])
 
     def test_a10_the_mode_is_read_from_the_launch_journal(self):
@@ -1674,8 +1680,9 @@ WITNESSES = {
     "version-searched": _w("ga", a8_turn, "A8-turn", ("VERSION_FORM.fullmatch(", "VERSION_FORM.search(")),
     "version-matched": _w("ga", a8_turn, "A8-turn", ("VERSION_FORM.fullmatch(", "VERSION_FORM.match(")),
     "version-exit-ignored": _w("ga", a8_turn, "A8-turn", ("if c.returncode == 0 else None", "if True else None")),
-    "shapes-recorded": _w("ga", a9_source, "A9-source", ("SHAPES_SOURCE = \"documented\"\n",
-                                                         "SHAPES_SOURCE = \"recorded\"\n")),
+    # lane vendor-settle stage V (design section 5, review finding 10): the new anchor, red on A9's two-words check
+    "shapes-off-word": _w("ga", a9_source, "A9-source", ("SHAPES_SOURCE = \"recorded\"\n",
+                                                         "SHAPES_SOURCE = \"observed\"\n")),
 }
 TARGETS = {"tg": lambda: tg, "ga": lambda: ga}
 WITNESS_LOG: list = []
@@ -2112,6 +2119,56 @@ class TestGeneratedMutants(unittest.TestCase):
             key, t, w, kind, i = next(m for m in mutants if m[1] == target and m[3] == "if-false"
                                       and ("t not in EVENT_KEYS" in m[0] or "if timed_out" in m[0]))
             self.assertTrue(run_mutant(t, w, kind, i), f"{key} survived")
+
+
+# ---- R-recorded (lane vendor-settle stage V, freeze leg i; glitch-f1's settle rulings, Thu 22 Oct 2026) ------------
+def r_recorded_problems() -> list:
+    """Each RECORDED stream of gemini-streams is a byte copy of rehearsals/<walk>/turn-<k>.jsonl, and read_stream and
+    end_reason read it as plain json does: the init's model and session id, the assistant text (consecutive delta
+    chunks joined, runs joined by newlines), output, tool ids, the result's status, stats and models (none for w-g24's
+    timed-out turn), the result count, nothing undecoded, and the ledger's end reason."""
+    out = []
+    recorded = sorted(f for f, (kind, _rest) in labels().items() if kind == "RECORDED")
+    if recorded != ["w-g21-turn-1.jsonl", "w-g21-turn-2.jsonl", "w-g24-turn-1.jsonl"]:
+        out.append(f"the RECORDED files are {recorded}")
+    for name in recorded:
+        walk, k = re.fullmatch(r"(w-g[0-9]+)-turn-([0-9]+)\.jsonl", name).groups()
+        src = HERE / "rehearsals" / walk / f"turn-{k}.jsonl"
+        if (FIXTURES / name).read_bytes() != src.read_bytes():
+            out.append(f"{name} is not byte for byte {src.relative_to(HERE)}")
+            continue
+        turn = json.loads((HERE / "rehearsals" / walk / "driver-ledger.json").read_text(encoding="utf-8"))["turns"][
+            int(k) - 1]
+        recs = [json.loads(x) for x in fixture(name).split("\n") if x.strip()]
+        init = [r for r in recs if r["type"] == "init"]
+        result = [r for r in recs if r["type"] == "result"]
+        runs, open_run = [], False
+        for r in recs:
+            if r["type"] == "message" and r["role"] == "assistant":
+                if r.get("delta") is True and open_run:
+                    runs[-1] += r["content"]
+                else:
+                    runs.append(r["content"])
+                open_run = r.get("delta") is True
+            else:
+                open_run = False
+        tools = [r["tool_id"] for r in recs if r["type"] == "tool_use"]
+        want = {"init_model": init[0]["model"], "session_id": init[0]["session_id"], "agent_text": "\n".join(runs),
+                "agent_output": bool(tools) or any(x.strip() for x in runs),
+                "status": result[0]["status"] if result else None, "stats": result[0]["stats"] if result else None,
+                "served_models": list(result[0]["stats"]["models"]) if result else [], "results": len(result),
+                "tool_ids": tools, "undecoded": 0}
+        got = ga.read_stream(fixture(name), model=init[0]["model"])
+        out += [f"{name}: read_stream's {key} is {str(got.get(key))[:60]!r}, the stream's {str(v)[:60]!r}"
+                for key, v in want.items() if got.get(key) != v]
+        if ga.end_reason(turn["exit"], turn["end"] == "timed-out", got) != turn["end"]:
+            out.append(f"{name}: end_reason is not the ledger's {turn['end']!r}")
+    return out
+
+
+class RRecorded(unittest.TestCase):
+    def test_r_recorded_the_copies_read_as_plain_json(self):
+        self.assertEqual(r_recorded_problems(), [])
 
 
 if __name__ == "__main__":

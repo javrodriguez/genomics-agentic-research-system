@@ -143,17 +143,21 @@ def settled(*, legs=("i", "ii", "rows", "items", "iii"), registry=None, **arms):
         if "ii" in legs:
             stack.enter_context(mock.patch.dict(check_take.VENDOR_CHECK_SHAPES_SOURCE,
                                                 {h: "recorded" for h in harnesses}))
-        if "rows" in legs:
-            rows = copy.deepcopy(check_take.VENDOR_PENDING_ROWS)
-            for h in harnesses:
+        # lane vendor-settle stage V (S6): the live map is settled, so a leg left out is put in its unsettled state
+        # here (rows PENDING, items unrecorded), and the map is always a patched copy: a case's edit never writes the
+        # live one (the "a row unsettled" edit used to)
+        rows = copy.deepcopy(check_take.VENDOR_PENDING_ROWS)
+        for h in harnesses:
+            if "rows" in legs:
                 rows[h] = {k: {"reason": r["reason"], "state": "SAME", "fixture": f"vendor-check/recorded-{h}.jsonl",
                                "reader": "synthetic_reader"} for k, r in rows[h].items()}
-            stack.enter_context(mock.patch.object(check_take, "VENDOR_PENDING_ROWS", rows))
-        if "items" in legs:
-            items = copy.deepcopy(getattr(check_take, "VENDOR_READER_ITEMS", {}))
-            for h in harnesses:
-                items[h] = dict.fromkeys(items.get(h, {}), f"vendor-check/recorded-{h}.jsonl")
-            stack.enter_context(mock.patch.object(check_take, "VENDOR_READER_ITEMS", items, create=True))
+            else:
+                rows[h] = {k: {"reason": r["reason"], "state": "PENDING"} for k, r in rows[h].items()}
+        stack.enter_context(mock.patch.object(check_take, "VENDOR_PENDING_ROWS", rows))
+        items = copy.deepcopy(getattr(check_take, "VENDOR_READER_ITEMS", {}))
+        for h in harnesses:
+            items[h] = dict.fromkeys(items.get(h, {}), f"vendor-check/recorded-{h}.jsonl" if "items" in legs else None)
+        stack.enter_context(mock.patch.object(check_take, "VENDOR_READER_ITEMS", items, create=True))
         if registry is not None:
             stack.enter_context(mock.patch.object(native_reader_registration, "production_readers", registry))
         elif "iii" in legs:
@@ -163,7 +167,30 @@ def settled(*, legs=("i", "ii", "rows", "items", "iii"), registry=None, **arms):
         yield
 
 
+@contextlib.contextmanager
+def at_documented():
+    """TEST DATA: the T4 head's state for both vendor harnesses, which FS-main and FS-check start from (lane
+    vendor-settle stage V flipped the live tree to "recorded"): both adapters' SHAPES_SOURCE and check_take's
+    VENDOR_CHECK_SHAPES_SOURCE "documented", every VENDOR_PENDING_ROWS row PENDING, every READER item unrecorded."""
+    rows = {h: {k: {"reason": r["reason"], "state": "PENDING"} for k, r in block.items()}
+            for h, block in check_take.VENDOR_PENDING_ROWS.items()}
+    items = {h: dict.fromkeys(block) for h, block in check_take.VENDOR_READER_ITEMS.items()}
+    with contextlib.ExitStack() as stack:
+        for module in ADAPTERS.values():
+            stack.enter_context(mock.patch.object(module, "SHAPES_SOURCE", "documented"))
+        stack.enter_context(mock.patch.dict(check_take.VENDOR_CHECK_SHAPES_SOURCE,
+                                            {h: "documented" for h in HARNESS.values()}))
+        stack.enter_context(mock.patch.object(check_take, "VENDOR_PENDING_ROWS", rows))
+        stack.enter_context(mock.patch.object(check_take, "VENDOR_READER_ITEMS", items))
+        yield
+
+
 def main_problems(mod) -> list:
+    with at_documented():
+        return _main_problems(mod)
+
+
+def _main_problems(mod) -> list:
     out = []
     for arms in (("A", "O"), ("A", "G"), ("A", "O", "G"), ("O",), ("G",)):
         vendors = [a for a in arms if a in ADAPTERS]
@@ -198,16 +225,20 @@ def main_problems(mod) -> list:
 
 
 class TheFreezeRefusesDocumentedShapes(unittest.TestCase):
-    def test_fs_the_adapters_are_documented_on_this_head(self):
-        self.assertEqual((codex_adapter.SHAPES_SOURCE, gemini_adapter.SHAPES_SOURCE), ("documented", "documented"))
+    def test_fs_the_adapters_are_recorded_on_this_head(self):
+        # lane vendor-settle stage V flipped both (glitch-f1's settle rulings, Thu 22 Oct 2026)
+        self.assertEqual((codex_adapter.SHAPES_SOURCE, gemini_adapter.SHAPES_SOURCE), ("recorded", "recorded"))
+        self.assertEqual(check_take.VENDOR_CHECK_SHAPES_SOURCE, {"codex": "recorded", "gemini": "recorded"})
 
     def test_fs_draft_the_committed_draft_names_both_arms(self):
         committed = json.loads((HERE / "prereg-draft.json").read_text())
-        got = freeze.unrecorded_shapes_problem(committed)
+        self.assertIsNone(freeze.unrecorded_shapes_problem(committed))      # stage V: the live tree passes all legs
+        with at_documented():
+            got = freeze.unrecorded_shapes_problem(committed)
         self.assertIsNotNone(got)
         for words in ("arm O (codex)", "arm G (gemini)", "'documented'", "recorded"):
             self.assertIn(words, got)
-        with settled(O=True, G=True):
+        with at_documented(), settled(O=True, G=True):
             self.assertIsNone(freeze.unrecorded_shapes_problem(committed))
         self.assertIsNone(freeze.unrecorded_shapes_problem(draft(("A",))))
         self.assertIsNone(freeze.unrecorded_shapes_problem({"tasks": []}))
@@ -267,6 +298,11 @@ CHECK_CASES = (
 
 
 def check_problems(mod) -> list:
+    with at_documented():
+        return _check_problems(mod)
+
+
+def _check_problems(mod) -> list:
     out = []
     for name, legs, registry, edit, words in CHECK_CASES:
         for arms in (("A", "O"), ("A", "G"), ("A", "O", "G")):
@@ -307,22 +343,33 @@ class TheFreezeGateHasThreeLegs(unittest.TestCase):
     def test_fs_check_each_leg_refuses_and_all_three_pass(self):
         self.assertEqual(check_problems(freeze), [])
 
-    def test_fs_check_the_committed_draft_names_every_open_leg(self):
-        # Lane freeze-gates-fix S9 (glitch-f1's ruling, 22 Oct 2026): since Javier's acceptance commit (5457e75e) the
-        # production registry holds both vendor readers, so leg (iii) holds on this tree for both arms and is not
-        # named; legs (i) and (ii) stay open until the vendor settlement (stage V) and are named. Leg (iii)'s refusals
-        # are bound on synthetic registries by FS-check's main cases and CHECK_WITNESSES.
+    def test_fs_check_after_the_settlement_the_committed_draft_passes_every_leg(self):
+        # glitch-f1's merge-5 ruling (b), 22 Oct 2026, keeping both lanes' intent. Since Javier's acceptance commit
+        # (5457e75e) the production registry holds both vendor readers (lane freeze-gates-fix S9), and since the vendor
+        # settlement (stage V) both vendors' shapes read "recorded": (1) the committed draft passes all three legs for
+        # codex and gemini on the real registry; (2) with the registry empty, leg iii is named for both vendors; (3) at
+        # the pre-settlement "documented" state, legs i and ii are named while leg iii holds on the real registry.
         import native_reader_registration as nrr
         committed = json.loads((HERE / "prereg-draft.json").read_text())
-        got = freeze.unrecorded_shapes_problem(committed)
+        self.assertEqual(nrr.production_readers(), {"codex": nrr.codex_reader, "gemini": nrr.gemini_reader})
+        self.assertIsNone(freeze.unrecorded_shapes_problem(committed))                                  # (1)
+        for harness in ("codex", "gemini"):
+            self.assertEqual(freeze.registration_problems(harness), [], harness)
+        with mock.patch.object(native_reader_registration, "production_readers", lambda *a, **k: {}):
+            empty = freeze.unrecorded_shapes_problem(committed)                                       # (2)
+        self.assertIsNotNone(empty)
+        for arm, harness in (("O", "codex"), ("G", "gemini")):
+            self.assertIn(f"arm {arm} ({harness}): leg iii:", empty)
+            self.assertNotIn(f"arm {arm} ({harness}): leg i:", empty)
+            self.assertNotIn(f"arm {arm} ({harness}): leg ii:", empty)
+        with at_documented():
+            documented = freeze.unrecorded_shapes_problem(committed)                                  # (3)
+        self.assertIsNotNone(documented)
         for words in ("arm O (codex): leg i:", "arm G (gemini): leg i:", "arm O (codex): leg ii:",
                       "arm G (gemini): leg ii:", "arm G (gemini): leg ii: T-11 inherited-context is PENDING"):
-            self.assertIn(words, got)
-        self.assertEqual(nrr.production_readers(), {"codex": nrr.codex_reader, "gemini": nrr.gemini_reader})
+            self.assertIn(words, documented)
         for arm, harness in (("O", "codex"), ("G", "gemini")):
-            self.assertEqual(freeze.registration_problems(harness), [], harness)
-            self.assertNotIn(f"arm {arm} ({harness}): leg iii:", got)
-
+            self.assertNotIn(f"arm {arm} ({harness}): leg iii:", documented)
 
 def mutant(old: str, new: str):
     src = Path(freeze.__file__).read_text(encoding="utf-8")

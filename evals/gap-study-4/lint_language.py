@@ -38,6 +38,7 @@ Exit 0 clean, 1 findings, 2 usage. stdlib only, no network, no model.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -238,6 +239,33 @@ def is_take_record(path: Path) -> bool:
     return mode_binding.record_parts(parts, TAKE_ROOTS) is not None
 
 
+# ROUND 4, LANE VENDOR-SETTLE STAGE K (glitch-f1's settle-design rulings, Wed 21 Oct 2026: the RECORDED fixture copies
+# are treated as the walk files are). A RECORDED take folder, tests/fixtures/recorded-<harness>-<walk>/, is a byte
+# copy of a committed walk folder's records (rehearsals/<walk>/**, never linted, above), which the vendor readers are
+# re-tested on; its first lint reported 18 findings, every one the `k / n` rule on a dated session path such as
+# `sessions/2026/10/20`. NARROW ON PURPOSE: a file there is a record only while its bytes are the sha256 its folder's
+# PROVENANCE.json lists for it, so an edited copy is linted again; the folder's README.md and PROVENANCE.json are the
+# study's own words and are linted as before; no pattern changes.
+_RECORDED_FIXTURE = re.compile(r"recorded-(codex|gemini)-w-[og][0-9]+")
+
+
+def is_recorded_fixture_copy(path: Path) -> bool:
+    folder = path.parent
+    rel_parts = []
+    while folder != folder.parent and not _RECORDED_FIXTURE.fullmatch(folder.name):
+        rel_parts.insert(0, folder.name)
+        folder = folder.parent
+    if not (_RECORDED_FIXTURE.fullmatch(folder.name) and folder.parent.name == "fixtures"
+            and folder.parent.parent.name == "tests"):
+        return False
+    rel = "/".join([*rel_parts, path.name])
+    try:
+        listed = json.loads((folder / "PROVENANCE.json").read_text(encoding="utf-8"))["files"][rel]["sha256"]
+        return hashlib.sha256(path.read_bytes()).hexdigest() == listed
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 # Prose and data are scanned by default. Source is scanned only when asked for: a docstring that
 # explains why a word is banned is not a published claim, and the pre-registration's own test
 # points this tool at the published set explicitly.
@@ -255,6 +283,7 @@ def iter_files(paths: list[str], include_code: bool = False):
                         and not is_outside_report(f)
                         and not is_case_file(f)
                         and not is_take_record(f)
+                        and not is_recorded_fixture_copy(f)
                         and "__pycache__" not in f.parts):
                     yield f
         elif path.is_file():

@@ -1,0 +1,20 @@
+{
+ "lane": "vendor-settle-k2",
+ "files": [
+  {
+   "path": "COPIED.d/vendor-settle-k2.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K2 (glitch-f1's ruling \"CONTEXT-SWEEP GAP read\", Wed 21 Oct 2026 22:26 EDT, option A, under Javier's standing delegation): the Claude arm's loaded-context leak sweep reads decoded text. This fragment: the files stage K2 adds."
+  },
+  {
+   "path": "checks.d/vendor-settle-k2.txt",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K2 (glitch-f1's ruling \"CONTEXT-SWEEP GAP read\", Wed 21 Oct 2026 22:26 EDT, option A, under Javier's standing delegation): the Claude arm's loaded-context leak sweep reads decoded text. Its battery lines."
+  },
+  {
+   "path": "tests/test_context_sweep.py",
+   "status": "new",
+   "reason": "Lane vendor-settle stage K2 (glitch-f1's ruling \"CONTEXT-SWEEP GAP read\", Wed 21 Oct 2026 22:26 EDT, option A, under Javier's standing delegation): the Claude arm's loaded-context leak sweep reads decoded text. The planted escaped-newline, escaped-tab, \\u-escape, key and duplicated-key cases through check_take's own context_text and context_leaks, the snippet carve-out and the excusal kept, the sub-agent sweep and leak_grep reading the same text, and three witnesses (the old raw sweep among them)."
+  }
+ ]
+}
