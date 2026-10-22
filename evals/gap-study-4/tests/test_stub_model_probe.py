@@ -238,6 +238,10 @@ class DryRun(unittest.TestCase):
                                                                or "connect" in r["argv"])])
         self.assertIn("--fake-responses", by[("A1-fake", "process-3")]["argv"])
         self.assertNotIn("--fake-responses", by[("A1", "process-3")]["argv"])
+        # stage 8: process k's argv names process k's own fake file
+        for k in (1, 2, 3):
+            a = by[("A1-fake", f"process-{k}")]["argv"]
+            self.assertEqual(a[-2:], ["--fake-responses", f"{smp.DRY_ROOT}/t/{smp.STUB_DIR}/fake-responses-{k}.jsonl"])
         self.assertEqual(by[("A1", "client-environment")]["changes"],
                          {"added": ["GOOGLE_GEMINI_BASE_URL"], "removed": ["HTTPS_PROXY"], "replaced": ["GEMINI_API_KEY"]})
 
@@ -416,15 +420,104 @@ class StopsAndCrossCheck(unittest.TestCase):
             shutil.rmtree(d, ignore_errors=True)
 
     def test_the_fake_cross_check(self):
+        # stage 8 (glitch-f1's B27 ruling 4): one fake file per process, process k's argv naming its own file, and the
+        # fetched output folder carrying every per-process file; their concatenation is the whole script, in order
         d, out, box, rec = run_fake("A1-fake")
         try:
             procs = [a for a, _e in box.calls if a[1] == "exec" and "-p" in a]
+            self.assertEqual(len(procs), 3)
             self.assertTrue(all(a[-2] == "--fake-responses" for a in procs))
-            got = [json.loads(x) for x in Path(out, "A1-fake", "fake-responses.jsonl").read_text().splitlines()]
-            want = sms.fake_records(smp.materialise(smp.load_scenario("A1"), rec["scratch"]["run_tree"]))
-            self.assertEqual(got, want)
+            tree = rec["scratch"]["run_tree"]
+            self.assertEqual([a[-1] for a in procs],
+                             [f"{tree}/{smp.STUB_DIR}/fake-responses-{k}.jsonl" for k in (1, 2, 3)])
+            names = sorted(os.listdir(os.path.join(out, "A1-fake")))
+            self.assertNotIn("fake-responses.jsonl", names)
+            per = [[json.loads(x) for x in Path(out, "A1-fake", f"fake-responses-{k}.jsonl").read_text().splitlines()]
+                   for k in (1, 2, 3)]
+            want = sms.fake_records(smp.materialise(smp.load_scenario("A1"), tree))
+            self.assertEqual([len(p) for p in per], [8, 1, 1])
+            self.assertEqual(per[0] + per[1] + per[2], want)
+            self.assertEqual(per, [want[0:8], want[8:9], want[9:10]])
+            self.assertEqual({f"A1-fake/fake-responses-{k}.jsonl" for k in (1, 2, 3)}
+                             - set(smp.manifest(out)["files"]), set())
         finally:
             shutil.rmtree(d, ignore_errors=True)
+
+
+def _req(kind, text=None):
+    m = {"kind": kind} if text is None else {"kind": kind, "text": text}
+    return {"endpoint": "stream", "match": m, "respond": {"text": "ok"}}
+
+
+class FakeSplit(unittest.TestCase):
+    """Stage 8 (glitch-f1's B27 ruling 4): the fake file is split at each process's user_text match, refused unless
+    the split gives exactly the scenario's processes, in order, each group non-empty."""
+
+    PROCS = ["one", "two", "three"]
+
+    def _script(self, reqs, procs=None):
+        return {"processes": list(procs or self.PROCS), "requests": reqs}
+
+    def test_a1_splits_at_requests_1_9_and_10(self):
+        groups = smp.fake_groups(smp.load_scenario("A1"))
+        self.assertEqual(groups, [list(range(0, 8)), [8], [9]])
+
+    def test_the_plain_split(self):
+        reqs = [_req("user_text", "one"), _req("function_response"), _req("user_text", "two"),
+                _req("function_response"), _req("user_text", "three")]
+        self.assertEqual(smp.fake_groups(self._script(reqs)), [[0, 1], [2, 3], [4]])
+
+    def _refused(self, reqs, words, procs=None):
+        with self.assertRaises(smp.ProbeRefused) as cm:
+            smp.fake_groups(self._script(reqs, procs))
+        self.assertIn(words, str(cm.exception))
+
+    def test_a_missing_boundary_refuses(self):
+        self._refused([_req("user_text", "one"), _req("function_response"), _req("user_text", "three")],
+                      "missing boundary")
+
+    def test_an_extra_boundary_refuses(self):
+        self._refused([_req("user_text", "one"), _req("user_text", "two"), _req("user_text", "three"),
+                       _req("user_text", "four")], "extra boundary")
+
+    def test_an_out_of_order_prompt_refuses(self):
+        self._refused([_req("user_text", "one"), _req("user_text", "three"), _req("user_text", "two")],
+                      "out of order")
+
+    def test_a_prompt_that_is_not_the_scenario_s_refuses(self):
+        self._refused([_req("user_text", "one"), _req("user_text", "two"), _req("user_text", "zwei")],
+                      "not the scenario's prompts")
+
+    def test_a_record_before_process_one_s_prompt_refuses(self):
+        self._refused([_req("function_response"), _req("user_text", "one"), _req("user_text", "two"),
+                       _req("user_text", "three")], "before process 1's prompt")
+
+    def test_a_prefix_match_is_not_a_boundary(self):
+        reqs = [_req("user_text", "one"), {"endpoint": "stream", "match": {"kind": "user_text_prefix", "prefix": "t"},
+                                           "respond": {"text": "ok"}}, _req("user_text", "three")]
+        self._refused(reqs, "missing boundary")
+
+    def test_an_empty_group_refuses(self):
+        with self.assertRaises(smp.ProbeRefused) as cm:
+            smp.check_fake_groups(self.PROCS, [[0, 1], [], [2]], 3)
+        self.assertIn("empty", str(cm.exception))
+
+    def test_groups_must_cover_every_record_once_in_order(self):
+        for groups in ([[0], [1], [3]], [[0], [2], [1]], [[0, 1], [1], [2]]):
+            with self.assertRaises(smp.ProbeRefused):
+                smp.check_fake_groups(self.PROCS, groups, 3)
+        smp.check_fake_groups(self.PROCS, [[0], [1], [2]], 3)
+
+    def test_the_dry_run_and_the_run_refuse_a_bad_split_before_any_runtime_call(self):
+        bad = self._script([_req("user_text", "one"), _req("user_text", "three"), _req("user_text", "two")])
+        with mock.patch.object(smp, "load_scenario", lambda n: dict(bad, model="gemini-3.8-flash")), \
+                mock.patch.object(rt, "DockerRuntime", side_effect=AssertionError("a runtime was built")), \
+                self.assertRaises(smp.ProbeRefused):
+            smp.dry_run(["A1-fake"], GEMINI_IMAGE, dict(RESOURCES))
+        with mock.patch.object(smp, "load_scenario", lambda n: dict(bad, model="gemini-3.8-flash")), \
+                self.assertRaises(smp.ProbeRefused):
+            smp.check_fake(["A1", "A1-fake"])
+        smp.check_fake(["A1", "A1-fake"])                 # the committed A1 splits
 
 
 class ReviewFold(unittest.TestCase):

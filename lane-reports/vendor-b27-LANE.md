@@ -282,3 +282,24 @@ Each module alone was green because no stale copy existed there.
   Three tests failed there, and each fails the same way alone on this Mac (19:32:42), so they are this Mac's environment, not this lane: test_run_take TestExecArgv.test_exec_argv and TestWalkLoginPlace.test_the_walk_login_place refuse because this agent session's environment holds a refused variable name (CLAUDE_CODE_MESSAGING_TOKEN, by name only; run_take reads the process's own environment), and test_config_folder C7Shapes.test_shape_rules errors because APFS refuses a non-UTF-8 file name ("[Errno 92] Illegal byte sequence"). Athena's battery does not have either condition.
 - Athena's battery on the new head is the verdict.
 - Correction to the reproduction line above: it ran at 18:30:39-18:31:12 EDT (`date`); the "19:30:39-19:31:12" there is a typing slip.
+
+## Stage 8: the A1-fake cross-check gets one fake file per process (glitch-f1's B27 ruling 4, 21 Oct 2026)
+
+The ruling's words (night log /Users/javrodher/glitch/plans/gap-study-round-4/orchestrator-night-2026-10-13-claude.md, "B27 RULINGS", item 4): "the A1-fake defect is fixed as B27 stage 8: one fake file per process, split at each process's user_text match and refused unless the split gives exactly the scenario's processes in order; red first; closure review; then A1 and A1-fake rerun together on athena."
+glitch-f1's brief adds: each group non-empty.
+
+Defect (the full run, /Users/javrodher/aegis-builds/b27-smoke-20261021/RUNLOG.md "# Full run"): A1-fake matched A1 only through process 1, because the pinned gemini-cli 0.64.0's FakeContentGenerator replays its whole --fake-responses file from response 1 in every process, and the probe passed one file to all three processes (stub_model_probe.py:264, :353, :411 at 82da1830).
+
+- fake_groups (box/stub_model_probe.py): a boundary is a script entry whose match is `user_text`; the boundaries' texts must equal the scenario's process prompts exactly, in order, and the first entry must be a boundary; each group runs from its boundary to the next.
+  Refusals, each by name: a process prompt out of order; a missing boundary (a `user_text_prefix` entry is not a boundary); an extra boundary; boundaries that are not the scenario's prompts; a record before process 1's prompt.
+  check_fake_groups then refuses a group count other than the process count, an empty group, and groups that do not cover every record exactly once in order.
+  Through fake_groups those three cannot fire on a split that passed the text and leading-record rules (each group holds at least its boundary; inferred from the construction); they stay as the ruling's rule written down and are tested directly.
+- A1.json splits at its requests 1, 9 and 10 into groups of 8, 1 and 1; A1.json and every other scenario file are unchanged, and stub_model_server.fake_records is unchanged (the probe slices its one-per-entry output).
+- Each process k gets `.stub-probe/fake-responses-<k>.jsonl`; process k's argv (dry run and run) ends `--fake-responses <run tree>/.stub-probe/fake-responses-<k>.jsonl`; the output folder <out>/A1-fake carries every per-process file (so the manifest and fetch-probe carry them); the single fake-responses.jsonl is gone.
+- check_fake runs in main before the dry run or the run, and at the head of dry_run, so a bad split refuses before any runtime call.
+
+Red first, on 82da1830 with only the test file changed (21:25:07-21:25:10 EDT, `date`): test_stub_model_probe "Ran 47 tests", "FAILED (failures=3, errors=10)": 8 errors "has no attribute 'fake_groups'", 2 "has no attribute 'check_fake_groups'", the dry run's process-1 argv "fake-responses.jsonl != fake-responses-1.jsonl", the run path's argv likewise, and "ProbeRefused not raised" for a bad split.
+Green (21:25:52-21:25:55): "Ran 47 tests", "OK".
+Mutants, each against the new tests, the file restored from a byte backup after each (cmp clean): the leading-record check dropped, the empty-group check dropped, the coverage check dropped, the text check loosened to a count, the run path naming process 1's file for every process, the dry run's up-front check dropped: each "FAILED".
+Mac, light-ok (21:26:41-21:26:56): test_stub_model_server 29 OK; test_stub_model_probe 47 OK; test_b27_reading 16 OK; the single-process hazard check, `unittest tests.test_stub_agents tests.test_stub_model_probe tests.test_stub_take` in one process from evals/gap-study-4: "Ran 84 tests", "OK".
+Next, not this lane agent's: a closure review, then A1 and A1-fake rerun together on athena.

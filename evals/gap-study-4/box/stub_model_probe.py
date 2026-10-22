@@ -35,7 +35,11 @@ WHAT DOES NOT, AND WHY (each recorded in the output's `departures`):
   - the exec argv is exec_argv's form (`docker exec --user <agent> --workdir <run tree> -e GEMINI_API_KEY <id>
     <launcher>`), built here because exec_argv reads a login file and refuses the base URL; a test binds the two forms;
   - the A1-fake cross-check (ruling 4) appends the CLI's hidden `--fake-responses <file>` flag (Q2G:8205-8216), which
-    check_model refuses as off the study argv, so check_model reads the study argv before the flag is appended.
+    check_model refuses as off the study argv, so check_model reads the study argv before the flag is appended;
+    the pinned CLI's FakeContentGenerator replays its file from response 1 in every process, so each process gets
+    its own file, fake-responses-<k>.jsonl, the script split at each process's user_text match (fake_groups; stage 8,
+    glitch-f1's B27 ruling 4), refused unless the split gives exactly the scenario's processes, in order, each group
+    non-empty.
 
     python3 -B evals/gap-study-4/box/stub_model_probe.py --box <box folder> --scratch-parent <owned folder>
         --output <.../stub-probe-<id>> --gemini-image sha256:<64> --scenarios A1[,A2,...|all] [--reason <why>]
@@ -83,6 +87,7 @@ SCENARIOS = ("A1", "A2", "A3", "B1", "B2", "C1", "C2")
 FAKE = "A1-fake"                       # glitch-f1's ruling 4: A1 again through the CLI's FakeContentGenerator
 FAKE_OF = "A1"
 FAKE_FLAG = "--fake-responses"
+FAKE_FILE = "fake-responses-{k}.jsonl"  # stage 8 (glitch-f1's B27 ruling 4): one fake file per CLI process
 ALL = SCENARIOS + (FAKE,)
 # The three environment changes (glitch-f1's ruling 1), and nothing else.
 BASE_URL_NAME = "GOOGLE_GEMINI_BASE_URL"
@@ -152,6 +157,47 @@ def load_scenario(name: str) -> dict:
     if doc["scenario"] != src:
         raise ProbeRefused(f"{src}.json names scenario {doc['scenario']!r}")
     return doc
+
+
+def check_fake_groups(processes: list, groups: list, n: int) -> list:
+    """The split's own rule: one group per process, each non-empty, together every record 0..n-1 once, in order."""
+    if len(groups) != len(processes):
+        raise ProbeRefused(f"the fake split gives {len(groups)} groups for {len(processes)} processes")
+    for k, g in enumerate(groups, 1):
+        if not g:
+            raise ProbeRefused(f"the fake split leaves process {k}'s group empty")
+    if [i for g in groups for i in g] != list(range(n)):
+        raise ProbeRefused("the fake split does not cover every record exactly once, in order")
+    return groups
+
+
+def fake_groups(doc: dict) -> list:
+    """The script's request indices per CLI process (glitch-f1's B27 ruling 4): a boundary is an entry matching
+    `user_text`; the boundaries' texts must be exactly the scenario's process prompts, in order, the first entry a
+    boundary; each group runs from its boundary to the next. Any other split refuses, by name."""
+    reqs, procs = doc["requests"], list(doc["processes"])
+    bounds = [i for i, e in enumerate(reqs) if e["match"]["kind"] == "user_text"]
+    texts = [reqs[i]["match"]["text"] for i in bounds]
+    if texts != procs:
+        if sorted(texts) == sorted(procs):
+            why = "a process prompt is out of order"
+        elif len(texts) < len(procs):
+            why = "a missing boundary"
+        elif len(texts) > len(procs):
+            why = "an extra boundary"
+        else:
+            why = "the boundaries are not the scenario's prompts"
+        raise ProbeRefused(f"the fake split refuses: {why} (user_text matches {texts}, processes {procs})")
+    if not bounds or bounds[0] != 0:
+        raise ProbeRefused("the fake split refuses: a record before process 1's prompt belongs to no process")
+    groups = [list(range(b, (bounds + [len(reqs)])[j + 1])) for j, b in enumerate(bounds)]
+    return check_fake_groups(procs, groups, len(reqs))
+
+
+def check_fake(names: list) -> None:
+    """Refuse a bad fake split before any runtime call (the dry run and the run both call it)."""
+    if FAKE in names:
+        fake_groups(load_scenario(FAKE))
 
 
 def materialise(doc: dict, run_tree: str) -> dict:
@@ -246,6 +292,7 @@ def take_resources() -> dict:
 def dry_run(names: list, image: str, resources: dict) -> list:
     """Every argv a real run would send, in order, for each scenario, with placeholder paths and ids; runs nothing."""
     out = []
+    check_fake(names)
     for name in names:
         doc = load_scenario(name)
         run_tree, cfg, evidence = f"{DRY_ROOT}/t", f"{DRY_ROOT}/cfg-dryrun", f"{DRY_ROOT}/e"
@@ -261,8 +308,8 @@ def dry_run(names: list, image: str, resources: dict) -> list:
         port = 40000
         version, _ = process_argv(take_id, ["gemini", "--version"], run_tree=run_tree, port=port, caller_env={})
         steps.append(("cli-version", version))
-        fake = f"{run_tree}/{STUB_DIR}/fake-responses.jsonl" if name == FAKE else None
         for k in range(1, len(doc["processes"]) + 1):
+            fake = f"{run_tree}/{STUB_DIR}/{FAKE_FILE.format(k=k)}" if name == FAKE else None
             argv, client = process_argv(take_id, cli_inner(doc, k, None if k == 1 else DRY_SESSION, fake_file=fake),
                                         run_tree=run_tree, port=port, caller_env={})
             steps.append((f"process-{k}", argv))
@@ -335,7 +382,7 @@ def session_id_of(stdout: str):
 
 def build_run_tree(run_tree: str, doc: dict, *, fake_records=None) -> None:
     """The run tree: the arm's .tmp and .home folders, the scenario's synthetic files, and the stub's read-only copy,
-    its materialised script and (A1-fake only) the fake-responses file."""
+    its materialised script and (A1-fake only) one fake-responses file per process (fake_records: a list of lists)."""
     os.mkdir(run_tree, 0o755)
     for d in (run_take.RUN_TREE_TMPDIR, run_take.RUN_TREE_HOMEDIR):
         os.mkdir(os.path.join(run_tree, d), 0o700)
@@ -349,9 +396,9 @@ def build_run_tree(run_tree: str, doc: dict, *, fake_records=None) -> None:
     shutil.copyfile(stub_model_server.__file__, os.path.join(stub_dir, STUB_FILE))
     _write_new(os.path.join(stub_dir, "scenario.json"),
                (json.dumps(materialise(doc, run_tree), indent=1, sort_keys=True) + "\n").encode("utf-8"))
-    if fake_records is not None:
-        _write_new(os.path.join(stub_dir, "fake-responses.jsonl"),
-                   "".join(json.dumps(r, separators=(",", ":")) + "\n" for r in fake_records).encode("utf-8"))
+    for k, group in enumerate(fake_records or [], 1):
+        _write_new(os.path.join(stub_dir, FAKE_FILE.format(k=k)),
+                   "".join(json.dumps(r, separators=(",", ":")) + "\n" for r in group).encode("utf-8"))
     for f in os.listdir(stub_dir):
         p = os.path.join(stub_dir, f)
         if os.path.isfile(p):
@@ -376,7 +423,11 @@ def run_scenario(runtime, env: dict, name: str, *, image: str, scratch_parent: s
            "scratch": {"base": base, "run_tree": run_tree, "config": cfg}, "processes": [],
            "processes_scripted": list(doc["processes"])}
     rec["config"] = take_config.write(cfg, HARNESS, model=doc["model"])
-    fake_records = stub_model_server.fake_records(materialise(load_scenario(FAKE_OF), run_tree)) if fake else None
+    fake_records = None
+    if fake:
+        script = materialise(load_scenario(FAKE_OF), run_tree)
+        records = stub_model_server.fake_records(script)
+        fake_records = [[records[i] for i in g] for g in fake_groups(script)]
     build_run_tree(run_tree, doc, fake_records=fake_records)
     launched = run_take.Launched(config_dir=cfg)
     restored = False
@@ -408,8 +459,8 @@ def run_scenario(runtime, env: dict, name: str, *, image: str, scratch_parent: s
             return ownership.operator_list(runtime, image=image, root_kind="config", run_tree=run_tree,
                                            config_dir=cfg, rel_dir=rel_dir, caller_env=env)
         session_id = None
-        fake_file = f"{run_tree}/{STUB_DIR}/fake-responses.jsonl" if fake else None
         for k in range(1, len(doc["processes"]) + 1):
+            fake_file = f"{run_tree}/{STUB_DIR}/{FAKE_FILE.format(k=k)}" if fake else None
             inner = cli_inner(doc, k, session_id, fake_file=fake_file)
             argv, cenv = process_argv(launched.take_id, inner, run_tree=run_tree, port=port, caller_env=env)
             started = time.time()
@@ -473,9 +524,9 @@ def run_scenario(runtime, env: dict, name: str, *, image: str, scratch_parent: s
     if restored:
         shutil.copytree(os.path.join(run_tree, STUB_OUT), os.path.join(out, "stub"))
         shutil.copyfile(os.path.join(run_tree, STUB_DIR, "scenario.json"), os.path.join(out, "scenario.json"))
-        if fake:
-            shutil.copyfile(os.path.join(run_tree, STUB_DIR, "fake-responses.jsonl"),
-                            os.path.join(out, "fake-responses.jsonl"))
+        for k in range(1, len(fake_records or []) + 1):
+            shutil.copyfile(os.path.join(run_tree, STUB_DIR, FAKE_FILE.format(k=k)),
+                            os.path.join(out, FAKE_FILE.format(k=k)))
         shutil.rmtree(base)
         rec["scratch_removed"] = not os.path.lexists(base)
     else:
@@ -590,6 +641,7 @@ def main(argv=None) -> int:
     a = p.parse_args(argv)
     names = scenario_names(a.scenarios)
     check_image(a.box, a.gemini_image)
+    check_fake(names)
     if a.dry_run:
         for row in dry_run(names, a.gemini_image, take_resources()):
             print(json.dumps(row, sort_keys=True))
