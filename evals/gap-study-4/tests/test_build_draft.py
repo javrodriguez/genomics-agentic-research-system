@@ -699,7 +699,9 @@ class Description(unittest.TestCase):
 
     def test_mode_residual_is_bound(self):
         d = self.get()
-        self.assertEqual(len(d["box_residuals"]), 8, "R8.mode-residual")   # 4th: the new-folder gap; then the read-only root, W-3b, arm O's egress host and arm O and G's HOME
+        # 4th: the new-folder gap; then the read-only root, W-3b, arm O's egress host, arm O and G's HOME and (lane
+        # d8-furniture fold 2, 22 Oct 2026) the arm G project tier
+        self.assertEqual(len(d["box_residuals"]), 9, "R8.mode-residual")
         self.assertEqual(d["box_residuals"][2], MODE_RESIDUAL, "R8.mode-residual")
         endstate_tests = (HERE / MODE_CHECK[0]).read_text()
         self.assertIn(f"class {MODE_CHECK[1]}(", endstate_tests, "R8.mode-residual")
