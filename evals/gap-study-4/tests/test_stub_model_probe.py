@@ -165,6 +165,8 @@ class Bindings(unittest.TestCase):
             rel = p.relative_to(STUDY).as_posix()
             if rel.startswith("tests/") or rel == "box/stub_model_probe.py":
                 continue
+            if rel == "box/hook_control_probe.py":   # lane hook-control: a probe on this road, itself bound unimported
+                continue
             src = p.read_text(encoding="utf-8")
             names = _imports(ast.parse(src))
             if [n for n in names if n.split(".")[-1] == "stub_model_probe"] or "box.stub_model_probe" in src \
