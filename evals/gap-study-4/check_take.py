@@ -6845,6 +6845,14 @@ def vendor_gemini_memory_partial(path) -> list:
                        "project's own: a context the study did not place")
         out += [f"[inherited-context] the session context ({where}) loaded {p}, which is no project block inside its "
                 "workspace directory" for p, _ in facts["files"] if not _gemini_inside(p, facts["dirs"])]
+    try:                                    # the adopted text: no memory-file write (gemini_memory_file_writes)
+        writes = gemini_memory_file_writes(path)
+    except _VENDOR_READ_ERRORS as e:
+        writes = None
+        out.append(f"[inherited-context] the take's tool calls cannot be read ({type(e).__name__}), so a memory-file "
+                   "write cannot be ruled out")
+    out += [f"[inherited-context] {where}: {tool} names the memory file {p!r}: memory may have been written for the "
+            "session" for where, tool, p in writes or []]
     settings, why = _gemini_pinned_settings(path)
     if settings is None:
         out.append(f"[inherited-context] the pinned settings cannot be built ({why}), so a context import cannot be "
