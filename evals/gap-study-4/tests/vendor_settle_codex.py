@@ -871,6 +871,23 @@ def _refused_missing(name):
 
 
 ROOT_OUT = f"<root>{TREE46}</root><root>/root/outside</root>"
+
+
+def _additional_tools():
+    """An additional_tools response_item after the first turn_context of the last rollout, every ordinal renumbered
+    (read_rollout accepts it then, so the legs that read it are reachable; review 0df1437 thought it refused first)."""
+    def edit(folder):
+        f = folder / LAST_O46
+        recs = [json.loads(x) for x in f.read_text(encoding="utf-8").split("\n") if x]
+        at = next(i for i, r in enumerate(recs) if r["type"] == "turn_context") + 1
+        rec = dict(recs[at - 1], type="response_item",
+                   payload={"type": "additional_tools", "tools": [{"name": "web_fetch"}]})
+        recs.insert(at, rec)
+        for i, r in enumerate(recs):
+            if "ordinal" in r:
+                r["ordinal"] = i
+        f.write_text("".join(json.dumps(r) + "\n" for r in recs), encoding="utf-8")
+    return edit
 LEAK_W = "evaluation"
 # (leg, reason, reader(plant, design) -> problems, plant edits, a patch context or None)
 LEG_PLANTS = [
@@ -892,6 +909,11 @@ LEG_PLANTS = [
     ("M21 T-18: world_state's apps section on", ct.HARNESS_CONDITION_VIOLATED,
      lambda p, d: [x for x in ct.vendor_codex_tools_partial(p.path) if "apps_instructions" in x],
      [_ws(lambda r: r["payload"]["state"].update(apps_instructions=True))], None),
+    ("M5 offered: an additional_tools item", "inherited-context",
+     lambda p, d: ct.vendor_codex_offered_partial(p.path), [_additional_tools], None),
+    ("M20 T-18: an additional_tools item", ct.HARNESS_CONDITION_VIOLATED,
+     lambda p, d: [x for x in ct.vendor_codex_tools_partial(p.path) if "additional_tools" in x], [_additional_tools],
+     None),
     ("M6 offered: a skill root outside the pinned folder", "inherited-context",
      lambda p, d: ct.vendor_codex_offered_partial(p.path),
      [_dev("<skills_instructions>", lambda t: t.replace("- `r0` = `/opt/cfg/skills/.system`",
@@ -929,10 +951,11 @@ LEG_PLANTS = [
      lambda p, d: ct.vendor_codex_origin_reads(p.path),
      [lambda: _payload_edit(LAST_O46, _message_with("user", ct.CODEX_AGENTS_PREFIX),
                             lambda r: r["payload"]["content"].append(dict(r["payload"]["content"][0])))], None),
-    ("M24 T-5: an operator line missing from the rollout", "unknown-harness-origin",
+    # the LAST operator line dropped (a middle one would also read as a part of unknown origin, another leg)
+    ("M24 T-5: the last operator line missing from the rollout", "unknown-harness-origin",
      lambda p, d: ct.vendor_codex_origin_reads(p.path),
      [lambda: _payload_edit(LAST_O46, lambda r: _is(r, "response_item", type="message", role="user") and [
-         c.get("text") for c in r["payload"]["content"]] == ["skip"],
+         c.get("text") for c in r["payload"]["content"]] == ["Why does the design table show three conditions?"],
          lambda r: r["payload"].update(content=[]))], None),
     ("M25 T-10: a leak word in world_state", "leak-in-loaded-context",
      lambda p, d: ct.vendor_codex_loaded_context_reads(p.path, d.pre),
