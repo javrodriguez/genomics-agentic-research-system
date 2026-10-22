@@ -1050,7 +1050,10 @@ class InterfaceRecords(unittest.TestCase):
 
 def pre_registration(tasks=("synthetic-task",)):
     rows = [row(task=task, slot=f"s{i}", half_cell=f"c{i}") for i, task in enumerate(tasks, 1)]
-    return {"tasks": [{"id": task} for task in tasks], "rows": rows, stats.DESIGN_KEY: design(tasks)}
+    # Lane run-launcher (ruling 2): a frozen pre-registration always carries take_order (freeze.prepare), which
+    # check_publication's order check reads; here it is the rows' own order.
+    return {"tasks": [{"id": task} for task in tasks], "rows": rows, stats.DESIGN_KEY: design(tasks),
+            "take_order": copy.deepcopy(rows)}
 
 
 class Reporting(unittest.TestCase):
@@ -1491,7 +1494,8 @@ class FreezeCoverage(unittest.TestCase):
                  "mode_binding.py", "walk_register.py",       # W8A: run.py and copy_manifest.py import these
                  "pending_walk.py",                           # live harness (15429361): run.py imports it
                  "graders/delegation.py",                     # the d7107255 battery ruling: run.py imports it
-                 "delegated_take.py")                         # the pre-freeze ruling: graders/delegation.py imports it
+                 "delegated_take.py",                         # the pre-freeze ruling: graders/delegation.py imports it
+                 "run_builders.py")                           # lane run-launcher: check_publication's order check
         with manifest_repository() as (repo, root, folder), tempfile.TemporaryDirectory() as tmp:
             fragment = json.loads((folder / "synthetic.json").read_text())
             entries = {e["path"]: e for e in fragment["files"]}

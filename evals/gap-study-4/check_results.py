@@ -541,7 +541,8 @@ def check_publication(rows, history, records, pre, page, grade, table=None):
     stats.check_records(records)
     wanted = pipeline().produce(rows, history, grade, table=table)["records"]
     rendered = result.render(result.from_records(wanted, pre, rows, history, table))
-    problems = []
+    import run_builders   # lane run-launcher, ruling 2: first registrations follow take_order within each launch part
+    problems = run_builders.order_problems(rows, pre)
     if not records_equal(records, wanted):
         problems.append("records/ differs from registered, routed and regraded takes")
     if not page_equal(page, rendered):

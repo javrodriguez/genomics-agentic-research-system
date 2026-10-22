@@ -1439,7 +1439,15 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--check", action="store_true", help="check routing.json and what the loop needs to start")
     ap.add_argument("--foreground", action="store_true", help="allow running without nohup")
     ap.add_argument("--serial", action="store_true", help="one take at a time (the fallback)")
+    # Lane run-launcher (glitch-f1's rulings on DESIGN-run-launcher.md, 22 Oct 2026): the counted run's road. The
+    # frozen take_order filtered to the run's arms (a deferred arm only after its go record), built by run_builders.
+    ap.add_argument("--run", action="store_true", help="drive the frozen take_order's remaining rows of the run's arms")
+    ap.add_argument("--arms", help="with --run: narrow the run's arms (comma-separated), never widen them")
+    ap.add_argument("--limit", type=int, help="with --run: drive at most this many rows of the frozen order")
     args = ap.parse_args(argv)
+    if (args.arms is not None or args.limit is not None) and not args.run:     # NIT-1 (review of run-launcher S)
+        print("batch: --arms and --limit go with --run", file=sys.stderr)
+        return 2
     if args.states:
         print(json.dumps({"routes": list(labels4.ROUTES), "batch": list(labels4.BATCH_STATES)}))
         return 0
@@ -1454,6 +1462,9 @@ def main(argv: list[str]) -> int:
     if not (under_nohup() or args.foreground):
         print("batch: run under nohup (or pass --foreground)", file=sys.stderr)
         return 2
+    if args.run:
+        import run_builders
+        return run_builders.run_main(arms=args.arms, limit=args.limit, serial=args.serial)
     print("batch: no driver exists yet; the sealed box's driver arrives in CP2", file=sys.stderr)
     return 2
 

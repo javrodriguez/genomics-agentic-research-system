@@ -144,7 +144,10 @@ SUITE_KIND = "gars"
 # The watcher's evidence blobs (glitch-6b's ruling (b), 15 Oct 2026, after w001's fetch refused on 12 of them): a binary
 # blob in the walk's new commits ships only as a gzip stream under rehearsals/<walk>/evidence/blobs/<sha256>, decoded
 # within these bounds and scanned decompressed with no allowance; anything else refuses.
-EVIDENCE_BLOB = re.compile(r"evals/gap-study-4/rehearsals/[A-Za-z0-9][A-Za-z0-9._-]*/evidence/blobs/[0-9a-f]{64}")
+# Lane run-launcher, decision 3 (glitch-f1, 22 Oct 2026): a counted take's watcher blobs sit at
+# takes/<slot>/<attempt>/evidence/blobs/<sha256>, the slot a frozen row's s-<64 hex>, the attempt a positive whole number.
+EVIDENCE_BLOB = re.compile(r"evals/gap-study-4/(?:rehearsals/[A-Za-z0-9][A-Za-z0-9._-]*|takes/s-[0-9a-f]{64}/[1-9][0-9]*)"
+                           r"/evidence/blobs/[0-9a-f]{64}")
 BLOB_MAX_BYTES = 16 * 1024 * 1024        # decompressed, per blob (and the stored size of one blob)
 BLOB_MAX_RATIO = 256                      # decompressed : compressed, against bombs (text compresses far less)
 BLOB_TOTAL_MAX = 64 * 1024 * 1024        # decompressed, all of a walk's evidence blobs together (review MAJOR 2)
