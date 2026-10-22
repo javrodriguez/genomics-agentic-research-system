@@ -384,8 +384,8 @@ def stop_and_marker_problems(fixture: str, path: Path) -> list:
     required, out = ct.required_steps(design.script, path, turns, False, project, source, ())
     lines = ct.operator_line_problems(ops, required, project, source)
     out += lines
-    if not lines:
-        out += ct.continuation_problems(turns, required, [], project, source)
+    if not lines:                               # stage V ruling (a): the turns vendor_check hands continuation
+        out += ct.continuation_problems(ct.vendor_continuation_turns(path, H, turns), required, [], project, source)
     return out
 
 
@@ -904,6 +904,16 @@ class GT7(unittest.TestCase):
                                  [])
         with vendor_plant.planted(G14) as clean:
             self.assertEqual(stop_and_marker_problems(G14, clean.path), [])
+            # witness: the join dropped (the view's turns handed on) is the false line again
+            with mock.patch.object(ct, "vendor_continuation_turns", lambda path, harness, turns: turns):
+                self.assertTrue(any(p.startswith("[continued-past-unheld-marker]")
+                                    for p in stop_and_marker_problems(G14, clean.path)))
+            # the joined reply holds the marker the ledger expects (the two chunks read as one text)
+            joined = ct.vendor_continuation_turns(clean.path, H, ct._vendor_turns(
+                ct.vendor_take_view(clean.path, H)["events"] or []))
+            self.assertTrue(any("Reply with a comma-separated list of IDs" in t["text"] for t in joined
+                                if t["role"] == "assistant"))
+            self.assertEqual(ct.vendor_continuation_turns(clean.path, "codex", ["x"]), ["x"])
 
 
 class GLegI(unittest.TestCase):

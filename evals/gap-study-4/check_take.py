@@ -4582,6 +4582,47 @@ def _vendor_turns(events) -> list:
     return out
 
 
+def vendor_continuation_turns(path, harness, turns) -> list:
+    """The turn list continuation_problems reads (glitch-f1's ruling on stage G's hand-back, lane vendor-settle stage
+    V): for gemini, one message's delta chunks joined as gemini_adapter.read_stream joins them (consecutive assistant
+    chunks with delta true, no separator; any other record ends the run), since the bound view writes each chunk as its
+    own agent-text event (transcript_gemini.py, a READER_SOURCES file, left as it is) and continuation_problems joins
+    agent texts with newlines, which read a marker streamed across two chunks as absent (w-g14, w-g31, w-g39 turn 1).
+    The streams are read as the envelopes bind them; when their assistant chunks are not the view's agent texts one for
+    one, or a stream cannot be read, the view's turns are returned as they are (unjoined: never a pass the view's own
+    reading would not give). codex: the turns unchanged."""
+    if harness != "gemini":
+        return turns
+    chunks = []                                            # (text, continues the chunk before it)
+    try:
+        for env in _vendor_envelopes(path):
+            open_run = False
+            for line in _vendor_stream(path, env).split("\n"):
+                if not line.strip():
+                    continue
+                r = json.loads(line)
+                if r.get("type") == "message" and r.get("role") == "assistant":
+                    chunks.append((r.get("content"), r.get("delta") is True and open_run))
+                    open_run = r.get("delta") is True
+                else:
+                    open_run = False
+    except _VENDOR_READ_ERRORS + (ValueError, KeyError, TypeError, AttributeError):
+        return turns
+    if [t["text"] for t in turns if t["role"] == "assistant"] != [c for c, _ in chunks]:
+        return turns
+    out, k = [], 0
+    for t in turns:
+        if t["role"] != "assistant":
+            out.append(t)
+            continue
+        if chunks[k][1] and out and out[-1]["role"] == "assistant":
+            out[-1] = {"role": "assistant", "text": out[-1]["text"] + t["text"]}
+        else:
+            out.append(dict(t))
+        k += 1
+    return out
+
+
 def vendor_origin_problems(path, harness, design) -> list:
     """unknown-harness-origin (T-5): codex PENDING (the rollout's response_item messages are read by no reader yet);
     gemini's non-operator user record is an extra interaction or a `sent` mismatch, vendor_operator_problems'
@@ -5048,8 +5089,9 @@ def vendor_check(path, task_id: str, half_name: str, row_index, *, wording_scrip
         problems += stop_problems
         line_problems = operator_line_problems(ops, required, expected_project, expected_source)
         problems += line_problems
-        if not line_problems:
-            problems += continuation_problems(turns, required, [], expected_project, expected_source)
+        if not line_problems:                   # stage V ruling (a): gemini's delta chunks joined for this reading
+            problems += continuation_problems(vendor_continuation_turns(path, harness, turns), required, [],
+                                              expected_project, expected_source)
     problems += fixture_binding_problems(path, half, False)[0]
     if bound:
         problems += vendor_leak_problems(ops, pre)
