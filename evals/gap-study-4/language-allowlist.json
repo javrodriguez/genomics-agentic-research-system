@@ -199,10 +199,24 @@
     },
     {
       "file": "evals/gap-study-4/native-readers/gemini-review.md",
+      "pattern": "ratio-slash",
+      "line_text": "Tallies (walks): reader facts 120/120 byte-equal; history 36/36 byte-equal; replay 0/50, projection 1/50 (w-g24, refused on both sides), check 1/36 and per-snapshot check 1/50 byte-equal, every inequality being the added `resumes_after_rerecord: 0` alone (432/432 equal once that key is removed).",
+      "ruled": "2026-10-22",
+      "why": "Bound record, never edited: native-readers/gemini-review.md is the independent review (the F4 review of lane vendor-b28) that Javier's second acceptance of the Gemini reader binds by sha256 (5292df49; native-readers/gemini-acceptance.json review.sha256 246244c1e0447b492136c8e583e068f358ed5d37b063be67546e09cff5ce43b2; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The slashes are the reviewer's tallies of reader checks over recorded walks, not a rate this study reports about any model or take. (Javier's decision OD112 (ask merge-fix2), 22 Oct 2026; at gemini-review.md:68 on 6cf546bf; replaces the excusal for line 157 of the review bytes 5457e75e bound)"
+    },
+    {
+      "file": "evals/gap-study-4/native-readers/gemini-review.md",
+      "pattern": "local-works",
+      "line_text": "SP/tools/mutf4.py (3f6d0c40…) works in a third scratch clone (mutclone).",
+      "ruled": "2026-10-22",
+      "why": "Bound record, never edited: native-readers/gemini-review.md is the independent review (the F4 review of lane vendor-b28) that Javier's second acceptance of the Gemini reader binds by sha256 (5292df49; native-readers/gemini-acceptance.json review.sha256 246244c1e0447b492136c8e583e068f358ed5d37b063be67546e09cff5ce43b2; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about a review tool running in a scratch clone, not a claim by this study about any model or take. (Javier's decision OD112 (ask merge-fix2), 22 Oct 2026; at gemini-review.md:148 on 6cf546bf)"
+    },
+    {
+      "file": "evals/gap-study-4/native-readers/gemini-review.md",
       "pattern": "always",
-      "line_text": "| MINOR 5, sent and model compared only when the stream carries them | mostly | The model is now always compared: init is required for the session check, and transcript_gemini requires `model` in an init. sent is still compared only when the stream has a user message. On w-g21 both streams carry it, and the gate binds the ledger's sent to each launch journal through `launch_facts`. See NIT 4. |",
-      "ruled": "2026-10-21",
-      "why": "Bound record, never edited: native-readers/gemini-review.md is the independent review Javier's acceptance binds by sha256 (native-readers/gemini-acceptance.json review.sha256 2c80deddc1cbe653cdb0a15e0d3923e7034018d4ea5bf1bdac5b90a0603f2e21; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about the reader's code and checks, not a claim by this study about any model or take. (lane freeze-gates-fix, glitch-f1's ruling (2) of 21 Oct 2026 under Javier's standing delegation; at gemini-review.md:157 on d5c0f798)"
+      "line_text": "| X26 front check only when two or more are live | SURVIVED | equivalent: CONTEXT_ID is always live after a road (a) patch (removing a CONTEXT_COPY fails `_ignored_prompts`' ORIGINAL check), so a single live id is the context id |",
+      "ruled": "2026-10-22",
+      "why": "Bound record, never edited: native-readers/gemini-review.md is the independent review (the F4 review of lane vendor-b28) that Javier's second acceptance of the Gemini reader binds by sha256 (5292df49; native-readers/gemini-acceptance.json review.sha256 246244c1e0447b492136c8e583e068f358ed5d37b063be67546e09cff5ce43b2; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about the reader's code path, not a claim by this study about any model or take. (Javier's decision OD112 (ask merge-fix2), 22 Oct 2026; at gemini-review.md:168 on 6cf546bf)"
     }
   ]
 }
