@@ -354,6 +354,34 @@ def case_stop_held_marker(t):
     return None, None
 
 
+def split_reply_marker(parts):
+    """gemini: the last turn's reply streamed as two delta chunks, split inside its marker (as the CLI streamed w-g14,
+    w-g31 and w-g39 turn 1); the snapshot keeps the whole reply."""
+    recs = parts["streams"][max(parts["streams"])]
+    k = max(i for i, r in enumerate(recs) if r.get("type") == "message" and r.get("role") == "assistant")
+    text = recs[k]["content"]
+    marker = text[len("Synthetic reply. "):]
+    cut = len("Synthetic reply. ") + max(1, len(marker) // 2)
+    recs[k:k + 1] = [dict(recs[k], content=text[:cut]), dict(recs[k], content=text[cut:])]
+
+
+def case_stop_held_marker_split(t):
+    # glitch-f1's stage W ruling 3: required_steps reads gemini's joined view, as continuation_problems does; read
+    # unjoined, the held marker looks absent and the stop reads proven (the passing direction)
+    stopped(t)
+    t.lines.pop()
+    t.replies.pop()
+    return split_reply_marker, None
+
+
+def case_reply_marker_split(t):
+    # ruling (a) on a SYNTHETIC take: a held marker split across chunks adds no continued-past-unheld-marker line
+    def edit(parts):
+        for k in sorted(parts["streams"])[:-1]:                 # every reply followed by a further line
+            split_reply_marker({"streams": {k: parts["streams"][k]}})
+    return edit, None
+
+
 def case_line_off_script(t):
     t.lines[1] = "06"
     return None, None
@@ -546,6 +574,10 @@ CASES = {
     "a stop at a line with no wait point": (("codex", "gemini"), case_stop_no_wait_point,
                                             {"stop-without-a-wait-point": 1}, None),
     "a stop at a held marker": (("codex", "gemini"), case_stop_held_marker, {"stop-at-held-marker": 1}, None),
+    # stage W ruling 3 and stage V ruling (a): a marker the CLI streamed across two delta chunks reads as held
+    "a stop at a held marker split across delta chunks": (("gemini",), case_stop_held_marker_split,
+                                                           {"stop-at-held-marker": 1}, None),
+    "a held marker split across delta chunks before the next line": (("gemini",), case_reply_marker_split, {}, None),
     "an operator line off the script": (("codex", "gemini"), case_line_off_script, {"operator-lines": 2}, None),
     "a reply missing its step's marker": (("codex", "gemini"), case_reply_without_marker,
                                           {"continued-past-unheld-marker": 1}, None),
