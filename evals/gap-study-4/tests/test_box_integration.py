@@ -199,6 +199,24 @@ def setUpModule():
     # The bypass acceptance is RULED not required in -p (glitch-06, 14 Oct 2026): no stand-in key.
     import drive as imported
     drive = imported
+    # Lane freeze-gates-fix S8 (glitch-f1's ruling 3 on the lane's hand-back, Wed 21 Oct 2026, under Javier's
+    # standing delegation): the production native-reader registry, read hermetically. Since Javier's acceptance commit
+    # (5457e75e) the study holds committed acceptance records, so the registry's default read runs git on the study
+    # tree, which this module's process guard refuses (git only under SCRATCH). Every fake-runtime road here drives a
+    # scratch study, so a registry call naming no study, or the study tree itself, reads an empty scratch folder with no
+    # acceptance record (the state those roads model: a harness no reader is registered for). A call naming a scratch
+    # study (a road's own registration) is passed through unchanged. The real tree's registry, both accepted readers,
+    # is asserted where no guard stands: test_native_reader_registration and test_vendor_admission.
+    import native_reader_registration as nrr
+    real_registry, study_tree = nrr.production_readers, nrr.HERE.resolve()
+    unregistered = SCRATCH / "no-acceptance-record"
+    unregistered.mkdir()
+
+    def scratch_registry(study=None):
+        if study is None or Path(study).resolve() == study_tree:
+            study = unregistered
+        return real_registry(study)
+    _STACK.enter_context(mock.patch.object(nrr, "production_readers", scratch_registry))
 
 
 def tearDownModule():
