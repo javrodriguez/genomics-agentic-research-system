@@ -185,3 +185,33 @@ Item 4 (identical on both sides, neither this lane's nor the stale record's) gai
 - tests.test_holdout_digests.H1Draft.test_no_pre_freeze_draft_carries_the_holdout (1 failure);
 - tests.test_build_draft Description.test_commitments ("['R9.sessions'] != []") and Readiness.test_committed_writer (2 failures; the R9.sessions red freeze-gates-fix already fixed on dry/all-225).
 Coverage: 27 modules in all (this lane's 12 plus freeze.py --check, and the reviewer's 15: test_prereg_order, test_pipeline, test_holdout_digests, test_no_output_nudge, test_nested_agent, test_agent_tool, test_vendor_constants, test_recheck_coverage, test_take_checker_dispatch, test_vendor_script, test_cp6_wiring, test_drive_loop, test_walk_wiring, test_build_draft, test_walk_runner), not the whole battery. The reading rule for athena's battery: any red outside items 2 and 4 is new and needs reading; item 3's green is not evidence.
+
+## Battery reading, gap4-b28-e722790
+
+The battery: athena run gap4-b28-e722790-e722790-20261022T052601Z on e72279086192573db1bf7dea500def9d73e62659, log /Users/javrodher/aegis-builds/athena-suites/gap4-b28-e722790-e722790-20261022T052601Z/run.log. Step 1 green (1303 tests, OK, 82 skipped). Step 2 ran 353 of 378 commands green and 25 `^FAIL [` lines.
+glitch-f1's brief, as relayed: quote each failing command's tests and first messages from the log; run the same command at 1e407b94 (the 5457e75e reader) on the Mac, each in its own process behind light-ok; classify it as identical on both sides (pre-existing) or new on this head.
+How (02:47-03:00 EDT 22 Oct): b28build/tools/battery_cmp.py ran each failing command from the repo root with python3.13 (athena uses 3.13.5). It ran once on the lane head and once on a scratch worktree of 1e407b94 (removed after). The FAIL/ERROR test sets and messages were compared with paths normalised; the three non-unittest commands were compared by their full output.
+test_round4 was not run on the Mac (it is the whole suite in one process, 1,396 s on athena). Its log keeps only its last failure (test_walk_layout L7CopyRecord, "rehearsals/w-g21/check.json is under evals/gap-study-4/ and no fragment in COPIED.d/ claims it", 72 extra entries). Its total, "FAILED (failures=72, errors=12, skipped=32)", equals exactly the sum of the member modules' reds below on the Mac: failures 2+1+1+1+43+10+6+3+2+1+2 = 72, errors 1+2+1+1+1+3+3 = 12. So it is read as their union, by that count; its own test list was not seen.
+
+New on this head: none.
+
+Identical on both sides (same failing tests, same messages but for paths), pre-existing:
+- Cause A, the two acceptance walks (w-o46, w-g21) registered at 5457e75e meet expectations written for an empty register (stale pre-acceptance expectations; the freeze-path reds lane freeze-gates-fix fixes, as I read them):
+  - build_draft.py --check (four lines: bootstrap-constants:9, vendor-admission:71, w5c-draft-ci:6, w8b-holdout-digests:6): "FAIL: the committed draft is missing or differs from what build_draft.py builds"; full output identical.
+  - test_build_draft (vendor-admission:70, w5c:4, and --witnesses 6 at w5c:14): Readiness.test_committed_writer and Description.test_commitments ("['R9.sessions'] != []"), 2 failures each (item 4).
+  - test_holdout_digests: H1Draft.test_no_pre_freeze_draft_carries_the_holdout (item 4).
+  - test_rehearsals: TheRegister.test_empty_register_says_zero_walks ("'(?m)^ok, having registered 0 walks: ' not found in 'ok: 2 registered walk(s), …' : R4.empty").
+  - test_walk_layout: L7CopyRecord.test_the_manifest_reads_the_register (72 COPIED.d-unclaimed paths under rehearsals/w-g21 and w-o46).
+  - mode_binding.py --walks --check: "FAIL 2 of 2 walk(s) drift from the pre-registration"; full output identical.
+- Cause B, drive's process guard refusing the registration's `git rev-parse --show-toplevel` ("test_box_integration.GuardTripped: process guard: subprocess.run refused ['git', '-C', …, 'rev-parse', '--show-toplevel']", native_reader_registration.py:285 before the source-hash check; code-level, the reviewer's lens 4), and the "'held' != 'pending-native-reader'" family:
+  - test_native_snapshot (live-harness-foundation:8 and vendor-admission:103): 2 failures, 1 error (DriverRetains.test_each_snapshot_is_retained_before_the_next_resume "'failed' != 'graded'", the "native session snapshot" reason).
+  - test_native_history_record: 2 errors (test_the_driver_ledger_carries_it_only_for_a_native_session, test_the_production_registry_leaves_it_pending: GuardTripped, and a TypeError on None).
+  - test_codex_identity: ServedModelRecorded.test_the_ledger_records_it, 1 error, GuardTripped.
+  - Item 4, as listed: test_pending_walk 43, test_pending_codex_walk 10, test_vendor_walk_road 6, test_vendor_admission_regrade 3, test_vendor_checker_road 2+3, test_vendor_take_records 3 errors.
+- w8e lint line: rc 1 on both sides with the same 5 findings; the output differs only in its input count, "5 finding(s) across 131 input(s)" on the head against 130 on the base (the new test module is one more input, with no finding).
+
+Item 2, as the list names, the same tests on both sides, the failure on the head turned into the stale-acceptance error:
+- test_vendor_admission Refusals.test_va_production_readers_on_this_tree_refuse: head ERROR "RegistrationRefused: the reader's sources changed since the record: a new acceptance is needed" (athena's log the same); base FAIL.
+- test_native_reader_registration CheckSession.test_the_driver_uses_the_same_function_and_refuses_incomplete: head ERROR, the same RegistrationRefused (athena the same); base FAIL "'agreed' != 'pending'". NoRecord.test_the_study_has_no_acceptance_record_and_the_registry_is_empty FAILs on both sides.
+
+Counts, by command line: 25 FAIL lines = 0 new; 24 identical on both sides (11 cause A, 11 cause B, 1 lint input count only, plus test_round4 as their union by count); 2 of those lines are the item 2 modules whose failure mode changes as listed.
