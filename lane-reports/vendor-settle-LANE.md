@@ -98,7 +98,7 @@ NOT COMPARABLE, `ruling` = glitch-f1's adopted text verbatim (sha256 of the ruli
 - T-17:billing-route `vendor_billing_route_partial(path, harness, pre)` (shared; stage G may call it): environment record names, TAKE_ENV and refused set, Codex provider and plan (Gemini: the pinned auth setting). Plants: CODEX_ACCESS_TOKEN in names_present; TAKE_ENV patched; provider "oss".
 - T-18 `vendor_codex_tools_partial`: no multi-agent or recommended_plugins section, no additional_tools, sections off, rebuilt config.toml turns agents, plugins and web search off. Plant: multi_agent_role into w-o47.
 
-Over the 38 committed GPT walks (rehearsals/w-o*, read in place): every SAME reader reads [] on 38/38; T-18 fires on 31 (every pre-B22 walk, w-o46 included, as ruled); T-12:offered-context and T-18 also read the recommended_plugins section on w-o7 and w-o8 (the adopted amendment; the design's open call 3 is reversed by it).
+Over the 38 committed GPT walks (rehearsals/w-o*, read in place): every SAME reader reads [] on 38 of 38; T-18 fires on 31 (every pre-B22 walk, w-o46 included, as ruled); T-12:offered-context and T-18 also read the recommended_plugins section on w-o7 and w-o8 (the adopted amendment; the design's open call 3 is reversed by it).
 check4_walk_vendor on the 38: 38 carry `[constant-binding] the take ran in permission mode 'unrecorded'` (check_take.constant_problems on the ledger, not a stage C row), 31 harness-condition-violated, 2 inherited-context.
 
 ### K's open point 2 (ruled in the C brief)
