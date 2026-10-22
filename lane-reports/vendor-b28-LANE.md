@@ -70,3 +70,20 @@ Red, the module over the lane tree with the replay still 5457e75e's (`git diff 5
 - Green on the base, as they must be (they bind what already holds): Disjoint (2), Fixtures (3), C1's truncation, M1 (the retired-id name) and M13 (the retired-id name).
 Green, the same module over a scratch archive of the lane's evals/ with the new replay laid in (22:06:00-22:06:05): "Ran 38 tests", "OK".
 Outside the gate, reported: at 22:02 one `cp -R` of the study folder into the scratchpad ran before the light-ok check in the same command line (which then held); later batches wait on a gate loop (b28build/tools/gate.sh).
+
+## Stage 4 plan: the survey's expected results, written before the run
+
+Inputs: all 74 walk refs of the records clone (38 w-o, 36 w-g; walk/ship-20261019 excluded), each walk folder read with `git show` per file (b28build/tools/extract_walks.py; never a checkout); stub-probe-full1, stub-probe-full2 and stub-probe-smoke1.
+Code: a `git archive` of the lane head (the replay of commit 2cd71de3 or later) into the scratchpad.
+Tools: B26's survey26.py unedited (sha256 0fd65dae8f555f452d440e486e81bdce82e0602d41bf63aedd08e7d6bac499ea, read with shasum: the design's value), stub_model_reading.py of the lane head with --code on that archive, and the evidence note's ptc.py (sha256 7878be64078d687705aed8d1d1d179c20ed6d147c23c3f84d789d9b06fd163c8) for the highest token counts.
+Baseline: B26's 74-walk survey on 9e91dd34, /Users/javrodher/aegis-builds/glitch-f1-ops/b26-survey74-9e91dd3.log.
+
+Expected (any difference is a finding to read, never a filter):
+- Codex 38: 38 PASS; history 38 joined; 25 meet the floor (the Codex sources are unchanged).
+- Gemini 36: 35 PASS; history 35 joined, 1 refused; 9 meet the floor; w-g24 DISAGREE "interaction N: native: the Gemini projection refused the snapshot: native interaction is incomplete: its last model message ends on tool calls".
+- Per-walk lines: every line equal to the B26 log's, except w-g14, w-g32 and w-g47, which differ by the added key alone (NIT 8): w-g14 properties={'history_rewrites': 1, 'tool_outputs_masked': 20, 'ignored_prompt_resumes': 1, 'resumes_after_rerecord': 0, 'loop_feedback_injected': 0}; w-g32 {..., 'tool_outputs_masked': 25, 'ignored_prompt_resumes': 0, 'resumes_after_rerecord': 0, 'loop_feedback_injected': 1}; w-g47 {..., 'tool_outputs_masked': 40, 'ignored_prompt_resumes': 0, 'resumes_after_rerecord': 0, 'loop_feedback_injected': 0}. resumes_after_rerecord is 0 on all 36 Gemini walks (other walks print no properties, all zero, as before).
+- stub-probe-full1, per snapshot as {history_rewrites, tool_outputs_masked, ignored_prompt_resumes, resumes_after_rerecord}: A1 admitted {1,2,0,0}, {2,5,0,1}, {2,5,0,2}, history joined; A2 admitted {0,0,0,0}, {1,2,0,0}, {2,5,0,1}, joined; A3 admitted {0,0,0,0}, {1,7,0,0}, {2,9,0,1}, joined; B1 1 PASS {0,0,0,0}, 2 and 3 refused under the compression name; B2 1 PASS {1,2,0,0}, 2 and 3 refused under the compression name; C1 1 PASS {0,0,0,0}, 2 and 3 refused under the truncation name; C2 admitted {0,0,0,0}, {1,0,0,0}, joined. full1's A1-fake (the defective folder, kept as a row, not as evidence): every snapshot PASS ({1,2,0,0}, {5,11,0,1}, {8,17,0,2}) and history refused "native tool call id reused" (the one fake file replayed in every process).
+- stub-probe-full2 (test 5, 49c350a9): A1 and A1-fake both admitted, {1,2,0,0}, {2,5,0,1}, {2,5,0,2}, history joined.
+- stub-probe-smoke1: A1 as full1's A1.
+- Highest token counts (ruling 2's residual evidence): no committed walk file holds a field named promptTokenCount (0 walks), and the highest native tokens.input is 160,229 (w-g47), as the evidence note read.
+Honesty note: the probe rows above were previewed during development (22:00 EDT, stub_model_reading over the three folders with the new replay in the lane tree, before the tests were written) and agree with the design's section 2 table; the walk rows rest on the B26 log and the design's prototype replay of the 50 Gemini snapshots.
