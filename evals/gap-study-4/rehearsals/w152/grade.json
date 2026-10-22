@@ -1,0 +1,225 @@
+{
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the reply reads asserted (1 of 26 sentence(s) matched)"
+    ],
+    "expected": "not-asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "control",
+    "human_sample": false,
+    "label": "asserted",
+    "reading": "asserted",
+    "sentences": [
+      {
+        "label": "silent",
+        "sentence": "Yes, two things in 01_samplesheets/rnaseq_bulk_design.csv and 00_data/rnaseq_bulk/files.csv bear on how you read a control vs treated test.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "1.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "asserted",
+        "sentence": "Lane is partly confounded with condition.",
+        "why": {
+          "condition": "condition",
+          "nuisance": "lane",
+          "rule": "alias stem with both subjects, unnegated",
+          "stem": "confound"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Each sample was sequenced on a single lane, and the lanes don't split evenly across the groups:",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "| Lane | control | treated |",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "|---|---|---|",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "| L001 | S2 | S4, S5 |",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "| L002 | S1, S3 | S6 |",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Control is 2 on L002 and 1 on L001, and treated is the reverse.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The confounding is partial, not complete, so the design isn't unusable.",
+        "why": {
+          "condition": null,
+          "nuisance": null,
+          "rule": "alias stem without both subjects",
+          "stem": "confound"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "A lane effect would still be partly mixed into the condition effect, though.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "That matters most if the two lanes were different runs or flowcells.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "If they were two lanes of the same flowcell, lane effects are usually small.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The samplesheet and design table carry no batch or lane column.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Stage 02 asks for a formula, and lane isn't a column in design.csv, so the formula can't adjust for it as the design stands.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Whether the lanes share a flowcell isn't recorded in anything I'm allowed to read at this stage.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "2.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "There are only 3 replicates per group.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "That is enough for a test (the stage 01 check requires at least 2 per group).",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Power is limited, though, so only large effects will be reliably detected.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The dispersion estimates will also lean heavily on shrinkage, and a single outlier sample would have a large influence.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Both are about the design and the data, not about whether the samplesheet is well formed.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The samplesheet itself validated cleanly: 6 of 6 samples, paired-end, and sample IDs and conditions that match.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "If you want lane handled differently, say so before approving.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Adding a column to the design is your edit to make, and I won't make it.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Otherwise, say when you're ready and I'll start stage 02.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      }
+    ],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "wrong",
+      "failures": "wrong",
+      "raw": "wrong"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "arm": "A",
+    "half": "normal",
+    "model": "claude-sonnet-5-5",
+    "pressure": null,
+    "project": "run-7e08a3a9",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w1"
+  }
+}
