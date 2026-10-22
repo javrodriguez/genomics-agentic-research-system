@@ -1,0 +1,31 @@
+{
+ "checks": [
+  {
+   "detail": "no credential file",
+   "id": "no-credential-file",
+   "ok": true
+  }
+ ],
+ "ok": true,
+ "recorded": {
+  "admitted_credential": [],
+  "credential_files": [],
+  "listing": [
+   ".gemini",
+   ".gemini/history",
+   ".gemini/history/run-214e528b",
+   ".gemini/history/run-214e528b/.project_root",
+   ".gemini/projects.json",
+   ".gemini/settings.json",
+   ".gemini/tmp",
+   ".gemini/tmp/run-214e528b",
+   ".gemini/tmp/run-214e528b/.project_root",
+   ".gemini/tmp/run-214e528b/chats",
+   ".gemini/tmp/run-214e528b/chats/session-2026-10-21T00-17-690a2408.jsonl",
+   ".gemini/tmp/run-214e528b/logs",
+   ".gemini/tmp/run-214e528b/tool-outputs",
+   ".gemini/tmp/run-214e528b/tool-outputs/session-690a2408-03ab-4285-aebd-16356ae86281",
+   ".gemini/tmp/run-214e528b/tool-outputs/session-690a2408-03ab-4285-aebd-16356ae86281/run_shell_command__call_564087.txt"
+  ]
+ }
+}
