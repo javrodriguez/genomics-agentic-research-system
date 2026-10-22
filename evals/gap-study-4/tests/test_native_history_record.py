@@ -2,10 +2,16 @@
 """Integration slice: the driver ledger states what the retained native snapshots prove, never more.
 
 For an adapter that names a native session, _take_records now runs step 1's session_history_facts over the take's
-retained snapshots (3c) through the PRODUCTION reader registry, which stays empty: the ledger's `native_history` is
-`pending` with the registry's own reason, never an acceptance. With a reviewed reader it would read `joined` (every
-later snapshot reproduces every earlier interaction), and a rewritten snapshot `refused`. Claude takes carry no such
-key. Synthetic snapshots and fakes only.
+retained snapshots (3c) through the PRODUCTION reader registry: with no reader registered for the harness the ledger's
+`native_history` is `pending` with the registry's own reason, never an acceptance. With a reviewed reader it reads
+`joined` (every later snapshot reproduces every earlier interaction), and a rewritten snapshot `refused`. Claude takes
+carry no such key. Synthetic snapshots and fakes only.
+
+Lane freeze-gates-fix S8 (glitch-f1's ruling 3, 21 Oct 2026): since Javier's acceptance commit (5457e75e) the study's
+registry holds the Codex and Gemini readers. Under test_box_integration's guard the registry's default read is a
+scratch study with no record (tests/test_box_integration.py, setUpModule), so readers=None still shows the unregistered
+road through the production call; and the ACCEPTED Gemini reader, handed in as the registry now holds it, refuses a
+snapshot that is not a Gemini session log, never joins it.
 """
 from __future__ import annotations
 
@@ -14,6 +20,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent.parent
 for p in (HERE, HERE / "tests"):
@@ -51,13 +58,39 @@ class Record(unittest.TestCase):
             refs.append(tns.ns().retain(folder, n, str(src)))
         return refs
 
-    def test_the_production_registry_leaves_it_pending(self):
+    def test_the_production_registry_without_the_reader_leaves_it_pending(self):
         import drive
-        with tempfile.TemporaryDirectory() as tmp:
+        import native_reader_registration as nrr
+        calls = []
+        registry = nrr.production_readers
+
+        def spy(*a, **kw):
+            calls.append((a, kw))
+            return registry(*a, **kw)
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(nrr, "production_readers", spy):
             refs = self.retained(tmp, ['{"turn": 1, "line": "a"}\n'])
             got = drive.native_history_record("gemini", Path(tmp) / "session", refs)
+        self.assertEqual(calls, [((), {})], "readers=None did not read the production registry")
         self.assertEqual(got["status"], "pending")
         self.assertIn("no reviewed native-session reader", got["why"])
+        self.assertIsNone(got["interactions"])
+
+    def test_the_guarded_registry_reads_a_scratch_study_never_the_tree(self):
+        # The study tree's registry runs git on the tree, which the guard refuses: without test_box_integration's
+        # redirect each call below raises GuardTripped.
+        import native_reader_registration as nrr
+        self.assertEqual(nrr.production_readers(), {})
+        self.assertEqual(nrr.production_readers(nrr.HERE), {})
+        self.assertEqual(Path(tbi.SCRATCH / "no-acceptance-record").is_dir(), True)
+
+    def test_the_accepted_gemini_reader_refuses_a_snapshot_that_is_no_gemini_log(self):
+        import drive
+        import native_reader_registration as nrr
+        with tempfile.TemporaryDirectory() as tmp:
+            refs = self.retained(tmp, ['{"turn": 1, "line": "a"}\n'])
+            got = drive.native_history_record("gemini", Path(tmp) / "session", refs,
+                                              readers={"gemini": nrr.gemini_reader})
+        self.assertEqual(got["status"], "refused")
         self.assertIsNone(got["interactions"])
 
     def test_a_reviewed_reader_joins_and_a_rewrite_refuses(self):

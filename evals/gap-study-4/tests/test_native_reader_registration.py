@@ -99,7 +99,13 @@ class CheckSession(unittest.TestCase):
             self.assertIn("not complete", got["why"])
             (Path(tmp) / "turn-2.jsonl").write_text(synthetic_stream(2))
             self.assertEqual(drive.gemini_cross_check(Path(tmp), refs, 2, readers=accepted)["status"], "agreed")
-            self.assertEqual(drive.gemini_cross_check(Path(tmp), refs, 2)["status"], "pending")
+            # Lane freeze-gates-fix S8 (glitch-f1's ruling 3, 21 Oct 2026): readers=None is the production registry,
+            # which holds the accepted Gemini reader since 5457e75e, so it reads as the accepted reader does; a
+            # registry without it keeps the take pending.
+            self.assertEqual(drive.gemini_cross_check(Path(tmp), refs, 2)["status"], "agreed")
+            from unittest import mock
+            with mock.patch.object(nrr(), "production_readers", lambda study=None: {}):
+                self.assertEqual(drive.gemini_cross_check(Path(tmp), refs, 2)["status"], "pending")
 
     def test_the_tool_prints_pass_with_shapes_head_and_hash(self):
         m = nrr()
@@ -171,11 +177,21 @@ class ManifestClaim(unittest.TestCase):
             self.assertTrue(any("native-readers/gemini-acceptance.json is under" in g for g in got))
 
 
-class NoRecord(unittest.TestCase):
-    def test_the_study_has_no_acceptance_record_and_the_registry_is_empty(self):
+# Lane freeze-gates-fix S8 (glitch-f1's ruling 3, 21 Oct 2026): Javier accepted both readers in one commit. Read from
+# git when this test was written: `git log -- native-readers/<harness>-acceptance.json` lists only this commit.
+ACCEPTED_AT = "5457e75ec115151b6bdcb463242fc63c74033fdb"
+
+
+class AcceptedRecords(unittest.TestCase):
+    def test_the_study_holds_javiers_two_records_and_the_registry_both_readers(self):
         m = nrr()
-        self.assertFalse((HERE / m.ACCEPTANCE_FILE).exists(), "an acceptance record must never be committed by a lane")
-        self.assertEqual(m.production_readers(), {})
+        for harness, prof in sorted(m.PROFILES.items()):
+            with self.subTest(harness=harness):
+                self.assertTrue((HERE / prof["acceptance"]).exists(), f"{harness}'s acceptance record is gone")
+                # a lane never commits or rewrites an acceptance record: the last commit touching it is his
+                self.assertEqual(m.acceptance_provenance(HERE, harness)["acceptance_commit"], ACCEPTED_AT,
+                                 f"{harness}'s acceptance record was committed after Javier's acceptance commit")
+        self.assertEqual(m.production_readers(), {"codex": m.codex_reader, "gemini": m.gemini_reader})
 
 
 # The registration gates, the positive registration and its single mutations run on walks made by the real road

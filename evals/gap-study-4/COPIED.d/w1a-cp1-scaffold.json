@@ -7,16 +7,6 @@
       "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/. Transfer (ruling S5-gap4-1, glitch-1b under Javier's standing delegation, 11 Oct 2026): drive.py, copied identical here from evals/gap-study-3/drive.py, moved to lane w6e-drive-commit, which edits it for CP2 and claims it in COPIED.d/w6e-drive-commit.json. Transfer (ruling S6-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026)): check_take.py, copied identical here from evals/gap-study-3/check_take.py, moved to lane w6h-drive-lifecycle, which edits it for CP2 (the plan's UPDATE check_take.py) and claims it in COPIED.d/w6h-drive-lifecycle.json. Transfer (ruling S6b-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026)): mode_binding.py, copied identical here from evals/gap-study-3/mode_binding.py, moved to lane w6i-checker-body (slice S6b, Q2), which edits it and claims it in COPIED.d/w6i-checker-body.json. Transfer (ruling W7A-gap4-1 (glitch-1b, under Javier's standing delegation, Sun 11 Oct 2026)): prereg.py, copied here from evals/gap-study-3/prereg.py and edited by slice S3 (lane w6d-prereg-order), moved to lane w7a-draft-text, which edits --status for W6D-R1-1 and claims it in COPIED.d/w7a-draft-text.json. Transfer (ruling W7D-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026)): review_kit/rounds.py, copied identical here from evals/gap-study-3/review_kit/rounds.py, moved to lane w7d-rehearsals (wave 7 piece P3), which corrects its usage lines to round 4's paths and claims it in COPIED.d/w7d-rehearsals.json. Transfer (ruling W8A-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; slice w8a, the walk layout, from ruling W8-layout-1)): copy_manifest.py, lint_language.py, fixture_walk.py, build_cases.py, leak_grep.py moved to lane w8a-walk-layout, which edits them for the walk layout and claims them in COPIED.d/w8a-walk-layout.json."
     },
     {
-      "path": "allowlist-derivation.json",
-      "status": "identical",
-      "source": "evals/gap-study-3/allowlist-derivation.json"
-    },
-    {
-      "path": "allowlist.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/allowlist.py"
-    },
-    {
       "path": "check_checklist_names.py",
       "status": "identical",
       "source": "evals/gap-study-3/check_checklist_names.py"

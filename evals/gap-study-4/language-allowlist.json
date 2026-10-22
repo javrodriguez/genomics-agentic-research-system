@@ -175,6 +175,34 @@
       "line_text": "          \"out of credits\",",
       "ruled": "2026-10-18",
       "why": "The codex spend-cap text marker, the phrase the pinned Codex CLI prints when a workspace has no credits left (openai/codex rust-v0.162.1, commit 092d3acd, codex-rs/protocol/src/error.rs:726 and :732), set as a marker by glitch-b5's ruling B7-F4 (vendor-admission round 17, 18 Oct 2026); it is a vendor's error text matched in an API-error record, not a rate in words, and rewording it would stop the marker matching. The prose around it avoids the phrase. (lane vendor-admission, round 17 B7-F4)"
+    },
+    {
+      "file": "evals/gap-study-4/native-readers/codex-review.md",
+      "pattern": "local-works",
+      "line_text": "So the road Javier's acceptance commit will travel works on this head; the real record must carry the real review's bytes and hash.",
+      "ruled": "2026-10-21",
+      "why": "Bound record, never edited: native-readers/codex-review.md is the independent review Javier's acceptance binds by sha256 (native-readers/codex-acceptance.json review.sha256 47a3f266cd52d6c3fc8ca7fd11be0c5d2c0fcc5dd528bb2b3bb580bd12024c06; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about the reader's code and checks, not a claim by this study about any model or take. (lane freeze-gates-fix, glitch-f1's ruling (2) of 21 Oct 2026 under Javier's standing delegation; at codex-review.md:56 on d5c0f798)"
+    },
+    {
+      "file": "evals/gap-study-4/native-readers/codex-review.md",
+      "pattern": "every-model",
+      "line_text": "- Record types across the 38 last snapshots: world_state 38 (all `full: true`, all inside turn 1), thread_settings_applied 102 (all between turns, every one with the extra keys reasoning_effort and runtime_workspace_roots, every model equal to the ledger's), task_started 89 = task_complete 89, item kinds UserMessage 89, AgentMessage 169, CommandExecution 226, Reasoning 125 (0 with a non-empty summary), FileChange 0; no turn_aborted, no error, no reroute.",
+      "ruled": "2026-10-21",
+      "why": "Bound record, never edited: native-readers/codex-review.md is the independent review Javier's acceptance binds by sha256 (native-readers/codex-acceptance.json review.sha256 47a3f266cd52d6c3fc8ca7fd11be0c5d2c0fcc5dd528bb2b3bb580bd12024c06; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about the reader's code and checks, not a claim by this study about any model or take. (lane freeze-gates-fix, glitch-f1's ruling (2) of 21 Oct 2026 under Javier's standing delegation; at codex-review.md:70 on d5c0f798)"
+    },
+    {
+      "file": "evals/gap-study-4/native-readers/codex-review.md",
+      "pattern": "consisten",
+      "line_text": "The gates are consistency checks over producer-written bytes; the guarantee against a consistent fabrication is his acceptance commit in his own window, as the module's docstring says.",
+      "ruled": "2026-10-21",
+      "why": "Bound record, never edited: native-readers/codex-review.md is the independent review Javier's acceptance binds by sha256 (native-readers/codex-acceptance.json review.sha256 47a3f266cd52d6c3fc8ca7fd11be0c5d2c0fcc5dd528bb2b3bb580bd12024c06; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about the reader's code and checks, not a claim by this study about any model or take. (lane freeze-gates-fix, glitch-f1's ruling (2) of 21 Oct 2026 under Javier's standing delegation; at codex-review.md:122 on d5c0f798)"
+    },
+    {
+      "file": "evals/gap-study-4/native-readers/gemini-review.md",
+      "pattern": "always",
+      "line_text": "| MINOR 5, sent and model compared only when the stream carries them | mostly | The model is now always compared: init is required for the session check, and transcript_gemini requires `model` in an init. sent is still compared only when the stream has a user message. On w-g21 both streams carry it, and the gate binds the ledger's sent to each launch journal through `launch_facts`. See NIT 4. |",
+      "ruled": "2026-10-21",
+      "why": "Bound record, never edited: native-readers/gemini-review.md is the independent review Javier's acceptance binds by sha256 (native-readers/gemini-acceptance.json review.sha256 2c80deddc1cbe653cdb0a15e0d3923e7034018d4ea5bf1bdac5b90a0603f2e21; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about the reader's code and checks, not a claim by this study about any model or take. (lane freeze-gates-fix, glitch-f1's ruling (2) of 21 Oct 2026 under Javier's standing delegation; at gemini-review.md:157 on d5c0f798)"
     }
   ]
 }

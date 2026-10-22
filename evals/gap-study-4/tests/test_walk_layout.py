@@ -669,18 +669,24 @@ class L7CopyRecord(Case):
 
             def mine(bad):
                 return sorted(b for b in bad if "rehearsals/w-" in b)
+            # Lane freeze-gates-fix S12 (athena's battery on 12e021d3): files_here() holds the committed walks since
+            # the merges, so every register handed in here carries the committed register's walks too (the registered
+            # state); the synthetic w-0001 and w-0002 are what each leg varies.
+            committed = {e["walk"] for e in json.loads((HERE / "rehearsals" / "register.json").read_text())["walks"]}
+            self.assertTrue(committed, "L7.copy-record")
             listed = mine(self.must("L7.copy-record", cm.problems, present=present, read=read,
-                                    records={"walks": {"w-0001"}, "takes": set()}))
+                                    records={"walks": {"w-0001"} | committed, "takes": set()}))
             self.assertEqual(listed, ["rehearsals/w-0002/grade.json is under evals/gap-study-4/ and no fragment in "
                                       "COPIED.d/ claims it"], "L7.copy-record")
-            unlisted = mine(cm.problems(present=present, read=read, records={"walks": set(), "takes": set()}))
+            unlisted = mine(cm.problems(present=present, read=read, records={"walks": set(committed), "takes": set()}))
             self.assertEqual(len(unlisted), 4, f"L7.copy-record {unlisted}")
             folder = Path(tempfile.mkdtemp(dir=tbi.SCRATCH))
             for frag in cm.FRAGMENTS.glob("*.json"):
                 (folder / frag.name).write_text(frag.read_text())
             (folder / "synthetic-lane.json").write_text(json.dumps({"lane": "synthetic-lane", "files": [
                 {"path": "rehearsals/w-0001/grade.json", "status": "new", "reason": "synthetic"}]}))
-            bad = cm.problems(folder, present=present, read=read, records={"walks": {"w-0001"}, "takes": set()})
+            bad = cm.problems(folder, present=present, read=read, records={"walks": {"w-0001"} | committed,
+                                                                           "takes": set()})
             self.assertTrue(any(b.startswith("rehearsals/w-0001/grade.json (synthetic-lane) is inside a record folder")
                                 for b in bad), f"L7.copy-record {mine(bad)}")
 

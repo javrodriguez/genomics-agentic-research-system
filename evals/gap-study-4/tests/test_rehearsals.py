@@ -316,12 +316,18 @@ class TheRegister(unittest.TestCase):
         # a missing register is not an empty one
         (self.rig.base / "register.json").unlink()
         self.assertTrue(any("register.json" in p and "missing" in p for p in self.rig.check()[0]), "R4.empty")
-        # the committed register: empty, and --check says so
+        # the committed register (lane freeze-gates-fix, glitch-f1's ruling (2), 21 Oct 2026): registered since the
+        # walks were merged, so --check passes saying how many it registered, the count read from register.json's own
+        # list, never the empty sentence
+        committed = json.loads((HERE / "rehearsals" / "register.json").read_text())["walks"]
+        self.assertTrue(committed, "R4.empty")
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             code = wr.main(["--check"])
         self.assertEqual(code, 0, "R4.empty")
-        self.assertRegex(out.getvalue(), r"(?m)^ok, having registered 0 walks: ", "R4.empty")
+        self.assertRegex(out.getvalue(), rf"(?m)^ok: {len(committed)} registered walk\(s\), each with its folder, "
+                                         r"none counted$", "R4.empty")
+        self.assertNotRegex(out.getvalue(), r"registered 0 walks", "R4.empty")
 
 
 class TheRegisterFold(unittest.TestCase):

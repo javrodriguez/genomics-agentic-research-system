@@ -214,16 +214,21 @@ class Refusals(unittest.TestCase):
         # review bea6e50 finding 1 (round-2 ruling 1): a deleted or unparseable driver-ledger.json is no agreement
         self.assertEqual(ledger_problems(run), [])
 
-    def test_va_production_readers_on_this_tree_refuse(self):
-        # readers=None is the production registry: no acceptance record on this tree, so {} and a refusal
+    def test_va_production_readers_on_this_tree_hold_the_accepted_readers(self):
+        # Lane freeze-gates-fix S8 (glitch-f1's ruling 3, 21 Oct 2026): readers=None is the production registry. Since
+        # Javier's acceptance commit (5457e75e) this tree registers both vendor readers; a harness the registry does
+        # not hold still refuses before the reader, read through that same production call.
         import native_reader_registration as nrr
-        self.assertEqual(nrr.production_readers(), {})
-        for road, drive_road in ROADS.items():
-            for harness in VENDORS:
-                loads, got = drive_road(run, harness, None, AGREED)
-                self.assertEqual(loads, [], f"{road} {harness}")
-                self.assertIsInstance(got, run.VendorAdmissionRefused, f"{road} {harness}: {got!r}")
-                self.assertIn("no registered", str(got))
+        self.assertEqual(nrr.production_readers(), {"codex": nrr.codex_reader, "gemini": nrr.gemini_reader})
+        real = nrr.production_readers
+        for harness in VENDORS:
+            without = {h: r for h, r in real().items() if h != harness}
+            with mock.patch.object(nrr, "production_readers", lambda study=None, without=without: dict(without)):
+                for road, drive_road in ROADS.items():
+                    loads, got = drive_road(run, harness, None, AGREED)
+                    self.assertEqual(loads, [], f"{road} {harness}")
+                    self.assertIsInstance(got, run.VendorAdmissionRefused, f"{road} {harness}: {got!r}")
+                    self.assertIn("no registered", str(got))
 
     def test_va_a_refusing_registry_refuses_the_take(self):
         import native_reader_registration as nrr

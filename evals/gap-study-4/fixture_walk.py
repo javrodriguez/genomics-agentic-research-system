@@ -43,6 +43,7 @@ No model, no network, stdlib only. Read-only.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -132,6 +133,59 @@ def root_pattern_problems() -> list[str]:
 HARNESS_TASK_OUTPUT = re.compile(r"^/private/tmp/claude-\d+/[^/]+/[^/]+/tasks/")
 
 
+# Lane freeze-gates-fix S8 (glitch-f1's ruling 1 on the lane's hand-back, Wed 21 Oct 2026, under Javier's standing
+# delegation): recorded per-walk exceptions, never a general class. Each names the walk, the one path, the transcript
+# line(s) that name it (1-based) with the sha256 of that line's bytes and the command the agent ran there, and the
+# reason. It applies only while every line of the walk's transcript naming the path is a recorded line with exactly
+# those bytes; it is printed whenever it applies, and one that matches nothing is itself a failure, so an exception can
+# never go stale silently.
+RECORDED_EXCEPTIONS = (
+    {"walk": "w023", "path": "/tmp/finalize.log",
+     "lines": {74: "b77ae1ee39129fc39bf0058e0d0ead94821e6ae546a0c0aeedd4543e517ed904"},
+     "command": ("python3 _system/stage00_register.py finalize --project projects/run-f742f2d1"
+                 " --model \"claude-haiku-4-5-20251001\""
+                 " 2>&1 | tee /tmp/finalize.log"),
+     "reason": "a file the session itself created (the agent's own tee of its finalize output), not a fixture read: "
+               "it names nothing of the study",
+     "ruling": "glitch-f1, ruling 1 on lane freeze-gates-fix's hand-back, Wed 21 Oct 2026"},
+)
+
+
+def _exception_for(transcript: Path, path: str) -> dict | None:
+    """The recorded exception covering `path` in this walk's transcript, or None. Every line naming the path must be
+    one of the exception's lines, with the recorded bytes (which carry the recorded command; S10, review n2: the
+    sha256 binds it, so no separate text check is kept)."""
+    walk = transcript.parent.name
+    for exc in RECORDED_EXCEPTIONS:
+        if exc["walk"] != walk or exc["path"] != path:
+            continue
+        try:
+            lines = transcript.read_bytes().split(b"\n")
+        except OSError:
+            return None
+        naming = {n for n, raw in enumerate(lines, 1) if path.encode() in raw}
+        if not naming or naming != set(exc["lines"]):
+            return None
+        for n, sha in exc["lines"].items():
+            raw = lines[n - 1]
+            if hashlib.sha256(raw).hexdigest() != sha:       # the line's bytes, and so the command on it
+                return None
+        return exc
+    return None
+
+
+def stale_exception_problems(walks) -> list[str]:
+    """A recorded exception that applies to no committed walk's transcript is a failure, named."""
+    by_walk = {Path(w).parent.name: Path(w) for w in walks}
+    out = []
+    for exc in RECORDED_EXCEPTIONS:
+        t = by_walk.get(exc["walk"])
+        if t is None or _exception_for(t, exc["path"]) is None:
+            out.append(f"the recorded exception for {exc['walk']} {exc['path']} matches no committed transcript line; "
+                       f"the walk, the path, the line or its bytes have changed")
+    return out
+
+
 def classify_path(p: str, run_tree: str | None) -> str:
     """One of: study, run-tree, system, harness, elsewhere.
 
@@ -152,12 +206,50 @@ def classify_path(p: str, run_tree: str | None) -> str:
     return "elsewhere"
 
 
+# Lane freeze-gates-fix (glitch-f1's ruling (2), Wed 21 Oct 2026, under Javier's standing delegation): a turn's launch
+# journal, the box's actual-submission record beside its stream (run_take: <stream>.launch.json; drive.py's
+# LAUNCH_JOURNAL_NAME, read here by name so this file imports no driver).
+LAUNCH_JOURNAL = re.compile(r"turn-[1-9][0-9]*\.jsonl\.launch\.json")
+
+
 def run_tree_of(transcript: Path) -> str | None:
-    """The run tree this session was driven in, from its ledger beside the transcript."""
+    """The run tree this session was driven in, from its ledger beside the transcript.
+
+    Lane freeze-gates-fix: drive.py's own road writes the ledger's `cwd` (drive.py:1222) and that is read first; the
+    committed Claude walk ledgers carry none, and every turn of a walk records its working folder in its launch
+    journal (`turn-N.jsonl.launch.json` `cwd`), so the run tree is that folder when every journal beside the
+    transcript names the same absolute path and that folder's name is the ledger's `project` (read from the records:
+    in all 225 walks committed at d5c0f798 the journals name one folder, named for the project). Journals that
+    disagree, name another project's folder, are a link, or are absent leave it unrecorded (None), so the paths stay
+    unplaced."""
     ledger = transcript.parent / "driver-ledger.json"
     if not ledger.is_file():
         return None
-    return (json.loads(ledger.read_text()) or {}).get("cwd")
+    doc = json.loads(ledger.read_text()) or {}
+    cwd = doc.get("cwd")
+    if cwd is not None:
+        return cwd
+    project = doc.get("project")
+    if not isinstance(project, str) or not project:
+        return None
+    seen = set()
+    for p in sorted(transcript.parent.iterdir()):
+        if not LAUNCH_JOURNAL.fullmatch(p.name):
+            continue
+        if p.is_symlink() or not p.is_file():          # S10 (review m2, J4): a linked journal is no record
+            return None
+        try:
+            doc = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            return None
+        got = doc.get("cwd") if isinstance(doc, dict) else None
+        if not isinstance(got, str) or not os.path.isabs(got):
+            return None
+        seen.add(got)
+    if len(seen) != 1:
+        return None
+    tree = seen.pop()
+    return tree if PurePosixPath(os.path.normpath(tree)).name == project else None
 
 
 def replay(transcript: Path) -> dict:
@@ -178,6 +270,12 @@ def replay(transcript: Path) -> dict:
                 row = seen.setdefault(p, {"path": p, "kind": classify_path(p, run_tree), "times": 0})
                 row["times"] += 1
     leaks = [r for r in seen.values() if r["kind"] == "study"]
+    excepted = []
+    for r in seen.values():                  # lane freeze-gates-fix S8: a recorded per-walk exception, printed
+        if r["kind"] == "elsewhere" and (exc := _exception_for(transcript, r["path"])) is not None:
+            r["kind"] = "excepted"
+            excepted.append({"path": r["path"], "lines": sorted(exc["lines"]), "command": exc["command"],
+                             "reason": exc["reason"], "ruling": exc["ruling"]})
     unplaced = [r for r in seen.values() if r["kind"] == "elsewhere"]
     by_kind: dict[str, int] = {}
     for r in seen.values():
@@ -188,7 +286,8 @@ def replay(transcript: Path) -> dict:
         "run_tree_recorded": run_tree is not None,
         "distinct_absolute_paths": len(seen),
         "by_kind": by_kind,
-        "verdict": "leaks" if leaks else "unplaced" if unplaced else "clean",
+        "verdict": "leaks" if leaks else "unplaced" if unplaced else "excepted" if excepted else "clean",
+        "recorded_exceptions": excepted,
         "leaking_paths": sorted(r["path"] for r in leaks),
         "unplaced_paths": sorted(r["path"] for r in unplaced),
         "outside_the_run_tree_but_not_the_study": sorted(
@@ -429,21 +528,27 @@ def main() -> int:
         print(f"ok, having graded 0 walks: {mode_binding.WALKS_DIR}/ holds no registered walk with a session, so "
               f"nothing here is evidence about any half. Not a pass for criterion 4.")
         return 0
-    bad = []
+    bad, n_exc = [], 0
     for w in walks:
         rec = replay(w)
+        n_exc += rec["verdict"] == "excepted"
         print(f"{rec['transcript']}: {rec['verdict']} — {rec['distinct_absolute_paths']} absolute path(s), "
               f"{rec['by_kind']}")
+        for e in rec["recorded_exceptions"]:
+            print(f"  EXCEPTED {e['path']} at transcript line(s) {e['lines']}: the agent ran {e['command']!r}; "
+                  f"{e['reason']} ({e['ruling']})")
         if rec["verdict"] == "leaks":
             bad.append((rec["transcript"], "names this checkout", rec["leaking_paths"]))
-        elif rec["verdict"] != "clean":
+        elif rec["verdict"] not in ("clean", "excepted"):
             bad.append((rec["transcript"], "names a path this verdict cannot place, which is not a clean "
                         "walk wherever the check runs", rec["unplaced_paths"]))
+    for problem in stale_exception_problems(walks):
+        bad.append(("fixture_walk.py", "RECORDED_EXCEPTIONS:", [problem]))
     for t, what, paths in bad:
         print(f"FAIL {t} {what}: {paths}")
     if not bad:
         print(f"ok: {len(walks)} committed walk(s) graded, none names this checkout and every path each "
-              f"named is placed")
+              f"named is placed" + (f"; {n_exc} by a recorded per-walk exception, printed above" if n_exc else ""))
     return 1 if bad else 0
 
 
