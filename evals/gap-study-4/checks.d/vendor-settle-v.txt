@@ -14,6 +14,7 @@ python3 -B -W ignore evals/gap-study-4/tests/test_codex_adapter.py
 python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py
 python3 -B -W ignore evals/gap-study-4/tests/test_edited_text_file.py
 python3 -B -W ignore evals/gap-study-4/tests/test_leak_grep_vendor.py
+python3 -B -W ignore evals/gap-study-4/tests/test_config_folder.py
 python3 -B -W ignore evals/gap-study-4/tests/test_context_sweep.py
 python3 -B -W ignore evals/gap-study-4/leak_grep.py --check
 python3 -B evals/gap-study-4/tests/vendor_check_fixtures.py --check
