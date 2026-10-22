@@ -1,0 +1,4 @@
+{"agent": {"harness": "claude-code", "version": "2.1.296"}, "home": null, "kind": "take", "model": "claude-opus-5-5", "run_tree": ""}
+{"ended_at": 1792149125.6777997, "kind": "turn", "n": 1, "started_at": 1792149112.752761}
+{"ended_at": 1792149134.8889644, "kind": "turn", "n": 2, "started_at": 1792149126.09405}
+{"ended_at": 1792149146.094667, "kind": "turn", "n": 3, "started_at": 1792149135.3094091}
