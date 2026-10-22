@@ -13,6 +13,12 @@ delegation; lane-reports/freeze-gates-fix-LANE.md): two of the walk gates read t
              when it is not; a key present with null still compares and is named. Witnesses: absent-key-compared (the
              red this lane fixes), absent-key-unbound (an absent key passes whatever the derived count).
 
+  F4-exception (S8, glitch-f1's ruling 1 on the hand-back) fixture_walk's recorded per-walk exception applies only to
+             its walk and path while every transcript line naming the path is a recorded line with its recorded bytes
+             and command; it is reported in replay's recorded_exceptions; one that matches no committed transcript is
+             named by stale_exception_problems. Witnesses: exception-unbound (the line's bytes unchecked),
+             stale-silent (a stale exception never named).
+
 Synthetic folders in temporary directories only: no walk record, model, network, container or credential.
 check_take.agent_summary is replaced for the duration of one call by mock.patch.object, restored on exit. No module
 is added to or replaced in sys.modules beyond the study modules a plain import adds; a witness module is compiled in
@@ -99,6 +105,52 @@ def f2_runtree(mod, p):
     return out
 
 
+@guarded("F4-exception")
+def f4_exception(mod, p):
+    import hashlib
+    out = []
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        tree, scratch = "/tmp/run-0a1b2c3d", "/tmp/synthetic-scratch.log"
+        cmd = f"python3 stage.py 2>&1 | tee {scratch}"
+
+        def walk(name, extra_line=False, edited=False):
+            folder = root / name
+            folder.mkdir()
+            (folder / "driver-ledger.json").write_text(json.dumps({"project": "run-0a1b2c3d"}))
+            (folder / "turn-1.jsonl.launch.json").write_text(json.dumps({"cwd": tree}))
+            recs = [{"type": "assistant", "message": {"content": [{"type": "text", "text": f"I read {tree}/gars/x."}]}},
+                    {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "t1", "name": "Bash",
+                                                                   "input": {"command": cmd}}]}}]
+            if extra_line:
+                recs.append({"type": "assistant", "message": {"content": [{"type": "text", "text": f"cat {scratch}"}]}})
+            lines = [json.dumps(r) for r in recs]
+            sha = hashlib.sha256(lines[1].encode()).hexdigest()
+            if edited:
+                lines[1] = lines[1].replace('"id": "t1"', '"id": "t2"')     # the bytes, not the command
+            (folder / "transcript.jsonl").write_text("\n".join(lines) + "\n")
+            return folder / "transcript.jsonl", sha
+
+        cases = {"the recorded line": ("w901", {}, "excepted"),
+                 "the path named on a second line": ("w902", {"extra_line": True}, "unplaced"),
+                 "the recorded line's bytes edited": ("w903", {"edited": True}, "unplaced"),
+                 "another walk": ("w904", {}, "unplaced")}
+        for what, (name, kw, want) in cases.items():
+            t, sha = walk(name, **kw)
+            exc = {"walk": name if what != "another walk" else "w999", "path": scratch, "lines": {2: sha},
+                   "command": cmd, "reason": "synthetic", "ruling": "synthetic"}
+            with mock.patch.object(mod, "RECORDED_EXCEPTIONS", (exc,)):
+                rec = mod.replay(t)
+                stale = mod.stale_exception_problems([t])
+            if rec["verdict"] != want:
+                out.append(f"{p}: {what}: verdict {rec['verdict']!r}, wanted {want!r}")
+            if want == "excepted" and [e["path"] for e in rec.get("recorded_exceptions", [])] != [scratch]:
+                out.append(f"{p}: {what}: the exception is not reported: {rec.get('recorded_exceptions')}")
+            if bool(stale) != (want != "excepted"):
+                out.append(f"{p}: {what}: stale_exception_problems gave {stale}")
+    return out
+
+
 SUB = {"calls": [], "models": [], "stream_file_differences": 0}
 
 
@@ -141,6 +193,13 @@ class TestFreezeGatesFix(unittest.TestCase):
     def test_f3_only_the_fields_the_checker_version_wrote(self):
         self.assertEqual(f3_nested(wg), [])
 
+    def test_f4_a_recorded_per_walk_exception_is_bound_and_printed(self):
+        self.assertEqual(f4_exception(fw), [])
+
+    def test_f4_the_committed_exception_is_w023s_alone(self):
+        self.assertEqual([(e["walk"], e["path"], sorted(e["lines"])) for e in fw.RECORDED_EXCEPTIONS],
+                         [("w023", "/tmp/finalize.log", [74])], "F4-exception")
+
 
 class WitnessNotPerformed(AssertionError):
     pass
@@ -173,6 +232,12 @@ WITNESSES = {
                                   "    if False:\n        derived = dict(derived)"),
                                  ("    if \"nested_cli_calls\" in check:\n        recorded[\"nested_cli_calls\"]",
                                   "    if True:\n        recorded[\"nested_cli_calls\"]")), f3_nested, "F3-nested"),
+    "exception-unbound": (fw, (("            if hashlib.sha256(raw).hexdigest() != sha or json.dumps",
+                                "            if False and hashlib.sha256(raw).hexdigest() != sha or json.dumps"),),
+                          f4_exception, "F4-exception"),
+    "stale-silent": (fw, (("            out.append(f\"the recorded exception for {exc['walk']}",
+                           "            0 and out.append(f\"the recorded exception for {exc['walk']}"),),
+                     f4_exception, "F4-exception"),
     "absent-key-unbound": (wg, (("        if nested != 0:\n            out.append(",
                                  "        if False:\n            out.append("),), f3_nested, "F3-nested"),
 }
@@ -204,9 +269,15 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_absent_key_unbound(self):
         self.kill("absent-key-unbound")
 
+    def test_witness_exception_unbound(self):
+        self.kill("exception-unbound")
+
+    def test_witness_stale_silent(self):
+        self.kill("stale-silent")
+
     def test_the_witnesses_are_named(self):
-        self.assertEqual(sorted(WITNESSES), ["absent-key-compared", "absent-key-unbound", "ledger-only",
-                                             "project-unbound"])
+        self.assertEqual(sorted(WITNESSES), ["absent-key-compared", "absent-key-unbound", "exception-unbound",
+                                             "ledger-only", "project-unbound", "stale-silent"])
 
 
 if __name__ == "__main__":
