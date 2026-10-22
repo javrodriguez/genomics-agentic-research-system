@@ -53,6 +53,33 @@ PRINTED_ORDER_CARRY = ("prereg.py --order <review sha> prints freeze.planned_ord
 STALE_ORDER_CARRY = "prereg.py --order is the earlier per-axis positive/control order; CP2 must replace it."
 
 
+# Lane gemini-defer, ruling R1: the deferral as glitch-f1 ruled it, the caveat being the map's section 6 sentence.
+DEFERRED_G = {
+    "status": "deferred",
+    "by": "Javier",
+    "words": "Javier's reply \"gemini-defer yes\", Thu 22 Oct 2026 09:19:59 EDT",
+    "records": {"decision": "OD105", "ask": "gemini-defer"},
+    "starts_only_on": "a later recorded owner go, after the Claude and Codex results",
+    "if_go": "runs exactly as registered here, published as a follow-up he chose after seeing those results",
+    "design_changed": False,
+    "caveat": "Gemini CLI stays pinned at the registered version, but the model Google serves under `gemini-3.8-flash` "
+              "and `gemini-3.5-flash-lite` can change on Google's side between the freeze and a later run; arm G's "
+              "served model is verified by name only (D8:310), so a deferred G result measures what Google served on "
+              "its run dates, not necessarily what it served at the freeze.",
+    "blind_sample": "The original report's blind draw covers the five run models (arm A's three, arm O's two) with the "
+                    "registered per-cell share: each (arm, harness, model) cell keeps the share of about_n it has in "
+                    "the full seven-model design. A follow-up, only after a committed go record, draws the two arm G "
+                    "cells under the same design and the same shares; labelling/sample.py leaves the deferred arm's "
+                    "models out of the original draw.",
+    "analysis": "The original report adjusts the three per-harness contrasts with Holm at m = 3, arm G's contrast "
+                "untested and still counted in m. If arm G runs later, the follow-up prints the full-family values "
+                "(arm G tested) beside the original adjusted values, labelled the registered full-design computation, "
+                "never a correction; the original report's values stand as published.",
+    "rows": 360,
+    "models": ["gemini-3.8-flash", "gemini-3.5-flash-lite"],
+}
+
+
 def core_problems(d):
     bad = []
     def need(ok, clause):
@@ -90,6 +117,12 @@ def core_problems(d):
     actual = {(r["arm"], r["task"], r["model"], r["half"], r["wording"], r["repeat"], r["pressure"]) for r in rows}
     need(actual == expected and len(rows) == len(expected), "R2.factors")
     need(d["amendments"] == {a: "Javier's letter \"D8: B2\", Tue 6 Oct 2026 23:43:50 EDT" for a in ("O", "G")}, "R13.amendment")
+    # Lane gemini-defer, ruling R1 (glitch-f1, 22 Oct 2026): arm G registered unchanged, its counted run deferred by
+    # Javier's OD105; typed here independently of the builder, beside optional_arms and never inside amendments.
+    need(d.get("deferred_arms") == {"G": DEFERRED_G} and list(d).index("deferred_arms") == list(d).index("optional_arms") + 1
+         and "G" not in d["optional_arms"] and all(isinstance(v, str) for v in d["amendments"].values())
+         and d["counts"]["by_arm"]["G"] == DEFERRED_G["rows"] and d["models"]["G"] == DEFERRED_G["models"]
+         and "G" in d["arms"] and sum(r["arm"] == "G" for r in rows) == 360, "R13.deferred")
     need("confounded-design-unprompted" not in ids and all(r["task"] in ids for r in rows), "R19.tasks")
     need(d["counts"] == {"pairs": len(ids), "by_arm": {a: sum(r["arm"] == a for r in rows) for a in MODELS},
          "tries": len(rows), "half_cells": len(cells)} and d["counts"] ==
@@ -140,6 +173,10 @@ CORE_MUTANTS = {
     "cells": ("R12.cells", ("rows", 0, "half_cell"), "fake-cell"),
     "factor": ("R2.factors", ("rows", 0, "repeat"), 99),
     "amendment": ("R13.amendment", ("amendments", "O"), "fake-source"),
+    "deferred-by": ("R13.deferred", ("deferred_arms", "G", "by"), "glitch-f1"),
+    "deferred-design": ("R13.deferred", ("deferred_arms", "G", "design_changed"), True),
+    "deferred-gone": ("R13.deferred", ("deferred_arms",), {}),
+    "deferred-rows": ("R13.deferred", ("deferred_arms", "G", "rows"), 180),
     "task-list": ("R19.tasks", ("rows", 0, "task"), "confounded-design-unprompted"),
     "pair-count": ("R20.counts", ("counts", "pairs"), 10),
     "lock": ("R6.locks", ("image_locks", 0, "sha256"), "0" * 64),
