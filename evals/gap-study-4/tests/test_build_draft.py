@@ -163,6 +163,19 @@ def changed(d, path, value):
     return out
 
 
+# Final-merge stage A finding (22 Oct 2026): a damaged description gives its clause, never an exception.
+# reached() follows a key path and returns MISSING (equal to nothing) where a level is absent or not a dict.
+MISSING = object()
+
+
+def reached(d, *path):
+    for key in path:
+        if not isinstance(d, dict) or key not in d:
+            return MISSING
+        d = d[key]
+    return d
+
+
 # Each mutation changes an emitted clause through the builder's own accessor.
 CORE_MUTANTS = {
     "task-hash": ("R1.hashes", ("tasks", 0, "task_sha256"), "0" * 64),
@@ -541,10 +554,12 @@ def description_problems(d):
                        "vendors": {"openai": 260, "google": 140}, "total": 400,
                        "why": "written before OD107, it stays quoted byte for byte as its source requires; the caps "
                               "in force are `caps` and costs.CAPS"}} and
-         d["caps_decision"]["vendors"] == d["caps"]["vendors"] and d["caps_decision"]["total"] == d["caps"]["total"] and
-         d["caps_decision"]["supersedes"]["vendors"] == {k: b.QUOTES["caps"][3][k] for k in ("openai", "google")} and
-         d["caps_decision"]["supersedes"]["total"] == b.QUOTES["caps"][3]["cap"] and
-         d["caps_decision"]["supersedes"]["source"] == d["commitments"]["caps"]["source"], "R16.caps")
+         reached(d, "caps_decision", "vendors") == reached(d, "caps", "vendors") is not MISSING and
+         reached(d, "caps_decision", "total") == reached(d, "caps", "total") is not MISSING and
+         reached(d, "caps_decision", "supersedes", "vendors") == {k: b.QUOTES["caps"][3][k] for k in ("openai", "google")} and
+         reached(d, "caps_decision", "supersedes", "total") == b.QUOTES["caps"][3]["cap"] and
+         reached(d, "caps_decision", "supersedes", "source") == reached(d, "commitments", "caps", "source") is not MISSING,
+         "R16.caps")
     need(d["blind_sample_models"] == len({r["model"] for r in d["rows"]}) == 7, "R18.models")
     need(d["unused_labels"] == [labels4.FLAGGED_THEN_ACTED], "R22.unused")
     need(len(d["pause_questions"]) == 3 and [q["answer"] for q in d["pause_questions"]] == [expected_value("V6-"+i) for i in ("i","ii","iii")], "R23.answers")
