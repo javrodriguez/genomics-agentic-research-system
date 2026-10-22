@@ -4,9 +4,11 @@ Derived from the installed bundle's createJsonlRecordAccumulator retained in
 the box lane's gemini-native-session-source.json, not a recorded live session.
 This returns raw replayed messages, NOT normalized checker facts. Message payload
 fields remain uninterpreted until a separate reviewed semantic reader validates
-them. No production registry imports this helper. Per-interaction snapshot
-preservation/comparison, visible text/tool projection and recorded-stream proof
-remain required before any native session reader can be registered.
+them. The production registry reaches this replay only through gemini_projection,
+the reviewed semantic reader (native_reader_registration's Gemini profile), and
+only under a committed acceptance record whose reader_sources_sha256 holds
+(lane vendor-b28, REVIEW-vendor-b28-DESIGN NIT 10: this line once said no
+production registry imports it, written before registration existed).
 
 Supports complete message upserts and ordinary content/tool-result patches.
 Destructive history operations and unknown control records fail closed. Unlike
@@ -69,10 +71,37 @@ written and refuses):
     ruled deviation on ruling 5); every re-recorded response part equal to one of its id's originals or the masked
     form ({output} holding "<tool_output_masked", :344663, :344871-344877); equal user text parts and non-empty model
     text parts, in order. The removed originals' fact states are frozen as they stood before the patch.
-Refused by name, until a rehearsal observes them (glitch-26's ruling 3): the resume after a re-record (a retired id
-recorded again, or a resume dropping a re-recorded copy), true chat compression (the context turn survives a
-re-record, :337254-337292, :348563-348580), and content truncation (a re-recorded response neither original nor
-masked). `properties` counts each road per snapshot: re-records, masked parts, ignored-prompt resumes.
+
+Lane vendor-b28 (glitch-f1's B27 rulings 3 and 5 and B27 DECISION, 21 Oct 2026; observed on the pinned client against a
+stub, lane vendor-b27's probe, never on the real API): road (a), the resume after a masking re-record, admitted on its
+observed shapes (probe scenarios A1, A2, A3 and B2's masking span). The re-record deleted the context id from the
+writer's index (:287237-287241); the next `-r` resume's chat start finds the stored context copy ignored
+(convertSessionToClientHistory, :286096-286110), prepends a fresh context turn under deriveStableId(["environment-context"])
+(getInitialChatHistory, :336356-336375) and updateMessagesFromHistory appends it as new (:287190-287196), then writes
+$patch {orderIds, removeIds, updates} in the same initialize call (:333190-333192, :287254-287265). Admitted only when:
+  * the re-entry is the first record after $set {sessionId}, of a retired context id, on newMessage's shape
+    (:286901-286908: {id, timestamp, type, content}, type user) with one text part in the session-context wrapper
+    (gemini_projection's ENV_CONTEXT_OPEN and ENV_CONTEXT_CLOSE); it becomes a copy ("resumed context turn", in
+    `copies`), never a fact: the frozen original stays in the timeline;
+  * the resume's patch is {orderIds, removeIds, updates} inside the window; every removed re-recorded copy is a user
+    copy on text parts only whose trimmed text is ignored, exactly one of them the re-recorded context copy, and no
+    such copy stays live (the completeness rule, glitch-f1's ruling O6); removed originals pass shape B's own check;
+    after the reorder the context turn is first.
+Refused by name: the re-entry anywhere else ("not the first record after its resume's $set {sessionId}"), off its shape
+("off getInitialChatHistory's shape"), a context record while its resumed copy is live ("recorded again while its
+resumed copy is live"), any other patch while it waits ("not consumed by its resume's {orderIds, removeIds, updates}
+patch"; a re-record shape runs the re-record's checks first, so true compression keeps its name), the patch's removals
+off the rule ("not ignored content", "exactly one re-recorded context copy", "keeps a re-recorded copy the CLI drops"),
+the context turn off the front ("not first after the resume's reorder") and a snapshot ending before the patch
+("without its resume's patch").
+F-B26-9 (glitch-26's 15:45 ruling): inside a resume the writer appends only the context turn and `<gemini id>_response`
+turns (:287190-287196 with :286099-286194), so any other message record closes the resume window.
+
+Still refused by name (glitch-26's ruling 3 and glitch-f1's B27 rulings 1 and 2): a retired id other than the context
+turn recorded again; true chat compression (the context turn survives a re-record, :337254-337292, :348563-348580),
+both observed key sets: B1's {removeIds, updates} with the context turn live, and B2's {removeIds} after a road (a)
+re-entry; and content truncation (a re-recorded response neither original nor masked). `properties` counts each road
+per snapshot: re-records, masked parts, ignored-prompt resumes, resumes after a re-record.
 """
 import hashlib
 import json
@@ -99,6 +128,13 @@ IGNORED_PREFIXES = ("/", "?", "<session_context>", "<hook_context>")
 JS_TRIM = ("\t\n\x0b\x0c\r \xa0            "
            "    　﻿")
 ORIGINAL, RESUME_COPY, RERECORDED = "original", "resume copy", "re-recorded copy"
+# Lane vendor-b28 (road (a), glitch-f1's B27 rulings 3 and 5): the context turn re-appended by the resume after a masking
+# re-record, under its stable id; a copy, never a fact source.
+CONTEXT_COPY = "resumed context turn"
+# getEnvironmentContext's wrapper, as gemini_projection spells it (ENV_CONTEXT_OPEN and ENV_CONTEXT_CLOSE); copied here so
+# no other reader source changes, and pinned equal by tests/test_b28_resume_after_rerecord.py.
+CONTEXT_OPEN = "<session_context>\nThis is the Gemini CLI. We are setting up the context for our chat.\n"
+CONTEXT_CLOSE = "</session_context>"
 # Lane vendor-b26 fold (glitch-f1's ruling 4, REVIEW-vendor-b26-04c4e77 MINOR 4; the orchestrator's 14:08 ruling): four
 # resume $patch shapes the pinned writer can write (:287254-287265 writes each key only when it has entries) but no
 # committed walk shows. By :286764-286783 and :286120-286150 a resume writes a content update for every gemini message
@@ -262,6 +298,8 @@ class _Replay:
         self.dead = []            # every dead re-record update's tool results (for the scanner)
         self.props = Counter()
         self.verified = set()     # resume copies checked at their resume's reorder
+        self.resume_at = None     # the record number of the last $set {sessionId} (lane vendor-b28)
+        self.ctx_pending = False  # the context turn re-entered in this resume, awaiting its patch (lane vendor-b28)
 
     # ---- the patches ------------------------------------------------------------------------------------------------
     def patch(self, patch):
@@ -273,6 +311,14 @@ class _Replay:
                                 "(chunk-NR7L3FXV.js:287254-287265)")
         if self.resume and frozenset(keys) in UNOBSERVED_RESUME_SHAPES:
             raise ReplayRefused(UNOBSERVED_RESUME_SHAPES[frozenset(keys)])
+        # Lane vendor-b28 (REVIEW-vendor-b28-DESIGN MINOR 2, ruled): a re-entered context turn is consumed only by its
+        # resume's {orderIds, removeIds, updates} patch inside the open window; any other patch refuses, whatever the
+        # window's state. A re-record shape runs the re-record's own checks first, so true compression keeps its name.
+        if self.ctx_pending and not (self.resume and keys == {"orderIds", "removeIds", "updates"}):
+            if keys in ({"removeIds"}, {"removeIds", "updates"}):
+                self._rerecord(patch)
+            raise ReplayRefused("a context turn re-entered after a re-record is not consumed by its resume's {orderIds, "
+                                "removeIds, updates} patch (chunk-NR7L3FXV.js:333190-333192, :287254-287265)")
         if keys == {"updates"}:
             _updates(self.live, patch["updates"])
         elif keys == {"orderIds", "updates"}:
@@ -284,6 +330,8 @@ class _Replay:
             # Lane vendor-b26 fold (glitch-f1's ruling 3): each removed id is checked first, then no update may name
             # one, so the removed prompts read the same before and after the loader's updates (:286390-286399).
             self._ignored_prompts(patch["removeIds"])
+            if self.ctx_pending:
+                self._context_copies(patch["removeIds"])
             if isinstance(patch["updates"], list) and any(
                     isinstance(u, dict) and u.get("id") in patch["removeIds"] for u in patch["updates"]):
                 raise ReplayRefused("a resume updates the prompt it removes (the recorder writes content patches only "
@@ -292,7 +340,14 @@ class _Replay:
             _updates(self.live, patch["updates"])
             self._retire(patch["removeIds"])
             self._resume_order(patch["orderIds"])
-            self.props["ignored_prompt_resumes"] += 1
+            if self.ctx_pending:
+                if list(self.live)[:1] != [CONTEXT_ID]:
+                    raise ReplayRefused("the resumed context turn is not first after the resume's reorder "
+                                        "(getInitialChatHistory, chunk-NR7L3FXV.js:336366-336375)")
+                self.ctx_pending = False
+                self.props["resumes_after_rerecord"] += 1
+            else:
+                self.props["ignored_prompt_resumes"] += 1
         elif keys in ({"removeIds"}, {"removeIds", "updates"}):
             self._rerecord(patch)
         else:
@@ -342,6 +397,8 @@ class _Replay:
             if message is None:
                 raise ReplayRefused("native resume removes an unknown message")
             text = "".join(_text_parts(message)).strip(JS_TRIM)
+            if self.ctx_pending and self.kind[i] == RERECORDED:
+                continue                  # road (a): checked by _context_copies (lane vendor-b28)
             if self.kind[i] == RERECORDED and message["type"] == "user" and text.startswith("<session_context>"):
                 raise ReplayRefused("the resume after a history re-record (it drops the re-recorded context turn): "
                                     "source-predicted, unobserved; refused by name (glitch-26's ruling 3)")
@@ -352,6 +409,32 @@ class _Replay:
                     and (not text or text.startswith(IGNORED_PREFIXES))):
                 raise ReplayRefused("a resume removes a message that is not an ignored user prompt "
                                     "(isIgnoredUserContent, chunk-NR7L3FXV.js:286096-286110)")
+
+    def _ignored_copy(self, i):
+        """A re-recorded user copy convertSessionToClientHistory drops: text parts only, and its joined text, trimmed,
+        empty or starting with an ignored prefix (chunk-NR7L3FXV.js:286096-286110)."""
+        m = self.live[i]
+        content = m.get("content")
+        text = "".join(_text_parts(m)).strip(JS_TRIM)
+        return (self.kind.get(i) == RERECORDED and m["type"] == "user" and isinstance(content, list) and bool(content)
+                and all(isinstance(p, dict) and set(p) == {"text"} and isinstance(p["text"], str) for p in content)
+                and (not text or text.startswith(IGNORED_PREFIXES)))
+
+    def _context_copies(self, remove):
+        """Road (a)'s removals (lane vendor-b28): every removed re-recorded copy is one the CLI drops, exactly one of
+        them the re-recorded context copy, and no such copy stays live (glitch-f1's ruling O6, the completeness rule:
+        convertSessionToClientHistory drops every one, :286105-286110, and the writer removes every id the history
+        lacks, :287232-287236)."""
+        copies = [i for i in remove if self.kind.get(i) == RERECORDED]
+        if not all(self._ignored_copy(i) for i in copies):
+            raise ReplayRefused("a resume after a re-record removes a re-recorded copy that is not ignored content "
+                                "(convertSessionToClientHistory keeps it, chunk-NR7L3FXV.js:286105-286117)")
+        heads = [i for i in copies if "".join(_text_parts(self.live[i])).strip(JS_TRIM).startswith("<session_context>")]
+        if len(heads) != 1:
+            raise ReplayRefused("a resume after a re-record must drop exactly one re-recorded context copy")
+        if any(i not in remove and self._ignored_copy(i) for i in self.live):
+            raise ReplayRefused("a resume after a re-record keeps a re-recorded copy the CLI drops "
+                                "(chunk-NR7L3FXV.js:286105-286110, :287232-287236)")
 
     def _rerecord(self, patch):
         remove = patch["removeIds"]
@@ -457,6 +540,17 @@ class _Replay:
     # ---- the records -----------------------------------------------------------------------------------------------
     def message(self, n, record):
         i = record["id"]
+        # F-B26-9 (glitch-26's 15:45 ruling, lane vendor-b28): inside a resume the writer appends only the context turn
+        # and `<gemini id>_response` turns (chunk-NR7L3FXV.js:287190-287196 with :286099-286194), so any other record
+        # closes the window.
+        if self.resume and i != CONTEXT_ID and not i.endswith(RESPONSE_SUFFIX):
+            self.resume = False
+        if i == CONTEXT_ID and self.kind.get(i) == CONTEXT_COPY and i in self.live:
+            raise ReplayRefused("the context turn is recorded again while its resumed copy is live (the writer patches "
+                                "an indexed id, chunk-NR7L3FXV.js:287170-287188, and appends it once)")
+        if i == CONTEXT_ID and i in self.retired and self.resume:
+            self._context_reentry(n, record)
+            return
         if i in self.retired:
             raise ReplayRefused("a retired native message id is recorded again (the resume after a history "
                                 "re-record: source-predicted, unobserved; refused by name, glitch-26's ruling 3)")
@@ -471,7 +565,30 @@ class _Replay:
         # Python dict assignment mirrors Map.set: replacing a value retains order.
         self.live[i] = record
 
+    def _context_reentry(self, n, record):
+        """Road (a) (lane vendor-b28): the context turn a masking re-record retired, re-appended by the next resume's
+        chat start as the first record after its $set {sessionId}, on newMessage's shape (:286901-286908) holding
+        getInitialChatHistory's one text part (:336356-336375). It becomes a copy (to `copies`, read by the scanner); the
+        frozen original stays the fact. Its resume's patch must consume it (patch, result)."""
+        if n - 1 != self.resume_at:
+            raise ReplayRefused("a re-entered context turn is not the first record after its resume's $set {sessionId} "
+                                "(the history starts with it, chunk-NR7L3FXV.js:287167-287196, :336366-336375)")
+        content = record.get("content")
+        if not (set(record) == SYNTHETIC_USER_KEYS and record["type"] == "user" and isinstance(content, list)
+                and len(content) == 1 and isinstance(content[0], dict) and set(content[0]) == {"text"}
+                and isinstance(content[0]["text"], str) and content[0]["text"].startswith(CONTEXT_OPEN)
+                and content[0]["text"].endswith(CONTEXT_CLOSE)):
+            raise ReplayRefused("a re-entered context turn is off getInitialChatHistory's shape (one user text part "
+                                "in the session-context wrapper, chunk-NR7L3FXV.js:336356-336375, :286901-286908)")
+        self.retired.discard(CONTEXT_ID)
+        self.kind[CONTEXT_ID] = CONTEXT_COPY
+        self.live[CONTEXT_ID] = record
+        self.ctx_pending = True
+
     def result(self):
+        if self.ctx_pending:
+            raise ReplayRefused("a context turn re-entered after a re-record without its resume's patch "
+                                "(the writer writes both in one initialize call, chunk-NR7L3FXV.js:333190-333192)")
         if any(k == RESUME_COPY and i not in self.verified for i, k in self.kind.items()):
             raise ReplayRefused("a <gemini id>_response turn is not the resumed copy of the round trip that follows it "
                                 "(no resume reorder placed it)")
@@ -482,7 +599,7 @@ class _Replay:
         return {"metadata": self.metadata, "messages": list(self.live.values()), "timeline": timeline,
                 "copies": others, "dead_results": self.dead,
                 "properties": {k: self.props[k] for k in ("history_rewrites", "tool_outputs_masked",
-                                                          "ignored_prompt_resumes")}}
+                                                          "ignored_prompt_resumes", "resumes_after_rerecord")}}
 
 
 def replay(raw):
@@ -519,6 +636,7 @@ def replay(raw):
                 metadata.update(update)
                 if "sessionId" in update:
                     state.resume = True
+                    state.resume_at = n
             elif "$patch" in record:
                 state.patch(record["$patch"])
             else:
