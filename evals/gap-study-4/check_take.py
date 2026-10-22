@@ -3831,18 +3831,19 @@ VENDOR_PENDING_ROWS = {
             "reader": "vendor_file_change_reads",
             "ruling": (
                      "### T-8:file-change (transcript-unreadable): file edits through Codex's patch tool\n"
-                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate"
-                     " letters.\n"
-                     "Codex records a patch-tool edit twice: a file_change item in its exec stream and a FileChange"
-                     " item in its rollout.\n"
-                     "No committed GPT walk used the patch tool (0 of 38 hold either record; all 216 tool calls were"
-                     " shell commands), so no recorded bytes can settle the reader.\n"
-                     "The partial check is the reader built for this row (check_take.py:4829-4859): it joins each"
-                     " stream file change to its rollout item and refuses an unjoined change or a rename.\n"
-                     "Its test feeds a synthetic unjoined change and a rename, both must refuse, and a reader that"
-                     " returns nothing goes red.\n"
-                     "A reader may conclude that shell-command edits are read comparably; not that patch-tool reading"
-                     " was proven on real sessions."),
+                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his "
+                     "freeze-gate letters.\n"
+                     "Codex records a patch-tool edit twice: a file_change item in its exec stream and a FileChange "
+                     "item in its rollout.\n"
+                     "No committed GPT walk used the patch tool (0 of 38 hold either record; all 216 tool calls "
+                     "were shell commands), so no recorded bytes can settle the reader.\n"
+                     "The partial check is the reader built for this row (check_take.py, vendor_file_change_reads): "
+                     "it joins each stream file change to its rollout item and refuses an unjoined change or a "
+                     "rename.\n"
+                     "Its test feeds a synthetic unjoined change and a rename, both must refuse, and a reader that "
+                     "returns nothing goes red.\n"
+                     "A reader may conclude that shell-command edits are read comparably; not that patch-tool "
+                     "reading was proven on real sessions."),
         },
         "T-10": {"reason": "leak-in-loaded-context", "state": "SAME",
             "fixture": "recorded-codex-w-o46/transcript.jsonl",
@@ -3874,18 +3875,22 @@ VENDOR_PENDING_ROWS = {
             "reader": "vendor_codex_memory_partial",
             "ruling": (
                      "### T-12:memory (inherited-context): memory offered to the session\n"
-                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, subject to his freeze-gate"
-                     " letters.\n"
-                     "Codex 0.162.1 wrote no memory record in any committed GPT walk: no memory key in its session,"
-                     " world-state, turn or thread records (0 of 38), and no memory section among its instructions (0"
-                     " of 38).\n"
-                     "With no record, there is nothing to compare to Claude Code's memory section.\n"
-                     "The partial check requires the world-state keys to stay within the two key sets the walks hold,"
-                     " no memory-named key anywhere, and no instruction section beyond the six recorded kinds; the"
-                     " retained pin of codex-cli 0.162.1 names no memory setting, so this check has no settings"
-                     " leg.\n"
-                     "Its test plants a memory key, and separately a memory section; each must fire.\n"
-                     "A reader may conclude no memory section was recorded; not that none reached the model."),
+                     "glitch-f1's ruling under Javier's standing delegation, 21 Oct 2026, amended 22 Oct 2026 after "
+                     "the settlement review (REVIEW-vendor-settle-codex-0df1437.md MAJOR 1), subject to his "
+                     "freeze-gate letters.\n"
+                     "Codex 0.162.1 has a memory feature, features.memories, off by default "
+                     "(features/src/lib.rs:1230-1235, openai/codex 092d3acd); the pinned configuration leaves it "
+                     "off.\n"
+                     "Memory generation ran at its default, on: memory_mode, written only when it is off "
+                     "(rollout/src/recorder.rs:976), is absent in all 38 walks; no walk holds a memory section, so "
+                     "nothing compares to Claude Code's.\n"
+                     "The partial check requires features.memories off in the pinned configuration, world-state "
+                     "keys within the two recorded sets, no memory-named key but memory_mode \"disabled\", and no "
+                     "instruction section beyond the six recorded kinds.\n"
+                     "Its tests turn features.memories on, and plant a \"## Memory\" developer section; each must "
+                     "fire.\n"
+                     "A reader may conclude the feature was off and no memory section recorded; not that none "
+                     "reached the model."),
         },
         "T-13": {"reason": "checkout-binding", "state": "NOT COMPARABLE",
             "reader": "vendor_codex_checkout_partial",
@@ -5791,6 +5796,9 @@ _CODEX_WS_COMMON = ("agents_md", "apps_instructions", "collaboration_mode", "con
                     "plugins_instructions", "realtime", "skills")
 CODEX_WORLD_STATE_KEYS = (frozenset(_CODEX_WS_COMMON), frozenset(_CODEX_WS_COMMON + ("multi_agent_usage_hint",)))
 _CODEX_MEMORY_KEY = re.compile(r"memor", re.I)
+# session_meta.memory_mode's one value, written only when memory generation is off (rollout/src/recorder.rs:976,
+# protocol.rs:3209-3210 skip it when None): the record of the safe setting (review 0df1437 MAJOR 1).
+CODEX_MEMORY_MODE_OFF = "disabled"
 # T-13: the branch the driver's checkout is built on, a literal in drive.clean_run_tree (drive.py:381, `symbolic-ref
 # HEAD refs/heads/main`; review MINOR 4: no named constant exists, and drive.py is a hashed file).
 CODEX_CHECKOUT_BRANCH = "main"
@@ -6066,22 +6074,38 @@ def _vc_memory_keys(node, where: str) -> list:
 
 
 def vendor_codex_memory_partial(path) -> list:
-    """inherited-context, T-12:memory (NOT COMPARABLE; glitch-f1's adopted ruling): world_state's keys are one of the
-    two sets the walks hold; no memory-named key anywhere in session_meta (SessionMeta.memory_mode, protocol.rs:3210,
-    would be one), world_state, turn_context or thread_settings; no developer section beyond the six recorded kinds.
-    The settings leg is dropped: the pinned source the rollout audit retained names no Codex memory setting (lane
-    notes, stage C's source read)."""
+    """inherited-context, T-12:memory (NOT COMPARABLE; glitch-f1's adopted ruling, re-amended 22 Oct after review
+    0df1437 MAJOR 1): the settings leg, the take's rebuilt pinned config.toml (take_config's own writer for the ledger's
+    model) must not turn on features.memories (Feature::MemoryTool, key "memories", default off, features/src/lib.rs:
+    1230-1235 at openai/codex 092d3acd); world_state's keys are one of the two sets the walks hold; no memory-named key
+    in session_meta, world_state, turn_context or thread_settings, except session_meta.memory_mode "disabled"
+    (CODEX_MEMORY_MODE_OFF: written only when memory generation is off, rollout/src/recorder.rs:976, so it is the record
+    of the safe setting; absent in all 38 walks); no developer section beyond the six recorded kinds (the CLI's memory
+    instructions are a tagless "## Memory" section, which reads as one)."""
     reason = "inherited-context"
     try:
         lines = _vendor_codex_lines(path)
+        model = (_ledger_beside(Path(path)) or {}).get("model_requested")
     except _VENDOR_READ_ERRORS as e:
         return _vc_unreadable(reason, e)
     out = []
+    try:
+        cfg = _tomllib.loads(_take_config.files_for("codex", model=model)[_take_config.CODEX_CONFIG].decode("ascii"))
+        memories = (cfg.get("features") or {}).get("memories", False)
+    except Exception as e:  # noqa: BLE001 - a config the writer cannot write is a refusal, never a pass
+        out.append(f"[{reason}] the take's pinned config.toml cannot be rebuilt ({type(e).__name__}: {str(e)[:160]}), "
+                   "so features.memories cannot be shown off")
+    else:
+        if memories is not False:
+            out.append(f"[{reason}] the take's pinned config.toml sets features.memories to {memories!r}: Codex's "
+                       "memory feature (features/src/lib.rs:1230-1235) may have offered memory to the session")
     for ws in _vc_world_states(lines):
         if frozenset(ws) not in CODEX_WORLD_STATE_KEYS:
             out.append(f"[{reason}] world_state's keys {sorted(ws)} are not one of the two sets the committed walks "
                        "hold: a section no walk recorded may have reached the model")
-    found = _vc_memory_keys(_vc_meta(lines), "session_meta")
+    meta = _vc_meta(lines)
+    found = _vc_memory_keys({k: v for k, v in meta.items() if not (k == "memory_mode" and v == CODEX_MEMORY_MODE_OFF)},
+                            "session_meta")
     for _line, rec in lines:
         pay = rec["payload"]
         if rec["type"] == "world_state":
