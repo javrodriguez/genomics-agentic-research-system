@@ -61,6 +61,13 @@ the Claude1 file already on athena (run_take.WALK_LOGIN_FILES), read there by th
         unpacked by this code (regular files and folders only, under that one folder), checked against the probe's
         manifest, every file scanned with no allowance (canary_scan), then moved to --out. Nothing reaches a clone.
 
+    python3 .../walk_launch.py probe-hooks --child <athena child> --probe <id> --scenarios <HG,HO-C0,HO-C1>
+                                           [--gemini-image sha256:<64>] [--codex-image sha256:<64>] --reason <why>
+        Lane hook-control (glitch-f1's rulings on the D8 hook control, 21 Oct 2026): box/hook_control_probe.py, a
+        measurement on the stub-model probe's road, started the same way under the same hold id gap4-probe-<id> (the
+        same claim, gate, hold, nohup, pid and exit file); its output is <child>/stub-probe-<id>, fetched by
+        `fetch-probe` unchanged.
+
 Every remote and local command goes through one Runner, so tests drive the whole road on fakes.
 """
 
@@ -779,6 +786,51 @@ def probe(runner: Runner, *, child: str, probe_id: str, scenarios: str, image: s
     return int(pid)
 
 
+# Lane hook-control (glitch-f1's rulings on lane-reports/hook-control-DESIGN.md, 21 Oct 2026): the D8 hook positive
+# control, box/hook_control_probe.py, on the stub-model probe's road: the same hold id rule, child guard, held start and
+# output folder; the images are named per harness (each exactly when one of its scenarios is named).
+HOOK_PROBE_MODULE = "evals/gap-study-4/box/hook_control_probe.py"
+HOOK_PROBE_SCENARIOS = re.compile(r"(HG|HO-C0|HO-C1)(,(HG|HO-C0|HO-C1)){0,2}")
+HOOK_PROBE_HARNESS = {"HG": "gemini", "HO-C0": "codex", "HO-C1": "codex"}
+
+
+def hook_probe_command(*, child: str, probe: str, scenarios: str, gemini_image, codex_image, reason: str) -> str:
+    """The one remote command that starts the hook control under its hold (_held_command), behind fresh_child_guard."""
+    _child(child)
+    hid = probe_hold_id(probe)
+    if not isinstance(scenarios, str) or not HOOK_PROBE_SCENARIOS.fullmatch(scenarios):
+        raise LaunchRefused("the hook control's scenarios are a comma list of HG, HO-C0 and HO-C1")
+    wanted = {HOOK_PROBE_HARNESS[s] for s in scenarios.split(",")}
+    images = {"gemini": gemini_image, "codex": codex_image}
+    for harness, img in images.items():
+        if (harness in wanted) != (img is not None):
+            raise LaunchRefused(f"the {harness} image is named exactly when one of its scenarios is")
+        if img is not None and (not isinstance(img, str) or not PROBE_IMAGE.fullmatch(img)):
+            raise LaunchRefused(f"the {harness} image is a full image id, sha256:<64 hex>")
+    if not isinstance(reason, str) or not reason.strip():
+        raise LaunchRefused("a hook control is run for a reason")
+    repo = f"{child}/repo"
+    env = _gate_env(hid)
+    argv = ["python3", "-B", f"{repo}/{HOOK_PROBE_MODULE}", "--box", f"{repo}/evals/gap-study-4/box",
+            "--scratch-parent", CONFIG_PARENT, "--output", probe_output(child, probe), "--scenarios", scenarios]
+    for harness in ("gemini", "codex"):
+        if images[harness] is not None:
+            argv += [f"--{harness}-image", images[harness]]
+    argv += ["--reason", reason]
+    return fresh_child_guard(child) + _held_command(child=child, hid=hid, env=env, held_env=env, argv=argv)
+
+
+def probe_hooks(runner: Runner, *, child: str, probe_id: str, scenarios: str, gemini_image, codex_image,
+                reason: str) -> int:
+    out = _ok(runner.remote(hook_probe_command(child=child, probe=probe_id, scenarios=scenarios,
+                                               gemini_image=gemini_image, codex_image=codex_image, reason=reason)),
+              "starting the hook control")
+    last = out.strip().splitlines()[-1] if out.strip() else ""
+    if not (last.isascii() and last.isdigit()):
+        raise LaunchRefused("the hook control's pid was not recorded")
+    return int(last)
+
+
 def _probe_members(tar, top: str) -> list:
     """Every member of the probe's tar: a regular file or a folder under `top`/, no link, device, absolute path or
     `..`; within PROBE_MAX_FILES and PROBE_MAX_BYTES. Refuses anything else, naming the rule, never a member's bytes."""
@@ -994,6 +1046,11 @@ def main(argv=None) -> int:
     pr = sub.add_parser("probe")
     for k in ("child", "probe", "scenarios", "image", "reason"):
         pr.add_argument(f"--{k}", required=True)
+    ph = sub.add_parser("probe-hooks")
+    for k in ("child", "probe", "scenarios", "reason"):
+        ph.add_argument(f"--{k}", required=True)
+    ph.add_argument("--gemini-image")
+    ph.add_argument("--codex-image")
     fp = sub.add_parser("fetch-probe")
     for k in ("child", "probe", "out", "gitleaks", "work"):
         fp.add_argument(f"--{k}", required=True)
@@ -1011,6 +1068,9 @@ def main(argv=None) -> int:
         elif a.verb == "probe":
             out = {"pid": probe(runner, child=a.child, probe_id=a.probe, scenarios=a.scenarios, image=a.image,
                                 reason=a.reason)}
+        elif a.verb == "probe-hooks":
+            out = {"pid": probe_hooks(runner, child=a.child, probe_id=a.probe, scenarios=a.scenarios,
+                                      gemini_image=a.gemini_image, codex_image=a.codex_image, reason=a.reason)}
         elif a.verb == "fetch-probe":
             out = fetch_probe(runner, child=a.child, probe_id=a.probe, out=a.out, gitleaks=a.gitleaks, work=a.work)
         else:
