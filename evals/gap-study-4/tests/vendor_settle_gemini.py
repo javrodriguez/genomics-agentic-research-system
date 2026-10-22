@@ -945,13 +945,31 @@ def _journal(k, change):
     return edit
 
 
+@contextlib.contextmanager
+def _constant_only():
+    """The pinned constant changed while the built settings stay the real ones (files_for reads the constant, so it is
+    held at its unpatched output): the constant leg alone."""
+    tc = ct._settle_g_take_config
+    real = tc.files_for
+    cache = {}
+
+    def files_for(harness, **kw):
+        key = (harness, tuple(sorted(kw.items())))
+        if key not in cache:
+            with mock.patch.object(tc, "GEMINI_AUTH_SETTING", GEMINI_AUTH_REAL):
+                cache[key] = real(harness, **kw)
+        return cache[key]
+    with mock.patch.object(tc, "files_for", files_for), mock.patch.object(
+            tc, "GEMINI_AUTH_SETTING", {"path": "security.auth.selectedType", "value": "oauth-personal"}):
+        yield
+
+
+GEMINI_AUTH_REAL = dict(ct._settle_g_take_config.GEMINI_AUTH_SETTING)
 HC = ct.HARNESS_CONDITION_VIOLATED
 # (leg, reason, reader(path, design) -> problems, plant edits, a patch context factory or None)
 G_LEG_PLANTS = [
     ("T-17: the pinned auth setting is not the API key (the constant)", "environment-record",
-     lambda p, d: ct.vendor_gemini_billing_route_partial(p), [],
-     lambda: mock.patch.object(ct._settle_g_take_config, "GEMINI_AUTH_SETTING",
-                               {"path": "security.auth.selectedType", "value": "oauth-personal"})),
+     lambda p, d: ct.vendor_gemini_billing_route_partial(p), [], lambda: _constant_only()),
     ("T-17: the built settings select another auth type", "environment-record",
      lambda p, d: ct.vendor_gemini_billing_route_partial(p), [],
      lambda: _settings_patch(lambda doc: doc["security"]["auth"].update(selectedType="oauth-personal"))),
