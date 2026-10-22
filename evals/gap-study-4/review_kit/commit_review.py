@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Commit a finished pre-freeze review unedited, with its blindness record beside it.
 
-    python3 evals/gap-study-2/review_kit/commit_review.py <review folder> <N>
+    python3 evals/gap-study-4/review_kit/commit_review.py <review folder> <N>
 
 Asserts before anything is copied: line 1 of the report is `prereg.json sha256: <the sha256 of the kit's prereg.json, the bytes the reviewer read>`; the
 report carries no absolute path and names no person; a ruling line is present. Copies the report to
@@ -9,6 +9,9 @@ review_kit/prefreeze-<N>.md and the blindness record beside it, lints the commit
 `git commit -F`. The commit lands exactly the two files, which is what freeze.py's review-commit rule reads.
 
 Never pushes: the push goes through the scanned door, on the owner's grant.
+
+ROUND 4 (lane review-kit-port, glitch-f1's fold 1): the co-author line names the reviewer launch.py now opens,
+Claude Opus 5.5, in place of the model round 3 named.
 """
 
 from __future__ import annotations
@@ -80,7 +83,7 @@ def main() -> int:
     msg.write_text(f"review: pre-freeze review {n}, committed as it stands\n\nOne fresh reviewer, launched headless "
                    f"outside the Brain with only the kit, read the draft at sha256 {read_sha[:12]} and ruled: {ruling} "
                    + ("" if read_sha == draft_sha else f"The draft in force at this commit is {draft_sha[:12]}: it moved after the review, so this review cannot seed a freeze. ")
-                   + "The report and its blindness record are committed unedited.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\n")
+                   + "The report and its blindness record are committed unedited.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n")
     lint = subprocess.run([sys.executable, str(STUDY_DIR / "commit_msg.py"), str(msg)], capture_output=True, text=True)
     if lint.returncode != 0:
         print(lint.stdout)

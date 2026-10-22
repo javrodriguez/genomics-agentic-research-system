@@ -142,8 +142,10 @@ class TheManifest(unittest.TestCase):
         # (lane w6h, ruling S6-gap4-1 moved check_take.py to w6h as an edited copy): allowlist.py stood in for it, and
         # since lane freeze-gates-fix S9 retired round 4's allowlist.py (glitch-f1's ruling), ci_conclusion.py does.
         # Departure w7d-1 (lane w7d, ruling W7D-gap4-1 moved review_kit/rounds.py to w7d as an edited copy):
-        # review_kit/launch.py, an identical copy this lane still claims, stands in for it.
-        for name in ("denials.py", "ci_conclusion.py", "lexicons/permission-stop.json", "review_kit/launch.py"):
+        # review_kit/launch.py, an identical copy this lane still claims, stands in for it. Departure review-kit-port-1
+        # (lane review-kit-port moved review_kit/launch.py there as an edited copy): review_kit/build_kit.py stands in.
+        # Departure review-kit-port-2 (build_kit.py moved there too): smoke_run_tree.py stands in.
+        for name in ("denials.py", "ci_conclusion.py", "lexicons/permission-stop.json", "smoke_run_tree.py"):
             mutated = lambda path, name=name: real(path) + (b" " if path == name else b"")
             bad = cm.problems(pinned=False, read=mutated)
             self.assertIn(f"{name} ({LANE}) differs from evals/gap-study-3/{name} at {cm.SOURCE_COMMIT} and has no "
