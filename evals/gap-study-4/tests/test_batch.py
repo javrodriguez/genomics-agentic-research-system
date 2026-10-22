@@ -1008,6 +1008,22 @@ class TestDeferredArm(unittest.TestCase):
             self.assertEqual(b.row_problems([dict(r, arm="G") for r in rows(2)]), [])
             self.assertEqual(reads, [1])
 
+    def test_the_deferral_is_asked_once_per_row(self):
+        # review NIT-4: row_problems calls deferral_problem once per row, refused or not
+        import prereg
+        d, calls = self.design(), []
+        with mock.patch.object(prereg, "load", lambda: d), \
+                mock.patch.object(prereg, "committed_go_records", lambda *a: []):
+            w = World()
+            b = batch.Batch(FakeDriver(w, None), FakeRepo(w), FakeWindow(w), table=test_table())
+            ask = b.deferral_problem
+            b.deferral_problem = lambda r: calls.append(r["slot"]) or ask(r)
+            got = b.row_problems([dict(r, arm="G") for r in rows(2)] + [dict(r, arm="A") for r in rows(3)[2:]])
+        self.assertEqual(len(got), 2)
+        self.assertTrue(all("arm G is deferred" in p for p in got))
+        self.assertEqual(sorted(calls), sorted({r["slot"] for r in rows(3)}))
+        self.assertEqual(len(calls), 3)
+
 
 class TrustingBatch(batch.Batch):
     """Mutant: trusts the driver's pin model instead of the registered row's."""

@@ -191,6 +191,15 @@ class DeferredArm(unittest.TestCase):
             self.assertFalse(any(line.startswith(f"  arm {arm} ") and DEFERRED_G in line for line in lines),
                              "D1.status")
 
+    def test_no_empty_deferred_list(self):
+        # review NIT-3: a deferred arm with no planned arm in the design never leaves an empty "; deferred: " behind
+        d = deferred_design()
+        d["deferred_arms"] = {"Z": copy.deepcopy(d["deferred_arms"]["G"])}
+        code, text = status(d)
+        arms = [line for line in text.splitlines() if line.startswith("arms     :")]
+        self.assertEqual(code, 0, "D1.status")
+        self.assertEqual(arms, ["arms     : 3 planned (A, O, G); optional: C"], "D1.status")
+
     def test_not_run_reason_names_the_deferral(self):
         d = deferred_design()
         with mock.patch.object(prereg, "load", lambda: d):
@@ -241,6 +250,8 @@ class DeferredArm(unittest.TestCase):
             (root / prereg.GO_RECORD.name).write_text(json.dumps([go()]))
             self.assertEqual(prereg.committed_go_records(root), [], "D3.go")      # written, not committed
             git("add", prereg.GO_RECORD.name)
+            # review NIT-1 (its M07 survivor): staged in the index, not committed, is still no go
+            self.assertEqual(prereg.committed_go_records(root), [], "D3.go")
             git("commit", "-q", "-m", "synthetic go")
             self.assertEqual(prereg.committed_go_records(root), [go()], "D3.go")
             self.assertTrue(prereg.deferred_arm_go("G", prereg.committed_go_records(root)), "D3.go")

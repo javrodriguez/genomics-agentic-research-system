@@ -56,8 +56,11 @@ def mechanical_states(history, published, table=None):
     return states
 
 
-def summarize(pre: dict, records: list, states: dict, registered: list) -> dict:
-    """All planned rows, with state from publication's committed outcomes/rulings."""
+def summarize(pre: dict, records: list, states: dict, registered: list, go_records: list | None = None) -> dict:
+    """All planned rows, with state from publication's committed outcomes/rulings.
+
+    go_records: Javier's committed go records for deferred arms (prereg.committed_go_records when None, read only
+    when the design defers an arm)."""
     count = pair_count(pre)
     planned = pre["rows"]
     if not isinstance(planned, list) or not planned:
@@ -79,7 +82,12 @@ def summarize(pre: dict, records: list, states: dict, registered: list) -> dict:
         raise ValueError("a recorded or registered try is outside the plan")
     # Lane gemini-defer, ruling R3 (glitch-f1, 22 Oct 2026): a deferred arm's unmeasured half-cell reads its frozen
     # deferral (prereg.deferral_label: "deferred (Javier, 22 Oct 2026)"), never "no takes".
+    # Review NIT-2 (glitch-f1, 22 Oct 2026): after Javier's committed go the arm is no longer deferred, so a half-cell
+    # with no take yet reads "no takes", as any arm's does.
     deferred = {arm: prereg.deferral_label(entry) for arm, entry in prereg.deferred_arms(pre).items()}
+    if deferred:
+        go = prereg.committed_go_records() if go_records is None else go_records
+        deferred = {arm: label for arm, label in deferred.items() if not prereg.deferred_arm_go(arm, go)}
     actual = collections.defaultdict(list)
     for r in records:
         actual[takes.half_cell_key(r)].append(r)

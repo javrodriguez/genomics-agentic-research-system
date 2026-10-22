@@ -1232,6 +1232,21 @@ class Reporting(unittest.TestCase):
         states = {"c-g": {"state": labels4.INCOMPLETE_MECHANICAL, "reason": "synthetic committed state"}}
         cells = {c["arm"]: c for c in completeness.summarize(pre, [], states, [])["cells"]}
         self.assertEqual(cells["G"]["state"], labels4.INCOMPLETE_MECHANICAL)
+        # review NIT-2: after Javier's committed go, a G half-cell with no take yet reads "no takes", not "deferred";
+        # a record that is not his go for arm G changes nothing
+        go = {"kind": "deferred arm go", "arm": "G", "by": "Javier", "decision": "OD-synthetic",
+              "ask": "synthetic-go", "at": "2026-12-01T14:00:00Z"}
+        cells = {c["arm"]: c for c in completeness.summarize(pre, [], {}, [], go_records=[go])["cells"]}
+        self.assertEqual(cells["G"]["state"], stats.NO_TAKES)
+        self.assertEqual(cells["G"]["reason"], "no committed graded take")
+        for bad in ([], [dict(go, arm="O")], [dict(go, by="glitch-f1")]):
+            with self.subTest(records=bad):
+                cells = {c["arm"]: c for c in completeness.summarize(pre, [], {}, [], go_records=bad)["cells"]}
+                self.assertEqual(cells["G"]["state"], "deferred (Javier, 22 Oct 2026)")
+        import prereg
+        with mock.patch.object(prereg, "committed_go_records", lambda *a: [go]):
+            cells = {c["arm"]: c for c in completeness.summarize(pre, [], {}, [])["cells"]}
+        self.assertEqual(cells["G"]["state"], stats.NO_TAKES)
 
     def test_mechanical_state_read_even_without_a_graded_record(self):
         pre = pre_registration()

@@ -256,9 +256,10 @@ def status_lines(pre: dict) -> list[str]:
     by_arm = collections.Counter(r.get("arm") for r in rows)
     extra = [a for a in arms if a not in table and a in optional]
     held = deferred_arms(pre)
+    shown = [a for a in planned if a in held]          # review NIT-3: never an empty "; deferred: "
     out = [f"{ARMS_LABEL:9}: {len(planned)} planned ({', '.join(planned)})"
            + (f"; optional: {', '.join(extra)}" if extra else "")
-           + (f"; deferred: {', '.join(a for a in planned if a in held)}" if held else "")]
+           + (f"; deferred: {', '.join(shown)}" if shown else "")]
     for arm in arms:
         if arm in table:
             harnesses = sorted({str(r["agent"]["harness"]) for r in rows if r.get("arm") == arm}) or ["no rows"]

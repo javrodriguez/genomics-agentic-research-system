@@ -930,8 +930,8 @@ class Batch:
         for r in rows:
             if not isinstance(r, dict) or not all(k in r for k in ("slot", "half_cell", "model")):
                 p.append(f"row {r!r} must name slot, half_cell and model")
-            elif self.deferral_problem(r):          # lane gemini-defer, R5: before the pins, the money and the cells
-                p.append(self.deferral_problem(r))
+            elif deferral := self.deferral_problem(r):   # lane gemini-defer, R5: before the pins, the money and the cells
+                p.append(deferral)                     # (review NIT-4: called once per row)
             elif agent_problems(r):
                 p += agent_problems(r)
             elif r["model"] not in self.table["pin_profiles"].get(r["agent"]["harness"], {}):
