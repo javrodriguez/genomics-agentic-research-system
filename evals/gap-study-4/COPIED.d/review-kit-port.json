@@ -1,0 +1,44 @@
+{
+  "lane": "review-kit-port",
+  "files": [
+    {
+      "path": "review_kit/BRIEF.md",
+      "status": "edited",
+      "source": "evals/gap-study-3/review_kit/BRIEF.md",
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). Ported to round 4 (freeze-path plan section 4; glitch-f1's ruling F5): the bytes under review, the folder and every command path name evals/gap-study-4/; the threat model is stated in the brief (plan CP6, line 888) and the reviewer restates it; the code is named by its parts (entry points, the container, the harnesses, the checker and graders, the walks, publication, the freeze), never with a list of ways around a rule (line 887); the vendor arms, their adapters and per-harness configs join the scope (D8-non-claude-arms.md, CP6's added review scope); the heavy gates (run_checks.py, freeze_rehearsal.py's COMMANDS including the walk gates, freeze.py --check) are read from athena/ at COMMIT and only light checks are run, among them the three legs through freeze.unrecorded_shapes_problem; the classes are MAJOR, MINOR (loosens or tightens) and NIT, and DO FREEZE needs no MAJOR (the stop rule, line 889). Bound by tests/test_review_kit.py K1, K4, K5, K6."
+    },
+    {
+      "path": "review_kit/why.md",
+      "status": "edited",
+      "source": "evals/gap-study-3/review_kit/why.md",
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). Round 4's purpose in place of round 3's: a new instrument (sealed pinned container, end-state graders, several wordings, ten tries), agents of more than one vendor with model and agent-system comparisons kept apart, its counts never added to an earlier round's. Names no study folder, round or person. Bound by tests/test_review_kit.py K1, K6."
+    },
+    {
+      "path": "review_kit/blindness.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/review_kit/blindness.py",
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). The usage line names evals/gap-study-4/; MARKERS lead with round 4's names (gap-study-4, round 4, gap4), keep every earlier marker, and add the operator's coordinating-session and board words (lane-orchestrator, Lane Board, OrgOS); the docstring says so. No logic changed. Bound by tests/test_review_kit.py K1, K2, K3."
+    },
+    {
+      "path": "review_kit/launch.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/review_kit/launch.py",
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). The two usage lines name evals/gap-study-4/, and the docstring names the athena/ inputs the operator adds before the row is registered (ruling F5). No code line changed. Bound by tests/test_review_kit.py K1."
+    },
+    {
+      "path": "tests/test_review_kit.py",
+      "status": "new",
+      "reason": "Lane review-kit-port: K1.port, K2.markers, K3.nested, K4.brief, K5.light, K6.public over the ported kit; --witnesses runs eleven mutants in process, each required to fail its bound test with its clause token. Reads committed files only; interpreter state left as found."
+    },
+    {
+      "path": "COPIED.d/review-kit-port.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment. Transfer (lane review-kit-port, under glitch-f1's freeze-path rulings, Wed 21 Oct 2026): review_kit/BRIEF.md, why.md, blindness.py and launch.py from lane w1a-cp1-scaffold, named in that lane's self-entry."
+    },
+    {
+      "path": "checks.d/review-kit-port.txt",
+      "status": "new",
+      "reason": "This lane's local checks: tests/test_review_kit.py, its --witnesses, and review_kit/rounds.py --check."
+    }
+  ]
+}

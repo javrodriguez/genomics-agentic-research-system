@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
 """The blindness of a review, read from the reviewer's own session file, written so the output can be committed.
 
-    python3 evals/gap-study-2/review_kit/blindness.py <review folder>
+    python3 evals/gap-study-4/review_kit/blindness.py <review folder>
 
 Two questions, kept apart. (1) Did the operator's own material reach the reviewer's loaded context? Markers that
 exist only in the operator's assistant tree are searched in the attachment records. (2) Did the reviewer read outside
 its folder? Every absolute path in its tool inputs is listed unless it is inside the folder.
 
-The markers name this round (`gars-eval-v4`, `gap-study-3`, `round 3`), the rounds before it whose names operator
-memory still carries (`gars-eval-v3` / `gap-study-2` / `round 2`, and the pre-study `gars-haiku-prestudy` /
-`haiku-prestudy`), the operator's open-items list, the assistant's memory and identity files, the operator's
-objective line, and this repository's own path, taken from this file's location rather than typed. The account
-email is matched by EMAIL.
+The markers name this round (`gap-study-4`, `round 4`, and `gap4`, the operator's shorthand for it), the rounds
+before it whose names operator memory still carries (`gars-eval-v4` / `gap-study-3` / `round 3`, `gars-eval-v3` /
+`gap-study-2` / `round 2`, and the pre-study `gars-haiku-prestudy` / `haiku-prestudy`), the operator's coordinating
+session and its boards (`lane-orchestrator`, `Lane Board`, `OrgOS`), the operator's open-items list, the assistant's
+memory and identity files, the operator's objective line, and this repository's own path, taken from this file's
+location rather than typed. The account email is matched by EMAIL.
+
+ROUND 4 (lane review-kit-port). The markers were round 3's; they now lead with round 4's names and keep every earlier
+one. The coordinating session's name is also the name of a skill in the operator's own home folder, so a reviewer
+that boots with that skill in its loaded context reads it as UNEXPLAINED here, which is what it is. No marker word
+occurs in any CLAUDE.md this repository tracks (tests/test_review_kit.py K3), so a nested instruction file the
+harness attaches as the reviewer reads `study/` cannot raise one.
 
 stdlib only. Never prints a path or an address unmasked.
 """
@@ -27,14 +34,20 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent.parent
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 MARKERS = [
-    ("the goal id", "gars-eval-v4"),
-    ("the study's folder name", "gap-study-3"),
-    ("the round's name", "round 3"),
+    ("the study's folder name", "gap-study-4"),
+    ("the round's name", "round 4"),
+    ("the round's shorthand", "gap4"),
+    ("round 3's goal id", "gars-eval-v4"),
+    ("round 3's folder name", "gap-study-3"),
+    ("round 3's name", "round 3"),
     ("round 2's goal id", "gars-eval-v3"),
     ("round 2's folder name", "gap-study-2"),
     ("round 2's name", "round 2"),
     ("the pre-study's goal id", "gars-haiku-prestudy"),
     ("the pre-study's folder name", "haiku-prestudy"),
+    ("the operator's coordinating session", "lane-orchestrator"),
+    ("the operator's lane board", "Lane Board"),
+    ("the operator's list system", "OrgOS"),
     ("the operator's open-items list", "Waiting on Javier"),
     ("the assistant's memory folder", "glitch-mem"),
     ("the assistant's identity file", "SOUL.md"),

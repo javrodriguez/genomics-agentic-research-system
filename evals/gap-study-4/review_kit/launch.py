@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Launch a blind pre-freeze reviewer, headless, from a review folder outside the Brain.
 
-    python3 evals/gap-study-3/review_kit/launch.py <review folder> [<session id>]
-    python3 evals/gap-study-3/review_kit/launch.py <review folder> <session id> --resume
+    python3 evals/gap-study-4/review_kit/launch.py <review folder> [<session id>]
+    python3 evals/gap-study-4/review_kit/launch.py <review folder> <session id> --resume
 
 The folder is built by build_kit.py: BRIEF.md, why.md, prereg.json, the previous review's bytes if any, and `study/`,
-a full-history clone of this repository with NO remote. This launcher:
+a full-history clone of this repository with NO remote. ROUND 4 (lane review-kit-port, ruling F5 of the freeze path):
+before the row is registered the operator adds `athena/`, the remote runner's outputs of the heavy gates at the
+commit in COMMIT (run_checks.py, each command of freeze_rehearsal.py's COMMANDS run directly, freeze.py --check), one
+file per command naming the command, the commit and the tail of its output. BRIEF.md has the reviewer read them and
+run only the light checks; `rounds.py --add` hashes the whole folder, so the row binds them. This launcher:
 
   - refuses a folder whose `study/` clone has a remote: the reviewer runs with no prompts and this machine's git
     credentials sit in the keychain, so a clone with a remote is a clone the reviewer could push from
