@@ -14,6 +14,13 @@ Lane w7b (wave 7 P2, Q-w6i-1; this module moved from lane w6i to lane w7b under 
             the driver ledger's own shape (driver-ledger.json's agent.harness), which every synthetic ledger here now
             carries. Witness: top-level-harness (round 3's top-level key, which the round-4 driver never writes).
 
+Lane freeze-gates-fix (glitch-f1's ruling (2), Wed 21 Oct 2026, under Javier's standing delegation):
+  M4-vendor a Codex walk is held to its pin by the CLI-written rollout (every turn_context's approval_policy and
+            sandbox_policy.type, the ledger's last native snapshot, hash-checked), a Gemini walk by its launch argv,
+            named input-side in the output; neither reads `unrecorded`, and a missing, altered or contradicting record
+            is a problem, never a pass. Witnesses: approval-only (the sandbox policy unread, so `never` alone passes),
+            argv-unread (the Gemini reading returns the pin without reading a journal).
+
 Fakes and synthetic strings only: no model, vendor, network, credential or holdout. setUpModule arms a process guard
 that refuses every process start before mode_binding.py is imported.
 """
@@ -90,6 +97,56 @@ def base_with(takes: list) -> Path:
     return base
 
 
+VTABLE = {"pin_profiles": {"codex": {"m-o": {"permission_mode": "bypass", "version": "0.0.1"}},
+                           "gemini": {"m-g": {"permission_mode": "yolo", "version": "0.0.1"}}}}
+
+
+def _rollout(pairs, settings=("never",), turns=None):
+    """A synthetic Codex rollout: one task_started and one turn_context per (approval_policy, sandbox type) pair."""
+    import hashlib
+    recs = [{"type": "session_meta", "payload": {"id": "t-1"}}]
+    for i, (approval, sandbox) in enumerate(pairs):
+        recs.append({"type": "event_msg", "payload": {"type": "task_started", "turn_id": f"u{i}"}})
+        recs.append({"type": "turn_context", "payload": {"turn_id": f"u{i}", "approval_policy": approval,
+                                                          "sandbox_policy": {"type": sandbox}}})
+    for _ in range((len(pairs) if turns is None else turns) - len(pairs)):
+        recs.append({"type": "event_msg", "payload": {"type": "task_started", "turn_id": "extra"}})
+    for a in settings:
+        recs.append({"type": "event_msg", "payload": {"type": "thread_settings_applied",
+                                                      "thread_settings": {"approval_policy": a}}})
+    raw = "".join(json.dumps(r) + "\n" for r in recs).encode()
+    return raw, hashlib.sha256(raw).hexdigest()
+
+
+def vendor_walks(walks: list) -> Path:
+    """A synthetic study folder of rehearsals/<walk>/ vendor walks. Each walk is (harness, model, spec): a Codex spec
+    is {pairs, settings?, turns?, sha?, snapshot?}; a Gemini spec is {argvs: [argv per turn], journals?}."""
+    base = Path(tempfile.mkdtemp(dir=SCRATCH))
+    for i, (harness, model, spec) in enumerate(walks, 1):
+        folder = base / "rehearsals" / f"w-v{i:02d}"     # zero-padded: rows() reads them sorted
+        folder.mkdir(parents=True)
+        (folder / "transcript.jsonl").write_text(json.dumps({"type": "turn", "text": "a synthetic line"}) + "\n")
+        ledger = {"agent": {"harness": harness, "version": "0.0.1"}, "model_requested": model,
+                  "permission_mode": "unrecorded", "permission_mode_recorded": "unrecorded"}
+        if harness == "codex":
+            raw, sha = _rollout(spec["pairs"], spec.get("settings", ("never",)), spec.get("turns"))
+            if spec.get("snapshot", True):
+                (folder / "session").mkdir()
+                (folder / "session" / "native-turn-1.jsonl").write_bytes(raw)
+            ledger["native_snapshots"] = [{"file": "native-turn-1.jsonl", "sha256": spec.get("sha", sha)}]
+        else:
+            for k, argv in enumerate(spec["argvs"], 1):
+                (folder / f"turn-{k}.jsonl").write_text("{}\n")
+                if k in spec.get("journals", range(1, len(spec["argvs"]) + 1)):
+                    (folder / f"turn-{k}.jsonl.launch.json").write_text(json.dumps(
+                        {"schema": 1, "harness": "gemini", "argv": argv, "cwd": "/tmp/run-synthetic"}))
+        (folder / "driver-ledger.json").write_text(json.dumps(ledger))
+    return base
+
+
+GOOD_ARGV = ["gemini", "-p", "a synthetic line", "-o", "stream-json", "-m", "m-g", "--approval-mode", "yolo"]
+
+
 def run_main(mod, base, table, *argv):
     out = io.StringIO()
     with mock.patch.object(mod, "HERE", base), mock.patch.object(routing, "load_table", lambda: table), \
@@ -160,6 +217,46 @@ def m3_folder(mod, p):
     return out
 
 
+@guarded("M4-vendor")
+def m4_vendor(mod, p):
+    """Lane freeze-gates-fix: the vendor walks' own records, and the source named beside each reading."""
+    out = []
+    good = ("never", "danger-full-access")
+    cases = {
+        "codex recorded bypass": (("codex", "m-o", {"pairs": [good, good], "settings": ("never", "never")}), False),
+        "codex approval never, sandbox read-only": (("codex", "m-o", {"pairs": [("never", "read-only")]}), True),
+        "codex one turn of two in another mode": (("codex", "m-o", {"pairs": [good, ("on-request",
+                                                                                     "danger-full-access")]}), True),
+        "codex thread settings disagree": (("codex", "m-o", {"pairs": [good], "settings": ("on-request",)}), True),
+        "codex a turn without its turn_context": (("codex", "m-o", {"pairs": [good], "turns": 2}), True),
+        "codex snapshot hash differs": (("codex", "m-o", {"pairs": [good], "sha": "0" * 64}), True),
+        "codex snapshot missing": (("codex", "m-o", {"pairs": [good], "snapshot": False}), True),
+        "gemini argv submits yolo": (("gemini", "m-g", {"argvs": [GOOD_ARGV, GOOD_ARGV]}), False),
+        "gemini argv without the flag": (("gemini", "m-g", {"argvs": [GOOD_ARGV[:-2]]}), True),
+        "gemini argv with a second approval flag": (("gemini", "m-g", {"argvs": [GOOD_ARGV + ["--yolo"]]}), True),
+        "gemini a turn's journal missing": (("gemini", "m-g", {"argvs": [GOOD_ARGV, GOOD_ARGV], "journals": (1,)}),
+                                            True),
+    }
+    base = vendor_walks([w for w, _ in cases.values()])
+    got = mod.rows(walks=True, base=base, table=VTABLE)
+    if len(got) != len(cases):
+        return [f"{p}: {len(got)} walks read, {len(cases)} committed"]
+    for (what, (walk, refused)), r in zip(cases.items(), got):
+        if bool(r["problems"]) != refused:
+            out.append(f"{p}: {what}: {'passed' if refused else 'failed'} ({r['problems']})")
+        if r.get("recorded") == "unrecorded":
+            out.append(f"{p}: {what}: read as 'unrecorded', the Claude Code field's absence")
+        want_source = {"codex": "codex rollout", "gemini": "input side"}[walk[0]]
+        if want_source not in str(r.get("source")):
+            out.append(f"{p}: {what}: the reading's source is {r.get('source')!r}")
+    rc, text = run_main(mod, vendor_walks([cases["codex recorded bypass"][0], cases["gemini argv submits yolo"][0]]),
+                        VTABLE, "--walks", "--check")
+    if rc != 0 or "input-side" not in text or "1 by codex rollout" not in text:
+        out.append(f"{p}: --check over one good walk per vendor arm gave exit {rc} and did not name the input-side "
+                   f"reading: {text[-400:]!r}")
+    return out
+
+
 class TestGuardArmed(unittest.TestCase):
     def test_a_process_start_trips(self):
         with self.assertRaises(GuardTripped):
@@ -175,6 +272,14 @@ class TestModeBinding(unittest.TestCase):
 
     def test_m3_the_take_folder_and_the_ledgers_harness(self):
         self.assertEqual(m3_folder(mb), [])
+
+    def test_m4_the_vendor_walks_own_records(self):
+        self.assertEqual(m4_vendor(mb), [])
+
+    def test_the_codex_map_is_the_adapters_pin(self):
+        import codex_adapter
+        self.assertEqual(set(mb.CODEX_MODE_RECORD), set(codex_adapter.MODE_FLAGS), "M4-vendor")
+        self.assertEqual(mb.CODEX_MODE_RECORD["bypass"], ("never", "danger-full-access"), "M4-vendor")
 
     def test_the_expectation_comes_from_routings_pin_profiles(self):
         self.assertIn("table", inspect.signature(mb.expected).parameters, "expected() does not read a routing table")
@@ -213,6 +318,12 @@ WITNESSES = {
     # W7B (Q-w6i-1)
     "top-level-harness": ((("    harness = ledger_harness(ledger)           # W7B: the driver ledger's own shape, agent.harness",
                             "    harness = ledger.get(\"harness\") or \"?\""),), m1_pin, "M1-pin"),
+    # lane freeze-gates-fix
+    "approval-only": ((("    names = [pin for pin, pair in CODEX_MODE_RECORD.items() if pair == (approval, sandbox)]",
+                        "    names = [pin for pin, pair in CODEX_MODE_RECORD.items() if pair[0] == approval]"),),
+                      m4_vendor, "M4-vendor"),
+    "argv-unread": ((("        value, problems = argv_mode(folder, harness)",
+                      "        value, problems = \"yolo\", []"),), m4_vendor, "M4-vendor"),
 }
 
 
@@ -235,8 +346,14 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_top_level_harness(self):
         self.kill("top-level-harness")
 
+    def test_witness_approval_only(self):
+        self.kill("approval-only")
+
+    def test_witness_argv_unread(self):
+        self.kill("argv-unread")
+
     def test_the_witnesses_are_named(self):
-        self.assertEqual(sorted(WITNESSES), ["model-only", "top-level-harness"])
+        self.assertEqual(sorted(WITNESSES), ["approval-only", "argv-unread", "model-only", "top-level-harness"])
 
 
 if __name__ == "__main__":
