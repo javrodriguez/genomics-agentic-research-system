@@ -656,6 +656,14 @@ class GCases(unittest.TestCase):
                 self.assertEqual(got, want)
                 self.assertEqual(want, [])
 
+    def test_g_nc_t17_credential_source_counts_the_turns(self):
+        # Gemini review 0df1437 NIT: the credential leg ties its per_turn entries to the walk's turn count
+        old = ',\n      {\n        "n": 2,\n        "recovery": false,\n        "exit": 0,\n        "apiKeySource": null\n      }'
+        with vendor_plant.planted(G21, vendor_plant.replace_bytes("environment.json", old, "")) as plant:
+            got = ct.vendor_gemini_billing_route_partial(plant.path)
+        self.assertEqual(len(got), 1, got)
+        self.assertTrue(got[0].startswith("[environment-record] ") and "turn" in got[0], got)
+
     def test_g_nc_t17_credential_source_leg(self):
         # stage V, glitch-f1's amendment of both T-17 rulings: a non-null credential_source on one vendor turn, and a
         # reported one, each fires the credential line alone; the clean copy carries none

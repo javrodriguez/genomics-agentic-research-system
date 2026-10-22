@@ -944,6 +944,10 @@ LEG_PLANTS = [
     ("M18 T-17: an empty per_turn credential list", "environment-record",
      lambda p, d: ct.vendor_billing_route_partial(p.path, "codex", d.pre),
      [lambda: vp.replace_bytes("environment.json", '"per_turn": [', '"per_turn": [], "per_turn_was": [')], None),
+    ("Y T-17: credential_source per_turn short of the walk's turns", "environment-record",
+     lambda p, d: ct.vendor_billing_route_partial(p.path, "codex", d.pre),
+     [lambda: vp.replace_bytes("environment.json", ',\n      {\n        "n": 3,\n        "recovery": false,\n'
+                               '        "exit": 0,\n        "apiKeySource": null\n      }', '')], None),
     ("M19 T-18: the pinned config turns agents on", ct.HARNESS_CONDITION_VIOLATED,
      lambda p, d: [x for x in ct.vendor_codex_tools_partial(p.path) if "config.toml" in x], [],
      lambda: _config_with("[agents]\nenabled = false\n", "[agents]\nenabled = true\n")),
