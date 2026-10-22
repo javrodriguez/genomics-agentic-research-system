@@ -1025,6 +1025,46 @@ class GPromptSwitches(unittest.TestCase):
         self.assertTrue(got and not any("replaces Gemini CLI's system prompt" in x for x in got), got)
 
 
+def _tool_use_plant(name, params):
+    """A tool_use record (and its tool_result) appended to w-g21's turn-1 stream, the envelope re-bound by the plant."""
+    def edit(folder):
+        f = folder / "turn-1.jsonl"
+        recs = [json.loads(x) for x in f.read_text(encoding="utf-8").split("\n") if x.strip()]
+        ts = recs[0].get("timestamp")
+        at = max(i for i, r in enumerate(recs) if r.get("type") == "tool_result") + 1
+        recs[at:at] = [{"type": "tool_use", "timestamp": ts, "tool_name": name, "tool_id": "plant_call_1",
+                        "parameters": params},
+                       {"type": "tool_result", "timestamp": ts, "tool_id": "plant_call_1", "status": "success",
+                        "output": "ok"}]
+        f.write_text("".join(json.dumps(r, separators=(",", ":")) + "\n" for r in recs), encoding="utf-8")
+    return edit
+
+
+class GMemoryWrites(unittest.TestCase):
+    """glitch-f1's stage Z (2b), GEMINI-S0-READ: 0.64.0 has no memory tool and saves memory by editing files
+    ([C] 335872), so the count is of write_file, replace and run_shell_command calls naming GEMINI.md outside the
+    workspace or /memory/ under the config folder (check_take.gemini_memory_file_writes)."""
+
+    def test_g_memory_writes_count_the_calls_that_name_a_memory_file(self):
+        with vendor_plant.planted(G21) as clean:
+            self.assertEqual(ct.gemini_memory_file_writes(clean.path), [])
+        cases = {
+            "write_file to the config folder's GEMINI.md": ("write_file", {"file_path": "/opt/cfg/.gemini/GEMINI.md",
+                                                                           "content": "x"}, 1),
+            "replace in the home-relative GEMINI.md": ("replace", {"file_path": "~/.gemini/GEMINI.md", "old_string": "a",
+                                                                   "new_string": "b"}, 1),
+            "a shell write into the project memory folder": (
+                "run_shell_command", {"command": "echo x >> /opt/cfg/.gemini/tmp/run-752c6e21/memory/MEMORY.md"}, 1),
+            "the workspace's own GEMINI.md": ("replace", {"file_path": f"{TREE21}/GEMINI.md", "old_string": "a",
+                                                          "new_string": "b"}, 0),
+            "a relative GEMINI.md (inside the workspace)": ("write_file", {"file_path": "gars/GEMINI.md",
+                                                                          "content": "x"}, 0),
+        }
+        for what, (name, params, want) in cases.items():
+            with self.subTest(case=what), vendor_plant.planted(G21, _tool_use_plant(name, params)) as plant:
+                self.assertEqual(len(ct.gemini_memory_file_writes(plant.path)), want)
+
+
 class GLegs(unittest.TestCase):
     """Gemini review 0df1437 MINOR 2: each leg a published text names fires alone on its own scratch copy."""
 
