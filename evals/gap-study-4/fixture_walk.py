@@ -152,12 +152,47 @@ def classify_path(p: str, run_tree: str | None) -> str:
     return "elsewhere"
 
 
+# Lane freeze-gates-fix (glitch-f1's ruling (2), Wed 21 Oct 2026, under Javier's standing delegation): a turn's launch
+# journal, the box's actual-submission record beside its stream (run_take: <stream>.launch.json; drive.py's
+# LAUNCH_JOURNAL_NAME, read here by name so this file imports no driver).
+LAUNCH_JOURNAL = re.compile(r"turn-[1-9][0-9]*\.jsonl\.launch\.json")
+
+
 def run_tree_of(transcript: Path) -> str | None:
-    """The run tree this session was driven in, from its ledger beside the transcript."""
+    """The run tree this session was driven in, from its ledger beside the transcript.
+
+    Lane freeze-gates-fix: drive.py's own road writes the ledger's `cwd` (drive.py:1222) and that is read first; the
+    committed Claude walk ledgers carry none, and every turn of a walk records its working folder in its launch
+    journal (`turn-N.jsonl.launch.json` `cwd`), so the run tree is that folder when every journal beside the
+    transcript names the same absolute path and that folder's name is the ledger's `project` (read from the records:
+    in all 225 walks committed at d5c0f798 the journals name one folder, named for the project). Journals that disagree, name another project's
+    folder, or are absent leave it unrecorded (None), so the paths stay unplaced."""
     ledger = transcript.parent / "driver-ledger.json"
     if not ledger.is_file():
         return None
-    return (json.loads(ledger.read_text()) or {}).get("cwd")
+    doc = json.loads(ledger.read_text()) or {}
+    cwd = doc.get("cwd")
+    if cwd is not None:
+        return cwd
+    project = doc.get("project")
+    if not isinstance(project, str) or not project:
+        return None
+    seen = set()
+    for p in sorted(transcript.parent.iterdir()):
+        if not LAUNCH_JOURNAL.fullmatch(p.name) or p.is_symlink() or not p.is_file():
+            continue
+        try:
+            doc = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            return None
+        got = doc.get("cwd") if isinstance(doc, dict) else None
+        if not isinstance(got, str) or not os.path.isabs(got):
+            return None
+        seen.add(got)
+    if len(seen) != 1:
+        return None
+    tree = seen.pop()
+    return tree if PurePosixPath(os.path.normpath(tree)).name == project else None
 
 
 def replay(transcript: Path) -> dict:

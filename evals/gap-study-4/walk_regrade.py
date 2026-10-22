@@ -273,17 +273,29 @@ def agent_summary_problems(check: dict, transcript: Path, harness=None) -> list:
         return []
     derived = ct.vendor_side_readings(Path(transcript), harness)[1] if _vendor(harness) else \
         ct.agent_summary(Path(transcript))
-    recorded = {"agent_calls": check.get("agent_calls"), "subagents": check.get("subagents"),
-                "nested_cli_calls": check.get("nested_cli_calls")}
+    # Lane freeze-gates-fix (glitch-f1's ruling (2), Wed 21 Oct 2026, under Javier's standing delegation): compare only
+    # the fields the walk's checker version wrote. nested_cli_calls came with W-3b (9e57ce79); a check.json written
+    # before it has no such KEY (20261016c's 28 walks, w137-w164). Its absence passes only when the derived count is
+    # 0, else it is named; a key present with null still compares, and is red.
+    out = []
+    if "nested_cli_calls" not in check:
+        derived = dict(derived)
+        nested = derived.pop("nested_cli_calls", None)
+        if nested != 0:
+            out.append(f"check.json was written before nested_cli_calls was recorded and the committed walk folder "
+                       f"carries {nested!r} nested agent-CLI call(s); only 0 passes unrecorded")
+    recorded = {"agent_calls": check.get("agent_calls"), "subagents": check.get("subagents")}
+    if "nested_cli_calls" in check:
+        recorded["nested_cli_calls"] = check.get("nested_cli_calls")
     if derived != recorded:
         rec_sub = recorded["subagents"] if isinstance(recorded["subagents"], dict) else {}
-        fields = [k for k in ("agent_calls", "nested_cli_calls") if recorded[k] != derived[k]] + \
+        fields = [k for k in ("agent_calls", "nested_cli_calls") if k in recorded and recorded[k] != derived.get(k)] + \
             ([f"subagents.{k}" for k in sorted(set(rec_sub) | set(derived["subagents"]))
               if rec_sub.get(k) != derived["subagents"].get(k)] if isinstance(recorded["subagents"], dict)
              else ["subagents"])                  # review r13 NIT 1: every mismatched field named
         named = ", ".join(f"{f} (recorded {_field(recorded, f)!r}, derived {_field(derived, f)!r})" for f in fields)
-        return [f"check.json's agent_calls and subagents are not the committed walk folder's reading: {named}"[:600]]
-    return []
+        return out + [f"check.json's agent_calls and subagents are not the committed walk folder's reading: {named}"[:600]]
+    return out
 
 
 def _field(doc: dict, dotted: str):
