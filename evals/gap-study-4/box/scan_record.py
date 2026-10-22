@@ -145,13 +145,15 @@ RULES_SCANNER = {"adapter": "box.rules_scanner", "factory": "gitleaks_scanner", 
 #              less the record's account positions)
 #   account    None; "identifying" (names the account: a scan masks or excludes it, never prints it); "plan" (describes
 #              the account's plan or credit: excluded the same way)
-#   evidence   walk folder/file:line under rehearsals/ where the record kind stands (read, never edited)
+#   evidence   walk folder/file:line under rehearsals/ where the record kind stands (read, never edited); for a kind
+#              transcript_view admits that no round-4 walk carries, the view's own table line (transcript_view.py:n)
 # Codex at 0.162.1: w-o46 predates lane B22's [agents] enabled = false (take_config.py:72-78, 280-284) and carries three
 # developer records (skills/permissions/collaboration, multi_agent.role_instructions, multi_agent.mode_instructions);
 # the post-B22 walks (w-o39..w-o44, w-o47) carry one, and their session_meta and turn_context multi_agent_version read
 # "disabled" (pre-B22: absent and "v2"), with world_state's multi_agent_mode and multi_agent_usage_hint gone. The kinds
 # below hold for both; the record counts differ. Gemini at 0.64.0 writes no account field: its header's projectHash is
-# sha256 of the run-tree path (36 of 36 walks). Claude Code at 2.1.296 writes plan fields only.
+# sha256 of the run-tree path (36 of 36 walks). Claude Code at 2.1.296 writes plan fields only (apiKeySource,
+# rate_limit_info, usage.service_tier).
 FURNITURE_KEYS = ("file", "record", "fields", "account", "evidence")
 ACCOUNT_CLASSES = (None, "identifying", "plan")
 _O46, _O47 = "w-o46/session/native-turn-3.jsonl:", "w-o47/session/native-turn-1.jsonl:"
@@ -234,10 +236,12 @@ FURNITURE = {
          "fields": ("type", "id", "timestamp", "content[].functionResponse.id", "content[].functionResponse.name"),
          "account": None, "evidence": (_G21 + "4", _G21 + "9")},
         {"file": "session", "record": "gemini",
+         # review fold M1: toolCalls[].description renders the model's arguments and resultDisplay holds the file
+         # text the model wrote (newContent, fileDiff, originalContent) and matched file lines: neither is furniture
          "fields": ("type", "id", "timestamp", "model", "tokens", "thoughts[].timestamp", "toolCalls[].id",
                     "toolCalls[].status", "toolCalls[].timestamp", "toolCalls[].displayName",
-                    "toolCalls[].description", "toolCalls[].resultDisplay", "toolCalls[].renderOutputAsMarkdown",
-                    "toolCalls[].result[].functionResponse.id", "toolCalls[].result[].functionResponse.name"),
+                    "toolCalls[].renderOutputAsMarkdown", "toolCalls[].result[].functionResponse.id",
+                    "toolCalls[].result[].functionResponse.name"),
          "account": None, "evidence": (_G21 + "6", _G21 + "8")},
         {"file": "stream", "record": "init", "fields": ("*",), "account": None, "evidence": (_G21S + "1",)},
         {"file": "stream", "record": "result", "fields": ("*",), "account": None, "evidence": (_G21S + "78",)},
@@ -245,7 +249,8 @@ FURNITURE = {
          "evidence": (_G21S + "2",)},
         {"file": "stream", "record": "tool_use", "fields": ("type", "timestamp", "tool_id"), "account": None,
          "evidence": (_G21S + "3",)},
-        {"file": "stream", "record": "tool_result", "fields": ("type", "timestamp", "tool_id", "status", "error"),
+        # review fold n1: error.message echoes the model's paths and arguments; only its type is the CLI's
+        {"file": "stream", "record": "tool_result", "fields": ("type", "timestamp", "tool_id", "status", "error.type"),
          "account": None, "evidence": (_G21S + "7",)},
     ),
     "claude-code": (
@@ -265,8 +270,29 @@ FURNITURE = {
          "evidence": ("w002/transcript.jsonl:47",)},
         {"file": "session", "record": "attachment:prompt_snapshot", "fields": ("*",), "account": None,
          "evidence": (_C + "15",)},
-        {"file": "session", "record": "attachment:queued_command", "fields": ("*",), "account": None,
+        # review fold M1: the prompt and its renderings carry the task notification wrapping the model's command (or an
+        # operator's mid-turn prompt); only the CLI's own keys are furniture
+        {"file": "session", "record": "attachment:queued_command",
+         "fields": _CC_ENVELOPE + ("isSidechain", "attachment.type", "attachment.commandMode", "attachment.origin",
+                                   "attachment.delivery_id", "attachment.runId", "attachment.source_uuid",
+                                   "attachment.timestamp"), "account": None,
          "evidence": ("w003/transcript.jsonl:69",)},
+        # review fold m1: the kinds transcript_view admits as harness that no round-4 walk carries, cited to the view's
+        # own tables (transcript_view.py), and the scheduled wakeup, which walks carry (its content is the model's own
+        # ScheduleWakeup prompt, so only the envelope is furniture)
+        {"file": "session", "record": "attachment:auto_mode", "fields": ("*",), "account": None,
+         "evidence": ("transcript_view.py:280",)},
+        {"file": "session", "record": "attachment:deferred_tools_record", "fields": ("*",), "account": None,
+         "evidence": ("transcript_view.py:278",)},
+        {"file": "session", "record": "ai-title", "fields": ("type", "sessionId"), "account": None,
+         "evidence": ("transcript_view.py:304",)},
+        {"file": "session", "record": "system", "fields": ("*",), "account": None,
+         "evidence": ("transcript_view.py:305",)},
+        {"file": "session", "record": "user:no-visible-output-nudge", "fields": ("*",), "account": None,
+         "evidence": ("transcript_view.py:331",)},
+        {"file": "session", "record": "user:scheduled-wakeup", "fields": _CC_ENVELOPE + ("isSidechain", "isMeta",
+                                                                                         "turnOrigin", "promptSource"),
+         "account": None, "evidence": ("w033/transcript.jsonl:96", "w116/transcript.jsonl:86")},
         {"file": "session", "record": "attachment:remote_session_change", "fields": ("*",), "account": None,
          "evidence": (_C + "14",)},
         {"file": "session", "record": "attachment:session_context", "fields": ("*",), "account": None,
@@ -291,6 +317,9 @@ FURNITURE = {
          "fields": _CC_ENVELOPE + ("message.id", "message.model", "message.type", "message.role",
                                    "message.stop_reason", "message.usage"), "account": None,
          "evidence": (_C + "18",)},
+        # review fold m3: the usage's service tier is an account-plan field
+        {"file": "session", "record": "assistant", "fields": ("message.usage.service_tier",), "account": "plan",
+         "evidence": (_C + "18",)},
         {"file": "stream", "record": "system/init", "fields": ("*",), "account": None, "evidence": (_CS + "1",)},
         {"file": "stream", "record": "system/init", "fields": ("apiKeySource",), "account": "plan",
          "evidence": (_CS + "1",)},
@@ -299,23 +328,31 @@ FURNITURE = {
          "evidence": (_CS + "4",)},
         {"file": "stream", "record": "system/thinking_tokens", "fields": ("*",), "account": None,
          "evidence": (_CS + "15",)},
-        {"file": "stream", "record": "system/task_started", "fields": ("*",), "account": None,
-         "evidence": ("w003/turn-1.jsonl:38",)},
+        # review fold M1: a task's description and summary carry the model's Bash command; the CLI's keys only
+        {"file": "stream", "record": "system/task_started",
+         "fields": ("type", "subtype", "uuid", "session_id", "task_id", "task_type", "tool_use_id", "run_id",
+                    "is_backgrounded"), "account": None, "evidence": ("w003/turn-1.jsonl:38",)},
         {"file": "stream", "record": "system/task_updated", "fields": ("*",), "account": None,
          "evidence": ("w003/turn-1.jsonl:40",)},
-        {"file": "stream", "record": "system/task_notification", "fields": ("*",), "account": None,
-         "evidence": ("w003/turn-1.jsonl:41",)},
-        {"file": "stream", "record": "system/background_tasks_changed", "fields": ("*",), "account": None,
-         "evidence": ("w003/turn-1.jsonl:37",)},
+        {"file": "stream", "record": "system/task_notification",
+         "fields": ("type", "subtype", "uuid", "session_id", "task_id", "tool_use_id", "run_id", "status",
+                    "output_file"), "account": None, "evidence": ("w003/turn-1.jsonl:41",)},
+        {"file": "stream", "record": "system/background_tasks_changed",
+         "fields": ("type", "subtype", "uuid", "session_id", "tasks[].task_id", "tasks[].task_type", "tasks[].run_id"),
+         "account": None, "evidence": ("w003/turn-1.jsonl:37",)},
         {"file": "stream", "record": "command_lifecycle", "fields": ("*",), "account": None,
          "evidence": ("w033/turn-1.jsonl:86",)},
         {"file": "stream", "record": "result/success",
          "fields": ("type", "subtype", "uuid", "session_id", "stop_reason", "terminal_reason", "fast_mode_state",
                     "fast_mode_disabled_reason", "usage", "origin", "permission_denials"), "account": None,
          "evidence": (_CS + "41",)},
+        {"file": "stream", "record": "result/success", "fields": ("usage.service_tier",), "account": "plan",
+         "evidence": (_CS + "41",)},
         {"file": "stream", "record": "assistant",
          "fields": ("type", "uuid", "session_id", "parent_tool_use_id", "message.id", "message.model",
                     "message.usage"), "account": None, "evidence": (_CS + "2",)},
+        {"file": "stream", "record": "assistant", "fields": ("message.usage.service_tier",), "account": "plan",
+         "evidence": (_CS + "2",)},
         {"file": "stream", "record": "user", "fields": ("type", "uuid", "session_id", "parent_tool_use_id", "timestamp"),
          "account": None, "evidence": (_CS + "5",)},
     ),

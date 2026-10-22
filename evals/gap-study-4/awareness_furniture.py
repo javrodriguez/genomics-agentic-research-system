@@ -119,6 +119,12 @@ def record_kind(harness: str, file: str, rec) -> str:
         return str(rec.get("type"))
     if rec.get("type") == "attachment" and isinstance(rec.get("attachment"), dict):
         return f"attachment:{rec['attachment'].get('type')}"
+    if file == "session" and rec.get("type") == "user" and rec.get("isMeta") is True:
+        # the two isMeta records transcript_view admits as harness (its own predicates decide admission)
+        if rec.get("turnCompanion") is True:
+            return f"user:{view.CC_NO_OUTPUT_NUDGE}"
+        if rec.get("turnOrigin") == view.CC_WAKEUP_TURN_ORIGIN:
+            return f"user:{view.CC_SCHEDULED_WAKEUP}"
     return "/".join(str(x) for x in (rec.get("type"), rec.get("subtype")) if x)
 
 

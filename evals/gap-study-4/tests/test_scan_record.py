@@ -726,7 +726,7 @@ CODEX_IDENTIFYING = {("session", "session_meta", "payload.creator_user_id"),
 CODEX_PLAN = {("session", "event_msg/token_count", f)
               for f in ("payload.rate_limits.plan_type", "payload.rate_limits.credits.has_credits",
                         "payload.rate_limits.credits.unlimited", "payload.rate_limits.credits.balance")}
-_EVIDENCE = re.compile(r"(w\d+|w-[og]\d+)/[A-Za-z0-9._/-]+\.jsonl:[1-9]\d*")
+_EVIDENCE = re.compile(r"(w\d+|w-[og]\d+)/[A-Za-z0-9._/-]+\.jsonl:[1-9]\d*|transcript_view\.py:[1-9]\d*")
 
 
 def furniture_shape_problems(furniture) -> list:
@@ -757,6 +757,8 @@ def furniture_shape_problems(furniture) -> list:
             if not isinstance(e["evidence"], tuple) or not e["evidence"] or \
                     not all(isinstance(x, str) and _EVIDENCE.fullmatch(x) for x in e["evidence"]):
                 out.append(f"{where}: evidence is not walk folder/file:line strings")
+            if h != "claude-code" and any(x.startswith("transcript_view.py:") for x in e["evidence"]):
+                out.append(f"{where}: a vendor entry cites no walk")
             key = (e["file"], e["record"], e["account"])
             if key in seen:
                 out.append(f"{where}: a second entry for {key}")

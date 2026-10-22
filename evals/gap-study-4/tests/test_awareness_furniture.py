@@ -184,6 +184,13 @@ def evidence_problems(furniture=None) -> list:
     for h, entries in furniture.items():
         for e in entries:
             for rel in e["evidence"]:
+                if rel.startswith("transcript_view.py:"):
+                    # a kind the view admits that no round-4 walk carries: the cited table line names it
+                    line = (HERE.parent / "transcript_view.py").read_text().split("\n")[int(rel.split(":")[1]) - 1]
+                    name = e["record"].split(":", 1)[-1]
+                    if f'"{name}"' not in line and not ("NUDGE" in line and name == tv.CC_NO_OUTPUT_NUDGE):
+                        out.append(f"{h} {e['record']}: {rel} does not name it")
+                    continue
                 path, n = _evidence_file(h, e, rel)
                 is_session = path.name == "transcript.jsonl" if h == "claude-code" else path.parent.name == "session"
                 if is_session != (e["file"] == "session"):
@@ -273,6 +280,126 @@ def _gemini_recs():
 
 
 GEMINI_EXPECTED = {(PHRASE, "furniture:user:session_context"): 1, (PHRASE, "native-result:read_file"): 1}
+
+
+# ---- review fold (REVIEW-d8-furniture-e692ce7.md M1, m2; glitch-f1, 22 Oct 2026) -----------------------------------
+# M1: no FURNITURE position may hold the model's own words. Over every committed walk, each record's model-written
+# strings (tool-call arguments, written file text, Bash commands, messages and thoughts) are gathered in file order, a
+# record's own before its furniture fields are read; a furniture string leaf that contains one of the strings gathered
+# so far in the same file is a hit. Bare paths are not counted (a cwd equal to a path the model also typed is the CLI's
+# path, not the model's words), nor strings under MIN_WORD characters, nor a string the model copied from the CLI's
+# own text written in that file before the model's first words (Gemini's session context lists the repository's files,
+# and the CLI re-sends it mid-session: w-g14 line 517, w-g32 line 514, w-g47 line 605). m2: the lists are complete on
+# every walk.
+MIN_WORD = 16
+_BARE_PATH = _re.compile(r"/\S*")
+
+
+def _strs(o):
+    return [s for _, s in af._leaves(o)]
+
+
+def model_strings(harness, file, rec) -> list:
+    if not isinstance(rec, dict):
+        return []
+    out = []
+    if harness == "codex" and file == "session":
+        p = rec.get("payload") if isinstance(rec.get("payload"), dict) else {}
+        if p.get("type") == "custom_tool_call" and isinstance(p.get("input"), str):
+            out.append(p["input"])
+            out += [a or b for a, b in _re.findall(r"`([^`]+)`|\"((?:[^\"\\]|\\.)+)\"", p["input"])]
+        if p.get("type") == "message" and p.get("role") == "assistant":
+            out += _strs(p.get("content"))
+    elif harness == "codex":
+        item = rec.get("item") if isinstance(rec.get("item"), dict) else {}
+        if item.get("type") == "agent_message":
+            out.append(item.get("text"))
+        if item.get("type") == "command_execution" and isinstance(item.get("command"), str):
+            m = _re.search(r"-lc (.*)$", item["command"], _re.S)
+            out.append(m.group(1).strip("'\"") if m else item["command"])
+    elif harness == "gemini" and file == "session":
+        if rec.get("type") == "gemini":
+            out.append(rec.get("content"))
+            for th in rec.get("thoughts") or []:
+                out += [th.get("subject"), th.get("description")]
+            for tc in rec.get("toolCalls") or []:
+                out += _strs(tc.get("args"))
+    elif harness == "gemini":
+        if rec.get("type") == "tool_use":
+            out += _strs(rec.get("parameters"))
+        if rec.get("type") == "message" and rec.get("role") == "assistant":
+            out.append(rec.get("content"))
+    elif rec.get("type") == "assistant":
+        for blk in (rec.get("message") or {}).get("content") or []:
+            if isinstance(blk, dict) and blk.get("type") == "tool_use":
+                out += _strs(blk.get("input"))
+            elif isinstance(blk, dict) and blk.get("type") in ("text", "thinking"):
+                out.append(blk.get("text") or blk.get("thinking"))
+    return [x.strip() for x in out if isinstance(x, str) and len(x.strip()) >= MIN_WORD
+            and not _BARE_PATH.fullmatch(x.strip())]
+
+
+def walk_dirs():
+    for h, pat in (("codex", r"w-o\d+"), ("gemini", r"w-g\d+"), ("claude-code", r"w\d+")):
+        for w in sorted(REH.iterdir()):
+            if _re.fullmatch(pat, w.name):
+                yield h, w
+
+
+def _walk_files(h, w):
+    fs = [("stream", f) for f in sorted(w.glob("turn-*.jsonl"))]
+    if h == "claude-code":
+        return fs + [("session", w / "transcript.jsonl")]
+    return fs + [("session", af.native_session(w))]
+
+
+def model_word_hits(walks=None) -> dict:
+    """{(harness, file, record kind, field path): [count, first walk line]} of furniture leaves holding model words."""
+    hits = {}
+    for h, w in (walk_dirs() if walks is None else walks):
+        for cls, f in _walk_files(h, w):
+            said, before = set(), []      # before: the CLI's text written before the model's first words in the file
+            for i, ln in enumerate(f.read_text(encoding="utf-8").split("\n"), 1):
+                if not ln:
+                    continue
+                rec = json.loads(ln)
+                mine = model_strings(h, cls, rec)
+                if not said and not mine:
+                    before.append("\n".join(af.furniture_strings(h, cls, rec)))
+                # a string the model copied from that earlier CLI text is the CLI's, not the model's words
+                said.update(x for x in mine if not any(x in b for b in before))
+                kind = af.record_kind(h, cls, rec)
+                want = [af._field_re(fld) for e in _sr.furniture_positions(h)
+                        if e["file"] == cls and e["record"] == kind and not e["account"] for fld in e["fields"]]
+                skip = af._account_paths(h, cls, kind)
+                for path, s in af._leaves(rec):
+                    if any(p.fullmatch(path) for p in want) and not any(p.fullmatch(path) for p in skip) \
+                            and any(x in s for x in said):
+                        key = (h, cls, kind, _re.sub(r"\[[0-9]+\]", "[]", path))
+                        hits.setdefault(key, [0, f"{w.name}/{f.name}:{i}"])[0] += 1
+    return hits
+
+
+class ReviewFold(unittest.TestCase):
+    def test_no_furniture_position_holds_the_models_words_on_any_walk(self):
+        self.assertEqual(model_word_hits(), {})
+
+    def test_the_lists_are_complete_on_every_walk(self):
+        self.assertEqual([p for h, w in walk_dirs() for p in completeness_problems(h, w.name)], [])
+
+    def test_witness_a_model_field_listed_goes_red(self):
+        # Gemini's toolCalls[].description renders the model's arguments (w-g21 native-turn-2 line 8): listed, it hits
+        gem = tuple(dict(e, fields=e["fields"] + ("toolCalls[].description",)) if e["record"] == "gemini" else e
+                    for e in _sr.FURNITURE["gemini"])
+        with mock.patch.dict(_sr.FURNITURE, {"gemini": gem}):
+            self.assertTrue(model_word_hits([("gemini", REH / "w-g21")]))
+
+    def test_witness_a_dropped_kind_goes_red(self):
+        for h, kind, walk in (("claude-code", "attachment:queued_command", "w003"),
+                              ("claude-code", "system/task_started", "w003")):
+            cut = tuple(e for e in _sr.FURNITURE[h] if e["record"] != kind)
+            with self.subTest(kind=kind), mock.patch.dict(_sr.FURNITURE, {h: cut}):
+                self.assertTrue(completeness_problems(h, walk))
 
 
 class Native(unittest.TestCase):
