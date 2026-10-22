@@ -237,6 +237,9 @@ class RoadAMutants(Witness):
         self.refused(self.mutate(lambda r: r[self.c].__setitem__("content", r[self.c]["content"][0]["text"])),
                      OFF_SHAPE)
 
+    def test_m3g_reentry_content_a_one_key_object(self):
+        self.refused(self.mutate(lambda r: r[self.c].__setitem__("content", {"text": "x"})), OFF_SHAPE)
+
     def test_m3d_reentry_text_not_opening_the_wrapper(self):
         self.refused(self.mutate(lambda r: self.text(r).__setitem__("text", self.text(r)["text"][1:])), OFF_SHAPE)
 
@@ -257,6 +260,13 @@ class RoadAMutants(Witness):
             self.assertTrue(r[self.c + 1]["id"].endswith("_response"))
             r[self.c], r[self.c + 1] = r[self.c + 1], r[self.c]
         self.refused(self.mutate(swap), NOT_FIRST_RECORD)
+
+    def test_m14_a_new_turn_between_the_reentry_and_its_patch(self):
+        """REVIEW-vendor-b28-DESIGN MINOR 2: once a new turn closes the window (F-B26-9) the pending re-entry still
+        refuses any later patch by the pending name, not as a reorder outside a resume."""
+        new = {"id": "synthetic-new-turn", "timestamp": self.a1[self.c]["timestamp"], "type": "user",
+               "content": [{"text": "synthetic"}]}
+        self.refused(self.mutate(lambda r: r.insert(self.c + 1, new)), NOT_CONSUMED)
 
     def test_m5_patch_without_remove_ids(self):
         self.refused(self.mutate(lambda r: r[self.p]["$patch"].pop("removeIds")), NOT_CONSUMED)
