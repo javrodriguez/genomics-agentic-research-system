@@ -1301,6 +1301,36 @@
       "tries": 0
     }
   },
+  "deferred_arms": {
+    "G": {
+      "status": "deferred",
+      "by": "Javier",
+      "words": "Javier's reply \"gemini-defer yes\", Thu 22 Oct 2026 09:19:59 EDT",
+      "records": {
+        "decision": "OD105",
+        "ask": "gemini-defer"
+      },
+      "starts_only_on": "a later recorded owner go, after the Claude and Codex results",
+      "if_go": "runs exactly as registered here, published as a follow-up he chose after seeing those results",
+      "design_changed": false,
+      "caveat": "Gemini CLI stays pinned at the registered version, but the model Google serves under `gemini-3.8-flash` and `gemini-3.5-flash-lite` can change on Google's side between the freeze and a later run; arm G's served model is verified by name only (D8:310), so a deferred G result measures what Google served on its run dates, not necessarily what it served at the freeze.",
+      "blind_sample": "The original report's blind draw covers the five run models (arm A's three, arm O's two) with the registered per-cell share: each (arm, harness, model) cell keeps the share of about_n it has in the full seven-model design. A follow-up, only after a committed go record, draws the two arm G cells under the same design and the same shares; labelling/sample.py withholds the deferred arm's models from the original draw.",
+      "analysis": "The original report adjusts the three per-harness contrasts with Holm at m = 3, arm G's contrast untested and still counted in m. If arm G runs later, the follow-up prints the full-family values (arm G tested) beside the original adjusted values, labelled the registered full-design computation, never a correction; the original report's values stand as published.",
+      "registered_cap": {
+        "vendor": "google",
+        "usd": 220,
+        "decision": "OD107",
+        "ask": "gcap-220",
+        "words": "Javier's reply \"gcap-220 yes\", Thu 22 Oct 2026 10:43:19 EDT",
+        "why": "the Google cap a later go needs is registered at the freeze, so the go runs exactly as registered"
+      },
+      "rows": 360,
+      "models": [
+        "gemini-3.8-flash",
+        "gemini-3.5-flash-lite"
+      ]
+    }
+  },
   "amendments": {
     "O": "Javier's letter \"D8: B2\", Tue 6 Oct 2026 23:43:50 EDT",
     "G": "Javier's letter \"D8: B2\", Tue 6 Oct 2026 23:43:50 EDT"
@@ -24570,10 +24600,32 @@
   },
   "caps": {
     "vendors": {
-      "openai": 260,
-      "google": 140
+      "openai": 180,
+      "google": 220
     },
     "total": 400
+  },
+  "caps_decision": {
+    "decision": "OD107",
+    "ask": "gcap-220",
+    "by": "Javier",
+    "words": "Javier's reply \"gcap-220 yes\", Thu 22 Oct 2026 10:43:19 EDT",
+    "at": "2026-10-22T14:43:19+00:00",
+    "vendors": {
+      "openai": 180,
+      "google": 220
+    },
+    "total": 400,
+    "supersedes": {
+      "commitment": "commitments.caps",
+      "source": "plans/gap-study-round-4/CP5-requirements.md line 57",
+      "vendors": {
+        "openai": 260,
+        "google": 140
+      },
+      "total": 400,
+      "why": "written before OD107, it stays quoted byte for byte as its source requires; the caps in force are `caps` and costs.CAPS"
+    }
   },
   "blind_sample_models": 7,
   "unused_labels": [
