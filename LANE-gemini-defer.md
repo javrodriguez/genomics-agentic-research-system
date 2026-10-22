@@ -98,3 +98,37 @@ Module runs on the Mac (light gate read before each batch; `run_named.py` is a s
 2. When it lands, `prereg.py --status` prints G deferred, `running_models` drops to five, completeness and the blind draw withhold G, and batch refuses G rows; the counted-run launcher's repo can offer `deferred_go_records()` (read at HEAD, as `history()` is), else batch reads `prereg.committed_go_records`.
 3. A go record is `evals/gap-study-4/deferred-arm-go.json`, a JSON list of `{kind: "deferred arm go", arm: "G", by: "Javier", decision, ask, at}`, committed after his go.
 4. Not built here, as briefed: the launcher's A+O queue and the ledger's no-G rule, and the D8 addendum.
+
+## Review fold (REVIEW-gemini-defer-dd7126a.md, PASS WITH FIXES)
+
+Folded Thu 22 Oct 2026, about 12:50 to 13:40 EDT, by an Opus 5.5 medium builder for glitch-f1, on top of `dd7126a0`.
+glitch-f1's rulings, under Javier's standing delegation: MAJOR-1 adopted (it reverses the earlier "D8 addendum only", because D8 sits outside the frozen file), MINOR-1 adopted, the four NITs adopted.
+Red runs: the new tests against `dd7126a0`'s code, in a scratch export (focused classes) and a detached scratch worktree (the in-memory `describe()`, which reads git).
+
+| Commit | Finding | What |
+|---|---|---|
+| `9a3169ad` | MAJOR-1 | `build_draft.CAPS_DECISION` and `d["caps_decision"]` beside `caps` |
+| `3aac3fc3` | MINOR-1 | `check_results.RUNTIME_PATHS` holds `deferred-arm-go.json` |
+| `2bf97548` | NIT-1 to NIT-4 | the staged go record test, completeness after a go, the status line, one deferral call per row |
+
+**MAJOR-1.** `caps_decision` = decision OD107, ask gcap-220, by Javier, his words ("gcap-220 yes", Thu 22 Oct 2026 10:43:19 EDT), at 2026-10-22T14:43:19+00:00, vendors openai 180 and google 220, total 400, and `supersedes` {commitment `commitments.caps`, source CP5-requirements line 57, vendors openai 260 and google 140, total 400, why}.
+The quote `commitments.caps` stays byte for byte.
+`tests/test_build_draft.py` R16.caps pins the typed dict, binds its vendors and total to `caps` and its superseded figures to `QUOTES["caps"]` and the commitment's source; description mutants `caps-decision` (openai 260) and `caps-superseded` (google 220).
+- Red, `description_problems(describe())` on `dd7126a0`: `['R9.sessions', 'R16.caps']`, no `caps_decision`.
+- Green on the lane: `['R9.sessions']` only (red before this lane, the ruled regeneration's), the three caps mutants red, `core_problems(assemble()) == []`.
+- prereg-draft.json is NOT regenerated here: the key enters it at the single regeneration in the freeze merge.
+
+**MINOR-1.** `RuntimeTiming.test_a_go_record_before_or_with_the_freeze_is_refused`: a go record in the freeze commit gives exactly one "run output committed before or with the freeze"; one committed before the freeze is refused; one after it passes.
+Red: `'deferred-arm-go.json' not found in (...)`. Green: RuntimeTiming 4 OK.
+Not built: the review's optional future-`at` refusal in `go_record_problems` (not in the ruling).
+
+**NIT-1.** `DeferredArm.test_go_record_is_read_committed` asserts no go while the record is only staged; it passes on correct code by design, and the review's M07 (read the index) now dies.
+**NIT-2.** `completeness.summarize(..., go_records=None)`: after a valid committed go, a G half-cell with no take reads "no takes" with reason "no committed graded take"; no record, arm O's or one not by Javier keeps "deferred (Javier, 22 Oct 2026)". The records are read (`prereg.committed_go_records`) only when the design defers an arm. Red: TypeError (no `go_records`).
+**NIT-3.** `prereg.status_lines` appends "; deferred: ..." only when a planned arm is deferred. Red: `'... optional: C; deferred: '`.
+**NIT-4.** `row_problems` binds `deferral := self.deferral_problem(r)`. Red: calls `[1, 1, 2, 2, 3]` against `[1, 2, 3]`.
+
+Green on the Mac (light gate read before each batch): test_batch.TestDeferredArm 5, test_prereg_status.DeferredArm 6 and StatusIsRound4 4, test_pipeline RuntimeTiming 4, Reporting 11, CostAccounting 11, FreezeCoverage 11: all OK.
+Added lines: `lint_language.scan_text` finds nothing.
+Whole modules on the Mac, at `2bf97548` in a scratch worktree: test_batch 123 OK, test_prereg_status 10 OK.
+Mutants: the review's driver extended in a scratch copy (`/private/tmp/claude-501/-Users-javrodher-glitch/de671dc9-9274-4a09-b079-1f80eb793658/scratchpad/fold/mutants-fold.py`, output `mutants-fold.out` beside it), run on a detached scratch worktree at `2bf97548`: the review's 30 plus M31 to M37 (caps_decision openai 260, caps_decision not emitted, supersedes google 220, the go record out of RUNTIME_PATHS, completeness ignoring a go, the empty "deferred:" back, deferral_problem asked twice): 37 killed, 0 survivors (M07 now killed by DeferredArm). The `DESC` runner ignores R9.sessions, which was red before this lane.
+Left to athena's battery, as before: whole test_build_draft and test_pipeline, the labelling 16-shard sweep and the witnesses.
