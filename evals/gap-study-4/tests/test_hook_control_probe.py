@@ -243,6 +243,18 @@ class DiffRule(unittest.TestCase):
                    for k in ("off", "on"))
         self._refused(rt.CODEX, study, study, off, on, road="C0", words="base's bytes")
 
+    def test_a_gemini_twin_off_the_study_s_serialisation_refuses(self):
+        # REVIEW NIT 2 (mutant R6): the same document in other bytes (compact, or with a duplicate key) refuses
+        rel = take_config.GEMINI_SETTINGS_PATH
+        study = study_files(rt.GEMINI)
+        t = hcp.hook_twins(rt.GEMINI, study, fired_path=FIRED)
+        o, n = json.loads(t["off"][rel]), json.loads(t["on"][rel])
+        compact = {rel: json.dumps(o, sort_keys=True).encode()}
+        self._refused(rt.GEMINI, study, study, compact, t["on"], words="serialisation")
+        dup = {rel: t["on"][rel].replace(b'{\n', b'{\n  "hooks": {},\n', 1)}
+        self.assertEqual(json.loads(dup[rel]), n)
+        self._refused(rt.GEMINI, study, study, t["off"], dup, words="serialisation")
+
     def test_the_flipped_line_must_sit_under_features(self):
         study = {"config.toml": b'model = "m"\n\n[features]\nhooks = false\n\n[other]\nhooks = false\n'}
         planted = (json.dumps(hcp.hooks_doc(rt.CODEX, FIRED), indent=2, sort_keys=True) + "\n").encode()
@@ -435,9 +447,18 @@ class Bindings(unittest.TestCase):
 
 
 # ------------------------------------------------------------------------------------------------ the verdict
-def unit(run, harness, role, *, selftest="selftest\n", reads=("selftest\nSessionStart\n",), scenario=None):
+GLIVE = {"served": 2}
+OLIVE = {"exit_class": "error", "first_type": "thread.started"}
+
+
+def unit(run, harness, role, *, selftest="selftest\n", reads=("selftest\nSessionStart\n",), scenario=None,
+         liveness=None):
+    live = GLIVE if harness == rt.GEMINI else OLIVE
     return {"scenario": scenario or ("HG" if harness == rt.GEMINI else "HO-C0"), "run": run, "harness": harness,
-            "role": role, "selftest_read": selftest, "reads": list(reads)}
+            "role": role, "selftest_read": selftest, "reads": list(reads),
+            "final_read": list(reads)[-1] if reads else selftest,
+            "liveness": list(liveness) if liveness is not None else [dict(live) for _ in reads],
+            "cli_version_rc": 0, "failure": None, "resume_skipped": None}
 
 
 def good_units(roads=("HO-C0",)):
@@ -456,7 +477,10 @@ def replace(units, run, scenario=None, **kw):
     out = []
     for u in units:
         if u["run"] == run and (scenario is None or u["scenario"] == scenario):
-            u = dict(u, **{("selftest_read" if k == "selftest" else k): v for k, v in kw.items()})
+            new = {("selftest_read" if k == "selftest" else k): v for k, v in kw.items()}
+            if "reads" in new and "final_read" not in new:      # the host's read after teardown follows the last one
+                new["final_read"] = new["reads"][-1] if new["reads"] else new.get("selftest_read", u["selftest_read"])
+            u = dict(u, **new)
         out.append(u)
     return out
 
@@ -478,9 +502,73 @@ class Verdict(unittest.TestCase):
         got = self.v(replace(good_units(), "O-on-bypass", reads=("selftest\n",)))
         self.assertEqual(got["arms"]["O"]["verdict"], "INCONCLUSIVE")
 
-    def test_every_on_twin_must_fire_c0_silent_c1_firing_is_not_a_pass(self):
-        units = replace(good_units(("HO-C0", "HO-C1")), "O-on-bypass", scenario="HO-C0", reads=("selftest\n",))
-        self.assertEqual(self.v(units)["arms"]["O"]["verdict"], "INCONCLUSIVE")
+    def test_per_road_reading_one_codex_road_passing_is_enough(self):
+        # glitch-f1's ruling m3 (revising "every on twin must fire" once liveness is bound): a road passes when its on
+        # twin fires and its live off twins stay silent; the Codex arm passes when one road passes and no off twin fires
+        two = good_units(("HO-C0", "HO-C1"))
+        units = replace(two, "O-on-bypass", scenario="HO-C0", reads=("selftest\n",))
+        got = self.v(units)
+        self.assertEqual(got["arms"]["O"]["verdict"], "PASS", got["arms"]["O"]["reasons"])
+        self.assertEqual(got["arms"]["O"]["roads"], {"HO-C0": False, "HO-C1": True})
+        both = replace(replace(two, "O-on-bypass", scenario="HO-C0", reads=("selftest\n",)), "O-on-bypass",
+                       scenario="HO-C1", reads=("selftest\n",))
+        self.assertEqual(self.v(both)["arms"]["O"]["verdict"], "INCONCLUSIVE")
+        # an off twin firing on the road that did not pass still fails the arm
+        fired = replace(units, "O-off-study", scenario="HO-C0", reads=("selftest\nSessionStart\n",))
+        self.assertEqual(self.v(fired)["arms"]["O"]["verdict"], "FAIL")
+        # a road whose off twin is not live does not pass, even with its on twin firing
+        dead = replace(units, "O-off-bypass", scenario="HO-C1",
+                       liveness=[{"exit_class": "exec-failed", "first_type": None}])
+        self.assertEqual(self.v(dead)["arms"]["O"]["verdict"], "INCONCLUSIVE")
+
+    def test_an_off_twin_counts_as_silent_only_when_live(self):
+        # REVIEW M1: an off twin whose CLI never got as far as its on twin is no evidence for the switch
+        for run, live in (("O-off-bypass", [{"exit_class": "exec-failed", "first_type": None}]),
+                          ("O-off-study", [{"exit_class": "error", "first_type": None}]),
+                          ("O-off-study", [{"exit_class": "timeout", "first_type": "thread.started"}]),
+                          ("O-off-study", []),
+                          ("O-off-study", [dict(OLIVE), dict(OLIVE)])):
+            with self.subTest(run=run, live=live):
+                got = self.v(replace(good_units(), run, liveness=live))
+                self.assertEqual(got["arms"]["O"]["verdict"], "INCONCLUSIVE")
+        for live in ([{"served": 0}, {"served": 1}], [{"served": 2}, {"served": None}], [{"served": 2}]):
+            with self.subTest(gemini=live):
+                got = self.v(replace(good_units(), "G-off", liveness=live))
+                self.assertEqual(got["arms"]["G"]["verdict"], "INCONCLUSIVE")
+        # both twins equally quiet on the stream with the same exit class is live
+        quiet = [{"exit_class": "error", "first_type": None}]
+        units = good_units()
+        for run in ("O-on-bypass", "O-off-bypass", "O-off-study"):
+            units = replace(units, run, liveness=quiet)
+        self.assertEqual(self.v(units)["arms"]["O"]["verdict"], "PASS")
+
+    def test_cli_version_must_exit_zero_and_any_unit_failure_blocks_a_pass(self):
+        # REVIEW M1 (cli_version) and m1 (every unit's failure is read, the informational run's too)
+        for run in ("G-on", "G-off", "O-on-bypass", "O-off-study", "O-on-study"):
+            arm = "G" if run.startswith("G") else "O"
+            with self.subTest(run=run, what="cli"):
+                self.assertEqual(self.v(replace(good_units(), run, cli_version_rc=126))["arms"][arm]["verdict"],
+                                 "INCONCLUSIVE")
+            with self.subTest(run=run, what="failure"):
+                self.assertEqual(self.v(replace(good_units(), run, failure={"type": "RuntimeError"}))["arms"][arm][
+                    "verdict"], "INCONCLUSIVE")
+        # Gemini always runs two processes (the design's open call 9): a skipped resume is not a pass
+        got = self.v(replace(good_units(), "G-off", resume_skipped="no session id"))
+        self.assertEqual(got["arms"]["G"]["verdict"], "INCONCLUSIVE")
+        # an off twin that fired still fails, whatever else failed
+        got = self.v(replace(good_units(), "G-off", failure={"type": "X"}, reads=("selftest\nSessionStart\n",)))
+        self.assertEqual(got["arms"]["G"]["verdict"], "FAIL")
+
+    def test_off_twins_are_judged_on_the_host_read_after_teardown(self):
+        # REVIEW m2: a write after the last per-process read (a CLI still running after its client's timeout)
+        got = self.v(replace(good_units(), "O-off-study", final_read="selftest\nSessionStart\n"))
+        self.assertEqual(got["arms"]["O"]["verdict"], "FAIL")
+        got = self.v(replace(good_units(), "G-off", final_read="selftest\nSessionEnd\n"))
+        self.assertEqual(got["arms"]["G"]["verdict"], "FAIL")
+        got = self.v(replace(good_units(), "O-off-bypass", final_read=None))
+        self.assertEqual(got["arms"]["O"]["verdict"], "INCONCLUSIVE")
+        got = self.v(replace(good_units(), "O-off-bypass", final_read="rewritten\n"))
+        self.assertEqual(got["arms"]["O"]["verdict"], "FAIL")
 
     def test_session_start_in_process_one_is_the_pass_condition(self):
         for reads in (("selftest\nBeforeAgent\n",), ("selftest\n", "selftest\nSessionStart\n"), ()):
@@ -683,7 +771,9 @@ class FakeBox:
                 if self.mode == "ignores-switch" or (self.mode == "honest" and on):
                     if doc.get("hooks"):
                         self._fire(GEMINI_FIRES[k])
-                Path(self.tree, smp.STUB_OUT, "state.json").write_text(json.dumps({"held": None, "done": False}))
+                self.served = getattr(self, "served", 0) + (2 if k == 1 else 1)
+                Path(self.tree, smp.STUB_OUT, "state.json").write_text(json.dumps({"held": None, "done": False,
+                                                                                    "requests": self.served}))
                 out = json.dumps({"type": "init", "session_id": SESSION}) + "\n" if k == 1 else "{}\n"
                 return rt.Completed(0, out, "")
             if "codex" in a and "exec" in a:
@@ -703,12 +793,64 @@ class FakeBox:
         return rt.Completed(0, "", "")
 
 
-def run_fake(names, mode="honest", **kw):
+class OffDies(FakeBox):
+    """REVIEW M1's reproduction (its gaps.py): the honest box, except every off-switch CLI process dies at once
+    (a docker exec error: 126, no stream)."""
+
+    def run(self, argv, *, env=None, timeout=None):
+        a = list(argv)
+        if a[1:2] == ["exec"] and a[-1] != "--version" and not ("/bin/bash" in a and a[-1].endswith(" selftest")) \
+                and smp.STUB_FILE not in " ".join(a) and (("gemini" in a and "-p" in a)
+                                                         or ("codex" in a and "exec" in a[2:])):
+            if "gemini" in a:
+                off = json.loads(Path(self.cfg, take_config.GEMINI_SETTINGS_PATH).read_text())["hooksConfig"][
+                    "enabled"] is False
+            else:
+                off = "\nhooks = false\n" in Path(self.cfg, "config.toml").read_text()
+            if off:
+                self.calls.append((a, dict(env or {})))
+                return rt.Completed(126, "", "OCI runtime exec failed: unable to start container process")
+        return super().run(argv, env=env, timeout=timeout)
+
+
+class Off2Raises(FakeBox):
+    """REVIEW m1's reproduction: G-off's resume raises in the docker client."""
+
+    def run(self, argv, *, env=None, timeout=None):
+        a = list(argv)
+        if a[1:2] == ["exec"] and "-r" in a and "gemini" in a:
+            if json.loads(Path(self.cfg, take_config.GEMINI_SETTINGS_PATH).read_text())["hooksConfig"]["enabled"] \
+                    is False:
+                raise RuntimeError("docker client lost the daemon")
+        return super().run(argv, env=env, timeout=timeout)
+
+
+class LateWriter(FakeBox):
+    """REVIEW m2: an off Codex process that times out in the client and writes SessionStart afterwards (the write
+    lands before teardown, after the per-process read)."""
+
+    def run(self, argv, *, env=None, timeout=None):
+        a = list(argv)
+        if a[1:3] == ["rm", "--force"]:
+            if getattr(self, "pending", None):
+                self._fire(self.pending)
+                self.pending = None
+        if a[1:2] == ["exec"] and "codex" in a and "exec" in a[2:] and "resume" not in a \
+                and "\nhooks = false\n" in Path(self.cfg, "config.toml").read_text():
+            self.calls.append((a, dict(env or {})))
+            self.pending = ["SessionStart"]
+            e = TimeoutError("client timed out")
+            e.stdout = json.dumps({"type": "thread.started", "thread_id": THREAD}) + "\n"
+            raise e
+        return super().run(argv, env=env, timeout=timeout)
+
+
+def run_fake(names, mode="honest", box_class=None, **kw):
     d = os.path.realpath(tempfile.mkdtemp(prefix="hc-"))
     parent = os.path.join(d, "parent")
     os.mkdir(parent, 0o700)
     out = os.path.join(d, "stub-probe-t")
-    box = FakeBox(mode, **kw)
+    box = (box_class or FakeBox)(mode, **kw)
     a = mock.Mock(scratch_parent=parent, output=out, gemini_image=GEMINI_IMAGE, codex_image=CODEX_IMAGE, reason="r")
     with mock.patch.object(hcp.sys, "platform", "linux"), mock.patch.object(hcp, "take_resources",
                                                                             lambda: dict(RESOURCES)):
@@ -773,6 +915,35 @@ class FullRunOnFakes(unittest.TestCase):
             self.assertFalse([x for x, _e in box.calls if x[1] == "exec" and "codex" in x and x.count("exec") >= 2])
             self.assertTrue([x for x, _e in box.calls if x[1] == "exec" and "/bin/bash" in x])
             self.assertTrue(all(x["precheck"] for x in s["units"]))
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_an_off_twin_that_never_starts_is_never_a_pass(self):
+        # REVIEW M1, red on d9d9b79e ("OffDies verdict PASS problems []")
+        d, out, box, s = run_fake(["HG", "HO-C0", "HO-C1"], box_class=OffDies)
+        try:
+            self.assertEqual(s["verdict"]["verdict"], "INCONCLUSIVE", json.dumps(s["verdict"]["arms"], indent=1)[:2000])
+            self.assertEqual({a: r["verdict"] for a, r in s["verdict"]["arms"].items()},
+                             {"G": "INCONCLUSIVE", "O": "INCONCLUSIVE"})
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_a_unit_that_failed_is_never_a_pass(self):
+        # REVIEW m1, red on d9d9b79e ("Off2Raises verdict PASS problems ['HG/G-off']")
+        d, out, box, s = run_fake(["HG"], box_class=Off2Raises)
+        try:
+            self.assertEqual(s["verdict"]["verdict"], "INCONCLUSIVE")
+            self.assertIn("HG/G-off", s["problems"])
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_a_late_write_in_an_off_twin_fails(self):
+        # REVIEW m2: the host's read after teardown sees what the per-process read missed
+        d, out, box, s = run_fake(["HO-C0"], box_class=LateWriter)
+        try:
+            self.assertEqual(s["verdict"]["verdict"], "FAIL", json.dumps(s["verdict"]["arms"], indent=1)[:2000])
+            unit_dir = os.path.join(out, "HO-C0", "O-off-study")
+            self.assertEqual(Path(unit_dir, "fired-after-teardown.log").read_text(), "selftest\nSessionStart\n")
         finally:
             shutil.rmtree(d, ignore_errors=True)
 

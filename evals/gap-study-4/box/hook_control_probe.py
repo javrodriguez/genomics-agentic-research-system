@@ -168,6 +168,9 @@ DEPARTURES = (
     "would refuse it by name and is not run (the control isolates the switch); census_names records that refusal",
     "Codex: --dangerously-bypass-hook-trust is appended after run_take.check_codex_turn reads the study argv, on the two "
     "bypass runs only; the per-process cap is 120 s (B27: 600 s); a non-zero exit is expected on C0 and C1",
+    "the diff rule is checked per run on the twin pair built at that run's own run tree, so the files actually run "
+    "differ from run to run also in the paths that name the tree (the Codex trust table's key, every marker command's "
+    "fired.log path); twin_sha256 therefore differs across runs, while study_sha256 is computed at the same path",
     "Codex C1: config.toml carries a dead local provider (model_provider and [model_providers.local], base_url "
     "http://127.0.0.1:9, requires_openai_auth = false) in all four runs; its key names are not verified at 0.162.1",
 )
@@ -474,14 +477,74 @@ def events_of(selftest_read, reads) -> dict:
     return {"selftest_ok": ok, "events": events, "anomalies": anomalies}
 
 
+EXEC_FAILED_CODES = (125, 126, 127)      # docker exec's own failures: the CLI never ran
+
+
+def exit_class(code, timed_out: bool) -> str:
+    """A process's exit, classed for the liveness comparison (REVIEW M1)."""
+    if timed_out:
+        return "timeout"
+    if code is None or code in EXEC_FAILED_CODES:
+        return "exec-failed"
+    return "ok" if code == 0 else "error"
+
+
+def first_type(stdout):
+    """The `type` of a stream's first JSON record, or None."""
+    for line in (stdout or "").split("\n"):
+        try:
+            rec = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(rec, dict):
+            return rec.get("type") if isinstance(rec.get("type"), str) else None
+    return None
+
+
+def liveness_problem(harness: str, off_live, on_live):
+    """REVIEW M1 (glitch-f1's ruling): an off twin counts as silent only with the same liveness as its on twin, per
+    process. Gemini: the stub served at least one request in that process (a model request comes after SessionStart).
+    Codex: the same exit class, never a docker exec failure, and the same first stream record type. None when live."""
+    off_live, on_live = list(off_live or []), list(on_live or [])
+    if not off_live or len(off_live) != len(on_live):
+        return f"{len(off_live)} process(es) ran against its on twin's {len(on_live)}"
+    for k, (o, n) in enumerate(zip(off_live, on_live), 1):
+        if harness == GEMINI:
+            if type(o.get("served")) is not int or o["served"] < 1:
+                return f"process {k}: the stub served no request"
+        else:
+            if o.get("exit_class") == "exec-failed":
+                return f"process {k}: the CLI never ran (a docker exec failure)"
+            if (o.get("exit_class"), o.get("first_type")) != (n.get("exit_class"), n.get("first_type")):
+                return (f"process {k}: exit {o.get('exit_class')}/{o.get('first_type')} against its on twin's "
+                        f"{n.get('exit_class')}/{n.get('first_type')}")
+    return None
+
+
+def unit_blockers(u: dict) -> list:
+    """REVIEW m1 and M1: what keeps any run (the informational one too) from supporting a PASS: a failure (the pre-run
+    check's included), a `--version` that did not exit 0, a Gemini resume that did not run."""
+    out = []
+    if u.get("failure"):
+        out.append(f"the run failed ({(u['failure'] or {}).get('type') if isinstance(u['failure'], dict) else u['failure']})")
+    if u.get("cli_version_rc") != 0:
+        out.append(f"the CLI's --version exited {u.get('cli_version_rc')}")
+    if u.get("harness") == GEMINI and u.get("resume_skipped"):
+        out.append("the Gemini resume did not run")
+    return out
+
+
 def hook_verdict(units: list, arms) -> dict:
-    """glitch-f1's verdict over the runs' marker reads. Per arm: FAIL if any off twin logged an event; else
-    INCONCLUSIVE if an on twin did not log SessionStart in process 1 after a good self-test, an off twin had a bad
-    self-test, no process or a lost log, or a required run is missing; else PASS. Overall: the worst arm."""
+    """glitch-f1's verdict (the rulings on the review of d9d9b79e). Per arm: FAIL if any off twin logged an event in
+    a per-process read or the host's read after teardown; else INCONCLUSIVE if any run (on, off or informational) has
+    a blocker or a required run is missing; else per road: a road passes when its on twin logged SessionStart in
+    process 1 after a good self-test and each off twin is live (liveness_problem), had a good self-test, a final read
+    and no event. Gemini (one road) passes with its road; Codex passes when at least one road passes; otherwise
+    INCONCLUSIVE. Overall: the worst arm."""
     out = {}
     for arm in arms:
         mine = [u for u in units if ARM.get(u.get("harness")) == arm]
-        fail, inc, runs = [], [], {}
+        fail, inc, runs, roads, road_why = [], [], {}, {}, []
         scenarios = sorted({u["scenario"] for u in mine})
         if not mine:
             inc.append("no run of this arm")
@@ -490,26 +553,58 @@ def hook_verdict(units: list, arms) -> dict:
             need = {r.name for r in RUNS.get(s, ()) if r.role in ("on", "off")}
             for missing in sorted(need - have):
                 inc.append(f"{s}/{missing}: not run")
+        judged = {}
         for u in mine:
             key = f"{u['scenario']}/{u['run']}"
-            e = events_of(u.get("selftest_read"), u.get("reads") or [])
-            runs[key] = dict(e, role=u["role"])
-            if u["role"] == "off":
-                if any(e["events"]):
-                    fail.append(f"{key}: an off twin logged {sorted({x for p in e['events'] for x in p})}")
-                elif not e["selftest_ok"]:
-                    inc.append(f"{key}: the self-test failed")
-                elif not e["events"]:
-                    inc.append(f"{key}: no process ran")
-                elif e["anomalies"]:
-                    inc.append(f"{key}: {'; '.join(e['anomalies'])}")
-            elif u["role"] == "on":
+            reads = list(u.get("reads") or [])
+            e = events_of(u.get("selftest_read"), reads)
+            final = u.get("final_read")
+            ef = events_of(u.get("selftest_read"), reads + [final]) if isinstance(final, str) else e
+            judged[key] = (u, e, ef)
+            runs[key] = dict(e, role=u["role"], late=ef["events"][len(e["events"]):] if ef is not e else None)
+            if u["role"] == "off" and any(ef["events"]):
+                fail.append(f"{key}: an off twin logged {sorted({x for p in ef['events'] for x in p})}")
+            inc += [f"{key}: {b}" for b in unit_blockers(u)]
+        for s in scenarios:
+            in_s = [judged[k] for k in judged if k.startswith(s + "/")]
+            on = [x for x in in_s if x[0]["role"] == "on"]
+            offs = [x for x in in_s if x[0]["role"] == "off"]
+            why = []
+            if len(on) != 1:
+                why.append("no on twin")
+            else:
+                u, e, _ef = on[0]
                 if not e["selftest_ok"]:
-                    inc.append(f"{key}: the self-test failed")
+                    why.append(f"{u['run']}: the self-test failed")
                 elif not e["events"] or PASS_EVENT not in e["events"][0]:
-                    inc.append(f"{key}: the on twin did not log {PASS_EVENT} in process 1")
-        verdict = "FAIL" if fail else "INCONCLUSIVE" if inc else "PASS"
-        out[arm] = {"verdict": verdict, "reasons": fail + inc, "runs": runs}
+                    why.append(f"{u['run']}: the on twin did not log {PASS_EVENT} in process 1")
+            need = sum(1 for r in RUNS.get(s, ()) if r.role == "off")
+            if len(offs) != need:
+                why.append("an off twin is missing")
+            for u, e, ef in offs:
+                if not e["selftest_ok"]:
+                    why.append(f"{u['run']}: the self-test failed")
+                elif not e["events"]:
+                    why.append(f"{u['run']}: no process ran")
+                elif e["anomalies"]:
+                    why.append(f"{u['run']}: {'; '.join(e['anomalies'])}")
+                elif not isinstance(u.get("final_read"), str):
+                    why.append(f"{u['run']}: no host read after teardown")
+                elif on:
+                    lp = liveness_problem(u["harness"], u.get("liveness"), on[0][0].get("liveness"))
+                    if lp:
+                        why.append(f"{u['run']}: not live: {lp}")
+            roads[s] = not why
+            road_why += [f"{s}: {w}" for w in why]
+        if fail:
+            verdict = "FAIL"
+        elif inc:
+            verdict = "INCONCLUSIVE"
+        elif arm == ARM[CODEX]:
+            verdict = "PASS" if any(roads.values()) else "INCONCLUSIVE"
+        else:
+            verdict = "PASS" if roads and all(roads.values()) else "INCONCLUSIVE"
+        out[arm] = {"verdict": verdict, "reasons": fail + inc + road_why, "roads": roads, "runs": runs}
     order = {"PASS": 0, "INCONCLUSIVE": 1, "FAIL": 2}
     overall = max((r["verdict"] for r in out.values()), key=order.get, default="INCONCLUSIVE")
     return {"verdict": overall, "arms": out}
@@ -618,7 +713,8 @@ def run_unit(runtime, env: dict, scenario: str, run: Run, *, image: str, scratch
     rec = {"scenario": scenario, "run": run.name, "harness": harness, "role": run.role, "twin": run.twin,
            "bypass_trust": run.bypass, "road": ROADS[scenario], "image": image, "started_at": time.time(),
            "departures": list(DEPARTURES), "scratch": {"base": base, "run_tree": run_tree, "config": cfg},
-           "processes": [], "reads": [], "selftest_read": None, "precheck": None, "inner": [],
+           "processes": [], "reads": [], "selftest_read": None, "precheck": None, "inner": [], "liveness": [],
+           "cli_version_rc": None, "resume_skipped": None, "final_read": None,
            "predicted_events": list(PREDICTED_G_ON) if (harness == GEMINI and run.twin == "on") else None}
     study = study_files(harness, run_tree)
     twins = hook_twins(harness, study, fired_path=fired, road=ROADS[scenario])
@@ -684,6 +780,8 @@ def run_unit(runtime, env: dict, scenario: str, run: Run, *, image: str, scratch
         argv, cenv = argv_for(["gemini" if harness == GEMINI else "codex", "--version"])
         v = runtime.run(argv, env=cenv, timeout=120)
         rec["cli_version"] = {"returncode": v.returncode, "stdout": v.stdout[-500:], "stderr": v.stderr[-1000:]}
+        rec["cli_version_rc"] = v.returncode
+        served_before = 0
         session = None
         for k in (1, 2):
             if k == 2 and session is None:
@@ -715,6 +813,12 @@ def run_unit(runtime, env: dict, scenario: str, run: Run, *, image: str, scratch
                 state = ownership.operator_read(runtime, image=image, root_kind="run_tree", run_tree=run_tree,
                                                 config_dir=cfg, rel_path=f"{smp.STUB_OUT}/state.json", caller_env=env)
                 prow["stub_state"] = json.loads(state) if state else None
+                total = (prow["stub_state"] or {}).get("requests")
+                served = total - served_before if type(total) is int else None
+                served_before = total if type(total) is int else served_before
+                rec["liveness"].append({"served": served})
+            else:
+                rec["liveness"].append({"exit_class": exit_class(code, timed_out), "first_type": first_type(stdout)})
             if k == 1:
                 session = smp.session_id_of(stdout) if harness == GEMINI else thread_id_of(stdout)
                 prow["session_or_thread_id"] = session
@@ -746,6 +850,13 @@ def run_unit(runtime, env: dict, scenario: str, run: Run, *, image: str, scratch
         except Exception as e:  # noqa: BLE001
             rec["restore"] = {"error": f"{type(e).__name__}: {str(e)[:500]}"}
     if restored:
+        # REVIEW m2: every writer is dead now; the host's own read of fired.log judges the off twins
+        final = os.path.join(run_tree, FIRED_REL)
+        if os.path.isfile(final) and not os.path.islink(final):
+            with open(final, "rb") as fh:
+                raw = fh.read()
+            rec["final_read"] = raw.decode("utf-8", "replace")
+            _write_new(os.path.join(out, "fired-after-teardown.log"), raw)
         if harness == GEMINI and os.path.isdir(os.path.join(run_tree, smp.STUB_OUT)):
             shutil.copytree(os.path.join(run_tree, smp.STUB_OUT), os.path.join(out, "stub"))
             shutil.copyfile(os.path.join(run_tree, smp.STUB_DIR, "scenario.json"), os.path.join(out, "scenario.json"))
@@ -808,7 +919,9 @@ def run_probe(a, names: list, *, runtime=None, env=None, host_run=subprocess.run
             rec = run_unit(runtime, env, s, run, image=images[run.harness], scratch_parent=parent, out_root=a.output,
                            resources=resources, host_run=host_run)
             recs.append(rec)
-            units.append({k: rec[k] for k in ("scenario", "run", "harness", "role", "selftest_read", "reads")})
+            units.append({k: rec.get(k) for k in ("scenario", "run", "harness", "role", "selftest_read", "reads",
+                                                  "final_read", "liveness", "cli_version_rc", "failure",
+                                                  "resume_skipped")})
     arms = sorted({ARM[SCENARIO_HARNESS[s]] for s in names})
     verdict = hook_verdict(units, arms)
     summary = {"verdict": verdict, "images": images, "reason": getattr(a, "reason", ""), "resources": resources,
