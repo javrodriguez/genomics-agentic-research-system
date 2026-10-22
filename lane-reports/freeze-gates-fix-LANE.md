@@ -112,3 +112,47 @@ Interpreter state: test_freeze_gates_fix, test_rehearsals and test_mode_binding 
 - R9.sessions in tests/test_build_draft.py is a seventh red outside the six, the same cause as the draft (the merged walks); fixed the same way as R4.empty, since test_round4.py (the rehearsal's first COMMAND) runs every tests/test_*.py.
 - A lane COPIED.d fragment and checks.d file, as the w8e and review-kit-port lanes did.
 - The clone's origin remote was removed so nothing can be pushed.
+
+## S8 (glitch-f1's rulings on the hand-back, Wed 21 Oct 2026 about 23:25 EDT)
+
+The rulings, as relayed: (1) w023's file is a recorded per-walk exception naming the transcript line and the reason, printed whenever it applies, no general class; (2) allowlist.py: not regenerated yet: write every consumer, what a round-4 derivation adds or removes, whether any walk verdict changes, then hand back; (3) the stale pre-acceptance test expectations (test_native_history_record, test_pending_walk, test_vendor_admission's production_readers test) move to the post-acceptance state without weakening, red first, witnesses kept red; (4) the T-16 note is adopted; (5) R9.sessions and the COPIED.d and checks.d fragments are ratified.
+
+### Item 2: allowlist-derivation.json, every consumer and the delta (read this session, nothing regenerated)
+
+- What the file is: the Bash `--allowedTools` entries the prior round's transcripts could legally support (allowlist.py docstring); it excuses commands, not words (the word excusals are language-allowlist.json, a different file).
+- Consumers in round 4: only allowlist.py itself (`--check` compares derive() with the file; `pinned()` reads `driver_change.allowed_tools` from the pre-registration). A grep of evals/gap-study-4 for `allowlist-derivation`, `import allowlist` and `allowed_tools` finds no other reader. checks.d names no allowlist.py command. ci.yml runs `allowlist.py --check` for round 3 only (ci.yml:306-308, `evals/gap-study-3/allowlist.py`); the gap-study-4 job (ci.yml:431 on) does not run it. It is not in freeze_rehearsal's COMMANDS.
+- For which harnesses: none in round 4. claude_code_adapter.py:17 (C15-2) retires round 3's `--allowedTools` for the box; arm A passes `--permission-mode bypassPermissions` with `--disallowedTools`; Codex runs `--dangerously-bypass-approvals-and-sandbox` and Gemini `--approval-mode yolo`. drive.py:721 and :1221 still read `driver_change.allowed_tools`, on round 3's host road (`send`), which round 4's refusals shadow (mode_binding.py docstring, ROUND3_ROOTS). prereg-draft.json has no `driver_change` key, so `pinned()` returns None. 0 of the 225 committed launch journals carry `--allowedTools`.
+- What a derivation from round 3's transcripts would change (allowlist.derive() at 84809b5b; script fgf/aldelta.py): source evals/gap-study-2 (52 transcripts, 364 calls, 22 entries: route 15, shape 5, arbitrary 2) becomes evals/gap-study-3 (54 transcripts, 503 calls, 16 entries: route 7, shape 7, arbitrary 2). Added 5: `Bash(find data:*)`, `Bash(find gars:*)`, `Bash(ls -R:*)`, `Bash(sleep 5:*)`, `Bash(tail -5:*)`. Removed 11: `Bash(cat gars/00_initialize_project/CONTEXT.md:*)`, `Bash(cat gars/01_prepare_samplesheets/CONTEXT.md:*)`, `Bash(cat gars/CLAUDE.md:*)`, `Bash(cat gars/CLAUDE.md;:*)`, `Bash(cat gars/CONTEXT.md:*)`, `Bash(cd "$(git:*)`, `Bash(cd gars;:*)`, `Bash(find .:*)`, `Bash(ls gars/00_initialize_project:*)`, `Bash(pwd; ls:*)`, `Bash(python3 _system/stage01_samplesheet.py:*)`. problems() on the new derivation: none.
+- Walk verdicts: none of the 225 changes. No checker, grader, regrade or walk gate reads the file or `allowed_tools` (the grep above), and no walk was launched with an allowlist.
+- Options for the ruling: (a) retire the check and the file in round 4 (drop both from COPIED.d's w1a fragment; nothing reads them); (b) re-derive as an edited copy from round 3 (the delta above; it would then describe round 3's routes, which no round 4 arm uses); (c) keep it red and named. Recommendation: (a), since round 4 has no allowlist condition to derive.
+
+### Item 1: w023 (S8a, 65cd0026)
+
+fixture_walk.RECORDED_EXCEPTIONS holds one entry: w023, `/tmp/finalize.log`, transcript line 74 (the only line naming it), that line's sha256 and the command the agent ran there (`... 2>&1 | tee /tmp/finalize.log`), the reason and the ruling. It applies only while every line naming the path is a recorded line with those bytes and that command; `--check` prints an EXCEPTED line for it; an exception matching no committed transcript fails (stale_exception_problems).
+Red first: test_freeze_gates_fix against 84809b5b's fixture_walk.py FAILED (failures=3, errors=1: F4 and its two witnesses' precondition, RECORDED_EXCEPTIONS absent). Green: 11 OK, six witnesses red (exception-unbound, stale-silent added).
+
+### Item 3: the pre-acceptance expectations (S8b, 3e301939)
+
+Cause, one for all of them: since 5457e75e the study holds committed acceptance records, so production_readers() runs git on the study tree (native_reader_registration.py:649 -> :285), and test_box_integration's process guard admits git only under its scratch folder; every fake-runtime road reaching the driver's default registry read was held.
+Fix: under the guard, a registry call naming no study, or the study tree, reads an empty scratch study (the unregistered state those roads model); a road's own scratch study passes through. The real tree's registry is asserted unguarded: test_native_reader_registration AcceptedRecords (both records, last commit on each 5457e75e, registry {codex, gemini}) and test_vendor_admission (registry holds both; a registry without the harness refuses before the reader, both roads). test_native_history_record: readers=None goes through the production call (spied) and is pending; the accepted Gemini reader refuses a snapshot that is no Gemini log; the guarded registry reads a scratch study.
+
+| Module | 84809b5b | 3e301939 |
+|---|---|---|
+| test_pending_walk | 43 failures (23 tests) | 23 OK, run class by class (the whole module passes the 150 s cap once nothing fails fast) |
+| test_pending_codex_walk | 10 failures | 12 OK |
+| test_vendor_admission_regrade | 3 failures | 3 OK |
+| test_native_snapshot | 2 failures, 1 error | 15 OK |
+| test_vendor_walk_road | 6 failures | R9Road, P5WalkRoad, P5WalkWitnesses OK; R9Witnesses ran past the light cap and the heavy slot refused ("CPU speed limit 58 is below 100"): athena's |
+| test_native_history_record | 2 errors | 5 OK |
+| test_vendor_admission | 1 failure | 10 OK (its VA witnesses included) |
+| test_native_reader_registration | 2 failures | CheckSession and AcceptedRecords 5 OK; the whole module took 143 s at the base, so athena's |
+
+One process (fgf/oneproc-s8.txt): test_freeze_gates_fix, test_native_history_record, test_vendor_admission, test_mode_binding pass, no sys.modules entry replaced or removed; test_vendor_admission's real-registry assertion passing right after the guarded module shows the registry patch undone at teardown.
+
+### Gates at 3e301939 (Thu 22 Oct 2026 00:22-00:27 EDT; fgf/s8-head.json)
+
+mode_binding ok 225; fixture_walk ok 225 (1 by the printed exception); walk_regrade ok (114.3 s); allowlist rc 1 (item 2, awaiting the ruling); build_draft ok; lint clean; test_rehearsals 9 OK (83.9 s); native_reader_registration verify rc 0.
+
+### For athena
+
+test_vendor_walk_road R9Witnesses, test_native_reader_registration whole, test_build_draft whole, test_scaffold, test_box_integration, test_round4, walk_register --check, run.py --walks --check.
