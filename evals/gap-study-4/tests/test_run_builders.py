@@ -71,6 +71,20 @@ def rb():
     return MODS["run_builders"]
 
 
+@contextlib.contextmanager
+def scratch_cwd():
+    """Run the body with the working directory in a fresh temporary folder, restored and removed after: a call given
+    a relative path (refused by the real code) can only ever write into scratch under a mutant that drops the refusal,
+    never into the checkout the suite runs from (athena's battery tree guard read `?? relative/out/summary.json`)."""
+    before = os.getcwd()
+    with tempfile.TemporaryDirectory(prefix="rb-cwd-") as scratch:
+        os.chdir(scratch)
+        try:
+            yield Path(scratch)
+        finally:
+            os.chdir(before)
+
+
 # ------------------------------------------------------------------------------------------------- synthetic design
 AGENTS = {"A": ("claude-code", "2.1.296"), "O": ("codex", "0.162.1"), "G": ("gemini", "0.64.0")}
 MODELS = {"A": ["claude-opus-5-5", "claude-sonnet-5-5"], "O": ["gpt-6.1-sol", "gpt-6-luna"],
@@ -3357,7 +3371,9 @@ class S4Rehearse(Case):
         self.assertEqual(json.loads((none / "summary.json").read_text())["counts"], {"refused:no-pre-freeze-review": 1},
                          "S4.rehearse")
         self.assertEqual(calls, [], "S4.rehearse: a step ran after a refusal")
-        self.refuses("S4.rehearse", "RunRefused", "absolute path", rb().rehearse, "relative/out", source=self.s.repo)
+        with scratch_cwd():
+            self.refuses("S4.rehearse", "RunRefused", "absolute path", rb().rehearse, "relative/out",
+                         source=self.s.repo)
 
     def test_every_step_stays_under_out(self):
         import freeze_rehearsal as fr
@@ -3862,7 +3878,8 @@ class S4Rehearse(Case):
     def test_the_default_source_and_the_inside_refusal_g2(self):
         """Triage G2: with no source given rehearse reads drive.REPO and still refuses a relative out; an out inside
         the source is named on stderr."""
-        self.refuses("S4.rehearse", "RunRefused", "absolute path", rb().rehearse, "relative/out")
+        with scratch_cwd():
+            self.refuses("S4.rehearse", "RunRefused", "absolute path", rb().rehearse, "relative/out")
         inside = self.s.repo / "out"
         rc, _, err = self.must("S4.rehearse", call, rb().rehearse, inside, source=self.s.repo, review="r" * 40,
                                runner=lambda argv, cwd: (0, ""))
@@ -3973,8 +3990,9 @@ def run_witnesses(names) -> int:
     chosen = names or sorted(WITNESSES)
     for name in chosen:
         method, clause = WITNESSES[name]
-        got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--mutant", name,
-                              method], capture_output=True, text=True, timeout=110)
+        with tempfile.TemporaryDirectory(prefix="rb-witness-cwd-") as scratch:   # a mutant's stray write lands here
+            got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--mutant",
+                                  name, method], capture_output=True, text=True, timeout=110, cwd=scratch)
         outcome_ = _outcome_line(got)
         blocks = re.findall(r"^FAIL: (\w+) \(__main__\.(\w+)\.\w+\)[^\n]*\n(.*?)(?=^=|^Ran |\Z)", got.stderr,
                             re.M | re.S)
@@ -4007,7 +4025,9 @@ def run_generated(shard=None, sample=None, timeout=600, only=None) -> int:
 
     def one(mid, fast):
         argv = [sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--gen-mutant", mid]
-        got = subprocess.run(argv + (["--failfast"] if fast else []), capture_output=True, text=True, timeout=timeout)
+        with tempfile.TemporaryDirectory(prefix="rb-gen-cwd-") as scratch:   # a mutant's stray write lands here
+            got = subprocess.run(argv + (["--failfast"] if fast else []), capture_output=True, text=True,
+                                 timeout=timeout, cwd=scratch)
         return got, _outcome_line(got)
 
     for _, m in chosen:
