@@ -191,6 +191,12 @@ class FakeSuite:
         return list(self.public)
 
     def binary_blobs_hashed(self, repo, sha, present):
+        # Lane ship-evidence-blobs: the outward scan now asks for the shipped binary blobs too. This fake's
+        # scratch_clone makes no clone (and its public tip is a placeholder), so on the ship road it models a
+        # text-only bundle: no clone, no binary blob. Every fetch-road caller passes a real repository, unchanged;
+        # L10 ships binary blobs through BinaryRuleSuite, whose scratch_clone clones the bundle for real.
+        if not os.path.isdir(repo):
+            return []
         return nul_blobs(repo, sha, present)
 
     def rulings_file(self, repo):
@@ -1312,9 +1318,13 @@ def l10(mod) -> list:
             "a non-evidence binary blob outside the study": {"rec.bin": rawbin},
             "an evidence blob also at a non-evidence path": {evidence_path("w001", clean): clean,
                                                              "evals/gap-study-4/rehearsals/w001/copy.gz": clean},
+            # rev-list --objects names the evidence path (it sorts first); only the shipped commits' paths see zz.gz
+            "an evidence blob also at a later non-evidence path": {evidence_path("w001", clean): clean,
+                                                                   "evals/gap-study-4/rehearsals/w001/zz.gz": clean},
+            "a binary gzip FEXTRA": (lambda g: {evidence_path("w001", g): g})(make_gz(text, extra=b"\x00\x01")),
             "a walk folder off its form": {"evals/gap-study-4/rehearsals/-w/evidence/blobs/"
                                            + hashlib.sha256(clean).hexdigest(): clean},
-            "a take slot off its form": {"evals/gap-study-4/takes/s-123/1/evidence/blobs/"
+            "a take slot off its form": {"evals/gap-study-4/takes/s-short/1/evidence/blobs/"
                                          + hashlib.sha256(clean).hexdigest(): clean},
         }
         for why, files in cases.items():
@@ -1477,6 +1487,41 @@ WITNESSES = {
                            "L9-echo"),
     "remote-git-bare": ((("REMOTE_GIT = \"GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0 git\"",
                           "REMOTE_GIT = \"git\""),), "L3-fetch"),
+    # Lane ship-evidence-blobs (the outward evidence rule), each red by L10-outward-blobs alone. Named equivalent, no
+    # witness: outward_evidence_blobs' classification (`all(EVIDENCE_SHAPE.fullmatch(p) ...)`, as `any` or as True): a
+    # blob it wrongly calls evidence still meets the strict EVIDENCE_BLOB-and-name check on EVERY path and refuses
+    # there, and one it wrongly leaves out is refused by scan_unpublished; only the refusal's words change.
+    "outward-evidence-unallowed": ((("suite_mod.rulings_file(repo), evidence,", "suite_mod.rulings_file(repo), (),"),),
+                                   "L10-outward-blobs"),
+    "outward-evidence-unchecked": ((("    evidence = outward_evidence_blobs(suite_mod, check, head, public, gitleaks, work)",
+                                     "    evidence = tuple(o for _p, o, _d in suite_mod.binary_blobs_hashed(check, head, public))"),),
+                                   "L10-outward-blobs"),
+    "outward-paths-unread": ((("        binary[oid] |= where", "        pass"),), "L10-outward-blobs"),
+    "outward-path-unchecked": ((("                if not EVIDENCE_BLOB.fullmatch(p) or p.rsplit(\"/\", 1)[1] != digest:",
+                                 "                if False:"),), "L10-outward-blobs"),
+    "outward-name-unbound": ((("                if not EVIDENCE_BLOB.fullmatch(p) or p.rsplit(\"/\", 1)[1] != digest:",
+                               "                if not EVIDENCE_BLOB.fullmatch(p):"),), "L10-outward-blobs"),
+    "outward-form-unchecked": ((("                if not EVIDENCE_BLOB.fullmatch(p) or p.rsplit(\"/\", 1)[1] != digest:",
+                                 "                if p.rsplit(\"/\", 1)[1] != digest:"),), "L10-outward-blobs"),
+    "outward-count-cap-dropped": ((("    if len(evidence) > BLOB_MAX_COUNT:", "    if False:"),), "L10-outward-blobs"),
+    "outward-stored-cap-dropped": ((("            if int(_git_out(repo, \"cat-file\", \"-s\", oid).strip() or 0) > BLOB_MAX_BYTES:\n"
+                                     "                raise LaunchRefused(f\"evidence blob",
+                                     "            if False:\n                raise LaunchRefused(f\"evidence blob"),), "L10-outward-blobs"),
+    "outward-bound-dropped": ((("            bound = min(BLOB_MAX_BYTES, len(stored) * BLOB_MAX_RATIO, BLOB_TOTAL_MAX - decoded)",
+                                "            bound = 1 << 40"),), "L10-outward-blobs"),
+    "outward-ratio-dropped": ((("            bound = min(BLOB_MAX_BYTES, len(stored) * BLOB_MAX_RATIO, BLOB_TOTAL_MAX - decoded)",
+                                "            bound = min(BLOB_MAX_BYTES, BLOB_TOTAL_MAX - decoded)"),), "L10-outward-blobs"),
+    "outward-total-dropped": ((("            bound = min(BLOB_MAX_BYTES, len(stored) * BLOB_MAX_RATIO, BLOB_TOTAL_MAX - decoded)",
+                                "            bound = min(BLOB_MAX_BYTES, len(stored) * BLOB_MAX_RATIO)"),), "L10-outward-blobs"),
+    "outward-header-nul-unchecked": ((("            if any(b\"\\0\" in value for _field, value in header):", "            if False:"),),
+                                     "L10-outward-blobs"),
+    "outward-header-unscanned": ((("            _write_private(os.path.join(src, f\"{oid}.header\"),",
+                                   "            (lambda *x: None)(os.path.join(src, f\"{oid}.header\"),"),), "L10-outward-blobs"),
+    "outward-findings-ignored": ((("        if findings:\n            ids = sorted(", "        if False:\n            ids = sorted("),),
+                                 "L10-outward-blobs"),
+    "outward-decoded-kept": ((("        return tuple(sorted(evidence))\n    finally:\n        shutil.rmtree(tmp, ignore_errors=True)",
+                               "        return tuple(sorted(evidence))\n    finally:\n        pass"),), "L10-outward-blobs"),
+    "binary-payload-admitted": ((("    if b\"\\0\" in first:", "    if False:"),), "L10-outward-blobs"),
     # Named equivalent, no witness: the 1f 8b magic check in gzip_header is the only gate before parsing; dropping it
     # leaves the method byte and zlib's raw inflate to refuse a non-gzip, so only the refusal's words change.
     "back-scan-plain": ((("        n = suite_mod.scan_unpublished(", "        n = 1 or suite_mod.scan_unpublished("),),

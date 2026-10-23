@@ -538,6 +538,98 @@ def admitted_evidence_blobs(suite_mod, repo: str, head: str, tip: str, gitleaks:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+# Lane ship-evidence-blobs (glitch-af's ruling, 23 Oct 2026, after the run launcher's rehearsal ship of the freeze line
+# 1b20a10a refused on the w-g27 walk's 13 evidence blobs): the OUTWARD ship scan applies to an evidence blob the same
+# decode-and-scan rule the fetch applies (admitted_evidence_blobs, unchanged), with this road's own helpers (gunzip_to,
+# EVIDENCE_BLOB, the BLOB_* bounds, canary_scan); no second decoder, no --allow-blob road and no per-id list. An
+# evidence blob is a binary blob (athena_suite's binary_blobs_hashed, the very list scan_unpublished refuses on) every
+# one of whose paths in the shipped commits has the evidence shape; it is admitted only when it is named by the sha256
+# of the bytes it stores (the fetch's binding), is stored and decodes within the per-blob bound, decodes as one gzip
+# member whose payload is text, keeps the shipped evidence within BLOB_TOTAL_MAX and BLOB_MAX_COUNT, and its payload and
+# header fields scan clean with no allowance. Any other binary blob is left out, so scan_unpublished refuses it as
+# before; an evidence-shaped blob failing a check refuses here, naming its id and the rule, never content.
+EVIDENCE_SHAPE = re.compile(r"evals/gap-study-4/(?:rehearsals|takes)/.+/evidence/blobs/[^/]+")
+
+
+def _shipped_blob_paths(repo: str, head: str, present: list, wanted: set) -> dict:
+    """{blob id: set of paths} at which each wanted blob sits in any shipped commit (reachable from head, from no
+    public tip): every (path, blob) entry a shipped commit holds that a parent lacks, from `git log --raw` over each
+    parent of a merge (--diff-merges=separate) and a root commit's whole tree (--root), NUL-framed, no rename
+    folding. A wanted blob is reachable from no public commit, so any shipped commit holding it at a path either got it
+    from a shipped parent or added it itself, and the commit that added it lists it here."""
+    raw = _git_out(repo, "log", "--diff-merges=separate", "--root", "--raw", "-z", "--no-abbrev", "--no-renames",
+                   "--format=", head, *(["--not"] + list(present) if present else []), binary=True)
+    toks, found, i = raw.split(b"\0"), {}, 0
+    while i < len(toks):
+        tok = toks[i].lstrip(b"\n")
+        if tok.startswith(b":") and i + 1 < len(toks):
+            meta = tok.decode("ascii", "replace").split()
+            if len(meta) >= 5 and meta[3] in wanted:
+                found.setdefault(meta[3], set()).add(toks[i + 1].decode("utf-8", "surrogateescape"))
+            i += 2
+        else:
+            i += 1
+    return found
+
+
+def outward_evidence_blobs(suite_mod, repo: str, head: str, present: list, gitleaks: str, work: str) -> tuple:
+    """The evidence blob ids the outward scan's scan_unpublished may allow (see the comment above); () when the shipped
+    commits bring no evidence-shaped binary blob, in which case no file is decoded and no scanner runs."""
+    import shutil
+    import tempfile
+    binary = {}
+    for path, oid, _digest in suite_mod.binary_blobs_hashed(repo, head, list(present)):
+        binary.setdefault(oid, set()).add(path)
+    if not binary:
+        return ()
+    for oid, where in _shipped_blob_paths(repo, head, present, set(binary)).items():
+        binary[oid] |= where
+    evidence = {oid: where for oid, where in binary.items() if all(EVIDENCE_SHAPE.fullmatch(p) for p in where)}
+    if not evidence:
+        return ()
+    if len(evidence) > BLOB_MAX_COUNT:
+        raise LaunchRefused(f"the shipped commits bring {len(evidence)} evidence blobs, past the cap of "
+                            f"{BLOB_MAX_COUNT}; nothing ships")
+    os.makedirs(work, exist_ok=True)
+    tmp = tempfile.mkdtemp(prefix="blobs-", dir=work)            # mode 0700
+    try:
+        src = os.path.join(tmp, "src")
+        os.mkdir(src, 0o700)
+        decoded = 0
+        for oid in sorted(evidence):
+            if int(_git_out(repo, "cat-file", "-s", oid).strip() or 0) > BLOB_MAX_BYTES:
+                raise LaunchRefused(f"evidence blob {oid} is stored larger than {BLOB_MAX_BYTES} bytes; nothing ships")
+            stored = _git_out(repo, "cat-file", "blob", oid, binary=True)
+            digest = hashlib.sha256(stored).hexdigest()
+            for p in sorted(evidence[oid]):
+                if not EVIDENCE_BLOB.fullmatch(p) or p.rsplit("/", 1)[1] != digest:
+                    raise LaunchRefused(f"evidence blob {oid} sits off <walk or take>/evidence/blobs/<sha256 of its "
+                                        f"stored bytes>; nothing ships")
+            bound = min(BLOB_MAX_BYTES, len(stored) * BLOB_MAX_RATIO, BLOB_TOTAL_MAX - decoded)
+            fd = os.open(os.path.join(src, oid), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            try:
+                with os.fdopen(fd, "wb") as fh:
+                    size, header = gunzip_to(stored, fh, bound)
+            except LaunchRefused as e:
+                raise LaunchRefused(f"evidence blob {oid}: {e}; nothing ships") from None
+            decoded += size
+            if any(b"\0" in value for _field, value in header):
+                raise LaunchRefused(f"evidence blob {oid}: a gzip header field is binary; nothing ships")
+            fixed = (b"MTIME: " + str(int.from_bytes(stored[4:8], "little")).encode() + b"\nXFL: "
+                     + str(stored[8]).encode() + b"\nOS: " + str(stored[9]).encode() + b"\n")
+            _write_private(os.path.join(src, f"{oid}.header"),
+                           fixed + b"".join(k.encode() + b": " + v + b"\n" for k, v in header))
+            del stored
+        findings = canary_scan(gitleaks, src, tmp)
+        if findings:
+            ids = sorted({n.split(".")[0] for n, _why in findings})
+            raise LaunchRefused(f"the private scan refused {len(ids)} evidence blob(s): {', '.join(ids)}; "
+                                f"nothing ships")
+        return tuple(sorted(evidence))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def load_suite(suite: str):
     """athena_suite.py from the operator's aegis checkout, loaded by path (its module level only defines names)."""
     import importlib.util
@@ -590,8 +682,9 @@ def outward_scan(suite_mod, *, repo: str, bundle: str, head: str, gitleaks: str,
     public = suite_mod.fetch_public_refs(check, suite_mod.PUBLIC_REFERENCE[SUITE_KIND], work)
     if not public:
         raise LaunchRefused("the public GARS remote advertised nothing; nothing ships")
-    return suite_mod.scan_unpublished(check, head, work, gitleaks, public, suite_mod.rulings_file(repo), (), ruled,
-                                      [], ruled_msgs)
+    evidence = outward_evidence_blobs(suite_mod, check, head, public, gitleaks, work)     # lane ship-evidence-blobs
+    return suite_mod.scan_unpublished(check, head, work, gitleaks, public, suite_mod.rulings_file(repo), evidence,
+                                      ruled, [], ruled_msgs)
 
 
 def ship(runner: Runner, *, repo: str, ref: str, suite: str, reserve: str, gitleaks: str, work: str,
