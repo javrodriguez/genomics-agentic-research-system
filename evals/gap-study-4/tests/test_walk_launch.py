@@ -1207,8 +1207,155 @@ def l4(mod) -> list:
     return out
 
 
+# Lane ship-evidence-blobs (glitch-af's ruling, 23 Oct 2026, after the run launcher's rehearsal ship of the freeze line
+# 1b20a10a refused on the w-g27 walk's 13 evidence blobs): the OUTWARD ship scan applies to an evidence blob the same
+# decode-and-scan rule the fetch applies. A binary blob every one of whose paths in the shipped commits is
+# rehearsals/<walk>/evidence/blobs/<sha256> or takes/<slot>/<attempt>/evidence/blobs/<sha256> is admitted only when it
+# is one gzip stream, its decompressed bytes are text, its <sha256> is the fetch's binding (the sha256 of the bytes the
+# blob stores: EVIDENCE_BLOB and admitted_evidence_blobs' rule), it is within the per-blob, total and count caps, and
+# its decompressed text (and its header fields) scan clean with no allowance; anything else still refuses.
+class BinaryRuleSuite(FakeSuite):
+    """FakeSuite whose scan_unpublished applies athena_suite's binary-blob rule: a binary blob reachable from the head
+    and from no public tip refuses unless its id is in allow_blobs (scan_unpublished's own words). Its scratch_clone
+    really clones the bundle (no checkout), so the outward rule reads the bytes that would ship."""
+
+    def scratch_clone(self, bundle, dest, workdir):
+        super().scratch_clone(bundle, dest, workdir)
+        git("clone", "-q", "--no-checkout", bundle, dest)
+
+    def scan_unpublished(self, repo, sha, workdir, gitleaks, public_shas, rulings, allow_blobs, ruled, ruled_used,
+                         ruled_messages):
+        bad = [(p, oid) for p, oid, _d in nul_blobs(repo, sha, list(public_shas)) if oid not in allow_blobs]
+        if bad:
+            raise RuntimeError("non-public commits bring %d binary blob(s) the scanner cannot read; rule each after "
+                               "reading it with --allow-blob <id>: %s" % (len(bad), ", ".join("%s %s" % b for b in bad)))
+        return super().scan_unpublished(repo, sha, workdir, gitleaks, public_shas, rulings, allow_blobs, ruled,
+                                        ruled_used, ruled_messages)
+
+
+def take_evidence_path(data, attempt=1):
+    return (f"evals/gap-study-4/takes/s-{'c' * 64}/{attempt}/evidence/blobs/" + hashlib.sha256(data).hexdigest())
+
+
+def outward_rig(mod, t, files, *, gitleaks=None):
+    """A repo whose public tip is its second commit, then one shipped commit adding `files` ({path: bytes}); ship
+    through the fake athena with BinaryRuleSuite and the fake gitleaks. Returns (runner, result, suite, tip)."""
+    repo, root, base = make_repo(t)
+    for path, data in files.items():
+        full = Path(repo, path)
+        full.parent.mkdir(parents=True, exist_ok=True)
+        full.write_bytes(data)
+        git("-C", repo, "add", path)
+    git("-C", repo, "commit", "-q", "-m", "walk")
+    tip = git("-C", repo, "rev-parse", "HEAD").strip()
+    runner = FakeRunner(athena_head=tip)
+    suite = BinaryRuleSuite(runner.calls, public=(base,))
+    reserve = reserve_file(t)
+    with mock.patch.object(mod, "PINNED_TREE", root), \
+            mock.patch.object(mod, "RESERVE_SHA256", hashlib.sha256(Path(reserve).read_bytes()).hexdigest()):
+        try:
+            out = mod.ship(runner, repo=repo, ref="main", suite="/x/athena_suite.py", reserve=reserve,
+                           gitleaks=gitleaks or fake_gitleaks(t), work=os.path.join(t, "work"),
+                           precheck=lambda s: [], suite_module=suite)
+        except mod.LaunchRefused as e:
+            out = e
+    return runner, out, suite, tip
+
+
+def l10(mod) -> list:
+    """The outward ship scan admits a valid evidence blob by the fetch's own rule and refuses every tampered one."""
+    import gzip
+    out = []
+    text = json.dumps({"path": "plan/approved.json", "op": "open"}).encode()
+    clean = gzip.compress(text)
+    second = gzip.compress(b"another clean watcher record\n")
+    planted = gzip.compress(b"PLANTED synthetic marker\n")
+    token = gzip.compress(json.dumps({"text": "token = " + _fake_token()}).encode())
+    binpay = gzip.compress(b"\x00\x00binary payload")
+    rawbin = b"\x00\x01raw evidence, not gzip"
+    bomb = gzip.compress(b"a" * (300 * 1024))
+    named_by_payload = "evals/gap-study-4/rehearsals/w001/evidence/blobs/" + hashlib.sha256(text).hexdigest()
+
+    def oid_of(data):
+        return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+    with tempfile.TemporaryDirectory() as t:
+        # the valid ones: one rehearsal blob; a counted take's blob; two blobs together
+        for why, files in (("a valid rehearsal evidence blob", {evidence_path("w001", clean): clean}),
+                           ("a valid counted take's evidence blob", {take_evidence_path(clean): clean}),
+                           ("two valid evidence blobs", {evidence_path("w001", clean): clean,
+                                                         evidence_path("w002", second): second})):
+            d = os.path.join(t, why.replace(" ", "-").replace("'", ""))
+            os.mkdir(d)
+            runner, got, suite, _tip = outward_rig(mod, d, files)
+            if not isinstance(got, dict):
+                out.append(f"L10-outward-blobs: {why} does not ship: {got}")
+                continue
+            want = sorted({oid_of(v) for v in files.values()})
+            if not suite.scans or sorted(suite.scans[0]["allow_blobs"]) != want:
+                out.append(f"L10-outward-blobs: {why} is not handed to scan_unpublished as exactly its blob id(s)")
+            if any(n.startswith("blobs-") for n in os.listdir(os.path.join(d, "work", "outward-scan"))):
+                out.append(f"L10-outward-blobs: {why} left its decompressed folder")
+        # the tampered ones: each must refuse before athena is touched, and never print decompressed content
+        cases = {
+            "a blob that is not gzip": {evidence_path("w001", rawbin): rawbin},
+            "gzip whose decompressed bytes are binary": {evidence_path("w001", binpay): binpay},
+            "a sha256 that is not its stored bytes'": {"evals/gap-study-4/rehearsals/w001/evidence/blobs/" + "0" * 64: clean},
+            "a name bound to the decompressed bytes, not the stored ones": {named_by_payload: clean},
+            "a planted marker in the decompressed text": {evidence_path("w001", planted): planted},
+            "a token-shaped canary in the decompressed text": {evidence_path("w001", token): token},
+            "a planted gzip FNAME": (lambda g: {evidence_path("w001", g): g})(make_gz(text, name=b"PLANTED")),
+            "a planted gzip FCOMMENT": (lambda g: {evidence_path("w001", g): g})(make_gz(text, comment=b"PLANTED")),
+            "a long gzip FNAME": (lambda g: {evidence_path("w001", g): g})(make_gz(text, name=b"n" * 5000)),
+            "a ratio bomb": {evidence_path("w001", bomb): bomb},
+            "a truncated stream": (lambda g: {evidence_path("w001", g): g})(clean[:-6]),
+            "a non-evidence binary blob": {"evals/gap-study-4/rehearsals/w001/rec.json.gz": clean},
+            "a non-evidence binary blob outside the study": {"rec.bin": rawbin},
+            "an evidence blob also at a non-evidence path": {evidence_path("w001", clean): clean,
+                                                             "evals/gap-study-4/rehearsals/w001/copy.gz": clean},
+            "a walk folder off its form": {"evals/gap-study-4/rehearsals/-w/evidence/blobs/"
+                                           + hashlib.sha256(clean).hexdigest(): clean},
+            "a take slot off its form": {"evals/gap-study-4/takes/s-123/1/evidence/blobs/"
+                                         + hashlib.sha256(clean).hexdigest(): clean},
+        }
+        for why, files in cases.items():
+            d = os.path.join(t, re.sub(r"[^A-Za-z0-9]+", "-", why))
+            os.mkdir(d)
+            runner, got, _suite, _tip = outward_rig(mod, d, files)
+            if not isinstance(got, mod.LaunchRefused):
+                out.append(f"L10-outward-blobs: {why} ships")
+                continue
+            if any(c[0] in ("remote", "copy_to") for c in runner.calls):
+                out.append(f"L10-outward-blobs: {why} refused only after athena was touched")
+            if "PLANTED" in str(got) or "synthetic" in str(got) or "ghp_" in str(got):
+                out.append(f"L10-outward-blobs: the refusal of {why} prints decompressed content")
+        # the caps: per blob (stored and decompressed), total, count
+        two = {evidence_path("w001", clean): clean, evidence_path("w002", second): second}
+        for why, files, patch in (("over the per-blob cap", {evidence_path("w001", clean): clean},
+                                   ("BLOB_MAX_BYTES", len(text) - 1)),
+                                  ("over the total cap", two, ("BLOB_TOTAL_MAX", len(text) + 5)),
+                                  ("over the count cap", two, ("BLOB_MAX_COUNT", 1))):
+            d = os.path.join(t, why.replace(" ", "-"))
+            os.mkdir(d)
+            with mock.patch.object(mod, patch[0], patch[1]):
+                runner, got, _suite, _tip = outward_rig(mod, d, files)
+            if not isinstance(got, mod.LaunchRefused):
+                out.append(f"L10-outward-blobs: an evidence blob {why} ships")
+            elif any(c[0] in ("remote", "copy_to") for c in runner.calls):
+                out.append(f"L10-outward-blobs: an evidence blob {why} refused only after athena was touched")
+        # the stored-size cap on its own: a blob stored larger than the cap, its payload within it
+        if not len(text) < len(clean):
+            out.append("L10-outward-blobs: the stored-cap case is not built as intended (payload not smaller)")
+        d = os.path.join(t, "stored-cap")
+        os.mkdir(d)
+        with mock.patch.object(mod, "BLOB_MAX_BYTES", len(clean) - 1):
+            runner, got, _suite, _tip = outward_rig(mod, d, {evidence_path("w001", clean): clean})
+        if not isinstance(got, mod.LaunchRefused):
+            out.append("L10-outward-blobs: an evidence blob stored larger than the per-blob cap ships")
+    return out
+
+
 CHECKS = {"L1-ship": l1, "L2-run": l2, "L3-fetch": l3, "L4-bounds": l4, "L5-guards": l5, "L6-start": l6,
-          "L7-env": l7, "L8-blobs": l8, "L9-echo": l9, "L9-env": l9}
+          "L7-env": l7, "L8-blobs": l8, "L9-echo": l9, "L9-env": l9, "L10-outward-blobs": l10}
 
 
 def witness(edits) -> types.ModuleType:
@@ -1364,6 +1511,9 @@ class TestTheRoad(unittest.TestCase):
 
     def test_l9_echo_and_env(self):
         self.assertEqual(l9(wl), [])
+
+    def test_l10_outward_evidence_blobs(self):
+        self.assertEqual(l10(wl), [])
 
     def test_pinned_tree_is_variants(self):
         import variants
@@ -1705,6 +1855,99 @@ class TestRealReturnScan(unittest.TestCase):
         got, branches = self.case(None)
         self.assertIsInstance(got, dict, got)
         self.assertIn("refs/heads/walk/w-AbCd1234", branches)
+
+
+class _PublicAt:
+    """The real athena_suite module with one function replaced: fetch_public_refs answers the test's own public tip
+    instead of fetching GitHub (everything else, scan_unpublished and its binary rule included, is the real code)."""
+
+    def __init__(self, real, public):
+        self._real, self._public = real, list(public)
+
+    def __getattr__(self, name):
+        return getattr(self._real, name)
+
+    def fetch_public_refs(self, repo, url, workdir):
+        return list(self._public)
+
+
+def _aws_shaped() -> str:
+    """An AWS-access-key-shaped string made at run time (never a key, never printed): AKIA and 16 of [A-Z2-7]."""
+    import secrets
+    return "AKIA" + "".join(secrets.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567") for _ in range(16))
+
+
+class TestRealOutwardScan(unittest.TestCase):
+    """Lane ship-evidence-blobs on the REAL scanner: walk_launch.outward_scan over a real bundle, with the real
+    athena_suite (its scan_unpublished and binary-blob rule) and the real gitleaks; only the public fetch is answered
+    locally. A clean evidence blob is admitted; an AWS-shaped or a GitHub-token-shaped canary in its decompressed text,
+    and a binary blob off the evidence paths, each refuse. Skipped BY NAME where athena_suite.py or gitleaks is absent."""
+
+    def setUp(self):
+        self.gitleaks = _real_gitleaks()
+        if not os.path.isfile(ATHENA_SUITE_PY) or self.gitleaks is None:
+            self.skipTest(REAL_SCAN_SKIP)
+        self.suite = wl.load_suite(ATHENA_SUITE_PY)
+
+    def scan(self, files):
+        with tempfile.TemporaryDirectory() as t:
+            repo, _root, base = make_repo(t)
+            for path, data in files.items():
+                Path(repo, path).parent.mkdir(parents=True, exist_ok=True)
+                Path(repo, path).write_bytes(data)
+                git("-C", repo, "add", path)
+            git("-C", repo, "commit", "-q", "-m", "walk")
+            head = git("-C", repo, "rev-parse", "HEAD").strip()
+            bundle = os.path.join(t, "out.bundle")
+            git("-C", repo, "bundle", "create", bundle, "main")
+            try:
+                return wl.outward_scan(_PublicAt(self.suite, [base]), repo=repo, bundle=bundle, head=head,
+                                       gitleaks=self.gitleaks, work=os.path.join(t, "work"))
+            except Exception as e:  # noqa: BLE001 - ship's own handling: any refusal keeps the bundle on the Mac
+                return e
+
+    def test_clean_evidence_blob_is_admitted(self):
+        import gzip
+        data = gzip.compress(json.dumps({"path": "plan/approved.json", "op": "open"}).encode())
+        got = self.scan({evidence_path("w001", data): data})
+        self.assertEqual(got, 1, got)
+
+    def test_clean_take_evidence_blob_is_admitted(self):
+        import gzip
+        data = gzip.compress(json.dumps({"path": "plan/approved.json", "op": "read"}).encode())
+        got = self.scan({take_evidence_path(data): data})
+        self.assertEqual(got, 1, got)
+
+    def test_aws_shaped_canary_in_evidence_refuses(self):
+        import gzip
+        canary = _aws_shaped()
+        data = gzip.compress(json.dumps({"text": "aws_access_key_id = " + canary}).encode())
+        got = self.scan({evidence_path("w001", data): data})
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertIn("private scan refused", str(got))
+        self.assertNotIn(canary, str(got))
+
+    def test_token_canary_in_evidence_refuses(self):
+        import gzip
+        canary = _fake_token()
+        data = gzip.compress(json.dumps({"text": "token = " + canary}).encode())
+        got = self.scan({evidence_path("w001", data): data})
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertIn("private scan refused", str(got))
+        self.assertNotIn(canary, str(got))
+
+    def test_non_evidence_binary_blob_refuses(self):
+        import gzip
+        data = gzip.compress(json.dumps({"path": "plan/approved.json"}).encode())
+        got = self.scan({"evals/gap-study-4/rehearsals/w001/rec.json.gz": data})
+        self.assertIsInstance(got, Exception)
+        self.assertIn("binary blob", str(got))
+
+    def test_misnamed_evidence_blob_refuses(self):
+        import gzip
+        data = gzip.compress(json.dumps({"path": "plan/approved.json"}).encode())
+        got = self.scan({"evals/gap-study-4/rehearsals/w001/evidence/blobs/" + "0" * 64: data})
+        self.assertIsInstance(got, Exception)
 
 
 class TestSkipRule(unittest.TestCase):
