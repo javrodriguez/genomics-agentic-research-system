@@ -318,7 +318,31 @@ METHOD = {
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 
-EQUIVALENT: dict = {}
+EQUIVALENT: dict = {
+    # Triage s1 (shard 1/16 at b60dbce7).
+    "run_builders.rehearsal_source_problem:delete:L8:C4:e3e767f5":
+        "deletes the function's last statement, `return None`; falling off the end returns None, the same value.",
+    # triage G1
+    "run_builders.ledger_snapshot:drop-1:L4:C16:249a3a60":
+        "the loop runs only when ledger_doc_problems found nothing, so doc is exactly a dict and doc['spend'] exactly a "
+        "list; `that list or []` and `that list` iterate the same records (an empty list either way).",
+    # triage G4 (shards 14-16 at 240ee856).
+    "run_builders.lease_problem:delete:L17:C4:e3e767f5":
+        "deletes lease_problem's last statement, `return None` after the loop; falling off the end returns None, the "
+        "same value.",
+    # triage G2 (shards 6-9 at 240ee856, triaged on 2909ac69).
+    "run_builders.ruled_deferral_problem:delete:L8:C4:e3e767f5":
+        "deletes the function's last statement, `return None`; falling off the end returns None, the same value.",
+    "run_builders.ruled_deferral_problem:drop-1:L3:C15:54aec6d4":
+        "drops `or {}` from deferred_arms: a falsy value then fails `isinstance(deferred, dict)`, so the test reads "
+        "True exactly as `arm not in {}` did, and a truthy value is the same object either way.",
+    "run_builders.ledger_snapshot:drop-1:L6:C16:ff1a29c9":
+        "drops `or []` from doc.get('trimmed') on the branch taken only when ledger_doc_problems found nothing, so "
+        "trimmed is already a list there and iterates the same with or without `or []`.",
+    "run_builders.rehearse_takes:drop-0:L50:C21:c42b3fe9":
+        "drops t['arm'] == 'A' from a_done, read only when the lease is dead: rows are then arm A only, every "
+        "outcome's arm comes from those rows (any other slot is refused first), and the one O entry is 'refused'.",
+}
 
 
 def compile_module(name: str, source: str) -> types.ModuleType:
@@ -439,6 +463,36 @@ class S1Plan(Case):
         self.refuses("S1.plan", "RunRefused", "must be callable", rb().run_arms, pre, None)
         self.refuses("S1.plan", "RunRefused", "not an object", rb().run_arms, dict(pre, deferred_arms=["G"]), no_go)
 
+    def test_a_ruling_is_never_a_final_outcome_g1(self):
+        """Triage G1: a ruling record that carries final: true is still not a committed outcome; its slot runs."""
+        pre = design()
+        order = self.slots(pre, ("A", "O"))
+        history = [{"kind": "ruling", "slot": order[0], "attempt": 1, "ruling": "re-run", "route": None, "by": "x",
+                    "final": True}]
+        got = [r["slot"] for r in self.must("S1.plan", rb().run_rows, pre, history, go=no_go)]
+        self.assertEqual(got, order, "S1.plan: a ruling record read as a final outcome")
+
+    def test_a_take_order_that_is_not_a_list_is_refused_g3(self):
+        """Triage G3: a take_order that is not a list (a tuple of the frozen rows) is refused, never iterated."""
+        pre = design()
+        self.refuses("S1.plan", "RunRefused", "no take_order", rb().run_rows,
+                     dict(pre, take_order=tuple(pre["take_order"])), [], go=no_go)
+
+    def test_a_ruled_arm_deferred_by_a_non_object_is_not_deferred_g3(self):
+        """Triage G3: a deferred_arms that is not an object defers nothing, so the ruled arm G with rows is refused."""
+        for deferred in (["G"], "G"):
+            self.assertIsNotNone(self.must("S1.plan", rb().ruled_deferral_problem, dict(design(), deferred_arms=deferred),
+                                           no_go), f"S1.plan: deferred_arms {deferred!r} read as deferring G")
+
+    def test_run_rows_returns_the_list_g2(self):
+        """Triage G2: run_rows returns the rows as a list, cut by --limit."""
+        pre = design()
+        got = self.must("S1.plan", rb().run_rows, pre, [], go=no_go)
+        self.assertIsInstance(got, list, "S1.plan: run_rows returned no list")
+        cut = self.must("S1.plan", rb().run_rows, pre, [], go=no_go, limit=2)
+        self.assertIsInstance(cut, list, "S1.plan: run_rows with --limit returned no list")
+        self.assertEqual([r["slot"] for r in cut], self.slots(pre, ("A", "O"))[:2], "S1.plan: --limit")
+
 
 # ------------------------------------------------------------------------------------------------- S1.order
 class S1Order(Case):
@@ -494,6 +548,15 @@ class S1Order(Case):
         self.assertTrue(any("registered under arm" in x for x in got), f"S1.order: {got}")
         got = self.must("S1.order", rb().order_problems, [], dict(pre, take_order=None))
         self.assertTrue(got and "no take_order" in got[0], f"S1.order: {got}")
+
+    def test_a_row_under_another_arm_is_named_once_g3(self):
+        """Triage G3: a first registration under another arm is named once; nothing else is checked for that row."""
+        pre = design()
+        base = [r["slot"] for r in pre["take_order"] if r["arm"] in ("A", "O")]
+        wrong = dict(self.regs([(base[0], 2)], pre)[0], arm="Z")
+        got = self.must("S1.order", rb().order_problems, [wrong], pre)
+        self.assertEqual(len(got), 1, f"S1.order: {got}")
+        self.assertIn("registered under arm", got[0], "S1.order")
 
 
 # ------------------------------------------------------------------------------------------------- S1.ledger
@@ -583,6 +646,53 @@ class S1Ledger(Case):
         self.assertEqual(rb().computed_reads(doc_with(*READS)), [], "S1.ledger")
         self.assertEqual(rb().COMPUTED_SOURCE, "computed, not a vendor read", "S1.ledger: ruling 6's words")
 
+    def test_a_json_list_of_the_key_names_is_not_a_record_g1(self):
+        """Triage G1: a stored record or document that is a JSON list naming the right keys is refused by name."""
+        t1 = {"kind": "caps trimmed", "by": "Javier", "month": "2026-11", "at": "2026-10-31T22:00:00Z",
+              "figures": {"openai": "0", "google": "140"}}
+        for fn, value, words in ((lambda v: rb().spend_record_problems(v, now=NOW), list(rb().SPEND_KEYS),
+                                  "a spend record is not exactly"),
+                                 (rb().trim_record_problems, list(rb().TRIM_KEYS), "a trim record is not exactly"),
+                                 (rb().ledger_doc_problems, list(rb().LEDGER_DOC_KEYS), "run-ledger.json is not exactly")):
+            got = self.must("S1.ledger", fn, value)
+            self.assertTrue(len(got) == 1 and words in got[0], f"S1.ledger: a list of {value} not refused: {got}")
+        self.assertEqual(self.must("S1.ledger", rb().trim_record_problems, t1), [], "S1.ledger: a good trim refused")
+
+    def test_a_money_harness_without_a_vendor_refuses_g3(self):
+        """Triage G3: a money-billing harness absent from routing.PAID_HARNESSES refuses by name."""
+        pre = design()
+        for r in pre["rows"]:
+            if r["arm"] == "O":
+                r["agent"] = {"harness": "fake-paid", "version": "1"}
+        self.refuses("S1.ledger", "LedgerRefused", "has no vendor in routing.PAID_HARNESSES", rb().ledger_walks, pre, [],
+                     ("A", "O"))
+
+    def test_a_text_field_that_is_not_text_is_named_g2(self):
+        """Triage G2: a spend record's source or by that is not text is named, never an error."""
+        for k in ("source", "by"):
+            got = self.must("S1.ledger", rb().spend_record_problems, dict(READS[0], **{k: 5}), now=NOW)
+            self.assertIn(f"spend {k} is empty", got, f"S1.ledger: a {k} that is not text admitted")
+
+    def test_a_trim_month_or_figures_of_the_wrong_type_is_named_g2(self):
+        """Triage G2: a trim month that is not text, and figures that are not an object (even a list naming every
+        capped vendor), are named, never an error."""
+        t1 = {"kind": "caps trimmed", "by": "Javier", "month": "2026-11", "at": "2026-10-31T22:00:00Z",
+              "figures": {"openai": "0", "google": "140"}}
+        self.assertEqual(self.must("S1.ledger", rb().trim_record_problems, t1), [], "S1.ledger: a good trim refused")
+        got = self.must("S1.ledger", rb().trim_record_problems, dict(t1, month=202611))
+        self.assertTrue(any("is not YYYY-MM" in x for x in got), f"S1.ledger: a month that is not text: {got}")
+        for figures in (sorted(costs.CAPS), None):
+            got = self.must("S1.ledger", rb().trim_record_problems, dict(t1, figures=figures))
+            self.assertTrue(any("trim figures name exactly" in x for x in got),
+                            f"S1.ledger: figures {figures!r} admitted: {got}")
+
+    def test_a_money_harness_without_a_vendor_refuses_g2(self):
+        """Triage G2: a money-billing harness absent from routing.PAID_HARNESSES is a named refusal."""
+        import routing
+        with mock.patch.dict(routing.PAID_HARNESSES, {}, clear=True):
+            self.refuses("S1.ledger", "LedgerRefused", "has no vendor in routing.PAID_HARNESSES", self.snap,
+                         doc_with(*READS))
+
 
 class S1History(Case):
     def test_append_only_one_record_per_version(self):
@@ -595,6 +705,15 @@ class S1History(Case):
             with self.subTest(name=name):
                 self.assertNotEqual(rb().ledger_history_problems(versions), [], f"S1.history: {name}")
 
+
+    def test_a_bad_version_is_named_alone(self):
+        """Triage s1: a version that is not a valid document is named alone, and nothing is read past it."""
+        got = self.must("S1.history", rb().ledger_history_problems, [{"spend": "x", "trimmed": []}])
+        self.assertEqual(got, [f"version 0: {rb().RUN_LEDGER_NAME}'s spend is not a list"],
+                         "S1.history: a bad version not named alone")
+        got = self.must("S1.history", rb().ledger_history_problems, [doc_with(READS[0]), {"spend": []}])
+        self.assertEqual(len(got), 1, f"S1.history: {got}")
+        self.assertTrue(got[0].startswith("version 1: "), f"S1.history: {got}")
 
 # ------------------------------------------------------------------------------------------------- scratch repository
 class Scratch:
@@ -690,6 +809,178 @@ class S1Git(Case):
         self.must("S1.git", win.wait_reset)
         self.assertEqual(clock.t, 1_800_000_000 + rb().RESET_MARGIN_S, f"S1.git: waited to {clock.t}")
 
+
+    def test_a_refused_spend_record_writes_nothing(self):
+        """Triage s1: a spend record its own rules refuse is refused in a clean repository, nothing written."""
+        head = self.s.git("rev-parse", "HEAD")
+        self.refuses("S1.git", "LedgerRefused", "is not a capped vendor", self.append, dict(READS[0], vendor="x"))
+        self.assertEqual(self.s.git("rev-parse", "HEAD"), head, "S1.git: a refused record committed")
+        self.assertFalse((self.s.root / "run-ledger.json").exists(), "S1.git: a refused record written")
+
+    def test_a_committed_version_that_is_not_json_is_refused(self):
+        """Triage s1: a committed run-ledger.json version that is not JSON refuses the read."""
+        self.must("S1.git", self.append, READS[0])
+        self.s.commit_file("run-ledger.json", b"not json\n")
+        self.refuses("S1.git", "LedgerRefused", "is not JSON", rb().read_ledger_doc, self.s.root, self.s.repo)
+
+    def test_a_failed_commit_rolls_the_ledger_back_g1(self):
+        """Triage G1: a ledger commit git refuses (a pre-commit hook that exits 1) is LedgerRefused, and the file and
+        index go back to HEAD: removed when never committed, the committed version kept when it was."""
+        hook = self.s.repo / ".git" / "hooks" / "pre-commit"
+        hook.parent.mkdir(parents=True, exist_ok=True)
+        ledger = self.s.root / "run-ledger.json"
+        for committed_first in (False, True):
+            hook.unlink(missing_ok=True)
+            if committed_first:
+                self.must("S1.git", self.append, READS[0])
+            hook.write_text("#!/bin/sh\nexit 1\n")
+            hook.chmod(0o755)
+            head = self.s.git("rev-parse", "HEAD")
+            self.refuses("S1.git", "LedgerRefused", "git commit failed", self.append, READS[1])
+            self.assertEqual(self.s.git("rev-parse", "HEAD"), head, "S1.git: a refused commit moved HEAD")
+            self.assertEqual(self.s.git("status", "--porcelain", "--untracked-files=all"), "",
+                             f"S1.git: a refused commit left the repository dirty (committed first: {committed_first})")
+            if committed_first:
+                self.assertTrue(ledger.is_file(), "S1.git: a refused commit removed the committed ledger")
+                self.assertEqual(json.loads(ledger.read_text()), doc_with(READS[0]), "S1.git: not HEAD's ledger")
+            else:
+                self.assertFalse(ledger.exists(), "S1.git: a refused first record left its file")
+
+    def test_a_repository_without_a_commit_identity_is_refused_g1(self):
+        """Triage G1: with no repository-local identity and none in the environment, the ledger refuses before writing
+        (takes.require_commit_identity's ValueError), never by a failed commit."""
+        self.s.git("config", "--unset", "user.name")
+        self.s.git("config", "--unset", "user.email")
+        self.s.git("config", "user.useConfigOnly", "true")
+        head = self.s.git("rev-parse", "HEAD")
+        names = [f"GIT_{r}_{p}" for r in ("AUTHOR", "COMMITTER") for p in ("NAME", "EMAIL")]
+        with mock.patch.dict(os.environ, {}):
+            for n in names:
+                os.environ.pop(n, None)
+            try:
+                self.append(READS[0])
+            except ValueError as e:
+                self.assertIn("commit identity missing", str(e), "S1.git: refused for another reason")
+            except Exception as e:  # noqa: BLE001
+                self.fail(f"S1.git: raised {type(e).__name__}, not the identity refusal: {e}")
+            else:
+                self.fail("S1.git: a record committed without a commit identity")
+        self.assertEqual(self.s.git("rev-parse", "HEAD"), head, "S1.git")
+        self.assertFalse((self.s.root / "run-ledger.json").exists(), "S1.git: written without an identity")
+
+    def test_a_folder_that_is_not_a_repository_is_refused_g1(self):
+        """Triage G1: a git step that fails (no repository) is LedgerRefused by name, never read as an empty ledger."""
+        plain = Path(tempfile.mkdtemp(prefix="not-a-repo-")).resolve()
+        try:
+            (plain / "study").mkdir()
+            with mock.patch.dict(os.environ, {"GIT_CEILING_DIRECTORIES": str(plain.parent)}):
+                self.refuses("S1.git", "LedgerRefused", "git status failed", rb().read_ledger_doc, plain / "study",
+                             plain)
+        finally:
+            shutil.rmtree(plain, ignore_errors=True)
+
+    def test_append_spend_finds_its_repository_g1(self):
+        """Triage G1: append_spend without repo= commits in the repository that holds root."""
+        got = self.must("S1.git", rb().append_spend, READS[0], root=self.s.root, clock=lambda: NOW)
+        self.assertEqual(got, self.s.git("rev-parse", "HEAD").strip(), "S1.git: not the root's repository's commit")
+        self.assertEqual(self.must("S1.git", rb().read_ledger_doc, self.s.root, self.s.repo), doc_with(READS[0]),
+                         "S1.git")
+
+    def test_a_study_folder_reached_through_a_link_reads_the_same_records_g1(self):
+        """Triage G1: root reached through a symbolic link to the repository reads the same ledger and take files."""
+        self.must("S1.git", self.append, READS[0])
+        data = jl(rle("rejected", 1_800_000_000))
+        self.s.commit_file("takes/s-1/1/turn-1.jsonl", data)
+        link = self.s.base / "link"
+        os.symlink(self.s.repo, link)
+        root = link / "evals" / "gap-study-4"
+        self.assertEqual(self.must("S1.git", rb().read_ledger_doc, root, self.s.repo), doc_with(READS[0]),
+                         "S1.git: the ledger through a link")
+        self.assertEqual(self.must("S1.git", rb().committed_take_files, root, self.s.repo, "s-1", 1),
+                         {"evals/gap-study-4/takes/s-1/1/turn-1.jsonl": data}, "S1.git: the take files through a link")
+
+    def test_a_failed_commit_refuses_and_leaves_no_ledger_g3(self):
+        """Triage G3: a commit that fails (a refusing pre-commit hook) refuses the record and leaves no file."""
+        hooks = self.s.repo / ".git" / "hooks"
+        hooks.mkdir(parents=True, exist_ok=True)
+        (hooks / "pre-commit").write_text("#!/bin/sh\nexit 1\n")
+        (hooks / "pre-commit").chmod(0o755)
+        head = self.s.git("rev-parse", "HEAD")
+        self.refuses("S1.git", "LedgerRefused", "git commit failed", self.append, READS[0])
+        self.assertEqual(self.s.git("rev-parse", "HEAD"), head, "S1.git: a failed commit moved HEAD")
+        self.assertFalse((self.s.root / "run-ledger.json").exists(), "S1.git: a failed commit left the ledger file")
+        self.assertEqual(self.s.git("status", "--porcelain"), "", "S1.git: a failed commit left the repository dirty")
+
+    def test_the_writer_resolves_a_repository_named_through_a_link_g3(self):
+        """Triage G3: the repository may be named through a symbolic link; the record is still committed."""
+        link = self.s.base / "repo-link"
+        link.symlink_to(self.s.repo, target_is_directory=True)
+        got = self.must("S1.git", rb().append_spend, READS[0], root=self.s.root.resolve(), repo=link, clock=lambda: NOW)
+        self.assertEqual(got, self.s.git("rev-parse", "HEAD").strip(), "S1.git: not the new commit")
+        self.assertEqual(self.must("S1.git", rb().read_ledger_doc, self.s.root, self.s.repo), doc_with(READS[0]),
+                         "S1.git")
+
+    def test_append_trim_finds_its_own_repository_g3(self):
+        """Triage G3: append_trim with no repo given commits in the root's own repository."""
+        trim = {"kind": "caps trimmed", "by": "Javier", "month": "2026-11", "at": "2026-10-31T22:00:00Z",
+                "figures": {"openai": "0", "google": "140"}}
+        got = self.must("S1.git", rb().append_trim, trim, root=self.s.root)
+        self.assertEqual(got, self.s.git("rev-parse", "HEAD").strip(), "S1.git: not the new commit")
+        self.assertEqual(self.must("S1.git", rb().read_ledger_doc, self.s.root, self.s.repo)["trimmed"], [trim],
+                         "S1.git: the trim record")
+
+    def test_a_take_file_that_cannot_be_read_refuses_g3(self):
+        """Triage G3: a listed take file that git cannot show at HEAD refuses the window, never reads as empty."""
+        self.s.commit_file("takes/s-1/1/turn-1.jsonl", b"{}\n")
+        real = subprocess.run
+
+        def run(argv, *a, **k):
+            if "show" in argv:
+                return subprocess.CompletedProcess(argv, 128, b"", b"")
+            return real(argv, *a, **k)
+        with mock.patch.object(subprocess, "run", run):
+            self.refuses("S1.git", "WindowRefused", "cannot be read at HEAD", rb().committed_take_files, self.s.root,
+                         self.s.repo, "s-1", 1)
+
+    def test_a_take_file_git_cannot_show_is_refused_g4(self):
+        """Triage G4: a committed take file that `git show` cannot read refuses the window's read."""
+        self.s.commit_file("takes/s-1/1/turn-1.jsonl", jl(rle("rejected", 1_800_000_000)))
+        real_run = subprocess.run
+
+        def run(argv, *a, **k):
+            if "show" in argv:
+                return subprocess.CompletedProcess(argv, 128, b"", b"synthetic: cannot show")
+            return real_run(argv, *a, **k)
+        with mock.patch.object(subprocess, "run", run):
+            self.refuses("S1.git", "WindowRefused", "cannot be read at HEAD", rb().committed_take_files, self.s.root,
+                         self.s.repo, "s-1", 1)
+
+    def test_a_failing_git_command_is_refused_g2(self):
+        """Triage G2: a git command that exits non-zero is LedgerRefused naming it, never its empty output."""
+        self.refuses("S1.git", "LedgerRefused", "git show failed", rb()._git, self.s.repo, "show", "no-such-ref")
+
+    def test_a_failed_commit_leaves_the_ledger_as_committed_g2(self):
+        """Triage G2: a commit that fails removes a new run-ledger.json, or restores a tracked one to HEAD, and the
+        repository stays clean."""
+        hook = self.s.repo / ".git" / "hooks" / "pre-commit"
+        hook.parent.mkdir(parents=True, exist_ok=True)
+
+        def arm():
+            hook.write_text("#!/bin/sh\nexit 1\n")
+            hook.chmod(0o755)
+        path = self.s.root / "run-ledger.json"
+        arm()
+        self.refuses("S1.git", "LedgerRefused", "git commit failed", self.append, READS[0])
+        self.assertFalse(path.exists(), "S1.git: a new ledger left after a failed commit")
+        self.assertEqual(self.s.git("status", "--porcelain"), "", "S1.git: dirty after a failed first commit")
+        hook.unlink()
+        self.must("S1.git", self.append, READS[0])
+        committed = path.read_text()
+        arm()
+        self.refuses("S1.git", "LedgerRefused", "git commit failed", self.append, READS[1])
+        self.assertEqual(path.read_text() if path.exists() else None, committed,
+                         "S1.git: a tracked ledger not restored after a failed commit")
+        self.assertEqual(self.s.git("status", "--porcelain"), "", "S1.git: dirty after a failed commit")
 
 # ------------------------------------------------------------------------------------------------- S1.window
 def jl(*objs) -> bytes:
@@ -790,6 +1081,77 @@ class S1Window(Case):
         self.assertEqual(slept, [300.0, 300.0, 100.0], "S1.window: chunks")
         self.assertEqual(clock.t, 700.0, "S1.window")
 
+    def test_unreadable_lines_and_a_bare_event_g1(self):
+        """Triage G1: a line that is not JSON, or JSON that is not an object, is skipped; an allowed event with no
+        unifiedWindows gives its own resetsAt."""
+        files = {"x/turn-1.jsonl": b"not json\n" + jl([1, 2], 5, rle("rejected", 42))}
+        self.assertEqual(self.must("S1.window", rb().claude_reset, files), 42.0, "S1.window: unreadable lines")
+        bare = {"x/turn-1.jsonl": jl(rle("allowed", 7_000))}
+        self.assertEqual(self.must("S1.window", rb().claude_reset, bare), 7_000.0, "S1.window: a bare allowed event")
+
+    def test_only_rate_limit_events_count_g3(self):
+        """Triage G3: rate_limit_info on an event of another type is not a reset signal."""
+        files = {"x/turn-1.jsonl": jl(rle("rejected", 3_000), {"type": "assistant", "rate_limit_info": {
+            "status": "rejected", "resetsAt": 9_000}})}
+        self.assertEqual(self.must("S1.window", rb().claude_reset, files), 3_000.0, "S1.window: another event read")
+
+    def test_only_object_windows_with_numeric_use_are_full_g3(self):
+        """Triage G3: a window that is not an object is skipped; a utilisation that is not a number is not full."""
+        odd = {"x/turn-1.jsonl": jl(rle("allowed", 1_000, {"junk": "x", "five_hour": {"utilization": 1.0,
+                                                                                      "resetsAt": 4_000}}))}
+        self.assertEqual(self.must("S1.window", rb().claude_reset, odd), 4_000.0, "S1.window: a junk window")
+        flag = {"x/turn-1.jsonl": jl(rle("allowed", 1_000, {"five_hour": {"utilization": True, "resetsAt": 4_000}}))}
+        self.assertEqual(self.must("S1.window", rb().claude_reset, flag), 1_000.0,
+                         "S1.window: a boolean utilisation read as full")
+
+    def test_codex_skips_readings_without_limits_and_text_percents_g3(self):
+        """Triage G3: a payload without rate_limits is no reading; a used_percent that is text is not full."""
+        files = {"s/native-turn-1.jsonl": jl(rl({"used_percent": 100.0, "resets_at": 5_000}),
+                                             {"type": "event_msg", "payload": {"type": "token_count"}})}
+        self.assertEqual(self.must("S1.window", rb().codex_reset, files), 5_000.0, "S1.window: an empty reading")
+        text = {"s/native-turn-1.jsonl": jl(rl({"used_percent": "100", "resets_at": 5_000},
+                                               {"used_percent": 20.0, "resets_at": 9_000}))}
+        self.assertEqual(self.must("S1.window", rb().codex_reset, text), 9_000.0, "S1.window: a text percent")
+
+    def test_registered_harness_is_the_slots_one_row_g3(self):
+        """Triage G3: the harness of the one row with this slot and attempt; two such rows refuse."""
+        rows = [{"slot": "s-1", "attempt": 1, "agent": {"harness": "claude-code"}},
+                {"slot": "s-2", "attempt": 1, "agent": {"harness": "codex"}}]
+        self.assertEqual(self.must("S1.window", rb().registered_harness, rows, "s-2", 1), "codex",
+                         "S1.window: another slot's harness")
+        self.refuses("S1.window", "WindowRefused", "has 2 registrations", rb().registered_harness, rows + [rows[1]],
+                     "s-2", 1)
+
+    def test_a_rate_limit_event_without_its_info_is_skipped_g4(self):
+        """Triage G4: a rate_limit_event whose rate_limit_info is not an object is not an event."""
+        files = {"x/turn-1.jsonl": jl({"type": "rate_limit_event", "rate_limit_info": "text"}, rle("rejected", 2_000))}
+        self.assertEqual(self.must("S1.window", rb().claude_reset, files), 2_000.0,
+                         "S1.window: an event without its info was read")
+        self.refuses("S1.window", "WindowRefused", "no rate_limit_event", rb().claude_reset,
+                     {"x/turn-1.jsonl": jl({"type": "rate_limit_event", "rate_limit_info": None})})
+
+    def test_a_zero_or_negative_reset_is_not_an_epoch_g4(self):
+        """Triage G4: a reset time at or below zero is refused, not waited for."""
+        for value in (0, -5, 0.0):
+            self.refuses("S1.window", "WindowRefused", "not an epoch", rb().claude_reset,
+                         {"x/turn-1.jsonl": jl(rle("rejected", value))})
+
+    def test_the_registered_harness_is_the_slots_and_attempts_g4(self):
+        """Triage G4: the harness is read from the registration of that slot and that attempt."""
+        rows = [{"slot": "s1", "attempt": 1, "agent": {"harness": "claude-code", "version": "v"}},
+                {"slot": "s1", "attempt": 2, "agent": {"harness": "codex", "version": "v"}}]
+        self.assertEqual(self.must("S1.window", rb().registered_harness, rows, "s1", 2), "codex",
+                         "S1.window: another attempt's registration")
+        self.assertEqual(self.must("S1.window", rb().registered_harness, rows, "s1", 1), "claude-code", "S1.window")
+
+    def test_a_take_registered_other_than_once_refuses_g2(self):
+        """Triage G2: a paused take with no registration, or two, is WindowRefused by name."""
+        row = {"slot": "s1", "attempt": 1, "agent": {"harness": "codex", "version": "v"}}
+        self.assertEqual(self.must("S1.window", rb().registered_harness, [row], "s1", 1), "codex", "S1.window")
+        self.refuses("S1.window", "WindowRefused", "has 2 registrations", rb().registered_harness, [row, dict(row)],
+                     "s1", 1)
+        self.refuses("S1.window", "WindowRefused", "has 0 registrations", rb().registered_harness, [row], "s1", 2)
+
 
 # ------------------------------------------------------------------------------------------------- S2
 RUN_TOKEN_PATH = "/home/javier/gap4-secrets/claude-run/claude-run-token"      # ruling 4's words
@@ -867,6 +1229,56 @@ class S2Identity(Case):
             self.fail("S2.identity: an unregistered slot gave an identity")
 
 
+    def test_an_open_registration_that_is_not_one_row_is_refused(self):
+        """Triage s1: the open registration matching no row, or two rows, of the takes.json read is refused."""
+        import drive
+        import takes
+        reg = {"slot": "s-1", "attempt": 1}
+        for rows in ([dict(reg), dict(reg)], [dict(reg, attempt=2)]):
+            with mock.patch.object(drive, "open_registration", lambda root, repo, slot: dict(reg)), \
+                    mock.patch.object(takes, "load_rows", lambda root, repo, r=rows: [dict(x) for x in r]), \
+                    mock.patch.object(takes, "row_commits", lambda root, repo: {0: "c" * 40, 1: "d" * 40}):
+                self.refuses("S2.identity", "RunRefused", "is not one row of takes.json", rb().take_identity,
+                             self.s.root, self.s.repo, "s-1")
+
+    def test_a_registration_row_without_its_commit_is_refused_g3(self):
+        """Triage G3: the open registration's row with no registration commit is refused by name."""
+        import drive
+        import takes
+        reg = {"slot": "s-1", "attempt": 1}
+        with mock.patch.object(drive, "open_registration", lambda root, repo, slot: dict(reg)), \
+                mock.patch.object(takes, "load_rows", lambda root, repo: [dict(reg)]), \
+                mock.patch.object(takes, "row_commits", lambda root, repo: {}):
+            self.refuses("S2.identity", "RunRefused", "has no registration commit", rb().take_identity, self.s.root,
+                         self.s.repo, "s-1")
+
+    def test_the_identity_reads_resolved_paths_and_needs_a_commit_g2(self):
+        """Triage G2: take_identity reads every record at the resolved root and repository, and a row with no
+        registration commit is a named refusal."""
+        import drive
+        import takes
+        reg = {"slot": "s-1", "attempt": 1}
+        seen = []
+
+        def world(commits):
+            st = contextlib.ExitStack()
+            st.enter_context(mock.patch.object(drive, "open_registration", lambda root, repo, slot: seen.append(
+                (root, repo)) or dict(reg)))
+            st.enter_context(mock.patch.object(takes, "load_rows", lambda root, repo: seen.append((root, repo)) or [
+                dict(reg)]))
+            st.enter_context(mock.patch.object(takes, "row_commits", lambda root, repo: seen.append((root, repo)) or
+                                               dict(commits)))
+            return st
+        with world({0: "c" * 40}):
+            got = self.must("S2.identity", rb().take_identity, str(self.s.root / "x" / ".."),
+                            str(self.s.repo / "x" / ".."), "s-1")
+        want = (self.s.root.resolve(), self.s.repo.resolve())
+        self.assertEqual(seen, [want] * 3, "S2.identity: records read at unresolved paths")
+        self.assertEqual((got["index"], got["row_commit"]), (0, "c" * 40), "S2.identity")
+        with world({}):
+            self.refuses("S2.identity", "RunRefused", "has no registration commit", rb().take_identity, self.s.root,
+                         self.s.repo, "s-1")
+
 def origin_repo(base: Path):
     repo = base / "origin"
     (repo / "src").mkdir(parents=True)
@@ -928,6 +1340,117 @@ class S2Tree(Case):
         self.assertEqual(list(self.tmp.iterdir()), [], "S2.tree: a refused build left something")
 
 
+    def test_a_refused_placement_removes_the_tree_and_keeps_its_error(self):
+        """Triage s1: a placement that fails removes the take's tree and its own error goes on."""
+        import walk_builders as wb
+        repo, sha = origin_repo(self.base)
+
+        class Synthetic(Exception):
+            pass
+
+        def refuse(*a, **k):
+            raise Synthetic("synthetic placement refusal")
+        with mock.patch.object(wb, "place_instruction_file", refuse):
+            try:
+                rb().build_take_run_tree("11111111-2222-5333-8444-555555555555", repo=repo, commit=sha,
+                                         exclude=["evals"], harness="codex")
+            except Synthetic:
+                pass
+            except Exception as e:  # noqa: BLE001
+                self.fail(f"S2.tree: the placement's error became {type(e).__name__}: {e}")
+            else:
+                self.fail("S2.tree: a refused placement built a tree")
+        self.assertEqual(list(self.tmp.iterdir()), [], "S2.tree: a refused placement left its tree")
+
+    def test_an_empty_exclusion_is_refused(self):
+        """Triage s1: an empty exclusion is not a relative path; refused before anything is built."""
+        import walk_builders as wb
+        repo, sha = origin_repo(self.base)
+        try:
+            rb().build_take_run_tree("11111111-2222-5333-8444-555555555555", repo=repo, commit=sha,
+                                     exclude=["evals", ""], harness="claude-code")
+        except wb.BuilderRefused as e:
+            self.assertIn("list of relative paths", str(e), "S2.tree: refused for another reason")
+        except Exception as e:  # noqa: BLE001
+            self.fail(f"S2.tree: raised {type(e).__name__}, not BuilderRefused: {e}")
+        else:
+            self.fail("S2.tree: an empty exclusion was admitted")
+        self.assertEqual(list(self.tmp.iterdir()), [], "S2.tree: a refused build left something")
+
+    def test_an_absolute_exclusion_or_a_bad_commit_is_a_builder_refusal_g1(self):
+        """Triage G1: an absolute exclusion is refused before anything is built, and a checkout that fails is
+        BuilderRefused naming it; nothing is left."""
+        import walk_builders as wb
+        repo, sha = origin_repo(self.base)
+        for kwargs, words in (({"exclude": ["evals", "/abs"]}, "list of relative paths"),
+                              ({"commit": "0" * 40}, "was not built")):
+            args = dict(repo=repo, commit=sha, exclude=["evals"], harness="claude-code")
+            args.update(kwargs)
+            try:
+                rb().build_take_run_tree("11111111-2222-5333-8444-555555555555", **args)
+            except wb.BuilderRefused as e:
+                self.assertIn(words, str(e), "S2.tree: refused for another reason")
+            except Exception as e:  # noqa: BLE001
+                self.fail(f"S2.tree: raised {type(e).__name__}, not BuilderRefused: {e}")
+            else:
+                self.fail(f"S2.tree: {kwargs} admitted")
+        self.assertEqual(list(self.tmp.iterdir()), [], "S2.tree: a refused build left something")
+
+    def test_a_codex_tree_holds_its_native_instruction_file_g1(self):
+        """Triage G1: R-6, a codex take's tree carries AGENTS.md with the repository's instructions."""
+        repo, sha = origin_repo(self.base)
+        tree = self.must("S2.tree", rb().build_take_run_tree, "99999999-2222-5333-8444-555555555555", repo=repo,
+                         commit=sha, exclude=["evals"], harness="codex")
+        native = Path(tree) / "AGENTS.md"
+        self.assertTrue(native.is_file(), "S2.tree: no native instruction file for codex")
+        self.assertEqual(native.read_text(), "instructions\n", "S2.tree: R-6's contents")
+
+    def test_a_session_or_commit_that_is_not_text_is_refused_g3(self):
+        """Triage G3: a session id or commit that is not text is refused by its own rule, before anything is built."""
+        import walk_builders as wb
+        repo, sha = origin_repo(self.base)
+        for sid, commit, words in ((12345, "xyz", "needs its session id"),
+                                   ("11111111-2222-5333-8444-555555555555", sha.encode(), "40-hex")):
+            try:
+                rb().build_take_run_tree(sid, repo=repo, commit=commit, exclude=["evals"], harness="claude-code")
+            except wb.BuilderRefused as e:
+                self.assertIn(words, str(e), "S2.tree: refused for another reason")
+            except Exception as e:  # noqa: BLE001
+                self.fail(f"S2.tree: raised {type(e).__name__}, not BuilderRefused: {e}")
+            else:
+                self.fail(f"S2.tree: {sid!r} / {commit!r} admitted")
+        self.assertEqual(list(self.tmp.iterdir()), [], "S2.tree: a refused build left something")
+
+    def test_an_exclusion_that_is_not_text_is_refused_g4(self):
+        """Triage G4: an exclusion that is not text (a number, bytes) is refused before anything is built."""
+        import walk_builders as wb
+        repo, sha = origin_repo(self.base)
+        for bad in (1, b"evals"):
+            try:
+                rb().build_take_run_tree("11111111-2222-5333-8444-555555555555", repo=repo, commit=sha,
+                                         exclude=["evals", bad], harness="claude-code")
+            except wb.BuilderRefused as e:
+                self.assertIn("list of relative paths", str(e), "S2.tree: refused for another reason")
+            except Exception as e:  # noqa: BLE001
+                self.fail(f"S2.tree: raised {type(e).__name__}, not BuilderRefused: {e}")
+            else:
+                self.fail(f"S2.tree: the exclusion {bad!r} was admitted")
+        self.assertEqual(list(self.tmp.iterdir()), [], "S2.tree: a refused build left something")
+
+    def test_the_tree_is_returned_with_the_agent_home_g2(self):
+        """Triage G2: the built tree is returned; a codex take's tree holds R-H5's agent home, a Claude Code one's
+        does not."""
+        from box import run_take as rt
+        repo, sha = origin_repo(self.base)
+        tree = self.must("S2.tree", rb().build_take_run_tree, "11111111-2222-5333-8444-555555555555", repo=repo,
+                         commit=sha, exclude=["evals"], harness="codex")
+        self.assertIsNotNone(tree, "S2.tree: no tree returned")
+        self.assertTrue((Path(tree) / rt.RUN_TREE_HOMEDIR).is_dir(), "S2.tree: no agent home for codex (R-H5)")
+        cc = self.must("S2.tree", rb().build_take_run_tree, "99999999-2222-5333-8444-555555555555", repo=repo,
+                       commit=sha, exclude=["evals"], harness="claude-code")
+        self.assertIsNotNone(cc, "S2.tree: no tree returned")
+        self.assertFalse((Path(cc) / rt.RUN_TREE_HOMEDIR).exists(), "S2.tree: an agent home for Claude Code")
+
 class S2Prepare(Case):
     def test_identity_tree_and_a_refused_fixture(self):
         import drive
@@ -959,6 +1482,93 @@ class S2Prepare(Case):
                                       gars_tree_sha="e" * 40, tree_builder=tree_builder, fixture_builder=refused)
         self.assertEqual(removed, ["/synthetic/tree-sid-x"], "S2.prepare: a refused fixture left its tree")
 
+    def test_the_default_builders_and_a_refused_fixtures_own_error_g1(self):
+        """Triage G1: with no builders given, the take's tree is build_take_run_tree's and its fixture
+        walk_builders.build_walk_fixture's; a refused fixture removes the tree and its own error goes on."""
+        import walk_builders as wb
+        ident = {"index": 4, "attempt": 2, "row_commit": "c" * 40, "session_id": "sid-x"}
+        row = {"slot": "s-1", "agent": {"harness": "codex", "version": "v"}}
+        built, fixtures, removed = [], [], []
+
+        def tree_builder(sid, *, repo, commit, exclude, harness):
+            built.append((sid, repo, commit, tuple(exclude), harness))
+            return Path("/synthetic/tree-" + sid)
+
+        def fixture(r, tree, project):
+            fixtures.append(str(tree))
+            return {"sha256": "f" * 64}, "/synthetic/source"
+
+        class Synthetic(Exception):
+            pass
+
+        def refused(r, tree, project):
+            raise Synthetic("synthetic fixture refusal")
+        kw = dict(root="/r", repo="/repo", origin=("/o", "d" * 40), exclude=["evals"], gars_tree_sha="e" * 40)
+        with mock.patch.object(rb(), "take_identity", lambda root, repo, slot: dict(ident)), \
+                mock.patch.object(rb(), "build_take_run_tree", tree_builder), \
+                mock.patch.object(wb, "build_walk_fixture", fixture), \
+                mock.patch.object(wb, "remove_run_tree", lambda tree: removed.append(str(tree))):
+            got = self.must("S2.prepare", rb().prepare_take, row, **kw)
+            self.assertEqual((built, fixtures, got["tree"]),
+                             ([("sid-x", "/o", "d" * 40, ("evals",), "codex")], ["/synthetic/tree-sid-x"],
+                              Path("/synthetic/tree-sid-x")), "S2.prepare: not the default builders")
+            try:
+                rb().prepare_take(row, fixture_builder=refused, **kw)
+            except Synthetic:
+                pass
+            except Exception as e:  # noqa: BLE001
+                self.fail(f"S2.prepare: the fixture's error became {type(e).__name__}: {e}")
+            else:
+                self.fail("S2.prepare: a refused fixture gave a take")
+        self.assertEqual(removed, ["/synthetic/tree-sid-x"], "S2.prepare: a refused fixture left its tree")
+
+    def test_prepare_returns_the_takes_state_g3(self):
+        """Triage G3: prepare_take returns the take's state (slot, attempt, tree, project, identity)."""
+        import drive
+        ident = {"index": 4, "attempt": 2, "row_commit": "c" * 40, "session_id": "sid-x"}
+        row = {"slot": "s-1", "agent": {"harness": "codex", "version": "v"}}
+        with mock.patch.object(rb(), "take_identity", lambda root, repo, slot: dict(ident)):
+            got = self.must("S2.prepare", rb().prepare_take, row, root="/r", repo="/repo", origin=("/o", "d" * 40),
+                            exclude=["evals"], gars_tree_sha="e" * 40,
+                            tree_builder=lambda sid, **kw: Path("/synthetic/tree-" + sid),
+                            fixture_builder=lambda r, tree, project: ({"sha256": "f" * 64}, "/synthetic/source"))
+        self.assertIsInstance(got, dict, "S2.prepare: no state returned")
+        self.assertEqual((got.get("slot"), got.get("attempt"), got.get("tree"), got.get("project")),
+                         ("s-1", 2, Path("/synthetic/tree-sid-x"), drive.neutral_name("sid-x")), "S2.prepare: the state")
+
+    def test_the_default_fixture_and_a_refused_fixtures_own_error_g2(self):
+        """Triage G2: with no fixture builder the half's fixture is walk_builders.build_walk_fixture's; a refused
+        fixture's own error goes on after its tree is removed."""
+        import walk_builders as wb
+        ident = {"index": 4, "attempt": 2, "row_commit": "c" * 40, "session_id": "sid-x"}
+        row = {"slot": "s-1", "agent": {"harness": "codex", "version": "v"}}
+        used, removed = [], []
+
+        def tree_builder(sid, *, repo, commit, exclude, harness):
+            return Path("/synthetic/tree-" + sid)
+        with mock.patch.object(rb(), "take_identity", lambda root, repo, slot: dict(ident)), \
+                mock.patch.object(wb, "build_walk_fixture", lambda r, tree, project: used.append(str(tree)) or (
+                    {"sha256": "f" * 64}, "/synthetic/default-source")):
+            got = self.must("S2.prepare", rb().prepare_take, row, root="/r", repo="/repo", origin=("/o", "d" * 40),
+                            exclude=["evals"], gars_tree_sha="e" * 40, tree_builder=tree_builder)
+        self.assertEqual((used, got["identity"]["source"]), (["/synthetic/tree-sid-x"], "/synthetic/default-source"),
+                         "S2.prepare: not walk_builders' fixture")
+
+        def refused(r, tree, project):
+            raise RuntimeError("synthetic fixture refusal")
+        with mock.patch.object(rb(), "take_identity", lambda root, repo, slot: dict(ident)), \
+                mock.patch.object(wb, "remove_run_tree", lambda tree: removed.append(str(tree))):
+            try:
+                rb().prepare_take(row, root="/r", repo="/repo", origin=("/o", "d" * 40), exclude=["evals"],
+                                  gars_tree_sha="e" * 40, tree_builder=tree_builder, fixture_builder=refused)
+            except RuntimeError as e:
+                self.assertEqual(str(e), "synthetic fixture refusal", "S2.prepare: another error")
+            except Exception as e:  # noqa: BLE001
+                self.fail(f"S2.prepare: the fixture's error became {type(e).__name__}: {e}")
+            else:
+                self.fail("S2.prepare: a refused fixture prepared a take")
+        self.assertEqual(removed, ["/synthetic/tree-sid-x"], "S2.prepare: a refused fixture left its tree")
+
 
 class S2Road(Case):
     def road(self):
@@ -985,6 +1595,32 @@ class S2Road(Case):
         failing.discard("x")
         self.assertEqual(failing.problems, ["slot 'x': synthetic: busy"], "S2.road: a failed removal unnamed")
 
+
+    def test_releasing_a_slot_with_no_take_does_nothing(self):
+        """Triage s1: discard or keep of a slot with no prepared take removes, keeps and names nothing."""
+        road = self.road()
+        self.must("S2.road", road.discard, "never-prepared")
+        self.must("S2.road", road.keep, "never-prepared")
+        self.assertEqual((self.removed, road.kept, road.problems), ([], [], []), "S2.road: a release with no take")
+
+    def test_a_clean_removal_names_no_problem_g3(self):
+        """Triage G3: a run tree removed without a problem leaves road.problems empty."""
+        road = self.road()
+        self.must("S2.road", road.prepare, {"slot": "a"})
+        self.must("S2.road", road.discard, "a")
+        self.assertEqual((self.removed, road.problems), (["/t/a"], []), "S2.road: a clean removal named a problem")
+
+    def test_prepare_returns_the_state_and_discard_removes_g2(self):
+        """Triage G2: prepare returns the take's state; discard removes its tree, a failed removal named."""
+        road = self.road()
+        self.assertEqual(self.must("S2.road", road.prepare, {"slot": "a"}), {"tree": Path("/t/a"), "project": "p"},
+                         "S2.road: prepare's state")
+        self.must("S2.road", road.discard, "a")
+        self.assertEqual((self.removed, road.problems), (["/t/a"], []), "S2.road: discard")
+        failing = rb().TakeRoad(prepare=lambda r: {"tree": Path("/t/x")}, remove=lambda tree: "synthetic: busy")
+        self.must("S2.road", failing.prepare, {"slot": "x"})
+        self.must("S2.road", failing.discard, "x")
+        self.assertEqual(failing.problems, ["slot 'x': synthetic: busy"], "S2.road: a failed removal unnamed")
 
 class FakeSub:
     def __init__(self, name, log, fail=None):
@@ -1075,6 +1711,105 @@ class S2Driver(Case):
         self.assertEqual(rd.road.kept, [("s1", "/t")], "S2.driver: not kept for a human")
 
 
+    def test_a_launched_container_is_driven_and_removed_by_its_sub_driver(self):
+        """Triage s1: the container a launch returned is this run's, for drive and remove."""
+        rd = self.rig()
+        cid = self.must("S2.driver", rd.launch, a_row("s1", "claude-code"))
+        self.assertEqual(self.must("S2.driver", rd.drive, a_row("s1", "claude-code"), cid), {"by": "A"},
+                         "S2.driver: drive after launch")
+        self.must("S2.driver", rd.remove, cid)
+        self.assertIn(("A", "remove", cid), self.log, "S2.driver: remove after launch")
+
+    def test_a_ruling_record_is_not_the_takes_outcome(self):
+        """Triage s1: only the slot's outcomes decide the tree; a ruling record of the same attempt is not one."""
+        blocked = dict(outcome("s1", state="blocked", final=False), drive_started=True)
+        ruling = {"kind": "ruling", "slot": "s1", "attempt": 1, "ruling": "re-run", "route": None, "by": "x"}
+        rd = self.rig(history=[blocked, ruling])
+        self.must("S2.driver", rd.launch, a_row("s1", "claude-code"))
+        self.must("S2.driver", rd.published, a_row("s1", "claude-code"), 1)
+        self.assertEqual(rd.road.kept, [("s1", "/t")], "S2.driver: a ruling record read as the take's outcome")
+        self.assertNotIn(("road", "remove", "/t"), self.log, "S2.driver: a take needing a ruling lost its tree")
+
+    def test_only_the_takes_own_outcome_decides_its_tree_g1(self):
+        """Triage G1: another slot's later outcome never decides this take's tree, either way."""
+        blocked = dict(outcome("s1", state="blocked", final=False), drive_started=True)
+        rd = self.rig(history=[blocked, outcome("s2", state="graded")])
+        self.must("S2.driver", rd.launch, a_row("s1", "claude-code"))
+        self.must("S2.driver", rd.published, a_row("s1", "claude-code"), 1)
+        self.assertEqual(rd.road.kept, [("s1", "/t")], "S2.driver: another slot's outcome removed this take's tree")
+        other = dict(outcome("s2", state="blocked", final=False), drive_started=True)
+        rd = self.rig(history=[outcome("s1", state="graded"), other])
+        self.must("S2.driver", rd.launch, a_row("s1", "claude-code"))
+        self.must("S2.driver", rd.published, a_row("s1", "claude-code"), 1)
+        self.assertEqual((rd.road.kept, self.log[-1]), ([], ("road", "remove", "/t")),
+                         "S2.driver: another slot's blocked outcome kept this take's tree")
+
+    def test_a_container_left_by_a_failed_launch_is_this_runs_g3(self):
+        """Triage G3: the container a failed launch left is recorded, so the run can remove it."""
+        err = RuntimeError("synthetic launch failure, container left")
+        err.container_id = "cid-left"
+        rd = self.rig(fail=err)
+        try:
+            rd.launch(a_row("s2", "codex"))
+        except RuntimeError:
+            pass
+        except Exception as e:  # noqa: BLE001
+            self.fail(f"S2.driver: the launch's error became {type(e).__name__}: {e}")
+        else:
+            self.fail("S2.driver: a failed launch returned")
+        self.must("S2.driver", rd.remove, "cid-left")
+        self.assertIn(("O", "remove", "cid-left"), self.log, "S2.driver: the left container is not this run's")
+
+    def test_a_left_container_is_removed_by_its_sub_driver_g4(self):
+        """Triage G4: a failed launch that leaves a container records it under the sub-driver that launched it."""
+        err = RuntimeError("synthetic launch failure, container left")
+        err.container_id = "cid-left"
+        rd = self.rig(fail=err)
+        with self.assertRaises(RuntimeError, msg="S2.driver"):
+            rd.launch(a_row("s2", "codex"))
+        self.must("S2.driver", rd.remove, "cid-left")
+        self.assertIn(("O", "remove", "cid-left"), self.log, "S2.driver: the left container not removed by its driver")
+
+    def test_a_failed_launch_raises_its_own_error_g4(self):
+        """Triage G4: the sub-driver's launch error goes on unchanged after the tree is removed."""
+        class Synthetic(Exception):
+            pass
+        rd = self.rig(fail=Synthetic("synthetic launch failure"))
+        try:
+            rd.launch(a_row("s2", "codex"))
+        except Synthetic:
+            pass
+        except Exception as e:  # noqa: BLE001
+            self.fail(f"S2.driver: the launch's error became {type(e).__name__}: {e}")
+        else:
+            self.fail("S2.driver: a failed launch returned")
+        self.assertIn(("road", "remove", "/t"), self.log, "S2.driver: a launch with no container kept its tree")
+
+    def test_published_with_no_outcome_discards_the_tree_g4(self):
+        """Triage G4: a take with no committed outcome yet has its tree removed after publishing."""
+        rd = self.rig(history=())
+        self.must("S2.driver", rd.launch, a_row("s1", "claude-code"))
+        self.must("S2.driver", rd.published, a_row("s1", "claude-code"), 1)
+        self.assertEqual(self.log[-2:], [("A", "published", "s1"), ("road", "remove", "/t")],
+                         "S2.driver: publish with no outcome")
+
+    def test_a_row_without_an_agent_and_a_failed_launch_keep_their_errors_g2(self):
+        """Triage G2: a row with no agent has no driver (a named refusal); a launch error with no container goes on as
+        itself after the take's tree is removed."""
+        rd = self.rig()
+        self.refuses("S2.driver", "RunRefused", "has no driver in this run", rd.launch, {"slot": "s9"})
+        self.assertEqual(self.log, [], "S2.driver: something built for a row with no agent")
+        rd = self.rig(fail=RuntimeError("synthetic launch failure"))
+        try:
+            rd.launch(a_row("s2", "codex"))
+        except RuntimeError as e:
+            self.assertEqual(str(e), "synthetic launch failure", "S2.driver: another error")
+        except Exception as e:  # noqa: BLE001
+            self.fail(f"S2.driver: the launch error became {type(e).__name__}: {e}")
+        else:
+            self.fail("S2.driver: a failed launch returned")
+        self.assertIn(("road", "remove", "/t"), self.log, "S2.driver: a launch with no container kept its tree")
+
 class FakeLease:
     made = []
 
@@ -1114,6 +1849,64 @@ class S2Lease(Case):
         got = rb().union_secrets(lambda: [("token", "a")], lambda: [("token", "a"), ("token", "b")])()
         self.assertEqual(got, [("token", "a"), ("token", "b")], "S2.lease: union")
 
+
+    def test_the_union_reads_every_placed_lease(self):
+        """Triage s1: secrets() reads the leases placed so far."""
+        FakeLease.made = []
+        pool = rb().LeasePool("/srv/codex2/auth.json", uid_map=None, clock=None, walk_s_for=lambda r: 100,
+                              road_class=FakeLease)
+        self.assertEqual(self.must("S2.lease", pool.secrets), [], "S2.lease: secrets before any placement")
+        pool.place({"slot": "s1"}, "/cfg1")
+        self.assertEqual(self.must("S2.lease", pool.secrets), [("token", "shared"), ("token", "v-/cfg1")],
+                         "S2.lease: the placed lease's secrets")
+
+    def test_place_returns_the_leases_path_and_union_reads_each_source_g1(self):
+        """Triage G1: place returns where the take's lease was placed; union_secrets reads every source, once each."""
+        FakeLease.made = []
+        pool = rb().LeasePool("/srv/codex2/auth.json", uid_map=None, clock=None, walk_s_for=lambda r: 100,
+                              road_class=FakeLease)
+        self.assertEqual(self.must("S2.lease", pool.place, {"slot": "s1"}, "/cfg1"), "/cfg1/auth.json",
+                         "S2.lease: not the placement's path")
+        union = rb().union_secrets(lambda: [("token", "a")], lambda: [("token", "a"), ("token", "b")])
+        self.assertEqual(self.must("S2.lease", union), [("token", "a"), ("token", "b")], "S2.lease: union")
+
+    def test_each_take_logs_in_with_its_own_lease_g3(self):
+        """Triage G3: login_file_for(take) is that take's own placement."""
+        FakeLease.made = []
+        pool = rb().LeasePool("/srv/codex2/auth.json", uid_map=None, clock=None, walk_s_for=lambda r: 100,
+                              road_class=FakeLease)
+        pool.place({"slot": "s1"}, "/cfg1")
+        pool.place({"slot": "s2"}, "/cfg2")
+        self.assertEqual(self.must("S2.lease", pool.login_file_for, types.SimpleNamespace(row={"slot": "s1"})),
+                         ("login", "/cfg1"), "S2.lease: another take's lease")
+
+    def test_union_secrets_returns_a_reader_g3(self):
+        """Triage G3: union_secrets returns a callable that reads every source."""
+        union = self.must("S2.lease", rb().union_secrets, lambda: [("token", "a")], lambda: [("token", "b")])
+        self.assertTrue(callable(union), "S2.lease: union_secrets returned no reader")
+        self.assertEqual(self.must("S2.lease", union), [("token", "a"), ("token", "b")], "S2.lease: the union")
+
+    def test_place_returns_the_takes_own_placement_g4(self):
+        """Triage G4: place builds one lease road for the take, with its budget, and returns its placement."""
+        FakeLease.made = []
+        pool = rb().LeasePool("/srv/codex2/auth.json", uid_map=None, clock=None, walk_s_for=lambda r: 100,
+                              road_class=FakeLease)
+        self.assertEqual(self.must("S2.lease", pool.place, {"slot": "s1"}, "/cfg1"), "/cfg1/auth.json",
+                         "S2.lease: the placement")
+        self.assertEqual([(m.src, m.placed, m.walk_s) for m in FakeLease.made],
+                         [("/srv/codex2/auth.json", "/cfg1", 100)], "S2.lease: the take's lease road")
+
+    def test_a_placement_returns_its_path_and_is_the_takes_login_g2(self):
+        """Triage G2: place returns the lease's path, and the take's login and the secrets are that placement's."""
+        FakeLease.made = []
+        pool = rb().LeasePool("/srv/codex2/auth.json", uid_map=None, clock=None, walk_s_for=lambda r: 100,
+                              road_class=FakeLease)
+        self.assertEqual(self.must("S2.lease", pool.place, {"slot": "s1"}, "/cfg1"), "/cfg1/auth.json",
+                         "S2.lease: place's path")
+        self.assertEqual(self.must("S2.lease", pool.login_file_for, types.SimpleNamespace(row={"slot": "s1"})),
+                         ("login", "/cfg1"), "S2.lease: the take's login")
+        self.assertEqual(self.must("S2.lease", pool.secrets), [("token", "shared"), ("token", "v-/cfg1")],
+                         "S2.lease: the placement's secrets")
 
 class S2Harness(Case):
     """harness_driver hands walk_driver records="takes" and per-take hooks that read the road."""
@@ -1219,6 +2012,332 @@ class S2Harness(Case):
             self.assertIn("G", built["arms"], "S2.build: a go record does not admit G")
         self.assertEqual(rb().RULED_DEFERRALS, {"G": "OD105"}, "S2.build: the pinned deferral")
 
+
+    def test_a_design_without_the_ruled_arms_rows_needs_no_deferral(self):
+        """Triage s1: RULED_DEFERRALS binds only an arm that has rows; a design without G rows is not refused."""
+        pre = design(deferred=False)
+        pre = dict(pre, rows=[r for r in pre["rows"] if r["arm"] != "G"],
+                   take_order=[r for r in pre["take_order"] if r["arm"] != "G"])
+        self.assertIsNone(self.must("S2.build", rb().ruled_deferral_problem, pre, no_go),
+                          "S2.build: a design without the ruled arm's rows refused")
+        self.assertIsNotNone(self.must("S2.build", rb().ruled_deferral_problem, design(deferred=False), no_go),
+                             "S2.build: a design with G rows not deferring G admitted")
+
+    def test_codex_hooks_read_the_lease_pool(self):
+        """Triage s1: with the Codex gate open, the codex sub-driver's login and secrets are its lease pool's; a
+        missing or relative lease source refuses by name."""
+        import drive
+        import walk_builders as wb
+        seen = {}
+        road = rb().TakeRoad(prepare=lambda r: {"tree": Path("/t/" + r["slot"]), "project": "p"}, remove=lambda t: None)
+        b = dict(self.builders(), lease_path="/srv/codex2/auth.json")
+        with mock.patch.object(drive, "walk_driver", lambda **kw: seen.update(kw) or "driver"), \
+                mock.patch.object(wb, "codex_gate_problem", lambda: None), \
+                mock.patch.object(wb, "vendor_config", lambda r, cfg, tree: None):
+            driver, secrets = self.must("S2.harness", rb().harness_driver, b, "codex", road, "rules", "/root")
+            self.assertEqual((driver, seen["records"]), ("driver", "takes"), "S2.harness: codex")
+            self.assertEqual(self.must("S2.harness", secrets), [], "S2.harness: a lease before any placement")
+            self.refuses("S2.harness", "RunRefused", "no lease is placed", seen["login_file"],
+                         types.SimpleNamespace(row={"slot": "s1"}))
+            for lease, words in ((wb.Missing("synthetic: no lease"), "the Codex lease source is missing: synthetic: "
+                                  "no lease"), ("auth.json", "not an absolute path: 'auth.json'")):
+                self.refuses("S2.harness", "RunRefused", words, rb().harness_driver, dict(b, lease_path=lease),
+                             "codex", road, "rules", "/root")
+
+    def test_build_run_wires_its_repo_rules_and_history(self):
+        """Triage s1: build_run reads the history of the repository it is given, hands the rules scanner it built
+        to every sub-driver and the take repository, and the driver reads that repository's history."""
+        import drive
+        import takes
+        import walk_builders as wb
+        seen = {"rules": []}
+        b = dict(self.builders(), rules_scanner="rules-src", run_tree_origin=("/o", "t"), run_tree_exclude=(),
+                 table={"t": 1})
+
+        def scanner(src, runtime, config_parent, real):
+            seen["scan"] = (src, real)
+            return "rules-built"
+
+        def read_history(**kw):
+            seen["history"] = kw
+            return []
+        with mock.patch.object(wb, "missing", lambda builders: []), \
+                mock.patch.object(takes, "read_history", read_history), \
+                mock.patch.object(wb, "walk_rules_scanner", scanner), \
+                mock.patch.object(drive, "TakeRepo", lambda **kw: types.SimpleNamespace(history=lambda: [], **kw)), \
+                mock.patch.object(rb(), "harness_driver", lambda builders, harness, road, rules, root: seen[
+                    "rules"].append(rules) or (f"driver-{harness}", lambda: [])):
+            built = self.must("S2.build", rb().build_run, pre=design(), go=no_go, builders=b, root="/r",
+                              repo="/elsewhere/repo")
+        where = Path("/elsewhere/repo").resolve()
+        self.assertEqual((seen.get("history", {}).get("repo"), built["repo"].repo), (where, where),
+                         "S2.build: another repository")
+        self.assertEqual(seen.get("scan"), ("rules-src", False), "S2.build: the rules scanner")
+        self.assertEqual((seen["rules"], built["repo"].rules_scanner), (["rules-built", "rules-built"], "rules-built"),
+                         "S2.build: the built rules scanner not handed on")
+        self.assertIs(built["driver"].history, built["repo"].history, "S2.build: the driver's history")
+
+    def test_the_lock_and_proxy_reach_the_sub_driver_g1(self):
+        """Triage G1: the harness's lock path and proxy (walk_builders.for_row of the builders') reach walk_driver."""
+        import drive
+        import walk_builders as wb
+        seen = {}
+        road = rb().TakeRoad(prepare=lambda r: {"tree": Path("/t/" + r["slot"]), "project": "p"}, remove=lambda t: None)
+        with mock.patch.object(drive, "walk_driver", lambda **kw: seen.update(kw) or "driver"), \
+                mock.patch.object(wb, "login_file_by_name", lambda path, h: "checked:" + path), \
+                mock.patch.object(wb, "login_secrets", lambda login, h: (lambda: [])):
+            driver, _ = self.must("S2.harness", rb().harness_driver, self.builders(), "claude-code", road, "rules",
+                                  "/root")
+        self.assertEqual((driver, seen.get("lock_path"), seen.get("proxy")), ("driver", "/lock", "proxy-launch"),
+                         "S2.harness: the lock path or proxy not handed to walk_driver")
+
+    def test_build_run_resolves_its_root_and_wires_road_window_and_ledger_g1(self):
+        """Triage G1: build_run's root defaults to the study folder and is resolved; its road prepares takes with the
+        run's root, repo, origin, exclusions and GARS tree; the window and ledger are built over that repository;
+        --arms A narrows the arms, the harnesses and drops the ledger (claude-code bills no money)."""
+        import check_take
+        with self.stand_ins() as (b, seen):
+            default = self.must("S2.build", rb().build_run, pre=design(), go=no_go, builders=b, repo="/repo")
+            built = self.must("S2.build", rb().build_run, pre=design(), go=no_go, builders=b, root="/r", repo="/repo")
+            narrowed = self.must("S2.build", rb().build_run, pre=design(), go=no_go, builders=b, root="/r",
+                                 repo="/repo", arms=["A"])
+        root, repo = Path("/r").resolve(), Path("/repo").resolve()
+        self.assertEqual((default["repo"].root, built["repo"].root), (rb().HERE.resolve(), root),
+                         "S2.build: the take repository's root")
+        window = built["window"]
+        self.assertIsInstance(window, rb().UsageWindow, "S2.build: no usage window")
+        self.assertEqual((window.root, window.repo), (root, repo), "S2.build: the window's repository")
+        self.assertIsInstance(built["ledger"], rb().SpendLedger, "S2.build: no ledger for a codex run")
+        self.assertEqual((built["ledger"].root, built["ledger"].repo), (root, repo), "S2.build: the ledger's repository")
+        self.assertEqual((narrowed["arms"], narrowed["harnesses"], narrowed["ledger"]), (("A",), ["claude-code"], None),
+                         "S2.build: --arms A not narrowed")
+        road = built["road"]
+        self.assertIsInstance(road, rb().TakeRoad, "S2.build: no take road")
+        self.assertIs(built["driver"].road, road, "S2.build: the driver's road")
+        prepared = []
+        with mock.patch.object(rb(), "prepare_take",
+                               lambda r, **kw: prepared.append(kw) or {"tree": Path("/t"), "project": "p"}):
+            self.must("S2.build", lambda: road.prepare({"slot": "s1"}))
+        self.assertEqual(prepared, [{"root": root, "repo": repo, "origin": ("/o", "t"), "exclude": (),
+                                     "gars_tree_sha": check_take.GARS_TREE_SHA}], "S2.build: the road's prepare")
+
+    def test_a_closed_codex_gate_refuses_g3(self):
+        """Triage G3: the codex sub-driver is refused by name while the box's Codex gate is closed."""
+        import drive
+        import walk_builders as wb
+        road = rb().TakeRoad(prepare=lambda r: {"tree": Path("/t/" + r["slot"]), "project": "p"}, remove=lambda t: None)
+        b = dict(self.builders(), lease_path="/srv/codex2/auth.json")
+        with mock.patch.object(drive, "walk_driver", lambda **kw: "driver"), \
+                mock.patch.object(wb, "codex_gate_problem", lambda: "synthetic: the Codex gate is closed"), \
+                mock.patch.object(wb, "vendor_config", lambda r, cfg, tree: None):
+            self.refuses("S2.harness", "RunRefused", "harness 'codex': synthetic: the Codex gate is closed",
+                         rb().harness_driver, b, "codex", road, "rules", "/root")
+
+    def test_the_codex_hooks_place_the_takes_lease_g3(self):
+        """Triage G3: with the gate open, the codex spec_for places the take's lease and returns its take spec."""
+        import drive
+        import walk_builders as wb
+        seen, placed = {}, []
+        road = rb().TakeRoad(prepare=lambda r: {"tree": Path("/t/" + r["slot"]), "project": "p"}, remove=lambda t: None)
+        road.prepare({"slot": "s1"})
+        b = dict(self.builders(), lease_path="/srv/codex2/auth.json", design_for=lambda r, t: types.SimpleNamespace(
+            script=[]))
+
+        class Road:
+            def __init__(self, src, uid_map=None, clock=None):
+                self.walk_s = None
+
+            def place(self, cfg):
+                placed.append((cfg, self.walk_s))
+                return cfg + "/auth.json"
+
+            def login_file_for(self, take):
+                return "lease-login"
+
+            def secrets(self):
+                return [("token", "lease")]
+        with mock.patch.object(drive, "walk_driver", lambda **kw: seen.update(kw) or "driver"), \
+                mock.patch.object(wb, "codex_gate_problem", lambda: None), \
+                mock.patch.object(wb, "CodexLeaseRoad", Road), \
+                mock.patch.object(wb, "walk_budget_s", lambda script, budgets: 777), \
+                mock.patch.object(wb, "vendor_config", lambda r, cfg, tree: None):
+            driver, secrets = self.must("S2.harness", rb().harness_driver, b, "codex", road, "rules", "/root")
+            row = {"slot": "s1", "agent": {"harness": "codex", "version": "v"}}
+            spec_for = seen.get("spec_for")
+            self.assertTrue(callable(spec_for), "S2.harness: no codex spec_for")
+            self.assertEqual(self.must("S2.harness", spec_for, row, "/cfg"), ("spec", "/cfg", "/t/s1"),
+                             "S2.harness: the codex take spec")
+        self.assertEqual(placed, [("/cfg", 777)], "S2.harness: the take's lease not placed with its budget")
+        self.assertEqual(self.must("S2.harness", seen["login_file"], types.SimpleNamespace(row=row)), "lease-login",
+                         "S2.harness: the codex login is not the take's lease")
+        self.assertEqual(self.must("S2.harness", secrets), [("token", "lease")], "S2.harness: the lease secrets")
+
+    def test_claude_code_secrets_are_a_reader_of_its_login_g3(self):
+        """Triage G3: the claude-code sub-driver's secrets are a reader over its checked login file."""
+        import drive
+        import walk_builders as wb
+        seen = {}
+        road = rb().TakeRoad(prepare=lambda r: {"tree": Path("/t/" + r["slot"]), "project": "p"}, remove=lambda t: None)
+        with mock.patch.object(drive, "walk_driver", lambda **kw: seen.update(kw) or "driver"), \
+                mock.patch.object(wb, "login_file_by_name", lambda path, h: "checked:" + path), \
+                mock.patch.object(wb, "login_secrets", lambda login, h: (lambda: [("token", login)])), \
+                mock.patch.object(wb, "vendor_config", lambda r, cfg, tree: None):
+            driver, secrets = self.must("S2.harness", rb().harness_driver, self.builders(), "claude-code", road,
+                                        "rules", "/root")
+        self.assertTrue(callable(secrets), "S2.harness: the secrets are no reader")
+        self.assertIs(seen.get("secrets"), secrets, "S2.harness: walk_driver got other secrets")
+        self.assertEqual(self.must("S2.harness", secrets), [("token", "checked:/login")], "S2.harness")
+
+    def test_build_run_hands_out_its_rows_and_prepares_takes_g3(self):
+        """Triage G3: build_run's rows are run_rows' and its road prepares each take with the checker's tree sha, the
+        resolved root and repo, the origin and the exclusions."""
+        import check_take
+        with self.stand_ins() as (b, seen):
+            built = self.must("S2.build", rb().build_run, pre=design(), go=no_go, builders=b, root="/r", repo="/repo",
+                              limit=3)
+            self.assertEqual(built["rows"], rb().run_rows(design(), [], go=no_go, limit=3), "S2.build: the rows")
+            got = {}
+            with mock.patch.object(rb(), "prepare_take", lambda row, **kw: got.update(kw, row=row) or {
+                    "tree": Path("/t"), "slot": row["slot"]}):
+                self.must("S2.build", built["road"].prepare, {"slot": "s1"})
+        self.assertEqual((got.get("gars_tree_sha"), got.get("root"), got.get("repo"), got.get("origin"),
+                          got.get("exclude")),
+                         (check_take.GARS_TREE_SHA, Path("/r").resolve(), Path("/repo").resolve(), ("/o", "t"), ()),
+                         "S2.build: the take's preparation")
+
+    def test_a_run_with_no_money_harness_has_no_ledger_g3(self):
+        """Triage G3: arm A alone bills no money, so the run has no spend ledger."""
+        with self.stand_ins() as (b, seen):
+            built = self.must("S2.build", rb().build_run, pre=design(), go=no_go, builders=b, root="/r", repo="/repo",
+                              arms=["A"])
+        self.assertEqual(built["harnesses"], ["claude-code"], "S2.build")
+        self.assertIsNone(built["ledger"], "S2.build: a ledger for a run that bills no money")
+
+    def test_a_closed_codex_gate_refuses_by_name_g4(self):
+        """Triage G4: a closed Codex gate refuses the codex sub-driver by the gate's own words, nothing built."""
+        import drive
+        import walk_builders as wb
+        built = []
+        road = rb().TakeRoad(prepare=lambda r: {"tree": Path("/t/" + r["slot"]), "project": "p"}, remove=lambda t: None)
+        b = dict(self.builders(), lease_path="/srv/codex2/auth.json")
+        with mock.patch.object(drive, "walk_driver", lambda **kw: built.append(kw) or "driver"), \
+                mock.patch.object(wb, "codex_gate_problem", lambda: "synthetic: the Codex gate is closed"), \
+                mock.patch.object(wb, "vendor_config", lambda r, cfg, tree: None):
+            self.refuses("S2.harness", "RunRefused", "harness 'codex': synthetic: the Codex gate is closed",
+                         rb().harness_driver, b, "codex", road, "rules", "/root")
+        self.assertEqual(built, [], "S2.harness: a codex sub-driver built behind a closed gate")
+
+    def test_codex_spec_for_configures_places_and_specs_g4(self):
+        """Triage G4: the codex spec_for writes the vendor config into the take's tree, places the take's own lease
+        (its budget the take's) and returns the take's spec."""
+        import drive
+        import walk_builders as wb
+        seen, configured = {}, []
+        road = rb().TakeRoad(prepare=lambda r: {"tree": Path("/t/" + r["slot"]), "project": "p"}, remove=lambda t: None)
+        road.prepare({"slot": "s1"})
+        b = dict(self.builders(), lease_path="/srv/codex2/auth.json",
+                 design_for=lambda r, t: types.SimpleNamespace(script=["step"]))
+        FakeLease.made = []
+        with mock.patch.object(drive, "walk_driver", lambda **kw: seen.update(kw) or "driver"), \
+                mock.patch.object(wb, "codex_gate_problem", lambda: None), \
+                mock.patch.object(wb, "CodexLeaseRoad", FakeLease), \
+                mock.patch.object(wb, "walk_budget_s", lambda script, budgets: 777), \
+                mock.patch.object(wb, "vendor_config", lambda r, cfg, tree: configured.append((r["slot"], cfg, tree))):
+            self.must("S2.harness", rb().harness_driver, b, "codex", road, "rules", "/root")
+            row = {"slot": "s1", "agent": {"harness": "codex", "version": "v"}}
+            got = self.must("S2.harness", seen["spec_for"], row, "/cfg")
+            self.assertEqual(got, ("spec", "/cfg", "/t/s1"), "S2.harness: the codex take's spec")
+            self.assertEqual(configured, [("s1", "/cfg", "/t/s1")], "S2.harness: the codex vendor config")
+            self.assertEqual([(m.placed, m.walk_s) for m in FakeLease.made], [("/cfg", 777)],
+                             "S2.harness: the take's lease not placed")
+            self.assertEqual(self.must("S2.harness", seen["login_file"], types.SimpleNamespace(row=row)),
+                             ("login", "/cfg"), "S2.harness: the take's login is not its placed lease")
+
+    def test_claude_code_spec_for_writes_the_vendor_config_g4(self):
+        """Triage G4: the Claude Code spec_for writes the vendor config into the take's own tree first."""
+        import drive
+        import walk_builders as wb
+        seen, configured = {}, []
+        road = rb().TakeRoad(prepare=lambda r: {"tree": Path("/t/" + r["slot"]), "project": "p"}, remove=lambda t: None)
+        road.prepare({"slot": "s1"})
+        with mock.patch.object(drive, "walk_driver", lambda **kw: seen.update(kw) or "driver"), \
+                mock.patch.object(wb, "login_file_by_name", lambda path, h: "checked:" + path), \
+                mock.patch.object(wb, "login_secrets", lambda login, h: (lambda: [])), \
+                mock.patch.object(wb, "vendor_config", lambda r, cfg, tree: configured.append((r["slot"], cfg, tree))):
+            self.must("S2.harness", rb().harness_driver, self.builders(), "claude-code", road, "rules", "/root")
+            row = {"slot": "s1", "agent": {"harness": "claude-code", "version": "v"}}
+            self.assertEqual(self.must("S2.harness", seen["spec_for"], row, "/cfg"), ("spec", "/cfg", "/t/s1"),
+                             "S2.harness")
+        self.assertEqual(configured, [("s1", "/cfg", "/t/s1")], "S2.harness: the Claude Code vendor config")
+
+    def test_build_run_narrows_to_the_given_arms_g4(self):
+        """Triage G4: --arms narrows the run's arms, its sub-drivers and its ledger."""
+        with self.stand_ins() as (b, seen):
+            built = self.must("S2.build", rb().build_run, pre=design(), go=no_go, arms=["A"], builders=b, root="/r",
+                              repo="/repo")
+        self.assertEqual((built["arms"], built["harnesses"], [h for h, _ in seen["harness"]], built["ledger"]),
+                         (("A",), ["claude-code"], ["claude-code"], None), "S2.build: --arms A")
+        self.assertTrue(built["rows"] and all(r["arm"] == "A" for r in built["rows"]), "S2.build: the rows")
+
+    def test_build_run_reads_the_given_root_g4(self):
+        """Triage G4: build_run reads the history of the study folder it is given and hands it to the take repository."""
+        import drive
+        import takes
+        import walk_builders as wb
+        seen = {}
+        b = dict(self.builders(), rules_scanner="rules", run_tree_origin=("/o", "t"), run_tree_exclude=(),
+                 table={"t": 1})
+
+        def read_history(**kw):
+            seen["history"] = kw
+            return []
+        with mock.patch.object(wb, "missing", lambda builders: []), \
+                mock.patch.object(takes, "read_history", read_history), \
+                mock.patch.object(wb, "walk_rules_scanner", lambda *a, **k: "rules"), \
+                mock.patch.object(drive, "TakeRepo", lambda **kw: types.SimpleNamespace(history=lambda: [], **kw)), \
+                mock.patch.object(rb(), "harness_driver", lambda builders, harness, road, rules, root: (
+                    f"driver-{harness}", lambda: [])):
+            built = self.must("S2.build", rb().build_run, pre=design(), go=no_go, builders=b, root="/elsewhere/study",
+                              repo="/repo")
+        where = Path("/elsewhere/study").resolve()
+        self.assertEqual((seen.get("history", {}).get("root"), built["repo"].root), (where, where),
+                         "S2.build: another study folder")
+
+    def test_the_hooks_read_the_takes_tree_and_the_pair_is_returned_g2(self):
+        """Triage G2: harness_driver returns (driver, secrets), and spec_for and sidecar_for read the take's tree."""
+        import drive
+        import walk_builders as wb
+        seen = {}
+        road = rb().TakeRoad(prepare=lambda r: {"tree": Path("/t/" + r["slot"]), "project": "proj-" + r["slot"],
+                                                "identity": {}}, remove=lambda t: None)
+        road.prepare({"slot": "s1"})
+        with mock.patch.object(drive, "walk_driver", lambda **kw: seen.update(kw) or "driver"), \
+                mock.patch.object(wb, "login_file_by_name", lambda path, h: "checked:" + path), \
+                mock.patch.object(wb, "login_secrets", lambda login, h: (lambda: [])), \
+                mock.patch.object(wb, "vendor_config", lambda r, cfg, tree: None):
+            got = self.must("S2.harness", rb().harness_driver, self.builders(), "claude-code", road, "rules", "/root")
+            self.assertTrue(isinstance(got, tuple) and len(got) == 2 and got[0] == "driver",
+                            f"S2.harness: not (driver, secrets): {got!r}")
+            row = {"slot": "s1", "agent": {"harness": "claude-code", "version": "v"}}
+            self.assertEqual(self.must("S2.harness", seen.get("spec_for"), row, "/cfg"), ("spec", "/cfg", "/t/s1"),
+                             "S2.harness: spec_for's tree")
+            self.assertEqual(self.must("S2.harness", seen.get("sidecar_for"), row, "/ev"),
+                             ("side", "/ev", "/t/s1", "proj-s1"), "S2.harness: sidecar_for's tree")
+
+    def test_build_run_returns_its_ledger_and_leaves_the_builders_g2(self):
+        """Triage G2: build_run returns its dict with a SpendLedger when a run harness bills money (None for arm A
+        alone), and never writes into the caller's builders."""
+        with self.stand_ins() as (b, seen):
+            login, keys = b["login_path"], set(b)
+            built = self.must("S2.build", rb().build_run, pre=design(), go=no_go, builders=b, root="/r", repo="/repo")
+            self.assertIsInstance(built, dict, "S2.build: build_run returned no dict")
+            self.assertEqual((b["login_path"], set(b)), (login, keys), "S2.build: the caller's builders were changed")
+            self.assertIsInstance(built.get("ledger"), rb().SpendLedger, "S2.build: no spend ledger for codex")
+            a_only = self.must("S2.build", rb().build_run, pre=design(), go=no_go, arms=["A"], builders=b, root="/r",
+                               repo="/repo")
+            self.assertIsInstance(a_only, dict, "S2.build: build_run returned no dict")
+            self.assertEqual((a_only.get("harnesses"), a_only.get("ledger")), (["claude-code"], None),
+                             "S2.build: a spend ledger for arm A alone")
 
 # ------------------------------------------------------------------------------------------------- S3
 import contextlib  # noqa: E402
@@ -1361,6 +2480,90 @@ class S3RunMain(Case):
             go = rb().go_reader("/root")
             self.assertEqual((go("G"), go("O"), seen), (True, None, ["/root", "/root"]), "S3.run: the go reader")
 
+    def test_the_go_reader_reads_when_called_g1(self):
+        """Triage G1: the go reader imports and reads R5's records each time it is called."""
+        import prereg
+        with mock.patch.object(prereg, "committed_go_records", lambda root=None: ["rec"]), \
+                mock.patch.object(prereg, "deferred_arm_go", lambda arm, records: arm == "G"):
+            go = rb().go_reader("/root")
+            self.assertEqual((self.must("S3.run", go, "G"), self.must("S3.run", go, "O")), (True, None),
+                             "S3.run: the go reader")
+
+    def test_an_unfrozen_design_is_one_refusal_line_g1(self):
+        """Triage G1: an unfrozen design is refused in one line, exit 2, nothing built and no summary."""
+        import prereg
+        seen = []
+        with mock.patch.object(prereg, "require_frozen", lambda what: (_ for _ in ()).throw(SystemExit("not frozen"))), \
+                mock.patch.object(rb(), "build_run", lambda **kw: seen.append(kw) or self.built()):
+            rc, out, err = self.must("S3.run", call, rb().run_main, root="/r", repo="/repo")
+        self.assertEqual((rc, err, out, seen), (2, "batch: refused: not frozen\n", "", []),
+                         "S3.run: an unfrozen design not refused in one line")
+
+    def test_the_summary_line_is_printed_stopped_or_refused_g1(self):
+        """Triage G1: stdout carries the one JSON summary when the loop runs, and when it refuses its rows."""
+        with self.world(self.built(), result=[outcome("s1")]):
+            rc, out, _ = self.must("S3.run", call, rb().run_main, root="/r", repo="/repo")
+        self.assertEqual(len(out.splitlines()), 1, f"S3.run: not one summary line: {out!r}")
+        doc = self.must("S3.run", json.loads, out)
+        self.assertEqual((rc, doc["counts"], doc["stopped"]), (0, {"graded": 1}, None), "S3.run: the summary")
+        with self.world(self.built(), result=batch.BatchConfigError("rows refused")):
+            rc, out, _ = self.must("S3.run", call, rb().run_main, root="/r", repo="/repo")
+        self.assertEqual(len(out.splitlines()), 1, f"S3.run: a refused row set printed no summary: {out!r}")
+        doc = self.must("S3.run", json.loads, out)
+        self.assertEqual((rc, doc["counts"], doc["stopped"]), (1, {}, {"reason": "rows refused", "kind": "stop"}),
+                         "S3.run: a refused row set's summary")
+
+    def test_run_summary_fields_g1(self):
+        """Triage G1: run_summary's closed fields, a stop carrying its kind."""
+        built = self.built()
+        got = self.must("S3.run", rb().run_summary, [outcome("s1"), outcome("s2")], {"slot": "s1", "reason": "nightly"},
+                        built, ["google"])
+        self.assertEqual(got, {"counts": {"graded": 2}, "stopped": {"slot": "s1", "reason": "nightly", "kind": "stop"},
+                               "arms": ["A", "O"], "rows": 1, "kept_run_trees": [], "run_tree_problems": [],
+                               "computed_spend_reads": ["google"]}, "S3.run: the summary's fields")
+
+    def test_run_main_resolves_its_root_and_repo_g3(self):
+        """Triage G3: build_run gets the resolved root and repo run_main was given."""
+        seen = []
+        with self.world(self.built(), result=[]), mock.patch.object(rb(), "build_run",
+                                                                    lambda **kw: seen.append(kw) or self.built()):
+            self.must("S3.run", call, rb().run_main, root="/r", repo="/elsewhere/repo")
+        self.assertEqual([(kw.get("root"), kw.get("repo")) for kw in seen],
+                         [(Path("/r").resolve(), Path("/elsewhere/repo").resolve())], "S3.run: the root and repo")
+
+    def test_the_summary_names_the_stop_g3(self):
+        """Triage G3: run_summary carries the loop's stop with its kind: a spend cap is a spend event, else a stop."""
+        stop = {"slot": "s1", "attempt": 1, "state": "blocked", "reason": "routing: spend-cap-reached (openai)"}
+        got = self.must("S3.run", rb().run_summary, [outcome("s1", state="blocked", final=False)], stop, self.built())
+        self.assertEqual(got["stopped"], dict(stop, kind="spend event"), "S3.run: the spend-cap stop")
+        got = self.must("S3.run", rb().run_summary, [], dict(stop, reason="nightly stop rule"), self.built())
+        self.assertEqual(got["stopped"], dict(stop, reason="nightly stop rule", kind="stop"), "S3.run: another stop")
+
+    def test_run_summary_names_the_stop_g4(self):
+        """Triage G4: the summary carries the loop's stop with its kind."""
+        stop = {"slot": "s1", "attempt": 1, "state": "blocked", "reason": "nightly stop rule"}
+        got = self.must("S3.run", rb().run_summary, [outcome("s1", state="blocked", final=False)], stop, self.built())
+        self.assertEqual(got["stopped"], dict(stop, kind="stop"), "S3.run: the stop not summarised")
+        self.assertIsNone(self.must("S3.run", rb().run_summary, [], None, self.built())["stopped"], "S3.run")
+
+    def test_the_go_reader_is_returned_and_run_main_resolves_its_paths_g2(self):
+        """Triage G2: go_reader returns the reader; run_main hands build_run the resolved root it is given and, with
+        no repository, drive.REPO's."""
+        import drive
+        import prereg
+        with mock.patch.object(prereg, "committed_go_records", lambda root=None: ["rec"]), \
+                mock.patch.object(prereg, "deferred_arm_go", lambda arm, records: arm == "G"):
+            go = self.must("S3.run", rb().go_reader, "/root")
+            self.assertTrue(callable(go), f"S3.run: go_reader returned {go!r}")
+            self.assertEqual((self.must("S3.run", go, "G"), self.must("S3.run", go, "O")), (True, None), "S3.run")
+        seen = []
+        with self.world(self.built(), result=[]), mock.patch.object(rb(), "build_run",
+                                                                    lambda **kw: seen.append(kw) or self.built()):
+            rc, _, err = self.must("S3.run", call, rb().run_main, root="/r/x/..")
+        self.assertEqual(rc, 0, f"S3.run: {err}")
+        self.assertEqual((seen[0]["root"], seen[0]["repo"]) if seen else None,
+                         (Path("/r/x/..").resolve(), Path(drive.REPO).resolve()), "S3.run: the root or repository")
+
 
 class S3Writers(Case):
     def setUp(self):
@@ -1414,6 +2617,50 @@ class S3Writers(Case):
                                  "repo": self.s.repo.resolve()}], "S3.writers: the door's arguments")
 
 
+    def test_figures_each_vendor_once(self):
+        """Triage s1: --figure is vendor=amount, each vendor once."""
+        self.assertEqual(self.must("S3.writers", rb().parse_figures, ["openai=0", "google=140"]),
+                         {"openai": "0", "google": "140"}, "S3.writers: figures")
+        self.assertEqual(self.must("S3.writers", rb().parse_figures, None), {}, "S3.writers: no figures")
+        for bad in (["google"], ["=140"], ["google=1", "google=2"]):
+            self.refuses("S3.writers", "LedgerRefused", "is not one vendor=amount", rb().parse_figures, bad)
+
+    def test_a_refused_rehearsal_exits_1_with_its_reason_g3(self):
+        """Triage G3: `rehearse` refused (RunRefused) exits 1 naming the refusal, and writes nothing else."""
+        out = self.s.base / "out"
+        out.mkdir()
+        n = self.count()
+        with mock.patch.object(rb(), "rehearse", side_effect=rb().RunRefused("synthetic refusal")):
+            rc, _, err = self.must("S3.writers", call, rb().main, ["rehearse", "--out", str(out)])
+        self.assertEqual((rc, "run_builders: refused: synthetic refusal" in err, self.count()), (1, True, n),
+                         f"S3.writers: a refused rehearsal: {err}")
+
+    def test_the_writers_print_their_commit_and_name_a_refusal_g2(self):
+        """Triage G2: spend-read and night-ruling print {verb, commit} with the new HEAD; a refused record prints
+        nothing on stdout and names the refusal on stderr."""
+        import takes
+
+        def parsed(out):
+            try:
+                return json.loads(out)
+            except ValueError:
+                self.fail(f"S3.writers: stdout is not one JSON line: {out!r}")
+        rc, out, err = self.must("S3.writers", call, rb().main, ["spend-read", "--vendor", "google", "--usd", "1",
+                                 "--at", "2026-10-15T20:00:00Z", "--source", "r4-g billing page", "--by", "Javier"])
+        self.assertEqual((rc, parsed(out)), (0, {"verb": "spend-read", "commit": self.s.git("rev-parse", "HEAD").strip()}),
+                         f"S3.writers: spend-read {err}")
+        with mock.patch.object(takes, "commit_night_ruling",
+                               lambda **kw: self.s.commit_file("rulings.json", b"[]\n", "one night ruling")):
+            rc, out, err = self.must("S3.writers", call, rb().main, ["night-ruling", "--slot", "s-1", "--attempt", "2",
+                                                                     "--by", "Javier"])
+        self.assertEqual((rc, parsed(out)), (0, {"verb": "night-ruling",
+                                                 "commit": self.s.git("rev-parse", "HEAD").strip()}),
+                         f"S3.writers: night-ruling {err}")
+        rc, out, err = self.must("S3.writers", call, rb().main, ["trimmed", "--month", "2026-11", "--at",
+                                 "2026-10-31T22:00:00Z", "--by", "glitch", "--figure", "google=1", "--figure", "openai=0"])
+        self.assertEqual((rc, out, "run_builders: refused: " in err), (1, "", True),
+                         f"S3.writers: a refused record not named: {err!r}")
+
 class S3Hook(Case):
     def test_the_order_check_reaches_publication(self):
         import result
@@ -1465,6 +2712,11 @@ class S4Rows(Case):
                 rb().rehearsal_rows(rows)
             self.assertEqual(got_e.exception.reason, "rows-missing", "S4.rows")
 
+    def test_another_arms_row_is_passed_over_g1(self):
+        """Triage G1: a row of another arm (G) before the first O and A is passed over, never refused."""
+        got = self.must("S4.rows", rb().rehearsal_rows, [arow("s0", "G"), arow("s1", "O"), arow("s2", "A")])
+        self.assertEqual([r["slot"] for r in got], ["s1", "s2"], "S4.rows: another arm's row first")
+
 
 class S4Summary(Case):
     def test_overlap(self):
@@ -1488,6 +2740,17 @@ class S4Summary(Case):
         touching = {"a": {"launched_at": 0, "drive_started_at": 1, "drive_ended_at": 4},
                     "b": {"launched_at": 0, "drive_started_at": 4, "drive_ended_at": 9}}
         self.assertFalse(rb().overlap_of(touching), "S4.summary: drives that only touch read as overlapping")
+
+    def test_overlap_needs_both_ends_and_both_orders_g4(self):
+        """Triage G4: a drive with no end never overlaps, and a later drive listed first does not overlap an earlier
+        one."""
+        unended = {"a": {"launched_at": 0, "drive_started_at": 1, "drive_ended_at": None},
+                   "b": {"launched_at": 0, "drive_started_at": 2, "drive_ended_at": 5}}
+        self.assertFalse(self.must("S4.summary", rb().overlap_of, unended), "S4.summary: a drive with no end")
+        later_first = {"b": {"launched_at": 5, "drive_started_at": 6, "drive_ended_at": 12},
+                       "a": {"launched_at": 0, "drive_started_at": 1, "drive_ended_at": 4}}
+        self.assertFalse(self.must("S4.summary", rb().overlap_of, later_first),
+                         "S4.summary: a serial run listed later-first read as overlapping")
 
     def test_exact_keys_closed_values_and_pass(self):
         times = {"s1": {"launched_at": 100.0, "drive_started_at": 101.0, "drive_ended_at": 200.0},
@@ -1541,6 +2804,36 @@ class S4Summary(Case):
                      refused="anything else")
 
 
+    def test_the_lease_refusal_is_counted_once(self):
+        """Triage s1: the lease refusal is one count beside the takes' routes."""
+        times = {"s1": {"launched_at": 100.0, "drive_started_at": 101.0, "drive_ended_at": 200.0}}
+        got = rb().rehearsal_summary([outcome("s1")], times, {("s1", 1): "a" * 40}, arms={"s1": "A"},
+                                     lease_refused=True)
+        self.assertEqual(got["counts"], {"graded": 1, "refused:codex-lease-not-live": 1}, "S4.summary: counts")
+
+    def test_outcomes_without_arms_are_refused_g3(self):
+        """Triage G3: outcomes with no arms given are refused by name."""
+        self.refuses("S4.summary", "RunRefused", "no rehearsal arm", rb().rehearsal_summary, [outcome("s1")], {}, {})
+
+    def test_three_takes_never_pass_g3(self):
+        """Triage G3: the rehearsal passes with exactly two takes; a third take fails it even beside two good ones."""
+        times = {"s1": {"launched_at": 100.0, "drive_started_at": 101.0, "drive_ended_at": 200.0},
+                 "s2": {"launched_at": 150.0, "drive_started_at": 151.0, "drive_ended_at": 210.0}}
+        outs = [outcome("s1"), outcome("s2"), outcome("s3")]
+        got = self.must("S4.summary", rb().rehearsal_summary, outs, times, {("s1", 1): "a" * 40, ("s2", 1): "b" * 40},
+                        arms={"s1": "A", "s2": "O", "s3": "A"})
+        self.assertEqual((len(got["takes"]), got["pass"]), (3, False), "S4.summary: three takes passed")
+
+    def test_an_undriven_start_is_no_overlap_g3(self):
+        """Triage G3: a take with an end but no drive start never overlaps."""
+        got = self.must("S4.summary", rb().overlap_of, {"a": {"drive_started_at": None, "drive_ended_at": 5},
+                                                        "b": {"drive_started_at": 1, "drive_ended_at": 9}})
+        self.assertIs(got, False, "S4.summary: an undriven take overlapped")
+
+    def test_a_take_without_arms_is_refused_g2(self):
+        """Triage G2: with no arms given, a take has no rehearsal arm: a named refusal, never an error."""
+        self.refuses("S4.summary", "RunRefused", "no rehearsal arm", rb().rehearsal_summary, [outcome("s1")], {}, {})
+
 class S4Timed(Case):
     def test_times_around_launch_and_drive(self):
         clock = iter([1.0, 2.0, 3.0]).__next__
@@ -1583,6 +2876,30 @@ class S4Lease(Case):
                              "S4.lease: a missing lease source")
         self.assertIsNone(rb().lease_problem(self.builders(), rows[:1]), "S4.lease: an A row needs no lease")
 
+    def test_a_lease_source_that_is_not_a_path_is_not_live_g1(self):
+        """Triage G1: a lease source that is not a path is not live, even with the gate open and a freshness check that
+        would pass."""
+        import walk_builders as wb
+        rows = [arow("s1", "A"), arow("s2", "O")]
+        with mock.patch.object(wb, "codex_gate_problem", lambda: None), \
+                mock.patch.object(wb, "walk_budget_s", lambda script, budgets: 1200), \
+                mock.patch.object(wb, "lease_freshness_problem", lambda path, now, walk_s: None):
+            for lease in (wb.Missing("none"), None):
+                self.assertEqual(self.must("S4.lease", rb().lease_problem, self.builders(lease=lease), rows),
+                                 "codex-lease-not-live", f"S4.lease: a lease source {lease!r} read as live")
+
+    def test_the_freshness_check_gets_the_takes_budget_g2(self):
+        """Triage G2: the lease's freshness is checked against the O take's own walk budget at the builders' clock."""
+        import walk_builders as wb
+        seen = []
+        with mock.patch.object(wb, "codex_gate_problem", lambda: None), \
+                mock.patch.object(wb, "walk_budget_s", lambda script, budgets: 1200), \
+                mock.patch.object(wb, "lease_freshness_problem",
+                                  lambda path, now, walk_s: seen.append((path, now, walk_s)) or None):
+            self.assertIsNone(self.must("S4.lease", rb().lease_problem, self.builders(), [arow("s2", "O")]),
+                              "S4.lease: a live lease refused")
+        self.assertEqual(seen, [("/srv/codex2/auth.json", 1000.0, 1200)], "S4.lease: not the take's budget")
+
 
 class HookSub(FakeSub):
     """A FakeSub whose next drive first runs `hook` (a launch made while that drive runs)."""
@@ -1603,6 +2920,32 @@ class S4Takes(Case):
 
     def tearDown(self):
         shutil.rmtree(self.out, ignore_errors=True)
+
+    def test_the_takes_times_come_from_the_given_clock(self):
+        """Triage s1: summary.json's times are the injected clock's."""
+        ticks = iter(range(100)).__next__
+        st, seen, loop = self.world()
+        with st:
+            self.must("S4.takes", rb().rehearse_takes, str(self.out), builders={"x": 1}, root="/r", repo="/repo",
+                      clock=lambda: float(ticks()), batch_class=loop)
+        summary = json.loads((self.out / "summary.json").read_text())
+        times = [t[k] for t in summary["takes"] for k in ("launched_at", "drive_started_at", "drive_ended_at")]
+        self.assertEqual(len(times), 6, f"S4.takes: {summary}")
+        self.assertTrue(all(isinstance(t, str) and t.startswith("1970-01-01T00:00:") for t in times),
+                        f"S4.takes: not the given clock's times: {times}")
+
+    def test_production_builders_are_real_given_ones_are_not(self):
+        """Triage s1: build_run's real flag is True only for the production builders rehearse_takes fetched."""
+        import walk_builders as wb
+        for given, real in ((None, True), ({"x": 1}, False)):
+            ticks = iter(range(100)).__next__
+            st, seen, loop = self.world()
+            with st, mock.patch.object(wb, "production_builders", lambda: {"x": 1}):
+                self.must("S4.takes", rb().rehearse_takes, str(self.out), builders=given, root="/r", repo="/repo",
+                          clock=lambda: float(ticks()), batch_class=loop)
+            self.assertEqual((seen["build"]["builders"], seen["build"]["real"]), ({"x": 1}, real),
+                             f"S4.takes: builders={given!r}")
+            (self.out / "summary.json").unlink(missing_ok=True)
 
     def world(self, lease=None):
         import prereg
@@ -1779,6 +3122,204 @@ class S4Takes(Case):
                 self.assertEqual((rc, summary["counts"]), (0, {"graded": 2, "kept_removed": 2}),
                                  f"S4.takes: {summary}")
 
+    def test_the_default_repo_and_loop_and_the_summary_file_g1(self):
+        """Triage G1: with no repo or batch class given, the takes run in drive.REPO through batch.Batch, and a run
+        writes summary.json."""
+        import drive
+        ticks = iter(range(100)).__next__
+        st, seen, loop = self.world()
+        with st, mock.patch.object(drive, "REPO", Path("/synthetic-repo")), mock.patch.object(batch, "Batch", loop):
+            rc = self.must("S4.takes", rb().rehearse_takes, str(self.out), builders={"x": 1}, root="/r",
+                           clock=lambda: float(ticks()))
+        self.assertEqual((rc, seen.get("rows"), seen.get("build", {}).get("repo")),
+                         (0, ["s1", "s2"], Path("/synthetic-repo").resolve()), "S4.takes: the default repo or loop")
+        self.assertTrue((self.out / "summary.json").is_file(), "S4.takes: no summary.json written")
+
+    def test_a_rehearse_takes_error_never_writes_rehearses_summary_g1(self):
+        """Triage G1: a rehearse-takes error whose --out is not a folder writes nothing, even when that folder appears
+        before rehearse's own writability check could run (rehearse's freeze-failed is rehearse's alone)."""
+        out = self.out / "later"
+
+        def appears(path):
+            out.mkdir(exist_ok=True)
+            return True
+        with mock.patch.object(rb(), "rehearse_takes", side_effect=RuntimeError("words")), \
+                mock.patch.object(rb(), "rehearse_out_writable", appears):
+            rc, _, _ = self.must("S4.takes", call, rb().main, ["rehearse-takes", "--out", str(out)])
+        self.assertEqual((rc, (out / "summary.json").exists()), (1, False),
+                         "S4.takes: rehearse's freeze-failed summary written for a rehearse-takes error")
+
+    def summary_g3(self):
+        path = self.out / "summary.json"
+        return json.loads(path.read_text()) if path.exists() else {}
+
+    def test_the_takes_read_the_resolved_repository_g3(self):
+        """Triage G3: build_run and outcome_commits get the resolved root and repo rehearse_takes was given."""
+        ticks = iter(range(100)).__next__
+        st, seen, loop = self.world()
+        got = {}
+        with st, mock.patch.object(rb(), "outcome_commits", lambda root, repo: got.update(root=root, repo=repo) or {
+                ("s1", 1): "a" * 40, ("s2", 1): "b" * 40}):
+            self.must("S4.takes", rb().rehearse_takes, str(self.out), builders={"x": 1}, root="/r",
+                      repo="/elsewhere/repo", clock=lambda: float(ticks()), batch_class=loop)
+        want = (Path("/r").resolve(), Path("/elsewhere/repo").resolve())
+        self.assertEqual((seen["build"].get("root"), seen["build"].get("repo")), want, "S4.takes: build_run's paths")
+        self.assertEqual((got.get("root"), got.get("repo")), want, "S4.takes: outcome_commits' paths")
+
+    def test_without_a_clock_the_takes_are_timed_by_the_wall_clock_g3(self):
+        """Triage G3: with no clock given the takes are timed by the wall clock, never refused for it."""
+        import time
+        st, seen, loop = self.world()
+        before = time.time() - 5
+        with st:
+            self.must("S4.takes", rb().rehearse_takes, str(self.out), builders={"x": 1}, root="/r", repo="/repo",
+                      batch_class=loop)
+        summary = self.summary_g3()
+        self.assertEqual(sorted(k for k in summary.get("counts", {"refused:none": 1}) if k.startswith("refused:")), [],
+                         f"S4.takes: refused without a clock: {summary}")
+        launched = [t.get("launched_at") for t in summary.get("takes", [])]
+        self.assertEqual(len(launched), 2, f"S4.takes: {summary}")
+        self.assertTrue(all(isinstance(t, str) and datetime.datetime.fromisoformat(t).timestamp() >= before
+                            for t in launched), f"S4.takes: not wall-clock times: {launched}")
+
+    def test_a_rehearsal_refusal_writes_its_closed_reason_g3(self):
+        """Triage G3: a RehearsalRefused while choosing the rows writes its closed reason and exits 1."""
+        st, seen, loop = self.world()
+        with st, mock.patch.object(rb(), "rehearsal_rows", side_effect=rb().RehearsalRefused("rows-missing", "words")):
+            rc = self.must("S4.takes", rb().rehearse_takes, str(self.out), builders={"x": 1}, root="/r", repo="/repo",
+                           clock=lambda: 0.0, batch_class=loop)
+        self.assertEqual((rc, self.summary_g3()), (1, {"takes": [], "overlap": False, "pass": False,
+                                                       "counts": {"refused:rows-missing": 1}}), "S4.takes: rows-missing")
+        self.assertNotIn("rows", seen, "S4.takes: a take ran after the refusal")
+
+    def test_a_refused_build_always_leaves_a_summary_g3(self):
+        """Triage G3: a refused build writes summary.json refused:builders-missing."""
+        st, seen, loop = self.world()
+        with st, mock.patch.object(rb(), "build_run", side_effect=rb().RunRefused("missing runtime: x")):
+            rc = self.must("S4.takes", rb().rehearse_takes, str(self.out), builders={"x": 1}, root="/r", repo="/repo",
+                           clock=lambda: 0.0, batch_class=loop)
+        self.assertEqual((rc, self.summary_g3().get("counts")), (1, {"refused:builders-missing": 1}),
+                         "S4.takes: a refused build left no closed summary")
+
+    def test_a_loop_error_still_removes_kept_trees_g3(self):
+        """Triage G3: when the loop errors, every run tree the road kept is still removed."""
+        removed = []
+        road = rb().TakeRoad(prepare=lambda r: {"tree": "/t/" + r["slot"]}, remove=lambda t: removed.append(t) or None)
+        road.prepare({"slot": "s9"})
+        road.keep("s9")
+
+        class Breaks:
+            def __init__(self, driver, repo, window, **kw):
+                pass
+
+            def run(self, rows):
+                raise RuntimeError("words")
+        st, seen, _ = self.world()
+        with st:
+            stand_in = rb().build_run
+
+            def build(**kw):
+                built = dict(stand_in(**kw))
+                built["road"] = road
+                return built
+            with mock.patch.object(rb(), "build_run", build):
+                rc = self.must("S4.takes", rb().rehearse_takes, str(self.out), builders={"x": 1}, root="/r",
+                               repo="/repo", clock=lambda: 0.0, batch_class=Breaks)
+        self.assertEqual((rc, removed, road.kept), (1, ["/t/s9"], []), "S4.takes: a kept tree left after a loop error")
+
+    def test_an_error_escaping_the_takes_is_named_by_type_g3(self):
+        """Triage G3: main names an error escaping rehearse-takes by its type alone."""
+        with mock.patch.object(rb(), "rehearse_takes", side_effect=OSError("words")):
+            rc, _, err = self.must("S4.takes", call, rb().main, ["rehearse-takes", "--out", str(self.out)])
+        self.assertEqual((rc, "run_builders: refused: OSError" in err, "words" in err), (1, True, False),
+                         f"S4.takes: {err!r}")
+
+    def test_the_default_loop_is_batchs_g4(self):
+        """Triage G4: with no batch_class given, the takes run through batch.Batch."""
+        ticks = iter(range(100)).__next__
+        st, seen, loop = self.world()
+        with st, mock.patch.object(batch, "Batch", loop):
+            rc = self.must("S4.takes", rb().rehearse_takes, str(self.out), builders={"x": 1}, root="/r", repo="/repo",
+                           clock=lambda: float(ticks()))
+        summary = json.loads((self.out / "summary.json").read_text())
+        self.assertEqual((rc, seen.get("rows"), summary["pass"]), (0, ["s1", "s2"], True),
+                         f"S4.takes: batch.Batch not the default loop: {summary}")
+
+    def test_a_stop_with_no_take_writes_its_summary_g4(self):
+        """Triage G4: a stop with no take writes summary.json, its one closed refusal."""
+        st, seen, _ = self.world()
+        with st:
+            rc = self.must("S4.takes", rb().rehearse_takes, str(self.out), builders={"x": 1}, root="/r", repo="/repo",
+                           clock=lambda: 0.0, batch_class=self.stopping_loop("registering slot s1 failed"))
+        path = self.out / "summary.json"
+        self.assertTrue(path.exists(), "S4.takes: a stop with no take wrote no summary.json")
+        self.assertEqual((rc, json.loads(path.read_text())["counts"]), (1, {"refused:loop-stopped": 1}), "S4.takes")
+
+    def test_a_stop_after_takes_is_summarised_by_its_takes_g4(self):
+        """Triage G4: a loop that stopped after its takes ran is summarised by those takes, not refused."""
+        ticks = iter(range(100)).__next__
+        st, seen, loop = self.world()
+
+        class StopsAfter(loop):
+            def run(self_, rows):
+                got = super().run(rows)
+                self_.stopped = {"slot": rows[-1]["slot"], "attempt": 1, "state": "graded", "reason": "nightly stop"}
+                return got
+        with st:
+            rc = self.must("S4.takes", rb().rehearse_takes, str(self.out), builders={"x": 1}, root="/r", repo="/repo",
+                           clock=lambda: float(ticks()), batch_class=StopsAfter)
+        summary = json.loads((self.out / "summary.json").read_text())
+        self.assertEqual((rc, summary["pass"], [t["arm"] for t in summary["takes"]]), (0, True, ["O", "A"]),
+                         f"S4.takes: a stop after the takes refused them: {summary}")
+
+    def test_no_take_and_no_stop_is_an_empty_failed_summary_g4(self):
+        """Triage G4: a loop that returns no take and records no stop writes an empty summary that does not pass."""
+        class Empty:
+            stopped = None
+
+            def __init__(self, driver, repo, window, **kw):
+                pass
+
+            def run(self, rows):
+                return []
+        st, seen, _ = self.world()
+        with st:
+            rc = self.must("S4.takes", rb().rehearse_takes, str(self.out), builders={"x": 1}, root="/r", repo="/repo",
+                           clock=lambda: 0.0, batch_class=Empty)
+        self.assertEqual((rc, json.loads((self.out / "summary.json").read_text())),
+                         (1, {"takes": [], "overlap": False, "pass": False, "counts": {"kept_removed": 0}}),
+                         "S4.takes: no take and no stop")
+
+    def test_a_take_step_error_without_its_out_folder_writes_nothing_g4(self):
+        """Triage G4: main writes the take step's closed summary only into an --out folder that exists."""
+        missing = self.out / "missing"
+        with mock.patch.object(rb(), "rehearse_takes", side_effect=RuntimeError("words")):
+            rc, _, err = self.must("S4.takes", call, rb().main, ["rehearse-takes", "--out", str(missing)])
+        self.assertEqual((rc, missing.exists(), "words" in err), (1, False, False), "S4.takes: wrote without --out")
+
+    def test_the_root_design_and_default_clock_reach_the_takes_g2(self):
+        """Triage G2: build_run gets the resolved root given and the frozen design; with no clock the takes run on
+        time.time."""
+        st, seen, loop = self.world()
+        with st:
+            rc = self.must("S4.takes", rb().rehearse_takes, str(self.out), builders={"x": 1},
+                           root=str(self.out / "x" / ".."), repo="/repo", batch_class=loop)
+        build = seen.get("build", {})
+        self.assertEqual(build.get("root"), self.out.resolve(), "S4.takes: not the given root, resolved")
+        self.assertEqual(build.get("pre"), design(), "S4.takes: not the frozen design")
+        summary = json.loads((self.out / "summary.json").read_text())
+        self.assertEqual((rc in (0, 1), len(summary["takes"])), (True, 2), f"S4.takes: {summary}")
+
+    def test_write_summary_returns_its_path_and_a_refusal_is_named_g2(self):
+        """Triage G2: write_summary returns the file it wrote; a RunRefused from the take step is named on stderr."""
+        got = self.must("S4.takes", rb().write_summary, self.out, {"pass": False})
+        self.assertEqual(got, self.out / "summary.json", "S4.takes: write_summary's path")
+        self.assertEqual(json.loads(got.read_text()) if got else None, {"pass": False}, "S4.takes")
+        with mock.patch.object(rb(), "rehearse_takes", side_effect=rb().RunRefused("synthetic refusal")):
+            rc, _, err = self.must("S4.takes", call, rb().main, ["rehearse-takes", "--out", str(self.out)])
+        self.assertEqual((rc, "run_builders: refused: synthetic refusal" in err), (1, True),
+                         f"S4.takes: the refusal not named: {err!r}")
+
 
 class S4Rehearse(Case):
     def setUp(self):
@@ -1913,6 +3454,177 @@ class S4Rehearse(Case):
                              "S4.rehearse: a summary written into the source repository")
             inside.rmdir()
 
+    def test_the_take_step_returns_the_childs_code_and_output(self):
+        """Triage s1: a take step that exits 0 is (0, its output)."""
+        got = self.must("S4.rehearse", rb().run_takes_step, [sys.executable, "-c", "print('ran')"], self.base, 60)
+        self.assertEqual((got[0], got[1].strip()), (0, "ran"), "S4.rehearse: the take step")
+
+    def test_the_latest_review_is_the_last_commit_landing_one(self):
+        """Triage s1: latest_review is the last commit touching a pre-freeze review that freeze admits, else None."""
+        import freeze
+        self.assertIsNone(self.must("S4.rehearse", rb().latest_review, self.s.repo), "S4.rehearse: no review")
+        self.s.commit_file("review_kit/prefreeze-1.md", b"synthetic review\n", "review")
+        sha = self.s.git("rev-parse", "HEAD").strip()
+        seen = []
+        with mock.patch.object(freeze, "review_file_problems", lambda c: seen.append(c) or ([], "x")):
+            self.assertEqual(self.must("S4.rehearse", rb().latest_review, self.s.repo), sha,
+                             "S4.rehearse: the committed review")
+        self.assertEqual(seen, [sha], "S4.rehearse: freeze's check of the review")
+        with mock.patch.object(freeze, "review_file_problems", lambda c: (["synthetic"], None)):
+            self.assertIsNone(self.must("S4.rehearse", rb().latest_review, self.s.repo),
+                              "S4.rehearse: a review freeze refuses")
+
+    def test_an_out_that_cannot_be_resolved_is_not_writable(self):
+        """Triage s1: rehearse_out_writable is False, a bool, when the path cannot be resolved."""
+        with mock.patch.object(Path, "resolve", side_effect=OSError("synthetic")):
+            got = self.must("S4.rehearse", rb().rehearse_out_writable, self.base)
+        self.assertIs(got, False, "S4.rehearse: not False")
+
+    def test_a_refusal_runs_no_step_g1(self):
+        """Triage G1: no pre-freeze review, or a full --out, is a closed refusal and no clone step runs."""
+        def runner(argv, cwd):
+            raise AssertionError(f"S4.rehearse: a step ran after a refusal: {argv[:3]}")
+        none = self.base / "none"
+        with mock.patch.object(rb(), "latest_review", lambda source: None):
+            rc = self.must("S4.rehearse", rb().rehearse, none, source=self.s.repo, runner=runner)
+        self.assertEqual((rc, json.loads((none / "summary.json").read_text())["counts"]),
+                         (1, {"refused:no-pre-freeze-review": 1}), "S4.rehearse: no review")
+        full = self.base / "full"
+        full.mkdir()
+        (full / "x").write_text("x")
+        rc = self.must("S4.rehearse", rb().rehearse, full, source=self.s.repo, review="r" * 40, runner=runner)
+        self.assertEqual((rc, json.loads((full / "summary.json").read_text())["counts"]),
+                         (1, {"refused:out-not-empty": 1}), "S4.rehearse: a full --out")
+
+    def test_the_source_problems_g1(self):
+        """Triage G1: rehearsal_source_problem: an empty folder is fine; a full folder or a file is out-not-empty; a
+        folder under the source, or the source itself, is out-inside-source."""
+        with mock.patch.dict(os.environ, {"GIT_CEILING_DIRECTORIES": str(self.base)}):
+            empty = self.base / "empty"
+            empty.mkdir()
+            self.assertIsNone(self.must("S4.rehearse", rb().rehearsal_source_problem, empty, self.s.repo),
+                              "S4.rehearse: an empty --out refused")
+            full = self.base / "full"
+            full.mkdir()
+            (full / "x").write_text("x")
+            a_file = self.base / "a-file"
+            a_file.write_text("x")
+            for out in (full, a_file):
+                self.assertEqual(self.must("S4.rehearse", rb().rehearsal_source_problem, out, self.s.repo),
+                                 "out-not-empty", f"S4.rehearse: {out.name}")
+            self.assertEqual(self.must("S4.rehearse", rb().rehearsal_source_problem, self.s.repo / "out", self.s.repo),
+                             "out-inside-source", "S4.rehearse: a folder under the source")
+            bare = self.base / "bare"
+            bare.mkdir()
+            self.assertEqual(self.must("S4.rehearse", rb().rehearsal_source_problem, bare, bare),
+                             "out-inside-source", "S4.rehearse: --out the source itself")
+
+    def test_an_out_is_writable_only_absolute_existing_and_outside_g1(self):
+        """Triage G1: rehearse_out_writable is True only for an absolute, existing folder outside drive.REPO."""
+        import drive
+        with mock.patch.object(drive, "REPO", self.s.repo):
+            self.assertIs(self.must("S4.rehearse", rb().rehearse_out_writable, self.base), True, "S4.rehearse")
+            for out, why in ((Path(os.path.relpath(self.base)), "a relative path"),
+                             (self.base / "missing", "a folder that does not exist"),
+                             (self.s.repo, "the source itself")):
+                self.assertIs(self.must("S4.rehearse", rb().rehearse_out_writable, out), False,
+                              f"S4.rehearse: {why} read as writable")
+
+    def test_the_take_step_returns_a_tuple_g1(self):
+        """Triage G1: run_takes_step is (code, output) when the child runs, and (1, the error) when it cannot start."""
+        got = self.must("S4.rehearse", rb().run_takes_step, [sys.executable, "-c", "print('ran')"], self.base, 60)
+        self.assertEqual(got, (0, "ran\n"), "S4.rehearse: the take step's result")
+        got = self.must("S4.rehearse", rb().run_takes_step, [str(self.base / "no-such-program")], self.base, 60)
+        self.assertTrue(isinstance(got, tuple) and len(got) == 2 and got[0] == 1 and isinstance(got[1], str),
+                        f"S4.rehearse: a step that cannot start gave {got!r}")
+
+    def test_no_review_commit_is_no_review_g1(self):
+        """Triage G1: with no committed review (or no repository) latest_review is None, even when freeze would admit
+        any commit."""
+        import freeze
+        with mock.patch.object(freeze, "review_file_problems", lambda c: ([], "x")), \
+                mock.patch.dict(os.environ, {"GIT_CEILING_DIRECTORIES": str(self.base.parent)}):
+            self.assertIsNone(self.must("S4.rehearse", rb().latest_review, self.s.repo), "S4.rehearse: no review")
+            self.assertIsNone(self.must("S4.rehearse", rb().latest_review, self.base), "S4.rehearse: no repository")
+
+    def rehearse_g4(self, out, **kwargs):
+        """Triage G4: rehearse with every step a stand-in that records it; (rc, calls)."""
+        import freeze_rehearsal as fr
+        calls = []
+
+        def runner(argv, cwd):
+            calls.append(list(argv))
+            return 0, ""
+        args = dict(source=self.s.repo, runner=runner, takes_runner=lambda argv, cwd, timeout: (0, ""),
+                    budget_for=lambda clone: 60, clock=lambda: NOW)
+        args.update(kwargs)
+        with mock.patch.object(fr, "synthetic_holdout_source", lambda draft, dest: None):
+            rc = self.must("S4.rehearse", rb().rehearse, out, **args)
+        return rc, calls
+
+    def test_a_dirty_source_is_not_clean_g4(self):
+        """Triage G4: a source with an untracked file is source-not-clean."""
+        (self.s.root / "stray").write_text("x")
+        self.assertEqual(self.must("S4.rehearse", rb().rehearsal_source_problem, self.base / "o", self.s.repo.resolve()),
+                         "source-not-clean", "S4.rehearse: a dirty source")
+        (self.s.root / "stray").unlink()
+        self.assertIsNone(self.must("S4.rehearse", rb().rehearsal_source_problem, self.base / "o", self.s.repo.resolve()),
+                          "S4.rehearse: a clean source")
+
+    def test_no_review_commit_is_none_without_asking_freeze_g4(self):
+        """Triage G4: with no committed pre-freeze review (or no repository) latest_review is None, freeze not asked."""
+        import freeze
+        seen = []
+        with mock.patch.object(freeze, "review_file_problems", lambda c: seen.append(c) or ([], "x")):
+            self.assertIsNone(self.must("S4.rehearse", rb().latest_review, self.s.repo), "S4.rehearse: no review")
+            self.assertIsNone(self.must("S4.rehearse", rb().latest_review, self.base), "S4.rehearse: no repository")
+        self.assertEqual(seen, [], "S4.rehearse: freeze asked about a review that does not exist")
+
+    def test_a_refused_out_runs_no_step_even_with_a_review_g4(self):
+        """Triage G4: an --out that is not empty is refused, and no step runs, when a review is given too."""
+        full = self.base / "full"
+        full.mkdir()
+        (full / "x").write_text("x")
+        rc, calls = self.rehearse_g4(full, review="r" * 40)
+        path = full / "summary.json"
+        counts = json.loads(path.read_text()).get("counts") if path.exists() else None
+        self.assertEqual((rc, calls, counts), (1, [], {"refused:out-not-empty": 1}),
+                         "S4.rehearse: a refused --out ran steps")
+
+    def test_no_review_found_is_refused_g4(self):
+        """Triage G4: with no review given and none committed, the rehearsal is refused, no step run."""
+        out = self.base / "none"
+        with mock.patch.object(rb(), "latest_review", lambda source: None):
+            rc, calls = self.rehearse_g4(out)
+        path = out / "summary.json"
+        counts = json.loads(path.read_text()).get("counts") if path.exists() else None
+        self.assertEqual((rc, calls, counts), (1, [], {"refused:no-pre-freeze-review": 1}),
+                         "S4.rehearse: ran without a review")
+
+    def test_the_latest_review_is_used_when_none_is_given_g4(self):
+        """Triage G4: with no review given, the latest committed one is the freeze's review."""
+        out = self.base / "out"
+        with mock.patch.object(rb(), "latest_review", lambda source: "c" * 40):
+            rc, calls = self.rehearse_g4(out)
+        freeze_argv = [c for c in calls if c[0] == sys.executable and c[4].endswith("/freeze.py")]
+        self.assertEqual((rc, [a[5:7] for a in freeze_argv]), (0, [["--review-commit", "c" * 40]]),
+                         "S4.rehearse: the latest review not used")
+
+    def test_the_default_runner_is_freeze_rehearsals_g4(self):
+        """Triage G4: with no runner given, each clone step runs through freeze_rehearsal.sh in its step environment."""
+        import freeze_rehearsal as fr
+        out = self.base / "out"
+        ran = []
+
+        def sh(argv, cwd, env=None, timeout=3600):
+            ran.append((list(argv), env == fr.step_environment()))
+            return 0, ""
+        with mock.patch.object(fr, "sh", sh):
+            rc, _ = self.rehearse_g4(out, review="r" * 40, runner=None)
+        self.assertEqual(rc, 0, "S4.rehearse: the default runner")
+        self.assertEqual(ran[0], (["git", "clone", "-q", "--no-local", str(self.s.repo.resolve()), str(out / "clone")],
+                                  True), "S4.rehearse: the first step not through freeze_rehearsal.sh")
+
     def test_the_take_budget(self):
         """MINOR-4: each rehearsal row's walk budget (a step with a recovery counts twice) plus one quiescence cap."""
         scripts = {"s1": [{"n": 1}, {"n": 2, "recovery": "r"}], "s2": [{"n": 1}]}
@@ -2034,6 +3746,161 @@ class S4Rehearse(Case):
         self.assertFalse((self.s.root / "run-ledger.json").exists(), "S4.rehearse: the source repository was written")
         self.assertEqual(self.s.git("status", "--porcelain"), "", "S4.rehearse: the source changed")
 
+    def summary_g3(self, out):
+        path = Path(out) / "summary.json"
+        return json.loads(path.read_text()) if path.exists() else {}
+
+    def rehearse_g3(self, out, runner, **kw):
+        """rehearse with every step a stand-in: no holdout source, a fixed budget and a take step that exits 0."""
+        import freeze_rehearsal as fr
+        args = dict(source=self.s.repo, review="r" * 40, runner=runner, takes_runner=lambda a, c, t: (0, ""),
+                    budget_for=lambda clone: 60, clock=lambda: NOW)
+        args.update(kw)
+        with mock.patch.object(fr, "synthetic_holdout_source", lambda draft, dest: None):
+            return self.must("S4.rehearse", rb().rehearse, out, **args)
+
+    def test_the_source_problems_by_name_g3(self):
+        """Triage G3: rehearsal_source_problem names out-inside-source and source-not-clean, else None."""
+        self.assertEqual(self.must("S4.rehearse", rb().rehearsal_source_problem, self.s.repo / "out", self.s.repo),
+                         "out-inside-source", "S4.rehearse")
+        self.assertIsNone(self.must("S4.rehearse", rb().rehearsal_source_problem, self.base / "clean", self.s.repo),
+                          "S4.rehearse: a clean source refused")
+        (self.s.root / "stray").write_text("x")
+        self.assertEqual(self.must("S4.rehearse", rb().rehearsal_source_problem, self.base / "dirty", self.s.repo),
+                         "source-not-clean", "S4.rehearse")
+
+    def test_refusals_leave_a_closed_summary_and_run_nothing_g3(self):
+        """Triage G3: each refusal before the clone exits 1 with its closed summary (none inside the source) and runs no
+        step, even with every later step a stand-in that would succeed."""
+        calls = []
+        runner = lambda argv, cwd: calls.append(argv) or (0, "")  # noqa: E731
+        inside = self.s.repo / "out"
+        self.assertEqual((self.rehearse_g3(inside, runner), inside.exists()), (1, False), "S4.rehearse: inside")
+        full = self.base / "full"
+        full.mkdir()
+        (full / "x").write_text("x")
+        self.assertEqual((self.rehearse_g3(full, runner), self.summary_g3(full).get("counts")),
+                         (1, {"refused:out-not-empty": 1}), "S4.rehearse: out-not-empty")
+        none = self.base / "none"
+        with mock.patch.object(rb(), "latest_review", lambda source: None):
+            self.assertEqual((self.rehearse_g3(none, runner, review=None), self.summary_g3(none).get("counts")),
+                             (1, {"refused:no-pre-freeze-review": 1}), "S4.rehearse: no review")
+        self.assertEqual(calls, [], "S4.rehearse: a step ran after a refusal")
+
+    def test_the_source_is_resolved_g3(self):
+        """Triage G3: a source named through a symbolic link is cloned by its resolved path."""
+        link = self.base / "src-link"
+        link.symlink_to(self.s.repo, target_is_directory=True)
+        calls = []
+        rc = self.rehearse_g3(self.base / "out", lambda argv, cwd: calls.append(list(argv)) or (0, ""), source=link)
+        self.assertEqual((rc, calls[0][4] if calls else None), (0, str(self.s.repo.resolve())),
+                         "S4.rehearse: the source not resolved")
+
+    def test_each_failed_step_stops_the_rehearsal_g3(self):
+        """Triage G3: a failed clone step or freeze step exits 1 with refused:freeze-failed and runs nothing after it."""
+        for name, fails in (("clone", lambda argv: argv[:2] == ["git", "clone"]),
+                            ("freeze", lambda argv: len(argv) > 4 and str(argv[4]).endswith("/freeze.py"))):
+            out = self.base / f"out-{name}"
+            calls = []
+
+            def runner(argv, cwd, fails=fails):
+                calls.append(list(argv))
+                return (1, "words") if fails(argv) else (0, "")
+            rc = self.rehearse_g3(out, runner)
+            self.assertEqual((rc, self.summary_g3(out).get("counts")), (1, {"refused:freeze-failed": 1}),
+                             f"S4.rehearse: a failed {name} step")
+            self.assertTrue(calls and fails(calls[-1]), f"S4.rehearse: a step ran after the failed {name} step")
+
+    def test_a_budget_that_cannot_be_read_stops_the_rehearsal_g3(self):
+        """Triage G3: a budget refused or unreadable exits 1 with its closed reason; the take step never runs."""
+        for budget, want in ((lambda c: (_ for _ in ()).throw(rb().RehearsalRefused("rows-missing", "words")),
+                              "rows-missing"),
+                             (lambda c: (_ for _ in ()).throw(OSError("words")), "builders-missing")):
+            out = self.base / f"out-{want}"
+            ran = []
+            rc = self.rehearse_g3(out, lambda argv, cwd: (0, ""), budget_for=budget,
+                                  takes_runner=lambda a, c, t: ran.append(a) or (0, ""))
+            self.assertEqual((rc, self.summary_g3(out).get("counts"), ran), (1, {f"refused:{want}": 1}, []),
+                             f"S4.rehearse: {want}")
+
+    def test_a_missing_checker_budget_is_builders_missing_g3(self):
+        """Triage G3: rehearsal_budget_s refuses a Missing checker budget as builders-missing, never another error."""
+        import variants
+        import walk_builders as wb
+        folder = self.base / "clone" / "evals" / "gap-study-4"
+        folder.mkdir(parents=True)
+        order = [dict(arow("s1", "O"), task="t", half="h", wording="w1"),
+                 dict(arow("s2", "A"), task="t", half="h", wording="w2")]
+        (folder / "prereg.json").write_text(json.dumps({"take_order": order}))
+        with mock.patch.object(variants, "operator_steps", lambda *a, **k: [{"n": 1}]), \
+                mock.patch.object(wb, "checker_budgets", lambda: wb.Missing("pending")):
+            try:
+                rb().rehearsal_budget_s(self.base / "clone")
+            except rb().RehearsalRefused as e:
+                self.assertEqual(e.reason, "builders-missing", "S4.rehearse")
+            except Exception as e:  # noqa: BLE001
+                self.fail(f"S4.rehearse: a Missing budget raised {type(e).__name__}, not RehearsalRefused")
+            else:
+                self.fail("S4.rehearse: a Missing budget gave a budget")
+
+    def test_the_source_problems_by_name_g2(self):
+        """Triage G2: rehearsal_source_problem names a file or a non-empty folder out-not-empty, an out inside the
+        source out-inside-source, and admits an empty or absent out."""
+        src = self.s.repo
+        a_file = self.base / "file"
+        a_file.write_text("x")
+        full = self.base / "full"
+        full.mkdir()
+        (full / "x").write_text("x")
+        empty = self.base / "empty"
+        empty.mkdir()
+        for out, want in ((a_file, "out-not-empty"), (full, "out-not-empty"), (empty, None),
+                          (self.base / "absent", None), (src / "absent", "out-inside-source")):
+            self.assertEqual(self.must("S4.rehearse", rb().rehearsal_source_problem, out, src), want,
+                             f"S4.rehearse: {out.name}")
+
+    def test_the_default_source_and_the_inside_refusal_g2(self):
+        """Triage G2: with no source given rehearse reads drive.REPO and still refuses a relative out; an out inside
+        the source is named on stderr."""
+        self.refuses("S4.rehearse", "RunRefused", "absolute path", rb().rehearse, "relative/out")
+        inside = self.s.repo / "out"
+        rc, _, err = self.must("S4.rehearse", call, rb().rehearse, inside, source=self.s.repo, review="r" * 40,
+                               runner=lambda argv, cwd: (0, ""))
+        self.assertEqual((rc, "run_builders: refused: rehearsal out-inside-source" in err), (1, True),
+                         f"S4.rehearse: {err!r}")
+
+    def test_a_failed_clone_or_freeze_step_stops_the_rehearsal_g2(self):
+        """Triage G2: a failed clone step, or a failed freeze step, is freeze-failed with nothing run after it."""
+        import freeze_rehearsal as fr
+        for n, fails in enumerate((lambda argv: argv[:2] == ["git", "clone"],
+                                   lambda argv: len(argv) > 4 and str(argv[4]).endswith("/freeze.py"))):
+            calls, takes_calls = [], []
+
+            def runner(argv, cwd, fails=fails):
+                calls.append(list(argv))
+                return (1, "words") if fails(argv) else (0, "")
+            out = self.base / f"out-g2-{n}"
+            with mock.patch.object(fr, "synthetic_holdout_source", lambda draft, dest: None):
+                rc = self.must("S4.rehearse", rb().rehearse, out, source=self.s.repo, review="r" * 40, runner=runner,
+                               takes_runner=lambda a, c, t: takes_calls.append(a) or (0, ""),
+                               budget_for=lambda c: 60, clock=lambda: NOW)
+            path = out / "summary.json"
+            text = path.read_text() if path.exists() else "{}"
+            self.assertEqual((rc, json.loads(text).get("counts"), takes_calls), (1, {"refused:freeze-failed": 1}, []),
+                             f"S4.rehearse: failed step {n}")
+            self.assertTrue(fails(calls[-1]), f"S4.rehearse: a step ran after the failed one: {calls[-1][:6]}")
+
+    def test_latest_review_needs_a_clean_read_and_a_commit_g2(self):
+        """Triage G2: a failed git read, or one naming no commit, is no review, and freeze is never asked."""
+        import freeze
+        seen = []
+        with mock.patch.object(freeze, "review_file_problems", lambda c: seen.append(c) or ([], "x")):
+            with mock.patch.object(subprocess, "run", lambda argv, **k: subprocess.CompletedProcess(
+                    argv, 1, stdout="a" * 40 + "\n", stderr="")):
+                failed = self.must("S4.rehearse", rb().latest_review, self.s.repo)
+            none = self.must("S4.rehearse", rb().latest_review, self.s.repo)
+        self.assertEqual((failed, none, seen), (None, None, []), "S4.rehearse: a review from a bad read")
+
 
 class S4Commits(Case):
     def setUp(self):
@@ -2053,6 +3920,22 @@ class S4Commits(Case):
         self.assertEqual(rb().outcome_commits(self.s.root, self.s.repo), {("s1", 1): first, ("s2", 1): second},
                          "S4.commits")
 
+
+    def test_outcome_commits_reads(self):
+        """Triage s1: outcome_commits reads the committed outcomes (an error is a failure here)."""
+        self.s.commit_file("outcomes.json", json.dumps([outcome("s1")]).encode(), "one")
+        first = self.s.git("rev-parse", "HEAD").strip()
+        self.assertEqual(self.must("S4.commits", rb().outcome_commits, self.s.root, self.s.repo), {("s1", 1): first},
+                         "S4.commits")
+
+    def test_outcome_commits_through_a_link_g1(self):
+        """Triage G1: root reached through a symbolic link to the repository reads the same commits."""
+        self.s.commit_file("outcomes.json", json.dumps([outcome("s1")]).encode(), "one")
+        first = self.s.git("rev-parse", "HEAD").strip()
+        link = self.s.base / "link"
+        os.symlink(self.s.repo, link)
+        self.assertEqual(self.must("S4.commits", rb().outcome_commits, link / "evals" / "gap-study-4", self.s.repo),
+                         {("s1", 1): first}, "S4.commits: through a link")
 
 # ------------------------------------------------------------------------------------------------- G1
 class G1Generated(Case):
