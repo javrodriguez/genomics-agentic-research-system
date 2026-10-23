@@ -17,6 +17,8 @@ setUpClass); a .py file in tests/ that discovery would never run fails it too; a
 one line, `test_round4: <n> run, <m> skipped, <x> expected failures`, which run_checks requires and prints.
 Review round 3 (W1A3-2): an @expectedFailure test turns a red guard green, so every expected failure fails the
 battery too (no allowance), and it is counted on the closing line.
+Run-launcher fix A2 (freeze-final battery on 0e6b6633): a test that leaves sys.stdout or sys.argv changed fails
+the battery by name, and both are put back first, so the closing line still reaches the real stdout.
 
 No model, no network, stdlib only.
 """
@@ -102,7 +104,11 @@ def main(folder: Path | None = None) -> int:
     bad = module_problems(folder)
     for b in bad:
         print(f"test_round4: {b}")
+    entry_out, entry_argv = sys.stdout, list(sys.argv)
     result = unittest.TextTestRunner(verbosity=2).run(s)
+    leaked = leaked_globals(entry_out, entry_argv)
+    for b in leaked:
+        print(f"test_round4: {b}")
     banned = [(str(t), why) for t, why in result.skipped if why not in SKIP_ALLOWED]
     for test, why in banned:
         print(f"test_round4: skipped, and its reason is not in SKIP_ALLOWED: {test}: {why}")
@@ -111,7 +117,23 @@ def main(folder: Path | None = None) -> int:
     xfail = len(result.expectedFailures)
     print(f"test_round4: {result.testsRun - len(result.skipped)} run, {len(result.skipped)} skipped, "
           f"{xfail} expected failures", flush=True)
-    return 0 if result.wasSuccessful() and not bad and not banned and not xfail else 1
+    return 0 if result.wasSuccessful() and not bad and not banned and not xfail and not leaked else 1
+
+
+def leaked_globals(entry_out, entry_argv: list[str]) -> list[str]:
+    """The process-global state a test left changed: sys.stdout not the stream the battery started on, or sys.argv
+    not the list it started with. Each is put back first, so the reason and the closing line still reach the real
+    stdout; a hijack is then a named red, never a missing closing line (the freeze-final battery on 0e6b6633: two
+    fake-box sweeps on batch's rolling pool left sys.stdout on a dead StringIO)."""
+    out = []
+    if sys.stdout is not entry_out:
+        out.append(f"a test left sys.stdout replaced (a {type(sys.stdout).__name__}, not the stream the battery "
+                   f"started on); the battery put it back")
+        sys.stdout = entry_out
+    if sys.argv != entry_argv:
+        out.append(f"a test left sys.argv changed ({sys.argv!r}, not {entry_argv!r}); the battery put it back")
+        sys.argv = list(entry_argv)
+    return out
 
 
 if __name__ == "__main__":

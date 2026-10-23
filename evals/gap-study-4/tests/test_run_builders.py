@@ -132,6 +132,18 @@ def by_id() -> dict:
     return {m.id: m for m in generate()[0]}
 
 
+def one_generated(mid: str):
+    """The one generated mutant a --gen-mutant child runs, found without the generator's per-mutant compile check
+    (1531 whole-module compiles, about 22 s, paid by every child): ids and spans come from the AST and the
+    replacement alone, and the parent's generate() already dropped every mutant that does not compile, so the lookup
+    finds the same mutant, and compile_module still compiles it. walk_mutation.py (lane w10) is not changed: only
+    the name compile in its globals is shadowed, during this lookup only."""
+    import walk_mutation
+    with mock.patch.dict(walk_mutation.ROAD, road(), clear=True), \
+            mock.patch.object(walk_mutation, "compile", lambda *a, **k: None, create=True):
+        return {m.id: m for m in walk_mutation.generate()[0]}[mid]
+
+
 def mutants() -> dict:
     return {
         "plan-resorted": ("S1.plan", "run_builders",
@@ -333,7 +345,7 @@ def setUpModule():
         assert text.count(old) == 1, f"witness {SELECTED}: its anchor occurs {text.count(old)} times"
         MODS[target] = compile_module(target, text.replace(old, new))
     if GENERATED is not None:
-        m = by_id()[GENERATED]
+        m = one_generated(GENERATED)
         MODS[m.module] = compile_module(m.module, m.source((HERE / f"{m.module}.py").read_text()))
     for name in TARGETS:
         if name not in MODS:
@@ -767,7 +779,14 @@ class S1Window(Case):
         def sleep(s):
             slept.append(s)
             clock.t += s
-        self.must("S1.window", rb().wait_until, 700.0, lambda: clock.t, sleep)
+        reads = []
+
+        def now():             # bounded: a wait that reads the clock without sleeping fails, never hangs the test
+            reads.append(clock.t)
+            if len(reads) > 50:
+                raise AssertionError("S1.window: the clock was read 50 times without the wait ending")
+            return clock.t
+        self.must("S1.window", rb().wait_until, 700.0, now, sleep)
         self.assertEqual(slept, [300.0, 300.0, 100.0], "S1.window: chunks")
         self.assertEqual(clock.t, 700.0, "S1.window")
 
@@ -2140,6 +2159,9 @@ def run_generated(shard=None, sample=None, timeout=600, only=None) -> int:
                       ("INCONCLUSIVE", inconclusive)):
         for x in ids:
             print(f"  {name}: {x}", flush=True)
+    # The last line, one line whatever the count, so a log tail carries this shard's whole red list.
+    print(f"test_run_builders shard reds: survived unlisted [{','.join(survived)}]; listed but killed "
+          f"[{','.join(listed_killed)}]; inconclusive [{','.join(inconclusive)}]", flush=True)
     return 0 if not survived and not listed_killed and not inconclusive else 1
 
 

@@ -72,6 +72,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import threading
 import types
 import unittest
 from pathlib import Path
@@ -124,6 +125,7 @@ class GuardTripped(Exception):
     """A process start this module never allows."""
 
 
+_SWEEP_LOCK = threading.Lock()
 _REAL = {"run": subprocess.run, "Popen": subprocess.Popen}
 
 
@@ -659,13 +661,16 @@ class FakeBox:
                     + "".join(f"{5 + i} 1 0:{5 + i} / {host} rw,nosuid,nodev,relatime - tmpfs tmpfs rw,mode=1777\n"
                               for i, host in enumerate(tmpfs.values())))
         table.close()
-        buf, saved = _io.StringIO(), sys.argv            # in process: the module's process guard spawns nothing
-        sys.argv = ["-c", table.name, str(os.getuid()), a[12], a[13], a[14], a[15]]
-        try:
-            with _cl.redirect_stdout(buf), FakeBox.as_container(tree), FakeBox.as_container(cfg):   # as the agent
-                exec(compile(rt.SWEEP_PROGRAM, "<the session sweep>", "exec"), {"__name__": "__sweep__"})
-        finally:
-            sys.argv = saved
+        # sys.argv and sys.stdout are process-global: two takes swept at once (batch's rolling window) would
+        # interleave the swaps and leave sys.stdout on a dead buffer, so one sweep at a time.
+        with _SWEEP_LOCK:
+            buf, saved = _io.StringIO(), sys.argv            # in process: the module's process guard spawns nothing
+            sys.argv = ["-c", table.name, str(os.getuid()), a[12], a[13], a[14], a[15]]
+            try:
+                with _cl.redirect_stdout(buf), FakeBox.as_container(tree), FakeBox.as_container(cfg):   # as the agent
+                    exec(compile(rt.SWEEP_PROGRAM, "<the session sweep>", "exec"), {"__name__": "__sweep__"})
+            finally:
+                sys.argv = saved
         doc = json.loads(buf.getvalue())
         hosts = {cfg: rt.CONFIG_MOUNT, **{host: path for path, host in tmpfs.items()}}
 
