@@ -1,0 +1,188 @@
+#!/usr/bin/env python3
+"""Lane pf1-l3-transcript-integrity (Gap Study round 4; fold plan prefreeze-1, the lane orchestrator's approval of
+Sat 24 Oct 2026 under Javier's standing delegation): pre-freeze review 1's m9, the preflight's direct-egress probe.
+
+  E1-program    box/preflight.DIRECT_PROGRAM run in this process on fake route tables (a default route; an internal
+                network with no default route) and a fake connect: the gateway candidates are the route table's gateways
+                and the first host of each on-link network, every GATEWAY_PORTS port is tried on each, every target is
+                tried at its address, and a connection made is recorded as one; it opens /proc/net/route alone.
+  E2-checks     the program's own output judged by the three checks: clean when nothing connected, red when the gateway,
+                a raw IP or the metadata address connected, and red when the inspect's gateway was not tried.
+  E3-bound      the probe's argv carries the timeout, the ports and the targets from the module's constants, and the
+                draft's named residual names the same addresses and ports.
+
+Witnesses: a program that skips the on-link first host, and a gateway check that never reads the inspect, are each
+caught. No process, network or credential: the connect is a fake, the route table a string.
+"""
+
+from __future__ import annotations
+
+import builtins
+import contextlib
+import io
+import json
+import socket
+import sys
+import unittest
+from pathlib import Path
+from unittest import mock
+
+HERE = Path(__file__).resolve().parent.parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+
+import build_draft  # noqa: E402
+from box import preflight as pf  # noqa: E402
+
+HEADER = "Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT\n"
+# 172.30.0.1 as /proc/net/route spells it (little-endian hex): 01 00 1E AC; the /16 network 00 00 1E AC, mask FF FF 00 00
+DEFAULT_ROUTE = HEADER + ("eth0\t00000000\t01001EAC\t0003\t0\t0\t0\t00000000\t0\t0\t0\n"
+                          "eth0\t00001EAC\t00000000\t0001\t0\t0\t0\t0000FFFF\t0\t0\t0\n")
+INTERNAL_ONLY = HEADER + "eth0\t00001FAC\t00000000\t0001\t0\t0\t0\t0000FFFF\t0\t0\t0\n"   # 172.31.0.0/16, no gateway
+
+
+class FakeSocket:
+    def close(self):
+        pass
+
+
+def run_program(table: str, *, connects=(), program=None) -> tuple:
+    """(the program's JSON output, the (address, port) pairs it tried, the paths it opened)."""
+    tried, opened = [], []
+    real_open = builtins.open
+
+    def fake_open(path, *a, **k):
+        opened.append(str(path))
+        if path == "/proc/net/route":
+            return io.StringIO(table)
+        return real_open(path, *a, **k)
+
+    def fake_connect(addr, timeout=None):
+        tried.append(tuple(addr))
+        if tuple(addr) in connects:
+            return FakeSocket()
+        raise TimeoutError("timed out")
+
+    argv = ["-c", str(pf.DIRECT_TIMEOUT_S), ",".join(map(str, pf.GATEWAY_PORTS)), *pf.direct_target_args()]
+    buf = io.StringIO()
+    with mock.patch.object(builtins, "open", fake_open), mock.patch.object(socket, "create_connection", fake_connect), \
+            mock.patch.object(sys, "argv", argv), contextlib.redirect_stdout(buf):
+        exec(compile(program or pf.DIRECT_PROGRAM, "<direct-egress>", "exec"), {"__name__": "__main__"})
+    return json.loads(buf.getvalue()), tried, opened
+
+
+def raw_for(out: dict, gateway: str | None) -> dict:
+    nets = {"n": {"Gateway": gateway or ""}}
+    return {"direct-egress": {"returncode": 0, "stdout": json.dumps(out), "stderr": ""},
+            "take-inspect": {"returncode": 0, "stdout": json.dumps([{"NetworkSettings": {"Networks": nets}}]),
+                             "stderr": ""}}
+
+
+def judged(raw: dict) -> dict:
+    out = {}
+    for cid, fn in (("egress-raw-ip-refused", pf._check_raw_ip), ("egress-metadata-refused", pf._check_metadata),
+                    ("egress-gateway-refused", pf._check_gateway)):
+        try:
+            out[cid] = (True, fn(raw))
+        except pf._Fail as e:
+            out[cid] = (False, str(e))
+    return out
+
+
+class E1Program(unittest.TestCase):
+    def test_default_route_table(self):
+        out, tried, opened = run_program(DEFAULT_ROUTE)
+        self.assertEqual(out["gateway_candidates"], ["172.30.0.1"])     # the gateway, and the /16's first host
+        self.assertEqual(sorted(out["gateway"]["172.30.0.1"]), sorted(map(str, pf.GATEWAY_PORTS)))
+        self.assertEqual(sorted(out["targets"]), sorted(pf.DIRECT_TARGETS))
+        want = {("172.30.0.1", p) for p in pf.GATEWAY_PORTS} | set(pf.DIRECT_TARGETS.values())
+        self.assertEqual(set(tried), want)
+        self.assertEqual(opened, ["/proc/net/route"])
+        self.assertFalse(any(r["connected"] for r in out["targets"].values()))
+        self.assertEqual({r["error"] for r in out["gateway"]["172.30.0.1"].values()}, {"TimeoutError"})
+
+    def test_internal_network_with_no_default_route(self):
+        out, tried, _ = run_program(INTERNAL_ONLY)
+        self.assertEqual(out["gateway_candidates"], ["172.31.0.1"])
+        self.assertEqual(len([t for t in tried if t[0] == "172.31.0.1"]), len(pf.GATEWAY_PORTS))
+
+    def test_a_connection_is_recorded(self):
+        out, _, _ = run_program(DEFAULT_ROUTE, connects={("172.30.0.1", 22), ("169.254.169.254", 80)})
+        self.assertIs(out["gateway"]["172.30.0.1"]["22"]["connected"], True)
+        self.assertIs(out["targets"]["metadata"]["connected"], True)
+        self.assertIs(out["targets"]["raw-ip-a"]["connected"], False)
+
+
+class E2Checks(unittest.TestCase):
+    def test_clean(self):
+        out, _, _ = run_program(DEFAULT_ROUTE)
+        got = judged(raw_for(out, "172.30.0.1"))
+        self.assertEqual({k: v[0] for k, v in got.items()}, dict.fromkeys(got, True), got)
+
+    def test_internal_network_inspect_with_no_gateway(self):
+        out, _, _ = run_program(INTERNAL_ONLY)
+        self.assertTrue(judged(raw_for(out, None))["egress-gateway-refused"][0])
+
+    def test_each_connection_is_red(self):
+        for target, cid in ((("172.30.0.1", 2375), "egress-gateway-refused"), (("1.1.1.1", 443), "egress-raw-ip-refused"),
+                            (("8.8.8.8", 443), "egress-raw-ip-refused"),
+                            (("169.254.169.254", 80), "egress-metadata-refused")):
+            out, _, _ = run_program(DEFAULT_ROUTE, connects={target})
+            got = judged(raw_for(out, "172.30.0.1"))
+            self.assertFalse(got[cid][0], (target, got))
+            self.assertEqual([k for k, v in got.items() if not v[0]], [cid], target)
+
+    def test_the_inspects_gateway_must_be_tried(self):
+        out, _, _ = run_program(INTERNAL_ONLY)
+        self.assertFalse(judged(raw_for(out, "172.30.0.1"))["egress-gateway-refused"][0])
+
+    def test_an_answered_refusal_is_named_not_failed(self):
+        out, _, _ = run_program(DEFAULT_ROUTE)
+        out["gateway"]["172.30.0.1"]["22"]["error"] = "ConnectionRefusedError"
+        ok, detail = judged(raw_for(out, "172.30.0.1"))["egress-gateway-refused"]
+        self.assertTrue(ok)
+        self.assertIn("172.30.0.1:22", detail)
+
+    def test_witness_a_program_without_the_on_link_host_is_caught(self):
+        skip = pf.DIRECT_PROGRAM.replace("cands.add(socket.inet_ntoa((net + 1).to_bytes(4, \"big\")))", "pass")
+        self.assertNotEqual(skip, pf.DIRECT_PROGRAM, "witness not performed")
+        out, _, _ = run_program(INTERNAL_ONLY, program=skip)
+        self.assertFalse(judged(raw_for(out, None))["egress-gateway-refused"][0])
+
+    def test_witness_a_check_blind_to_the_inspect_is_caught(self):
+        out, _, _ = run_program(INTERNAL_ONLY)
+        with mock.patch.object(pf, "_inspect_gateways", lambda obj: []):
+            self.assertTrue(judged(raw_for(out, "172.30.0.1"))["egress-gateway-refused"][0], "witness not performed")
+        self.assertFalse(judged(raw_for(out, "172.30.0.1"))["egress-gateway-refused"][0])
+
+
+class E3Bound(unittest.TestCase):
+    def test_the_probe_argv(self):
+        spec = pf.run_take.TakeSpec(image="sha256:" + "a" * 64, run_tree="/srv/w0/t1/tree", config_dir="/srv/w0/t1/cfg",
+                                    network="b" * 64, memory_reservation=512, memory=1536, cpus="1", pids_limit=64)
+        hosts = {h: f"{h}.example" for h in pf.run_take.LOGIN_VARIABLE}
+        probes = pf.probes(spec, take_id="c" * 64, sidecar_id="d" * 64, harness=pf.run_take.CLAUDE_CODE, hosts=hosts,
+                           evidence_dir="/srv/w0/rec/ev", sidecar_image="sha256:" + "e" * 64, proxy_id="f" * 64,
+                           proxy_image="sha256:" + "1" * 64)
+        argv = [p for p in probes if p.id == "direct-egress"][0].argv
+        tail = list(argv[list(argv).index("-c") + 1:])
+        self.assertEqual(tail, [pf.DIRECT_PROGRAM, str(pf.DIRECT_TIMEOUT_S), ",".join(map(str, pf.GATEWAY_PORTS)),
+                                *pf.direct_target_args()])
+        self.assertEqual(pf.PROBE_IDS[-1], "direct-egress")
+        self.assertEqual(pf.PREFLIGHT_CHECKS[-3:], ("egress-raw-ip-refused", "egress-metadata-refused",
+                                                    "egress-gateway-refused"))
+
+    def test_the_residual_names_the_constants(self):
+        text = build_draft.PF1_READS_EGRESS_RESIDUAL["text"]
+        ports = ", ".join(map(str, pf.GATEWAY_PORTS[:-1])) + " and " + str(pf.GATEWAY_PORTS[-1])
+        self.assertIn(f"on ports {ports} (egress-gateway-refused)", text)
+        for label in pf.RAW_IP_TARGETS:
+            self.assertIn(pf.DIRECT_TARGETS[label][0], text)
+        self.assertIn(f"{pf.DIRECT_TARGETS[pf.METADATA_TARGET][0]} on port {pf.DIRECT_TARGETS[pf.METADATA_TARGET][1]}",
+                      text)
+        for cid in ("egress-raw-ip-refused", "egress-metadata-refused", "egress-gateway-refused"):
+            self.assertIn(cid, text)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=1)

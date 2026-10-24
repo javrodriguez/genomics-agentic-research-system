@@ -507,7 +507,8 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
         self.executed_turns.append(executed)
         try:
             with open(got["stream_path"], encoding="utf-8", errors="surrogateescape", newline="") as fh:
-                read = read_stream(fh.read())
+                stream_text = fh.read()
+            read = read_stream(stream_text)
             off = served_model_off(read, self.model)
             side = unlisted_side_model(read, self.model)
             sub_off = subagent_model_off(read, self.model)
@@ -535,7 +536,8 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
             "tools": read["init_extra"]["tools"], "inits": read["inits"], "calls": read["calls"],
             "tool_use_ids": read["tool_use_ids"], "result": read["result"], "session_ids": read["session_ids"],
             "undecoded": read["undecoded"], "served_models": read["served_models"],
-            "model_usage": read["model_usage"], "served_off": off, "side_calls": side_calls(read, self.model)})
+            "model_usage": read["model_usage"], "served_off": off, "side_calls": side_calls(read, self.model),
+            "content_units": stream_content_units(stream_text)})   # PF1-L3: what C6 compares with the session file
         return aa.TurnResult(exit_code=got["exit_code"], text=read["agent_text"], stream_path=got["stream_path"],
                              end_reason=end_reason(got["exit_code"], got["timed_out"]), init=init,
                              api_errors=read["api_errors"], counters=counters,
@@ -625,6 +627,138 @@ def cross_check(turn_records: list, session_text: str, *, session_id: str) -> li
     if sorted(map(str, sess_tools)) != sorted(map(str, stream_tools)):
         out.append(f"the streams hold {len(stream_tools)} tool call(s) and the session file {len(sess_tools)}, "
                    f"not the same ones")
+    # PF1-L3 (MAJOR 7): the content itself, turn by turn and in order, never the ids alone
+    units = [t.get("content_units") for t in turn_records]
+    missing = sum(1 for u in units if not isinstance(u, list))
+    if missing:
+        out.append(f"{missing} turn record(s) carry no content units, so the session file's content cannot be "
+                   f"compared with the streams")
+    else:
+        out += content_problems(units, session_text)
+    return out
+
+
+# ---- PF1-L3: the content the graders read, compared with the host-captured streams (pre-freeze review 1, MAJOR 7) ---
+# The lane orchestrator's approval of fold plan prefreeze-1 (Sat 24 Oct 2026, under Javier's standing delegation).
+# transcript.jsonl is the session file copied out of the config folder, the take's read-write mount owned by the
+# agent's uid, and every words-graded reading reads it (transcript_view's claude-code parser). C6 above bound ids
+# only, so one in-take command that rewrote a reply's words passed. The units below are what transcript_view reads
+# of an agent's text, reasoning, tool calls and tool results, so a change to any of them, in either file, shows:
+#     text         (kind, message.id, the block's text)
+#     thinking     (kind, message.id, the block's thinking)
+#     tool_use     (kind, its id, its name, its input as canonical JSON)
+#     tool_result  (kind, tool_use_id, its content as canonical JSON, is_error)
+#     other-block  (kind, message.id, its type, the whole block as canonical JSON): any other assistant block
+# from the main thread only: a stream record with parent_tool_use_id set (a sub-agent's) and a session record with
+# isSidechain true are not the main thread, and the harness's API-error records are no agent content. The session
+# file is split into turns at its operator lines (transcript_view's rule: a user record whose content is a string,
+# with no origin and no isMeta or isApiErrorMessage key); turn k's units, in order, must equal turn k's stream's, and
+# nothing may come before the first operator line. Measured on every committed claude-code walk at 96c1d959 (151 of
+# 151 equal, turn by turn, with 1533 thinking, 890 text, 1663 tool_use and 1663 tool_result units); a line that is not
+# JSON is skipped here, so a record cut or blanked in the session file is a missing unit (transcript_line_problems
+# names the line). Not compared, because the stream does not carry them: attachments, system and bookkeeping records,
+# and the sub-agent files (box_residuals names them).
+CONTENT_UNIT_KINDS = ("text", "thinking", "tool_use", "tool_result", "other-block")
+
+
+def _content_records(text: str) -> list:
+    """The JSON object records of a JSONL text, split on newline alone; a line that is not one is skipped."""
+    out = []
+    for raw in (text or "").split("\n"):
+        if not raw.strip():
+            continue
+        try:
+            rec = json.loads(raw)
+        except ValueError:
+            continue
+        if isinstance(rec, dict):
+            out.append(rec)
+    return out
+
+
+def _canonical(value) -> str:
+    return json.dumps(value, sort_keys=True, ensure_ascii=False)
+
+
+def _units(rec: dict) -> list:
+    """One main-thread record's content units, in block order."""
+    msg = rec.get("message") if isinstance(rec.get("message"), dict) else {}
+    content = msg.get("content")
+    if not isinstance(content, list):
+        return []
+    if rec.get("type") == "assistant":
+        if _is_api_error(rec) or rec.get("isApiErrorMessage") is True:
+            return []
+        out = []
+        for b in content:
+            if not isinstance(b, dict):
+                continue
+            kind = b.get("type")
+            if kind == "text":
+                out.append(("text", msg.get("id"), b.get("text")))
+            elif kind == "thinking":
+                out.append(("thinking", msg.get("id"), b.get("thinking")))
+            elif kind == "tool_use":
+                out.append(("tool_use", b.get("id"), b.get("name"), _canonical(b.get("input"))))
+            else:
+                out.append(("other-block", msg.get("id"), kind, _canonical(b)))
+        return out
+    if rec.get("type") == "user":
+        return [("tool_result", b.get("tool_use_id"), _canonical(b.get("content")), b.get("is_error") is True)
+                for b in content if isinstance(b, dict) and b.get("type") == "tool_result"]
+    return []
+
+
+def stream_content_units(text: str) -> list:
+    """One turn stream's main-thread content units, in order (a sub-agent's records, parent_tool_use_id set, left
+    out)."""
+    return [u for rec in _content_records(text) if rec.get("parent_tool_use_id") is None for u in _units(rec)]
+
+
+def _is_operator_line(rec: dict) -> bool:
+    msg = rec.get("message") if isinstance(rec.get("message"), dict) else {}
+    return (rec.get("type") == "user" and isinstance(msg.get("content"), str) and "origin" not in rec
+            and not any(k in rec for k in ("isMeta", "isApiErrorMessage")))
+
+
+def session_content_turns(text: str) -> list:
+    """The session file's main-thread content units split at its operator lines: [units before the first operator
+    line, turn 1's, turn 2's, ...]."""
+    turns = [[]]
+    for rec in _content_records(text):
+        if rec.get("isSidechain") is True:
+            continue
+        if _is_operator_line(rec):
+            turns.append([])
+            continue
+        turns[-1].extend(_units(rec))
+    return turns
+
+
+def _unit_name(unit) -> str:
+    return "nothing" if unit is None else f"{unit[0]} {str(unit[1])[:60]!r}"
+
+
+def content_problems(stream_units: list, session_text: str) -> list:
+    """PF1-L3: the session file's content against the turn streams' (one list of units per turn, in turn order).
+    Problems, each one sentence naming kinds and ids, never the words; [] when every turn's units are equal."""
+    turns = session_content_turns(session_text)
+    out = []
+    if turns[0]:
+        out.append(f"the session file holds {len(turns[0])} content item(s) before its first operator line, which "
+                   f"no turn stream holds")
+    if len(turns) - 1 != len(stream_units):
+        out.append(f"the session file holds {len(turns) - 1} operator line(s) and the take {len(stream_units)} turn "
+                   f"stream(s)")
+    for n, (stream, sess) in enumerate(zip(stream_units, turns[1:]), 1):
+        if [tuple(u) for u in stream] == [tuple(u) for u in sess]:
+            continue
+        i = next((k for k, (a, b) in enumerate(zip(stream, sess)) if tuple(a) != tuple(b)), min(len(stream), len(sess)))
+        a = tuple(stream[i]) if i < len(stream) else None
+        b = tuple(sess[i]) if i < len(sess) else None
+        out.append(f"turn {n}: the session file's content differs from the host-captured stream at item {i + 1} "
+                   f"(the stream holds {len(stream)} item(s), the session file {len(sess)}; there the stream has "
+                   f"{_unit_name(a)} and the session file {_unit_name(b)})")
     return out
 
 

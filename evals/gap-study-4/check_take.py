@@ -1961,6 +1961,7 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
         problems += subagent_problems(path)   # the Agent tool's records bound (glitch-b5, 16 Oct)
         problems += subagent_reach_problems(path, design.pre, counts)   # and their reach counted, in place
         problems += session_store_problems(path) + nested_agent_flag_problems(path)   # W-3b (glitch-b5, 16 Oct)
+        problems += transcript_content_problems(path)   # PF1-L3: the content against the streams (MAJOR 7)
     # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm, so the ledger's arm must be the take's.
     led = _ledger_beside(path)
     if led is not None and led.get("arm") != arm:
@@ -2425,6 +2426,7 @@ def check4_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wordi
         problems += subagent_problems(path)   # the Agent tool's records bound (glitch-b5, 16 Oct)
         problems += subagent_reach_problems(path, design.pre, counts)   # and their reach counted, in place
         problems += session_store_problems(path) + nested_agent_flag_problems(path)   # W-3b (glitch-b5, 16 Oct)
+        problems += transcript_content_problems(path)   # PF1-L3: the content against the streams (MAJOR 7)
     beside = _ledger_beside(path)
     if isinstance(beside, dict) and beside.get("arm") != arm:
         problems.append(f"[constant-binding] the walk's driver ledger records arm {beside.get('arm')!r}, and the walk is "
@@ -5355,7 +5357,8 @@ def vendor_round4_problems(path, design, arm=None) -> list:
     return (vendor_design_tree_problems(path, harness, design)
             + vendor_recorded_mode_problems(path, harness, design, arm)
             + vendor_denied_tool_problems(path, harness, design) + vendor_unread_problems(path, harness, ledger)
-            + vendor_nested_flag_problems(path, harness) + vendor_file_change_problems(path, harness))
+            + vendor_nested_flag_problems(path, harness) + vendor_file_change_problems(path, harness)
+            + vendor_content_problems(path, harness))   # PF1-L3: content against the streams (MAJOR 7)
 
 
 # ---- P3. THE VENDOR ENTRIES (plan sections 1b, 6 and 9; glitch-b5 round 12, with review c-6302fd3 NIT 6) ------------
@@ -7008,6 +7011,145 @@ def vendor_gemini_tools_partial(path) -> list:
 
 
 # ---- END SETTLE: GEMINI READERS -------------------------------------------------------------------------------------
+
+
+# ---- PF1-L3: THE TRANSCRIPT'S CONTENT AGAINST THE HOST-CAPTURED STREAMS (pre-freeze review 1, MAJOR 7) --------------
+#   The lane orchestrator's approval of fold plan prefreeze-1, Sat 24 Oct 2026, under Javier's standing delegation.
+#   The session file and the vendor native stores sit on the take's read-write config mount, owned by the agent's uid;
+#   the turn streams are the host's capture of each exec's stdout. A take whose records disagree in content is refused
+#   [transcript-mismatch]: an operator reason with its round-4 ruling, routed by its own row (routing.json
+#   transcript-mismatch): aborted after the agent's first turn, published and counted against holding, never re-run
+#   (the agent can cause it, MAJOR 5's principle), but beside harness-condition-violated, which keeps glitch-b5's
+#   ruling 3 (harness-error, as cgroup-kill's none_of does); a rehearsal before it. It is read from the committed records alone,
+#   so a walk's recheck applies it too.
+#     claude-code  every turn's main-thread text, thinking, tool_use and tool_result units, in order, between turn-N.jsonl
+#                  and transcript.jsonl (claude_code_adapter.content_problems, the same comparison the driver's C6
+#                  cross-check makes live); 151 of 151 committed claude-code walks equal at 96c1d959.
+#     codex        the accepted join (native_reader_registration.codex_join_session) already compares each turn's agent
+#                  text, reasoning, command status, exit code and output with the retained rollout; it leaves the
+#                  command itself, "presentation-derived, not compared". Here each exec stream's completed
+#                  command_execution command, split as a POSIX shell line (shlex.split), must equal the rollout's
+#                  CommandExecution argv, in order: 226 of 226 commands on the 38 committed arm-O walks.
+#     gemini       the accepted join compares text segments, tool ids, names, statuses and arguments; it leaves the tool
+#                  results. Here each stream tool_result's output must equal its call's native resultDisplay when that
+#                  is a string, and be absent when it is not (a list_directory's object display): 2375 results on the 35
+#                  readable committed arm-G walks (1992 string, 383 object), all equal; w-g24's snapshot is unreadable,
+#                  as its other readers already say.
+#   Not compared, because no host capture holds it (box_residuals names each): what only the native store or the
+#   session file holds (Claude Code's attachments and sub-agent files, Gemini's functionResponse parts sent back to the
+#   model, Codex's custom_tool_call inputs and outputs and a patch's contents), and a child writing into the harness's
+#   own stdout pipe, which every process of the take can reach under the one uid.
+TRANSCRIPT_MISMATCH = "transcript-mismatch"
+import shlex as _shlex  # noqa: E402
+
+import claude_code_adapter as _cca  # noqa: E402
+
+
+def transcript_content_problems(path: Path) -> list[str]:
+    """claude-code: [transcript-mismatch] for each turn whose session-file content is not its stream's; [] when every
+    turn agrees. The streams are the turn-N.jsonl beside the transcript, in turn order."""
+    path = Path(path)
+    _journals, streams = _turn_files(path)
+    try:
+        texts = [(path.parent / f"turn-{n}.jsonl").read_bytes().decode("utf-8", errors="replace")
+                 for n in sorted(streams)]
+        session = path.read_bytes().decode("utf-8", errors="replace")
+    except OSError as e:
+        raise CheckRefused(f"the transcript or a turn stream cannot be read ({type(e).__name__})") from None
+    return [f"[{TRANSCRIPT_MISMATCH}] {p}" for p in
+            _cca.content_problems([_cca.stream_content_units(t) for t in texts], session)]
+
+
+def _vendor_bound_texts(path: Path) -> tuple:
+    """(the envelope-bound turn streams' texts in envelope order, the last retained native snapshot's bytes), each
+    checked against the digest that binds it, as vendor_raw_records reads them. Raises VendorUnreadable."""
+    envelopes = [_binding._json(x) for x in _binding._jsonl_lines(_binding._regular_bytes(path).decode("utf-8"))]
+    ledger = _binding._json(_binding._regular_bytes(path.parent / "driver-ledger.json").decode("utf-8"))
+    texts = []
+    for env in envelopes:
+        raw = _binding._regular_bytes(path.parent / env["stream"])
+        if hashlib.sha256(raw).hexdigest() != env["sha256"]:
+            raise VendorUnreadable(f"{env['stream']}: its bytes are not the ones its envelope binds")
+        texts.append(raw.decode("utf-8"))
+    snaps = ledger.get("native_snapshots")
+    if not (isinstance(snaps, list) and snaps and isinstance(snaps[-1], dict)):
+        raise VendorUnreadable("the ledger names no retained native snapshot")
+    name = snaps[-1].get("file")
+    if not (isinstance(name, str) and name and Path(name).name == name and name not in (".", "..")):
+        raise VendorUnreadable(f"the last native snapshot {name!r} is not a confined basename")
+    raw = _binding._regular_bytes(path.parent / "session" / name)
+    if hashlib.sha256(raw).hexdigest() != snaps[-1].get("sha256"):
+        raise VendorUnreadable(f"session/{name}: its bytes are not the ones the ledger binds")
+    return texts, raw
+
+
+def _codex_command_problems(texts: list, raw: bytes) -> list[str]:
+    shown = []
+    for k, text in enumerate(texts, 1):
+        for n, line in enumerate(transcript_view.jsonl_lines(text), 1):
+            rec = json.loads(line)
+            item = rec.get("item") if isinstance(rec, dict) else None
+            if rec.get("type") == "item.completed" and isinstance(item, dict) and item.get("type") == "command_execution":
+                shown.append((f"turn-{k}.jsonl line {n}", item.get("command")))
+    native = []
+    for rec in _codex_native._json_lines(raw, VendorUnreadable):
+        pay = rec.get("payload") if isinstance(rec.get("payload"), dict) else {}
+        item = pay.get("item")
+        if rec.get("type") == "event_msg" and pay.get("type") == "item_completed" and isinstance(item, dict) \
+                and item.get("type") == "CommandExecution":
+            native.append(item.get("command"))
+    if len(shown) != len(native):
+        return [f"[{TRANSCRIPT_MISMATCH}] the exec streams show {len(shown)} completed command(s) and the rollout "
+                f"records {len(native)}"]
+    for (where, cmd), argv in zip(shown, native):
+        try:
+            split = _shlex.split(cmd) if isinstance(cmd, str) else None
+        except ValueError:
+            split = None
+        if split != argv:
+            return [f"[{TRANSCRIPT_MISMATCH}] {where}: the command the exec stream shows is not, split as a shell line, "
+                    f"the argv the rollout records for it"]
+    return []
+
+
+def _gemini_result_problems(texts: list, raw: bytes) -> list[str]:
+    _gemini_projection.project(raw)
+    replayed = _gemini_replay.replay(raw)
+    native = {}
+    for message in replayed["timeline"]:
+        for tool in message.get("toolCalls") or [] if message.get("type") == "gemini" else []:
+            if tool.get("id") in native:
+                return [f"[{TRANSCRIPT_MISMATCH}] the native session holds two tool calls with id {tool.get('id')!r}"]
+            native[tool.get("id")] = tool
+    for k, text in enumerate(texts, 1):
+        for n, line in enumerate(transcript_view.jsonl_lines(text), 1):
+            rec = _tx_gemini.decode(line)
+            if rec.get("type") != _tx_gemini.TOOL_RESULT:
+                continue
+            tool = native.get(rec.get("tool_id"))
+            if tool is None:
+                return [f"[{TRANSCRIPT_MISMATCH}] turn-{k}.jsonl line {n}: the stream's tool result names a call the "
+                        f"native session does not hold"]
+            display = tool.get("resultDisplay")
+            want = display if isinstance(display, str) else None
+            if rec.get("output") != want:
+                return [f"[{TRANSCRIPT_MISMATCH}] turn-{k}.jsonl line {n}: the stream's tool result output is not the "
+                        f"native session's display of call {str(rec.get('tool_id'))[:60]!r}"]
+    return []
+
+
+def vendor_content_problems(path, harness) -> list[str]:
+    """codex: the exec streams' commands against the rollout's argv; gemini: the streams' tool-result outputs against
+    the native displays. [transcript-mismatch] on a difference; [transcript-unreadable] when either side cannot be
+    read, never a pass."""
+    harness = _vendor_harness(harness)
+    path = Path(path)
+    try:
+        texts, raw = _vendor_bound_texts(path)
+        return (_codex_command_problems if harness == "codex" else _gemini_result_problems)(texts, raw)
+    except _VENDOR_READ_ERRORS + (_gemini_replay.ReplayRefused, ValueError, OSError) as e:
+        return [f"[{TRANSCRIPT_UNREADABLE}] the content cross-check cannot read the take's streams and native session "
+                f"({type(e).__name__}), so a difference cannot be ruled out"]
 
 
 if __name__ == "__main__":
