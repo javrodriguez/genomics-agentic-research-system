@@ -231,8 +231,8 @@ class H4Draft(unittest.TestCase):
         self.assertEqual(self.draft["labelling_design"], json.loads(json.dumps(want)))
         self.assertEqual(sm.validate_design(self.draft["labelling_design"]), self.draft["labelling_design"])
         self.assertEqual(self.draft["labelling_design"]["about_n"], 80)
-        self.assertIsNone(self.draft["labelling_design"]["flagged_list"])
-        self.assertIsNone(sm.FLAGGED_LIST, "the switch is on before Javier's answer to ask gap-flag-list")
+        self.assertEqual(self.draft["labelling_design"]["flagged_list"], {"cap": 40})
+        self.assertEqual(sm.FLAGGED_LIST, {"cap": 40}, "the switch is Javier's yes to ask gap-flag-list (OD127)")
 
     def test_routed_residuals_named(self):
         probes = [r["probe"] for r in self.draft["routed_residuals"]]
@@ -611,14 +611,32 @@ class RV2Seen(unittest.TestCase):
         import build_draft
         draft = json.loads((HERE / "prereg-draft.json").read_text(encoding="utf-8"))
         w3b = [b for b in draft["box_residuals"] if b.get("name") == "W-3b"][0]["text"]
-        self.assertIn("sends a claude-code take to the human sample (with labelling_design.flagged_list null it gets "
-                      "no separate human look", w3b)
-        self.assertIn("no separate human look", draft["labelling_rules"]["flagged_seen"])
-        self.assertTrue(all("no separate human look" in r["text"] for r in draft["routed_residuals"]))
-        with mock.patch.object(sm, "FLAGGED_LIST", {"cap": 40}):
-            self.assertEqual(build_draft._w3b_seen(), "")
-            self.assertIn("goes to the flagged check list", build_draft.flagged_seen())
+        self.assertIn("sends a claude-code take to the human sample. What REMAINS", w3b)      # on (OD127): as before
+        self.assertIn("goes to the flagged check list", draft["labelling_rules"]["flagged_seen"])
+        self.assertTrue(all("goes to the flagged check list" in r["text"] for r in draft["routed_residuals"]))
+        self.assertFalse(any("no separate human look" in json.dumps(v) for k, v in draft.items()
+                             if k in ("box_residuals", "labelling_rules", "routed_residuals")))
+        with mock.patch.object(sm, "FLAGGED_LIST", None):
+            self.assertIn("no separate human look", build_draft._w3b_seen())
+            self.assertIn("no separate human look", build_draft.flagged_seen())
         self.assertEqual(build_draft.W3B_SEEN, build_draft._w3b_seen())
+
+    def test_off_is_byte_identical(self):
+        """With the switch off, the sample, the blind sheet's input and RESULT.md carry no byte of the flagged list."""
+        ff = [{"take": "s1/1", "readers": "agree", "record": rec(human_sample=True, human_why=["scope_read-flag"])},
+              {"take": "s2/1", "readers": "agree", "record": rec(repeat=2)}]
+        design = {"seed": 3, "about_n": 1, "oversample": {"failure": 1, "disagree": 1}, "strata": list(sm.STRATA),
+                  "harness_models": {CLAUDE: ["a1"]}}
+        off = sm.draw(ff, dict(design, flagged_list=None))
+        on = sm.draw(ff, dict(design, flagged_list={"cap": 40}))
+        self.assertEqual(set(off), {"design_sha256", "seed", "strata", "items"})
+        self.assertEqual(off["items"], on["items"])
+        self.assertEqual(sm.render(off), sm.render(dict({k: v for k, v in on.items() if k != "flagged"},
+                                                        design_sha256=off["design_sha256"])))
+        base = {"stats": stats.derive([], DESIGN), "completeness": {}, "pause_notes": [], "stopped": []}
+        with mock.patch.object(result.completeness, "render", lambda c: "completeness"):
+            self.assertEqual(result.render(dict(base, flagged=result.flagged_counts(
+                {"labelling_design": {"flagged_list": None}}))).encode(), result.render(base).encode())
 
 
 class RV3SectionOf(unittest.TestCase):

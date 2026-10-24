@@ -86,7 +86,7 @@ TAKE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,127}")
 # dict {"cap": <a positive int, or None for no cap>} draws the list (see draw()). It enters the pre-registered design
 # as `flagged_list` (PROPOSED below, which build_draft registers as labelling_design), so either answer changes this
 # one line and the draft is rebuilt from it.
-FLAGGED_LIST = None         # the design's `flagged_list` key, beside the docstring's five: None | {"cap": int | None}
+FLAGGED_LIST = {"cap": 40}  # Javier's yes to ask gap-flag-list, OD127 (Sat 24 Oct 2026): the non-blind list, cap 40
 FLAGGED_PREFIX = "F"                    # the flagged list's sheet ids, F001, F002, ...; the blind draw's are L001, ...
 # The proposed design (glitch-2f's to rule at the freeze; Q-w11d-1). The seed is a date, chosen before any take exists.
 PROPOSED = {"seed": 20261012, "about_n": 80, "oversample": {"failure": 3, "disagree": 3}, "strata": list(STRATA),

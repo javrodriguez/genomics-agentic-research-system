@@ -1858,12 +1858,12 @@ def x1_script(sm, sh, ag):
 
 def fl1_flagged(sm, sh, ag):
     """Pre-freeze review 1, MAJOR 6 item 3 (lane pf1-l2b, Sat 24 Oct 2026): the flagged list behind sample.FLAGGED_LIST.
-    The switch is off until Javier answers ask gap-flag-list, and off leaves every draw byte as before; on, every
+    The switch is Javier's yes to ask gap-flag-list (OD127, cap 40), and off leaves every draw byte as before; on, every
     flagged take of the drawn cells is listed whole outside the blind draw (F001, ...), a cap draws that many by its
     own seeded generator and publishes the count beyond it, and the blind draw is the same either way."""
     out, E = [], sm.SampleError
-    if sm.FLAGGED_LIST is not None:
-        out.append("FL1: the flagged-list switch is on before Javier's answer to ask gap-flag-list")
+    if sm.FLAGGED_LIST != {"cap": 40}:
+        out.append("FL1: the flagged-list switch is not Javier's answer to ask gap-flag-list (OD127: on, cap 40)")
     if "flagged_list" not in sm.PROPOSED or sm.PROPOSED["flagged_list"] != sm.FLAGGED_LIST:
         out.append("FL1: the proposed design does not carry the switch as its flagged_list")
     if "flagged_list" not in sm.DESIGN_FIELDS:
@@ -2294,7 +2294,6 @@ EQUIVALENT = {
     'sample: cmp-negate#0 L56 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'sample: stmt-delete L57 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'sample: return-none L366 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
-    'sample: assign-empty L89 af1f68e8 FLAGGED_LIST = None': ('identical-mutant', 'the line already assigns the empty None (the flagged-list switch, off; lane pf1-l2b)', 'None'),
     'sample: int-change L57 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'sheet: stmt-delete L49 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
     'sheet: stmt-delete L62 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
