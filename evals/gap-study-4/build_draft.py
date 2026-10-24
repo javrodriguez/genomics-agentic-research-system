@@ -1195,7 +1195,12 @@ PF1_TRANSCRIPT_RESIDUAL = {
             "(what the CLI sent back to the model, such as a file's contents), and Codex's custom_tool_call inputs and "
             "outputs and a patch's contents (its exec stream shows a patch's paths and kinds only); (c) a record the "
             "agent adds to the session file can raise a harness-condition refusal (an auto_mode attachment is one), "
-            "which routes harness-error and is re-run, a rewritten transcript beside it included.",
+            "which routes harness-error and is re-run, a rewritten transcript beside it included. Two of the "
+            "comparisons are matched on the recorded data, not cited to the pinned source: the Codex rule (a command the "
+            "exec stream shows, split as a POSIX shell line, equals the rollout's argv) holds for 226 of 226 commands "
+            "on the 38 committed arm-O walks, and the argv-to-string renderer is not in the retained Codex source; the "
+            "Gemini rule (a stream tool result's output equals its native resultDisplay when that is a string, and is "
+            "absent otherwise) holds for 2375 of 2375 results on the 35 readable committed arm-G walks.",
     "ruling": "the lane orchestrator's approval of fold plan prefreeze-1 (pre-freeze review 1, MAJOR 7), Sat 24 Oct "
               "2026, under Javier's standing delegation",
     "closed_check": "tests/test_pf1_transcript_integrity.py (each claude-code unit kind red when rewritten, a moved or "
