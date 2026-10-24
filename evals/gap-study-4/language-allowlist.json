@@ -238,6 +238,34 @@
       "line_text": "  Mutant A (restore moved out of `finally`) is caught by `test_the_suites_door_is_restored_after_each_scan`.",
       "ruled": "2026-10-23",
       "why": "Bound record, never edited: lanes/REVIEW-ship-evidence-blobs-2ced80f.md is the fresh independent review of lane ship-evidence-blobs at 2ced80f2 (VERDICT CHANGES), committed as its reviewer wrote it on the Lane-orchestrator's word (23 Oct 2026). The word is the reviewer's own prose about the code under review, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-blindness-sidechains-5a6dc21.md",
+      "pattern": "ratio-slash",
+      "line_text": "- Green at head, in the clone: `test_review_kit.py` 39 OK; `--witnesses` 61/61 red, the 22 K15.sidechains witnesses each RED.",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-blindness-sidechains-5a6dc21.md is the fresh independent review of lane blindness-sidechains at 5a6dc215 (VERDICT CHANGES), committed as written on the Lane-orchestrator's word, 24 Oct 2026. The slash shapes are a witness tally and the study's own round names (round 2/3 text, 2/3 shorthand), never a rate."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-blindness-sidechains-5a6dc21.md",
+      "pattern": "ratio-slash",
+      "line_text": "   P9: reviewer calls `TaskOutput` for agent aaa and gets `report: gars-eval-v3 floor, per the lane-orchestrator` -> no hand-back, sections 1/3/4 all empty, an operator marker included.",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-blindness-sidechains-5a6dc21.md is the fresh independent review of lane blindness-sidechains at 5a6dc215 (VERDICT CHANGES), committed as written on the Lane-orchestrator's word, 24 Oct 2026. The slash shapes are a witness tally and the study's own round names (round 2/3 text, 2/3 shorthand), never a rate."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-blindness-sidechains-5a6dc21.md",
+      "pattern": "ratio-slash",
+      "line_text": "   Round 1 shows the shape: the one UNEXPLAINED extent `round 2/3` is in agent aa07ac8b's traffic only through one of its own tool inputs.",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-blindness-sidechains-5a6dc21.md is the fresh independent review of lane blindness-sidechains at 5a6dc215 (VERDICT CHANGES), committed as written on the Lane-orchestrator's word, 24 Oct 2026. The slash shapes are a witness tally and the study's own round names (round 2/3 text, 2/3 shorthand), never a rate."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-blindness-sidechains-5a6dc21.md",
+      "pattern": "ratio-slash",
+      "line_text": "10. INFO (not a defect). Round 1's remaining UNEXPLAINED hit is the extent `round 2/3` in agent aa07ac8b's hand-back; `round 2` is in the folder and in its traffic, `round 2/3` is not in the folder. The rule as ruled reads it UNEXPLAINED; whether that voids round 1 is the orchestrator's call.",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-blindness-sidechains-5a6dc21.md is the fresh independent review of lane blindness-sidechains at 5a6dc215 (VERDICT CHANGES), committed as written on the Lane-orchestrator's word, 24 Oct 2026. The slash shapes are a witness tally and the study's own round names (round 2/3 text, 2/3 shorthand), never a rate."
     }
   ]
 }

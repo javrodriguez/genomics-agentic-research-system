@@ -33,15 +33,28 @@ and the two path rows) is never explained, in a hand-back or anywhere else. Writ
 their own section and void nothing by themselves, and the last section states what the sub-agents' records show of
 the reviewer's isolation.
 
+THE REVIEW OF 5a6dc21 (CHANGES), folded on the Lane-orchestrator's rulings the same day. The folder is the folder as
+it stood at launch: launch.py's per-file manifest when there is one, otherwise the files no newer than the launch
+stamp that no session wrote by any tool, the shell included; the record names which rule ran. A path tail must still
+hold the marker it explains. "Read it there" means a tool result the sub-agent received, never its own input, or a
+report a nested agent of its own handed it and read the same way; a nested session that is missing explains
+nothing. A report read through another tool (TaskOutput, or its tasks/<id>.output file) is a hand-back, read once;
+an Agent result that names no agent is listed and stays UNEXPLAINED. A record kept twice, and a rendered form that
+reflows its prompt, are read once. Task notifications are listed apart from the reports. A study word is traced by
+its word alone, so a word the study's own files also hold passes even when the sub-agent met it elsewhere: the
+ruling's own limit, and why the operator rows are refused outright.
+
 stdlib only. Never prints a path or an address unmasked.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -82,6 +95,10 @@ ABS_PATH = re.compile(r"(/(?:Users|private|var|tmp|home|etc|opt)[^\s\"'`]*)")
 AGENT_MESSAGE = re.compile(r'<agent-message from="([^"]+)">')
 TASK_ID = re.compile(r"<task-notification>.*?<task-id>([^<\s]+)</task-id>", re.S)
 LAUNCHED_ID = re.compile(r"agentId: (\w+)")
+# A sub-agent's report file, as the client names it in a task notification.
+TASK_OUTPUT = re.compile(r"tasks/(\w+)\.output")
+# launch.py's per-file record of the folder at launch (round 2 on): `<sha256>  <path under the folder>` per line.
+MANIFEST = "folder-manifest.txt"
 # A shell command that writes, by its own text: a redirect (never 2>&1 or a here-document), or a verb that writes.
 WRITE_CMD = re.compile(r"(?<![\d&<>])>(?!&)|\b(?:mkdir|cp|mv|tee|touch|rsync|ln|install|unzip|tar)\b|\bsed\s+-i"
                        r"|\bgit\s+(?:clone|worktree|init)\b")
@@ -164,39 +181,60 @@ def leaves(x) -> list[str]:
     return []
 
 
+def squash(s: str) -> str:
+    """A text with its whitespace runs made one space, so a reflowed copy reads as the same text."""
+    return " ".join(s.split())
+
+
 def inside(p: str, folder: Path) -> bool:
     f = str(folder)
     return any(p == base or p.startswith(base + "/") for base in (f, "/private" + f))
 
 
-def handback_from(text: str) -> str | None:
-    """The agent a record's text hands back from, if it is a hand-back or a task notification."""
-    m = AGENT_MESSAGE.search(text) or TASK_ID.search(text)
-    return m.group(1) if m else None
+def handback_from(text: str) -> tuple[str, str] | None:
+    """(agent, kind) when a record's text hands back from an agent: a report, or a task notification."""
+    m = AGENT_MESSAGE.search(text)
+    if m:
+        return m.group(1), "report"
+    m = TASK_ID.search(text)
+    return (m.group(1), "notification") if m else None
 
 
 class Session:
     """One session file's records, read the same way for the reviewer and for each of its sub-agents.
 
-    The context is its attachment records less the hand-backs, which are read on their own (section 4). Its
-    traffic is every string of its tool inputs and tool results, lower-cased: what it asked for and what it read.
+    The context is its attachment records less the hand-backs, which are read on their own (section 4). What it
+    received is the text of the tool results it was given, less the ones that are another agent's report: that is
+    what it read. Its own tool inputs are kept apart and never count as read (review of 5a6dc21, finding 5).
+    A record seen twice is read once: by its uuid, and an inline copy of a subagents/ file record without one by its
+    content (read_sessions). Records without a uuid inside one file are each read: the client repeats its own.
     """
 
     def __init__(self, name: str, lines: list[str], folder: Path):
         self.name, self.n, self.ctx, self.inputs = name, 0, [], []
         self.launches: dict[str, str] = {}
-        self.handbacks: list[tuple[str, str]] = []
+        self.noid: list[str] = []
+        self.calls: dict[str, dict] = {}
+        self.pending: list[tuple[str, str]] = []
+        self.results: list[str] = []
+        self.handbacks: list[tuple[str, str, str]] = []
         self.written_inside: set[str] = set()
         self.writes: set[str] = set()
         self.skills: tuple[str, ...] | None = None
         self.workflow = self.mcp = self.memory_outside = 0
-        traffic: list[str] = []
+        self.traffic = ""
         agent_calls: set[str] = set()
+        seen: set[str] = set()
         for line in lines:
             try:
                 rec = json.loads(line)
             except json.JSONDecodeError:
                 continue
+            key = rec.get("uuid")
+            if key and key in seen:
+                continue
+            if key:
+                seen.add(str(key))
             self.n += 1
             kind = rec.get("type")
             if kind == "attachment":
@@ -204,14 +242,14 @@ class Session:
                 if a.get("type") == "queued_command":
                     # The client keeps one message up to three times on this record: the prompt, its origin and
                     # the rendered form the model was shown. The shown form is read once, the prompt only when
-                    # the shown form does not hold it.
+                    # the shown form does not hold it, whitespace aside.
                     text = "\n".join(leaves(a.get("prompt")))
                     shown = "\n".join(leaves(rec.get("rendered")))
-                    if text not in shown:
+                    if squash(text) not in squash(shown):
                         shown = (shown + "\n" + text).strip()
-                    aid = handback_from(shown)
-                    if aid:
-                        self.handbacks.append((aid, shown))
+                    hb = handback_from(shown)
+                    if hb:
+                        self.handbacks.append((hb[0], shown, hb[1]))
                         continue
                 self.ctx.append(line)
                 if a.get("type") == "skill_listing":
@@ -229,7 +267,7 @@ class Session:
                         continue
                     name, inp = str(b.get("name") or ""), b.get("input") or {}
                     self.inputs.append(json.dumps(inp))
-                    traffic += leaves(inp)
+                    self.calls[str(b.get("id"))] = inp
                     self.workflow += name == "Workflow"
                     self.mcp += name.startswith("mcp__")
                     if name in AGENT_TOOLS:
@@ -244,20 +282,42 @@ class Session:
                         continue
                     if b.get("type") == "tool_result":
                         body = "\n".join(leaves(b.get("content")))
-                        traffic.append(body)
                         tid = str(b.get("tool_use_id"))
                         if tid in agent_calls:
-                            m = LAUNCHED_ID.search(body)
-                            aid = str(tur.get("agentId") or (m.group(1) if m else ""))
-                            if aid:
-                                self.launches[tid] = aid
-                                if tur.get("status") != "async_launched" and "Async agent launched" not in body:
-                                    self.handbacks.append((aid, body))
+                            self.agent_result(tid, body, tur)
+                        else:
+                            self.pending.append((tid, body))
                     elif b.get("type") == "text":
-                        aid = handback_from(str(b.get("text") or ""))
-                        if aid:
-                            self.handbacks.append((aid, str(b.get("text"))))
-        self.traffic = "\n".join(traffic).lower()
+                        hb = handback_from(str(b.get("text") or ""))
+                        if hb:
+                            self.handbacks.append((hb[0], str(b.get("text")), hb[1]))
+
+    def agent_result(self, tid: str, body: str, tur: dict) -> None:
+        """An Agent tool result: the launch of a named agent, or a foreground agent's report. One that names no
+        agent is listed and read as a report from no session, so its hits stay UNEXPLAINED (finding 4)."""
+        m = LAUNCHED_ID.search(body)
+        aid = str(tur.get("agentId") or (m.group(1) if m else ""))
+        if not aid:
+            self.noid.append(tid)
+            self.handbacks.append((f"(no agent id, {tid})", body, "report"))
+            return
+        self.launches[tid] = aid
+        if tur.get("status") != "async_launched" and "Async agent launched" not in body:
+            self.handbacks.append((aid, body, "report"))
+
+    def resolve(self, ids: set[str]) -> None:
+        """Once every agent id is known: a tool result whose call names an agent, or its tasks/<id>.output file
+        (TaskOutput, a Read or a cat of it), is that agent's report, read once; every other result is received."""
+        for tid, body in self.pending:
+            strs = leaves(self.calls.get(tid, {}))
+            out = [m.group(1) for x in strs for m in TASK_OUTPUT.finditer(x)]
+            named = [i for i in sorted(ids) if any(re.search(rf"(?<!\w){re.escape(i)}(?!\w)", x) for x in strs)]
+            aid = (out or named or [None])[0]
+            if aid:
+                self.handbacks.append((aid, body, "report"))
+            else:
+                self.results.append(body)
+        self.traffic = "\n".join(self.results).lower()
 
     def note_writes(self, name: str, inp: dict, folder: Path) -> None:
         if name in WRITE_TOOLS:
@@ -271,7 +331,9 @@ class Session:
             if WRITE_CMD.search(cmd):
                 for m in ABS_PATH.finditer(cmd):
                     p = m.group(1).rstrip(").,:;\\")
-                    if p and not inside(p, folder) and not p.startswith("/dev/"):
+                    if p and inside(p, folder):
+                        self.written_inside.add(str(Path(p).resolve()))
+                    elif p and not p.startswith("/dev/"):
                         self.writes.add(p)
 
 
@@ -307,34 +369,79 @@ def read_sessions(main: Path, folder: Path) -> tuple[Session, dict[str, Session]
     files = {}
     for f in sorted((main.parent / main.stem / "subagents").glob("agent-*.jsonl")):
         files[f.stem[len("agent-"):]] = f.read_text(errors="replace").splitlines()
+    def bare(line: str) -> str:
+        """A record's content less the two keys an inline copy adds."""
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            return line
+        return json.dumps({k: v for k, v in rec.items() if k not in ("isSidechain", "agentId")}, sort_keys=True)
+
+    for aid, lines in inline.items():
+        in_file = {bare(x) for x in files.get(aid, [])}
+        inline[aid] = [x for x in lines if bare(x) not in in_file]
     side = {aid: Session(aid, files.get(aid, []) + inline.get(aid, []), folder)
             for aid in sorted(set(files) | set(inline))}
-    return Session("the reviewer", own, folder), side
+    reviewer = Session("the reviewer", own, folder)
+    ids = set(side) | {aid for s in (reviewer, *side.values()) for aid in s.launches.values()}
+    for s in (reviewer, *side.values()):
+        s.resolve(ids)
+    return reviewer, side
 
 
-def corpus(folder: Path, written: set[str]) -> list[Path]:
-    """The files the reviewer was given: under the folder's entries at launch, never a .git folder, a link, or a
-    file any of the sessions wrote inside the folder (its report among them)."""
-    listing = folder.parent / (folder.name + "-launch") / "folder-at-launch.txt"
+def regular_files(top: Path) -> list[Path]:
+    """Every regular file under `top`, never inside a .git folder and never through a link."""
+    if top.is_symlink() or not top.exists():
+        return []
+    if top.is_file():
+        return [top]
+    out = []
+    for d, dirs, names in os.walk(top):
+        dirs[:] = sorted(x for x in dirs if x != ".git" and not (Path(d) / x).is_symlink())
+        out += [Path(d) / x for x in sorted(names) if not (Path(d) / x).is_symlink() and (Path(d) / x).is_file()]
+    return out
+
+
+def corpus(folder: Path, written: set[str]) -> tuple[list[Path], str]:
+    """The files the reviewer was given, as the folder stood at launch, and the rule that chose them.
+
+    With launch.py's per-file manifest (round 2 on), exactly the files it lists whose bytes still hash as they did
+    at launch. Without one (round 1), every file under the folder's entries at launch that is no newer than the
+    launch stamp (folder-at-launch.txt) and that no session wrote by any tool, the shell included (review of
+    5a6dc21, finding 2). Never a .git folder or a link.
+    """
+    side = folder.parent / (folder.name + "-launch")
+    manifest = side / MANIFEST
+    if manifest.is_file():
+        listed = [ln.split("  ", 1) for ln in manifest.read_text().splitlines() if "  " in ln]
+        out = []
+        for sha, rel in listed:
+            p = folder / rel
+            if p.is_symlink() or not p.is_file() or not inside(str(p.resolve()), folder.resolve()):
+                continue
+            if hashlib.sha256(p.read_bytes()).hexdigest() == sha:
+                out.append(p)
+        return out, (f"the per-file manifest taken at launch: {len(out)} of its {len(listed)} files, those whose "
+                     f"bytes are unchanged since launch")
+    listing = side / "folder-at-launch.txt"
     tops = ([folder / n for n in listing.read_text().split("\n") if n.strip()] if listing.is_file()
             else sorted(folder.iterdir()))
-    out = []
-    for top in tops:
-        if top.is_symlink() or not top.exists():
-            continue
-        if top.is_file():
-            out.append(top)
-            continue
-        for d, dirs, names in os.walk(top):
-            dirs[:] = sorted(x for x in dirs if x != ".git" and not (Path(d) / x).is_symlink())
-            out += [Path(d) / x for x in sorted(names) if not (Path(d) / x).is_symlink()]
-    return [p for p in out if str(p.resolve()) not in written]
+    files = [p for top in tops for p in regular_files(top)]
+    stamp = listing.stat().st_mtime_ns if listing.is_file() else None
+    newer = [p for p in files if stamp is not None and p.stat().st_mtime_ns > stamp]
+    by_write = [p for p in files if p not in newer and str(p.resolve()) in written]
+    out = [p for p in files if p not in newer and p not in by_write]
+    when = (time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(stamp / 1e9)) if stamp is not None
+            else "none recorded")
+    return out, (f"no per-file manifest at launch, so the launch stamp (folder-at-launch.txt, {when}): {len(out)} "
+                 f"files, less {len(newer)} newer than the stamp and {len(by_write)} a session wrote")
 
 
-def candidates(ext: str, folder: Path) -> list[str]:
+def candidates(ext: str, marker: str, folder: Path) -> list[str]:
     """What must be found for a hit whose extent is `ext`: the extent itself, and for a path each tail of it that
-    still holds a `/` (so `ROOT/study/evals/x` may be found as `evals/x`, never as a bare word). An absolute path
-    outside the folder has none: it is a read outside, not a file in the folder."""
+    still holds a `/` and still holds the marker (so `ROOT/study/evals/x` may be found as `evals/x`, never as a bare
+    word, and never by a tail that has dropped the word it explains). An absolute path outside the folder has none:
+    it is a read outside, not a file in the folder."""
     if ext.startswith(("/", "~")):
         for base in (str(folder).lower(), "/private" + str(folder).lower()):
             if ext == base or ext.startswith(base + "/"):
@@ -345,24 +452,25 @@ def candidates(ext: str, folder: Path) -> list[str]:
     if not ext:
         return []
     parts = ext.split("/")
-    return [ext] + ["/".join(parts[i:]) for i in range(1, len(parts) - 1)]
+    tails = ["/".join(parts[i:]) for i in range(1, len(parts) - 1)]
+    return [c for c in [ext] + tails if marker in c]
 
 
-def handback_hits(handbacks: dict[str, list[str]]) -> list[dict]:
+def handback_hits(handbacks: list[tuple[str, str, str]]) -> list[dict]:
     """Every marker occurrence in every hand-back, with its extent."""
     hits = []
-    for aid, texts in handbacks.items():
-        for text in texts:
-            low = text.lower()
-            for label, w, op in rows():
-                for m in re.finditer(re.escape(w.lower()), low):
-                    s, e = m.start(), m.end()
-                    while s > 0 and EXTENT.match(low[s - 1]):
-                        s -= 1
-                    while e < len(low) and EXTENT.match(low[e]):
-                        e += 1
-                    hits.append({"aid": aid, "label": label, "op": op, "ext": low[s:e].rstrip(".'-/").lstrip(".'-"),
-                                 "quote": " ".join(text[max(0, m.start() - 40):m.start() + 160].split())})
+    for aid, text, kind in handbacks:
+        low = text.lower()
+        for label, w, op in rows():
+            for m in re.finditer(re.escape(w.lower()), low):
+                s, e = m.start(), m.end()
+                while s > 0 and EXTENT.match(low[s - 1]):
+                    s -= 1
+                while e < len(low) and EXTENT.match(low[e]):
+                    e += 1
+                hits.append({"aid": aid, "label": label, "op": op, "word": w.lower(), "kind": kind,
+                             "ext": low[s:e].rstrip(".'-/").lstrip(".'-"),
+                             "quote": " ".join(text[max(0, m.start() - 40):m.start() + 160].split())})
     return hits
 
 
@@ -384,6 +492,17 @@ def found_in(files: list[Path], folder: Path, wanted: set[str]) -> set[str]:
     return found
 
 
+def read_there(aid: str, c: str, side: dict[str, Session], seen: frozenset = frozenset()) -> bool:
+    """Did agent `aid` read `c`: in a tool result it received, or in a report a nested agent of its own handed it,
+    where that nested agent read it in turn by this same rule (finding 6). No session, no read."""
+    if aid in seen or aid not in side:
+        return False
+    s = side[aid]
+    if c in s.traffic:
+        return True
+    return any(c in text.lower() and read_there(child, c, side, seen | {aid}) for child, text, _ in s.handbacks)
+
+
 def table_of(ctx: list[str], folder: Path) -> list[dict]:
     out = []
     for label, w, op in rows():
@@ -397,19 +516,19 @@ def analyse(folder: Path, sid: str, projects: Path = PROJECTS) -> dict:
     reviewer, side = read_sessions(session_file(sid, projects), folder)
     sessions = [reviewer, *side.values()]
     launched = {aid for s in sessions for aid in s.launches.values()}
+    all_hb = [h for s in sessions for h in s.handbacks]
     handbacks: dict[str, list[str]] = {}
-    for s in sessions:
-        for aid, text in s.handbacks:
-            handbacks.setdefault(aid, []).append(text)
+    for aid, text, _ in all_hb:
+        handbacks.setdefault(aid, []).append(text)
     written = set().union(*(s.written_inside for s in sessions))
-    files = corpus(folder, written)
-    hits = handback_hits(handbacks)
+    files, rule = corpus(folder, written)
+    hits = handback_hits(all_hb)
     # Operator hits are searched too, so the one rule that refuses them is the line below, and it alone.
-    wanted = {c for h in hits if h["aid"] in side for c in candidates(h["ext"], folder)}
+    wanted = {c for h in hits for c in candidates(h["ext"], h["word"], folder)}
     in_folder = found_in(files, folder, wanted)
     for h in hits:
-        read = side[h["aid"]].traffic if h["aid"] in side else ""
-        h["traced"] = (not h["op"]) and any(c in in_folder and c in read for c in candidates(h["ext"], folder))
+        h["traced"] = (not h["op"]) and any(c in in_folder and read_there(h["aid"], c, side)
+                                            for c in candidates(h["ext"], h["word"], folder))
     hb_table = []
     for label, _, _ in rows():
         mine = [h for h in hits if h["label"] == label]
@@ -421,9 +540,13 @@ def analyse(folder: Path, sid: str, projects: Path = PROJECTS) -> dict:
     return {
         "sid": sid, "n": reviewer.n, "ctx": reviewer.ctx, "inputs": reviewer.inputs, "sidechains": side,
         "missing": sorted(launched - set(side)), "unlaunched": sorted(set(side) - launched),
+        "noid": [t for s in sessions for t in s.noid],
         "table": table_of(reviewer.ctx, folder), "side_table": table_of(side_ctx, folder),
         "per_agent": {aid: r for aid, r in per_agent.items() if r},
         "handbacks": handbacks, "handback_table": hb_table, "corpus_files": [str(p) for p in files],
+        "corpus_rule": rule,
+        "reports": [(aid, text) for aid, text, kind in all_hb if kind == "report"],
+        "notifications": [(aid, text) for aid, text, kind in all_hb if kind == "notification"],
         "handback_quotes": [(f"agent {h['aid']}, {h['label']}", mask(h["quote"], str(folder))[:120])
                             for h in hits if not h["traced"]],
         "outside": outside_paths(reviewer, folder),
@@ -458,7 +581,9 @@ def render(a: dict, folder: Path) -> str:
             f"   launched agents with no session file: {len(a['missing'])}"
             + (f" ({', '.join(a['missing'])})" if a["missing"] else ""),
             f"   session files no launch names: {len(a['unlaunched'])}"
-            + (f" ({', '.join(a['unlaunched'])})" if a["unlaunched"] else "")]
+            + (f" ({', '.join(a['unlaunched'])})" if a["unlaunched"] else ""),
+            f"   Agent results that name no agent: {len(a['noid'])}"
+            + (f" (tool uses {', '.join(a['noid'])}; read as reports from no session)" if a["noid"] else "")]
     out += [f"   - agent {aid}: {s.n} records, {len(s.ctx)} attachment records, {len(s.inputs)} tool calls"
             for aid, s in side.items()]
     out += ["", "3. Operator material in the sub-agents' own loaded context, all sessions together, by the rules of 1.",
@@ -467,12 +592,18 @@ def render(a: dict, folder: Path) -> str:
             for r in a["side_table"]]
     for aid, rs in a["per_agent"].items():
         out += [f"   - agent {aid}: {r['label']} UNEXPLAINED {r['un']}" for r in rs]
-    n_hb = sum(len(v) for v in a["handbacks"].values())
-    out += ["", f"4. Sub-agent hand-backs in the loaded context: {n_hb}, from {len(a['handbacks'])} agents.",
-            "   A hit is explained only when its text (the word or path it sits in) is in a file that was in the",
-            "   folder at launch and that no session wrote, and in that sub-agent's own tool traffic: it read it",
-            "   there. Any other hit is UNEXPLAINED, and an operator row is never explained. The count that binds is",
-            "   UNEXPLAINED, and it must be 0.", "",
+    rep_from = sorted({aid for aid, _ in a["reports"]})
+    note_from = sorted({aid for aid, _ in a["notifications"]})
+    out += ["", f"4. Sub-agent hand-backs carrying a report: {len(a['reports'])}, from {len(rep_from)} agents.",
+            f"   Task notifications, listed apart: {len(a['notifications'])}, from {len(note_from)} agents; their",
+            "   text is read by the same rule, so any hit in one is in the table below.",
+            "   A hit is explained only when its text (the word or path it sits in) is in a file of the folder as",
+            "   it stood at launch, and in a tool result that sub-agent received (or a report a nested agent of",
+            "   its own handed it and read the same way): it read it there. Any other hit is UNEXPLAINED, and an",
+            "   operator row is never explained. A study word is traced by its word alone, so a word the study's",
+            "   own files also hold passes even when the sub-agent met it elsewhere; that is why the operator",
+            "   rows are refused outright. The count that binds is UNEXPLAINED, and it must be 0.",
+            f"   The folder as it stood at launch: {a['corpus_rule']}.", "",
             f"   {'marker':34} {'total':>6} {'traced to the folder':>21} {'UNEXPLAINED':>12}"]
     out += [f"   {r['label']:34} {r['total']:>6} {r['traced']:>21} {r['un']:>12}" for r in a["handback_table"]]
     if a["handback_quotes"]:

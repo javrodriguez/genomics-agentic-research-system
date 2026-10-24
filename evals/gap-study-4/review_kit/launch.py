@@ -47,6 +47,7 @@ No model is called by this file itself; it starts the reviewer's session. stdlib
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -151,6 +152,21 @@ def record_env_names(side: Path, env: dict, name: str = "env-names.txt") -> None
     (side / name).write_text("".join(f"{k}\n" for k in sorted(env)))
 
 
+def write_manifest(folder: Path, side: Path) -> None:
+    """The folder as it stands at launch, one `<sha256>  <path under the folder>` line per regular file (never inside
+    a .git folder, never through a link), so blindness.py can read the folder the reviewer was given and not what
+    any session later wrote into it (lane blindness-sidechains, the review of 5a6dc21, finding 2)."""
+    lines = []
+    for d, dirs, names in os.walk(folder):
+        dirs[:] = sorted(x for x in dirs if x != ".git" and not (Path(d) / x).is_symlink())
+        for n in sorted(names):
+            p = Path(d) / n
+            if p.is_symlink() or not p.is_file():
+                continue
+            lines.append(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(folder)}\n")
+    (side / "folder-manifest.txt").write_text("".join(lines))
+
+
 def resume(folder: Path, sid: str, drive) -> int:
     side = folder.parent / (folder.name + "-launch")
     recorded = (side / "SESSION").read_text().strip() if (side / "SESSION").is_file() else None
@@ -202,6 +218,7 @@ def main() -> int:
     (side / "SESSION").write_text(sid + "\n")
     (side / "FOLDER").write_text(str(folder) + "\n")
     (side / "folder-at-launch.txt").write_text("\n".join(sorted(os.listdir(folder))) + "\n")
+    write_manifest(folder, side)
     env = env_for()
     record_env_names(side, env)
     argv = argv_for(sid, drive)

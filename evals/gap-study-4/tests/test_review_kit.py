@@ -59,6 +59,8 @@ Lane-orchestrator's ruling 2 on the lane's hand-back, the same day) was written 
 Lane blindness-sidechains (the Lane-orchestrator's ruling of Sat 24 Oct 2026, under Javier's standing delegation,
 after the pre-freeze round 1 record read 45 UNEXPLAINED hits, every one in a sub-agent hand-back): K15 was written red
 first.
+The folds of the review of 5a6dc21 (VERDICT CHANGES, the Lane-orchestrator's rulings the same day): SidechainFolds,
+twelve more K15 tests, were written red first at 5a6dc21.
 
 Reads committed files only; no model, network, container or take. Interpreter state (sys.modules, sys.path,
 os.environ, cwd) is left as found.
@@ -68,6 +70,7 @@ bound test to fail by an AssertionError carrying its clause token.
 """
 from __future__ import annotations
 
+import hashlib
 import atexit  # noqa: F401  (TemporaryDirectory's weakref.finalize imports it lazily; loaded here so no test adds a module)
 import importlib.util
 import json
@@ -659,6 +662,13 @@ class Sidechains(unittest.TestCase):
         reviewer.append({"type": "user", "message": {"content": handback(
             "eee", "Per gap-study-3, nothing else.")}})
         self.write(proj / f"{self.SID}.jsonl", reviewer)
+        # Every file of the folder is older than the launch stamp, so the rules under test here (the launch listing
+        # and the sessions' own writes) are the only ones that exclude a file.
+        stamp = 1_700_000_000
+        os.utime(side / "folder-at-launch.txt", (stamp, stamp))
+        for p in self.folder.rglob("*"):
+            if p.is_file():
+                os.utime(p, (stamp - 90, stamp - 90))
 
         side_a = [{"type": "user", "isSidechain": True, "agentId": "aaa", "message": {"content": "brief"}}, skills,
                   call("t1", "Read", {"file_path": notes}), result("t1", self.NOTES.split("\n")[0]),
@@ -768,6 +778,221 @@ class Sidechains(unittest.TestCase):
         self.assertEqual(iso["ccc"]["skills_as_reviewer"], False, "K15.sidechains")
         self.assertEqual(iso["bbb"]["memory_outside"], 1, "K15.sidechains")
         self.assertEqual(iso["aaa"]["workflow"] + iso["aaa"]["mcp"], 0, "K15.sidechains")
+
+
+def _att(kind, **kw):
+    return {"type": "attachment", "attachment": {"type": kind, **kw}}
+
+
+def _call(tid, name, inp):
+    return {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": tid, "name": name, "input": inp}]}}
+
+
+def _result(tid, body, tur=None):
+    rec = {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": tid,
+                                                    "content": [{"type": "text", "text": body}]}]}}
+    if tur is not None:
+        rec["toolUseResult"] = tur
+    return rec
+
+
+def _hb(aid, body):
+    return {"type": "user", "message": {"content": f'Another Claude session sent a message:\n<agent-message from="{aid}">'
+                                                   f"\n[Subagent hand-back] {body}\n</agent-message>"}}
+
+
+def _launch(tid, aid):
+    return [_call(tid, "Agent", {"prompt": "p"}),
+            _result(tid, f"Async agent launched successfully.\nagentId: {aid}", {"agentId": aid, "status": "async_launched"})]
+
+
+def _side(aid, recs):
+    return [{"type": "user", "isSidechain": True, "agentId": aid, "message": {"content": "brief"}}] + recs
+
+
+class SidechainFolds(unittest.TestCase):
+    """K15.sidechains, the folds of the review of 5a6dc21 (REVIEW-blindness-sidechains-5a6dc21.md, the
+    Lane-orchestrator's rulings of Sat 24 Oct 2026): one small fixture per finding, `@F` standing for the folder."""
+
+    SID = "11111111-2222-5333-8444-666666666666"
+
+    def run_case(self, files, reviewer, sides, newer=(), manifest=None):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t).resolve()
+            folder = root / "pfr" / "round9"
+            (folder / "study").mkdir(parents=True)
+            launch_side = folder.parent / "round9-launch"
+            launch_side.mkdir()
+            listing = launch_side / "folder-at-launch.txt"
+            listing.write_text("study\n")
+            stamp = 1_700_000_000
+            os.utime(listing, (stamp, stamp))
+            for rel, body in files.items():
+                p = folder / rel
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(body)
+                when = stamp + 90 if rel in newer else stamp - 90
+                os.utime(p, (when, when))
+            if manifest is not None:
+                (launch_side / "folder-manifest.txt").write_text(
+                    "".join(f"{hashlib.sha256(body.encode()).hexdigest()}  {rel}\n" for rel, body in manifest.items()))
+            F = str(folder)
+            proj = root / "projects" / "-k15b"
+            sub = proj / self.SID / "subagents"
+            sub.mkdir(parents=True)
+
+            def fix(recs):
+                return "".join(json.dumps(r).replace("@F", F) + "\n" for r in recs)
+            (proj / f"{self.SID}.jsonl").write_text(fix(reviewer))
+            for aid, recs in sides.items():
+                (sub / f"agent-{aid}.jsonl").write_text(fix(recs))
+            b = load_blindness()
+            a = b.analyse(folder, self.SID, root / "projects")
+            a["rendered"] = b.render(a, folder)
+            return a
+
+    def hb_row(self, a, label):
+        rows = {r["label"]: (r["total"], r["traced"], r["un"]) for r in a["handback_table"]}
+        return rows[label]
+
+    def test_a_path_tail_that_drops_the_marker_explains_nothing(self):
+        a = self.run_case({"study/evals/gap-study-4/tests/test_x.py": "x=1\n"},
+                          _launch("tA", "aaa") + [_hb("aaa", "see evals/gap-study-3/tests/test_x.py for the old one")],
+                          {"aaa": _side("aaa", [_call("t1", "Bash", {"command": "find @F/study -name '*.py'"}),
+                                                _result("t1", "@F/study/evals/gap-study-4/tests/test_x.py")])})
+        self.assertEqual(self.hb_row(a, "round 3's folder name"), (1, 0, 1), "K15.sidechains: tail without the marker")
+
+    def test_a_file_a_shell_command_wrote_inside_the_folder_is_not_the_folder(self):
+        a = self.run_case({"study/readme.md": "hello\n", "study/scratch.md": "the floor is gars-eval-v3's\n"},
+                          _launch("tA", "aaa") + [_hb("aaa", "the floor is gars-eval-v3's")],
+                          {"aaa": _side("aaa", [_call("t1", "Bash", {"command": "cat > @F/study/scratch.md <<'EOF'\nx\nEOF"}),
+                                                _result("t1", ""),
+                                                _call("t2", "Read", {"file_path": "@F/study/scratch.md"}),
+                                                _result("t2", "the floor is gars-eval-v3's")])})
+        self.assertEqual(self.hb_row(a, "round 2's goal id"), (1, 0, 1), "K15.sidechains: a shell write inside")
+
+    def test_a_file_newer_than_the_launch_stamp_is_not_the_folder(self):
+        a = self.run_case({"study/readme.md": "hello\n", "study/late.md": "the floor is gars-eval-v3's\n"},
+                          _launch("tA", "aaa") + [_hb("aaa", "the floor is gars-eval-v3's")],
+                          {"aaa": _side("aaa", [_call("t2", "Read", {"file_path": "@F/study/late.md"}),
+                                                _result("t2", "the floor is gars-eval-v3's")])},
+                          newer=("study/late.md",))
+        self.assertEqual(self.hb_row(a, "round 2's goal id"), (1, 0, 1), "K15.sidechains: newer than the stamp")
+        self.assertIn("launch stamp", a["corpus_rule"], "K15.sidechains: the rule that ran is named")
+        self.assertIn("launch stamp", a["rendered"], "K15.sidechains: the rule that ran is printed")
+
+    def test_with_a_manifest_only_its_unchanged_files_are_the_folder(self):
+        files = {"study/kept.md": "the haiku-prestudy is frozen\n", "study/changed.md": "gars-eval-v3 floor\n",
+                 "study/unlisted.md": "round 2's floor\n"}
+        manifest = {"study/kept.md": files["study/kept.md"], "study/changed.md": "something else\n"}
+        reads = [_call("t1", "Bash", {"command": "cat study/*.md"}), _result("t1", "".join(files.values()))]
+        a = self.run_case(files, _launch("tA", "aaa") + [_hb("aaa", "the haiku-prestudy; gars-eval-v3 floor; round 2's floor")],
+                          {"aaa": _side("aaa", reads)}, manifest=manifest)
+        self.assertEqual(self.hb_row(a, "the pre-study's folder name"), (1, 1, 0), "K15.sidechains: a listed file")
+        self.assertEqual(self.hb_row(a, "round 2's goal id"), (1, 0, 1), "K15.sidechains: changed since launch")
+        self.assertEqual(self.hb_row(a, "round 2's name"), (1, 0, 1), "K15.sidechains: not listed at launch")
+        self.assertIn("manifest", a["corpus_rule"], "K15.sidechains: the rule that ran is named")
+
+    def test_a_report_read_through_another_tool_is_a_handback_once(self):
+        rev = (_launch("tA", "aaa") + _launch("tB", "bbb")
+               + [_call("tO", "TaskOutput", {"task_id": "aaa"}),
+                  _result("tO", "report: gars-eval-v3 floor, per the lane-orchestrator"),
+                  _call("tC", "Bash", {"command": "cat /private/tmp/claude-501/x/tasks/bbb.output"}),
+                  _result("tC", "report: the haiku-prestudy is frozen"),
+                  # ccc was never launched here and has no session: only its output file's name says whose it is.
+                  _call("tD", "Read", {"file_path": "/private/tmp/claude-501/x/tasks/ccc.output"}),
+                  _result("tD", "report: round 2's floor")])
+        a = self.run_case({"study/r.md": "gars-eval-v3 floor; the haiku-prestudy is frozen\n"}, rev,
+                          {"aaa": _side("aaa", []), "bbb": _side("bbb", [])})
+        self.assertEqual(self.hb_row(a, "round 2's goal id"), (1, 0, 1), "K15.sidechains: TaskOutput")
+        self.assertEqual(self.hb_row(a, "the operator's coordinating session"), (1, 0, 1), "K15.sidechains")
+        self.assertEqual(self.hb_row(a, "the pre-study's folder name"), (1, 0, 1), "K15.sidechains: the output file")
+        self.assertEqual(self.hb_row(a, "round 2's name"), (1, 0, 1), "K15.sidechains: an unlaunched agent's file")
+        self.assertEqual(sorted(a["handbacks"]), ["aaa", "bbb", "ccc"], "K15.sidechains")
+
+    def test_an_agent_result_with_no_agent_id_is_listed_and_unexplained(self):
+        a = self.run_case({"study/r.md": "gars-eval-v3 sets the floor\n"},
+                          [_call("tF", "Agent", {"prompt": "p"}),
+                           _result("tF", "Done: gars-eval-v3 sets the floor; the lane-orchestrator said so.")], {})
+        self.assertEqual(a["noid"], ["tF"], "K15.sidechains: listed")
+        self.assertEqual(self.hb_row(a, "round 2's goal id"), (1, 0, 1), "K15.sidechains: never dropped")
+        self.assertEqual(self.hb_row(a, "the operator's coordinating session"), (1, 0, 1), "K15.sidechains")
+        self.assertIn("Agent results that name no agent: 1", a["rendered"], "K15.sidechains: in section 2")
+
+    def test_what_a_subagent_typed_is_not_what_it_read(self):
+        a = self.run_case({"study/r.md": "gars-eval-v3 floor\n"},
+                          _launch("tA", "aaa") + [_hb("aaa", "gars-eval-v3 floor")],
+                          {"aaa": _side("aaa", [_call("t1", "Bash", {"command": "echo gars-eval-v3 > /dev/null"}),
+                                                _result("t1", "")])})
+        self.assertEqual(self.hb_row(a, "round 2's goal id"), (1, 0, 1), "K15.sidechains: its own input")
+
+    def nested(self, child_session: bool):
+        sides = {"aaa": _side("aaa", _launch("tN", "nnn") + [_hb("nnn", "gars-eval-v3 floor")])}
+        if child_session:
+            sides["nnn"] = _side("nnn", [_call("t1", "Read", {"file_path": "@F/study/r.md"}),
+                                         _result("t1", "gars-eval-v3 floor")])
+        return self.run_case({"study/r.md": "gars-eval-v3 floor\n"},
+                             _launch("tA", "aaa") + [_hb("aaa", "child said gars-eval-v3 floor")], sides)
+
+    def test_a_relayed_nested_handback_traces_through_the_nested_session(self):
+        self.assertEqual(self.hb_row(self.nested(True), "round 2's goal id"), (2, 2, 0), "K15.sidechains: relayed")
+        a = self.nested(False)
+        self.assertEqual(self.hb_row(a, "round 2's goal id"), (2, 0, 2), "K15.sidechains: nested session missing")
+        self.assertEqual(a["missing"], ["nnn"], "K15.sidechains")
+
+    def test_a_record_kept_twice_is_read_once(self):
+        dup = [{"uuid": "u-1", **_att("total_tokens_reminder", content="the north star")}]
+        a = self.run_case({"study/r.md": "x\n"},
+                          _launch("tA", "aaa") + [dict(r, isSidechain=True, agentId="aaa") for r in dup],
+                          {"aaa": _side("aaa", dup)})
+        side = {r["label"]: r["un"] for r in a["side_table"]}
+        self.assertEqual(side["the operator's objective line"], 1, "K15.sidechains: inline and in its file")
+        bare = [_att("total_tokens_reminder", content="the north star")]
+        a = self.run_case({"study/r.md": "x\n"},
+                          _launch("tA", "aaa") + [dict(r, isSidechain=True, agentId="aaa") for r in bare],
+                          {"aaa": _side("aaa", bare)})
+        side = {r["label"]: r["un"] for r in a["side_table"]}
+        self.assertEqual(side["the operator's objective line"], 1, "K15.sidechains: the same record with no uuid")
+        a = self.run_case({"study/r.md": "x\n"}, _launch("tA", "aaa"), {"aaa": _side("aaa", dup + dup)})
+        side = {r["label"]: r["un"] for r in a["side_table"]}
+        self.assertEqual(side["the operator's objective line"], 1, "K15.sidechains: one uuid twice in one file")
+        text = ('Another Claude session sent a message:\n<agent-message from="aaa">\n[Subagent hand-back] '
+                "gars-eval-v3 floor\n</agent-message>")
+        q = _att("queued_command", commandMode="prompt", prompt=text)
+        q["rendered"] = [{"content": "<system-reminder>shown: " + text.replace("\n", " ") + "</system-reminder>"}]
+        a = self.run_case({"study/r.md": "x\n"}, _launch("tA", "aaa") + [q], {"aaa": _side("aaa", [])})
+        self.assertEqual(self.hb_row(a, "round 2's goal id")[0], 1, "K15.sidechains: a reflowed rendered form")
+
+    def test_task_notifications_are_listed_apart_from_reports(self):
+        note = {"type": "user", "message": {"content": "<task-notification>\n<task-id>aaa</task-id>\n<status>completed"
+                                                       "</status>\n<result>not repeated here</result>"}}
+        a = self.run_case({"study/r.md": "x\n"}, _launch("tA", "aaa") + [_hb("aaa", "done"), note],
+                          {"aaa": _side("aaa", [])})
+        self.assertEqual((len(a["reports"]), len(a["notifications"])), (1, 1), "K15.sidechains")
+        self.assertIn("hand-backs carrying a report: 1", a["rendered"], "K15.sidechains")
+        self.assertIn("Task notifications, listed apart: 1", a["rendered"], "K15.sidechains")
+
+    def test_the_docstring_states_the_shared_study_word_limit(self):
+        doc = " ".join(text("blindness").split('"""')[1].split())
+        self.assertIn("A study word is traced by its word alone", doc, "K15.sidechains")
+
+    def test_launch_writes_the_per_file_manifest(self):
+        lk = load_launch()
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t).resolve()
+            folder, side = root / "f", root / "f-launch"
+            (folder / "study" / ".git").mkdir(parents=True)
+            side.mkdir()
+            (folder / "BRIEF.md").write_text("b\n")
+            (folder / "study" / "x.py").write_text("x\n")
+            (folder / "study" / ".git" / "HEAD").write_text("ref\n")
+            os.symlink(folder / "BRIEF.md", folder / "study" / "link.md")
+            lk.write_manifest(folder, side)
+            got = (side / "folder-manifest.txt").read_text()
+        want = "".join(f"{hashlib.sha256(b).hexdigest()}  {rel}\n" for rel, b in (("BRIEF.md", b"b\n"),
+                                                                                    ("study/x.py", b"x\n")))
+        self.assertEqual(got, want, "K15.sidechains: one line per regular file, no .git, no link")
+        self.assertIn("    write_manifest(folder, side)\n", text("launch"), "K15.sidechains: the launch writes it")
 
 
 def mutants():
@@ -885,11 +1110,11 @@ def mutants():
                 '    side_ctx = [line for s in side.values() for line in s.ctx]',
                 '    side_ctx = []'),
         "handback-folder-only": ("Sidechains.test_a_handback_hit_not_traced_is_unexplained", "K15.sidechains", "blindness",
-                'any(c in in_folder and c in read for c in',
-                'any(c in in_folder for c in'),
+                'any(c in in_folder and read_there(h["aid"], c, side)',
+                'any(c in in_folder'),
         "handback-read-only": ("Sidechains.test_a_handback_hit_not_traced_is_unexplained", "K15.sidechains", "blindness",
-                'any(c in in_folder and c in read for c in',
-                'any(c in read for c in'),
+                'any(c in in_folder and read_there(h["aid"], c, side)',
+                'any(read_there(h["aid"], c, side)'),
         "outside-path-traced": ("Sidechains.test_a_handback_hit_not_traced_is_unexplained", "K15.sidechains", "blindness",
                 '        else:\n            return []\n',
                 '        else:\n            pass\n'),
@@ -897,8 +1122,8 @@ def mutants():
                 'mask(h["quote"], str(folder))[:120])',
                 'mask(h["quote"], str(folder)))'),
         "written-in-corpus": ("Sidechains.test_the_reviewers_own_writes_are_never_the_folder_it_was_given", "K15.sidechains", "blindness",
-                '    return [p for p in out if str(p.resolve()) not in written]',
-                '    return out'),
+                '    by_write = [p for p in files if p not in newer and str(p.resolve()) in written]',
+                '    by_write = []'),
         "launch-listing-ignored": ("Sidechains.test_the_reviewers_own_writes_are_never_the_folder_it_was_given", "K15.sidechains", "blindness",
                 'tops = ([folder / n for n in listing.read_text().split("\\n") if n.strip()] if listing.is_file()\n            else sorted(folder.iterdir()))',
                 'tops = sorted(folder.iterdir())'),
@@ -915,8 +1140,8 @@ def mutants():
                 '                    elif b.get("type") == "text":',
                 '                    elif False:'),
         "handback-queued-twice": ("Sidechains.test_handbacks_are_read_whichever_record_carries_them", "K15.sidechains", "blindness",
-                '                        self.handbacks.append((aid, shown))\n                        continue\n',
-                '                        self.handbacks.append((aid, shown))\n'),
+                '                        self.handbacks.append((hb[0], shown, hb[1]))\n                        continue\n',
+                '                        self.handbacks.append((hb[0], shown, hb[1]))\n'),
         "handback-sync-unread": ("Sidechains.test_handbacks_are_read_whichever_record_carries_them", "K15.sidechains", "blindness",
                 'if tur.get("status") != "async_launched" and "Async agent launched" not in body:',
                 'if False:'),
@@ -933,7 +1158,70 @@ def mutants():
                 '"skills_as_reviewer": None if s.skills is None else set(s.skills) == skills',
                 '"skills_as_reviewer": True'),
         "queued-read-twice": ("Sidechains.test_a_handback_hit_not_traced_is_unexplained", "K15.sidechains", "blindness",
-                '                    if text not in shown:\n', '                    if True:\n'),
+                '                    if squash(text) not in squash(shown):\n', '                    if True:\n'),
+        "tail-keeps-dropped-marker": ("SidechainFolds.test_a_path_tail_that_drops_the_marker_explains_nothing", "K15.sidechains", "blindness",
+                '    return [c for c in [ext] + tails if marker in c]',
+                '    return [ext] + tails'),
+        "shell-write-inside-kept": ("SidechainFolds.test_a_file_a_shell_command_wrote_inside_the_folder_is_not_the_folder", "K15.sidechains", "blindness",
+                '                    if p and inside(p, folder):\n                        self.written_inside.add(str(Path(p).resolve()))\n                    elif p and not p.startswith("/dev/"):',
+                '                    if False:\n                        pass\n                    elif p and not inside(p, folder) and not p.startswith("/dev/"):'),
+        "mtime-ignored": ("SidechainFolds.test_a_file_newer_than_the_launch_stamp_is_not_the_folder", "K15.sidechains", "blindness",
+                '    newer = [p for p in files if stamp is not None and p.stat().st_mtime_ns > stamp]',
+                '    newer = []'),
+        "rule-unprinted": ("SidechainFolds.test_a_file_newer_than_the_launch_stamp_is_not_the_folder", "K15.sidechains", "blindness",
+                '            f"   The folder as it stood at launch: {a[\'corpus_rule\']}.", "",\n',
+                '            "",\n'),
+        "manifest-ignored": ("SidechainFolds.test_with_a_manifest_only_its_unchanged_files_are_the_folder", "K15.sidechains", "blindness",
+                '    if manifest.is_file():',
+                '    if False:'),
+        "manifest-hash-unchecked": ("SidechainFolds.test_with_a_manifest_only_its_unchanged_files_are_the_folder", "K15.sidechains", "blindness",
+                '            if hashlib.sha256(p.read_bytes()).hexdigest() == sha:',
+                '            if True:'),
+        "manifest-not-written": ("SidechainFolds.test_launch_writes_the_per_file_manifest", "K15.sidechains", "launch",
+                '    write_manifest(folder, side)\n',
+                ''),
+        "manifest-keeps-git": ("SidechainFolds.test_launch_writes_the_per_file_manifest", "K15.sidechains", "launch",
+                'dirs[:] = sorted(x for x in dirs if x != ".git" and not (Path(d) / x).is_symlink())',
+                'dirs[:] = sorted(dirs)'),
+        "taskoutput-unread": ("SidechainFolds.test_a_report_read_through_another_tool_is_a_handback_once", "K15.sidechains", "blindness",
+                'aid = (out or named or [None])[0]',
+                'aid = (out or [None])[0]'),
+        "output-file-unread": ("SidechainFolds.test_a_report_read_through_another_tool_is_a_handback_once", "K15.sidechains", "blindness",
+                'aid = (out or named or [None])[0]',
+                'aid = (named or [None])[0]'),
+        "noid-dropped": ("SidechainFolds.test_an_agent_result_with_no_agent_id_is_listed_and_unexplained", "K15.sidechains", "blindness",
+                '            self.handbacks.append((f"(no agent id, {tid})", body, "report"))\n',
+                ''),
+        "noid-unlisted": ("SidechainFolds.test_an_agent_result_with_no_agent_id_is_listed_and_unexplained", "K15.sidechains", "blindness",
+                '"noid": [t for s in sessions for t in s.noid],',
+                '"noid": [],'),
+        "inputs-read": ("SidechainFolds.test_what_a_subagent_typed_is_not_what_it_read", "K15.sidechains", "blindness",
+                '        self.traffic = "\\n".join(self.results).lower()',
+                '        self.traffic = "\\n".join(self.results + self.inputs).lower()'),
+        "nested-unfollowed": ("SidechainFolds.test_a_relayed_nested_handback_traces_through_the_nested_session", "K15.sidechains", "blindness",
+                '    return any(c in text.lower() and read_there(child, c, side, seen | {aid}) for child, text, _ in s.handbacks)',
+                '    return False'),
+        "nested-missing-explains": ("SidechainFolds.test_a_relayed_nested_handback_traces_through_the_nested_session", "K15.sidechains", "blindness",
+                '    if aid in seen or aid not in side:\n        return False\n',
+                '    if aid in seen:\n        return False\n    if aid not in side:\n        return True\n'),
+        "record-no-uuid-twice": ("SidechainFolds.test_a_record_kept_twice_is_read_once", "K15.sidechains", "blindness",
+                '        inline[aid] = [x for x in lines if bare(x) not in in_file]',
+                '        inline[aid] = lines'),
+        "record-read-twice": ("SidechainFolds.test_a_record_kept_twice_is_read_once", "K15.sidechains", "blindness",
+                '            if key and key in seen:\n                continue\n',
+                '            if False:\n                continue\n'),
+        "reflow-read-twice": ("SidechainFolds.test_a_record_kept_twice_is_read_once", "K15.sidechains", "blindness",
+                '                    if squash(text) not in squash(shown):\n',
+                '                    if text not in shown:\n'),
+        "shared-word-unstated": ("SidechainFolds.test_the_docstring_states_the_shared_study_word_limit", "K15.sidechains", "blindness",
+                'reports. A study word is traced by\nits word alone',
+                'reports.\nIts word alone'),
+        "notification-as-report": ("SidechainFolds.test_task_notifications_are_listed_apart_from_reports", "K15.sidechains", "blindness",
+                '    return (m.group(1), "notification") if m else None',
+                '    return (m.group(1), "report") if m else None'),
+        "section-4-counts-notifications": ("SidechainFolds.test_task_notifications_are_listed_apart_from_reports", "K15.sidechains", "blindness",
+                'f"4. Sub-agent hand-backs carrying a report: {len(a[\'reports\'])}',
+                'f"4. Sub-agent hand-backs carrying a report: {len(a[\'reports\']) + len(a[\'notifications\'])}'),
         "isolation-memory-ignored": ("Sidechains.test_the_isolation_the_records_show", "K15.sidechains", "blindness",
                 '                    self.memory_outside += 1',
                 '                    pass'),
