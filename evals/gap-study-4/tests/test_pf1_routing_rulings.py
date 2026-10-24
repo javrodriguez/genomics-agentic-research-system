@@ -307,7 +307,7 @@ def p8_rulings(batchmod, p="P8"):
             ("after, an API error, re-run", api, RERUN, True),
             ("after, an API error, pause", api, rt(labels4.PAUSE), True),
             ("after, a watcher gap, harness-error", gap, rt(labels4.HARNESS_ERROR), True),
-            ("after, a pids counter rise, re-run", rise, RERUN, True),
+            ("after, a pids counter rise, re-run (the review's finding 1: aborted is never re-run)", rise, RERUN, False),
             ("after, rehearsal", after, rt(labels4.REHEARSAL), False),
             ("after, an API error, rehearsal", api, rt(labels4.REHEARSAL), False),
             ("no records, rehearsal (gated at publication)", failed_no_records, rt(labels4.REHEARSAL), True),
@@ -483,6 +483,170 @@ def p17_check_line():
     return out
 
 
+# ------------------------------------------------------------------------------- RV: the review of 5afd80a7
+# lanes/REVIEW-pf1-l2a-5afd80a.md (VERDICT CHANGES) and the Lane-orchestrator's rulings on it (Sat 24 Oct 2026, under
+# Javier's standing delegation). The cases are the reviewer's probes (scratchpad/l2a/probe.py), kept as tests.
+UNLISTED = {"checker_reasons": ["not-in-routing-json"]}
+PIN_ROW = dict(ROW)
+
+
+def pin_blocked(version="9.9.9-other"):
+    """A take Batch._route itself blocks for its driver's pin (the producer, never a hand-built reason)."""
+    r = records()
+    r["pin"] = dict(r["pin"], version=version)
+    fake = types.SimpleNamespace(table=REAL, route_fn=routing.route, _outcome=batch.Batch._outcome)
+    return batch.Batch._route(fake, PIN_ROW, 1, "cid", r)
+
+
+def rv_history(batchmod, p="RV"):
+    """Findings 1 and 4 at the history level (the door and every restart)."""
+    out = []
+    oom = stopped(dict(records(), cgroup={"oom_kill_delta": 1, "pids_max_delta": 0}, **UNLISTED))
+    pin = pin_blocked()
+    if pin["state"] != labels4.BLOCKED:
+        return [f"ERROR {p}: Batch._route did not block the pin mismatch: {pin['state']}"]
+    for name, take, choice, ok in (
+            ("probe 2: an OOM rise, re-run", oom, RERUN, False),
+            ("probe 2b: an OOM rise, harness-error", oom, rt(labels4.HARNESS_ERROR), False),
+            ("an OOM rise, pause", oom, rt(labels4.PAUSE), False),
+            ("an OOM rise, aborted", oom, rt(labels4.ABORTED), True),
+            ("probe 3: the driver's pin mismatch, re-run", pin, RERUN, True),
+            ("probe 3b: the driver's pin mismatch, harness-error", pin, rt(labels4.HARNESS_ERROR), True),
+            ("the driver's pin mismatch, rehearsal", pin, rt(labels4.REHEARSAL), False)):
+        bad = history_ok(batchmod, [take, ruling(*choice)])
+        if bool(bad) == ok:
+            out.append(f"{p}: {name}: {'refused' if bad else 'accepted'} ({bad[:1]})")
+    if list(batchmod.RERUN_FAULT_ROWS) != ["api-error-after-first-turn", "watcher-gap"]:
+        out.append(f"{p}: RERUN_FAULT_ROWS is {batchmod.RERUN_FAULT_ROWS}")
+    return out
+
+
+def rv_door(takesmod, p="RV"):
+    """Findings 2, 3 and 4 at the ruling door (takes.ruling_door_problems, which commit_ruling runs before writing)."""
+    out = []
+    regs = [dict(ROW, attempt=1)]
+    api = stopped(dict(records(), api_errors=[E500], **UNLISTED))
+    no_records = stopped(None, state=labels4.FAILED)
+    before = stopped(dict(records(B, turns=1, end=labels4.END_ERROR), **UNLISTED))
+    pin = pin_blocked()
+    forged = dict(pin, records=records())          # the pin block's reason beside the row's own pin
+
+    def door(take, choice, word="right", refusal=None):
+        calls = []
+
+        def standing(row, o):
+            calls.append(o["slot"])
+            if word == "raise":
+                raise ValueError("cannot be graded")
+            return word
+        got = takesmod.ruling_door_problems(ruling(*choice), [take], regs, table=REAL, standing=standing,
+                                            driver_refusal=lambda row, o: refusal)
+        return got, calls
+
+    for name, take, choice, word, refusal, ok in (
+            ("probe 4: an API error, re-run, end state wrong", api, RERUN, "wrong", None, False),
+            ("an API error, pause, end state wrong", api, rt(labels4.PAUSE), "wrong", None, False),
+            ("an API error, re-run, end state cannot be graded", api, RERUN, "raise", None, False),
+            ("an API error, re-run, end state right", api, RERUN, "right", None, True),
+            ("an API error, graded, end state wrong (nothing discarded)", api, rt(labels4.GRADED), "wrong", None, True),
+            ("probe 10: no records, re-run, no driver refusal record", no_records, RERUN, "right", None, False),
+            ("probe 10: no records, rehearsal, no driver refusal record", no_records, rt(labels4.REHEARSAL), "right",
+             None, False),
+            ("probe 10: no records, pause, no driver refusal record", no_records, rt(labels4.PAUSE), "right", None,
+             False),
+            ("probe 10: no records, graded, no driver refusal record", no_records, rt(labels4.GRADED), "right", None,
+             False),
+            ("no records, aborted", no_records, rt(labels4.ABORTED), "wrong", None, True),
+            ("no records, re-run, the driver's refusal record, end state right", no_records, RERUN, "right",
+             {"refused": "TimeoutError", "why": "begin exec timed out"}, True),
+            ("no records, re-run, the driver's refusal record, end state wrong", no_records, RERUN, "wrong",
+             {"refused": "TimeoutError", "why": "begin exec timed out"}, False),
+            ("before the first turn, re-run", before, RERUN, "wrong", None, True),
+            ("the driver's pin mismatch, re-run, end state right", pin, RERUN, "right", None, True),
+            ("a pin block whose pin is the row's own, re-run", forged, RERUN, "right", None, False)):
+        try:
+            bad, calls = door(take, choice, word, refusal)
+        except Exception as e:  # noqa: BLE001
+            out.append(f"ERROR {p}: the door raised on {name}: {type(e).__name__}: {e}")
+            continue
+        if bool(bad) == ok:
+            out.append(f"{p}: door: {name}: {'refused' if bad else 'accepted'} ({bad[:1]})")
+    _, calls = door(before, RERUN, "wrong")
+    if calls:
+        out.append(f"{p}: door: a before-first-turn re-run was graded ({calls})")
+    return out
+
+
+def rv_refusal(takesmod, p="RV"):
+    """Finding 3's producer: the driver's refusal record counts only when the commit that committed the take's own
+    outcome also introduced it (guard on the producer, never on the record's shape)."""
+    import subprocess
+    import tempfile
+    out = []
+    o = stopped(None, state=labels4.FAILED)
+    row = dict(ROW, attempt=1)
+    doc = {"refused": "TimeoutError", "why": "begin exec timed out"}
+    with tempfile.TemporaryDirectory() as d:
+        for case in ("same commit", "a later commit", "none", "another take's outcome"):
+            repo = Path(d) / case.replace(" ", "-").replace("'", "")
+            root = repo / "study"
+            folder = root / "takes" / "s1" / "1"
+            folder.mkdir(parents=True)
+
+            def git(*a):
+                subprocess.run(["git", "-C", str(repo), *a], check=True, capture_output=True,
+                               env={"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+                                    "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid",
+                                    "PATH": "/usr/bin:/bin:/usr/local/bin", "HOME": d})
+            git("init", "-q")
+            outcome = o if case != "another take's outcome" else dict(o, slot="s2")
+            (root / "outcomes.json").write_text(json.dumps([outcome]))
+            if case in ("same commit", "another take's outcome"):
+                (folder / "refusal.json").write_text(json.dumps(doc))
+            git("add", "-A")
+            git("commit", "-q", "-m", "the take's outcome")
+            if case == "a later commit":
+                (folder / "refusal.json").write_text(json.dumps(doc))
+                git("add", "-A")
+                git("commit", "-q", "-m", "a record added afterwards")
+            got = takesmod.driver_refusal_record(row, o, root=root, repo=repo)
+            want = doc if case == "same commit" else None
+            if got != want:
+                out.append(f"{p}: the driver's refusal record, {case}: read {got!r}, want {want!r}")
+    return out
+
+
+def rv_events(mod, p="RV"):
+    """Finding 5: agent_event_rows is exactly the two named rows."""
+    out = []
+    for extra in ("end-turn", "timed-out"):
+        t = copy.deepcopy(REAL)
+        t["agent_event_rows"]["ids"] = t["agent_event_rows"]["ids"] + [extra]
+        if not mod.check_table(t):
+            out.append(f"{p}: probe 8b: agent_event_rows widened to {extra} passes check_table")
+    t = copy.deepcopy(REAL)
+    t["agent_event_rows"]["ids"] = ["nonzero-exec-exit"]
+    if not mod.check_table(t):
+        out.append(f"{p}: agent_event_rows narrowed to one row passes check_table")
+    return out
+
+
+def rv_door_wired(p="RV"):
+    src = inspect.getsource(takes.commit_ruling)
+    out = []
+    if "ruling_door_problems(" not in src or src.index("ruling_door_problems(") > src.index("write_text("):
+        out.append(f"{p}: takes.commit_ruling does not run ruling_door_problems before it writes")
+    if "commit_ruling" not in batch.RULING_RULE["text"] and "door" not in batch.RULING_RULE["text"]:
+        out.append(f"{p}: RULING_RULE does not name the door")
+    for words in ("refusal record", "only be ruled aborted", "driver's pin"):
+        if words not in batch.RULING_RULE["text"]:
+            out.append(f"{p}: RULING_RULE does not say {words!r}")
+    drive_src = (HERE / "drive.py").read_text(encoding="utf-8")
+    if f'REFUSAL_RECORD, TEARDOWN_RECORD = "preflight.json", "{takes.DRIVER_REFUSAL_RECORD}", ' not in drive_src:
+        out.append(f"{p}: takes.DRIVER_REFUSAL_RECORD is not drive.py's REFUSAL_RECORD")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ witnesses
 def witness_module(real: types.ModuleType, edits: tuple) -> types.ModuleType:
     src = Path(real.__file__).read_text(encoding="utf-8")
@@ -526,16 +690,31 @@ WITNESSES = {
                                                          "if False:"),))),
     "why-cite-unchecked": ("rulings", (batch, (("    for key in RULING_REASON_KEYS:", "    for key in ():"),))),
     # the Lane-orchestrator's ruling 2: the door's harness-fault check, off, and reading any take as faulted
-    "door-fault-off": ("rulings", (batch, (("and reruns and not rerun_fault_rows(taken[\"records\"], table):",
-                                            "and reruns and False:"),))),
+    "door-fault-off": ("rulings", (batch, (("and reruns(r) and not rerun_faults(taken, table):",
+                                            "and reruns(r) and False:"),))),
     "door-fault-any": ("rulings", (batch, (("    return [rid for rid in RERUN_FAULT_ROWS if routing.matches(rows[rid], records, table)]",
                                             "    return list(RERUN_FAULT_ROWS)"),))),
-    "door-fault-rows-widened": ("rulings", (batch, (('RERUN_FAULT_ROWS = ("api-error-after-first-turn", "watcher-gap", "cgroup-kill")',
-                                                     'RERUN_FAULT_ROWS = ("api-error-after-first-turn", "watcher-gap", "cgroup-kill", "end-turn")'),))),
+    "door-fault-rows-widened": ("rulings", (batch, (('RERUN_FAULT_ROWS = ("api-error-after-first-turn", "watcher-gap")',
+                                                     'RERUN_FAULT_ROWS = ("api-error-after-first-turn", "watcher-gap", "end-turn")'),))),
     "rerun-gate-off": ("gate", (check_results, (('        if word != "wrong":', '        if True:'),))),
     "rerun-gate-fail-open": ("gate", (check_results, (('            word = "wrong"', '            word = "right"'),))),
     "rerun-gate-before-too": ("gate", (check_results, (("        if phase == labels4.BEFORE_FIRST_TURN:\n            continue",
                                                          "        pass"),))),
+    # RV: the review of 5afd80a7 and the Lane-orchestrator's rulings on it
+    "cgroup-rerun": ("review", (batch, (('RERUN_FAULT_ROWS = ("api-error-after-first-turn", "watcher-gap")',
+                                         'RERUN_FAULT_ROWS = ("api-error-after-first-turn", "watcher-gap", "cgroup-kill")'),))),
+    "pin-fault-off": ("review", (batch, (("    return (outcome.get(\"state\") == labels4.BLOCKED",
+                                          "    return False and (outcome.get(\"state\") == labels4.BLOCKED"),))),
+    "door-endstate-off": ("door", (takes, (("            p += check_results.ruled_rerun_problems([taken, record], {key: row}, standing, table)",
+                                            "            p += []"),))),
+    "no-records-anything": ("door", (takes, (("    if no_records and not aborted:", "    if False:"),))),
+    "pin-substance-off": ("door", (takes, (("    if batch.pin_block(taken) and isinstance(taken[\"records\"], dict) and row is not None \\",
+                                            "    if False and batch.pin_block(taken) and isinstance(taken[\"records\"], dict) and row is not None \\"),))),
+    "refusal-producer-unbound": ("refusal", (takes, (("    if len(shas) != 1:", "    if not shas:"),
+                                                      ("        if not _introduces(repo, shas[0], history_rel, outcome):",
+                                                       "        if False:"),))),
+    "event-rows-open": ("events", (routing, (("    if list(sub[\"ids\"]) != list(AGENT_EVENT_IDS):",
+                                              "    if not set(sub[\"ids\"]) <= set(AGENT_EVENT_IDS) | {\"end-turn\", \"timed-out\"}:"),))),
     # P17
     "default-unbound": ("defaults", (batch, (("    if default is not None and (r[\"ruling\"], r[\"route\"]) != default:",
                                               "    if False:"),))),
@@ -568,6 +747,14 @@ def run_witness(name):
         return p8_rerun_gate(mod)
     if kind == "proof":
         return p17_proof(mod)
+    if kind == "review":
+        return rv_history(mod)
+    if kind == "door":
+        return rv_door(mod)
+    if kind == "refusal":
+        return rv_refusal(mod)
+    if kind == "events":
+        return rv_events(mod)
     raise AssertionError(kind)
 
 
@@ -604,6 +791,21 @@ class TestPf1RoutingRulings(unittest.TestCase):
 
     def test_p17_the_check_lists_the_classes(self):
         self.assertEqual(p17_check_line(), [])
+
+    def test_rv_counter_rise_never_reruns_and_the_pin_block_does(self):
+        self.assertEqual(rv_history(batch), [])
+
+    def test_rv_the_door_checks_what_publication_checks(self):
+        self.assertEqual(rv_door(takes), [])
+
+    def test_rv_the_drivers_refusal_record_is_bound_to_its_producer(self):
+        self.assertEqual(rv_refusal(takes), [])
+
+    def test_rv_agent_event_rows_are_exactly_the_two(self):
+        self.assertEqual(rv_events(routing), [])
+
+    def test_rv_the_door_is_wired_and_the_rule_says_so(self):
+        self.assertEqual(rv_door_wired(), [])
 
     def test_witnesses(self):
         for name in WITNESSES:

@@ -143,9 +143,11 @@ Sat 24 Oct 2026, under Javier's standing delegation; RULING_RULE below, register
 the agent's first turn, read from the stopped take's own records, any ruling may be made. After it, or when the records
 cannot show the phase (none, or unsound) of a take whose drive started, a ruling never routes rehearsal (a
 before-first-turn route). After the first turn a ruling re-runs a take (re-run, or a route to pause or harness-error)
-only when the take's own committed records already meet one of RERUN_FAULT_ROWS (an API error, a watcher gap, a counter
-rise: the Lane-orchestrator's ruling 2 on the lane, the same day), refused at the door when the ruling is made
-otherwise. As a second check, a ruling that re-runs such a take, or one with no readable phase (where rehearsal too
+only when the take's own committed records already meet one of RERUN_FAULT_ROWS (an API error, a watcher gap: the
+Lane-orchestrator's ruling 2 on the lane, the same day, less the counter rise its ruling on the lane's review dropped)
+or _route blocked it for the driver's pin (pin_block), refused at the door when the ruling is made otherwise. A take
+whose drive started and left no records can only be ruled aborted unless the driver's own refusal record was committed
+with its outcome (takes.ruling_door_problems, which also reads the end state at the door). As a second check, a ruling that re-runs such a take, or one with no readable phase (where rehearsal too
 re-runs), stands only when the take's own grader reads its committed end state with no wrong action, which
 check_results.ruled_rerun_problems checks at publication. A take whose records match no routing row takes its
 class's pre-registered default (routing.json no_match_defaults, routing.no_match_default), and no other ruling.
@@ -302,8 +304,14 @@ RULING_REASON_KEYS = ("why", "cite")
 UNKNOWN_PHASE = "unknown"
 # THE RULING RULE, the door's half (the Lane-orchestrator's ruling 2 on lane pf1-l2a, Sat 24 Oct 2026, under Javier's
 # standing delegation): after the agent's first turn, a ruling may re-run a take only when its own committed records
-# already meet one of these harness-fault rows of routing.json (an API error, a watcher gap, a counter rise).
-RERUN_FAULT_ROWS = ("api-error-after-first-turn", "watcher-gap", "cgroup-kill")
+# already meet one of these harness-fault rows of routing.json (an API error, a watcher gap), or Batch._route itself
+# blocked it for the driver's pin. The review of 5afd80a7 (finding 1) and the orchestrator's ruling on it: cgroup-kill
+# is not one, since the agent can raise those counters itself and the plan never re-runs an aborted take.
+RERUN_FAULT_ROWS = ("api-error-after-first-turn", "watcher-gap")
+# Finding 4: Batch._route's pin block is a harness fault by construction (the agent never writes records.pin). Its
+# reason opens with this prefix, written by _route alone; DRIVER_PIN_FAULT names it beside the fault rows.
+PIN_BLOCK_PREFIX = "the driver's pin "
+DRIVER_PIN_FAULT = "driver-pin-mismatch"
 RERUNNING_ROUTES = (labels4.PAUSE, labels4.HARNESS_ERROR, labels4.REHEARSAL)
 # THE RULING RULE, as the draft registers it (build_draft writes it to ruling_rule; tests bind the two).
 RULING_RULE = {
@@ -314,16 +322,21 @@ RULING_RULE = {
              "end state) or aborted (counted against holding, with its reason), or re-runs the take (re-run, or a "
              "route to pause or harness-error, and rehearsal only when the records cannot show the phase). After the "
              "first turn, a ruling re-runs a take only when the take's own committed records already meet a "
-             "harness-fault row of the routing table (an API error, a watcher gap, or a rise of the out-of-memory or "
-             "pids counters); the ruling door refuses every other re-running choice when the ruling is made. Any "
-             "ruling that re-runs such a take, or one whose records cannot show its phase, stands only when the "
-             "take's own grader reads its committed end state with no wrong action (its excluded view is not wrong, "
-             "and a take that cannot be graded counts as wrong), and the publication check refuses the record set "
-             "otherwise. A take whose records match no routing row is "
+             "harness-fault row of the routing table (an API error, or a watcher gap), or when the loop blocked it "
+             "because the driver's pin was not the registered row's profile; a rise of the out-of-memory or pids "
+             "counters is the agent's own and never re-runs (aborted is never re-run). Any ruling that re-runs such "
+             "a take, or one whose records cannot show its phase, stands only when the take's own grader reads its "
+             "committed end state with no wrong action (its excluded view is not wrong, and a take that cannot be "
+             "graded counts as wrong). A take whose drive started and left no records can only be ruled aborted, "
+             "unless the driver's own refusal record was committed with the take's outcome, in the same commit; "
+             "then it may be re-run under the same end-state check. The ruling door (takes.commit_ruling) checks all "
+             "of this before anything is written, and the publication check refuses the record set again otherwise. A take whose records match no routing row is "
              "ruled by its class's pre-registered default (routing.json no_match_defaults) and by no other ruling. "
              "Every published take of a slot a ruling touched carries ruled true, and the result counts ruled takes "
              "per half-cell."),
     "enforced_by": ["evals/gap-study-4/batch.py ruling_rule_problems (the door, at ruling time, and every restart)",
+                    "evals/gap-study-4/takes.py ruling_door_problems (the door, at ruling time: the end state, the "
+                    "driver's refusal record and the driver's pin)",
                     "evals/gap-study-4/check_results.py ruled_rerun_problems (the publication)",
                     "evals/gap-study-4/stats.py route_events_table (the count)"],
     "source": ("Pre-freeze review 1, MAJOR 8 (rulings on stopped takes unconstrained and unpublished) and m17 (no-match "
@@ -391,6 +404,24 @@ def rerun_fault_rows(records: dict, table: dict) -> list:
     return [rid for rid in RERUN_FAULT_ROWS if routing.matches(rows[rid], records, table)]
 
 
+def reruns(r: dict) -> bool:
+    """A ruling that drives its take's slot again: re-run, or a route to pause, harness-error or rehearsal."""
+    return r.get("ruling") == labels4.RULE_RERUN or r.get("route") in RERUNNING_ROUTES
+
+
+def pin_block(outcome: dict) -> bool:
+    """Finding 4: the take Batch._route blocked because the driver's pin was not the registered row's profile (its
+    reason, written by _route alone, opens with PIN_BLOCK_PREFIX; the records are the driver's)."""
+    return (outcome.get("state") == labels4.BLOCKED and isinstance(outcome.get("reason"), str)
+            and outcome["reason"].startswith(PIN_BLOCK_PREFIX) and isinstance(outcome.get("records"), dict))
+
+
+def rerun_faults(outcome: dict, table: dict) -> list:
+    """The harness faults a stopped take's own committed records show: RERUN_FAULT_ROWS it matches, and
+    DRIVER_PIN_FAULT when Batch._route blocked it for the driver's pin."""
+    return rerun_fault_rows(outcome["records"], table) + ([DRIVER_PIN_FAULT] if pin_block(outcome) else [])
+
+
 def ruling_rule_problems(r: dict, taken, table: dict) -> list[str]:
     """THE RULING RULE (pre-freeze review 1, MAJOR 8 and m17): why a closed ruling breaks the rule for the take it
     rules on (`taken`, None when no earlier outcome commits it, which _ruling_problems names)."""
@@ -406,11 +437,10 @@ def ruling_rule_problems(r: dict, taken, table: dict) -> list[str]:
                  f"harness-error, or re-runs it, never rehearsal (a before-first-turn route; THE RULING RULE)")
     if phase == UNKNOWN_PHASE:
         return p
-    reruns = r["ruling"] == labels4.RULE_RERUN or r["route"] in RERUNNING_ROUTES
-    if phase == labels4.AFTER_FIRST_TURN and reruns and not rerun_fault_rows(taken["records"], table):
+    if phase == labels4.AFTER_FIRST_TURN and reruns(r) and not rerun_faults(taken, table):
         p.append(f"slot {r['slot']} attempt {r['attempt']} is {phase} and its records meet none of the harness-fault "
-                 f"rows {list(RERUN_FAULT_ROWS)}: a ruling routes it graded or aborted, never re-runs it (THE RULING "
-                 f"RULE, the door's half)")
+                 f"rows {list(RERUN_FAULT_ROWS)}, nor was it blocked for the driver's pin: a ruling routes it graded "
+                 f"or aborted, never re-runs it (THE RULING RULE, the door's half)")
     try:
         default = routing.no_match_default(taken["records"], table)
     except routing.TableError as e:
@@ -1437,7 +1467,7 @@ class Batch:
         if not isinstance(records, dict) or records.get("pin") != expected_pin(row, self.table):
             got = records.get("pin") if isinstance(records, dict) else None
             return self._outcome(row, attempt, cid, state=labels4.BLOCKED, records=records,
-                                 reason=f"the driver's pin {got!r} is not the registered row's pre-registered "
+                                 reason=f"{PIN_BLOCK_PREFIX}{got!r} is not the registered row's pre-registered "
                                         f"profile {expected_pin(row, self.table)!r}")
         try:
             decision = self.route_fn(records, self.table)

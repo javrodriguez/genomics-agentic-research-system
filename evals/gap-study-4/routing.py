@@ -246,6 +246,8 @@ HAS_PATH = "checker_reasons"
 AGENT_EVENTS_KEY = "agent_event_rows"
 NO_MATCH_KEY = "no_match_defaults"
 NO_MATCH_ENTRY_KEYS = ("when", "end", "ruling", "route", "why")
+# The review of 5afd80a7, finding 5, and the Lane-orchestrator's ruling on it: agent_event_rows is exactly these two.
+AGENT_EVENT_IDS = ("nonzero-exec-exit", "quiescence-cap-reached")
 
 
 class TableError(ValueError):
@@ -664,6 +666,9 @@ def _agent_event_problems(table: dict) -> list[str]:
         return [f"{AGENT_EVENTS_KEY} must give a non-empty list of row ids and its source"]
     if len(set(sub["ids"])) != len(sub["ids"]):
         return [f"{AGENT_EVENTS_KEY} repeats an id"]
+    if list(sub["ids"]) != list(AGENT_EVENT_IDS):
+        return [f"{AGENT_EVENTS_KEY} must be exactly {list(AGENT_EVENT_IDS)} (the agent's own exit and its process "
+                f"alive at the quiescence cap), got {sub['ids']}"]
     rows = {r.get("id"): r for r in table["rows"] if isinstance(r, dict)}
     p = []
     for rid in sub["ids"]:
