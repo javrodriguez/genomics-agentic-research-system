@@ -2029,7 +2029,7 @@ class TestOD57TwinOutward(unittest.TestCase):
             self.skipTest(REAL_SCAN_SKIP)
         self.suite = wl.load_suite(ATHENA_SUITE_PY)
 
-    def scan(self, public_files, walk_files, *, removes=(), listed=None, first=None):
+    def scan(self, public_files, walk_files, *, removes=(), listed=None, first=None, mod=wl):
         """A public commit adding `public_files`, then (with `first`, a ({path: bytes}, removed paths) pair) a walk
         commit of its own, then one walk commit adding `walk_files` and removing `removes`; outward_scan of the last
         commit with the public commit as the public tip. Returns (result, head)."""
@@ -2053,8 +2053,8 @@ class TestOD57TwinOutward(unittest.TestCase):
             git("-C", repo, "bundle", "create", bundle, "main")
             kw = {} if listed is None else {"lines_ruled": listed}
             try:
-                return wl.outward_scan(_PublicAt(self.suite, [base]), repo=repo, bundle=bundle, head=head,
-                                       gitleaks=self.gitleaks, work=os.path.join(t, "work"), **kw), head
+                return mod.outward_scan(_PublicAt(self.suite, [base]), repo=repo, bundle=bundle, head=head,
+                                        gitleaks=self.gitleaks, work=os.path.join(t, "work"), **kw), head
             except Exception as e:  # noqa: BLE001 - ship's own handling: any refusal keeps the bundle on the Mac
                 return e, head
 
@@ -2139,6 +2139,40 @@ class TestOD57TwinOutward(unittest.TestCase):
         data = twin_bytes(1) + extra
         got, _ = self.scan({TWIN_RECORD % 1: data}, {TWIN_COPY % 1: data})
         self.assertRefusedAt(got, TWIN_COPY % 1, (153,))
+
+    def test_the_suites_door_is_restored_after_each_scan(self):
+        door = self.suite.scan_unpublished.__globals__
+        before = door["ruled_line_findings"]
+        got, _ = self.scan({TWIN_RECORD % 1: twin_bytes(1)}, {TWIN_COPY % 1: twin_bytes(1)}, listed=[])
+        self.assertEqual(got, 1, got)
+        self.assertIs(door["ruled_line_findings"], before)
+        got, _ = self.scan({}, {TWIN_COPY % 1: twin_bytes(1)})
+        self.assertIsInstance(got, Exception, got)
+        self.assertIs(door["ruled_line_findings"], before)
+
+    def test_a_suite_whose_rule_is_not_this_repositorys_copy_gets_no_twin_road(self):
+        with tempfile.TemporaryDirectory() as t:
+            other = Path(t, "od57_rule.py")
+            other.write_bytes(Path(HERE, "box", "od57_rule.py").read_bytes() + b"\n")
+            with mock.patch.dict(wl._OD57_COPIES, {"od57_rule": other}):
+                self.assertIsNone(wl._od57_door(self.suite))
+                got, _ = self.scan({TWIN_RECORD % 1: twin_bytes(1)}, {TWIN_COPY % 1: twin_bytes(1)})
+        self.assertRefusedAt(got, TWIN_COPY % 1, TWIN_LINES[1])
+        self.assertIs(wl._od57_door(self.suite), self.suite.scan_unpublished.__globals__)
+        self.assertIsNone(wl._od57_door(FakeSuite([])))
+
+    def test_witness_the_blob_identity_dropped_admits_a_changed_copy(self):
+        mod = witness([("if o == oid[0] and p != path and", "if p != path and")])
+        data = twin_bytes(1)
+        changed = data.replace(b'"kind":"main"', b'"kind":"maim"', 1)
+        got, _ = self.scan({TWIN_RECORD % 1: data}, {TWIN_COPY % 1: changed}, mod=mod)
+        self.assertEqual(got, 1, got)           # the one-byte case would ship: test_one_byte_changed... goes red
+
+    def test_witness_the_twin_road_unset_refuses_the_real_five(self):
+        mod = witness([("        door[\"ruled_line_findings\"] = _od57_twin_door(door, original)\n", "        pass\n")])
+        got, _ = self.scan({TWIN_RECORD % 1: twin_bytes(1)}, {TWIN_COPY % 1: twin_bytes(1)}, mod=mod, listed=[])
+        self.assertRefusedAt(got, TWIN_COPY % 1, TWIN_LINES[1])
+
 
 class TestOD57TwinShipListing(unittest.TestCase):
     """ship records the outward scan's OD57 admissions (each twin one names its twin), and nothing else it used."""

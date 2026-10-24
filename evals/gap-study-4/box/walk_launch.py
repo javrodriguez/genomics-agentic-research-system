@@ -74,6 +74,7 @@ Every remote and local command goes through one Runner, so tests drive the whole
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
@@ -81,6 +82,7 @@ import re
 import shlex
 import subprocess
 import sys
+import types
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
@@ -666,10 +668,120 @@ def od57_lines(ruled) -> list:
     return sorted(set(ruled))
 
 
-def outward_scan(suite_mod, *, repo: str, bundle: str, head: str, gitleaks: str, work: str) -> int:
+# OD57 byte twins on the OUTWARD road (the Lane-orchestrator's ruling, 23 Oct 2026, under Javier's standing delegation,
+# after this lane's real-line scan of 1b20a10a refused five OD57 findings in tests/fixtures/recorded-gemini-w-g21/,
+# byte copies of rehearsals/w-g21/'s walk records). No path is widened and nothing new is allowed: a finding the
+# suite's own OD57 door refuses is admitted only when the flagged file's blob at the finding's commit is the very blob
+# (the same id, a regular file) of a walk record the suite's door reads as agent text at that commit (its own
+# _od57_file, so RULED_AGENT_TEXT and RULED_VENDOR_TEXT), and the suite's own ruled_line_findings, handed the finding
+# at that record's path, admits it there: the shared rule with that record's family shapes and kind, the carried-commit
+# and whole-line checks, and the probe rescan (any finding of the rule left on that line refuses). Every twin of the
+# file must admit it. The road runs only when the suite's od57_rule.py and od57_shapes.py are byte for byte this
+# repository's box/ copies and its RULED_LINES are the reviewed ones; otherwise the door is left as it is and such a
+# finding refuses. Each admission is listed as "OD57:<commit>:<path>:<line> via <twin path>[, <twin path>...]". Any
+# other rule, a byte difference, a missing twin and a twin outside the ruled set still refuse.
+OD57_TWIN_MODES = ("100644", "100755")
+_OD57_COPIES = {"od57_rule": HERE / "box" / "od57_rule.py", "od57_shapes": HERE / "box" / "od57_shapes.py"}
+
+
+def _od57_door(suite_mod):
+    """The module namespace scan_unpublished resolves its OD57 door in, when that door is the shared rule (see above);
+    else None."""
+    g = getattr(getattr(suite_mod, "scan_unpublished", None), "__globals__", None)
+    if not isinstance(g, dict) or not callable(g.get("ruled_line_findings")) or not callable(g.get("_od57_file")):
+        return None
+    try:
+        od57_bound(types.SimpleNamespace(RULED_LINES=g.get("RULED_LINES"), _ruled_bash=g.get("_ruled_bash")))
+        for name, copy in _OD57_COPIES.items():
+            if Path(getattr(g.get(name), "__file__", "") or "").read_bytes() != copy.read_bytes():
+                return None
+    except (LaunchRefused, OSError, ValueError):
+        return None
+    return g
+
+
+def _tree_files(repo: str, rev: str) -> list:
+    """(mode, blob id, path) of every regular file in `rev`'s whole tree, NUL-framed."""
+    out = []
+    for rec in _git_out(repo, "ls-tree", "-r", "-z", "--full-tree", rev, binary=True).split(b"\0"):
+        meta, sep, path = rec.partition(b"\t")
+        parts = meta.decode("ascii", "replace").split()
+        if sep and len(parts) == 3 and parts[1] == "blob" and parts[0] in OD57_TWIN_MODES:
+            out.append((parts[0], parts[2], path.decode("utf-8", "surrogateescape")))
+    return out
+
+
+def _od57_twin_door(door: dict, original):
+    """The suite's ruled_line_findings, then the twin road (see above) over what it still refuses."""
+    trees = {}
+
+    def twins_of(repo, f):
+        rev, path = f.get("Commit"), f.get("File")
+        if not (isinstance(rev, str) and HEX40.fullmatch(rev) and isinstance(path, str) and door["_od57_file"](path)
+                is None):
+            return []
+        if rev not in trees:
+            try:
+                trees[rev] = _tree_files(repo, rev)
+            except LaunchRefused:
+                trees[rev] = []
+        oid = [o for _m, o, p in trees[rev] if p == path]
+        if len(oid) != 1:
+            return []
+        return sorted(p for _m, o, p in trees[rev] if o == oid[0] and p != path and door["_od57_file"](p) is not None)
+
+    def ruled_line_findings(repo, findings, carried, gitleaks, workdir, flags, scan_reads=None):
+        still, admitted = original(repo, findings, carried, gitleaks, workdir, flags, scan_reads)
+        refused, groups = [], []
+        for f in still:
+            twins = twins_of(repo, f)
+            if twins:
+                groups.append((f, [dict(f, File=t) for t in twins]))
+            else:
+                refused.append(f)
+        if not groups:
+            return still, admitted
+        left, ok = original(repo, [s for _f, group in groups for s in group], carried, gitleaks, workdir, flags,
+                            scan_reads)
+        left_ids, ok = {id(s) for s in left}, set(ok)
+        for f, group in groups:
+            names = [r["ruling"] for r in door["RULED_LINES"] if r.get("rule") == f.get("RuleID")]
+            if len(names) == 1 and all(id(s) not in left_ids
+                                       and f"{names[0]}:{s['Commit']}:{s['File']}:{s['StartLine']}" in ok
+                                       for s in group):
+                admitted.append(f"{names[0]}:{f['Commit']}:{f['File']}:{f['StartLine']} via "
+                                + ", ".join(s["File"] for s in group))
+            else:
+                refused.append(f)
+        return refused, admitted
+
+    return ruled_line_findings
+
+
+@contextlib.contextmanager
+def _od57_twins(suite_mod, used: list, lines_ruled):
+    """scan_unpublished's OD57 door with the twin road (see above) for the duration of one outward scan, restored
+    after; on a scan that returns, the OD57 admissions it listed in `used` are added to `lines_ruled`."""
+    door = _od57_door(suite_mod)
+    original = door["ruled_line_findings"] if door is not None else None
+    if door is not None:
+        door["ruled_line_findings"] = _od57_twin_door(door, original)
+    try:
+        yield
+        if lines_ruled is not None:
+            prefixes = tuple(r["ruling"] + ":" for r in _scan_record.RULED_LINES)
+            lines_ruled.extend(sorted({u for u in used if isinstance(u, str) and u.startswith(prefixes)}))
+    finally:
+        if door is not None:
+            door["ruled_line_findings"] = original
+
+
+def outward_scan(suite_mod, *, repo: str, bundle: str, head: str, gitleaks: str, work: str,
+                 lines_ruled: list = None) -> int:
     """athena_suite.cmd_run's checks over a scratch clone of the bundle, its own functions: the secret-shaped names
     (less the reviewed exemptions) and ignore files, then gitleaks over every commit the public GARS remote does not
-    serve. Returns how many commits were scanned; any refusal raises."""
+    serve, its OD57 door with the twin road (_od57_twins). Returns how many commits were scanned, and adds the OD57
+    admissions to `lines_ruled` when given; any refusal raises."""
     os.makedirs(work, exist_ok=True)
     check = os.path.join(work, "check-clone")
     doc, _ = suite_mod.committed_allowlist(suite_mod.ALLOWLIST)
@@ -683,8 +795,10 @@ def outward_scan(suite_mod, *, repo: str, bundle: str, head: str, gitleaks: str,
     if not public:
         raise LaunchRefused("the public GARS remote advertised nothing; nothing ships")
     evidence = outward_evidence_blobs(suite_mod, check, head, public, gitleaks, work)     # lane ship-evidence-blobs
-    return suite_mod.scan_unpublished(check, head, work, gitleaks, public, suite_mod.rulings_file(repo), evidence,
-                                      ruled, [], ruled_msgs)
+    used = []
+    with _od57_twins(suite_mod, used, lines_ruled):                                       # the OD57 twin ruling
+        return suite_mod.scan_unpublished(check, head, work, gitleaks, public, suite_mod.rulings_file(repo), evidence,
+                                          ruled, used, ruled_msgs)
 
 
 def ship(runner: Runner, *, repo: str, ref: str, suite: str, reserve: str, gitleaks: str, work: str,
@@ -717,10 +831,11 @@ def ship(runner: Runner, *, repo: str, ref: str, suite: str, reserve: str, gitle
     heads = _ok(runner.local(["git", "bundle", "list-heads", bundle]), "git bundle list-heads").split()
     if heads != [head, f"refs/heads/{ref}"]:
         raise LaunchRefused("the bundle's heads are not exactly the ref at its head")
+    lines_ruled = []        # the outward scan's OD57 admissions, each twin one naming its twin
     suite_mod = load_suite(suite) if suite_module is None else suite_module
     try:
         scanned = outward_scan(suite_mod, repo=repo, bundle=bundle, head=head, gitleaks=gitleaks,
-                               work=os.path.join(work, "outward-scan"))
+                               work=os.path.join(work, "outward-scan"), lines_ruled=lines_ruled)
     except LaunchRefused:
         raise
     except Exception as e:  # noqa: BLE001 - athena_suite's Refused, a git failure: nothing ships unscanned
@@ -736,7 +851,8 @@ def ship(runner: Runner, *, repo: str, ref: str, suite: str, reserve: str, gitle
     _ok(runner.remote(f"{REMOTE_GIT} clone -q -b {shlex.quote(ref)} {child}/walk-out.bundle {child}/repo"), "the athena clone")
     if _ok(runner.remote(f"{REMOTE_GIT} -C {child}/repo rev-parse HEAD"), "the athena head").strip() != head:
         raise LaunchRefused("athena's clone is not at the head")
-    return {"child": child, "head": head, "bundle_sha256": digest, "scanned_commits": scanned}
+    return {"child": child, "head": head, "bundle_sha256": digest, "scanned_commits": scanned,
+            "lines_ruled": lines_ruled}
 
 
 # ------------------------------------------------------------------------------------------------ run
