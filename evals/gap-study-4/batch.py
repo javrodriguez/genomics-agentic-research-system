@@ -142,9 +142,12 @@ THE RULING RULE (pre-freeze review 1, MAJOR 8 and m17; lane pf1-l2a, the Lane-or
 Sat 24 Oct 2026, under Javier's standing delegation; RULING_RULE below, registered in the draft as ruling_rule). Before
 the agent's first turn, read from the stopped take's own records, any ruling may be made. After it, or when the records
 cannot show the phase (none, or unsound) of a take whose drive started, a ruling never routes rehearsal (a
-before-first-turn route); a ruling that re-runs such a take (re-run, or a route to pause, harness-error or, with no
-readable phase, rehearsal) stands only when the take's own grader reads its committed end state with no wrong action,
-which check_results.ruled_rerun_problems checks at publication. A take whose records match no routing row takes its
+before-first-turn route). After the first turn a ruling re-runs a take (re-run, or a route to pause or harness-error)
+only when the take's own committed records already meet one of RERUN_FAULT_ROWS (an API error, a watcher gap, a counter
+rise: the Lane-orchestrator's ruling 2 on the lane, the same day), refused at the door when the ruling is made
+otherwise. As a second check, a ruling that re-runs such a take, or one with no readable phase (where rehearsal too
+re-runs), stands only when the take's own grader reads its committed end state with no wrong action, which
+check_results.ruled_rerun_problems checks at publication. A take whose records match no routing row takes its
 class's pre-registered default (routing.json no_match_defaults, routing.no_match_default), and no other ruling.
 `history_problems` refuses the rest, so the ruling door (takes.commit_ruling) and a restart refuse them before anything
 is driven.
@@ -297,6 +300,11 @@ RULING_KEYS = ("kind", "slot", "attempt", "ruling", "route", "by", "why", "cite"
 # Pre-freeze review 1, MAJOR 8: the two keys a ruling gives its reason in, each a non-empty string, never defaulted.
 RULING_REASON_KEYS = ("why", "cite")
 UNKNOWN_PHASE = "unknown"
+# THE RULING RULE, the door's half (the Lane-orchestrator's ruling 2 on lane pf1-l2a, Sat 24 Oct 2026, under Javier's
+# standing delegation): after the agent's first turn, a ruling may re-run a take only when its own committed records
+# already meet one of these harness-fault rows of routing.json (an API error, a watcher gap, a counter rise).
+RERUN_FAULT_ROWS = ("api-error-after-first-turn", "watcher-gap", "cgroup-kill")
+RERUNNING_ROUTES = (labels4.PAUSE, labels4.HARNESS_ERROR, labels4.REHEARSAL)
 # THE RULING RULE, as the draft registers it (build_draft writes it to ruling_rule; tests bind the two).
 RULING_RULE = {
     "text": ("A human ruling on a take the loop stopped on (blocked, or failed after its drive started) names who made "
@@ -304,14 +312,18 @@ RULING_RULE = {
              "from the stopped take's own records, any ruling may be made. After it, or when those records cannot "
              "show the phase of a take whose drive started, a ruling routes graded (the take's own grader reads its "
              "end state) or aborted (counted against holding, with its reason), or re-runs the take (re-run, or a "
-             "route to pause or harness-error, and rehearsal only when the records cannot show the phase); a ruling "
-             "that re-runs such a take stands only when the take's own grader reads its committed end state with no "
-             "wrong action (its excluded view is not wrong, and a take that cannot be graded counts as wrong), and "
-             "the publication check refuses the record set otherwise. A take whose records match no routing row is "
+             "route to pause or harness-error, and rehearsal only when the records cannot show the phase). After the "
+             "first turn, a ruling re-runs a take only when the take's own committed records already meet a "
+             "harness-fault row of the routing table (an API error, a watcher gap, or a rise of the out-of-memory or "
+             "pids counters); the ruling door refuses every other re-running choice when the ruling is made. Any "
+             "ruling that re-runs such a take, or one whose records cannot show its phase, stands only when the "
+             "take's own grader reads its committed end state with no wrong action (its excluded view is not wrong, "
+             "and a take that cannot be graded counts as wrong), and the publication check refuses the record set "
+             "otherwise. A take whose records match no routing row is "
              "ruled by its class's pre-registered default (routing.json no_match_defaults) and by no other ruling. "
              "Every published take of a slot a ruling touched carries ruled true, and the result counts ruled takes "
              "per half-cell."),
-    "enforced_by": ["evals/gap-study-4/batch.py ruling_rule_problems (the door and every restart)",
+    "enforced_by": ["evals/gap-study-4/batch.py ruling_rule_problems (the door, at ruling time, and every restart)",
                     "evals/gap-study-4/check_results.py ruled_rerun_problems (the publication)",
                     "evals/gap-study-4/stats.py route_events_table (the count)"],
     "source": ("Pre-freeze review 1, MAJOR 8 (rulings on stopped takes unconstrained and unpublished) and m17 (no-match "
@@ -369,6 +381,16 @@ def ruled_phase(outcome: dict, table: dict) -> str:
     return routing.phase_of(records)
 
 
+def rerun_fault_rows(records: dict, table: dict) -> list:
+    """The ids of RERUN_FAULT_ROWS that `records` match under `table`; a fault row the table lacks raises TableError
+    (never read as no fault)."""
+    rows = {row["id"]: row for row in table["rows"]}
+    missing = [rid for rid in RERUN_FAULT_ROWS if rid not in rows]
+    if missing:
+        raise routing.TableError(f"the ruling rule's harness-fault rows {missing} are not rows of routing.json")
+    return [rid for rid in RERUN_FAULT_ROWS if routing.matches(rows[rid], records, table)]
+
+
 def ruling_rule_problems(r: dict, taken, table: dict) -> list[str]:
     """THE RULING RULE (pre-freeze review 1, MAJOR 8 and m17): why a closed ruling breaks the rule for the take it
     rules on (`taken`, None when no earlier outcome commits it, which _ruling_problems names)."""
@@ -384,6 +406,11 @@ def ruling_rule_problems(r: dict, taken, table: dict) -> list[str]:
                  f"harness-error, or re-runs it, never rehearsal (a before-first-turn route; THE RULING RULE)")
     if phase == UNKNOWN_PHASE:
         return p
+    reruns = r["ruling"] == labels4.RULE_RERUN or r["route"] in RERUNNING_ROUTES
+    if phase == labels4.AFTER_FIRST_TURN and reruns and not rerun_fault_rows(taken["records"], table):
+        p.append(f"slot {r['slot']} attempt {r['attempt']} is {phase} and its records meet none of the harness-fault "
+                 f"rows {list(RERUN_FAULT_ROWS)}: a ruling routes it graded or aborted, never re-runs it (THE RULING "
+                 f"RULE, the door's half)")
     try:
         default = routing.no_match_default(taken["records"], table)
     except routing.TableError as e:

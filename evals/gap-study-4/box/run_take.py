@@ -84,7 +84,8 @@ CODEX = "codex"
 GEMINI = "gemini"
 
 # The C3 routing names (interface 11, fixed by lane w4h). wait_gone returns the survivors the drive step counts
-# into this box key; a non-zero count routes by the row below (phase after-first-turn, harness-error).
+# into this box key; a non-zero count routes by the row below (phase after-first-turn, graded since pre-freeze
+# review 1's MAJOR 5: a survivor is the agent's own process, an agent event of the take, never harness-error).
 QUIESCENCE_CAP_SURVIVORS_KEY = "quiescence_cap_survivors"
 QUIESCENCE_CAP_ROW = "quiescence-cap-reached"
 

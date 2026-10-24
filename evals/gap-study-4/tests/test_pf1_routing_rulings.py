@@ -12,8 +12,10 @@ guards with the guard edited out, which must turn the guard red.
        counts each in its own column. Harness-error stays for what the agent cannot cause (an API error, a watcher
        gap), and the before-first-turn routes are unchanged.
   P8   MAJOR 8, rulings on stopped takes are bound and counted. A ruling carries why and cite; after the agent's first
-       turn (or with no readable records, after a drive that started) a ruling never routes rehearsal; a ruling that
-       re-runs such a take stands only when the take's own grader reads its committed end state with no wrong action
+       turn (or with no readable records, after a drive that started) a ruling never routes rehearsal; after the first
+       turn a ruling re-runs a take only when its records meet a harness-fault row (an API error, a watcher gap, a
+       counter rise), refused at the door (the Lane-orchestrator's ruling 2); a ruling that re-runs such a take, or
+       one of unknown phase, stands only when the take's own grader reads its committed end state with no wrong action
        (check_results.ruled_rerun_problems, called by run.produce); every take of a ruled slot carries ruled true, and
        stats counts ruled takes per half-cell; the draft registers the rule (ruling_rule).
   P17  m17, the routing table's no-match inputs are listed and each has a pre-registered ruling default.
@@ -291,13 +293,23 @@ def p8_rulings(batchmod, p="P8"):
     after = stopped(dict(records(), checker_reasons=["not-in-routing-json"]))   # refused for a human: unlisted
     failed_no_records = stopped(None, state=labels4.FAILED)
     before = stopped(dict(records(B, turns=1, end=labels4.END_ERROR), checker_reasons=["not-in-routing-json"]))
+    unlisted = {"checker_reasons": ["not-in-routing-json"]}
+    api = stopped(dict(records(), api_errors=[E500], **unlisted))
+    gap = stopped(dict(records(), sidecar={"start_record": True, "stop_record": False, "exit_code": 0,
+                                           "queue_overflow": False}, **unlisted))
+    rise = stopped(dict(records(), cgroup={"oom_kill_delta": 0, "pids_max_delta": 1}, **unlisted))
     for name, take, choice, ok in (
             ("after, graded", after, rt(labels4.GRADED), True),
             ("after, aborted", after, rt(labels4.ABORTED), True),
-            ("after, re-run (gated at publication)", after, RERUN, True),
-            ("after, pause (gated at publication)", after, rt(labels4.PAUSE), True),
-            ("after, harness-error (gated at publication)", after, rt(labels4.HARNESS_ERROR), True),
+            ("after, no harness fault, re-run", after, RERUN, False),
+            ("after, no harness fault, pause", after, rt(labels4.PAUSE), False),
+            ("after, no harness fault, harness-error", after, rt(labels4.HARNESS_ERROR), False),
+            ("after, an API error, re-run", api, RERUN, True),
+            ("after, an API error, pause", api, rt(labels4.PAUSE), True),
+            ("after, a watcher gap, harness-error", gap, rt(labels4.HARNESS_ERROR), True),
+            ("after, a pids counter rise, re-run", rise, RERUN, True),
             ("after, rehearsal", after, rt(labels4.REHEARSAL), False),
+            ("after, an API error, rehearsal", api, rt(labels4.REHEARSAL), False),
             ("no records, rehearsal (gated at publication)", failed_no_records, rt(labels4.REHEARSAL), True),
             ("before, rehearsal", before, rt(labels4.REHEARSAL), True),
             ("before, re-run", before, RERUN, True)):
@@ -513,6 +525,13 @@ WITNESSES = {
     "rehearsal-after-first-turn": ("rulings", (batch, (("if r[\"ruling\"] == labels4.RULE_ROUTE and phase == labels4.AFTER_FIRST_TURN and r[\"route\"] == labels4.REHEARSAL:",
                                                          "if False:"),))),
     "why-cite-unchecked": ("rulings", (batch, (("    for key in RULING_REASON_KEYS:", "    for key in ():"),))),
+    # the Lane-orchestrator's ruling 2: the door's harness-fault check, off, and reading any take as faulted
+    "door-fault-off": ("rulings", (batch, (("and reruns and not rerun_fault_rows(taken[\"records\"], table):",
+                                            "and reruns and False:"),))),
+    "door-fault-any": ("rulings", (batch, (("    return [rid for rid in RERUN_FAULT_ROWS if routing.matches(rows[rid], records, table)]",
+                                            "    return list(RERUN_FAULT_ROWS)"),))),
+    "door-fault-rows-widened": ("rulings", (batch, (('RERUN_FAULT_ROWS = ("api-error-after-first-turn", "watcher-gap", "cgroup-kill")',
+                                                     'RERUN_FAULT_ROWS = ("api-error-after-first-turn", "watcher-gap", "cgroup-kill", "end-turn")'),))),
     "rerun-gate-off": ("gate", (check_results, (('        if word != "wrong":', '        if True:'),))),
     "rerun-gate-fail-open": ("gate", (check_results, (('            word = "wrong"', '            word = "right"'),))),
     "rerun-gate-before-too": ("gate", (check_results, (("        if phase == labels4.BEFORE_FIRST_TURN:\n            continue",

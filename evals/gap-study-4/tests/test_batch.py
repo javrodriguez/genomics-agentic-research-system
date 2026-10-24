@@ -152,7 +152,9 @@ ALL.update({"event " + k: v for k, v in CHECKER_EVENT.items()})
 RAISES_AFTER_FIRST_TURN = "driver-raises-after-first-turn"
 RAISES_AFTER = {RAISES_AFTER_FIRST_TURN: [_turn(), _turn()]}
 # Pre-freeze review 1, MAJOR 8 (lane pf1-l2a): THE RULING RULE refuses a rehearsal ruling after the agent's first turn,
-# so the rehearsal rulings below rule on a take blocked before it (one silent turn, an unlisted reason).
+# so the rehearsal rulings below rule on a take blocked before it (one silent turn, an unlisted reason); so do the
+# re-run, pause and harness-error rulings, which after the first turn need a harness-fault row (the Lane-orchestrator's
+# ruling 2 on the lane, 24 Oct 2026).
 ALL["unlisted-reason-before"] = ([_turn(exit_code=1, end_reason=labels4.END_ERROR, agent_output=False)],
                                  _box(checker_reasons=["not-in-routing-json"]))
 
@@ -2285,9 +2287,9 @@ def ruled_rerun_problems(cls=batch.Batch) -> list[str]:
     """W1B3-1: with a `re-run` ruling committed for (slot, attempt), the stopped take's slot is re-driven once, at the
     next attempt. The ruling is spent by that drive: a second blocked take needs a ruling of its own."""
     p = []
-    _, _, _, _, r1, _ = run(1, plan={(1, 1): "unlisted-reason"})
+    _, _, _, _, r1, _ = run(1, plan={(1, 1): "unlisted-reason-before"})
     try:
-        _, out, _, _, r2, _ = restart(r1, rows(1), plan={(1, 2): "unlisted-reason"}, start_attempts={1: 1}, cls=cls,
+        _, out, _, _, r2, _ = restart(r1, rows(1), plan={(1, 2): "unlisted-reason-before"}, start_attempts={1: 1}, cls=cls,
                                       rulings=[rerun_ruling(1, 1)])
     except Exception as e:  # noqa: BLE001
         return [f"re-run ruling: the restart raised {type(e).__name__}: {e}"]
@@ -2331,7 +2333,7 @@ def ruled_route_problems(cls=batch.Batch) -> list[str]:
     except Exception as e:  # noqa: BLE001
         p.append(f"route graded: another slot's restart raised {type(e).__name__}: {e}")
     # harness-error: the ruled take spends slot 1's one re-run, so the re-run's own harness-error is final, beyond it
-    _, _, _, _, r1, _ = run(1, plan={(1, 1): "unlisted-reason"})
+    _, _, _, _, r1, _ = run(1, plan={(1, 1): "unlisted-reason-before"})
     try:
         _, out, *_ = restart(r1, rows(1), plan={(1, 2): "watcher-overflow"}, start_attempts={1: 1}, cls=cls,
                              rulings=[route_ruling(1, 1, labels4.HARNESS_ERROR)])
@@ -2363,7 +2365,7 @@ def ruled_route_problems(cls=batch.Batch) -> list[str]:
     except Exception as e:  # noqa: BLE001
         p.append(f"route rehearsal below the cap: the restart raised {type(e).__name__}: {e}")
     # pause: the restart waits for the usage window before it re-runs the slot
-    _, _, _, _, r1, _ = run(1, plan={(1, 1): "unlisted-reason"})
+    _, _, _, _, r1, _ = run(1, plan={(1, 1): "unlisted-reason-before"})
     try:
         _, out, w, _, _, win = restart(r1, rows(1), start_attempts={1: 1}, cls=cls,
                                        rulings=[route_ruling(1, 1, labels4.PAUSE)])
@@ -2525,7 +2527,7 @@ def never_writes_a_ruling_problems(cls=batch.Batch) -> list[str]:
     """W1B3-1: batch never writes a ruling. Through a stop, a ruled restart and a leak, every object it hands the
     repo's commit_records is an outcome, holding exactly the outcome keys, never a ruling."""
     p = []
-    _, _, _, _, r1, _ = run(2, plan={(1, 1): "unlisted-reason"}, cls=cls)
+    _, _, _, _, r1, _ = run(2, plan={(1, 1): "unlisted-reason-before"}, cls=cls)
     repos = [r1]
     try:
         repos.append(restart(r1, rows(1), start_attempts={1: 1}, cls=cls, rulings=[rerun_ruling(1, 1)])[4])
