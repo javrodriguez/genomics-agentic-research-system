@@ -153,9 +153,10 @@ class FakeSuite:
     PUBLIC_REFERENCE = {"gars": "https://example.invalid/gars.git"}
     RULED_LINES = sr.RULED_LINES        # the reviewed OD57 line rulings (walk_launch.od57_bound)
 
-    def __init__(self, log, *, public=("a" * 40,), public_error=False, nonpublic_finding=False, hits=(), scanned=3,
+    def __init__(self, log, *, public=None, public_error=False, nonpublic_finding=False, hits=(), scanned=3,
                  ruled_lines=()):
-        self.log, self.public, self.public_error = log, list(public), public_error
+        # public None: the scratch clone's root commit (a tip the clone holds, so the outward rule's git reads work)
+        self.log, self.public, self.public_error = log, None if public is None else list(public), public_error
         self.scans, self.scanned = [], scanned
         self.nonpublic_finding, self.hits = nonpublic_finding, list(hits)
         self.ruled_lines = list(ruled_lines)     # what scan_unpublished appends to its ruled list
@@ -173,7 +174,10 @@ class FakeSuite:
         return (), {"r": 1}, {"m": 1}
 
     def scratch_clone(self, bundle, dest, workdir):
+        # the review of 2ced80f2, NIT 5: a real clone of the bundle (no checkout), so the outward rule reads the bytes
+        # that would ship and no fake answers for a folder that was never made
         self.log.append(("suite", ["scratch_clone", bundle, dest]))
+        git("clone", "-q", "--no-checkout", bundle, dest)
 
     def name_hits(self, repo, sha, allow):
         return list(self.hits)
@@ -188,15 +192,15 @@ class FakeSuite:
         self.log.append(("suite", ["fetch_public_refs", url]))
         if self.public_error:
             raise RuntimeError("the public reference could not be read anonymously; nothing ships")
+        if self.public is None:
+            return [git("-C", repo, "rev-list", "--max-parents=0", "--all").split()[0]]
         return list(self.public)
 
     def binary_blobs_hashed(self, repo, sha, present):
-        # Lane ship-evidence-blobs: the outward scan now asks for the shipped binary blobs too. This fake's
-        # scratch_clone makes no clone (and its public tip is a placeholder), so on the ship road it models a
-        # text-only bundle: no clone, no binary blob. Every fetch-road caller passes a real repository, unchanged;
-        # L10 ships binary blobs through BinaryRuleSuite, whose scratch_clone clones the bundle for real.
+        # Lane ship-evidence-blobs: the outward scan asks for the shipped binary blobs too. A folder that is not a
+        # repository raises (the review of 2ced80f2, NIT 5): no fake answer can stand in for a scan that never ran.
         if not os.path.isdir(repo):
-            return []
+            raise FileNotFoundError(f"FakeSuite.binary_blobs_hashed: no repository at {repo}")
         return nul_blobs(repo, sha, present)
 
     def rulings_file(self, repo):
@@ -241,7 +245,8 @@ def l1(mod) -> list:
         fetches = [i for i, c in enumerate(runner.calls) if c[0] == "suite" and c[1][0] == "fetch_public_refs"]
         if len(scans) != 1 or not fetches or not fetches[0] < scans[0][0] < first_remote:
             out.append("L1-ship: athena is touched before athena_suite's public fetch and outward scan")
-        elif scans[0][1][1:] != [head, ["a" * 40], os.path.join(repo, ".git", "hooks", "glitch-gitleaksignore"),
+        elif scans[0][1][1:] != [head, [git("-C", repo, "rev-list", "--max-parents=0", "HEAD").strip()],
+                                 os.path.join(repo, ".git", "hooks", "glitch-gitleaksignore"),
                                  {"r": 1}, {"m": 1}]:
             out.append("L1-ship: the outward scan is not scan_unpublished(head, the public tips, the push door's "
                        "rulings, the committed allowlist)")
@@ -822,6 +827,24 @@ def make_gz(payload: bytes, *, extra=None, name=None, comment=None, fhcrc=False,
         + (len(payload) & 0xFFFFFFFF).to_bytes(4, "little")
 
 
+def text_looking_gz(payload: bytes, *, extra_len=4000, name_len=3990) -> bytes:
+    """A gzip member git reads as TEXT (the review of 2ced80f2, MAJOR 1): FLG FEXTRA|FNAME, a nonzero MTIME, XFL 2,
+    OS 3 and an FEXTRA of `extra_len` A bytes then an FNAME of `name_len` n bytes, so no NUL falls in its first 8000
+    bytes. The default fields sit within GZ_FIELD_MAX; extra_len=8300, name_len=None is the review's probe p1."""
+    import zlib
+    flg = 0x04 | (0x08 if name_len is not None else 0)
+    head = b"\x1f\x8b\x08" + bytes([flg]) + b"\x01\x01\x01\x01" + b"\x02\x03"
+    head += extra_len.to_bytes(2, "little") + b"A" * extra_len
+    if name_len is not None:
+        head += b"n" * name_len + b"\x00"
+    c = zlib.compressobj(9, zlib.DEFLATED, -zlib.MAX_WBITS)
+    body = c.compress(payload) + c.flush()
+    data = head + body + (zlib.crc32(payload) & 0xFFFFFFFF).to_bytes(4, "little") \
+        + (len(payload) & 0xFFFFFFFF).to_bytes(4, "little")
+    assert b"\0" not in data[:8000], "the text-looking gzip has a NUL in its first 8000 bytes"
+    return data
+
+
 _BOMB = []
 
 
@@ -1225,10 +1248,6 @@ class BinaryRuleSuite(FakeSuite):
     and from no public tip refuses unless its id is in allow_blobs (scan_unpublished's own words). Its scratch_clone
     really clones the bundle (no checkout), so the outward rule reads the bytes that would ship."""
 
-    def scratch_clone(self, bundle, dest, workdir):
-        super().scratch_clone(bundle, dest, workdir)
-        git("clone", "-q", "--no-checkout", bundle, dest)
-
     def scan_unpublished(self, repo, sha, workdir, gitleaks, public_shas, rulings, allow_blobs, ruled, ruled_used,
                          ruled_messages):
         bad = [(p, oid) for p, oid, _d in nul_blobs(repo, sha, list(public_shas)) if oid not in allow_blobs]
@@ -1286,13 +1305,21 @@ def l10(mod) -> list:
         return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
     with tempfile.TemporaryDirectory() as t:
         # the valid ones: one rehearsal blob; a counted take's blob; two blobs together
-        for why, files in (("a valid rehearsal evidence blob", {evidence_path("w001", clean): clean}),
-                           ("a valid counted take's evidence blob", {take_evidence_path(clean): clean}),
-                           ("two valid evidence blobs", {evidence_path("w001", clean): clean,
-                                                         evidence_path("w002", second): second})):
+        textgz = text_looking_gz(text)
+        two_walks = {evidence_path("w001", clean): clean, evidence_path("w002", second): second}
+        for why, files, patch in (
+                ("a valid rehearsal evidence blob", {evidence_path("w001", clean): clean}, None),
+                ("a valid counted take's evidence blob", {take_evidence_path(clean): clean}, None),
+                ("two valid evidence blobs", two_walks, None),
+                # MAJOR 1: a gzip git reads as text is a candidate too, decoded and scanned like any other
+                ("a valid text-looking evidence blob", {evidence_path("w001", textgz): textgz}, None),
+                # MINOR 3: the caps count per walk, as the fetch's do (one fetch is one walk's commits)
+                ("one blob in each of two walks under a count cap of 1", two_walks, ("BLOB_MAX_COUNT", 1)),
+                ("two walks each within the total cap", two_walks, ("BLOB_TOTAL_MAX", len(text) + 5))):
             d = os.path.join(t, why.replace(" ", "-").replace("'", ""))
             os.mkdir(d)
-            runner, got, suite, _tip = outward_rig(mod, d, files)
+            with mock.patch.object(mod, patch[0], patch[1]) if patch else contextlib.nullcontext():
+                runner, got, suite, _tip = outward_rig(mod, d, files)
             if not isinstance(got, dict):
                 out.append(f"L10-outward-blobs: {why} does not ship: {got}")
                 continue
@@ -1322,6 +1349,15 @@ def l10(mod) -> list:
             "an evidence blob also at a later non-evidence path": {evidence_path("w001", clean): clean,
                                                                    "evals/gap-study-4/rehearsals/w001/zz.gz": clean},
             "a binary gzip FEXTRA": (lambda g: {evidence_path("w001", g): g})(make_gz(text, extra=b"\x00\x01")),
+            "a text-looking gzip off the evidence paths": {"evals/gap-study-4/rehearsals/w001/rec.json.gz": textgz},
+            "a text-looking gzip outside the study": {"notes.gz": textgz},
+            "a text-looking gzip at an evidence path and a later non-evidence one": {
+                evidence_path("w001", textgz): textgz, "evals/gap-study-4/rehearsals/w001/zz.gz": textgz},
+            "a token-shaped canary in a text-looking gzip's text":
+                (lambda g: {evidence_path("w001", g): g})(text_looking_gz(json.dumps({"text": "token = "
+                                                                                      + _fake_token()}).encode())),
+            "a planted marker in a text-looking gzip's text":
+                (lambda g: {evidence_path("w001", g): g})(text_looking_gz(b"PLANTED synthetic marker\n")),
             "a walk folder off its form": {"evals/gap-study-4/rehearsals/-w/evidence/blobs/"
                                            + hashlib.sha256(clean).hexdigest(): clean},
             "a take slot off its form": {"evals/gap-study-4/takes/s-short/1/evidence/blobs/"
@@ -1338,8 +1374,8 @@ def l10(mod) -> list:
                 out.append(f"L10-outward-blobs: {why} refused only after athena was touched")
             if "PLANTED" in str(got) or "synthetic" in str(got) or "ghp_" in str(got):
                 out.append(f"L10-outward-blobs: the refusal of {why} prints decompressed content")
-        # the caps: per blob (stored and decompressed), total, count
-        two = {evidence_path("w001", clean): clean, evidence_path("w002", second): second}
+        # the caps: per blob (stored and decompressed), and per walk the total and the count (MINOR 3)
+        two = {evidence_path("w001", clean): clean, evidence_path("w001", second): second}
         for why, files, patch in (("over the per-blob cap", {evidence_path("w001", clean): clean},
                                    ("BLOB_MAX_BYTES", len(text) - 1)),
                                   ("over the total cap", two, ("BLOB_TOTAL_MAX", len(text) + 5)),
@@ -1994,6 +2030,42 @@ class TestRealOutwardScan(unittest.TestCase):
         got = self.scan({"evals/gap-study-4/rehearsals/w001/evidence/blobs/" + "0" * 64: data})
         self.assertIsInstance(got, Exception)
 
+    # The review of 2ced80f2, MAJOR 1 (its probe p1): a gzip git reads as text (no NUL in its first 8000 bytes) is a
+    # candidate as the fetch's evidence_candidates takes it; at an evidence path it is decoded and scanned by the one
+    # rule, anywhere else it refuses. The canary is AWS-shaped, made at run time, never a key, never printed.
+    def aws_text_gz(self, **kw):
+        canary = _aws_shaped()
+        return canary, text_looking_gz(json.dumps({"text": "aws_access_key_id = " + canary}).encode(), **kw)
+
+    def test_p1_text_looking_gzip_at_an_evidence_path_refuses(self):
+        canary, data = self.aws_text_gz(extra_len=8300, name_len=None)       # the probe's bytes: FEXTRA over 8000
+        got = self.scan({evidence_path("w001", data): data})
+        self.assertIsInstance(got, wl.LaunchRefused, got)
+        self.assertNotIn(canary, str(got))
+
+    def test_p1_text_looking_gzip_off_the_evidence_paths_refuses(self):
+        canary, data = self.aws_text_gz(extra_len=8300, name_len=None)
+        got = self.scan({"evals/gap-study-4/rehearsals/w001/rec.json.gz": data})
+        self.assertIsInstance(got, wl.LaunchRefused, got)
+        self.assertNotIn(canary, str(got))
+
+    def test_canary_in_a_text_looking_evidence_gzip_within_the_field_caps_refuses_by_the_scan(self):
+        canary, data = self.aws_text_gz()
+        got = self.scan({evidence_path("w001", data): data})
+        self.assertIsInstance(got, wl.LaunchRefused, got)
+        self.assertIn("private scan refused", str(got))
+        self.assertNotIn(canary, str(got))
+
+    def test_clean_text_looking_evidence_gzip_is_admitted(self):
+        data = text_looking_gz(json.dumps({"path": "plan/approved.json", "op": "open"}).encode())
+        got = self.scan({evidence_path("w001", data): data})
+        self.assertEqual(got, 1, got)
+
+    def test_clean_text_looking_gzip_off_the_evidence_paths_refuses(self):
+        data = text_looking_gz(json.dumps({"path": "plan/approved.json", "op": "open"}).encode())
+        got = self.scan({"evals/gap-study-4/rehearsals/w001/rec.json.gz": data})
+        self.assertIsInstance(got, wl.LaunchRefused, got)
+
 
 # Lane ship-evidence-blobs, the OD57 twin ruling (the Lane-orchestrator's, 23 Oct 2026, under Javier's standing
 # delegation): the outward scan admits an OD57 finding in a file whose blob at the finding's commit is byte-identical
@@ -2139,6 +2211,73 @@ class TestOD57TwinOutward(unittest.TestCase):
         data = twin_bytes(1) + extra
         got, _ = self.scan({TWIN_RECORD % 1: data}, {TWIN_COPY % 1: data})
         self.assertRefusedAt(got, TWIN_COPY % 1, (153,))
+
+    # The review of 2ced80f2, MINOR 2 (its probe p3): two guards that had no witness.
+    CODEX_RECORD = "evals/gap-study-4/rehearsals/w-o21/session/native-turn-1.jsonl"
+
+    def test_twins_of_two_families_refuse_the_copy(self):
+        # Gemini bytes at a Gemini and at a Codex record path: the Codex twin does not admit, so neither does the copy
+        b = twin_bytes(1)
+        got, _ = self.scan({TWIN_RECORD % 1: b, self.CODEX_RECORD: b}, {TWIN_COPY % 1: b})
+        self.assertRefusedAt(got, TWIN_COPY % 1, TWIN_LINES[1])
+
+    def test_a_ruled_path_finding_the_door_refused_is_never_twinned(self):
+        # Gemini bytes at a Codex record path, refused by the suite's door, with a Gemini twin that would admit
+        b = twin_bytes(1)
+        got, _ = self.scan({TWIN_RECORD % 1: b}, {self.CODEX_RECORD: b})
+        self.assertRefusedAt(got, self.CODEX_RECORD, TWIN_LINES[1])
+
+    def test_witness_all_as_any_admits_the_two_family_copy(self):
+        mod = witness([("if len(names) == 1 and all(id(s)", "if len(names) == 1 and any(id(s)")])
+        b = twin_bytes(1)
+        got, _ = self.scan({TWIN_RECORD % 1: b, self.CODEX_RECORD: b}, {TWIN_COPY % 1: b}, mod=mod)
+        self.assertEqual(got, 1, got)           # test_twins_of_two_families_refuse_the_copy goes red
+
+    def test_witness_the_ruled_path_filter_dropped_admits_the_codex_path_copy(self):
+        mod = witness([("and isinstance(path, str) and door[\"_od57_file\"](path)\n                is None):",
+                        "and isinstance(path, str)):")])
+        b = twin_bytes(1)
+        got, _ = self.scan({TWIN_RECORD % 1: b}, {self.CODEX_RECORD: b}, mod=mod)
+        self.assertEqual(got, 1, got)           # test_a_ruled_path_finding_the_door_refused_is_never_twinned goes red
+
+    # Named equivalent, no witness (the review's mutant F): _tree_files' regular-file mode filter; a symlink's or a
+    # gitlink's blob id cannot equal a JSONL walk record's, so only regular files are ever twins with or without it.
+    # Named equivalent, no witness (the review's mutant G): the `... in ok` string check; the suite's
+    # ruled_line_findings returns every finding it is handed either still refused or admitted, so `id(s) not in
+    # left_ids` alone decides the same.
+
+    def test_a_copy_added_by_a_merge_itself_is_admitted_via_its_twin(self):
+        # the review's NIT 7: an evil merge adds the copy (the remerge diff carries the finding at the merge commit)
+        with tempfile.TemporaryDirectory() as t:
+            repo, _root, _ = make_repo(t)
+            Path(repo, TWIN_RECORD % 1).parent.mkdir(parents=True)
+            Path(repo, TWIN_RECORD % 1).write_bytes(twin_bytes(1))
+            git("-C", repo, "add", TWIN_RECORD % 1)
+            git("-C", repo, "commit", "-q", "-m", "public")
+            base = git("-C", repo, "rev-parse", "HEAD").strip()
+            git("-C", repo, "checkout", "-q", "-b", "side")
+            Path(repo, "f9.txt").write_text("9\n")
+            git("-C", repo, "add", "f9.txt")
+            git("-C", repo, "commit", "-q", "-m", "side")
+            git("-C", repo, "checkout", "-q", "main")
+            Path(repo, "f8.txt").write_text("8\n")
+            git("-C", repo, "add", "f8.txt")
+            git("-C", repo, "commit", "-q", "-m", "main")
+            git("-C", repo, "merge", "-q", "--no-ff", "--no-commit", "side")
+            Path(repo, TWIN_COPY % 1).parent.mkdir(parents=True)
+            Path(repo, TWIN_COPY % 1).write_bytes(twin_bytes(1))
+            git("-C", repo, "add", TWIN_COPY % 1)
+            git("-C", repo, "commit", "-q", "-m", "merge")
+            head = git("-C", repo, "rev-parse", "HEAD").strip()
+            self.assertEqual(len(git("-C", repo, "rev-list", "--parents", "-n", "1", head).split()), 3)
+            bundle = os.path.join(t, "out.bundle")
+            git("-C", repo, "bundle", "create", bundle, "main")
+            listed = []
+            got = wl.outward_scan(_PublicAt(self.suite, [base]), repo=repo, bundle=bundle, head=head,
+                                  gitleaks=self.gitleaks, work=os.path.join(t, "work"), lines_ruled=listed)
+        self.assertEqual(got, 3, got)
+        self.assertEqual(sorted(listed), [f"OD57:{head}:{TWIN_COPY % 1}:{line} via {TWIN_RECORD % 1}"
+                                          for line in TWIN_LINES[1]])
 
     def test_the_suites_door_is_restored_after_each_scan(self):
         door = self.suite.scan_unpublished.__globals__
