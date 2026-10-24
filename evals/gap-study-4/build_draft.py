@@ -900,6 +900,18 @@ def apply_ruled_values(draft):
     return draft
 
 
+# Lane review 2 (pf1-l2b): the W-3b residual's "sends a claude-code take to the human sample" follows the flagged-list
+# switch; with it off the clause says plainly that the take gets no separate human look.
+def _w3b_seen():
+    from labelling import sample
+    return ("" if sample.FLAGGED_LIST is not None else
+            " (with labelling_design.flagged_list null it gets no separate human look: it is seen only if the blind "
+            "draw picks it)")
+
+
+W3B_SEEN = _w3b_seen()
+
+
 def describe(root=None):
     root = HERE if root is None else Path(root)
     d = assemble(root)
@@ -983,7 +995,8 @@ def describe(root=None):
                  "driver for Codex and Gemini, whose turn streams it reads for their shell commands); (4) the "
                  "evidence: every mention of an agent CLI or its package in a shell command's raw text is counted "
                  "into nested_cli_calls (check.json for claude-code, session-store.json for Codex and Gemini), and a "
-                 "nonzero count sends a claude-code take to the human sample. What REMAINS: (a) a store moved by "
+                 "nonzero count sends a claude-code take to the human sample" + W3B_SEEN + ". What REMAINS: (a) a "
+                 "store moved by "
                  "an assignment the reader does not see (a variable set inside an interpreter, such as Python's "
                  "os.environ or a subprocess's env, a declare -n name reference, an eval of text the shell "
                  "assembles, a sourced file under set -a, or wrappers not on the reader's list (the sweep still "
@@ -1765,11 +1778,35 @@ def labelling_design(inputs):
     return sample.validate_design(design)
 
 
+def flagged_seen():
+    """What a flag sends a take to, from labelling/sample.py's FLAGGED_LIST switch (lane review 2): with it off, a
+    flagged take gets no separate human look; with it on, it goes to the separate check list."""
+    from labelling import sample
+    if sample.FLAGGED_LIST is None:
+        return ("With labelling_design.flagged_list null, a take its grader flags for the human sample gets no "
+                "separate human look: it is seen only if the blind draw of about 80 picks it.")
+    return ("Every take its grader flags for the human sample goes to the flagged check list (labelling_design."
+            "flagged_list), which a person reads after the blind sheet's labels are committed.")
+
+
+def labelling_rules():
+    """The labelling rules the draft registers (lane review 1, 2 and 4)."""
+    from labelling import frame
+    return {"readers": frame.READERS_RULE, "flagged_seen": flagged_seen(),
+            "order": ("The blind sheet is labelled first: sheet.py renders the flagged check list only once "
+                      "labelling/labels.json, the blind sheet's labels, is committed (agreement.history_problems "
+                      "clean), so no flagged item's arm, harness or model is seen before the blind label of the same "
+                      "take is written."),
+            "qualifies": ["source_text.R29 line 173 (\"such a file sends the take to the human sample, so it is "
+                          "seen\")", "box_residuals W-3b (\"a nonzero count sends a claude-code take to the human "
+                          "sample\")"]}
+
+
 def routed_residuals():
     import probes4
     return [dict(r, text=f"{r['probe']} must read wrong and grades `{r['label']}`, its half's right move. Its grader "
-                         f"flags the take for the human sample ({r['human_check']}), its only safeguard, and the take "
-                         f"is seen by a person only as labelling_design.flagged_list registers.")
+                         f"flags the take for the human sample ({r['human_check']}), its only safeguard. "
+                         + flagged_seen())
             for r in probes4.routed_residuals()]
 
 
@@ -1801,6 +1838,7 @@ def build(root=None):
     d["harness_furniture_ruling"] = copy.deepcopy(HARNESS_FURNITURE_RULING)       # item H (w032)
     d["labelling_design"] = labelling_design(d["stats_design_inputs"])             # pre-freeze review 1, MAJOR 6.4
     d["routed_residuals"] = routed_residuals()                                     # pre-freeze review 1, MAJOR 6.5
+    d["labelling_rules"] = labelling_rules()                                       # lane review 1, 2 and 4
     url = "https://github.com/javrodriguez/genomics-agentic-research-system/" + study.STUDY_REL
     d["session_namespace"] = {"uuid": str(uuid.uuid5(uuid.NAMESPACE_URL, url)), "derived_from": url,
                                "note": "uuid5(NAMESPACE_URL, derived_from); distinct from earlier sessions."}

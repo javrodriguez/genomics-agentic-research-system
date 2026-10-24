@@ -64,6 +64,7 @@ WALK_STEP = (
 # published page's section is a single-command step like BEFORE's; the commit bodies' step reads the freeze commit
 # and scans the bodies since it, or says it is not frozen, and its body is bound here exactly.
 SECTION = "python3 evals/gap-study-4/lint_pooling.py --section-of docs/EVALS.md"
+SECTION_LANGUAGE = "python3 evals/gap-study-4/lint_language.py --section-of docs/EVALS.md"   # lane review 3
 BODIES = ('python3 evals/gap-study-4/lint_language.py --commits-since "$freeze"',
           'python3 evals/gap-study-4/lint_pooling.py --commits-since "$freeze"')
 BODIES_RUN = (f"if [ -f {FROZEN} ]; then\n"
@@ -236,7 +237,7 @@ def problems(text, baseline, introduced, *, box_present=None):
         need(BOX_OWNER in block, "R38.box-owner")
         need(BOX_RULING in block, "R38.box-ruling")
         need(not any("test_box_integration.py" in run for run in runs), "R38.box-absent")
-    before = before + (WALK, SECTION)         # W8D: the walk register's step; m14: the published page's section
+    before = before + (WALK, SECTION, SECTION_LANGUAGE)   # W8D: the walk register; m14: the published page, both linters
     expected = before + AFTER
     command_steps = {}
     for command in expected:
@@ -308,7 +309,7 @@ def problems(text, baseline, introduced, *, box_present=None):
     need(removed == 0, "R44.additive")
     bodies = [run for _, _, run in entries if any(command in run for command in BODIES)]
     need(bodies == [BODIES_RUN], "R38.bodies")            # m14 (lane pf1-l2b): the commit bodies' step, exactly
-    need(len(entries) == len(expected) + 3, "R38.total")
+    need(len(entries) == len(expected) + 3, "R38.total")      # the bodies step, additive and the private message
     return found
 
 
@@ -397,6 +398,10 @@ def mutations():
     edits["section-step-removed"] = ("R38.command:" + SECTION, SECTION, SECTION + " --missing")   # m14
     edits["before-section"] = ("R38.before:" + SECTION, f"        run: {SECTION}\n",
                                f"        run: |\n          echo fake\n          {SECTION}\n")
+    edits["section-language-removed"] = ("R38.command:" + SECTION_LANGUAGE, SECTION_LANGUAGE,
+                                         SECTION_LANGUAGE + " --missing")                      # lane review 3
+    edits["before-section-language"] = ("R38.before:" + SECTION_LANGUAGE, f"        run: {SECTION_LANGUAGE}\n",
+                                        f"        run: |\n          echo fake\n          {SECTION_LANGUAGE}\n")
     edits["bodies-unfrozen-pass"] = ("R38.bodies", '            echo "not applicable — not frozen"\n          fi\n',
                                      '            echo "passed"\n          fi\n')
     edits["bodies-since-head"] = ("R38.bodies", "git log --format=%H --reverse -- evals/gap-study-4/prereg.json | head -1)\n"

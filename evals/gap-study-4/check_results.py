@@ -545,8 +545,14 @@ def original_values_problems(rec: dict, path=None) -> list[str]:
     later reverted, is refused). Not yet published: nothing to hold, and from_records refuses a follow-up without it."""
     import result
     path = result.ORIGINAL_VALUES if path is None else Path(path)
+    rel = path.resolve().relative_to(REPO.resolve()).as_posix()
     if not path.is_file():
-        return []
+        code, ever = git("log", "--format=%H", "--full-history", "-1", "--", rel)
+        if code:
+            return [f"{path.name}: its commit history cannot be read"]
+        # lane review 10: a published file that is gone is refused by name, never read as not yet published
+        return [f"{path.name} was committed ({ever[:12]}) and is gone: the original report's values are published "
+                f"once and stand"] if ever else []
     out = []
     try:
         held = json.loads(path.read_text(encoding="utf-8"))
@@ -555,7 +561,6 @@ def original_values_problems(rec: dict, path=None) -> list[str]:
     if held != rec["original_values"]:
         out.append(f"{path.name} differs from the values the original report's records give now: the original "
                    f"report's values stand as published")
-    rel = path.resolve().relative_to(REPO.resolve()).as_posix()
     code, commits = git("log", "--format=%H", "--full-history", "--", rel)
     if code:
         return out + [f"{path.name}: its commit history cannot be read"]

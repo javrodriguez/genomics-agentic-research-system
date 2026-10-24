@@ -136,11 +136,12 @@ def grade_views(grade: dict, grader=None) -> dict:
 CELL_FIELDS = ("half", "wording", "repeat", "pressure")      # variants.row_fields' cell: the only row fields read
 
 
-def dispatch(mod, name: str, row: dict, spec: dict, transcript, evidence) -> dict:
+def dispatch(mod, name: str, row: dict, spec: dict, transcript, evidence, *, own=None) -> dict:
     """The one grading dispatch (pre-freeze review 1, m16; lane pf1-l2b): the delegation seam, each grader called as
     its grade() takes it, and the nested-agent sample. regrade (takes and walks) and probes4.run_grader (the
     constructed triples) both call it, so the two roads cannot differ. `row` holds CELL_FIELDS, `task` and
-    `grader_half`; precondition_refusal's row fields are variants.row_fields of exactly CELL_FIELDS on both roads."""
+    `grader_half`; precondition_refusal's row fields are variants.row_fields of exactly CELL_FIELDS on both roads.
+    `own`, a list when given, receives the grader's own human_sample before the nested-agent sample (lane review 8)."""
     original = transcript                 # W-3b: the nested agent-CLI count reads the take as it was handed
     transcript, refused = delegation.seam(name, evidence, transcript)   # a delegated take, presented (16 Oct)
     if refused:
@@ -159,12 +160,14 @@ def dispatch(mod, name: str, row: dict, spec: dict, transcript, evidence) -> dic
         got = mod.grade(row["task"], transcript, evidence, spec, half=row["grader_half"])
     else:
         raise ValueError(f"no invocation for grader {name!r}")
+    if own is not None:
+        own.append(got.get("human_sample"))
     return delegation.sampled(got, original)                      # W-3b: a nested agent CLI, to the human sample
 
 
-def regrade(name: str, row: dict, spec: dict, transcript, evidence) -> tuple[dict, str]:
+def regrade(name: str, row: dict, spec: dict, transcript, evidence, *, own=None) -> tuple[dict, str]:
     mod = grader_for(name)
-    got = dispatch(mod, name, row, spec, transcript, evidence)
+    got = dispatch(mod, name, row, spec, transcript, evidence, own=own)
     return dict(got, views=grade_views(got, mod)), str(Path(mod.__file__).resolve())
 
 
@@ -184,8 +187,15 @@ NESTED_CLI, READERS_DISAGREE = "nested-agent-cli", "readers-disagree"
 
 
 def human_why(grade: dict) -> list:
-    """The sorted HUMAN_WHY ids for a grade (dict(got, graded_by=...) or a test's stand-in); [] when not flagged."""
-    if not isinstance(grade, dict) or grade.get("human_sample") is not True:
+    """The sorted HUMAN_WHY ids for a grade (dict(got, graded_by=..., grader_flag=...) or a test's stand-in); [] when
+    not flagged. A human_sample that is not a bool is refused (lane review 9). The grader's own flag (grader_flag, the
+    grader's human_sample before the nested-agent sample) is named beside the other reasons (lane review 8); a grade
+    that does not say (a stand-in) names it only when no other reason does."""
+    if not isinstance(grade, dict):
+        return []
+    if "human_sample" in grade and type(grade["human_sample"]) is not bool:
+        raise ValueError(f"the grade's human_sample is not a bool: {grade['human_sample']!r}")
+    if grade.get("human_sample") is not True:
         return []
     out = set()
     check = grade.get("human_check")
@@ -196,8 +206,9 @@ def human_why(grade: dict) -> list:
         out.add(NESTED_CLI)
     if any(e.startswith(READERS_LINE) for e in lines):
         out.add(READERS_DISAGREE)
-    if not out:
-        by = grade.get("graded_by")
+    by = grade.get("graded_by")
+    own = grade.get("grader_flag") is True or ("grader_flag" not in grade and not out)
+    if own:
         out.add(f"{Path(by).stem}-flag" if isinstance(by, str) and by else "grader-flag")
     return sorted(out)
 
@@ -322,9 +333,10 @@ def grade_committed(row: dict, outcome: dict, *, readers=None) -> dict:
     evidence = endstate.Evidence.load(path / "evidence")
     require_evidence_identity(row, evidence)
     named = dict(row, grader_half=(task["grader_halves"] or {}).get(row["half"]))
+    own = []
     got, module = regrade(variants.grader_name(task), named, spec, transcript_lines(path / "transcript.jsonl"),
-                          evidence)
-    return dict(got, graded_by=module)
+                          evidence, own=own)
+    return dict(got, graded_by=module, grader_flag=own[0] is True)     # lane review 8: the grader's own flag
 
 
 # ---- stopped takes' end states (pre-freeze review 1, m13; lane pf1-l2b, Sat 24 Oct 2026) ---------------------------
@@ -364,6 +376,11 @@ def committed_evidence(row: dict, outcome: dict):
     folder = HERE / mode_binding.TAKES_DIR / str(outcome["slot"]) / str(outcome["attempt"]) / "evidence"
     if not folder.is_dir():
         return None
+    rel = folder.parent.resolve().relative_to(REPO.resolve()).as_posix()     # lane review 11: as grade_committed reads
+    if takes._git_at(REPO, "status", "--porcelain", "--", rel):
+        raise ValueError(f"the stopped take's folder {rel} has uncommitted changes")
+    if not takes._git_at(REPO, "ls-files", "--", rel):
+        raise ValueError(f"the stopped take's folder {rel} is not committed")
     try:
         return endstate.Evidence.load(folder)
     except (endstate.EvidenceError, OSError, ValueError):

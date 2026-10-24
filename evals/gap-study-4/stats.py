@@ -1217,13 +1217,20 @@ def original_records(records: list, deferred_arms) -> list:
 
 
 def read_deferred_arms(prereg_path) -> set:
-    """The deferred arms of the frozen pre-registration (its `deferred_arms` keys); none when it carries none."""
+    """The deferred arms of the frozen pre-registration (its `deferred_arms` keys); none when it carries none. An
+    unreadable file, or a `deferred_arms` that is not a map of arm to deferral, is refused, as prereg.deferred_arms
+    refuses it (lane review 10), never read as no deferral."""
     try:
         pre = json.loads(Path(prereg_path).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return set()
-    table = pre.get("deferred_arms") if isinstance(pre, dict) else None
-    return set(table) if isinstance(table, dict) else set()
+    except (OSError, ValueError) as e:
+        raise StatsError(f"the pre-registration cannot be read for its deferred arms: {e}") from e
+    if not isinstance(pre, dict):
+        raise StatsError("the pre-registration is not an object")
+    table = pre.get("deferred_arms") or {}
+    if not isinstance(table, dict) or not all(isinstance(e, dict) and e.get("status") == "deferred"
+                                              for e in table.values()):
+        raise StatsError("deferred_arms maps an arm to its deferral")
+    return set(table)
 
 
 # ---- the check -------------------------------------------------------------------------------------------------
@@ -1266,8 +1273,8 @@ def check(results_dir=RESULTS_DIR, prereg_path=PREREG, page_path=RESULT_PAGE):
     design, problem = read_design(prereg_path)
     if problem:
         return 1, [f"stats --check: FAIL no design: {problem}"]
-    original = original_records(records, read_deferred_arms(prereg_path))      # MAJOR 10: the original report's
     try:
+        original = original_records(records, read_deferred_arms(prereg_path))  # MAJOR 10: the original report's
         first, second = derive(original, design), derive(original, design)
     except StatsError as e:
         return 1, [f"stats --check: FAIL record or design: {e}"]

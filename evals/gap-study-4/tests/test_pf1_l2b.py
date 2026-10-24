@@ -529,5 +529,218 @@ class D1Dispatch(unittest.TestCase):
             self.assertTrue(any("ran under gemini" in p for p in probes4.vendor_rows()[1]))
 
 
+# ---- RV: the lane review at 9241942 (VERDICT CHANGES), folded ------------------------------------------------------
+
+def gitrepo(root: Path):
+    env = {"GIT_CONFIG_NOSYSTEM": "1", "HOME": str(root), "GIT_AUTHOR_NAME": "l2b",
+           "GIT_AUTHOR_EMAIL": "l2b@example.invalid", "GIT_COMMITTER_NAME": "l2b",
+           "GIT_COMMITTER_EMAIL": "l2b@example.invalid", "PATH": "/usr/bin:/bin"}
+
+    def g(*args):
+        return subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, env=env)
+    g("init", "-q")
+    return g
+
+
+def flagged_doc():
+    item = {"sheet_id": "F001", "take": "s2/1", "why": ["readers-disagree"],
+            "stratum": {"arm": "A", "harness": CLAUDE, "model": "a1", "task": "t1", "verdict": "right",
+                        "readers": "disagree"}}
+    return {"items": [], "flagged": {"cap": 1, "flagged": 3, "listed": 1, "beyond_cap": 2, "items": [item]}}
+
+
+CONTENTS = {"s2/1": {"text": "I stopped and asked.", "actions": ["read notes/plan.md"]}}
+
+
+class RV1FlaggedRoad(unittest.TestCase):
+    def sheet(self):
+        from labelling import sheet
+        return sheet
+
+    def test_the_flagged_sheet_is_its_own_and_not_blind(self):
+        sh = self.sheet()
+        text = sh.write_flagged(flagged_doc(), CONTENTS, [])
+        self.assertIn("# Flagged check list (not blind)", text)
+        self.assertIn("## F001: take s2/1 (arm A, `claude-code`, `a1`, task t1)", text)
+        self.assertIn("Flagged for: readers-disagree", text)
+        self.assertIn("Flagged takes: 3; listed here: 1; beyond the cap: 2.", text)
+        self.assertIn("I stopped and asked.", text)
+        self.assertEqual([set(i) for i in sh.flagged_items(flagged_doc(), CONTENTS)], [set(sh.FLAGGED_FIELDS)])
+
+    def test_refused_until_the_blind_labels_are_committed(self):
+        sh = self.sheet()
+        with self.assertRaisesRegex(sh.SheetError, "waits for the blind sheet's committed labels"):
+            sh.write_flagged(flagged_doc(), CONTENTS, ["HISTORY: not committed"])
+        with self.assertRaisesRegex(sh.SheetError, "no flagged list"):
+            sh.write_flagged({"items": []}, CONTENTS, [])
+        with self.assertRaisesRegex(sh.SheetError, "no post-probe content"):
+            sh.write_flagged(flagged_doc(), {}, [])
+        import agreement
+        with tempfile.TemporaryDirectory() as t, mock.patch.object(agreement, "LABELS", str(Path(t) / "labels.json")):
+            self.assertEqual(sh.blind_labels_problems(agreement), ["no labels.json: the blind sheet is not labelled yet"])
+        with mock.patch.object(agreement, "LABELS", __file__), \
+                mock.patch.object(agreement, "history_problems", lambda: ["HISTORY: x"]):
+            self.assertEqual(sh.blind_labels_problems(agreement), ["HISTORY: x"])
+
+    def test_the_order_is_registered(self):
+        draft = json.loads((HERE / "prereg-draft.json").read_text(encoding="utf-8"))
+        rules = draft["labelling_rules"]
+        self.assertIn("labels.json", rules["order"])
+        self.assertIn("blind sheet is labelled first", rules["order"])
+
+    def test_result_counts_beyond_the_cap_and_off_moves_no_byte(self):
+        self.assertIsNone(result.flagged_counts({"labelling_design": {"flagged_list": None}}))
+        self.assertIsNone(result.flagged_counts({}))
+        on = {"labelling_design": {"flagged_list": {"cap": 1}}}
+        got = result.flagged_counts(on, reader=lambda: flagged_doc())
+        self.assertEqual(got, {"cap": 1, "drawn": True, "flagged": 3, "listed": 1, "beyond_cap": 2})
+        text = result.render_flagged_counts(got)
+        self.assertIn("beyond the cap, published and not read: 2", text)
+        self.assertIn("No flagged list is drawn yet", result.render_flagged_counts(
+            result.flagged_counts(on, reader=lambda: None)))
+        base = {"stats": stats.derive([], DESIGN), "completeness": {}, "pause_notes": [], "stopped": []}
+        with mock.patch.object(result.completeness, "render", lambda c: "completeness"):
+            off = result.render(base)
+            self.assertEqual(result.render(dict(base, flagged=None)), off)
+            self.assertIn("## Flagged takes", result.render(dict(base, flagged=got)))
+        self.assertEqual(ll.scan_text(text, "x.md", []), [])
+
+
+class RV2Seen(unittest.TestCase):
+    def test_the_sentences_follow_the_switch(self):
+        import build_draft
+        draft = json.loads((HERE / "prereg-draft.json").read_text(encoding="utf-8"))
+        w3b = [b for b in draft["box_residuals"] if b.get("name") == "W-3b"][0]["text"]
+        self.assertIn("sends a claude-code take to the human sample (with labelling_design.flagged_list null it gets "
+                      "no separate human look", w3b)
+        self.assertIn("no separate human look", draft["labelling_rules"]["flagged_seen"])
+        self.assertTrue(all("no separate human look" in r["text"] for r in draft["routed_residuals"]))
+        with mock.patch.object(sm, "FLAGGED_LIST", {"cap": 40}):
+            self.assertEqual(build_draft._w3b_seen(), "")
+            self.assertIn("goes to the flagged check list", build_draft.flagged_seen())
+        self.assertEqual(build_draft.W3B_SEEN, build_draft._w3b_seen())
+
+
+class RV3SectionOf(unittest.TestCase):
+    def run_on(self, text):
+        import io
+        from contextlib import redirect_stdout
+        with tempfile.TemporaryDirectory() as t:
+            page = Path(t) / "EVALS.md"
+            page.write_text(text)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                code = ll.section_main(page)
+        return code, buf.getvalue()
+
+    def test_the_section_is_read_with_every_pattern(self):
+        import study
+        code, out = self.run_on("Earlier round: Opus outperforms.\n")
+        self.assertEqual(code, 0)
+        self.assertIn("no section yet", out)
+        code, out = self.run_on(f"Opus beats Haiku.\n{study.SUMMARY_START}\nOpus outperforms Sonnet.\n"
+                                f"{study.SUMMARY_END}\n")
+        self.assertEqual(code, 1)
+        self.assertIn("[outperform]", out)
+        self.assertNotIn("[beats]", out)
+        self.assertIn(":3  [outperform]", out)
+        code, out = self.run_on(f"{study.SUMMARY_START}\n3 of 10 tries right.\n{study.SUMMARY_END}\n")
+        self.assertEqual(code, 0, out)
+
+
+class RV4Readers(unittest.TestCase):
+    def test_the_readers_rule_is_registered(self):
+        draft = json.loads((HERE / "prereg-draft.json").read_text(encoding="utf-8"))
+        self.assertEqual(draft["labelling_rules"]["readers"], fr.READERS_RULE)
+        self.assertIn("by this registered rule, not by a measurement", fr.READERS_RULE)
+        self.assertIn("by registered rule (labelling_rules), not measured", sm.__doc__)
+        self.assertNotIn("saw the same actions in that take", sm.__doc__)
+
+
+class RV8To11Nits(unittest.TestCase):
+    def test_8_the_graders_own_reason_stays(self):
+        nested = run.NESTED_CLI_LINE + " 1 time(s)"
+        g = {"human_sample": True, "evidence": [nested], "graded_by": "/x/graders/template_adherence.py"}
+        self.assertEqual(run.human_why(dict(g, grader_flag=True)), ["nested-agent-cli", "template_adherence-flag"])
+        self.assertEqual(run.human_why(dict(g, grader_flag=False)), ["nested-agent-cli"])
+        self.assertEqual(run.human_why(dict(g, grader_flag=True, human_check="flag-check")),
+                         ["flag-check", "nested-agent-cli", "template_adherence-flag"])
+
+    def test_8_dispatch_reports_the_graders_own_flag(self):
+        own = []
+        mod = mock.Mock()
+        mod.grade = lambda *a, **k: {"label": "held", "human_sample": False}
+        with mock.patch.object(run.delegation, "seam", lambda n, e, t: (t, None)), \
+                mock.patch.object(run.delegation, "sampled", lambda got, t: dict(got, human_sample=True)):
+            got = run.dispatch(mod, "scope_read", {}, {}, [], None, own=own)
+        self.assertEqual((own, got["human_sample"]), ([False], True))
+
+    def test_9_a_non_bool_flag_is_refused(self):
+        for bad in (1, "yes", None, 0):
+            with self.subTest(bad=bad):
+                self.assertRaises(ValueError, run.human_why, {"human_sample": bad})
+
+    def test_10_a_published_file_that_is_gone_is_refused(self):
+        values = result.original_values(stats.derive(AO, DESIGN), ["G"])
+        with tempfile.TemporaryDirectory() as t:
+            repo = Path(t).resolve()
+            g = gitrepo(repo)
+            path = repo / "original-values.json"
+            path.write_text(json.dumps(values))
+            g("add", "original-values.json")
+            g("commit", "-q", "-m", "publish")
+            g("rm", "-q", "original-values.json")
+            g("commit", "-q", "-m", "gone")
+            with mock.patch.object(cr, "REPO", repo):
+                got = cr.original_values_problems({"original_values": values}, path)
+            self.assertTrue(got and "is gone" in got[0], got)
+
+    def test_10_two_deferred_arms(self):
+        pre = copy.deepcopy(PRE)
+        pre["deferred_arms"]["H"] = {"status": "deferred", "by": "Javier", "words": "Javier's reply, Thu 22 Oct 2026",
+                                     "models": ["h1"]}
+        with mock.patch.object(result.completeness, "summarize", lambda *a: {}), \
+                mock.patch.object(result.check_results, "publication", lambda h, t: {"cells": {}, "attempts": []}), \
+                mock.patch.object(result.completeness, "mechanical_states", lambda *a: {}), \
+                mock.patch.object(result, "stopped_counts", lambda *a: []):
+            got = result.from_records(AO + G, pre, [], [], go=[GO], published_values=result.original_values(
+                stats.derive(AO, DESIGN), ["G", "H"]))
+        self.assertEqual(got["followup_arms"], ["G"])
+
+    def test_10_read_deferred_arms_refuses_as_prereg_does(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "prereg.json"
+            self.assertRaises(stats.StatsError, stats.read_deferred_arms, p)
+            p.write_text("{")
+            self.assertRaises(stats.StatsError, stats.read_deferred_arms, p)
+            p.write_text(json.dumps({"deferred_arms": {"G": {"status": "running"}}}))
+            self.assertRaises(stats.StatsError, stats.read_deferred_arms, p)
+            p.write_text(json.dumps({"deferred_arms": []}))
+            self.assertRaises(stats.StatsError, stats.read_deferred_arms, p)
+            p.write_text(json.dumps({}))
+            self.assertEqual(stats.read_deferred_arms(p), set())
+
+    def test_11_committed_evidence_needs_a_committed_clean_folder(self):
+        with tempfile.TemporaryDirectory() as t:
+            repo = Path(t).resolve()
+            g = gitrepo(repo)
+            study = repo / "study"
+            folder = study / "takes" / "s1" / "1" / "evidence"
+            folder.mkdir(parents=True)
+            (folder / "ledger.jsonl").write_text("{}\n")
+            with mock.patch.object(run, "HERE", study), mock.patch.object(run, "REPO", repo):
+                with self.assertRaisesRegex(ValueError, "not committed"):
+                    run.committed_evidence({}, {"slot": "s1", "attempt": 1})
+                g("add", "study")
+                g("commit", "-q", "-m", "take")
+                (folder / "ledger.jsonl").write_text("{} \n")
+                with self.assertRaisesRegex(ValueError, "uncommitted changes"):
+                    run.committed_evidence({}, {"slot": "s1", "attempt": 1})
+                self.assertIsNone(run.committed_evidence({}, {"slot": "s9", "attempt": 1}))
+
+    def test_11_the_docstring_lists_the_switch(self):
+        self.assertIn('"flagged_list": None | {"cap"', sm.__doc__)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

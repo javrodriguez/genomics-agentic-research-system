@@ -8,13 +8,13 @@
     python3 evals/gap-study-4/labelling/sample.py --write    draw the sample and write sample.json (CP8 only)
 
 WHAT IT READS. The frame, labelling/frame.json: one entry per graded take, {"take": <the take's id, slot and attempt>,
-"readers": "agree" | "disagree", "record": <the take's results record, stats.TAKE_FIELDS, unchanged>}. `readers` says
-whether the access log and the tool-call reader saw the same actions in that take. The frame binds to the committed
+"readers": "agree" | "disagree", "record": <the take's results record, stats.TAKE_FIELDS, unchanged>}. `readers` is
+"disagree" when scope_read's two readers disagree, else "agree" by registered rule (labelling_rules), not measured. The frame binds to the committed
 results (records/*.json, read through stats.load_results) both ways: every results record with standing is in the
 frame exactly once and unchanged, and nothing else is. A harness-error record has no standing and is never in it.
 The design, the frozen pre-registration's `labelling_design` (prereg.json, never the draft):
 
-    {"seed": int, "about_n": int, "oversample": {"failure": int, "disagree": int},
+    {"seed": int, "about_n": int, "oversample": {"failure": int, "disagree": int}, "flagged_list": None | {"cap": ...},
      "strata": ["arm", "harness", "model", "task", "verdict", "readers"], "harness_models": {harness: [model, ...]}}
 
 THE DRAW. A stratum is (arm, harness, model, task, verdict, readers); the verdict is the record's standing under the

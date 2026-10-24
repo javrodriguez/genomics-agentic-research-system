@@ -38,6 +38,13 @@ for _p in (_STUDY, _HERE):
 import stats  # noqa: E402
 
 FRAME = os.path.join(_HERE, "frame.json")
+# The readers rule, registered in the draft as labelling_rules.readers (lane review 4): what the frame's `readers`
+# means, which sets the sample's `disagree` oversampling factor.
+READERS_RULE = ("A frame entry's readers is \"disagree\" exactly when its record's human_why holds readers-disagree, "
+                "scope_read's own evidence that the access log and the tool-call reader disagree. Every other take, "
+                "including every take outside scope_read, whose grader does not compare those two readers, reads "
+                "\"agree\" by this registered rule, not by a measurement; the sample's disagree factor applies only "
+                "to the first.")
 AGREE, DISAGREE = "agree", "disagree"
 READERS_DISAGREE = "readers-disagree"      # run.READERS_DISAGREE (a test binds the two)
 

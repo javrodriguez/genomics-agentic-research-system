@@ -1928,9 +1928,55 @@ def fl1_flagged(sm, sh, ag):
     return out
 
 
+def fl2_flagged_sheet(sm, sh, ag):
+    """Lane pf1-l2b (review findings 1 and 2): the flagged check list, not blind, refused until the blind labels are
+    committed and while the sample carries no flagged list; its items hold exactly FLAGGED_FIELDS."""
+    out, E = [], sh.SheetError
+    item = {"sheet_id": "F001", "take": "s001/1", "why": ["scope_read-flag"],
+            "stratum": {"arm": "A", "harness": "claude-code", "model": "m-alpha", "task": "task-one",
+                        "verdict": "wrong", "readers": "agree"}}
+    doc = {"items": [], "flagged": {"cap": None, "flagged": 1, "listed": 1, "beyond_cap": 0, "items": [item]}}
+    contents = {"s001/1": {"text": "It went on.", "actions": ["run make check"]}}
+    try:
+        text = sh.write_flagged(doc, contents, [])
+    except Exception as e:  # noqa: BLE001
+        return [f"FL2: the flagged sheet refused a good list: {type(e).__name__}: {e}"]
+    for want in ("# Flagged check list (not blind)", "## F001: take s001/1 (arm A, `claude-code`, `m-alpha`, task "
+                 "task-one)", "Flagged for: scope_read-flag", "Flagged takes: 1; listed here: 1; beyond the cap: 0.",
+                 "It went on.", "run make check", "Check: "):
+        if want not in text:
+            out.append(f"FL2: the flagged sheet does not show {want!r}")
+    got = sh.flagged_items(doc, contents)
+    if [set(i) for i in got] != [set(sh.FLAGGED_FIELDS)] or got[0]["why"] != ["scope_read-flag"]:
+        out.append("FL2: a flagged item does not hold exactly its fields")
+    out += refused("FL2", lambda: sh.write_flagged(doc, contents, ["HISTORY: x"]), E, "a list before the labels")
+    out += refused("FL2", lambda: sh.write_flagged({"items": []}, contents, []), E, "a sample with no flagged list")
+    out += refused("FL2", lambda: sh.write_flagged(dict(doc, flagged={"items": None}), contents, []), E,
+                   "a flagged list with no items")
+    out += refused("FL2", lambda: sh.write_flagged(doc, {}, []), E, "a flagged take with no content")
+    out += refused("FL2", lambda: sh.render_flagged([dict(got[0], extra=1)], doc["flagged"]), E, "an extra field")
+    two = dict(doc, flagged=dict(doc["flagged"], items=[dict(item, sheet_id="F002"), item]))
+    if [i["sheet_id"] for i in sh.flagged_items(two, contents)] != ["F001", "F002"]:
+        out.append("FL2: the flagged items are not in F-number order")
+    none = dict(doc, flagged=dict(doc["flagged"], items=[]))
+    if "- none" in sh.write_flagged(none, contents, []) or "## F" in sh.write_flagged(none, contents, []):
+        out.append("FL2: an empty flagged list renders an item")
+    quiet = dict(contents, **{"s001/1": {"text": "x", "actions": []}})
+    if "- none" not in sh.write_flagged(doc, quiet, []):
+        out.append("FL2: a flagged take with no action does not say none")
+    with tempfile.TemporaryDirectory() as t, mock.patch.object(ag, "LABELS", str(Path(t) / "labels.json")):
+        if sh.blind_labels_problems(ag) != ["no labels.json: the blind sheet is not labelled yet"]:
+            out.append("FL2: a missing labels.json does not hold the flagged sheet back")
+    with mock.patch.object(ag, "LABELS", __file__), mock.patch.object(ag, "history_problems", lambda: ["HISTORY: y"]):
+        if sh.blind_labels_problems(ag) != ["HISTORY: y"]:
+            out.append("FL2: the flagged sheet does not read agreement's history check")
+    return out
+
+
 SAMPLE_CHECKS = (d1_design, f1_frame, b1_bind, a1_split, s1_seed, o1_over, m1_models, w1_weights, p1_pin, c1_check,
                  c2_cli, r4_deferred, fl1_flagged)
-SHEET_CHECKS = (k1_blind, k2_mask, k3_defs, k3r_real_graders, k4_content, k5_render, k6_write, k7_cli)
+SHEET_CHECKS = (k1_blind, k2_mask, k3_defs, k3r_real_graders, k4_content, k5_render, k6_write, k7_cli,
+                fl2_flagged_sheet)
 AGREE_CHECKS = (g1_labels, g2_rows, g3_back, g4_pool, g9_small_rows, g5_check, g6_history, g6r_real_git, g7_unmeasured, g8_cli,
                 l1_lint, x1_script, n1_names)
 ALL_CHECKS = SAMPLE_CHECKS + SHEET_CHECKS + AGREE_CHECKS

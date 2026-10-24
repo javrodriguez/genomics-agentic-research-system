@@ -344,6 +344,37 @@ def commit_bodies(since: str, at: str = DEFAULT_AT) -> list[tuple[str, str]]:
     return bodies
 
 
+def section_main(page: Path) -> int:
+    """Lane review 3 (pf1-l2b): the public page's round 4 section, read as lint_pooling --section-of reads it (only this
+    round's marked block; the earlier rounds' sections are theirs), against every pattern here, the comparatives
+    included. An excusal names the page's repository path and the exact line, as everywhere."""
+    text = page.read_text(errors="replace") if page.is_file() else ""
+    if study.SUMMARY_START not in text or study.SUMMARY_END not in text:
+        print(f"no section yet: {page} carries no {study.SUMMARY_START} block, so this scan has read nothing and "
+              f"claims nothing. Not a pass.")
+        return 0
+    start = text.index(study.SUMMARY_START)
+    end = text.index(study.SUMMARY_END, start)
+    before = text[:start].count("\n")
+    section = text[start:end]
+    try:
+        rel = str(page.resolve().relative_to(REPO))
+    except ValueError:
+        rel = str(page)
+    found = scan_text(section, rel, load_allowlist())
+    for f in found:
+        f["line"] += before
+    if not found:
+        print(f"clean — this round's section of {page} scanned ({section.count(chr(10))} line(s))")
+        return 0
+    print(f"{len(found)} finding(s) in this round's section of {page}:\n")
+    for f in found:
+        print(f"  {f['file']}:{f['line']}  [{f['pattern']}] {f['matched']!r}")
+        print(f"      {f['text'][:120]}")
+        print(f"      why banned: {f['why']}")
+    return 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Refuse the words this study may not publish.")
     ap.add_argument("paths", nargs="*")
@@ -353,7 +384,13 @@ def main() -> int:
     ap.add_argument("--include-code", action="store_true",
                     help="also scan .py sources (off by default; see NEVER_SCANNED)")
     ap.add_argument("--list-patterns", action="store_true")
+    ap.add_argument("--section-of", type=Path, metavar="FILE",
+                    help="scan only this round's marked section of FILE (study.SUMMARY_START..SUMMARY_END), as "
+                         "lint_pooling --section-of does; says so when the section does not exist yet")
     args = ap.parse_args()
+
+    if args.section_of is not None:
+        return section_main(args.section_of)
 
     if args.list_patterns:
         for name, rx, why in PATTERNS:

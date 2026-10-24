@@ -139,18 +139,53 @@ def render_stopped(rows: list) -> str:
     return "\n".join(out + [""])
 
 
+# Lane review 1 (pf1-l2b): with labelling_design.flagged_list on, the page prints how many takes were flagged, how
+# many the check list holds and how many fell beyond its cap; with it off (null) nothing is added, byte for byte.
+def _sample_doc():
+    from labelling import sample
+    got = sample.derive()
+    return None if got is None else got[2]
+
+
+def flagged_counts(pre: dict, reader=None):
+    design = pre.get("labelling_design")
+    fl = design.get("flagged_list") if isinstance(design, dict) else None
+    if fl is None:
+        return None
+    doc = (_sample_doc if reader is None else reader)()
+    if doc is None:
+        return {"cap": fl["cap"], "drawn": False}
+    f = doc["flagged"]
+    return {"cap": f["cap"], "drawn": True, "flagged": f["flagged"], "listed": f["listed"],
+            "beyond_cap": f["beyond_cap"]}
+
+
+def render_flagged_counts(c) -> str:
+    if c is None:
+        return ""
+    cap = "no cap" if c["cap"] is None else f"a cap of {stats._say(c['cap'])}"
+    out = ["## Flagged takes, the separate check list", "",
+           f"Every take a grader flagged for the human sample goes to a separate check list, read after the blind "
+           f"labels, with {cap}.", ""]
+    if not c["drawn"]:
+        return "\n".join(out + ["No flagged list is drawn yet: there is no frame.", ""])
+    return "\n".join(out + [f"Flagged takes: {stats._say(c['flagged'])}; on the check list: "
+                            f"{stats._say(c['listed'])}; beyond the cap, published and not read: "
+                            f"{stats._say(c['beyond_cap'])}.", ""])
+
+
 def from_records(records: list, pre: dict, rows: list, history: list, table=None, *, go=None,
-                 published_values=None, evidence_for=None) -> dict:
+                 published_values=None, evidence_for=None, flagged_reader=None) -> dict:
     published = check_results.publication(history, table)
     states = completeness.mechanical_states(history, published["cells"], table)
     deferred = deferred_arm_names(pre)
     original = stats.original_records(records, deferred)
     derived = stats.derive(original, pre[stats.DESIGN_KEY])
     held = sorted({r["arm"] for r in records} & set(deferred))
-    released = [a for a in deferred if prereg.deferred_arm_go(a, go)] if held else []
-    if sorted(released) != held:
-        raise ValueError(f"records of the deferred arm(s) {sorted(set(held) - set(released))} exist and no committed "
-                         f"go record releases them ({prereg.GO_RECORD.name})")
+    unreleased = [a for a in held if not prereg.deferred_arm_go(a, go)]      # lane review 10: per arm with records
+    if unreleased:
+        raise ValueError(f"records of the deferred arm(s) {unreleased} exist and no committed go record releases "
+                         f"them ({prereg.GO_RECORD.name})")
     followup = []
     if held:
         values = read_original_values() if published_values is None else published_values
@@ -163,6 +198,7 @@ def from_records(records: list, pre: dict, rows: list, history: list, table=None
             "followup": followup, "followup_arms": held,
             "completeness": completeness.summarize(pre, records, states, rows),
             "stopped": stopped_counts(rows, history, evidence_for),
+            "flagged": flagged_counts(pre, flagged_reader),
             "pause_notes": pause_notes(rows, published["attempts"])}
 
 
@@ -203,6 +239,7 @@ def render(rec: dict) -> str:
         lines += [empty_line(), ""]
     lines += [completeness.render(rec["completeness"]), render_pause_notes(rec["pause_notes"]),
               render_stopped(rec["stopped"]) if "stopped" in rec else "",
+              *([render_flagged_counts(rec["flagged"])] if rec.get("flagged") is not None else []),   # off: no byte
               stats_block(rec["stats"]), render_followup(rec.get("followup") or [], rec.get("followup_arms") or []),
               prior_sections()]
     return "\n".join(lines).rstrip() + "\n"
