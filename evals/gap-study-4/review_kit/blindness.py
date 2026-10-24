@@ -39,8 +39,11 @@ stamp that no session wrote by any tool, the shell included; the record names wh
 hold the marker it explains. "Read it there" means a tool result the sub-agent received, never its own input, or a
 report a nested agent of its own handed it and read the same way; a nested session that is missing explains
 nothing. A report read through another tool (TaskOutput, or its tasks/<id>.output file) is a hand-back, read once;
-an Agent result that names no agent is listed and stays UNEXPLAINED. A record kept twice, and a rendered form that
-reflows its prompt, are read once. Task notifications are listed apart from the reports. A study word is traced by
+an Agent result that names no agent is listed and stays UNEXPLAINED. A hit the sub-agent did not read but its brief
+holds is traced via brief only when the brief's author read it in a tool result or it is in the folder at launch,
+and section 4 prints it apart. A cp, mv or rsync writes only its destination. A record kept twice, and a rendered
+form that reflows its prompt, are read once. Task notifications are listed apart from the
+reports. A study word is traced by
 its word alone, so a word the study's own files also hold passes even when the sub-agent met it elsewhere: the
 ruling's own limit, and why the operator rows are refused outright.
 
@@ -100,8 +103,13 @@ TASK_OUTPUT = re.compile(r"tasks/(\w+)\.output")
 # launch.py's per-file record of the folder at launch (round 2 on): `<sha256>  <path under the folder>` per line.
 MANIFEST = "folder-manifest.txt"
 # A shell command that writes, by its own text: a redirect (never 2>&1 or a here-document), or a verb that writes.
-WRITE_CMD = re.compile(r"(?<![\d&<>])>(?!&)|\b(?:mkdir|cp|mv|tee|touch|rsync|ln|install|unzip|tar)\b|\bsed\s+-i"
-                       r"|\bgit\s+(?:clone|worktree|init)\b")
+REDIRECT = re.compile(r"(?<![\d&<>])>(?!&)")
+WRITE_VERB = re.compile(r"\b(?:mkdir|cp|mv|tee|touch|rsync|ln|install|unzip|tar)\b|\bsed\s+-i"
+                        r"|\bgit\s+(?:clone|worktree|init)\b")
+WRITE_CMD = re.compile(REDIRECT.pattern + "|" + WRITE_VERB.pattern)
+# The steps of a shell command, and the verbs that copy or move (their sources are reads).
+SEGMENT = re.compile(r"&&|\|\||[;|\n]")
+COPY_VERBS = ("cp", "mv", "rsync")
 # The characters a quoted word or path is made of, for the extent of a hit inside a hand-back.
 EXTENT = re.compile(r"[a-z0-9_.\-/~']")
 
@@ -327,14 +335,36 @@ class Session:
             elif p:
                 self.writes.add(p)
         elif name == "Bash":
-            cmd = str(inp.get("command") or "")
-            if WRITE_CMD.search(cmd):
-                for m in ABS_PATH.finditer(cmd):
-                    p = m.group(1).rstrip(").,:;\\")
-                    if p and inside(p, folder):
-                        self.written_inside.add(str(Path(p).resolve()))
-                    elif p and not p.startswith("/dev/"):
-                        self.writes.add(p)
+            cwd = None
+            for seg in SEGMENT.split(str(inp.get("command") or "")):
+                words = seg.split()
+                if words[:1] == ["cd"] and len(words) > 1:
+                    cwd = words[1] if words[1].startswith("/") else (cwd + "/" + words[1] if cwd else None)
+                    continue
+                self.note_shell_write(seg, folder, cwd)
+
+    def note_shell_write(self, seg: str, folder: Path, cwd: str | None = None) -> None:
+        """One step of a shell command that writes, by its own text. A cp, mv or rsync writes only its last argument,
+        its destination; its sources are reads, not writes (the lead's ruling on the fold of 5a6dc21), and a step
+        that writes only by a redirect writes only the redirect's target, never the program it runs. A step that
+        names no absolute path to write writes where an earlier `cd` of the same command left it."""
+        if not WRITE_CMD.search(seg):
+            return
+        words = seg.split()
+        redirects = list(REDIRECT.finditer(seg))
+        target = seg
+        if words and words[0] in COPY_VERBS:
+            target = words[-1]
+        elif redirects and not WRITE_VERB.search(seg):
+            target = seg[redirects[-1].end():]
+        if cwd and not ABS_PATH.search(target) and not inside(cwd, folder):
+            self.writes.add(cwd)
+        for m in ABS_PATH.finditer(target):
+            p = m.group(1).rstrip(").,:;\\")
+            if p and inside(p, folder):
+                self.written_inside.add(str(Path(p).resolve()))
+            elif p and not p.startswith("/dev/"):
+                self.writes.add(p)
 
 
 def outside_paths(s: Session, folder: Path) -> set[str]:
@@ -526,14 +556,32 @@ def analyse(folder: Path, sid: str, projects: Path = PROJECTS) -> dict:
     # Operator hits are searched too, so the one rule that refuses them is the line below, and it alone.
     wanted = {c for h in hits for c in candidates(h["ext"], h["word"], folder)}
     in_folder = found_in(files, folder, wanted)
+    # The brief each agent was launched with, and the session that wrote it (the lead's ruling, 24 Oct 2026): a hit
+    # that traces only through the brief is explained when its extent is explained for the brief's author, in a
+    # tool result that session received or in the launch corpus. It never widens past what section 1 admits.
+    briefs: dict[str, tuple[Session, str]] = {}
+    for s in sessions:
+        for tid, aid in s.launches.items():
+            briefs[aid] = (s, "\n".join(leaves((s.calls.get(tid) or {}).get("prompt"))).lower())
     for h in hits:
-        h["traced"] = (not h["op"]) and any(c in in_folder and read_there(h["aid"], c, side)
-                                            for c in candidates(h["ext"], h["word"], folder))
+        cs = candidates(h["ext"], h["word"], folder)
+        if h["op"]:
+            h["via"] = None
+        elif any(c in in_folder and read_there(h["aid"], c, side) for c in cs):
+            h["via"] = "direct"
+        elif h["aid"] in briefs and any(c in briefs[h["aid"]][1] and (c in briefs[h["aid"]][0].traffic
+                                                                      or c in in_folder) for c in cs):
+            h["via"] = "brief"
+        else:
+            h["via"] = None
+        h["traced"] = h["via"] is not None
     hb_table = []
     for label, _, _ in rows():
         mine = [h for h in hits if h["label"] == label]
         traced = sum(h["traced"] for h in mine)
-        hb_table.append({"label": label, "total": len(mine), "traced": traced, "un": len(mine) - traced})
+        brief = sum(h["via"] == "brief" for h in mine)
+        hb_table.append({"label": label, "total": len(mine), "traced": traced, "brief": brief,
+                         "un": len(mine) - traced})
     side_ctx = [line for s in side.values() for line in s.ctx]
     per_agent = {aid: [r for r in table_of(s.ctx, folder) if r["un"]] for aid, s in side.items()}
     skills = set(reviewer.skills or ())
@@ -603,9 +651,13 @@ def render(a: dict, folder: Path) -> str:
             "   operator row is never explained. A study word is traced by its word alone, so a word the study's",
             "   own files also hold passes even when the sub-agent met it elsewhere; that is why the operator",
             "   rows are refused outright. The count that binds is UNEXPLAINED, and it must be 0.",
+            "   A hit is traced via brief when the sub-agent did not read it but its brief holds it, and the",
+            "   brief's author read it in a tool result or it is in the folder at launch; it never admits more",
+            "   than section 1 does for the author.",
             f"   The folder as it stood at launch: {a['corpus_rule']}.", "",
-            f"   {'marker':34} {'total':>6} {'traced to the folder':>21} {'UNEXPLAINED':>12}"]
-    out += [f"   {r['label']:34} {r['total']:>6} {r['traced']:>21} {r['un']:>12}" for r in a["handback_table"]]
+            f"   {'marker':34} {'total':>6} {'traced, direct':>15} {'traced via brief':>17} {'UNEXPLAINED':>12}"]
+    out += [f"   {r['label']:34} {r['total']:>6} {r['traced'] - r['brief']:>15} {r['brief']:>17} {r['un']:>12}"
+            for r in a["handback_table"]]
     if a["handback_quotes"]:
         out.append("   UNEXPLAINED hits, each quoted to its first 120 characters:")
         out += [f"   - {who}: {q}" for who, q in a["handback_quotes"]]
