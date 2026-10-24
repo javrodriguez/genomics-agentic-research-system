@@ -5,12 +5,14 @@ The reviewer is never handed them: `build_kit.py` gives it `BRIEF.md`, `why.md`,
 
 ## A round, in order
 
-1. On the remote runner, in a throwaway child of the head under review, run `python3 evals/gap-study-4/review_kit/athena_outputs.py <outputs folder> [--holdout-tool <aegis holdout.py>]`. It runs `run_checks.py`, each command of `freeze_rehearsal.py`'s `COMMANDS` directly, `freeze.py --check` and the three legs, and writes one file per gate with its own `command:`, `commit:` and `exit:` lines and the masked tail of its output. Copy the folder back to the machine that builds the kit.
-2. Build the folder outside the Brain and this repository: `python3 evals/gap-study-4/review_kit/build_kit.py <folder> --n <N> --athena <outputs folder> [--previous <bytes>]`. It refuses an outputs folder that is empty or nested, or that holds a link, a dotfile, an empty file, a file without the line `commit: <the head sha>`, or a file carrying an absolute path, a person's name or an operator marker, and copies the rest to `<folder>/athena/`. Never fill `athena/` by hand: that skips every one of these refusals.
-3. Register the row and commit it alone: `python3 evals/gap-study-4/review_kit/rounds.py --add --kind prefreeze --folder <folder>`. The row hashes the whole folder, `athena/` included.
-4. Read the row's session id (`rounds.py --session-id <row>`) and launch: `python3 evals/gap-study-4/review_kit/launch.py <folder> <id>`. A session cut off after its first agent turn is resumed with `--resume`, never relaunched.
-5. Run `python3 evals/gap-study-4/review_kit/blindness.py <folder>` on the reviewer's own session file.
-6. Commit the report exactly once: `python3 evals/gap-study-4/review_kit/commit_review.py <folder> <N>`.
+Every step names its interpreter: `python3.12`, the operator machine's Python 3.12, from a shell whose PATH holds no conda folder (a bare `python3` there can be an older Python that these files do not run on).
+
+1. Produce the outputs the way the battery itself runs, on the remote runner through the aegis suite road, never in a walk child: from the aegis checkout, `python3.12 ops/athena_suite.py run --repo <clone> --rev <the head under review> --label <label> --kind gars-gap4 --outputs --jobs 24 --solo --max-minutes 360`, then `python3.12 ops/athena_suite.py fetch <run id> --wait`. As the suite account, in the battery's own fresh checkout and HOME, under umask 022, it runs the GARS suite, the battery's lines 24 at a time, then `athena_outputs.py <outputs folder> --run-checks-from <the battery's own copy>`, which takes the battery as the `run_checks.py` gate and runs each command of `freeze_rehearsal.py`'s `COMMANDS` directly, `freeze.py --check` and the three legs, writing one file per gate with its own `command:`, `commit:` and `exit:` lines and the masked tail of its output. `holdout.py --check` is written as OWED (ruling C4). Only a fetch that reads PASS hands the outputs folder in: `<the run's local folder>/athena-outputs/`, its tarball's sha256 checked against the run's log before it is unpacked.
+2. Build the folder outside the Brain and this repository: `python3.12 evals/gap-study-4/review_kit/build_kit.py <folder> --n <N> --athena <outputs folder> [--previous <bytes>]`. It refuses an outputs folder that is empty or nested, or that holds a link, a dotfile, an empty file, a file without the line `commit: <the head sha>`, or a file carrying an absolute path, a person's name or an operator marker, and copies the rest to `<folder>/athena/`. Never fill `athena/` by hand: that skips every one of these refusals.
+3. Register the row and commit it alone: `python3.12 evals/gap-study-4/review_kit/rounds.py --add --kind prefreeze --folder <folder>`. The row hashes the whole folder, `athena/` included.
+4. Read the row's session id (`python3.12 evals/gap-study-4/review_kit/rounds.py --session-id <row>`) and launch: `python3.12 evals/gap-study-4/review_kit/launch.py <folder> <id>`. A session cut off after its first agent turn is resumed with `--resume`, never relaunched.
+5. Run `python3.12 evals/gap-study-4/review_kit/blindness.py <folder>` on the reviewer's own session file.
+6. Commit the report exactly once: `python3.12 evals/gap-study-4/review_kit/commit_review.py <folder> <N>`.
 
 ## Before round 1: the skills smoke
 
@@ -26,12 +28,12 @@ BUILT-IN SKILLS: dataviz, update-config, keybindings-help, code-review, simplify
 How the list was obtained: from the `skill_listing` records of round 3's pre-freeze reviewer sessions, headless sessions launched outside the Brain with the same isolation flags (the sessions named by `evals/gap-study-3/review_kit/prefreeze-3-blindness.txt`, `prefreeze-4-blindness.txt` and `prefreeze-5-blindness.txt`). Each recorded `skillCount` 13 and exactly these 13 names. Read from those session files on Wed 21 Oct 2026 by lane review-kit-port; no session was launched to obtain it.
 
 1. Make a throwaway folder outside the Brain and this repository, holding a `BRIEF.md` with the one line `Reply with the single word done, and stop.`, an empty `study/` made by `git init` (no remote), a `COMMIT` file and an `athena/` folder with one placeholder file, so `launch.py`'s folder checks pass. It holds no study bytes.
-2. Launch it with no session id: `python3 evals/gap-study-4/review_kit/launch.py <smoke folder>`. The id is a fresh uuid4 and belongs to no row: the smoke binds no bytes and is not a round. Never launch it under a row's derived id.
-3. Run `python3 evals/gap-study-4/review_kit/blindness.py <smoke folder>`.
+2. Launch it with no session id: `python3.12 evals/gap-study-4/review_kit/launch.py <smoke folder>`. The id is a fresh uuid4 and belongs to no row: the smoke binds no bytes and is not a round. Never launch it under a row's derived id.
+3. Run `python3.12 evals/gap-study-4/review_kit/blindness.py <smoke folder>`.
 4. List the skills the session was offered, from the session file `blindness.py` read (`~/.claude/projects/*/<id>.jsonl`, the id in `<smoke folder>-launch/SESSION`):
 
    ```
-   python3 -c 'import json,sys
+   python3.12 -c 'import json,sys
    for l in open(sys.argv[1]):
        r = json.loads(l); a = r.get("attachment") or {}
        if r.get("type") == "attachment" and "skill" in str(a.get("type", "")): print(a.get("type"), a.get("skillCount"), a.get("names"))' <session file>

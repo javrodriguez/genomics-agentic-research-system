@@ -31,11 +31,20 @@ and a reviewer that runs only light checks and reads the remote runner's outputs
   K11.effort   launch and resume both pass --effort medium (OD56: Opus 5.5 at medium for reviewers)
   K12.producer review_kit/athena_outputs.py writes one file per gate with its own command and commit lines, masks
                by named rules, and its files pass build_kit's athena/ check
+  K13.battery  athena_outputs.py --run-checks-from takes the remote suite's parallel battery as the run_checks gate:
+               the copy must open with its own `battery commit <the head> jobs <N>` line and close with the commit's
+               own summary line, once and last; the gate's exit is the commit's own run_checks.verdict of that line;
+               a link, a missing file, a file inside the repository, another commit, a second or a misplaced
+               summary line is refused before any file is written. The README names python3.12 for every step and
+               the suite road for step 1
 
 Folds of glitch-f1's rulings on the first hand-back (Wed 21 Oct 2026): K7, K8 and K9 were written red first.
 Folds of the review of c41b7d50 (REVIEW-review-kit-port-c41b7d5.md, glitch-f1's rulings): K10, K11, K12 and the
 tightened K8 (a commit line, not the sha anywhere; no dotfile, absolute home path, person or operator marker; the
 half-built folder removed) and K9 (the built-in list, effort, environment names) were written red first.
+
+Lane prefreeze-road (the Lane-orchestrator's ruling of Sat 24 Oct 2026, under Javier's standing delegation, after the
+pre-freeze round's remote outputs came back with environment reds): K13 was written red first.
 
 Reads committed files only; no model, network, container or take. Interpreter state (sys.modules, sys.path,
 os.environ, cwd) is left as found.
@@ -404,6 +413,88 @@ class Producer(unittest.TestCase):
         self.assertIn("athena_outputs.py", text("readme"), "K12.producer: the README names it")
 
 
+class Battery(unittest.TestCase):
+    HEAD = "0123456789abcdef0123456789abcdef01234567"
+    PASS3 = ("PASS [test_round4] exit 0 in 9.0s: python3 -W ignore evals/gap-study-4/test_round4.py\n"
+             "    test_round4: 9 run, 0 skipped, 0 expected failures\n"
+             "PASS [a.txt:1] exit 0 in 0.1s: true\nPASS [a.txt:2] exit 0 in 0.1s: true\n"
+             "athena-suite: battery tree unchanged\n")
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.pr = load_isolated(FILES["producer"], "review_kit_athena_outputs_for_battery", MUTATED.get("producer"))
+        self.rc = load_isolated(HERE / "run_checks.py", "run_checks_for_battery_test")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def copy(self, body: str, head: str | None = None, jobs: int = 24, name: str = "battery.out") -> Path:
+        p = self.root / name
+        p.write_text(f"athena-suite: battery commit {head or self.HEAD} jobs {jobs}\n" + body)
+        return p
+
+    def test_the_battery_copy_is_the_run_checks_gate(self):
+        for body, code in ((self.PASS3 + "run_checks: 3 of 3 commands passed\n", 0),
+                           (self.PASS3.replace("PASS [a.txt:2] exit 0", "FAIL [a.txt:2] exit 1")
+                            + "run_checks: 2 of 3 commands passed\n", 1)):
+            with self.subTest(code=code):
+                why, gate = self.pr.battery_gate(self.copy(body), self.HEAD, self.rc, REPO)
+                self.assertIsNone(why, f"K13.battery: {why}")
+                label, got, out = gate
+                self.assertEqual(got, code, "K13.battery: the exit is the commit's own verdict of its summary line")
+                self.assertTrue(label.startswith("run_checks.py"), f"K13.battery: {label}")
+                self.assertIn("24 at a time", label, "K13.battery: the label says how the lines ran")
+                self.assertEqual(out.splitlines()[-1], body.splitlines()[-1], "K13.battery: the summary, verbatim, last")
+                self.assertNotIn("battery commit", out, "K13.battery: the binding line is not gate output")
+                self.assertIn("PASS [a.txt:1]", out, "K13.battery")
+
+    def test_a_copy_that_cannot_be_bound_to_this_head_is_refused(self):
+        good = self.PASS3 + "run_checks: 3 of 3 commands passed\n"
+        inside = REPO / "evals" / "gap-study-4" / "no-such-battery-copy.out"
+        link = self.root / "l.out"
+        os.symlink(self.copy(good, name="real.out"), link)
+        (self.root / "nohead.out").write_text(good)
+        (self.root / "nojobs.out").write_text(f"athena-suite: battery commit {self.HEAD}\n" + good)
+        cases = {
+            "missing": self.root / "absent.out",
+            "a link": link,
+            "inside the repository": inside,
+            "another commit": self.copy(good, head="f" * 40, name="other.out"),
+            "no binding line": self.root / "nohead.out",
+            "a binding line without jobs": self.root / "nojobs.out",
+            "no summary line": self.copy(self.PASS3, name="nosum.out"),
+            "two summary lines": self.copy("run_checks: 3 of 3 commands passed\n" + good, name="two.out"),
+            "summary not last": self.copy(good + "later\n", name="notlast.out"),
+            "a summary of nothing": self.copy("run_checks: 0 of 0 commands passed\n", name="zero.out"),
+        }
+        for case, path in cases.items():
+            with self.subTest(case=case):
+                why, gate = self.pr.battery_gate(path, self.HEAD, self.rc, REPO)
+                self.assertTrue(why, f"K13.battery: {case} was taken as the gate")
+                self.assertIsNone(gate, f"K13.battery: {case}")
+
+    def test_main_checks_the_copy_before_any_file_is_written(self):
+        src = text("producer")
+        self.assertIn('ap.add_argument("--run-checks-from"', src, "K13.battery")
+        main = src.split("def main()", 1)[1]
+        self.assertLess(main.index("battery_gate("), main.index("out.mkdir("), "K13.battery: checked before writing")
+
+    def test_the_readme_names_the_interpreter_and_the_suite_road(self):
+        r = text("readme")
+        order = r.split("## A round, in order", 1)[1].split("\n## ", 1)[0]
+        bare = re.findall(r"`python3 [^`]*`", order)
+        self.assertEqual(bare, [], f"K13.battery: a step names a bare python3: {bare}")
+        for n in range(2, 7):
+            step = re.search(rf"^{n}\. .*$", order, re.M)
+            self.assertIsNotNone(step, f"K13.battery: no step {n}")
+            self.assertIn("`python3.12 evals/gap-study-4/review_kit/", step.group(0), f"K13.battery: step {n}")
+        first = re.search(r"^1\. .*$", order, re.M)
+        self.assertIsNotNone(first, "K13.battery: no step 1")
+        for must in ("python3.12", "athena_suite.py run", "--kind gars-gap4", "--outputs", "--jobs 24", "fetch"):
+            self.assertIn(must, first.group(0), f"K13.battery: step 1 names {must}")
+
+
 def load_launch():
     return load_isolated(FILES["launch"], "review_kit_launch_for_test", MUTATED.get("launch"))
 
@@ -491,6 +582,18 @@ def mutants():
                                      '"none", *drive.ISOLATION_FLAGS,'),
         "producer-no-commit-line": ("Producer.test_each_file_carries_its_lines_and_passes_the_kit_check",
                                     "K12.producer", "producer", 'f"commit: {head}\\n"', 'f"sha: {head}\\n"'),
+        "battery-other-commit": ("Battery.test_a_copy_that_cannot_be_bound_to_this_head_is_refused", "K13.battery",
+                                 "producer", "if m.group(1) != head:", "if False:"),
+        "battery-summary-anywhere": ("Battery.test_a_copy_that_cannot_be_bound_to_this_head_is_refused",
+                                     "K13.battery", "producer", "if len(closing) != 1 or closing[0] != len(lines) - 1:",
+                                     "if not closing:"),
+        "battery-exit-forced": ("Battery.test_the_battery_copy_is_the_run_checks_gate", "K13.battery", "producer",
+                                "code = run_checks.verdict(k, n)", "code = 0"),
+        "battery-link-taken": ("Battery.test_a_copy_that_cannot_be_bound_to_this_head_is_refused", "K13.battery",
+                               "producer", "if path.is_symlink() or not path.is_file():", "if not path.exists():"),
+        "readme-bare-python": ("Battery.test_the_readme_names_the_interpreter_and_the_suite_road", "K13.battery",
+                               "readme", "2. Build the folder outside the Brain and this repository: `python3.12 ",
+                               "2. Build the folder outside the Brain and this repository: `python3 "),
         "builtin-list-dropped": ("Smoke.test_the_operator_notes_require_the_skills_smoke", "K9.smoke", "readme",
                                  "BUILT-IN SKILLS: ", "Built-in skills: "),
         "brief-outcomes-key": ("Brief.test_every_draft_key_the_brief_names_exists", "K4.brief", "brief",

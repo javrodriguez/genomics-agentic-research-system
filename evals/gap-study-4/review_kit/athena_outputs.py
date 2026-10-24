@@ -2,6 +2,7 @@
 """Write the heavy gates' outputs a pre-freeze reviewer reads from athena/, one file per gate, on the remote runner.
 
     python3 evals/gap-study-4/review_kit/athena_outputs.py <out folder> [--holdout-tool <aegis holdout.py>] [--timeout-s N]
+    python3 evals/gap-study-4/review_kit/athena_outputs.py <out folder> --run-checks-from <battery copy> [...]
 
 Run by the pre-check operator on the remote runner, in a throwaway child of the head under review, never on the Mac.
 It runs, from the repository root and at its committed HEAD (it refuses a study with uncommitted changes, so the
@@ -22,6 +23,19 @@ person name <account>, and an operator marker <marker> (blindness.py's MARKERS, 
 carries anyway; build_kit.athena_markers). The gate's exit code is never masked. Lane review-kit-port, from the
 review of the port (MINOR 3: nothing produced the files the kit requires).
 
+THE SUITE ROAD (lane prefreeze-road, the Lane-orchestrator's ruling of Sat 24 Oct 2026 under Javier's standing
+delegation). The first pre-freeze round ran this file in a walk child as the login account: run_checks.py ran its
+lines one after another and timed out at 21600 s, and the clone's umask and the backgrounded start's ignored SIGINT
+turned two battery tests red that the suite's own battery passes. The outputs are now produced the way the battery
+runs: athena_suite.py run --kind gars-gap4 --outputs runs the GARS suite, then the battery's lines --jobs at a time,
+then this file as step 3, as the suite account, in the battery's own fresh checkout and HOME, under the step wrapper
+(umask 022). The battery mode writes a copy of its own output, and --run-checks-from hands that copy in as the
+run_checks gate's output in place of a serial run. battery_gate reads it before any file is written and refuses a
+link, a missing file, a file inside this repository, a copy whose first line is not `athena-suite: battery commit
+<this HEAD> jobs <N>`, and a copy without exactly one summary line in run_checks.summary's form, as its last line.
+The gate's exit is this commit's own run_checks.verdict of that line, never a number handed in; its label says the
+lines ran N at a time. Every other gate runs here exactly as before.
+
 No model, no network, no container. stdlib only.
 """
 
@@ -41,6 +55,8 @@ TAIL_LINES = 200
 LEGS_CODE = ("import json, freeze; p = freeze.unrecorded_shapes_problem(json.load(open('prereg-draft.json'))); "
              "print('every leg holds' if p is None else p); raise SystemExit(0 if p is None else 1)")
 LEGS_NAME = "freeze.unrecorded_shapes_problem(prereg-draft.json): legs i-iii"
+BATTERY_HEAD = re.compile(r"athena-suite: battery commit ([0-9a-f]{40}) jobs ([1-9][0-9]*)")
+SUMMARY = re.compile(r"run_checks: ([0-9]+) of ([0-9]+) commands passed")
 
 
 def _load_build_kit():
@@ -87,11 +103,49 @@ def write_output(out: Path, n: int, name: str, head: str, code: int, text: str, 
     return fname
 
 
+def load_run_checks():
+    """This commit's own run_checks.py, by path."""
+    spec = importlib.util.spec_from_file_location("run_checks_for_outputs", STUDY_DIR / "run_checks.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def battery_gate(path: Path, head: str, run_checks, repo: Path = REPO):
+    """(None, (label, exit, output)) for the remote suite's battery copy at `path` taken as the run_checks gate, or
+    (why not, None). See THE SUITE ROAD above."""
+    path = Path(path)
+    if not path.is_absolute():
+        return f"--run-checks-from {path} is not an absolute path", None
+    if path.is_symlink() or not path.is_file():
+        return f"--run-checks-from {path.name} is not a regular file", None
+    if path.resolve().is_relative_to(repo.resolve()):
+        return "--run-checks-from names a file inside this repository", None
+    lines = path.read_text(encoding="utf-8", errors="replace").rstrip("\n").split("\n")
+    m = BATTERY_HEAD.fullmatch(lines[0])
+    if not m:
+        return "the battery copy does not open with its `athena-suite: battery commit <sha> jobs <N>` line", None
+    if m.group(1) != head:
+        return f"the battery copy is of commit {m.group(1)[:12]}, not this HEAD {head[:12]}", None
+    lines = lines[1:]
+    closing = [i for i, line in enumerate(lines) if SUMMARY.fullmatch(line)]
+    if len(closing) != 1 or closing[0] != len(lines) - 1:
+        return f"the battery copy holds {len(closing)} summary line(s), and it must hold one, as its last line", None
+    last = SUMMARY.fullmatch(lines[-1])
+    k, n = (int(x) for x in last.groups()) if last else (0, 0)
+    if not last or run_checks.summary(k, n) != lines[-1] or n < 1:
+        return "the battery copy's summary line is not one this commit's run_checks.summary prints", None
+    code = run_checks.verdict(k, n)
+    label = f"run_checks.py (its lines {m.group(2)} at a time, by the remote suite's battery mode)"
+    return None, (label, code, "\n".join(lines) + "\n")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("out", type=Path)
     ap.add_argument("--holdout-tool", default=None)
     ap.add_argument("--timeout-s", type=int, default=6 * 3600)
+    ap.add_argument("--run-checks-from", type=Path, default=None)
     args = ap.parse_args()
     out = args.out.resolve()
     if out.exists():
@@ -105,6 +159,12 @@ def main() -> int:
         print("refusing: the repository has uncommitted changes, so no commit line could say what ran")
         return 2
     head = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    battery = None
+    if args.run_checks_from is not None:
+        why, battery = battery_gate(args.run_checks_from, head, load_run_checks())
+        if why:
+            print("refusing: " + why)
+            return 2
     sys.path.insert(0, str(STUDY_DIR))
     import freeze_rehearsal  # noqa: E402  (imported here: it imports the freeze and the checker)
     fr = freeze_rehearsal
@@ -114,7 +174,7 @@ def main() -> int:
             print("refusing: " + why)
             return 2
     py = [sys.executable, "-B", "-W", "ignore"]
-    gates = [("run_checks.py", py + [fr.study.rel("run_checks.py")], REPO)]
+    gates = [("run_checks.py", py + [fr.study.rel("run_checks.py")], REPO) if battery is None else (battery[0], None, None)]
     for command in freeze_rehearsal.COMMANDS:
         if command == fr.HOLDOUT_GATE and args.holdout_tool is not None:
             gates.append((fr.HOLDOUT_STEP_LABEL, list(fr.holdout_check_command(args.holdout_tool, REPO, head)), REPO))
@@ -126,8 +186,11 @@ def main() -> int:
     env = fr.step_environment()
     passed = 0
     for n, (name, argv, cwd) in enumerate(gates, 1):
-        owed = fr.owed_step(argv)
-        code, text = owed if owed else fr.sh(argv, cwd, env, timeout=args.timeout_s)
+        if battery is not None and n == 1:
+            code, text = battery[1], battery[2]      # the battery copy's own verdict and output (battery_gate)
+        else:
+            owed = fr.owed_step(argv)
+            code, text = owed if owed else fr.sh(argv, cwd, env, timeout=args.timeout_s)
         fname = write_output(out, n, name, head, code, text, REPO, Path.home())
         passed += code == 0
         print(f"[{code}] {fname}", flush=True)
