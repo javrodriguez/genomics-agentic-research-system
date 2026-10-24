@@ -11,7 +11,8 @@ Every step names its interpreter: `python3.12`, the operator machine's Python 3.
 2. Build the folder outside the Brain and this repository: `python3.12 evals/gap-study-4/review_kit/build_kit.py <folder> --n <N> --athena <outputs folder> [--previous <bytes>]`. It refuses an outputs folder that is empty or nested, or that holds a link, a dotfile, an empty file, a file without the line `commit: <the head sha>`, or a file carrying an absolute path, a person's name or an operator marker, and copies the rest to `<folder>/athena/`. Never fill `athena/` by hand: that skips every one of these refusals.
 3. Register the row and commit it alone: `python3.12 evals/gap-study-4/review_kit/rounds.py --add --kind prefreeze --folder <folder>`. The row hashes the whole folder, `athena/` included.
 4. Read the row's session id (`python3.12 evals/gap-study-4/review_kit/rounds.py --session-id <row>`) and launch: `python3.12 evals/gap-study-4/review_kit/launch.py <folder> <id>`. A session cut off after its first agent turn is resumed with `--resume`, never relaunched.
-5. Run `python3.12 evals/gap-study-4/review_kit/blindness.py <folder>` on the reviewer's own session file.
+5. Run `python3.12 evals/gap-study-4/review_kit/blindness.py <folder>` on the reviewer's own session file and every sidechain session it spawned (`<session>/subagents/`).
+   Its UNEXPLAINED columns in sections 1, 3 and 4 must read 0, and sections 2 and 6 name what the round's reader must see: a launched sub-agent with no session file, and every write outside the folder.
 6. Commit the report exactly once: `python3.12 evals/gap-study-4/review_kit/commit_review.py <folder> <N>`.
 
 ## Before round 1: the skills smoke

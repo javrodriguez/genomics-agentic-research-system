@@ -40,6 +40,13 @@ and a reviewer that runs only light checks and reads the remote runner's outputs
   K14.workflow launch and resume both pass `--disallowedTools Workflow`, so the reviewer cannot start the client's
                bundled workflows (deep-research among them); the README's smoke requires the init record to list
                no Workflow tool, and names the probe that measured the skills question
+  K15.sidechains blindness.py also reads every sidechain session the reviewer's session spawned (found through
+               the Agent tool results and the client's subagents/ folder; a session file nothing launched is read
+               too, and a launched agent with no file is named). Each sub-agent's loaded context gets the same
+               markers and its tool inputs the same absolute-path scan. A marker hit in a hand-back is explained
+               only when its text is in a file that was in the review folder at launch and that the reviewer did
+               not write, and in that sub-agent's own tool traffic; an operator marker is never explained, there
+               or anywhere. Writes outside the folder are listed in their own section
 
 Folds of glitch-f1's rulings on the first hand-back (Wed 21 Oct 2026): K7, K8 and K9 were written red first.
 Folds of the review of c41b7d50 (REVIEW-review-kit-port-c41b7d5.md, glitch-f1's rulings): K10, K11, K12 and the
@@ -49,6 +56,9 @@ half-built folder removed) and K9 (the built-in list, effort, environment names)
 Lane prefreeze-road (the Lane-orchestrator's ruling of Sat 24 Oct 2026, under Javier's standing delegation, after the
 pre-freeze round's remote outputs came back with environment reds): K13 was written red first. K14 (the
 Lane-orchestrator's ruling 2 on the lane's hand-back, the same day) was written red first.
+Lane blindness-sidechains (the Lane-orchestrator's ruling of Sat 24 Oct 2026, under Javier's standing delegation,
+after the pre-freeze round 1 record read 45 UNEXPLAINED hits, every one in a sub-agent hand-back): K15 was written red
+first.
 
 Reads committed files only; no model, network, container or take. Interpreter state (sys.modules, sys.path,
 os.environ, cwd) is left as found.
@@ -566,6 +576,200 @@ class Smoke(unittest.TestCase):
         self.assertIn("only names on that list", section, "K9.smoke: default deny")
 
 
+def load_blindness():
+    return load_isolated(FILES["blindness"], "blindness_under_test", MUTATED.get("blindness"))
+
+
+class Sidechains(unittest.TestCase):
+    """K15.sidechains: the reviewer's sub-agents are read, and a hand-back is explained only by the folder it was given.
+
+    One fixture: a reviewer session that launches three sub-agents (and a fourth session file nothing launched), each
+    a sidechain session file in the client's own layout, `<session>/subagents/agent-<id>.jsonl` with its meta file.
+    """
+
+    SID = "11111111-2222-5333-8444-555555555555"
+    NOTES = ("The battery for gap-study-3 ran inside its own box; see evals/gap-study-2/a.py for the older one.\n"
+             "The pre-study, haiku-prestudy, is frozen.\n"
+             "A comment that names the lane-orchestrator.\n")
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        root = Path(self._tmp.name).resolve()
+        self.projects = root / "projects"
+        self.folder = root / "pfr-k15" / "round9"
+        study = self.folder / "study" / "evals"
+        (study / "gap-study-2").mkdir(parents=True)
+        (study / "notes.md").write_text(self.NOTES)
+        (study / "gap-study-2" / "a.py").write_text("x = 1\n")
+        side = self.folder.parent / "round9-launch"
+        side.mkdir()
+        (side / "SESSION").write_text(self.SID + "\n")
+        (side / "folder-at-launch.txt").write_text("study\n")
+        F = str(self.folder)
+        notes = F + "/study/evals/notes.md"
+        proj = self.projects / "-k15"
+        sub = proj / self.SID / "subagents"
+        sub.mkdir(parents=True)
+
+        def att(kind, **kw):
+            return {"type": "attachment", "attachment": {"type": kind, **kw}}
+
+        def call(tid, name, inp):
+            return {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": tid, "name": name,
+                                                                  "input": inp}]}}
+
+        def result(tid, body, tur=None):
+            rec = {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": tid,
+                                                            "content": [{"type": "text", "text": body}]}]}}
+            if tur is not None:
+                rec["toolUseResult"] = tur
+            return rec
+
+        def handback(aid, body):
+            return (f'Another Claude session sent a message:\n<agent-message from="{aid}">\n[Subagent hand-back] '
+                    f"{body}\n</agent-message>")
+
+        skills = att("skill_listing", content="- dataviz: charts\n- run: launch the app\n")
+        reviewer = [att("environment", snapshot={"workingDirectory": F}), skills,
+                    att("total_tokens_reminder", content=f"cwd {F} names lane-orchestrator here")]
+        for tid, aid in (("toolu_A", "aaa"), ("toolu_B", "bbb"), ("toolu_C", "ccc"), ("toolu_D", "ddd")):
+            reviewer.append(call(tid, "Agent", {"description": "d", "subagent_type": "general-purpose",
+                                                "prompt": f"Read only under {F}."}))
+            # ddd's launch names its agent in the result text only, as the client's own text does.
+            reviewer.append(result(tid, f"Async agent launched successfully.\nagentId: {aid} (internal ID)",
+                                   None if aid == "ddd" else {"agentId": aid, "status": "async_launched"}))
+        # fff runs in the foreground: its report comes back as the Agent tool's own result.
+        reviewer.append(call("toolu_F", "Agent", {"description": "d", "prompt": "p"}))
+        reviewer.append(result("toolu_F", "Done: the gap4 notes.", {"agentId": "fff", "status": "completed"}))
+        said = "the hand-back said round 2's goal id gars-eval-v3\n"
+        (self.folder / "study" / "review-notes.md").write_text(said)
+        (self.folder / "report.md").write_text(said)
+        reviewer.append(call("toolu_W", "Write", {"file_path": F + "/study/review-notes.md", "content": said}))
+        # A hand-back delivered as a user message (aaa), and one delivered as a queued_command attachment (bbb).
+        reviewer.append({"type": "user", "message": {"content": handback(
+            "aaa", "The battery for gap-study-3 ran inside its own box. The haiku-prestudy is frozen. "
+                   "Compare /Users/someone/other/evals/gap-study-2/a.py with it.")}})
+        queued = att("queued_command", commandMode="prompt", prompt=handback(
+            "bbb", "round 2's goal id gars-eval-v3 sets the old floor."))
+        queued["attachment"]["origin"] = {"from": "bbb", "body": "round 2's goal id gars-eval-v3 sets the old floor."}
+        queued["rendered"] = [{"content": "<system-reminder>\n" + queued["attachment"]["prompt"] + "\n</system-reminder>"}]
+        reviewer.append(queued)
+        reviewer.append({"type": "user", "message": {"content": handback(
+            "ccc", "A comment that names the lane-orchestrator.")}})
+        reviewer.append({"type": "user", "message": {"content": handback(
+            "eee", "Per gap-study-3, nothing else.")}})
+        self.write(proj / f"{self.SID}.jsonl", reviewer)
+
+        side_a = [{"type": "user", "isSidechain": True, "agentId": "aaa", "message": {"content": "brief"}}, skills,
+                  call("t1", "Read", {"file_path": notes}), result("t1", self.NOTES.split("\n")[0]),
+                  call("t2", "Bash", {"command": "mkdir -p /tmp/cmrev && cat > /tmp/cmrev/v.py <<'EOF'\nx\nEOF"}),
+                  result("t2", "")]
+        side_b = [{"type": "user", "isSidechain": True, "agentId": "bbb", "message": {"content": "brief"}}, skills,
+                  att("nested_memory", path="/Users/someone/OrgOS/CLAUDE.md", content="notes"),
+                  call("t3", "Bash", {"command": "cat /Users/someone/elsewhere/x.txt"}),
+                  result("t3", "round 2's goal id gars-eval-v3 sets the old floor.")]
+        side_c = [{"type": "user", "isSidechain": True, "agentId": "ccc", "message": {"content": "brief"}},
+                  att("skill_listing", content="- dataviz: charts\n- lane-orchestrator: the operator's skill\n"),
+                  call("t4", "Read", {"file_path": notes}), result("t4", self.NOTES)]
+        side_x = [{"type": "user", "isSidechain": True, "agentId": "xxx", "message": {"content": "brief"}},
+                  att("total_tokens_reminder", content="the north star")]
+        side_f = [{"type": "user", "isSidechain": True, "agentId": "fff", "message": {"content": "brief"}}]
+        for aid, recs, tid in (("aaa", side_a, "toolu_A"), ("bbb", side_b, "toolu_B"), ("ccc", side_c, "toolu_C"),
+                               ("xxx", side_x, "toolu_X"), ("fff", side_f, "toolu_F")):
+            self.write(sub / f"agent-{aid}.jsonl", recs)
+            (sub / f"agent-{aid}.meta.json").write_text(json.dumps({"agentType": "general-purpose",
+                                                                    "toolUseId": tid}))
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    @staticmethod
+    def write(path: Path, recs: list[dict]) -> None:
+        path.write_text("".join(json.dumps(r) + "\n" for r in recs))
+
+    def analysed(self):
+        b = load_blindness()
+        return b, b.analyse(self.folder, self.SID, self.projects)
+
+    def row(self, table, label):
+        rows = [r for r in table if r["label"] == label]
+        self.assertEqual(len(rows), 1, f"K15.sidechains: {label} rows {len(rows)}")
+        return rows[0]
+
+    def test_every_sidechain_is_found_and_one_nothing_launched_is_still_read(self):
+        _, a = self.analysed()
+        self.assertEqual(sorted(a["sidechains"]), ["aaa", "bbb", "ccc", "fff", "xxx"], "K15.sidechains")
+        self.assertEqual(a["missing"], ["ddd"], "K15.sidechains: a launched agent with no session file")
+        self.assertEqual(a["unlaunched"], ["xxx"], "K15.sidechains: a session file nothing launched")
+        side = self.row(a["side_table"], "the operator's objective line")
+        self.assertEqual(side["un"], 1, "K15.sidechains: the unlaunched session's context is scanned")
+
+    def test_a_handback_hit_traced_to_a_folder_file_the_subagent_read_is_explained(self):
+        _, a = self.analysed()
+        row = self.row(a["handback_table"], "round 3's folder name")
+        self.assertEqual((row["total"], row["traced"], row["un"]), (2, 1, 1), f"K15.sidechains: {row}")
+
+    def test_a_handback_hit_not_traced_is_unexplained(self):
+        _, a = self.analysed()
+        # In the folder but never read by aaa; read by bbb outside the folder and in no folder file; traced only
+        # through an absolute path outside the folder (aaa); from an agent with no sidechain session (eee).
+        pre = self.row(a["handback_table"], "the pre-study's folder name")
+        self.assertEqual((pre["traced"], pre["un"]), (0, 1), f"K15.sidechains: not read there {pre}")
+        goal = self.row(a["handback_table"], "round 2's goal id")
+        self.assertEqual((goal["total"], goal["traced"], goal["un"]), (1, 0, 1),
+                         f"K15.sidechains: one message, read once {goal}")
+        old = self.row(a["handback_table"], "round 2's folder name")
+        self.assertEqual((old["traced"], old["un"]), (0, 1), f"K15.sidechains: an outside absolute path {old}")
+        quotes = "\n".join(q for _, q in a["handback_quotes"])
+        self.assertIn("gars-eval-v3", quotes, "K15.sidechains: an UNEXPLAINED hit is quoted")
+        self.assertTrue(all(len(q) <= 120 for _, q in a["handback_quotes"]), "K15.sidechains: quotes are capped")
+
+    def test_the_reviewers_own_writes_are_never_the_folder_it_was_given(self):
+        # Both files quote gars-eval-v3: one the reviewer wrote inside a folder it was handed, one that was not in
+        # the folder at launch. Neither is the folder the reviewer was given, so neither can trace a hit.
+        _, a = self.analysed()
+        self.assertNotIn(str(self.folder / "study" / "review-notes.md"), a["corpus_files"], "K15.sidechains: written")
+        self.assertNotIn(str(self.folder / "report.md"), a["corpus_files"], "K15.sidechains: not there at launch")
+        self.assertIn(str(self.folder / "study" / "evals" / "notes.md"), a["corpus_files"], "K15.sidechains")
+
+    def test_an_operator_marker_is_never_explained(self):
+        _, a = self.analysed()
+        hb = self.row(a["handback_table"], "the operator's coordinating session")
+        self.assertEqual((hb["total"], hb["traced"], hb["un"]), (1, 0, 1), f"K15.sidechains: hand-back {hb}")
+        own = self.row(a["table"], "the operator's coordinating session")
+        self.assertEqual((own["fp"], own["un"]), (0, 1), f"K15.sidechains: beside the folder path {own}")
+        side = self.row(a["side_table"], "the operator's coordinating session")
+        self.assertEqual(side["un"], 1, f"K15.sidechains: a sub-agent's skill listing {side}")
+        orgos = self.row(a["side_table"], "the operator's list system")
+        self.assertEqual(orgos["un"], 1, f"K15.sidechains: {orgos}")
+
+    def test_handbacks_are_read_whichever_record_carries_them(self):
+        _, a = self.analysed()
+        self.assertEqual(sorted(a["handbacks"]), ["aaa", "bbb", "ccc", "eee", "fff"], "K15.sidechains")
+        sync = self.row(a["handback_table"], "the round's shorthand")
+        self.assertEqual((sync["total"], sync["un"]), (1, 1), f"K15.sidechains: a foreground result {sync}")
+        reviewer_ctx = self.row(a["table"], "round 2's goal id")
+        self.assertEqual(reviewer_ctx["total"], 0, "K15.sidechains: a hand-back is not counted twice")
+
+    def test_paths_outside_and_writes_outside_are_listed_per_session(self):
+        b, a = self.analysed()
+        self.assertTrue(any("/tmp/cmrev" in p for p in a["side_outside"]["aaa"]), "K15.sidechains")
+        self.assertTrue(any("elsewhere" in p for p in a["side_outside"]["bbb"]), "K15.sidechains")
+        self.assertEqual(sorted(a["writes"]), ["aaa"], f"K15.sidechains: {a['writes']}")
+        self.assertTrue(all(p.startswith("/tmp/cmrev") for p in a["writes"]["aaa"]), "K15.sidechains")
+        out = b.render(a, self.folder)
+        self.assertIn("Writes outside the folder", out, "K15.sidechains")
+        self.assertNotIn(str(self.folder), out, "K15.sidechains: the folder is masked")
+
+    def test_the_isolation_the_records_show(self):
+        _, a = self.analysed()
+        iso = a["isolation"]
+        self.assertEqual(iso["aaa"]["skills_as_reviewer"], True, "K15.sidechains")
+        self.assertEqual(iso["ccc"]["skills_as_reviewer"], False, "K15.sidechains")
+        self.assertEqual(iso["bbb"]["memory_outside"], 1, "K15.sidechains")
+        self.assertEqual(iso["aaa"]["workflow"] + iso["aaa"]["mcp"], 0, "K15.sidechains")
+
+
 def mutants():
     """name -> (test id, clause, file key, old, new). Each weakens one property; old occurs exactly once."""
     return {
@@ -668,6 +872,71 @@ def mutants():
         "person-named": ("Public.test_no_absolute_path_and_no_person", "K6.public", "why",
                          "The adversarial reader's first lens is this page.",
                          "The adversarial reader's first lens is this page, written for Javier."),
+        "sidechains-unread": ("Sidechains.test_every_sidechain_is_found_and_one_nothing_launched_is_still_read", "K15.sidechains", "blindness",
+                '    for f in sorted((main.parent / main.stem / "subagents").glob("agent-*.jsonl")):',
+                '    for f in []:'),
+        "unlaunched-ignored": ("Sidechains.test_every_sidechain_is_found_and_one_nothing_launched_is_still_read", "K15.sidechains", "blindness",
+                '"unlaunched": sorted(set(side) - launched)',
+                '"unlaunched": []'),
+        "launch-text-unread": ("Sidechains.test_every_sidechain_is_found_and_one_nothing_launched_is_still_read", "K15.sidechains", "blindness",
+                'aid = str(tur.get("agentId") or (m.group(1) if m else ""))',
+                'aid = str(tur.get("agentId") or "")'),
+        "side-context-unscanned": ("Sidechains.test_every_sidechain_is_found_and_one_nothing_launched_is_still_read", "K15.sidechains", "blindness",
+                '    side_ctx = [line for s in side.values() for line in s.ctx]',
+                '    side_ctx = []'),
+        "handback-folder-only": ("Sidechains.test_a_handback_hit_not_traced_is_unexplained", "K15.sidechains", "blindness",
+                'any(c in in_folder and c in read for c in',
+                'any(c in in_folder for c in'),
+        "handback-read-only": ("Sidechains.test_a_handback_hit_not_traced_is_unexplained", "K15.sidechains", "blindness",
+                'any(c in in_folder and c in read for c in',
+                'any(c in read for c in'),
+        "outside-path-traced": ("Sidechains.test_a_handback_hit_not_traced_is_unexplained", "K15.sidechains", "blindness",
+                '        else:\n            return []\n',
+                '        else:\n            pass\n'),
+        "quotes-uncapped": ("Sidechains.test_a_handback_hit_not_traced_is_unexplained", "K15.sidechains", "blindness",
+                'mask(h["quote"], str(folder))[:120])',
+                'mask(h["quote"], str(folder)))'),
+        "written-in-corpus": ("Sidechains.test_the_reviewers_own_writes_are_never_the_folder_it_was_given", "K15.sidechains", "blindness",
+                '    return [p for p in out if str(p.resolve()) not in written]',
+                '    return out'),
+        "launch-listing-ignored": ("Sidechains.test_the_reviewers_own_writes_are_never_the_folder_it_was_given", "K15.sidechains", "blindness",
+                'tops = ([folder / n for n in listing.read_text().split("\\n") if n.strip()] if listing.is_file()\n            else sorted(folder.iterdir()))',
+                'tops = sorted(folder.iterdir())'),
+        "operator-traced": ("Sidechains.test_an_operator_marker_is_never_explained", "K15.sidechains", "blindness",
+                'h["traced"] = (not h["op"]) and any(',
+                'h["traced"] = any('),
+        "operator-beside-folder": ("Sidechains.test_an_operator_marker_is_never_explained", "K15.sidechains", "blindness",
+                '            if operator:\n                un += 1\n            elif kind',
+                '            if False:\n                un += 1\n            elif kind'),
+        "operator-rows-off": ("Sidechains.test_an_operator_marker_is_never_explained", "K15.sidechains", "blindness",
+                '[(label, w, w in OPERATOR) for',
+                '[(label, w, False) for'),
+        "handback-user-unread": ("Sidechains.test_handbacks_are_read_whichever_record_carries_them", "K15.sidechains", "blindness",
+                '                    elif b.get("type") == "text":',
+                '                    elif False:'),
+        "handback-queued-twice": ("Sidechains.test_handbacks_are_read_whichever_record_carries_them", "K15.sidechains", "blindness",
+                '                        self.handbacks.append((aid, shown))\n                        continue\n',
+                '                        self.handbacks.append((aid, shown))\n'),
+        "handback-sync-unread": ("Sidechains.test_handbacks_are_read_whichever_record_carries_them", "K15.sidechains", "blindness",
+                'if tur.get("status") != "async_launched" and "Async agent launched" not in body:',
+                'if False:'),
+        "side-paths-unscanned": ("Sidechains.test_paths_outside_and_writes_outside_are_listed_per_session", "K15.sidechains", "blindness",
+                '"side_outside": {aid: outside_paths(s, folder) for aid, s in side.items()},',
+                '"side_outside": {aid: set() for aid in side},'),
+        "shell-writes-unread": ("Sidechains.test_paths_outside_and_writes_outside_are_listed_per_session", "K15.sidechains", "blindness",
+                '            if WRITE_CMD.search(cmd):',
+                '            if False:'),
+        "writes-section-dropped": ("Sidechains.test_paths_outside_and_writes_outside_are_listed_per_session", "K15.sidechains", "blindness",
+                'f"6. Writes outside the folder: {n_w}',
+                'f"6. Outside: {n_w}'),
+        "isolation-skills-assumed": ("Sidechains.test_the_isolation_the_records_show", "K15.sidechains", "blindness",
+                '"skills_as_reviewer": None if s.skills is None else set(s.skills) == skills',
+                '"skills_as_reviewer": True'),
+        "queued-read-twice": ("Sidechains.test_a_handback_hit_not_traced_is_unexplained", "K15.sidechains", "blindness",
+                '                    if text not in shown:\n', '                    if True:\n'),
+        "isolation-memory-ignored": ("Sidechains.test_the_isolation_the_records_show", "K15.sidechains", "blindness",
+                '                    self.memory_outside += 1',
+                '                    pass'),
     }
 
 

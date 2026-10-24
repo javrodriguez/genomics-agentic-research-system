@@ -20,12 +20,26 @@ that boots with that skill in its loaded context reads it as UNEXPLAINED here, w
 occurs in any CLAUDE.md this repository tracks (tests/test_review_kit.py K3), so a nested instruction file the
 harness attaches as the reviewer reads `study/` cannot raise one.
 
+LANE BLINDNESS-SIDECHAINS (the Lane-orchestrator's ruling of Sat 24 Oct 2026, under Javier's standing delegation).
+Pre-freeze round 1's record read 45 UNEXPLAINED hits, every one inside a sub-agent's hand-back, and this file had
+never read the sub-agents' own sessions. It now reads every sidechain session the reviewer's session spawned: the
+records the client marks isSidechain, and `<session>/subagents/agent-<id>.jsonl`, matched to the Agent tool's
+results (a launched agent with no session file and a session file no launch names are both stated). Each one gets
+the same markers and the same absolute-path scan as the reviewer. A hand-back, whichever record carries it (a user
+message, a queued command, a task notification or a synchronous tool result), is read on its own: a hit there is
+explained only when the word or path it sits in occurs in a file that was in the folder at launch and that no
+session wrote, and in that sub-agent's own tool traffic, so the sub-agent read it there. An operator row (OPERATOR
+and the two path rows) is never explained, in a hand-back or anywhere else. Writes outside the folder are listed in
+their own section and void nothing by themselves, and the last section states what the sub-agents' records show of
+the reviewer's isolation.
+
 stdlib only. Never prints a path or an address unmasked.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -55,6 +69,30 @@ MARKERS = [
     ("the operator's memory file", "MEMORY.md"),
 ]
 ACCOUNT = re.compile(r"javrodher|rodrij92|javier", re.I)
+PROJECTS = Path.home() / ".claude" / "projects"
+# The operator's own Brain, by path, derived like REPO rather than typed in full.
+BRAIN = Path.home() / "glitch"
+# Ruling 2 of lane blindness-sidechains: these name the operator's side, never the study, so no folder, report or
+# hand-back can explain a hit on one. The two path rows below are operator rows too.
+OPERATOR = {"lane-orchestrator", "Lane Board", "OrgOS", "Waiting on Javier", "glitch-mem", "SOUL.md", "north star",
+            "MEMORY.md"}
+AGENT_TOOLS = ("Agent", "Task")
+WRITE_TOOLS = ("Write", "Edit", "MultiEdit", "NotebookEdit")
+ABS_PATH = re.compile(r"(/(?:Users|private|var|tmp|home|etc|opt)[^\s\"'`]*)")
+AGENT_MESSAGE = re.compile(r'<agent-message from="([^"]+)">')
+TASK_ID = re.compile(r"<task-notification>.*?<task-id>([^<\s]+)</task-id>", re.S)
+LAUNCHED_ID = re.compile(r"agentId: (\w+)")
+# A shell command that writes, by its own text: a redirect (never 2>&1 or a here-document), or a verb that writes.
+WRITE_CMD = re.compile(r"(?<![\d&<>])>(?!&)|\b(?:mkdir|cp|mv|tee|touch|rsync|ln|install|unzip|tar)\b|\bsed\s+-i"
+                       r"|\bgit\s+(?:clone|worktree|init)\b")
+# The characters a quoted word or path is made of, for the extent of a hit inside a hand-back.
+EXTENT = re.compile(r"[a-z0-9_.\-/~']")
+
+
+def rows() -> list[tuple[str, str, bool]]:
+    """(label, word, operator) for every row of a marker table, the two path rows last."""
+    return ([(label, w, w in OPERATOR) for label, w in MARKERS]
+            + [("this repository, by path", str(REPO), True), ("the operator's Brain, by path", str(BRAIN), True)])
 
 
 def mask(s: str, folder: str) -> str:
@@ -65,14 +103,15 @@ def mask(s: str, folder: str) -> str:
     return ACCOUNT.sub("<account>", s)
 
 
-def session_file(sid: str) -> Path:
-    hits = sorted((Path.home() / ".claude" / "projects").glob(f"*/{sid}.jsonl"))
+def session_file(sid: str, projects: Path = PROJECTS) -> Path:
+    hits = sorted(projects.glob(f"*/{sid}.jsonl"))
     if len(hits) != 1:
         raise SystemExit(f"session file for the reviewer: {len(hits)} found, cannot read blindness")
     return hits[0]
 
 
-def classify_hits(ctx_lines: list[str], word: str, folder: Path) -> tuple[int, int, int, int]:
+def classify_hits(ctx_lines: list[str], word: str, folder: Path,
+                  operator: bool = False) -> tuple[int, int, int, int]:
     """Every occurrence of `word` in the loaded context, split by what put it there.
 
     Returns (total, in the reviewer's own report, inside the folder's own path, unexplained).
@@ -87,6 +126,8 @@ def classify_hits(ctx_lines: list[str], word: str, folder: Path) -> tuple[int, i
     Both recur in every round, so a rule read on the totals could never pass, and a round voided for it
     would void its re-run too. What the rule means is: did anything put this word there that was not the
     reviewer's own work and not the folder it was handed. That is the unexplained count.
+
+    Lane blindness-sidechains, ruling 2: an operator row is never explained, whatever sits beside it.
     """
     own = fp = un = total = 0
     marker = word.lower()
@@ -101,7 +142,9 @@ def classify_hits(ctx_lines: list[str], word: str, folder: Path) -> tuple[int, i
         for m in re.finditer(re.escape(marker), low):
             total += 1
             window = low[max(0, m.start() - 60):m.end() + 60]
-            if kind == "edited_text_file":
+            if operator:
+                un += 1
+            elif kind == "edited_text_file":
                 own += 1
             elif parent_name in window or folder_name in window:
                 fp += 1
@@ -110,48 +153,133 @@ def classify_hits(ctx_lines: list[str], word: str, folder: Path) -> tuple[int, i
     return total, own, fp, un
 
 
-def report(folder: Path, sid: str) -> str:
-    path = session_file(sid)
-    ctx, tool_inputs, n = [], [], 0
-    for line in path.read_text(errors="replace").splitlines():
-        try:
-            rec = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        n += 1
-        if rec.get("type") == "attachment":
-            ctx.append(line)
-        if rec.get("type") == "assistant":
-            for b in (rec.get("message") or {}).get("content") or []:
-                if isinstance(b, dict) and b.get("type") == "tool_use":
-                    tool_inputs.append(json.dumps(b.get("input") or {}))
-    ctx_text = "\n".join(ctx)
-    # ROUND 3. The record names the session it read. The round register derives each round's session id as
-    # uuid5 of the commit that introduced its row, and rounds.py --check holds the committed blindness
-    # record to that id -- so a reviewer opened under any other id cannot satisfy the row it claims to be.
-    # It goes here rather than in the report because the report is written by the reviewer and committed
-    # unedited, and because naming the session a blindness check read is what a blindness check is for.
-    out = [f"blindness check, read from the reviewer's own session file ({n} records, {len(ctx)} attachment records, "
-           f"{len(tool_inputs)} tool calls)",
-           f"session id: {sid}", "",
-           "1. Operator material in the loaded context (attachment records).",
-           "   Every hit is classified. Two causes carry nothing about the study and recur in EVERY round:",
-           "   the review folder's own path, which the harness echoes through its own furniture, and the",
-           "   reviewer's own report, which it wrote and the harness attached back into its context. The",
-           "   count that binds is UNEXPLAINED, and it must be 0 (Ruling 6, 20 September 2026). A rule read",
-           "   on the totals could never pass, because both causes are present before the reviewer starts.",
-           "",
-           f"   {'marker':34} {'total':>6} {'own report':>11} {'folder path':>12} {'UNEXPLAINED':>12}"]
-    for label, w in MARKERS:
-        t, own, fp, un = classify_hits(ctx, w, folder)
-        out.append(f"   {label:34} {t:>6} {own:>11} {fp:>12} {un:>12}")
-    t, own, fp, un = classify_hits(ctx, str(REPO), folder)
-    out.append(f"   {'this repository, by path':34} {t:>6} {own:>11} {fp:>12} {un:>12}")
-    out.append(f"   {'the account email':34} {len(EMAIL.findall(ctx_text)):>6} "
-               f"{'':>11} {'':>12} {'tolerated':>12}")
+def leaves(x) -> list[str]:
+    """Every string inside a JSON value."""
+    if isinstance(x, str):
+        return [x]
+    if isinstance(x, dict):
+        return [s for v in x.values() for s in leaves(v)]
+    if isinstance(x, list):
+        return [s for v in x for s in leaves(v)]
+    return []
+
+
+def inside(p: str, folder: Path) -> bool:
+    f = str(folder)
+    return any(p == base or p.startswith(base + "/") for base in (f, "/private" + f))
+
+
+def handback_from(text: str) -> str | None:
+    """The agent a record's text hands back from, if it is a hand-back or a task notification."""
+    m = AGENT_MESSAGE.search(text) or TASK_ID.search(text)
+    return m.group(1) if m else None
+
+
+class Session:
+    """One session file's records, read the same way for the reviewer and for each of its sub-agents.
+
+    The context is its attachment records less the hand-backs, which are read on their own (section 4). Its
+    traffic is every string of its tool inputs and tool results, lower-cased: what it asked for and what it read.
+    """
+
+    def __init__(self, name: str, lines: list[str], folder: Path):
+        self.name, self.n, self.ctx, self.inputs = name, 0, [], []
+        self.launches: dict[str, str] = {}
+        self.handbacks: list[tuple[str, str]] = []
+        self.written_inside: set[str] = set()
+        self.writes: set[str] = set()
+        self.skills: tuple[str, ...] | None = None
+        self.workflow = self.mcp = self.memory_outside = 0
+        traffic: list[str] = []
+        agent_calls: set[str] = set()
+        for line in lines:
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            self.n += 1
+            kind = rec.get("type")
+            if kind == "attachment":
+                a = rec.get("attachment") or {}
+                if a.get("type") == "queued_command":
+                    # The client keeps one message up to three times on this record: the prompt, its origin and
+                    # the rendered form the model was shown. The shown form is read once, the prompt only when
+                    # the shown form does not hold it.
+                    text = "\n".join(leaves(a.get("prompt")))
+                    shown = "\n".join(leaves(rec.get("rendered")))
+                    if text not in shown:
+                        shown = (shown + "\n" + text).strip()
+                    aid = handback_from(shown)
+                    if aid:
+                        self.handbacks.append((aid, shown))
+                        continue
+                self.ctx.append(line)
+                if a.get("type") == "skill_listing":
+                    self.skills = tuple(sorted(re.findall(r"^- ([^:\n]+):", str(a.get("content") or ""), re.M)))
+                if a.get("type") == "deferred_tools_delta":
+                    names = [str(n) for n in a.get("addedNames") or []]
+                    self.workflow += names.count("Workflow")
+                    self.mcp += sum(n.startswith("mcp__") for n in names)
+                if a.get("type") in ("nested_memory", "claude_md") and a.get("path") \
+                        and not inside(str(a["path"]), folder):
+                    self.memory_outside += 1
+            elif kind == "assistant":
+                for b in (rec.get("message") or {}).get("content") or []:
+                    if not (isinstance(b, dict) and b.get("type") == "tool_use"):
+                        continue
+                    name, inp = str(b.get("name") or ""), b.get("input") or {}
+                    self.inputs.append(json.dumps(inp))
+                    traffic += leaves(inp)
+                    self.workflow += name == "Workflow"
+                    self.mcp += name.startswith("mcp__")
+                    if name in AGENT_TOOLS:
+                        agent_calls.add(str(b.get("id")))
+                    self.note_writes(name, inp, folder)
+            elif kind == "user":
+                content = (rec.get("message") or {}).get("content")
+                blocks = [{"type": "text", "text": content}] if isinstance(content, str) else content or []
+                tur = rec.get("toolUseResult") if isinstance(rec.get("toolUseResult"), dict) else {}
+                for b in blocks:
+                    if not isinstance(b, dict):
+                        continue
+                    if b.get("type") == "tool_result":
+                        body = "\n".join(leaves(b.get("content")))
+                        traffic.append(body)
+                        tid = str(b.get("tool_use_id"))
+                        if tid in agent_calls:
+                            m = LAUNCHED_ID.search(body)
+                            aid = str(tur.get("agentId") or (m.group(1) if m else ""))
+                            if aid:
+                                self.launches[tid] = aid
+                                if tur.get("status") != "async_launched" and "Async agent launched" not in body:
+                                    self.handbacks.append((aid, body))
+                    elif b.get("type") == "text":
+                        aid = handback_from(str(b.get("text") or ""))
+                        if aid:
+                            self.handbacks.append((aid, str(b.get("text"))))
+        self.traffic = "\n".join(traffic).lower()
+
+    def note_writes(self, name: str, inp: dict, folder: Path) -> None:
+        if name in WRITE_TOOLS:
+            p = str(inp.get("file_path") or inp.get("notebook_path") or "")
+            if p and inside(p, folder):
+                self.written_inside.add(str(Path(p).resolve()))
+            elif p:
+                self.writes.add(p)
+        elif name == "Bash":
+            cmd = str(inp.get("command") or "")
+            if WRITE_CMD.search(cmd):
+                for m in ABS_PATH.finditer(cmd):
+                    p = m.group(1).rstrip(").,:;\\")
+                    if p and not inside(p, folder) and not p.startswith("/dev/"):
+                        self.writes.add(p)
+
+
+def outside_paths(s: Session, folder: Path) -> set[str]:
+    """The absolute paths in a session's tool inputs that are not inside its folder (round 3's scan, unchanged)."""
     outside = set()
-    for t in tool_inputs:
-        for m in re.finditer(r"(/(?:Users|private|var|tmp|home|etc|opt)[^\s\"'`]*)", t):
+    for t in s.inputs:
+        for m in ABS_PATH.finditer(t):
             p = m.group(1)
             if str(folder) in p or ("/private" + str(folder)) in p:
                 continue
@@ -159,9 +287,219 @@ def report(folder: Path, sid: str) -> str:
                 outside.add("(a search pattern the reviewer used on its own report, not a path it read)")
                 continue
             outside.add(mask(p, str(folder))[:120])
-    out += ["", f"2. Absolute paths in the reviewer's tool inputs that are not inside its folder: {len(outside)}"]
-    out += ["   - " + p for p in sorted(outside)[:20]]
+    return outside
+
+
+def read_sessions(main: Path, folder: Path) -> tuple[Session, dict[str, Session]]:
+    """The reviewer's session and every sidechain session it spawned, as the client writes them: records marked
+    isSidechain inside the session file, and `<session>/subagents/agent-<id>.jsonl` beside it."""
+    own, inline = [], {}
+    for line in main.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            own.append(line)
+            continue
+        if rec.get("isSidechain") and rec.get("agentId"):
+            inline.setdefault(str(rec["agentId"]), []).append(line)
+        else:
+            own.append(line)
+    files = {}
+    for f in sorted((main.parent / main.stem / "subagents").glob("agent-*.jsonl")):
+        files[f.stem[len("agent-"):]] = f.read_text(errors="replace").splitlines()
+    side = {aid: Session(aid, files.get(aid, []) + inline.get(aid, []), folder)
+            for aid in sorted(set(files) | set(inline))}
+    return Session("the reviewer", own, folder), side
+
+
+def corpus(folder: Path, written: set[str]) -> list[Path]:
+    """The files the reviewer was given: under the folder's entries at launch, never a .git folder, a link, or a
+    file any of the sessions wrote inside the folder (its report among them)."""
+    listing = folder.parent / (folder.name + "-launch") / "folder-at-launch.txt"
+    tops = ([folder / n for n in listing.read_text().split("\n") if n.strip()] if listing.is_file()
+            else sorted(folder.iterdir()))
+    out = []
+    for top in tops:
+        if top.is_symlink() or not top.exists():
+            continue
+        if top.is_file():
+            out.append(top)
+            continue
+        for d, dirs, names in os.walk(top):
+            dirs[:] = sorted(x for x in dirs if x != ".git" and not (Path(d) / x).is_symlink())
+            out += [Path(d) / x for x in sorted(names) if not (Path(d) / x).is_symlink()]
+    return [p for p in out if str(p.resolve()) not in written]
+
+
+def candidates(ext: str, folder: Path) -> list[str]:
+    """What must be found for a hit whose extent is `ext`: the extent itself, and for a path each tail of it that
+    still holds a `/` (so `ROOT/study/evals/x` may be found as `evals/x`, never as a bare word). An absolute path
+    outside the folder has none: it is a read outside, not a file in the folder."""
+    if ext.startswith(("/", "~")):
+        for base in (str(folder).lower(), "/private" + str(folder).lower()):
+            if ext == base or ext.startswith(base + "/"):
+                ext = ext[len(base):].lstrip("/")
+                break
+        else:
+            return []
+    if not ext:
+        return []
+    parts = ext.split("/")
+    return [ext] + ["/".join(parts[i:]) for i in range(1, len(parts) - 1)]
+
+
+def handback_hits(handbacks: dict[str, list[str]]) -> list[dict]:
+    """Every marker occurrence in every hand-back, with its extent."""
+    hits = []
+    for aid, texts in handbacks.items():
+        for text in texts:
+            low = text.lower()
+            for label, w, op in rows():
+                for m in re.finditer(re.escape(w.lower()), low):
+                    s, e = m.start(), m.end()
+                    while s > 0 and EXTENT.match(low[s - 1]):
+                        s -= 1
+                    while e < len(low) and EXTENT.match(low[e]):
+                        e += 1
+                    hits.append({"aid": aid, "label": label, "op": op, "ext": low[s:e].rstrip(".'-/").lstrip(".'-"),
+                                 "quote": " ".join(text[max(0, m.start() - 40):m.start() + 160].split())})
+    return hits
+
+
+def found_in(files: list[Path], folder: Path, wanted: set[str]) -> set[str]:
+    """The wanted strings that occur (lower-cased) in one of the files or in the files' own relative paths."""
+    paths = "\n".join(str(p.relative_to(folder)).lower() for p in files)
+    found = {w for w in wanted if w in paths}
+    pending = wanted - found
+    for p in files:
+        if not pending:
+            break
+        try:
+            body = p.read_bytes().decode("utf-8", errors="replace").lower()
+        except OSError:
+            continue
+        hit = {w for w in pending if w in body}
+        found |= hit
+        pending -= hit
+    return found
+
+
+def table_of(ctx: list[str], folder: Path) -> list[dict]:
+    out = []
+    for label, w, op in rows():
+        t, own, fp, un = classify_hits(ctx, w, folder, operator=op)
+        out.append({"label": label, "total": t, "own": own, "fp": fp, "un": un})
+    return out
+
+
+def analyse(folder: Path, sid: str, projects: Path = PROJECTS) -> dict:
+    """Everything the record states, as data. render() writes it; the tests read it."""
+    reviewer, side = read_sessions(session_file(sid, projects), folder)
+    sessions = [reviewer, *side.values()]
+    launched = {aid for s in sessions for aid in s.launches.values()}
+    handbacks: dict[str, list[str]] = {}
+    for s in sessions:
+        for aid, text in s.handbacks:
+            handbacks.setdefault(aid, []).append(text)
+    written = set().union(*(s.written_inside for s in sessions))
+    files = corpus(folder, written)
+    hits = handback_hits(handbacks)
+    # Operator hits are searched too, so the one rule that refuses them is the line below, and it alone.
+    wanted = {c for h in hits if h["aid"] in side for c in candidates(h["ext"], folder)}
+    in_folder = found_in(files, folder, wanted)
+    for h in hits:
+        read = side[h["aid"]].traffic if h["aid"] in side else ""
+        h["traced"] = (not h["op"]) and any(c in in_folder and c in read for c in candidates(h["ext"], folder))
+    hb_table = []
+    for label, _, _ in rows():
+        mine = [h for h in hits if h["label"] == label]
+        traced = sum(h["traced"] for h in mine)
+        hb_table.append({"label": label, "total": len(mine), "traced": traced, "un": len(mine) - traced})
+    side_ctx = [line for s in side.values() for line in s.ctx]
+    per_agent = {aid: [r for r in table_of(s.ctx, folder) if r["un"]] for aid, s in side.items()}
+    skills = set(reviewer.skills or ())
+    return {
+        "sid": sid, "n": reviewer.n, "ctx": reviewer.ctx, "inputs": reviewer.inputs, "sidechains": side,
+        "missing": sorted(launched - set(side)), "unlaunched": sorted(set(side) - launched),
+        "table": table_of(reviewer.ctx, folder), "side_table": table_of(side_ctx, folder),
+        "per_agent": {aid: r for aid, r in per_agent.items() if r},
+        "handbacks": handbacks, "handback_table": hb_table, "corpus_files": [str(p) for p in files],
+        "handback_quotes": [(f"agent {h['aid']}, {h['label']}", mask(h["quote"], str(folder))[:120])
+                            for h in hits if not h["traced"]],
+        "outside": outside_paths(reviewer, folder),
+        "side_outside": {aid: outside_paths(s, folder) for aid, s in side.items()},
+        "writes": {s.name: sorted(s.writes) for s in sessions if s.writes},
+        "isolation": {aid: {"skills_as_reviewer": None if s.skills is None else set(s.skills) == skills,
+                            "workflow": s.workflow, "mcp": s.mcp, "memory_outside": s.memory_outside}
+                      for aid, s in side.items()},
+        "email": len(EMAIL.findall("\n".join(reviewer.ctx + side_ctx))),
+    }
+
+
+def render(a: dict, folder: Path) -> str:
+    F = str(folder)
+    side = a["sidechains"]
+    out = [f"blindness check, read from the reviewer's own session file ({a['n']} records, {len(a['ctx'])} attachment "
+           f"records, {len(a['inputs'])} tool calls) and its {len(side)} sub-agent session files",
+           f"session id: {a['sid']}", "",
+           "1. Operator material in the loaded context (attachment records).",
+           "   Every hit is classified. Two causes carry nothing about the study and recur in EVERY round:",
+           "   the review folder's own path, which the harness echoes through its own furniture, and the",
+           "   reviewer's own report, which it wrote and the harness attached back into its context. The",
+           "   count that binds is UNEXPLAINED, and it must be 0 (Ruling 6, 20 September 2026). A rule read",
+           "   on the totals could never pass, because both causes are present before the reviewer starts.",
+           "   A sub-agent's hand-back is not counted here: section 4 reads it. An operator row is never",
+           "   explained (lane blindness-sidechains, 24 October 2026).",
+           "",
+           f"   {'marker':34} {'total':>6} {'own report':>11} {'folder path':>12} {'UNEXPLAINED':>12}"]
+    out += [f"   {r['label']:34} {r['total']:>6} {r['own']:>11} {r['fp']:>12} {r['un']:>12}" for r in a["table"]]
+    out.append(f"   {'the account email':34} {a['email']:>6} {'':>11} {'':>12} {'tolerated':>12}")
+    out += ["", f"2. The reviewer's sub-agents: {len(side)} sidechain session files read",
+            f"   launched agents with no session file: {len(a['missing'])}"
+            + (f" ({', '.join(a['missing'])})" if a["missing"] else ""),
+            f"   session files no launch names: {len(a['unlaunched'])}"
+            + (f" ({', '.join(a['unlaunched'])})" if a["unlaunched"] else "")]
+    out += [f"   - agent {aid}: {s.n} records, {len(s.ctx)} attachment records, {len(s.inputs)} tool calls"
+            for aid, s in side.items()]
+    out += ["", "3. Operator material in the sub-agents' own loaded context, all sessions together, by the rules of 1.",
+            "", f"   {'marker':34} {'total':>6} {'own report':>11} {'folder path':>12} {'UNEXPLAINED':>12}"]
+    out += [f"   {r['label']:34} {r['total']:>6} {r['own']:>11} {r['fp']:>12} {r['un']:>12}"
+            for r in a["side_table"]]
+    for aid, rs in a["per_agent"].items():
+        out += [f"   - agent {aid}: {r['label']} UNEXPLAINED {r['un']}" for r in rs]
+    n_hb = sum(len(v) for v in a["handbacks"].values())
+    out += ["", f"4. Sub-agent hand-backs in the loaded context: {n_hb}, from {len(a['handbacks'])} agents.",
+            "   A hit is explained only when its text (the word or path it sits in) is in a file that was in the",
+            "   folder at launch and that no session wrote, and in that sub-agent's own tool traffic: it read it",
+            "   there. Any other hit is UNEXPLAINED, and an operator row is never explained. The count that binds is",
+            "   UNEXPLAINED, and it must be 0.", "",
+            f"   {'marker':34} {'total':>6} {'traced to the folder':>21} {'UNEXPLAINED':>12}"]
+    out += [f"   {r['label']:34} {r['total']:>6} {r['traced']:>21} {r['un']:>12}" for r in a["handback_table"]]
+    if a["handback_quotes"]:
+        out.append("   UNEXPLAINED hits, each quoted to its first 120 characters:")
+        out += [f"   - {who}: {q}" for who, q in a["handback_quotes"]]
+    out += ["", f"5. Absolute paths in the reviewer's tool inputs that are not inside its folder: {len(a['outside'])}"]
+    out += ["   - " + p for p in sorted(a["outside"])[:20]]
+    for aid, ps in a["side_outside"].items():
+        out.append(f"   agent {aid}, in its tool inputs: {len(ps)}")
+        out += ["   - " + p for p in sorted(ps)[:20]]
+    n_w = sum(len(v) for v in a["writes"].values())
+    out += ["", f"6. Writes outside the folder: {n_w} paths, by the Write and Edit tools' own paths and by the paths",
+            "   a shell command that writes names. Listed, not ruled: a write outside does not void a round by itself."]
+    for who, ps in a["writes"].items():
+        out.append(f"   {who if who == 'the reviewer' else 'agent ' + who}: {len(ps)}")
+        out += ["   - " + mask(p, F)[:120] for p in ps[:20]]
+    out += ["", "7. The reviewer's isolation, as the sub-agents' own records show it. The launch flags are process",
+            "   flags and no sidechain record carries them, nor the environment it ran with."]
+    for aid, iso in a["isolation"].items():
+        sk = {True: "the reviewer's", False: "NOT the reviewer's", None: "none recorded"}[iso["skills_as_reviewer"]]
+        out.append(f"   - agent {aid}: skills offered {sk}; Workflow tool named {iso['workflow']}; MCP tools named "
+                   f"{iso['mcp']}; instruction files from outside the folder {iso['memory_outside']}")
     return "\n".join(out) + "\n"
+
+
+def report(folder: Path, sid: str, projects: Path = PROJECTS) -> str:
+    return render(analyse(folder, sid, projects), folder)
 
 
 def main() -> int:
