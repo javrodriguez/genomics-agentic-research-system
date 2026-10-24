@@ -6,10 +6,10 @@
     python3 evals/gap-study-4/prereg.py --task <id>     one task's design
     python3 evals/gap-study-4/prereg.py --order <sha>   the take order this seed produces (freeze.planned_order;
                                                         the seed is the full 40 lowercase hex characters)
-    python3 evals/gap-study-4/prereg.py --order-for-review <sha>
-                                                        the order the freeze writes for this review commit: the
-                                                        seed order_beacon.seed makes of it and the registered drand
-                                                        round, refused until that round is published
+    python3 evals/gap-study-4/prereg.py --order-from-beacon
+                                                        the order the freeze writes: the seed order_beacon.seed
+                                                        makes of the registered drand round, refused until that
+                                                        round is published
 
 WHY A LOADER RATHER THAN json.load IN EACH FILE. The first study dispatched graders by a hard-coded
 id chain and kept each take's checks as module constants, so the definitions that decide a verdict
@@ -35,12 +35,14 @@ replaced round 3's per-axis order here).
 WHAT THE SEED BINDS, AND WHAT IT DOES NOT (pre-freeze review 1, MAJOR 9, lane L1). This docstring
 used to say the review commit's sha alone made the order impossible to choose. It did not: an
 operator holding the clone could commit the review, preview the order, reset and recommit, and
-pick among as many orders as it cared to commit. The seed is now order_beacon.seed of the review
-commit and one public drand round the draft registers (take_order_beacon), read by the freeze from
-two relays. Before that round is published its value exists nowhere, so a review committed before
-it cannot be re-made to choose an order, and `--order-for-review` refuses to preview one. What is
-left is named in the draft (take_order_beacon.residual): a review committed after the round under
-a forged earlier date would still choose among orders, and the round's signature is not verified.
+pick among as many orders as it cared to commit. The seed is now order_beacon.seed of one public
+drand round the draft registers (take_order_beacon) and its randomness alone, read by the freeze
+from two relays; nothing the operator commits enters it. The freeze also requires GitHub's own push
+record of the commit that registered the round, an hour or more before the round is published, so
+the round was fixed before its value existed, and `--order-from-beacon` refuses to preview an order
+before the round is published. What is left is named in the draft (take_order_beacon.residual):
+whoever controls GitHub or its clock could register a round late, and the round's signature is not
+verified.
 
 No model, no network, stdlib only.
 """
@@ -328,14 +330,11 @@ def order(seed_sha: str) -> list[dict]:
     return load_freeze().planned_order(load(), seed_sha)
 
 
-def order_for_review(review_sha: str, *, opener=None, now=None) -> list[dict]:
-    """The take order the freeze writes for this review commit (MAJOR 9). On the frozen file, from its recorded beacon
-    reading; on the draft, only once the registered drand round is published, read from both relays. Raises
-    SystemExit on a malformed sha and order_beacon.BeaconRefused when no order can exist yet."""
+def order_from_beacon(*, opener=None, now=None) -> list[dict]:
+    """The take order the freeze writes (MAJOR 9): on the frozen file, from its recorded beacon reading; on the draft,
+    only once the registered drand round is published, read from both relays. Raises order_beacon.BeaconRefused when
+    no order can exist yet."""
     import order_beacon
-    problem = seed_problem(review_sha)
-    if problem:
-        raise SystemExit(problem)
     pre = load()
     round_no = order_beacon.registered_round(pre.get("take_order_beacon"))
     reading = pre.get("take_order_beacon_reading") if pre.get("_frozen") else None
@@ -345,7 +344,7 @@ def order_for_review(review_sha: str, *, opener=None, now=None) -> list[dict]:
             raise order_beacon.BeaconRefused("the frozen file's beacon reading is refused: " + "; ".join(bad))
     else:
         reading = order_beacon.read_relays(round_no, opener=opener, now=now)
-    return load_freeze().planned_order(pre, order_beacon.seed(review_sha, reading))
+    return load_freeze().planned_order(pre, order_beacon.seed(reading))
 
 
 def main() -> int:
@@ -353,7 +352,7 @@ def main() -> int:
     ap.add_argument("--status", action="store_true")
     ap.add_argument("--task", metavar="ID")
     ap.add_argument("--order", metavar="SHA")
-    ap.add_argument("--order-for-review", metavar="SHA")
+    ap.add_argument("--order-from-beacon", action="store_true")
     args = ap.parse_args()
 
     if args.status:
@@ -394,26 +393,22 @@ def main() -> int:
             print(f"  ... {len(rows) - 8} more")
         return 0
 
-    if args.order_for_review:
+    if args.order_from_beacon:
         import order_beacon
-        problem = seed_problem(args.order_for_review)
-        if problem:
-            print(f"take order: refused: {problem}")
-            return 1
         load_freeze()
         try:
-            rows = order_for_review(args.order_for_review)
+            rows = order_from_beacon()
         except (order_beacon.BeaconRefused, ValueError) as e:
             print(f"take order: refused: {e}")
             return 1
         print(f"take order: {ORDER_FUNCTION}, one permutation of {len(rows)} whole planned rows, seeded by "
-              f"order_beacon.seed of review {args.order_for_review[:12]} and the registered drand round")
+              f"order_beacon.seed of the registered drand round")
         for i, r in enumerate(rows[:8]):
             print(f"  {i:3}  {r['arm']:2} {r['model']:28} {r['task']:22} {r['half']:8} "
                   f"{r['wording']} repeat {r['repeat']}  {r['slot']}")
         return 0
 
-    ap.error("give --status, --task <id>, --order <sha> or --order-for-review <sha>")
+    ap.error("give --status, --task <id>, --order <sha> or --order-from-beacon")
 
 
 if __name__ == "__main__":

@@ -113,7 +113,8 @@ def prepare(draft, *, review, parent, pins, frozen_at, beacon):
     """The frozen file from the reviewed draft. Pre-freeze review 1, m2: the stats_design sentinel was the only PENDING
     guard, so a copy with that one key replaced froze with 15 PENDING strings left; the draft's own pending() map must
     be empty. MAJOR 9: the order is seeded by order_beacon.seed over the review commit and the registered drand round's
-    reading (`beacon`, read by take_order_beacon_reading), never by the review commit alone."""
+    reading (`beacon`, read by take_order_beacon_reading) alone: nothing the operator commits enters the seed (the lane
+    orchestrator's ruling 1 on lane L1's hand-back)."""
     import stats
     import completeness
     left = draft_pending(draft)
@@ -126,7 +127,7 @@ def prepare(draft, *, review, parent, pins, frozen_at, beacon):
     bad = order_beacon.reading_problems(beacon, round_no)
     if bad:
         raise ValueError("the take-order beacon reading is refused: " + "; ".join(bad))
-    seed = order_beacon.seed(review, beacon)
+    seed = order_beacon.seed(beacon)
     frozen = copy.deepcopy(draft)
     frozen.update(status="FROZEN", frozen_at=frozen_at, frozen_at_commit_parent=parent,
                   pre_freeze_review_commit=review, take_order_seed=seed, take_order_beacon_reading=copy.deepcopy(beacon),
@@ -150,20 +151,57 @@ def synthetic_beacon_reading(round_no: int) -> dict:
             "relays": list(order_beacon.RELAYS)}
 
 
-def review_committed_at(review_commit: str) -> int:
-    """The review commit's committer time (unix seconds), as git records it."""
-    code, out = git("show", "-s", "--format=%ct", review_commit)
-    if code != 0 or not out.strip().isdigit():
-        raise ValueError(f"the review commit {review_commit[:12]}'s committer time cannot be read")
-    return int(out.strip())
+REGISTERED_LINE = "REGISTERED_ROUND: int | None = {round}"
 
 
-def take_order_beacon_reading(draft, review_commit, *, rehearsal=False, reading_file=None, opener=None, now=None):
+def registering_commit(round_no: int):
+    """The first commit in HEAD's history whose order_beacon.py sets REGISTERED_ROUND to exactly `round_no`, or None."""
+    line = REGISTERED_LINE.format(round=round_no)
+    rel = study.rel("order_beacon.py")
+    code, out = git("log", "--reverse", "--format=%H", "-S", line, "--", rel)
+    if code != 0:
+        return None
+    for sha in out.split():
+        code, text = git("show", f"{sha}:{rel}")
+        if code == 0 and line in text.splitlines():
+            return sha
+    return None
+
+
+def push_records(repo=None) -> list[tuple[int, str]]:
+    """[(unix time, pushed sha)] of every push GitHub records on the witness repository, read read-only with
+    `gh api` (GET /repos/{repo}/activity, activity_type=push). Raises ValueError when it cannot be read."""
+    repo = order_beacon.WITNESS_REPO if repo is None else repo
+    got = subprocess.run(["gh", "api", "--paginate", f"repos/{repo}/activity?activity_type=push&per_page=100",
+                          "--jq", '.[] | "\\(.timestamp)\\t\\(.after)"'], capture_output=True, text=True)
+    if got.returncode != 0:
+        raise ValueError(f"GitHub's push records for {repo} cannot be read with gh api: {got.stderr.strip()[:200]}")
+    out = []
+    for ln in got.stdout.splitlines():
+        stamp, _, sha = ln.partition("\t")
+        try:
+            out.append((int(datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()), sha.strip()))
+        except ValueError:
+            raise ValueError(f"an unreadable push record for {repo}: {ln[:120]!r}") from None
+    return out
+
+
+def history_contains(commit: str, sha: str) -> bool:
+    """Whether `sha` (a pushed commit) holds `commit` in its history, read from this repository; a sha this clone does
+    not have holds nothing it can show."""
+    code, _ = git("merge-base", "--is-ancestor", commit, sha)
+    return code == 0
+
+
+def take_order_beacon_reading(draft, review_commit, *, rehearsal=False, reading_file=None, opener=None, now=None,
+                              pushes=None, contains=None):
     """MAJOR 9: the reading of the draft's registered drand round that seeds the order.
 
-    The real freeze reads both relays itself (the network, on the Mac) and refuses a review whose committer time is not
-    before the round's time. A disposable rehearsal reads a --beacon-reading file (checked offline: chain, round, time,
-    randomness the sha256 of the signature) or, given none, a synthetic reading, and says so (BEACON_NOT_REHEARSED)."""
+    The real freeze refuses unless GitHub's own push records on order_beacon.WITNESS_REPO hold the commit that
+    registered the round, stamped at least WITNESS_LEAD_S before the round's publication (ruling 1), and then reads
+    both relays itself (the network, on the Mac). A disposable rehearsal reads a --beacon-reading file (checked offline:
+    chain, round, time, randomness the sha256 of the signature) or, given none, a synthetic reading, and says so
+    (BEACON_NOT_REHEARSED). `pushes` and `contains` stand in for push_records() and history_contains in tests."""
     try:
         round_no = order_beacon.registered_round(draft.get(BEACON_KEY))
         if rehearsal:
@@ -177,12 +215,11 @@ def take_order_beacon_reading(draft, review_commit, *, rehearsal=False, reading_
             return reading
         if reading_file is not None:
             raise ValueError("--beacon-reading is for a disposable rehearsal only; the real freeze reads both relays")
-        committed = review_committed_at(review_commit)
-        if committed >= order_beacon.round_time(round_no):
-            raise ValueError(f"the review commit {review_commit[:12]} was committed at {order_beacon.iso(committed)}, "
-                             f"not before drand round {round_no} ({order_beacon.iso(order_beacon.round_time(round_no))}):"
-                             f" a review committed once the round's value is public could be re-made to choose the "
-                             f"order")
+        problem = order_beacon.push_witness_problem(
+            registering_commit(round_no), round_no, push_records() if pushes is None else pushes,
+            history_contains if contains is None else contains)
+        if problem:
+            raise ValueError(problem)
         reading = order_beacon.read_relays(round_no, opener=opener, now=now)
         if reading["signature"] == SYNTHETIC_SIGNATURE:
             raise ValueError("the relays answered the rehearsal's synthetic signature")

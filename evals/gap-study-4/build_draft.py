@@ -207,20 +207,20 @@ def assemble(root=None):
             "rows": rows, "counts": {"pairs": len(tasks), "by_arm": dict(collections.Counter(r["arm"] for r in rows)),
                                       "tries": len(rows), "half_cells": len({r["half_cell"] for r in rows})},
             "take_order": None, "take_order_seed": None, "take_order_function": "freeze.planned_order",
-            # Pre-freeze review 1, MAJOR 9 (lane L1): the review commit alone could be re-made to choose the order, so
-            # the seed also takes a public drand round registered here, whose value no one knows until it is
-            # published (order_beacon.py); the rule, the chain, the relays and the residual are its words.
+            # Pre-freeze review 1, MAJOR 9 (lane L1; the lane orchestrator's ruling 1): the review commit could be re-made
+            # to choose the order, so the seed is a public drand round registered here alone, whose value no one knows
+            # until it is published (order_beacon.py); the rule, the chain, the relays and the residual are its words.
             "take_order_rule": ("in one randomised order interleaved across arm, model, task and half, seeded from the "
-                                "review commit and the registered drand round (take_order_beacon), read at the "
-                                "freeze; round 3 seeded its order from the review commit alone."),
+                                "registered drand round (take_order_beacon) alone, read at the freeze; round 3 seeded "
+                                "its order from the review commit."),
             "take_order_beacon": order_beacon.registration(),
             # W6D-R1-2 and W7A-R1-4 (lane w7a): the --order that exists (prereg.order -> freeze.planned_order,
             # seed_problem) and what it prints (the name, the row count, the seed's head and the first rows).
             "order_carry": ("prereg.py --order <seed> names freeze.planned_order and shows the head of its "
                             "permutation of the design's whole planned rows, seeded by a full 40-character "
                             "lowercase hex seed; it refuses until every agent version is pinned. The frozen seed is "
-                            "order_beacon.seed of the pre-freeze review commit and the registered drand round, and "
-                            "prereg.py --order-for-review <review sha> refuses until that round is published."),
+                            "order_beacon.seed of the registered drand round alone, and prereg.py --order-from-beacon "
+                            "refuses until that round is published."),
             "image_locks": locks, "version_pins": pins}
 
 

@@ -10,23 +10,26 @@ with prereg.py --order, reset and recommit, and choose among as many orders as i
 clone saw the first commit. The order decides which half-cells go unmeasured if the money gate stops the loop.
 
 THE ANCHOR. The draft registers one round of drand's quicknet chain (the League of Entropy's public beacon, a new
-value every 3 s, CHAIN below) whose time falls after the review can be committed. Its value cannot be known before
-that time by anyone, the operator included. The freeze reads the round from two independently operated relays
-(RELAYS), requires them to agree byte for byte, requires the published randomness to be the sha256 of the published
-signature (how drand derives it), and seeds the order with seed() over the review commit and that randomness. The
-frozen file records the reading (take_order_beacon_reading). A reset and recommit before the round is published
-changes nothing the operator can choose, because the value that decides the order does not exist yet.
+value every 3 s, CHAIN below), set once in REGISTERED_ROUND. Its value cannot be known before that round's time by
+anyone, the operator included. The freeze reads the round from two independently operated relays (RELAYS), requires
+them to agree byte for byte, requires the published randomness to be the sha256 of the published signature (how drand
+derives it), and seeds the order with seed() over that round and its randomness alone (SEED_RULE). The frozen file
+records the reading (take_order_beacon_reading).
 
-WHAT THIS DOES NOT BIND, NAMED (residual(), carried into the draft beside the rule):
-  - the round's BLS signature is not verified here (no stdlib road); two relays run by different operators must agree,
-    which is a weaker guarantee than the signature check a drand client makes;
-  - a review commit made AFTER the round is published could still be re-made to choose among orders. The freeze refuses
-    a review whose committer time is not before the round's time, and records both, but a committer time is set by
-    whoever commits, so a forged date is a lie a reader can catch only by comparing the review commit with the record
-    outside the clone (the lane orchestrator's log of when the review ran).
+NOTHING THE OPERATOR COMMITS IS IN THE SEED (the lane orchestrator's ruling 1 on lane L1's hand-back, Sat 24 Oct 2026).
+A review commit or the draft's bytes in the seed could be ground: re-made many times under a forged date once the
+round is public. So the seed reads the round and its randomness only, and the one thing left to choose, which round,
+is fixed before its value exists by an outside witness: the freeze refuses unless the commit that set REGISTERED_ROUND
+to the round is contained in a push GitHub itself recorded on WITNESS_REPO (its push activity, read read-only with
+gh api) at least WITNESS_LEAD_S before the round is published (push_witness_problem). A local committer date is the
+operator's to set; GitHub's push time is not.
 
-The network is read only by read_relays: at the real freeze (on the Mac), by --read, and by prereg.py
---order-for-review once the round is published. No take, check or test reads it; tests hand in an opener.
+WHAT THIS DOES NOT BIND, NAMED (residual(), carried into the draft beside the rule): whoever controls GitHub, or the
+clock its push records are stamped by, could register a round after its value is public; and the round's BLS signature
+is not verified here (no stdlib road): two relays run by different operators must agree instead.
+
+The network is read only by read_relays and push_records: at the real freeze (on the Mac), by --read, and by prereg.py
+--order-from-beacon once the round is published. No take, check or test reads it; tests hand in an opener and records.
 
 No model; stdlib only.
 """
@@ -58,6 +61,10 @@ RELAYS = ("https://api.drand.sh", "https://drand.cloudflare.com")
 # first round published at or after the latest time the review can be committed (--round-at <that time>), in the same
 # commit as the regenerated draft. While None, the draft's round reads PENDING and the freeze is closed.
 REGISTERED_ROUND: int | None = None
+# The outside witness of when the round was registered (ruling 1): GitHub's push activity on the private aegis remote,
+# and how long before the round's publication the registering commit must have been pushed there.
+WITNESS_REPO = "javrodriguez/aegis"
+WITNESS_LEAD_S = 3600
 READING_KEYS = ("chain_hash", "round", "round_time", "randomness", "signature", "relays")
 HEX = re.compile(r"[0-9a-f]+")
 SEED_SHAPE = re.compile(r"[0-9a-f]{40}")
@@ -77,19 +84,21 @@ def registration() -> dict:
                 seed_rule=SEED_RULE, residual=residual())
 
 
-SEED_RULE = ("take_order_seed is the first 40 hex characters of the sha256 of the UTF-8 text '<the pre-freeze review "
-             "commit's full sha>\\n<the round>\\n<the round's randomness>', the round read from both relays, which must "
-             "agree, with its randomness the sha256 of its signature (order_beacon.seed).")
+SEED_PREFIX = "gap-study-4 take order\n"
+SEED_RULE = ("take_order_seed is the first 40 hex characters of the sha256 of the UTF-8 text 'gap-study-4 take "
+             "order\\n<the round>\\n<the round's randomness>': nothing the operator commits enters it. The round is the "
+             "one registered here, read from both relays, which must agree, with its randomness the sha256 of its "
+             "signature (order_beacon.seed); the freeze refuses unless the commit that registered the round was pushed "
+             "to " + WITNESS_REPO + " at least " + str(WITNESS_LEAD_S) + " s before the round is published, by GitHub's "
+             "own push record (order_beacon.push_witness_problem).")
 
 
 def residual() -> str:
-    return ("The take order is fixed once both the pre-freeze review commit and the registered drand round exist. A "
-            "review committed before the round is published cannot be re-made to choose an order, because the round's "
-            "value does not exist yet. The freeze refuses a review whose committer time is not before the round's time "
-            "and records both, but a committer time is set by whoever commits: a review re-committed after the round "
-            "under a forged earlier date would choose among orders, and only the orchestrator's record of when the "
-            "review ran, kept outside the clone, can show it. The round's BLS signature is not verified; two relays run "
-            "by different operators must agree instead.")
+    return ("The take order is fixed by the registered drand round alone, and the round is fixed before its value "
+            "exists by GitHub's own record of the push that registered it, at least an hour before the round is "
+            "published. Whoever controls GitHub, or the clock its push records are stamped by, could register a round "
+            "after its value is public and so choose the order. The round's BLS signature is not verified; two relays "
+            "run by different operators must agree instead.")
 
 
 def round_time(round_no: int) -> int:
@@ -185,12 +194,33 @@ def read_relays(round_no: int, *, opener=None, now=None) -> dict:
     return reading
 
 
-def seed(review_commit: str, reading: dict) -> str:
-    """SEED_RULE: 40 lowercase hex characters, so prereg.py --order <seed> previews the frozen order."""
-    if not (isinstance(review_commit, str) and SEED_SHAPE.fullmatch(review_commit)):
-        raise BeaconRefused(f"the review commit is the full 40-character lowercase sha, not {review_commit!r}")
-    text = f"{review_commit}\n{reading['round']}\n{reading['randomness']}"
+def seed(reading: dict) -> str:
+    """SEED_RULE: 40 lowercase hex characters over the round and its randomness alone, so prereg.py --order <seed>
+    previews the frozen order."""
+    text = f"{SEED_PREFIX}{reading['round']}\n{reading['randomness']}"
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:40]
+
+
+def push_witness_problem(commit, round_no: int, pushes, contains) -> str | None:
+    """Why GitHub's push records do not witness the round's registration in time (ruling 1), or None.
+
+    `commit` is the commit that set REGISTERED_ROUND to `round_no` (None when no commit did); `pushes` is
+    [(unix time, pushed sha)] as GitHub recorded them on WITNESS_REPO; `contains(commit, sha)` says whether `sha`'s
+    history holds `commit`. A push counts only if it holds the commit and GitHub stamped it at least WITNESS_LEAD_S
+    before the round's publication time."""
+    if not (isinstance(commit, str) and SEED_SHAPE.fullmatch(commit)):
+        return (f"no commit in this history sets REGISTERED_ROUND to {round_no}: the round's registration has no "
+                f"commit to witness")
+    deadline = round_time(round_no) - WITNESS_LEAD_S
+    held = sorted(t for t, sha in pushes if contains(commit, sha))
+    if not held:
+        return (f"GitHub records no push to {WITNESS_REPO} holding {commit[:12]}, the commit that registered round "
+                f"{round_no}")
+    if held[0] > deadline:
+        return (f"GitHub's first push to {WITNESS_REPO} holding {commit[:12]} is stamped {iso(held[0])}, later than "
+                f"{iso(deadline)} ({WITNESS_LEAD_S} s before round {round_no} is published): the round could have been "
+                f"registered with its value in sight")
+    return None
 
 
 def iso(t: float) -> str:

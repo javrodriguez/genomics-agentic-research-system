@@ -46,13 +46,12 @@ def digest(path):
 # W7A-R1-4: what --order prints (the function's name, the row count, the seed's head and the first rows), not the
 # whole permutation.
 # Lane pf1-l1-freeze-gates (pre-freeze review 1, MAJOR 9): --order takes the seed itself, and the frozen seed is
-# order_beacon.seed of the review commit and the registered drand round; the --order-for-review claim is held by
+# order_beacon.seed of the registered drand round alone (ruling 1); the --order-from-beacon claim is held by
 # tests/test_pf1_freeze_gates.py G9.beacon.
 ORDER_CARRY = ("prereg.py --order <seed> names freeze.planned_order and shows the head of its permutation of the "
                "design's whole planned rows, seeded by a full 40-character lowercase hex seed; it refuses until every "
-               "agent version is pinned. The frozen seed is order_beacon.seed of the pre-freeze review commit and the "
-               "registered drand round, and prereg.py --order-for-review <review sha> refuses until that round is "
-               "published.")
+               "agent version is pinned. The frozen seed is order_beacon.seed of the registered drand round alone, "
+               "and prereg.py --order-from-beacon refuses until that round is published.")
 PRINTED_ORDER_CARRY = ("prereg.py --order <review sha> prints freeze.planned_order: one permutation of the design's "
                        "whole planned rows, seeded by the full 40-character sha of the pre-freeze review commit; it "
                        "refuses until every agent version is pinned.")

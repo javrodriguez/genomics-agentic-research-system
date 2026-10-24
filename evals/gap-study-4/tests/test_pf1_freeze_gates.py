@@ -17,9 +17,13 @@ guards and must turn that clause red alone.
                relays on 24 Oct 2026 is the test vector); read_relays refuses an unpublished round without reading the
                network, a disagreement and a randomness that is not the signature's sha256; prepare seeds the order
                with order_beacon.seed, never the review commit; the real freeze refuses a review committed at or after
-               the round and a --beacon-reading file; the draft registers the beacon with its round PENDING; and
-               prereg.py --order-for-review refuses before the round is published and reads a frozen file's reading.
-               Witnesses: seed-review-only, relays-not-compared, review-time-unchecked, preview-before-round.
+               a --beacon-reading file; ruling 1 of the lane orchestrator (24 Oct 2026): the seed is the round and its
+               randomness alone, so two reviews freeze one order, and the real freeze reads the relays only once
+               GitHub's push records on the aegis remote hold the commit that registered the round, stamped an hour
+               or more before it is published (registering_commit on a scratch history, push_records on a stand-in
+               gh); the draft registers the beacon with its round PENDING; and prereg.py --order-from-beacon refuses
+               before the round is published and reads a frozen file's reading. Witnesses: seed-ignores-randomness,
+               relays-not-compared, push-lead-unchecked, push-holding-unchecked, preview-before-round.
   G2b.pending  m2: prepare refuses a draft holding any PENDING input even with its stats_design sentinel replaced.
                Witness: pending-unchecked.
   G4.coverage  MAJOR 4 part 3: the freeze's coverage reading names the missing walks of arms A and O and none of the
@@ -224,19 +228,21 @@ def g9_beacon(fz, ob, pr, p="G9.beacon") -> list:
         except ob.BeaconRefused:
             if seen:
                 out.append(f"{p}: the network was read for an unpublished round")
-        s1, s2 = ob.seed(REVIEW, reading()), ob.seed(OTHER_REVIEW, reading())
-        s3 = ob.seed(REVIEW, reading(randomness="c" * 64))
-        if len({s1, s2, s3, REVIEW}) != 4 or not ob.SEED_SHAPE.fullmatch(s1) or s1 != hashlib.sha256(
-                f"{REVIEW}\n{ROUND}\n{RANDOMNESS}".encode()).hexdigest()[:40]:
-            out.append(f"{p}: the seed is not SEED_RULE over the review and the randomness")
+        s1 = ob.seed(reading())
+        s3 = ob.seed(reading(randomness="c" * 64))
+        s4 = ob.seed(reading(round=ROUND + 1))
+        if len({s1, s3, s4}) != 3 or not ob.SEED_SHAPE.fullmatch(s1) or s1 != hashlib.sha256(
+                f"gap-study-4 take order\n{ROUND}\n{RANDOMNESS}".encode()).hexdigest()[:40]:
+            out.append(f"{p}: the seed is not SEED_RULE over the round and its randomness")
         d = registered(committed_draft())
         with open_design(fz):
             frozen = fz.prepare(d, review=REVIEW, parent="b" * 40, pins=[], frozen_at="t", beacon=reading())
+            other = fz.prepare(d, review=OTHER_REVIEW, parent="b" * 40, pins=[], frozen_at="t", beacon=reading())
         if frozen["take_order_seed"] != s1 or frozen["take_order_beacon_reading"] != reading() or \
                 frozen["take_order"] != fz.planned_order(d, s1):
             out.append(f"{p}: prepare does not seed the order with order_beacon.seed")
-        if frozen["take_order"] == fz.planned_order(d, REVIEW):
-            out.append(f"{p}: prepare's order is the review commit's alone")
+        if other["take_order"] != frozen["take_order"] or other["pre_freeze_review_commit"] != OTHER_REVIEW:
+            out.append(f"{p}: the review commit moves the order")
         if fz.keys_outside_the_freeze(d, frozen):
             out.append(f"{p}: the freeze wrote keys outside its own: {fz.keys_outside_the_freeze(d, frozen)}")
         for bad_beacon in (None, reading(round=ROUND + 1), reading(signature="00")):
@@ -246,15 +252,28 @@ def g9_beacon(fz, ob, pr, p="G9.beacon") -> list:
                 out.append(f"{p}: prepare admitted the beacon reading {bad_beacon!r:.60}")
             except (ValueError, TypeError):
                 pass
-        with mock.patch.object(fz, "review_committed_at", lambda c: ROUND_TIME):
-            try:
-                fz.take_order_beacon_reading(d, REVIEW, opener=relay_opener(), now=ROUND_TIME + 60)
-                out.append(f"{p}: a review committed at the round's time seeds the freeze")
-            except ValueError:
-                pass
-        with mock.patch.object(fz, "review_committed_at", lambda c: ROUND_TIME - 600):
-            if fz.take_order_beacon_reading(d, REVIEW, opener=relay_opener(), now=ROUND_TIME + 60) != reading():
-                out.append(f"{p}: the real freeze does not read the relays")
+        lead = ob.WITNESS_LEAD_S
+        early, pushed = [(ROUND_TIME - lead - 60, "a" * 40)], "c" * 40
+        holds = lambda commit, sha: (commit, sha) == (pushed, "a" * 40)  # noqa: E731
+        for name, commit, pushes, contains in (
+                ("no registering commit", None, early, holds),
+                ("no push holding it", pushed, early, lambda c, s: False),
+                ("a push under the lead", pushed, [(ROUND_TIME - lead + 60, "a" * 40)], holds),
+                ("a push after the round", pushed, [(ROUND_TIME + 60, "a" * 40)], holds)):
+            seen = []
+            with mock.patch.object(fz, "registering_commit", lambda r, commit=commit: commit):
+                try:
+                    fz.take_order_beacon_reading(d, REVIEW, opener=relay_opener(seen=seen), now=ROUND_TIME + 120,
+                                                 pushes=pushes, contains=contains)
+                    out.append(f"{p}: the real freeze ran with {name}")
+                except ValueError:
+                    pass
+            if seen:
+                out.append(f"{p}: the relays were read with {name}")
+        with mock.patch.object(fz, "registering_commit", lambda r: pushed):
+            if fz.take_order_beacon_reading(d, REVIEW, opener=relay_opener(), now=ROUND_TIME + 60, pushes=early
+                                            + [(ROUND_TIME + 5, "b" * 40)], contains=holds) != reading():
+                out.append(f"{p}: the real freeze with an early witnessed push does not read the relays")
             with tempfile.TemporaryDirectory() as tmp:
                 f = Path(tmp) / "reading.json"
                 f.write_text(json.dumps(reading()))
@@ -282,12 +301,12 @@ def g9_beacon(fz, ob, pr, p="G9.beacon") -> list:
             seen = []
             with mock.patch.object(pr, "load", lambda design=design: design):
                 try:
-                    pr.order_for_review(REVIEW, opener=relay_opener(seen=seen))
-                    out.append(f"{p}: --order-for-review previewed an order with its round {why}")
+                    pr.order_from_beacon(opener=relay_opener(seen=seen))
+                    out.append(f"{p}: --order-from-beacon previewed an order with its round {why}")
                 except ob.BeaconRefused:
                     pass
             if seen:
-                out.append(f"{p}: --order-for-review read the network for a round {why}")
+                out.append(f"{p}: --order-from-beacon read the network for a round {why}")
         command = freeze_rehearsal.freeze_command(REVIEW, None, "/synthetic/reading.json")
         if command[-2:] != ("--beacon-reading", "/synthetic/reading.json") or \
                 "--beacon-reading" in freeze_rehearsal.freeze_command(REVIEW, None):
@@ -297,8 +316,28 @@ def g9_beacon(fz, ob, pr, p="G9.beacon") -> list:
             out.append(f"{p}: the rehearsal's beacon step does not fail a synthetic reading alone")
         frozen_doc = dict(frozen, _frozen=True, _source="prereg.json")
         with mock.patch.object(pr, "load", lambda: frozen_doc):
-            if pr.order_for_review(REVIEW) != frozen["take_order"]:
-                out.append(f"{p}: --order-for-review does not read the frozen file's order")
+            if pr.order_from_beacon() != frozen["take_order"]:
+                out.append(f"{p}: --order-from-beacon does not read the frozen file's order")
+        with tempfile.TemporaryDirectory() as tmp:                     # registering_commit on a scratch history
+            repo = Path(tmp)
+            git(repo, "init", "-q")
+            (repo / "evals" / "gap-study-4").mkdir(parents=True)
+            shas = []
+            for value in ("None", "123", "1234"):
+                (repo / "evals" / "gap-study-4" / "order_beacon.py").write_text(
+                    f"x = 1\nREGISTERED_ROUND: int | None = {value}\n")
+                git(repo, "add", "-A")
+                git(repo, "commit", "-q", "-m", value)
+                shas.append(git(repo, "rev-parse", "HEAD"))
+            with mock.patch.object(fz, "REPO", repo):
+                got = [fz.registering_commit(r) for r in (123, 1234, 12)]
+        if got != [shas[1], shas[2], None]:
+            out.append(f"{p}: registering_commit reads {got}, wanted the commits that set 123 and 1234, none for 12")
+        fake = types.SimpleNamespace(returncode=0, stdout=f"2026-10-24T20:00:00Z\t{'d' * 40}\n", stderr="")
+        with mock.patch.object(fz.subprocess, "run", lambda argv, **k: fake if argv[:2] == ["gh", "api"] and
+                               "repos/javrodriguez/aegis/activity?activity_type=push&per_page=100" in argv else None):
+            if fz.push_records() != [(ROUND_TIME - 1440, "d" * 40)]:
+                out.append(f"{p}: push_records does not read GitHub's push activity")
     except Exception as e:  # noqa: BLE001
         return [f"ERROR {p}: {type(e).__name__}: {str(e)[:300]}"]
     return out
@@ -616,12 +655,14 @@ WITNESSES = {
     "empty-pattern-admitted": ("G2.pins", "freeze", (("        if not matched:\n            raise ValueError(",
                                                       "        if False:\n            raise ValueError("),)),
     "review-digest-unchecked": ("G3.review", "freeze", (("    if first != want:\n", "    if False:\n"),)),
-    "seed-review-only": ("G9.beacon", "order_beacon", (('    text = f"{review_commit}\\n{reading[\'round\']}\\n'
-                                                        '{reading[\'randomness\']}"\n',
-                                                        '    return review_commit\n'),)),
+    "seed-ignores-randomness": ("G9.beacon", "order_beacon", (('    text = f"{SEED_PREFIX}{reading[\'round\']}\\n'
+                                                               '{reading[\'randomness\']}"\n',
+                                                               '    text = f"{SEED_PREFIX}{reading[\'round\']}"\n'),)),
     "relays-not-compared": ("G9.beacon", "order_beacon", (("    if len(set(answers)) != 1:\n", "    if False:\n"),)),
-    "review-time-unchecked": ("G9.beacon", "freeze", (("        if committed >= order_beacon.round_time(round_no):\n",
-                                                       "        if False:\n"),)),
+    "push-lead-unchecked": ("G9.beacon", "order_beacon", (("    if held[0] > deadline:\n", "    if False:\n"),)),
+    "push-holding-unchecked": ("G9.beacon", "order_beacon", (("    held = sorted(t for t, sha in pushes if "
+                                                              "contains(commit, sha))\n",
+                                                              "    held = sorted(t for t, sha in pushes)\n"),)),
     "preview-before-round": ("G9.beacon", "prereg", (("        reading = order_beacon.read_relays(round_no, "
                                                       "opener=opener, now=now)\n",
                                                       "        reading = {'round': round_no, 'randomness': '0'}\n"),)),
