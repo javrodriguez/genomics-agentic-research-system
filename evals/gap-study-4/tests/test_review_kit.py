@@ -448,8 +448,8 @@ class Battery(unittest.TestCase):
         self.rc = load_isolated(HERE / "run_checks.py", "run_checks_for_battery_test")
         # a three-command battery: the copies below count it whole (review MINOR-1: a count that is not the commit's
         # whole battery is refused)
-        self.rc.commands = lambda: [("test_round4", "t"), ("a.txt:1", "true"), ("a.txt:2", "true")]
-        self.rc.file_problems = lambda: []
+        self.rc.commands = lambda: [("test_round4", "t"), ("a.txt:1", "true")]
+        self.rc.file_problems = lambda: [("b.TXT", "not a lane checks file")]     # whole = 2 commands + 1 problem
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -486,7 +486,13 @@ class Battery(unittest.TestCase):
             "missing": self.root / "absent.out",
             "a link": link,
             "inside the repository": inside,
-            "a relative path": Path("battery.out"),
+            # an existing well-formed copy, named relative to the working folder (closure review m3)
+            "a relative path": Path(os.path.relpath(self.copy(good, name="rel.out"))),
+            "the commands without the file problems": self.copy(self.PASS3.replace("PASS [a.txt:2] exit 0 in 0.1s: true\n", "")
+                                                                + "run_checks: 2 of 2 commands passed\n", name="two-only.out"),
+            "a tree line not just before the summary": self.copy(
+                "athena-suite: battery tree unchanged\n" + self.PASS3.replace("athena-suite: battery tree unchanged\n", "")
+                + "run_checks: 3 of 3 commands passed\n", name="tree-early.out"),
             "not this battery's count": self.copy(self.PASS3 + "run_checks: 4 of 4 commands passed\n", name="four.out"),
             "no tree line": self.copy(self.PASS3.replace("athena-suite: battery tree unchanged\n", "")
                                       + "run_checks: 3 of 3 commands passed\n", name="notree.out"),
@@ -626,6 +632,15 @@ def mutants():
                                 "producer", "if path.resolve().is_relative_to(repo.resolve()):", "if False:"),
         "battery-any-count": ("Battery.test_a_copy_that_cannot_be_bound_to_this_head_is_refused", "K13.battery",
                               "producer", "    if n != whole:\n", "    if False:\n"),
+        "battery-relative-taken": ("Battery.test_a_copy_that_cannot_be_bound_to_this_head_is_refused", "K13.battery",
+                                   "producer", "if not path.is_absolute():", "if False:"),
+        "battery-count-commands-only": ("Battery.test_a_copy_that_cannot_be_bound_to_this_head_is_refused",
+                                        "K13.battery", "producer",
+                                        "whole = len(run_checks.commands()) + len(run_checks.file_problems())",
+                                        "whole = len(run_checks.commands())"),
+        "battery-tree-anywhere": ("Battery.test_a_copy_that_cannot_be_bound_to_this_head_is_refused", "K13.battery",
+                                  "producer", "if len(lines) < 2 or lines[-2] != TREE_UNCHANGED:",
+                                  "if TREE_UNCHANGED not in lines:"),
         "battery-tree-ignored": ("Battery.test_a_copy_that_cannot_be_bound_to_this_head_is_refused", "K13.battery",
                                  "producer", "if len(lines) < 2 or lines[-2] != TREE_UNCHANGED:", "if False:"),
         "battery-link-taken": ("Battery.test_a_copy_that_cannot_be_bound_to_this_head_is_refused", "K13.battery",

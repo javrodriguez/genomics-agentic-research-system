@@ -24,6 +24,7 @@ Reads committed walk records and copies them into temporary folders only; no mod
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -45,7 +46,23 @@ WALKS = {"w142": [11, 86], "w158": [11, 49]}
 REAL_HOME = "/home/alice/projects/rnaseq/counts.tsv"
 
 
+def mac_realpath(real):
+    """os.path.realpath as the Mac resolves /home (a link to /System/Volumes/Data/home), on any machine: the closure
+    review's MAJOR M1, so the home-through-system witness reads red on Linux too, where /home resolves to itself."""
+    def resolve(path):
+        path = os.fspath(path)
+        if path == "/home" or path.startswith("/home/"):
+            return "/System/Volumes/Data" + path
+        return real(path)
+    return resolve
+
+
 def f5_home(mod, p="F5-home"):
+    with mock.patch.object(os.path, "realpath", mac_realpath(os.path.realpath)):
+        return _f5_home(mod, p)
+
+
+def _f5_home(mod, p):
     out = []
     try:
         for path, want in ((PLACEHOLDER, "elsewhere"), (REAL_HOME, "elsewhere"), ("/home", "elsewhere"),
