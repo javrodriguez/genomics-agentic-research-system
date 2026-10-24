@@ -37,6 +37,9 @@ and a reviewer that runs only light checks and reads the remote runner's outputs
                a link, a missing file, a file inside the repository, another commit, a second or a misplaced
                summary line is refused before any file is written. The README names python3.12 for every step and
                the suite road for step 1
+  K14.workflow launch and resume both pass `--disallowedTools Workflow`, so the reviewer cannot start the client's
+               bundled workflows (deep-research among them); the README's smoke requires the init record to list
+               no Workflow tool, and names the probe that measured the skills question
 
 Folds of glitch-f1's rulings on the first hand-back (Wed 21 Oct 2026): K7, K8 and K9 were written red first.
 Folds of the review of c41b7d50 (REVIEW-review-kit-port-c41b7d5.md, glitch-f1's rulings): K10, K11, K12 and the
@@ -44,7 +47,8 @@ tightened K8 (a commit line, not the sha anywhere; no dotfile, absolute home pat
 half-built folder removed) and K9 (the built-in list, effort, environment names) were written red first.
 
 Lane prefreeze-road (the Lane-orchestrator's ruling of Sat 24 Oct 2026, under Javier's standing delegation, after the
-pre-freeze round's remote outputs came back with environment reds): K13 was written red first.
+pre-freeze round's remote outputs came back with environment reds): K13 was written red first. K14 (the
+Lane-orchestrator's ruling 2 on the lane's hand-back, the same day) was written red first.
 
 Reads committed files only; no model, network, container or take. Interpreter state (sys.modules, sys.path,
 os.environ, cwd) is left as found.
@@ -365,6 +369,23 @@ class Effort(unittest.TestCase):
             self.assertEqual(argv[argv.index("--model") + 1], "claude-opus-5-5", "K11.effort")
 
 
+class Workflow(unittest.TestCase):
+    def test_launch_and_resume_disallow_the_workflow_tool(self):
+        lk = load_launch()
+        drive = types.SimpleNamespace(ISOLATION_FLAGS=("--setting-sources", "project,local"))
+        for argv in (lk.argv_for("id", drive), lk.resume_argv_for("id", drive)):
+            self.assertIn("--disallowedTools", argv, "K14.workflow: no --disallowedTools")
+            self.assertEqual(argv[argv.index("--disallowedTools") + 1], "Workflow", "K14.workflow")
+            self.assertTrue(argv[argv.index("--disallowedTools") + 2].startswith("--"),
+                            "K14.workflow: the disallow list holds Workflow alone")
+
+    def test_the_smoke_checks_the_tool_list_and_cites_the_probe(self):
+        section = text("readme").split("## Before round 1: the skills smoke", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("lists no `Workflow` tool", section, "K14.workflow: the smoke reads the tool list")
+        self.assertNotIn("has not been measured", section, "K14.workflow: the probe measured it")
+        self.assertIn("e02da1fd-a604-4570-91f5-ed48a7b5faa4", section, "K14.workflow: the probe is named")
+
+
 class Folder(unittest.TestCase):
     def test_launch_refuses_a_folder_without_athena_or_commit(self):
         lk = load_launch()
@@ -590,8 +611,8 @@ def mutants():
                             'if not (folder / "athena").is_dir() or not any((folder / "athena").iterdir()):',
                             "if False:"),
         "effort-dropped-on-resume": ("Effort.test_launch_and_resume_pass_effort_medium", "K11.effort", "launch",
-                                     '"none", *drive.ISOLATION_FLAGS, "--effort", EFFORT,',
-                                     '"none", *drive.ISOLATION_FLAGS,'),
+                                     '"none", *drive.ISOLATION_FLAGS, *DISALLOW, "--effort", EFFORT,',
+                                     '"none", *drive.ISOLATION_FLAGS, *DISALLOW,'),
         "producer-no-commit-line": ("Producer.test_each_file_carries_its_lines_and_passes_the_kit_check",
                                     "K12.producer", "producer", 'f"commit: {head}\\n"', 'f"sha: {head}\\n"'),
         "battery-other-commit": ("Battery.test_a_copy_that_cannot_be_bound_to_this_head_is_refused", "K13.battery",
@@ -609,6 +630,13 @@ def mutants():
                                  "producer", "if len(lines) < 2 or lines[-2] != TREE_UNCHANGED:", "if False:"),
         "battery-link-taken": ("Battery.test_a_copy_that_cannot_be_bound_to_this_head_is_refused", "K13.battery",
                                "producer", "if path.is_symlink() or not path.is_file():", "if not path.exists():"),
+        "workflow-allowed": ("Workflow.test_launch_and_resume_disallow_the_workflow_tool", "K14.workflow", "launch",
+                             '*drive.ISOLATION_FLAGS, *DISALLOW, "--effort", EFFORT, "--output-format", "stream-json",\n'
+                             '            "--verbose", "--session-id", session_id]',
+                             '*drive.ISOLATION_FLAGS, "--effort", EFFORT, "--output-format", "stream-json",\n'
+                             '            "--verbose", "--session-id", session_id]'),
+        "smoke-tools-unread": ("Workflow.test_the_smoke_checks_the_tool_list_and_cites_the_probe", "K14.workflow",
+                               "readme", "lists no `Workflow` tool", "lists its tools"),
         "readme-bare-python": ("Battery.test_the_readme_names_the_interpreter_and_the_suite_road", "K13.battery",
                                "readme", "2. Build the folder outside the Brain and this repository: `python3.12 ",
                                "2. Build the folder outside the Brain and this repository: `python3 "),

@@ -16,8 +16,9 @@ Every step names its interpreter: `python3.12`, the operator machine's Python 3.
 
 ## Before round 1: the skills smoke
 
-The reviewer is launched with the driver's isolation flags (`--setting-sources project,local`, `--strict-mcp-config`), `--effort medium`, auto memory off, and an environment built from `launch.py`'s `ALLOWED_ENV` alone.
-Whether skills kept in the operator's home folder (directly, one level deeper under the account-synced folder, or as plugins) still reach a session launched that way on today's client has not been measured.
+The reviewer is launched with the driver's isolation flags (`--setting-sources project,local`, `--strict-mcp-config`), `--disallowedTools Workflow`, `--effort medium`, auto memory off, and an environment built from `launch.py`'s `ALLOWED_ENV` alone.
+Whether skills kept in the operator's home folder (directly, one level deeper under the account-synced folder, or as plugins) reach a session launched that way was measured on Sat 24 Oct 2026 on client 2.1.280 by lane prefreeze-road's probe, session e02da1fd-a604-4570-91f5-ed48a7b5faa4, launched by `launch.py` with no row: the Skill tool answered `Unknown skill` for an account-synced skill (by its plain and its namespaced name) and for a home-folder skill, and refused the client's own bundled `deep-research` as reserved for the user.
+The init record's `skills` list names more than the `skill_listing` record does because it also lists the client's bundled commands that only a user may start; the Workflow tool could still start a bundled workflow, so `launch.py` disallows it.
 One such skill carries the operator's coordinating-session name (`lane-orchestrator`), and the Brain keeps its own skills too.
 So before round 1 opens, one turn is launched exactly as a reviewer is, and its loaded skills are listed.
 
@@ -50,6 +51,7 @@ What the smoke must show, every item, before round 1 opens:
 - `env-names.txt` lists only names `ALLOWED_ENV` holds plus `ENABLE_CLAUDEAI_MCP_SERVERS` and `CLAUDE_CODE_DISABLE_AUTO_MEMORY`.
 - `blindness.py` prints UNEXPLAINED 0 on every marker row, `lane-orchestrator` included, and 0 absolute paths outside the folder.
 - Every skill name the listing records is on the built-in list above, and only names on that list pass: a name from the operator's home folder, the account-synced folder, a plugin or the Brain fails the smoke, and so does a new built-in name, until it is reviewed and added to the list on its own commit.
+- The session's init record (the stream's `system` record of subtype `init`, in `<smoke folder>-launch/stream.jsonl`) lists no `Workflow` tool.
 - The skill listing was read: if step 4 prints no skill record at all, the smoke has not measured the list and does not pass. Record that, and find the record the client uses before trusting a silence.
 
 If any item fails, round 1 does not open.

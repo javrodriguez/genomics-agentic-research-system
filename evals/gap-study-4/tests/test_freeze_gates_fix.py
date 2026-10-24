@@ -220,9 +220,11 @@ class TestFreezeGatesFix(unittest.TestCase):
     def test_f4_a_recorded_per_walk_exception_is_bound_and_printed(self):
         self.assertEqual(f4_exception(fw), [])
 
-    def test_f4_the_committed_exception_is_w023s_alone(self):
+    def test_f4_the_committed_exceptions_are_w023s_w142s_and_w158s(self):
+        # lane prefreeze-road (the Lane-orchestrator's ruling 1, 24 Oct 2026): the two placeholder exceptions join w023's
         self.assertEqual([(e["walk"], e["path"], sorted(e["lines"])) for e in fw.RECORDED_EXCEPTIONS],
-                         [("w023", "/tmp/finalize.log", [74])], "F4-exception")
+                         [("w023", "/tmp/finalize.log", [74]), ("w142", "/home/<user", [11, 86]),
+                          ("w158", "/home/<user", [11, 49])], "F4-exception")
 
 
 class WitnessNotPerformed(AssertionError):

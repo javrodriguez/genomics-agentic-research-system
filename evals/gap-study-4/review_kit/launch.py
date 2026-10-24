@@ -25,6 +25,9 @@ This launcher:
     container), so a reviewer launched from an operator pane inherited that pane's effort, session id and messaging
     socket and token. The environment is now an allowlist, default deny, and never the driver's or the caller's.
     Never an Agent sub-agent: those boot with the operator's memory.
+  - passes `--disallowedTools Workflow` (lane prefreeze-road, the Lane-orchestrator's ruling 2, Sat 24 Oct 2026):
+    the client offers the Workflow tool and bundled workflows such as deep-research, which the Skill tool cannot
+    start but the Workflow tool can; the disallow flag is the narrower of the two closings;
   - records the session id it opened, the folder's listing at launch, the NAMES of the environment it passed
     (env-names.txt, never a value), the stream, stderr and the exit code beside the folder, so blindness.py can read
     the reviewer's own session file afterwards.
@@ -68,6 +71,8 @@ EFFORT = "medium"
 PROMPT = "Read BRIEF.md in this folder and follow it exactly."
 RESUME_PROMPT = ("Your session was interrupted by a rate limit and has been resumed. Continue exactly where you "
                  "were: follow BRIEF.md in this folder to completion, and write the report it asks for.")
+# Lane prefreeze-road (the Lane-orchestrator's ruling 2): the tools the reviewer is never offered, on launch and resume
+DISALLOW = ("--disallowedTools", "Workflow")
 REVIEWER_ENV = {"ENABLE_CLAUDEAI_MCP_SERVERS": "false", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
 # The only names the reviewer's environment takes from the caller's, each with the reason the headless client needs
 # it. Everything else is dropped: every CLAUDE* / CLAUDE_CODE_* name of the operator's session, any API key, any
@@ -122,15 +127,15 @@ def folder_problems(folder: Path) -> list[str]:
 
 def argv_for(session_id: str, drive) -> list[str]:
     return ["claude", "-p", PROMPT, "--model", MODEL, "--permission-mode", "auto", "--permission-prompts", "none",
-            *drive.ISOLATION_FLAGS, "--effort", EFFORT, "--output-format", "stream-json", "--verbose",
-            "--session-id", session_id]
+            *drive.ISOLATION_FLAGS, *DISALLOW, "--effort", EFFORT, "--output-format", "stream-json",
+            "--verbose", "--session-id", session_id]
 
 
 def resume_argv_for(session_id: str, drive) -> list[str]:
     """The same flags, the same model, the same id -- continued with the harness's --resume, never re-opened."""
     return ["claude", "-p", RESUME_PROMPT, "--model", MODEL, "--permission-mode", "auto", "--permission-prompts",
-            "none", *drive.ISOLATION_FLAGS, "--effort", EFFORT, "--output-format", "stream-json", "--verbose",
-            "--resume", session_id]
+            "none", *drive.ISOLATION_FLAGS, *DISALLOW, "--effort", EFFORT, "--output-format", "stream-json",
+            "--verbose", "--resume", session_id]
 
 
 def env_for(source=None) -> dict:

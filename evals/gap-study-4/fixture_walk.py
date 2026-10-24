@@ -93,6 +93,15 @@ def under(path: str, root: str) -> bool:
     return False
 
 
+def spelled_under(path: str, root: str) -> bool:
+    """Is `path` at or below `root` by the normalised spelling alone (no resolution)? Lane prefreeze-road (the
+    Lane-orchestrator's ruling 1, Sat 24 Oct 2026): a system root is read this way, because on the Mac `/home` resolves
+    to `/System/Volumes/Data/home`, so under()'s resolved arm placed every /home path under the system root /System
+    there while the same path read unplaced on Linux."""
+    pa, pb = parts(path), parts(root)
+    return len(pa) >= len(pb) and pa[:len(pb)] == pb
+
+
 def any_under(path: str, roots) -> bool:
     return any(under(path, r) for r in roots)
 
@@ -148,6 +157,17 @@ RECORDED_EXCEPTIONS = (
      "reason": "a file the session itself created (the agent's own tee of its finalize output), not a fixture read: "
                "it names nothing of the study",
      "ruling": "glitch-f1, ruling 1 on lane freeze-gates-fix's hand-back, Wed 21 Oct 2026"},
+    # lane prefreeze-road: the quoted placeholder in two walks' transcripts, each line bound by its bytes
+    {"walk": "w142", "path": "/home/<user",
+     "lines": {11: "33d87cce9288b870d83bf418c9f4ea801e9e9b8bebce5b9679c2d8eec8184fda", 86: "21490c51949cc0cebb8a20cb687dd07efd7174e34f8a4fa79941c5b02806e16f"},
+     "command": "the session's CLAUDE.md instructions attachment (line 11), and the output of `python3 _system/executorlib.py --help; python3 _system/executorlib.py submit --help; sed -n 1,80p _system/gars-env.sh` (line 86)",
+     "reason": "the GARS fixture's own text quotes the cluster paths /gpfs/home/<user> and /gpfs/data/abl/home/<user>, in which the path pattern reads /home/<user: a placeholder in the fixture's words, no path of any machine and nothing of the study",
+     "ruling": "the Lane-orchestrator, ruling 1 on lane prefreeze-road's hand-back, Sat 24 Oct 2026, under Javier's standing delegation"},
+    {"walk": "w158", "path": "/home/<user",
+     "lines": {11: "965b56a09104faef31d3b891fc48c55643de69564f71b1039f0f6be9c5d40ab4", 49: "4b457f14dd20e2d1eca1ad6ceb3338bdf0c740fcc664faee8259f3a2c6997e70"},
+     "command": "the session's CLAUDE.md instructions attachment (line 11), and the output of the command whose last part is `sed -n 1,40p _system/gars-env.sh` (line 49)",
+     "reason": "the GARS fixture's own text quotes the cluster paths /gpfs/home/<user> and /gpfs/data/abl/home/<user>, in which the path pattern reads /home/<user: a placeholder in the fixture's words, no path of any machine and nothing of the study",
+     "ruling": "the Lane-orchestrator, ruling 1 on lane prefreeze-road's hand-back, Sat 24 Oct 2026, under Javier's standing delegation"},
 )
 
 
@@ -199,7 +219,7 @@ def classify_path(p: str, run_tree: str | None) -> str:
         return "study"
     if run_tree and under(p, run_tree):
         return "run-tree"
-    if any_under(p, SYSTEM_ROOTS):
+    if any(spelled_under(p, r) for r in SYSTEM_ROOTS):
         return "system"
     if HARNESS_TASK_OUTPUT.match(p):
         return "harness"
