@@ -82,6 +82,7 @@ import re
 import shlex
 import subprocess
 import sys
+import threading
 import types
 from pathlib import Path
 
@@ -334,10 +335,59 @@ def evidence_candidates(repo: str, head: str, tip: str) -> dict:
     for oid, where in paths.items():
         if oid not in new:
             continue
-        head_bytes = _git_out(repo, "cat-file", "blob", oid, binary=True)[:8000]
-        if head_bytes[:2] == b"\x1f\x8b" or b"\0" in head_bytes:
+        if is_evidence_candidate(_git_out(repo, "cat-file", "blob", oid, binary=True)[:8000]):
             out[oid] = where
     return out
+
+
+def is_evidence_candidate(head_bytes: bytes) -> bool:
+    """A blob both roads decode-and-scan or refuse, by its first 8000 bytes: binary to git (a NUL there) OR gzip magic
+    1f 8b, text to git or not (the fetch's MINOR 5; the outward road's since the review of 2ced80f2, MAJOR 1)."""
+    if head_bytes[:2] == b"\x1f\x8b" or b"\0" in head_bytes[:8000]:
+        return True
+    return False
+
+
+# One decode-and-stage step shared by the fetch (admitted_evidence_blobs) and the outward ship scan
+# (outward_evidence_blobs), so the two roads cannot drift (the review of 2ced80f2, NIT 4, folded with its MAJOR 1):
+# the stored-size cap, the sha256 of the STORED bytes as the name at every path, the per-blob bound (the absolute cap,
+# the ratio and the room the caller's total leaves), gunzip_to, the binary-header check and the .header file. Each road
+# keeps its own words (FETCH_SAYS is the fetch's, byte for byte as before).
+FETCH_SAYS = {"stored": "blob {oid} is stored larger than {cap} bytes",
+              "path": "blob {oid} sits outside rehearsals/<walk>/evidence/blobs/<sha256 of its bytes>",
+              "decode": "evidence blob {oid}: {why}",
+              "header": "evidence blob {oid}: a gzip header field is binary"}
+OUTWARD_SAYS = {"stored": "evidence blob {oid} is stored larger than {cap} bytes; nothing ships",
+                "path": "evidence blob {oid} sits off <walk or take>/evidence/blobs/<sha256 of its stored bytes>; "
+                        "nothing ships",
+                "decode": "evidence blob {oid}: {why}; nothing ships",
+                "header": "evidence blob {oid}: a gzip header field is binary; nothing ships"}
+
+
+def stage_evidence_blob(repo: str, oid: str, where, src: str, room: int, says: dict) -> int:
+    """Decode blob `oid` (its paths `where`) into src/<oid> and its header into src/<oid>.header, each 0600, for the
+    caller's canary scan; returns the decompressed size. `room` is what the caller's total cap leaves. Refuses in the
+    words of `says` (FETCH_SAYS or OUTWARD_SAYS), naming the id and the rule, never content."""
+    if int(_git_out(repo, "cat-file", "-s", oid).strip() or 0) > BLOB_MAX_BYTES:
+        raise LaunchRefused(says["stored"].format(oid=oid, cap=BLOB_MAX_BYTES))
+    data = _git_out(repo, "cat-file", "blob", oid, binary=True)
+    name = hashlib.sha256(data).hexdigest()
+    if not all(EVIDENCE_BLOB.fullmatch(p) and p.rsplit("/", 1)[1] == name for p in where):
+        raise LaunchRefused(says["path"].format(oid=oid))
+    limit = min(BLOB_MAX_BYTES, len(data) * BLOB_MAX_RATIO, room)
+    fd = os.open(os.path.join(src, oid), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as fh:
+            n, fields = gunzip_to(data, fh, limit)
+    except LaunchRefused as e:
+        raise LaunchRefused(says["decode"].format(oid=oid, why=e)) from None
+    if any(b"\0" in v for _k, v in fields):
+        raise LaunchRefused(says["header"].format(oid=oid))
+    meta = (b"MTIME: " + str(int.from_bytes(data[4:8], "little")).encode() + b"\nXFL: "
+            + str(data[8]).encode() + b"\nOS: " + str(data[9]).encode() + b"\n")
+    _write_private(os.path.join(src, oid + ".header"),
+                   meta + b"".join(k.encode() + b": " + v + b"\n" for k, v in fields))
+    return n
 
 
 def _tree_entries(repo: str, commit: str) -> list:
@@ -508,28 +558,7 @@ def admitted_evidence_blobs(suite_mod, repo: str, head: str, tip: str, gitleaks:
         for oid in sorted(cands):
             if oid in in_head:
                 raise LaunchRefused(f"blob {oid} is in the shipped head's history, not only the walk's commits")
-            if int(_git_out(repo, "cat-file", "-s", oid).strip() or 0) > BLOB_MAX_BYTES:
-                raise LaunchRefused(f"blob {oid} is stored larger than {BLOB_MAX_BYTES} bytes")
-            data = _git_out(repo, "cat-file", "blob", oid, binary=True)
-            name = hashlib.sha256(data).hexdigest()
-            where = cands[oid]
-            if not all(EVIDENCE_BLOB.fullmatch(p) and p.rsplit("/", 1)[1] == name for p in where):
-                raise LaunchRefused(f"blob {oid} sits outside rehearsals/<walk>/evidence/blobs/<sha256 of its bytes>")
-            limit = min(BLOB_MAX_BYTES, len(data) * BLOB_MAX_RATIO, BLOB_TOTAL_MAX - total)
-            fd = os.open(os.path.join(src, oid), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            try:
-                with os.fdopen(fd, "wb") as fh:
-                    n, fields = gunzip_to(data, fh, limit)
-            except LaunchRefused as e:
-                raise LaunchRefused(f"evidence blob {oid}: {e}") from None
-            total += n
-            if any(b"\0" in v for _k, v in fields):
-                raise LaunchRefused(f"evidence blob {oid}: a gzip header field is binary")
-            meta = (b"MTIME: " + str(int.from_bytes(data[4:8], "little")).encode() + b"\nXFL: "
-                    + str(data[8]).encode() + b"\nOS: " + str(data[9]).encode() + b"\n")
-            _write_private(os.path.join(src, oid + ".header"),
-                           meta + b"".join(k.encode() + b": " + v + b"\n" for k, v in fields))
-            del data
+            total += stage_evidence_blob(repo, oid, cands[oid], src, BLOB_TOTAL_MAX - total, FETCH_SAYS)
         problems = canary_scan(gitleaks, src, tmp)
         if problems:
             names = sorted({n.split(".")[0] for n, _why in problems})
@@ -550,6 +579,10 @@ def admitted_evidence_blobs(suite_mod, repo: str, head: str, tip: str, gitleaks:
 # member whose payload is text, keeps the shipped evidence within BLOB_TOTAL_MAX and BLOB_MAX_COUNT, and its payload and
 # header fields scan clean with no allowance. Any other binary blob is left out, so scan_unpublished refuses it as
 # before; an evidence-shaped blob failing a check refuses here, naming its id and the rule, never content.
+# The review of 2ced80f2 and the Lane-orchestrator's rulings on it (23 Oct 2026): the candidates are the fetch's own
+# set (is_evidence_candidate: binary to git OR gzip magic, so a gzip git reads as text is decoded too, MAJOR 1), a
+# gzip-magic text blob off the evidence paths refuses here, the decode step is the fetch's own (stage_evidence_blob,
+# NIT 4), and the count and total caps hold per walk folder as the fetch's hold per walk (MINOR 3).
 EVIDENCE_SHAPE = re.compile(r"evals/gap-study-4/(?:rehearsals|takes)/.+/evidence/blobs/[^/]+")
 
 
@@ -574,54 +607,105 @@ def _shipped_blob_paths(repo: str, head: str, present: list, wanted: set) -> dic
     return found
 
 
+def _unpublished_candidates(repo: str, head: str, present: list) -> dict:
+    """{blob id: set of the paths rev-list names it by} for every blob reachable from head and from no public tip that
+    is_evidence_candidate takes (binary to git OR gzip magic, text to git or not: the review of 2ced80f2, MAJOR 1).
+    Each blob's first 8000 bytes come from one `git cat-file --batch` stream; the rest is read and dropped."""
+    names = {}
+    for line in _git_out(repo, "rev-list", "--objects", head, *(["--not"] + list(present) if present else [])
+                         ).splitlines():
+        oid, _, path = line.partition(" ")
+        if path:
+            names.setdefault(oid, set()).add(path)
+    if not names:
+        return {}
+    order = sorted(names)
+    p = subprocess.Popen(["git", "-C", repo, "cat-file", "--batch"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                         stderr=subprocess.DEVNULL, env=clean_git_env())
+    feed = threading.Thread(target=lambda: (p.stdin.write("".join(o + "\n" for o in order).encode()),
+                                            p.stdin.close()), daemon=True)
+    feed.start()
+    out = {}
+    try:
+        for oid in order:
+            header = p.stdout.readline().decode("ascii", "replace").split()
+            if len(header) != 3 or header[0] != oid or not header[2].isdigit():
+                raise LaunchRefused(f"git cat-file could not read object {oid}; nothing ships")
+            size, first = int(header[2]), b""
+            left = size
+            while left:
+                chunk = p.stdout.read(min(left, 1 << 20))
+                if not chunk:
+                    raise LaunchRefused(f"git cat-file ended inside object {oid}; nothing ships")
+                if len(first) < 8000:
+                    first += chunk[:8000 - len(first)]
+                left -= len(chunk)
+            if p.stdout.read(1) != b"\n":
+                raise LaunchRefused(f"git cat-file framed object {oid} off its form; nothing ships")
+            if header[1] == "blob" and is_evidence_candidate(first):
+                out[oid] = set(names[oid])
+    finally:
+        feed.join(timeout=600)
+        p.stdout.close()
+        if p.wait(timeout=600) != 0:
+            raise LaunchRefused(f"git cat-file failed (exit {p.returncode}); nothing ships")
+    return out
+
+
+def _evidence_walk(path: str) -> str:
+    """The walk (or counted take attempt) folder an evidence path sits in: rehearsals/<walk> or takes/<slot>/<n>."""
+    return path.rsplit("/evidence/blobs/", 1)[0]
+
+
 def outward_evidence_blobs(suite_mod, repo: str, head: str, present: list, gitleaks: str, work: str) -> tuple:
     """The evidence blob ids the outward scan's scan_unpublished may allow (see the comment above); () when the shipped
-    commits bring no evidence-shaped binary blob, in which case no file is decoded and no scanner runs."""
+    commits bring no candidate, in which case no file is decoded and no scanner runs.
+
+    The candidates are the fetch's (the review of 2ced80f2, MAJOR 1): every shipped blob binary to git or starting
+    with gzip magic (_unpublished_candidates), with athena_suite's own binary list on top. One every path of which in
+    the shipped commits has the evidence shape is decoded and scanned by the one rule (stage_evidence_blob, then
+    canary_scan); a gzip-magic blob git reads as text anywhere else refuses here; a binary one anywhere else is left to
+    scan_unpublished, which refuses it unless a committed ruling names it, as before. The count and total caps hold per
+    walk folder, as the fetch's hold per walk (one fetch is one walk's commits; MINOR 3); no cap value changed."""
     import shutil
     import tempfile
     binary = {}
     for path, oid, _digest in suite_mod.binary_blobs_hashed(repo, head, list(present)):
         binary.setdefault(oid, set()).add(path)
-    if not binary:
+    cands = _unpublished_candidates(repo, head, present)
+    for oid, where in binary.items():
+        cands.setdefault(oid, set()).update(where)
+    if not cands:
         return ()
-    for oid, where in _shipped_blob_paths(repo, head, present, set(binary)).items():
-        binary[oid] |= where
-    evidence = {oid: where for oid, where in binary.items() if all(EVIDENCE_SHAPE.fullmatch(p) for p in where)}
+    for oid, where in _shipped_blob_paths(repo, head, present, set(cands)).items():
+        cands[oid] |= where
+    evidence = {oid: where for oid, where in cands.items() if all(EVIDENCE_SHAPE.fullmatch(p) for p in where)}
+    stray = sorted(oid for oid in cands if oid not in evidence and oid not in binary)
+    if stray:
+        raise LaunchRefused(f"the shipped commits bring {len(stray)} gzip blob(s) git reads as text off the evidence "
+                            f"paths: {', '.join(stray)}; nothing ships")
     if not evidence:
         return ()
-    if len(evidence) > BLOB_MAX_COUNT:
-        raise LaunchRefused(f"the shipped commits bring {len(evidence)} evidence blobs, past the cap of "
-                            f"{BLOB_MAX_COUNT}; nothing ships")
+    walks = {}
+    for oid, where in evidence.items():
+        for p in where:
+            walks.setdefault(_evidence_walk(p), set()).add(oid)
+    for walk, oids in sorted(walks.items()):
+        if len(oids) > BLOB_MAX_COUNT:
+            raise LaunchRefused(f"the shipped commits bring {len(oids)} evidence blobs in one walk folder, past the cap "
+                                f"of {BLOB_MAX_COUNT}; nothing ships")
     os.makedirs(work, exist_ok=True)
     tmp = tempfile.mkdtemp(prefix="blobs-", dir=work)            # mode 0700
     try:
         src = os.path.join(tmp, "src")
         os.mkdir(src, 0o700)
-        decoded = 0
+        decoded = {walk: 0 for walk in walks}
         for oid in sorted(evidence):
-            if int(_git_out(repo, "cat-file", "-s", oid).strip() or 0) > BLOB_MAX_BYTES:
-                raise LaunchRefused(f"evidence blob {oid} is stored larger than {BLOB_MAX_BYTES} bytes; nothing ships")
-            stored = _git_out(repo, "cat-file", "blob", oid, binary=True)
-            digest = hashlib.sha256(stored).hexdigest()
-            for p in sorted(evidence[oid]):
-                if not EVIDENCE_BLOB.fullmatch(p) or p.rsplit("/", 1)[1] != digest:
-                    raise LaunchRefused(f"evidence blob {oid} sits off <walk or take>/evidence/blobs/<sha256 of its "
-                                        f"stored bytes>; nothing ships")
-            bound = min(BLOB_MAX_BYTES, len(stored) * BLOB_MAX_RATIO, BLOB_TOTAL_MAX - decoded)
-            fd = os.open(os.path.join(src, oid), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            try:
-                with os.fdopen(fd, "wb") as fh:
-                    size, header = gunzip_to(stored, fh, bound)
-            except LaunchRefused as e:
-                raise LaunchRefused(f"evidence blob {oid}: {e}; nothing ships") from None
-            decoded += size
-            if any(b"\0" in value for _field, value in header):
-                raise LaunchRefused(f"evidence blob {oid}: a gzip header field is binary; nothing ships")
-            fixed = (b"MTIME: " + str(int.from_bytes(stored[4:8], "little")).encode() + b"\nXFL: "
-                     + str(stored[8]).encode() + b"\nOS: " + str(stored[9]).encode() + b"\n")
-            _write_private(os.path.join(src, f"{oid}.header"),
-                           fixed + b"".join(k.encode() + b": " + v + b"\n" for k, v in header))
-            del stored
+            mine = sorted({_evidence_walk(p) for p in evidence[oid]})
+            room = min(BLOB_TOTAL_MAX - decoded[walk] for walk in mine)
+            size = stage_evidence_blob(repo, oid, sorted(evidence[oid]), src, room, OUTWARD_SAYS)
+            for walk in mine:
+                decoded[walk] += size
         findings = canary_scan(gitleaks, src, tmp)
         if findings:
             ids = sorted({n.split(".")[0] for n, _why in findings})
