@@ -60,6 +60,20 @@ WALK_STEP = (
     "        # Binds each registered walk to the one walk commit that wrote it; zero walks is said, not passed.\n"
     f"        run: {WALK}\n"
 )
+# Pre-freeze review 1, m14 (lane pf1-l2b, Sat 24 Oct 2026): round 3's two publication-language steps, ported. The
+# published page's section is a single-command step like BEFORE's; the commit bodies' step reads the freeze commit
+# and scans the bodies since it, or says it is not frozen, and its body is bound here exactly.
+SECTION = "python3 evals/gap-study-4/lint_pooling.py --section-of docs/EVALS.md"
+BODIES = ('python3 evals/gap-study-4/lint_language.py --commits-since "$freeze"',
+          'python3 evals/gap-study-4/lint_pooling.py --commits-since "$freeze"')
+BODIES_RUN = (f"if [ -f {FROZEN} ]; then\n"
+              f"  freeze=$(git log --format=%H --reverse -- {FROZEN} | head -1)\n"
+              '  test -n "$freeze"\n'
+              '  echo "scanning commit bodies since the freeze commit $freeze"\n'
+              f"  {BODIES[0]}\n  {BODIES[1]}\n"
+              "else\n"
+              '  echo "not applicable — not frozen"\n'
+              "fi")
 COPY = PLAN_COMMANDS[3]
 BOX = PLAN_COMMANDS[4]
 BOX_OWNER = "      # CP2 owns tests/test_box_integration.py; omitted until it exists\n"
@@ -222,7 +236,7 @@ def problems(text, baseline, introduced, *, box_present=None):
         need(BOX_OWNER in block, "R38.box-owner")
         need(BOX_RULING in block, "R38.box-ruling")
         need(not any("test_box_integration.py" in run for run in runs), "R38.box-absent")
-    before = before + (WALK,)                 # W8D: the walk register's step, single-command like BEFORE's
+    before = before + (WALK, SECTION)         # W8D: the walk register's step; m14: the published page's section
     expected = before + AFTER
     command_steps = {}
     for command in expected:
@@ -292,7 +306,9 @@ def problems(text, baseline, introduced, *, box_present=None):
                   difflib.SequenceMatcher(a=baseline.splitlines(), b=text.splitlines(), autojunk=False).get_opcodes()
                   if tag in ("delete", "replace"))
     need(removed == 0, "R44.additive")
-    need(len(entries) == len(expected) + 2, "R38.total")
+    bodies = [run for _, _, run in entries if any(command in run for command in BODIES)]
+    need(bodies == [BODIES_RUN], "R38.bodies")            # m14 (lane pf1-l2b): the commit bodies' step, exactly
+    need(len(entries) == len(expected) + 3, "R38.total")
     return found
 
 
@@ -378,6 +394,16 @@ def mutations():
     edits["command-walk"] = ("R38.command:" + WALK, WALK, WALK + " --missing")
     edits["before-walk"] = ("R38.before:" + WALK, f"        run: {WALK}\n",
                             f"        run: |\n          echo fake\n          {WALK}\n")
+    edits["section-step-removed"] = ("R38.command:" + SECTION, SECTION, SECTION + " --missing")   # m14
+    edits["before-section"] = ("R38.before:" + SECTION, f"        run: {SECTION}\n",
+                               f"        run: |\n          echo fake\n          {SECTION}\n")
+    edits["bodies-unfrozen-pass"] = ("R38.bodies", '            echo "not applicable — not frozen"\n          fi\n',
+                                     '            echo "passed"\n          fi\n')
+    edits["bodies-since-head"] = ("R38.bodies", "git log --format=%H --reverse -- evals/gap-study-4/prereg.json | head -1)\n"
+                                  '            test -n "$freeze"\n            echo "scanning',
+                                  "git rev-parse HEAD)\n"
+                                  '            test -n "$freeze"\n            echo "scanning')
+    edits["bodies-one-linter"] = ("R38.bodies", f"            {BODIES[1]}\n", "")
     edits['extra-step'] = ('R38.total', '    steps:\n',
         '    steps:\n      - name: Extra\n        # A fake extra command.\n        run: echo extra\n')
     for name, command in (("push", "git push"), ("gh", "gh run list"), ("deploy", "deploy fake"),

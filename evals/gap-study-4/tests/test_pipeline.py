@@ -920,7 +920,7 @@ def get_run():
 def take_record(**kw):
     r = {k: row()[k] for k in stats.TAKE_FIELDS[:8]}
     r.update(route=labels4.GRADED, cell_state=None, label="synthetic-right",
-             views={v: "right" for v in stats.VIEWS})
+             views={v: "right" for v in stats.VIEWS}, human_sample=False, human_why=[])   # MAJOR 6 (lane pf1-l2b)
     r.update(kw)
     return r
 

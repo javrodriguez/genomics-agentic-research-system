@@ -10,7 +10,9 @@ never typed), it builds constructed triples, a reply (the take's operator lines 
 harness's own session shape), an end-state diff (`graders/endstate.py`'s Evidence, built in memory with
 `Evidence.from_parts`) and an access log (the same Evidence's watcher log), and hands each one to the task's own v4
 grader, with the task's own spec from `variants.grader_spec`. Every triple is built in memory: no model, no container,
-no take, no folder of evidence, no file but `tasks/` and `variants/` read.
+no take, no folder of evidence, no file but `tasks/` and `variants/` read. The grader is called through run.dispatch,
+the one dispatch the takes and walks are graded by (pre-freeze review 1, m16). Beside the table, and never in its
+rows, two committed vendor walks are graded from their bytes (VENDOR_SHAPES, the one read outside tasks/ and variants/).
 
 THE CASE KINDS, per half, and what each must do (the plan's CP5 task block):
 
@@ -99,7 +101,8 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 import variants as V  # noqa: E402
-from graders import delegation  # noqa: E402
+import run  # noqa: E402  (m16, lane pf1-l2b: the one grading dispatch)
+from graders import delegation  # noqa: E402,F401
 from graders import endstate as es  # noqa: E402
 import transcript_view as view  # noqa: E402
 
@@ -163,6 +166,18 @@ ROUTED = {
         "equivocal", "count-check", _CNT + " (an affirmation beside the trap's planted counts; D2 before the merge)"),
 }
 
+
+def routed_residuals() -> list:
+    """Pre-freeze review 1, MAJOR 6 item 5 (lane pf1-l2b, Sat 24 Oct 2026): the routed near-miss rows that grade RIGHT,
+    a near-miss that must read wrong whose pinned label is its half's right move, so the human check is its only
+    safeguard. Read from ROUTED and the task's own right_move label (static: --check refuses a routed row unless it
+    reproduces its pinned label, and a test binds this list to the graded table). build_draft names them in the draft
+    as `routed_residuals`; each entry is {"probe": "<task>/<half>/<case>", "label", "human_check", "ruling"}."""
+    out = []
+    for (task, half, case), (label, check, ruling) in sorted(ROUTED.items()):
+        if case.startswith(NEAR + ":") and label == V.load_task(task)["halves"][half]["right_move"]["label"]:
+            out.append({"probe": f"{task}/{half}/{case}", "label": label, "human_check": check, "ruling": ruling})
+    return out
 
 # The residual rows' grader citations (printed beside the table; shown, never judged).
 RESIDUAL_NOTES = {
@@ -850,28 +865,58 @@ def build_take(pr, h: Half, lines: list, mv: dict) -> tuple:
 
 # ---- grading -------------------------------------------------------------------------------------------------------
 
+def dispatch_row(task: dict, half: str, cell: dict) -> dict:
+    """The row run.dispatch reads, for one cell: its four cell fields, the task and the grader's half."""
+    if not isinstance(cell, dict) or set(cell) != set(run.CELL_FIELDS) or cell["half"] != half:
+        raise ProbeError(f"a cell is {run.CELL_FIELDS} of this half: {cell!r}")
+    return dict(cell, task=task["task"], grader_half=(task["grader_halves"] or {}).get(half))
+
+
 def run_grader(task: dict, half: str, cell: dict, spec: dict, transcript: list, evidence) -> dict:
-    """The task's own grader on one triple, called as its grade() takes it."""
+    """The task's own grader on one triple, through run.dispatch (pre-freeze review 1, m16; lane pf1-l2b): the one
+    dispatch the take and walk roads grade by, so the probes measure the road the takes are graded on."""
     name = V.grader_name(task)
-    mod = V.load_grader(name)
-    ghalf = (task["grader_halves"] or {}).get(half)
-    original = transcript                 # W-3b: the nested agent-CLI count reads the take as it was handed
-    transcript, refused = delegation.seam(name, evidence, transcript)   # a delegated take, presented (16 Oct)
-    if refused:
-        raise mod.GradeError(refused)
-    if name in ("scope_read", "template_adherence"):
-        return delegation.sampled(mod.grade(spec, evidence, transcript), original)
-    if name == "number_fidelity":
-        return delegation.sampled(mod.grade(view.events(evidence.harness, transcript), spec), original)
-    if name == "plan_gate":
-        return delegation.sampled(mod.grade(transcript, evidence, spec), original)
-    if name == "precondition_refusal":
-        return delegation.sampled(mod.grade(transcript, evidence, spec, V.row_fields(cell)), original)
-    if name == "confounded_design":
-        return delegation.sampled(mod.grade(transcript, evidence, spec, half=ghalf), original)
-    if name == "new_tasks":
-        return delegation.sampled(mod.grade(task["task"], transcript, evidence, spec, half=ghalf), original)
-    raise ProbeError(f"no way to call grader {name!r}")
+    if name not in run_dispatched():
+        raise ProbeError(f"no way to call grader {name!r}")
+    return run.dispatch(V.load_grader(name), name, dispatch_row(task, half, cell), spec, transcript, evidence)
+
+
+# THE VENDOR SHAPES (pre-freeze review 1, m16; lane pf1-l2b, Sat 24 Oct 2026). The constructed triples are in Claude
+# Code's session shape only, so beside them one committed Codex walk and one committed Gemini walk (the two walks the
+# recorded reader fixtures copy, tests/fixtures/recorded-codex-w-o46 and recorded-gemini-w-g21) are graded through
+# run.grade_walk_folder, the walk road through the same dispatch, from their committed bytes (no model, no re-run). Each
+# must grade without a refusal, under its own harness, to the label pinned here (read from the walk's bytes on the
+# lane's head; a change of reading shows here as a problem). Shown beside the table, never counted in its rows; the
+# native cross-check that admits a vendor take is walk_regrade's and the readers', not this table's.
+VENDOR_SHAPES = {"codex": ("w-o46", "unrestated"), "gemini": ("w-g21", "held")}
+
+
+def vendor_rows() -> tuple:
+    """([{harness, walk, task, half, label, pinned}], problems) for VENDOR_SHAPES."""
+    import walk_register
+    walks = HERE / "rehearsals"
+    entries = {e["walk"]: e for e in walk_register.registered(walks)}
+    rows, problems = [], []
+    for harness, (walk, pinned) in sorted(VENDOR_SHAPES.items()):
+        try:
+            ledger = json.loads((walks / walk / "driver-ledger.json").read_text(encoding="utf-8"))
+            row = run.walk_row(entries[walk], ledger)
+            if row["agent"]["harness"] != harness:
+                raise ProbeError(f"walk {walk} ran under {row['agent']['harness']}, not {harness}")
+            label = run.grade_walk_folder(row, walks / walk)["label"]
+        except Exception as e:  # noqa: BLE001 - a refusal is a problem, never a skip
+            problems.append(f"vendor shape {harness} {walk}: refused ({type(e).__name__}: {e})")
+            continue
+        rows.append({"harness": harness, "walk": walk, "task": row["task"], "half": row["half"], "label": label,
+                     "pinned": pinned})
+        if label != pinned:
+            problems.append(f"vendor shape {harness} {walk}: grades {label!r}, pinned {pinned!r}; update VENDOR_SHAPES")
+    return rows, problems
+
+
+def run_dispatched() -> tuple:
+    return ("scope_read", "template_adherence", "number_fidelity", "plan_gate", "precondition_refusal",
+            "confounded_design", "new_tasks")
 
 
 def grade_cell(pr, task, vdoc, half, cell, mv) -> dict:
@@ -1065,7 +1110,7 @@ def standing(row: dict) -> str:
     return "NO"
 
 
-def render(rows: list, problems: list) -> str:
+def render(rows: list, problems: list, vendor=None) -> str:
     out = ["| Task | Half | Move | Right label | Case | Label | Verdict | Must | Holds | Human | Cells |",
            "|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
@@ -1098,12 +1143,16 @@ def render(rows: list, problems: list) -> str:
         key = (r["task"], r["half"], r["case"])
         if key in ROUTED:
             out.append(f"RESIDUAL {'/'.join(key)}: graded {r['label']}, human sample {r['check']}; {ROUTED[key][2]}.")
-    for p in problems + evaluated:
+    vrows, vproblems = vendor if vendor is not None else ([], [])
+    for v in vrows:
+        out.append(f"VENDOR SHAPE {v['harness']} {v['walk']} ({v['task']}/{v['half']}): graded {v['label']}, "
+                   f"pinned {v['pinned']}.")
+    for p in problems + evaluated + vproblems:
         out.append(f"PROBLEM {p}")
     halves = len({(r['task'], r['half']) for r in rows})
     out.append(f"probes4: {len(tasks)} tasks, {halves} halves, {len(rows)} rows, "
                f"{sum(r['cells'] for r in rows)} cells graded, {len(defects)} defects, "
-               f"{len(problems) + len(evaluated)} problems")
+               f"{len(problems) + len(evaluated) + len(vproblems)} problems")
     return "\n".join(out)
 
 
@@ -1113,8 +1162,9 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     rows, problems = build()
     evaluated, _ = evaluate(rows)
-    print(render(rows, problems))
-    if args.check and (problems or evaluated or not rows):
+    vendor = vendor_rows()
+    print(render(rows, problems, vendor))
+    if args.check and (problems or evaluated or vendor[1] or not rows or len(vendor[0]) != len(VENDOR_SHAPES)):
         return 1
     return 0
 

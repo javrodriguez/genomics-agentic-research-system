@@ -91,7 +91,34 @@ PATTERNS: list[tuple[str, str, str]] = [
     ("free", r"\bfree\b",
      "'free' about a local model hides the machine time and the electricity"),
     ("data-never-leaves", r"data never leaves", "a claim about where a lab's data goes is not the run's to make"),
+    # PRE-FREEZE REVIEW 1, m14 (lane pf1-l2b, Sat 24 Oct 2026): three comparatives that passed the guard. A sentence
+    # comparing models stays Javier's (stats.py: "stats prints numbers and family labels only"), so the study's own
+    # words never say one model outperforms, beats or is stronger than another. FAMILY_LABEL_EXCEPTIONS below.
+    ("outperform", r"outperform", "a sentence comparing models is Javier's to write, never the study's"),
+    ("stronger", r"\bstronger\b", "a sentence comparing models is Javier's to write, never the study's"),
+    ("beats", r"\bbeats\b", "a sentence comparing models is Javier's to write, never the study's"),
 ]
+
+# THE FAMILY-LABEL EXCEPTION (m14). A comparative inside one of these exact strings is a registered name, not a claim:
+# the four family labels stats prints (stats.FAMILIES, which check_families holds every comparison row to), the
+# contrast family's short name in stats' own prose, and the design's registered power-grid field as a JSON key. A
+# comparative anywhere else on the line is still a finding. Read from stats, never copied.
+COMPARATIVES = ("outperform", "stronger", "beats")
+
+
+def family_label_exceptions() -> tuple:
+    import stats  # noqa: E402  (this study's, first on sys.path)
+    return tuple(stats.FAMILIES) + (stats.CONTRAST_NAME, '"stronger":')
+
+
+def inside_label(line: str, start: int, end: int, labels) -> bool:
+    for label in labels:
+        i = line.find(label)
+        while i != -1:
+            if i <= start and end <= i + len(label):
+                return True
+            i = line.find(label, i + 1)
+    return False
 
 
 def load_allowlist() -> list[dict]:
@@ -116,9 +143,12 @@ def excused(entries: list[dict], rel: str, pattern: str, line_text: str) -> dict
 
 def scan_text(text: str, rel: str, entries: list[dict]) -> list[dict]:
     findings = []
+    labels = family_label_exceptions()
     for lineno, line in enumerate(text.splitlines(), start=1):
         for name, rx, why in PATTERNS:
             for m in re.finditer(rx, line, flags=re.IGNORECASE):
+                if name in COMPARATIVES and inside_label(line, m.start(), m.end(), labels):
+                    continue
                 if excused(entries, rel, name, line):
                     continue
                 findings.append({"file": rel, "line": lineno, "pattern": name,

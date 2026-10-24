@@ -70,7 +70,7 @@ DESIGN_KEY = "labelling_design"
 
 STRATA = ("arm", "harness", "model", "task", "verdict", "readers")
 READERS = ("agree", "disagree")
-DESIGN_FIELDS = ("seed", "about_n", "oversample", "strata", "harness_models")
+DESIGN_FIELDS = ("seed", "about_n", "oversample", "strata", "harness_models", "flagged_list")
 OVERSAMPLE_FIELDS = ("failure", "disagree")
 ENTRY_FIELDS = ("take", "readers", "record")
 STRICT_VIEW = "failures"
@@ -78,8 +78,19 @@ FAILED = "wrong"
 ORIGINAL, FOLLOWUP = "original", "followup"                         # lane gemini-defer, R4: the two parts of a draw
 DEFERRED = "deferred"
 TAKE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,127}")
+# THE FLAGGED LIST (pre-freeze review 1, MAJOR 6 item 3; lane pf1-l2b, Sat 24 Oct 2026). A take its grader sent to the
+# human sample (its record's human_sample, carried from the grade by run.record_for) is seen by a person only if it is
+# drawn. Whether every flagged take goes to Javier as a separate, non-blind check list beside the blind draw, and how
+# many at most, is his (ask gap-flag-list: he is the labeller). This one switch holds his answer and nothing else
+# reads another: None (OFF, the default until he answers) draws no list and leaves every sample byte as before; a
+# dict {"cap": <a positive int, or None for no cap>} draws the list (see draw()). It enters the pre-registered design
+# as `flagged_list` (PROPOSED below, which build_draft registers as labelling_design), so either answer changes this
+# one line and the draft is rebuilt from it.
+FLAGGED_LIST = None         # the design's `flagged_list` key, beside the docstring's five: None | {"cap": int | None}
+FLAGGED_PREFIX = "F"                    # the flagged list's sheet ids, F001, F002, ...; the blind draw's are L001, ...
 # The proposed design (glitch-2f's to rule at the freeze; Q-w11d-1). The seed is a date, chosen before any take exists.
-PROPOSED = {"seed": 20261012, "about_n": 80, "oversample": {"failure": 3, "disagree": 3}, "strata": list(STRATA)}
+PROPOSED = {"seed": 20261012, "about_n": 80, "oversample": {"failure": 3, "disagree": 3}, "strata": list(STRATA),
+            "flagged_list": FLAGGED_LIST}
 
 
 class SampleError(Exception):
@@ -117,6 +128,10 @@ def validate_design(d) -> dict:
             if not stats._id(m) or m in seen:
                 raise SampleError(f"model {m!r} is not an id, or is listed twice")
             seen.add(m)
+    fl = d["flagged_list"]
+    if fl is not None and (not isinstance(fl, dict) or set(fl) != {"cap"} or
+                           (fl["cap"] is not None and not _count(fl["cap"], 1))):
+        raise SampleError("flagged_list is None (no flagged list) or {'cap': a positive int or None}")
     return d
 
 
@@ -284,7 +299,29 @@ def draw(frame, design, deferred=(), part=ORIGINAL) -> dict:
     doc = {"design_sha256": design_sha(design), "seed": design["seed"], "strata": list(STRATA), "items": items}
     if deferred:
         doc.update(part=part, withheld=[list(c) for c in deferred])
+    if design["flagged_list"] is not None:                  # MAJOR 6 item 3: only when the switch is on
+        doc["flagged"] = flagged_list(frame, design, drawn)
     return doc
+
+
+def flagged_list(frame, design, drawn) -> dict:
+    """MAJOR 6 item 3: every flagged take (record human_sample True) of the drawn (arm, harness, model) cells, outside
+    the blind draw and drawn whole: sorted by take id and numbered F001, F002, ...; when design.flagged_list.cap is an
+    int below their number, a draw of cap of them by random.Random(f"{seed}|flagged") (never the blind draw's
+    generator, so the blind draw is the same either way), with the count beyond the cap published beside the list.
+    Each item carries its take, its human_why and its stratum: the list is not blind, and a take may sit in both."""
+    cells = set(drawn)
+    flagged = sorted((e for e in frame if e["record"]["human_sample"] is True and stratum(e)[:3] in cells),
+                     key=lambda e: e["take"])
+    cap = design["flagged_list"]["cap"]
+    chosen = flagged
+    if cap is not None and len(flagged) > cap:
+        keep = set(random.Random(f"{design['seed']}|flagged").sample([e["take"] for e in flagged], cap))
+        chosen = [e for e in flagged if e["take"] in keep]
+    items = [{"sheet_id": f"{FLAGGED_PREFIX}{i:03d}", "take": e["take"], "why": list(e["record"]["human_why"]),
+              "stratum": dict(zip(STRATA, stratum(e)))} for i, e in enumerate(chosen, start=1)]
+    return {"cap": cap, "flagged": len(flagged), "listed": len(items), "beyond_cap": len(flagged) - len(items),
+            "items": items}
 
 
 def render(doc: dict) -> str:

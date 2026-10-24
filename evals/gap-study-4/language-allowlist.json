@@ -238,6 +238,13 @@
       "line_text": "  Mutant A (restore moved out of `finally`) is caught by `test_the_suites_door_is_restored_after_each_scan`.",
       "ruled": "2026-10-23",
       "why": "Bound record, never edited: lanes/REVIEW-ship-evidence-blobs-2ced80f.md is the fresh independent review of lane ship-evidence-blobs at 2ced80f2 (VERDICT CHANGES), committed as its reviewer wrote it on the Lane-orchestrator's word (23 Oct 2026). The word is the reviewer's own prose about the code under review, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/coverage_today.md",
+      "pattern": "stronger",
+      "line_text": "- **Reach is the weakest.** When a verdict needs more than one guard, `reach` is the reach of the weakest of them (W4F1-2, the gap4 lane lead's decision): a `yes` that needs `decide` for one of its routes is `claude-and-codex`, even where another of its guards reaches every agent; the notes name the stronger guards.",
+      "ruled": "2026-10-24",
+      "why": "Pre-freeze review 1, m14 (lane pf1-l2b, Sat 24 Oct 2026): the new comparative pattern's one finding in the study's own prose. The line is CP5's coverage table note on how a verdict's reach is read when it needs more than one GARS guard: 'the stronger guards' are the guards of wider reach, a statement about GARS's guards, not a comparison of models or a claim about any take."
     }
   ]
 }

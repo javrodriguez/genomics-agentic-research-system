@@ -480,6 +480,23 @@ jobs:
             echo "copy gate commit: $freeze"
             python3 "$copy_root/evals/gap-study-4/copy_manifest.py" --check
           fi
+      - name: Round 4 pooling guard on the published page
+        # Pre-freeze review 1, m14: round 3's step, ported. Only this round's marked section of
+        # docs/EVALS.md is read, and the step says so while no section exists; never a pass.
+        run: python3 evals/gap-study-4/lint_pooling.py --section-of docs/EVALS.md
+      - name: Round 4 commit bodies
+        # Pre-freeze review 1, m14: round 3's step, ported. The commit bodies since the freeze
+        # commit, the ones that carry what the study found; before the freeze it says so.
+        run: |
+          if [ -f evals/gap-study-4/prereg.json ]; then
+            freeze=$(git log --format=%H --reverse -- evals/gap-study-4/prereg.json | head -1)
+            test -n "$freeze"
+            echo "scanning commit bodies since the freeze commit $freeze"
+            python3 evals/gap-study-4/lint_language.py --commits-since "$freeze"
+            python3 evals/gap-study-4/lint_pooling.py --commits-since "$freeze"
+          else
+            echo "not applicable — not frozen"
+          fi
       - name: Round 4 workflow diff is additive
         # Binds this workflow to added lines only since the introducing commit.
         run: |

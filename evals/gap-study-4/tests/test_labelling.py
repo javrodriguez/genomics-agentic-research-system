@@ -30,6 +30,10 @@ lines, each starting with its own prefix; a check that raises reports that as it
               (refused by its rule before it is bound, never a crash); read_design refuses a bad design; exact output.
   C2-cli      sample.py's command line over its own paths (patched to a temporary tree): --check, --write, --help
               and the parser's refusals.
+  FL1-flagged the flagged list (pre-freeze review 1, MAJOR 6; lane pf1-l2b): the switch off by default and in the
+              proposed design, its shape refused off its rule, off moves no byte, on lists every flagged take of the
+              part's own cells whole (F001, ...) beside an unmoved blind draw, a cap is a seeded draw with its count
+              beyond published.
 
   sheet.py (blind by construction)
   K1-blind    a frame whose every hidden field is a sentinel: no sentinel reaches an item or the sheet; an item holds
@@ -84,6 +88,7 @@ import hashlib
 import io
 import json
 import os
+import random
 import re
 import signal
 import subprocess
@@ -182,7 +187,7 @@ STRATA = ["arm", "harness", "model", "task", "verdict", "readers"]
 
 def design(**kw):
     d = {"seed": 7, "about_n": 12, "oversample": {"failure": 3, "disagree": 2}, "strata": list(STRATA),
-         "harness_models": copy.deepcopy(HM)}
+         "harness_models": copy.deepcopy(HM), "flagged_list": None}     # MAJOR 6 (lane pf1-l2b): the switch, off
     d.update(kw)
     return d
 
@@ -192,7 +197,8 @@ def rec(harness, model, task, ok, i, *, label=None, arm=None, wording=None, vers
     return {"arm": arm or ARM.get(harness, "A"), "task": task, "half": "trap", "model": model,
             "agent": {"harness": harness, "version": version}, "wording": wording or f"w{i}", "repeat": 0,
             "pressure": None, "route": route, "cell_state": None,
-            "label": label or ("held" if ok else "proceeded"), "views": {"failures": w, "excluded": w, "raw": w}}
+            "label": label or ("held" if ok else "proceeded"), "views": {"failures": w, "excluded": w, "raw": w},
+            "human_sample": False, "human_why": []}       # MAJOR 6 (lane pf1-l2b): the record's flag
 
 
 def frame(per=8, hm=HM, **kw):
@@ -543,7 +549,7 @@ def p1_pin(sm, sh, ag):
     if rc != 0 or got != want:
         out.append(f"P1: --pin printed {got[:80]!r} rc {rc}")
     if sm.PROPOSED != {"seed": 20261012, "about_n": 80, "oversample": {"failure": 3, "disagree": 3},
-                       "strata": STRATA}:
+                       "strata": STRATA, "flagged_list": sm.FLAGGED_LIST}:      # MAJOR 6 (lane pf1-l2b): the switch
         out.append("P1: the proposed design is not the lane's")
     if sum(len(v) for v in draft.values()) != 7 or "seed 20261012\n" not in got:
         out.append("P1: the pin does not read seven models from the draft")
@@ -1850,8 +1856,80 @@ def x1_script(sm, sh, ag):
     return out
 
 
+def fl1_flagged(sm, sh, ag):
+    """Pre-freeze review 1, MAJOR 6 item 3 (lane pf1-l2b, Sat 24 Oct 2026): the flagged list behind sample.FLAGGED_LIST.
+    The switch is off until Javier answers ask gap-flag-list, and off leaves every draw byte as before; on, every
+    flagged take of the drawn cells is listed whole outside the blind draw (F001, ...), a cap draws that many by its
+    own seeded generator and publishes the count beyond it, and the blind draw is the same either way."""
+    out, E = [], sm.SampleError
+    if sm.FLAGGED_LIST is not None:
+        out.append("FL1: the flagged-list switch is on before Javier's answer to ask gap-flag-list")
+    if "flagged_list" not in sm.PROPOSED or sm.PROPOSED["flagged_list"] != sm.FLAGGED_LIST:
+        out.append("FL1: the proposed design does not carry the switch as its flagged_list")
+    if "flagged_list" not in sm.DESIGN_FIELDS:
+        out.append("FL1: flagged_list is not a design field")
+    for what, fl in (("a cap of zero", {"cap": 0}), ("a bool cap", {"cap": True}), ("a string cap", {"cap": "4"}),
+                     ("a float cap", {"cap": 4.0}), ("an extra key", {"cap": 4, "x": 1}), ("no cap key", {}),
+                     ("a list", [4]), ("a bare int", 4), ("False", False)):
+        out += refused("FL1", lambda fl=fl: sm.validate_design(design(flagged_list=fl)), E, f"flagged_list {what}")
+    for fl in (None, {"cap": None}, {"cap": 1}, {"cap": 40}):
+        out += accepted("FL1", lambda fl=fl: sm.validate_design(design(flagged_list=fl)), f"flagged_list {fl!r}")
+    ff = copy.deepcopy(FRAME)
+    for n, e in enumerate(ff):
+        if n % 5 == 2:
+            e["record"].update(human_sample=True, human_why=["scope_read-flag"] if n % 2 else ["readers-disagree"])
+    want = sorted(e["take"] for e in ff if e["record"]["human_sample"])
+    off = sm.draw(ff, design())
+    if "flagged" in off or off["items"] != sm.draw(FRAME, design())["items"]:
+        out.append("FL1: with the switch off the draw carries a flagged list or moves")
+    if set(off) != {"design_sha256", "seed", "strata", "items"}:
+        out.append(f"FL1: with the switch off the sample's keys are {sorted(off)}")
+    whole = sm.draw(ff, design(flagged_list={"cap": None}))
+    fl = whole.get("flagged") or {}
+    if whole["items"] != off["items"]:
+        out.append("FL1: the flagged list moves the blind draw")
+    if [i["take"] for i in fl.get("items", [])] != want:
+        out.append(f"FL1: the uncapped list is not every flagged take in take order: {fl.get('items', [])[:2]}")
+    if [i["sheet_id"] for i in fl.get("items", [])] != [f"F{n:03d}" for n in range(1, len(want) + 1)]:
+        out.append("FL1: the flagged list's sheet ids are not F001, F002, ...")
+    byt = {e["take"]: e for e in ff}
+    for i in fl.get("items", []):
+        e = byt[i["take"]]
+        if i["why"] != e["record"]["human_why"] or i["stratum"] != dict(zip(STRATA, sm.stratum(e))) or \
+                set(i) != {"sheet_id", "take", "why", "stratum"}:
+            out.append(f"FL1: item {i['sheet_id']} does not carry its take's why and stratum, and only those")
+            break
+    if (fl.get("cap"), fl.get("flagged"), fl.get("listed"), fl.get("beyond_cap")) != (None, len(want), len(want), 0):
+        out.append(f"FL1: the uncapped list's counts are {[fl.get(k) for k in ('cap', 'flagged', 'listed', 'beyond_cap')]}")
+    for cap in (1, 3, len(want) - 1):
+        got = sm.draw(ff, design(flagged_list={"cap": cap}))
+        c = got["flagged"]
+        pick = sorted(random.Random(f"{design()['seed']}|flagged").sample(want, cap))
+        if [i["take"] for i in c["items"]] != pick:
+            out.append(f"FL1: cap {cap}: the list is not the seeded draw of {cap} in take order")
+        if (c["cap"], c["flagged"], c["listed"], c["beyond_cap"]) != (cap, len(want), cap, len(want) - cap):
+            out.append(f"FL1: cap {cap}: counts {[c[k] for k in ('cap', 'flagged', 'listed', 'beyond_cap')]}")
+        if got["items"] != off["items"] or got != sm.draw(ff, design(flagged_list={"cap": cap})):
+            out.append(f"FL1: cap {cap}: the blind draw moves, or the list is not a function of the seed")
+    for cap in (len(want), len(want) + 5):
+        c = sm.draw(ff, design(flagged_list={"cap": cap}))["flagged"]
+        if [i["take"] for i in c["items"]] != want or c["beyond_cap"] != 0:
+            out.append(f"FL1: cap {cap} at or above the flagged count does not list every flagged take")
+    held = (("O", "codex", "m-gamma"),)
+    orig = sm.draw(ff, design(flagged_list={"cap": None}), deferred=held)["flagged"]
+    follow = sm.draw(ff, design(flagged_list={"cap": None}), deferred=held, part="followup")["flagged"]
+    gamma = sorted(e["take"] for e in ff if e["record"]["human_sample"] and e["record"]["model"] == "m-gamma")
+    if [i["take"] for i in orig["items"]] != [t for t in want if t not in gamma] or \
+            [i["take"] for i in follow["items"]] != gamma or not gamma:
+        out.append("FL1: the flagged list is not drawn from the part's own cells (original, follow-up)")
+    none = sm.draw(FRAME, design(flagged_list={"cap": None}))["flagged"]
+    if none != {"cap": None, "flagged": 0, "listed": 0, "beyond_cap": 0, "items": []}:
+        out.append(f"FL1: a frame with no flagged take lists {none}")
+    return out
+
+
 SAMPLE_CHECKS = (d1_design, f1_frame, b1_bind, a1_split, s1_seed, o1_over, m1_models, w1_weights, p1_pin, c1_check,
-                 c2_cli, r4_deferred)
+                 c2_cli, r4_deferred, fl1_flagged)
 SHEET_CHECKS = (k1_blind, k2_mask, k3_defs, k3r_real_graders, k4_content, k5_render, k6_write, k7_cli)
 AGREE_CHECKS = (g1_labels, g2_rows, g3_back, g4_pool, g9_small_rows, g5_check, g6_history, g6r_real_git, g7_unmeasured, g8_cli,
                 l1_lint, x1_script, n1_names)
@@ -2169,7 +2247,7 @@ EQUIVALENT = {
     'sample: if-false L56 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'sample: cmp-negate#0 L56 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'sample: stmt-delete L57 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sample: return-none L329 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
+    'sample: return-none L366 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
     'sample: int-change L57 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'sheet: stmt-delete L49 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
     'sheet: stmt-delete L62 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),

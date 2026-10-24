@@ -51,7 +51,8 @@ def validate_ledger(rows: list) -> dict:
             raise ValueError("; ".join(bad))
         identity = {k: row[k] for k in stats.TAKE_FIELDS[:8]}
         stats.validate_record(dict(identity, route=labels4.GRADED, cell_state=None,
-                                   label="identity-only", views={v: "wrong" for v in stats.VIEWS}))
+                                   label="identity-only", views={v: "wrong" for v in stats.VIEWS},
+                                   human_sample=False, human_why=[]))    # MAJOR 6 (lane pf1-l2b): the closed record
         key = (row["slot"], row["attempt"])
         if type(row["attempt"]) is not int or row["attempt"] < 1 or key in registered:
             raise ValueError("a registration needs a unique slot and positive attempt")
@@ -364,7 +365,10 @@ def freeze_commit() -> str | None:
 # Review MINOR-1 on lane gemini-defer (glitch-f1, 22 Oct 2026): Javier's go record for a deferred arm
 # (prereg.GO_RECORD) is run output too, so one committed before or with the freeze cannot release the arm.
 RUNTIME_PATHS = ("takes.json", "outcomes.json", "rulings.json", "records",
-                 "RESULT.md", "cost-calls.json", "COSTS.md", "deferred-arm-go.json")
+                 "RESULT.md", "cost-calls.json", "COSTS.md", "deferred-arm-go.json",
+                 # pre-freeze review 1 (lane pf1-l2b): the original report's published values (MAJOR 10) and the
+                 # labelling frame built from the takes (MAJOR 6) are run output too
+                 "original-values.json", "labelling/frame.json")
 
 
 def runtime_timing_problems() -> list[str]:
@@ -534,19 +538,52 @@ def pipeline():
     return module
 
 
+def original_values_problems(rec: dict, path=None) -> list[str]:
+    """Pre-freeze review 1, MAJOR 10 (lane pf1-l2b): once the original report's values are published
+    (result.ORIGINAL_VALUES), they never change. The file must hold exactly what the original report's records give
+    now, and every committed version of it must be one and the same blob (a later commit that edits it, even one
+    later reverted, is refused). Not yet published: nothing to hold, and from_records refuses a follow-up without it."""
+    import result
+    path = result.ORIGINAL_VALUES if path is None else Path(path)
+    if not path.is_file():
+        return []
+    out = []
+    try:
+        held = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        return [f"{path.name} is unreadable: {exc}"]
+    if held != rec["original_values"]:
+        out.append(f"{path.name} differs from the values the original report's records give now: the original "
+                   f"report's values stand as published")
+    rel = path.resolve().relative_to(REPO.resolve()).as_posix()
+    code, commits = git("log", "--format=%H", "--full-history", "--", rel)
+    if code:
+        return out + [f"{path.name}: its commit history cannot be read"]
+    blobs = set()
+    for commit in commits.split():
+        c, blob = git("rev-parse", f"{commit}:{rel}")
+        blobs.add(blob if c == 0 else "deleted")
+    if len(blobs) > 1:
+        out.append(f"{path.name} has been committed as {len(blobs)} different versions: the original report's "
+                   f"values are published once")
+    return out
+
+
 def check_publication(rows, history, records, pre, page, grade, table=None):
     import result
     for row in rows:
         takes_mod.require_planned_row(row, pre)
     stats.check_records(records)
     wanted = pipeline().produce(rows, history, grade, table=table)["records"]
-    rendered = result.render(result.from_records(wanted, pre, rows, history, table))
+    rec = result.from_records(wanted, pre, rows, history, table)
+    rendered = result.render(rec)
     import run_builders   # lane run-launcher, ruling 2: first registrations follow take_order within each launch part
     problems = run_builders.order_problems(rows, pre)
     if not records_equal(records, wanted):
         problems.append("records/ differs from registered, routed and regraded takes")
     if not page_equal(page, rendered):
         problems.append("RESULT.md differs from the complete statistics and committed cell states, including agent")
+    problems += original_values_problems(rec)          # MAJOR 10 (lane pf1-l2b)
     return problems
 
 

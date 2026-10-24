@@ -1753,6 +1753,26 @@ HARNESS_FURNITURE_RULING = {
 }
 
 
+# PRE-FREEZE REVIEW 1, MAJOR 6 (lane pf1-l2b, Sat 24 Oct 2026, under the lane orchestrator's approval of the fold plan).
+# Item 4: the blind sample's design is registered in the draft, so the freeze pins it (the freeze writes only its own
+# keys and cannot add one): labelling/sample.py's PROPOSED (seed 20261012, about_n 80 from Javier's D6 A, the oversample
+# factors, the strata, and the flagged_list switch that holds his answer to ask gap-flag-list) with the design's
+# harness models. Item 5: the routed residuals, the near-miss probes graded right whose only safeguard is the human
+# check, named from probes4.routed_residuals (read from probes4's own table, never typed here).
+def labelling_design(inputs):
+    from labelling import sample
+    design = dict(copy.deepcopy(sample.PROPOSED), harness_models=copy.deepcopy(inputs["harness_models"]))
+    return sample.validate_design(design)
+
+
+def routed_residuals():
+    import probes4
+    return [dict(r, text=f"{r['probe']} must read wrong and grades `{r['label']}`, its half's right move. Its grader "
+                         f"flags the take for the human sample ({r['human_check']}), its only safeguard, and the take "
+                         f"is seen by a person only as labelling_design.flagged_list registers.")
+            for r in probes4.routed_residuals()]
+
+
 def build(root=None):
     root = HERE if root is None else Path(root)
     d = describe(root)
@@ -1779,6 +1799,8 @@ def build(root=None):
     d["checker_constants_ruling"] = copy.deepcopy(CHECKER_CONSTANTS_RULING)       # BOOTSTRAP B6
     d["sidecar_watch_ruling"] = copy.deepcopy(SIDECAR_WATCH_RULING)               # BOOTSTRAP, Addendum 2
     d["harness_furniture_ruling"] = copy.deepcopy(HARNESS_FURNITURE_RULING)       # item H (w032)
+    d["labelling_design"] = labelling_design(d["stats_design_inputs"])             # pre-freeze review 1, MAJOR 6.4
+    d["routed_residuals"] = routed_residuals()                                     # pre-freeze review 1, MAJOR 6.5
     url = "https://github.com/javrodriguez/genomics-agentic-research-system/" + study.STUDY_REL
     d["session_namespace"] = {"uuid": str(uuid.uuid5(uuid.NAMESPACE_URL, url)), "derived_from": url,
                                "note": "uuid5(NAMESPACE_URL, derived_from); distinct from earlier sessions."}
