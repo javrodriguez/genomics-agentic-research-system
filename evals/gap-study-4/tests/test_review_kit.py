@@ -425,6 +425,10 @@ class Battery(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.pr = load_isolated(FILES["producer"], "review_kit_athena_outputs_for_battery", MUTATED.get("producer"))
         self.rc = load_isolated(HERE / "run_checks.py", "run_checks_for_battery_test")
+        # a three-command battery: the copies below count it whole (review MINOR-1: a count that is not the commit's
+        # whole battery is refused)
+        self.rc.commands = lambda: [("test_round4", "t"), ("a.txt:1", "true"), ("a.txt:2", "true")]
+        self.rc.file_problems = lambda: []
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -451,7 +455,8 @@ class Battery(unittest.TestCase):
 
     def test_a_copy_that_cannot_be_bound_to_this_head_is_refused(self):
         good = self.PASS3 + "run_checks: 3 of 3 commands passed\n"
-        inside = REPO / "evals" / "gap-study-4" / "no-such-battery-copy.out"
+        # a well-formed copy inside a stand-in repository (the temporary folder), so only that rule can refuse it
+        inside = self.copy(good, name="inside.out")
         link = self.root / "l.out"
         os.symlink(self.copy(good, name="real.out"), link)
         (self.root / "nohead.out").write_text(good)
@@ -460,6 +465,12 @@ class Battery(unittest.TestCase):
             "missing": self.root / "absent.out",
             "a link": link,
             "inside the repository": inside,
+            "a relative path": Path("battery.out"),
+            "not this battery's count": self.copy(self.PASS3 + "run_checks: 4 of 4 commands passed\n", name="four.out"),
+            "no tree line": self.copy(self.PASS3.replace("athena-suite: battery tree unchanged\n", "")
+                                      + "run_checks: 3 of 3 commands passed\n", name="notree.out"),
+            "a changed tree": self.copy(self.PASS3.replace("battery tree unchanged", "battery tree changed: 1 entr(ies) differ")
+                                        + "run_checks: 3 of 3 commands passed\n", name="changed.out"),
             "another commit": self.copy(good, head="f" * 40, name="other.out"),
             "no binding line": self.root / "nohead.out",
             "a binding line without jobs": self.root / "nojobs.out",
@@ -470,7 +481,8 @@ class Battery(unittest.TestCase):
         }
         for case, path in cases.items():
             with self.subTest(case=case):
-                why, gate = self.pr.battery_gate(path, self.HEAD, self.rc, REPO)
+                why, gate = self.pr.battery_gate(path, self.HEAD, self.rc,
+                                                 self.root if case == "inside the repository" else REPO)
                 self.assertTrue(why, f"K13.battery: {case} was taken as the gate")
                 self.assertIsNone(gate, f"K13.battery: {case}")
 
@@ -589,6 +601,12 @@ def mutants():
                                      "if not closing:"),
         "battery-exit-forced": ("Battery.test_the_battery_copy_is_the_run_checks_gate", "K13.battery", "producer",
                                 "code = run_checks.verdict(k, n)", "code = 0"),
+        "battery-inside-repo": ("Battery.test_a_copy_that_cannot_be_bound_to_this_head_is_refused", "K13.battery",
+                                "producer", "if path.resolve().is_relative_to(repo.resolve()):", "if False:"),
+        "battery-any-count": ("Battery.test_a_copy_that_cannot_be_bound_to_this_head_is_refused", "K13.battery",
+                              "producer", "    if n != whole:\n", "    if False:\n"),
+        "battery-tree-ignored": ("Battery.test_a_copy_that_cannot_be_bound_to_this_head_is_refused", "K13.battery",
+                                 "producer", "if len(lines) < 2 or lines[-2] != TREE_UNCHANGED:", "if False:"),
         "battery-link-taken": ("Battery.test_a_copy_that_cannot_be_bound_to_this_head_is_refused", "K13.battery",
                                "producer", "if path.is_symlink() or not path.is_file():", "if not path.exists():"),
         "readme-bare-python": ("Battery.test_the_readme_names_the_interpreter_and_the_suite_road", "K13.battery",

@@ -4,7 +4,8 @@
     python3 evals/gap-study-4/review_kit/athena_outputs.py <out folder> [--holdout-tool <aegis holdout.py>] [--timeout-s N]
     python3 evals/gap-study-4/review_kit/athena_outputs.py <out folder> --run-checks-from <battery copy> [...]
 
-Run by the pre-check operator on the remote runner, in a throwaway child of the head under review, never on the Mac.
+Run by the pre-check operator on the remote runner, never on the Mac: since lane prefreeze-road, as step 3 of the aegis
+suite road (THE SUITE ROAD below), never in a walk child.
 It runs, from the repository root and at its committed HEAD (it refuses a study with uncommitted changes, so the
 commit line says what ran):
 
@@ -32,7 +33,9 @@ then this file as step 3, as the suite account, in the battery's own fresh check
 (umask 022). The battery mode writes a copy of its own output, and --run-checks-from hands that copy in as the
 run_checks gate's output in place of a serial run. battery_gate reads it before any file is written and refuses a
 link, a missing file, a file inside this repository, a copy whose first line is not `athena-suite: battery commit
-<this HEAD> jobs <N>`, and a copy without exactly one summary line in run_checks.summary's form, as its last line.
+<this HEAD> jobs <N>`, a copy without exactly one summary line in run_checks.summary's form, as its last line, a
+summary whose count is not this commit's whole battery (run_checks.commands() plus file_problems(), so a subset or a
+hand-made copy is refused), and a copy whose line before the summary is not `athena-suite: battery tree unchanged`.
 The gate's exit is this commit's own run_checks.verdict of that line, never a number handed in; its label says the
 lines ran N at a time. Every other gate runs here exactly as before.
 
@@ -56,6 +59,7 @@ LEGS_CODE = ("import json, freeze; p = freeze.unrecorded_shapes_problem(json.loa
              "print('every leg holds' if p is None else p); raise SystemExit(0 if p is None else 1)")
 LEGS_NAME = "freeze.unrecorded_shapes_problem(prereg-draft.json): legs i-iii"
 BATTERY_HEAD = re.compile(r"athena-suite: battery commit ([0-9a-f]{40}) jobs ([1-9][0-9]*)")
+TREE_UNCHANGED = "athena-suite: battery tree unchanged"
 SUMMARY = re.compile(r"run_checks: ([0-9]+) of ([0-9]+) commands passed")
 
 
@@ -135,6 +139,11 @@ def battery_gate(path: Path, head: str, run_checks, repo: Path = REPO):
     k, n = (int(x) for x in last.groups()) if last else (0, 0)
     if not last or run_checks.summary(k, n) != lines[-1] or n < 1:
         return "the battery copy's summary line is not one this commit's run_checks.summary prints", None
+    whole = len(run_checks.commands()) + len(run_checks.file_problems())
+    if n != whole:
+        return f"the battery copy counts {n} command(s), and this commit's whole battery is {whole}", None
+    if len(lines) < 2 or lines[-2] != TREE_UNCHANGED:
+        return "the battery copy's line before its summary is not `" + TREE_UNCHANGED + "`", None
     code = run_checks.verdict(k, n)
     label = f"run_checks.py (its lines {m.group(2)} at a time, by the remote suite's battery mode)"
     return None, (label, code, "\n".join(lines) + "\n")
