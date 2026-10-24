@@ -258,14 +258,20 @@ def l1(mod) -> list:
         reads = [c[1] for c in runner.calls if c[0] == "remote" and c[1].startswith("sha256sum ")]
         if reads != [f"sha256sum {CHILD}/walk-out.bundle", f"sha256sum {CHILD}/athena-reserve"]:
             out.append("L1-ship: the athena copies are not each read back by sha256")
-    for why, suite_kw in (("a finding in a commit the public remote does not serve", {"nonpublic_finding": True}),
-                          ("an unreadable public-ref list", {"public_error": True}),
-                          ("a public remote advertising nothing", {"public": ()}),
-                          ("a secret-shaped file", {"hits": [("x.pem", "pem")]})):
+    # each refusal must be its own check's (the battery on 24ca0d9f): since FakeSuite clones for real, a mutant that
+    # swallows the public-fetch error with a tip the clone lacks refuses by an unrelated git error, so the words count
+    for why, suite_kw, words in (
+            ("a finding in a commit the public remote does not serve", {"nonpublic_finding": True},
+             "in commits that are not public"),
+            ("an unreadable public-ref list", {"public_error": True}, "could not be read anonymously"),
+            ("a public remote advertising nothing", {"public": ()}, "the public GARS remote advertised nothing"),
+            ("a secret-shaped file", {"hits": [("x.pem", "pem")]}, "secret-shaped file")):
         with tempfile.TemporaryDirectory() as t:
             runner, got, _, _ = ship_rig(mod, t, suite_kw=suite_kw)
             if not isinstance(got, mod.LaunchRefused):
                 out.append(f"L1-ship: {why} ships")
+            elif words not in str(got):
+                out.append(f"L1-ship: {why} is not refused by its own check: {str(got)[:120]}")
             elif any(c[0] in ("remote", "copy_to") for c in runner.calls):
                 out.append(f"L1-ship: {why} refused only after athena was touched")
     with tempfile.TemporaryDirectory() as t:
