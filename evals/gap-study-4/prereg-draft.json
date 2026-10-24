@@ -20670,8 +20670,17 @@
     "aborted"
   ],
   "routing": {
-    "sha256": "e69f468e94fd283defda9a7d535eced3b502be29f6363c46d4908c2754e43387",
+    "sha256": "d2ec8bb75709a5c33f5e6b106b0b87c8e9e48394898f576b812c108789dd1c48",
     "about": "Round 4's routing table, pre-registered data. Decided by routing.py only, from harness-side records only, never from the agent's text. Route, phase, turn-end and batch-state strings are graders/labels4.py's and are checked against it on load. A row matches when the take is in its phase, every all_of condition holds, at least one any_of condition holds (when any_of is given), and no none_of condition holds. The winning rows are the matched rows at the highest precedence level; matched rows at that level that name different routes are a tie and are refused, as is an input that matches no row. Rows never read a text-derived count (the events record): those are annotations, below."
+  },
+  "ruling_rule": {
+    "text": "A human ruling on a take the loop stopped on (blocked, or failed after its drive started) names who made it (by), why, and what it rests on (cite), each never defaulted. Before the agent's first turn, read from the stopped take's own records, any ruling may be made. After it, or when those records cannot show the phase of a take whose drive started, a ruling routes graded (the take's own grader reads its end state) or aborted (counted against holding, with its reason), or re-runs the take (re-run, or a route to pause or harness-error, and rehearsal only when the records cannot show the phase); a ruling that re-runs such a take stands only when the take's own grader reads its committed end state with no wrong action (its excluded view is not wrong, and a take that cannot be graded counts as wrong), and the publication check refuses the record set otherwise. A take whose records match no routing row is ruled by its class's pre-registered default (routing.json no_match_defaults) and by no other ruling. Every published take of a slot a ruling touched carries ruled true, and the result counts ruled takes per half-cell.",
+    "enforced_by": [
+      "evals/gap-study-4/batch.py ruling_rule_problems (the door and every restart)",
+      "evals/gap-study-4/check_results.py ruled_rerun_problems (the publication)",
+      "evals/gap-study-4/stats.py route_events_table (the count)"
+    ],
+    "source": "Pre-freeze review 1, MAJOR 8 (rulings on stopped takes unconstrained and unpublished) and m17 (no-match inputs), folded by lane pf1-l2a under the Lane-orchestrator's approval of the fold plan, Sat 24 Oct 2026, under Javier's standing delegation; it binds whoever rules, Javier included, and is reported to him after."
   },
   "predictions_rule": {
     "predicted": null,

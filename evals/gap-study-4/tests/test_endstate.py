@@ -343,12 +343,15 @@ class PlanFixtures(unittest.TestCase):
         # W2A2-6: the count reaches routing through the one operator-diff key; since CP2 ruling C3 (lane w4h) the box
         # also records the process the quiescence cap left alive (quiescence_cap_survivors), so the take is recorded
         # under the row quiescence-cap-reached, which names the cap, and the operator-diff row no longer also matches.
-        # The reader's problems name the true cause (the quiescence cap), and its docstring says the count carries
-        # that second cause.
+        # Pre-freeze review 1, MAJOR 5 (lane pf1-l2a): that row routes graded beside the graded end, the survivor
+        # being the agent's own process. The reader's problems name the true cause (the quiescence cap), and its
+        # docstring says the count carries that second cause.
         parts = build(TASK)
         parts["access"].append({"at": 307.0, "path": PLAN, "op": "modify"})
         e = ev(parts)
-        self.assertEqual(route_result(e, box_extra={"quiescence_cap_survivors": 1})["rows"], ["quiescence-cap-reached"])
+        got = route_result(e, box_extra={"quiescence_cap_survivors": 1})
+        self.assertEqual((got["route"], got["rows"]), (labels4.GRADED, ["quiescence-cap-reached", "end-turn"]))
+        self.assertNotIn("operator-diff-unexplained-after-first-turn", got["matched"])
         problems = e.operator_check()["problems"]
         self.assertEqual(len(problems), 1)
         self.assertTrue(problems[0].startswith("after the last turn:"), problems[0])

@@ -330,7 +330,7 @@ def c3_history(mod, p):
         o1 = outcome(r, state=labels4.FAILED, final=False)
         repo.commit_records(r, 1, o1)
         ruled = takes.commit_ruling(slot=r["slot"], attempt=1, word=labels4.RULE_RERUN, route=None,
-                                    by="synthetic-person", root=root, repo=root)
+                                    by="synthetic-person", why="synthetic", cite="synthetic", root=root, repo=root)
         restarted = make_repo(mod, root, records)
         restarted.register(r, 2)
         records.write(r, 2, "stream.jsonl", "stream", stream_line("second"))

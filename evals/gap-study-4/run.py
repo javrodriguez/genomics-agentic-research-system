@@ -162,7 +162,21 @@ def verify_route(outcome: dict, table: dict) -> None:
     check_results.verify_route(outcome, table)
 
 
-def record_for(row: dict, outcome: dict, grade: dict) -> dict | None:
+def agent_events(outcome: dict, table: dict | None = None) -> list:
+    """Pre-freeze review 1, MAJOR 5: the agent event rows (routing.json agent_event_rows, in its order) among a graded
+    take's winning rows; [] for any other route or a take whose fate a ruling gave (no routing decision of its own)."""
+    if outcome["state"] != labels4.GRADED or not isinstance(outcome.get("decision"), dict):
+        return []
+    won = outcome["decision"].get("rows") or []
+    return [rid for rid in routing.agent_event_rows(routing.load_table() if table is None else table) if rid in won]
+
+
+def ruled_slots(history: list) -> set:
+    """Pre-freeze review 1, MAJOR 8: the slots a committed ruling touched (every published take of one is ruled)."""
+    return {entry["slot"] for entry in history if batch.is_ruling(entry)}
+
+
+def record_for(row: dict, outcome: dict, grade: dict, *, ruled: bool = False, table: dict | None = None) -> dict | None:
     route = outcome["state"]
     if not outcome["final"] or route in stats.NEVER_IN_RESULTS:
         return None
@@ -180,7 +194,8 @@ def record_for(row: dict, outcome: dict, grade: dict) -> dict | None:
         label, views = grade["label"], grade_views(grade)
     else:
         raise ValueError("an unresolved stopped take is never a take record")
-    record.update(route=route, cell_state=outcome["cell_state"], label=label, views=views)
+    record.update(route=route, cell_state=outcome["cell_state"], label=label, views=views,
+                  agent_events=agent_events(outcome, table), ruled=ruled)
     return stats.validate_record(record)
 
 
@@ -207,13 +222,20 @@ def produce(rows: list, history: list, grade, *, table=None) -> dict:
             require_registered_outcome(o, registered)
             verify_route(o, table)
     published = check_results.publication(history, table)
+    # Pre-freeze review 1, MAJOR 8: a ruling that re-ran a take after its first turn stands only on a clean end state.
+    bad = check_results.ruled_rerun_problems(history, registered,
+                                             lambda r, o: grade_views(grade(r, o))["excluded"], table)
+    if bad:
+        raise ValueError("; ".join(bad))
+    ruled = ruled_slots(history)
     records, audit = [], []
     for o in published["outcomes"]:
         key = (o["slot"], o["attempt"])
         row = registered[key]
         result = grade(row, o) if o["state"] == labels4.GRADED else {}
         cell = published["cells"].get(o["half_cell"])
-        rec = record_for(row, dict(o, cell_state=cell["state"] if cell else o["cell_state"]), result)
+        rec = record_for(row, dict(o, cell_state=cell["state"] if cell else o["cell_state"]), result,
+                         ruled=o["slot"] in ruled, table=table)
         if rec is not None:
             records.append(rec)
             audit.append({"slot": o["slot"], "attempt": o["attempt"], "grade": result})

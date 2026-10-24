@@ -114,15 +114,19 @@ def validate_ruling(record: dict, history: list) -> None:
         raise ValueError("; ".join(bad))
 
 
-def commit_ruling(*, slot: str, attempt: int, word: str, route, by: str, root=HERE, repo=REPO) -> dict:
+def commit_ruling(*, slot: str, attempt: int, word: str, route, by: str, why: str, cite: str, root=HERE,
+                  repo=REPO) -> dict:
     """The human door: append the caller's closed ruling to rulings.json, one commit.
 
     by is a required argument. It is never read from git, an environment variable
     or a default. The door uses the same committed history CP2 reads. A failed
     commit leaves the file for a human to reconcile; nothing retries a ruling.
+    why and cite (pre-freeze review 1, MAJOR 8) are required the same way, and
+    batch's ruling rule is checked against the history before anything is written.
     """
     root, repo = Path(root).resolve(), Path(repo).resolve()
     record = dict(kind=labels4.RULING, slot=slot, attempt=attempt, ruling=word, route=route, by=by)
+    record.update(why=why, cite=cite)
     history = read_history(root=root, repo=repo)
     validate_ruling(record, history)
     if _git_at(repo, "status", "--porcelain"):
@@ -420,10 +424,13 @@ def main(argv=None):
     parser.add_argument("--attempt", type=int)
     parser.add_argument("--route", choices=labels4.ROUTES)
     parser.add_argument("--by")
+    parser.add_argument("--why", help="with --ruling: why, in the ruler's words (required)")
+    parser.add_argument("--cite", help="with --ruling: the record, commit or rule the ruling rests on (required)")
     args = parser.parse_args(argv)
     try:
         if args.ruling:
-            commit_ruling(slot=args.slot, attempt=args.attempt, word=args.ruling, route=args.route, by=args.by)
+            commit_ruling(slot=args.slot, attempt=args.attempt, word=args.ruling, route=args.route, by=args.by,
+                          why=args.why, cite=args.cite)
             print("takes: 1 human ruling committed")
         elif args.add:
             if not args.row or args.attempt is None:

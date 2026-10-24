@@ -116,11 +116,27 @@ an event, and the text masked) on every take, in every phase, whatever route win
 `route()` refuses the take. Rows never read the `events` record, so a text-derived count can never
 route a take, and an annotation can never be lost to a route.
 
+AGENT EVENT ROWS (pre-freeze review 1, MAJOR 5; lane pf1-l2a, the Lane-orchestrator's approval of the fold plan, Sat 24
+Oct 2026, under Javier's standing delegation). After the first turn, a process alive at the quiescence cap
+(quiescence-cap-reached) and a non-zero exec exit with no API error and no counter rise (nonzero-exec-exit) are the
+agent's own acts as far as harness records can tell, so both rows route graded, never harness-error: the plan's graded
+rule says no try is discarded or re-run for something the agent did. routing.json's agent_event_rows names them;
+`check_table` refuses an id there that is not a graded after-first-turn row; run.py writes the winning ones into the
+take record's agent_events, and stats counts each in its own column.
+
+THE NO-MATCH PROOF (pre-freeze review 1, m17; the same approval). `--check` enumerates the table's closed input
+classes for every pin harness (`no_match_classes`: each condition's truth read through PROOF_CONDITIONS, each variable
+through PROOF_DOMAINS, a branch closed once a row surely matches) and lists every class no row matches by its phase and
+the last turn's end; `no_match_problems` refuses a class with no entry in routing.json's no_match_defaults, an entry no
+class reaches, and a condition outside PROOF_CONDITIONS. Such a take is still refused by `route()` (batch commits it
+blocked, for a look), and `no_match_default` gives the one ruling batch.py accepts for it.
+
 No model is called anywhere in this module. Standard library only.
 """
 
 from __future__ import annotations
 
+import copy
 import json
 import math
 import os
@@ -224,6 +240,12 @@ OPS = ("eq", "ne", "gt", "truthy", "falsy", "not_null", "is_null", "nonempty", "
 _VALUE_OPS = ("eq", "ne", "gt", "has")
 # glitch-b5's ruling 3 (17 Oct 2026): `has` holds when checker_reasons carries its value, one named operator reason.
 HAS_PATH = "checker_reasons"
+
+# Pre-freeze review 1 (lane pf1-l2a, the Lane-orchestrator's approval of the fold plan, 24 Oct 2026): MAJOR 5's agent
+# event rows and m17's pre-registered ruling defaults for the inputs no row matches (THE NO-MATCH PROOF, below).
+AGENT_EVENTS_KEY = "agent_event_rows"
+NO_MATCH_KEY = "no_match_defaults"
+NO_MATCH_ENTRY_KEYS = ("when", "end", "ruling", "route", "why")
 
 
 class TableError(ValueError):
@@ -350,7 +372,8 @@ def check_table(table: dict) -> list[str]:
     for key in ("pin_fields", "graded_ends", "rate_limit_markers", "rate_limit_markers_status", "operator_reasons",
                 "operator_reasons_status", "driver_decided_reasons", "reasons_only_before_first_turn",
                 "checker_reasons_become_events", "pin_profiles", "pin_profiles_status", "pin_refusal", "rows",
-                "annotations", "spend_cap_markers", "spend_cap_markers_status", "spend_cap_refusal"):
+                "annotations", "spend_cap_markers", "spend_cap_markers_status", "spend_cap_refusal",
+                AGENT_EVENTS_KEY, NO_MATCH_KEY):
         if key not in table:
             p.append(f"missing {key}")
     if p:
@@ -468,6 +491,8 @@ def check_table(table: dict) -> list[str]:
     for r in labels4.ROUTES:
         if r not in seen_routes:
             p.append(f"no row routes to {r}")
+    p += _agent_event_problems(table)
+    p += _no_match_default_problems(table)
     for a in table["annotations"]:
         aid = a.get("id")
         if not a.get("source"):
@@ -621,6 +646,63 @@ def _pin_refusal_problems(rule, order: dict) -> list[str]:
         p.append(f"pin_refusal: only a route that outranks rehearsal may outrank it, got {outranks}")
     if not rule["source"]:
         p.append("pin_refusal: no source cited")
+    return p
+
+
+def agent_event_rows(table: dict) -> tuple:
+    """MAJOR 5: the ids of the graded after-first-turn rows whose records the agent itself can produce, in table
+    order (routing.json's agent_event_rows)."""
+    return tuple(table[AGENT_EVENTS_KEY]["ids"])
+
+
+def _agent_event_problems(table: dict) -> list[str]:
+    """MAJOR 5: agent_event_rows names, once each and with its source, rows of this table that are after-first-turn
+    and graded; a harness-error row named there would publish a harness fault as the agent's."""
+    sub = table[AGENT_EVENTS_KEY]
+    if (not isinstance(sub, dict) or set(sub) != {"ids", "source"} or not isinstance(sub["ids"], list) or not sub["ids"]
+            or not all(_is_str(i) and i for i in sub["ids"]) or not (_is_str(sub["source"]) and sub["source"])):
+        return [f"{AGENT_EVENTS_KEY} must give a non-empty list of row ids and its source"]
+    if len(set(sub["ids"])) != len(sub["ids"]):
+        return [f"{AGENT_EVENTS_KEY} repeats an id"]
+    rows = {r.get("id"): r for r in table["rows"] if isinstance(r, dict)}
+    p = []
+    for rid in sub["ids"]:
+        row = rows.get(rid)
+        if row is None:
+            p.append(f"{AGENT_EVENTS_KEY} names {rid!r}, which is no row of the table")
+        elif row.get("route") != labels4.GRADED or row.get("when") != labels4.AFTER_FIRST_TURN:
+            p.append(f"{AGENT_EVENTS_KEY} names {rid!r}, which routes {row.get('route')!r} in phase {row.get('when')!r}: "
+                     f"an agent event row is graded, after the first turn")
+    return p
+
+
+def _no_match_default_problems(table: dict) -> list[str]:
+    """m17: the shape of the pre-registered ruling defaults (whether they cover the no-match classes is
+    no_match_problems', which --check runs: it enumerates)."""
+    sub = table[NO_MATCH_KEY]
+    if (not isinstance(sub, dict) or set(sub) != {"source", "entries"} or not (_is_str(sub["source"]) and sub["source"])
+            or not isinstance(sub["entries"], list) or not sub["entries"]):
+        return [f"{NO_MATCH_KEY} must give its source and a non-empty list of entries"]
+    p, keys = [], set()
+    for i, e in enumerate(sub["entries"]):
+        where = f"{NO_MATCH_KEY} entry {i}"
+        if not isinstance(e, dict) or set(e) != set(NO_MATCH_ENTRY_KEYS):
+            p.append(f"{where} must hold exactly {list(NO_MATCH_ENTRY_KEYS)}")
+            continue
+        if e["when"] not in (labels4.BEFORE_FIRST_TURN, labels4.AFTER_FIRST_TURN):
+            p.append(f"{where}: phase {e['when']!r} is not before-first-turn or after-first-turn")
+        if e["end"] is not None and e["end"] not in labels4.TURN_ENDS:
+            p.append(f"{where}: end {e['end']!r} is not None or a labels4 turn end")
+        if e["ruling"] != labels4.RULE_ROUTE or e["route"] not in labels4.ROUTES:
+            p.append(f"{where}: a default is a {labels4.RULE_ROUTE} ruling to a labels4 route, got {e['ruling']!r} "
+                     f"{e['route']!r}")
+        elif e["when"] == labels4.AFTER_FIRST_TURN and e["route"] not in (labels4.GRADED, labels4.ABORTED):
+            p.append(f"{where}: after the first turn a default is final (graded or aborted), never {e['route']!r}")
+        if not (_is_str(e["why"]) and e["why"].strip()):
+            p.append(f"{where}: no why")
+        if (e.get("when"), e.get("end")) in keys:
+            p.append(f"{where}: a second default for {e.get('when')} {e.get('end')}")
+        keys.add((e.get("when"), e.get("end")))
     return p
 
 
@@ -967,11 +1049,232 @@ def route(records: dict, table: dict | None = None) -> dict:
     }
 
 
+# ------------------------------------------------------------------------------- THE NO-MATCH PROOF (m17)
+# Every condition the table may hold, by (path, op), and the input variables its truth reads. A condition outside this
+# closed vocabulary refuses the proof: a new kind of condition needs its class here before --check can pass.
+PROOF_CONDITIONS = {
+    ("preflight.ok", "falsy"): ("preflight",),
+    ("exit.container_started", "falsy"): ("started",),
+    ("exit.container_exited", "truthy"): ("exited",),
+    ("exit.exec_codes", "nonzero_outside_timeout"): ("exec", "end"),
+    ("api_errors", "nonempty"): ("api",),
+    **{(f"api_errors.{k}", op): ("api",) for k in API_ERROR_KEYS for op in ("in_rate_limit_markers", SPEND_OP)},
+    ("sidecar.start_record", "falsy"): ("sidecar",),
+    ("sidecar.stop_record", "falsy"): ("sidecar",),
+    ("sidecar.exit_code", "ne"): ("sidecar",),
+    ("sidecar.queue_overflow", "truthy"): ("sidecar",),
+    ("checker_reasons", "in_operator_reasons"): ("checker",),
+    ("checker_reasons", "has"): ("checker",),
+    ("operator.unexplained_diffs", "gt"): ("opdiff",),
+    ("ledger.finalize_abort", "truthy"): ("finalize",),
+    ("ledger.end", "eq"): ("end",),
+    ("cgroup.oom_kill_delta", "gt"): ("oom",),
+    ("cgroup.pids_max_delta", "gt"): ("pids",),
+    ("init", "differs_from_pin"): ("init",),
+    ("init", "present_differs_from_pin"): ("init",),
+    ("unreadable_consequential", "nonempty"): ("unreadable",),
+    ("quiescence_cap_survivors", "gt"): ("survivors",),
+}
+# Each variable's classes. Every class is one value of the record field (or fields) it names, and the classes of a
+# variable reach every combination of truth values its conditions can take: the sidecar's four fields as all sixteen
+# combinations; API errors as none, an error with no marker, a rate limit, a spend cap and both (a condition reads any
+# error of the list); the checker reasons as none, an operator reason, harness-condition-violated (an operator reason
+# that cgroup-kill's none_of names), round 3's before-first-turn reason, an event id and an unlisted id; init as the
+# pin, a differing event and none. Counts are 0 or 1 because every condition on them is "gt 0". The end and phase are
+# assigned first, so every class carries both.
+PROOF_ORDER = ("survivors", "api", "oom", "pids", "checker", "unreadable", "init", "exec", "sidecar", "opdiff",
+               "finalize", "started", "exited", "preflight")
+_SIDECAR = tuple((s, t, x, q) for s in (True, False) for t in (True, False) for x in (0, 1) for q in (False, True))
+PROOF_DOMAINS = {
+    "survivors": (0, 1), "api": ("none", "error", "rate", "spend", "rate+spend"), "oom": (0, 1), "pids": (0, 1),
+    "checker": ("none", "operator", "harness-condition-violated", "before-only", "event", "unlisted"),
+    "unreadable": (False, True), "init": ("pin", "differs", "missing"), "exec": (0, 1), "sidecar": _SIDECAR,
+    "opdiff": (0, 1), "finalize": (False, True), "started": (True, False), "exited": (False, True),
+    "preflight": (True, False),
+}
+PROOF_ENDS = {labels4.BEFORE_FIRST_TURN: (None, labels4.END_TURN, labels4.TIMED_OUT, labels4.END_ERROR),
+              labels4.AFTER_FIRST_TURN: (labels4.END_TURN, labels4.TIMED_OUT, labels4.END_ERROR)}
+
+
+def _proof_api(table: dict, harness: str, cls: str) -> list:
+    rate, spend = table["rate_limit_markers"][harness], table["spend_cap_markers"][harness]
+
+    def marked(entry):
+        for k in API_ERROR_KEYS:
+            if entry[k]:
+                return {"status": None, "type": None, "text": None, k: entry[k][0]}
+        return None
+    plain = {"status": 500, "type": "pf1-proof-unmarked", "text": None}
+    out = {"none": [], "error": [plain], "rate": [marked(rate)], "spend": [marked(spend)],
+           "rate+spend": [marked(rate), marked(spend)]}[cls]
+    return None if None in out else out
+
+
+def _proof_records(table: dict, harness: str, profile: dict, a: dict) -> dict | None:
+    """The concrete records of one assignment; unassigned variables take the clean class (their first)."""
+    v = {k: a.get(k, PROOF_DOMAINS[k][0]) for k in PROOF_DOMAINS}
+    after = a["phase"] == labels4.AFTER_FIRST_TURN
+    n = 0 if a["end"] is None else 1
+    pin = dict(profile, harness=harness)
+    init = {"pin": {f: pin[f] for f in PLAN_PIN_FIELDS}, "differs": dict({f: pin[f] for f in PLAN_PIN_FIELDS},
+                                                                        version="pf1-proof-other"), "missing": None}
+    api = _proof_api(table, harness, v["api"])
+    if api is None:
+        return None                       # this harness has no marker of that kind: the class does not exist for it
+    ops = [r for r in table["operator_reasons"] if r != "harness-condition-violated"
+           and r not in table["reasons_only_before_first_turn"]["ids"]]
+    checker = {"none": [], "operator": ops[:1], "harness-condition-violated": ["harness-condition-violated"],
+               "before-only": list(table["reasons_only_before_first_turn"]["ids"][:1]),
+               "event": list(table["checker_reasons_become_events"]["ids"][:1]), "unlisted": ["pf1-proof-unlisted"]}
+    s, t, x, q = v["sidecar"]
+    return {
+        "ledger": {"first_turn_started": after, "turns": n, "end": a["end"], "turn_ends": [a["end"]] * n,
+                   "turn_outputs": [after] * n, "committed": False, "finalize_abort": v["finalize"]},
+        "exit": {"container_started": v["started"], "container_exited": v["exited"], "exec_codes": [v["exec"]] * n},
+        "cgroup": {"oom_kill_delta": v["oom"], "pids_max_delta": v["pids"]},
+        "init": [copy.deepcopy(init[v["init"]]) for _ in range(n)],
+        "pin": pin,
+        "api_errors": copy.deepcopy(api),
+        "sidecar": {"start_record": s, "stop_record": t, "exit_code": x, "queue_overflow": q},
+        "preflight": {"ok": v["preflight"]},
+        "operator": {"unexplained_diffs": v["opdiff"]},
+        "checker_reasons": list(checker[v["checker"]]),
+        "quiescence_kill": bool(v["survivors"]),
+        "events": {"outside_reach": 0},
+        "unreadable_consequential": ["pf1-proof/path"] if v["unreadable"] else [],
+        "quiescence_cap_survivors": v["survivors"],
+    }
+
+
+def _proof_vocabulary_problems(table: dict) -> list[str]:
+    p = []
+    groups = [(row.get("id"), row.get(g, [])) for row in table["rows"] for g in ("all_of", "any_of", "none_of")]
+    groups += [("pin_refusal", table["pin_refusal"]["all_of"]), ("spend_cap_refusal", table["spend_cap_refusal"]["any_of"])]
+    for owner, conds in groups:
+        for c in conds:
+            path, op = c.get("path"), c.get("op")
+            if (path, op) not in PROOF_CONDITIONS:
+                p.append(f"{owner}: condition {(path, op)} is outside the no-match proof's closed "
+                         f"vocabulary (routing.PROOF_CONDITIONS): its class must be added before --check can prove "
+                         f"the table exhaustive")
+            elif op in ("gt", "ne") and c.get("value") != 0:
+                p.append(f"{owner}: condition {(path, op, c.get('value'))} compares with {c.get('value')!r}; the "
+                         f"no-match proof's classes are built for 0")
+    return p
+
+
+def _row_state(row: dict, a: dict, rec: dict, table: dict) -> str:
+    """'match', 'nomatch' or 'open' for a row under a partial assignment (a condition is read once its variables are
+    all assigned)."""
+    if row["when"] not in (labels4.ANY_TIME, a["phase"]):
+        return "nomatch"
+
+    def val(c):
+        return holds(c, rec, table) if all(x in a for x in PROOF_CONDITIONS[(c["path"], c["op"])]) else None
+    alls = [val(c) for c in row.get("all_of", [])]
+    anys = [val(c) for c in row["any_of"]]
+    nones = [val(c) for c in row.get("none_of", [])]
+    if False in alls or (anys and all(x is False for x in anys)) or True in nones:
+        return "nomatch"
+    if all(x is True for x in alls) and True in anys and all(x is False for x in nones):
+        return "match"
+    return "open"
+
+
+def no_match_classes(table: dict) -> list[dict]:
+    """m17: every input class no row matches, for every pin harness (its first registered model's profile), found by
+    assigning the closed variables one by one and stopping a branch as soon as a row surely matches. Each class is
+    {harness, when, end, assigned (the variables the class fixes), witness (its records, the rest clean)}; a class
+    whose witness check_records refuses (a malformed or contradictory record) or a refusal rule holds on is not a
+    no-match input and is left out."""
+    if _proof_vocabulary_problems(table):
+        raise TableError("; ".join(_proof_vocabulary_problems(table)))
+    out = []
+    for harness, models in sorted(table["pin_profiles"].items()):
+        model, prof = sorted(models.items())[0]
+        profile = dict(prof, model=model)
+        for phase, ends in PROOF_ENDS.items():
+            for end in ends:
+                _proof_walk(table, harness, profile, {"phase": phase, "end": end}, 0, out)
+    return out
+
+
+def _proof_walk(table, harness, profile, a, i, out) -> None:
+    rec = _proof_records(table, harness, profile, a)
+    if rec is None:
+        return
+    states = [_row_state(row, a, rec, table) for row in table["rows"]]
+    if "match" in states:
+        return
+    if all(s == "nomatch" for s in states) or i == len(PROOF_ORDER):
+        if check_records(rec, table) or spend_cap_holds(rec, table) or pin_refusal_holds(rec, table):
+            return
+        if "open" in states:
+            raise TableError(f"the no-match proof left rows open on a full assignment: {a}")
+        out.append({"harness": harness, "when": a["phase"], "end": a["end"],
+                    "assigned": {k: v for k, v in a.items() if k not in ("phase", "end")}, "witness": rec})
+        return
+    var = PROOF_ORDER[i]
+    open_rows = [row for row, s in zip(table["rows"], states) if s == "open"]
+    read = any(var in PROOF_CONDITIONS[(c["path"], c["op"])] for row in open_rows
+               for g in ("all_of", "any_of", "none_of") for c in row.get(g, []))
+    # A variable no open row reads cannot change whether a row matches: it takes its clean class, the one whose
+    # records are soundest, so the class's witness is refused only when every completion of it would be.
+    for value in PROOF_DOMAINS[var] if read else PROOF_DOMAINS[var][:1]:
+        _proof_walk(table, harness, profile, dict(a, **{var: value}), i + 1, out)
+
+
+def no_match_problems(table: dict) -> list[str]:
+    """m17: the table is exhaustive up to its pre-registered defaults: every no-match class (phase, last turn's end)
+    has exactly one entry in no_match_defaults, and every entry is reached by a class."""
+    p = _no_match_default_problems(table) + _proof_vocabulary_problems(table)
+    if p:
+        return p
+    reached = {(c["when"], c["end"]): c for c in no_match_classes(table)}
+    entries = {(e["when"], e["end"]) for e in table[NO_MATCH_KEY]["entries"]}
+    p += [f"no-match class {k[0]}, last turn {k[1]}: no pre-registered ruling default "
+          f"(e.g. harness {reached[k]['harness']}, {reached[k]['assigned']}): add a row, or an entry to "
+          f"{NO_MATCH_KEY}" for k in sorted(set(reached) - entries, key=str)]
+    p += [f"{NO_MATCH_KEY} entry {k[0]}, last turn {k[1]}: no no-match class reaches it (a row matches every such "
+          f"input): a stale default" for k in sorted(entries - set(reached), key=str)]
+    return p
+
+
+def no_match_default(records: dict, table: dict) -> tuple | None:
+    """m17: the pre-registered (ruling, route) for records no row matches (sound records, no refusal rule holding,
+    no row matching), else None. A no-match class with no entry raises TableError (--check refuses that table)."""
+    if check_records(records, table) or spend_cap_holds(records, table) or pin_refusal_holds(records, table):
+        return None
+    if any(matches(row, records, table) for row in table["rows"]):
+        return None
+    key = (phase_of(records), records["ledger"]["end"])
+    for e in table[NO_MATCH_KEY]["entries"]:
+        if (e["when"], e["end"]) == key:
+            return (e["ruling"], e["route"])
+    raise TableError(f"records no row matches ({key[0]}, last turn {key[1]}) have no pre-registered ruling default")
+
+
 def main(argv: list[str]) -> int:
-    """`routing.py --check` validates routing.json; `routing.py <records.json>` routes one take."""
+    """`routing.py --check` validates routing.json and runs the no-match proof; `routing.py <records.json>` routes one
+    take."""
     if argv[:1] == ["--check"]:
         table = load_table()
+        bad = no_match_problems(table)
+        for b in bad:
+            print(f"routing: FAIL {b}")
+        if bad:
+            return 1
+        classes = no_match_classes(table)
+        keys = sorted({(c["when"], c["end"]) for c in classes}, key=str)
+        defaults = {(e["when"], e["end"]): e for e in table[NO_MATCH_KEY]["entries"]}
         print(f"routing.json: {len(table['rows'])} rows, {len(table['annotations'])} annotations, sound")
+        print(f"routing.json: no-match proof over {len(table['pin_profiles'])} pin harness(es): {len(classes)} input "
+              f"class(es) no row matches, in {len(keys)} phase and end pair(s), each with its pre-registered ruling "
+              f"default:")
+        for k in keys:
+            e = defaults[k]
+            print(f"  {k[0]}, last turn {k[1] if k[1] is not None else 'none (no turn ran)'} -> {e['ruling']} "
+                  f"{e['route']}")
         return 0
     if len(argv) == 1:
         with open(argv[0], encoding="utf-8") as fh:

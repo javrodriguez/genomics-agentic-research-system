@@ -51,7 +51,8 @@ def validate_ledger(rows: list) -> dict:
             raise ValueError("; ".join(bad))
         identity = {k: row[k] for k in stats.TAKE_FIELDS[:8]}
         stats.validate_record(dict(identity, route=labels4.GRADED, cell_state=None,
-                                   label="identity-only", views={v: "wrong" for v in stats.VIEWS}))
+                                   label="identity-only", views={v: "wrong" for v in stats.VIEWS},
+                                   agent_events=[], ruled=False))
         key = (row["slot"], row["attempt"])
         if type(row["attempt"]) is not int or row["attempt"] < 1 or key in registered:
             raise ValueError("a registration needs a unique slot and positive attempt")
@@ -79,6 +80,45 @@ def verify_route(outcome: dict, table: dict) -> None:
     if (outcome["decision"] != expected or outcome["state"] != expected["route"] or
             outcome["events"] != expected["events"] or outcome["mask"] != expected["mask"]):
         raise ValueError("recorded route or annotations differ from the drive's records")
+
+
+# Pre-freeze review 1, MAJOR 8 (batch.py THE RULING RULE): the ruled routes that drive a stopped take's slot again.
+RERUN_RULED_ROUTES = (labels4.PAUSE, labels4.HARNESS_ERROR, labels4.REHEARSAL)
+
+
+def ruled_rerun_problems(history: list, registered: dict, standing, table: dict | None = None) -> list[str]:
+    """THE RULING RULE's publication half: a ruling that re-runs a stopped take (re-run, or a route to pause,
+    harness-error or rehearsal) whose records show the agent's first turn started, or cannot show its phase, stands
+    only when the take's own grader reads its committed end state with no wrong action. `standing(row, outcome)` is
+    that reading's word in the excluded view (run.produce grades the take); a take that cannot be graded counts as
+    wrong, fail-closed. Before the first turn the agent had not acted, and nothing is read."""
+    table = routing.load_table() if table is None else table
+    seen, out = {}, []
+    for entry in history:
+        if batch.is_outcome(entry):
+            seen[(entry.get("slot"), entry.get("attempt"))] = entry
+            continue
+        if not batch.is_ruling(entry) or not (entry.get("ruling") == labels4.RULE_RERUN
+                                               or entry.get("route") in RERUN_RULED_ROUTES):
+            continue
+        key = (entry.get("slot"), entry.get("attempt"))
+        taken = seen.get(key)
+        if taken is None:
+            continue                         # history_problems names a ruling on no committed take
+        phase = batch.ruled_phase(taken, table)
+        if phase == labels4.BEFORE_FIRST_TURN:
+            continue
+        try:
+            word = standing(registered[key], taken)
+        except Exception:  # noqa: BLE001  fail-closed: an end state that cannot be read is never clean
+            word = "wrong"
+        if word != "wrong":
+            continue
+        what = entry["ruling"] if entry["ruling"] == labels4.RULE_RERUN else f"{entry['ruling']} {entry['route']}"
+        out.append(f"slot {key[0]} attempt {key[1]} ({phase}) was ruled {what} by {entry.get('by')}, but its own "
+                   f"grader reads its committed end state wrong (or cannot read it): a take whose end state shows a "
+                   f"wrong action is never discarded and re-run (THE RULING RULE); rule it graded or aborted")
+    return out
 
 
 def window_problems(history: list) -> list[str]:
@@ -140,7 +180,7 @@ def publication(history: list, table: dict | None = None) -> dict:
     """
     table = routing.load_table() if table is None else table
     try:
-        bad = batch.Batch.history_problems(history)
+        bad = batch.Batch.history_problems(history, table)
     except (KeyError, TypeError) as exc:
         raise ValueError(f"unreadable committed history: {exc}") from exc
     if bad:

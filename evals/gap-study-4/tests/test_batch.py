@@ -151,6 +151,10 @@ ALL.update({"event " + k: v for k, v in CHECKER_EVENT.items()})
 # yet the agent did act, so the take is never re-driven without a ruling.
 RAISES_AFTER_FIRST_TURN = "driver-raises-after-first-turn"
 RAISES_AFTER = {RAISES_AFTER_FIRST_TURN: [_turn(), _turn()]}
+# Pre-freeze review 1, MAJOR 8 (lane pf1-l2a): THE RULING RULE refuses a rehearsal ruling after the agent's first turn,
+# so the rehearsal rulings below rule on a take blocked before it (one silent turn, an unlisted reason).
+ALL["unlisted-reason-before"] = ([_turn(exit_code=1, end_reason=labels4.END_ERROR, agent_output=False)],
+                                 _box(checker_reasons=["not-in-routing-json"]))
 
 
 def scenario_state(name: str, table: dict) -> str:
@@ -1770,7 +1774,7 @@ class TestRestart(unittest.TestCase):
     def test_history_check_can_fail(self):
         class Trusting(batch.Batch):          # history read without its checks
             @staticmethod
-            def history_problems(history):
+            def history_problems(history, table=None):   # pf1-l2a: batch passes its table
                 return []
 
         class DefaultsToNothing(batch.Batch):   # a repo with no history() read as "nothing committed"
@@ -2076,7 +2080,7 @@ class TestCellCaps(unittest.TestCase):
 
         class NoFieldCheck(batch.Batch):   # the outcome's own cell fields never checked (the walk still runs)
             @staticmethod
-            def history_problems(history):
+            def history_problems(history, table=None):   # pf1-l2a: batch passes its table
                 return []
         found = history_validation_problems(NoFieldCheck)
         for case in ("a cell state without its reason", "a cell state that is not labels4's, below the cap"):
@@ -2229,8 +2233,10 @@ BY = "Javier"   # who made the tests' rulings: a ruling names its maker, and bat
 
 def ruling(slot, attempt, rule, route=None, by=BY) -> dict:
     """A human's ruling on one blocked take, or one that failed after its drive started (W1B3-1), as the repo commits
-    it beside the outcomes: `re-run`, or `route` with a labels4 route, and `by` naming who."""
-    return {"kind": labels4.RULING, "slot": slot, "attempt": attempt, "ruling": rule, "route": route, "by": by}
+    it beside the outcomes: `re-run`, or `route` with a labels4 route, `by` naming who, and (pre-freeze review 1,
+    MAJOR 8) why and what it cites."""
+    return {"kind": labels4.RULING, "slot": slot, "attempt": attempt, "ruling": rule, "route": route, "by": by,
+            "why": "synthetic: the stopped take's records were read", "cite": "tests/test_batch.py"}
 
 
 def rerun_ruling(slot, attempt, **kw) -> dict:
@@ -2335,8 +2341,8 @@ def ruled_route_problems(cls=batch.Batch) -> list[str]:
     except Exception as e:  # noqa: BLE001
         p.append(f"route harness-error: the restart raised {type(e).__name__}: {e}")
     # rehearsal: hc-a's two rehearsals and the ruled one reach the cap, so hc-a closes and nothing more is registered
-    _, _, _, _, r1, _ = run(0, plan={(1, 1): "preflight-fail", (1, 2): "preflight-fail", (1, 3): "unlisted-reason"},
-                            serial=True, row_list=rows_in(["hc-a"]))
+    _, _, _, _, r1, _ = run(0, plan={(1, 1): "preflight-fail", (1, 2): "preflight-fail",
+                                     (1, 3): "unlisted-reason-before"}, serial=True, row_list=rows_in(["hc-a"]))
     try:
         b, out, w, *_ = restart(r1, rows_in(["hc-a", "hc-a", "hc-b"]), cls=cls,
                                 rulings=[route_ruling(1, 3, labels4.REHEARSAL)])
@@ -2347,7 +2353,7 @@ def ruled_route_problems(cls=batch.Batch) -> list[str]:
         p.append(f"route rehearsal: the restart raised {type(e).__name__}: {e}")
     # rehearsal, below the cap: the ruled take is hc-a's first rehearsal, so the slot's re-run rehearses as its second
     # and the next as its third, which closes hc-a (never a fourth attempt)
-    _, _, _, _, r1, _ = run(1, plan={(1, 1): "unlisted-reason"})
+    _, _, _, _, r1, _ = run(1, plan={(1, 1): "unlisted-reason-before"})
     try:
         _, out, w, *_ = restart(r1, rows(1), plan={(1, a): "preflight-fail" for a in (2, 3, 4)}, start_attempts={1: 1},
                                 cls=cls, serial=True, rulings=[route_ruling(1, 1, labels4.REHEARSAL)])
@@ -2541,7 +2547,8 @@ def fold4_bad_histories() -> dict:
     _, _, _, _, rg, _ = run(2, plan={(1, 1): "watcher-overflow"})
     good = rg.history()
     capped = capped_history()                                              # slot 1 pauses three times, serially
-    _, _, _, _, rr, _ = run(0, plan={(1, 1): "preflight-fail", (1, 2): "preflight-fail", (1, 3): "unlisted-reason"},
+    _, _, _, _, rr, _ = run(0, plan={(1, 1): "preflight-fail", (1, 2): "preflight-fail",
+                                     (1, 3): "unlisted-reason-before"},
                             serial=True, row_list=rows_in(["hc-a"]))      # two rehearsals, then blocked
     closed_by_ruling = rr.history() + [route_ruling(1, 3, labels4.REHEARSAL)]   # the ruled third closes hc-a
 
@@ -2553,7 +2560,7 @@ def fold4_bad_histories() -> dict:
     return {
         "a ruling with an unknown word": (blocked + [dict(rerun_ruling(1, 1), ruling="retake")], "not a labels4 ruling"),
         "a ruling that names no maker": (blocked + [rerun_ruling(1, 1, by="  ")], "`by`"),
-        "a ruling with a key of its own": (blocked + [dict(rerun_ruling(1, 1), why="looked fine")], "the ruling keys"),
+        "a ruling with a key of its own": (blocked + [dict(rerun_ruling(1, 1), block=1)], "the ruling keys"),
         "a ruling missing a key": (blocked + [{k: v for k, v in rerun_ruling(1, 1).items() if k != "by"}],
                                    "the ruling keys"),
         "a re-run ruling that names a route": (blocked + [rerun_ruling(1, 1, route=labels4.GRADED)], "names no route"),
@@ -2855,7 +2862,7 @@ class TestFold4Mutants(unittest.TestCase):
 
         class Trusting(batch.Batch):
             @staticmethod
-            def history_problems(history):
+            def history_problems(history, table=None):   # pf1-l2a: batch passes its table
                 return []
         found = history_validation_problems(Trusting)
         for case in ("a window event on a take that is no pause", "a window event reopened",

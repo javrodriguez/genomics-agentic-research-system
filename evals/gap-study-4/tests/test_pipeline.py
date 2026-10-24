@@ -464,7 +464,7 @@ class ScratchIdentity(unittest.TestCase):
                 takes.commit_registration(r, 1, root=repo.root, repo=repo.root, pre={"rows": [r]})
                 repo.commit_records(r, 1, outcome(r, state=labels4.FAILED, final=False))
                 takes.commit_ruling(slot=r["slot"], attempt=1, word=labels4.RULE_ROUTE,
-                    route=labels4.ABORTED, by="synthetic-person", root=repo.root, repo=repo.root)
+                    route=labels4.ABORTED, by="synthetic-person", why="synthetic", cite="synthetic", root=repo.root, repo=repo.root)
                 self.assertEqual(git(repo.root, "show", "-s", "--format=%an <%ae>"),
                                  "synthetic <synthetic@example.invalid>")
 
@@ -483,7 +483,7 @@ class ScratchIdentity(unittest.TestCase):
                             takes.commit_registration(other, 1, root=repo.root, repo=repo.root, pre={"rows": [other]})
                         else:
                             takes.commit_ruling(slot=r["slot"], attempt=1, word=labels4.RULE_ROUTE,
-                                route=labels4.ABORTED, by="synthetic-person", root=repo.root, repo=repo.root)
+                                route=labels4.ABORTED, by="synthetic-person", why="synthetic", cite="synthetic", root=repo.root, repo=repo.root)
                     self.assertEqual(git(repo.root, "rev-parse", "HEAD"), before)
                     self.assertEqual(git(repo.root, "status", "--porcelain"), "")
 
@@ -644,7 +644,8 @@ def recorded(state, r=None, attempt=1, window=1):
 
 def ruling(r, attempt=1, route=labels4.PAUSE, word=labels4.RULE_ROUTE, by="synthetic-person"):
     return {"kind": labels4.RULING, "slot": r["slot"], "attempt": attempt,
-            "ruling": word, "route": route, "by": by}
+            "ruling": word, "route": route, "by": by,
+            "why": "synthetic", "cite": "synthetic"}      # pre-freeze review 1, MAJOR 8
 
 
 def after_ruled_final_history():
@@ -844,7 +845,7 @@ class RulingDoor(unittest.TestCase):
             (repo.root / "pending.txt").write_text("synthetic pending work\n")
             with self.assertRaisesRegex(ValueError, "existing changes"):
                 takes.commit_ruling(slot=r["slot"], attempt=1, word=labels4.RULE_ROUTE,
-                    route=labels4.ABORTED, by="synthetic-person", root=repo.root, repo=repo.root)
+                    route=labels4.ABORTED, by="synthetic-person", why="synthetic", cite="synthetic", root=repo.root, repo=repo.root)
             self.assertEqual(git(repo.root, "rev-parse", "HEAD"), before)
             self.assertFalse((repo.root / "rulings.json").exists())
 
@@ -859,7 +860,7 @@ class RulingDoor(unittest.TestCase):
                                              "GIT_AUTHOR_EMAIL": "synthetic@example.invalid",
                                              "GIT_COMMITTER_EMAIL": "synthetic@example.invalid"}):
                 got = takes.commit_ruling(slot=r["slot"], attempt=1, word=labels4.RULE_ROUTE,
-                                          route=labels4.ABORTED, by=who, root=repo.root, repo=repo.root)
+                                          route=labels4.ABORTED, by=who, why="synthetic", cite="synthetic", root=repo.root, repo=repo.root)
             self.assertEqual(set(got), set(batch.RULING_KEYS))
             self.assertTrue(batch.is_ruling(got))
             self.assertEqual(got["by"], who)
@@ -894,7 +895,7 @@ class RulingDoor(unittest.TestCase):
                 before = git(repo.root, "rev-parse", "HEAD")
                 with self.assertRaisesRegex(ValueError, "by"):
                     takes.commit_ruling(slot=r["slot"], attempt=1, word=labels4.RULE_ROUTE,
-                        route=labels4.ABORTED, by=by, root=repo.root, repo=repo.root)
+                        route=labels4.ABORTED, by=by, why="synthetic", cite="synthetic", root=repo.root, repo=repo.root)
                 self.assertEqual(git(repo.root, "rev-parse", "HEAD"), before)
                 self.assertEqual(git(repo.root, "status", "--porcelain"), "")
                 self.assertFalse((repo.root / "rulings.json").exists())

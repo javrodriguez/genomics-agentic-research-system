@@ -420,6 +420,7 @@ QUOTES = {'estimand': ('plan',
 
 import stats
 import costs
+import batch      # pre-freeze review 1, MAJOR 8: THE RULING RULE, registered below as ruling_rule
 import lint_language
 import lint_pooling
 from graders import labels4
@@ -914,6 +915,7 @@ def describe(root=None):
     d.update(views=list(stats.VIEWS), routes=list(labels4.ROUTES), reserved_labels=list(labels4.RESERVED))
     table = json.loads((root / "routing.json").read_text())
     d["routing"] = {"sha256": sha((root / "routing.json").read_bytes()), "about": table["about"]}
+    d["ruling_rule"] = copy.deepcopy(batch.RULING_RULE)       # pre-freeze review 1, MAJOR 8 (lane pf1-l2a)
     d["predictions_rule"] = copy.deepcopy(PREDICTIONS_RULE)
     d["predictions"] = prediction_rows(d["rows"])
     # W8B (lane w8b-holdout-digests, ruling W8B-gap4-1): no holdout digest, count or stand-in before the freeze.

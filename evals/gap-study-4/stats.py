@@ -19,7 +19,14 @@ THE TAKE RECORD (closed; an unknown, missing or mistyped key is refused with Sta
      "cell_state": None | labels4.INCOMPLETE_MECHANICAL,
      "label": str,
      "views": {"failures": "right" | "wrong", "excluded": "right" | "wrong" | "out",
-               "raw": "right" | "wrong" | "stop"}  (None exactly when route is harness-error)}
+               "raw": "right" | "wrong" | "stop"}  (None exactly when route is harness-error),
+     "agent_events": the agent event rows among a graded take's winning rows, in AGENT_EVENTS order ([] otherwise),
+     "ruled": bool, true when a committed human ruling touched the take's slot}
+
+Pre-freeze review 1 (lane pf1-l2a, the Lane-orchestrator's approval of the fold plan, Sat 24 Oct 2026, under
+Javier's standing delegation): MAJOR 5 routes a take graded when the agent's own act ended its CLI with a non-zero
+exit or left a process alive at the quiescence cap (routing.json agent_event_rows), and MAJOR 8 counts the takes a
+ruling touched; both are counted per half-cell in table 1b, route_events_table, in their own columns.
 
 The half words are `variants.HALVES` (lane w4d builds variants.py in parallel; it is not imported here, and a
 later test binds the two). A stop (a label in labels4.RESERVED) is wrong under `failures` (the strict view),
@@ -39,6 +46,7 @@ THE DESIGN (closed): {"tasks_that_run", "harness_models", "stronger_weaker", "cr
 pre-registration, tests supply designs.
 
 THE TABLES, each a function, each generated and never typed:
+  1b route_events_table   per half-cell, the graded takes each agent event routed, and the ruled takes.
   1 bounds_table      x right of n graded per half-cell and stop view, with intervals.clopper_pearson's exact
                       two-sided 0.95 bounds, rounded outward (lower floored, upper ceiled on the 0.001 grid).
   2 holds_table       every graded try right on both halves under the strict view, of the cell's printed n (a
@@ -133,7 +141,10 @@ class StatsError(Exception):
 
 
 TAKE_FIELDS = ("arm", "task", "half", "model", "agent", "wording", "repeat", "pressure", "route", "cell_state",
-               "label", "views")
+               "label", "views", "agent_events", "ruled")
+# MAJOR 5 (pre-freeze review 1): routing.json's agent_event_rows, in its order; tests/test_pf1_routing_rulings.py
+# binds the two (stats reads no routing table).
+AGENT_EVENTS = ("nonzero-exec-exit", "quiescence-cap-reached")
 AGENT_FIELDS = ("harness", "version")
 HALVES = ("trap", "normal")                 # variants.HALVES
 VIEWS = ("failures", "excluded", "raw")
@@ -207,6 +218,7 @@ def validate_record(r) -> dict:
         raise StatsError(f"a {route} record never reaches results")
     if route not in labels4.ROUTES:
         raise StatsError(f"route {route!r} is not a labels4 route")
+    _check_route_notes(r)
     if r["cell_state"] not in CELL_STATES:
         raise StatsError(f"cell_state {r['cell_state']!r} is not None or one of {labels4.CELL_STATES}")
     if r["label"] in UNUSED_LABELS:
@@ -231,6 +243,20 @@ def validate_record(r) -> dict:
     elif len(set(v.values())) != 1 or v["failures"] not in ("right", "wrong"):
         raise StatsError(f"a graded non-stop label is right or wrong alike in all three views: {v!r}")
     return r
+
+
+def _check_route_notes(r: dict) -> None:
+    """MAJOR 5 and 8: agent_events is a list of AGENT_EVENTS ids, each once and in that order, on a graded record
+    only; ruled is a bool."""
+    ev = r["agent_events"]
+    if not isinstance(ev, list) or not all(isinstance(e, str) for e in ev):
+        raise StatsError(f"agent_events must be a list of agent event row ids: {ev!r}")
+    if [e for e in AGENT_EVENTS if e in ev] != ev:
+        raise StatsError(f"agent_events must name AGENT_EVENTS {AGENT_EVENTS}, each once and in that order: {ev!r}")
+    if ev and r["route"] != labels4.GRADED:
+        raise StatsError(f"an agent event routes a take graded; a {r['route']} record carries none: {ev!r}")
+    if not isinstance(r["ruled"], bool):
+        raise StatsError(f"ruled must be a bool: {r['ruled']!r}")
 
 
 def level(r: dict):
@@ -380,6 +406,39 @@ def bounds_table(records: list, design: dict):
                      "cell_state": states[0] if states else None,
                      **{view: _view_counts(rs, view) for view in VIEWS}})
     return rows
+
+
+def route_events_table(records: list, design: dict):
+    """Table 1b (pre-freeze review 1, MAJOR 5 and 8): per half-cell, its takes, the graded takes each agent event
+    routed (its own column each), and the takes of a slot a committed ruling touched; NO_TAKES for no records."""
+    if not records:
+        return NO_TAKES
+    by = {}
+    for r in records:
+        by.setdefault(half_cell_key(r), []).append(r)
+    rows = []
+    for key in _design_cells(records, design):
+        rs = by.get(key, [])
+        arm, task, half, model, harness = key
+        rows.append({"arm": arm, "task": task, "half": half, "model": model, "harness": harness, "takes": len(rs),
+                     **{e: sum(1 for r in rs if e in r["agent_events"]) for e in AGENT_EVENTS},
+                     "ruled": sum(1 for r in rs if r["ruled"])})
+    return rows
+
+
+def render_route_events(rows) -> str:
+    out = [TABLE_HEADINGS["route_events"], ""]
+    if rows == NO_TAKES:
+        return "\n".join(out + [NO_TAKES, ""])
+    out += ["Graded takes the routing table graded because the agent's own act ended its CLI with a non-zero exit, or "
+            "left a process of its own alive at the quiescence cap, each in its own column beside the take's ordinary "
+            "reading in the tables below; and the takes of a slot a committed human ruling touched. Counts of takes.",
+            "", "| Arm | Task | Model | Harness | Half | Takes | Non-zero exit (the agent's own exit) "
+            "| Process alive at the quiescence cap | Ruled takes |", "|---|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        out.append(f"{_cellname(r)} | {r['half']} | {_none(r['takes'])} | {_none(r['nonzero-exec-exit'])} "
+                   f"| {_none(r['quiescence-cap-reached'])} | {_none(r['ruled'])} |")
+    return "\n".join(out + [""])
 
 
 def _xn(c, word="right") -> str:
@@ -955,9 +1014,10 @@ def power_table(design: dict) -> list:
 
 # ---- derive and render -----------------------------------------------------------------------------------------
 
-TABLES = ("bounds", "holds", "chance_of_holding", "paired", "per_wording", "comparisons", "across_tasks", "power")
+TABLES = ("bounds", "route_events", "holds", "chance_of_holding", "paired", "per_wording", "comparisons", "across_tasks", "power")
 TABLE_HEADINGS = {
     "bounds": "### Counts with exact 0.95 bounds, per half-cell",
+    "route_events": "### Agent-caused routes and ruled takes, per half-cell",
     "holds": "### Holds, under the strict view",
     "chance_of_holding": "### The chance of holding at a given per-try accuracy",
     "paired": "### Paired results per wording (descriptive)",
@@ -978,7 +1038,8 @@ def derive(records: list, design: dict) -> dict:
     holds = holds_table(records, design)
     comps = comparisons(records, design)
     check_families(comps, design)
-    tables = {"bounds": bounds_table(records, design), "holds": holds,
+    tables = {"bounds": bounds_table(records, design), "route_events": route_events_table(records, design),
+              "holds": holds,
               "chance_of_holding": chance_of_holding(printed_ns(holds)),
               "paired": paired_table(records, design), "per_wording": sensitivity_table(records, design),
               "comparisons": comps, "across_tasks": across_tasks(records, design), "power": power_table(design)}
@@ -1136,6 +1197,7 @@ def render_md(derived: dict) -> str:
     out = ["## Statistics", ""]
     out.append(render_agents(derived["agents"]))
     out.append(render_bounds(t["bounds"]))
+    out.append(render_route_events(t["route_events"]))
     out.append(render_holds(t["holds"]))
     out.append(render_chance(t["chance_of_holding"]))
     out.append(_or_no_takes(t["paired"], lambda: render_paired(t["paired"], d), "paired"))
