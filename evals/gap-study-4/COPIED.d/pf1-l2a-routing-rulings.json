@@ -15,6 +15,11 @@
       "path": "checks.d/pf1-l2a-routing-rulings.txt",
       "status": "new",
       "reason": "Lane pf1-l2a-routing-rulings's listed checks: tests/test_pf1_routing_rulings.py, and routing.py --check listing the no-match class after the first turn with its graded default."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l2a-5afd80a.md",
+      "status": "new",
+      "reason": "The fresh review of lane pf1-l2a at 5afd80a7 (VERDICT CHANGES, Sat 24 Oct 2026), committed as written, unedited; its findings fold under the Lane-orchestrator's rulings on it, recorded with the fold."
     }
   ]
 }
