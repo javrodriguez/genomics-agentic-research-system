@@ -217,6 +217,27 @@
       "line_text": "| X26 front check only when two or more are live | SURVIVED | equivalent: CONTEXT_ID is always live after a road (a) patch (removing a CONTEXT_COPY fails `_ignored_prompts`' ORIGINAL check), so a single live id is the context id |",
       "ruled": "2026-10-22",
       "why": "Bound record, never edited: native-readers/gemini-review.md is the independent review (the F4 review of lane vendor-b28) that Javier's second acceptance of the Gemini reader binds by sha256 (5292df49; native-readers/gemini-acceptance.json review.sha256 246244c1e0447b492136c8e583e068f358ed5d37b063be67546e09cff5ce43b2; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about the reader's code path, not a claim by this study about any model or take. (Javier's decision OD112 (ask merge-fix2), 22 Oct 2026; at gemini-review.md:168 on 6cf546bf)"
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-ship-evidence-blobs-2ced80f.md",
+      "pattern": "always",
+      "line_text": "   Normal `gzip.compress` output always has a NUL at byte 3, so an accidental leak is unlikely; the risk is crafted bytes.",
+      "ruled": "2026-10-23",
+      "why": "Bound record, never edited: lanes/REVIEW-ship-evidence-blobs-2ced80f.md is the fresh independent review of lane ship-evidence-blobs at 2ced80f2 (VERDICT CHANGES), committed as its reviewer wrote it on the Lane-orchestrator's word (23 Oct 2026). The word is the reviewer's own prose about the code under review, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-ship-evidence-blobs-2ced80f.md",
+      "pattern": "out-of",
+      "line_text": "   At this head that is 13 evidence blobs (1 at w-g27, 12 at w-g29) out of 3,356 unpublished commits, against 435 evidence blobs in the tree.",
+      "ruled": "2026-10-23",
+      "why": "Bound record, never edited: lanes/REVIEW-ship-evidence-blobs-2ced80f.md is the fresh independent review of lane ship-evidence-blobs at 2ced80f2 (VERDICT CHANGES), committed as its reviewer wrote it on the Lane-orchestrator's word (23 Oct 2026). The word is the reviewer's own prose about the code under review, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-ship-evidence-blobs-2ced80f.md",
+      "pattern": "out-of",
+      "line_text": "  Mutant A (restore moved out of `finally`) is caught by `test_the_suites_door_is_restored_after_each_scan`.",
+      "ruled": "2026-10-23",
+      "why": "Bound record, never edited: lanes/REVIEW-ship-evidence-blobs-2ced80f.md is the fresh independent review of lane ship-evidence-blobs at 2ced80f2 (VERDICT CHANGES), committed as its reviewer wrote it on the Lane-orchestrator's word (23 Oct 2026). The word is the reviewer's own prose about the code under review, not a claim by this study about any model or take."
     }
   ]
 }
