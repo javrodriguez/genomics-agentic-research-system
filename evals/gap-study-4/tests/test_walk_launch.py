@@ -1995,6 +1995,162 @@ class TestRealOutwardScan(unittest.TestCase):
         self.assertIsInstance(got, Exception)
 
 
+# Lane ship-evidence-blobs, the OD57 twin ruling (the Lane-orchestrator's, 23 Oct 2026, under Javier's standing
+# delegation): the outward scan admits an OD57 finding in a file whose blob at the finding's commit is byte-identical
+# (the same blob id) to a walk record the shared OD57 rule reads as agent text at that commit, only when the shared
+# rule, with that record's family shapes and its probe rescan, admits it on that line. The twins are the committed
+# w-g21 Gemini records themselves (their blob ids pinned below); the copy path is the real fixture's.
+TWIN_RECORD = "evals/gap-study-4/rehearsals/w-g21/session/native-turn-%d.jsonl"
+TWIN_COPY = "evals/gap-study-4/tests/fixtures/recorded-gemini-w-g21/session/native-turn-%d.jsonl"
+TWIN_BLOBS = {1: "8845437737bd6fdc6734d853e589ffaff5f83969", 2: "aaced501040dc941fb424fe76efb3a982c65f724"}
+TWIN_LINES = {1: (128, 129), 2: (128, 129, 178)}      # the five generic-api-key findings of the 1b20a10a ship scan
+
+
+def twin_bytes(n: int) -> bytes:
+    return Path(HERE, "rehearsals", "w-g21", "session", f"native-turn-{n}.jsonl").read_bytes()
+
+
+def twin_line_prefixed(data: bytes, line: int, field: str) -> bytes:
+    """`data` with one JSON field put first in the record on `line` (1-based); every other byte unchanged."""
+    lines = data.split(b"\n")
+    assert lines[line - 1].startswith(b"{"), "the record is not a JSON object"
+    lines[line - 1] = b"{" + field.encode() + b"," + lines[line - 1][1:]
+    return b"\n".join(lines)
+
+
+class TestOD57TwinOutward(unittest.TestCase):
+    """The twin ruling on the REAL scanner: walk_launch.outward_scan over a real bundle, the real athena_suite and the
+    real gitleaks; only the public fetch is answered locally. Skipped BY NAME where athena_suite.py or gitleaks is
+    absent."""
+
+    def setUp(self):
+        self.gitleaks = _real_gitleaks()
+        if not os.path.isfile(ATHENA_SUITE_PY) or self.gitleaks is None:
+            self.skipTest(REAL_SCAN_SKIP)
+        self.suite = wl.load_suite(ATHENA_SUITE_PY)
+
+    def scan(self, public_files, walk_files, *, removes=(), listed=None, first=None):
+        """A public commit adding `public_files`, then (with `first`, a ({path: bytes}, removed paths) pair) a walk
+        commit of its own, then one walk commit adding `walk_files` and removing `removes`; outward_scan of the last
+        commit with the public commit as the public tip. Returns (result, head)."""
+        with tempfile.TemporaryDirectory() as t:
+            repo, _root, base = make_repo(t)
+            steps = [(public_files, (), "public")] + ([(first[0], first[1], "walk-1")] if first else []) \
+                + [(walk_files, removes, "walk")]
+            for files, gone, msg in steps:
+                for path, data in files.items():
+                    Path(repo, path).parent.mkdir(parents=True, exist_ok=True)
+                    Path(repo, path).write_bytes(data)
+                    git("-C", repo, "add", path)
+                for path in gone:
+                    git("-C", repo, "rm", "-q", path)
+                if files or gone or msg != "public":
+                    git("-C", repo, "commit", "-q", "--allow-empty", "-m", msg)
+                if msg == "public":
+                    base = git("-C", repo, "rev-parse", "HEAD").strip()
+            head = git("-C", repo, "rev-parse", "HEAD").strip()
+            bundle = os.path.join(t, "out.bundle")
+            git("-C", repo, "bundle", "create", bundle, "main")
+            kw = {} if listed is None else {"lines_ruled": listed}
+            try:
+                return wl.outward_scan(_PublicAt(self.suite, [base]), repo=repo, bundle=bundle, head=head,
+                                       gitleaks=self.gitleaks, work=os.path.join(t, "work"), **kw), head
+            except Exception as e:  # noqa: BLE001 - ship's own handling: any refusal keeps the bundle on the Mac
+                return e, head
+
+    def assertRefusedAt(self, got, path, lines):
+        self.assertIsInstance(got, Exception, got)
+        self.assertIn("gitleaks found", str(got))
+        for n in lines:
+            self.assertIn(f"{path}:generic-api-key:{n}", str(got))
+
+    def test_the_twins_are_the_committed_w_g21_records(self):
+        for n, oid in TWIN_BLOBS.items():
+            with self.subTest(n=n):
+                self.assertEqual(git("hash-object", str(Path(HERE, "rehearsals", "w-g21", "session",
+                                                             f"native-turn-{n}.jsonl"))).strip(), oid)
+
+    def test_the_real_five_findings_are_admitted_via_their_public_twins(self):
+        recs = {TWIN_RECORD % n: twin_bytes(n) for n in TWIN_BLOBS}
+        copies = {TWIN_COPY % n: twin_bytes(n) for n in TWIN_BLOBS}
+        listed = []
+        got, head = self.scan(recs, copies, listed=listed)
+        self.assertEqual(got, 1, got)
+        want = sorted(f"OD57:{head}:{TWIN_COPY % n}:{line} via {TWIN_RECORD % n}"
+                      for n, lines in TWIN_LINES.items() for line in lines)
+        self.assertEqual(sorted(listed), want)
+
+    def test_twins_carried_in_the_same_commit_are_admitted_both_ways(self):
+        files = {TWIN_RECORD % 1: twin_bytes(1), TWIN_COPY % 1: twin_bytes(1)}
+        listed = []
+        got, head = self.scan({}, files, listed=listed)
+        self.assertEqual(got, 1, got)
+        self.assertEqual(sorted(listed), sorted(
+            [f"OD57:{head}:{TWIN_RECORD % 1}:{line}" for line in TWIN_LINES[1]]
+            + [f"OD57:{head}:{TWIN_COPY % 1}:{line} via {TWIN_RECORD % 1}" for line in TWIN_LINES[1]]))
+
+    def test_one_byte_changed_in_the_copy_refuses(self):
+        data = twin_bytes(1)
+        changed = data.replace(b'"kind":"main"', b'"kind":"maim"', 1)
+        self.assertNotEqual(changed, data)
+        got, _ = self.scan({TWIN_RECORD % 1: data}, {TWIN_COPY % 1: changed})
+        self.assertRefusedAt(got, TWIN_COPY % 1, TWIN_LINES[1])
+
+    def test_an_absent_twin_refuses(self):
+        got, _ = self.scan({}, {TWIN_COPY % 1: twin_bytes(1)})
+        self.assertRefusedAt(got, TWIN_COPY % 1, TWIN_LINES[1])
+
+    def test_a_twin_removed_at_the_findings_commit_refuses(self):
+        # a commit that removes the twin and adds the copy is a rename git's diff shows without content (no
+        # finding at all), so the twin goes in one walk commit and the copy arrives in the next
+        got, _ = self.scan({TWIN_RECORD % 1: twin_bytes(1)}, {TWIN_COPY % 1: twin_bytes(1)},
+                           first=({"f9.txt": b"9\n"}, (TWIN_RECORD % 1,)))
+        self.assertRefusedAt(got, TWIN_COPY % 1, TWIN_LINES[1])
+
+    def test_a_twin_outside_the_ruled_set_refuses(self):
+        outside = {"evals/gap-study-4/rehearsals/w-g21/session/other-1.jsonl": twin_bytes(1),
+                   "evals/gap-study-4/rehearsals/w-g21/transcript.jsonl": twin_bytes(1),
+                   "evals/gap-study-4/tests/fixtures/b25-real-shapes/w-g21-native-turn-1.jsonl": twin_bytes(1)}
+        got, _ = self.scan(outside, {TWIN_COPY % 1: twin_bytes(1)})
+        self.assertRefusedAt(got, TWIN_COPY % 1, TWIN_LINES[1])
+
+    def test_another_rule_on_the_line_refuses(self):
+        canary = _aws_shaped()
+        data = twin_line_prefixed(twin_bytes(1), 128, json.dumps("note") + ":" + json.dumps(
+            "aws_access_key_id = " + canary))
+        got, _ = self.scan({TWIN_RECORD % 1: data}, {TWIN_COPY % 1: data})
+        self.assertIsInstance(got, Exception, got)
+        self.assertIn("gitleaks found", str(got))
+        self.assertIn(f"{TWIN_COPY % 1}:aws-access-token:128", str(got))
+        self.assertNotIn(canary, str(got))
+
+    def test_a_second_finding_of_the_rule_on_the_line_refuses(self):
+        import secrets
+        import string
+        value = "".join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(40))
+        data = twin_line_prefixed(twin_bytes(1), 128, json.dumps("note") + ":" + json.dumps(
+            "api_key = " + value))
+        got, _ = self.scan({TWIN_RECORD % 1: data}, {TWIN_COPY % 1: data})
+        self.assertRefusedAt(got, TWIN_COPY % 1, (128,))
+        self.assertNotIn(value, str(got))
+
+    def test_the_pin_line_on_a_line_the_rule_does_not_read_refuses(self):
+        extra = json.dumps({"type": "user", "content": [{"text": OD57_LINE}]}).encode() + b"\n"
+        data = twin_bytes(1) + extra
+        got, _ = self.scan({TWIN_RECORD % 1: data}, {TWIN_COPY % 1: data})
+        self.assertRefusedAt(got, TWIN_COPY % 1, (153,))
+
+class TestOD57TwinShipListing(unittest.TestCase):
+    """ship records the outward scan's OD57 admissions (each twin one names its twin), and nothing else it used."""
+
+    def test_ship_lists_the_outward_od57_admissions(self):
+        entry = f"OD57:{'e' * 40}:{TWIN_COPY % 1}:128 via {TWIN_RECORD % 1}"
+        with tempfile.TemporaryDirectory() as t:
+            _, got, _, _ = ship_rig(wl, t, suite_kw={"ruled_lines": [entry, "b" * 40]})
+        self.assertIsInstance(got, dict, got)
+        self.assertEqual(got.get("lines_ruled"), [entry])
+
+
 class TestSkipRule(unittest.TestCase):
     """The battery allows exactly REAL_SCAN_SKIP, and any other skip reason still fails it (closure review MINOR A)."""
 
