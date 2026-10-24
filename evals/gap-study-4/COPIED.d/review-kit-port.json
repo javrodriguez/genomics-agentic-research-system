@@ -11,7 +11,7 @@
       "path": "review_kit/why.md",
       "status": "edited",
       "source": "evals/gap-study-3/review_kit/why.md",
-      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). Round 4's purpose in place of round 3's: a new instrument (sealed pinned container, end-state graders, several wordings, ten tries), agents of more than one vendor with model and agent-system comparisons kept apart, its counts never added to an earlier round's. Names no study folder, round or person. Bound by tests/test_review_kit.py K1, K6."
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). Round 4's purpose in place of round 3's: a new instrument (sealed pinned container, end-state graders, several wordings, ten tries), agents of more than one vendor with model and agent-system comparisons kept apart, its counts never added to an earlier round's. Names no study folder, round or person. Bound by tests/test_review_kit.py K1, K6. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates, Sat 24 Oct 2026): this copy is a near-rewrite of its source. The edits beyond this reason are recorded in COPIED.d/w1a-cp1-scaffold.json; its history is git log -- evals/gap-study-4/review_kit/why.md, from its first commit ad88d14d82f8."
     },
     {
       "path": "review_kit/blindness.py",

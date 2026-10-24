@@ -51,9 +51,14 @@ never counted: "pending", "regrade refused", "pending: regraded, no checker read
 "not graded" (a walk refused or failed before its first agent turn) and "grade unreadable" (missing or not JSON: fail
 closed). pending_walk.uncounted_walks decides.
 
-WHAT THIS DOES NOT DO. It is not wired into freeze_rehearsal.py or walk_register.py (lanes w8b and w8d own them; a
-later slice adopts --require-complete), it never runs a walk, and it says nothing about what a walk showed. Every
-figure it prints is bound to one arm and one model; it states no figure across arms or models.
+THE FREEZE'S GATE (pre-freeze review 1, MAJOR 4 part 3, lane L1). --require-run-arms exits 1 on any missing walk of
+an arm the freeze runs and prints each deferred arm's coverage (the draft's deferred_arms) as recorded, not required;
+freeze.py runs the same reading in process (coverage_report) before it prepares the frozen file, and
+freeze_rehearsal.py runs --coverage --require-run-arms among its walk gates. --require-complete, every arm, is the
+precondition of a deferred arm's later go.
+
+WHAT THIS DOES NOT DO. It never runs a walk, and it says nothing about what a walk showed. Every figure it prints is
+bound to one arm and one model; it states no figure across arms or models.
 
 No model, no network, stdlib only. Read-only, apart from the temporary copy of the register.
 """
@@ -295,6 +300,50 @@ def coverage_lines(got: dict, specs: list[dict], design: dict, n_entries: int) -
     return lines
 
 
+# Pre-freeze review 1, MAJOR 4 part 3 (the lane orchestrator's fold plan of 24 Oct 2026, under OD105's "runs exactly
+# as registered"): the freeze requires coverage of every arm that runs at it, and records a deferred arm's coverage
+# without requiring it; complete coverage of a deferred arm is a precondition of its later go (--require-complete).
+# Which arms are deferred is the draft's own deferred_arms (status "deferred"), never typed here.
+DEFERRED_STATUS = "deferred"
+
+
+def deferred_arms(study_dir: Path = HERE) -> dict:
+    """{arm: its deferred_arms entry} for each arm the draft defers."""
+    draft = json.loads((Path(study_dir) / "prereg-draft.json").read_text())
+    return {arm: e for arm, e in (draft.get("deferred_arms") or {}).items()
+            if isinstance(e, dict) and e.get("status") == DEFERRED_STATUS}
+
+
+def run_arm_gaps(got: dict, deferred) -> list[dict]:
+    """The missing specs of every arm the freeze runs (the deferred arms' left out, never counted as covered)."""
+    return [s for s in got["missing"] if s["arm"] not in deferred]
+
+
+def deferred_lines(got: dict, specs: list[dict], deferred) -> list[str]:
+    lines = []
+    for arm, per in counts(specs).items():
+        if arm not in deferred:
+            continue
+        for model, n in per.items():
+            gap = sum(1 for s in got["missing"] if (s["arm"], s["model"]) == (arm, model))
+            lines.append(f"deferred arm {arm}, {model}: {n - gap} of {n} required walks covered, {gap} missing; "
+                         f"recorded, not required at this freeze (the draft's deferred_arms); complete coverage is a "
+                         f"precondition of its later go (--require-complete)")
+    return lines
+
+
+def coverage_report(base=None, study_dir: Path = HERE) -> dict:
+    """The --coverage reading in process: {"design", "specs", "entries", "got", "deferred"}; raises PlanRefused,
+    RegisterUnreadable and the design readers' errors as --coverage refuses them."""
+    design = design_in_force(study_dir)
+    specs = plan_walks(design)
+    base = Path(base) if base else walk_register.REHEARSALS
+    entries = read_register(base, design)
+    import pending_walk
+    got = coverage(entries, specs, design, pending_walk.uncounted_walks(base, [e["walk"] for e in entries]))
+    return {"design": design, "specs": specs, "entries": entries, "got": got, "deferred": deferred_arms(study_dir)}
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="The CP6 walk list, and which of its walks the register covers.",
                                  allow_abbrev=False)
@@ -302,10 +351,14 @@ def main(argv=None) -> int:
     mode.add_argument("--list", action="store_true", help="print the required walks")
     mode.add_argument("--coverage", action="store_true", help="print each required walk covered or missing")
     ap.add_argument("--require-complete", action="store_true", help="with --coverage: exit 1 on any missing walk")
+    ap.add_argument("--require-run-arms", action="store_true",
+                    help="with --coverage: exit 1 on any missing walk of an arm the freeze runs (deferred arms recorded)")
     ap.add_argument("--base", help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
     if args.require_complete and not args.coverage:
         ap.error("--require-complete goes with --coverage")
+    if args.require_run_arms and (not args.coverage or args.require_complete):
+        ap.error("--require-run-arms goes with --coverage, without --require-complete")
     try:
         design = design_in_force()
         specs = plan_walks(design)
@@ -325,6 +378,16 @@ def main(argv=None) -> int:
     got = coverage(entries, specs, design, pending_walk.uncounted_walks(base, [e["walk"] for e in entries]))
     print("\n".join(coverage_lines(got, specs, design, len(entries))))
     missing = got["missing"]
+    if args.require_run_arms:
+        deferred = deferred_arms()
+        print("\n".join(deferred_lines(got, specs, deferred)))
+        gaps = run_arm_gaps(got, deferred)
+        if gaps:
+            print(f"FAIL --require-run-arms: {len(gaps)} required walk(s) of the arms the freeze runs are missing "
+                  f"(the lines above name each)")
+            return 1
+        print("ok: every required walk of the arms the freeze runs is covered")
+        return 0
     if args.require_complete and missing:
         print("FAIL --require-complete: required walks are missing (the lines above name each)")
         return 1

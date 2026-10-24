@@ -537,6 +537,8 @@ class Rehearsal:
         if str(command[4]).endswith("freeze.py"):
             r = MODS["freeze_rehearsal"]
             frozen = {"status": "FROZEN", "take_order": [{}]}
+            # lane pf1-l1-freeze-gates (MAJOR 9): the fake freeze read a real-shaped beacon, as a freeze given one does
+            frozen["take_order_beacon_reading"] = {"signature": "ab"}
             if "--holdout-digests" in command:
                 source = json.loads(Path(command[command.index("--holdout-digests") + 1]).read_text())
                 frozen.update(holdout_salted_digests=source["salted_sha256"],

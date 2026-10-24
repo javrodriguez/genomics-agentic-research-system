@@ -103,8 +103,9 @@ def mutants() -> dict:
                             "    if min(counts) < 1:\n"),
         "keys-not-allowed": ("H6.allowed", "freeze", '    "holdout_salted_digests", "holdout_wordings_per_task_version",\n',
                              ""),
-        "check-skips-draft": ("H7.check", "freeze", "            problem = draft_holdout_problem(json.loads(DRAFT.read_text()))\n",
-                              "            problem = None\n"),
+        # lane pf1-l1-freeze-gates (pre-freeze review 1, m1): --check reads the holdout fields as one leg of check_legs
+        "check-skips-draft": ("H7.check", "freeze", '    legs.append(("holdout fields", [problem] if problem else []))\n',
+                              '    legs.append(("holdout fields", []))\n'),
         "rehearsal-silent": ("H8.rehearsal", "freeze", "            print(HOLDOUT_NOT_REHEARSED)\n", "            pass\n"),
         "rehearsal-skips-file": ("H9.rehearsal", "freeze_rehearsal",
                                  "        holdout_file = None if args.no_holdout_digests else scratch / HOLDOUT_FILE\n",
@@ -176,7 +177,7 @@ class FreezeHarness:
                 ("rev-parse", "HEAD"): (0, "b" * 40)}.get(args, (1, "no such fake git call"))
 
     @staticmethod
-    def prepare(draft, *, review, parent, pins, frozen_at):
+    def prepare(draft, *, review, parent, pins, frozen_at, beacon=None):
         return dict(copy.deepcopy(draft), status="FROZEN", frozen_at=frozen_at, frozen_at_commit_parent=parent,
                     pre_freeze_review_commit=review, take_order_seed=review, take_order=[], pinned_files=pins)
 
@@ -190,6 +191,10 @@ class FreezeHarness:
                    (f, "rehearsal_evidence", lambda *a, **k: {"name": "synthetic", "sha256": "d" * 64, "text": ""}),
                    (f, "write_outputs", lambda frozen: self.written.append(frozen) or ()),
                    (f, "owned_paths", lambda *a, **k: []),
+                   # lane pf1-l1-freeze-gates (pre-freeze review 1, MAJORs 4 and 9): the coverage gate and the beacon
+                   # read stood in for, as the other gates here are; tests/test_pf1_freeze_gates.py binds both
+                   (f, "coverage_problem", lambda *a, **k: None),
+                   (f, "take_order_beacon_reading", lambda *a, **k: {"synthetic": "beacon reading"}),
                    (f.copy_manifest, "problems", lambda *a, **k: []))
         with contextlib.ExitStack() as stack:
             for module, name, value in patches:
@@ -338,7 +343,9 @@ class H7Check(Case):
     def test_check_refuses_a_draft_carrying_the_fields(self):
         h = self.harness()
         code, out = h.run(["--check"])
-        self.assertEqual(code, 0, f"H7.check clean {out}")
+        # lane pf1-l1-freeze-gates (pre-freeze review 1, m1): --check now reads every leg a freeze reads, and this
+        # synthetic draft fails the others (PENDING inputs, no beacon); the holdout leg itself holds on it
+        self.assertIn("freeze --check: holdout fields: ok", out, f"H7.check clean {out}")
         for name, draft in (("digests", dict(synthetic_draft(), holdout_salted_digests="PENDING")),
                             ("count", dict(synthetic_draft(), holdout_wordings_per_task_version=7)),
                             ("rule-count", dict(synthetic_draft(), holdout_rule=dict(RULE, wordings_per_task_version=7)))):
@@ -387,6 +394,8 @@ class RehearsalHarness:
         self.commands.append(list(command))
         if command[4].endswith("freeze.py"):
             frozen = dict(synthetic_draft(), status="FROZEN", take_order=[{}])
+            # lane pf1-l1-freeze-gates (MAJOR 9): the fake freeze read a real-shaped beacon, as a freeze given one does
+            frozen["take_order_beacon_reading"] = {"signature": "ab"}
             if "--holdout-digests" in command:
                 source = json.loads(Path(command[command.index("--holdout-digests") + 1]).read_text())
                 self.sources.append(source)       # read while the freeze runs: the rehearsal deletes it after

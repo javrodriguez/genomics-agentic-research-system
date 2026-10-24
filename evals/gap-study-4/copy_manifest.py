@@ -36,7 +36,12 @@ exist, and the freeze writes it once from derive(). What --check refuses:
   - (N2) a reason that is not a non-empty string;
   - (review round 2) any file whose bytes are a round 3 record at the source or base commit, whatever its
     status; an `edited` copy whose bytes are already a file under evals/ (it is an `identical` copy of that file);
-    and any copy of the first study's three named fixture builders that is not `identical`.
+    and any copy of the first study's three named fixture builders that is not `identical`;
+  - (pre-freeze review 1, m8, lane pf1-l1-freeze-gates) an `edited` copy that is a near-rewrite, more than
+    NEAR_REWRITE_SHARE of its lines changed from its source (difflib's matching lines over the longer side), whose
+    reason cites no lane record (LANE_RECORD: a commit sha, a COPIED.d fragment, a checks.d file or a lane report):
+    a short reason over a rewritten file no longer passes, so a reader can follow each rewrite to where its edits
+    are recorded. What it cannot see: whether the cited records explain every line; that stays the reviews' job.
 
 RECORDS ARE CLAIMED BY THEIR OWN LEDGERS, NOT BY FRAGMENTS (lane w8a, ruling W8-layout-1, README Q4; this file moved
 from lane w1a to lane w8a under ruling W8A-gap4-1). A file inside a walk folder, rehearsals/<walk>/**, is claimed
@@ -126,6 +131,11 @@ ROUND3_RECORDS = tuple(f"{SOURCE_DIR}/{r}" for r in (
     "prereg.json", "prereg-draft.json", "takes.json", "COPIED.json", "RESULT.md", "COSTS.md", "PROGRESS.md",
     "test_round3.py", "results/", "transcripts/", "rehearsals/", "pauses/", "walks/", "verification/", "cases/",
     "graders/", "review_kit/rounds.json", "review_kit/prefreeze-"))
+# Pre-freeze review 1, m8: the registered changed-line share above which an edited copy is a near-rewrite, and what a
+# reason must cite for one (a commit of 8 to 40 hex characters, a fragment, a checks file or a lane report).
+NEAR_REWRITE_SHARE = 0.5
+LANE_RECORD = re.compile(r"(?<![0-9a-f])[0-9a-f]{8,40}(?![0-9a-f])|COPIED\.d/[\w.-]+\.json|checks\.d/[\w.-]+\.txt"
+                         r"|lane-reports/[\w./-]+")
 # The empty blob is every empty file; an empty new file copies nothing.
 EMPTY_BLOB = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
 
@@ -222,6 +232,15 @@ def record_blobs() -> set[str]:
             blobs |= found
         _RECORD_BLOBS = blobs - {EMPTY_BLOB}
     return _RECORD_BLOBS
+
+
+def changed_share(orig: bytes, copy: bytes) -> float:
+    """The share of lines an edit changed: 1 less difflib's matching lines over the longer side's line count."""
+    import difflib
+    a = orig.decode("utf-8", errors="replace").splitlines()
+    b = copy.decode("utf-8", errors="replace").splitlines()
+    kept = sum(m.size for m in difflib.SequenceMatcher(None, a, b, autojunk=False).get_matching_blocks())
+    return 1 - kept / max(len(a), len(b), 1)
 
 
 def is_record(src: str) -> bool:
@@ -413,6 +432,12 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
             out.append(f"{path} ({lane}) copies the shared builder {src}, which is uneditable: identical only")
         if status == "edited" and not why:
             out.append(f"{path} ({lane}) differs from {src} and no reason is recorded")
+        elif status == "edited" and differs and not LANE_RECORD.search(why):
+            share = changed_share(orig, copy)
+            if share > NEAR_REWRITE_SHARE:
+                out.append(f"{path} ({lane}) is a near-rewrite of {src} ({share:.0%} of its lines changed, above "
+                           f"{NEAR_REWRITE_SHARE:.0%}) and its reason cites no lane record (a commit, a COPIED.d "
+                           f"fragment, a checks.d file or a lane report)")
         if path in UNEDITABLE and (differs or status != "identical"):
             out.append(f"{path} ({lane}) is a copied fixture builder and differs from {src}, or is recorded as "
                        f"edited; that is a FAIL, not a manifest entry")

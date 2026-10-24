@@ -307,17 +307,43 @@ def _field(doc: dict, dotted: str):
 
 def regrade_problems(study: Path = HERE, *, readers=None, grade=None) -> list:
     """Every committed regrade.json must re-derive to its exact bytes."""
+    return regrade_report(study, readers=readers, grade=grade)[0]
+
+
+NOT_A_REPOSITORY = ("{study} is not inside a git repository: a regrade, a recheck and a count are re-derived from "
+                    "committed bytes, so nothing here can be checked, and that is not a pass")
+
+
+def regrade_report(study: Path = HERE, *, readers=None, grade=None) -> tuple[list, dict]:
+    """(problems, counts): regrade_problems' reading and how much of it was re-derived (pre-freeze review 1, m7: the
+    gate printed a bare ok having re-derived nothing, and returned [] outside a git repository). counts is
+    {"walks": walks listed at HEAD, "regrades": regrade.json files re-derived, "recheck_walks": walks whose recheck
+    chain was read, "counts": check.json counts re-derived from their transcripts, "pending": walks whose committed
+    grade.json is the pending document, "pending_unregraded": the pending walks with no regrade.json}."""
     study = Path(study)
+    counts = {"walks": 0, "regrades": 0, "recheck_walks": 0, "counts": 0, "pending": 0, "pending_unregraded": []}
     root, prefix = nrr._repo(study)
     if root is None:
-        return []
+        return [NOT_A_REPOSITORY.format(study=study)], counts
     walks = nrr._rel(prefix, mode_binding.WALKS_DIR)
     listed = nrr._git(root, "ls-tree", "-r", "--name-only", "HEAD", "--", walks + "/").splitlines()
     out = []
+    names = {tuple(rel[len(walks) + 1:].split("/")) for rel in listed}
+    counts["walks"] = len({n[0] for n in names if len(n) == 2})
+    for walk, name in sorted(n for n in names if len(n) == 2 and n[1] == "grade.json"):
+        try:
+            doc = json.loads(nrr._show(root, f"{walks}/{walk}/grade.json"))
+        except (ValueError, nrr.RegistrationRefused):
+            continue
+        if isinstance(doc, dict) and doc.get("status") == pending_walk.PENDING:
+            counts["pending"] += 1
+            if (walk, REGRADE_FILE) not in names:
+                counts["pending_unregraded"].append(walk)
     for rel in listed:
         parts = rel[len(walks) + 1:].split("/")
         if len(parts) != 2 or parts[1] != REGRADE_FILE:
             continue
+        counts["regrades"] += 1
         try:
             again = regrade_bytes(regrade_doc(parts[0], study, readers=readers, grade=grade))
         except RegradeRefused as e:
@@ -330,8 +356,9 @@ def regrade_problems(study: Path = HERE, *, readers=None, grade=None) -> list:
         parts = rel[len(walks) + 1:].split("/")
         if len(parts) == 2 and parts[1].startswith(RECHECK_PREFIX):
             by_walk.setdefault(parts[0], []).append(parts[1])
-    for walk, names in sorted(by_walk.items()):
-        out += recheck_chain_problems(root, prefix, walk, names, study, readers=readers, grade=grade)
+    for walk, chain in sorted(by_walk.items()):
+        counts["recheck_walks"] += 1
+        out += recheck_chain_problems(root, prefix, walk, chain, study, readers=readers, grade=grade)
     out += register_recheck_problems(root, prefix, by_walk)
     for rel in listed:                    # review r6 MINOR 2: every committed count re-derived from its transcript
         parts = rel[len(walks) + 1:].split("/")
@@ -356,9 +383,31 @@ def regrade_problems(study: Path = HERE, *, readers=None, grade=None) -> list:
                            f"transcript.jsonl")
                 continue
             harness = pending_walk.walk_harness(Path(tmp), parts[0])      # T4 P5: the vendor side's reading
+            counts["counts"] += 1
             out += [f"walk {parts[0]!r}: {p}" for p in nudge_count_problems(check, path, harness)]
             out += [f"walk {parts[0]!r}: {p}" for p in agent_summary_problems(check, path, harness)]
+    return out, counts
+
+
+def gate_problems(problems: list, counts: dict) -> list:
+    """What --check refuses beyond regrade_problems (m7): a register of walks of which nothing was re-derived (the gate
+    would be vacuous), and, once any regrade exists, a pending walk with none (the regrade is all or nothing, so a
+    partial one never reads green)."""
+    out = list(problems)
+    derived = counts["regrades"] + counts["recheck_walks"] + counts["counts"]
+    if counts["walks"] and not derived:
+        out.append(f"{counts['walks']} walk(s) are committed and nothing was re-derived: not a pass")
+    if counts["regrades"]:
+        out += [f"walk {w!r}: its committed grade.json is pending and it has no {REGRADE_FILE}, though the regrade "
+                f"has begun" for w in counts["pending_unregraded"]]
     return out
+
+
+def counts_line(counts: dict) -> str:
+    return (f"re-derived {counts['regrades']} {REGRADE_FILE} file(s), {counts['recheck_walks']} walk(s)' recheck "
+            f"chains and {counts['counts']} check.json count(s), over {counts['walks']} committed walk(s); "
+            f"{counts['pending']} walk(s) graded pending, {len(counts['pending_unregraded'])} of them with no "
+            f"{REGRADE_FILE}")
 
 
 def materialize_walk(root, walk_rel: str, into: Path) -> None:
@@ -736,9 +785,11 @@ def main(argv=None) -> int:
                   f"{ch['reasons_added']}, removed {ch['reasons_removed']}; commit it with commit_recheck")
             return 0
         if a.check:
-            bad = regrade_problems()
+            problems, counts = regrade_report()
+            bad = gate_problems(problems, counts)
             for b in bad:
                 print(f"walk_regrade: FAIL {b}")
+            print("walk_regrade: " + counts_line(counts))
             print("walk_regrade: ok" if not bad else f"walk_regrade: {len(bad)} problem(s)")
             return 1 if bad else 0
         print(f"walk_regrade: wrote {write_regrade(a.walk)}; commit it with commit_regrade (scanned, alone)")

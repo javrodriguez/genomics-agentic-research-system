@@ -4192,6 +4192,89 @@ def vendor_shapes_problems(harness: str) -> list:
     return vendor_rows_problems(harness) + vendor_reader_items_problems(harness) if source == "recorded" else []
 
 
+# Pre-freeze review 1, m3 (the lane orchestrator's fold plan of Sat 24 Oct 2026, lane L1). Freeze legs i and ii rested
+# on hand-set words: SHAPES_SOURCE "recorded", VENDOR_CHECK_SHAPES_SOURCE "recorded" and a README label whose version
+# pattern took any version, while the fixtures' byte binding to the committed walks lived only in a test
+# (tests/test_vendor_check.py VP-provenance); with VENDOR_PENDING_ROWS or VENDOR_READER_ITEMS emptied, leg ii held.
+# Two additions, read by freeze.py's legs only (the row-shape readers above are unchanged):
+#   - the registered minimum item set of each table, as the vendor-settle stages left them on 22 Oct 2026 (stages C, G
+#     and V; tests/test_vendor_check.py TABLE_KEYS and TABLE_READER_ITEMS name the same keys): a table missing any of
+#     them is refused, so emptying a table no longer opens the leg;
+#   - recorded_binding_problem: a RECORDED fixture is held to the bytes of the committed walk it was copied from, through
+#     its folder's PROVENANCE.json, and its label must name the harness's pinned CLI version exactly.
+VENDOR_ROWS_REGISTERED = {
+    "codex": ("T-5", "T-8:file-change", "T-10", "T-12:offered-context", "T-12:instruction-files",
+              "T-12:prompt-snapshot", "T-12:memory", "T-13", "T-14", "T-16", "T-17:billing-route", "T-18"),
+    "gemini": ("T-4", "T-10", "T-11", "T-12:offered-context", "T-12:instruction-files", "T-12:prompt-snapshot",
+               "T-12:memory", "T-13", "T-14", "T-17:billing-route", "T-18"),
+}
+VENDOR_ITEMS_REGISTERED = {
+    "codex": ("T-1", "T-2", "T-3", "T-4", "T-6", "T-7", "T-8", "T-9", "T-11", "T-15", "T-17", "T-20", "T-21", "T-23",
+              "T-24"),
+    "gemini": ("T-1", "T-2", "T-3", "T-5", "T-6", "T-7", "T-8", "T-9", "T-15", "T-16", "T-17", "T-20", "T-21", "T-23",
+               "T-24"),
+}
+PROVENANCE_FILE = "PROVENANCE.json"
+
+
+def vendor_minimum_problems(harness: str) -> list:
+    """Each registered row or READER item missing from the harness's table (an unknown harness raises KeyError)."""
+    rows = VENDOR_PENDING_ROWS.get(harness)
+    items = VENDOR_READER_ITEMS.get(harness)
+    rows = rows if isinstance(rows, dict) else {}
+    items = items if isinstance(items, dict) else {}
+    out = [f"VENDOR_PENDING_ROWS has no registered row {k}" for k in VENDOR_ROWS_REGISTERED[harness] if k not in rows]
+    return out + [f"VENDOR_READER_ITEMS has no registered item {k}" for k in VENDOR_ITEMS_REGISTERED[harness]
+                  if k not in items]
+
+
+def vendor_fixtures_named(harness: str) -> list:
+    """Every RECORDED fixture the harness's SAME rows and READER items name, once each, sorted."""
+    rows = VENDOR_PENDING_ROWS.get(harness) or {}
+    named = {r.get("fixture") for r in rows.values() if isinstance(r, dict) and r.get("state") == "SAME"}
+    named |= set((VENDOR_READER_ITEMS.get(harness) or {}).values())
+    return sorted(f for f in named if isinstance(f, str))
+
+
+def recorded_binding_problem(harness: str, fixture, cli: str) -> str | None:
+    """None when `fixture` ("<folder>/<file>" under tests/fixtures) is a byte copy of a committed walk record on this
+    harness's pinned CLI: its folder's PROVENANCE.json names the harness, `cli` (e.g. "codex-cli 0.162.1") and a walk,
+    lists the file with its source rehearsals/<walk>/<file> and its sha256; the fixture's bytes and the source's bytes
+    in this study both have that sha256; and the README labels the file RECORDED at that walk on exactly `cli`."""
+    parts = fixture.split("/") if isinstance(fixture, str) else []
+    if len(parts) != 2 or not all(parts) or any(x in (".", "..") for x in parts):
+        return f"its fixture {fixture!r} is not <folder>/<file> under tests/fixtures"
+    folder = HERE / "tests" / "fixtures" / parts[0]
+    try:
+        prov = json.loads((folder / PROVENANCE_FILE).read_text(encoding="utf-8"))
+        readme = (folder / "README.md").read_text(encoding="utf-8").split("\n")
+        data = (folder / parts[1]).read_bytes()
+    except (OSError, ValueError) as e:
+        return f"its fixture {fixture!r} has no readable bytes, {PROVENANCE_FILE} or README ({type(e).__name__})"
+    if not isinstance(prov, dict) or prov.get("harness") != harness or prov.get("cli") != cli:
+        return (f"its fixture {fixture!r}'s {PROVENANCE_FILE} names harness {prov.get('harness')!r} on "
+                f"{prov.get('cli')!r}, not {harness} on the pinned {cli!r}") if isinstance(prov, dict) else \
+            f"its fixture {fixture!r}'s {PROVENANCE_FILE} is not an object"
+    walk = prov.get("walk")
+    entry = (prov.get("files") or {}).get(parts[1]) if isinstance(prov.get("files"), dict) else None
+    if not (isinstance(walk, str) and walk and isinstance(entry, dict)):
+        return f"its fixture {fixture!r} is not listed with its walk in {PROVENANCE_FILE}"
+    source = f"rehearsals/{walk}/{parts[1]}"
+    if entry.get("source") != source:
+        return f"its fixture {fixture!r}'s source is {entry.get('source')!r}, not {source}"
+    digest = hashlib.sha256(data).hexdigest()
+    if entry.get("sha256") != digest:
+        return f"its fixture {fixture!r}'s bytes are not the sha256 {PROVENANCE_FILE} names"
+    try:
+        if hashlib.sha256((HERE / source).read_bytes()).hexdigest() != digest:
+            return f"its fixture {fixture!r} differs from the committed walk record {source}"
+    except OSError:
+        return f"its fixture {fixture!r}'s source {source} is not in this study"
+    if f"- `{parts[1]}`: RECORDED at walk {walk}, {cli}." not in readme:
+        return f"its fixture {fixture!r} is not labelled RECORDED at walk {walk} on exactly {cli!r}"
+    return None
+
+
 def vendor_pending(harness: str, key: str, reader, *args, **kwargs) -> list:
     """The one road for a vendor PENDING refusal (plan section 7). While the row of (harness, key) is PENDING, its
     refusal under the row's reason id; once it is settled, the problems of `reader(*args, **kwargs)`, which must be

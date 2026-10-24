@@ -89,6 +89,10 @@ VERSION_FORM = re.compile(r"codex-cli ([0-9]+\.[0-9]+\.[0-9]+)")
 MODE_FLAGS = {"bypass": ("--dangerously-bypass-approvals-and-sandbox",)}
 SHAPES_SOURCE = "recorded"
 SHAPES_SOURCES = ("documented", "recorded")
+# Pre-freeze review 1, m3 (lane L1): the RECORDED fixture SHAPES_SOURCE "recorded" rests on. freeze.py's leg i holds
+# it to the committed walk record it was copied from (check_take.recorded_binding_problem), so the word alone
+# never opens the leg.
+SHAPES_RECORDED_ON = "recorded-codex-w-o46/transcript.jsonl"
 
 # The rollout file's records (NOT in D8; Q-w11a-1).
 ROLLOUT_META, ROLLOUT_TURN = "session_meta", "turn_context"

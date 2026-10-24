@@ -15,31 +15,31 @@
       "path": "takes.py",
       "status": "edited",
       "source": "evals/gap-study-3/takes.py",
-      "reason": "R2, R5, R21-R25, R28, R33: committed registration guard and human ruling door Night-ruling fold (live harness, under glitch-06's ruling, 14 Oct 2026): commit_night_ruling, the one door for THE NIGHTLY STOP's run-level ruling, with commit_ruling's discipline; the done map and registration_outcomes read outcomes through batch.is_outcome and skip night rulings."
+      "reason": "R2, R5, R21-R25, R28, R33: committed registration guard and human ruling door Night-ruling fold (live harness, under glitch-06's ruling, 14 Oct 2026): commit_night_ruling, the one door for THE NIGHTLY STOP's run-level ruling, with commit_ruling's discipline; the done map and registration_outcomes read outcomes through batch.is_outcome and skip night rulings. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates, Sat 24 Oct 2026): this copy is a near-rewrite of its source. The edits beyond this reason are recorded in COPIED.d/vendor-admission.json; its history is git log -- evals/gap-study-4/takes.py, from its first commit ad88d14d82f8."
     },
     {
       "path": "check_results.py",
       "status": "edited",
       "source": "evals/gap-study-3/check_results.py",
-      "reason": "R3, R14, R24, R26-R28, R31: re-verify recorded routes, rulings, windows and records Edit without transfer by lane w9-cp6 (glitch-2f's wave 9 ruling (the Lane-orchestrator, under Javier's standing delegation, Mon 12 Oct 2026; slice w9, CP6 wiring); departure w9-1, because tests/test_pipeline.py's PipelineOwnership binds check_results.py to this lane): W8B-R2-2, synthetic_digest_problems, called by check_frozen_content, re-applies freeze.synthetic_tasks to the committed prereg.json as its freeze commit wrote it and as it stands; the rehearsal's synthetic holdout digests are refused naming W8B-gap4-1, and under --rehearsal-plan printed NOT CHECKED. Bound by tests/test_cp6_wiring.py S1. Night-ruling fold: outcome readers use batch.is_outcome; the publication walk skips night rulings. Lane run-launcher (ruling 2, 22 Oct 2026), an edit without transfer: check_publication starts its problems from run_builders.order_problems (first registrations follow take_order within each launch part). Bound by tests/test_run_builders.py S3Hook."
+      "reason": "R3, R14, R24, R26-R28, R31: re-verify recorded routes, rulings, windows and records Edit without transfer by lane w9-cp6 (glitch-2f's wave 9 ruling (the Lane-orchestrator, under Javier's standing delegation, Mon 12 Oct 2026; slice w9, CP6 wiring); departure w9-1, because tests/test_pipeline.py's PipelineOwnership binds check_results.py to this lane): W8B-R2-2, synthetic_digest_problems, called by check_frozen_content, re-applies freeze.synthetic_tasks to the committed prereg.json as its freeze commit wrote it and as it stands; the rehearsal's synthetic holdout digests are refused naming W8B-gap4-1, and under --rehearsal-plan printed NOT CHECKED. Bound by tests/test_cp6_wiring.py S1. Night-ruling fold: outcome readers use batch.is_outcome; the publication walk skips night rulings. Lane run-launcher (ruling 2, 22 Oct 2026), an edit without transfer: check_publication starts its problems from run_builders.order_problems (first registrations follow take_order within each launch part). Bound by tests/test_run_builders.py S3Hook. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates, Sat 24 Oct 2026): this copy is a near-rewrite of its source. The edits beyond this reason are recorded in COPIED.d/w9-cp6.json; its history is git log -- evals/gap-study-4/check_results.py, from its first commit ad88d14d82f8."
     },
     {
       "path": "result.py",
       "status": "edited",
       "source": "evals/gap-study-3/result.py",
-      "reason": "R8, R12, R15-R16, R23-R24, R28, R30-R32: tables solely from stats and committed completeness"
+      "reason": "R8, R12, R15-R16, R23-R24, R28, R30-R32: tables solely from stats and committed completeness Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates, Sat 24 Oct 2026): this copy is a near-rewrite of its source; its history is git log -- evals/gap-study-4/result.py, from its first commit ad88d14d82f8."
     },
     {
       "path": "completeness.py",
       "status": "edited",
       "source": "evals/gap-study-3/completeness.py",
-      "reason": "R2, R23, R28, R30: every planned half-cell and task-list denominator"
+      "reason": "R2, R23, R28, R30: every planned half-cell and task-list denominator Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates, Sat 24 Oct 2026): this copy is a near-rewrite of its source; its history is git log -- evals/gap-study-4/completeness.py, from its first commit ad88d14d82f8."
     },
     {
       "path": "costs.py",
       "status": "edited",
       "source": "evals/gap-study-3/costs.py",
-      "reason": "R6 R11 R29: per-call costs, dated prices and round spending predicates. Edit W8D-gap4-1 (lane w8d, under ruling W8D-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; slice w8d, CP8 prep); no ownership transfer, departure w8d-1, because tests/test_pipeline.py's PipelineOwnership binds costs.py to this lane): the module docstring's last two lines, which said the driver invokes walk_gate and month_turn_allowed, now name batch.Batch (lane w7c's wiring: before a block is registered, and month_turn_allowed again before each paid launch). Docs only; the line count is unchanged."
+      "reason": "R6 R11 R29: per-call costs, dated prices and round spending predicates. Edit W8D-gap4-1 (lane w8d, under ruling W8D-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; slice w8d, CP8 prep); no ownership transfer, departure w8d-1, because tests/test_pipeline.py's PipelineOwnership binds costs.py to this lane): the module docstring's last two lines, which said the driver invokes walk_gate and month_turn_allowed, now name batch.Batch (lane w7c's wiring: before a block is registered, and month_turn_allowed again before each paid launch). Docs only; the line count is unchanged. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates, Sat 24 Oct 2026): this copy is a near-rewrite of its source. The edits beyond this reason are recorded in COPIED.d/w6j-claude-adapter.json, COPIED.d/w8d-cp8-prep.json; its history is git log -- evals/gap-study-4/costs.py, from its first commit ad88d14d82f8."
     }
   ]
 }
