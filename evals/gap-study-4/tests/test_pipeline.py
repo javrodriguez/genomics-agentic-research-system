@@ -921,7 +921,8 @@ def get_run():
 def take_record(**kw):
     r = {k: row()[k] for k in stats.TAKE_FIELDS[:8]}
     r.update(route=labels4.GRADED, cell_state=None, label="synthetic-right",
-             views={v: "right" for v in stats.VIEWS})
+             views={v: "right" for v in stats.VIEWS},
+             agent_events=[], ruled=False)            # pre-freeze review 1, MAJOR 5 and 8 (stats.TAKE_FIELDS)
     r.update(kw)
     return r
 
