@@ -1095,8 +1095,9 @@ BOOTSTRAP_SPANS = (
      "    # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm",
      # and the isolation denials' line (glitch-6b's isolation ruling, 15 Oct 2026), and the transcript line check's
      # (glitch-b5's ruling on review r8, 16 Oct 2026), and the sub-agent records' (the Agent parity ruling, 16 Oct),
-     # and the session store's and the persistence flag's (W-3b, glitch-b5's pre-freeze ruling, 16 Oct 2026)
-     "d2f869d00d1a2505d3850640c2db63d0a9a2c59c1614defc21549f864887bf05"),
+     # and the session store's and the persistence flag's (W-3b, glitch-b5's pre-freeze ruling, 16 Oct 2026), and the
+     # transcript content's (lane pf1-l3, fold plan prefreeze-1 MAJOR 7, the lane orchestrator's approval, 24 Oct 2026)
+     "7f13552e05b98ade6e45643de95f327866a37c58c8e9c85f08391e31eef694e8"),
     # glitch-b5's ruling 2 (16 Oct 2026): context_text's one append line sweeps an admitted edited_text_file without its
     # snippet (check_take's appended _swept_attachment_line); no line moves.
     ("context-text", "def context_text(path: Path) -> str:\n", "\n\ndef context_leaks(",

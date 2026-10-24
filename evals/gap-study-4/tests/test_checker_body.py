@@ -226,6 +226,19 @@ def conversation(script: list) -> list:
     return recs
 
 
+def _turn_content(recs: list, n: int) -> list:
+    """Lane pf1-l3: the session records after the n-th operator line and before the next (claude_code_adapter's
+    turn split), the records a turn's stream carries."""
+    import claude_code_adapter as cca
+    k, out = 0, []
+    for rec in recs:
+        if cca._is_operator_line(rec):
+            k += 1
+        elif k == n:
+            out.append(rec)
+    return out
+
+
 def take_folder(script: list, *, records=None, instruction=None) -> Path:
     """transcript.jsonl, driver-ledger.json and environment.json for one clean take of the row."""
     folder = Path(tempfile.mkdtemp(dir=SCRATCH))
@@ -260,9 +273,12 @@ def take_folder(script: list, *, records=None, instruction=None) -> Path:
                    cwd="/run")                                   # the run tree, as run_take records it (review r16)
         (folder / f"turn-{t['n']}.jsonl.launch.json").write_text(json.dumps(doc))
         # r5 NIT (c): a journal's turn has its stream, whose init offers none of the three denied tools
+        # lane pf1-l3 (fold plan prefreeze-1, MAJOR 7, 24 Oct 2026): the stream carries its turn's main-thread content,
+        # as the host captures it, so the session file's content equals its streams' (check_take [transcript-mismatch])
         (folder / f"turn-{t['n']}.jsonl").write_text(json.dumps(
             {"type": "system", "subtype": "init", "session_id": sid(), "tools": ["Bash", "Read"], "model": r["model"]})
-            + "\n" + json.dumps({"type": "result", "subtype": "success"}) + "\n")
+            + "\n" + "".join(json.dumps(x) + "\n" for x in _turn_content(recs, t["n"]))
+            + json.dumps({"type": "result", "subtype": "success"}) + "\n")
     # W-3b (glitch-b5's pre-freeze ruling, 16 Oct 2026): the driver's listings of the config folder's session store,
     # holding only the take's own session after each turn and at publish
     own = [["projects/-run", "dir"], [f"projects/-run/{sid()}.jsonl", "file"]]
