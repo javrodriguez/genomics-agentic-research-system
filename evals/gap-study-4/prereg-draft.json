@@ -20253,8 +20253,23 @@
   "take_order": null,
   "take_order_seed": null,
   "take_order_function": "freeze.planned_order",
-  "take_order_rule": "in one randomised order interleaved across arm, model, task and half, seeded from the review commit as round 3 seeded its order.",
-  "order_carry": "prereg.py --order <review sha> names freeze.planned_order and shows the head of its permutation of the design's whole planned rows, seeded by the full 40-character sha of the pre-freeze review commit; it refuses until every agent version is pinned.",
+  "take_order_rule": "in one randomised order interleaved across arm, model, task and half, seeded from the review commit and the registered drand round (take_order_beacon), read at the freeze; round 3 seeded its order from the review commit alone.",
+  "take_order_beacon": {
+    "network": "drand",
+    "beacon_id": "quicknet",
+    "chain_hash": "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971",
+    "genesis_time": 1692803367,
+    "period_s": 3,
+    "scheme": "bls-unchained-g1-rfc9380",
+    "relays": [
+      "https://api.drand.sh",
+      "https://drand.cloudflare.com"
+    ],
+    "round": "PENDING",
+    "seed_rule": "take_order_seed is the first 40 hex characters of the sha256 of the UTF-8 text '<the pre-freeze review commit's full sha>\\n<the round>\\n<the round's randomness>', the round read from both relays, which must agree, with its randomness the sha256 of its signature (order_beacon.seed).",
+    "residual": "The take order is fixed once both the pre-freeze review commit and the registered drand round exist. A review committed before the round is published cannot be re-made to choose an order, because the round's value does not exist yet. The freeze refuses a review whose committer time is not before the round's time and records both, but a committer time is set by whoever commits: a review re-committed after the round under a forged earlier date would choose among orders, and only the orchestrator's record of when the review ran, kept outside the clone, can show it. The round's BLS signature is not verified; two relays run by different operators must agree instead."
+  },
+  "order_carry": "prereg.py --order <seed> names freeze.planned_order and shows the head of its permutation of the design's whole planned rows, seeded by a full 40-character lowercase hex seed; it refuses until every agent version is pinned. The frozen seed is order_beacon.seed of the pre-freeze review commit and the registered drand round, and prereg.py --order-for-review <review sha> refuses until that round is published.",
   "image_locks": [
     {
       "path": "box/codex/image.lock",
@@ -26004,6 +26019,7 @@
     "/served_model_rule/claude-code": "R15 CP5-req 53: the harness owners supply the served-model rule.",
     "/served_model_rule/gemini": "R15 CP5-req 53: the harness owners supply the served-model rule.",
     "/stats_design_inputs/floors": "V5, R17: the published probes table exposes no floor field; the table owner must supply one.",
+    "/take_order_beacon/round": "Pre-freeze review 1, MAJOR 9: a drand quicknet round whose time falls after the review of this draft can be committed, chosen when the draft is regenerated for that review (order_beacon.py --round-at).",
     "/walk_counts/inherited_shapes/0": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
     "/walk_counts/inherited_shapes/1": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
     "/walk_counts/off_path_offers": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
@@ -26026,6 +26042,7 @@
       "/served_model_rule/claude-code",
       "/served_model_rule/gemini",
       "/stats_design_inputs/floors",
+      "/take_order_beacon/round",
       "/walk_counts/inherited_shapes/0",
       "/walk_counts/inherited_shapes/1",
       "/walk_counts/off_path_offers",
