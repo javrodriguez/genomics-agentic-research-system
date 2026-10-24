@@ -97,3 +97,69 @@ The Mac was on thermal hold the whole time (`mac_slot.py light-ok --work gap-stu
 
 - The real-line outward scan of the candidate head (3,356 commits), because of the thermal hold; that proof belongs to the athena battery or the rehearsal ship.
 - The full `TestWitnesses` battery (16 new L10 witnesses at about 30 s each); one was spot-checked.
+
+## Closure check (24ca0d9f)
+
+VERDICT: PASS
+
+Checked 2026-10-23 23:28 EDT on head 24ca0d9fcc062e870f8bda2eaf9bee56a25277c7, which adds 04da2dfb, cb986f35 (red 2) and 24ca0d9f (green 2).
+The only working-tree change is this appended section.
+
+### Run on the Mac (light-ok --tests was ok at 23:24)
+
+- At 24ca0d9f, `TestRealOutwardScan` passed: 11 tests, real suite, real gitleaks.
+  It includes my old probe p1's exact bytes (FEXTRA of 8300) at an evidence path and off the evidence paths, and both now refuse.
+  It also covers a text-looking gzip within the field caps: with a canary inside, it refuses by the private scan; clean, it is admitted at an evidence path and refused off the evidence paths.
+- At 24ca0d9f, `TestTheRoad.test_l10_outward_evidence_blobs` passed (32 s), and so did `test_l8_blobs` (the fetch, through the shared decode step, 47 s), `test_l1_ship` (4 s) and `TestOD57TwinShipListing`.
+- After that the gate turned to "tests hold: CPU speed limit 60 is below 80" (then 68), so nothing more ran on the Mac.
+
+### Not run (left to the athena battery)
+
+- `TestOD57TwinOutward` at 24ca0d9f: the new tests for two families, the ruled-path filter, merge twins, and the B and C witnesses.
+- The red 2 reproduction at cb986f35.
+- `TestWitnesses`.
+- Re-runs of my probes p2 and p3 (p1 is now covered by the test above).
+- The twin road's code (`_od57_door`, `_od57_twin_door`, `_od57_twins`) did not change since 2ced80f2, so the new twin tests change only the tests.
+- This PASS holds on that battery coming back green.
+
+### The rulings, read in the code
+
+1. The candidate set is now the fetch's: `is_evidence_candidate` (binary, or gzip magic) is shared by `evidence_candidates` and `_unpublished_candidates`.
+   A candidate on the evidence paths is decoded and scanned.
+   A gzip-magic blob that git reads as text, anywhere else, refuses as `stray`.
+   p1 is now a real-scanner test.
+2. `stage_evidence_blob` is the one decode step.
+   On the fetch its order and its arithmetic are unchanged: the stored cap, the read, the path and name at every path, the limit, `gunzip_to`, the NUL check on header fields, and the `.header` file.
+   `FETCH_SAYS` is byte for byte the old fetch wording: `.format(cap=BLOB_MAX_BYTES)` and `.format(why=e)` render exactly as the old f-strings did.
+   The one change in order: `total` grows after the header check instead of before it, and that matters only on a path that refuses anyway.
+3. Mutants B and C each have a red test and a witness; the reasoning for F and G being equivalent is recorded.
+4. The caps are counted per walk folder (`_evidence_walk`), and no value changed.
+   A blob that sits in two walk folders counts in both, and its room is the smaller of the two, so it errs toward refusing.
+5. `FakeSuite.binary_blobs_hashed` raises on a missing repository, and `FakeSuite.scratch_clone` really clones.
+6. A merge twin test (an evil merge adds the copy) checks both the admission and its listing.
+
+**The ruled deviation is accepted.**
+A binary blob with a NUL, off the evidence paths, is left to `scan_unpublished`.
+That refuses it unless the committed allowlist names it by both sha256 and blob id, or `allow_blobs` holds it.
+`allow_blobs` holds only the decoded evidence ids, so no new allowance is added.
+The two benchmark `fastq.gz` blobs are binary, so they go down this road and are never treated as `stray`.
+
+**FakeSuite cloning for real makes no test pass vacuously.**
+FakeSuite's default public tip is now the clone's root commit, so every `git ... --not <public>` in the outward rule resolves.
+The happy path in L1 ships, which proves the evidence rule runs cleanly on the fake rig.
+The L1 cases that expect a refusal differ from that happy path only in their own trigger.
+They do not assert the reason for the refusal, but that was already true before this lane.
+
+### Findings
+
+1. **NIT: an error mid-stream in `_unpublished_candidates` can stall for 10 minutes.**
+   If the main thread refuses in the middle of the cat-file stream (a header that does not match, a short read), its `finally` runs `feed.join(timeout=600)` before it closes `p.stdout`.
+   With more than about 64 KiB of ids still unfed, which the real line has, the feed thread is blocked on a full stdin while cat-file is blocked on a stdout nobody reads.
+   The refusal then waits the full 600 s, and the later wait raises "git cat-file failed", which hides the first message.
+   It still fails closed, and it needs a corrupt clone that has passed the bundle's index-pack.
+   Fix: close `p.stdout` (or kill `p`) before the join on the error path.
+2. **NIT: the walk caps leave the total decoded per ship unbounded.**
+   Per walk, the decoded size is still capped, but the sum across walks is now walks × `BLOB_TOTAL_MAX` on the Mac's disk, inside the 0700 temporary folder that is removed afterwards.
+   Today it is small (all 435 evidence blobs together store 252 KB), so it matters only while the Mac is short of disk.
+
+The stop rule is reached: only nits remain.
