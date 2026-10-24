@@ -1,0 +1,14 @@
+{
+  "role": "One row per round of blind review or final verification, append-only. A row is committed alone and before its reviewer opens; that reviewer's session id is uuid5(namespace, the sha of the row's commit) and is deliberately not stored here.",
+  "rows": [
+    {
+      "n": 1,
+      "kind": "prefreeze",
+      "prompt_sha256": "4246efa5b4093e30e23bf62966cda268e45b62101488189ceeb79373e48984cc",
+      "input_sha256": "85b5b15f7a747e5aa0adb37bfc8c57ba9bcd2962285d107fa9ba01c5f1db549b",
+      "launch_commit": "2854c6445fd24ecf570ebad06d20db4fd266874b",
+      "added": "2026-10-24T19:45:35+00:00",
+      "voids": null
+    }
+  ]
+}
