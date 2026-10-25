@@ -903,8 +903,10 @@ def ready_problems(d):
     need(d["instruction_files"] == {CODEX: [take_config.INSTRUCTION_FILES[CODEX]],
                                    GEMINI: [take_config.INSTRUCTION_FILES[GEMINI]]}, "R15.instructions")
     import routing as _routing                   # D-INT-2: arm O's served-model rule is routing's own sentence
-    need(d["price_table"] == "PENDING" and d["served_model_rule"][CODEX] == _routing.SERVED_MODEL_LIMIT and
-         all(v == "PENDING" for h, v in d["served_model_rule"].items() if h != CODEX), "R15.values")
+    # pre-freeze review 1, PENDING #4-5 (lane pf1-l4a, 25 Oct 2026): arm A's and arm G's rules from D8 line 310
+    need(d["price_table"] == "PENDING" and d["served_model_rule"] == {
+        CLAUDE: b.SERVED_MODEL_RULE_CLAUDE, CODEX: _routing.SERVED_MODEL_LIMIT, GEMINI: b.SERVED_MODEL_RULE_GEMINI},
+         "R15.values")
     # lane d8-furniture (21 Oct 2026): each harness's furniture list, from box/scan_record.FURNITURE under the pinned CLI
     need(furniture_problems(d) == [], "R15.furniture")
     # glitch-f1's ruling (21 Oct 2026): rounds 1-3's deterministic-layer note carried, with round 4's line per arm
@@ -1199,6 +1201,30 @@ class PrefreezeFills(unittest.TestCase):
             self.assertNotIn(f"/effort/{CLAUDE}/{m}", d["pending"], "F1.effort")
         self.assertEqual(d["effort_evidence"], b.EFFORT_EVIDENCE, "F1.effort-evidence")
         self.assertEqual(set(d["effort_evidence"][CLAUDE]), set(MODELS["A"]), "F1.effort-evidence")
+
+    def test_served_model_rules_name_their_checks(self):
+        """PENDING #4-5: each rule names the code that binds it, and that code is what the rule says."""
+        import claude_code_adapter as cca, routing as _routing
+        d = b.build()
+        rule_a, rule_g = d["served_model_rule"][CLAUDE], d["served_model_rule"][GEMINI]
+        for text in ("verified on every turn", "message.model", "modelUsage", "served_model_off", "init-mismatch",
+                     "harness-error", "pin_refusal", "D8 line 310"):
+            self.assertIn(text, rule_a, "F2.served-claude")
+        for text in ("by name only", "init.model", "result.stats.models", "read_stream", "assumed", "D8 line 310"):
+            self.assertIn(text, rule_g, "F2.served-gemini")
+        table = json.loads((HERE / "routing.json").read_text())
+        (row,) = [r for r in table["rows"] if r["id"] == "init-mismatch"]
+        self.assertEqual((row["when"], row["route"]), ("after-first-turn", "harness-error"), "F2.served-claude")
+        self.assertEqual(table["pin_refusal"]["when"], "before-first-turn", "F2.served-claude")
+        self.assertEqual(cca.served_model_off({"served_models": ["claude-opus-5-5", "claude-sonnet-5-5"],
+                                               "model_usage": None}, "claude-opus-5-5"), "claude-sonnet-5-5",
+                         "F2.served-claude")
+        self.assertNotIn(CLAUDE, _routing.UNOBSERVED_ACCEPTED, "F2.served-claude")
+        self.assertNotIn(GEMINI, _routing.UNOBSERVED_ACCEPTED, "F2.served-gemini")
+        self.assertEqual(_routing.ACCEPTED_IDENTITY_SOURCES[GEMINI]["model"], ("stream-init", "stream-stats"),
+                         "F2.served-gemini")
+        for pointer in (f"/served_model_rule/{CLAUDE}", f"/served_model_rule/{GEMINI}"):
+            self.assertNotIn(pointer, d["pending"], "F2.served")
 
 
 READY_MUTANTS = {

@@ -25658,9 +25658,9 @@
     ]
   },
   "served_model_rule": {
-    "claude-code": "PENDING",
+    "claude-code": "for the Claude Code arm, the served model is verified on every turn (D8 line 310): every agent assistant record's message.model, and the turn result's modelUsage when it names any model, must name the pinned model (claude_code_adapter.served_model_off; a side or sub-agent model off that module's closed lists stops the take for a ruling); a turn that served another model routes as harness-error after the agent's first turn (routing.json's init-mismatch row) and is refused for a human before it (routing.json's pin_refusal)",
     "codex": "for the OpenAI arm, the served model is verified only when the CLI reports a reroute; otherwise the requested model is assumed",
-    "gemini": "PENDING"
+    "gemini": "for the Google arm, the served model is verified by name only (D8 line 310): on every call, the CLI's init.model and every key of result.stats.models must be the row's model (gemini_adapter.read_stream; D8 line 168), which records the requested model name; what Google serves under that name is assumed (D8 line 169: \"not known to be recorded\")"
   },
   "furniture": {
     "claude-code": [
@@ -26020,8 +26020,6 @@
     "/limitations/5/round_4_reading": "V8, R8 plan 830: CP2 evidence is required for the accepted conditional reading.",
     "/limitations/9/round_4_reading": "V8, R8 plan 830: CP2 evidence is required for the accepted conditional reading.",
     "/price_table": "R15 CP5-req 54: Javier's walk gate reads dated vendor prices.",
-    "/served_model_rule/claude-code": "R15 CP5-req 53: the harness owners supply the served-model rule.",
-    "/served_model_rule/gemini": "R15 CP5-req 53: the harness owners supply the served-model rule.",
     "/stats_design_inputs/floors": "V5, R17: the published probes table exposes no floor field; the table owner must supply one.",
     "/walk_counts/inherited_shapes/0": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
     "/walk_counts/inherited_shapes/1": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
@@ -26039,8 +26037,6 @@
       "/limitations/5/round_4_reading",
       "/limitations/9/round_4_reading",
       "/price_table",
-      "/served_model_rule/claude-code",
-      "/served_model_rule/gemini",
       "/stats_design_inputs/floors",
       "/walk_counts/inherited_shapes/0",
       "/walk_counts/inherited_shapes/1",

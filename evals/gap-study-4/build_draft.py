@@ -1267,6 +1267,22 @@ EFFORT_EVIDENCE = {CLAUDE: {
         "read": _EFFORT_READ}}}
 
 
+# Pre-freeze review 1, PENDING #4-5 (lane pf1-l4a, 25 Oct 2026; CP5-req 53): D8 line 310 (plans/gap-study-round-4/
+# D8-non-claude-arms.md): "The served model is verified per turn in arm A, per turn only through a log line in arm O
+# (if the walk finds it written), and by name only in arm G". Arm O's rule stays routing's own sentence (D-INT-2).
+SERVED_MODEL_RULE_CLAUDE = (
+    "for the Claude Code arm, the served model is verified on every turn (D8 line 310): every agent assistant "
+    "record's message.model, and the turn result's modelUsage when it names any model, must name the pinned model "
+    "(claude_code_adapter.served_model_off; a side or sub-agent model off that module's closed lists stops the take "
+    "for a ruling); a turn that served another model routes as harness-error after the agent's first turn "
+    "(routing.json's init-mismatch row) and is refused for a human before it (routing.json's pin_refusal)")
+SERVED_MODEL_RULE_GEMINI = (
+    "for the Google arm, the served model is verified by name only (D8 line 310): on every call, the CLI's init.model "
+    "and every key of result.stats.models must be the row's model (gemini_adapter.read_stream; D8 line 168), which "
+    "records the requested model name; what Google serves under that name is assumed (D8 line 169: \"not known to be "
+    "recorded\")")
+
+
 def effort_for(harness, model):
     """R15 CP5-req 51, one model's effort setting as take_config writes it: codex's per model, gemini's one thinking
     setting (both sourced by R3, round 17 B6), claude-code's the harness default its walks record (CLAUDE_EFFORT)."""
@@ -1799,6 +1815,10 @@ def build(root=None):
     d["instruction_files"] = {CODEX: [take_config.INSTRUCTION_FILES[CODEX]],
                                GEMINI: [take_config.INSTRUCTION_FILES[GEMINI]]}
     d["served_model_rule"] = {h: PENDING for h in HARNESSES.values()}
+    # Pre-freeze review 1, PENDING #4-5 (lane pf1-l4a, 25 Oct 2026): arm A's and arm G's rules, each D8 line 310's
+    # reading of its harness, naming the code that binds it.
+    d["served_model_rule"][CLAUDE] = SERVED_MODEL_RULE_CLAUDE
+    d["served_model_rule"][GEMINI] = SERVED_MODEL_RULE_GEMINI
     # Departure D-INT-2 (glitch-06 under the standing delegation, 14 Oct 2026; for Javier's review before the freeze;
     # this field only, the harness lane's narrow extension): arm O's rule is routing's own sentence, read from routing.
     import routing as _routing
