@@ -162,6 +162,16 @@ def _sample_doc(pre: dict):
     return sample.draw(frame, design, deferred, sample.ORIGINAL)
 
 
+def sample_errors() -> tuple:
+    """labelling/sample.py's SampleError, the error a missing frame raises; none in a copy that carries no labelling/
+    (a disposable tree that never draws a sample)."""
+    try:
+        from labelling import sample
+    except ImportError:
+        return ()
+    return (sample.SampleError,)
+
+
 def flagged_counts(pre: dict, reader=None):
     design = pre.get("labelling_design")
     fl = design.get("flagged_list") if isinstance(design, dict) else None
@@ -268,10 +278,9 @@ def main(argv=None) -> int:
     group.add_argument("--publish-original", action="store_true",
                        help="write original-values.json once, when the original report is published (MAJOR 10)")
     args = ap.parse_args(argv)
-    from labelling import sample as _sample
     try:
         got = derive()
-    except (ValueError, _sample.SampleError, stats.StatsError) as exc:      # closure MINOR 3: a missing frame named
+    except (ValueError, stats.StatsError, *sample_errors()) as exc:      # closure MINOR 3: a missing frame named
         print(f"result: FAIL {exc}")
         return 1
     if got is None:

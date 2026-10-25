@@ -594,9 +594,13 @@ def check_publication(rows, history, records, pre, page, grade, table=None):
     return problems
 
 
-def _sample_error():
-    from labelling import sample
-    return sample.SampleError
+def _sample_error() -> tuple:
+    """labelling/sample.py's SampleError (a missing frame); none in a copy that carries no labelling/."""
+    try:
+        from labelling import sample
+    except ImportError:
+        return ()
+    return (sample.SampleError,)
 
 
 def main(argv=None):
@@ -632,7 +636,7 @@ def main(argv=None):
         print(f"check_results: {len(rows)} rows, {len(records)} records verified" if rows or history or records
               else "check_results: no takes; frozen pins verified, no publication measured")
         return 0
-    except (ValueError, KeyError, OSError, _sample_error()) as exc:     # closure MINOR 3: a missing frame named
+    except (ValueError, KeyError, OSError, *_sample_error()) as exc:    # closure MINOR 3: a missing frame named
         print(f"check_results: REFUSE: {exc}")
         return 1
 
