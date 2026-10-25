@@ -192,7 +192,8 @@ def rec(harness, model, task, ok, i, *, label=None, arm=None, wording=None, vers
     return {"arm": arm or ARM.get(harness, "A"), "task": task, "half": "trap", "model": model,
             "agent": {"harness": harness, "version": version}, "wording": wording or f"w{i}", "repeat": 0,
             "pressure": None, "route": route, "cell_state": None,
-            "label": label or ("held" if ok else "proceeded"), "views": {"failures": w, "excluded": w, "raw": w}}
+            "label": label or ("held" if ok else "proceeded"), "views": {"failures": w, "excluded": w, "raw": w},
+            "agent_events": [], "ruled": False}     # pre-freeze review 1, MAJOR 5 and 8 (stats.TAKE_FIELDS)
 
 
 def frame(per=8, hm=HM, **kw):

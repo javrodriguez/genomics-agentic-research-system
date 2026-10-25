@@ -114,17 +114,116 @@ def validate_ruling(record: dict, history: list) -> None:
         raise ValueError("; ".join(bad))
 
 
-def commit_ruling(*, slot: str, attempt: int, word: str, route, by: str, root=HERE, repo=REPO) -> dict:
+# The review of 5afd80a7 (findings 2, 3 and 4) and the Lane-orchestrator's rulings on it (Sat 24 Oct 2026, under
+# Javier's standing delegation): the door reads, before anything is written, what the publication check will read.
+DRIVER_REFUSAL_RECORD = "refusal.json"      # drive.py's REFUSAL_RECORD, the driver's own refusal record (tests bind it)
+
+
+def _introduces(repo: Path, sha: str, history_rel: str, outcome: dict) -> bool:
+    """`sha` appends exactly `outcome` to outcomes.json (its parent's list is the new one's head)."""
+    now = json.loads(_git_at(repo, "show", f"{sha}:{history_rel}", missing=True) or "[]")
+    before = json.loads(_git_at(repo, "show", f"{sha}^:{history_rel}", missing=True) or "[]")
+    return isinstance(now, list) and isinstance(before, list) and now[:len(before)] == before \
+        and now[len(before):] == [outcome]
+
+
+def driver_refusal_record(row: dict, outcome: dict, *, root=HERE, repo=REPO) -> dict | None:
+    """Finding 3: the driver's own refusal record in the take's folder, counted only when the one commit that
+    introduced it is the commit that committed the take's own outcome (the driver's commit road, guarded by its
+    producer, never by the record's shape), and when it names its refusal ({refused, why}, non-empty strings)."""
+    root, repo = Path(root).resolve(), Path(repo).resolve()
+    rel = (root / mode_binding.TAKES_DIR / str(row["slot"]) / str(row["attempt"]) / DRIVER_REFUSAL_RECORD
+           ).relative_to(repo).as_posix()
+    history_rel = (root / HISTORY_FILES[0]).relative_to(repo).as_posix()
+    shas = _git_at(repo, "log", "--format=%H", "--", rel, missing=True).split()
+    if len(shas) != 1:
+        return None
+    try:
+        if not _introduces(repo, shas[0], history_rel, outcome):
+            return None
+        doc = json.loads(_git_at(repo, "show", f"{shas[0]}:{rel}", missing=True) or "null")
+    except ValueError:
+        return None
+    if not (isinstance(doc, dict) and all(isinstance(doc.get(k), str) and doc[k].strip() for k in ("refused", "why"))):
+        return None
+    return doc
+
+
+TAKE_COMMIT_SUBJECT = "Record one take's outcome and its records"   # drive.py's COMMIT_SUBJECT (tests bind it)
+
+
+def outcome_committed_by_take_road(outcome: dict, *, root=HERE, repo=REPO) -> bool:
+    """The pin-block ruling: the commit that appended exactly `outcome` to outcomes.json is the take road's (drive's
+    TakeRepo, whose subject is TAKE_COMMIT_SUBJECT and which commits only the outcomes batch hands it)."""
+    root, repo = Path(root).resolve(), Path(repo).resolve()
+    history_rel = (root / HISTORY_FILES[0]).relative_to(repo).as_posix()
+    for sha in _git_at(repo, "log", "--format=%H", "--", history_rel, missing=True).split():
+        try:
+            if not _introduces(repo, sha, history_rel, outcome):
+                continue
+        except ValueError:
+            return False
+        subject = _git_at(repo, "show", "-s", "--format=%s", sha, missing=True)
+        if subject != TAKE_COMMIT_SUBJECT:
+            return False
+        return True
+    return False
+
+
+def _end_state_word(row: dict, outcome: dict) -> str:
+    """The take's own grader's word for its committed end state in the excluded view (run.grade_committed)."""
+    import run
+    return run.grade_views(run.grade_committed(row, outcome))["excluded"]
+
+
+def ruling_door_problems(record: dict, history: list, rows: list, *, table=None, standing=None,
+                         driver_refusal=None) -> list[str]:
+    """THE RULING RULE at the door (batch.py), beyond history_problems: (finding 2) a ruling that re-runs a take whose
+    first turn started, or whose phase cannot be read, is refused unless its own grader reads its committed end state
+    with no wrong action, the check publication runs (check_results.ruled_rerun_problems); (finding 3) a take whose
+    drive started and left no records is ruled aborted, or re-run only on the driver's own refusal record committed
+    with its outcome; (finding 4) a pin block whose pin is the registered row's own profile is no driver pin mismatch.
+    `standing` and `driver_refusal` stand in for the real readers in tests."""
+    import check_results
+    table = routing.load_table() if table is None else table
+    standing = _end_state_word if standing is None else standing
+    driver_refusal = driver_refusal_record if driver_refusal is None else driver_refusal
+    key = (record.get("slot"), record.get("attempt"))
+    taken = next((o for o in reversed(history) if batch.is_outcome(o) and (o.get("slot"), o.get("attempt")) == key),
+                 None)
+    if taken is None or record.get("ruling") not in labels4.RULINGS:
+        return []                                  # history_problems names both
+    row = next((r for r in rows if (r.get("slot"), r.get("attempt")) == key), None)
+    phase = batch.ruled_phase(taken, table)
+    p = batch.door_rule_problems([taken, record], rows, table, driver_refusal)   # findings 3 and 4, shared
+    if batch.reruns(record) and phase != labels4.BEFORE_FIRST_TURN:
+        if row is None:
+            p.append(f"slot {key[0]} attempt {key[1]}: no registered row, so its end state cannot be read")
+        else:
+            p += check_results.ruled_rerun_problems([taken, record], {key: row}, standing, table)
+    return p
+
+
+def commit_ruling(*, slot: str, attempt: int, word: str, route, by: str, why: str, cite: str, root=HERE,
+                  repo=REPO, standing=None) -> dict:
     """The human door: append the caller's closed ruling to rulings.json, one commit.
 
     by is a required argument. It is never read from git, an environment variable
     or a default. The door uses the same committed history CP2 reads. A failed
     commit leaves the file for a human to reconcile; nothing retries a ruling.
+    why and cite (pre-freeze review 1, MAJOR 8) are required the same way, and
+    batch's ruling rule is checked against the history before anything is written.
     """
     root, repo = Path(root).resolve(), Path(repo).resolve()
     record = dict(kind=labels4.RULING, slot=slot, attempt=attempt, ruling=word, route=route, by=by)
+    record.update(why=why, cite=cite)
     history = read_history(root=root, repo=repo)
     validate_ruling(record, history)
+    rows = load_rows(root=root, repo=repo) if batch.reruns(record) else []    # a re-running ruling reads its row
+    bad = ruling_door_problems(record, history, rows, standing=standing,
+                               driver_refusal=lambda r, o: driver_refusal_record(r, o, root=root, repo=repo))
+    if bad:
+        raise ValueError("; ".join(bad))
     if _git_at(repo, "status", "--porcelain"):
         raise ValueError("commit the existing changes before a ruling; one ruling per commit")
     require_commit_identity(repo)
@@ -420,10 +519,13 @@ def main(argv=None):
     parser.add_argument("--attempt", type=int)
     parser.add_argument("--route", choices=labels4.ROUTES)
     parser.add_argument("--by")
+    parser.add_argument("--why", help="with --ruling: why, in the ruler's words (required)")
+    parser.add_argument("--cite", help="with --ruling: the record, commit or rule the ruling rests on (required)")
     args = parser.parse_args(argv)
     try:
         if args.ruling:
-            commit_ruling(slot=args.slot, attempt=args.attempt, word=args.ruling, route=args.route, by=args.by)
+            commit_ruling(slot=args.slot, attempt=args.attempt, word=args.ruling, route=args.route, by=args.by,
+                          why=args.why, cite=args.cite)
             print("takes: 1 human ruling committed")
         elif args.add:
             if not args.row or args.attempt is None:

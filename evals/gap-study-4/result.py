@@ -42,9 +42,12 @@ def stats_block(derived: dict) -> str:
 def from_records(records: list, pre: dict, rows: list, history: list, table=None) -> dict:
     published = check_results.publication(history, table)
     states = completeness.mechanical_states(history, published["cells"], table)
+    registered = {(r["slot"], r["attempt"]): r for r in rows if "attempt" in r}
     return {"stats": stats.derive(records, pre[stats.DESIGN_KEY]),
             "completeness": completeness.summarize(pre, records, states, rows),
-            "pause_notes": pause_notes(rows, published["attempts"])}
+            "pause_notes": pause_notes(rows, published["attempts"]),
+            # the orchestrator's pin-block ruling (lane pf1-l2a): listed, never counted
+            "harness_events": check_results.pin_block_events(history, registered, table)}
 
 
 def pause_notes(rows, attempts):
@@ -83,6 +86,7 @@ def render(rec: dict) -> str:
     if rec["stats"]["takes"] == 0:
         lines += [empty_line(), ""]
     lines += [completeness.render(rec["completeness"]), render_pause_notes(rec["pause_notes"]),
+              check_results.render_harness_events(rec.get("harness_events") or []),
               stats_block(rec["stats"]), prior_sections()]
     return "\n".join(lines).rstrip() + "\n"
 

@@ -294,6 +294,13 @@
       "line_text": "- Suite in the clone: `Ran 55 tests ... OK`; `--witnesses`: `107/107 red; registry 107`; `copy_manifest.py --check`: `ok: 729 files from 73 fragment(s)`; working tree clean after the runs.",
       "ruled": "2026-10-24",
       "why": "Bound record, never edited: lanes/REVIEW-blindness-sidechains-b715949.md is the final closure check of lane blindness-sidechains at b7159493 (VERDICT PASS), committed as written on the Lane-orchestrator's word, 24 Oct 2026. The line is a gate reading or a witness tally, never a rate."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l2a-5afd80a.md",
+      "pattern": "out-of",
+      "line_text": "Recommended: take `cgroup-kill` out of `RERUN_FAULT_ROWS`, so that after the first turn a counter rise is ruled aborted (or graded).",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l2a-5afd80a.md is the fresh independent review of lane pf1-l2a at 5afd80a7 (VERDICT CHANGES), committed as its reviewer wrote it on the Lane-orchestrator's word (24 Oct 2026), who ruled this entry the same day. A reviewer's record, committed unedited; 'take X out of Y' names removing a row, not a rate."
     }
   ]
 }

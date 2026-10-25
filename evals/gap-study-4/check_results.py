@@ -51,7 +51,8 @@ def validate_ledger(rows: list) -> dict:
             raise ValueError("; ".join(bad))
         identity = {k: row[k] for k in stats.TAKE_FIELDS[:8]}
         stats.validate_record(dict(identity, route=labels4.GRADED, cell_state=None,
-                                   label="identity-only", views={v: "wrong" for v in stats.VIEWS}))
+                                   label="identity-only", views={v: "wrong" for v in stats.VIEWS},
+                                   agent_events=[], ruled=False))
         key = (row["slot"], row["attempt"])
         if type(row["attempt"]) is not int or row["attempt"] < 1 or key in registered:
             raise ValueError("a registration needs a unique slot and positive attempt")
@@ -79,6 +80,106 @@ def verify_route(outcome: dict, table: dict) -> None:
     if (outcome["decision"] != expected or outcome["state"] != expected["route"] or
             outcome["events"] != expected["events"] or outcome["mask"] != expected["mask"]):
         raise ValueError("recorded route or annotations differ from the drive's records")
+
+
+# Pre-freeze review 1, MAJOR 8 (batch.py THE RULING RULE): the ruled routes that drive a stopped take's slot again.
+RERUN_RULED_ROUTES = (labels4.PAUSE, labels4.HARNESS_ERROR, labels4.REHEARSAL)
+
+
+def ruled_rerun_problems(history: list, registered: dict, standing, table: dict | None = None) -> list[str]:
+    """THE RULING RULE's publication half: a ruling that re-runs a stopped take (re-run, or a route to pause,
+    harness-error or rehearsal) whose records show the agent's first turn started, or cannot show its phase, stands
+    only when the take's own grader reads its committed end state with no wrong action. `standing(row, outcome)` is
+    that reading's word in the excluded view (run.produce grades the take); a take that cannot be graded counts as
+    wrong, fail-closed. Before the first turn the agent had not acted, and nothing is read."""
+    table = routing.load_table() if table is None else table
+    seen, out = {}, []
+    for entry in history:
+        if batch.is_outcome(entry):
+            seen[(entry.get("slot"), entry.get("attempt"))] = entry
+            continue
+        if not batch.is_ruling(entry) or not (entry.get("ruling") == labels4.RULE_RERUN
+                                               or entry.get("route") in RERUN_RULED_ROUTES):
+            continue
+        key = (entry.get("slot"), entry.get("attempt"))
+        taken = seen.get(key)
+        if taken is None:
+            continue                         # history_problems names a ruling on no committed take
+        phase = batch.ruled_phase(taken, table)
+        if phase == labels4.BEFORE_FIRST_TURN:
+            continue
+        try:
+            word = standing(registered[key], taken)
+        except Exception:  # noqa: BLE001  fail-closed: an end state that cannot be read is never clean
+            word = "wrong"
+        if word != "wrong":
+            continue
+        what = entry["ruling"] if entry["ruling"] == labels4.RULE_RERUN else f"{entry['ruling']} {entry['route']}"
+        out.append(f"slot {key[0]} attempt {key[1]} ({phase}) was ruled {what} by {entry.get('by')}, but its own "
+                   f"grader reads its committed end state wrong (or cannot read it): a take whose end state shows a "
+                   f"wrong action is never discarded and re-run (THE RULING RULE); rule it graded or aborted")
+    return out
+
+
+# The Lane-orchestrator's ruling on the pin-block gap (Sat 24 Oct 2026, under Javier's standing delegation): a pin-blocked
+# outcome is a harness event, never a take result.
+def pin_is_registered(outcome: dict, registered: dict) -> bool:
+    """The outcome's records carry its registered row's model and agent (run.require_registered_outcome's test)."""
+    row = registered.get((outcome.get("slot"), outcome.get("attempt")))
+    rec = outcome.get("records")
+    if row is None or not isinstance(rec, dict) or not isinstance(rec.get("pin"), dict):
+        return False
+    return all(rec["pin"].get(k) == v for k, v in dict(model=row["model"], **row["agent"]).items())
+
+
+def pin_block_events(history: list, registered: dict, table: dict | None = None, *, refusal=None,
+                     committed=None) -> list[dict]:
+    """The committed outcomes whose pin is not their row's that the identity guard exempts, each as a harness event
+    {slot, attempt, recorded_pin, registered_pin}: only when (1) Batch._route wrote the block (batch.pin_block) and
+    the commit that appended it is the take road's (`committed`, takes.outcome_committed_by_take_road), (2) the same
+    slot has a later outcome under the registered pin, and (3) the ruling that re-ran it passed THE RULING RULE
+    (batch.ruling_rule_problems and door_rule_problems; the end state is read by ruled_rerun_problems, as for every
+    re-run). Every other pin mismatch stays refused. `refusal` and `committed` stand in for the git readers in tests."""
+    import takes as takes_reader
+    table = routing.load_table() if table is None else table
+    refusal = takes_reader.driver_refusal_record if refusal is None else refusal
+    committed = takes_reader.outcome_committed_by_take_road if committed is None else committed
+    outcomes = [o for o in history if batch.is_outcome(o)]
+    rulings = {(e.get("slot"), e.get("attempt")): e for e in history if batch.is_ruling(e)}
+    rows, events = list(registered.values()), []
+    for o in outcomes:
+        key = (o.get("slot"), o.get("attempt"))
+        if o.get("records") is None or key not in registered or pin_is_registered(o, registered):
+            continue
+        if not batch.pin_block(o) or not committed(o):
+            continue
+        ruling = rulings.get(key)
+        later = next((x for x in outcomes if x["slot"] == o["slot"] and x["attempt"] > o["attempt"]
+                      and pin_is_registered(x, registered)), None)
+        if not (later and ruling is not None):
+            continue
+        if (not batch.reruns(ruling) or batch.ruling_rule_problems(ruling, o, table)
+                or batch.door_rule_problems([o, ruling], rows, table, refusal)):
+            continue
+        row = registered[key]
+        events.append({"slot": o["slot"], "attempt": o["attempt"], "recorded_pin": o["records"]["pin"],
+                       "registered_pin": dict(model=row["model"], **row["agent"])})
+    return events
+
+
+def render_harness_events(events: list) -> str:
+    """The published list of pin-block harness events; empty when there is none."""
+    if not events:
+        return ""
+    def pin(x):
+        return " ".join(str(x.get(k)) for k in ("model", "harness", "version"))
+    lines = ["## Harness events: driver pin blocks", "",
+             "Takes the loop blocked because the driver's pin was not the registered row's profile, each re-run "
+             "under the registered pin by a ruling that passed the ruling rule. Harness events, never counted.", "",
+             "| Slot | Attempt | Recorded pin | Registered pin |", "|---|---|---|---|"]
+    for e in events:
+        lines.append(f"| {e['slot']} | {e['attempt']} | {pin(e['recorded_pin'])} | {pin(e['registered_pin'])} |")
+    return "\n".join(lines) + "\n"
 
 
 def window_problems(history: list) -> list[str]:
@@ -140,7 +241,7 @@ def publication(history: list, table: dict | None = None) -> dict:
     """
     table = routing.load_table() if table is None else table
     try:
-        bad = batch.Batch.history_problems(history)
+        bad = batch.Batch.history_problems(history, table)
     except (KeyError, TypeError) as exc:
         raise ValueError(f"unreadable committed history: {exc}") from exc
     if bad:

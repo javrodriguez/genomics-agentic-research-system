@@ -135,6 +135,24 @@ labels4.RULING with exactly RULING_KEYS,
              the next launch for the usage window)
     route    a labels4 route for RULE_ROUTE, None for RULE_RERUN
     by       who ruled (a non-empty string), never inferred
+    why      why, in the ruler's words (a non-empty string; pre-freeze review 1, MAJOR 8)
+    cite     what the ruling rests on: the record, commit or rule it cites (a non-empty string)
+
+THE RULING RULE (pre-freeze review 1, MAJOR 8 and m17; lane pf1-l2a, the Lane-orchestrator's approval of the fold plan,
+Sat 24 Oct 2026, under Javier's standing delegation; RULING_RULE below, registered in the draft as ruling_rule). Before
+the agent's first turn, read from the stopped take's own records, any ruling may be made. After it, or when the records
+cannot show the phase (none, or unsound) of a take whose drive started, a ruling never routes rehearsal (a
+before-first-turn route). After the first turn a ruling re-runs a take (re-run, or a route to pause or harness-error)
+only when the take's own committed records already meet one of RERUN_FAULT_ROWS (an API error, a watcher gap: the
+Lane-orchestrator's ruling 2 on the lane, the same day, less the counter rise its ruling on the lane's review dropped)
+or _route blocked it for the driver's pin (pin_block), refused at the door when the ruling is made otherwise. A take
+whose drive started and left no records can only be ruled aborted unless the driver's own refusal record was committed
+with its outcome (takes.ruling_door_problems, which also reads the end state at the door). As a second check, a ruling that re-runs such a take, or one with no readable phase (where rehearsal too
+re-runs), stands only when the take's own grader reads its committed end state with no wrong action, which
+check_results.ruled_rerun_problems checks at publication. A take whose records match no routing row takes its
+class's pre-registered default (routing.json no_match_defaults, routing.no_match_default), and no other ruling.
+`history_problems` refuses the rest, so the ruling door (takes.commit_ruling) and a restart refuse them before anything
+is driven.
 
 One ruling per take; a ruling is spent by the drive it allows, so a later stopped take of the slot
 needs its own. The loop reads rulings and never writes one (its repo interface has no road for it).
@@ -280,7 +298,54 @@ OUTCOME_KEYS = ("slot", "half_cell", "attempt", "container_id", "state", "reason
                 "beyond_cap", "stop",
                 "cell_state", "cell_reason", "drive_started", "window_event")
 # Every key of a committed ruling (THE RULINGS, W1B3-1): a closed record, told from an outcome by its kind.
-RULING_KEYS = ("kind", "slot", "attempt", "ruling", "route", "by")
+RULING_KEYS = ("kind", "slot", "attempt", "ruling", "route", "by", "why", "cite")
+# Pre-freeze review 1, MAJOR 8: the two keys a ruling gives its reason in, each a non-empty string, never defaulted.
+RULING_REASON_KEYS = ("why", "cite")
+UNKNOWN_PHASE = "unknown"
+# THE RULING RULE, the door's half (the Lane-orchestrator's ruling 2 on lane pf1-l2a, Sat 24 Oct 2026, under Javier's
+# standing delegation): after the agent's first turn, a ruling may re-run a take only when its own committed records
+# already meet one of these harness-fault rows of routing.json (an API error, a watcher gap), or Batch._route itself
+# blocked it for the driver's pin. The review of 5afd80a7 (finding 1) and the orchestrator's ruling on it: cgroup-kill
+# is not one, since the agent can raise those counters itself and the plan never re-runs an aborted take.
+RERUN_FAULT_ROWS = ("api-error-after-first-turn", "watcher-gap")
+# Finding 4: Batch._route's pin block is a harness fault by construction (the agent never writes records.pin). Its
+# reason opens with this prefix, written by _route alone; DRIVER_PIN_FAULT names it beside the fault rows.
+PIN_BLOCK_PREFIX = "the driver's pin "
+DRIVER_PIN_FAULT = "driver-pin-mismatch"
+RERUNNING_ROUTES = (labels4.PAUSE, labels4.HARNESS_ERROR, labels4.REHEARSAL)
+# THE RULING RULE, as the draft registers it (build_draft writes it to ruling_rule; tests bind the two).
+RULING_RULE = {
+    "text": ("A human ruling on a take the loop stopped on (blocked, or failed after its drive started) names who made "
+             "it (by), why, and what it rests on (cite), each never defaulted. Before the agent's first turn, read "
+             "from the stopped take's own records, any ruling may be made. After it, or when those records cannot "
+             "show the phase of a take whose drive started, a ruling routes graded (the take's own grader reads its "
+             "end state) or aborted (counted against holding, with its reason), or re-runs the take (re-run, or a "
+             "route to pause or harness-error, and rehearsal only when the records cannot show the phase). After the "
+             "first turn, a ruling re-runs a take only when the take's own committed records already meet a "
+             "harness-fault row of the routing table (an API error, or a watcher gap), or when the loop blocked it "
+             "because the driver's pin was not the registered row's profile; a rise of the out-of-memory or pids "
+             "counters is the agent's own and never re-runs (aborted is never re-run). Any ruling that re-runs such "
+             "a take, or one whose records cannot show its phase, stands only when the take's own grader reads its "
+             "committed end state with no wrong action (its excluded view is not wrong, and a take that cannot be "
+             "graded counts as wrong). A take whose drive started and left no records can only be ruled aborted, "
+             "unless the driver's own refusal record was committed with the take's outcome, in the same commit; "
+             "then it may be re-run under the same end-state check. The ruling door (takes.commit_ruling) checks all "
+             "of this before anything is written; a restart refuses a history that breaks the refusal-record or the "
+             "driver's-pin condition before it drives anything, and the publication check refuses the record set "
+             "again on all of it. A take whose records match no routing row is "
+             "ruled by its class's pre-registered default (routing.json no_match_defaults) and by no other ruling. "
+             "Every published take of a slot a ruling touched carries ruled true, and the result counts ruled takes "
+             "per half-cell."),
+    "enforced_by": ["evals/gap-study-4/batch.py ruling_rule_problems (the door, at ruling time, and every restart)",
+                    "evals/gap-study-4/takes.py ruling_door_problems (the door, at ruling time: the end state, the "
+                    "driver's refusal record and the driver's pin)",
+                    "evals/gap-study-4/check_results.py ruled_rerun_problems (the publication)",
+                    "evals/gap-study-4/stats.py route_events_table (the count)"],
+    "source": ("Pre-freeze review 1, MAJOR 8 (rulings on stopped takes unconstrained and unpublished) and m17 (no-match "
+               "inputs), folded by lane pf1-l2a under the Lane-orchestrator's approval of the fold plan, Sat 24 Oct "
+               "2026, under Javier's standing delegation; it binds whoever rules, Javier included, and is reported to "
+               "him after."),
+}
 
 
 # Interface 8 (w1b's next-touch item 5): a registered row's agent, {"harness": AgentAdapter.name, "version":
@@ -320,6 +385,112 @@ def needs_ruling(outcome: dict) -> bool:
     """W1B3-1: the take stopped the loop on something a human must rule on before its slot goes on: it is blocked,
     or it failed after its drive started (the agent may have acted). A failed take where nothing ran needs none."""
     return outcome["state"] == labels4.BLOCKED or (outcome["state"] == labels4.FAILED and outcome["drive_started"] is not False)
+
+
+def ruled_phase(outcome: dict, table: dict) -> str:
+    """THE RULING RULE: a stopped take's phase, read from its own records when they are sound under `table`, else
+    UNKNOWN_PHASE (no records, as when the driver raised, or records routing cannot read)."""
+    records = outcome.get("records")
+    if not isinstance(records, dict) or routing.shape_problems(records, table):
+        return UNKNOWN_PHASE
+    return routing.phase_of(records)
+
+
+def rerun_fault_rows(records: dict, table: dict) -> list:
+    """The ids of RERUN_FAULT_ROWS that `records` match under `table`; a fault row the table lacks raises TableError
+    (never read as no fault)."""
+    rows = {row["id"]: row for row in table["rows"]}
+    missing = [rid for rid in RERUN_FAULT_ROWS if rid not in rows]
+    if missing:
+        raise routing.TableError(f"the ruling rule's harness-fault rows {missing} are not rows of routing.json")
+    return [rid for rid in RERUN_FAULT_ROWS if routing.matches(rows[rid], records, table)]
+
+
+def reruns(r: dict) -> bool:
+    """A ruling that drives its take's slot again: re-run, or a route to pause, harness-error or rehearsal."""
+    return r.get("ruling") == labels4.RULE_RERUN or r.get("route") in RERUNNING_ROUTES
+
+
+def pin_block(outcome: dict) -> bool:
+    """Finding 4: the take Batch._route blocked because the driver's pin was not the registered row's profile (its
+    reason, written by _route alone, opens with PIN_BLOCK_PREFIX; the records are the driver's)."""
+    return (outcome.get("state") == labels4.BLOCKED and isinstance(outcome.get("reason"), str)
+            and outcome["reason"].startswith(PIN_BLOCK_PREFIX) and isinstance(outcome.get("records"), dict))
+
+
+def rerun_faults(outcome: dict, table: dict) -> list:
+    """The harness faults a stopped take's own committed records show: RERUN_FAULT_ROWS it matches, and
+    DRIVER_PIN_FAULT when Batch._route blocked it for the driver's pin."""
+    return rerun_fault_rows(outcome["records"], table) + ([DRIVER_PIN_FAULT] if pin_block(outcome) else [])
+
+
+def door_rule_problems(history: list, rows: list, table: dict, refusal) -> list[str]:
+    """THE RULING RULE's two conditions that read beyond the history (the closure review of 898e598c, MINOR 1, and
+    the Lane-orchestrator's ruling on it): for every ruling in `history`, (a) a take whose drive started and left no
+    records is ruled aborted, or re-run only when `refusal(row, outcome)` (takes.driver_refusal_record: the driver's
+    own refusal record, bound to the commit of the take's outcome) finds one; (b) a pin block whose pin is the
+    registered row's own profile (`rows`, by slot) is no driver pin mismatch. The ruling door, every restart
+    (Batch.run) and the publication (run.produce) all call it, so a ruling written into rulings.json past the door is
+    refused the same way."""
+    seen, out = {}, []
+    for entry in history:
+        if is_outcome(entry):
+            seen[(entry.get("slot"), entry.get("attempt"))] = entry
+            continue
+        if not is_ruling(entry) or entry.get("ruling") not in labels4.RULINGS:
+            continue
+        key = (entry.get("slot"), entry.get("attempt"))
+        taken = seen.get(key)
+        if taken is None:
+            continue                                   # history_problems names it
+        row = next((r for r in reversed(rows) if r.get("slot") == key[0]), None)
+        aborted = entry["ruling"] == labels4.RULE_ROUTE and entry.get("route") == labels4.ABORTED
+        if pin_block(taken) and row is not None:
+            try:
+                own = taken["records"].get("pin") == expected_pin(row, table)
+            except PinProfileMissing:
+                own = False
+            if own:
+                out.append(f"slot {key[0]} attempt {key[1]}: its block names the driver's pin, but the pin is the "
+                           f"registered row's own profile: no driver pin mismatch, so no harness fault to re-run it on")
+        if taken.get("records") is None and taken.get("drive_started") is not False and not aborted:
+            if not reruns(entry):
+                out.append(f"slot {key[0]} attempt {key[1]}: its drive started and left no records, so it can only "
+                           f"be ruled aborted (or re-run on the driver's own refusal record; THE RULING RULE)")
+            elif row is None or refusal(dict(row, slot=key[0], attempt=key[1]), taken) is None:
+                out.append(f"slot {key[0]} attempt {key[1]}: its drive started and left no records, and no refusal "
+                           f"record of the driver's was committed with its outcome: it can only be ruled aborted")
+    return out
+
+
+def ruling_rule_problems(r: dict, taken, table: dict) -> list[str]:
+    """THE RULING RULE (pre-freeze review 1, MAJOR 8 and m17): why a closed ruling breaks the rule for the take it
+    rules on (`taken`, None when no earlier outcome commits it, which _ruling_problems names)."""
+    p = []
+    for key in RULING_REASON_KEYS:
+        if not (isinstance(r.get(key), str) and r[key].strip()):
+            p.append(f"a ruling gives its {key} (a non-empty string, never defaulted), got {r.get(key)!r}")
+    if not isinstance(taken, dict) or r.get("ruling") not in labels4.RULINGS:
+        return p
+    phase = ruled_phase(taken, table)
+    if r["ruling"] == labels4.RULE_ROUTE and phase == labels4.AFTER_FIRST_TURN and r["route"] == labels4.REHEARSAL:
+        p.append(f"slot {r['slot']} attempt {r['attempt']} is {phase}: a ruling routes it graded, aborted, pause or "
+                 f"harness-error, or re-runs it, never rehearsal (a before-first-turn route; THE RULING RULE)")
+    if phase == UNKNOWN_PHASE:
+        return p
+    if phase == labels4.AFTER_FIRST_TURN and reruns(r) and not rerun_faults(taken, table):
+        p.append(f"slot {r['slot']} attempt {r['attempt']} is {phase} and its records meet none of the harness-fault "
+                 f"rows {list(RERUN_FAULT_ROWS)}, nor was it blocked for the driver's pin: a ruling routes it graded "
+                 f"or aborted, never re-runs it (THE RULING RULE, the door's half)")
+    try:
+        default = routing.no_match_default(taken["records"], table)
+    except routing.TableError as e:
+        return p + [str(e)]
+    if default is not None and (r["ruling"], r["route"]) != default:
+        p.append(f"slot {r['slot']} attempt {r['attempt']}: its records match no routing row ({phase}, last turn "
+                 f"{taken['records']['ledger']['end']}), so its ruling is the pre-registered default {default[0]} "
+                 f"{default[1]} (routing.json no_match_defaults), not {r['ruling']} {r['route']}")
+    return p
 
 
 def cell_event(outcome: dict) -> tuple:
@@ -662,7 +833,8 @@ class Batch:
             if diff is not None:
                 raise BatchConfigError(f"the history argument differs from repo.history(): {diff}")
         self._replay_night(history)
-        self._replay([e for e in history if not is_night_ruling(e)])
+        self._history = [e for e in history if not is_night_ruling(e)]
+        self._replay(self._history)
         if self.nightly_stop_pending:
             raise BatchConfigError(f"{NIGHTLY_STOP}: {self.night_counts['harness_error']} harness-errors are committed "
                                    f"since the last night ruling; the run waits for a committed night ruling naming "
@@ -707,8 +879,9 @@ class Batch:
 
     # ---------------------------------------------------------------------------- the history
     @classmethod
-    def history_problems(cls, history) -> list[str]:
-        """Why the committed outcomes and rulings cannot be trusted (empty when they can)."""
+    def history_problems(cls, history, table: dict | None = None) -> list[str]:
+        """Why the committed outcomes and rulings cannot be trusted (empty when they can). `table` (routing.json's,
+        read when None) is the one THE RULING RULE reads a stopped take's records against."""
         if not isinstance(history, list):
             return ["history must be a list of committed outcomes"]
         p, seen, cell, final_at = [], {}, {}, {}
@@ -717,6 +890,11 @@ class Batch:
         for i, o in enumerate(history):
             if is_ruling(o):
                 p += cls._ruling_problems(i, o, seen, ruled, pending)
+                if isinstance(o, dict) and set(o) == set(RULING_KEYS):
+                    taken = seen.get((o["slot"], o["attempt"])) if not isinstance(o["slot"], (list, dict, set)) else None
+                    if table is None:
+                        table = routing.load_table()
+                    p += [f"history[{i}]: {x}" for x in ruling_rule_problems(o, taken, table)]
                 continue
             if is_night_ruling(o):              # THE NIGHTLY STOP: checked whole by _night_walk below
                 continue
@@ -808,7 +986,7 @@ class Batch:
         """Rebuild the re-runs spent, the half-cells' events, each slot's next attempt, the closed slots and half-cells,
         and what each slot is owed or awaits, from the committed outcomes and rulings, walked in commit order, so a
         restart continues where the stopped run committed (W1B2-3, W1B3-1, W1B3-5, W1B3-6)."""
-        problems = self.history_problems(history)
+        problems = self.history_problems(history, self.table)
         if problems:
             raise BatchConfigError("the repo's history cannot be trusted: " + "; ".join(problems))
         problems = self.cell_history_problems(history)
@@ -850,6 +1028,16 @@ class Batch:
             elif o["state"] == labels4.FAILED:
                 self.owed[slot] = (nxt, "it failed before its drive started, and is re-driven")
         self.paused = restart_waits(history)
+
+    def ruling_door_problems(self, rows: list) -> list[str]:
+        """The restart's half of THE RULING RULE's two git-bound conditions (door_rule_problems) over the committed
+        history this loop replayed: the repo's own driver_refusal_record when it has one, else the study's
+        (takes.driver_refusal_record, read from git)."""
+        reader = getattr(self.repo, "driver_refusal_record", None)
+        if reader is None:
+            import takes                  # batch otherwise never reads git; takes imports batch, so read lazily
+            reader = takes.driver_refusal_record
+        return door_rule_problems(self._history, rows, self.table, reader)
 
     def _apply_ruling(self, r: dict, o: dict) -> dict:
         """W1B3-1: a ruling's fate for the take it rules on, decided at its place in the history. `re-run`: the slot is
@@ -963,7 +1151,7 @@ class Batch:
         return p
 
     def run(self, rows: list[dict]) -> list[dict]:
-        problems = self.row_problems(rows)
+        problems = self.row_problems(rows) + self.ruling_door_problems(rows)
         if problems:
             raise BatchConfigError("; ".join(problems))
         queue = collections.deque((dict(r), self.next_attempt.get(r["slot"], 1)) for r in rows)
@@ -1331,7 +1519,7 @@ class Batch:
         if not isinstance(records, dict) or records.get("pin") != expected_pin(row, self.table):
             got = records.get("pin") if isinstance(records, dict) else None
             return self._outcome(row, attempt, cid, state=labels4.BLOCKED, records=records,
-                                 reason=f"the driver's pin {got!r} is not the registered row's pre-registered "
+                                 reason=f"{PIN_BLOCK_PREFIX}{got!r} is not the registered row's pre-registered "
                                         f"profile {expected_pin(row, self.table)!r}")
         try:
             decision = self.route_fn(records, self.table)

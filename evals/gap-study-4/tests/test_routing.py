@@ -960,7 +960,9 @@ SCENARIOS = {
     "init version differs": Sc(_sc(A, [lambda r: r["init"].__setitem__(1, dict(INIT, version="9.9.9"))]), "harness-error", ["init-mismatch"]),
     "init event missing": Sc(_sc(A, [lambda r: r["init"].__setitem__(0, None)]), "harness-error", ["init-mismatch"]),
     "mismatch on the last turn of an otherwise graded take": Sc(_sc(A, [_multi_turn(4), _mismatch]), "harness-error", ["init-mismatch"]),
-    "non-zero exec exit, nothing else": Sc(_sc(A, [lambda r: r["exit"]["exec_codes"].__setitem__(0, 1)]), "harness-error", ["nonzero-exec-exit"]),
+    # pre-freeze review 1, MAJOR 5 (lane pf1-l2a): the agent's own exit is graded, its id an agent event
+    "non-zero exec exit, nothing else": Sc(_sc(A, [lambda r: r["exit"]["exec_codes"].__setitem__(0, 1)]), "graded",
+                                           ["nonzero-exec-exit", "end-turn"]),
     "operator reason after first turn": Sc(_sc(A, [_set("checker_reasons", [READERS])]), "harness-error", ["operator-reason-after-first-turn"]),
     "operator diff after first turn": Sc(_sc(A, [_set("operator.unexplained_diffs", 2)]), "harness-error", ["operator-diff-unexplained-after-first-turn"]),
     "finalize abort after first turn": Sc(_sc(A, [_set("ledger.finalize_abort", True)]), "harness-error", ["finalize-abort-after-first-turn"]),
@@ -976,7 +978,7 @@ SCENARIOS = {
     "outside reach with a rate limit (pause, W1B-1)": Sc(_sc(A, [_rate, _end_error(1), _reach()]), "pause", ["rate-limit"], None, [OR], True),
     "outside reach with an API 500 (harness-error, W1B-1)": Sc(_sc(A, [_api, _end_error(1), _reach()]), "harness-error", ["api-error-after-first-turn"], None, [OR], True),
     "outside reach with a container exit (harness-error, W1B-1)": Sc(_sc(A, [_container, _end_error(137), _reach()]), "harness-error",
-                                                                     ["container-exit-after-first-turn", "nonzero-exec-exit"], None, [OR], True),
+                                                                     ["container-exit-after-first-turn"], None, [OR], True),
     "outside reach before the first turn": Sc(_sc(B, [_set("preflight.ok", False), _reach()]), "rehearsal", ["preflight-failed"], None, [OR], True),
     "ended in error plus an outside reach only -> refused (W1B-1, W1B-6)": Sc(_sc(A, [_end_error(0), _reach()]), REFUSED, None, None, [OR], True),
     "ended in error plus a quiescence kill only -> refused (W1B-6)": Sc(_sc(A, [_end_error(0), _set("quiescence_kill", True)]), REFUSED, None, None, [QK], False),
@@ -2786,11 +2788,13 @@ class TestNextTouchSpendCap(unittest.TestCase):
 
 
 # CP2 ruling C3 (glitch-f3, 17:35; names fixed at 17:42): two box keys and their rows, both after-first-turn, both
-# harness-error. `unreadable_consequential` (row unreadable-consequential-path): the run-tree paths the sidecar could
+# harness-error until pre-freeze review 1's MAJOR 5 (lane pf1-l2a, 24 Oct 2026) re-routed the cap's row graded: a
+# survivor is the agent's own process, so its take is read, never discarded (tests/test_pf1_routing_rulings.py P5).
+# `unreadable_consequential` (row unreadable-consequential-path): the run-tree paths the sidecar could
 # not read among the task's consequential ones; before the first turn a non-empty list is refused (a preflight
 # failure is CP2's to fold into preflight_ok). `quiescence_cap_survivors` (row quiescence-cap-reached): the processes
-# still alive at the quiescence cap (W2A2-6), so the published harness-error column names the cap, never an operator
-# diff: the operator-diff row does not also match, and the take's rows read exactly ["quiescence-cap-reached"].
+# still alive at the quiescence cap (W2A2-6): the operator-diff row does not also match, and the take routes graded
+# by the cap's row beside its graded end (MAJOR 5).
 UNREADABLE, SURVIVORS = "unreadable_consequential", "quiescence_cap_survivors"
 UNREADABLE_ROW, CAP_ROW = "unreadable-consequential-path", "quiescence-cap-reached"
 OP_DIFF_ROW = "operator-diff-unexplained-after-first-turn"
@@ -2830,9 +2834,10 @@ C3_CASES = {   # name -> (records builder, route or REFUSED, winning rows, match
     "an unreadable path beside a silent timeout, before the first turn, is refused": (
         lambda: c3_record(B, SOME_PATHS[:1], edits=[silent_timeout]), REFUSED, None, None, []),
     "processes alive at the quiescence cap": (
-        lambda: c3_record(A, survivors=1), labels4.HARNESS_ERROR, [CAP_ROW], [CAP_ROW, "end-turn"], []),
-    "the cap's survivors and the operator diff they caused: the cap's row alone (W2A2-6)": (
-        lambda: c3_record(A, survivors=2, edits=[_diffs(1)]), labels4.HARNESS_ERROR, [CAP_ROW], [CAP_ROW, "end-turn"], []),
+        lambda: c3_record(A, survivors=1), labels4.GRADED, [CAP_ROW, "end-turn"], [CAP_ROW, "end-turn"], []),
+    "the cap's survivors and the operator diff they caused: the cap's row, never the diff's (W2A2-6)": (
+        lambda: c3_record(A, survivors=2, edits=[_diffs(1)]), labels4.GRADED, [CAP_ROW, "end-turn"],
+        [CAP_ROW, "end-turn"], []),
     "an operator diff with no survivors stays the operator-diff row": (
         lambda: c3_record(A, edits=[_diffs(1)]), labels4.HARNESS_ERROR, [OP_DIFF_ROW], [OP_DIFF_ROW, "end-turn"], []),
     "survivors before the first turn are refused (lane w4h decision)": (
@@ -2842,9 +2847,10 @@ C3_CASES = {   # name -> (records builder, route or REFUSED, winning rows, match
     "an unreadable path beside a rate limit: pause": (
         lambda: c3_record(A, SOME_PATHS[:1], edits=[_rate, _end_error(1)]), labels4.PAUSE, ["rate-limit"], None, []),
     "survivors beside a quiescence kill: the cap's row, and the kill's event": (
-        lambda: c3_record(A, survivors=1, edits=[_qk]), labels4.HARNESS_ERROR, [CAP_ROW], None, [QK]),
-    "an unreadable path and survivors: both rows": (
-        lambda: c3_record(A, SOME_PATHS[:1], survivors=1), labels4.HARNESS_ERROR, [UNREADABLE_ROW, CAP_ROW], None, []),
+        lambda: c3_record(A, survivors=1, edits=[_qk]), labels4.GRADED, [CAP_ROW, "end-turn"], None, [QK]),
+    "an unreadable path and survivors: the unreadable path's harness-error outranks the cap's graded row": (
+        lambda: c3_record(A, SOME_PATHS[:1], survivors=1), labels4.HARNESS_ERROR, [UNREADABLE_ROW],
+        [UNREADABLE_ROW, CAP_ROW, "end-turn"], []),
 }
 
 
@@ -2897,17 +2903,17 @@ SCENARIOS.update({f"C3: {name}": Sc(build, route, rows, matched, events, False)
 
 
 class TestNextTouchC3(unittest.TestCase):
-    """CP2 ruling C3: `unreadable_consequential` (row unreadable-consequential-path) and `quiescence_cap_survivors`
-    (row quiescence-cap-reached), both after-first-turn and harness-error."""
+    """CP2 ruling C3: `unreadable_consequential` (row unreadable-consequential-path, after-first-turn, harness-error)
+    and `quiescence_cap_survivors` (row quiescence-cap-reached, after-first-turn, graded since MAJOR 5)."""
 
     def test_the_names_are_fixed(self):
         self.assertIn(UNREADABLE, routing.RECORD_SCHEMA)
         self.assertIn(SURVIVORS, routing.RECORD_SCHEMA)
         self.assertIn(UNREADABLE, aa.BOX_KEYS)
         self.assertIn(SURVIVORS, aa.BOX_KEYS)
-        for rid, path in ((UNREADABLE_ROW, UNREADABLE), (CAP_ROW, SURVIVORS)):
+        for rid, path, route in ((UNREADABLE_ROW, UNREADABLE, labels4.HARNESS_ERROR), (CAP_ROW, SURVIVORS, labels4.GRADED)):
             row = next(r for r in REAL["rows"] if r["id"] == rid)
-            self.assertEqual((row["when"], row["route"]), (labels4.AFTER_FIRST_TURN, labels4.HARNESS_ERROR), rid)
+            self.assertEqual((row["when"], row["route"]), (labels4.AFTER_FIRST_TURN, route), rid)
             self.assertEqual([c["path"] for c in row["any_of"]], [path], rid)
         op_diff = next(r for r in REAL["rows"] if r["id"] == OP_DIFF_ROW)
         self.assertIn({"path": SURVIVORS, "op": "gt", "value": 0}, op_diff["none_of"])
@@ -2924,7 +2930,7 @@ class TestNextTouchC3(unittest.TestCase):
                      if any(k in d for k in (UNREADABLE_ROW, CAP_ROW, OP_DIFF_ROW)) and not all_problems(t)]
         self.assertEqual(survivors, [])
         described = " ".join(d for d, _ in mutants(test_table()))
-        for what in (f"{UNREADABLE_ROW}: removed", f"{CAP_ROW}: removed", f"{CAP_ROW}: route -> graded",
+        for what in (f"{UNREADABLE_ROW}: removed", f"{CAP_ROW}: removed", f"{CAP_ROW}: route -> harness-error",
                      f"{OP_DIFF_ROW}: none_of deleted", f"{OP_DIFF_ROW}: none_of[0] gt mutated"):
             self.assertIn(what, described)
         real = routing.check_records
@@ -2947,7 +2953,7 @@ class TestNextTouchC3(unittest.TestCase):
         self.assertEqual((got["route"], got["rows"]), (labels4.HARNESS_ERROR, [UNREADABLE_ROW]))
         box = dict(full_box(), **{UNREADABLE: [], SURVIVORS: 3, "unexplained_operator_diffs": 1})
         got = routing.route(aa.harness_records([a_turn(), a_turn()], pin=PIN, box=box), t)
-        self.assertEqual((got["route"], got["rows"]), (labels4.HARNESS_ERROR, [CAP_ROW]))
+        self.assertEqual((got["route"], got["rows"]), (labels4.GRADED, [CAP_ROW, "end-turn"]))
         for key in (UNREADABLE, SURVIVORS):
             box = dict(full_box(), **{UNREADABLE: [], SURVIVORS: 0})
             del box[key]

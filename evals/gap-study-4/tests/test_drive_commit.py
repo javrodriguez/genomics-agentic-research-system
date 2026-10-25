@@ -327,10 +327,17 @@ def c3_history(mod, p):
         r = row(1)
         repo.register(r, 1)
         records.write(r, 1, "stream.jsonl", "stream", stream_line("first"))
+        # the review of 5afd80a7, finding 3: a take whose drive left no records is re-run only on the driver's own
+        # refusal record, committed with its outcome (here by the commit road under test); the end state is stubbed
+        refusal = root / takes.mode_binding.TAKES_DIR / str(r["slot"]) / "1" / takes.DRIVER_REFUSAL_RECORD
+        refusal.parent.mkdir(parents=True)          # the take's own folder, where the driver writes the record
+        refusal.write_text(json.dumps({"refused": "TimeoutError", "why": "synthetic begin exec timed out"}))
+        records.files.setdefault((r["slot"], 1), []).append((str(refusal), "preflight"))
         o1 = outcome(r, state=labels4.FAILED, final=False)
         repo.commit_records(r, 1, o1)
         ruled = takes.commit_ruling(slot=r["slot"], attempt=1, word=labels4.RULE_RERUN, route=None,
-                                    by="synthetic-person", root=root, repo=root)
+                                    by="synthetic-person", why="synthetic", cite="synthetic", root=root, repo=root,
+                                    standing=lambda row, o: "right")
         restarted = make_repo(mod, root, records)
         restarted.register(r, 2)
         records.write(r, 2, "stream.jsonl", "stream", stream_line("second"))
