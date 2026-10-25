@@ -330,7 +330,9 @@ RULING_RULE = {
              "graded counts as wrong). A take whose drive started and left no records can only be ruled aborted, "
              "unless the driver's own refusal record was committed with the take's outcome, in the same commit; "
              "then it may be re-run under the same end-state check. The ruling door (takes.commit_ruling) checks all "
-             "of this before anything is written, and the publication check refuses the record set again otherwise. A take whose records match no routing row is "
+             "of this before anything is written; a restart refuses a history that breaks the refusal-record or the "
+             "driver's-pin condition before it drives anything, and the publication check refuses the record set "
+             "again on all of it. A take whose records match no routing row is "
              "ruled by its class's pre-registered default (routing.json no_match_defaults) and by no other ruling. "
              "Every published take of a slot a ruling touched carries ruled true, and the result counts ruled takes "
              "per half-cell."),
@@ -420,6 +422,45 @@ def rerun_faults(outcome: dict, table: dict) -> list:
     """The harness faults a stopped take's own committed records show: RERUN_FAULT_ROWS it matches, and
     DRIVER_PIN_FAULT when Batch._route blocked it for the driver's pin."""
     return rerun_fault_rows(outcome["records"], table) + ([DRIVER_PIN_FAULT] if pin_block(outcome) else [])
+
+
+def door_rule_problems(history: list, rows: list, table: dict, refusal) -> list[str]:
+    """THE RULING RULE's two conditions that read beyond the history (the closure review of 898e598c, MINOR 1, and
+    the Lane-orchestrator's ruling on it): for every ruling in `history`, (a) a take whose drive started and left no
+    records is ruled aborted, or re-run only when `refusal(row, outcome)` (takes.driver_refusal_record: the driver's
+    own refusal record, bound to the commit of the take's outcome) finds one; (b) a pin block whose pin is the
+    registered row's own profile (`rows`, by slot) is no driver pin mismatch. The ruling door, every restart
+    (Batch.run) and the publication (run.produce) all call it, so a ruling written into rulings.json past the door is
+    refused the same way."""
+    seen, out = {}, []
+    for entry in history:
+        if is_outcome(entry):
+            seen[(entry.get("slot"), entry.get("attempt"))] = entry
+            continue
+        if not is_ruling(entry) or entry.get("ruling") not in labels4.RULINGS:
+            continue
+        key = (entry.get("slot"), entry.get("attempt"))
+        taken = seen.get(key)
+        if taken is None:
+            continue                                   # history_problems names it
+        row = next((r for r in reversed(rows) if r.get("slot") == key[0]), None)
+        aborted = entry["ruling"] == labels4.RULE_ROUTE and entry.get("route") == labels4.ABORTED
+        if pin_block(taken) and row is not None:
+            try:
+                own = taken["records"].get("pin") == expected_pin(row, table)
+            except PinProfileMissing:
+                own = False
+            if own:
+                out.append(f"slot {key[0]} attempt {key[1]}: its block names the driver's pin, but the pin is the "
+                           f"registered row's own profile: no driver pin mismatch, so no harness fault to re-run it on")
+        if taken.get("records") is None and taken.get("drive_started") is not False and not aborted:
+            if not reruns(entry):
+                out.append(f"slot {key[0]} attempt {key[1]}: its drive started and left no records, so it can only "
+                           f"be ruled aborted (or re-run on the driver's own refusal record; THE RULING RULE)")
+            elif row is None or refusal(dict(row, slot=key[0], attempt=key[1]), taken) is None:
+                out.append(f"slot {key[0]} attempt {key[1]}: its drive started and left no records, and no refusal "
+                           f"record of the driver's was committed with its outcome: it can only be ruled aborted")
+    return out
 
 
 def ruling_rule_problems(r: dict, taken, table: dict) -> list[str]:
@@ -792,7 +833,8 @@ class Batch:
             if diff is not None:
                 raise BatchConfigError(f"the history argument differs from repo.history(): {diff}")
         self._replay_night(history)
-        self._replay([e for e in history if not is_night_ruling(e)])
+        self._history = [e for e in history if not is_night_ruling(e)]
+        self._replay(self._history)
         if self.nightly_stop_pending:
             raise BatchConfigError(f"{NIGHTLY_STOP}: {self.night_counts['harness_error']} harness-errors are committed "
                                    f"since the last night ruling; the run waits for a committed night ruling naming "
@@ -987,6 +1029,16 @@ class Batch:
                 self.owed[slot] = (nxt, "it failed before its drive started, and is re-driven")
         self.paused = restart_waits(history)
 
+    def ruling_door_problems(self, rows: list) -> list[str]:
+        """The restart's half of THE RULING RULE's two git-bound conditions (door_rule_problems) over the committed
+        history this loop replayed: the repo's own driver_refusal_record when it has one, else the study's
+        (takes.driver_refusal_record, read from git)."""
+        reader = getattr(self.repo, "driver_refusal_record", None)
+        if reader is None:
+            import takes                  # batch otherwise never reads git; takes imports batch, so read lazily
+            reader = takes.driver_refusal_record
+        return door_rule_problems(self._history, rows, self.table, reader)
+
     def _apply_ruling(self, r: dict, o: dict) -> dict:
         """W1B3-1: a ruling's fate for the take it rules on, decided at its place in the history. `re-run`: the slot is
         driven once more, outside every cap. `route`: the route's own handler decides, as the loop would have, and a
@@ -1099,7 +1151,7 @@ class Batch:
         return p
 
     def run(self, rows: list[dict]) -> list[dict]:
-        problems = self.row_problems(rows)
+        problems = self.row_problems(rows) + self.ruling_door_problems(rows)
         if problems:
             raise BatchConfigError("; ".join(problems))
         queue = collections.deque((dict(r), self.next_attempt.get(r["slot"], 1)) for r in rows)

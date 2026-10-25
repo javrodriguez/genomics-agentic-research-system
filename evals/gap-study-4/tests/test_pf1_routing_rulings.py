@@ -647,6 +647,89 @@ def rv_door_wired(p="RV"):
     return out
 
 
+# --------------------------------------------------------------- CL: the closure review of 898e598c (MINOR 1)
+# lanes/REVIEW-pf1-l2a-898e598.md and the Lane-orchestrator's ruling on it: the two door-only conditions (a take that
+# left no records re-run with no producer-bound refusal record, and a forged pin block) are refused at the restart and
+# at publication too, so a ruling written straight into rulings.json cannot get past them.
+DOC = {"refused": "TimeoutError", "why": "synthetic begin exec timed out"}
+
+
+def _helper(name):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(f"pf1_cl_{name}", HERE / "tests" / f"{name}.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def cl_restart(batchmod, p="CL"):
+    """The restart (Batch.run after replaying the committed history), the reviewer's a7 and c2."""
+    tb = _helper("test_batch")
+    out = []
+    _, _, _, _, crashed, _ = tb.run(1, plan={(1, 1): tb.RAISES_AFTER_FIRST_TURN})
+    _, _, _, _, pinned, _ = tb.run(1, pins={1: dict(tb.PIN, version="driver-says")})
+    real_pin = pinned.history()
+    forged = [dict(copy.deepcopy(real_pin[0]),
+                   records=dict(real_pin[0]["records"], pin=batch.expected_pin(tb.rows(1)[0], tb.test_table())))]
+    rerun = ruling(*RERUN, slot=1)
+
+    def restart(history, reader):
+        w = tb.World()
+        repo = tb.FakeRepo(w, prior=history + [dict(rerun)])
+        if reader is not None:
+            repo.driver_refusal_record = reader
+        b = batchmod.Batch(tb.FakeDriver(w, None, start_attempts={1: 1}), repo, tb.FakeWindow(w),
+                           table=tb.test_table())
+        try:
+            return [(o["slot"], o["attempt"], o["state"]) for o in b.run(tb.rows(1))]
+        except batchmod.BatchConfigError as e:
+            return f"refused: {e}"
+    for name, history, reader, refused in (
+            ("a7: no records, re-run, no refusal record", crashed.history(), None, True),
+            ("no records, re-run, the reader finds no record", crashed.history(), lambda row, o: None, True),
+            ("no records, re-run, the driver's refusal record", crashed.history(), lambda row, o: dict(DOC), False),
+            ("c2: a forged pin block, re-run", forged, None, True),
+            ("a pin block, re-run", real_pin, None, False)):
+        got = restart(copy.deepcopy(history), reader)
+        if isinstance(got, str) != refused:
+            out.append(f"{p}: restart: {name}: {got}")
+    return out
+
+
+def cl_publication(runmod, p="CL"):
+    """Publication (run.produce), the same two conditions on the same histories."""
+    tp = _helper("test_pipeline")
+    out = []
+    r = tp.row()
+    rows = [dict(r, attempt=1)]
+    t = tp.table()
+    crashed = tp.outcome(r, state=labels4.FAILED, final=False)
+    good = tp.recorded(labels4.GRADED, r)
+    pin = dict(good["records"]["pin"])
+    other = dict(good["records"], pin=dict(pin, version="driver-says"))
+    blocked = tp.outcome(r, state=labels4.BLOCKED, final=False, records=other, decision=None,
+                         reason=f"{batch.PIN_BLOCK_PREFIX}{other['pin']!r} is not the registered row's profile")
+    forged = dict(blocked, records=good["records"])
+    rerun = tp.ruling(r, word=labels4.RULE_RERUN, route=None)
+    grade = lambda row, o: {"label": "synthetic-right", "correct": True}   # noqa: E731
+    for name, history, reader, refused in (
+            ("no records, re-run, no refusal record", [crashed, rerun], lambda row, o: None, True),
+            ("no records, re-run, the driver's refusal record", [crashed, rerun], lambda row, o: dict(DOC), False),
+            ("a forged pin block, re-run", [forged, rerun], lambda row, o: None, True)):
+        try:
+            runmod.produce(rows, copy.deepcopy(history), grade, table=t, refusal=reader)
+            got = "published"
+        except ValueError as e:
+            got = f"refused: {e}"
+        if got.startswith("refused") != refused:
+            out.append(f"{p}: publication: {name}: {got[:200]}")
+    # A genuine pin block passes the shared conditions (run.produce's require_registered_outcome refuses any outcome
+    # whose pin is not its row's, a block included, before these are read: named in the lane report, not this lane's).
+    if batch.door_rule_problems([blocked, rerun], rows, t, lambda row, o: None):
+        out.append(f"{p}: the shared conditions refuse a genuine pin block's re-run")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ witnesses
 def witness_module(real: types.ModuleType, edits: tuple) -> types.ModuleType:
     src = Path(real.__file__).read_text(encoding="utf-8")
@@ -707,14 +790,20 @@ WITNESSES = {
                                           "    return False and (outcome.get(\"state\") == labels4.BLOCKED"),))),
     "door-endstate-off": ("door", (takes, (("            p += check_results.ruled_rerun_problems([taken, record], {key: row}, standing, table)",
                                             "            p += []"),))),
-    "no-records-anything": ("door", (takes, (("    if no_records and not aborted:", "    if False:"),))),
-    "pin-substance-off": ("door", (takes, (("    if batch.pin_block(taken) and isinstance(taken[\"records\"], dict) and row is not None \\",
-                                            "    if False and batch.pin_block(taken) and isinstance(taken[\"records\"], dict) and row is not None \\"),))),
+    "no-records-anything": ("door-batch", (batch, (("        if taken.get(\"records\") is None and taken.get(\"drive_started\") is not False and not aborted:",
+                                                    "        if False:"),))),
+    "pin-substance-off": ("door-batch", (batch, (("        if pin_block(taken) and row is not None:",
+                                                  "        if False:"),))),
     "refusal-producer-unbound": ("refusal", (takes, (("    if len(shas) != 1:", "    if not shas:"),
                                                       ("        if not _introduces(repo, shas[0], history_rel, outcome):",
                                                        "        if False:"),))),
     "event-rows-open": ("events", (routing, (("    if list(sub[\"ids\"]) != list(AGENT_EVENT_IDS):",
                                               "    if not set(sub[\"ids\"]) <= set(AGENT_EVENT_IDS) | {\"end-turn\", \"timed-out\"}:"),))),
+    # CL: the closure review of 898e598c
+    "restart-door-off": ("restart", (batch, (("        problems = self.row_problems(rows) + self.ruling_door_problems(rows)",
+                                              "        problems = self.row_problems(rows)"),))),
+    "publication-door-off": ("publication", (run, (("    bad += batch.door_rule_problems(history, list(registered.values()), table, refusal)",
+                                                    "    bad += []"),))),
     # P17
     "default-unbound": ("defaults", (batch, (("    if default is not None and (r[\"ruling\"], r[\"route\"]) != default:",
                                               "    if False:"),))),
@@ -751,10 +840,18 @@ def run_witness(name):
         return rv_history(mod)
     if kind == "door":
         return rv_door(mod)
+    if kind == "door-batch":                       # the door's shared conditions, batch.door_rule_problems
+        from unittest import mock
+        with mock.patch.object(takes, "batch", mod):
+            return rv_door(takes)
     if kind == "refusal":
         return rv_refusal(mod)
     if kind == "events":
         return rv_events(mod)
+    if kind == "restart":
+        return cl_restart(mod)
+    if kind == "publication":
+        return cl_publication(mod)
     raise AssertionError(kind)
 
 
@@ -806,6 +903,12 @@ class TestPf1RoutingRulings(unittest.TestCase):
 
     def test_rv_the_door_is_wired_and_the_rule_says_so(self):
         self.assertEqual(rv_door_wired(), [])
+
+    def test_cl_the_restart_refuses_the_two_door_conditions(self):
+        self.assertEqual(cl_restart(batch), [])
+
+    def test_cl_publication_refuses_the_two_door_conditions(self):
+        self.assertEqual(cl_publication(run), [])
 
     def test_witnesses(self):
         for name in WITNESSES:

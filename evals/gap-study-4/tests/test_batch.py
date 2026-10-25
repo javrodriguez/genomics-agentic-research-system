@@ -459,7 +459,7 @@ def run(n, plan=None, serial=False, cls=batch.Batch, table=None, row_list=None, 
 
 
 def restart(prev_repo, row_list, plan=None, start_attempts=None, cls=batch.Batch, table=None, serial=False,
-            window_cls=None, rulings=(), **driver_kw):
+            window_cls=None, rulings=(), refusal=None, **driver_kw):
     """W1B2-3: a new process after a stop. A new driver, window and loop; the repo holds every outcome
     committed before (its history), and the loop is handed nothing else. `rulings` are committed to the repo after
     the stop, by a human (W1B3-1: batch never writes one)."""
@@ -467,6 +467,8 @@ def restart(prev_repo, row_list, plan=None, start_attempts=None, cls=batch.Batch
     d = FakeDriver(w, plan, start_attempts=start_attempts, **driver_kw)
     prior = prev_repo.history() + [copy.deepcopy(x) for x in rulings]
     r, win = FakeRepo(w, prior=prior), (window_cls or FakeWindow)(w)
+    if refusal is not None:           # the closure review of 898e598c: the driver's refusal record, as the repo reads it
+        r.driver_refusal_record = refusal
     b = cls(d, r, win, table=table or test_table(), serial=serial)
     out = b.run(row_list)
     return b, out, w, d, r, win
@@ -2381,7 +2383,8 @@ def ruled_route_problems(cls=batch.Batch) -> list[str]:
 def raised_after_first_turn_problems(cls=batch.Batch) -> list[str]:
     """W1B3-1: a driver that raises after the agent's first turn leaves the loop no records, yet the agent acted: the
     take is committed `failed` with drive_started true, a restart refuses it without a ruling, and a `re-run` ruling
-    re-drives it once."""
+    re-drives it once, when the driver's own refusal record was committed with its outcome (THE RULING RULE, the
+    closure review of 898e598c); with none, the restart refuses the re-run."""
     p = []
     _, _, _, _, r1, _ = run(1, plan={(1, 1): RAISES_AFTER_FIRST_TURN}, cls=cls)
     one = r1.snapshot(1)
@@ -2394,7 +2397,15 @@ def raised_after_first_turn_problems(cls=batch.Batch) -> list[str]:
         if "slot 1 attempt 1" not in str(e):
             p.append(f"refused without naming slot 1 attempt 1: {e}")
     try:
-        _, out, *_ = restart(r1, rows(1), start_attempts={1: 1}, cls=cls, rulings=[rerun_ruling(1, 1)])
+        _, out, *_ = restart(r1, rows(1), start_attempts={1: 1}, cls=cls, rulings=[rerun_ruling(1, 1)],
+                             refusal=lambda row, o: None)
+        p.append(f"with a re-run ruling and no refusal record, the restart drove it ({outcomes_of(out)})")
+    except batch.BatchConfigError as e:
+        if "refusal record" not in str(e):
+            p.append(f"with a re-run ruling and no refusal record, refused for another reason: {e}")
+    try:
+        _, out, *_ = restart(r1, rows(1), start_attempts={1: 1}, cls=cls, rulings=[rerun_ruling(1, 1)],
+                             refusal=lambda row, o: {"refused": "TimeoutError", "why": "synthetic"})
         if outcomes_of(out) != [(1, 2, labels4.GRADED)]:
             p.append(f"with a re-run ruling, the restart committed {outcomes_of(out)}")
     except Exception as e:  # noqa: BLE001

@@ -174,20 +174,7 @@ def ruling_door_problems(record: dict, history: list, rows: list, *, table=None,
         return []                                  # history_problems names both
     row = next((r for r in rows if (r.get("slot"), r.get("attempt")) == key), None)
     phase = batch.ruled_phase(taken, table)
-    aborted = record["ruling"] == labels4.RULE_ROUTE and record["route"] == labels4.ABORTED
-    no_records = taken.get("records") is None and taken.get("drive_started") is not False
-    p = []
-    if batch.pin_block(taken) and isinstance(taken["records"], dict) and row is not None \
-            and taken["records"].get("pin") == batch.expected_pin(row, table):
-        p.append(f"slot {key[0]} attempt {key[1]}: its block names the driver's pin, but the pin is the registered "
-                 f"row's own profile: no driver pin mismatch, so no harness fault to re-run it on")
-    if no_records and not aborted:
-        if not batch.reruns(record):
-            p.append(f"slot {key[0]} attempt {key[1]}: its drive started and left no records, so it can only be "
-                     f"ruled aborted (or re-run on the driver's own refusal record; THE RULING RULE)")
-        elif row is None or driver_refusal(row, taken) is None:
-            p.append(f"slot {key[0]} attempt {key[1]}: its drive started and left no records, and no refusal record "
-                     f"of the driver's was committed with its outcome: it can only be ruled aborted")
+    p = batch.door_rule_problems([taken, record], rows, table, driver_refusal)   # findings 3 and 4, shared
     if batch.reruns(record) and phase != labels4.BEFORE_FIRST_TURN:
         if row is None:
             p.append(f"slot {key[0]} attempt {key[1]}: no registered row, so its end state cannot be read")

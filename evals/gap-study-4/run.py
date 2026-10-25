@@ -213,7 +213,7 @@ def require_registered_outcome(outcome: dict, registered: dict) -> None:
             raise ValueError("the outcome differs from its registered model or agent")
 
 
-def produce(rows: list, history: list, grade, *, table=None) -> dict:
+def produce(rows: list, history: list, grade, *, table=None, refusal=None) -> dict:
     """Re-verify every attempt, then grade final eligible takes; no routing repair."""
     table = routing.load_table() if table is None else table
     registered = check_results.validate_ledger(rows)
@@ -225,6 +225,9 @@ def produce(rows: list, history: list, grade, *, table=None) -> dict:
     # Pre-freeze review 1, MAJOR 8: a ruling that re-ran a take after its first turn stands only on a clean end state.
     bad = check_results.ruled_rerun_problems(history, registered,
                                              lambda r, o: grade_views(grade(r, o))["excluded"], table)
+    # The closure review of 898e598c: the door's two git-bound conditions, again (`refusal` stands in for tests).
+    refusal = takes.driver_refusal_record if refusal is None else refusal
+    bad += batch.door_rule_problems(history, list(registered.values()), table, refusal)
     if bad:
         raise ValueError("; ".join(bad))
     ruled = ruled_slots(history)
