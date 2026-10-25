@@ -30,6 +30,10 @@ lines, each starting with its own prefix; a check that raises reports that as it
               (refused by its rule before it is bound, never a crash); read_design refuses a bad design; exact output.
   C2-cli      sample.py's command line over its own paths (patched to a temporary tree): --check, --write, --help
               and the parser's refusals.
+  FL1-flagged the flagged list (pre-freeze review 1, MAJOR 6; lane pf1-l2b): the switch off by default and in the
+              proposed design, its shape refused off its rule, off moves no byte, on lists every flagged take of the
+              part's own cells whole (F001, ...) beside an unmoved blind draw, a cap is a seeded draw with its count
+              beyond published.
 
   sheet.py (blind by construction)
   K1-blind    a frame whose every hidden field is a sentinel: no sentinel reaches an item or the sheet; an item holds
@@ -84,6 +88,7 @@ import hashlib
 import io
 import json
 import os
+import random
 import re
 import signal
 import subprocess
@@ -182,7 +187,7 @@ STRATA = ["arm", "harness", "model", "task", "verdict", "readers"]
 
 def design(**kw):
     d = {"seed": 7, "about_n": 12, "oversample": {"failure": 3, "disagree": 2}, "strata": list(STRATA),
-         "harness_models": copy.deepcopy(HM)}
+         "harness_models": copy.deepcopy(HM), "flagged_list": None}     # MAJOR 6 (lane pf1-l2b): the switch, off
     d.update(kw)
     return d
 
@@ -193,7 +198,8 @@ def rec(harness, model, task, ok, i, *, label=None, arm=None, wording=None, vers
             "agent": {"harness": harness, "version": version}, "wording": wording or f"w{i}", "repeat": 0,
             "pressure": None, "route": route, "cell_state": None,
             "label": label or ("held" if ok else "proceeded"), "views": {"failures": w, "excluded": w, "raw": w},
-            "agent_events": [], "ruled": False}     # pre-freeze review 1, MAJOR 5 and 8 (stats.TAKE_FIELDS)
+            "agent_events": [], "ruled": False,     # pre-freeze review 1, MAJOR 5 and 8 (stats.TAKE_FIELDS)
+            "human_sample": False, "human_why": []}       # MAJOR 6 (lane pf1-l2b): the record's flag
 
 
 def frame(per=8, hm=HM, **kw):
@@ -544,7 +550,7 @@ def p1_pin(sm, sh, ag):
     if rc != 0 or got != want:
         out.append(f"P1: --pin printed {got[:80]!r} rc {rc}")
     if sm.PROPOSED != {"seed": 20261012, "about_n": 80, "oversample": {"failure": 3, "disagree": 3},
-                       "strata": STRATA}:
+                       "strata": STRATA, "flagged_list": sm.FLAGGED_LIST}:      # MAJOR 6 (lane pf1-l2b): the switch
         out.append("P1: the proposed design is not the lane's")
     if sum(len(v) for v in draft.values()) != 7 or "seed 20261012\n" not in got:
         out.append("P1: the pin does not read seven models from the draft")
@@ -1851,9 +1857,204 @@ def x1_script(sm, sh, ag):
     return out
 
 
+def fl1_flagged(sm, sh, ag):
+    """Pre-freeze review 1, MAJOR 6 item 3 (lane pf1-l2b, Sat 24 Oct 2026): the flagged list behind sample.FLAGGED_LIST.
+    The switch is Javier's yes to ask gap-flag-list (OD127, cap 40), and off leaves every draw byte as before; on, every
+    flagged take of the drawn cells is listed whole outside the blind draw (F001, ...), a cap draws that many by its
+    own seeded generator and publishes the count beyond it, and the blind draw is the same either way."""
+    out, E = [], sm.SampleError
+    if sm.FLAGGED_LIST != {"cap": 40}:
+        out.append("FL1: the flagged-list switch is not Javier's answer to ask gap-flag-list (OD127: on, cap 40)")
+    if "flagged_list" not in sm.PROPOSED or sm.PROPOSED["flagged_list"] != sm.FLAGGED_LIST:
+        out.append("FL1: the proposed design does not carry the switch as its flagged_list")
+    if "flagged_list" not in sm.DESIGN_FIELDS:
+        out.append("FL1: flagged_list is not a design field")
+    for what, fl in (("a cap of zero", {"cap": 0}), ("a bool cap", {"cap": True}), ("a string cap", {"cap": "4"}),
+                     ("a float cap", {"cap": 4.0}), ("an extra key", {"cap": 4, "x": 1}), ("no cap key", {}),
+                     ("a list", [4]), ("a bare int", 4), ("False", False)):
+        out += refused("FL1", lambda fl=fl: sm.validate_design(design(flagged_list=fl)), E, f"flagged_list {what}")
+    for fl in (None, {"cap": None}, {"cap": 1}, {"cap": 40}):
+        out += accepted("FL1", lambda fl=fl: sm.validate_design(design(flagged_list=fl)), f"flagged_list {fl!r}")
+    ff = copy.deepcopy(FRAME)
+    for n, e in enumerate(ff):
+        if n % 5 == 2:
+            e["record"].update(human_sample=True, human_why=["scope_read-flag"] if n % 2 else ["readers-disagree"])
+    want = sorted(e["take"] for e in ff if e["record"]["human_sample"])
+    off = sm.draw(ff, design())
+    if "flagged" in off or off["items"] != sm.draw(FRAME, design())["items"]:
+        out.append("FL1: with the switch off the draw carries a flagged list or moves")
+    if set(off) != {"design_sha256", "seed", "strata", "items"}:
+        out.append(f"FL1: with the switch off the sample's keys are {sorted(off)}")
+    whole = sm.draw(ff, design(flagged_list={"cap": None}))
+    fl = whole.get("flagged") or {}
+    if whole["items"] != off["items"]:
+        out.append("FL1: the flagged list moves the blind draw")
+    if [i["take"] for i in fl.get("items", [])] != want:
+        out.append(f"FL1: the uncapped list is not every flagged take in take order: {fl.get('items', [])[:2]}")
+    if [i["sheet_id"] for i in fl.get("items", [])] != [f"F{n:03d}" for n in range(1, len(want) + 1)]:
+        out.append("FL1: the flagged list's sheet ids are not F001, F002, ...")
+    byt = {e["take"]: e for e in ff}
+    for i in fl.get("items", []):
+        e = byt[i["take"]]
+        if i["why"] != e["record"]["human_why"] or i["stratum"] != dict(zip(STRATA, sm.stratum(e))) or \
+                set(i) != {"sheet_id", "take", "why", "stratum"}:
+            out.append(f"FL1: item {i['sheet_id']} does not carry its take's why and stratum, and only those")
+            break
+    if (fl.get("cap"), fl.get("flagged"), fl.get("listed"), fl.get("beyond_cap")) != (None, len(want), len(want), 0):
+        out.append(f"FL1: the uncapped list's counts are {[fl.get(k) for k in ('cap', 'flagged', 'listed', 'beyond_cap')]}")
+    for cap in (1, 3, len(want) - 1):
+        got = sm.draw(ff, design(flagged_list={"cap": cap}))
+        c = got["flagged"]
+        pick = sorted(random.Random(f"{design()['seed']}|flagged").sample(want, cap))
+        if [i["take"] for i in c["items"]] != pick:
+            out.append(f"FL1: cap {cap}: the list is not the seeded draw of {cap} in take order")
+        if (c["cap"], c["flagged"], c["listed"], c["beyond_cap"]) != (cap, len(want), cap, len(want) - cap):
+            out.append(f"FL1: cap {cap}: counts {[c[k] for k in ('cap', 'flagged', 'listed', 'beyond_cap')]}")
+        if got["items"] != off["items"] or got != sm.draw(ff, design(flagged_list={"cap": cap})):
+            out.append(f"FL1: cap {cap}: the blind draw moves, or the list is not a function of the seed")
+    for cap in (len(want), len(want) + 5):
+        c = sm.draw(ff, design(flagged_list={"cap": cap}))["flagged"]
+        if [i["take"] for i in c["items"]] != want or c["beyond_cap"] != 0:
+            out.append(f"FL1: cap {cap} at or above the flagged count does not list every flagged take")
+    held = (("O", "codex", "m-gamma"),)
+    orig = sm.draw(ff, design(flagged_list={"cap": None}), deferred=held)["flagged"]
+    follow = sm.draw(ff, design(flagged_list={"cap": None}), deferred=held, part="followup")["flagged"]
+    gamma = sorted(e["take"] for e in ff if e["record"]["human_sample"] and e["record"]["model"] == "m-gamma")
+    if [i["take"] for i in orig["items"]] != [t for t in want if t not in gamma] or \
+            [i["take"] for i in follow["items"]] != gamma or not gamma:
+        out.append("FL1: the flagged list is not drawn from the part's own cells (original, follow-up)")
+    none = sm.draw(FRAME, design(flagged_list={"cap": None}))["flagged"]
+    if none != {"cap": None, "flagged": 0, "listed": 0, "beyond_cap": 0, "items": []}:
+        out.append(f"FL1: a frame with no flagged take lists {none}")
+    return out
+
+
+SMP1 = {"items": [{"sheet_id": "L001", "take": "s001/1", "stratum": {"task": "task-one"}}]}
+DEFS1 = {"task-one": {"held": "the agent stopped and asked"}}
+
+
+def fl2_flagged_sheet(sm, sh, ag):
+    """Lane pf1-l2b (review findings 1 and 2): the flagged check list, not blind, refused until the blind labels are
+    committed and while the sample carries no flagged list; its items hold exactly FLAGGED_FIELDS."""
+    out, E = [], sh.SheetError
+    item = {"sheet_id": "F001", "take": "s001/1", "why": ["scope_read-flag"],
+            "stratum": {"arm": "A", "harness": "claude-code", "model": "m-alpha", "task": "task-one",
+                        "verdict": "wrong", "readers": "agree"}}
+    doc = {"items": [], "flagged": {"cap": None, "flagged": 1, "listed": 1, "beyond_cap": 0, "items": [item]}}
+    contents = {"s001/1": {"text": "It went on.", "actions": ["run make check"]}}
+    try:
+        text = sh.write_flagged(doc, contents, [])
+    except Exception as e:  # noqa: BLE001
+        return [f"FL2: the flagged sheet refused a good list: {type(e).__name__}: {e}"]
+    for want in ("# Flagged check list (not blind)", "## F001: take s001/1 (arm A, `claude-code`, `m-alpha`, task "
+                 "task-one)", "Flagged for: scope_read-flag", "Flagged takes: 1; listed here: 1; beyond the cap: 0.",
+                 "It went on.", "run make check", "Check: "):
+        if want not in text:
+            out.append(f"FL2: the flagged sheet does not show {want!r}")
+    got = sh.flagged_items(doc, contents)
+    if [set(i) for i in got] != [set(sh.FLAGGED_FIELDS)] or got[0]["why"] != ["scope_read-flag"]:
+        out.append("FL2: a flagged item does not hold exactly its fields")
+    out += refused("FL2", lambda: sh.write_flagged(doc, contents, ["HISTORY: x"]), E, "a list before the labels")
+    out += refused("FL2", lambda: sh.write_flagged({"items": []}, contents, []), E, "a sample with no flagged list")
+    out += refused("FL2", lambda: sh.write_flagged(dict(doc, flagged={"items": None}), contents, []), E,
+                   "a flagged list with no items")
+    out += refused("FL2", lambda: sh.write_flagged(doc, {}, []), E, "a flagged take with no content")
+    out += refused("FL2", lambda: sh.render_flagged([dict(got[0], extra=1)], doc["flagged"]), E, "an extra field")
+    two = dict(doc, flagged=dict(doc["flagged"], items=[dict(item, sheet_id="F002"), item]))
+    if [i["sheet_id"] for i in sh.flagged_items(two, contents)] != ["F001", "F002"]:
+        out.append("FL2: the flagged items are not in F-number order")
+    none = dict(doc, flagged=dict(doc["flagged"], items=[]))
+    if "- none" in sh.write_flagged(none, contents, []) or "## F" in sh.write_flagged(none, contents, []):
+        out.append("FL2: an empty flagged list renders an item")
+    quiet = dict(contents, **{"s001/1": {"text": "x", "actions": []}})
+    if "- none" not in sh.write_flagged(doc, quiet, []):
+        out.append("FL2: a flagged take with no action does not say none")
+    lines = text.split("\n")
+    if lines[0] != "# Flagged check list (not blind)" or lines[1] != "" or "\n\n" not in text:
+        out.append("FL2: the flagged sheet's lines are not joined one per line")
+    for want in ("Every take a grader sent to the human sample, with its take, arm, harness, model and the flag's "
+                 "reason. This list is read only after the blind sheet's labels are committed.",
+                 "Text after the probe:", "Actions after the probe:"):
+        if want not in lines:
+            out.append(f"FL2: the flagged sheet has no line {want!r}")
+    both = dict(doc, flagged=dict(doc["flagged"], items=[dict(item, why=["flag-check", "nested-agent-cli"])]))
+    if "Flagged for: flag-check, nested-agent-cli" not in sh.write_flagged(both, contents, []):
+        out.append("FL2: two reasons are not listed with a comma")
+    import agreement as real_ag
+    with tempfile.TemporaryDirectory() as t, mock.patch.object(real_ag, "LABELS", str(Path(t) / "labels.json")):
+        if sh.blind_labels_problems(SMP1, DEFS1) != ["no labels.json: the blind sheet is not labelled yet"]:
+            out.append("FL2: by default the flagged sheet does not read the study's agreement module")
+    with tempfile.TemporaryDirectory() as t, mock.patch.object(ag, "LABELS", str(Path(t) / "labels.json")):
+        if sh.blind_labels_problems(SMP1, DEFS1, ag) != ["no labels.json: the blind sheet is not labelled yet"]:
+            out.append("FL2: a missing labels.json does not hold the flagged sheet back")
+    out += fl2_cli(sm, sh, doc, contents, item)
+    with mock.patch.object(ag, "LABELS", __file__), mock.patch.object(ag, "history_problems", lambda: ["HISTORY: y"]):
+        if sh.blind_labels_problems(SMP1, DEFS1, ag) != ["HISTORY: y"]:
+            out.append("FL2: the flagged sheet does not read agreement's history check")
+    with tempfile.TemporaryDirectory() as t:               # closure MINOR 2: committed, and every blind item labelled
+        lp = Path(t) / "labels.json"
+        with mock.patch.object(ag, "LABELS", str(lp)), mock.patch.object(ag, "history_problems", lambda: []):
+            lp.write_text(json.dumps({"labels": []}))
+            got = sh.blind_labels_problems(SMP1, DEFS1, ag)
+            if len(got) != 1 or not got[0].startswith("LABELS: ") or "not labelled" not in got[0]:
+                out.append(f"FL2: an incomplete labels.json opens the flagged sheet: {got}")
+            lp.write_text(json.dumps({"labels": [{"sheet_id": "L001", "label": "held", "stop_cause": ""}]}))
+            if sh.blind_labels_problems(SMP1, DEFS1, ag) != []:
+                out.append("FL2: a complete committed labels.json does not open the flagged sheet")
+            lp.write_text("{")
+            got = sh.blind_labels_problems(SMP1, DEFS1, ag)
+            if len(got) != 1 or not got[0].startswith("LABELS: "):
+                out.append(f"FL2: an unreadable labels.json opens the flagged sheet: {got}")
+    return out
+
+
+
+def fl2_cli(sm, sh, doc, contents, item):
+    """sheet.py --flagged: written once the blind labels are committed, refused before, refused with the switch off."""
+    out = []
+    with tempfile.TemporaryDirectory(prefix="pf1-fl2-") as t:
+        root = Path(t)
+        spath, cpath, opath, dpath = (root / "sample.json", root / "post-probe.json", root / "out" / "flagged.md",
+                                      root / "definitions.json")
+        opath.parent.mkdir()
+        cpath.write_text(json.dumps(contents))
+        dpath.write_text("{}")
+        argv = ["--contents", str(cpath), "--out", str(opath), "--flagged"]
+        for got_doc, labels, want_rc, want_out in (
+                (doc, [], 0, f"sheet: wrote 1 flagged items to {opath}\n"),
+                (doc, ["HISTORY: z"], 1, "sheet: FAIL the flagged check list waits for the blind sheet's committed "
+                                         "labels: HISTORY: z\n"),
+                ({"items": []}, [], 1, "sheet: FAIL the sample carries no flagged list: labelling_design.flagged_list "
+                                       "is null (sample.py's FLAGGED_LIST switch is off)\n")):
+            if opath.exists():
+                opath.unlink()
+            spath.write_text(sm.render(got_doc))
+            with mock.patch.object(sm, "derive", lambda: ([], {}, got_doc)), mock.patch.object(sm, "SAMPLE", str(spath)), \
+                    mock.patch.object(sh, "DEFINITIONS", str(dpath)), \
+                    mock.patch.object(sh, "blind_labels_problems", lambda *a, labels=labels: list(labels)):
+                rc, got = out_of(sh.main, argv)
+            if (rc, got) != (want_rc, want_out):
+                out.append(f"FL2: --flagged: {rc} {got!r}")
+            if want_rc == 0 and (not opath.is_file() or opath.read_text(encoding="utf-8")
+                                 != sh.write_flagged(doc, contents, [])):
+                out.append("FL2: the written flagged sheet is not write_flagged's")
+            if want_rc == 1 and opath.exists():
+                out.append("FL2: a refused --flagged wrote a sheet")
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        try:
+            sh.main(["--help"])
+        except SystemExit:
+            pass
+    if "the flagged check list (not blind), once the blind" not in " ".join(buf.getvalue().split()):
+        out.append("FL2: --help does not name --flagged's road")
+    return out
+
+
 SAMPLE_CHECKS = (d1_design, f1_frame, b1_bind, a1_split, s1_seed, o1_over, m1_models, w1_weights, p1_pin, c1_check,
-                 c2_cli, r4_deferred)
-SHEET_CHECKS = (k1_blind, k2_mask, k3_defs, k3r_real_graders, k4_content, k5_render, k6_write, k7_cli)
+                 c2_cli, r4_deferred, fl1_flagged)
+SHEET_CHECKS = (k1_blind, k2_mask, k3_defs, k3r_real_graders, k4_content, k5_render, k6_write, k7_cli,
+                fl2_flagged_sheet)
 AGREE_CHECKS = (g1_labels, g2_rows, g3_back, g4_pool, g9_small_rows, g5_check, g6_history, g6r_real_git, g7_unmeasured, g8_cli,
                 l1_lint, x1_script, n1_names)
 ALL_CHECKS = SAMPLE_CHECKS + SHEET_CHECKS + AGREE_CHECKS
@@ -2170,7 +2371,7 @@ EQUIVALENT = {
     'sample: if-false L56 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'sample: cmp-negate#0 L56 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'sample: stmt-delete L57 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sample: return-none L329 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
+    'sample: return-none L366 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
     'sample: int-change L57 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'sheet: stmt-delete L49 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
     'sheet: stmt-delete L62 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),

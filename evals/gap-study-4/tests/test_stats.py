@@ -52,7 +52,8 @@ def rec(**kw):
     """One synthetic graded take record; keyword arguments override the defaults."""
     r = {"arm": "A", "task": "t1", "half": "trap", "model": "m1", "agent": agent(),
          "wording": "w1", "repeat": 1, "pressure": None, "route": "graded", "cell_state": None,
-         "label": "right-move", "views": dict(VIEWS_RIGHT), "agent_events": [], "ruled": False}
+         "label": "right-move", "views": dict(VIEWS_RIGHT), "agent_events": [], "ruled": False,
+         "human_sample": False, "human_why": []}
     r.update(kw)
     return r
 
@@ -145,7 +146,9 @@ class TheModuleIsRound4s(unittest.TestCase):
         self.assertEqual(stats.HALVES, ("trap", "normal"))
         self.assertEqual(stats.TAKE_FIELDS, ("arm", "task", "half", "model", "agent", "wording", "repeat",
                                              "pressure", "route", "cell_state", "label", "views", "agent_events",
-                                             "ruled"))   # the last two: pre-freeze review 1, MAJOR 5 and 8
+                                             "ruled", "human_sample", "human_why"))
+        # agent_events and ruled: pre-freeze review 1, MAJOR 5 and 8 (lane pf1-l2a); human_sample and human_why:
+        # MAJOR 6 (lane pf1-l2b), the flag, appended after them at the L6a merge
         self.assertEqual(stats.RESULTS_DIR, HERE / "records")
         self.assertTrue(issubclass(stats.StatsError, Exception))
 

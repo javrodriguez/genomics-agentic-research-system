@@ -309,6 +309,79 @@ def write_sheet(doc, contents, frame, design, defs, grader_labels) -> str:
     return text
 
 
+# THE FLAGGED CHECK LIST (pre-freeze review 1, MAJOR 6; lane pf1-l2b, review findings 1 and 2). With sample.py's
+# FLAGGED_LIST on, sample.json carries `flagged`: every take its grader flagged for the human sample, drawn whole (a cap
+# draws that many). This sheet is that list, NOT blind: each item names its take, arm, harness, model, task and the
+# flag's why, beside the take's text and actions after the probe as written. A take may sit in both lists, so this
+# sheet would unblind its blind item: it is refused until labels.json, the blind sheet's labels, is committed once
+# and on disk as committed (agreement.history_problems clean), the order the draft registers (labelling_rules.order).
+# With the switch off, sample.json carries no `flagged` and this sheet is refused; the blind road above is unchanged.
+FLAGGED_FIELDS = ("sheet_id", "take", "arm", "harness", "model", "task", "why", "text", "actions")
+
+
+def flagged_items(doc: dict, contents: dict) -> list:
+    """The flagged check list's items, in F-number order; refused when the sample carries no flagged list."""
+    fl = doc.get("flagged")
+    if not isinstance(fl, dict) or not isinstance(fl.get("items"), list):
+        raise SheetError("the sample carries no flagged list: labelling_design.flagged_list is null (sample.py's "
+                         "FLAGGED_LIST switch is off)")
+    items = []
+    for it in sorted(fl["items"], key=lambda i: i["sheet_id"]):
+        if it["take"] not in contents:
+            raise SheetError(f"{it['sheet_id']}: no post-probe content for its take")
+        c = validate_content(contents[it["take"]], it["sheet_id"])
+        st = it["stratum"]
+        items.append(dict(sheet_id=it["sheet_id"], take=it["take"], arm=st["arm"], harness=st["harness"],
+                          model=st["model"], task=st["task"], why=list(it["why"]), text=c["text"],
+                          actions=list(c["actions"])))
+    return items
+
+
+def render_flagged(items: list, fl: dict) -> str:
+    out = ["# Flagged check list (not blind)", "",
+           "Every take a grader sent to the human sample, with its take, arm, harness, model and the flag's reason. "
+           "This list is read only after the blind sheet's labels are committed.", "",
+           f"Flagged takes: {fl['flagged']}; listed here: {fl['listed']}; beyond the cap: {fl['beyond_cap']}.", ""]
+    for it in items:
+        if set(it) != set(FLAGGED_FIELDS):
+            raise SheetError(f"a flagged item holds exactly {FLAGGED_FIELDS}")
+        text_fence, act_fence = fence(it["text"]), fence(*it["actions"])
+        out += [f"## {it['sheet_id']}: take {it['take']} (arm {it['arm']}, `{it['harness']}`, `{it['model']}`, task "
+                f"{it['task']})", "", f"Flagged for: {', '.join(it['why'])}", "", "Text after the probe:", "",
+                text_fence, it["text"], text_fence, "", "Actions after the probe:"]
+        out += (["", act_fence] + it["actions"] + [act_fence]) if it["actions"] else ["- none"]
+        out += ["", "Check: ", ""]
+    return "\n".join(out)
+
+
+def write_flagged(doc: dict, contents: dict, labels_problems) -> str:
+    """The flagged check list, or SheetError: refused while the blind labels are not committed (labels_problems, the
+    lines agreement.history_problems gives, or a missing labels.json), or when the sample carries no flagged list."""
+    items = flagged_items(doc, contents)
+    if labels_problems:
+        raise SheetError("the flagged check list waits for the blind sheet's committed labels: "
+                         + "; ".join(labels_problems))
+    return render_flagged(items, doc["flagged"])
+
+
+def blind_labels_problems(smp: dict, defs: dict, agreement=None) -> list:
+    """Why the blind labels are not yet committed as read (agreement.history_problems) or not complete for the sample
+    `smp` (agreement.validate_labels: every blind item labelled, each label defined; closure MINOR 2), or []."""
+    if agreement is None:
+        import agreement
+    if not os.path.isfile(agreement.LABELS):
+        return ["no labels.json: the blind sheet is not labelled yet"]
+    bad = agreement.history_problems()
+    if bad:
+        return bad
+    try:
+        with open(agreement.LABELS, encoding="utf-8") as fh:
+            agreement.validate_labels(json.load(fh), smp, defs)
+    except (ValueError, KeyError, TypeError, agreement.AgreementError) as err:
+        return [f"LABELS: {err}"]
+    return []
+
+
 def inside_study(path) -> bool:
     """Is path the study folder or under it, on real paths compared without case (review W11D-R1-4: this Mac's disk
     ignores case, so a path spelled in another case is the same folder)?"""
@@ -321,6 +394,8 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--contents", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--flagged", action="store_true", help="the flagged check list (not blind), once the blind "
+                    "labels are committed; refused while labelling_design.flagged_list is null")
     args = ap.parse_args(argv)
     if inside_study(args.out):
         print("sheet: FAIL --out is inside the study folder; the sheet holds agent text (Q-w11d-3)")
@@ -338,6 +413,12 @@ def main(argv=None) -> int:
             contents = json.load(fh)
         with open(DEFINITIONS, encoding="utf-8") as fh:
             defs = json.load(fh)
+        if args.flagged:
+            text = write_flagged(doc, contents, blind_labels_problems(doc, defs))
+            with open(args.out, "w", encoding="utf-8") as fh:
+                fh.write(text)
+            print(f"sheet: wrote {len(doc['flagged']['items'])} flagged items to {args.out}")
+            return 0
         tasks = {i["stratum"]["task"] for i in doc["items"]}
         text = write_sheet(doc, contents, frame, design, defs, {t: grader_labels(t) for t in tasks})
     except (SheetError, sample.SampleError, stats.StatsError, OSError, ValueError) as err:

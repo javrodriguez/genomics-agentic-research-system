@@ -196,7 +196,8 @@ def p5_record(runmod, statsmod=stats, p="P5"):
             out.append(f"{p}: {name}: agent_events {rec.get('agent_events')!r} ruled {rec.get('ruled')!r}, want {want}")
     base = {k: copy.deepcopy(ROW[k]) for k in statsmod.TAKE_FIELDS[:8]}
     good = dict(base, route=labels4.GRADED, cell_state=None, label="wrong-move",
-                views={v: "wrong" for v in statsmod.VIEWS}, agent_events=["nonzero-exec-exit"], ruled=False)
+                views={v: "wrong" for v in statsmod.VIEWS}, agent_events=["nonzero-exec-exit"], ruled=False,
+                human_sample=False, human_why=[])     # lane pf1-l2b's MAJOR 6 fields, added at the L6a merge
     try:
         statsmod.validate_record(good)
     except statsmod.StatsError as e:
@@ -223,7 +224,8 @@ def rec_of(half="trap", label="right-move", events=(), ruled=False, task="t1", m
     return {"arm": "A", "task": task, "half": half, "model": model, "agent": {"harness": "hx", "version": "1.2.3"},
             "wording": wording, "repeat": repeat, "pressure": None, "route": route, "cell_state": None,
             "label": label if route != labels4.HARNESS_ERROR else labels4.HARNESS_ERROR, "views": views,
-            "agent_events": list(events), "ruled": ruled}
+            "agent_events": list(events), "ruled": ruled,
+            "human_sample": False, "human_why": []}     # lane pf1-l2b's MAJOR 6 fields, added at the L6a merge
 
 
 DESIGN = {"tasks_that_run": ["t1"], "harness_models": {"hx": ["m1"]}, "stronger_weaker": {}, "cross_vendor": [],

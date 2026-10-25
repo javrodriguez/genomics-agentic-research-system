@@ -91,7 +91,34 @@ PATTERNS: list[tuple[str, str, str]] = [
     ("free", r"\bfree\b",
      "'free' about a local model hides the machine time and the electricity"),
     ("data-never-leaves", r"data never leaves", "a claim about where a lab's data goes is not the run's to make"),
+    # PRE-FREEZE REVIEW 1, m14 (lane pf1-l2b, Sat 24 Oct 2026): three comparatives that passed the guard. A sentence
+    # comparing models stays Javier's (stats.py: "stats prints numbers and family labels only"), so the study's own
+    # words never say one model outperforms, beats or is stronger than another. FAMILY_LABEL_EXCEPTIONS below.
+    ("outperform", r"outperform", "a sentence comparing models is Javier's to write, never the study's"),
+    ("stronger", r"\bstronger\b", "a sentence comparing models is Javier's to write, never the study's"),
+    ("beats", r"\bbeats\b", "a sentence comparing models is Javier's to write, never the study's"),
 ]
+
+# THE FAMILY-LABEL EXCEPTION (m14). A comparative inside one of these exact strings is a registered name, not a claim:
+# the four family labels stats prints (stats.FAMILIES, which check_families holds every comparison row to), the
+# contrast family's short name in stats' own prose, and the design's registered power-grid field as a JSON key. A
+# comparative anywhere else on the line is still a finding. Read from stats, never copied.
+COMPARATIVES = ("outperform", "stronger", "beats")
+
+
+def family_label_exceptions() -> tuple:
+    import stats  # noqa: E402  (this study's, first on sys.path)
+    return tuple(stats.FAMILIES) + (stats.CONTRAST_NAME, '"stronger":')
+
+
+def inside_label(line: str, start: int, end: int, labels) -> bool:
+    for label in labels:
+        i = line.find(label)
+        while i != -1:
+            if i <= start and end <= i + len(label):
+                return True
+            i = line.find(label, i + 1)
+    return False
 
 
 def load_allowlist() -> list[dict]:
@@ -116,9 +143,12 @@ def excused(entries: list[dict], rel: str, pattern: str, line_text: str) -> dict
 
 def scan_text(text: str, rel: str, entries: list[dict]) -> list[dict]:
     findings = []
+    labels = family_label_exceptions()
     for lineno, line in enumerate(text.splitlines(), start=1):
         for name, rx, why in PATTERNS:
             for m in re.finditer(rx, line, flags=re.IGNORECASE):
+                if name in COMPARATIVES and inside_label(line, m.start(), m.end(), labels):
+                    continue
                 if excused(entries, rel, name, line):
                     continue
                 findings.append({"file": rel, "line": lineno, "pattern": name,
@@ -314,6 +344,37 @@ def commit_bodies(since: str, at: str = DEFAULT_AT) -> list[tuple[str, str]]:
     return bodies
 
 
+def section_main(page: Path) -> int:
+    """Lane review 3 (pf1-l2b): the public page's round 4 section, read as lint_pooling --section-of reads it (only this
+    round's marked block; the earlier rounds' sections are theirs), against every pattern here, the comparatives
+    included. An excusal names the page's repository path and the exact line, as everywhere."""
+    text = page.read_text(errors="replace") if page.is_file() else ""
+    if study.SUMMARY_START not in text or study.SUMMARY_END not in text:
+        print(f"no section yet: {page} carries no {study.SUMMARY_START} block, so this scan has read nothing and "
+              f"claims nothing. Not a pass.")
+        return 0
+    start = text.index(study.SUMMARY_START)
+    end = text.index(study.SUMMARY_END, start)
+    before = text[:start].count("\n")
+    section = text[start:end]
+    try:
+        rel = str(page.resolve().relative_to(REPO))
+    except ValueError:
+        rel = str(page)
+    found = scan_text(section, rel, load_allowlist())
+    for f in found:
+        f["line"] += before
+    if not found:
+        print(f"clean — this round's section of {page} scanned ({section.count(chr(10))} line(s))")
+        return 0
+    print(f"{len(found)} finding(s) in this round's section of {page}:\n")
+    for f in found:
+        print(f"  {f['file']}:{f['line']}  [{f['pattern']}] {f['matched']!r}")
+        print(f"      {f['text'][:120]}")
+        print(f"      why banned: {f['why']}")
+    return 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Refuse the words this study may not publish.")
     ap.add_argument("paths", nargs="*")
@@ -323,7 +384,13 @@ def main() -> int:
     ap.add_argument("--include-code", action="store_true",
                     help="also scan .py sources (off by default; see NEVER_SCANNED)")
     ap.add_argument("--list-patterns", action="store_true")
+    ap.add_argument("--section-of", type=Path, metavar="FILE",
+                    help="scan only this round's marked section of FILE (study.SUMMARY_START..SUMMARY_END), as "
+                         "lint_pooling --section-of does; says so when the section does not exist yet")
     args = ap.parse_args()
+
+    if args.section_of is not None:
+        return section_main(args.section_of)
 
     if args.list_patterns:
         for name, rx, why in PATTERNS:

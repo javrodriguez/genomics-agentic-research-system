@@ -21,7 +21,8 @@ THE TAKE RECORD (closed; an unknown, missing or mistyped key is refused with Sta
      "views": {"failures": "right" | "wrong", "excluded": "right" | "wrong" | "out",
                "raw": "right" | "wrong" | "stop"}  (None exactly when route is harness-error),
      "agent_events": the agent event rows among a graded take's winning rows, in AGENT_EVENTS order ([] otherwise),
-     "ruled": bool, true when a committed human ruling touched the take's slot}
+     "ruled": bool, true when a committed human ruling touched the take's slot,
+     "human_sample": bool, "human_why": [HUMAN_WHY id, ...]}   MAJOR 6 (lane pf1-l2b): the grader's flag and why
 
 Pre-freeze review 1 (lane pf1-l2a, the Lane-orchestrator's approval of the fold plan, Sat 24 Oct 2026, under
 Javier's standing delegation): MAJOR 5 routes a take graded when the agent's own act ended its CLI with a non-zero
@@ -141,10 +142,22 @@ class StatsError(Exception):
 
 
 TAKE_FIELDS = ("arm", "task", "half", "model", "agent", "wording", "repeat", "pressure", "route", "cell_state",
-               "label", "views", "agent_events", "ruled")
+               "label", "views", "agent_events", "ruled", "human_sample", "human_why")
 # MAJOR 5 (pre-freeze review 1): routing.json's agent_event_rows, in its order; tests/test_pf1_routing_rulings.py
 # binds the two (stats reads no routing table).
 AGENT_EVENTS = ("nonzero-exec-exit", "quiescence-cap-reached")
+# Pre-freeze review 1, MAJOR 6 (lane pf1-l2b, Sat 24 Oct 2026, under the lane orchestrator's approval of the fold
+# plan): a take its grader sent to the human sample carries that flag into its record, appended after the twelve
+# base fields (and, at the L6a merge, after lane pf1-l2a's agent_events and ruled) so the first eight (the
+# identity drive.LAUNCH_FIELDS and takes read as TAKE_FIELDS[:8]) never move.
+# human_sample is True exactly when the grader's own result says so; human_why names why, as a sorted list of
+# distinct ids from HUMAN_WHY (the grader's human_check, a nested agent CLI, the two readers disagreeing, or the
+# grader's own flag), empty exactly when human_sample is False. A record with no grade (aborted, harness-error)
+# carries False and []. The words the grader wrote about the flag stay in its grade, never in a record.
+HUMAN_CHECKS = ("ask-check", "cause-check", "count-check", "fix-check", "flag-check")
+HUMAN_WHY = HUMAN_CHECKS + ("nested-agent-cli", "readers-disagree") + tuple(
+    f"{g}-flag" for g in ("confounded_design", "new_tasks", "number_fidelity", "plan_gate", "precondition_refusal",
+                          "scope_read", "template_adherence"))
 AGENT_FIELDS = ("harness", "version")
 HALVES = ("trap", "normal")                 # variants.HALVES
 VIEWS = ("failures", "excluded", "raw")
@@ -223,6 +236,7 @@ def validate_record(r) -> dict:
         raise StatsError(f"cell_state {r['cell_state']!r} is not None or one of {labels4.CELL_STATES}")
     if r["label"] in UNUSED_LABELS:
         raise StatsError(f"{r['label']} is named unused in round 4's pre-registration")
+    _check_human(r)
     if route == labels4.HARNESS_ERROR:
         if r["label"] != labels4.HARNESS_ERROR or r["views"] is not None:
             raise StatsError("a harness-error record carries the label harness-error and views None")
@@ -257,6 +271,20 @@ def _check_route_notes(r: dict) -> None:
         raise StatsError(f"an agent event routes a take graded; a {r['route']} record carries none: {ev!r}")
     if not isinstance(r["ruled"], bool):
         raise StatsError(f"ruled must be a bool: {r['ruled']!r}")
+
+
+def _check_human(r: dict) -> None:
+    """MAJOR 6 (lane pf1-l2b): human_sample a bool; human_why the sorted distinct HUMAN_WHY ids, empty exactly when
+    the flag is False; a record with no grade (aborted, harness-error) is never flagged."""
+    flag, why = r["human_sample"], r["human_why"]
+    if type(flag) is not bool:
+        raise StatsError(f"human_sample must be a bool: {flag!r}")
+    if not isinstance(why, list) or any(w not in HUMAN_WHY for w in why) or why != sorted(set(why)):
+        raise StatsError(f"human_why must be a sorted list of distinct ids from {HUMAN_WHY}: {why!r}")
+    if flag != bool(why):
+        raise StatsError(f"human_why names a reason exactly when human_sample is True: {flag!r}, {why!r}")
+    if flag and r["route"] != labels4.GRADED:
+        raise StatsError(f"only a graded take is sent to the human sample by its grader, not a {r['route']} record")
 
 
 def level(r: dict):
@@ -751,6 +779,13 @@ FAMILIES = ("within-harness model comparison",
             "within-harness stronger against weaker, over the tasks that run",
             "agent-system comparison",
             "descriptive, no test")
+# The contrast family's short name in this module's prose (pre-freeze review 1, m14; lane pf1-l2b): a registered name,
+# which lint_language excuses inside its exact spelling only, as it excuses the four labels above.
+CONTRAST_NAME = "stronger-against-weaker"
+# m14: table 5 splits by family so the agent-system rows (between harnesses) never sit under a model-comparison
+# heading: the two within-harness families under TABLE_HEADINGS["comparisons"], the cross-harness ones under
+# TABLE_HEADINGS["agent_system"].
+WITHIN_HARNESS_FAMILIES = FAMILIES[:2]
 
 
 def fisher(x1: int, n1: int, x2: int, n2: int) -> Fraction:
@@ -1022,7 +1057,8 @@ TABLE_HEADINGS = {
     "chance_of_holding": "### The chance of holding at a given per-try accuracy",
     "paired": "### Paired results per wording (descriptive)",
     "per_wording": "### Per-wording sensitivity",
-    "comparisons": "### Model comparisons, the pre-registered families",
+    "comparisons": "### Model comparisons within each harness, the pre-registered families",
+    "agent_system": "### Agent-system comparisons between harnesses, the pre-registered families",
     "across_tasks": "### Across tasks: the paired difference, resampled by task, wording and repeat",
     "power": "### Power for the clustered design (simulated)",
 }
@@ -1128,30 +1164,43 @@ def _units_txt(c) -> str:
     return NO_TAKES if not c["n"] else f"{c['right']} of {c['n']}"
 
 
+COMPARISON_HEADER = ("| Family | Harness | Model | Harness | Model | Task | Units right (first) | Units right (second) "
+                     "| Incomplete units | Fisher p | Holm-adjusted p | At or under alpha |",
+                     "|---|---|---|---|---|---|---|---|---|---|---|---|")
+
+
 def render_comparisons(rows, design: dict) -> str:
-    out = [TABLE_HEADINGS["comparisons"], ""]
+    """Table 5 in two parts (m14): the within-harness families, then the agent-system rows between harnesses."""
     if rows == NO_TAKES:
-        return "\n".join(out + [NO_TAKES, ""])
+        return "\n".join([TABLE_HEADINGS["comparisons"], "", NO_TAKES, "", TABLE_HEADINGS["agent_system"], "",
+                          NO_TAKES, ""])
+    out = [TABLE_HEADINGS["comparisons"], ""]
     out += [f"The test unit is one try's trap and normal record, right when both halves are right under the strict "
             f"view, compared by the two-sided Fisher exact test; per-task families are Holm-adjusted over the "
             f"{_say(family_size(design))} tasks that run, and each stronger-against-weaker contrast over the "
             f"{_say(len(design['stronger_weaker']))} stronger-against-weaker contrasts, in exact arithmetic, at "
             f"alpha {design['alpha']}. "
-            f"Each row names its family; a descriptive row carries no test.", "",
-            "| Family | Harness | Model | Harness | Model | Task | Units right (first) | Units right (second) "
-            "| Incomplete units | Fisher p | Holm-adjusted p | At or under alpha |",
-            "|---|---|---|---|---|---|---|---|---|---|---|---|"]
-    for r in rows:
-        task = "the tasks that run" if r["task"] is None else f"`{r['task']}`"
-        inc = f"{_side_incomplete(r['a'])} and {_side_incomplete(r['b'])}"
-        if "p" in r:
-            at = "" if r["at_alpha"] is None else ("yes" if r["at_alpha"] else "no")
-            tail = f"{r['p']} | {r['adjusted']} | {at}"
-        else:
-            tail = "no test | no test | no test"
-        out.append(f"| {r['family']} | `{r['harness_a']}` | `{r['model_a']}` | `{r['harness_b']}` | `{r['model_b']}` "
-                   f"| {task} | {_units_txt(r['a'])} | {_units_txt(r['b'])} | {inc} | {tail} |")
+            f"Each row names its family; a descriptive row carries no test.", "", *COMPARISON_HEADER]
+    out += [_comparison_line(r) for r in rows if r["family"] in WITHIN_HARNESS_FAMILIES]
+    out += ["", TABLE_HEADINGS["agent_system"], "",
+            "Between harnesses each row compares two agent systems, a model inside its own harness, never two models: "
+            "the first model of each harness's stronger-against-weaker pair against another's, tested per task and "
+            "Holm-adjusted over the tasks that run as above, and every other pair between harnesses descriptive, "
+            "with no test.", "", *COMPARISON_HEADER]
+    out += [_comparison_line(r) for r in rows if r["family"] not in WITHIN_HARNESS_FAMILIES]
     return "\n".join(out + [""])
+
+
+def _comparison_line(r) -> str:
+    task = "the tasks that run" if r["task"] is None else f"`{r['task']}`"
+    inc = f"{_side_incomplete(r['a'])} and {_side_incomplete(r['b'])}"
+    if "p" in r:
+        at = "" if r["at_alpha"] is None else ("yes" if r["at_alpha"] else "no")
+        tail = f"{r['p']} | {r['adjusted']} | {at}"
+    else:
+        tail = "no test | no test | no test"
+    return (f"| {r['family']} | `{r['harness_a']}` | `{r['model_a']}` | `{r['harness_b']}` | `{r['model_b']}` "
+            f"| {task} | {_units_txt(r['a'])} | {_units_txt(r['b'])} | {inc} | {tail} |")
 
 
 def render_across(rows) -> str:
@@ -1180,8 +1229,9 @@ def render_power(rows, design: dict) -> str:
     out += [f"Simulated pairs of models in one harness, {_say(family_size(design))} tasks, {_say(pw['wordings'])} "
             f"wordings and {_say(pw['repeats'])} repeats per task, unit accuracies sharing a task and a wording "
             f"offset; each simulation applies table 5's tests and table 6's bootstrap at alpha {design['alpha']}.", "",
-            "| Stronger | Weaker | Task spread | Wording spread | Some per-task test after Holm | Contrast over the "
-            "tasks that run | Bootstrap excludes zero |", "|---|---|---|---|---|---|---|"]
+            "| First model of the stronger-against-weaker pair | Second model | Task spread | Wording spread "
+            "| Some per-task test after Holm | Contrast over the tasks that run | Bootstrap excludes zero |",
+            "|---|---|---|---|---|---|---|"]
     for r in rows:
         pt = r["point"]
         k = lambda v: f"{v} of {r['sims']} simulations"
@@ -1202,7 +1252,7 @@ def render_md(derived: dict) -> str:
     out.append(render_chance(t["chance_of_holding"]))
     out.append(_or_no_takes(t["paired"], lambda: render_paired(t["paired"], d), "paired"))
     out.append(render_sensitivity(t["per_wording"]))
-    out.append(_or_no_takes(t["comparisons"], lambda: render_comparisons(t["comparisons"], d), "comparisons"))
+    out.append(render_comparisons(t["comparisons"], d))                       # m14: both parts, no takes or not
     out.append(render_across(t["across_tasks"]))
     out.append(_or_no_takes(t["power"], lambda: render_power(t["power"], d), "power"))
     return "\n".join(out)
@@ -1214,6 +1264,37 @@ def _or_no_takes(rows, fn, table) -> str:
 
 def render_block(derived: dict) -> str:
     return STATS_START + "\n" + render_md(derived) + STATS_END
+
+
+# ---- the deferred arm's registered analysis (pre-freeze review 1, MAJOR 10; lane pf1-l2b, Sat 24 Oct 2026) --------
+# deferred_arms.G.analysis (OD105, as registered): the original report adjusts the three per-harness contrasts with Holm
+# at m = 3, arm G's contrast untested and still counted in m, and those values stand as published. So the original
+# report's tables are derived from the records of the arms that are not deferred, under the full design (whose
+# stronger_weaker still lists arm G's pair, so m stays 3); arm G's records, which exist only after Javier's committed
+# go, reach only result.py's follow-up section, never these tables.
+
+def original_records(records: list, deferred_arms) -> list:
+    """The records the original report is derived from: every record whose arm is not a deferred arm."""
+    held = set(deferred_arms)
+    return [r for r in records if r["arm"] not in held]
+
+
+def read_deferred_arms(prereg_path) -> set:
+    """The deferred arms of the frozen pre-registration (its `deferred_arms` keys); none when it carries none. An
+    unreadable file, or a `deferred_arms` that is not a map of arm to deferral, is refused, as prereg.deferred_arms
+    refuses it (lane review 10), never read as no deferral."""
+    try:
+        pre = json.loads(Path(prereg_path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        raise StatsError(f"the pre-registration cannot be read for its deferred arms: {e}") from e
+    if not isinstance(pre, dict):
+        raise StatsError("the pre-registration is not an object")
+    table = pre.get("deferred_arms", {})
+    table = {} if table is None else table
+    if not isinstance(table, dict) or not all(isinstance(e, dict) and e.get("status") == "deferred"
+                                              for e in table.values()):
+        raise StatsError("deferred_arms maps an arm to its deferral")
+    return set(table)
 
 
 # ---- the check -------------------------------------------------------------------------------------------------
@@ -1257,7 +1338,8 @@ def check(results_dir=RESULTS_DIR, prereg_path=PREREG, page_path=RESULT_PAGE):
     if problem:
         return 1, [f"stats --check: FAIL no design: {problem}"]
     try:
-        first, second = derive(records, design), derive(records, design)
+        original = original_records(records, read_deferred_arms(prereg_path))  # MAJOR 10: the original report's
+        first, second = derive(original, design), derive(original, design)
     except StatsError as e:
         return 1, [f"stats --check: FAIL record or design: {e}"]
     block = render_block(first)

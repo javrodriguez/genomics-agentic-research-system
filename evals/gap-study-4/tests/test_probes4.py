@@ -119,17 +119,19 @@ TRUE_RESIDUAL: dict = {}
 ROWS: list = []
 PROBLEMS: list = []
 TEXT = ""
+VENDOR: tuple = ([], [])
 
 
 def setUpModule():
-    global probes, V, ROWS, PROBLEMS, TEXT
+    global probes, V, ROWS, PROBLEMS, TEXT, VENDOR
     import probes4
     import variants
     probes, V = probes4, variants
     TRUE_NEAR.update(cy=probes.ConditionalYes.near, ta=probes.TemplateAdherence.near)
     TRUE_RESIDUAL.update(ta=probes.TemplateAdherence.residual)
     ROWS, PROBLEMS = probes.build()
-    TEXT = probes.render(ROWS, PROBLEMS)
+    VENDOR = probes.vendor_rows()          # pre-freeze review 1, m16 (lane pf1-l2b): the two vendor shapes, as the CLI prints them
+    TEXT = probes.render(ROWS, PROBLEMS, VENDOR)
 
 
 def tearDownModule():
@@ -807,7 +809,7 @@ class WhatTheTableHolds(unittest.TestCase):
 class Determinism(unittest.TestCase):
     def test_two_builds_render_identical_bytes(self):
         rows, problems = probes.build()
-        self.assertEqual(probes.render(rows, problems).encode(), TEXT.encode())
+        self.assertEqual(probes.render(rows, problems, probes.vendor_rows()).encode(), TEXT.encode())
 
     def test_two_runs_print_identical_bytes(self):
         a, b = run_cli(), run_cli()
