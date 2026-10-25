@@ -331,9 +331,9 @@ def flagged_items(doc: dict, contents: dict) -> list:
             raise SheetError(f"{it['sheet_id']}: no post-probe content for its take")
         c = validate_content(contents[it["take"]], it["sheet_id"])
         st = it["stratum"]
-        items.append({"sheet_id": it["sheet_id"], "take": it["take"], "arm": st["arm"], "harness": st["harness"],
-                      "model": st["model"], "task": st["task"], "why": list(it["why"]), "text": c["text"],
-                      "actions": list(c["actions"])})
+        items.append(dict(sheet_id=it["sheet_id"], take=it["take"], arm=st["arm"], harness=st["harness"],
+                          model=st["model"], task=st["task"], why=list(it["why"]), text=c["text"],
+                          actions=list(c["actions"])))
     return items
 
 
@@ -345,11 +345,11 @@ def render_flagged(items: list, fl: dict) -> str:
     for it in items:
         if set(it) != set(FLAGGED_FIELDS):
             raise SheetError(f"a flagged item holds exactly {FLAGGED_FIELDS}")
-        ft, fa = fence(it["text"]), fence(*it["actions"])
+        text_fence, act_fence = fence(it["text"]), fence(*it["actions"])
         out += [f"## {it['sheet_id']}: take {it['take']} (arm {it['arm']}, `{it['harness']}`, `{it['model']}`, task "
-                f"{it['task']})", "", f"Flagged for: {', '.join(it['why'])}", "", "Text after the probe:", "", ft,
-                it["text"], ft, "", "Actions after the probe:"]
-        out += ["", fa, *it["actions"], fa] if it["actions"] else ["- none"]
+                f"{it['task']})", "", f"Flagged for: {', '.join(it['why'])}", "", "Text after the probe:", "",
+                text_fence, it["text"], text_fence, "", "Actions after the probe:"]
+        out += (["", act_fence] + it["actions"] + [act_fence]) if it["actions"] else ["- none"]
         out += ["", "Check: ", ""]
     return "\n".join(out)
 

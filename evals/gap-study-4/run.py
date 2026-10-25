@@ -377,10 +377,10 @@ def committed_evidence(row: dict, outcome: dict):
     if not folder.is_dir():
         return None
     rel = folder.parent.resolve().relative_to(REPO.resolve()).as_posix()     # lane review 11: as grade_committed reads
-    if takes._git_at(REPO, "status", "--porcelain", "--", rel):
-        raise ValueError(f"the stopped take's folder {rel} has uncommitted changes")
     if not takes._git_at(REPO, "ls-files", "--", rel):
         raise ValueError(f"the stopped take's folder {rel} is not committed")
+    if takes._git_at(REPO, "status", "--porcelain", "--", rel):
+        raise ValueError(f"the stopped take's folder {rel} has uncommitted changes")
     try:
         return endstate.Evidence.load(folder)
     except (endstate.EvidenceError, OSError, ValueError):

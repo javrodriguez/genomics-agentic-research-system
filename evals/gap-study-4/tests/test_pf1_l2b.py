@@ -150,7 +150,7 @@ class H2Why(unittest.TestCase):
                                         "graded_by": "/x/graders/scope_read.py"}), ["scope_read-flag"])
         self.assertEqual(run.human_why({"human_sample": True, "human_check": "count-check", "evidence": [nested]}),
                          ["count-check", "nested-agent-cli"])
-        self.assertEqual(run.human_why({"human_sample": "yes"}), [])
+        self.assertRaises(ValueError, run.human_why, {"human_sample": "yes"})          # lane review 9
 
     def test_the_fixed_words_are_the_graders_own(self):
         delegation = (HERE / "graders" / "delegation.py").read_text(encoding="utf-8")
@@ -507,7 +507,7 @@ class D1Dispatch(unittest.TestCase):
 
     def test_regrade_grades_through_dispatch(self):
         seen = []
-        with mock.patch.object(run, "dispatch", lambda *a: seen.append(a[1]) or {"label": "declined", "expected": "declined", "correct": True}):
+        with mock.patch.object(run, "dispatch", lambda *a, own=None: seen.append(a[1]) or {"label": "declined", "expected": "declined", "correct": True}):
             got, _ = run.regrade("scope_read", {}, {}, [], None)
         self.assertEqual(seen, ["scope_read"])
         self.assertEqual(got["views"], {v: "right" for v in stats.VIEWS})
@@ -761,4 +761,12 @@ class RV8To11Nits(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main(verbosity=1)
+    # every failing and erroring test named last, one line each, so a run's last lines say which (the athena log
+    # keeps a failing command's last 20 lines)
+    prog = unittest.main(verbosity=1, exit=False)
+    res = prog.result
+    for kind, pairs in (("FAILED", res.failures), ("ERRORED", res.errors)):
+        for case, _ in pairs:
+            print(f"test_pf1_l2b {kind} {case.id()}")
+    print(f"test_pf1_l2b: {res.testsRun} run, {len(res.failures)} failures, {len(res.errors)} errors")
+    sys.exit(0 if res.wasSuccessful() else 1)

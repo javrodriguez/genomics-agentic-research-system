@@ -547,6 +547,8 @@ def original_values_problems(rec: dict, path=None) -> list[str]:
     path = result.ORIGINAL_VALUES if path is None else Path(path)
     rel = path.resolve().relative_to(REPO.resolve()).as_posix()
     if not path.is_file():
+        if git("rev-parse", "--verify", "-q", "HEAD")[0] != 0:
+            return []                                        # no commit at all: nothing was ever published
         code, ever = git("log", "--format=%H", "--full-history", "-1", "--", rel)
         if code:
             return [f"{path.name}: its commit history cannot be read"]

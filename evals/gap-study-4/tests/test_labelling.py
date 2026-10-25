@@ -1964,12 +1964,71 @@ def fl2_flagged_sheet(sm, sh, ag):
     quiet = dict(contents, **{"s001/1": {"text": "x", "actions": []}})
     if "- none" not in sh.write_flagged(doc, quiet, []):
         out.append("FL2: a flagged take with no action does not say none")
+    lines = text.split("\n")
+    if lines[0] != "# Flagged check list (not blind)" or lines[1] != "" or "\n\n" not in text:
+        out.append("FL2: the flagged sheet's lines are not joined one per line")
+    for want in ("Every take a grader sent to the human sample, with its take, arm, harness, model and the flag's "
+                 "reason. This list is read only after the blind sheet's labels are committed.",
+                 "Text after the probe:", "Actions after the probe:"):
+        if want not in lines:
+            out.append(f"FL2: the flagged sheet has no line {want!r}")
+    both = dict(doc, flagged=dict(doc["flagged"], items=[dict(item, why=["flag-check", "nested-agent-cli"])]))
+    if "Flagged for: flag-check, nested-agent-cli" not in sh.write_flagged(both, contents, []):
+        out.append("FL2: two reasons are not listed with a comma")
+    import agreement as real_ag
+    with tempfile.TemporaryDirectory() as t, mock.patch.object(real_ag, "LABELS", str(Path(t) / "labels.json")):
+        if sh.blind_labels_problems() != ["no labels.json: the blind sheet is not labelled yet"]:
+            out.append("FL2: by default the flagged sheet does not read the study's agreement module")
     with tempfile.TemporaryDirectory() as t, mock.patch.object(ag, "LABELS", str(Path(t) / "labels.json")):
         if sh.blind_labels_problems(ag) != ["no labels.json: the blind sheet is not labelled yet"]:
             out.append("FL2: a missing labels.json does not hold the flagged sheet back")
+    out += fl2_cli(sm, sh, doc, contents, item)
     with mock.patch.object(ag, "LABELS", __file__), mock.patch.object(ag, "history_problems", lambda: ["HISTORY: y"]):
         if sh.blind_labels_problems(ag) != ["HISTORY: y"]:
             out.append("FL2: the flagged sheet does not read agreement's history check")
+    return out
+
+
+
+def fl2_cli(sm, sh, doc, contents, item):
+    """sheet.py --flagged: written once the blind labels are committed, refused before, refused with the switch off."""
+    out = []
+    with tempfile.TemporaryDirectory(prefix="pf1-fl2-") as t:
+        root = Path(t)
+        spath, cpath, opath, dpath = (root / "sample.json", root / "post-probe.json", root / "out" / "flagged.md",
+                                      root / "definitions.json")
+        opath.parent.mkdir()
+        cpath.write_text(json.dumps(contents))
+        dpath.write_text("{}")
+        argv = ["--contents", str(cpath), "--out", str(opath), "--flagged"]
+        for got_doc, labels, want_rc, want_out in (
+                (doc, [], 0, f"sheet: wrote 1 flagged items to {opath}\n"),
+                (doc, ["HISTORY: z"], 1, "sheet: FAIL the flagged check list waits for the blind sheet's committed "
+                                         "labels: HISTORY: z\n"),
+                ({"items": []}, [], 1, "sheet: FAIL the sample carries no flagged list: labelling_design.flagged_list "
+                                       "is null (sample.py's FLAGGED_LIST switch is off)\n")):
+            if opath.exists():
+                opath.unlink()
+            spath.write_text(sm.render(got_doc))
+            with mock.patch.object(sm, "derive", lambda: ([], {}, got_doc)), mock.patch.object(sm, "SAMPLE", str(spath)), \
+                    mock.patch.object(sh, "DEFINITIONS", str(dpath)), \
+                    mock.patch.object(sh, "blind_labels_problems", lambda labels=labels: list(labels)):
+                rc, got = out_of(sh.main, argv)
+            if (rc, got) != (want_rc, want_out):
+                out.append(f"FL2: --flagged: {rc} {got!r}")
+            if want_rc == 0 and (not opath.is_file() or opath.read_text(encoding="utf-8")
+                                 != sh.write_flagged(doc, contents, [])):
+                out.append("FL2: the written flagged sheet is not write_flagged's")
+            if want_rc == 1 and opath.exists():
+                out.append("FL2: a refused --flagged wrote a sheet")
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        try:
+            sh.main(["--help"])
+        except SystemExit:
+            pass
+    if "the flagged check list (not blind), once the blind" not in " ".join(buf.getvalue().split()):
+        out.append("FL2: --help does not name --flagged's road")
     return out
 
 

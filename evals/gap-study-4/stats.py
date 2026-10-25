@@ -1226,7 +1226,8 @@ def read_deferred_arms(prereg_path) -> set:
         raise StatsError(f"the pre-registration cannot be read for its deferred arms: {e}") from e
     if not isinstance(pre, dict):
         raise StatsError("the pre-registration is not an object")
-    table = pre.get("deferred_arms") or {}
+    table = pre.get("deferred_arms", {})
+    table = {} if table is None else table
     if not isinstance(table, dict) or not all(isinstance(e, dict) and e.get("status") == "deferred"
                                               for e in table.values()):
         raise StatsError("deferred_arms maps an arm to its deferral")
