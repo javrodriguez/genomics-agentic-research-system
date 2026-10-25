@@ -22482,7 +22482,17 @@
     },
     {
       "text": "No session file records `--allowedTools`. A take's `allowed_tools` is the driver's own ledger entry, and the evidence that the harness applied the list is that the route's commands ran without a denial.",
-      "round_4_reading": "PENDING"
+      "round_4_reading": {
+        "source": "cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V8-L3",
+        "source_sentence_sha256": "2427bf67d29b113db189f612663258d958c1357b36cee81e8968b029d5f438ba",
+        "commitment": {
+          "disposition": "conditional-retire",
+          "condition": "no-codex-or-gemini-tool-list",
+          "owner": "CP2",
+          "condition_holds": true,
+          "read": "No Codex or Gemini launch or config passes a list of admitted tools (codex_adapter.py, gemini_adapter.py, box/take_config.py; routing.json pin_profiles hold a permission mode and a version only), and no claude-code turn passes --allowedTools (claude_code_adapter.argv; none of the 348 turn launch journals of the 151 committed Claude walks carries it). The study's tool lists are deny lists, named where they are set: Claude Code's --disallowedTools (claude_code_adapter.DISALLOWED_TOOLS) and Gemini CLI's tools.exclude (take_config.GEMINI_SETTINGS)."
+        }
+      }
     },
     {
       "text": "An entry whose second token is `-c` or `-` lets the session under test run any program text the model writes, and no classifier reads it. Such entries are marked `arbitrary` in the derivation and are as wide in practice as the bare binary the derivation's first rule forbids. Three more entries are narrower than that but wider than they look: two end in a semicolon, so they admit whatever follows it, `find .` admits its own `-exec`, and `cd \"$(git` admits any git subcommand inside its substitution and whatever follows the closing quote. Each is a verbatim prefix of a command a round-2 route ran, so the derivation's rule holds lexically. What a semicolon entry admits in practice is read off its text, not measured: the harness splits a compound command before matching, under which such an entry may admit nothing at all. Either way no count is misread, because every denial prints beside its take with the command quoted; and none of these admits a program the two `arbitrary` entries do not already admit.",
@@ -22543,10 +22553,15 @@
         "source": "cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V8-L9",
         "source_sentence_sha256": "e23886a04c39b2b7f293882c31a73617b544ced8eb3e76b30d32034099daf574",
         "commitment": {
-          "disposition": "carry",
+          "disposition": "reword",
           "permission_mode": "transcript-record",
-          "enforcement_proven": false
-        }
+          "enforcement_proven": false,
+          "argv_only_harnesses": [
+            "gemini"
+          ],
+          "corrected_by": "pre-freeze review 1, m4: V8-L9's reason (\"it now covers three harnesses\") is wrong for arm G"
+        },
+        "words": "The permission mode a take is held to is the mode its own records show: for arm A the transcript's permissionMode, for arm O the turn_context Codex writes into its rollout, and for arm G the launch argv, because Gemini CLI 0.64.0 writes no mode record (mode_binding.py, ARGV_ONLY_HARNESSES; D8 line 311). That binds what the session reported, or for arm G what the driver passed, not what the harness enforced; a harness that recorded one mode and applied another would satisfy this check."
       }
     },
     {
@@ -22555,7 +22570,19 @@
     },
     {
       "text": "`gars/` has moved on the repository's main branch since round 2. Round 3 exports every checkout from a commit carrying round 2's pinned tree, so the system under test is round 2's and not the current one; a reader comparing against today's GARS is comparing against a different tree.",
-      "round_4_reading": "PENDING"
+      "round_4_reading": {
+        "source": "cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V8-L11",
+        "source_sentence_sha256": "f657a5dcd4805c6e218b82d9679a422bd4f337ec28a70fc73ee12609a4dd37a1",
+        "commitment": {
+          "disposition": "reword",
+          "condition": "CP2-system-under-test-tree",
+          "owner": "CP2",
+          "pinned_commit": "844a4ce0d89437ca043363981a86096f6383a141",
+          "gars_tree": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+          "same_tree_as": "rounds 2 and 3"
+        },
+        "words": "Every checkout is exported from the GARS tree pinned at variants.PINNED_TREE, commit 844a4ce0 (gars tree 8a54e0f8, the tree rounds 2 and 3 also ran); a reader comparing against today's GARS is comparing against a different tree."
+      }
     }
   ],
   "box_residuals": [
@@ -26015,8 +26042,6 @@
     "/deterministic_layer_note/round_4/codex/evidence": "D8 lines 339-345: the hook positive control's record supplies the vendor arms' evidence.",
     "/deterministic_layer_note/round_4/gemini/evidence": "D8 lines 339-345: the hook positive control's record supplies the vendor arms' evidence.",
     "/floor_evidence": "V5, R17: the published probes table exposes no floor field; the table owner must supply one.",
-    "/limitations/10/round_4_reading": "V8, R8 plan 830: CP2 evidence is required for the accepted conditional reading.",
-    "/limitations/2/round_4_reading": "V8, R8 plan 830: CP2 evidence is required for the accepted conditional reading.",
     "/limitations/5/round_4_reading": "V8, R8 plan 830: CP2 evidence is required for the accepted conditional reading.",
     "/limitations/9/round_4_reading": "V8, R8 plan 830: CP2 evidence is required for the accepted conditional reading.",
     "/price_table": "R15 CP5-req 54: Javier's walk gate reads dated vendor prices.",
@@ -26032,8 +26057,6 @@
       "/deterministic_layer_note/round_4/codex/evidence",
       "/deterministic_layer_note/round_4/gemini/evidence",
       "/floor_evidence",
-      "/limitations/10/round_4_reading",
-      "/limitations/2/round_4_reading",
       "/limitations/5/round_4_reading",
       "/limitations/9/round_4_reading",
       "/price_table",

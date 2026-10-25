@@ -884,6 +884,43 @@ def ruled_value(key):
     return value
 
 
+# Pre-freeze review 1 (lane pf1-l4a, Sun 25 Oct 2026; FOLD-PLAN-prefreeze-1.md section 2 rows 9 and 12, and m4): three
+# limitation readings, each the accepted V8 value read against round 4's code, keeping its source and hash. V8-L3's
+# condition and V8-L11's tree are read here; V8-L9 was accepted as "carry" on the reason "it now covers three
+# harnesses", which review 1's m4 found wrong for arm G (mode_binding.ARGV_ONLY_HARNESSES), so it is reworded to say
+# so. V8-L6 and V8-L10 stay PENDING: L6 needs the classifier read (row 10), and V8-L10's new words assume a refusal
+# that round 4's checker does not make (check4 lifts read-outside-the-checkout into an event, graded as usual).
+def prefreeze_readings():
+    import mode_binding
+    import check_take
+    l3 = ruled_value("V8-L3")
+    l3["commitment"].update(
+        condition_holds=True,
+        read="No Codex or Gemini launch or config passes a list of admitted tools (codex_adapter.py, gemini_adapter.py, "
+             "box/take_config.py; routing.json pin_profiles hold a permission mode and a version only), and no "
+             "claude-code turn passes --allowedTools (claude_code_adapter.argv; none of the 348 turn launch journals of "
+             "the 151 committed Claude walks carries it). The study's tool lists are deny lists, named where they are "
+             "set: Claude Code's --disallowedTools (claude_code_adapter.DISALLOWED_TOOLS) and Gemini CLI's "
+             "tools.exclude (take_config.GEMINI_SETTINGS).")
+    l9 = ruled_value("V8-L9")
+    l9["commitment"].update(
+        disposition="reword", argv_only_harnesses=list(mode_binding.ARGV_ONLY_HARNESSES),
+        corrected_by="pre-freeze review 1, m4: V8-L9's reason (\"it now covers three harnesses\") is wrong for arm G")
+    l9["words"] = ("The permission mode a take is held to is the mode its own records show: for arm A the "
+                   "transcript's permissionMode, for arm O the turn_context Codex writes into its rollout, and for arm "
+                   "G the launch argv, because Gemini CLI 0.64.0 writes no mode record (mode_binding.py, "
+                   "ARGV_ONLY_HARNESSES; D8 line 311). That binds what the session reported, or for arm G what the "
+                   "driver passed, not what the harness enforced; a harness that recorded one mode and applied another "
+                   "would satisfy this check.")
+    l11 = ruled_value("V8-L11")
+    l11["commitment"].update(disposition="reword", pinned_commit=variants.PINNED_TREE,
+                             gars_tree=check_take.GARS_TREE_SHA, same_tree_as="rounds 2 and 3")
+    l11["words"] = (f"Every checkout is exported from the GARS tree pinned at variants.PINNED_TREE, commit "
+                    f"{variants.PINNED_TREE[:8]} (gars tree {check_take.GARS_TREE_SHA[:8]}, the tree rounds 2 and 3 "
+                    f"also ran); a reader comparing against today's GARS is comparing against a different tree.")
+    return {3: l3, 9: l9, 11: l11}
+
+
 def apply_ruled_values(draft):
     for question, key in zip(draft["pause_questions"], ("V6-i", "V6-ii", "V6-iii")):
         question["answer"] = ruled_value(key)
@@ -894,8 +931,10 @@ def apply_ruled_values(draft):
     draft["wave3"]["documented_reply"] = PENDING
     conditional = (3, 6, 10, 11)
     draft["limitation_proposals"] = {str(i): ruled_value(f"V8-L{i}") for i in conditional}
+    resolved = prefreeze_readings()
     for i, entry in enumerate(draft["limitations"], 1):
-        entry["round_4_reading"] = PENDING if i in conditional else ruled_value(f"V8-L{i}")
+        entry["round_4_reading"] = (resolved[i] if i in resolved else
+                                    PENDING if i in conditional else ruled_value(f"V8-L{i}"))
     draft["alpha_secondary"] = "0.1"
     return draft
 

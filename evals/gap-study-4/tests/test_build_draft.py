@@ -1226,6 +1226,44 @@ class PrefreezeFills(unittest.TestCase):
         for pointer in (f"/served_model_rule/{CLAUDE}", f"/served_model_rule/{GEMINI}"):
             self.assertNotIn(pointer, d["pending"], "F2.served")
 
+    def test_limitation_readings_rest_on_the_code(self):
+        """PENDING #9 and #12 and m4: what each reading says of the code is true of it."""
+        import subprocess
+        import claude_code_adapter as cca, mode_binding, variants as v
+        from box import take_config
+        # V8-L3's condition: no list of admitted tools anywhere a vendor launch or config is built
+        for rel in ("codex_adapter.py", "gemini_adapter.py", "box/take_config.py"):
+            text = (HERE / rel).read_text()
+            for flag in ("--allowedTools", "--allowed-tools", "allowed_tools", "allowedTools", "coreTools",
+                         "tools.core", "tools.allowed"):
+                self.assertNotIn(flag, text, f"F3.L3: {rel} carries {flag}")
+        table = json.loads((HERE / "routing.json").read_text())
+        self.assertEqual({k for models in table["pin_profiles"].values() for pin in models.values() for k in pin},
+                         {"permission_mode", "version"}, "F3.L3")
+        argv = cca.argv("x", model="claude-opus-5-5", permission_mode="bypassPermissions", session_id="s", first=True)
+        self.assertNotIn("--allowedTools", argv, "F3.L3")
+        self.assertIn("--disallowedTools", argv, "F3.L3")
+        self.assertIn(("tools.exclude", ["google_web_search", "web_fetch"]), take_config.GEMINI_SETTINGS, "F3.L3")
+        journals = list((HERE / "rehearsals").glob("w[0-9]*/turn-*.jsonl.launch.json"))
+        self.assertEqual(len(journals), 348, "F3.L3")
+        self.assertFalse([j for j in journals if "--allowedTools" in j.read_text()], "F3.L3")
+        # m4: arm G alone is read from the argv
+        self.assertEqual(mode_binding.ARGV_ONLY_HARNESSES, ("gemini",), "F3.L9")
+        # V8-L11: the pinned commit's gars tree, rounds 2 and 3's, not today's
+        self.assertEqual(v.PINNED_TREE, PINNED_COMMIT, "F3.L11")
+        got = subprocess.run(["git", "-C", str(REPO), "rev-parse", f"{PINNED_COMMIT}:gars"], capture_output=True,
+                             text=True, check=True).stdout.strip()
+        self.assertEqual(got, PINNED_GARS_TREE, "F3.L11")
+        for name in ("gap-study-2", "gap-study-3"):
+            prior = json.loads((HERE.parent / name / "prereg.json").read_text())
+            self.assertEqual(prior["system_under_test"]["gars_tree_sha"], PINNED_GARS_TREE, "F3.L11")
+        head = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD:gars"], capture_output=True, text=True,
+                              check=True).stdout.strip()
+        self.assertNotEqual(head, PINNED_GARS_TREE, "F3.L11")
+        d = b.build()
+        for i in (3, 9, 11):
+            self.assertEqual(d["limitations"][i - 1]["round_4_reading"], expected_prefreeze_reading(i), "F3.readings")
+
 
 READY_MUTANTS = {
     "furniture-pending": ("R15.furniture", ("furniture", CODEX), "PENDING"),
@@ -2397,8 +2435,42 @@ def expected_value(key):
     return value
 
 
+PINNED_COMMIT, PINNED_GARS_TREE = "844a4ce0d89437ca043363981a86096f6383a141", "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74"
+
+
+def expected_prefreeze_reading(i):
+    """Pre-freeze review 1 (lane pf1-l4a, 25 Oct 2026): V8-L3 read as retired (its condition holds), V8-L9 reworded for
+    arm G's argv-only mode (m4), V8-L11 reworded naming the pinned tree; each keeps its accepted source and hash."""
+    value = expected_value(f"V8-L{i}")
+    if i == 3:
+        value["commitment"].update(condition_holds=True, read=(
+            "No Codex or Gemini launch or config passes a list of admitted tools (codex_adapter.py, gemini_adapter.py, "
+            "box/take_config.py; routing.json pin_profiles hold a permission mode and a version only), and no "
+            "claude-code turn passes --allowedTools (claude_code_adapter.argv; none of the 348 turn launch journals of "
+            "the 151 committed Claude walks carries it). The study's tool lists are deny lists, named where they are "
+            "set: Claude Code's --disallowedTools (claude_code_adapter.DISALLOWED_TOOLS) and Gemini CLI's "
+            "tools.exclude (take_config.GEMINI_SETTINGS)."))
+    elif i == 9:
+        value["commitment"].update(disposition="reword", argv_only_harnesses=["gemini"], corrected_by=(
+            "pre-freeze review 1, m4: V8-L9's reason (\"it now covers three harnesses\") is wrong for arm G"))
+        value["words"] = (
+            "The permission mode a take is held to is the mode its own records show: for arm A the transcript's "
+            "permissionMode, for arm O the turn_context Codex writes into its rollout, and for arm G the launch argv, "
+            "because Gemini CLI 0.64.0 writes no mode record (mode_binding.py, ARGV_ONLY_HARNESSES; D8 line 311). That "
+            "binds what the session reported, or for arm G what the driver passed, not what the harness enforced; a "
+            "harness that recorded one mode and applied another would satisfy this check.")
+    elif i == 11:
+        value["commitment"].update(disposition="reword", pinned_commit=PINNED_COMMIT, gars_tree=PINNED_GARS_TREE,
+                                   same_tree_as="rounds 2 and 3")
+        value["words"] = ("Every checkout is exported from the GARS tree pinned at variants.PINNED_TREE, commit "
+                          "844a4ce0 (gars tree 8a54e0f8, the tree rounds 2 and 3 also ran); a reader comparing against "
+                          "today's GARS is comparing against a different tree.")
+    return value
+
+
 def expected_readings():
-    return ["PENDING" if i in (3, 6, 10, 11) else expected_value(f"V8-L{i}") for i in range(1,12)]
+    return [expected_prefreeze_reading(i) if i in (3, 9, 11) else "PENDING" if i in (6, 10) else
+            expected_value(f"V8-L{i}") for i in range(1,12)]
 
 
 def expected_power():
@@ -2476,8 +2548,10 @@ class RuledValues(unittest.TestCase):
                          {str(i):expected_value(f"V8-L{i}") for i in (3,6,10,11)}, "V8.proposals")
         self.assertEqual(d["wave3"]["documented_reply"], "PENDING")
         self.assertIn("/wave3/documented_reply", d["pending"])
-        for i in (3,6,10,11):
+        for i in (6,10):           # pre-freeze review 1 (lane pf1-l4a): 3 and 11 are read, 6 and 10 stay open
             self.assertIn(f"/limitations/{i-1}/round_4_reading", d["pending"])
+        for i in (3,9,11):
+            self.assertNotIn(f"/limitations/{i-1}/round_4_reading", d["pending"])
 
     def test_supplied_hashes(self):
         self.assertTrue(hasattr(b, "RULED_VALUES"), "supplied values must be named")
