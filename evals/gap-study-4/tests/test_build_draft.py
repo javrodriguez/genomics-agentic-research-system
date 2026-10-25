@@ -900,8 +900,12 @@ def ready_problems(d):
     need(ns["derived_from"].endswith('/' + study.STUDY_REL) and ns["uuid"] == str(uuid.uuid5(uuid.NAMESPACE_URL, ns["derived_from"])) and
          ns["uuid"] != "9607c78d-18c9-5965-9202-5f09043bdf0c", "R33.namespace")
     # R-6 (glitch-b5's ruling of 17 Oct 2026; lane vendor-admission T4 P2): the native names, no configured fallback
-    need(d["instruction_files"] == {CODEX: [take_config.INSTRUCTION_FILES[CODEX]],
-                                   GEMINI: [take_config.INSTRUCTION_FILES[GEMINI]]}, "R15.instructions")
+    # pre-freeze review 1, m15 (lane pf1-l4a, 25 Oct 2026): arm A's own file, CLAUDE.md, named beside them (D8 line 303)
+    need(d["instruction_files"] == {CLAUDE: ["CLAUDE.md"], CODEX: [take_config.INSTRUCTION_FILES[CODEX]],
+                                   GEMINI: [take_config.INSTRUCTION_FILES[GEMINI]]} and
+         d.get("instruction_files_source") == b.INSTRUCTION_FILES_SOURCE and
+         set(d["instruction_files_source"]) == {CLAUDE, CODEX, GEMINI} and
+         "line 303" in d["instruction_files_source"][CLAUDE], "R15.instructions")
     import routing as _routing                   # D-INT-2: arm O's served-model rule is routing's own sentence
     # pre-freeze review 1, PENDING #4-5 (lane pf1-l4a, 25 Oct 2026): arm A's and arm G's rules from D8 line 310
     need(d["price_table"] == "PENDING" and d["served_model_rule"] == {

@@ -1364,6 +1364,18 @@ SERVED_MODEL_RULE_GEMINI = (
     "recorded\")")
 
 
+# Pre-freeze review 1, m15 (lane pf1-l4a, 25 Oct 2026): arm A's instruction file, read natively by Claude Code.
+CLAUDE_INSTRUCTION_FILE = "CLAUDE.md"
+INSTRUCTION_FILES_SOURCE = {
+    CLAUDE: "plans/gap-study-round-4/D8-non-claude-arms.md line 303: \"Arm A reads `CLAUDE.md` by itself\" (and line "
+            "287: \"reads `CLAUDE.md` natively\"); the run tree carries the pinned tree's gars/CLAUDE.md",
+    CODEX: "R-6 (glitch-b5's ruling, 17 Oct 2026): the CLI's native file, configured nowhere (box/take_config.py "
+           "INSTRUCTION_FILES), a byte-identical copy of each CLAUDE.md placed beside it (walk_builders.build_run_tree)",
+    GEMINI: "R-6 (glitch-b5's ruling, 17 Oct 2026): the CLI's native file, configured nowhere (box/take_config.py "
+            "INSTRUCTION_FILES), a byte-identical copy of each CLAUDE.md placed beside it (walk_builders.build_run_tree)",
+}
+
+
 def effort_for(harness, model):
     """R15 CP5-req 51, one model's effort setting as take_config writes it: codex's per model, gemini's one thinking
     setting (both sourced by R3, round 17 B6), claude-code's the harness default its walks record (CLAUDE_EFFORT)."""
@@ -1892,9 +1904,11 @@ def build(root=None):
     d["config_templates"] = config_templates()
     d["effort"] = {h: {m: effort_for(h, m) for m in MODELS[a]} for a, h in HARNESSES.items()}
     d["effort_evidence"] = copy.deepcopy(EFFORT_EVIDENCE)                       # pre-freeze review 1, PENDING #1-3
-    # R-6 (glitch-b5, 17 Oct 2026; lane vendor-admission T4 P2): each vendor CLI's native file, configured nowhere
-    d["instruction_files"] = {CODEX: [take_config.INSTRUCTION_FILES[CODEX]],
+    # R-6 (glitch-b5, 17 Oct 2026; lane vendor-admission T4 P2): each vendor CLI's native file, configured nowhere;
+    # pre-freeze review 1, m15 (lane pf1-l4a, 25 Oct 2026): arm A's own file named beside them
+    d["instruction_files"] = {CLAUDE: [CLAUDE_INSTRUCTION_FILE], CODEX: [take_config.INSTRUCTION_FILES[CODEX]],
                                GEMINI: [take_config.INSTRUCTION_FILES[GEMINI]]}
+    d["instruction_files_source"] = copy.deepcopy(INSTRUCTION_FILES_SOURCE)
     d["served_model_rule"] = {h: PENDING for h in HARNESSES.values()}
     # Pre-freeze review 1, PENDING #4-5 (lane pf1-l4a, 25 Oct 2026): arm A's and arm G's rules, each D8 line 310's
     # reading of its harness, naming the code that binds it.

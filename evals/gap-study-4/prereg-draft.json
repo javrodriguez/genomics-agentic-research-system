@@ -25688,12 +25688,20 @@
     }
   },
   "instruction_files": {
+    "claude-code": [
+      "CLAUDE.md"
+    ],
     "codex": [
       "AGENTS.md"
     ],
     "gemini": [
       "GEMINI.md"
     ]
+  },
+  "instruction_files_source": {
+    "claude-code": "plans/gap-study-round-4/D8-non-claude-arms.md line 303: \"Arm A reads `CLAUDE.md` by itself\" (and line 287: \"reads `CLAUDE.md` natively\"); the run tree carries the pinned tree's gars/CLAUDE.md",
+    "codex": "R-6 (glitch-b5's ruling, 17 Oct 2026): the CLI's native file, configured nowhere (box/take_config.py INSTRUCTION_FILES), a byte-identical copy of each CLAUDE.md placed beside it (walk_builders.build_run_tree)",
+    "gemini": "R-6 (glitch-b5's ruling, 17 Oct 2026): the CLI's native file, configured nowhere (box/take_config.py INSTRUCTION_FILES), a byte-identical copy of each CLAUDE.md placed beside it (walk_builders.build_run_tree)"
   },
   "served_model_rule": {
     "claude-code": "for the Claude Code arm, the served model is verified on every turn (D8 line 310): every agent assistant record's message.model, and the turn result's modelUsage when it names any model, must name the pinned model (claude_code_adapter.served_model_off; a side or sub-agent model off that module's closed lists stops the take for a ruling); a turn that served another model routes as harness-error after the agent's first turn (routing.json's init-mismatch row) and is refused for a human before it (routing.json's pin_refusal)",
