@@ -1176,13 +1176,16 @@ class P19RunArms(Base):
                          "P19.run-arms: no line for an arm that runs")
         full = self.rehearsals([entry(s, f"walk-{i}") for i, s in enumerate(specs)])
         rep = self.call(self.CLAUSE, wp.coverage_report, full)
+        self.assertIsInstance(rep, dict, "P19.run-arms: coverage_report returns the reading")
         self.assertEqual((rep["got"]["missing"], rep["specs"], len(rep["entries"]), sorted(rep["deferred"])),
                          ([], specs, len(specs), ["G"]), "P19.run-arms: coverage_report on a full register")
         study = self.study_copy()
         self.edit_draft(study, lambda d: d["deferred_arms"]["G"].update(status="running"))
-        self.assertEqual(self.call(self.CLAUSE, wp.coverage_report, full, study)["deferred"], {},
+        rep = self.call(self.CLAUSE, wp.coverage_report, full, study)
+        self.assertEqual(rep.get("deferred") if isinstance(rep, dict) else rep, {},
                          "P19.run-arms: coverage_report reads the study it is given")
         live = self.call(self.CLAUSE, wp.coverage_report)
+        self.assertIsInstance(live, dict, "P19.run-arms: coverage_report returns the reading")
         import walk_register as wr
         self.assertEqual(len(live["entries"]), len(wr.registered(wr.REHEARSALS)),
                          "P19.run-arms: with no base, the study's own register")

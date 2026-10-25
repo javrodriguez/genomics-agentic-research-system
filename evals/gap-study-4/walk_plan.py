@@ -378,21 +378,21 @@ def main(argv=None) -> int:
     got = coverage(entries, specs, design, pending_walk.uncounted_walks(base, [e["walk"] for e in entries]))
     print("\n".join(coverage_lines(got, specs, design, len(entries))))
     missing = got["missing"]
-    if args.require_run_arms:
-        deferred = deferred_arms()
-        print("\n".join(deferred_lines(got, specs, deferred)))
-        gaps = run_arm_gaps(got, deferred)
-        if gaps:
-            print(f"FAIL --require-run-arms: {len(gaps)} required walk(s) of the arms the freeze runs are missing "
-                  f"(the lines above name each)")
-            return 1
-        print("ok: every required walk of the arms the freeze runs is covered")
-        return 0
     if args.require_complete and missing:
         print("FAIL --require-complete: required walks are missing (the lines above name each)")
         return 1
     if args.require_complete:
         print("ok: every required walk is covered")
+    if not args.require_run_arms:
+        return 0
+    deferred = deferred_arms()
+    print("\n".join(deferred_lines(got, specs, deferred)))
+    gaps = run_arm_gaps(got, deferred)
+    if gaps:
+        print(f"FAIL --require-run-arms: {len(gaps)} required walk(s) of the arms the freeze runs are missing "
+              f"(the lines above name each)")
+        return 1
+    print("ok: every required walk of the arms the freeze runs is covered")
     return 0
 
 
