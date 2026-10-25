@@ -30,6 +30,11 @@
       "path": "lanes/REVIEW-pf1-l2b-242f49e.md",
       "status": "new",
       "reason": "Lane pf1-l2b-labelling-stats (Gap Study round 4, lane L2b of the fold of pre-freeze review 1, aegis-builds/pfr-20261024/FOLD-PLAN-prefreeze-1.md, approved by the lane orchestrator under Javier's standing delegation, Sat 24 Oct 2026) folds MAJOR 6, MAJOR 10, m13, m14 and m16. The lane's fresh closure check at 242f49e (VERDICT PASS, three MINORs), committed unedited as its reviewer wrote it, on the lead's word."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l2b-b1dcf92.md",
+      "status": "new",
+      "reason": "Lane pf1-l2b-labelling-stats (Gap Study round 4, lane L2b of the fold of pre-freeze review 1, aegis-builds/pfr-20261024/FOLD-PLAN-prefreeze-1.md, approved by the lane orchestrator under Javier's standing delegation, Sat 24 Oct 2026) folds MAJOR 6, MAJOR 10, m13, m14 and m16. The lane's fresh closure check at b1dcf92 (VERDICT PASS), committed unedited as its reviewer wrote it, on the lead's word."
     }
   ]
 }

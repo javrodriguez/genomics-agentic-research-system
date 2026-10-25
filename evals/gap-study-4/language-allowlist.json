@@ -294,6 +294,13 @@
       "line_text": "| 6 red run, 169-row bytes | red 52ae6bb (0/3, real assertions), capture runs | closed |",
       "ruled": "2026-10-24",
       "why": "Bound record, never edited: lanes/REVIEW-pf1-l2b-242f49e.md is the fresh closure check of lane pf1-l2b-labelling-stats at 242f49e (VERDICT PASS), committed as its reviewer wrote it on the lead's word (24 Oct 2026). '0/3' is the reviewer's count of an athena run's passing commands (0 of 3), not a rate claimed about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l2b-b1dcf92.md",
+      "pattern": "hundred",
+      "line_text": "I ran on the Mac, behind `mac_slot.py light-ok --tests --work gap-study-r4` (\"light ok\", CPU speed limit 100), with python3.12, read-only:",
+      "ruled": "2026-10-25",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l2b-b1dcf92.md is the fresh closure check of lane pf1-l2b-labelling-stats at b1dcf92 (VERDICT PASS), committed as its reviewer wrote it on the lead's word (25 Oct 2026). The number on this line is the reviewer's own reading of a count or a measurement in that check, not a rate claimed about any model or take."
     }
   ]
 }
