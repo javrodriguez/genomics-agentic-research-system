@@ -19,11 +19,12 @@ guards and must turn that clause red alone.
                with order_beacon.seed, never the review commit; the real freeze refuses a review committed at or after
                a --beacon-reading file; ruling 1 of the lane orchestrator (24 Oct 2026): the seed is the round and its
                randomness alone, so two reviews freeze one order, and the real freeze reads the relays only once
-               GitHub's push records on the aegis remote hold the commit that registered the round, stamped an hour
+               GitHub's push records on the private GARS mirror hold the commit that registered the round, stamped an hour
                or more before it is published (registering_commit on a scratch history, push_records on a stand-in
                gh); the draft registers the beacon with its round PENDING; and prereg.py --order-from-beacon refuses
                before the round is published and reads a frozen file's reading. Witnesses: seed-ignores-randomness,
-               relays-not-compared, push-lead-unchecked, push-holding-unchecked, preview-before-round.
+               relays-not-compared, witness-repo-aegis, push-lead-unchecked, push-holding-unchecked,
+               preview-before-round.
   G2b.pending  m2: prepare refuses a draft holding any PENDING input even with its stats_design sentinel replaced.
                Witness: pending-unchecked.
   G4.coverage  MAJOR 4 part 3: the freeze's coverage reading names the missing walks of arms A and O and none of the
@@ -202,6 +203,23 @@ def g3_review(fz, p="G3.review") -> list:
 def g9_beacon(fz, ob, pr, p="G9.beacon") -> list:
     out = []
     try:
+        # ruling 1 of 24 Oct, second hand-back: the witness is the private GARS mirror, under Javier's standing word
+        # "mirror every verified gap study wave" (12 Oct 2026, plans/gap-study-round-4/next-slices-2026-10-11.md)
+        if ob.WITNESS_REPO != "javrodriguez/gars-cloud-mirror":
+            out.append(f"{p}: the witness repository is {ob.WITNESS_REPO}, not the private GARS mirror")
+        reg = ob.registration()
+        word = "mirror every verified gap study wave"
+        if word not in reg["seed_rule"] or word not in reg["residual"]:
+            out.append(f"{p}: the draft's beacon rule and residual do not cite the standing word")
+        if reg.get("registration_order") != list(ob.REGISTRATION_ORDER) or len(ob.REGISTRATION_ORDER) != 4 or \
+                not all(w in " ".join(ob.REGISTRATION_ORDER) for w in ("REGISTERED_ROUND", "athena", "gars-mirror.sh",
+                                                                       "an hour")):
+            out.append(f"{p}: the draft does not order the registering steps: {reg.get('registration_order')}")
+        gone = ob.push_witness_problem("c" * 40, ROUND, [], lambda c, x: True) or ""
+        if "documents no retention" not in gone or "never passes" not in gone:
+            out.append(f"{p}: a missing push record is not refused by name as possibly expired: {gone!r}")
+        if out:
+            return out      # the rest reads the draft's registration, which a wrong witness or rule already breaks
         if ob.round_time(ROUND) != ROUND_TIME or ob.round_at(
                 __import__("datetime").datetime.fromtimestamp(ROUND_TIME - 1, __import__("datetime").timezone.utc)) \
                 != ROUND:
@@ -335,7 +353,8 @@ def g9_beacon(fz, ob, pr, p="G9.beacon") -> list:
             out.append(f"{p}: registering_commit reads {got}, wanted the commits that set 123 and 1234, none for 12")
         fake = types.SimpleNamespace(returncode=0, stdout=f"2026-10-24T20:00:00Z\t{'d' * 40}\n", stderr="")
         with mock.patch.object(fz.subprocess, "run", lambda argv, **k: fake if argv[:2] == ["gh", "api"] and
-                               "repos/javrodriguez/aegis/activity?activity_type=push&per_page=100" in argv else None):
+                               "repos/javrodriguez/gars-cloud-mirror/activity?activity_type=push&per_page=100"
+                               in argv else None):
             if fz.push_records() != [(ROUND_TIME - 1440, "d" * 40)]:
                 out.append(f"{p}: push_records does not read GitHub's push activity")
     except Exception as e:  # noqa: BLE001
@@ -659,6 +678,8 @@ WITNESSES = {
                                                                '{reading[\'randomness\']}"\n',
                                                                '    text = f"{SEED_PREFIX}{reading[\'round\']}"\n'),)),
     "relays-not-compared": ("G9.beacon", "order_beacon", (("    if len(set(answers)) != 1:\n", "    if False:\n"),)),
+    "witness-repo-aegis": ("G9.beacon", "order_beacon", (('WITNESS_REPO = "javrodriguez/gars-cloud-mirror"\n',
+                                                          'WITNESS_REPO = "javrodriguez/aegis"\n'),)),
     "push-lead-unchecked": ("G9.beacon", "order_beacon", (("    if held[0] > deadline:\n", "    if False:\n"),)),
     "push-holding-unchecked": ("G9.beacon", "order_beacon", (("    held = sorted(t for t, sha in pushes if "
                                                               "contains(commit, sha))\n",

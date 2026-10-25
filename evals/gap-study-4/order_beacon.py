@@ -61,10 +61,34 @@ RELAYS = ("https://api.drand.sh", "https://drand.cloudflare.com")
 # first round published at or after the latest time the review can be committed (--round-at <that time>), in the same
 # commit as the regenerated draft. While None, the draft's round reads PENDING and the freeze is closed.
 REGISTERED_ROUND: int | None = None
-# The outside witness of when the round was registered (ruling 1): GitHub's push activity on the private aegis remote,
-# and how long before the round's publication the registering commit must have been pushed there.
-WITNESS_REPO = "javrodriguez/aegis"
+# The outside witness of when the round was registered (ruling 1, and its second hand-back of 24 Oct 2026): GitHub's
+# push activity on the private GARS mirror, which holds the study's own history (the aegis remote is another
+# repository and can never hold a study commit). Pushes there run under Javier's standing word "mirror every verified
+# gap study wave" (typed 12 Oct 2026 in glitch-2f's window, plans/gap-study-round-4/next-slices-2026-10-11.md), with
+# _local/bin/gars-mirror.sh once athena passes the wave. WITNESS_LEAD_S is how long before the round's publication the
+# registering commit must have been pushed there.
+WITNESS_REPO = "javrodriguez/gars-cloud-mirror"
 WITNESS_LEAD_S = 3600
+STANDING_WORD = ("Javier's standing word \"mirror every verified gap study wave\" (12 Oct 2026, "
+                 "plans/gap-study-round-4/next-slices-2026-10-11.md)")
+# The registering steps, in their run order (written into the draft as take_order_beacon.registration_order).
+REGISTRATION_ORDER = (
+    "1. Commit the round: set REGISTERED_ROUND in order_beacon.py to a quicknet round (order_beacon.py --round-at) and "
+    "re-derive the draft, in one commit on the freeze line.",
+    "2. athena PASS: the whole gars-gap4 battery passes at that commit.",
+    "3. Mirror: push that verified wave to " + WITNESS_REPO + " with _local/bin/gars-mirror.sh, under " + STANDING_WORD
+    + "; GitHub stamps the push.",
+    "4. Wait: the round must publish at least an hour (" + str(WITNESS_LEAD_S) + " s) after GitHub's push stamp; the "
+    "freeze refuses otherwise, and reads the round only once it is published.",
+)
+# Retention (checked Sat 24 Oct 2026 by lane L1's builder): GitHub's REST docs for GET /repos/{owner}/{repo}/activity
+# (https://docs.github.com/en/rest/repos/repos#list-repository-activities) and for the activity view
+# (https://docs.github.com/en/repositories/viewing-activity-and-data-for-your-repository/using-the-activity-view-to-see-changes-to-a-repository)
+# state no retention period. Read live the same day, both repositories returned every push back to their creation
+# (gars-cloud-mirror: 536 records from 2026-09-30, created 2026-09-30; aegis: from 2026-09-12, its creation day), but an
+# undocumented limit is no guarantee, so a record GitHub no longer returns refuses by name (push_witness_problem).
+RETENTION_NOTE = ("GitHub's activity API documents no retention period "
+                  "(docs.github.com/en/rest/repos/repos#list-repository-activities)")
 READING_KEYS = ("chain_hash", "round", "round_time", "randomness", "signature", "relays")
 HEX = re.compile(r"[0-9a-f]+")
 SEED_SHAPE = re.compile(r"[0-9a-f]{40}")
@@ -81,7 +105,7 @@ def registration() -> dict:
     if REGISTERED_ROUND is not None:
         round_time(REGISTERED_ROUND)
     return dict(CHAIN, relays=list(RELAYS), round="PENDING" if REGISTERED_ROUND is None else REGISTERED_ROUND,
-                seed_rule=SEED_RULE, residual=residual())
+                seed_rule=SEED_RULE, registration_order=list(REGISTRATION_ORDER), residual=residual())
 
 
 SEED_PREFIX = "gap-study-4 take order\n"
@@ -90,7 +114,8 @@ SEED_RULE = ("take_order_seed is the first 40 hex characters of the sha256 of th
              "one registered here, read from both relays, which must agree, with its randomness the sha256 of its "
              "signature (order_beacon.seed); the freeze refuses unless the commit that registered the round was pushed "
              "to " + WITNESS_REPO + " at least " + str(WITNESS_LEAD_S) + " s before the round is published, by GitHub's "
-             "own push record (order_beacon.push_witness_problem).")
+             "own push record (order_beacon.push_witness_problem); that push is the mirror of a verified wave, under "
+             + STANDING_WORD + ".")
 
 
 def residual() -> str:
@@ -98,7 +123,9 @@ def residual() -> str:
             "exists by GitHub's own record of the push that registered it, at least an hour before the round is "
             "published. Whoever controls GitHub, or the clock its push records are stamped by, could register a round "
             "after its value is public and so choose the order. The round's BLS signature is not verified; two relays "
-            "run by different operators must agree instead.")
+            "run by different operators must agree instead. The witnessing push is the mirror of a verified wave, made "
+            "under " + STANDING_WORD + "; " + RETENTION_NOTE + ", so a push record GitHub no longer returns refuses "
+            "the freeze, never passes it.")
 
 
 def round_time(round_no: int) -> int:
@@ -214,8 +241,9 @@ def push_witness_problem(commit, round_no: int, pushes, contains) -> str | None:
     deadline = round_time(round_no) - WITNESS_LEAD_S
     held = sorted(t for t, sha in pushes if contains(commit, sha))
     if not held:
-        return (f"GitHub records no push to {WITNESS_REPO} holding {commit[:12]}, the commit that registered round "
-                f"{round_no}")
+        return (f"GitHub returns no push to {WITNESS_REPO} holding {commit[:12]}, the commit that registered round "
+                f"{round_no}: either it was never mirrored or GitHub no longer returns the record ({RETENTION_NOTE}); "
+                f"a missing record never passes")
     if held[0] > deadline:
         return (f"GitHub's first push to {WITNESS_REPO} holding {commit[:12]} is stamped {iso(held[0])}, later than "
                 f"{iso(deadline)} ({WITNESS_LEAD_S} s before round {round_no} is published): the round could have been "
