@@ -179,7 +179,8 @@ def g2_pins(fz, p="G2.pins") -> list:
             out.append(f"{p}: pinned paths that are no file: {missing[:3]}")
         entries, _ = fz.copy_manifest.load_fragments()
         claimed = {e["path"] for _, e in entries if e["status"] in fz.copy_manifest.STATUSES}
-        want = len(claimed) - (1 if "prereg.json" in claimed else 0) + len(READERS) + 1
+        # + 2: CLAUDE.md and (lane pf1-l4-close, review m4) the approved price table, both outside the study folder
+        want = len(claimed) - (1 if "prereg.json" in claimed else 0) + len(READERS) + 2
         if len(paths) != want:
             out.append(f"{p}: {len(paths)} pinned paths, the manifest's count reconciles to {want}")
         try:

@@ -16,7 +16,8 @@
     },
     "claude_effort_read.py": {
       "sha256": "8eee98fa318bbcab4c7e196abcc9bdeeb4b77dedfacdfd9ca0fcaa0b420c9aa4",
-      "what": "the probe, as run"
+      "what": "the probe, as run",
+      "note": "Its docstring names its first road, reading the binary in place from the image's layer folder; that road found none (the image store is containerd's, so docker image inspect gives no GraphDriver), and the docker save road below it ran, as the record's read_from says (review REVIEW-pf1-l4-close-291b357, NIT 3). The probe is kept byte for byte as run, so the note is here and not in it."
     }
   }
 }

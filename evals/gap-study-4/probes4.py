@@ -1119,7 +1119,7 @@ def floors(rows: list) -> tuple:
             return ", ".join(kinds) if kinds else "none"
         only = {h: [k for k in right[h] if k not in both] for h in V.HALVES}
         neither = [k for k in HABITS if not any(k in right[h] for h in V.HALVES)]
-        tail = (f"right on the {V.HALVES[0]} only: {named(only[V.HALVES[0]])}; right on the {V.HALVES[1]} half only: "
+        tail = (f"right on the {V.HALVES[0]} half only: {named(only[V.HALVES[0]])}; right on the {V.HALVES[1]} half only: "
                 f"{named(only[V.HALVES[1]])}; right on neither half: {named(neither)}")
         if both:
             text = (f"every unit right on both halves: {named(both)} grade right on both halves in every probes4 cell, "

@@ -1363,11 +1363,15 @@ class PrefreezeFills(unittest.TestCase):
     def test_price_table_reason(self):
         """NIT (pre-freeze review 1): the price table's pending reason names what reads it, and the lines it cites."""
         reason = b.PENDING_REASONS["price_table"]
+        # lane pf1-l4-close (25 Oct 2026): the cost step's price variants moved the cited lines
         self.assertEqual(reason, "R15 CP5-req 54: published per-call costs read a dated vendor price table "
-                                 "(costs.py:81-139, 214); the money gate reads the ledger's cost per try.", "F10.price")
+                                 "(costs.py:248-318, and 383-390 with its price_variants); the money gate reads the "
+                                 "ledger's cost per try.", "F10.price")
         lines = (HERE / "costs.py").read_text().split("\n")
-        self.assertTrue(lines[80].startswith("def account(calls, price_table):"), "F10.price")
-        self.assertIn('["price_table"]', lines[213], "F10.price")
+        self.assertTrue(lines[247].startswith("def account(calls, price_table, variants=None):"), "F10.price")
+        self.assertEqual(lines[317], "    return out", "F10.price")
+        self.assertTrue(lines[382].startswith("def frozen_inputs(pre):"), "F10.price")
+        self.assertIn('pre["price_table"]', lines[389], "F10.price")
         # lane pf1-l4-close (25 Oct 2026): the table is filled, so the reason shows only on a draft whose table is not
         self.assertEqual(b.pending(changed(b.build(), ("price_table",), "PENDING"))["/price_table"], reason,
                          "F10.price")
@@ -1520,9 +1524,12 @@ class PrefreezeClose(unittest.TestCase):
             self.assertTrue(label.startswith("API-equivalent, not billed"), "C6.labels")
         self.assertTrue(all(r["label"].startswith("API-equivalent, not billed") for r in table["rows"]
                             if r["vendor"] == "anthropic"), "C6.labels")
-        for key, field in (("marks", "candidate_marks"), ("lead_rulings", "lead_rulings"),
-                           ("follow_ups", "follow_ups_for_L4"), ("gaps", "absent_or_gaps")):
+        for key, field in (("marks", "candidate_marks"), ("gaps", "absent_or_gaps")):
             self.assertEqual(src[key], table[field], f"C6.source: {key}")
+        # review M1 (lane pf1-l4-close): each follow-up and lead ruling carried word for word with its status;
+        # tests/test_pf1_cost_step.py TheStatuses checks what each status says against the cost step
+        for key, field in (("lead_rulings", "lead_rulings"), ("follow_ups", "follow_ups_for_L4")):
+            self.assertEqual([e["text"] for e in src[key]], table[field], f"C6.source: {key}")
         self.assertEqual((src["billing_source"]["file"], src["billing_source"]["key"]),
                          (study.rel("routing.json"), table["arm_o_billing_source"]["key"]), "C6.billing")
         routed = json.loads((HERE / "routing.json").read_text())[src["billing_source"]["key"]]
@@ -2982,8 +2989,10 @@ def expected_prefreeze_reading(i):
     if i == 11:
         return {"disposition": "reword", "by": PREFREEZE_BY, "read": (
             f"V8-L11's condition resolved: every checkout is exported from variants.PINNED_TREE {PINNED_COMMIT}, gars "
-            f"tree {PINNED_GARS_TREE}, the tree rounds 2 and 3 ran. The accepted words name `system_under_test`, a key "
-            f"the draft does not carry yet (m5); re-read these words when m5 lands."), "words": (
+            f"tree {PINNED_GARS_TREE}, the tree rounds 2 and 3 ran. The accepted words name `system_under_test`, which "
+            f"the draft does not carry: it is a checker constant (check_take.py line 2050, in CHECKER_CONSTANTS), and "
+            f"design_view refuses a draft that carries one (check_take.py lines 2183-2185), so these words name the pin "
+            f"in its place (lane pf1-l4-close, on review REVIEW-pf1-l4-close-291b357 m2)."), "words": (
             "Every checkout is exported from the GARS tree pinned at variants.PINNED_TREE, commit 844a4ce0 (gars tree "
             "8a54e0f8, the tree rounds 2 and 3 also ran); a reader comparing against today's GARS is comparing against "
             "a different tree.")}
@@ -3012,13 +3021,16 @@ def expected_prefreeze_reading(i):
             "(drive.py lines 2981 and 2986). No attempt is refused for it, so neither capped nor harness-error is its "
             "route: the accepted words' refusal and its quoted refused path do not describe round 4's checker, and "
             "\"Ruling 3 ... byte-identical\" is round 3's history, as V8-L10's own reason says. No published table "
-            "counts the event per half-cell; it is on each take's record."), "words": (
+            "counts the event per half-cell, and the published take record (stats.TAKE_FIELDS, run.record_for) does not "
+            "carry it: its count is in the take's routed records, events.outside_reach (agent_adapter.py line 385, from "
+            "drive.py line 2986)."), "words": (
             "The take checker counts every absolute path outside its own run tree in the box that a tool call or its "
             "result names (the checkout, the home folder and the temporary roots) as a read-outside-the-checkout "
             "event, and it cannot tell a path that carries information from one that does not. A harness's own scratch "
             "file or background-task output file is one that does not. No attempt is refused for it: the take is "
-            "graded as usual, its text masked, and the event is recorded on the take, so an event there is not by "
-            "itself a reading of the model.")}
+            "graded as usual, its text masked, and the event's count is kept in the take's routed records "
+            "(events.outside_reach), not in the published take record, so an event there is not by itself a reading of "
+            "the model.")}
     raise KeyError(i)
 
 

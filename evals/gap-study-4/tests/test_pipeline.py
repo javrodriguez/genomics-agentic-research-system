@@ -1455,9 +1455,14 @@ class CostAccounting(unittest.TestCase):
             root = Path(tmp)
             calls, page = root / "cost-calls.json", root / "COSTS.md"
             calls.write_text(json.dumps([self.call(), self.call()]))
+            # lane pf1-l4-close (25 Oct 2026): the frozen file carries the price variants the cost step prices by, and
+            # the page opens with the statement generated from them (tests/test_pf1_cost_step.py holds the cases)
+            variants = {"source": {}, "labels": {v: "API-equivalent, not billed: synthetic" for v in ("anthropic",
+                                                                                                     "openai")},
+                        "cache_write": {"openai": {"synthetic-model": {"30m": "1", "12h": "1"}}}, "over": {}}
             def frozen(what):
                 self.assertTrue(what)
-                return {"price_table": self.fake_prices()}
+                return {"price_table": self.fake_prices(), "price_variants": variants}
             with mock.patch.object(costs, "CALLS", calls), mock.patch.object(costs, "PAGE", page), \
                     mock.patch.object(costs.prereg, "require_frozen", frozen), redirect_stdout(io.StringIO()):
                 try:
@@ -1465,7 +1470,8 @@ class CostAccounting(unittest.TestCase):
                     self.assertEqual(costs.main(["--check"]), 0)
                 except TypeError as exc:
                     self.fail(f"the nonempty cost path must request the frozen design: {exc}")
-                self.assertEqual(page.read_text(), costs.render(costs.account([self.call()], self.fake_prices())))
+                self.assertEqual(page.read_text(), costs.render(costs.account([self.call()], self.fake_prices(),
+                                                                              variants), costs.cost_statement(variants)))
                 page.write_text("synthetic stale costs\n")
                 self.assertEqual(costs.main(["--check"]), 1)
 

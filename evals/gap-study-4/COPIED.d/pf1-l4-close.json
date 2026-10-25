@@ -1,0 +1,20 @@
+{
+  "lane": "pf1-l4-close",
+  "files": [
+    {
+      "path": "tests/test_pf1_cost_step.py",
+      "status": "new",
+      "reason": "Lane pf1-l4-close (Gap Study round 4, lane L4's close of pre-freeze review 1's fold, under the lane orchestrator's rulings of Sun 25 Oct 2026 on review REVIEW-pf1-l4-close-291b357, M1, m4 and m5): the cost step's cases, each a check read against the approved price table's own rows (the over-272K and over-100,000 rows and their flags, cache writes split by their recorded duration or priced at the stated bound, the arm A and arm O labels on every priced cost, the generated statement and the follow-ups' statuses, the frozen file's variants, Claude Code's recorded split, the freeze's pin of the table), and one in-memory mutant per rule that must turn its case red."
+    },
+    {
+      "path": "checks.d/pf1-l4-close.txt",
+      "status": "new",
+      "reason": "Lane pf1-l4-close: this lane's local checks for run_checks.py: the cost step's test module (costs.py --check runs from w5b-cp5-pipeline's)."
+    },
+    {
+      "path": "COPIED.d/pf1-l4-close.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Lane pf1-l4-close (pre-freeze review 1's closing fills and the cost step its review asked for, 25 Oct 2026). Its edits to files other lanes claim, without a change of status: build_draft.py, prereg-draft.json, probes4.py, costs.py, claude_code_adapter.py (the call's recorded cache-write split), freeze.py (one entry in PINNED, the approved price table), tests/test_build_draft.py, tests/test_probes4.py and tests/test_pf1_freeze_gates.py (its pin count, plus one for the table). The approved price table, the 2.1.296 effort read and its probe are kept outside the study folder, at lane-reports/gap-study-4/pf1-l4-close-20261025/ (a lane record is not study content)."
+    }
+  ]
+}
