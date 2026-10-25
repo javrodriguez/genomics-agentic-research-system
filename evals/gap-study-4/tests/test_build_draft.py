@@ -1432,14 +1432,25 @@ class PrefreezeFills(unittest.TestCase):
         self.assertEqual(d["wave3"]["documented_reply"], expected_documented_reply(), "F4.documented")
         self.assertEqual(d["wave3"]["documented_reply_superseded_wording"], SUPERSEDED_DOCUMENTED, "F4.documented")
         import subprocess
-        v7 = subprocess.run(["git", "-C", str(REPO), "show", "e1cfe860:cloud-briefs/w5c/V6-V8-proposals.md"],
-                            capture_output=True, text=True, check=True).stdout.split("\n")
-        self.assertEqual(v7[48], "- **Proposed definition:** " + SUPERSEDED_DOCUMENTED["text"], "F4.documented")
-        self.assertIn("this is today's built behaviour", v7[49], "F4.documented")
-        for g in ("graders/scope_read.py", "graders/template_adherence.py"):
-            changed = subprocess.run(["git", "-C", str(REPO), "diff", "--quiet", "0c1976df3f76a28637335d2bb6bfa91c5ae6ed1f",
-                                      "HEAD", "--", f"evals/gap-study-4/{g}"]).returncode
-            self.assertEqual(changed, 0, f"F4.documented: {g} changed, so labels could move")
+        # V7's passage is read from its committed record (e1cfe860 is in no ref of the line: the merged battery
+        # pf1-l6b-battery-7955554 read exit 128), bound to its source note's sha256, which is the draft's hash
+        note = json.loads((HERE / "source-records/V6-V8-proposals-e1cfe860-lines-45-51.json").read_text())
+        record = (HERE / note["record"]).read_bytes()
+        self.assertEqual((note["commit"], note["path"], note["lines"]),
+                         ("e1cfe860ce127358cad8cab83246c895f6507e15", "cloud-briefs/w5c/V6-V8-proposals.md", [45, 51]),
+                         "F4.documented")
+        self.assertEqual(hashlib.sha256(record).hexdigest(), note["sha256"], "F4.documented")
+        self.assertEqual(note["sha256"], b.RULED_VALUES["V7-documented"]["source_sentence_sha256"], "F4.documented")
+        self.assertEqual(record.decode(), EXPECTED_VALUE_PASSAGES["V7-documented"], "F4.documented")
+        v7 = record.decode().split("\n")                          # lines 45-51: index 4 is line 49, index 5 line 50
+        self.assertEqual(v7[4], "- **Proposed definition:** " + SUPERSEDED_DOCUMENTED["text"], "F4.documented")
+        self.assertIn("this is today's built behaviour", v7[5], "F4.documented")
+        # the graders' blobs at HEAD are the base 0c1976df's (read there), so no label moves; no older commit is read
+        for g, blob in (("graders/scope_read.py", "873bd36a417aeaa4c78d4f5a3046cb2a288f6869"),
+                        ("graders/template_adherence.py", "cb39d0af5c2252b005c8d558bf3a5eaa23496981")):
+            got = subprocess.run(["git", "-C", str(REPO), "rev-parse", f"HEAD:evals/gap-study-4/{g}"],
+                                 capture_output=True, text=True, check=True).stdout.strip()
+            self.assertEqual(got, blob, f"F4.documented: {g} changed, so labels could move")
 
 
 READY_MUTANTS = {

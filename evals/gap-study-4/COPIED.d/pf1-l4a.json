@@ -27,6 +27,16 @@
       "reason": "Lane pf1-l4a: a byte copy of probe hookctl2's (HG2) summary.json as fetched from athena on 22 Oct 2026 (units and verdict: Gemini PASS in both processes)."
     },
     {
+      "path": "source-records/V6-V8-proposals-e1cfe860-lines-45-51.md",
+      "status": "new",
+      "reason": "Lane pf1-l4a (the lead's ruling after the merged battery pf1-l6b-battery-7955554, 25 Oct 2026): a record of V7's documented-reply proposal, lines 45-51 of cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 (a commit in no ref of the line), byte for byte, sha256 3df43989... (the draft's source_sentence_sha256 for wave3.documented_reply); never edited."
+    },
+    {
+      "path": "source-records/V6-V8-proposals-e1cfe860-lines-45-51.json",
+      "status": "new",
+      "reason": "Lane pf1-l4a: the record's source note (commit, path, its blob and sha256, lines 45-51, the record's sha256), which tests/test_build_draft.py checks the record against."
+    },
+    {
       "path": "COPIED.d/pf1-l4a.json",
       "status": "new",
       "reason": "This lane's copy-record fragment (interface 1). Lane pf1-l4a (pre-freeze review 1's evidence-only fills, 25 Oct 2026). Its edits to files other lanes claim, without a change of status: build_draft.py, prereg-draft.json and tests/test_build_draft.py (the fills and their tests), and the NIT corrections named in this lane's commits. language-allowlist.json gains two entries (edited by this lane, appended) for the committed probe manifests' byte-count lines (a fetched file's size), each bound to its exact text, as bound records. The fresh review of this lane at cc83aac6 (VERDICT CHANGES) is kept, byte for byte, outside the study folder at lane-reports/gap-study-4/REVIEW-pf1-l4a-cc83aac.md (the lead's ruling, 25 Oct 2026: a lane record is not study content)."
