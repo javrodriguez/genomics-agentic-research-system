@@ -20,6 +20,11 @@
       "path": "lanes/REVIEW-pf1-l2a-5afd80a.md",
       "status": "new",
       "reason": "The fresh review of lane pf1-l2a at 5afd80a7 (VERDICT CHANGES, Sat 24 Oct 2026), committed as written, unedited; its findings fold under the Lane-orchestrator's rulings on it, recorded with the fold."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l2a-898e598.md",
+      "status": "new",
+      "reason": "The closure review of lane pf1-l2a at 898e598c and 77e4aa69 (VERDICT CHANGES, one MINOR and two NITs, Sat 24 Oct 2026), committed as written, unedited; its MINOR folds under the Lane-orchestrator's ruling on it, and its two NITs are recorded with no change, on the same ruling."
     }
   ]
 }
