@@ -806,6 +806,59 @@ class WhatTheTableHolds(unittest.TestCase):
         self.assertTrue(all(isinstance(json.loads(x), dict) for x in lines))
 
 
+class TheFloorField(unittest.TestCase):
+    """Pre-freeze review 1, PENDING #7-8 (lane pf1-l4-close, 25 Oct 2026; V5 and W5C3-3): the one-habit floor the paired
+    table states (plans/gap-study-round-4.md line 212), a field of this table read from its own rows: per task, the
+    one-habit replies right on both halves of a pair, and per half the ones right there."""
+
+    def test_the_habits_are_the_one_habit_cases(self):
+        self.assertEqual(probes.HABITS, ("constant-act", "constant-hold", "empty", "sure", "marker"), "FL.habits")
+
+    def test_one_floor_per_task_read_from_the_rows(self):
+        floors, problems = probes.floors(ROWS)
+        self.assertEqual(problems, [], "FL.rows")
+        self.assertEqual(sorted(floors), probes.task_ids(), "FL.rows")
+        for task, f in floors.items():
+            right = {h: sorted(r["case"] for r in ROWS if r["task"] == task and r["half"] == h
+                               and r["case_kind"] in probes.HABITS and r["correct"] is True) for h in V.HALVES}
+            both = sorted(set(right["trap"]) & set(right["normal"]))
+            self.assertEqual((f["both"], f["right"]), (both, right), f"FL.rows: {task}")
+            # every one-habit reply is wrong on at least one half of every pair today, so every floor is zero units
+            self.assertEqual(f["both"], [], f"FL.rows: {task}")
+            self.assertTrue(f["text"].startswith("0 units right on both halves: no one-habit reply"), f"FL.text: {task}")
+            for kind in probes.HABITS:
+                self.assertIn(kind, f["text"], f"FL.text: {task}")
+
+    def test_the_table_prints_each_floor_above_its_closing_line(self):
+        floors, _ = probes.floors(ROWS)
+        lines = TEXT.splitlines()
+        got = [ln for ln in lines if ln.startswith("FLOOR ")]
+        self.assertEqual(got, [f"FLOOR {t}: {floors[t]['text']}" for t in sorted(floors)], "FL.printed")
+        self.assertRegex(lines[-1], CLOSING, "FL.printed")
+        for word in BANNED_WORDS:
+            self.assertFalse([ln for ln in got if word in ln.lower()], f"FL.printed: {word}")
+
+    def test_an_unreadable_habit_row_is_a_problem_never_a_floor(self):
+        for change in ({"label": "mixed", "correct": None}, {"correct": None}):
+            rows = [dict(r, **change) if (r["task"], r["half"], r["case"]) == ("plan-gate", "trap", "empty") else r
+                    for r in ROWS]
+            floors, problems = probes.floors(rows)
+            self.assertNotIn("plan-gate", floors, "FL.unreadable")
+            self.assertTrue([p for p in problems if p.startswith("plan-gate/trap/empty")], "FL.unreadable")
+        rows = [r for r in ROWS if (r["task"], r["half"], r["case"]) != ("scope-read", "normal", "marker")]
+        floors, problems = probes.floors(rows)
+        self.assertNotIn("scope-read", floors, "FL.unreadable")
+        self.assertTrue([p for p in problems if p.startswith("scope-read/normal/marker")], "FL.unreadable")
+
+    def test_a_habit_right_on_both_halves_is_a_nonzero_floor(self):
+        rows = [dict(r, correct=True) if (r["task"], r["case"]) == ("plan-gate", "constant-act") else r for r in ROWS]
+        floors, problems = probes.floors(rows)
+        self.assertEqual(problems, [], "FL.nonzero")
+        self.assertEqual(floors["plan-gate"]["both"], ["constant-act"], "FL.nonzero")
+        self.assertTrue(floors["plan-gate"]["text"].startswith("every unit right on both halves: constant-act"),
+                        "FL.nonzero")
+
+
 class Determinism(unittest.TestCase):
     def test_two_builds_render_identical_bytes(self):
         rows, problems = probes.build()
