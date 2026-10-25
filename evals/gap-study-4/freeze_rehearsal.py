@@ -37,6 +37,16 @@ import study  # noqa: E402
 
 DRAFT = HERE / "prereg-draft.json"
 
+# THE LIVE-BOX CHECKLIST: records this program cannot make (it drives no take), required on a real box before the
+# freeze and read beside its report. Lane pf1-l3 (the lead's ruling on the second closure check of f0c0eb1d, 24 Oct
+# 2026): no committed claude-code walk holds a cut turn, so the cut-tail bound (claude_code_adapter.cut_tail_problem)
+# has met only synthetic records.
+LIVE_BOX_REQUIRED = (
+    "one forced-timeout claude-code take on a real box: a turn the registered budget cuts (driver ledger row end "
+    "timed-out, exit 124), its turn stream and session file committed, check_take.transcript_content_problems read on "
+    "it, so a real cut's gap between the two records is measured against the cut-tail bound",
+)
+
 # Frozen-state gates only. Missing files are interpreter failures, never dropped.
 # W8A (ruling W8-layout-1; this file moved from lane w5b to lane w8a under ruling W8A-gap4-1): the four walk checks,
 # so the rehearsal proves the walks the freeze rests on are registered, held to their pins, clean of the checkout and

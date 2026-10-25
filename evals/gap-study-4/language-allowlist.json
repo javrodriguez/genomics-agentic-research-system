@@ -371,6 +371,48 @@
       "line_text": "Offline, there is no stronger anchor than the commit road short of signed commits.",
       "ruled": "2026-10-25",
       "why": "Bound record, never edited: lanes/REVIEW-pf1-l2a-2f8f930.md is the fresh closure check of lane pf1-l2a at 2f8f930e (VERDICT PASS), committed as its reviewer wrote it. Lane pf1-l2b's m14 pattern (stronger) met this line only at the L6a merge (Sun 25 Oct 2026, the integration lane of the fold plan's step 3, under the Lane-orchestrator's approval of that plan); 'no stronger anchor than the commit road' is about provenance anchors, never a sentence comparing models."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l3-fb35432.md",
+      "pattern": "ratio-slash",
+      "line_text": "- The athena run pf1-l3-checks-fb35432-20261025T012547Z ran four other modules (test_vendor_entries, test_vendor_body, test_pipeline, test_box_integration), 4/4 PASS-SUBSET (run.log, summary.txt).",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l3-fb35432.md is the fresh independent review of lane pf1-l3-transcript-integrity at fb354328 (VERDICT: CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (24 Oct 2026). The words are the reviewer's own prose about the code under review and its own test runs, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l3-fb35432.md",
+      "pattern": "out-of",
+      "line_text": "| The same edit in both the session file and the turn stream | passes; this is residual (a), out of the stated threat model |",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l3-fb35432.md is the fresh independent review of lane pf1-l3-transcript-integrity at fb354328 (VERDICT: CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (24 Oct 2026). The words are the reviewer's own prose about the code under review and its own test runs, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l3-fb35432.md",
+      "pattern": "ratio-slash",
+      "line_text": "- The evidence statement \"athena passed 4/4\" is true, but it is not evidence for m9 or for the content check.",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l3-fb35432.md is the fresh independent review of lane pf1-l3-transcript-integrity at fb354328 (VERDICT: CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (24 Oct 2026). The words are the reviewer's own prose about the code under review and its own test runs, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l3-fb35432.md",
+      "pattern": "out-of",
+      "line_text": "  That falls under residual (a), the one-uid road, which the threat model puts out of scope.",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l3-fb35432.md is the fresh independent review of lane pf1-l3-transcript-integrity at fb354328 (VERDICT: CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (24 Oct 2026). The words are the reviewer's own prose about the code under review and its own test runs, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l3-f0c0eb1.md",
+      "pattern": "ratio-slash",
+      "line_text": "- athena run pf1-l3-close-f0c0eb1-20261025T025259Z: PASS-SUBSET, 16/16 at commit f0c0eb1d80e8, from summary.txt and run.log.",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l3-f0c0eb1.md is the reviewer's second closure check of lane pf1-l3-transcript-integrity at f0c0eb1d (VERDICT: CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (24 Oct 2026). The words are the reviewer's own prose about its test runs, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l3-461dc16.md",
+      "pattern": "out-of",
+      "line_text": "- Either leave the extra unit out of what the cut turn is graded on, or name in residual (c) that it is graded unconfirmed.",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l3-461dc16.md is the reviewer's third closure check of lane pf1-l3-transcript-integrity at 461dc169 (VERDICT: CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (24 Oct 2026). The words are the reviewer's own prose about the code under review, not a claim by this study about any model or take."
     }
   ]
 }

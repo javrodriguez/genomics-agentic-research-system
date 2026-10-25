@@ -135,7 +135,10 @@ def read_stream(text: str, model=None) -> dict:
     """
     thread_ids, said, output, api, usage, completed, failed, tools, bad = [], [], False, [], None, 0, 0, [], 0
     served = []
-    lines = [raw.strip() for raw in text.splitlines() if raw.strip()]
+    # lane pf1-l3 (the second closure check of f0c0eb1d, 24 Oct 2026): split on "\n" alone, as gemini_adapter does;
+    # str.splitlines also splits on U+2028, U+2029 and U+0085, which a JSON string carries raw, so a command's output
+    # printing one would split a record and refuse the turn
+    lines = [raw.strip() for raw in text.split("\n") if raw.strip()]
     for n, raw in enumerate(lines, 1):
         try:
             rec = json.loads(raw)
@@ -230,7 +233,7 @@ def submitted_mode(journal_path: str, want: dict) -> dict:
 
 def _rollout_records(text: str) -> list:
     out = []
-    for raw in text.splitlines():
+    for raw in text.split("\n"):              # lane pf1-l3: "\n" alone (U+2028 and kin sit inside JSON strings)
         if not raw.strip():
             continue
         try:

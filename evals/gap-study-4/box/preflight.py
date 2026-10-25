@@ -109,7 +109,25 @@ PREFLIGHT_CHECKS = (
     "names-do-not-resolve",
     "study-folders-absent",
     "run-tree-path-neutral",
+    "egress-raw-ip-refused",
+    "egress-metadata-refused",
+    "egress-gateway-refused",
 )
+# PF1-L3 (pre-freeze review 1, m9; fold plan prefreeze-1, the lane orchestrator's approval, Sat 24 Oct 2026, under
+# Javier's standing delegation): the three roads out that egress-direct-refused (the take's own host by name) does not
+# try. The direct-egress probe, run as the agent, connects (TCP, DIRECT_TIMEOUT_S each, all at once) to two public
+# addresses by IP literal (no name to resolve), to the link-local metadata address, and to every gateway the take's
+# own route table names, plus the first host of each on-link network (where Docker's default IPAM puts an internal
+# network's gateway), on GATEWAY_PORTS. Each check passes only when no connection was made; the gateway check also
+# needs the take inspect's own gateway (NetworkSettings.Networks.*.Gateway, when it names one) among the addresses
+# tried, so the probe cannot have tried somewhere else. An answered refusal (the host's stack is reachable, the port
+# closed) is listed in the detail, never read as a connection. A host service on a port outside GATEWAY_PORTS is
+# not tried (box_residuals names it).
+DIRECT_TARGETS = {"raw-ip-a": ("1.1.1.1", 443), "raw-ip-b": ("8.8.8.8", 443), "metadata": ("169.254.169.254", 80)}
+RAW_IP_TARGETS = ("raw-ip-a", "raw-ip-b")
+METADATA_TARGET = "metadata"
+GATEWAY_PORTS = (22, 53, 80, 443, 2375, 2376, 3128, 8080)
+DIRECT_TIMEOUT_S = 3
 POSTFLIGHT_CHECKS = ("no-credential-file",)
 
 # `<harness> --version`'s output form, per harness: a regex with one group (the version) once a walk measures it.
@@ -403,9 +421,50 @@ sys.stderr.write(done.stderr.decode("utf-8", "replace"))
 sys.exit(done.returncode)
 """
 
+# PF1-L3 (m9): the direct-egress probe. It reads /proc/net/route only (never under the run tree) and prints
+# {"routes", "gateway_candidates", "gateway": {address: {port: result}}, "targets": {label: result}}, each result
+# {"address", "connected"} plus the error's type name when no connection was made.
+DIRECT_PROGRAM = """\
+import concurrent.futures, json, socket, struct, sys
+timeout, ports, fixed = float(sys.argv[1]), [int(p) for p in sys.argv[2].split(",")], sys.argv[3:]
+def ip(h):
+    return socket.inet_ntoa(struct.pack("<I", int(h, 16)))
+rows, cands = [], set()
+with open("/proc/net/route") as fh:
+    for line in fh.read().splitlines()[1:]:
+        f = line.split()
+        if len(f) < 8:
+            continue
+        rows.append({"iface": f[0], "destination": ip(f[1]), "gateway": ip(f[2]), "mask": ip(f[7])})
+        if f[2] != "00000000":
+            cands.add(ip(f[2]))
+        elif f[1] != "00000000" and f[7].upper() != "FFFFFFFF":
+            net = int.from_bytes(struct.pack("<I", int(f[1], 16)), "big")
+            cands.add(socket.inet_ntoa((net + 1).to_bytes(4, "big")))
+def attempt(address, port):
+    try:
+        socket.create_connection((address, port), timeout=timeout).close()
+        return {"address": "%s:%d" % (address, port), "connected": True}
+    except OSError as e:
+        return {"address": "%s:%d" % (address, port), "connected": False, "error": type(e).__name__}
+jobs = {("gateway", a, p): (a, p) for a in sorted(cands) for p in ports}
+for t in fixed:
+    label, _, where = t.partition("=")
+    address, _, port = where.rpartition(":")
+    jobs[("target", label, None)] = (address, int(port))
+with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(jobs))) as pool:
+    got = dict(zip(jobs, pool.map(lambda k: attempt(*jobs[k]), list(jobs))))
+gateway = {}
+for (kind, a, p), r in got.items():
+    if kind == "gateway":
+        gateway.setdefault(a, {})[str(p)] = r
+print(json.dumps({"routes": rows, "gateway_candidates": sorted(cands), "gateway": gateway,
+                  "targets": {a: r for (kind, a, p), r in got.items() if kind == "target"}}))
+"""
+
 PROGRAMS = {"identity": IDENTITY_PROGRAM, "cgroup": CGROUP_PROGRAM, "listing": LISTING_PROGRAM,
             "processes": PROCESSES_PROGRAM, "sockets": SOCKETS_PROGRAM, "egress": EGRESS_PROGRAM,
-            "watcher-caps": PROCESSES_PROGRAM}
+            "watcher-caps": PROCESSES_PROGRAM, "direct-egress": DIRECT_PROGRAM}
 
 
 def _proxy_port() -> str:
@@ -444,7 +503,7 @@ class Probe:
 
 PROBE_IDS = ("identity", "take-inspect", "take-image-manifest", "harness-version", "cgroup", "listing", "processes", "sidecar-inspect",
              "sidecar-image-manifest", "proxy-inspect", "egress-image-manifest", "egress-launch", "health",
-             "watcher-caps", "sockets", "egress", "study-folders")
+             "watcher-caps", "sockets", "egress", "study-folders", "direct-egress")
 PROBE_TIMEOUT_S = 60
 
 
@@ -464,6 +523,11 @@ def refused_names(harness: str, hosts: dict) -> list:
     run_take._known_harness(harness)
     _check_hosts(hosts)
     return list(BLOCKED_NAMES) + sorted(v for k, v in hosts.items() if k != harness)
+
+
+def direct_target_args() -> list:
+    """PF1-L3 (m9): DIRECT_TARGETS as the direct-egress program's label=address:port arguments, in order."""
+    return [f"{label}={address}:{port}" for label, (address, port) in DIRECT_TARGETS.items()]
 
 
 def _read_health(path: str):
@@ -519,6 +583,8 @@ def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, ev
         Probe("egress", agent(_py(EGRESS_PROGRAM, run_take.PROXY_ALIAS, _proxy_port(), hosts[harness],
                                   OTHER_HOST_VIA_PROXY, *refused_names(harness, hosts)))),
         Probe("study-folders", read=lambda: _study_folders(run_tree)),
+        Probe("direct-egress", agent(_py(DIRECT_PROGRAM, str(DIRECT_TIMEOUT_S), ",".join(map(str, GATEWAY_PORTS)),
+                                         *direct_target_args()))),       # PF1-L3 (m9)
     )
 
 
@@ -859,6 +925,63 @@ def _check_path_neutral(raw, spec, *_):
     return "the run tree's path carries no leak word"
 
 
+def _direct(raw) -> dict:
+    got = _json_out(raw, "direct-egress")
+    _need(isinstance(got, dict) and isinstance(got.get("targets"), dict) and isinstance(got.get("gateway"), dict)
+          and isinstance(got.get("gateway_candidates"), list), "the direct-egress record is not its shape")
+    return got
+
+
+def _target_refused(raw, label: str) -> str:
+    want = "%s:%d" % DIRECT_TARGETS[label]
+    r = _direct(raw)["targets"].get(label)
+    _need(isinstance(r, dict) and r.get("address") == want, f"{want} ({label}) was not tried")
+    _need(r.get("connected") is False, f"a direct connection to {want} ({label}) was made")
+    return f"{want} refused ({r.get('error')})"
+
+
+def _check_raw_ip(raw, *_):
+    return "; ".join(_target_refused(raw, label) for label in RAW_IP_TARGETS)
+
+
+def _check_metadata(raw, *_):
+    return _target_refused(raw, METADATA_TARGET)
+
+
+def _inspect_gateways(obj) -> list:
+    """The take inspect's gateways, one per network it is on. PF1-L3 (the lane orchestrator's ruling on review fb354328
+    finding 5, 24 Oct 2026): an empty Gateway on any of its networks (as an --internal network may report) refuses,
+    fail closed: the probe's candidates then come from the take's own route table alone, with nothing host-side to
+    bind them to, so the check never passes on the route table's word. The freeze rehearsal's real box records which
+    it is."""
+    nets = (obj.get("NetworkSettings") or {}).get("Networks") if isinstance(obj, dict) else None
+    _need(isinstance(nets, dict) and nets, "the take inspect names no network, so its gateway cannot be shown")
+    empty = sorted(str(k) for k, n in nets.items() if not (isinstance(n, dict) and isinstance(n.get("Gateway"), str)
+                                                          and n["Gateway"]))
+    _need(not empty, f"the take inspect names no gateway for network(s) {empty}: the addresses tried cannot be bound "
+                     f"to the take's own gateway (fail closed)")
+    return sorted({n["Gateway"] for n in nets.values()})
+
+
+def _check_gateway(raw, *_):
+    got = _direct(raw)
+    cands = got["gateway_candidates"]
+    _need(bool(cands), "the take's route table names no gateway and no on-link network: nothing was tried")
+    want = _inspect_gateways(_inspect_obj(raw, "take-inspect"))
+    missing = [g for g in want if g not in cands]
+    _need(not missing, f"the take inspect's gateway {missing} was not among the addresses tried {cands}")
+    answered = []
+    for address in cands:
+        ports = got["gateway"].get(address)
+        _need(isinstance(ports, dict) and sorted(ports) == sorted(map(str, GATEWAY_PORTS)),
+              f"gateway {address}: not every port of {list(GATEWAY_PORTS)} was tried")
+        made = [p for p, r in ports.items() if not isinstance(r, dict) or r.get("connected") is not False]
+        _need(not made, f"a direct connection to gateway {address} port(s) {sorted(made, key=int)} was made")
+        answered += [f"{address}:{p}" for p, r in ports.items() if r.get("error") == "ConnectionRefusedError"]
+    tail = f"; answered refused (reachable, port closed): {sorted(answered)}" if answered else ""
+    return f"no connection to {cands} on {list(GATEWAY_PORTS)}{tail}"
+
+
 CHECKS = {
     "agent-non-root": _check_agent, "image-matches-lock": _check_image,
     "harness-version-matches-lock": _check_version, "take-inspect-matches-spec": _check_take_inspect,
@@ -869,6 +992,8 @@ CHECKS = {
     "egress-allowed-host": _check_allowed, "egress-other-host-refused": _check_other,
     "egress-direct-refused": _check_direct, "names-do-not-resolve": _check_names,
     "study-folders-absent": _check_study, "run-tree-path-neutral": _check_path_neutral,
+    "egress-raw-ip-refused": _check_raw_ip, "egress-metadata-refused": _check_metadata,
+    "egress-gateway-refused": _check_gateway,
 }
 # The C3 routing name (interface 11, fixed by lane w4h): the sidecar's reply field. Before the first turn a
 # non-empty list folds into preflight_ok false (consequential-paths-readable).

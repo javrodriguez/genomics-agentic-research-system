@@ -532,10 +532,14 @@ def description_problems(d):
         {"text": "the token is visible to child processes if preflight says so", "conditional_on_preflight": True,
          "finding": b.TOKEN_VISIBILITY_FINDING},
         {"text": "model weights behind an id are not pinnable"}, MODE_RESIDUAL, NEW_FOLDER_RESIDUAL]
-         and len(d["box_residuals"]) == 9
+         and len(d["box_residuals"]) == 11
          and [r.get("name") for r in d["box_residuals"][4:]] == ["read-only root", "W-3b", "arm O egress host",
-                                                                 "arm O and G HOME", "arm G project tier"],
-         "R8.residuals")   # + the read-only root and W-3b (16 Oct), arm O's egress host (R1, 18 Oct), R-H5 (19 Oct)
+                                                                 "arm O and G HOME", "arm G project tier",
+                                                                 "transcript content and the one uid",
+                                                                 "unlogged reads and the probed roads out"]
+         and d["box_residuals"][9:] == [b.PF1_TRANSCRIPT_RESIDUAL, b.PF1_READS_EGRESS_RESIDUAL],
+         "R8.residuals")   # + the read-only root and W-3b (16 Oct), arm O's egress host (R1, 18 Oct), R-H5 (19 Oct), pf1-l3
+    #                   (24 Oct: MAJOR 7 and m9 of pre-freeze review 1)
     need(d.get("final_stop") == FINAL_STOP, "R8.final-stop")
     need(d["leak_words"] == old["leak_words"] + [study.STUDY, "round 4"] and len(old["leak_words"]) == 23 and
          d["leak_context_excusals"] == old["leak_context_excusals"] and len(d["leak_context_excusals"]) == 3 and
@@ -805,8 +809,9 @@ class Description(unittest.TestCase):
     def test_mode_residual_is_bound(self):
         d = self.get()
         # 4th: the new-folder gap; then the read-only root, W-3b, arm O's egress host, arm O and G's HOME and (lane
-        # d8-furniture fold 2, 22 Oct 2026) the arm G project tier
-        self.assertEqual(len(d["box_residuals"]), 9, "R8.mode-residual")
+        # d8-furniture fold 2, 22 Oct 2026) the arm G project tier; (lane pf1-l3, 24 Oct 2026) the transcript content
+        # and the unlogged reads and roads out
+        self.assertEqual(len(d["box_residuals"]), 11, "R8.mode-residual")
         self.assertEqual(d["box_residuals"][2], MODE_RESIDUAL, "R8.mode-residual")
         endstate_tests = (HERE / MODE_CHECK[0]).read_text()
         self.assertIn(f"class {MODE_CHECK[1]}(", endstate_tests, "R8.mode-residual")

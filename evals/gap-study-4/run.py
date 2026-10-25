@@ -30,6 +30,7 @@ import copy
 import importlib.util
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -342,6 +343,24 @@ def transcript_lines(path) -> "transcript_view.BoundTranscript":
     w020's commit failed because a path reached plan_gate.take_events, whose guard refuses one; a grader opens no
     file), bound to its path (the review of E: the vendor binding reads the envelope's streams beside it), as one
     transcript_view.BoundTranscript, never a bare path."""
+    p = Path(path)
+    # lane pf1-l3 (the third closure check of 461dc169, finding 2, 24 Oct 2026): in a claude-code take whose cut turn
+    # the host records, the one extra unit the session file may carry past its stream has no host copy, so the graders
+    # (the words-graded readings and pause_adherence's stop class) are handed the transcript without it
+    led = p.parent / "driver-ledger.json"
+    try:
+        harness = (json.loads(led.read_text(encoding="utf-8")).get("agent") or {}).get("harness") if led.is_file() \
+            else None
+    except (OSError, ValueError, AttributeError):
+        harness = None
+    if harness == "claude-code":
+        import claude_code_adapter as _cca
+        confirmed = _cca.confirmed_transcript_text(p.parent)
+        if confirmed is not None:
+            with tempfile.TemporaryDirectory(prefix="confirmed-") as d:
+                q = Path(d) / "transcript.jsonl"
+                q.write_text(confirmed, encoding="utf-8")
+                return transcript_view.BoundTranscript(q)          # its lines are read at once, here
     return transcript_view.BoundTranscript(path)
 
 

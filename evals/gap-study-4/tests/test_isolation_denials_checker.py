@@ -11,13 +11,14 @@ pinned 2.1.296 binary drops a denied tool from the model's list by name, so:
                and the tools; one line per such init.
   D-clean      full journals and inits that list none of them: nothing; the flag's =, comma and space spellings
                read alike; a deferred_tools_delta adding other names: nothing.
-  D-delta      a transcript deferred_tools_delta whose addedNames includes one of the three refuses.
+  D-delta      a transcript deferred_tools_delta whose addedNames includes one of the three refuses, as
+               [transcript-mismatch] since lane pf1-l3 (the transcript alone shows it; review fb354328 finding 1).
   D-journal    fail closed: a journal whose --disallowedTools or permissions.deny lacks one of the three, whose
                crossSessionInbound is not "refuse" or is absent, or that carries two inline --settings; a turn stream
                with no journal; no journal at all; a turn stream with no init record: each refuses.
   D-prompt     a --disallowedTools that is the prompt after -p is never read as the flag.
-  D-shape      an init whose tools, or a delta whose addedNames, are not a list raises CheckRefused rather than
-               guess.
+  D-shape      an init whose tools are not a list raises CheckRefused rather than guess; a delta whose addedNames
+               are not a list is [transcript-mismatch] (lane pf1-l3).
   D-wired      check4 and check4_walk both add these problems.
   D-names      the checker's three are the adapter's and run_take's (the harness lane's addition).
   D-witness    each clause dropped in memory turns a check red.
@@ -143,7 +144,8 @@ class Denials(unittest.TestCase):
         out = []
         for tool in DENY:
             got = self.run_case([BASE], records=[delta(["mcp__x__y", tool])])
-            if ct.reason_ids(got) != ["harness-condition-violated"] or tool not in got[0]:
+            # lane pf1-l3 (ruling on review fb354328 finding 1): the delta is the transcript's alone, a mismatch
+            if ct.reason_ids(got) != ["transcript-mismatch"] or tool not in got[0]:
                 out.append(f"D-delta {tool}: {got}")
         return out
 
@@ -187,12 +189,12 @@ class Denials(unittest.TestCase):
             except ct.CheckRefused:
                 pass
         with tempfile.TemporaryDirectory() as d:
+            # lane pf1-l3 (ruling on review fb354328 finding 1): a delta off its shape is the agent-writable
+            # transcript's, so it is transcript-mismatch, never a guess and never a stop
             path = take(Path(d), [BASE], records=[delta("RemoteTrigger")])
-            try:
-                ct.denied_tool_problems(path)
-                out.append("D-shape: addedNames that are not a list were read")
-            except ct.CheckRefused:
-                pass
+            got = ct.denied_tool_problems(path)
+            if ct.reason_ids(got) != ["transcript-mismatch"] or "not a list" not in got[0]:
+                out.append(f"D-shape: addedNames that are not a list read as {got}")
         return out
 
     def check_wired(self):

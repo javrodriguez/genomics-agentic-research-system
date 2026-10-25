@@ -21,6 +21,12 @@ agent reached read did-not-reach, and readers-disagree compares user text only. 
               joined "A<LS>B" line refuse; its control (a space) and blank lines do not.
   L-witness   each clause dropped in memory turns a check red.
 
+SUPERSEDED IN PART (lane pf1-l3, the lane orchestrator's ruling on the closure check of 8cf492b2, 24 Oct 2026):
+U+2028, U+2029 and U+0085 are legal inside a JSON string and every reader splits on "\n" alone, so a record carrying
+one is READ whole by both ends, never refused (the refusal let an agent void and re-run its own take by printing one
+character); the C0 separators (never legal raw in a JSON string) are still refused, and a line two records are
+joined into is still not JSON, so the checker still refuses it.
+
 Synthetic fixtures only.
 """
 
@@ -53,7 +59,8 @@ def setUpModule():
 
 
 LS = "\u2028"
-SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029")
+SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e")             # refused (C0, never legal raw in JSON)
+JSON_LEGAL = ("\x85", "\u2028", "\u2029")                                 # read whole (pf1-l3)
 USER = {"type": "user", "message": {"role": "user", "content": "please start"}, "permissionMode": "bypassPermissions"}
 INIT = {"type": "system", "subtype": "init", "session_id": "s", "model": "m", "permissionMode": "bypassPermissions",
         "claude_code_version": "2.1.296", "apiKeySource": "none", "tools": ["Bash"]}
@@ -84,9 +91,21 @@ def driver_problems(mod=None) -> list:
                 out.append(f"L-driver: a stream with {sep!r} {name} was read")
             except mod.StreamError:
                 pass
+    for sep in JSON_LEGAL:
+        raw = json.dumps(said("ok_READY-MARK"), ensure_ascii=False).replace("ok_", "ok" + sep)
+        try:
+            got = mod.read_stream(jsonl(INIT) + raw + "\n")
+            if "READY-MARK" not in got["agent_text"] or sep not in got["agent_text"]:
+                out.append(f"L-driver: a record carrying {sep!r} lost its text: {got['agent_text']!r}")
+        except mod.StreamError as e:
+            out.append(f"L-driver: a record carrying {sep!r} inside a string was refused: {e}")
     got = mod.cross_check([], jsonl(said("a" + LS + "b")), session_id="s")
+    if any("separator" in g for g in got):
+        out.append(f"L-driver: the cross-check refuses a session file carrying U+2028 inside a string: {got}")
+    # the second closure check of f0c0eb1d: a session file the driver cannot split is named, never crashed on
+    got = mod.cross_check([], jsonl(said("a")) .replace('"a"', '"a\x0bb"'), session_id="s")
     if not any("separator" in g for g in got):
-        out.append(f"L-driver: the cross-check does not name a session file carrying U+2028: {got}")
+        out.append(f"L-driver: the cross-check does not name a session file carrying \\x0b: {got}")
     src = Path(mod.__file__).read_text()
     if 'with open(got["stream_path"], encoding="utf-8", errors="surrogateescape", newline="") as fh:' not in src:
         out.append("L-driver: the stream file is not opened with newline=\"\"")
@@ -122,7 +141,6 @@ def checker_problems(mod=None) -> list:
     mod = mod or ct
     out = []
     refused = {
-        "the reviewer's u2028.py case": jsonl(USER, said("ok" + LS + "READY-MARK")),
         'a joined "A<LS>B" line': json.dumps(USER) + LS + json.dumps(said("READY-MARK")) + "\n",
         "a non-blank line that is not JSON": jsonl(USER) + "not json\n" + jsonl(said("x")),
         "half a record": jsonl(USER) + json.dumps(said("x"))[:20] + "\n",
@@ -136,6 +154,9 @@ def checker_problems(mod=None) -> list:
         if mod.reason_ids(got) != ["transcript-unreadable"]:
             out.append(f"L-checker {name}: {got}")
     for name, text in (("the control (a space)", jsonl(USER, said("ok READY-MARK"))),
+                       ("the reviewer's u2028.py case, read whole (pf1-l3)", jsonl(USER, said("ok" + LS + "READY-MARK"))),
+                       ("U+2029 inside a string (pf1-l3)", jsonl(USER, said("ok\u2029READY-MARK"))),
+                       ("U+0085 inside a string (pf1-l3)", jsonl(USER, said("ok\x85READY-MARK"))),
                        ("blank lines", jsonl(USER) + "\n   \n" + jsonl(said("x"))), ("empty", "")):
         got = mod.transcript_line_problems(transcript(text))
         if got:
@@ -194,6 +215,9 @@ class TheLineSeparators(unittest.TestCase):
                 cca, "    if any(s in (text or \"\") for s in LINE_SEPARATORS):", "    if False:"))),
             ("the cross-check crashes", lambda: driver_problems(mutant(
                 cca, "    except StreamError as e:\n        return [str(e)]\n", "    except KeyError as e:\n        return [str(e)]\n"))),
+            ("the JSON-legal separators refused again", lambda: driver_problems(mutant(
+                cca, 'LINE_SEPARATORS = ("\\r", "\\x0b", "\\x0c", "\\x1c", "\\x1d", "\\x1e")',
+                'LINE_SEPARATORS = ("\\r", "\\x0b", "\\x0c", "\\x1c", "\\x1d", "\\x1e", "\\u2028")'))),
             ("the checker's separators unread", lambda: checker_problems(mutant(
                 ct, '    seps = sorted({f"U+{ord(s):04X}" for s in TRANSCRIPT_LINE_SEPARATORS if s in text})',
                 "    seps = []"))),

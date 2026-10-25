@@ -223,7 +223,9 @@ class World:
                                "MemoryReservation": s.memory_reservation, "NanoCpus": 2_000_000_000,
                                "ReadonlyRootfs": True, "Tmpfs": {"/tmp": "rw,exec,nosuid,nodev,mode=1777", "/var/tmp": "rw,exec,nosuid,nodev,mode=1777"}},
                 "Mounts": [{"Type": "bind", "Source": s.run_tree, "Destination": s.run_tree, "RW": True},
-                           {"Type": "bind", "Source": s.config_dir, "Destination": "/opt/cfg", "RW": True}]}],
+                           {"Type": "bind", "Source": s.config_dir, "Destination": "/opt/cfg", "RW": True}],
+                # PF1-L3 (m9): the internal network's gateway, which the direct-egress probe must have tried
+                "NetworkSettings": {"Networks": {"n": {"Gateway": GATEWAY}}}}],
             "take-image-manifest": json.dumps(MANIFEST) + "\n",
             "harness-version": VERSION_OUT[harness][0],
             "cgroup": {"cpu.max": "200000 100000", "memory.max": str(s.memory),
@@ -245,6 +247,15 @@ class World:
             "egress": {"via_proxy": {HOSTS[harness]: {"status": 200}, "github.com": {"status": 403}},
                        "direct": {"connected": False, "error": "gaierror"},
                        "resolves": {n: False for n in REFUSED_NAMES[harness]}},
+            # PF1-L3 (m9): the direct-egress probe's record, nothing connected
+            "direct-egress": {
+                "routes": [{"iface": "eth0", "destination": "172.30.0.0", "gateway": "0.0.0.0",
+                            "mask": "255.255.0.0"}],
+                "gateway_candidates": [GATEWAY],
+                "gateway": {GATEWAY: {str(port): {"address": f"{GATEWAY}:{port}", "connected": False,
+                                                  "error": "TimeoutError"} for port in pf.GATEWAY_PORTS}},
+                "targets": {label: {"address": f"{a}:{port}", "connected": False, "error": "OSError"}
+                            for label, (a, port) in pf.DIRECT_TARGETS.items()}},
         }
         for row in self.answers["watcher-caps"]:
             row.update(uids=[10002] * 4, gids=[10002] * 4, groups=[], no_new_privs=1,
@@ -313,6 +324,13 @@ def edit_world(fn):
 
 
 # Every check's own breaks: each must turn that check (and the record) red.
+GATEWAY = "172.30.0.1"     # PF1-L3 (m9): the world's internal-network gateway
+
+
+def _set_connected(label):
+    return edit_json("direct-egress", lambda d: d["targets"][label].update(connected=True))
+
+
 BREAKS = {
     "agent-non-root": [
         ("root-uid", edit_json("identity", lambda d: d.update(uid=0))),
@@ -498,6 +516,29 @@ BREAKS = {
         ("unlooked", edit_value("study-folders", lambda v: v.pop(STUDY[-1]))),
     ],
     "run-tree-path-neutral": [],   # driven by its own test (the path is the spec's)
+    # PF1-L3 (pre-freeze review 1, m9; fold plan prefreeze-1, 24 Oct 2026): the three roads out the proxy does not take
+    "egress-raw-ip-refused": [
+        ("raw-ip-a-connected", _set_connected("raw-ip-a")),
+        ("raw-ip-b-connected", _set_connected("raw-ip-b")),
+        ("raw-ip-untried", edit_json("direct-egress", lambda d: d["targets"].pop("raw-ip-b"))),
+        ("raw-ip-elsewhere", edit_json("direct-egress", lambda d: d["targets"]["raw-ip-a"].update(
+            address="10.0.0.1:443"))),
+        ("record-off-shape", edit_json("direct-egress", lambda d: d.pop("targets"))),
+    ],
+    "egress-metadata-refused": [
+        ("metadata-connected", _set_connected("metadata")),
+        ("metadata-untried", edit_json("direct-egress", lambda d: d["targets"].pop("metadata"))),
+    ],
+    "egress-gateway-refused": [
+        ("gateway-connected", edit_json("direct-egress", lambda d: d["gateway"][GATEWAY]["22"].update(connected=True))),
+        ("gateway-unknown", edit_json("direct-egress", lambda d: d["gateway"][GATEWAY]["2375"].pop("connected"))),
+        ("port-untried", edit_json("direct-egress", lambda d: d["gateway"][GATEWAY].pop("8080"))),
+        ("candidate-untried", edit_json("direct-egress", lambda d: d["gateway"].pop(GATEWAY))),
+        ("nothing-tried", edit_json("direct-egress", lambda d: d.update(gateway_candidates=[], gateway={}))),
+        ("inspect-gateway-untried", edit_json("take-inspect", lambda d: d[0]["NetworkSettings"]["Networks"]["n"].update(
+            Gateway="172.30.0.254"))),
+        ("inspect-names-no-network", edit_json("take-inspect", lambda d: d[0].pop("NetworkSettings"))),
+    ],
 }
 
 
@@ -1122,8 +1163,8 @@ class TestPrograms(MutantCase):
             for p in World(h).probes():
                 if p.argv is not None and "-c" in p.argv:
                     built[p.id] = p.argv[list(p.argv).index("-c") + 1]
-        if len(built) != 8:      # R4-2 (lane vendor-b11 round 4): arms O's and G's version probe runs one too
-            out.append(f"{len(built)} probes run a program, not 8")
+        if len(built) != 9:      # R4-2 (lane vendor-b11 round 4): arms O's and G's version probe runs one too;
+            out.append(f"{len(built)} probes run a program, not 9")   # PF1-L3 (m9): and the direct-egress probe
         for name, src in built.items():
             try:
                 ast.parse(src, feature_version=(3, 11))
@@ -2076,7 +2117,9 @@ BASE_BREAKS = {"agent-non-root": 9, "image-matches-lock": 3, "harness-version-ma
                "watcher-invisible": 6, "sidecar-isolated": 15, "watcher-started": 2, "watcher-capability": 5,
                "consequential-paths-readable": 4, "no-container-socket": 4, "egress-allowed-host": 2,
                "egress-other-host-refused": 2, "egress-direct-refused": 1, "names-do-not-resolve": 5,
-               "study-folders-absent": 2, "run-tree-path-neutral": 0}
+               "study-folders-absent": 2, "run-tree-path-neutral": 0,
+               # PF1-L3 (m9, 24 Oct 2026): added, the base's eighteen kept
+               "egress-raw-ip-refused": 5, "egress-metadata-refused": 2, "egress-gateway-refused": 7}
 
 
 class TestNothingDropped(unittest.TestCase):

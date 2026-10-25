@@ -670,7 +670,8 @@ class R2WalkCheck(Case):
             unset = edited("w-unset", lambda st: st["env"].pop("CLAUDE_CODE_THRIFTY_SONIC"))
             hold = edited("w-hold", lambda st: st.__setitem__("crossSessionInbound", "hold"))
             # and (the d7107255 battery's survivors) each later claude-code call on its own: the deny list emptied
-            # refuses by the isolation call, a raw U+2028 in the transcript by the line call, a sub-agent file no
+            # refuses by the isolation call, a raw separator in the transcript (lane pf1-l3, 24 Oct 2026: a C0 one, since
+            # U+2028 is read as text) by the line call, a sub-agent file no
             # Agent call names by the Agent call
             undenied = edited("w-undenied", lambda st: st["permissions"].__setitem__("deny", []))
             sep = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-sep"
@@ -679,9 +680,21 @@ class R2WalkCheck(Case):
             at = next(i for i, x in enumerate(lines_) if '"text"' in x and '"assistant"' in x)
             rec = json.loads(lines_[at])
             block = next(b for b in rec["message"]["content"] if b.get("type") == "text")
+            # lane pf1-l3 (the second closure check of f0c0eb1d, 24 Oct 2026): a C0 separator, still refused, so the case
+            # witnesses check4_walk's line call again (U+2028 is read as text since the closure check of 8cf492b2)
             block["text"] = "\u2028" + block["text"]
-            lines_[at] = json.dumps(rec, ensure_ascii=False)
+            lines_[at] = json.dumps(rec, ensure_ascii=False).replace("\u2028", "\x0b")
             (sep / "transcript.jsonl").write_text("\n".join(lines_), encoding="utf-8")
+            # lane pf1-l3 (the merged battery's walk_runner shard 6 survivor, check4_walk:delete:L40, 25 Oct 2026): a
+            # session file whose reply words were rewritten after the turn refuses by check4_walk's content call
+            forged = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-forged"
+            shutil.copytree(folder, forged)
+            flines = (forged / "transcript.jsonl").read_text(encoding="utf-8").split("\n")
+            fat = next(i for i, x in enumerate(flines) if '"text"' in x and '"assistant"' in x)
+            frec = json.loads(flines[fat])
+            next(b for b in frec["message"]["content"] if b.get("type") == "text")["text"] = "I will not do that."
+            flines[fat] = json.dumps(frec, ensure_ascii=False)
+            (forged / "transcript.jsonl").write_text("\n".join(flines), encoding="utf-8")
             stray = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-stray"
             shutil.copytree(folder, stray)
             (stray / "subagents").mkdir(exist_ok=True)
@@ -711,7 +724,8 @@ class R2WalkCheck(Case):
                                      (swept, "nested-agent", "/tmp/n/projects/-x/n1.jsonl is a claude session"),
                                      (hold, hcv, "crossSessionInbound is 'hold'"),
                                      (undenied, hcv, "permissions.deny lacks"),
-                                     (sep, "transcript-unreadable", "line separator(s) U+2028"),
+                                     (sep, "transcript-unreadable", "line separator(s) U+000B"),
+                                     (forged, "transcript-mismatch", "differs from the host-captured stream"),
                                      (stray, "subagent-records", "are not exactly the copies the driver ledger names"),
                                      (stray, "leak-in-loaded-context", "sub-agent file agent-0000ffff.jsonl's loaded")):
                 got = self.must("R2.walk-check", ct.check4_walk, where / "transcript.jsonl", w.row["task"],
@@ -1095,8 +1109,9 @@ BOOTSTRAP_SPANS = (
      "    # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm",
      # and the isolation denials' line (glitch-6b's isolation ruling, 15 Oct 2026), and the transcript line check's
      # (glitch-b5's ruling on review r8, 16 Oct 2026), and the sub-agent records' (the Agent parity ruling, 16 Oct),
-     # and the session store's and the persistence flag's (W-3b, glitch-b5's pre-freeze ruling, 16 Oct 2026)
-     "d2f869d00d1a2505d3850640c2db63d0a9a2c59c1614defc21549f864887bf05"),
+     # and the session store's and the persistence flag's (W-3b, glitch-b5's pre-freeze ruling, 16 Oct 2026), and the
+     # transcript content's (lane pf1-l3, fold plan prefreeze-1 MAJOR 7, the lane orchestrator's approval, 24 Oct 2026)
+     "7f13552e05b98ade6e45643de95f327866a37c58c8e9c85f08391e31eef694e8"),
     # glitch-b5's ruling 2 (16 Oct 2026): context_text's one append line sweeps an admitted edited_text_file without its
     # snippet (check_take's appended _swept_attachment_line); no line moves.
     ("context-text", "def context_text(path: Path) -> str:\n", "\n\ndef context_leaks(",

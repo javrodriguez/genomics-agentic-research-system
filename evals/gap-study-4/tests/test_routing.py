@@ -1681,7 +1681,8 @@ class TestCapKeyNames(unittest.TestCase):
 # round-4 checker line that emits it; TestRound3Sources keeps round 3's ids re-derived beside them).
 ROUND4_ADDED_REASONS = ("harness-condition-violated", "transcript-unreadable",    # + glitch-b5, 16 Oct 2026
                         "subagent-records",                                        # + the Agent parity ruling
-                        "nested-agent")                                            # + W-3b (glitch-b5, 16 Oct)
+                        "nested-agent",                                            # + W-3b (glitch-b5, 16 Oct)
+                        "transcript-mismatch")                                     # + pf1-l3 (MAJOR 7, 24 Oct)
 CHECK_TAKE4 = "evals/gap-study-4/check_take.py"
 
 
@@ -1760,6 +1761,47 @@ class TestRound4Additions(unittest.TestCase):
             rec["checker_reasons"] = [sr]
             got = routing.route(rec, t)
             self.assertEqual((got["route"], got["rows"]), (want, [row]), phase)
+
+    def test_transcript_mismatch_is_listed_emitted_and_routed_aborted(self):
+        """Fold plan prefreeze-1, MAJOR 7 (24 Oct 2026): transcript-mismatch, by its own row: aborted after the agent's
+        first turn (never re-run: the agent can cause it), outranking the generic operator-reason row; beside
+        harness-condition-violated, glitch-b5's ruling 3 holds (harness-error, its none_of, as cgroup-kill's); a
+        rehearsal before the first turn by the generic row."""
+        tm = "transcript-mismatch"
+        src = REAL["operator_reasons_round4"]["sources"][tm]
+        for cite in ("prefreeze-1", "24 Oct 2026", "MAJOR 7", "never re-run", "aborted"):
+            self.assertIn(cite, src["ruling"])
+        self.assertEqual(src["emitted_at"], CHECK_TAKE4)
+        self.assertNotIn(tm, REAL["operator_reason_sources"])
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        with open(os.path.join(root, CHECK_TAKE4), encoding="utf-8") as f:
+            text = f.read()
+        self.assertIn(f'TRANSCRIPT_MISMATCH = "{tm}"', text)
+        self.assertIn('f"[{TRANSCRIPT_MISMATCH}] ', text)
+        rows = [r for r in REAL["rows"] if r["id"] == tm]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual((rows[0]["when"], rows[0]["route"], rows[0]["any_of"], rows[0].get("none_of")),
+                         ("after-first-turn", labels4.ABORTED,
+                          [{"path": "checker_reasons", "op": "has", "value": tm}],
+                          [{"path": "checker_reasons", "op": "has", "value": self.HCV}]))
+        t = test_table()
+        for phase, reasons, want, row in ((A, [tm], labels4.ABORTED, [tm]),
+                                          (A, [tm, "readers-disagree"], labels4.ABORTED, [tm]),
+                                          (A, [tm, self.HCV], labels4.HARNESS_ERROR,
+                                           ["operator-reason-after-first-turn"]),
+                                          (B, [tm], labels4.REHEARSAL, ["operator-reason-before-first-turn"])):
+            rec = baseline(phase)
+            rec["checker_reasons"] = list(reasons)
+            got = routing.route(rec, t)
+            self.assertEqual((got["route"], got["rows"]), (want, row), (phase, reasons))
+            if want == labels4.ABORTED:
+                self.assertEqual(got["cap"]["reruns_per_slot"], 0)
+        # witness: without the row, the same records route harness-error (re-run)
+        t2 = copy.deepcopy(t)
+        t2["rows"] = [r for r in t2["rows"] if r["id"] != tm]
+        rec = baseline(A)
+        rec["checker_reasons"] = [tm]
+        self.assertEqual(routing.route(rec, t2)["route"], labels4.HARNESS_ERROR)
 
     def test_nested_agent_is_listed_emitted_and_routed(self):
         """glitch-b5's pre-freeze ruling (16 Oct 2026, W-3b): nested-agent, routed like harness-condition-violated."""
@@ -3158,6 +3200,31 @@ def _hcv(r):
 SCENARIOS.update({
     "harness-condition-violated beside a cgroup kill is voided, never aborted (glitch-b5, 17 Oct 2026)":
         Sc(_sc(A, [_hcv, _cgroup]), "harness-error", ["operator-reason-after-first-turn"]),
+})
+
+
+# Fold plan prefreeze-1, MAJOR 7 (lane pf1-l3, 24 Oct 2026): the plan's oracle for the transcript-mismatch row.
+def _tm(r):
+    r["checker_reasons"] = ["transcript-mismatch"]
+
+
+def _tm_rd(r):
+    r["checker_reasons"] = ["transcript-mismatch", "readers-disagree"]
+
+
+def _tm_hcv(r):
+    r["checker_reasons"] = ["transcript-mismatch", HCV_RULED]
+
+
+SCENARIOS.update({
+    "transcript-mismatch after the first turn is aborted, never re-run (pf1-l3, 24 Oct 2026)":
+        Sc(_sc(A, [_tm]), "aborted", ["transcript-mismatch"]),
+    "transcript-mismatch beside readers-disagree is still aborted (pf1-l3)":
+        Sc(_sc(A, [_tm_rd]), "aborted", ["transcript-mismatch"]),
+    "transcript-mismatch beside harness-condition-violated keeps ruling 3, harness-error (pf1-l3)":
+        Sc(_sc(A, [_tm_hcv]), "harness-error", ["operator-reason-after-first-turn"]),
+    "transcript-mismatch before the first turn is a rehearsal (pf1-l3)":
+        Sc(_sc(B, [_tm]), "rehearsal", ["operator-reason-before-first-turn"]),
 })
 
 

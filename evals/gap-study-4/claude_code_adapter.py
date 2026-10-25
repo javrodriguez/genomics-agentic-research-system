@@ -116,7 +116,12 @@ class ExecutedStreamRefused(StreamError, aa.ExecutedTurnRefused):
 # when they reach it untranslated: box/run_take captures the turn's stdout with universal newlines (review r9), so a
 # \r becomes \n before the stream file is written, and the session file is read the same way. The \r entry is kept as
 # harmless defence in depth; \r is the checker's to refuse (check_take.transcript_line_problems reads the bytes).
-LINE_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029")
+# SUPERSEDED IN PART (lane pf1-l3, the lane orchestrator's ruling on the closure check of 8cf492b2, 24 Oct 2026):
+# U+2028, U+2029 and U+0085 are legal inside a JSON string, and every reader here splits JSONL on "\n" alone, so a
+# record carrying one is read whole, never dropped and never refused: the refusal let an agent void and re-run its own
+# take by printing one character. Only the C0 separators stay refused (raw, they are never legal inside a JSON string).
+JSON_STRING_SEPARATORS = ("\x85", "\u2028", "\u2029")       # read as text, split on "\n" alone
+LINE_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e")
 
 
 def _records(text: str) -> tuple[list, int]:
@@ -507,7 +512,8 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
         self.executed_turns.append(executed)
         try:
             with open(got["stream_path"], encoding="utf-8", errors="surrogateescape", newline="") as fh:
-                read = read_stream(fh.read())
+                stream_text = fh.read()
+            read = read_stream(stream_text)
             off = served_model_off(read, self.model)
             side = unlisted_side_model(read, self.model)
             sub_off = subagent_model_off(read, self.model)
@@ -535,7 +541,8 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
             "tools": read["init_extra"]["tools"], "inits": read["inits"], "calls": read["calls"],
             "tool_use_ids": read["tool_use_ids"], "result": read["result"], "session_ids": read["session_ids"],
             "undecoded": read["undecoded"], "served_models": read["served_models"],
-            "model_usage": read["model_usage"], "served_off": off, "side_calls": side_calls(read, self.model)})
+            "model_usage": read["model_usage"], "served_off": off, "side_calls": side_calls(read, self.model),
+            "content_units": stream_content_units(stream_text)})   # PF1-L3: what C6 compares with the session file
         return aa.TurnResult(exit_code=got["exit_code"], text=read["agent_text"], stream_path=got["stream_path"],
                              end_reason=end_reason(got["exit_code"], got["timed_out"]), init=init,
                              api_errors=read["api_errors"], counters=counters,
@@ -625,6 +632,292 @@ def cross_check(turn_records: list, session_text: str, *, session_id: str) -> li
     if sorted(map(str, sess_tools)) != sorted(map(str, stream_tools)):
         out.append(f"the streams hold {len(stream_tools)} tool call(s) and the session file {len(sess_tools)}, "
                    f"not the same ones")
+    # PF1-L3 (MAJOR 7): the content itself, turn by turn and in order, never the ids alone
+    units = [t.get("content_units") for t in turn_records]
+    missing = sum(1 for u in units if not isinstance(u, list))
+    if missing:
+        out.append(f"{missing} turn record(s) carry no content units, so the session file's content cannot be "
+                   f"compared with the streams")
+    else:
+        cut = {k for k, t in enumerate(turn_records, 1) if t.get("timed_out") is True or t.get("exit_code") == 124}
+        out += content_problems(units, session_text, cut=cut)
+    return out
+
+
+# ---- PF1-L3: the content the graders read, compared with the host-captured streams (pre-freeze review 1, MAJOR 7) ---
+# The lane orchestrator's approval of fold plan prefreeze-1 (Sat 24 Oct 2026, under Javier's standing delegation).
+# transcript.jsonl is the session file copied out of the config folder, the take's read-write mount owned by the
+# agent's uid, and every words-graded reading reads it (transcript_view's claude-code parser). C6 above bound ids
+# only, so one in-take command that rewrote a reply's words passed. The units below are what transcript_view reads
+# of an agent's text, reasoning, tool calls and tool results, so a change to any of them, in either file, shows:
+#     text         (kind, message.id, the block's text)
+#     thinking     (kind, message.id, the block's thinking)
+#     tool_use     (kind, its id, its name, its input as canonical JSON)
+#     tool_result  (kind, tool_use_id, its content as canonical JSON, is_error)
+#     other-block  (kind, message.id, its type, the whole block as canonical JSON): any other assistant block
+# from the main thread only: a stream record with parent_tool_use_id set (a sub-agent's) and a session record with
+# isSidechain true are not the main thread, and the harness's API-error records are no agent content. The session
+# file is split into turns at its operator lines (transcript_view's rule: a user record whose content is a string,
+# with no origin and no isMeta or isApiErrorMessage key); turn k's units, in order, must equal turn k's stream's, and
+# nothing may come before the first operator line. Measured on every committed claude-code walk at 96c1d959 (151 of
+# 151 equal, turn by turn, with 1533 thinking, 890 text, 1663 tool_use and 1663 tool_result units); a line that is not
+# JSON is skipped here, so a record cut or blanked in the session file is a missing unit (transcript_line_problems
+# names the line). Not compared, because the stream does not carry them: attachments, system and bookkeeping records,
+# and the sub-agent files (box_residuals names them).
+CONTENT_UNIT_KINDS = ("text", "thinking", "tool_use", "tool_result", "other-block")
+
+
+def _content_records(text: str) -> list:
+    """The JSON object records of a JSONL text, split on newline alone; a line that is not one is skipped."""
+    out = []
+    for raw in (text or "").split("\n"):
+        if not raw.strip():
+            continue
+        try:
+            rec = json.loads(raw)
+        except ValueError:
+            continue
+        if isinstance(rec, dict):
+            out.append(rec)
+    return out
+
+
+def _canonical(value) -> str:
+    return json.dumps(value, sort_keys=True, ensure_ascii=False)
+
+
+def _units(rec: dict) -> list:
+    """One main-thread record's content units, in block order."""
+    msg = rec.get("message") if isinstance(rec.get("message"), dict) else {}
+    content = msg.get("content")
+    if not isinstance(content, list):
+        return []
+    if rec.get("type") == "assistant":
+        if _is_api_error(rec) or rec.get("isApiErrorMessage") is True:
+            return []
+        out = []
+        for b in content:
+            if not isinstance(b, dict):
+                continue
+            kind = b.get("type")
+            if kind == "text":
+                out.append(("text", msg.get("id"), b.get("text")))
+            elif kind == "thinking":
+                out.append(("thinking", msg.get("id"), b.get("thinking")))
+            elif kind == "tool_use":       # its message id last: a message's units group by it (third closure check)
+                out.append(("tool_use", b.get("id"), b.get("name"), _canonical(b.get("input")), msg.get("id")))
+            else:
+                out.append(("other-block", msg.get("id"), kind, _canonical(b)))
+        return out
+    if rec.get("type") == "user":
+        return [("tool_result", b.get("tool_use_id"), _canonical(b.get("content")), b.get("is_error") is True)
+                for b in content if isinstance(b, dict) and b.get("type") == "tool_result"]
+    return []
+
+
+def stream_content_units(text: str) -> list:
+    """One turn stream's main-thread content units, in order (a sub-agent's records, parent_tool_use_id set, left
+    out)."""
+    return [u for rec in _content_records(text) if rec.get("parent_tool_use_id") is None for u in _units(rec)]
+
+
+def _is_operator_line(rec: dict) -> bool:
+    msg = rec.get("message") if isinstance(rec.get("message"), dict) else {}
+    return (rec.get("type") == "user" and isinstance(msg.get("content"), str) and "origin" not in rec
+            and not any(k in rec for k in ("isMeta", "isApiErrorMessage")))
+
+
+def session_content_turns(text: str) -> list:
+    """The session file's main-thread content units split at its operator lines: [units before the first operator
+    line, turn 1's, turn 2's, ...]."""
+    turns = [[]]
+    for rec in _content_records(text):
+        if rec.get("isSidechain") is True:
+            continue
+        if _is_operator_line(rec):
+            turns.append([])
+            continue
+        turns[-1].extend(_units(rec))
+    return turns
+
+
+def _unit_name(unit) -> str:
+    return "nothing" if unit is None else f"{unit[0]} {str(unit[1])[:60]!r}"
+
+
+def _message_id(unit):
+    """The assistant message a unit belongs to (a tool_use unit carries it last), None for a tool_result."""
+    if unit[0] == "tool_result":
+        return None
+    return unit[4] if unit[0] == "tool_use" else unit[1]
+
+
+def _last_record_length(units: list) -> int:
+    """How many of the units' trailing ones are the record in flight: the last tool_result alone (Claude Code writes
+    one user record per result), or the assistant message the last unit belongs to, all its blocks (text, thinking,
+    tool_use) grouped by its message id (the third closure check of 461dc169, findings 3 and 4)."""
+    if not units:
+        return 0
+    if units[-1][0] == "tool_result":
+        return 1
+    mid = _message_id(units[-1])
+    k = 0
+    for u in reversed(units):
+        if u[0] == "tool_result" or _message_id(u) != mid:
+            break
+        k += 1
+    return k
+
+
+def cut_tail_problem(stream: list, sess: list):
+    """The second closure check of f0c0eb1d and the lead's ruling on it (24 Oct 2026): in a turn the host records as
+    cut the two records may differ only by the record in flight when the kill fell. Everything before the stream's
+    last record must be equal; after it the session may hold a prefix of that record's units (it lacks the rest) and
+    at most one unit more that the stream lacks. None when that holds, else the sentence naming the difference."""
+    g = _last_record_length(stream)
+    head = len(stream) - g
+    if sess[:head] != stream[:head]:
+        i = next((k for k, (a, b) in enumerate(zip(stream[:head], sess[:head])) if a != b), min(head, len(sess)))
+        return (f"the session file differs from the host-captured stream at item {i + 1}, before the record in flight "
+                f"when the turn was cut")
+    rest, last = sess[head:], stream[head:]
+    # the third closure check of 461dc169 (finding 1): a unit present in both records has the same content, so the
+    # tail is exactly one of two shapes: the session lags (a prefix of the record in flight, unit for unit), or the
+    # stream lags (all of it and at most one unit more); any unit that differs in place refuses
+    if rest == last[:len(rest)] or (rest[:len(last)] == last and len(rest) == len(last) + 1):
+        return None
+    if len(rest) > len(last) + 1 and rest[:len(last)] == last:
+        return (f"the session file holds {len(rest) - len(last)} item(s) after the record in flight that the stream "
+                f"does not, more than the one a cut can leave")
+    i = next((k for k, (a, b) in enumerate(zip(rest, last)) if a != b), min(len(rest), len(last)))
+    return (f"the session file's record in flight differs from the stream's at its item {i + 1}: a cut drops units, "
+            f"it never changes one")
+
+
+def _turn_line_units(session_text: str) -> list:
+    """(turn, units) for each content-bearing main-thread line of the session file, in order (turn 0 before the first
+    operator line)."""
+    turn, out = 0, []
+    for raw in (session_text or "").split("\n"):
+        if not raw.strip():
+            continue
+        try:
+            rec = json.loads(raw)
+        except ValueError:
+            continue
+        if not isinstance(rec, dict) or rec.get("isSidechain") is True:
+            continue
+        if _is_operator_line(rec):
+            turn += 1
+            continue
+        got = _units(rec)
+        if got:
+            out.append((turn, got))
+    return out
+
+
+def unconfirmed_session_lines(stream_texts: list, session_text: str, cut=()) -> set:
+    """The session file's line indices (0-based, newline-split) that hold only the one extra unit a cut turn's tail
+    may carry when the stream lags: it has no host copy, so nothing the take is graded or classified on reads it (the
+    third closure check of 461dc169, finding 2). Empty unless a host-recorded cut turn ends with that shape."""
+    units = [stream_content_units(t) for t in stream_texts]
+    turn, per_line = 0, []                    # (line index, turn, its units) for each content-bearing line
+    for i, raw in enumerate((session_text or "").split("\n")):
+        if not raw.strip():
+            continue
+        try:
+            rec = json.loads(raw)
+        except ValueError:
+            continue
+        if not isinstance(rec, dict) or rec.get("isSidechain") is True:
+            continue
+        if _is_operator_line(rec):
+            turn += 1
+            continue
+        got = _units(rec)
+        if got:
+            per_line.append((i, turn, got))
+    out = set()
+    for n in sorted(set(cut)):
+        if not 1 <= n <= len(units):
+            continue
+        sess = [u for _, t, us in per_line if t == n for u in us]
+        stream = [tuple(u) for u in units[n - 1]]
+        if len(sess) != len(stream) + 1 or [tuple(u) for u in sess[:-1]] != stream:
+            continue
+        lines = [(i, us) for i, t, us in per_line if t == n]
+        if lines and len(lines[-1][1]) == 1:
+            out.add(lines[-1][0])
+    return out
+
+
+def host_recorded_cuts(folder) -> set:
+    """The turns a take folder's driver ledger (host-written) records as cut: end timed-out or exit 124, by each
+    row's own n."""
+    try:
+        with open(os.path.join(str(folder), "driver-ledger.json"), encoding="utf-8") as fh:
+            rows = json.load(fh).get("turns") or []
+    except (OSError, ValueError, AttributeError):
+        return set()
+    return {r["n"] for r in rows if isinstance(r, dict) and isinstance(r.get("n"), int) and not isinstance(r["n"], bool)
+            and (r.get("end") == "timed-out" or r.get("exit") == 124)}
+
+
+def confirmed_transcript_text(folder) -> str | None:
+    """A claude-code take folder's transcript.jsonl without its unconfirmed lines, or None when it has none."""
+    cut = host_recorded_cuts(folder)
+    if not cut:
+        return None
+    base = str(folder)
+    with open(os.path.join(base, "transcript.jsonl"), encoding="utf-8") as fh:
+        text = fh.read()
+    streams = []
+    n = 1
+    while os.path.isfile(os.path.join(base, f"turn-{n}.jsonl")):
+        with open(os.path.join(base, f"turn-{n}.jsonl"), encoding="utf-8", errors="replace") as fh:
+            streams.append(fh.read())
+        n += 1
+    drop = unconfirmed_session_lines(streams, text, cut)
+    if not drop:
+        return None
+    return "\n".join(line for i, line in enumerate(text.split("\n")) if i not in drop)
+
+
+def content_problems(stream_units: list, session_text: str, cut=()) -> list:
+    """PF1-L3: the session file's content against the turn streams' (one list of units per turn, in turn order).
+    Problems, each one sentence naming kinds and ids, never the words; [] when every turn's units are equal. A turn in
+    `cut` (the host recorded its cut: timed out, exit 124) may differ only by the record in flight when the kill fell
+    (cut_tail_problem), since it can fall between the CLI's writes to its stream and to its session file (the lead's
+    rulings on the closure checks of 8cf492b2 and f0c0eb1d, 24 Oct 2026)."""
+    turns = session_content_turns(session_text)
+    out = []
+    if turns[0]:
+        out.append(f"the session file holds {len(turns[0])} content item(s) before its first operator line, which "
+                   f"no turn stream holds")
+    if len(turns) - 1 != len(stream_units):
+        out.append(f"the session file holds {len(turns) - 1} operator line(s) and the take {len(stream_units)} turn "
+                   f"stream(s)")
+    for n, (stream, sess) in enumerate(zip(stream_units, turns[1:]), 1):
+        if n in set(cut):
+            why = cut_tail_problem([tuple(u) for u in stream], [tuple(u) for u in sess])
+            if why is None and len(sess) == len(stream) + 1:
+                # the fourth closure check of 2ab2c8f5: the one extra unit must sit alone on its line, or it could not
+                # be left out of grading without cutting a line in two; the CLI writes one block per record
+                lines = [us for t, us in _turn_line_units(session_text) if t == n]
+                if not lines or len(lines[-1]) != 1:
+                    why = ("the session file's one unit past the stream shares its line with another unit, a shape the "
+                           "CLI never writes, so it cannot be left out of grading")
+            if why:
+                out.append(f"turn {n} (cut, as the host records): {why}")
+            continue
+        if [tuple(u) for u in stream] == [tuple(u) for u in sess]:
+            continue
+        i = next((k for k, (a, b) in enumerate(zip(stream, sess)) if tuple(a) != tuple(b)), min(len(stream), len(sess)))
+        a = tuple(stream[i]) if i < len(stream) else None
+        b = tuple(sess[i]) if i < len(sess) else None
+        out.append(f"turn {n}: the session file's content differs from the host-captured stream at item {i + 1} "
+                   f"(the stream holds {len(stream)} item(s), the session file {len(sess)}; there the stream has "
+                   f"{_unit_name(a)} and the session file {_unit_name(b)})")
     return out
 
 

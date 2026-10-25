@@ -8,7 +8,8 @@ pairs and in the one inline --settings env that each turn's launch journal (turn
 Code 2.1.296 then never emits its auto_mode attachment (the Bash-first steer). So:
 
   S-violated   every turn sets the switch "false" and the transcript carries an auto_mode attachment: one
-               `[harness-condition-violated]` refusal naming the count.
+               `[transcript-mismatch]` refusal naming the count (lane pf1-l3: the transcript alone shows it, so the
+               records disagree; review fb354328 finding 1, 24 Oct 2026).
   S-clean      every turn sets it to a string the binary reads as false ("false", "0", "no", "off", any case, padded)
                and no auto_mode record: nothing.
   S-closed     fail closed: a turn whose settings do not set the switch, set it on, set a JSON boolean or any other
@@ -108,9 +109,11 @@ class Steer(unittest.TestCase):
 
     def check_violated(self):
         got = self.run_case([USER, AUTO, USER, AUTO], [UNSET, UNSET])
-        if len(got) != 1 or not got[0].startswith("[harness-condition-violated] ") or "2 auto_mode" not in got[0]:
+        # lane pf1-l3 (the lane orchestrator's ruling on review fb354328 finding 1, 24 Oct 2026): the auto_mode record is
+        # the agent-writable transcript's alone, so it is transcript-mismatch (aborted), never a harness condition
+        if len(got) != 1 or not got[0].startswith("[transcript-mismatch] ") or "2 auto_mode" not in got[0]:
             return [f"S-violated: {got}"]
-        if ct.reason_ids(got) != ["harness-condition-violated"]:
+        if ct.reason_ids(got) != ["transcript-mismatch"]:
             return ["S-violated: not routable by its id"]
         return []
 
@@ -217,8 +220,9 @@ class Steer(unittest.TestCase):
             ("another attachment type", lambda: mock.patch.object(ct, "AUTO_MODE_ATTACHMENT", "auto_mode_exit")),
             ("missing journal read as nothing", lambda: mock.patch.object(ct, "_journal_gaps", lambda *a: [])),
             ("auto_mode only under the switch", lambda: source_mutant(
-                '    count = _auto_mode_records(path)\n    if count:',
-                '    count = _auto_mode_records(path) if journals and not bad else 0\n    if count:')),
+                # lane pf1-l3: the anchor follows the host-shown split (the closure check of 8cf492b2, 24 Oct 2026)
+                '    count = _auto_mode_records(path)\n    if count and steer_on:',
+                '    count = _auto_mode_records(path) if journals and not bad else 0\n    if count and steer_on:')),
             ("the prompt read as flags", lambda: mock.patch.object(ct, "_JOURNAL_PRINT_FLAGS", ())),
         )
         for name, ctx in mutants:

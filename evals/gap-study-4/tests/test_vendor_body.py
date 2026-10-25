@@ -281,6 +281,12 @@ def tool_command(command):
                 item["command"] = command
             if r["type"] == "tool_use":
                 r.update(tool_name="run_shell_command", parameters={"command": command})
+        # lane pf1-l3 (fold plan prefreeze-1, MAJOR 7, 24 Oct 2026): the rollout records the argv the stream shows, as
+        # the CLI writes both, so the take's records agree (check_take.vendor_content_problems)
+        for _t, pay in parts.get("rollout", {}).get(2, []):
+            item = pay.get("item") if isinstance(pay, dict) else None
+            if pay.get("type") == "item_completed" and isinstance(item, dict) and item.get("type") == "CommandExecution":
+                item["command"] = __import__("shlex").split(command)
     return edit
 
 
@@ -299,8 +305,12 @@ def marker_in(where):
             for r in parts["streams"][1]:
                 if (r.get("item") or {}).get("type") == "agent_message":
                     r["item"]["text"] += f" {note}"
-                if r["type"] == "tool_result":
-                    r["output"] += f" {note}"
+                # lane pf1-l3 (fold plan prefreeze-1, MAJOR 7, 24 Oct 2026): gemini's marker rides an assistant delta
+                # chunk, the stream's alone, so the tool result output still equals its native display
+                # (check_take.vendor_content_problems); before, it rode the tool result output
+                if r["type"] == "message" and r.get("role") == "assistant" and r.get("delta") is True:
+                    r["content"] += f" {note}"
+                    break
         if "snapshot" in where:
             key = "rollout" if "rollout" in parts else "native"
             if key == "rollout":
@@ -308,7 +318,8 @@ def marker_in(where):
                     if pay.get("type") == "function_call_output":
                         pay["output"] += f" {note}"
             else:
-                parts["native"][2][1]["toolCalls"][0]["resultDisplay"] += f" {note}"
+                # lane pf1-l3: the native session's own copy of the result, which no stream shows (before: its display)
+                parts["native"][2][1]["toolCalls"][0]["result"][0]["functionResponse"]["response"]["output"] += f" {note}"
     return edit
 
 
@@ -588,23 +599,28 @@ CASES = {
     # ruling 22 Oct, merge 5)
     "the CLI's record holds an extra turn": (("codex", "gemini"), case_extra_turn,
                                              {"codex": {"readers-disagree": 1, "unknown-harness-origin": 1,
-                                                        "constant-binding": 2}, "gemini": {"readers-disagree": 1}},
+                                                        "constant-binding": 2, "transcript-mismatch": 1},
+                                              "gemini": {"readers-disagree": 1}},
                                              None),
     "the ledger's sent line differs from the envelopes": (("codex", "gemini"), case_ledger_sent_differs,
                                                           {"readers-disagree": 1}, None),
+    # lane pf1-l3 (fold plan prefreeze-1, MAJOR 7, 24 Oct 2026): a case whose stream and native records disagree in
+    # content now also adds [transcript-mismatch] (check_take.vendor_content_problems), and an unbound snapshot one
+    # more [transcript-unreadable] (that reader refuses it too); the cases are kept as they are, their reasons added
     # the last retained snapshot the ledger does not bind: no reader of it stands (codex's cwd and run tree too; since
     # stage V every settled reader of the snapshot refuses it too, each under its row's reason for codex and as
     # transcript-unreadable for gemini; none passes)
     "a codex snapshot the ledger does not bind": (("codex",), case_snapshot_unbound,
-                                                  {"transcript-unreadable": 2, "inherited-context": 5,
+                                                  {"transcript-unreadable": 3, "inherited-context": 5,
                                                    "unknown-harness-origin": 1, "leak-in-loaded-context": 1,
                                                    "environment-record": 1, "checkout-binding": 2,
                                                    "constant-binding": 3, "harness-condition-violated": 1}, None),
-    "a gemini snapshot the ledger does not bind": (("gemini",), case_snapshot_unbound, {"transcript-unreadable": 10},
+    "a gemini snapshot the ledger does not bind": (("gemini",), case_snapshot_unbound, {"transcript-unreadable": 11},
                                                    None),
     # no-first-agent-turn (T-1); the replies' markers go with the output
     "no agent output": (("codex", "gemini"), edits(no_agent_output, None),
-                        {"no-first-agent-turn": 1, "continued-past-unheld-marker": 2}, None),
+                        {"codex": {"no-first-agent-turn": 1, "continued-past-unheld-marker": 2, "transcript-mismatch": 1},
+                         "gemini": {"no-first-agent-turn": 1, "continued-past-unheld-marker": 2}}, None),
     # no-session-id (T-2): bound_items refuses a stream without one, so the view refuses too
     "the CLI wrote no session id": (("codex", "gemini"), edits(no_session_id, None),
                                     {"no-session-id": 1, "transcript-unreadable": 1}, None),
@@ -618,8 +634,10 @@ CASES = {
     "a held marker split across delta chunks before the next line": (("gemini",), case_reply_marker_split, {}, None),
     # Gemini review 0df1437 MINOR 1: DECOYS, a marker split across a tool call is two messages, never joined
     "a marker split across a tool call before the next line": (("gemini",), case_marker_split_across_tool,
-                                                               {"continued-past-unheld-marker": 1}, None),
-    "a stop marker split across a tool call": (("gemini",), case_stop_marker_split_across_tool, {}, None),
+                                                               {"continued-past-unheld-marker": 1,
+                                                                "transcript-mismatch": 1}, None),
+    "a stop marker split across a tool call": (("gemini",), case_stop_marker_split_across_tool,
+                                               {"transcript-mismatch": 1}, None),   # the decoy is the stream's alone
     "an operator line off the script": (("codex", "gemini"), case_line_off_script, {"operator-lines": 2}, None),
     "a reply missing its step's marker": (("codex", "gemini"), case_reply_without_marker,
                                           {"continued-past-unheld-marker": 1}, None),
