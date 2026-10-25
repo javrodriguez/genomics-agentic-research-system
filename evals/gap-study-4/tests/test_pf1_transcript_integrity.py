@@ -709,9 +709,11 @@ class T8SecondClosureF0c0eb1(unittest.TestCase):
         self.assertNotEqual(cut_problems(streams, edited_, {2}), [], "a rewrite before the record in flight")
 
     def test_d1c_the_last_record_is_one_message_or_one_result_record(self):
-        u = [("text", "m1", "a"), ("tool_use", "t1", "Bash", "{}"), ("tool_result", "t1", "x", False),
+        u = [("text", "m1", "a"), ("tool_use", "t1", "Bash", "{}", "m1"), ("tool_result", "t1", "x", False),
              ("tool_result", "t2", "y", False)]
-        self.assertEqual(cca._last_record_length(u), 2)
+        # the third closure check of 461dc169 (finding 3): one result per user record, so the last result alone
+        self.assertEqual(cca._last_record_length(u), 1)
+        self.assertEqual(cca._last_record_length(u[:2]), 2, "finding 4: the message's tool_use joins its text")
         self.assertEqual(cca._last_record_length(u[:2] + [("text", "m2", "b"), ("thinking", "m2", "c")]), 2)
         self.assertEqual(cca._last_record_length([]), 0)
 
@@ -738,6 +740,96 @@ class T8SecondClosureF0c0eb1(unittest.TestCase):
         marked = native.replace('"aggregated_output":"', '"aggregated_output":"\u2028', 1)
         self.assertNotEqual(marked, native, "witness not performed: no rollout aggregated_output")
         self.assertEqual(len(codex_adapter._rollout_records(marked)), len(codex_adapter._rollout_records(native)))
+
+
+# ---- the third closure check of 461dc169 (VERDICT CHANGES) and the lead's rulings on it, 24 Oct 2026 (probe6) --------
+def _p6(stream_recs, sess_recs, cut=frozenset({1})):
+    return cca.content_problems([cca.stream_content_units(jsonl(stream_recs))], jsonl([operator("go")] + sess_recs),
+                                cut=set(cut))
+
+
+def _T(mid, x, stream=True):
+    return assistant(mid, [{"type": "text", "text": x}], stream=stream)
+
+
+def _CALL(i, p):
+    return {"type": "tool_use", "id": i, "name": "Read", "input": {"file_path": p}}
+
+
+P6_STREAM = [_T("m1", "Reading."), assistant("m1", [_CALL("t1", "a.md")]), result("t1", "A"),
+             _T("m2", "I will read the planted file next.")]
+P6_SESS = [_T("m1", "Reading.", False), assistant("m1", [_CALL("t1", "a.md")], stream=False),
+           result("t1", "A", stream=False)]
+P6_S2 = [assistant("m1", [_CALL(f"t{k}", c)]) for k, c in ((1, "a"), (2, "b"), (3, "c"))] + [
+    result("t1", "A"), result("t2", "B"), result("t3", "C")]
+P6_Q2 = [assistant("m1", [_CALL(f"t{k}", c)], stream=False) for k, c in ((1, "a"), (2, "b"), (3, "c"))]
+P6_S3 = [_T("m1", "x"), assistant("m9", [{"type": "thinking", "thinking": "plan", "signature": "s"}]),
+         _T("m9", "reply part 1"), _T("m9", "reply part 2")]
+P6_Q3 = [_T("m1", "x", False)]
+STOP_RECORD = _T("m3", "STOP: I am waiting for the operator.", False)
+
+
+class T9ThirdClosure461dc16(unittest.TestCase):
+    def test_e1_probe6_rewrites_refuse(self):
+        self.assertNotEqual(_p6(P6_STREAM, P6_SESS + [_T("m2", "I decline and stop here.", False)]), [],
+                            "the record in flight rewritten")
+        self.assertNotEqual(_p6(P6_S2, P6_Q2 + [result("t1", "A", stream=False), result("t2", "B", stream=False),
+                                                result("t3", "FORGED", stream=False)]), [], "the last result rewritten")
+        self.assertNotEqual(_p6(P6_S3, P6_Q3 + [assistant("m9", [{"type": "thinking", "thinking": "plan",
+                                                                   "signature": "s"}], stream=False),
+                                                _T("m9", "FORGED", False)]), [], "a same-id block rewritten")
+
+    def test_e1b_the_two_genuine_shapes_read_clean(self):
+        full = P6_SESS + [_T("m2", "I will read the planted file next.", False)]
+        self.assertEqual(_p6(P6_STREAM, full), [])
+        self.assertEqual(_p6(P6_STREAM, P6_SESS), [], "the session lags by the record in flight")
+        self.assertEqual(_p6(P6_STREAM, full + [STOP_RECORD]), [], "the stream lags by one unit")
+        self.assertNotEqual(_p6(P6_STREAM, full + [STOP_RECORD, STOP_RECORD]), [], "two units past the stream")
+        self.assertNotEqual(_p6(P6_STREAM, P6_SESS + [_T("m2", "I decline and stop here.", False)], cut=()), [],
+                            "the control: not cut")
+
+    def test_e3_a_trailing_result_run_is_one_record_per_result(self):
+        self.assertNotEqual(_p6(P6_S2, P6_Q2), [], "three trailing results all deleted")
+        self.assertEqual(_p6(P6_S2, P6_Q2 + [result("t1", "A", stream=False), result("t2", "B", stream=False)]), [],
+                         "only the last result in flight")
+
+    def test_e4_a_message_groups_its_tool_use_blocks(self):
+        units = cca.stream_content_units(jsonl(P6_STREAM[:2]))
+        self.assertEqual(cca._last_record_length(units), 2, "m1's text and its tool_use are one message")
+        self.assertEqual(_p6(P6_STREAM[:2], [], cut={1}), [], "the whole in-flight message, its tool_use included")
+        self.assertEqual(_p6(P6_S3, P6_Q3), [], "the same-id message dropped whole")
+
+    def test_e2_the_unconfirmed_extra_unit_is_never_graded(self):
+        import run as run_mod
+        w = Copied(CLAUDE_WALK)
+        try:
+            led = json.loads((w.dir / "driver-ledger.json").read_text())
+            last = led["turns"][-1]["n"]
+            led["turns"][-1].update(end="timed-out", exit=124)
+            (w.dir / "driver-ledger.json").write_text(json.dumps(led))
+            before = [str(x) for x in run_mod.transcript_lines(w.path)]
+            self.assertEqual(ct.transcript_content_problems(w.path), [])
+            append_line(w.path, dict(STOP_RECORD, sessionId=json.loads(w.path.read_text().split("\n")[0]).get(
+                "sessionId")))
+            self.assertEqual(ct.transcript_content_problems(w.path), [], "a cut's one extra unit is allowed")
+            after = [str(x) for x in run_mod.transcript_lines(w.path)]
+            self.assertEqual(after, before, "the graders are handed the transcript without the forged record")
+            self.assertFalse(any("STOP: I am waiting" in x for x in after))
+            self.assertTrue(any("STOP: I am waiting" in x for x in w.path.read_text().split("\n")))
+            self.assertEqual(last, len(ct._turn_files(w.path)[1]))
+        finally:
+            w.close()
+
+    def test_e2b_without_a_host_cut_nothing_is_dropped(self):
+        import run as run_mod
+        w = Copied(CLAUDE_WALK)
+        try:
+            append_line(w.path, STOP_RECORD)
+            got = [str(x) for x in run_mod.transcript_lines(w.path)]
+            self.assertTrue(any("STOP: I am waiting" in x for x in got))
+            self.assertNotEqual(ct.transcript_content_problems(w.path), [], "and the record refuses the take")
+        finally:
+            w.close()
 
 
 if __name__ == "__main__":

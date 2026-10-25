@@ -7222,14 +7222,9 @@ def _host_cut_turns(records: list, texts: list, harness: str) -> set:
 
 
 def _host_recorded_cuts(path: Path) -> set:
-    """The turns the driver ledger (host-written) records as cut: end timed-out or exit 124, by each row's n."""
-    try:
-        rows = json.loads((Path(path).parent / "driver-ledger.json").read_text(encoding="utf-8")).get("turns") or []
-    except (OSError, ValueError, AttributeError):
-        return set()
-    # the closure check's NIT 5: each row maps to its turn by its own n (the producer's field), never its position
-    return {r["n"] for r in rows if isinstance(r, dict) and isinstance(r.get("n"), int) and not isinstance(r["n"], bool)
-            and (r.get("end") == CUT_END or r.get("exit") == CUT_EXIT)}
+    """The turns the driver ledger (host-written) records as cut: end timed-out or exit 124, by each row's n (the
+    closure check's NIT 5); one reader, claude_code_adapter.host_recorded_cuts, for the checker and the graders."""
+    return _cca.host_recorded_cuts(Path(path).parent)
 
 
 def _codex_command_problems(records: list, raw: bytes) -> list[str]:

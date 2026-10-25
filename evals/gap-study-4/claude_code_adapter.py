@@ -704,8 +704,8 @@ def _units(rec: dict) -> list:
                 out.append(("text", msg.get("id"), b.get("text")))
             elif kind == "thinking":
                 out.append(("thinking", msg.get("id"), b.get("thinking")))
-            elif kind == "tool_use":
-                out.append(("tool_use", b.get("id"), b.get("name"), _canonical(b.get("input"))))
+            elif kind == "tool_use":       # its message id last: a message's units group by it (third closure check)
+                out.append(("tool_use", b.get("id"), b.get("name"), _canonical(b.get("input")), msg.get("id")))
             else:
                 out.append(("other-block", msg.get("id"), kind, _canonical(b)))
         return out
@@ -745,16 +745,25 @@ def _unit_name(unit) -> str:
     return "nothing" if unit is None else f"{unit[0]} {str(unit[1])[:60]!r}"
 
 
+def _message_id(unit):
+    """The assistant message a unit belongs to (a tool_use unit carries it last), None for a tool_result."""
+    if unit[0] == "tool_result":
+        return None
+    return unit[4] if unit[0] == "tool_use" else unit[1]
+
+
 def _last_record_length(units: list) -> int:
-    """How many of the units' trailing ones are one record's: an assistant message (the units sharing the last one's
-    message id) or one user tool_result record's (the trailing run of tool_result units)."""
+    """How many of the units' trailing ones are the record in flight: the last tool_result alone (Claude Code writes
+    one user record per result), or the assistant message the last unit belongs to, all its blocks (text, thinking,
+    tool_use) grouped by its message id (the third closure check of 461dc169, findings 3 and 4)."""
     if not units:
         return 0
-    last = units[-1]
+    if units[-1][0] == "tool_result":
+        return 1
+    mid = _message_id(units[-1])
     k = 0
     for u in reversed(units):
-        same = (u[0] == "tool_result") if last[0] == "tool_result" else (u[0] != "tool_result" and u[1] == last[1])
-        if not same:
+        if u[0] == "tool_result" or _message_id(u) != mid:
             break
         k += 1
     return k
@@ -772,13 +781,84 @@ def cut_tail_problem(stream: list, sess: list):
         return (f"the session file differs from the host-captured stream at item {i + 1}, before the record in flight "
                 f"when the turn was cut")
     rest, last = sess[head:], stream[head:]
-    k = 0
-    while k < min(len(rest), len(last)) and rest[k] == last[k]:
-        k += 1
-    if len(rest) - k > 1:
-        return (f"the session file holds {len(rest) - k} item(s) after the record in flight that the stream does not, "
-                f"more than the one a cut can leave")
-    return None
+    # the third closure check of 461dc169 (finding 1): a unit present in both records has the same content, so the
+    # tail is exactly one of two shapes: the session lags (a prefix of the record in flight, unit for unit), or the
+    # stream lags (all of it and at most one unit more); any unit that differs in place refuses
+    if rest == last[:len(rest)] or (rest[:len(last)] == last and len(rest) == len(last) + 1):
+        return None
+    if len(rest) > len(last) + 1 and rest[:len(last)] == last:
+        return (f"the session file holds {len(rest) - len(last)} item(s) after the record in flight that the stream "
+                f"does not, more than the one a cut can leave")
+    i = next((k for k, (a, b) in enumerate(zip(rest, last)) if a != b), min(len(rest), len(last)))
+    return (f"the session file's record in flight differs from the stream's at its item {i + 1}: a cut drops units, "
+            f"it never changes one")
+
+
+def unconfirmed_session_lines(stream_texts: list, session_text: str, cut=()) -> set:
+    """The session file's line indices (0-based, newline-split) that hold only the one extra unit a cut turn's tail
+    may carry when the stream lags: it has no host copy, so nothing the take is graded or classified on reads it (the
+    third closure check of 461dc169, finding 2). Empty unless a host-recorded cut turn ends with that shape."""
+    units = [stream_content_units(t) for t in stream_texts]
+    turn, per_line = 0, []                    # (line index, turn, its units) for each content-bearing line
+    for i, raw in enumerate((session_text or "").split("\n")):
+        if not raw.strip():
+            continue
+        try:
+            rec = json.loads(raw)
+        except ValueError:
+            continue
+        if not isinstance(rec, dict) or rec.get("isSidechain") is True:
+            continue
+        if _is_operator_line(rec):
+            turn += 1
+            continue
+        got = _units(rec)
+        if got:
+            per_line.append((i, turn, got))
+    out = set()
+    for n in sorted(set(cut)):
+        if not 1 <= n <= len(units):
+            continue
+        sess = [u for _, t, us in per_line if t == n for u in us]
+        stream = [tuple(u) for u in units[n - 1]]
+        if len(sess) != len(stream) + 1 or [tuple(u) for u in sess[:-1]] != stream:
+            continue
+        lines = [(i, us) for i, t, us in per_line if t == n]
+        if lines and len(lines[-1][1]) == 1:
+            out.add(lines[-1][0])
+    return out
+
+
+def host_recorded_cuts(folder) -> set:
+    """The turns a take folder's driver ledger (host-written) records as cut: end timed-out or exit 124, by each
+    row's own n."""
+    try:
+        with open(os.path.join(str(folder), "driver-ledger.json"), encoding="utf-8") as fh:
+            rows = json.load(fh).get("turns") or []
+    except (OSError, ValueError, AttributeError):
+        return set()
+    return {r["n"] for r in rows if isinstance(r, dict) and isinstance(r.get("n"), int) and not isinstance(r["n"], bool)
+            and (r.get("end") == "timed-out" or r.get("exit") == 124)}
+
+
+def confirmed_transcript_text(folder) -> str | None:
+    """A claude-code take folder's transcript.jsonl without its unconfirmed lines, or None when it has none."""
+    cut = host_recorded_cuts(folder)
+    if not cut:
+        return None
+    base = str(folder)
+    with open(os.path.join(base, "transcript.jsonl"), encoding="utf-8") as fh:
+        text = fh.read()
+    streams = []
+    n = 1
+    while os.path.isfile(os.path.join(base, f"turn-{n}.jsonl")):
+        with open(os.path.join(base, f"turn-{n}.jsonl"), encoding="utf-8", errors="replace") as fh:
+            streams.append(fh.read())
+        n += 1
+    drop = unconfirmed_session_lines(streams, text, cut)
+    if not drop:
+        return None
+    return "\n".join(line for i, line in enumerate(text.split("\n")) if i not in drop)
 
 
 def content_problems(stream_units: list, session_text: str, cut=()) -> list:
