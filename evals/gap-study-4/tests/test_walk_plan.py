@@ -63,6 +63,11 @@ from a typed number, and bind:
                     deferred arms only; run_arm_gaps and --require-run-arms require every arm the freeze runs and
                     print each deferred arm and model as recorded; coverage_report is the --coverage reading; bound
                     by the generated sweep, no named witness
+  P20.strict        (lane pf1-walk-cover-strict, OD131 "walk-cover strict") strict_walks names arm A's walks; on
+                    --coverage and in coverage_report an arm A walk whose reading carries a reason HEAD's routing
+                    routes to harness-error covers nothing and is reported with why, an arm O walk with the same
+                    reason covers as before, and a clean arm A walk covers; witnesses strict-unread-cli,
+                    strict-unread-report, strict-every-arm (pending_walk's own rule: tests/test_walk_cover_strict.py)
 
 Red first: before walk_plan.py exists every test fails by its own assertion (P0.module), with no error. The helpers
 that call walk_plan (plan, cover, cli) turn any exception other than the documented refusal into a failure carrying
@@ -184,18 +189,22 @@ def mutants():
                            "            except FileNotFoundError:\n                pass"),
         "register-check-skipped": ("P12.register", "        if problems:\n            raise RegisterUnreadable(",
                                    "        if False:\n            raise RegisterUnreadable("),
+        # these two and default-base-ignored re-anchored by lane pf1-walk-cover-strict: lane pf1-l1-freeze-gates's
+        # deferred_lines and coverage_report repeat the bare lines, so each anchor occurred twice and its witness went
+        # red only by P0.module; each is now anchored on the site it was written for (coverage_lines, main)
         "per-model-arm-dropped": ("P13.per-model",
-                                  "if (s[\"arm\"], s[\"model\"]) == (arm, model))",
-                                  "if s[\"model\"] == model)"),
+                                  "if (s[\"arm\"], s[\"model\"]) == (arm, model))\n            lines.append(f\"{model_line(",
+                                  "if s[\"model\"] == model)\n            lines.append(f\"{model_line("),
         "per-model-model-dropped": ("P13.per-model",
-                                    "if (s[\"arm\"], s[\"model\"]) == (arm, model))",
-                                    "if s[\"arm\"] == arm)"),
+                                    "if (s[\"arm\"], s[\"model\"]) == (arm, model))\n            lines.append(f\"{model_line(",
+                                    "if s[\"arm\"] == arm)\n            lines.append(f\"{model_line("),
         "script-entry-dropped": ("P14.cli", "    raise SystemExit(main())", "    main()"),
         "list-require-admitted": ("P14.cli", "    if args.require_complete and not args.coverage:",
                                   "    if False:"),
         "ok-unconditional": ("P14.cli", "    if args.require_complete:\n        print(\"ok",
                              "    if True:\n        print(\"ok"),
-        "default-base-ignored": ("P14.cli", "else walk_register.REHEARSALS", "else HERE / \"rehearsals\""),
+        "default-base-ignored": ("P14.cli", "if args.base else walk_register.REHEARSALS",
+                                 "if args.base else HERE / \"rehearsals\""),
         "stand-in-any-id": ("P16.scratch-only", "\n            and walk_register.WALK_ID.fullmatch(e[\"walk\"])]",
                             "]"),
         "stand-in-type-unchecked": ("P17.wrong-type",
@@ -209,9 +218,17 @@ def mutants():
         # batch-8 review finding 1 (glitch-06, 14 Oct 2026): a pending walk is never coverage
         "pending-counted": ("P18.pending", "        if entry[\"walk\"] in uncounted:            # batch-8 rulings",
                             "        if False:            # batch-8 rulings"),
+        # re-anchored by lane pf1-walk-cover-strict: the call line also stands in coverage_report, so the bare line
+        # occurred twice and the witness went red only by P0.module (the module refused its anchor); now main's site
         "pending-unread": ("P18.pending",
-                           "    got = coverage(entries, specs, design, pending_walk.uncounted_walks(base, [e[\"walk\"] for e in entries]))",
-                           "    got = coverage(entries, specs, design)"),
+                           "    got = coverage(entries, specs, design,\n                   pending_walk.uncounted_walks("
+                           "base, [e[\"walk\"] for e in entries], strict_walks(entries)))\n    print(",
+                           "    got = coverage(entries, specs, design)\n    print("),
+        # OD131 (lane pf1-walk-cover-strict): arm A's walks are judged by the strict rule, on both roads, and only they
+        "strict-unread-cli": ("P20.strict", "strict_walks(entries)))\n    print(", "[]))\n    print("),
+        "strict-unread-report": ("P20.strict", "strict_walks(entries)))\n    return {", "[]))\n    return {"),
+        "strict-every-arm": ("P20.strict", "    return [e[\"walk\"] for e in entries if e[\"arm\"] in "
+                             "WALK_COVER_STRICT[\"arms\"]]\n", "    return [e[\"walk\"] for e in entries]\n"),
         "pending-unreported": ("P18.pending", "    for label, why in got[\"uncounted\"]:\n", "    for label, why in []:\n"),
     }
 
@@ -242,6 +259,13 @@ def setUpModule():
     subprocess.Popen = refuse_process          # the process guard: armed here, never at import
     for name in ("walk_register", "lint_language", "lint_pooling"):
         MODS[name] = __import__(name)
+    # OD131 (lane pf1-walk-cover-strict): pending_walk reads the routing table as HEAD's commit holds it, with git,
+    # which the process guard refuses; here the study's own routing.json stands in for it (a clean checkout holds
+    # HEAD's), and tests/test_walk_cover_strict.py binds the git read itself
+    import pending_walk
+    import routing
+    SAVED["head_routing_table"] = getattr(pending_walk, "head_routing_table", None)
+    pending_walk.head_routing_table = lambda: routing.load_table()
     path = HERE / "walk_plan.py"
     if not path.is_file():
         MODS["walk_plan"] = None               # red first: every test fails by P0.module, never by an error
@@ -273,6 +297,11 @@ def setUpModule():
 
 def tearDownModule():
     subprocess.Popen = SAVED["popen"]
+    import pending_walk
+    if SAVED.get("head_routing_table") is None:
+        pending_walk.__dict__.pop("head_routing_table", None)
+    else:
+        pending_walk.head_routing_table = SAVED["head_routing_table"]
     if SELECTED is not None or MUTANT_SOURCE is not None:
         sys.modules.pop("walk_plan", None)     # a compiled mutant never outlives this module
     sys.path[:] = SAVED["path"]
@@ -1211,6 +1240,51 @@ class P19RunArms(Base):
         self.assertNotIn("--require-run-arms", out, "P19.run-arms: plain --coverage is unchanged")
 
 
+class P20Strict(Base):
+    """Lane pf1-walk-cover-strict, OD131 (Javier, 25 Oct 2026: "walk-cover strict"): a Claude walk counts as covered
+    only if it rechecks clean under the harness as it will be frozen. walk_plan names arm A's walks strict
+    (strict_walks), on the --coverage road and in coverage_report, and pending_walk judges them; an arm O walk carrying
+    the same reason counts as before. Written so the generated sweep binds the new lines."""
+    CLAUSE = "P20.strict"
+
+    def dirty(self, base: Path, walk: str, reasons) -> None:
+        path = base / walk / "check.json"
+        doc = json.loads(path.read_text())
+        doc["checker_reasons"] = list(reasons)
+        path.write_text(json.dumps(doc))
+
+    def test_an_arm_a_walk_counts_only_clean(self):
+        import pending_walk
+        wp = self.wp(self.CLAUSE)
+        design, specs = self.plan(self.CLAUSE)
+        self.assertEqual(getattr(wp, "WALK_COVER_STRICT", {}).get("arms"), ("A",), "P20.strict: OD131 names arm A")
+        a, o = (next(s for s in specs if s["arm"] == arm) for arm in ("A", "O"))
+        entries = [entry(a, "walk-a"), entry(o, "walk-o"), entry(a, "walk-a2")]
+        self.assertEqual(self.call(self.CLAUSE, getattr(wp, "strict_walks", None), entries), ["walk-a", "walk-a2"],
+                         "P20.strict: the arm A walks, in register order")
+        self.assertEqual(self.call(self.CLAUSE, getattr(wp, "strict_walks", None), []), [], "P20.strict")
+        hcv = "harness-condition-violated"
+        why = f"{getattr(pending_walk, 'STRICT_WHY', 'no strict rule')}: {hcv}"
+        base = self.rehearsals(entries[:2])
+        for walk in ("walk-a", "walk-o"):
+            self.dirty(base, walk, [hcv])
+        code, out = self.cli(self.CLAUSE, ["--coverage", "--base", str(base)])
+        self.assertEqual(code, 0, f"P20.strict: {out[-300:]}")
+        self.assertRegex(out, rf"(?m)^missing  {re.escape(self.sline(a))}$", "P20.strict: the arm A walk covers nothing")
+        self.assertRegex(out, rf"(?m)^covered  {re.escape(self.sline(o))} by walk-o$",
+                         "P20.strict: the arm O walk counts as before")
+        self.assertIn(f"{why}, not counted: walk 'walk-a'", out, "P20.strict: and is reported with why")
+        rep = self.call(self.CLAUSE, wp.coverage_report, base)
+        self.assertEqual(rep["got"]["uncounted"], [("walk-a", why)], "P20.strict: coverage_report applies the rule")
+        self.assertEqual(list(rep["got"]["covered"]), [self.key(o, design)], "P20.strict: coverage_report")
+        self.dirty(base, "walk-a", [])
+        code, out = self.cli(self.CLAUSE, ["--coverage", "--base", str(base)])
+        self.assertRegex(out, rf"(?m)^covered  {re.escape(self.sline(a))} by walk-a$",
+                         "P20.strict: a clean arm A walk covers its spec")
+        rep = self.call(self.CLAUSE, wp.coverage_report, base)
+        self.assertEqual(rep["got"]["uncounted"], [], "P20.strict: a clean arm A walk is counted by coverage_report")
+
+
 BOUND = {"P2.dropped": "P2Dropped.test_a_dropped_task_or_wording_changes_the_figures",
          "P3.halves": "P3Halves.test_every_task_and_half_on_every_planned_model",
          "P4.off-design": "P4OffDesign.test_an_entry_outside_the_plan_is_reported_never_counted",
@@ -1227,7 +1301,8 @@ BOUND = {"P2.dropped": "P2Dropped.test_a_dropped_task_or_wording_changes_the_fig
          "P16.scratch-only": "P16ScratchOnly.test_a_path_shaped_walk_id_writes_nothing_outside_the_scratch",
          "P17.wrong-type": "P17WrongType.test_a_field_of_the_wrong_type_is_skipped_never_a_crash",
          "P18.pending": "P18Pending.test_a_pending_walk_covers_nothing",
-         "P19.run-arms": "P19RunArms.test_the_freeze_requires_the_arms_it_runs"}
+         "P19.run-arms": "P19RunArms.test_the_freeze_requires_the_arms_it_runs",
+         "P20.strict": "P20Strict.test_an_arm_a_walk_counts_only_clean"}
 WITNESSES = {name: (BOUND[clause], clause) for name, (clause, _, _) in mutants().items()}
 
 
