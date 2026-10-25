@@ -116,7 +116,12 @@ class ExecutedStreamRefused(StreamError, aa.ExecutedTurnRefused):
 # when they reach it untranslated: box/run_take captures the turn's stdout with universal newlines (review r9), so a
 # \r becomes \n before the stream file is written, and the session file is read the same way. The \r entry is kept as
 # harmless defence in depth; \r is the checker's to refuse (check_take.transcript_line_problems reads the bytes).
-LINE_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029")
+# SUPERSEDED IN PART (lane pf1-l3, the lane orchestrator's ruling on the closure check of 8cf492b2, 24 Oct 2026):
+# U+2028, U+2029 and U+0085 are legal inside a JSON string, and every reader here splits JSONL on "\n" alone, so a
+# record carrying one is read whole, never dropped and never refused: the refusal let an agent void and re-run its own
+# take by printing one character. Only the C0 separators stay refused (raw, they are never legal inside a JSON string).
+JSON_STRING_SEPARATORS = ("\x85", "\u2028", "\u2029")       # read as text, split on "\n" alone
+LINE_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e")
 
 
 def _records(text: str) -> tuple[list, int]:
@@ -634,7 +639,8 @@ def cross_check(turn_records: list, session_text: str, *, session_id: str) -> li
         out.append(f"{missing} turn record(s) carry no content units, so the session file's content cannot be "
                    f"compared with the streams")
     else:
-        out += content_problems(units, session_text)
+        cut = {k for k, t in enumerate(turn_records, 1) if t.get("timed_out") is True or t.get("exit_code") == 124}
+        out += content_problems(units, session_text, cut=cut)
     return out
 
 
@@ -739,9 +745,12 @@ def _unit_name(unit) -> str:
     return "nothing" if unit is None else f"{unit[0]} {str(unit[1])[:60]!r}"
 
 
-def content_problems(stream_units: list, session_text: str) -> list:
+def content_problems(stream_units: list, session_text: str, cut=()) -> list:
     """PF1-L3: the session file's content against the turn streams' (one list of units per turn, in turn order).
-    Problems, each one sentence naming kinds and ids, never the words; [] when every turn's units are equal."""
+    Problems, each one sentence naming kinds and ids, never the words; [] when every turn's units are equal. A turn in
+    `cut` (the host recorded its cut: timed out, exit 124) is compared only up to the shorter record's last complete
+    unit, since the kill can fall between the CLI's writes to its stream and to its session file (the lead's ruling on
+    the closure check of 8cf492b2, 24 Oct 2026)."""
     turns = session_content_turns(session_text)
     out = []
     if turns[0]:
@@ -751,6 +760,9 @@ def content_problems(stream_units: list, session_text: str) -> list:
         out.append(f"the session file holds {len(turns) - 1} operator line(s) and the take {len(stream_units)} turn "
                    f"stream(s)")
     for n, (stream, sess) in enumerate(zip(stream_units, turns[1:]), 1):
+        if n in set(cut):
+            k = min(len(stream), len(sess))
+            stream, sess = stream[:k], sess[:k]
         if [tuple(u) for u in stream] == [tuple(u) for u in sess]:
             continue
         i = next((k for k, (a, b) in enumerate(zip(stream, sess)) if tuple(a) != tuple(b)), min(len(stream), len(sess)))

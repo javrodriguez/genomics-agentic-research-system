@@ -2724,6 +2724,7 @@ def steer_condition_problems(path: Path) -> list[str]:
     fail closed."""
     journals, streams = _turn_files(path)
     problems = _journal_gaps("the bash-first steer-off condition", journals, streams)
+    steer_on = bool(problems)      # PF1-L3: a host record (a journal, or its absence) shows the steer may have run
     for switch in (STEER_SWITCH, SILENT_TURN_SWITCH):      # glitch-b5 (16 Oct 2026): the silent-turn reminder too
         bad = []
         for n, journal in sorted(journals.items()):
@@ -2731,13 +2732,19 @@ def steer_condition_problems(path: Path) -> list[str]:
             value = settings[0].get("env", {}).get(switch) if len(settings) == 1 else None
             if not (isinstance(value, str) and value == STEER_REQUIRED[switch]):
                 bad.append(n)
+        if bad and switch == STEER_SWITCH:
+            steer_on = True
         if bad:
             problems.append(f"[{HARNESS_CONDITION_VIOLATED}] turn(s) {bad} do not set {switch} off (exactly the "
                             f"string {STEER_REQUIRED[switch]!r}) in exactly one inline --settings: the "
                             f"{'bash-first steer-off' if switch == STEER_SWITCH else 'silent-turn reminder off'} "
                             f"condition did not hold on every turn")
     count = _auto_mode_records(path)
-    if count:
+    if count and steer_on:
+        # what a host record also shows stays a harness condition (the closure check of 8cf492b2, 24 Oct 2026)
+        problems.append(f"[{HARNESS_CONDITION_VIOLATED}] the transcript carries {count} auto_mode attachment(s): the "
+                        f"bash-first steer reached the agent")
+    elif count:
         # PF1-L3 (the lane orchestrator's ruling on review fb354328 finding 1, 24 Oct 2026): the session file is the
         # agent's to write, so what only it shows is a disagreement between the records, never a harness condition
         problems.append(f"[{TRANSCRIPT_MISMATCH}] the transcript carries {count} auto_mode attachment(s), which no "
@@ -2753,18 +2760,22 @@ def denied_tool_problems(path: Path) -> list[str]:
     journals, streams = _turn_files(path)
     problems = _journal_gaps("the isolation denials", journals, streams)
     want = set(ISOLATION_DENIED_TOOLS)
+    host_shown = set()           # PF1-L3: the denied tools a host record (a journal or a stream init) leaves offered
     for n, journal in sorted(journals.items()):
         tokens, settings = _journal_view(journal)
         gaps = []
         if not want <= _journal_denied(tokens):
             gaps.append(f"--disallowedTools lacks {sorted(want - _journal_denied(tokens))}")
+            host_shown |= want - _journal_denied(tokens)
         if len(settings) != 1:
             gaps.append(f"{len(settings)} inline --settings, not one")
+            host_shown |= want
         else:
             deny = settings[0].get("permissions", {}).get("deny", [])
             deny = set(deny) if isinstance(deny, list) and all(isinstance(d, str) for d in deny) else set()
             if not want <= deny:
                 gaps.append(f"permissions.deny lacks {sorted(want - deny)}")
+                host_shown |= want - deny
             if settings[0].get("crossSessionInbound") != CROSS_SESSION_INBOUND:
                 gaps.append(f"crossSessionInbound is {settings[0].get('crossSessionInbound')!r}, not "
                             f"{CROSS_SESSION_INBOUND!r}")
@@ -2787,6 +2798,7 @@ def denied_tool_problems(path: Path) -> list[str]:
                 raise CheckRefused(f"{stream.name}: an init record whose tools are not a list")
             offered = sorted(set(map(str, tools)) & want)
             if offered:
+                host_shown |= set(offered)
                 problems.append(f"[{HARNESS_CONDITION_VIOLATED}] turn {n}'s init offers {offered}: the isolation "
                                 f"denials did not hold")
         if not inits:
@@ -2809,10 +2821,16 @@ def denied_tool_problems(path: Path) -> list[str]:
                             f"a list: off the record shape the harness writes")
             continue
         offered = sorted(set(map(str, added)) & want)
-        if offered:
-            problems.append(f"[{TRANSCRIPT_MISMATCH}] a deferred_tools_delta in the transcript adds {offered}, which "
-                            f"no host record offers (the journals deny them, the stream inits omit them): the records "
-                            f"disagree")
+        # the closure check of 8cf492b2 and the lead's ruling on it (24 Oct 2026): what a host record also shows stays
+        # a harness condition (the CLI writes this delta when a denial fails, as the 25 pre-ruling walks record); only
+        # what the transcript alone shows is a disagreement between the records
+        if offered and set(offered) <= host_shown:
+            problems.append(f"[{HARNESS_CONDITION_VIOLATED}] a deferred_tools_delta adds {offered}: the isolation "
+                            f"denials did not hold")
+        elif offered:
+            problems.append(f"[{TRANSCRIPT_MISMATCH}] a deferred_tools_delta in the transcript adds "
+                            f"{sorted(set(offered) - host_shown)}, which no host record offers (the journals deny "
+                            f"them, the stream inits omit them): the records disagree")
     return problems
 
 
@@ -2922,7 +2940,10 @@ def _no_duplicate_keys(pairs) -> dict:
 #   [transcript-unreadable] (an operator reason with its round-4 ruling, routed by the generic rows like
 #   harness-condition-violated). The bytes are read as written (no newline translation), so a \r is seen.
 TRANSCRIPT_UNREADABLE = "transcript-unreadable"
-TRANSCRIPT_LINE_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029")
+# SUPERSEDED IN PART (lane pf1-l3, the lane orchestrator's ruling on the closure check of 8cf492b2, 24 Oct 2026): every
+# reader here splits on "\n" alone, and U+2028, U+2029 and U+0085 are legal inside a JSON string, so a transcript
+# carrying one is read, never refused; the C0 separators (never legal raw in a JSON string) stay refused.
+TRANSCRIPT_LINE_SEPARATORS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e")
 
 
 def transcript_line_problems(path: Path) -> list[str]:
@@ -7071,20 +7092,22 @@ def transcript_content_problems(path: Path) -> list[str]:
         session = path.read_bytes().decode("utf-8", errors="replace")
     except OSError as e:
         raise CheckRefused(f"the transcript or a turn stream cannot be read ({type(e).__name__})") from None
+    cut = _host_recorded_cuts(path)
     out = [f"[{TRANSCRIPT_MISMATCH}] {p}" for p in
-           _cca.content_problems([_cca.stream_content_units(t) for t in texts], session)]
-    return out + transcript_record_problems(path, texts, session, _journals)
+           _cca.content_problems([_cca.stream_content_units(t) for t in texts], session, cut=cut)]
+    return out + transcript_record_problems(path, texts, session, _journals, cut=cut)
 
 
-def _host_readable(texts: list) -> bool:
-    """Every turn stream reads as the host captured it: no line separator but newline, every non-blank line one JSON
-    object (the host's own record, which the agent does not write)."""
-    for text in texts:
+def _host_readable(texts: list, cut=()) -> bool:
+    """Every turn stream reads as the host captured it: no C0 separator, every non-blank line one JSON object (the
+    host's own record, which the agent does not write); a cut turn's last line may be the one the kill cut short."""
+    for k, text in enumerate(texts, 1):
         if any(sep in text for sep in _cca.LINE_SEPARATORS):
             return False
-        for line in text.split("\n"):
-            if not line.strip():
-                continue
+        lines = [line for line in text.split("\n") if line.strip()]
+        if k in set(cut) and lines:
+            lines = lines[:-1]
+        for line in lines:
             try:
                 if not isinstance(json.loads(line), dict):
                     return False
@@ -7093,7 +7116,7 @@ def _host_readable(texts: list) -> bool:
     return True
 
 
-def transcript_record_problems(path: Path, texts: list, session: str, journals: dict) -> list[str]:
+def transcript_record_problems(path: Path, texts: list, session: str, journals: dict, cut=()) -> list[str]:
     """PF1-L3 (the lane orchestrator's ruling on review fb354328 findings 1-2, 24 Oct 2026: after the first turn,
     nothing only the agent-writable session file shows may route a take to harness-error or rehearsal):
     [transcript-mismatch] when, the host streams being readable, the session file carries a line that is not one JSON
@@ -7102,15 +7125,16 @@ def transcript_record_problems(path: Path, texts: list, session: str, journals: 
     151 of 151 committed walks equal). transcript_line_problems and the view still name the line; this reading only
     says the records disagree, so the take routes aborted, never re-run."""
     out = []
-    if _host_readable(texts):
+    if _host_readable(texts, cut):
         seps = sorted({f"U+{ord(c):04X}" for c in TRANSCRIPT_LINE_SEPARATORS if c in session})
         if seps:
             out.append(f"[{TRANSCRIPT_MISMATCH}] the session file carries line separator(s) {', '.join(seps)} that "
                        f"no turn stream carries: the records disagree")
         junk, side = 0, 0
-        for line in session.split("\n"):
-            if not line.strip():
-                continue
+        sess_lines = [line for line in session.split("\n") if line.strip()]
+        if texts and len(texts) in set(cut) and sess_lines:
+            sess_lines = sess_lines[:-1]      # the last turn was cut: its session file's last line may be cut short
+        for line in sess_lines:
             try:
                 rec = json.loads(line)
             except ValueError:
@@ -7198,12 +7222,13 @@ def _host_cut_turns(records: list, texts: list, harness: str) -> set:
 
 
 def _host_recorded_cuts(path: Path) -> set:
-    """The turns the driver ledger (host-written) records as cut: end timed-out or exit 124, by row order."""
+    """The turns the driver ledger (host-written) records as cut: end timed-out or exit 124, by each row's n."""
     try:
         rows = json.loads((Path(path).parent / "driver-ledger.json").read_text(encoding="utf-8")).get("turns") or []
     except (OSError, ValueError, AttributeError):
         return set()
-    return {k for k, r in enumerate(rows, 1) if isinstance(r, dict)
+    # the closure check's NIT 5: each row maps to its turn by its own n (the producer's field), never its position
+    return {r["n"] for r in rows if isinstance(r, dict) and isinstance(r.get("n"), int) and not isinstance(r["n"], bool)
             and (r.get("end") == CUT_END or r.get("exit") == CUT_EXIT)}
 
 

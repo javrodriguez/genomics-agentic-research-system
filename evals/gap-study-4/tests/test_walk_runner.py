@@ -670,7 +670,8 @@ class R2WalkCheck(Case):
             unset = edited("w-unset", lambda st: st["env"].pop("CLAUDE_CODE_THRIFTY_SONIC"))
             hold = edited("w-hold", lambda st: st.__setitem__("crossSessionInbound", "hold"))
             # and (the d7107255 battery's survivors) each later claude-code call on its own: the deny list emptied
-            # refuses by the isolation call, a raw U+2028 in the transcript by the line call, a sub-agent file no
+            # refuses by the isolation call, a raw U+2028 in the transcript (lane pf1-l3, 24 Oct 2026: read as text, so
+            # now the content call, the transcript's alone: transcript-mismatch) by the line call, a sub-agent file no
             # Agent call names by the Agent call
             undenied = edited("w-undenied", lambda st: st["permissions"].__setitem__("deny", []))
             sep = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-sep"
@@ -711,7 +712,7 @@ class R2WalkCheck(Case):
                                      (swept, "nested-agent", "/tmp/n/projects/-x/n1.jsonl is a claude session"),
                                      (hold, hcv, "crossSessionInbound is 'hold'"),
                                      (undenied, hcv, "permissions.deny lacks"),
-                                     (sep, "transcript-unreadable", "line separator(s) U+2028"),
+                                     (sep, "transcript-mismatch", "differs from the host-captured stream"),
                                      (stray, "subagent-records", "are not exactly the copies the driver ledger names"),
                                      (stray, "leak-in-loaded-context", "sub-agent file agent-0000ffff.jsonl's loaded")):
                 got = self.must("R2.walk-check", ct.check4_walk, where / "transcript.jsonl", w.row["task"],

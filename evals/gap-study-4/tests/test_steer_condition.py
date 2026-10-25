@@ -220,8 +220,9 @@ class Steer(unittest.TestCase):
             ("another attachment type", lambda: mock.patch.object(ct, "AUTO_MODE_ATTACHMENT", "auto_mode_exit")),
             ("missing journal read as nothing", lambda: mock.patch.object(ct, "_journal_gaps", lambda *a: [])),
             ("auto_mode only under the switch", lambda: source_mutant(
-                '    count = _auto_mode_records(path)\n    if count:',
-                '    count = _auto_mode_records(path) if journals and not bad else 0\n    if count:')),
+                # lane pf1-l3: the anchor follows the host-shown split (the closure check of 8cf492b2, 24 Oct 2026)
+                '    count = _auto_mode_records(path)\n    if count and steer_on:',
+                '    count = _auto_mode_records(path) if journals and not bad else 0\n    if count and steer_on:')),
             ("the prompt read as flags", lambda: mock.patch.object(ct, "_JOURNAL_PRINT_FLAGS", ())),
         )
         for name, ctx in mutants:

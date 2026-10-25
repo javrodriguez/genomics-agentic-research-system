@@ -396,7 +396,7 @@ class T4Rewrites(unittest.TestCase):
         w = Copied(CLAUDE_WALK)
         try:
             rewrite_lines(w.path, _claude_text)
-            with mock.patch.object(cca, "content_problems", lambda units, text: []):
+            with mock.patch.object(cca, "content_problems", lambda units, text, cut=(): []):
                 self.assertEqual(ct.transcript_content_problems(w.path), [], "witness not performed")
         finally:
             w.close()
@@ -509,8 +509,7 @@ class T6ReviewFb354328(unittest.TestCase):
     def test_r2b_junk_line_separator_and_sidechain_record(self):
         side = assistant("sc", [{"type": "text", "text": "side"}], stream=False, isSidechain=True)
         for name, edit in (("junk", lambda w: append_line(w.path, "not a record")),
-                           ("separator", lambda w: rewrite_lines(w.path, lambda r: _claude_text(r) and bool(
-                               r["message"]["content"][0].update(text="a\u2028b")) is False)),
+                           ("C0 separator", lambda w: append_line(w.path, "\x0c")),
                            ("sidechain", lambda w: append_line(w.path, side))):
             got = self.claude(edit)
             self.assertIn(ct.TRANSCRIPT_MISMATCH, got, name)
@@ -591,6 +590,98 @@ class T6ReviewFb354328(unittest.TestCase):
     def test_witness_the_old_tags_would_route_harness_error(self):
         self.assertEqual(routed([ct.TRANSCRIPT_MISMATCH, ct.HARNESS_CONDITION_VIOLATED]), "harness-error")
         self.assertEqual(routed([ct.TRANSCRIPT_UNREADABLE]), "harness-error")
+
+
+# ---- the closure check of 8cf492b2 (VERDICT CHANGES) and the lead's rulings on it, 24 Oct 2026 ------------------------
+def _ledger(w) -> dict:
+    return json.loads((w.dir / "driver-ledger.json").read_text())
+
+
+def _set_ledger(w, led) -> None:
+    (w.dir / "driver-ledger.json").write_text(json.dumps(led))
+
+
+class T7ClosureCheck8cf492b(unittest.TestCase):
+    claude = T6ReviewFb354328.claude
+    def test_c1a_host_and_session_both_show_the_delta_stays_a_harness_condition(self):
+        def edit(w):
+            for n in (1, 2):
+                j = w.dir / f"turn-{n}.jsonl.launch.json"
+                doc = json.loads(j.read_text())
+                doc["argv"] = [a for a in doc["argv"] if a != "SendMessage"]
+                j.write_text(json.dumps(doc))
+            append_line(w.path, DENIED_DELTA)
+        got = self.claude(edit)
+        self.assertEqual(sorted(set(got)), [ct.HARNESS_CONDITION_VIOLATED], got)
+        self.assertEqual(routed(got), "harness-error")
+
+    def test_c1b_host_and_session_both_show_auto_mode_stays_a_harness_condition(self):
+        def edit(w):
+            for n in (1, 2):
+                j = w.dir / f"turn-{n}.jsonl.launch.json"
+                text = j.read_text().replace("CLAUDE_CODE_THRIFTY_SONIC", "CLAUDE_CODE_THRIFTY_SONIC_OFF")
+                j.write_text(text)
+            append_line(w.path, AUTO_MODE)
+        got = self.claude(edit)
+        self.assertEqual(sorted(set(got)), [ct.HARNESS_CONDITION_VIOLATED], got)
+
+    def test_c1c_session_alone_is_a_mismatch(self):
+        for rec in (AUTO_MODE, DENIED_DELTA):
+            self.assertEqual(self.claude(lambda w: append_line(w.path, rec)), [ct.TRANSCRIPT_MISMATCH], rec)
+
+    def test_c3a_a_cut_turn_compares_to_the_shorter_records_last_complete_unit(self):
+        streams, sess = two_turns()
+        short = sess[:-1]                         # turn 2's last record never reached the session file
+        self.assertNotEqual(problems(streams, short), [])
+        self.assertEqual(cca.content_problems([cca.stream_content_units(t) for t in streams], jsonl(short), cut={2}), [])
+        rewritten = copy.deepcopy(short)
+        rewritten[10]["message"]["content"][0]["input"]["file_path"] = "b.md"
+        self.assertNotEqual(cca.content_problems([cca.stream_content_units(t) for t in streams], jsonl(rewritten),
+                                                 cut={2}), [], "a rewrite before the cut is still refused")
+        self.assertNotEqual(cca.content_problems([cca.stream_content_units(t) for t in streams], jsonl(short),
+                                                 cut={1}), [], "only the cut turn is cut short")
+
+    def test_c3b_a_host_recorded_cut_on_a_copied_walk(self):
+        def cut_session(w):
+            lines = [l for l in w.path.read_text().split("\n") if l.strip()]
+            last = max(k for k, l in enumerate(lines) if json.loads(l).get("type") == "assistant")
+            lines = lines[:last] + [lines[last][:30]]      # its last assistant record cut short by the kill
+            w.path.write_text("\n".join(lines) + "\n")
+
+        def with_cut(w):
+            led = _ledger(w)
+            led["turns"][-1].update(end="timed-out", exit=124)
+            _set_ledger(w, led)
+            cut_session(w)
+        self.assertEqual(self.claude(with_cut), [])
+        self.assertIn(ct.TRANSCRIPT_MISMATCH, self.claude(cut_session), "without the host's cut it disagrees")
+
+    def test_c4_a_printed_json_legal_separator_reads_clean_in_both_records(self):
+        def printed(w):
+            for f in (w.path, w.dir / "turn-1.jsonl"):
+                rewrite_lines(f, lambda r: r.get("type") == "user" and isinstance((r.get("message") or {}).get(
+                    "content"), list) and any(b.get("type") == "tool_result" and isinstance(b.get("content"), str)
+                    and not b.update(content=b["content"] + "\u2028\u2029\x85") for b in r["message"]["content"]))
+        w = Copied(CLAUDE_WALK)
+        try:
+            clean = ct.reason_ids(ct.transcript_line_problems(w.path))
+            printed(w)
+            self.assertIn("\u2028", w.path.read_text(encoding="utf-8"))
+            self.assertEqual(ct.reason_ids(ct.transcript_line_problems(w.path)), clean)
+            self.assertEqual(ct.transcript_content_problems(w.path), [])
+        finally:
+            w.close()
+        self.assertEqual(self.claude(lambda w: append_line(w.path, "not a record")), [ct.TRANSCRIPT_MISMATCH])
+
+    def test_c5_ledger_rows_map_to_turns_by_n(self):
+        w = Copied("w-g24")
+        try:
+            led = _ledger(w)
+            led["turns"] = [dict(led["turns"][0], n=3), {"n": 1, "end": "end_turn", "exit": 0}]
+            _set_ledger(w, led)
+            self.assertEqual(ct._host_recorded_cuts(w.path), {3})
+        finally:
+            w.close()
 
 
 if __name__ == "__main__":

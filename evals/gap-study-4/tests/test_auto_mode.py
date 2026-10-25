@@ -151,6 +151,9 @@ class TheAutoModeAttachment(unittest.TestCase):
         (dep,) = [d for d in draft["harness_furniture_ruling"]["departures"] if d["of"] == tv.CC_AUTO_MODE]
         for word in ("round 3", "bypass", "Bash", "RULED 15 Oct (glitch-6b)", "CLAUDE_CODE_THRIFTY_SONIC",
                      "admitted for audit only", "harness-condition-violated",
+                     # lane pf1-l3 (the lead's ruling on review fb354328 and its closure check, 24 Oct 2026): what only
+                     # the transcript shows is a mismatch between the records
+                     "as transcript-mismatch when every launch journal sets the switch off",
                      # glitch-6b's ruling (15 Oct 2026): the value, its parser proof and records, and the departure
                      'set to "false"', 'triBool reads "0", "false", "no" and "off" as false',
                      "lane-reports/stub-take-20261015/claude-2.1.296-", "as the product ships, the steer depends on the model",
