@@ -22632,6 +22632,11 @@
       "name": "arm G project tier",
       "text": "D8 mitigation 1 (\"Never a Google key from an unpaid project; preflight records the project's tier\", plans/gap-study-round-4/D8-non-claude-arms.md line 388) is enforced only by the owner's recorded fact: Javier's own words of 8 Oct 2026, \"Google Paid, cap $140\" (plans/gap-study-round-4.md line 2129), which preflight records as given (box/preflight.py GOOGLE_PROJECT_TIER). It is not measured (that needs an API call with the key), and that the key placed in the box comes from that project is the owner's hands.",
       "ruling": "glitch-f1, Thu 22 Oct 2026, under Javier's standing delegation"
+    },
+    {
+      "name": "vendor-account state",
+      "text": "vendor-account state persists between takes, outside the box, so no take starts from a clean vendor account. Arm G: GEMINI_API_KEY is visible to the agent (this list's first finding: measured in 10 of the 36 Gemini walks), and the take's one egress host, generativelanguage.googleapis.com (box/egress/proxy_conf.py), also serves the Gemini API's Files resource, which Google's Files API page (read 25 Oct 2026) says stores an uploaded file for 48 hours, up to 20 GB per project; pre-freeze review 1 also names cached contents under the same key (not read here). So a take can leave a file there that a later take on the same key could list or read. Arm O: every take signs in to the one ChatGPT account of its lease and reaches it through its one host (the arm O egress host residual above), so what one take leaves in that account's data is reachable from the next. Inferred from the hosts and the visible logins, not measured.",
+      "ruling": "pre-freeze review 1, m10, folded by lane pf1-l4a under the lane orchestrator's brief of 25 Oct 2026"
     }
   ],
   "run_tree_residual": {

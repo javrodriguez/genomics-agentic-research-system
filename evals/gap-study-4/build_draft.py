@@ -1087,6 +1087,7 @@ def describe(root=None):
                          "tests/test_walk_builders.py B21AgentHome (the folder in a vendor checkout, git-excluded, "
                          "mode 700, none for arm A)"}]
     d["box_residuals"].append(copy.deepcopy(ARM_G_TIER_RESIDUAL))       # lane d8-furniture fold 2 (22 Oct 2026)
+    d["box_residuals"].append(copy.deepcopy(VENDOR_ACCOUNT_RESIDUAL))   # pre-freeze review 1, m10 (25 Oct 2026)
     d["run_tree_residual"] = run_tree_residual()                          # lane d8-furniture fold 2 (22 Oct 2026)
     # Q-w7a-1 (ruling W7A-close-1): S7-D4 ruled (A), the watcher's final stop, pre-registered with its check.
     d["final_stop"] = {
@@ -1232,6 +1233,20 @@ ARM_G_TIER_RESIDUAL = {
             "preflight records as given (box/preflight.py GOOGLE_PROJECT_TIER). It is not measured (that needs an API "
             "call with the key), and that the key placed in the box comes from that project is the owner's hands.",
     "ruling": "glitch-f1, Thu 22 Oct 2026, under Javier's standing delegation"}
+# Pre-freeze review 1, m10 (lane pf1-l4a, 25 Oct 2026): vendor-account state that outlives a take, named.
+VENDOR_ACCOUNT_RESIDUAL = {
+    "name": "vendor-account state",
+    "text": "vendor-account state persists between takes, outside the box, so no take starts from a clean vendor "
+            "account. Arm G: GEMINI_API_KEY is visible to the agent (this list's first finding: measured in 10 of the "
+            "36 Gemini walks), and the take's one egress host, generativelanguage.googleapis.com "
+            "(box/egress/proxy_conf.py), also serves the Gemini API's Files resource, which Google's Files API page "
+            "(read 25 Oct 2026) says stores an uploaded file for 48 hours, up to 20 GB per project; pre-freeze review "
+            "1 also names cached contents under the same key (not read here). So a take can leave a file there that a "
+            "later take on the same key could list or read. Arm O: every take signs in to the one ChatGPT account of "
+            "its lease and reaches it through its one host (the arm O egress host residual above), so what one take "
+            "leaves in that account's data is reachable from the next. Inferred from the hosts and the visible "
+            "logins, not measured.",
+    "ruling": "pre-freeze review 1, m10, folded by lane pf1-l4a under the lane orchestrator's brief of 25 Oct 2026"}
 RUN_TREE_RESIDUAL_KEYS = ("residual", "permitted_sweep_files", "permitted_sweep_files_rule")
 RUN_TREE_ROUND_4 = {
     "observed": "In 1 of the 225 walks at d5c0f798 an agent reached README.md line 28: w-g17 (arm G), which searched "

@@ -536,9 +536,11 @@ def description_problems(d):
         {"text": "the token is visible to child processes if preflight says so", "conditional_on_preflight": True,
          "finding": b.TOKEN_VISIBILITY_FINDING},
         {"text": "model weights behind an id are not pinnable"}, MODE_RESIDUAL, NEW_FOLDER_RESIDUAL]
-         and len(d["box_residuals"]) == 9
+         and len(d["box_residuals"]) == 10
          and [r.get("name") for r in d["box_residuals"][4:]] == ["read-only root", "W-3b", "arm O egress host",
-                                                                 "arm O and G HOME", "arm G project tier"],
+                                                                 "arm O and G HOME", "arm G project tier",
+                                                                 "vendor-account state"]
+         and d["box_residuals"][9] == b.VENDOR_ACCOUNT_RESIDUAL,       # pre-freeze review 1, m10 (lane pf1-l4a)
          "R8.residuals")   # + the read-only root and W-3b (16 Oct), arm O's egress host (R1, 18 Oct), R-H5 (19 Oct)
     need(d.get("final_stop") == FINAL_STOP, "R8.final-stop")
     need(d["leak_words"] == old["leak_words"] + [study.STUDY, "round 4"] and len(old["leak_words"]) == 23 and
@@ -810,7 +812,7 @@ class Description(unittest.TestCase):
         d = self.get()
         # 4th: the new-folder gap; then the read-only root, W-3b, arm O's egress host, arm O and G's HOME and (lane
         # d8-furniture fold 2, 22 Oct 2026) the arm G project tier
-        self.assertEqual(len(d["box_residuals"]), 9, "R8.mode-residual")
+        self.assertEqual(len(d["box_residuals"]), 10, "R8.mode-residual")   # + m10 (pf1-l4a, 25 Oct 2026)
         self.assertEqual(d["box_residuals"][2], MODE_RESIDUAL, "R8.mode-residual")
         endstate_tests = (HERE / MODE_CHECK[0]).read_text()
         self.assertIn(f"class {MODE_CHECK[1]}(", endstate_tests, "R8.mode-residual")
@@ -1286,6 +1288,18 @@ class PrefreezeFills(unittest.TestCase):
         self.assertEqual(d["predictions_rule"]["informed_by"], INFORMED, "F6.informed")
         self.assertEqual({p["informed_by"] for p in d["predictions"]}, {INFORMED}, "F6.informed")
         self.assertEqual({p["predicted"] for p in d["predictions"]}, {None}, "F6.informed")
+
+    def test_vendor_account_residual_rests_on_the_box(self):
+        """m10: the hosts and the visible key the residual names are the box's."""
+        from box.egress import proxy_conf
+        text = b.VENDOR_ACCOUNT_RESIDUAL["text"]
+        self.assertEqual(proxy_conf.HOSTS[GEMINI], "generativelanguage.googleapis.com", "F7.account")
+        self.assertIn(proxy_conf.HOSTS[GEMINI], text, "F7.account")
+        self.assertIn("GEMINI_API_KEY reached the agent's commands in 10 of the 36 Gemini walks",
+                      b.TOKEN_VISIBILITY_FINDING, "F7.account")
+        self.assertIn("measured in 10 of the 36 Gemini walks", text, "F7.account")
+        self.assertIn("arm O egress host", [r.get("name") for r in b.build()["box_residuals"]], "F7.account")
+        self.assertIn("not measured", text, "F7.account")
 
     def test_limitation_readings_rest_on_the_code(self):
         """PENDING #9 and #12 and m4: what each reading says of the code is true of it."""
