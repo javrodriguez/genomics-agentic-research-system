@@ -149,6 +149,27 @@ def driver_refusal_record(row: dict, outcome: dict, *, root=HERE, repo=REPO) -> 
     return doc
 
 
+TAKE_COMMIT_SUBJECT = "Record one take's outcome and its records"   # drive.py's COMMIT_SUBJECT (tests bind it)
+
+
+def outcome_committed_by_take_road(outcome: dict, *, root=HERE, repo=REPO) -> bool:
+    """The pin-block ruling: the commit that appended exactly `outcome` to outcomes.json is the take road's (drive's
+    TakeRepo, whose subject is TAKE_COMMIT_SUBJECT and which commits only the outcomes batch hands it)."""
+    root, repo = Path(root).resolve(), Path(repo).resolve()
+    history_rel = (root / HISTORY_FILES[0]).relative_to(repo).as_posix()
+    for sha in _git_at(repo, "log", "--format=%H", "--", history_rel, missing=True).split():
+        try:
+            if not _introduces(repo, sha, history_rel, outcome):
+                continue
+        except ValueError:
+            return False
+        subject = _git_at(repo, "show", "-s", "--format=%s", sha, missing=True)
+        if subject != TAKE_COMMIT_SUBJECT:
+            return False
+        return True
+    return False
+
+
 def _end_state_word(row: dict, outcome: dict) -> str:
     """The take's own grader's word for its committed end state in the excluded view (run.grade_committed)."""
     import run

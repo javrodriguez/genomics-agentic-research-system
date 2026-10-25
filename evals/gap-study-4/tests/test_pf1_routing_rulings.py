@@ -730,6 +730,106 @@ def cl_publication(runmod, p="CL"):
     return out
 
 
+# ---------------------------------------------- PB: a pin-blocked take at publication (the orchestrator's ruling)
+# The Lane-orchestrator's ruling on the pin-block gap (Sat 24 Oct 2026, under Javier's standing delegation): the identity
+# guard stays strict for every counted outcome; a committed outcome whose pin is not its row's is exempt only when its
+# block was written by Batch._route (checked by the commit that wrote it, never the reason prefix alone), the same slot
+# has a later re-run outcome under the registered pin, and that re-run passed the ruling rule. It is then listed as a
+# harness event (slot, recorded pin, registered pin), never counted; a pin block never re-run is a stop for an owner.
+def pb_case(tp, *, committed=True, rerun_pin_ok=True, ruled=True, forged=False, later=True, later_failed=False):
+    r1, r2 = tp.row(), tp.row()
+    rows = [dict(r1, attempt=1), dict(r2, attempt=2)] if later else [dict(r1, attempt=1)]
+    good = tp.recorded(labels4.GRADED, r1)
+    pin = dict(good["records"]["pin"])
+    other = dict(good["records"], pin=dict(pin, version="driver-says"))
+    blocked = tp.outcome(r1, state=labels4.BLOCKED, final=False, records=other, decision=None,
+                         reason=f"{batch.PIN_BLOCK_PREFIX}{other['pin']!r} is not the registered row's profile")
+    if forged:
+        blocked = dict(blocked, reason="routing refused: synthetic")
+    history = [blocked]
+    if ruled:
+        history.append(tp.ruling(r1, word=labels4.RULE_RERUN, route=None))
+    if later:
+        second = tp.recorded(labels4.GRADED, r2, attempt=2)
+        if not rerun_pin_ok:
+            second = dict(second, records=dict(second["records"], pin=dict(pin, version="driver-says")))
+        if later_failed:                 # the re-run's drive raised: no outcome under the registered pin exists
+            second = tp.outcome(r2, attempt=2, state=labels4.FAILED, final=False)
+        history.append(second)
+    return rows, history, (lambda o: committed)
+
+
+def pb_publication(runmod, crmod=check_results, p="PB"):
+    tp = _helper("test_pipeline")
+    out = []
+    grade = lambda row, o: {"label": "synthetic-right", "correct": True}   # noqa: E731
+    for name, kw, ok in (
+            ("a pin block, committed by the take road, re-run under the registered pin", {}, True),
+            ("the block's commit is not the take road's", {"committed": False}, False),
+            ("the re-run ran under a pin that is not the registered one", {"rerun_pin_ok": False}, False),
+            ("the re-run left no outcome under the registered pin (its drive raised)", {"later_failed": True}, False),
+            ("never re-run (no ruling, no later outcome)", {"ruled": False, "later": False}, False),
+            ("a later outcome but no ruling", {"ruled": False}, False),
+            ("not a pin block (another block's reason)", {"forged": True}, False)):
+        rows, history, committed = pb_case(tp, **kw)
+        try:
+            got = runmod.produce(rows, history, grade, table=tp.table(), refusal=lambda row, o: None,
+                                 committed=committed)
+        except ValueError as e:
+            if ok:
+                out.append(f"{p}: {name}: refused: {str(e)[:200]}")
+            elif kw.get("ruled") is False and kw.get("later") is False and "owner" not in str(e):
+                out.append(f"{p}: {name}: refused without saying it is a stop for an owner: {str(e)[:200]}")
+            continue
+        if not ok:
+            out.append(f"{p}: {name}: published")
+            continue
+        events = got.get("harness_events")
+        want = [{"slot": rows[0]["slot"], "attempt": 1, "recorded_pin": history[0]["records"]["pin"],
+                 "registered_pin": dict(model=rows[0]["model"], **rows[0]["agent"])}]
+        if events != want:
+            out.append(f"{p}: {name}: harness events {events!r}, want {want!r}")
+        if [(x["route"]) for x in got["records"]] != [labels4.GRADED] or len(got["records"]) != 1:
+            out.append(f"{p}: {name}: counted {len(got['records'])} records, want the re-run's one")
+    rows, history, committed = pb_case(tp)
+    rendered = crmod.render_harness_events(crmod.pin_block_events(history, {(x["slot"], x["attempt"]): x for x in rows},
+                                                                  tp.table(), refusal=lambda row, o: None,
+                                                                  committed=committed))
+    if "driver-says" not in rendered or "never counted" not in rendered:
+        out.append(f"{p}: the result's harness-event section does not list the block: {rendered[:200]!r}")
+    return out
+
+
+def pb_producer(takesmod, p="PB"):
+    """The producer check: the commit that appended the outcome is the take road's (its subject, drive.py's
+    COMMIT_SUBJECT) and appended exactly that outcome."""
+    import subprocess
+    import tempfile
+    out = []
+    o = {"slot": "s1", "attempt": 1, "state": labels4.BLOCKED}
+    with tempfile.TemporaryDirectory() as d:
+        for case, subject, appended in (("the take road", takesmod.TAKE_COMMIT_SUBJECT, [o]),
+                                        ("another subject", "Edit the ledger by hand", [o]),
+                                        ("two outcomes at once", takesmod.TAKE_COMMIT_SUBJECT, [o, dict(o, slot="s2")])):
+            repo = Path(d) / case.replace(" ", "-")
+            root = repo / "study"
+            root.mkdir(parents=True)
+            env = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid", "GIT_COMMITTER_NAME": "t",
+                   "GIT_COMMITTER_EMAIL": "t@example.invalid", "PATH": "/usr/bin:/bin:/usr/local/bin", "HOME": d}
+            subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True, capture_output=True, env=env)
+            (root / "outcomes.json").write_text(json.dumps(appended))
+            subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True, capture_output=True, env=env)
+            subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", subject], check=True, capture_output=True,
+                           env=env)
+            got = takesmod.outcome_committed_by_take_road(o, root=root, repo=repo)
+            if got != (case == "the take road"):
+                out.append(f"{p}: producer check, {case}: {got}")
+    drive_src = (HERE / "drive.py").read_text(encoding="utf-8")
+    if f'COMMIT_SUBJECT = "{takes.TAKE_COMMIT_SUBJECT}"' not in drive_src:
+        out.append(f"{p}: takes.TAKE_COMMIT_SUBJECT is not drive.py's COMMIT_SUBJECT")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ witnesses
 def witness_module(real: types.ModuleType, edits: tuple) -> types.ModuleType:
     src = Path(real.__file__).read_text(encoding="utf-8")
@@ -804,6 +904,15 @@ WITNESSES = {
                                               "        problems = self.row_problems(rows)"),))),
     "publication-door-off": ("publication", (run, (("    bad += batch.door_rule_problems(history, list(registered.values()), table, refusal)",
                                                     "    bad += []"),))),
+    # PB: the pin-blocked take at publication
+    "pb-guard-off": ("pb-run", (run, (("                require_registered_outcome(o, registered)",
+                                        "                pass"),))),
+    "pb-producer-off": ("pb", (check_results, (("        if not batch.pin_block(o) or not committed(o):",
+                                                 "        if not batch.pin_block(o):"),))),
+    "pb-rerun-pin-unchecked": ("pb", (check_results, (("        later = next((x for x in outcomes if x[\"slot\"] == o[\"slot\"] and x[\"attempt\"] > o[\"attempt\"]\n"
+                                                        "                      and pin_is_registered(x, registered)), None)",
+                                                        "        later = next((x for x in outcomes if x[\"slot\"] == o[\"slot\"] and x[\"attempt\"] > o[\"attempt\"]), None)"),))),
+    "pb-producer-subject-off": ("pb-producer", (takes, (("    if subject != TAKE_COMMIT_SUBJECT:", "    if False:"),))),
     # P17
     "default-unbound": ("defaults", (batch, (("    if default is not None and (r[\"ruling\"], r[\"route\"]) != default:",
                                               "    if False:"),))),
@@ -848,6 +957,14 @@ def run_witness(name):
         return rv_refusal(mod)
     if kind == "events":
         return rv_events(mod)
+    if kind == "pb":
+        from unittest import mock
+        with mock.patch.object(run, "check_results", mod):
+            return pb_publication(run, mod)
+    if kind == "pb-run":
+        return pb_publication(mod)
+    if kind == "pb-producer":
+        return pb_producer(mod)
     if kind == "restart":
         return cl_restart(mod)
     if kind == "publication":
@@ -909,6 +1026,12 @@ class TestPf1RoutingRulings(unittest.TestCase):
 
     def test_cl_publication_refuses_the_two_door_conditions(self):
         self.assertEqual(cl_publication(run), [])
+
+    def test_pb_a_pin_block_publishes_as_a_harness_event_only_when_rerun(self):
+        self.assertEqual(pb_publication(run), [])
+
+    def test_pb_the_blocks_commit_is_the_take_roads(self):
+        self.assertEqual(pb_producer(takes), [])
 
     def test_witnesses(self):
         for name in WITNESSES:

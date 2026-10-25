@@ -210,23 +210,31 @@ def require_registered_outcome(outcome: dict, registered: dict) -> None:
     if records is not None:
         pin = records["pin"]
         if any(pin.get(k) != v for k, v in dict(model=row["model"], **row["agent"]).items()):
+            if batch.pin_block(outcome):
+                raise ValueError("the outcome differs from its registered model or agent: a pin-blocked take that "
+                                 "was not re-run under the registered pin by a ruling that passed the ruling rule "
+                                 "(or whose block the take road did not commit) is a stop that needs an owner")
             raise ValueError("the outcome differs from its registered model or agent")
 
 
-def produce(rows: list, history: list, grade, *, table=None, refusal=None) -> dict:
+def produce(rows: list, history: list, grade, *, table=None, refusal=None, committed=None) -> dict:
     """Re-verify every attempt, then grade final eligible takes; no routing repair."""
     table = routing.load_table() if table is None else table
     registered = check_results.validate_ledger(rows)
+    refusal = takes.driver_refusal_record if refusal is None else refusal
+    # The orchestrator's pin-block ruling: a pin block re-run under the registered pin is a harness event, never counted
+    events = check_results.pin_block_events(history, registered, table, refusal=refusal, committed=committed)
+    exempt = {(e["slot"], e["attempt"]) for e in events}
     for o in history:
         if batch.is_outcome(o):
-            require_registered_outcome(o, registered)
+            if (o["slot"], o["attempt"]) not in exempt:
+                require_registered_outcome(o, registered)
             verify_route(o, table)
     published = check_results.publication(history, table)
     # Pre-freeze review 1, MAJOR 8: a ruling that re-ran a take after its first turn stands only on a clean end state.
     bad = check_results.ruled_rerun_problems(history, registered,
                                              lambda r, o: grade_views(grade(r, o))["excluded"], table)
     # The closure review of 898e598c: the door's two git-bound conditions, again (`refusal` stands in for tests).
-    refusal = takes.driver_refusal_record if refusal is None else refusal
     bad += batch.door_rule_problems(history, list(registered.values()), table, refusal)
     if bad:
         raise ValueError("; ".join(bad))
@@ -243,7 +251,7 @@ def produce(rows: list, history: list, grade, *, table=None, refusal=None) -> di
             records.append(rec)
             audit.append({"slot": o["slot"], "attempt": o["attempt"], "grade": result})
     stats.check_records(records)
-    return dict(published, records=records, audit=audit)
+    return dict(published, records=records, audit=audit, harness_events=events)
 
 
 def record_document(records: list) -> list:

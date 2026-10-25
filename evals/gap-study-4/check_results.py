@@ -121,6 +121,67 @@ def ruled_rerun_problems(history: list, registered: dict, standing, table: dict 
     return out
 
 
+# The Lane-orchestrator's ruling on the pin-block gap (Sat 24 Oct 2026, under Javier's standing delegation): a pin-blocked
+# outcome is a harness event, never a take result.
+def pin_is_registered(outcome: dict, registered: dict) -> bool:
+    """The outcome's records carry its registered row's model and agent (run.require_registered_outcome's test)."""
+    row = registered.get((outcome.get("slot"), outcome.get("attempt")))
+    rec = outcome.get("records")
+    if row is None or not isinstance(rec, dict) or not isinstance(rec.get("pin"), dict):
+        return False
+    return all(rec["pin"].get(k) == v for k, v in dict(model=row["model"], **row["agent"]).items())
+
+
+def pin_block_events(history: list, registered: dict, table: dict | None = None, *, refusal=None,
+                     committed=None) -> list[dict]:
+    """The committed outcomes whose pin is not their row's that the identity guard exempts, each as a harness event
+    {slot, attempt, recorded_pin, registered_pin}: only when (1) Batch._route wrote the block (batch.pin_block) and
+    the commit that appended it is the take road's (`committed`, takes.outcome_committed_by_take_road), (2) the same
+    slot has a later outcome under the registered pin, and (3) the ruling that re-ran it passed THE RULING RULE
+    (batch.ruling_rule_problems and door_rule_problems; the end state is read by ruled_rerun_problems, as for every
+    re-run). Every other pin mismatch stays refused. `refusal` and `committed` stand in for the git readers in tests."""
+    import takes as takes_reader
+    table = routing.load_table() if table is None else table
+    refusal = takes_reader.driver_refusal_record if refusal is None else refusal
+    committed = takes_reader.outcome_committed_by_take_road if committed is None else committed
+    outcomes = [o for o in history if batch.is_outcome(o)]
+    rulings = {(e.get("slot"), e.get("attempt")): e for e in history if batch.is_ruling(e)}
+    rows, events = list(registered.values()), []
+    for o in outcomes:
+        key = (o.get("slot"), o.get("attempt"))
+        if o.get("records") is None or key not in registered or pin_is_registered(o, registered):
+            continue
+        if not batch.pin_block(o) or not committed(o):
+            continue
+        ruling = rulings.get(key)
+        later = next((x for x in outcomes if x["slot"] == o["slot"] and x["attempt"] > o["attempt"]
+                      and pin_is_registered(x, registered)), None)
+        if not (later and ruling is not None):
+            continue
+        if (not batch.reruns(ruling) or batch.ruling_rule_problems(ruling, o, table)
+                or batch.door_rule_problems([o, ruling], rows, table, refusal)):
+            continue
+        row = registered[key]
+        events.append({"slot": o["slot"], "attempt": o["attempt"], "recorded_pin": o["records"]["pin"],
+                       "registered_pin": dict(model=row["model"], **row["agent"])})
+    return events
+
+
+def render_harness_events(events: list) -> str:
+    """The published list of pin-block harness events; empty when there is none."""
+    if not events:
+        return ""
+    def pin(x):
+        return " ".join(str(x.get(k)) for k in ("model", "harness", "version"))
+    lines = ["## Harness events: driver pin blocks", "",
+             "Takes the loop blocked because the driver's pin was not the registered row's profile, each re-run "
+             "under the registered pin by a ruling that passed the ruling rule. Harness events, never counted.", "",
+             "| Slot | Attempt | Recorded pin | Registered pin |", "|---|---|---|---|"]
+    for e in events:
+        lines.append(f"| {e['slot']} | {e['attempt']} | {pin(e['recorded_pin'])} | {pin(e['registered_pin'])} |")
+    return "\n".join(lines) + "\n"
+
+
 def window_problems(history: list) -> list[str]:
     """A window event holds at most BLOCK pauses within at most MAX_OPEN consecutive outcomes, with no slot twice
     and no other event's pause between them (B19-5: batch.py's rolling window commits the takes that were open when
