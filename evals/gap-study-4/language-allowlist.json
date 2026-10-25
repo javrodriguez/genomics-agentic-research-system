@@ -413,6 +413,20 @@
       "line_text": "- Either leave the extra unit out of what the cut turn is graded on, or name in residual (c) that it is graded unconfirmed.",
       "ruled": "2026-10-24",
       "why": "Bound record, never edited: lanes/REVIEW-pf1-l3-461dc16.md is the reviewer's third closure check of lane pf1-l3-transcript-integrity at 461dc169 (VERDICT: CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (24 Oct 2026). The words are the reviewer's own prose about the code under review, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/hook-control/hookctl2/manifest.json",
+      "pattern": "hundred",
+      "line_text": "   \"bytes\": 100,",
+      "ruled": "2026-10-25",
+      "why": "Bound record, never edited: hook-control/hookctl2/manifest.json is a byte copy of probe hookctl2's (HG2) manifest as fetched from athena on 22 Oct 2026, committed by lane pf1-l4a as the Gemini arm's hook-control evidence (records.json binds its sha256). The line is one fetched file's size in bytes, never a count of takes or a rate."
+    },
+    {
+      "file": "evals/gap-study-4/hook-control/hookctl1/manifest.json",
+      "pattern": "hundred",
+      "line_text": "   \"bytes\": 100,",
+      "ruled": "2026-10-25",
+      "why": "Bound record, never edited: hook-control/hookctl1/manifest.json is a byte copy of probe hookctl1's manifest as fetched from athena on 22 Oct 2026, committed by lane pf1-l4a as the Codex arm's hook-control evidence (records.json binds its sha256). The line is one fetched file's size in bytes, never a count of takes or a rate."
     }
   ]
 }

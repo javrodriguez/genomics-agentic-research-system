@@ -1,0 +1,47 @@
+{
+  "about": "D8's hook positive control (plans/gap-study-round-4/D8-non-claude-arms.md lines 339-345), the fetched probe records it closed on, committed for the draft's deterministic_layer_note evidence (pre-freeze review 1, PENDING #18-19, lane pf1-l4a, 25 Oct 2026). Each probe's summary.json and manifest.json are byte copies of the folder fetched from athena; the manifest lists the sha256 of every other fetched file. Not a study take, walk, rehearsal, cell or registered attempt. The fetch-time hashes and counts are those the athena operator recorded in its run log, /Users/javrodher/aegis-builds/hookctl-20261022/RUNLOG.md (outside this repository), lines 345, 471 and 500.",
+  "probes": [
+    {
+      "probe": "hookctl1",
+      "scenarios": [
+        "HG",
+        "HO-C0",
+        "HO-C1"
+      ],
+      "head": "2d4fec8ff7ca5a6783ebc1fdbdafc905ab2e31b0",
+      "ran": "athena, Thu 22 Oct 2026, ended exit=1 at 04:38:01 EDT",
+      "fetched_tar_sha256": "8bbaf0ccec222f6f66e7b458cde97e8d6ab85ddd49dc274c79b89615e6aeff6f",
+      "fetched_files": 123,
+      "committed": {
+        "hookctl1/manifest.json": "df4934f400dacc15c76a533665c018f16859213a1aed899a5c83dabdf155c221",
+        "hookctl1/summary.json": "3604f433ba396bbc34122f564359cd5b1f017258fc0a702c1e6256829df6c4a6"
+      },
+      "verdicts": {
+        "O": "PASS",
+        "G": "INCONCLUSIVE"
+      },
+      "log": "plans/gap-study-round-4/orchestrator-night-2026-10-13-claude.md, the entries of Thu 22 Oct 04:40 and 04:42 EDT (glitch-f1)",
+      "hashes_from": "RUNLOG.md lines 345 (tar sha256 and file count)"
+    },
+    {
+      "probe": "hookctl2",
+      "recorded_as": "HG2",
+      "scenarios": [
+        "HG"
+      ],
+      "head": "4179630165d646e820da8a1a4cfc2dd39c3c423d",
+      "ran": "athena, Thu 22 Oct 2026, ended exit=0 at 06:02:53 EDT",
+      "fetched_tar_sha256": "77a5b6982a150de47007aba97f1a21269c5ff5ba75595eafb837e85da66ecb13",
+      "fetched_files": 35,
+      "committed": {
+        "hookctl2/manifest.json": "971cda8106cbe91893cb96c99720b3152cd209c8433d02bc6c712ef494738035",
+        "hookctl2/summary.json": "2410ae52c429df08bd37effabc6c6e13badc640c8fc87f91543415b880c9213c"
+      },
+      "verdicts": {
+        "G": "PASS"
+      },
+      "log": "plans/gap-study-round-4/orchestrator-night-2026-10-13-claude.md, the entry of Thu 22 Oct 06:03 EDT (glitch-f1)",
+      "hashes_from": "RUNLOG.md lines 471 and 500 (tar sha256 and file count; manifest sha256)"
+    }
+  ]
+}

@@ -1,0 +1,494 @@
+{
+ "files": {
+  "HG/G-off/fired-after-process-1.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HG/G-off/fired-after-process-2.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HG/G-off/fired-after-selftest.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HG/G-off/fired-after-teardown.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HG/G-off/probe.json": {
+   "bytes": 15766,
+   "sha256": "6db322d399ab4143c16de10233ecbbff4f29f1ac97cf0ece40fe5c21d4ecd968"
+  },
+  "HG/G-off/scenario.json": {
+   "bytes": 941,
+   "sha256": "a58d14720dbac86808a5758d6db62c00f94ecb13316aca4641007544c27b20e3"
+  },
+  "HG/G-off/stub/bodies/req-1.json": {
+   "bytes": 40669,
+   "sha256": "7d3edb8bc55555fac15b594fefac42d208edd345223a8e7df5f765b1bd3342dc"
+  },
+  "HG/G-off/stub/bodies/req-2.json": {
+   "bytes": 41624,
+   "sha256": "71c3488490256ef7ea7b7d1630dcdf0b156c49df59aff959cfa9b158f104e35d"
+  },
+  "HG/G-off/stub/bodies/req-3.json": {
+   "bytes": 42525,
+   "sha256": "4845e19c67ec1cc7b6e899a4d729028e7a11a5f5749e710544e73b68a4d57e85"
+  },
+  "HG/G-off/stub/requests.jsonl": {
+   "bytes": 1253,
+   "sha256": "384aa1c05e78be3b3e48d8bfd97fe5efc99e833b64d11f4631ce2951e2edfb63"
+  },
+  "HG/G-off/stub/state.json": {
+   "bytes": 100,
+   "sha256": "9ed468312ed7610eda4654e716fec5485d6860ba9f6202821f219959b07909e8"
+  },
+  "HG/G-off/turn-1.jsonl": {
+   "bytes": 1019,
+   "sha256": "fa84ee76b3452ccffab3f177867f6a172662898c1cbd747b5e523c10540ed2a4"
+  },
+  "HG/G-off/turn-1.stderr.txt": {
+   "bytes": 681,
+   "sha256": "3366cf469cb15be2a7f6e0ad80b32b49941cf00dfd8d2feadefdf57767edf30b"
+  },
+  "HG/G-off/turn-2.jsonl": {
+   "bytes": 665,
+   "sha256": "1f9e81400d7cae14d5afac774abff7beb04c1c96a39c30e276b24ea7c499fbdc"
+  },
+  "HG/G-off/turn-2.stderr.txt": {
+   "bytes": 559,
+   "sha256": "e7b402c8f16ea110a3a34900093fcbc2d6db15ebddf24537ac6933ad001110bc"
+  },
+  "HG/G-off/twin/.gemini__settings.json": {
+   "bytes": 6191,
+   "sha256": "74b3dc34e26c8ec8d3b6307ba0198f65642c2bb2422f68678807874cd9c2afe8"
+  },
+  "HG/G-on/fired-after-process-1.log": {
+   "bytes": 139,
+   "sha256": "6be6d01a45492792905ea61ab7e73459917d68c7bce92f7b0a2f0eb57f4be424"
+  },
+  "HG/G-on/fired-after-process-2.log": {
+   "bytes": 205,
+   "sha256": "34f86db53c7380d28773ac6453c9dff62b4f86d1c7b0bd03850f7553df491659"
+  },
+  "HG/G-on/fired-after-selftest.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HG/G-on/fired-after-teardown.log": {
+   "bytes": 205,
+   "sha256": "34f86db53c7380d28773ac6453c9dff62b4f86d1c7b0bd03850f7553df491659"
+  },
+  "HG/G-on/probe.json": {
+   "bytes": 16763,
+   "sha256": "e31337452cb55721341e77dda004249c4e8082385577ce68d99718c24c5141bf"
+  },
+  "HG/G-on/scenario.json": {
+   "bytes": 941,
+   "sha256": "88eba843e4596c1b30420916c054783e4e861fd995d2fe9a10e9c8582180303c"
+  },
+  "HG/G-on/stub/bodies/req-1.json": {
+   "bytes": 40669,
+   "sha256": "ad6b2bd49e818bb9fd0e8d79971d7461e16286aa27a56803c5d740e3e744a8bf"
+  },
+  "HG/G-on/stub/bodies/req-2.json": {
+   "bytes": 41624,
+   "sha256": "8e7a6f09b570a2b5eed7519212f2505da17eae2444f7f84243acff427d7b8156"
+  },
+  "HG/G-on/stub/bodies/req-3.json": {
+   "bytes": 42525,
+   "sha256": "13e7cd66b639241ce1baf0a2ee2218593c79fba090c8708bd27af1c5aff932b1"
+  },
+  "HG/G-on/stub/requests.jsonl": {
+   "bytes": 1253,
+   "sha256": "983a507bc600b354c9031604b3e949497176f137b919a96f08fdac0fb3c870cc"
+  },
+  "HG/G-on/stub/state.json": {
+   "bytes": 100,
+   "sha256": "9ed468312ed7610eda4654e716fec5485d6860ba9f6202821f219959b07909e8"
+  },
+  "HG/G-on/turn-1.jsonl": {
+   "bytes": 1020,
+   "sha256": "3266f55955840af209e5099049d75c400d76cb64e1fa146785040a64a8f061a8"
+  },
+  "HG/G-on/turn-1.stderr.txt": {
+   "bytes": 681,
+   "sha256": "3366cf469cb15be2a7f6e0ad80b32b49941cf00dfd8d2feadefdf57767edf30b"
+  },
+  "HG/G-on/turn-2.jsonl": {
+   "bytes": 665,
+   "sha256": "24c096779a277df13b8e99146baa6ad73fd22e54b87428392c26a1272969373a"
+  },
+  "HG/G-on/turn-2.stderr.txt": {
+   "bytes": 482,
+   "sha256": "b9ffd0e21705488bdf373fc8d1382aedaaf54259804825fd7ceb077e984a2c87"
+  },
+  "HG/G-on/twin/.gemini__settings.json": {
+   "bytes": 6190,
+   "sha256": "a893fb14781f70851b1280a0e63cbb84b7516b1057dbc6777e638d2f1c5bd7d9"
+  },
+  "HO-C0/O-off-bypass/fired-after-process-1.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C0/O-off-bypass/fired-after-process-2.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C0/O-off-bypass/fired-after-selftest.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C0/O-off-bypass/fired-after-teardown.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C0/O-off-bypass/probe.json": {
+   "bytes": 18552,
+   "sha256": "3ad61d6f90913d66ce5dd21b44c6a3415769878282270727bb08c0cfd543b7c5"
+  },
+  "HO-C0/O-off-bypass/turn-1.jsonl": {
+   "bytes": 1441,
+   "sha256": "0415d633452123afba7bc98ab34b4971008a525eee7a41ab1cf019e83f8f554e"
+  },
+  "HO-C0/O-off-bypass/turn-1.stderr.txt": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C0/O-off-bypass/turn-2.jsonl": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C0/O-off-bypass/turn-2.stderr.txt": {
+   "bytes": 509,
+   "sha256": "fbed08bff8dae3285d074800e024e4e159d8ce92ea4c179860e08787319d2554"
+  },
+  "HO-C0/O-off-bypass/twin/config.toml": {
+   "bytes": 365,
+   "sha256": "c86ef61379907fcc5bdf040be99eef91b0b21bb3b509d1d2dd62e2f7b4f3c23b"
+  },
+  "HO-C0/O-off-bypass/twin/hooks.json": {
+   "bytes": 858,
+   "sha256": "a3e58618293587c9440eced01eea4dfdd63833ddf1d4243398e619f3abdc6bfb"
+  },
+  "HO-C0/O-off-study/fired-after-process-1.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C0/O-off-study/fired-after-process-2.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C0/O-off-study/fired-after-selftest.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C0/O-off-study/fired-after-teardown.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C0/O-off-study/probe.json": {
+   "bytes": 18474,
+   "sha256": "8067812d46a63ae5abfad46319d2e03433a8f244aadb33b43511200fb4b8465d"
+  },
+  "HO-C0/O-off-study/turn-1.jsonl": {
+   "bytes": 1081,
+   "sha256": "5bc29feb64b7dfedd09cacef07fac55f3534be8fca2cb23e4553a2cc81616bd2"
+  },
+  "HO-C0/O-off-study/turn-1.stderr.txt": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C0/O-off-study/turn-2.jsonl": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C0/O-off-study/turn-2.stderr.txt": {
+   "bytes": 509,
+   "sha256": "bc4cd32e3d9efd5e45d003a325a1b726d012ecc75885f9387e19c2bf6c892390"
+  },
+  "HO-C0/O-off-study/twin/config.toml": {
+   "bytes": 365,
+   "sha256": "550e5d88614a07954cdf9870b1e51363cf6efed7e23a19dad10f7e07df317675"
+  },
+  "HO-C0/O-off-study/twin/hooks.json": {
+   "bytes": 858,
+   "sha256": "97c9ad2bdcd09e333fddd34debb3a9fbe567fd78e39b698498e58a9a8eb44a35"
+  },
+  "HO-C0/O-on-bypass/fired-after-process-1.log": {
+   "bytes": 22,
+   "sha256": "b95b61f4e0cc6925a2d63b7f0e3f8331b9f758ac2ad12bc6038d34fd990868d1"
+  },
+  "HO-C0/O-on-bypass/fired-after-process-2.log": {
+   "bytes": 22,
+   "sha256": "b95b61f4e0cc6925a2d63b7f0e3f8331b9f758ac2ad12bc6038d34fd990868d1"
+  },
+  "HO-C0/O-on-bypass/fired-after-selftest.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C0/O-on-bypass/fired-after-teardown.log": {
+   "bytes": 22,
+   "sha256": "b95b61f4e0cc6925a2d63b7f0e3f8331b9f758ac2ad12bc6038d34fd990868d1"
+  },
+  "HO-C0/O-on-bypass/probe.json": {
+   "bytes": 18616,
+   "sha256": "1f86d4c98c6b36b75ad7db39e076b7f6ee88fcdc4b1cb566605fca39af34de3c"
+  },
+  "HO-C0/O-on-bypass/turn-1.jsonl": {
+   "bytes": 1441,
+   "sha256": "9ed38a66f4cec1acd0e6bfa5770fbb3391ff879880c78007d6368bd0a3fd5921"
+  },
+  "HO-C0/O-on-bypass/turn-1.stderr.txt": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C0/O-on-bypass/turn-2.jsonl": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C0/O-on-bypass/turn-2.stderr.txt": {
+   "bytes": 509,
+   "sha256": "5f8532161a1839f2b205afc853a54a62717ddb3b25f1a40f0aafc92f5a93eaa0"
+  },
+  "HO-C0/O-on-bypass/twin/config.toml": {
+   "bytes": 364,
+   "sha256": "5f7c16dc50d6161b910530b179aa34455c259dd0b3a3a1ea5b9faf44444d21d6"
+  },
+  "HO-C0/O-on-bypass/twin/hooks.json": {
+   "bytes": 858,
+   "sha256": "f184e4fda6bf9b45501d72559357e007b05567e12691def95688de65b343797b"
+  },
+  "HO-C0/O-on-study/fired-after-process-1.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C0/O-on-study/fired-after-process-2.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C0/O-on-study/fired-after-selftest.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C0/O-on-study/fired-after-teardown.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C0/O-on-study/probe.json": {
+   "bytes": 18480,
+   "sha256": "268073bdf07b0651a7f7879d50fb4e80621422e7ab3b9fb546c66159bedd702c"
+  },
+  "HO-C0/O-on-study/turn-1.jsonl": {
+   "bytes": 1081,
+   "sha256": "0191172f7b555434dd46518cae47fca28cb5be1d497b3aed43879fd11d439dcf"
+  },
+  "HO-C0/O-on-study/turn-1.stderr.txt": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C0/O-on-study/turn-2.jsonl": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C0/O-on-study/turn-2.stderr.txt": {
+   "bytes": 509,
+   "sha256": "2264d38031e04c510f0958dd3ca830b2aefbe07d52bd0d76bb1864e6f7d85015"
+  },
+  "HO-C0/O-on-study/twin/config.toml": {
+   "bytes": 364,
+   "sha256": "82963396d0a4aa86a5008680a16bde0ef73a3a7bb45c679d74bd50439dfdc74b"
+  },
+  "HO-C0/O-on-study/twin/hooks.json": {
+   "bytes": 858,
+   "sha256": "0f6c1c21353662558603262c00df4aaa37519b9219961563a3609f8b177b854a"
+  },
+  "HO-C1/O-off-bypass/fired-after-process-1.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C1/O-off-bypass/fired-after-process-2.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C1/O-off-bypass/fired-after-selftest.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C1/O-off-bypass/fired-after-teardown.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C1/O-off-bypass/probe.json": {
+   "bytes": 18553,
+   "sha256": "1e2234c80826589f2074b23bfc3b708cbd000b0c5b5047725aa4935dbd22bef0"
+  },
+  "HO-C1/O-off-bypass/turn-1.jsonl": {
+   "bytes": 1001,
+   "sha256": "bc126ac46c178bc2576c4382798a8b63bab70768263ab9d74a3ebbafe0f3c939"
+  },
+  "HO-C1/O-off-bypass/turn-1.stderr.txt": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C1/O-off-bypass/turn-2.jsonl": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C1/O-off-bypass/turn-2.stderr.txt": {
+   "bytes": 509,
+   "sha256": "6d56100a9c8ebdcaf7507c2409f532accb78e9ba0379f90f0627a638c3646a57"
+  },
+  "HO-C1/O-off-bypass/twin/config.toml": {
+   "bytes": 514,
+   "sha256": "672a706c1cdc69f38469abbbae58fda1e9d21f85fb80f7e61e4524c6f89e2454"
+  },
+  "HO-C1/O-off-bypass/twin/hooks.json": {
+   "bytes": 858,
+   "sha256": "e2539d6d071002734556a647b6acc19c359c1f082585b30a2b8e5dd3480b91e3"
+  },
+  "HO-C1/O-off-study/fired-after-process-1.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C1/O-off-study/fired-after-process-2.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C1/O-off-study/fired-after-selftest.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C1/O-off-study/fired-after-teardown.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C1/O-off-study/probe.json": {
+   "bytes": 18476,
+   "sha256": "45e34c5e2181e12d7cd57f3b8c9ec8114c92672dad8ce1bd96481b3037e50156"
+  },
+  "HO-C1/O-off-study/turn-1.jsonl": {
+   "bytes": 641,
+   "sha256": "09adbf97f340d7621006301ceebc148416757e9c8d6f8b2ebde29c3392738a85"
+  },
+  "HO-C1/O-off-study/turn-1.stderr.txt": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C1/O-off-study/turn-2.jsonl": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C1/O-off-study/turn-2.stderr.txt": {
+   "bytes": 509,
+   "sha256": "58f1c7497c6ae2f46b131b58bec76de5708b297a4f47f69b4eba060cb555c782"
+  },
+  "HO-C1/O-off-study/twin/config.toml": {
+   "bytes": 514,
+   "sha256": "dcfc6dc826dd80c9ec4f2d415628f5bcd4ede93d3a3f72d0d1d188c249797b20"
+  },
+  "HO-C1/O-off-study/twin/hooks.json": {
+   "bytes": 858,
+   "sha256": "36114498e8ce2deb29553c6a398333706be24c570029c95c3ae79ad20713d71c"
+  },
+  "HO-C1/O-on-bypass/fired-after-process-1.log": {
+   "bytes": 22,
+   "sha256": "b95b61f4e0cc6925a2d63b7f0e3f8331b9f758ac2ad12bc6038d34fd990868d1"
+  },
+  "HO-C1/O-on-bypass/fired-after-process-2.log": {
+   "bytes": 22,
+   "sha256": "b95b61f4e0cc6925a2d63b7f0e3f8331b9f758ac2ad12bc6038d34fd990868d1"
+  },
+  "HO-C1/O-on-bypass/fired-after-selftest.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C1/O-on-bypass/fired-after-teardown.log": {
+   "bytes": 22,
+   "sha256": "b95b61f4e0cc6925a2d63b7f0e3f8331b9f758ac2ad12bc6038d34fd990868d1"
+  },
+  "HO-C1/O-on-bypass/probe.json": {
+   "bytes": 18613,
+   "sha256": "790e2fca8fad3e5ef9821bbfb6776b9e2aa1ab003da4b75e23cacce09783fd43"
+  },
+  "HO-C1/O-on-bypass/turn-1.jsonl": {
+   "bytes": 1001,
+   "sha256": "cfb5398f6db1800474bc73c7b99ef5d398276449b680a15e9d460dc68d5d708a"
+  },
+  "HO-C1/O-on-bypass/turn-1.stderr.txt": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C1/O-on-bypass/turn-2.jsonl": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C1/O-on-bypass/turn-2.stderr.txt": {
+   "bytes": 509,
+   "sha256": "61df2934bec466f5ff1ca6a7a07f5ceeb3315ec2c1b0ced4191cb1912032ce84"
+  },
+  "HO-C1/O-on-bypass/twin/config.toml": {
+   "bytes": 513,
+   "sha256": "4a8746f4ebf343be18df736400be841dde389903c2f2adc9266b69c512805921"
+  },
+  "HO-C1/O-on-bypass/twin/hooks.json": {
+   "bytes": 858,
+   "sha256": "fd0f9abaa3dcad7668e0220e5d859e5be0e8e8d06aaeb70315c223604d577d68"
+  },
+  "HO-C1/O-on-study/fired-after-process-1.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C1/O-on-study/fired-after-process-2.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C1/O-on-study/fired-after-selftest.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C1/O-on-study/fired-after-teardown.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HO-C1/O-on-study/probe.json": {
+   "bytes": 18482,
+   "sha256": "e2ad378ca42cc171a7b90d05d770a404d116e5c805d9cfb8cb44723f0df31e56"
+  },
+  "HO-C1/O-on-study/turn-1.jsonl": {
+   "bytes": 641,
+   "sha256": "a83e4f33f6d7ad4ca26f21c3fd6d1d69646b070327a5d96be9ec45d5acc556c9"
+  },
+  "HO-C1/O-on-study/turn-1.stderr.txt": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C1/O-on-study/turn-2.jsonl": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "HO-C1/O-on-study/turn-2.stderr.txt": {
+   "bytes": 509,
+   "sha256": "624ae7ccde02c76c5e0759941e1fa3b237cb6ae9353c7e2d412d0cc0fc0372a2"
+  },
+  "HO-C1/O-on-study/twin/config.toml": {
+   "bytes": 513,
+   "sha256": "410745e52d2e001a240ba26ac1b59eb5f712eff665ac46c44dd77378633b5978"
+  },
+  "HO-C1/O-on-study/twin/hooks.json": {
+   "bytes": 858,
+   "sha256": "90af8f16e0d71f2e50983f500e6854696d9cf3ff9ef07bbb89e6ea435a674519"
+  },
+  "calls.json": {
+   "bytes": 508494,
+   "sha256": "1891522f4857f168d81ebecc36b89cf829d0fddb10d74305013b7f938b6ca046"
+  },
+  "summary.json": {
+   "bytes": 7715,
+   "sha256": "3604f433ba396bbc34122f564359cd5b1f017258fc0a702c1e6256829df6c4a6"
+  }
+ },
+ "not_a_study_record": "a hook positive-control observation of the pinned Codex and Gemini CLIs (lane hook-control); never a study take, walk, rehearsal, cell or registered attempt",
+ "record_kind": "stub-model-probe"
+}

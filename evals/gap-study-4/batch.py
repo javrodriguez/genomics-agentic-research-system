@@ -195,7 +195,7 @@ and a model that has a profile under that harness, and its agent's version must 
 THE MONEY GATE (lane w7c, ruling W7C-gap4-1, glitch-1b under Javier's standing delegation, 12 Oct 2026). The
 round's two money checks, costs.month_turn_allowed (the month-turn hold: no OpenAI or Google take from 23:30 UTC on a
 month's last day until Javier's "caps trimmed" is recorded) and costs.walk_gate (spend since the round began, plus
-what the remaining tries project, against the $260 / $140 / $400 caps), are called by the loop itself, never left to
+what the remaining tries project, against the $180 / $220 / $400 caps, OD107), are called by the loop itself, never left to
 a driver. Before each wave is registered (B19-5: the rows that fill the drive lanes free at that moment; with equal
 drive durations, a block of three), every row of the wave whose harness bills money per call (any harness
 but routing.NO_MONEY_HARNESSES; routing.PAID_HARNESSES names each one's arm) is put through both, on one reading of

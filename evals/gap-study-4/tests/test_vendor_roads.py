@@ -199,7 +199,7 @@ def draft_problems() -> list:
     """The committed draft's instruction_files (build_draft --check binds the draft to the writer, and
     test_build_draft's R15.instructions binds the writer to take_config.INSTRUCTION_FILES)."""
     got = json.loads((HERE / "prereg-draft.json").read_text())["instruction_files"]
-    want = {"codex": ["AGENTS.md"], "gemini": ["GEMINI.md"]}
+    want = {"claude-code": ["CLAUDE.md"], "codex": ["AGENTS.md"], "gemini": ["GEMINI.md"]}   # m15 (pf1-l4a)
     return [] if got == want else [f"the draft's instruction_files are {got}"]
 
 

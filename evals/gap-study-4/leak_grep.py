@@ -175,7 +175,13 @@ def main() -> int:
     else:
         print(f"{rec['leak_words']} leak word(s), read against {rec['sessions_read']} recorded session(s) "
               f"({len(rec['sessions_unread'])} unread: {[u['session'] for u in rec['sessions_unread']]}) "
-              f"through the take checker's own readers.\n")
+              f"through the take checker's own readers.")
+        # pre-freeze review 1, NIT (lane pf1-l4a, 25 Oct 2026): each session the list was not grepped against is named
+        # with its reason, so the gap is printed, not silent.
+        for u in rec["sessions_unread"]:
+            print(f"  not grepped: {u['session']} ({KNOWN_UNREADABLE.get(u['session'], 'not a known unreadable')}; "
+                  f"the reader: {u['why']})")
+        print()
         for s in rec["per_session"]:
             print(f"  {s['session']:42} context {s['context_records_bytes']:>8} bytes  "
                   f"present {s['words_present']}  WOULD VOID {s['words_the_checker_would_void_on']}")
@@ -201,8 +207,9 @@ def main() -> int:
               f"the agent -- a leak to fix -- or it is the harness describing itself, which needs an "
               f"excusal pinned to the phrase it appears in, and that is the owner's ruling to make.")
         return 1
+    unread = len(rec["sessions_unread"])
     print(f"\nok: {rec['leak_words']} leak word(s) grepped against {rec['sessions_read']} real session(s); "
-          f"none would void one")
+          f"none would void one" + (f"; {unread} session(s) not grepped (unreadable, named above)" if unread else ""))
     return 0
 
 
