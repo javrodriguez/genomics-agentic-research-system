@@ -32,6 +32,12 @@ guards and must turn that clause red alone.
                (FREEZE_WRITTEN_KEYS); take_order_beacon_reading takes no review commit; gh api is pinned to github.com
                and refuses another GH_HOST. Witnesses: docstring-registers, history-unchecked, draft-unwitnessed,
                host-unpinned.
+  G9c.branches The closure check of 84ab6393, finding 1, on scratch branch histories: a candidate draft on another
+               pushed branch after the registration, a round registered on another pushed branch, a pushed sha this
+               clone does not hold, and a merge that took another line's draft (draft_commit refuses two candidate
+               lines) are each refused; another lane's branch from before the registration is no candidate; the
+               residual names only a rewritten mirror or GitHub. Witnesses: foreign-round-admitted,
+               foreign-draft-admitted, missing-push-admitted, draft-lines-unchecked.
   G10.nits     NITs 4, 6 and 7: prepare's docstring keeps the review commit out of the seed; a pinned file with
                uncommitted edits fails --check's pins leg; an unparseable grade.json counts as pending.
                Witnesses: dirty-pin-admitted, unreadable-grade-skipped.
@@ -58,7 +64,10 @@ guards and must turn that clause red alone.
                aside, unclaimed since 96c1d959 and reported to the orchestrator); after the review of 53d0e9af
                (finding 3) a citation is a commit that resolves and changed the file after its copy commit: a bare
                date, a hash naming nothing, a commit that never touched it and its copy commit each refuse.
-               Witnesses: near-rewrite-unchecked, citation-unresolved-admitted, copy-commit-admitted.
+               After its closure check (finding 2) every cited commit must be on HEAD's line and an edit of the
+               file: one good citation never covers a bad one. Witnesses: near-rewrite-unchecked,
+               citation-unresolved-admitted, copy-commit-admitted, citation-one-covers-all,
+               citation-off-head-admitted.
 
 Reads the committed study and copies it into temporary folders; patched openers stand in for the network. No model,
 no network, no container. --witnesses runs every witness and prints a line for each.
@@ -292,7 +301,8 @@ def g9_beacon(fz, ob, pr, p="G9.beacon") -> list:
                 ("a push under the lead", pushed, [(ROUND_TIME - lead + 60, "a" * 40)], holds),
                 ("a push after the round", pushed, [(ROUND_TIME + 60, "a" * 40)], holds)):
             with mock.patch.object(fz, "registering_commit", lambda r, commit=commit: commit), \
-                    mock.patch.object(fz, "draft_commit", lambda: pushed):
+                    mock.patch.object(fz, "draft_commit", lambda: pushed), \
+                    mock.patch.object(fz, "mirror_problem", lambda *a: None):     # G9c reads real branch histories
                 try:
                     fz.take_order_witness(d, pushes=pushes, contains=contains)
                     out.append(f"{p}: the witness held with {name}")
@@ -301,7 +311,8 @@ def g9_beacon(fz, ob, pr, p="G9.beacon") -> list:
         if ob.push_witness_problem(pushed, ROUND, early, lambda c, s: False) is None:
             out.append(f"{p}: a push that does not hold the commit witnessed it")
         with mock.patch.object(fz, "registering_commit", lambda r: pushed), \
-                mock.patch.object(fz, "draft_commit", lambda: pushed):
+                mock.patch.object(fz, "draft_commit", lambda: pushed), \
+                mock.patch.object(fz, "mirror_problem", lambda *a: None):     # G9c reads real branch histories
             w = fz.take_order_witness(d, pushes=early + [(ROUND_TIME + 5, "b" * 40)], contains=holds)
             if w.get("registering_push") != {"sha": "a" * 40, "stamp": early[0][0]}:
                 out.append(f"{p}: an early witnessed push is not the witness: {w}")
@@ -353,7 +364,7 @@ def g9_beacon(fz, ob, pr, p="G9.beacon") -> list:
                 out.append(f"{p}: --order-from-beacon does not read the frozen file's order")
         fake = types.SimpleNamespace(returncode=0, stdout=f"2026-10-24T20:00:00Z\t{'d' * 40}\n", stderr="")
         with mock.patch.object(fz.subprocess, "run", lambda argv, **k: fake if argv[:4] == ["gh", "api", "--hostname", "github.com"] and
-                               "repos/javrodriguez/gars-cloud-mirror/activity?activity_type=push&per_page=100"
+                               "repos/javrodriguez/gars-cloud-mirror/activity?per_page=100"
                                in argv else None):
             if fz.push_records() != [(ROUND_TIME - 1440, "d" * 40)]:
                 out.append(f"{p}: push_records does not read GitHub's push activity")
@@ -627,9 +638,9 @@ def g8_copies(cm, p="G8.copies") -> list:
             for why, cite, says in (("a bare date", "20261024", "resolves to no commit"),
                                     ("a hash that resolves to nothing", "deadbeefdeadbeef01", "resolves to no commit"),
                                     ("a commit that never touched result.py", "96c1d959932216ab9acd43003143348c9761a513",
-                                     "changed it after its copy commit"),
+                                     "change it after its copy commit"),
                                     ("result.py's own copy commit", cm_first_commit(cm, "result.py"),
-                                     "changed it after its copy commit")):
+                                     "change it after its copy commit")):
                 frag = json.loads((HERE / "COPIED.d" / "w5b-cp5-pipeline.json").read_text())
                 for e in frag["files"]:
                     if e["path"] == "result.py":
@@ -638,6 +649,35 @@ def g8_copies(cm, p="G8.copies") -> list:
                 got = [x for x in cm.problems(folder) if "near-rewrite" in x]
                 if [x.split(" ", 1)[0] for x in got] != ["result.py"] or says not in got[0]:
                     out.append(f"{p}: a near-rewrite citing {why} reads {got}")
+        # the closure check of 84ab6393, finding 2: one good citation never covers a bad one, and a commit outside
+        # HEAD's history is no citation
+        good = subprocess.run(["git", "-C", str(HERE), "log", "-1", "--format=%H", "--", "result.py"],
+                              capture_output=True, text=True).stdout.strip()
+        mixed = cm.citation_problem("result.py", f"edited by {good[:12]} and {'96c1d959932216ab9acd43003143348c9761a513'}")
+        if not mixed or "did not change it" not in mixed:
+            out.append(f"{p}: a good citation covered a bad one: {mixed!r}")
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            git(repo, "init", "-q", "-b", "main")
+            f = repo / "evals" / "gap-study-4" / "x.py"
+            f.parent.mkdir(parents=True)
+            shas = []
+            for text in ("one\n", "two\n"):
+                f.write_text(text)
+                git(repo, "add", "-A")
+                git(repo, "commit", "-q", "-m", text.strip())
+                shas.append(git(repo, "rev-parse", "HEAD"))
+            git(repo, "checkout", "-q", "-b", "side")
+            f.write_text("three\n")
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "-m", "side")
+            side = git(repo, "rev-parse", "HEAD")
+            git(repo, "checkout", "-q", "main")
+            with mock.patch.object(cm, "REPO", repo):
+                on, off = cm.citation_problem("x.py", f"edited by {shas[1]}"), cm.citation_problem(
+                    "x.py", f"edited by {side}")
+            if on is not None or not off or "outside HEAD's history" not in off:
+                out.append(f"{p}: a citation on HEAD's line reads {on!r}, one on another branch {off!r}")
     except Exception as e:  # noqa: BLE001
         return [f"ERROR {p}: {type(e).__name__}: {str(e)[:240]}"]
     return out
@@ -764,6 +804,134 @@ def g9b_witness(fz, ob, p="G9b.witness") -> list:
     return out
 
 
+class Scratch:
+    """A scratch repository holding evals/gap-study-4/order_beacon.py and prereg-draft.json, for branch histories."""
+
+    def __init__(self):
+        self.repo = Path(tempfile.mkdtemp(prefix="pf1-branches-"))
+        git(self.repo, "init", "-q", "-b", "main")
+        (self.repo / "evals" / "gap-study-4").mkdir(parents=True)
+
+    def commit(self, *, round_no="keep", draft=None, other=None, msg="c") -> str:
+        d = self.repo / "evals" / "gap-study-4"
+        if round_no != "keep":
+            (d / "order_beacon.py").write_text("x = 1\n" + REGISTER_LINE.format(round_no))
+        if draft is not None:
+            (d / "prereg-draft.json").write_text(json.dumps({"draft": draft}) + "\n")
+        if other is not None:
+            (d / "other.txt").write_text(other + "\n")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-q", "-m", msg)
+        return git(self.repo, "rev-parse", "HEAD")
+
+    def contains(self, commit, sha) -> bool:
+        return subprocess.run(["git", "-C", str(self.repo), "merge-base", "--is-ancestor", commit, sha],
+                              capture_output=True).returncode == 0
+
+
+def g9c_branches(fz, ob, p="G9c.branches") -> list:
+    """The closure check of 84ab6393, finding 1: candidates on parallel pushed branches, and a draft taken by a merge."""
+    out = []
+    try:
+        r1, r2 = ROUND, ROUND + 1
+        early = ROUND_TIME - ob.WITNESS_LEAD_S - 600
+        draft = registered(committed_draft())
+
+        def witness(sc, tips):
+            with mock.patch.object(fz, "REPO", sc.repo):
+                try:
+                    return fz.take_order_witness(draft, pushes=[(early, t) for t in tips], contains=sc.contains)
+                except ValueError as e:
+                    return f"refused: {e}"
+
+        # a candidate draft on another pushed branch, after the registering commit
+        sc = Scratch()
+        sc.commit(round_no=None, draft="v0")
+        reg = sc.commit(round_no=r1)
+        git(sc.repo, "branch", "candB")
+        a = sc.commit(draft="A")
+        git(sc.repo, "checkout", "-q", "candB")
+        b = sc.commit(draft="B")
+        git(sc.repo, "checkout", "-q", "main")
+        got = witness(sc, [a, b])
+        if not (isinstance(got, str) and "candidate draft on another pushed branch" in got):
+            out.append(f"{p}: a candidate draft on a pushed branch is not refused: {got}")
+        # another round registered on another pushed branch
+        sc = Scratch()
+        base = sc.commit(round_no=None, draft="v0")
+        sc.commit(round_no=r1)
+        tip = sc.commit(draft="A")
+        git(sc.repo, "checkout", "-q", "-b", "candR", base)
+        cand = sc.commit(round_no=r2)
+        git(sc.repo, "checkout", "-q", "main")
+        got = witness(sc, [tip, cand])
+        if not (isinstance(got, str) and f"sets REGISTERED_ROUND to {r2}" in got):
+            out.append(f"{p}: a round registered on a pushed branch is not refused: {got}")
+        # the merge-late case: a merge takes the side branch's draft after the round
+        sc = Scratch()
+        sc.commit(round_no=None, draft="v0")
+        sc.commit(round_no=r1)
+        git(sc.repo, "branch", "candB")
+        a = sc.commit(draft="A")
+        git(sc.repo, "checkout", "-q", "candB")
+        b = sc.commit(draft="B")
+        git(sc.repo, "checkout", "-q", "main")
+        git(sc.repo, "merge", "-q", "--no-ff", "-X", "theirs", "-m", "merge candB", "candB")
+        merge = git(sc.repo, "rev-parse", "HEAD")
+        with mock.patch.object(fz, "REPO", sc.repo):
+            got = fz.draft_commit()
+        if got != merge:
+            out.append(f"{p}: a merge that took another line's draft is not the draft commit: {got[:12]}")
+        got = witness(sc, [a, b])
+        if not (isinstance(got, str) and "the draft commit" in got):
+            out.append(f"{p}: the merge-late case (its merge never pushed before the round) is witnessed: {got}")
+        # two candidate lines: both parents changed the draft to the same bytes, so the merge changes nothing
+        sc = Scratch()
+        sc.commit(round_no=None, draft="v0")
+        sc.commit(round_no=r1)
+        git(sc.repo, "branch", "candB")
+        sc.commit(draft="same", msg="A")
+        git(sc.repo, "checkout", "-q", "candB")
+        sc.commit(draft="same", other="b", msg="B")
+        git(sc.repo, "checkout", "-q", "main")
+        git(sc.repo, "merge", "-q", "--no-ff", "-m", "merge candB", "candB")
+        with mock.patch.object(fz, "REPO", sc.repo):
+            try:
+                got = fz.draft_commit()
+                out.append(f"{p}: two candidate draft lines give draft_commit {got[:12]}")
+            except ValueError as e:
+                if "two candidate lines" not in str(e):
+                    out.append(f"{p}: two candidate lines are refused for another reason: {e}")
+        # a pushed sha this clone does not hold
+        sc = Scratch()
+        sc.commit(round_no=None, draft="v0")
+        sc.commit(round_no=r1)
+        tip = sc.commit(draft="A")
+        got = witness(sc, [tip, "e" * 40])
+        if not (isinstance(got, str) and "not in this clone" in got):
+            out.append(f"{p}: a pushed sha missing from the clone is not refused: {got}")
+        # the clean case: another lane's branch from before the registration, touching the draft, is no candidate
+        sc = Scratch()
+        base = sc.commit(round_no=None, draft="v0")
+        reg = sc.commit(round_no=r1)
+        tip = sc.commit(draft="A")
+        git(sc.repo, "checkout", "-q", "-b", "other", base)
+        other = sc.commit(draft="their own", other="x")
+        git(sc.repo, "checkout", "-q", "main")
+        got = witness(sc, [tip, other])
+        want = {"repo": ob.WITNESS_REPO, "host": "github.com", "registering_commit": reg,
+                "registering_push": {"sha": tip, "stamp": early}, "draft_commit": tip,
+                "draft_push": {"sha": tip, "stamp": early}}
+        if got != want:
+            out.append(f"{p}: the clean case reads {got}")
+        if "rewritten" in ob.residual().split("The remaining road", 1)[0] or \
+                "a mirror whose history someone rewrites, or GitHub itself" not in ob.residual():
+            out.append(f"{p}: the residual does not name the remaining road alone")
+    except Exception as e:  # noqa: BLE001
+        return [f"ERROR {p}: {type(e).__name__}: {str(e)[:300]}"]
+    return out
+
+
 def g10_nits(fz, wr, p="G10.nits") -> list:
     out = []
     try:
@@ -843,6 +1011,7 @@ def run_clause(clause: str, swap: dict | None = None) -> list:
             "G8.copies": lambda: g8_copies(m["copy_manifest"]),
             "G9b.witness": lambda: g9b_witness(m["freeze"], m["order_beacon"]),
             "G10.nits": lambda: g10_nits(m["freeze"], m["walk_regrade"]),
+            "G9c.branches": lambda: g9c_branches(m["freeze"], m["order_beacon"]),
         }[clause]()
 
 
@@ -895,9 +1064,8 @@ WITNESSES = {
                                                             "r\"REGISTERED_ROUND: int \\| None = (\\d+)\", source)]\n"),)),
     "history-unchecked": ("G9b.witness", "order_beacon", (("    if changes != [None, round_no]:\n",
                                                           "    if round_no not in changes:\n"),)),
-    "draft-unwitnessed": ("G9b.witness", "freeze", (('(("registering", registering_commit(round_no)), '
-                                                     '("draft", draft_commit())):',
-                                                     '(("registering", registering_commit(round_no)),):'),)),
+    "draft-unwitnessed": ("G9b.witness", "freeze", (('(("registering", registering), ("draft", draft_commit())):',
+                                                     '(("registering", registering),):'),)),
     "host-unpinned": ("G9b.witness", "freeze", (('    got = subprocess.run(["gh", "api", "--hostname", WITNESS_HOST, '
                                                  '"--paginate",', '    got = subprocess.run(["gh", "api", "--paginate",'),)),
     "dirty-pin-admitted": ("G10.nits", "freeze", (('            out.append(f"{p[\'path\']}: uncommitted edits (its bytes '
@@ -911,6 +1079,21 @@ WITNESSES = {
                                                                      "            continue\n"),)),
     "copy-commit-admitted": ("G8.copies", "copy_manifest", (("    edits = set(history[:-1])",
                                                              "    edits = set(history)"),)),
+    "foreign-round-admitted": ("G9c.branches", "freeze", (("        if value is not None:\n            return (f\"the "
+                                                            "mirror holds", "        if False:\n            return (f\"the "
+                                                            "mirror holds"),)),
+    "foreign-draft-admitted": ("G9c.branches", "freeze", (("        if history_contains(registering, c):\n",
+                                                           "        if False:\n"),)),
+    "missing-push-admitted": ("G9c.branches", "freeze", (("    if missing:\n        return (f\"{len(missing)}",
+                                                          "    if False:\n        return (f\"{len(missing)}"),)),
+    "draft-lines-unchecked": ("G9c.branches", "freeze", (("    if apart:\n", "    if False:\n"),)),
+    "citation-one-covers-all": ("G8.copies", "copy_manifest", (("        if full not in edits:\n            return "
+                                                               "f\"its reason cites {t}, which did not",
+                                                               "        if False:\n            return "
+                                                               "f\"its reason cites {t}, which did not"),)),
+    "citation-off-head-admitted": ("G8.copies", "copy_manifest", (('        if git("merge-base", "--is-ancestor", '
+                                                                   'full, "HEAD").returncode != 0:\n',
+                                                                   "        if False:\n"),)),
     "near-rewrite-unchecked": ("G8.copies", "copy_manifest", (("            if share > NEAR_REWRITE_SHARE:\n",
                                                                "            if False:\n"),)),
 }
@@ -957,6 +1140,9 @@ class TestPf1FreezeGates(unittest.TestCase):
 
     def test_g10_the_reviews_nits(self):
         self.check("G10.nits")
+
+    def test_g9c_candidates_on_other_branches_are_refused(self):
+        self.check("G9c.branches")
 
 
 class TestWitnesses(unittest.TestCase):

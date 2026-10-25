@@ -39,10 +39,10 @@ exist, and the freeze writes it once from derive(). What --check refuses:
     and any copy of the first study's three named fixture builders that is not `identical`;
   - (pre-freeze review 1, m8, lane pf1-l1-freeze-gates) an `edited` copy that is a near-rewrite, more than
     NEAR_REWRITE_SHARE of its lines changed from its source (difflib's matching lines over the longer side), whose
-    reason does not cite, as a commit that resolves, at least one commit that changed the file after its copy commit,
-    or that cites any hex token resolving to no commit (citation_problem; the review of 53d0e9af, finding 3): a short
-    reason over a rewritten file no longer passes, and neither does a bare date or a made-up hash. What it cannot
-    see: whether the cited commits explain every line; that stays the reviews' job.
+    reason cites no commit, or any hex token that is not a commit in HEAD's history that changed the file after its
+    copy commit (citation_problem; the review of 53d0e9af, finding 3, and its closure check, finding 2): a short
+    reason over a rewritten file no longer passes, nor a bare date, a made-up hash or a commit that edited something
+    else. What it cannot see: whether the cited commits explain every line; that stays the reviews' job.
 
 RECORDS ARE CLAIMED BY THEIR OWN LEDGERS, NOT BY FRAGMENTS (lane w8a, ruling W8-layout-1, README Q4; this file moved
 from lane w1a to lane w8a under ruling W8A-gap4-1). A file inside a walk folder, rehearsals/<walk>/**, is claimed
@@ -247,22 +247,26 @@ COMMIT_TOKEN = re.compile(r"(?<![0-9a-f])[0-9a-f]{8,40}(?![0-9a-f])")
 
 def citation_problem(path: str, why: str) -> str | None:
     """Why a near-rewrite's reason does not cite the commits that edited it, or None (the review of 53d0e9af, finding
-    3). Every 8-to-40 hex token in the reason must resolve to a commit (git cat-file -e), so a bare date or a hash
-    that names nothing refuses, and at least one must have changed this file after its copy commit (the first commit
-    in its history)."""
+    3, and the closure check of 84ab6393, finding 2). Every 8-to-40 hex token in the reason must name a commit in
+    HEAD's history that changed this file after its copy commit (the first commit in its history): a bare date, a
+    hash that names nothing, a commit on another branch, the copy commit or a commit that never touched the file each
+    refuse, and one good citation never covers a bad one."""
     tokens = COMMIT_TOKEN.findall(why or "")
     if not tokens:
         return "its reason cites no commit that edited it"
-    listed = git("log", "--format=%H", "--", study.rel(path))
+    listed = git("log", "--full-history", "--format=%H", "--", study.rel(path))
     history = listed.stdout.decode().split() if listed.returncode == 0 else []
     edits = set(history[:-1])            # newest first; the last is the copy commit
-    edited = False
     for t in tokens:
         got = git("rev-parse", "--verify", "--quiet", f"{t}^{{commit}}")
         if got.returncode != 0:
             return f"its reason cites {t}, which resolves to no commit"
-        edited = edited or got.stdout.decode().strip() in edits
-    return None if edited else "its reason cites no commit that changed it after its copy commit"
+        full = got.stdout.decode().strip()
+        if git("merge-base", "--is-ancestor", full, "HEAD").returncode != 0:
+            return f"its reason cites {t}, a commit outside HEAD's history"
+        if full not in edits:
+            return f"its reason cites {t}, which did not change it after its copy commit"
+    return None
 
 
 def is_record(src: str) -> bool:

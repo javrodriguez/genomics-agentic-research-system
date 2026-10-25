@@ -181,11 +181,61 @@ def registering_commit(round_no: int) -> str:
 
 def draft_commit() -> str:
     """The last commit in HEAD's history that changed prereg-draft.json: the draft whose rows the order permutes, fixed
-    by its own push before the round (finding 1c; the review's line 1 binds the review to the same bytes)."""
-    code, out = git("log", "-1", "--format=%H", "--", study.rel("prereg-draft.json"))
-    if code != 0 or not re.fullmatch(r"[0-9a-f]{40}", out.strip()):
-        raise ValueError("the last commit that changed prereg-draft.json cannot be read at HEAD")
-    return out.strip()
+    by its own push before the round (finding 1c; the review's line 1 binds the review to the same bytes). Read with
+    --full-history, so a merge that took a side branch's draft is not followed to that branch silently (the closure
+    check of 84ab6393, finding 1): a merge that took a side branch's draft is itself the draft commit (and must be
+    pushed before the round), and every commit that changed the draft must be an ancestor of the newest one in
+    topological order, or two candidate draft lines exist and the freeze refuses."""
+    code, out = git("log", "--full-history", "--topo-order", "--format=%H", "--", study.rel("prereg-draft.json"))
+    shas = out.split() if code == 0 else []
+    if not shas or not all(re.fullmatch(r"[0-9a-f]{40}", x) for x in shas):
+        raise ValueError("the commits that changed prereg-draft.json cannot be read at HEAD")
+    last = shas[0]
+    apart = [x for x in shas[1:] if not history_contains(x, last)]
+    if apart:
+        raise ValueError(f"prereg-draft.json has two candidate lines in HEAD's history: {apart[0][:12]} changed it and "
+                         f"is no ancestor of {last[:12]}, the newest commit that did; one draft line is frozen, never "
+                         f"one chosen among")
+    return last
+
+
+def rev_list(*args: str) -> list[str]:
+    code, out = git("rev-list", *args)
+    if code != 0:
+        raise ValueError(f"git rev-list {' '.join(args[:3])} ... cannot be read")
+    return out.split()
+
+
+def mirror_problem(pushes, registering: str):
+    """Why the mirror's pushes hold a candidate this freeze did not take, or None (the closure check of 84ab6393,
+    finding 1: parallel pushed branches, each with a clean history, let one be chosen after the round). Every pushed
+    sha must be in this clone; and no commit those pushes hold that is not an ancestor of HEAD may set REGISTERED_ROUND
+    to an integer, or change prereg-draft.json while descending from the registering commit. All the mirror's round and
+    draft history sits on HEAD's one line."""
+    shas = sorted({s for _, s in pushes if s and set(s) != {"0"}})
+    missing = [s for s in shas if git("cat-file", "-e", f"{s}^{{commit}}")[0] != 0]
+    if missing:
+        return (f"{len(missing)} sha(s) the mirror records are not in this clone ({missing[0][:12]} first): fetch the "
+                f"mirror's history before the freeze, which reads every pushed commit")
+    if not shas:
+        return None
+    rel_beacon, rel_draft = study.rel("order_beacon.py"), study.rel("prereg-draft.json")
+    for c in rev_list("--full-history", *shas, "--not", "HEAD", "--", rel_beacon):
+        code, text = git("show", f"{c}:{rel_beacon}")
+        if code != 0:
+            continue
+        try:
+            value = order_beacon.registered_value(text)
+        except order_beacon.BeaconRefused as e:
+            return f"the mirror holds {c[:12]}, off HEAD's line, whose order_beacon.py cannot be read ({e})"
+        if value is not None:
+            return (f"the mirror holds {c[:12]}, off HEAD's line, which sets REGISTERED_ROUND to {value}: a round "
+                    f"registered on another pushed branch could be the one chosen")
+    for c in rev_list("--full-history", *shas, "--not", "HEAD", "--", rel_draft):
+        if history_contains(registering, c):
+            return (f"the mirror holds {c[:12]}, off HEAD's line, which changes prereg-draft.json after the "
+                    f"registering commit {registering[:12]}: a candidate draft on another pushed branch")
+    return None
 
 
 WITNESS_HOST = "github.com"
@@ -204,7 +254,11 @@ def take_order_witness(draft, *, pushes=None, contains=None) -> dict:
     pushes = push_records() if pushes is None else pushes
     contains = history_contains if contains is None else contains
     witness = {"repo": order_beacon.WITNESS_REPO, "host": WITNESS_HOST}
-    for name, commit in (("registering", registering_commit(round_no)), ("draft", draft_commit())):
+    registering = registering_commit(round_no)
+    problem = mirror_problem(pushes, registering)
+    if problem:
+        raise ValueError(problem)
+    for name, commit in (("registering", registering), ("draft", draft_commit())):
         problem = order_beacon.push_witness_problem(commit, round_no, pushes, contains)
         if problem:
             raise ValueError(f"the {name} commit: {problem}")
@@ -214,20 +268,24 @@ def take_order_witness(draft, *, pushes=None, contains=None) -> dict:
 
 
 def push_records(repo=None) -> list[tuple[int, str]]:
-    """[(unix time, pushed sha)] of every push GitHub records on the witness repository, read read-only with
-    `gh api` (GET /repos/{repo}/activity, activity_type=push). Raises ValueError when it cannot be read."""
+    """[(unix time, pushed sha)] of every record GitHub keeps on the witness repository that puts a commit there (its
+    `after` sha: pushes, force pushes, branch creations, merges; a deletion's all-zero sha is dropped), read read-only
+    with `gh api` (GET /repos/{repo}/activity, every activity type: a new branch is recorded as branch_creation, not
+    push). Raises ValueError when it cannot be read."""
     repo = order_beacon.WITNESS_REPO if repo is None else repo
     host = os.environ.get("GH_HOST")
     if host not in (None, "", WITNESS_HOST):
         raise ValueError(f"GH_HOST is {host!r}: the push witness is read from {WITNESS_HOST} only")
     got = subprocess.run(["gh", "api", "--hostname", WITNESS_HOST, "--paginate",
-                          f"repos/{repo}/activity?activity_type=push&per_page=100",
+                          f"repos/{repo}/activity?per_page=100",
                           "--jq", '.[] | "\\(.timestamp)\\t\\(.after)"'], capture_output=True, text=True)
     if got.returncode != 0:
         raise ValueError(f"GitHub's push records for {repo} cannot be read with gh api: {got.stderr.strip()[:200]}")
     out = []
     for ln in got.stdout.splitlines():
         stamp, _, sha = ln.partition("\t")
+        if not sha.strip() or set(sha.strip()) == {"0"}:
+            continue
         try:
             out.append((int(datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()), sha.strip()))
         except ValueError:

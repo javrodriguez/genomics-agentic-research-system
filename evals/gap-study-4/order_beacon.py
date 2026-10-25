@@ -24,12 +24,14 @@ once in HEAD's history, from None to the round (history_problem); and both the c
 last commit that changed prereg-draft.json, whose rows the order permutes, are held by pushes GitHub itself recorded on
 WITNESS_REPO (its push activity, read read-only with gh api --hostname github.com) at least WITNESS_LEAD_S before the
 round is published (push_witness_problem). A local committer date is the operator's to set; GitHub's push time is not.
+And every commit the mirror's records hold must be in the freezing clone, with no other registered round and no
+other draft after the registration off HEAD's one line (freeze.mirror_problem; the closure check of 84ab6393), so
+candidates on parallel pushed branches are refused.
 
-WHAT THIS DOES NOT BIND, NAMED (residual(), carried into the draft beside the rule): whoever controls GitHub, or the
-clock its push records are stamped by; a local history rewritten to hide an earlier registration that the mirror's
-push records still hold (the mirror's other pushes are not scanned); a push record GitHub no longer returns, which
-refuses; and the round's BLS signature, not verified here (no stdlib road): two relays run by different operators must
-agree instead.
+WHAT THIS DOES NOT BIND, NAMED (residual(), carried into the draft beside the rule): a mirror whose history someone
+rewrites, or GitHub itself (or the clock its records are stamped by); a push record GitHub no longer returns refuses;
+and the round's BLS signature is not verified here (no stdlib road): two relays run by different operators must agree
+instead.
 
 The network is read only by read_relays and push_records: at the real freeze (on the Mac), by --read, and by prereg.py
 --order-from-beacon once the round is published. No take, check or test reads it; tests hand in an opener and records.
@@ -128,10 +130,11 @@ def residual() -> str:
             "REGISTERED_ROUND, read by parsing order_beacon.py at every commit, changed exactly once in the history it "
             "freezes, from None to the round, and that GitHub's own records hold a push of the commit that made that "
             "change and a push of the last commit that changed the draft, each at least an hour before the round is "
-            "published. It does not bind: whoever controls GitHub, or the clock its push records are stamped by; a "
-            "local history rewritten to hide an earlier registration that the mirror's push records still hold, since "
-            "the mirror's other pushes are not scanned; and the round's BLS signature, which is not verified (two "
-            "relays run by different operators must agree instead). The witnessing pushes are mirrors of verified "
+            "published, and that no commit the mirror's records hold registers another round, or changes the draft "
+            "after the registration, off that one line. The remaining road is only a mirror whose history someone "
+            "rewrites, or GitHub itself (or the clock its records are stamped by); and the round's BLS signature is "
+            "not verified (two relays run by different operators must agree instead). The witnessing pushes are "
+            "mirrors of verified "
             "waves, made under " + STANDING_WORD + "; " + RETENTION_NOTE + ", so a push record GitHub no longer "
             "returns refuses the freeze, never passes it.")
 

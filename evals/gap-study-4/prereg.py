@@ -41,9 +41,9 @@ from two relays; nothing the operator commits enters it. The freeze also require
 was registered once in its history (from None, never changed again), and GitHub's own push records
 of that registering commit and of the draft's last commit, each an hour or more before the round is
 published; `--order-from-beacon` refuses to preview an order before the round is published. What is
-left is named in the draft (take_order_beacon.residual): whoever controls GitHub or its clock, a
-local history rewritten to hide an earlier registration the mirror still holds, and the round's
-unverified signature.
+left is named in the draft (take_order_beacon.residual): a mirror whose history someone rewrites,
+or GitHub itself, and the round's unverified signature; candidates on other pushed branches are
+refused (freeze.mirror_problem).
 
 No model, no network, stdlib only.
 """
