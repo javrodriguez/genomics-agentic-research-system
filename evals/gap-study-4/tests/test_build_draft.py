@@ -493,6 +493,10 @@ from graders import labels4
 
 SOURCES = {"plan": "plans/gap-study-round-4.md", "req": "plans/gap-study-round-4/CP5-requirements.md"}
 INFORMED = "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+# Pre-freeze review 1, m12 (lane pf1-l4a, 25 Oct 2026): the basis also discloses the registered walks, read before the
+# freeze; the count is bound to rehearsals/register.json by PrefreezeFills.test_informed_by_names_the_walks.
+INFORMED += ("; 225 registered walks of the registered stimuli exist and were read before the freeze "
+             "(rehearsals/register.json), and no prediction is filled from them")
 
 
 def description_problems(d):
@@ -1273,6 +1277,15 @@ class PrefreezeFills(unittest.TestCase):
                 self.assertIn(rel, note[h]["evidence"], f"F5.evidence: {h}")
             self.assertNotIn(f"/deterministic_layer_note/round_4/{h}/evidence", d["pending"], "F5.evidence")
         self.assertIn("named residual", note[CODEX]["evidence"], "F5.evidence")
+
+    def test_informed_by_names_the_walks(self):
+        """m12: the walk count the basis discloses is the register's."""
+        walks = json.loads((HERE / "rehearsals/register.json").read_text())["walks"]
+        self.assertIn(f"; {len(walks)} registered walks of the registered stimuli exist", INFORMED, "F6.informed")
+        d = b.build()
+        self.assertEqual(d["predictions_rule"]["informed_by"], INFORMED, "F6.informed")
+        self.assertEqual({p["informed_by"] for p in d["predictions"]}, {INFORMED}, "F6.informed")
+        self.assertEqual({p["predicted"] for p in d["predictions"]}, {None}, "F6.informed")
 
     def test_limitation_readings_rest_on_the_code(self):
         """PENDING #9 and #12 and m4: what each reading says of the code is true of it."""

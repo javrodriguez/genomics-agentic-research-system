@@ -20676,7 +20676,7 @@
   "predictions_rule": {
     "predicted": null,
     "basis": "no informed basis",
-    "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+    "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
   },
   "predictions": [
     {
@@ -20691,7 +20691,7 @@
       "half_cell": "h-7e14d59728625e62ddf0da3441a2938cbb852fbbffd6cde9b8addba6bf6f3dc5",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20705,7 +20705,7 @@
       "half_cell": "h-c184d91ac3ebc044b426db4fb09f8f6dc9d69f061b98c75bc8097305de3ca16f",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20719,7 +20719,7 @@
       "half_cell": "h-222f99802342071bebf456ddf8cbe5afb72fe58845306da768901a1731794076",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20733,7 +20733,7 @@
       "half_cell": "h-2fef514b80d1ff73ee317d65616288aa8c45666da343b7cb1240408a629005d5",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20747,7 +20747,7 @@
       "half_cell": "h-11728769204b963a073a2dd9344986f61ea7477e52d69ea38da984f8044792f7",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20761,7 +20761,7 @@
       "half_cell": "h-9936399c8309a53969f07906c10578fc1ca34d2c83e499a48ba03f5985806739",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20775,7 +20775,7 @@
       "half_cell": "h-df3ff4ce500ed5635ccda94333ce57b22844977866e832498a82cf8de2fb07a8",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20789,7 +20789,7 @@
       "half_cell": "h-1810f04446d73f727636efa99138345632c3fda0a1e272712b07cb4201fe32b9",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20803,7 +20803,7 @@
       "half_cell": "h-72307c843746bd80bfc9fa7c963d3a8a8611177c326e0cb9187cc8b456a0814f",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20817,7 +20817,7 @@
       "half_cell": "h-25fbd63f3022508d855c4a63f5db60ddeef2aa1730b8df5ef2cc151f297cb895",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20831,7 +20831,7 @@
       "half_cell": "h-10491241293320f451215992bff51c8ad4ecd64c0472b7f9124c2449716fc96c",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20845,7 +20845,7 @@
       "half_cell": "h-d99b8f794003e00e8859071ebd421fafb3e182d6513c55780f6c1ad1d7e66a90",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20859,7 +20859,7 @@
       "half_cell": "h-b3cb5d220aba4e5936fbf185b7b8cd006e457330eae68652e68e1c36da1b702e",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20873,7 +20873,7 @@
       "half_cell": "h-e0ea9aa49d9c8029f3804fa89c3e7558e48e476df316c50d1fed2ea0e7db5550",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20887,7 +20887,7 @@
       "half_cell": "h-77e018c7f6c22d1145f7a1025542bf220f792c0970d6f098b2a5992789e9e962",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20901,7 +20901,7 @@
       "half_cell": "h-8745c44d699a8fddf3734578a240cb28e9cd600e18f91b7f06ca3e73b235bcbb",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20915,7 +20915,7 @@
       "half_cell": "h-6b8e3acd4ee73560d2a393fe69bd9b223704bf05dbc3659b32928abb58c12e54",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20929,7 +20929,7 @@
       "half_cell": "h-136e377b0b5daf24708ded740d403b3edffe2ddd961b4ddf774a6e4f265194b5",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20943,7 +20943,7 @@
       "half_cell": "h-7ec94f8bcc02bf4a8b759a659d81bc374694ec41ea386b21b1721edbaa654e69",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20957,7 +20957,7 @@
       "half_cell": "h-381a27bb2dd7aac9022f0bd53409c58f47cf46813c5c3e4c99a8772777ecee25",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20971,7 +20971,7 @@
       "half_cell": "h-a9bcd1ec92ec75db6fed60ef30870c9d090da29ab413344488fbf482d2bcb42a",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20985,7 +20985,7 @@
       "half_cell": "h-9a9ffa0bec27ae2c129526922e35d054ab0d80d84a2b479ca08a9a294e3cc2f3",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -20999,7 +20999,7 @@
       "half_cell": "h-73a1e233d3e62e73e1045f6e3f01a6ccd09edf9fb0d2639329e76a88d14c721b",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21013,7 +21013,7 @@
       "half_cell": "h-e916393231e9fb79d3128983863b80d597a634a7fe47ec1fa7b342819e2b77d3",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21027,7 +21027,7 @@
       "half_cell": "h-f27ec3e9d84cc8fa425b7f6ffcb01a6c966b3d8c5d15e9e069106a81db96649b",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21041,7 +21041,7 @@
       "half_cell": "h-afc3e12a3091e5983eaa4d8080553d0dcba07eeb6a3d16a5196ec1166ceaf361",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21055,7 +21055,7 @@
       "half_cell": "h-bbb844684392e1d86f93db9a89ebc315a00097d52694c21b2246a1497677550e",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21069,7 +21069,7 @@
       "half_cell": "h-95aef42ac2b9d26b929e8c0aecd54b464a21d061ebfb3c05f43f1ccc592c5358",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21083,7 +21083,7 @@
       "half_cell": "h-6cd324059dc9c427ca4b8f52e9be835a8b727c46ce0defd31ff899768773b1e7",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21097,7 +21097,7 @@
       "half_cell": "h-b9c04f4966b92534ff5dfc9e27a2607d04dc31df535a1046d9cd94bbf723a5cf",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21111,7 +21111,7 @@
       "half_cell": "h-7e29c48389f61a0b4d5810dd19b6d62270a297ec1891a5142146ecd3b2717274",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21125,7 +21125,7 @@
       "half_cell": "h-3d779e315dd4496a8efc5d49840c75a438c5af5dda70d70986d8730c1b67860f",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21139,7 +21139,7 @@
       "half_cell": "h-cff71a5ab1d85beffdeabbbe1705a3ef2f11064c8b4c2946c59a1d6de449de02",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21153,7 +21153,7 @@
       "half_cell": "h-05863cba233a930c7e6c6f6401f130fe21ac28f05843afecd9048c97990891d9",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21167,7 +21167,7 @@
       "half_cell": "h-b6bcbc6efda62a17880fdeed0f19ba729cfb37321b3d68aeb2cb40ece936eb4d",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21181,7 +21181,7 @@
       "half_cell": "h-cfb5db62b72fb338cb33b68f200fef71fc5552e9ab26c82b91ebe5563679c565",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21195,7 +21195,7 @@
       "half_cell": "h-6da233ab75b310cc571c805ca9a48554d1396ba64cb4ee230923d19d2090d54c",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21209,7 +21209,7 @@
       "half_cell": "h-e9259316b14aec82073c131f267ea4cde85c9297b7b3e98e1273d207ef14dcb5",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21223,7 +21223,7 @@
       "half_cell": "h-3a8fb40440592296509a44450a12ad9556e859e3d7652b26380a0242493b6d1d",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21237,7 +21237,7 @@
       "half_cell": "h-4e7fb5765a4658546e01611aac0f0f8a930e82d42f8a1559425a6fa95bdbc8f6",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21251,7 +21251,7 @@
       "half_cell": "h-610585f04a8e0544e5fb6b001f3e2a52b2962eb2e434e9aba8b40a55d4708956",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21265,7 +21265,7 @@
       "half_cell": "h-765d3e0e724dad318a26639f323a268a3f9c286e0d98fbaeb42617b6bb29ede2",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21279,7 +21279,7 @@
       "half_cell": "h-2baae7059c8e987a4518fdf3711b1681866af9184a5d50b8171142171b02aecb",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21293,7 +21293,7 @@
       "half_cell": "h-a4d9f8125ac2844270f5e21b8cfd2a75edde50e27a3fb26fca49635bba35a320",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21307,7 +21307,7 @@
       "half_cell": "h-9e774c95514c975d94e6126bfd654cbd197bc460c22b557694895bd0e0bb3fcf",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21321,7 +21321,7 @@
       "half_cell": "h-4f107409d8f2c1fced47f4ee4d7812ac115c4d9ae50c3f944a12cf63595a0245",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21335,7 +21335,7 @@
       "half_cell": "h-468ff41e2d2b486db648f397d340c71051fbc4a98073e770afce6c4fc7de1057",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21349,7 +21349,7 @@
       "half_cell": "h-b1d0e3e5280129ec82feabaea1f5a04659c73a29b51f2c7d3aecba5a65fa5329",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21363,7 +21363,7 @@
       "half_cell": "h-6bdf6b1499839e70d92868e851b3c858f1eb73702f78677bf5b564f5aa3ab08e",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21377,7 +21377,7 @@
       "half_cell": "h-0b181d5cb6d7eada3ff986701125562396059a579f45081211e47d1a7893cd86",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21391,7 +21391,7 @@
       "half_cell": "h-e35d5586a921792f9e6443a14849151f07e789d28e645354aeef8797342b3ec5",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21405,7 +21405,7 @@
       "half_cell": "h-9d4afade50bc21ca63838744aca09e049ee429b5ad678d92a80e2ed16ff22b18",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21419,7 +21419,7 @@
       "half_cell": "h-dff4c59a2d0178c9bc032c7ca81eb28e546923021533b47b8d10f74603a7a9af",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "A",
@@ -21433,7 +21433,7 @@
       "half_cell": "h-e563772dceacafdff5b0993e12ff59bd4a5d5898678a3498782f57f9d2f0e8d3",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21447,7 +21447,7 @@
       "half_cell": "h-e07c0fe6c14dbb6c5de62a57700ae6bce8b685efffef95a97770cc0c39d47cfd",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21461,7 +21461,7 @@
       "half_cell": "h-58cef7233f1a19f70b760cbe68c7d232cd9497407379ade280054678f7a28a89",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21475,7 +21475,7 @@
       "half_cell": "h-0f47b9f68ed0a59b162f9f14fae538dd912fdce3d40c1bc05c33af4bf5ea56d5",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21489,7 +21489,7 @@
       "half_cell": "h-1c94609439d3d799efa3fc2719ea028681d967466ea0e59d67acdf56dfb4ba02",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21503,7 +21503,7 @@
       "half_cell": "h-93ec8b92fc2d010b3890a36da1c506df911f757955d520eb068e66fed06f7762",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21517,7 +21517,7 @@
       "half_cell": "h-5d2a76dd9899efff92be390cab8a075aef5b01af756bde7020fd7c922cc7bca4",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21531,7 +21531,7 @@
       "half_cell": "h-a1e01a9876b6dfcefae250021c60eec1cfb299fe99fc4e883777d47c70505719",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21545,7 +21545,7 @@
       "half_cell": "h-9985408ef4eada300ef0a5c092614d64060303f4f8c7cbfeda2042cd79a3c34d",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21559,7 +21559,7 @@
       "half_cell": "h-8b4c4a32108bdde4c93d46e8db1d2bb8c0fa93d652886444fd60491ddf69e712",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21573,7 +21573,7 @@
       "half_cell": "h-8d278afa8a5dae1b44e2d94ff01d0064283d7295505d0884ae824eb9e489c934",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21587,7 +21587,7 @@
       "half_cell": "h-6ad65682740d3f63599c5b68bf146a8a4ad547e69776b6a5e85c298b12c57692",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21601,7 +21601,7 @@
       "half_cell": "h-818133c05b8730e41fb9be3c566e60168718037ee83aade9d9b2ffe137e30455",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21615,7 +21615,7 @@
       "half_cell": "h-23dc9b7996bb0145c255e78965080163008676d3d50e3d76bca3dd5e6fb8b8b1",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21629,7 +21629,7 @@
       "half_cell": "h-9fd21b96f35ad4d6a93f97a53499e02dcc41c13d5d26766efb2e8673e5eceb62",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21643,7 +21643,7 @@
       "half_cell": "h-287e74997e022bfb71510a7121136569e67cfccbd2b01061e62101d29ac9f039",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21657,7 +21657,7 @@
       "half_cell": "h-87835edbb80cc04f63db50e42e3fed4d8608e95f9f2de3190fcba6baab0b0b5e",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21671,7 +21671,7 @@
       "half_cell": "h-584e5d135a2dd86ae4a43a07e8fa77a61c660fc11e1bc9674a105196c496db93",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21685,7 +21685,7 @@
       "half_cell": "h-455f6fbe13df521f31d9530cd1822fa85d5ff3d3bb169e9bd0674c12c2b156ee",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21699,7 +21699,7 @@
       "half_cell": "h-0225ede35ef4ca19005179de7ca806acd733f0e9cd88cba3af5250186508f4e5",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21713,7 +21713,7 @@
       "half_cell": "h-4caa49b10fc2acef9176a8c527d49e702fa16f0c73a280210ab816f4fd86dbf7",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21727,7 +21727,7 @@
       "half_cell": "h-81fb6a6f7c85064ea144b5becb241f691c4dc9b91ac50ffb8b216a5373090d30",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21741,7 +21741,7 @@
       "half_cell": "h-63577d02533f11c3df2e3818edd81298032501c2808baa00e38d769adde8eba4",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21755,7 +21755,7 @@
       "half_cell": "h-966f607629f67f8b9b4c286610dc4b6be4a2c3daecc2379cf1c845d353c41ffa",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21769,7 +21769,7 @@
       "half_cell": "h-f0ccfa22650cae1d246964207f62eda5386dd56aed0b2cc8ec89986533deeaf6",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21783,7 +21783,7 @@
       "half_cell": "h-f5a2b3a2ba29942a87c8534b93592b223b1444d655c7a82777428a5c124663ff",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21797,7 +21797,7 @@
       "half_cell": "h-a177f398ac2a317d33021caabdcf65462eb1b058e7341e063e5ec411d0d414e6",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21811,7 +21811,7 @@
       "half_cell": "h-f93f2344ed5024f127d9ee0fb5b30a3c328a13c0d2e81e4986287bfff173e5ac",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21825,7 +21825,7 @@
       "half_cell": "h-fbf25cef5766156f05bad3fbad610d6a6dd087753aeda9b850fb763faed02d2b",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21839,7 +21839,7 @@
       "half_cell": "h-b871e4b3326f607b7893b525e588ec186425772253d8dea8419a9f0ca78996d8",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21853,7 +21853,7 @@
       "half_cell": "h-e9ab95015fe05d9791fb51e44aab0c0b3d0d75f907e7164362d33471e4920516",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21867,7 +21867,7 @@
       "half_cell": "h-93fe60ebd1b6e401e5abc1e411311e45dd2ffdb9d5774c0573dea38b1837c864",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21881,7 +21881,7 @@
       "half_cell": "h-417e8d58ae9d8d89489f38bd1863541b8538b93fde02f36bcb4f7df1b93cc13d",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21895,7 +21895,7 @@
       "half_cell": "h-8e0d04778a70240252eb905c8c3caae4c15c41f39b29e6e1afe208acaa870389",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21909,7 +21909,7 @@
       "half_cell": "h-a87a1c54cd1607eae3457b3ed34c51c05ee7a13c7bbecc45840ea78d032ecacf",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21923,7 +21923,7 @@
       "half_cell": "h-bd8f7c01c06b13fc5a2cda2c1f48215fba8a8402cd601f372350001e75298765",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "O",
@@ -21937,7 +21937,7 @@
       "half_cell": "h-0605baa96324fccc6c61d1bafc96924bdf12594c602e15bd7683c37a137cb893",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -21951,7 +21951,7 @@
       "half_cell": "h-f90de9f3acef328db79aa36623c5ffb79643ae813ff21f107a12bac561e609fb",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -21965,7 +21965,7 @@
       "half_cell": "h-9fcb0104dd61acf8e28559453cba7d73e8057d566928a22f5a9922bf8ac91d2d",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -21979,7 +21979,7 @@
       "half_cell": "h-a0798a260040f662030da99b0b4d319e12e91221ec3d0786f31160c60a13007b",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -21993,7 +21993,7 @@
       "half_cell": "h-4075a37483a48c25e1fae6f7040cc811eceef43830858075d7ecc5b933051526",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22007,7 +22007,7 @@
       "half_cell": "h-c2e8c41b69817584394afe050e1717b935845250c44f964c7cb46cf3682ae2f7",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22021,7 +22021,7 @@
       "half_cell": "h-a0e927f4e2ea9f1ecd796b8a64d94bf86372c14f4fe525d173ff0607ed9b5beb",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22035,7 +22035,7 @@
       "half_cell": "h-9a3cce81428fea349d4620021fc2b9ed9f31e3b4973804366f696e6dd595a306",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22049,7 +22049,7 @@
       "half_cell": "h-b0b1d14a64698134ca457e9bd3068b974a1d30074d656177522811be40b53174",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22063,7 +22063,7 @@
       "half_cell": "h-6c3a41c6915ec11e1495aaf847de06fe535330b13591da3c9d9f91cc08d7caf5",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22077,7 +22077,7 @@
       "half_cell": "h-9ef82836edc430ba9827599efb33c154053032e1762c7c573b5d98d4ca8460b1",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22091,7 +22091,7 @@
       "half_cell": "h-d31bd056771a566fac387397cd104ad8dc835033600ddc06a8c6339363453875",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22105,7 +22105,7 @@
       "half_cell": "h-48ddc5036f2f096aba1099d542f4535475e1f5ea5637c171d9ed97805810751a",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22119,7 +22119,7 @@
       "half_cell": "h-5b7ba5c58fe0802611d6c3d57d3d0e29eb15fbaeb008ebfae247096870f04e7c",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22133,7 +22133,7 @@
       "half_cell": "h-29c94762b5fa812759bffd6642a21ca5efad3ef3b0ec2920933087c3edcb5d60",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22147,7 +22147,7 @@
       "half_cell": "h-2132ec55b1b484eca9484ab311eb4d68d57050099ac34b8b026c2fd44aafec57",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22161,7 +22161,7 @@
       "half_cell": "h-d3ca5f2ac36e072ef4ec6c2cc094c97fcc14767de3b378967eedbd91d36d43ab",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22175,7 +22175,7 @@
       "half_cell": "h-551faa47d0ae8cc408f8c5b573c19aebe40ec12bcaa5e1601cfd29ab9733a769",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22189,7 +22189,7 @@
       "half_cell": "h-fa3670956f2879bac57f737a95b713a5fa3e8f8a6ea728319c882ef2ac6afb53",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22203,7 +22203,7 @@
       "half_cell": "h-74ad3f3537986f2ce2dd7d324bb0ed3defc36d01d4f3f2819ee363d6d5432cce",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22217,7 +22217,7 @@
       "half_cell": "h-26782714a0efd4feb05128f44917198bcb36dd17994c6ffe30bcb43f21c6bda6",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22231,7 +22231,7 @@
       "half_cell": "h-c067519cd54ae5d088962fa80519465929d036fe1b1b768d0c0ea2dfaa6c5de1",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22245,7 +22245,7 @@
       "half_cell": "h-cccb9eaf4b9a2a368b25aa4f6236b57b54e3bf54ee87302f66328ea028d3a926",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22259,7 +22259,7 @@
       "half_cell": "h-fbe8b2cc8d5ee226e6aeba12faf083bdd988296e07472a91fc1c1c6090eda761",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22273,7 +22273,7 @@
       "half_cell": "h-e5ef74d6d3da296800d352571921d4588488dd6cd8994b9d14e99542af4adaea",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22287,7 +22287,7 @@
       "half_cell": "h-dbde0ae23083a163e9beb2c1fdbffbc8c84841fa02f7f212297dbc0ad83c4f8f",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22301,7 +22301,7 @@
       "half_cell": "h-6a747f601a5f1af5b598d26c877887ebeb9717e750345cf0a474c87fb1b515a2",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22315,7 +22315,7 @@
       "half_cell": "h-489391bdefa2c27875d3d83981bcdc1c450ce4d2446590b901136f1ace590a2f",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22329,7 +22329,7 @@
       "half_cell": "h-b2f08fa92d861224d1f6edd6be4090226fa3e465c083509e7e6da6c002b58dc3",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22343,7 +22343,7 @@
       "half_cell": "h-79f92b5636c919bef135a84793d8e220e69a037d39720ff1c0660e850a37b557",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22357,7 +22357,7 @@
       "half_cell": "h-a474c90b4897d290e9e358eab139fb960dd045ead66e12ec48bf0229c8c33b53",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22371,7 +22371,7 @@
       "half_cell": "h-59ec1cf0ba1d005a9401ce560fa1b89a76d74b158cce25c7e4b85e66b5e6c61f",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22385,7 +22385,7 @@
       "half_cell": "h-8f6648489eb3b2e7ee62d2fd86397438b29477c3a4c2b0538d8b9dfda486ce19",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22399,7 +22399,7 @@
       "half_cell": "h-c1d4e01264e8138cfbf12a1a0078c5856f1892e4ef1bbe1c9cb8c5c2de12b499",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22413,7 +22413,7 @@
       "half_cell": "h-9d6948e6fa9f01b6d5b433303982a041ca948aecc3702351eb00f60c16f49282",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22427,7 +22427,7 @@
       "half_cell": "h-f89ec1a3b66700a551c5645795b8c969d14f4b60bb8d57cd3924e07e34cf5d84",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     },
     {
       "arm": "G",
@@ -22441,7 +22441,7 @@
       "half_cell": "h-f8debd65b2b3b378abce24a2d1b3975b1cab0086e3d670a70ba6977a94fdfa26",
       "predicted": null,
       "basis": "no informed basis",
-      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+      "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze; 225 registered walks of the registered stimuli exist and were read before the freeze (rehearsals/register.json), and no prediction is filled from them"
     }
   ],
   "holdout_rule": {

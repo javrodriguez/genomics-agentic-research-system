@@ -426,7 +426,10 @@ from graders import labels4
 
 SOURCES = {"plan": "plans/gap-study-round-4.md", "req": "plans/gap-study-round-4/CP5-requirements.md"}
 PREDICTIONS_RULE = {"predicted": None, "basis": "no informed basis",
-                    "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"}
+                    "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
+                                   # pre-freeze review 1, m12 (lane pf1-l4a, 25 Oct 2026): the walks, disclosed
+                                   "; 225 registered walks of the registered stimuli exist and were read before the "
+                                   "freeze (rehearsals/register.json), and no prediction is filled from them"}
 
 # Approved passages transcribed from BRIEF.md section 14, ruling w5c-source-1.
 # The outside-repository source is never read by this module.
