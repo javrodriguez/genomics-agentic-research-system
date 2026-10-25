@@ -545,7 +545,37 @@ class T6ReviewFb354328(unittest.TestCase):
     def test_r3b_a_cut_host_turn_keeps_its_native_failure_unreadable(self):
         got = ct.vendor_content_problems(WALKS / "w-g24" / "transcript.jsonl", "gemini")
         self.assertEqual(ct.reason_ids(got), [ct.TRANSCRIPT_UNREADABLE], got)
-        self.assertIn("cut turn", got[0])
+        self.assertIn("as the host records", got[0])
+
+    def test_r3d_a_cut_the_host_does_not_record_is_a_mismatch(self):
+        """The lead's tightening (24 Oct 2026): w-g24 with its ledger row's end and exit made a clean end."""
+        w = Copied("w-g24")
+        try:
+            led = json.loads((w.dir / "driver-ledger.json").read_text())
+            led["turns"][0].update(end="end_turn", exit=0)
+            (w.dir / "driver-ledger.json").write_text(json.dumps(led))
+            got = ct.vendor_content_problems(w.path, "gemini")
+            self.assertEqual(ct.reason_ids(got), [ct.TRANSCRIPT_MISMATCH], got)
+            self.assertIn("the host does not explain", got[0])
+        finally:
+            w.close()
+
+    def test_r3e_a_stream_cut_without_a_host_record_and_a_broken_native_store_is_a_mismatch(self):
+        w = Copied(GEMINI_WALK)
+        try:
+            lines = (w.dir / "turn-1.jsonl").read_text().split("\n")
+            kept = [l for l in lines if not (l.strip() and json.loads(l).get("type") == "result")]
+            self.assertNotEqual(len(kept), len(lines), "witness not performed: no result record")
+            (w.dir / "turn-1.jsonl").write_text("\n".join(kept))
+            w.rebind_stream("turn-1.jsonl")
+            led = json.loads((w.dir / "driver-ledger.json").read_text())
+            append_line(w.dir / "session" / led["native_snapshots"][-1]["file"], "{not json")
+            w.rebind_snapshot()
+            self.assertFalse(ct._host_recorded_cuts(w.path))
+            got = ct.vendor_content_problems(w.path, "gemini")
+            self.assertEqual(ct.reason_ids(got), [ct.TRANSCRIPT_MISMATCH], got)
+        finally:
+            w.close()
 
     def test_r3c_a_stream_command_that_does_not_split_is_unreadable(self):
         w = Copied(CODEX_WALK)

@@ -7187,10 +7187,24 @@ def _host_stream_records(texts: list, harness: str) -> list:
 HOST_TERMINAL_TYPES = {"codex": ("turn.completed", "turn.failed"), "gemini": ("result",)}
 
 
-def _host_streams_complete(records: list, texts: list, harness: str) -> bool:
-    """Every turn stream holds its CLI's terminal record (codex turn.completed or turn.failed; gemini result)."""
+CUT_EXIT = 124            # the budget's timeout exit, as box/run_take records it (w-g24's turn 1)
+CUT_END = "timed-out"     # the driver ledger row's end for a turn the registered budget cut
+
+
+def _host_cut_turns(records: list, texts: list, harness: str) -> set:
+    """The turns whose stream lacks its CLI's terminal record (codex turn.completed or turn.failed; gemini result)."""
     ends = {where.split(" line ")[0] for where, rec in records if rec.get("type") in HOST_TERMINAL_TYPES[harness]}
-    return all(f"turn-{k}.jsonl" in ends for k in range(1, len(texts) + 1))
+    return {k for k in range(1, len(texts) + 1) if f"turn-{k}.jsonl" not in ends}
+
+
+def _host_recorded_cuts(path: Path) -> set:
+    """The turns the driver ledger (host-written) records as cut: end timed-out or exit 124, by row order."""
+    try:
+        rows = json.loads((Path(path).parent / "driver-ledger.json").read_text(encoding="utf-8")).get("turns") or []
+    except (OSError, ValueError, AttributeError):
+        return set()
+    return {k for k, r in enumerate(rows, 1) if isinstance(r, dict)
+            and (r.get("end") == CUT_END or r.get("exit") == CUT_EXIT)}
 
 
 def _codex_command_problems(records: list, raw: bytes) -> list[str]:
@@ -7267,12 +7281,17 @@ def vendor_content_problems(path, harness) -> list[str]:
         records = _host_stream_records(texts, harness)
         return (_codex_command_problems if harness == "codex" else _gemini_result_problems)(records, raw)
     except _NativeUnread as e:
-        if not _host_streams_complete(records, texts, harness):
-            # a host stream with no terminal record is a cut turn (a time-out or a kill, as w-g24's exit 124): the
-            # host shows why the native store is incomplete, so the two records agree; it stays unread, as before
-            return [f"[{TRANSCRIPT_UNREADABLE}] {e}, and a host stream ends with no terminal record (a cut turn), so "
-                    f"a difference cannot be ruled out"]
-        return [f"[{TRANSCRIPT_MISMATCH}] {e}, while every host stream reads whole: the records disagree"]
+        cut = _host_cut_turns(records, texts, harness)
+        # the lane orchestrator's rulings on the fold of review fb354328 (24 Oct 2026): it stays unread only when the
+        # host itself shows the turn was cut, its driver-ledger row ending timed-out or exit 124 (the registered
+        # budget firing, as w-g24's), and its stream lacks its terminal record; any other unread native store is
+        # the agent's to have broken, a mismatch
+        if cut and cut <= _host_recorded_cuts(path):
+            return [f"[{TRANSCRIPT_UNREADABLE}] {e}, and turn(s) {sorted(cut)} were cut, as the host records (timed "
+                    f"out, no terminal record), so a difference cannot be ruled out"]
+        return [f"[{TRANSCRIPT_MISMATCH}] {e}, while the host streams read and record no cut turn"
+                + (f" (turn(s) {sorted(cut)} lack a terminal record the host does not explain)" if cut else "")
+                + ": the records disagree"]
     except _VENDOR_READ_ERRORS + (_gemini_replay.ReplayRefused, ValueError, OSError) as e:
         return [f"[{TRANSCRIPT_UNREADABLE}] the content cross-check cannot read the take's host records "
                 f"({type(e).__name__}), so a difference cannot be ruled out"]
