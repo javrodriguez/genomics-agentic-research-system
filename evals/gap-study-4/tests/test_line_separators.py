@@ -102,6 +102,10 @@ def driver_problems(mod=None) -> list:
     got = mod.cross_check([], jsonl(said("a" + LS + "b")), session_id="s")
     if any("separator" in g for g in got):
         out.append(f"L-driver: the cross-check refuses a session file carrying U+2028 inside a string: {got}")
+    # the second closure check of f0c0eb1d: a session file the driver cannot split is named, never crashed on
+    got = mod.cross_check([], jsonl(said("a")) .replace('"a"', '"a\x0bb"'), session_id="s")
+    if not any("separator" in g for g in got):
+        out.append(f"L-driver: the cross-check does not name a session file carrying \\x0b: {got}")
     src = Path(mod.__file__).read_text()
     if 'with open(got["stream_path"], encoding="utf-8", errors="surrogateescape", newline="") as fh:' not in src:
         out.append("L-driver: the stream file is not opened with newline=\"\"")
@@ -209,6 +213,8 @@ class TheLineSeparators(unittest.TestCase):
         cases = (
             ("the stream's separators unread", lambda: driver_problems(mutant(
                 cca, "    if any(s in (text or \"\") for s in LINE_SEPARATORS):", "    if False:"))),
+            ("the cross-check crashes", lambda: driver_problems(mutant(
+                cca, "    except StreamError as e:\n        return [str(e)]\n", "    except KeyError as e:\n        return [str(e)]\n"))),
             ("the JSON-legal separators refused again", lambda: driver_problems(mutant(
                 cca, 'LINE_SEPARATORS = ("\\r", "\\x0b", "\\x0c", "\\x1c", "\\x1d", "\\x1e")',
                 'LINE_SEPARATORS = ("\\r", "\\x0b", "\\x0c", "\\x1c", "\\x1d", "\\x1e", "\\u2028")'))),

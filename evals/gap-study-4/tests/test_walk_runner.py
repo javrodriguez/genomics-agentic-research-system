@@ -670,8 +670,8 @@ class R2WalkCheck(Case):
             unset = edited("w-unset", lambda st: st["env"].pop("CLAUDE_CODE_THRIFTY_SONIC"))
             hold = edited("w-hold", lambda st: st.__setitem__("crossSessionInbound", "hold"))
             # and (the d7107255 battery's survivors) each later claude-code call on its own: the deny list emptied
-            # refuses by the isolation call, a raw U+2028 in the transcript (lane pf1-l3, 24 Oct 2026: read as text, so
-            # now the content call, the transcript's alone: transcript-mismatch) by the line call, a sub-agent file no
+            # refuses by the isolation call, a raw separator in the transcript (lane pf1-l3, 24 Oct 2026: a C0 one, since
+            # U+2028 is read as text) by the line call, a sub-agent file no
             # Agent call names by the Agent call
             undenied = edited("w-undenied", lambda st: st["permissions"].__setitem__("deny", []))
             sep = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-sep"
@@ -680,8 +680,10 @@ class R2WalkCheck(Case):
             at = next(i for i, x in enumerate(lines_) if '"text"' in x and '"assistant"' in x)
             rec = json.loads(lines_[at])
             block = next(b for b in rec["message"]["content"] if b.get("type") == "text")
+            # lane pf1-l3 (the second closure check of f0c0eb1d, 24 Oct 2026): a C0 separator, still refused, so the case
+            # witnesses check4_walk's line call again (U+2028 is read as text since the closure check of 8cf492b2)
             block["text"] = "\u2028" + block["text"]
-            lines_[at] = json.dumps(rec, ensure_ascii=False)
+            lines_[at] = json.dumps(rec, ensure_ascii=False).replace("\u2028", "\x0b")
             (sep / "transcript.jsonl").write_text("\n".join(lines_), encoding="utf-8")
             stray = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-stray"
             shutil.copytree(folder, stray)
@@ -712,7 +714,7 @@ class R2WalkCheck(Case):
                                      (swept, "nested-agent", "/tmp/n/projects/-x/n1.jsonl is a claude session"),
                                      (hold, hcv, "crossSessionInbound is 'hold'"),
                                      (undenied, hcv, "permissions.deny lacks"),
-                                     (sep, "transcript-mismatch", "differs from the host-captured stream"),
+                                     (sep, "transcript-unreadable", "line separator(s) U+000B"),
                                      (stray, "subagent-records", "are not exactly the copies the driver ledger names"),
                                      (stray, "leak-in-loaded-context", "sub-agent file agent-0000ffff.jsonl's loaded")):
                 got = self.must("R2.walk-check", ct.check4_walk, where / "transcript.jsonl", w.row["task"],

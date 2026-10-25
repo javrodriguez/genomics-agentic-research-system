@@ -745,12 +745,48 @@ def _unit_name(unit) -> str:
     return "nothing" if unit is None else f"{unit[0]} {str(unit[1])[:60]!r}"
 
 
+def _last_record_length(units: list) -> int:
+    """How many of the units' trailing ones are one record's: an assistant message (the units sharing the last one's
+    message id) or one user tool_result record's (the trailing run of tool_result units)."""
+    if not units:
+        return 0
+    last = units[-1]
+    k = 0
+    for u in reversed(units):
+        same = (u[0] == "tool_result") if last[0] == "tool_result" else (u[0] != "tool_result" and u[1] == last[1])
+        if not same:
+            break
+        k += 1
+    return k
+
+
+def cut_tail_problem(stream: list, sess: list):
+    """The second closure check of f0c0eb1d and the lead's ruling on it (24 Oct 2026): in a turn the host records as
+    cut the two records may differ only by the record in flight when the kill fell. Everything before the stream's
+    last record must be equal; after it the session may hold a prefix of that record's units (it lacks the rest) and
+    at most one unit more that the stream lacks. None when that holds, else the sentence naming the difference."""
+    g = _last_record_length(stream)
+    head = len(stream) - g
+    if sess[:head] != stream[:head]:
+        i = next((k for k, (a, b) in enumerate(zip(stream[:head], sess[:head])) if a != b), min(head, len(sess)))
+        return (f"the session file differs from the host-captured stream at item {i + 1}, before the record in flight "
+                f"when the turn was cut")
+    rest, last = sess[head:], stream[head:]
+    k = 0
+    while k < min(len(rest), len(last)) and rest[k] == last[k]:
+        k += 1
+    if len(rest) - k > 1:
+        return (f"the session file holds {len(rest) - k} item(s) after the record in flight that the stream does not, "
+                f"more than the one a cut can leave")
+    return None
+
+
 def content_problems(stream_units: list, session_text: str, cut=()) -> list:
     """PF1-L3: the session file's content against the turn streams' (one list of units per turn, in turn order).
     Problems, each one sentence naming kinds and ids, never the words; [] when every turn's units are equal. A turn in
-    `cut` (the host recorded its cut: timed out, exit 124) is compared only up to the shorter record's last complete
-    unit, since the kill can fall between the CLI's writes to its stream and to its session file (the lead's ruling on
-    the closure check of 8cf492b2, 24 Oct 2026)."""
+    `cut` (the host recorded its cut: timed out, exit 124) may differ only by the record in flight when the kill fell
+    (cut_tail_problem), since it can fall between the CLI's writes to its stream and to its session file (the lead's
+    rulings on the closure checks of 8cf492b2 and f0c0eb1d, 24 Oct 2026)."""
     turns = session_content_turns(session_text)
     out = []
     if turns[0]:
@@ -761,8 +797,10 @@ def content_problems(stream_units: list, session_text: str, cut=()) -> list:
                    f"stream(s)")
     for n, (stream, sess) in enumerate(zip(stream_units, turns[1:]), 1):
         if n in set(cut):
-            k = min(len(stream), len(sess))
-            stream, sess = stream[:k], sess[:k]
+            why = cut_tail_problem([tuple(u) for u in stream], [tuple(u) for u in sess])
+            if why:
+                out.append(f"turn {n} (cut, as the host records): {why}")
+            continue
         if [tuple(u) for u in stream] == [tuple(u) for u in sess]:
             continue
         i = next((k for k, (a, b) in enumerate(zip(stream, sess)) if tuple(a) != tuple(b)), min(len(stream), len(sess)))

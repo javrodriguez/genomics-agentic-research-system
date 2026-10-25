@@ -684,5 +684,61 @@ class T7ClosureCheck8cf492b(unittest.TestCase):
             w.close()
 
 
+# ---- the second closure check of f0c0eb1d (VERDICT CHANGES) and the lead's rulings on it, 24 Oct 2026 ----------------
+def cut_problems(streams, sess, cut):
+    return cca.content_problems([cca.stream_content_units(t) for t in streams], jsonl(sess), cut=cut)
+
+
+class T8SecondClosureF0c0eb1(unittest.TestCase):
+    def test_d1a_probe5_deletions_refuse_under_a_cut(self):
+        streams, sess = two_turns()
+        self.assertNotEqual(cut_problems(streams, sess[:-2], {2}), [], "the last two session records dropped")
+        self.assertNotEqual(cut_problems(streams, sess[:10], {2}), [], "the cut turn's content emptied")
+        self.assertNotEqual(cut_problems(streams, sess[:5] + sess[7:], {1}), [], "a cut first turn's tail dropped")
+
+    def test_d1b_the_record_in_flight_is_the_only_allowance(self):
+        streams, sess = two_turns()
+        self.assertEqual(cut_problems(streams, sess, {2}), [])
+        self.assertEqual(cut_problems(streams, sess[:-1], {2}), [], "the session lacks the stream's last record")
+        extra = assistant("m5", [{"type": "text", "text": "Half a"}], stream=False)
+        self.assertEqual(cut_problems(streams, sess + [extra], {2}), [], "the session one record ahead")
+        two = [extra, assistant("m6", [{"type": "text", "text": "more"}], stream=False)]
+        self.assertNotEqual(cut_problems(streams, sess + two, {2}), [], "two records ahead")
+        edited_ = copy.deepcopy(sess[:-1])
+        edited_[10]["message"]["content"][0]["input"]["file_path"] = "b.md"
+        self.assertNotEqual(cut_problems(streams, edited_, {2}), [], "a rewrite before the record in flight")
+
+    def test_d1c_the_last_record_is_one_message_or_one_result_record(self):
+        u = [("text", "m1", "a"), ("tool_use", "t1", "Bash", "{}"), ("tool_result", "t1", "x", False),
+             ("tool_result", "t2", "y", False)]
+        self.assertEqual(cca._last_record_length(u), 2)
+        self.assertEqual(cca._last_record_length(u[:2] + [("text", "m2", "b"), ("thinking", "m2", "c")]), 2)
+        self.assertEqual(cca._last_record_length([]), 0)
+
+    def test_d1d_witness_the_old_prefix_rule_passes_probe5(self):
+        streams, sess = two_turns()
+        with mock.patch.object(cca, "cut_tail_problem", lambda a, b: None if a[:min(len(a), len(b))] ==
+                               b[:min(len(a), len(b))] else "x"):
+            self.assertEqual(cut_problems(streams, sess[:-2], {2}), [], "witness not performed")
+
+    def test_d2_codex_adapter_reads_a_json_legal_separator_whole(self):
+        import codex_adapter
+        text = (WALKS / CODEX_WALK / "turn-1.jsonl").read_text(encoding="utf-8")
+        marked = text.replace('"aggregated_output": "', '"aggregated_output": "\u2028\u2029\x85', 1)
+        if marked == text:
+            marked = text.replace('"aggregated_output":"', '"aggregated_output":"\u2028\u2029\x85', 1)
+        self.assertNotEqual(marked, text, "witness not performed: no aggregated_output")
+        self.assertIn("\u2028", marked)
+        clean = codex_adapter.read_stream(text)
+        got = codex_adapter.read_stream(marked)
+        self.assertEqual((got["completed"], got["tool_ids"], got["undecoded"]),
+                         (clean["completed"], clean["tool_ids"], clean["undecoded"]))
+        led = json.loads((WALKS / CODEX_WALK / "driver-ledger.json").read_text())
+        native = (WALKS / CODEX_WALK / "session" / led["native_snapshots"][-1]["file"]).read_text(encoding="utf-8")
+        marked = native.replace('"aggregated_output":"', '"aggregated_output":"\u2028', 1)
+        self.assertNotEqual(marked, native, "witness not performed: no rollout aggregated_output")
+        self.assertEqual(len(codex_adapter._rollout_records(marked)), len(codex_adapter._rollout_records(native)))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
