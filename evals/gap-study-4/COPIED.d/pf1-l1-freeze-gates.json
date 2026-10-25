@@ -35,6 +35,11 @@
       "path": "lanes/REVIEW-pf1-l1-84ab639.md",
       "status": "new",
       "reason": "The closure check of this lane at 84ab6393 (VERDICT CHANGES), committed unedited on the lane orchestrator's word, 25 Oct 2026 (sha256 81df8240416d51510a3d9aacf83193ee898b7c994aef3581ecf902cc0ac14ae4); its one banned-word line (a percentage) is excused in language-allowlist.json (one entry appended by this lane) as a bound record."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l1-2971d1d.md",
+      "status": "new",
+      "reason": "The second closure check of this lane at 2971d1d7 (VERDICT PASS), committed unedited on the lane orchestrator's word, 25 Oct 2026 (sha256 bcfc9847da126014c2ab363c1d4671319a067b9c24dae6419075000821d43a2e); its one banned-word line ('out of') is excused in language-allowlist.json (one entry appended by this lane) as a bound record."
     }
   ]
 }

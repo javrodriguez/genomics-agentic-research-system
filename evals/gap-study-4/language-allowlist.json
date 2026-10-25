@@ -252,6 +252,13 @@
       "line_text": "- language-allowlist.json: the w3c line text was updated to the re-cited reason, and an entry was added for my committed review's \"50%\" line. Both are quotations of records, with the ruling date given.",
       "ruled": "2026-10-25",
       "why": "Bound record, never edited: lanes/REVIEW-pf1-l1-84ab639.md is the closure check of lane pf1-l1-freeze-gates at 84ab6393 (VERDICT CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (25 Oct 2026). The share is quoted from the reviewer's earlier review line it describes, not a rate about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l1-2971d1d.md",
+      "pattern": "out-of",
+      "line_text": "  Re-run alone with the file moved out of the tree, `-k test_g8` reads OK. With the file in place, it reproduces the failure.",
+      "ruled": "2026-10-25",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l1-2971d1d.md is the second closure check of lane pf1-l1-freeze-gates at 2971d1d7 (VERDICT PASS), committed as its reviewer wrote it on the lane orchestrator's word (25 Oct 2026). 'Out of' is the reviewer's prose about moving a file, not a rate about any model or take."
     }
   ]
 }
