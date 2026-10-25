@@ -294,6 +294,20 @@
       "line_text": "- Suite in the clone: `Ran 55 tests ... OK`; `--witnesses`: `107/107 red; registry 107`; `copy_manifest.py --check`: `ok: 729 files from 73 fragment(s)`; working tree clean after the runs.",
       "ruled": "2026-10-24",
       "why": "Bound record, never edited: lanes/REVIEW-blindness-sidechains-b715949.md is the final closure check of lane blindness-sidechains at b7159493 (VERDICT PASS), committed as written on the Lane-orchestrator's word, 24 Oct 2026. The line is a gate reading or a witness tally, never a rate."
+    },
+    {
+      "file": "evals/gap-study-4/hook-control/hookctl2/manifest.json",
+      "pattern": "hundred",
+      "line_text": "   \"bytes\": 100,",
+      "ruled": "2026-10-25",
+      "why": "Bound record, never edited: hook-control/hookctl2/manifest.json is a byte copy of probe hookctl2's (HG2) manifest as fetched from athena on 22 Oct 2026, committed by lane pf1-l4a as the Gemini arm's hook-control evidence (records.json binds its sha256). The line is one fetched file's size in bytes, never a count of takes or a rate."
+    },
+    {
+      "file": "evals/gap-study-4/hook-control/hookctl1/manifest.json",
+      "pattern": "hundred",
+      "line_text": "   \"bytes\": 100,",
+      "ruled": "2026-10-25",
+      "why": "Bound record, never edited: hook-control/hookctl1/manifest.json is a byte copy of probe hookctl1's manifest as fetched from athena on 22 Oct 2026, committed by lane pf1-l4a as the Codex arm's hook-control evidence (records.json binds its sha256). The line is one fetched file's size in bytes, never a count of takes or a rate."
     }
   ]
 }

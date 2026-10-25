@@ -29,7 +29,7 @@
     {
       "path": "COPIED.d/pf1-l4a.json",
       "status": "new",
-      "reason": "This lane's copy-record fragment (interface 1). Lane pf1-l4a (pre-freeze review 1's evidence-only fills, 25 Oct 2026). Its edits to files other lanes claim, without a change of status: build_draft.py, prereg-draft.json and tests/test_build_draft.py (the fills and their tests), and the NIT corrections named in this lane's commits."
+      "reason": "This lane's copy-record fragment (interface 1). Lane pf1-l4a (pre-freeze review 1's evidence-only fills, 25 Oct 2026). Its edits to files other lanes claim, without a change of status: build_draft.py, prereg-draft.json and tests/test_build_draft.py (the fills and their tests), and the NIT corrections named in this lane's commits. language-allowlist.json gains two entries (edited by this lane, appended) for the committed probe manifests' byte-count lines (\"bytes\": 100), each bound to its exact text, as bound records."
     }
   ]
 }
