@@ -233,9 +233,10 @@ def g9_beacon(fz, ob, pr, p="G9.beacon") -> list:
         word = "mirror every verified gap study wave"
         if word not in reg["seed_rule"] or word not in reg["residual"]:
             out.append(f"{p}: the draft's beacon rule and residual do not cite the standing word")
-        if reg.get("registration_order") != list(ob.REGISTRATION_ORDER) or len(ob.REGISTRATION_ORDER) != 4 or \
+        if reg.get("registration_order") != list(ob.REGISTRATION_ORDER) or len(ob.REGISTRATION_ORDER) != 5 or \
+                not ob.REGISTRATION_ORDER[0].startswith("1. Fetch every mirror ref") or \
                 not all(w in " ".join(ob.REGISTRATION_ORDER) for w in ("REGISTERED_ROUND", "athena", "gars-mirror.sh",
-                                                                       "an hour")):
+                                                                       "an hour", "read-only")):
             out.append(f"{p}: the draft does not order the registering steps: {reg.get('registration_order')}")
         gone = ob.push_witness_problem("c" * 40, ROUND, [], lambda c, x: True) or ""
         if "documents no retention" not in gone or "never passes" not in gone:
@@ -644,7 +645,7 @@ def g8_copies(cm, p="G8.copies") -> list:
                 frag = json.loads((HERE / "COPIED.d" / "w5b-cp5-pipeline.json").read_text())
                 for e in frag["files"]:
                     if e["path"] == "result.py":
-                        e["reason"] = e["reason"].split(" Pre-freeze review 1, m8")[0] + f" Edited by {cite}."
+                        e["reason"] = e["reason"].split(" Pre-freeze review 1, m8")[0] + cm.CITATION_MARK + f": {cite}."
                 (folder / "w5b-cp5-pipeline.json").write_text(json.dumps(frag))
                 got = [x for x in cm.problems(folder) if "near-rewrite" in x]
                 if [x.split(" ", 1)[0] for x in got] != ["result.py"] or says not in got[0]:
@@ -653,9 +654,17 @@ def g8_copies(cm, p="G8.copies") -> list:
         # HEAD's history is no citation
         good = subprocess.run(["git", "-C", str(HERE), "log", "-1", "--format=%H", "--", "result.py"],
                               capture_output=True, text=True).stdout.strip()
-        mixed = cm.citation_problem("result.py", f"edited by {good[:12]} and {'96c1d959932216ab9acd43003143348c9761a513'}")
+        bad = "96c1d959932216ab9acd43003143348c9761a513"       # on HEAD's line, never touched result.py
+        mixed = cm.citation_problem("result.py", f"x.{cm.CITATION_MARK}: {good[:12]}, {bad}.")
         if not mixed or "did not change it" not in mixed:
             out.append(f"{p}: a good citation covered a bad one: {mixed!r}")
+        # the second closure check of 2971d1d7, minor 2: an owner's token outside this lane's citation sentence needs
+        # only to be a commit in HEAD's history
+        owner = cm.citation_problem("result.py", f"review of {bad}.{cm.CITATION_MARK}: {good[:12]}.")
+        dangling = cm.citation_problem("result.py", f"review of deadbeefdeadbeef01.{cm.CITATION_MARK}: {good[:12]}.")
+        bare = cm.citation_problem("result.py", f"edited by {good[:12]}.")
+        if owner is not None or not dangling or "resolves to no commit" not in dangling or not bare:
+            out.append(f"{p}: the citation scope reads owner {owner!r}, dangling {dangling!r}, no sentence {bare!r}")
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
             git(repo, "init", "-q", "-b", "main")
@@ -674,10 +683,24 @@ def g8_copies(cm, p="G8.copies") -> list:
             side = git(repo, "rev-parse", "HEAD")
             git(repo, "checkout", "-q", "main")
             with mock.patch.object(cm, "REPO", repo):
-                on, off = cm.citation_problem("x.py", f"edited by {shas[1]}"), cm.citation_problem(
-                    "x.py", f"edited by {side}")
-            if on is not None or not off or "outside HEAD's history" not in off:
-                out.append(f"{p}: a citation on HEAD's line reads {on!r}, one on another branch {off!r}")
+                on = cm.citation_problem("x.py", f"x.{cm.CITATION_MARK}: {shas[1]}.")
+                off = cm.citation_problem("x.py", f"x.{cm.CITATION_MARK}: {side}.")
+                off_owner = cm.citation_problem("x.py", f"review of {side}.{cm.CITATION_MARK}: {shas[1]}.")
+            if on is not None or not off or "outside HEAD's history" not in off or not off_owner or \
+                    "outside HEAD's history" not in off_owner:
+                out.append(f"{p}: a citation on HEAD's line reads {on!r}, one on another branch {off!r}, an "
+                           f"owner's on another branch {off_owner!r}")
+        # the five owners' sha citations are back, byte for byte as they stood before this lane's folds
+        for frag, path in (("review-kit-port", "review_kit/BRIEF.md"),
+                           ("w3c-cp3-graders-confound-newtasks", "graders/confounded_design.py"),
+                           ("w8a-walk-layout", "copy_manifest.py"), ("w8b-holdout-digests", "build_draft.py")):
+            then = json.loads(subprocess.run(["git", "-C", str(HERE), "show", f"96c1d959:evals/gap-study-4/COPIED.d/"
+                                              f"{frag}.json"], capture_output=True, text=True).stdout)
+            now = json.loads((HERE / "COPIED.d" / f"{frag}.json").read_text())
+            was = next(e["reason"] for e in then["files"] if e["path"] == path)
+            got = next(e["reason"] for e in now["files"] if e["path"] == path)
+            if got.split(" Pre-freeze review 1, m8")[0] != was:
+                out.append(f"{p}: {frag}'s reason for {path} is not its owner's words before this lane")
     except Exception as e:  # noqa: BLE001
         return [f"ERROR {p}: {type(e).__name__}: {str(e)[:240]}"]
     return out
@@ -925,7 +948,8 @@ def g9c_branches(fz, ob, p="G9c.branches") -> list:
         if got != want:
             out.append(f"{p}: the clean case reads {got}")
         if "rewritten" in ob.residual().split("The remaining road", 1)[0] or \
-                "a mirror whose history someone rewrites, or GitHub itself" not in ob.residual():
+                "a mirror whose history someone rewrites, or GitHub itself" not in ob.residual() or \
+                "a deleted branch" not in ob.residual() or "goes unseen" not in ob.residual():
             out.append(f"{p}: the residual does not name the remaining road alone")
     except Exception as e:  # noqa: BLE001
         return [f"ERROR {p}: {type(e).__name__}: {str(e)[:300]}"]
@@ -1087,7 +1111,7 @@ WITNESSES = {
     "missing-push-admitted": ("G9c.branches", "freeze", (("    if missing:\n        return (f\"{len(missing)}",
                                                           "    if False:\n        return (f\"{len(missing)}"),)),
     "draft-lines-unchecked": ("G9c.branches", "freeze", (("    if apart:\n", "    if False:\n"),)),
-    "citation-one-covers-all": ("G8.copies", "copy_manifest", (("        if full not in edits:\n            return "
+    "citation-one-covers-all": ("G8.copies", "copy_manifest", (("        if must_edit and full not in edits:\n            return "
                                                                "f\"its reason cites {t}, which did not",
                                                                "        if False:\n            return "
                                                                "f\"its reason cites {t}, which did not"),)),

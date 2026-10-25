@@ -29,9 +29,11 @@ other draft after the registration off HEAD's one line (freeze.mirror_problem; t
 candidates on parallel pushed branches are refused.
 
 WHAT THIS DOES NOT BIND, NAMED (residual(), carried into the draft beside the rule): a mirror whose history someone
-rewrites, or GitHub itself (or the clock its records are stamped by); a push record GitHub no longer returns refuses;
-and the round's BLS signature is not verified here (no stdlib road): two relays run by different operators must agree
-instead.
+rewrites, or GitHub itself (or the clock its records are stamped by); a record GitHub stops returning refuses the
+freeze only when it is one of the two witnessing pushes: a dropped record of a candidate branch goes unseen, so GitHub
+dropping a deleted branch's records is a remaining road (a mirror rule blocking deletion and force push would close
+it; that is a repository setting, Javier's call); and the round's BLS signature is not verified here (no stdlib road):
+two relays run by different operators must agree instead.
 
 The network is read only by read_relays and push_records: at the real freeze (on the Mac), by --read, and by prereg.py
 --order-from-beacon once the round is published. No take, check or test reads it; tests hand in an opener and records.
@@ -79,12 +81,15 @@ STANDING_WORD = ("Javier's standing word \"mirror every verified gap study wave\
                  "plans/gap-study-round-4/next-slices-2026-10-11.md)")
 # The registering steps, in their run order (written into the draft as take_order_beacon.registration_order).
 REGISTRATION_ORDER = (
-    "1. Commit the round: set REGISTERED_ROUND in order_beacon.py to a quicknet round (order_beacon.py --round-at) and "
+    "1. Fetch every mirror ref into the freezing clone, read-only, before the freeze: freeze.mirror_problem refuses "
+    "while any commit GitHub records on " + WITNESS_REPO + " is missing from it, so a force push whose old commits the "
+    "mirror no longer serves blocks the freeze.",
+    "2. Commit the round: set REGISTERED_ROUND in order_beacon.py to a quicknet round (order_beacon.py --round-at) and "
     "re-derive the draft, in one commit on the freeze line.",
-    "2. athena PASS: the whole gars-gap4 battery passes at that commit.",
-    "3. Mirror: push that verified wave to " + WITNESS_REPO + " with _local/bin/gars-mirror.sh, under " + STANDING_WORD
+    "3. athena PASS: the whole gars-gap4 battery passes at that commit.",
+    "4. Mirror: push that verified wave to " + WITNESS_REPO + " with _local/bin/gars-mirror.sh, under " + STANDING_WORD
     + "; GitHub stamps the push.",
-    "4. Wait: the round must publish at least an hour (" + str(WITNESS_LEAD_S) + " s) after GitHub's push stamp; the "
+    "5. Wait: the round must publish at least an hour (" + str(WITNESS_LEAD_S) + " s) after GitHub's push stamp; the "
     "freeze refuses otherwise, and reads the round only once it is published.",
 )
 # Retention (checked Sat 24 Oct 2026 by lane L1's builder): GitHub's REST docs for GET /repos/{owner}/{repo}/activity
@@ -132,11 +137,14 @@ def residual() -> str:
             "change and a push of the last commit that changed the draft, each at least an hour before the round is "
             "published, and that no commit the mirror's records hold registers another round, or changes the draft "
             "after the registration, off that one line. The remaining road is only a mirror whose history someone "
-            "rewrites, or GitHub itself (or the clock its records are stamped by); and the round's BLS signature is "
-            "not verified (two relays run by different operators must agree instead). The witnessing pushes are "
-            "mirrors of verified "
+            "rewrites, or GitHub itself (or the clock its records are stamped by), and among GitHub's own roads its "
+            "dropping a deleted branch's records: a record GitHub stops returning refuses the freeze only when it is "
+            "one of the two witnessing pushes, and a dropped record of a candidate branch goes unseen (a mirror rule "
+            "blocking deletion and force push would close it, a repository setting and Javier's call). The round's "
+            "BLS signature is not verified (two relays run by different operators must agree instead). The "
+            "witnessing pushes are mirrors of verified "
             "waves, made under " + STANDING_WORD + "; " + RETENTION_NOTE + ", so a push record GitHub no longer "
-            "returns refuses the freeze, never passes it.")
+            "returns for a witnessing push refuses the freeze, never passes it.")
 
 
 def registered_value(source: str):

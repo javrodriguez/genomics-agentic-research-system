@@ -245,26 +245,35 @@ def changed_share(orig: bytes, copy: bytes) -> float:
 COMMIT_TOKEN = re.compile(r"(?<![0-9a-f])[0-9a-f]{8,40}(?![0-9a-f])")
 
 
+# The citation sentence lane pf1-l1-freeze-gates appends to each near-rewrite's reason (m8): the strict rule reads
+# the tokens inside it; every other hex token in a reason is its owner's prose (the second closure check of 2971d1d7,
+# minor 2) and needs only to be a commit in HEAD's history.
+CITATION_MARK = " Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates"
+
+
 def citation_problem(path: str, why: str) -> str | None:
     """Why a near-rewrite's reason does not cite the commits that edited it, or None (the review of 53d0e9af, finding
-    3, and the closure check of 84ab6393, finding 2). Every 8-to-40 hex token in the reason must name a commit in
-    HEAD's history that changed this file after its copy commit (the first commit in its history): a bare date, a
-    hash that names nothing, a commit on another branch, the copy commit or a commit that never touched the file each
-    refuse, and one good citation never covers a bad one."""
-    tokens = COMMIT_TOKEN.findall(why or "")
-    if not tokens:
-        return "its reason cites no commit that edited it"
+    3, its closure check, finding 2, and the second closure check, minor 2). The reason must carry this lane's
+    citation sentence (CITATION_MARK), and every 8-to-40 hex token inside it must be a commit in HEAD's history that
+    changed this file after its copy commit (the first commit in its history): a bare date, a hash that names nothing,
+    a commit on another branch, the copy commit or a commit that never touched the file each refuse, and one good
+    citation never covers a bad one. Every hex token elsewhere in the reason must be a commit in HEAD's history."""
+    why = why or ""
+    head, mark, sentence = why.partition(CITATION_MARK)
+    strict = COMMIT_TOKEN.findall(sentence) if mark else []
+    if not strict:
+        return "its reason carries no citation sentence naming a commit that edited it"
     listed = git("log", "--full-history", "--format=%H", "--", study.rel(path))
     history = listed.stdout.decode().split() if listed.returncode == 0 else []
     edits = set(history[:-1])            # newest first; the last is the copy commit
-    for t in tokens:
+    for t, must_edit in [(t, False) for t in COMMIT_TOKEN.findall(head)] + [(t, True) for t in strict]:
         got = git("rev-parse", "--verify", "--quiet", f"{t}^{{commit}}")
         if got.returncode != 0:
             return f"its reason cites {t}, which resolves to no commit"
         full = got.stdout.decode().strip()
         if git("merge-base", "--is-ancestor", full, "HEAD").returncode != 0:
             return f"its reason cites {t}, a commit outside HEAD's history"
-        if full not in edits:
+        if must_edit and full not in edits:
             return f"its reason cites {t}, which did not change it after its copy commit"
     return None
 
