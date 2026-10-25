@@ -364,13 +364,22 @@ def write_flagged(doc: dict, contents: dict, labels_problems) -> str:
     return render_flagged(items, doc["flagged"])
 
 
-def blind_labels_problems(agreement=None) -> list:
-    """Why the blind labels are not yet committed as read (agreement.history_problems), or [] when they are."""
+def blind_labels_problems(smp: dict, defs: dict, agreement=None) -> list:
+    """Why the blind labels are not yet committed as read (agreement.history_problems) or not complete for the sample
+    `smp` (agreement.validate_labels: every blind item labelled, each label defined; closure MINOR 2), or []."""
     if agreement is None:
         import agreement
     if not os.path.isfile(agreement.LABELS):
         return ["no labels.json: the blind sheet is not labelled yet"]
-    return agreement.history_problems()
+    bad = agreement.history_problems()
+    if bad:
+        return bad
+    try:
+        with open(agreement.LABELS, encoding="utf-8") as fh:
+            agreement.validate_labels(json.load(fh), smp, defs)
+    except (ValueError, KeyError, TypeError, agreement.AgreementError) as err:
+        return [f"LABELS: {err}"]
+    return []
 
 
 def inside_study(path) -> bool:
@@ -405,7 +414,7 @@ def main(argv=None) -> int:
         with open(DEFINITIONS, encoding="utf-8") as fh:
             defs = json.load(fh)
         if args.flagged:
-            text = write_flagged(doc, contents, blind_labels_problems())
+            text = write_flagged(doc, contents, blind_labels_problems(doc, defs))
             with open(args.out, "w", encoding="utf-8") as fh:
                 fh.write(text)
             print(f"sheet: wrote {len(doc['flagged']['items'])} flagged items to {args.out}")

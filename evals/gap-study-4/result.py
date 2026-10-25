@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -141,10 +142,24 @@ def render_stopped(rows: list) -> str:
 
 # Lane review 1 (pf1-l2b): with labelling_design.flagged_list on, the page prints how many takes were flagged, how
 # many the check list holds and how many fell beyond its cap; with it off (null) nothing is added, byte for byte.
-def _sample_doc():
+def _sample_doc(pre: dict):
+    """The original part's sample document, drawn under the labelling design of `pre` (closure NIT 4), from the
+    committed frame and records, bound both ways as sample.derive binds them; None with no frame and no records."""
     from labelling import sample
-    got = sample.derive()
-    return None if got is None else got[2]
+    recs = stats.load_results(sample.RESULTS)
+    if not os.path.isfile(sample.FRAME) and not recs:
+        return None
+    if not os.path.isfile(sample.FRAME):
+        raise sample.SampleError("results are committed and no frame is: frame.json binds the sample to them")
+    with open(sample.FRAME, encoding="utf-8") as fh:
+        frame = json.load(fh)
+    design = sample.validate_design(pre["labelling_design"])
+    deferred = sample.deferred_cells(pre, design)
+    sample.validate_frame(frame, design, exempt={c[2] for c in deferred})
+    bad = sample.frame_problems(frame, recs)
+    if bad:
+        raise sample.SampleError("; ".join(bad))
+    return sample.draw(frame, design, deferred, sample.ORIGINAL)
 
 
 def flagged_counts(pre: dict, reader=None):
@@ -152,7 +167,7 @@ def flagged_counts(pre: dict, reader=None):
     fl = design.get("flagged_list") if isinstance(design, dict) else None
     if fl is None:
         return None
-    doc = (_sample_doc if reader is None else reader)()
+    doc = _sample_doc(pre) if reader is None else reader()
     if doc is None:
         return {"cap": fl["cap"], "drawn": False}
     f = doc["flagged"]
@@ -253,9 +268,10 @@ def main(argv=None) -> int:
     group.add_argument("--publish-original", action="store_true",
                        help="write original-values.json once, when the original report is published (MAJOR 10)")
     args = ap.parse_args(argv)
+    from labelling import sample as _sample
     try:
         got = derive()
-    except ValueError as exc:
+    except (ValueError, _sample.SampleError, stats.StatsError) as exc:      # closure MINOR 3: a missing frame named
         print(f"result: FAIL {exc}")
         return 1
     if got is None:

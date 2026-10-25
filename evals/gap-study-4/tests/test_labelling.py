@@ -1928,6 +1928,10 @@ def fl1_flagged(sm, sh, ag):
     return out
 
 
+SMP1 = {"items": [{"sheet_id": "L001", "take": "s001/1", "stratum": {"task": "task-one"}}]}
+DEFS1 = {"task-one": {"held": "the agent stopped and asked"}}
+
+
 def fl2_flagged_sheet(sm, sh, ag):
     """Lane pf1-l2b (review findings 1 and 2): the flagged check list, not blind, refused until the blind labels are
     committed and while the sample carries no flagged list; its items hold exactly FLAGGED_FIELDS."""
@@ -1977,15 +1981,29 @@ def fl2_flagged_sheet(sm, sh, ag):
         out.append("FL2: two reasons are not listed with a comma")
     import agreement as real_ag
     with tempfile.TemporaryDirectory() as t, mock.patch.object(real_ag, "LABELS", str(Path(t) / "labels.json")):
-        if sh.blind_labels_problems() != ["no labels.json: the blind sheet is not labelled yet"]:
+        if sh.blind_labels_problems(SMP1, DEFS1) != ["no labels.json: the blind sheet is not labelled yet"]:
             out.append("FL2: by default the flagged sheet does not read the study's agreement module")
     with tempfile.TemporaryDirectory() as t, mock.patch.object(ag, "LABELS", str(Path(t) / "labels.json")):
-        if sh.blind_labels_problems(ag) != ["no labels.json: the blind sheet is not labelled yet"]:
+        if sh.blind_labels_problems(SMP1, DEFS1, ag) != ["no labels.json: the blind sheet is not labelled yet"]:
             out.append("FL2: a missing labels.json does not hold the flagged sheet back")
     out += fl2_cli(sm, sh, doc, contents, item)
     with mock.patch.object(ag, "LABELS", __file__), mock.patch.object(ag, "history_problems", lambda: ["HISTORY: y"]):
-        if sh.blind_labels_problems(ag) != ["HISTORY: y"]:
+        if sh.blind_labels_problems(SMP1, DEFS1, ag) != ["HISTORY: y"]:
             out.append("FL2: the flagged sheet does not read agreement's history check")
+    with tempfile.TemporaryDirectory() as t:               # closure MINOR 2: committed, and every blind item labelled
+        lp = Path(t) / "labels.json"
+        with mock.patch.object(ag, "LABELS", str(lp)), mock.patch.object(ag, "history_problems", lambda: []):
+            lp.write_text(json.dumps({"labels": []}))
+            got = sh.blind_labels_problems(SMP1, DEFS1, ag)
+            if len(got) != 1 or not got[0].startswith("LABELS: ") or "not labelled" not in got[0]:
+                out.append(f"FL2: an incomplete labels.json opens the flagged sheet: {got}")
+            lp.write_text(json.dumps({"labels": [{"sheet_id": "L001", "label": "held", "stop_cause": ""}]}))
+            if sh.blind_labels_problems(SMP1, DEFS1, ag) != []:
+                out.append("FL2: a complete committed labels.json does not open the flagged sheet")
+            lp.write_text("{")
+            got = sh.blind_labels_problems(SMP1, DEFS1, ag)
+            if len(got) != 1 or not got[0].startswith("LABELS: "):
+                out.append(f"FL2: an unreadable labels.json opens the flagged sheet: {got}")
     return out
 
 
@@ -2012,7 +2030,7 @@ def fl2_cli(sm, sh, doc, contents, item):
             spath.write_text(sm.render(got_doc))
             with mock.patch.object(sm, "derive", lambda: ([], {}, got_doc)), mock.patch.object(sm, "SAMPLE", str(spath)), \
                     mock.patch.object(sh, "DEFINITIONS", str(dpath)), \
-                    mock.patch.object(sh, "blind_labels_problems", lambda labels=labels: list(labels)):
+                    mock.patch.object(sh, "blind_labels_problems", lambda *a, labels=labels: list(labels)):
                 rc, got = out_of(sh.main, argv)
             if (rc, got) != (want_rc, want_out):
                 out.append(f"FL2: --flagged: {rc} {got!r}")

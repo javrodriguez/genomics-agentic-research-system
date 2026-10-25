@@ -287,6 +287,13 @@
       "line_text": "   The port matches round 3 (`ci.yml:287`), but m14's words (\"outperform\", \"stronger\", \"beats\") are therefore checked in the study folder, RESULT.md and commit bodies, and not in the one public section.",
       "ruled": "2026-10-24",
       "why": "Bound record, never edited: lanes/REVIEW-pf1-l2b-9241942.md is the fresh independent review of lane pf1-l2b-labelling-stats at 9241942 (VERDICT CHANGES), committed as its reviewer wrote it on the lead's word (24 Oct 2026). The words are the reviewer's quotations of the lane's own new lint patterns and its tests, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l2b-242f49e.md",
+      "pattern": "ratio-slash",
+      "line_text": "| 6 red run, 169-row bytes | red 52ae6bb (0/3, real assertions), capture runs | closed |",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l2b-242f49e.md is the fresh closure check of lane pf1-l2b-labelling-stats at 242f49e (VERDICT PASS), committed as its reviewer wrote it on the lead's word (24 Oct 2026). '0/3' is the reviewer's count of an athena run's passing commands (0 of 3), not a rate claimed about any model or take."
     }
   ]
 }

@@ -577,10 +577,11 @@ class RV1FlaggedRoad(unittest.TestCase):
             sh.write_flagged(flagged_doc(), {}, [])
         import agreement
         with tempfile.TemporaryDirectory() as t, mock.patch.object(agreement, "LABELS", str(Path(t) / "labels.json")):
-            self.assertEqual(sh.blind_labels_problems(agreement), ["no labels.json: the blind sheet is not labelled yet"])
+            self.assertEqual(sh.blind_labels_problems({"items": []}, {}, agreement),
+                             ["no labels.json: the blind sheet is not labelled yet"])
         with mock.patch.object(agreement, "LABELS", __file__), \
                 mock.patch.object(agreement, "history_problems", lambda: ["HISTORY: x"]):
-            self.assertEqual(sh.blind_labels_problems(agreement), ["HISTORY: x"])
+            self.assertEqual(sh.blind_labels_problems({"items": []}, {}, agreement), ["HISTORY: x"])
 
     def test_the_order_is_registered(self):
         draft = json.loads((HERE / "prereg-draft.json").read_text(encoding="utf-8"))
@@ -612,8 +613,8 @@ class RV2Seen(unittest.TestCase):
         draft = json.loads((HERE / "prereg-draft.json").read_text(encoding="utf-8"))
         w3b = [b for b in draft["box_residuals"] if b.get("name") == "W-3b"][0]["text"]
         self.assertIn("sends a claude-code take to the human sample. What REMAINS", w3b)      # on (OD127): as before
-        self.assertIn("goes to the flagged check list", draft["labelling_rules"]["flagged_seen"])
-        self.assertTrue(all("goes to the flagged check list" in r["text"] for r in draft["routed_residuals"]))
+        self.assertIn("go to the flagged check list", draft["labelling_rules"]["flagged_seen"])
+        self.assertTrue(all("go to the flagged check list" in r["text"] for r in draft["routed_residuals"]))
         self.assertFalse(any("no separate human look" in json.dumps(v) for k, v in draft.items()
                              if k in ("box_residuals", "labelling_rules", "routed_residuals")))
         with mock.patch.object(sm, "FLAGGED_LIST", None):
@@ -758,6 +759,84 @@ class RV8To11Nits(unittest.TestCase):
 
     def test_11_the_docstring_lists_the_switch(self):
         self.assertIn('"flagged_list": None | {"cap"', sm.__doc__)
+
+
+# ---- C: the closure check at 242f49e (VERDICT PASS, three MINORs), folded ------------------------------------------
+
+class C1CapWords(unittest.TestCase):
+    def test_the_seen_sentences_carry_the_cap_and_the_part(self):
+        import build_draft
+        draft = json.loads((HERE / "prereg-draft.json").read_text(encoding="utf-8"))
+        for text in [draft["labelling_rules"]["flagged_seen"]] + [r["text"] for r in draft["routed_residuals"]]:
+            for want in ("up to 40", "a seeded draw", "published and not read", "the original report's cells",
+                         "follow-up"):
+                self.assertIn(want, text.lower())
+        self.assertEqual(draft["labelling_rules"]["flagged_seen"], build_draft.flagged_seen())
+        with mock.patch.object(sm, "FLAGGED_LIST", {"cap": None}):
+            text = build_draft.flagged_seen()
+            self.assertNotIn("up to", text.lower())
+            self.assertIn("every take its grader flags", text.lower())
+        with mock.patch.object(sm, "FLAGGED_LIST", {"cap": 7}):
+            self.assertIn("up to 7", build_draft.flagged_seen().lower())
+        self.assertEqual(ll.scan_text(build_draft.flagged_seen(), "x.md", []), [])
+
+
+class C3FrameMissing(unittest.TestCase):
+    def test_result_main_names_the_missing_frame(self):
+        import io
+        from contextlib import redirect_stdout
+        err = sm.SampleError("results are committed and no frame is: frame.json binds the sample to them")
+
+        def boom():
+            raise err
+        buf = io.StringIO()
+        with mock.patch.object(result, "derive", boom), redirect_stdout(buf):
+            code = result.main(["--check"])
+        self.assertEqual(code, 1)
+        self.assertEqual(buf.getvalue(), f"result: FAIL {err}\n")
+
+    def test_check_results_main_names_the_missing_frame(self):
+        import io
+        from contextlib import redirect_stdout
+        err = sm.SampleError("results are committed and no frame is: frame.json binds the sample to them")
+        buf = io.StringIO()
+        with mock.patch.object(cr, "is_shallow", lambda: False), \
+                mock.patch.object(cr, "runtime_timing_problems", lambda: []), \
+                mock.patch.object(cr.takes_mod, "load_rows", lambda: [{"r": 1}]), \
+                mock.patch.object(cr.takes_mod, "read_history", lambda: []), \
+                mock.patch.object(cr.stats, "load_results", lambda *a: []), \
+                mock.patch.object(cr.prereg, "is_frozen", lambda: True), \
+                mock.patch.object(cr.prereg, "require_frozen", lambda *a: {}), \
+                mock.patch.object(cr, "check_pins", lambda: []), \
+                mock.patch.object(cr, "check_frozen_content", lambda **k: []), \
+                mock.patch.object(cr, "check_publication", mock.Mock(side_effect=err)), redirect_stdout(buf):
+            code = cr.main(["--check"])
+        self.assertEqual(code, 1)
+        self.assertIn(f"check_results: REFUSE: {err}", buf.getvalue())
+        self.assertNotIn("Traceback", buf.getvalue())
+
+
+class C4FlaggedCountsReadPre(unittest.TestCase):
+    def test_the_pre_passed_is_the_design_read(self):
+        frame = [{"take": f"s{i}/1", "readers": "agree",
+                  "record": rec(repeat=i, human_sample=True, human_why=["scope_read-flag"])} for i in (1, 2, 3)]
+        lab = {"seed": 3, "about_n": 1, "oversample": {"failure": 1, "disagree": 1}, "strata": list(sm.STRATA),
+               "harness_models": {CLAUDE: ["a1"]}}
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t)
+            (t / "records").mkdir()
+            (t / "records" / "r.json").write_text(json.dumps([e["record"] for e in frame]))
+            (t / "frame.json").write_text(json.dumps(frame))
+            with mock.patch.object(sm, "FRAME", str(t / "frame.json")), \
+                    mock.patch.object(sm, "RESULTS", str(t / "records")), \
+                    mock.patch.object(sm, "PREREG", str(t / "absent-prereg.json")):
+                one = result.flagged_counts({"labelling_design": dict(lab, flagged_list={"cap": 1})})
+                every = result.flagged_counts({"labelling_design": dict(lab, flagged_list={"cap": None})})
+                (t / "frame.json").unlink()
+                with self.assertRaisesRegex(sm.SampleError, "no frame"):
+                    result.flagged_counts({"labelling_design": dict(lab, flagged_list={"cap": 1})})
+        self.assertEqual((one["flagged"], one["listed"], one["beyond_cap"]), (3, 1, 2))
+        self.assertEqual((every["flagged"], every["listed"], every["beyond_cap"]), (3, 3, 0))
 
 
 if __name__ == "__main__":

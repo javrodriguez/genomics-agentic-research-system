@@ -1785,8 +1785,17 @@ def flagged_seen():
     if sample.FLAGGED_LIST is None:
         return ("With labelling_design.flagged_list null, a take its grader flags for the human sample gets no "
                 "separate human look: it is seen only if the blind draw of about 80 picks it.")
-    return ("Every take its grader flags for the human sample goes to the flagged check list (labelling_design."
-            "flagged_list), which a person reads after the blind sheet's labels are committed.")
+    cap = sample.FLAGGED_LIST["cap"]
+    if cap is None:
+        reach = ("every take its grader flags for the human sample in the original report's cells goes to the "
+                 "flagged check list (labelling_design.flagged_list)")
+    else:
+        reach = (f"up to {cap} of the takes its grader flags for the human sample in the original report's cells go to "
+                 f"the flagged check list (labelling_design.flagged_list), all of them when {cap} or fewer are "
+                 f"flagged and a seeded draw of {cap} when more are, with the count beyond the cap published and not "
+                 f"read")
+    return (reach[0].upper() + reach[1:] + "; a deferred arm's cells get their own list only in its follow-up, after "
+            "its go. A person reads the list after the blind sheet's labels are committed (OD127).")
 
 
 def labelling_rules():
