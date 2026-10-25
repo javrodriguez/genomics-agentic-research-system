@@ -37,12 +37,13 @@ used to say the review commit's sha alone made the order impossible to choose. I
 operator holding the clone could commit the review, preview the order, reset and recommit, and
 pick among as many orders as it cared to commit. The seed is now order_beacon.seed of one public
 drand round the draft registers (take_order_beacon) and its randomness alone, read by the freeze
-from two relays; nothing the operator commits enters it. The freeze also requires GitHub's own push
-record of the commit that registered the round, an hour or more before the round is published, so
-the round was fixed before its value existed, and `--order-from-beacon` refuses to preview an order
-before the round is published. What is left is named in the draft (take_order_beacon.residual):
-whoever controls GitHub or its clock could register a round late, and the round's signature is not
-verified.
+from two relays; nothing the operator commits enters it. The freeze also requires that the round
+was registered once in its history (from None, never changed again), and GitHub's own push records
+of that registering commit and of the draft's last commit, each an hour or more before the round is
+published; `--order-from-beacon` refuses to preview an order before the round is published. What is
+left is named in the draft (take_order_beacon.residual): whoever controls GitHub or its clock, a
+local history rewritten to hide an earlier registration the mirror still holds, and the round's
+unverified signature.
 
 No model, no network, stdlib only.
 """

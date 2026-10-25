@@ -16,15 +16,25 @@ guards and must turn that clause red alone.
   G9.beacon    MAJOR 9: order_beacon reads drand quicknet rounds as published (the round the builder read from both
                relays on 24 Oct 2026 is the test vector); read_relays refuses an unpublished round without reading the
                network, a disagreement and a randomness that is not the signature's sha256; prepare seeds the order
-               with order_beacon.seed, never the review commit; the real freeze refuses a review committed at or after
-               a --beacon-reading file; ruling 1 of the lane orchestrator (24 Oct 2026): the seed is the round and its
-               randomness alone, so two reviews freeze one order, and the real freeze reads the relays only once
-               GitHub's push records on the private GARS mirror hold the commit that registered the round, stamped an hour
-               or more before it is published (registering_commit on a scratch history, push_records on a stand-in
-               gh); the draft registers the beacon with its round PENDING; and prereg.py --order-from-beacon refuses
+               with order_beacon.seed, never the review commit; the real freeze refuses a --beacon-reading file;
+               ruling 1 of the lane orchestrator (24 Oct 2026): the seed is the round and its randomness alone, so
+               two reviews freeze one order, and take_order_witness refuses unless GitHub's push records on the
+               private GARS mirror hold the commits that registered the round and last changed the draft, stamped an
+               hour or more before it is published (push_records on a stand-in gh; G9b.witness reads real scratch
+               histories); the draft registers the beacon with its round PENDING; and prereg.py --order-from-beacon refuses
                before the round is published and reads a frozen file's reading. Witnesses: seed-ignores-randomness,
                relays-not-compared, witness-repo-aegis, push-lead-unchecked, push-holding-unchecked,
                preview-before-round.
+  G9b.witness  The review of 53d0e9af, findings 1 and 2, on scratch histories: a docstring naming rounds registers
+               nothing (registered_value parses the assignment); a round set twice, set back, set from another round
+               or never None first is refused; a draft changed after the witnessed push is refused, and the witness
+               (both commits, their pushes and GitHub's stamps) is what take_order_witness returns and the freeze writes
+               (FREEZE_WRITTEN_KEYS); take_order_beacon_reading takes no review commit; gh api is pinned to github.com
+               and refuses another GH_HOST. Witnesses: docstring-registers, history-unchecked, draft-unwitnessed,
+               host-unpinned.
+  G10.nits     NITs 4, 6 and 7: prepare's docstring keeps the review commit out of the seed; a pinned file with
+               uncommitted edits fails --check's pins leg; an unparseable grade.json counts as pending.
+               Witnesses: dirty-pin-admitted, unreadable-grade-skipped.
   G2b.pending  m2: prepare refuses a draft holding any PENDING input even with its stats_design sentinel replaced.
                Witness: pending-unchecked.
   G4.coverage  MAJOR 4 part 3: the freeze's coverage reading names the missing walks of arms A and O and none of the
@@ -45,7 +55,10 @@ guards and must turn that clause red alone.
                fixture bound. Witnesses: minimum-dropped, binding-bytes-unchecked, shapes-word-alone.
   G8.copies    m8: copy_manifest --check refuses an edited copy that is a near-rewrite (above NEAR_REWRITE_SHARE of its
                lines changed) whose reason cites no lane record; the live record is clean of it (review_kit/rounds.json
-               aside, unclaimed since 96c1d959 and reported to the orchestrator). Witness: near-rewrite-unchecked.
+               aside, unclaimed since 96c1d959 and reported to the orchestrator); after the review of 53d0e9af
+               (finding 3) a citation is a commit that resolves and changed the file after its copy commit: a bare
+               date, a hash naming nothing, a commit that never touched it and its copy commit each refuse.
+               Witnesses: near-rewrite-unchecked, citation-unresolved-admitted, copy-commit-admitted.
 
 Reads the committed study and copies it into temporary folders; patched openers stand in for the network. No model,
 no network, no container. --witnesses runs every witness and prints a line for each.
@@ -278,32 +291,34 @@ def g9_beacon(fz, ob, pr, p="G9.beacon") -> list:
                 ("no push holding it", pushed, early, lambda c, s: False),
                 ("a push under the lead", pushed, [(ROUND_TIME - lead + 60, "a" * 40)], holds),
                 ("a push after the round", pushed, [(ROUND_TIME + 60, "a" * 40)], holds)):
-            seen = []
-            with mock.patch.object(fz, "registering_commit", lambda r, commit=commit: commit):
+            with mock.patch.object(fz, "registering_commit", lambda r, commit=commit: commit), \
+                    mock.patch.object(fz, "draft_commit", lambda: pushed):
                 try:
-                    fz.take_order_beacon_reading(d, REVIEW, opener=relay_opener(seen=seen), now=ROUND_TIME + 120,
-                                                 pushes=pushes, contains=contains)
-                    out.append(f"{p}: the real freeze ran with {name}")
+                    fz.take_order_witness(d, pushes=pushes, contains=contains)
+                    out.append(f"{p}: the witness held with {name}")
                 except ValueError:
                     pass
-            if seen:
-                out.append(f"{p}: the relays were read with {name}")
-        with mock.patch.object(fz, "registering_commit", lambda r: pushed):
-            if fz.take_order_beacon_reading(d, REVIEW, opener=relay_opener(), now=ROUND_TIME + 60, pushes=early
-                                            + [(ROUND_TIME + 5, "b" * 40)], contains=holds) != reading():
-                out.append(f"{p}: the real freeze with an early witnessed push does not read the relays")
+        if ob.push_witness_problem(pushed, ROUND, early, lambda c, s: False) is None:
+            out.append(f"{p}: a push that does not hold the commit witnessed it")
+        with mock.patch.object(fz, "registering_commit", lambda r: pushed), \
+                mock.patch.object(fz, "draft_commit", lambda: pushed):
+            w = fz.take_order_witness(d, pushes=early + [(ROUND_TIME + 5, "b" * 40)], contains=holds)
+            if w.get("registering_push") != {"sha": "a" * 40, "stamp": early[0][0]}:
+                out.append(f"{p}: an early witnessed push is not the witness: {w}")
+            if fz.take_order_beacon_reading(d, opener=relay_opener(), now=ROUND_TIME + 60) != reading():
+                out.append(f"{p}: the real freeze does not read the relays")
             with tempfile.TemporaryDirectory() as tmp:
                 f = Path(tmp) / "reading.json"
                 f.write_text(json.dumps(reading()))
                 try:
-                    fz.take_order_beacon_reading(d, REVIEW, reading_file=f, opener=relay_opener(), now=ROUND_TIME + 60)
+                    fz.take_order_beacon_reading(d, reading_file=f, opener=relay_opener(), now=ROUND_TIME + 60)
                     out.append(f"{p}: the real freeze took a --beacon-reading file")
                 except ValueError:
                     pass
-                if fz.take_order_beacon_reading(d, REVIEW, rehearsal=True, reading_file=f) != reading():
+                if fz.take_order_beacon_reading(d, rehearsal=True, reading_file=f) != reading():
                     out.append(f"{p}: a rehearsal's --beacon-reading file was not read")
             with contextlib.redirect_stdout(io.StringIO()) as said:
-                synthetic = fz.take_order_beacon_reading(d, REVIEW, rehearsal=True)
+                synthetic = fz.take_order_beacon_reading(d, rehearsal=True)
             if synthetic["signature"] != fz.SYNTHETIC_SIGNATURE or fz.BEACON_NOT_REHEARSED not in said.getvalue():
                 out.append(f"{p}: a rehearsal without a reading is not marked synthetic")
         live = committed_draft()
@@ -336,23 +351,8 @@ def g9_beacon(fz, ob, pr, p="G9.beacon") -> list:
         with mock.patch.object(pr, "load", lambda: frozen_doc):
             if pr.order_from_beacon() != frozen["take_order"]:
                 out.append(f"{p}: --order-from-beacon does not read the frozen file's order")
-        with tempfile.TemporaryDirectory() as tmp:                     # registering_commit on a scratch history
-            repo = Path(tmp)
-            git(repo, "init", "-q")
-            (repo / "evals" / "gap-study-4").mkdir(parents=True)
-            shas = []
-            for value in ("None", "123", "1234"):
-                (repo / "evals" / "gap-study-4" / "order_beacon.py").write_text(
-                    f"x = 1\nREGISTERED_ROUND: int | None = {value}\n")
-                git(repo, "add", "-A")
-                git(repo, "commit", "-q", "-m", value)
-                shas.append(git(repo, "rev-parse", "HEAD"))
-            with mock.patch.object(fz, "REPO", repo):
-                got = [fz.registering_commit(r) for r in (123, 1234, 12)]
-        if got != [shas[1], shas[2], None]:
-            out.append(f"{p}: registering_commit reads {got}, wanted the commits that set 123 and 1234, none for 12")
         fake = types.SimpleNamespace(returncode=0, stdout=f"2026-10-24T20:00:00Z\t{'d' * 40}\n", stderr="")
-        with mock.patch.object(fz.subprocess, "run", lambda argv, **k: fake if argv[:2] == ["gh", "api"] and
+        with mock.patch.object(fz.subprocess, "run", lambda argv, **k: fake if argv[:4] == ["gh", "api", "--hostname", "github.com"] and
                                "repos/javrodriguez/gars-cloud-mirror/activity?activity_type=push&per_page=100"
                                in argv else None):
             if fz.push_records() != [(ROUND_TIME - 1440, "d" * 40)]:
@@ -596,6 +596,13 @@ def g3m_legs(fz, ctm, ca, p="G3m.legs") -> list:
     return out
 
 
+def cm_first_commit(cm, path: str) -> str:
+    """The commit that first added `path` under the study (its copy commit)."""
+    got = subprocess.run(["git", "-C", str(HERE), "log", "--reverse", "--format=%H", "--", path],
+                         capture_output=True, text=True).stdout.split()
+    return got[0]
+
+
 def g8_copies(cm, p="G8.copies") -> list:
     out = []
     try:
@@ -615,8 +622,179 @@ def g8_copies(cm, p="G8.copies") -> list:
             got = [x for x in cm.problems(folder) if "near-rewrite" in x]
             if sorted(x.split(" ", 1)[0] for x in got) != ["result.py", "takes.py"]:
                 out.append(f"{p}: two near-rewrites with their citations removed read {got}")
+            # the review of 53d0e9af, finding 3: a citation must be a commit that resolves and edited the file after
+            # its copy commit; a bare date, a hash that resolves to nothing, or a commit that never touched it refuses
+            for why, cite, says in (("a bare date", "20261024", "resolves to no commit"),
+                                    ("a hash that resolves to nothing", "deadbeefdeadbeef01", "resolves to no commit"),
+                                    ("a commit that never touched result.py", "96c1d959932216ab9acd43003143348c9761a513",
+                                     "changed it after its copy commit"),
+                                    ("result.py's own copy commit", cm_first_commit(cm, "result.py"),
+                                     "changed it after its copy commit")):
+                frag = json.loads((HERE / "COPIED.d" / "w5b-cp5-pipeline.json").read_text())
+                for e in frag["files"]:
+                    if e["path"] == "result.py":
+                        e["reason"] = e["reason"].split(" Pre-freeze review 1, m8")[0] + f" Edited by {cite}."
+                (folder / "w5b-cp5-pipeline.json").write_text(json.dumps(frag))
+                got = [x for x in cm.problems(folder) if "near-rewrite" in x]
+                if [x.split(" ", 1)[0] for x in got] != ["result.py"] or says not in got[0]:
+                    out.append(f"{p}: a near-rewrite citing {why} reads {got}")
     except Exception as e:  # noqa: BLE001
         return [f"ERROR {p}: {type(e).__name__}: {str(e)[:240]}"]
+    return out
+
+
+REGISTER_LINE = "REGISTERED_ROUND: int | None = {}\n"
+
+
+def beacon_history(values, *, docstring=(), draft_after=False):
+    """A scratch repository with evals/gap-study-4/order_beacon.py and prereg-draft.json, one commit per value of
+    REGISTERED_ROUND in `values` (the first with the draft), optional docstring lines naming rounds as bare lines in the
+    first commit, and, with `draft_after`, one more commit that changes only the draft. Returns (repo, [shas],
+    draft sha)."""
+    tmp = tempfile.mkdtemp(prefix="pf1-witness-")
+    repo = Path(tmp)
+    git(repo, "init", "-q")
+    study_dir = repo / "evals" / "gap-study-4"
+    study_dir.mkdir(parents=True)
+    shas = []
+    for i, v in enumerate(values):
+        doc = "".join(REGISTER_LINE.format(r) for r in docstring) if i == 0 else ""
+        (study_dir / "order_beacon.py").write_text(f'"""Synthetic.\n{doc}"""\nx = 1\n' + REGISTER_LINE.format(v))
+        if i == 0:
+            (study_dir / "prereg-draft.json").write_text('{"synthetic": 1}\n')
+        git(repo, "add", "-A")
+        git(repo, "commit", "-q", "-m", f"value {v}")
+        shas.append(git(repo, "rev-parse", "HEAD"))
+    draft = shas[0]
+    if draft_after:
+        (study_dir / "prereg-draft.json").write_text('{"synthetic": 2}\n')
+        git(repo, "add", "-A")
+        git(repo, "commit", "-q", "-m", "draft moved")
+        draft = git(repo, "rev-parse", "HEAD")
+    return repo, shas, draft
+
+
+def g9b_witness(fz, ob, p="G9b.witness") -> list:
+    out = []
+    import inspect
+    try:
+        r1, r2 = ROUND, ROUND + 1
+        early = ROUND_TIME - ob.WITNESS_LEAD_S - 600
+        # (a) a docstring naming rounds is no registration: the round is the parsed assignment's value
+        got = []
+        for text in ('"""\nREGISTERED_ROUND: int | None = 5\n"""\nREGISTERED_ROUND: int | None = None\n',
+                     "REGISTERED_ROUND: int | None = 7\n"):
+            try:
+                got.append(ob.registered_value(text))
+            except ob.BeaconRefused as e:
+                got.append(f"refused: {e}")
+        if got != [None, 7]:
+            out.append(f"{p}: registered_value does not read the module's assignment: {got}")
+        for bad in ("REGISTERED_ROUND = 1 + 2\n", "x = 1\n", "REGISTERED_ROUND = 3\nREGISTERED_ROUND = 4\n",
+                    "REGISTERED_ROUND = True\n"):
+            try:
+                ob.registered_value(bad)
+                out.append(f"{p}: registered_value read {bad!r}")
+            except ob.BeaconRefused:
+                pass
+        repo, shas, _ = beacon_history([None, r1], docstring=[r1, r2])
+        with mock.patch.object(fz, "REPO", repo):
+            try:
+                got = fz.registering_commit(r1)
+            except ValueError as e:
+                got = f"refused: {e}"
+            if got != shas[1]:
+                out.append(f"{p}: the docstring commit registered round {r1}: {got}")
+        # (b) the value changes once, from None to the round, and never again
+        for name, values, rnd in (("set twice", [None, r1, r2, r1], r1), ("back to None and again", [None, r1, None,
+                                  r1], r1), ("another round first", [None, r2, r1], r1), ("never None", [r1], r1),
+                                  ("left at another round", [None, r2], r1)):
+            repo, shas, _ = beacon_history(values)
+            with mock.patch.object(fz, "REPO", repo):
+                try:
+                    got = fz.registering_commit(rnd)
+                    out.append(f"{p}: a history {name} registered round {rnd} at {got}")
+                except ValueError:
+                    pass
+        # (c) the draft's last commit is witnessed too, and the witness is written into the frozen file
+        draft = registered(committed_draft())
+        for name, after, pushed in (("a draft changed after the push", True, "first"), ("both held", False, "last")):
+            repo, shas, dsha = beacon_history([None, r1], draft_after=after)
+            head = git(repo, "rev-parse", "HEAD")
+            push_sha = shas[-1] if pushed == "first" else head
+            contains = lambda c, s, repo=repo: subprocess.run(   # noqa: E731
+                ["git", "-C", str(repo), "merge-base", "--is-ancestor", c, s], capture_output=True).returncode == 0
+            with mock.patch.object(fz, "REPO", repo):
+                try:
+                    w = fz.take_order_witness(draft, pushes=[(early, push_sha)], contains=contains)
+                except ValueError:
+                    w = None
+            if after and w is not None:
+                out.append(f"{p}: {name} passed")
+            if not after:
+                want = {"repo": ob.WITNESS_REPO, "host": "github.com", "registering_commit": shas[1],
+                        "registering_push": {"sha": head, "stamp": early}, "draft_commit": dsha,
+                        "draft_push": {"sha": head, "stamp": early}}
+                if w != want:
+                    out.append(f"{p}: the witness reads {w}, wanted {want}")
+        if "take_order_witness" not in fz.FREEZE_WRITTEN_KEYS:
+            out.append(f"{p}: the freeze does not write take_order_witness")
+        if "review_commit" in inspect.signature(fz.take_order_beacon_reading).parameters:
+            out.append(f"{p}: take_order_beacon_reading still takes an unused review commit")
+        # the witness read is pinned to github.com
+        seen = []
+        fake = types.SimpleNamespace(returncode=0, stdout="", stderr="")
+        with mock.patch.object(fz.subprocess, "run", lambda argv, **k: seen.append(argv) or fake), \
+                mock.patch.dict(fz.os.environ, {"GH_HOST": "github.com"}):
+            fz.push_records()
+        if not seen or seen[0][:4] != ["gh", "api", "--hostname", "github.com"]:
+            out.append(f"{p}: gh api is not pinned to github.com: {seen[:1]}")
+        with mock.patch.dict(fz.os.environ, {"GH_HOST": "ghe.example.invalid"}):
+            try:
+                fz.push_records()
+                out.append(f"{p}: a GH_HOST of another host was followed")
+            except ValueError:
+                pass
+        for line in (ob.residual(), Path(__file__).read_text().split("G9.beacon", 1)[1].split("G2b.pending", 1)[0]):
+            if "review committed at or after" in line or "fixed before its value exists" in line and \
+                    "draft" not in line:
+                out.append(f"{p}: a text claims what the code does not enforce: {line[:120]!r}")
+    except Exception as e:  # noqa: BLE001
+        return [f"ERROR {p}: {type(e).__name__}: {str(e)[:300]}"]
+    return out
+
+
+def g10_nits(fz, wr, p="G10.nits") -> list:
+    out = []
+    try:
+        if "review commit" in (fz.prepare.__doc__ or "").split("MAJOR 9", 1)[-1].split(".")[0]:
+            out.append(f"{p}: prepare's docstring still puts the review commit in the seed")
+        # 6: a pinned file with uncommitted edits is a --check failure
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            git(repo, "init", "-q")
+            (repo / "a.txt").write_text("one\n")
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "-m", "a")
+            with mock.patch.object(fz, "REPO", repo):
+                clean = fz.pin_problems([fz.pin("a.txt")])
+                (repo / "a.txt").write_text("two\n")
+                dirty = fz.pin_problems([fz.pin("a.txt")])
+            if clean or not any("uncommitted edits" in x for x in dirty):
+                out.append(f"{p}: a pinned file with uncommitted edits reads {dirty} (clean {clean})")
+        # 7: a grade.json that does not parse counts as pending
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            git(repo, "init", "-q")
+            (repo / "rehearsals" / "w-x1").mkdir(parents=True)
+            (repo / "rehearsals" / "w-x1" / "grade.json").write_text("{not json")
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "-m", "walk")
+            problems, counts = wr.regrade_report(repo)
+            if counts["pending"] != 1 or counts["pending_unregraded"] != ["w-x1"]:
+                out.append(f"{p}: an unparseable grade.json is skipped: {counts}")
+    except Exception as e:  # noqa: BLE001
+        return [f"ERROR {p}: {type(e).__name__}: {str(e)[:300]}"]
     return out
 
 
@@ -663,6 +841,8 @@ def run_clause(clause: str, swap: dict | None = None) -> list:
             "G7.regrade": lambda: g7_regrade(m["walk_regrade"]),
             "G3m.legs": lambda: g3m_legs(m["freeze"], m["check_take"], m["codex_adapter"]),
             "G8.copies": lambda: g8_copies(m["copy_manifest"]),
+            "G9b.witness": lambda: g9b_witness(m["freeze"], m["order_beacon"]),
+            "G10.nits": lambda: g10_nits(m["freeze"], m["walk_regrade"]),
         }[clause]()
 
 
@@ -710,6 +890,27 @@ WITNESSES = {
     "shapes-word-alone": ("G3m.legs", "freeze", (("            legs += [f\"leg i: {p}\" for p in "
                                                   "shapes_binding_problems(harness, adapter, draft)]\n",
                                                   "            pass\n"),)),
+    "docstring-registers": ("G9b.witness", "order_beacon", (("    found = []\n",
+                                                            "    found = [ast.Constant(int(m)) for m in re.findall("
+                                                            "r\"REGISTERED_ROUND: int \\| None = (\\d+)\", source)]\n"),)),
+    "history-unchecked": ("G9b.witness", "order_beacon", (("    if changes != [None, round_no]:\n",
+                                                          "    if round_no not in changes:\n"),)),
+    "draft-unwitnessed": ("G9b.witness", "freeze", (('(("registering", registering_commit(round_no)), '
+                                                     '("draft", draft_commit())):',
+                                                     '(("registering", registering_commit(round_no)),):'),)),
+    "host-unpinned": ("G9b.witness", "freeze", (('    got = subprocess.run(["gh", "api", "--hostname", WITNESS_HOST, '
+                                                 '"--paginate",', '    got = subprocess.run(["gh", "api", "--paginate",'),)),
+    "dirty-pin-admitted": ("G10.nits", "freeze", (('            out.append(f"{p[\'path\']}: uncommitted edits (its bytes '
+                                                   'are not its HEAD blob)")\n', "            pass\n"),)),
+    "unreadable-grade-skipped": ("G10.nits", "walk_regrade", (("            doc = None          # the review of "
+                                                                "53d0e9af, NIT 7",
+                                                                "            continue          # the review of "
+                                                                "53d0e9af, NIT 7"),)),
+    "citation-unresolved-admitted": ("G8.copies", "copy_manifest", (('            return f"its reason cites {t}, '
+                                                                     'which resolves to no commit"\n',
+                                                                     "            continue\n"),)),
+    "copy-commit-admitted": ("G8.copies", "copy_manifest", (("    edits = set(history[:-1])",
+                                                             "    edits = set(history)"),)),
     "near-rewrite-unchecked": ("G8.copies", "copy_manifest", (("            if share > NEAR_REWRITE_SHARE:\n",
                                                                "            if False:\n"),)),
 }
@@ -750,6 +951,12 @@ class TestPf1FreezeGates(unittest.TestCase):
 
     def test_g8_near_rewrites_cite_a_record(self):
         self.check("G8.copies")
+
+    def test_g9b_the_round_and_the_draft_are_witnessed(self):
+        self.check("G9b.witness")
+
+    def test_g10_the_reviews_nits(self):
+        self.check("G10.nits")
 
 
 class TestWitnesses(unittest.TestCase):

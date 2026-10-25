@@ -39,9 +39,10 @@ exist, and the freeze writes it once from derive(). What --check refuses:
     and any copy of the first study's three named fixture builders that is not `identical`;
   - (pre-freeze review 1, m8, lane pf1-l1-freeze-gates) an `edited` copy that is a near-rewrite, more than
     NEAR_REWRITE_SHARE of its lines changed from its source (difflib's matching lines over the longer side), whose
-    reason cites no lane record (LANE_RECORD: a commit sha, a COPIED.d fragment, a checks.d file or a lane report):
-    a short reason over a rewritten file no longer passes, so a reader can follow each rewrite to where its edits
-    are recorded. What it cannot see: whether the cited records explain every line; that stays the reviews' job.
+    reason does not cite, as a commit that resolves, at least one commit that changed the file after its copy commit,
+    or that cites any hex token resolving to no commit (citation_problem; the review of 53d0e9af, finding 3): a short
+    reason over a rewritten file no longer passes, and neither does a bare date or a made-up hash. What it cannot
+    see: whether the cited commits explain every line; that stays the reviews' job.
 
 RECORDS ARE CLAIMED BY THEIR OWN LEDGERS, NOT BY FRAGMENTS (lane w8a, ruling W8-layout-1, README Q4; this file moved
 from lane w1a to lane w8a under ruling W8A-gap4-1). A file inside a walk folder, rehearsals/<walk>/**, is claimed
@@ -131,11 +132,9 @@ ROUND3_RECORDS = tuple(f"{SOURCE_DIR}/{r}" for r in (
     "prereg.json", "prereg-draft.json", "takes.json", "COPIED.json", "RESULT.md", "COSTS.md", "PROGRESS.md",
     "test_round3.py", "results/", "transcripts/", "rehearsals/", "pauses/", "walks/", "verification/", "cases/",
     "graders/", "review_kit/rounds.json", "review_kit/prefreeze-"))
-# Pre-freeze review 1, m8: the registered changed-line share above which an edited copy is a near-rewrite, and what a
-# reason must cite for one (a commit of 8 to 40 hex characters, a fragment, a checks file or a lane report).
+# Pre-freeze review 1, m8: the registered changed-line share above which an edited copy is a near-rewrite, whose reason
+# must cite a commit that edited it (citation_problem).
 NEAR_REWRITE_SHARE = 0.5
-LANE_RECORD = re.compile(r"(?<![0-9a-f])[0-9a-f]{8,40}(?![0-9a-f])|COPIED\.d/[\w.-]+\.json|checks\.d/[\w.-]+\.txt"
-                         r"|lane-reports/[\w./-]+")
 # The empty blob is every empty file; an empty new file copies nothing.
 EMPTY_BLOB = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
 
@@ -241,6 +240,29 @@ def changed_share(orig: bytes, copy: bytes) -> float:
     b = copy.decode("utf-8", errors="replace").splitlines()
     kept = sum(m.size for m in difflib.SequenceMatcher(None, a, b, autojunk=False).get_matching_blocks())
     return 1 - kept / max(len(a), len(b), 1)
+
+
+COMMIT_TOKEN = re.compile(r"(?<![0-9a-f])[0-9a-f]{8,40}(?![0-9a-f])")
+
+
+def citation_problem(path: str, why: str) -> str | None:
+    """Why a near-rewrite's reason does not cite the commits that edited it, or None (the review of 53d0e9af, finding
+    3). Every 8-to-40 hex token in the reason must resolve to a commit (git cat-file -e), so a bare date or a hash
+    that names nothing refuses, and at least one must have changed this file after its copy commit (the first commit
+    in its history)."""
+    tokens = COMMIT_TOKEN.findall(why or "")
+    if not tokens:
+        return "its reason cites no commit that edited it"
+    listed = git("log", "--format=%H", "--", study.rel(path))
+    history = listed.stdout.decode().split() if listed.returncode == 0 else []
+    edits = set(history[:-1])            # newest first; the last is the copy commit
+    edited = False
+    for t in tokens:
+        got = git("rev-parse", "--verify", "--quiet", f"{t}^{{commit}}")
+        if got.returncode != 0:
+            return f"its reason cites {t}, which resolves to no commit"
+        edited = edited or got.stdout.decode().strip() in edits
+    return None if edited else "its reason cites no commit that changed it after its copy commit"
 
 
 def is_record(src: str) -> bool:
@@ -432,12 +454,13 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
             out.append(f"{path} ({lane}) copies the shared builder {src}, which is uneditable: identical only")
         if status == "edited" and not why:
             out.append(f"{path} ({lane}) differs from {src} and no reason is recorded")
-        elif status == "edited" and differs and not LANE_RECORD.search(why):
+        elif status == "edited" and differs:
             share = changed_share(orig, copy)
             if share > NEAR_REWRITE_SHARE:
-                out.append(f"{path} ({lane}) is a near-rewrite of {src} ({share:.0%} of its lines changed, above "
-                           f"{NEAR_REWRITE_SHARE:.0%}) and its reason cites no lane record (a commit, a COPIED.d "
-                           f"fragment, a checks.d file or a lane report)")
+                problem = citation_problem(path, why)
+                if problem:
+                    out.append(f"{path} ({lane}) is a near-rewrite of {src} ({share:.0%} of its lines changed, above "
+                               f"{NEAR_REWRITE_SHARE:.0%}) and {problem}")
         if path in UNEDITABLE and (differs or status != "identical"):
             out.append(f"{path} ({lane}) is a copied fixture builder and differs from {src}, or is recorded as "
                        f"edited; that is a FAIL, not a manifest entry")

@@ -18,15 +18,18 @@ records the reading (take_order_beacon_reading).
 
 NOTHING THE OPERATOR COMMITS IS IN THE SEED (the lane orchestrator's ruling 1 on lane L1's hand-back, Sat 24 Oct 2026).
 A review commit or the draft's bytes in the seed could be ground: re-made many times under a forged date once the
-round is public. So the seed reads the round and its randomness only, and the one thing left to choose, which round,
-is fixed before its value exists by an outside witness: the freeze refuses unless the commit that set REGISTERED_ROUND
-to the round is contained in a push GitHub itself recorded on WITNESS_REPO (its push activity, read read-only with
-gh api) at least WITNESS_LEAD_S before the round is published (push_witness_problem). A local committer date is the
-operator's to set; GitHub's push time is not.
+round is public. So the seed reads the round and its randomness only. What the freeze enforces (the review of
+53d0e9af, finding 1): REGISTERED_ROUND, read by parsing each version of this file (registered_value), changed exactly
+once in HEAD's history, from None to the round (history_problem); and both the commit that made that change and the
+last commit that changed prereg-draft.json, whose rows the order permutes, are held by pushes GitHub itself recorded on
+WITNESS_REPO (its push activity, read read-only with gh api --hostname github.com) at least WITNESS_LEAD_S before the
+round is published (push_witness_problem). A local committer date is the operator's to set; GitHub's push time is not.
 
 WHAT THIS DOES NOT BIND, NAMED (residual(), carried into the draft beside the rule): whoever controls GitHub, or the
-clock its push records are stamped by, could register a round after its value is public; and the round's BLS signature
-is not verified here (no stdlib road): two relays run by different operators must agree instead.
+clock its push records are stamped by; a local history rewritten to hide an earlier registration that the mirror's
+push records still hold (the mirror's other pushes are not scanned); a push record GitHub no longer returns, which
+refuses; and the round's BLS signature, not verified here (no stdlib road): two relays run by different operators must
+agree instead.
 
 The network is read only by read_relays and push_records: at the real freeze (on the Mac), by --read, and by prereg.py
 --order-from-beacon once the round is published. No take, check or test reads it; tests hand in an opener and records.
@@ -36,6 +39,7 @@ No model; stdlib only.
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import re
@@ -114,18 +118,54 @@ SEED_RULE = ("take_order_seed is the first 40 hex characters of the sha256 of th
              "one registered here, read from both relays, which must agree, with its randomness the sha256 of its "
              "signature (order_beacon.seed); the freeze refuses unless the commit that registered the round was pushed "
              "to " + WITNESS_REPO + " at least " + str(WITNESS_LEAD_S) + " s before the round is published, by GitHub's "
-             "own push record (order_beacon.push_witness_problem); that push is the mirror of a verified wave, under "
+             "own push record, and so must the last commit that changed the draft (order_beacon.push_witness_problem); "
+             "that push is the mirror of a verified wave, under "
              + STANDING_WORD + ".")
 
 
 def residual() -> str:
-    return ("The take order is fixed by the registered drand round alone, and the round is fixed before its value "
-            "exists by GitHub's own record of the push that registered it, at least an hour before the round is "
-            "published. Whoever controls GitHub, or the clock its push records are stamped by, could register a round "
-            "after its value is public and so choose the order. The round's BLS signature is not verified; two relays "
-            "run by different operators must agree instead. The witnessing push is the mirror of a verified wave, made "
-            "under " + STANDING_WORD + "; " + RETENTION_NOTE + ", so a push record GitHub no longer returns refuses "
-            "the freeze, never passes it.")
+    return ("The take order is seeded by the registered drand round and its randomness alone. The freeze enforces that "
+            "REGISTERED_ROUND, read by parsing order_beacon.py at every commit, changed exactly once in the history it "
+            "freezes, from None to the round, and that GitHub's own records hold a push of the commit that made that "
+            "change and a push of the last commit that changed the draft, each at least an hour before the round is "
+            "published. It does not bind: whoever controls GitHub, or the clock its push records are stamped by; a "
+            "local history rewritten to hide an earlier registration that the mirror's push records still hold, since "
+            "the mirror's other pushes are not scanned; and the round's BLS signature, which is not verified (two "
+            "relays run by different operators must agree instead). The witnessing pushes are mirrors of verified "
+            "waves, made under " + STANDING_WORD + "; " + RETENTION_NOTE + ", so a push record GitHub no longer "
+            "returns refuses the freeze, never passes it.")
+
+
+def registered_value(source: str):
+    """REGISTERED_ROUND as one version of this file assigns it, read by parsing the module (the review of 53d0e9af,
+    finding 1a: a line of text in a docstring is no registration). The one module-level assignment's value must be the
+    literal None or an int; anything else, or no or several assignments, is BeaconRefused."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError as e:
+        raise BeaconRefused(f"this version of order_beacon.py does not parse ({e.msg})") from None
+    found = []
+    for node in tree.body:
+        targets = [node.target] if isinstance(node, ast.AnnAssign) else node.targets if isinstance(node, ast.Assign) \
+            else []
+        if any(isinstance(t, ast.Name) and t.id == "REGISTERED_ROUND" for t in targets):
+            found.append(node.value)
+    if len(found) != 1:
+        raise BeaconRefused(f"this version of order_beacon.py assigns REGISTERED_ROUND {len(found)} times, not once")
+    value = found[0]
+    if isinstance(value, ast.Constant) and (value.value is None or type(value.value) is int):
+        return value.value
+    raise BeaconRefused("REGISTERED_ROUND is not assigned the literal None or an integer")
+
+
+def history_problem(values: list, round_no: int):
+    """Why a file's REGISTERED_ROUND values, commit by commit in history order, are not exactly one change from None
+    to `round_no` (finding 1b: a round set twice, or set back, could be chosen after its value is public), or None."""
+    changes = [v for i, v in enumerate(values) if i == 0 or v != values[i - 1]]
+    if changes != [None, round_no]:
+        return (f"REGISTERED_ROUND's history is {changes}, not one change from None to {round_no}: a round set more "
+                f"than once, set back, or never None first is refused")
+    return None
 
 
 def round_time(round_no: int) -> int:

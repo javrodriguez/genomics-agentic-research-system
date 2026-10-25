@@ -318,7 +318,7 @@ def regrade_report(study: Path = HERE, *, readers=None, grade=None) -> tuple[lis
     gate printed a bare ok having re-derived nothing, and returned [] outside a git repository). counts is
     {"walks": walks listed at HEAD, "regrades": regrade.json files re-derived, "recheck_walks": walks whose recheck
     chain was read, "counts": check.json counts re-derived from their transcripts, "pending": walks whose committed
-    grade.json is the pending document, "pending_unregraded": the pending walks with no regrade.json}."""
+    grade.json is the pending document or does not read as one object, "pending_unregraded": the pending walks with no regrade.json}."""
     counts = new_counts()
     return regrade_problems(study, readers=readers, grade=grade, counts=counts), counts
 
@@ -340,8 +340,8 @@ def regrade_problems(study: Path = HERE, *, readers=None, grade=None, counts=Non
         try:
             doc = json.loads(nrr._show(root, f"{walks}/{walk}/grade.json"))
         except (ValueError, nrr.RegistrationRefused):
-            continue
-        if isinstance(doc, dict) and doc.get("status") == pending_walk.PENDING:
+            doc = None          # the review of 53d0e9af, NIT 7: an unreadable grade counts as pending, never skipped
+        if not isinstance(doc, dict) or doc.get("status") == pending_walk.PENDING:
             counts["pending"] += 1
             if (walk, REGRADE_FILE) not in names:
                 counts["pending_unregraded"].append(walk)

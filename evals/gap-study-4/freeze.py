@@ -24,6 +24,7 @@ import argparse
 import copy
 import hashlib
 import json
+import os
 import re
 import subprocess
 import tempfile
@@ -112,9 +113,9 @@ def draft_pending(draft) -> dict:
 def prepare(draft, *, review, parent, pins, frozen_at, beacon):
     """The frozen file from the reviewed draft. Pre-freeze review 1, m2: the stats_design sentinel was the only PENDING
     guard, so a copy with that one key replaced froze with 15 PENDING strings left; the draft's own pending() map must
-    be empty. MAJOR 9: the order is seeded by order_beacon.seed over the review commit and the registered drand round's
-    reading (`beacon`, read by take_order_beacon_reading) alone: nothing the operator commits enters the seed (the lane
-    orchestrator's ruling 1 on lane L1's hand-back)."""
+    be empty. MAJOR 9: the order is seeded by order_beacon.seed over the registered drand round's reading alone
+    (`beacon`, read by take_order_beacon_reading; the lane orchestrator's ruling 1 on lane L1's hand-back). The
+    `review` commit is recorded as pre_freeze_review_commit and enters no seed."""
     import stats
     import completeness
     left = draft_pending(draft)
@@ -136,6 +137,7 @@ def prepare(draft, *, review, parent, pins, frozen_at, beacon):
 
 
 BEACON_KEY = "take_order_beacon"
+WITNESS_NOT_REHEARSED = "not witnessed: a disposable rehearsal reads no push record"
 BEACON_READING_KEY = "take_order_beacon_reading"
 BEACON_NOT_REHEARSED = ("NOT REHEARSED: the take-order beacon (a disposable rehearsal given no --beacon-reading seeds "
                         "its order from a synthetic reading, marked synthetic in the frozen file)")
@@ -154,25 +156,72 @@ def synthetic_beacon_reading(round_no: int) -> dict:
 REGISTERED_LINE = "REGISTERED_ROUND: int | None = {round}"
 
 
-def registering_commit(round_no: int):
-    """The first commit in HEAD's history whose order_beacon.py sets REGISTERED_ROUND to exactly `round_no`, or None."""
-    line = REGISTERED_LINE.format(round=round_no)
+def registering_commit(round_no: int) -> str:
+    """The one commit in HEAD's history that set REGISTERED_ROUND to `round_no`, read by parsing order_beacon.py at
+    every commit that changed it, oldest first (the review of 53d0e9af, finding 1a and 1b). ValueError unless the
+    value changed exactly once, from None to `round_no`, and never again."""
     rel = study.rel("order_beacon.py")
-    code, out = git("log", "--reverse", "--format=%H", "-S", line, "--", rel)
-    if code != 0:
-        return None
+    code, out = git("log", "--reverse", "--topo-order", "--full-history", "--format=%H", "--", rel)
+    if code != 0 or not out.split():
+        raise ValueError(f"the history of {rel} cannot be read at HEAD")
+    history = []
     for sha in out.split():
         code, text = git("show", f"{sha}:{rel}")
-        if code == 0 and line in text.splitlines():
-            return sha
-    return None
+        if code != 0:
+            raise ValueError(f"{rel} cannot be read at {sha[:12]}")
+        try:
+            history.append((sha, order_beacon.registered_value(text)))
+        except order_beacon.BeaconRefused as e:
+            raise ValueError(f"{rel} at {sha[:12]}: {e}") from None
+    problem = order_beacon.history_problem([v for _, v in history], round_no)
+    if problem:
+        raise ValueError(problem)
+    return next(sha for sha, v in history if v == round_no)
+
+
+def draft_commit() -> str:
+    """The last commit in HEAD's history that changed prereg-draft.json: the draft whose rows the order permutes, fixed
+    by its own push before the round (finding 1c; the review's line 1 binds the review to the same bytes)."""
+    code, out = git("log", "-1", "--format=%H", "--", study.rel("prereg-draft.json"))
+    if code != 0 or not re.fullmatch(r"[0-9a-f]{40}", out.strip()):
+        raise ValueError("the last commit that changed prereg-draft.json cannot be read at HEAD")
+    return out.strip()
+
+
+WITNESS_HOST = "github.com"
+
+
+def take_order_witness(draft, *, pushes=None, contains=None) -> dict:
+    """Ruling 1 and the review of 53d0e9af (findings 1 and 2): GitHub's own push records on order_beacon.WITNESS_REPO
+    must hold both the commit that registered the draft's round and the last commit that changed the draft, each
+    stamped at least WITNESS_LEAD_S before the round is published; ValueError otherwise. The witness, written into the
+    frozen file as take_order_witness, is each commit with the push that holds it and GitHub's stamp. `pushes` and
+    `contains` stand in for push_records() and history_contains in tests."""
+    try:
+        round_no = order_beacon.registered_round(draft.get(BEACON_KEY))
+    except order_beacon.BeaconRefused as e:
+        raise ValueError(f"the take-order beacon: {e}") from None
+    pushes = push_records() if pushes is None else pushes
+    contains = history_contains if contains is None else contains
+    witness = {"repo": order_beacon.WITNESS_REPO, "host": WITNESS_HOST}
+    for name, commit in (("registering", registering_commit(round_no)), ("draft", draft_commit())):
+        problem = order_beacon.push_witness_problem(commit, round_no, pushes, contains)
+        if problem:
+            raise ValueError(f"the {name} commit: {problem}")
+        stamp, sha = min((t, s) for t, s in pushes if contains(commit, s))
+        witness.update({f"{name}_commit": commit, f"{name}_push": {"sha": sha, "stamp": stamp}})
+    return witness
 
 
 def push_records(repo=None) -> list[tuple[int, str]]:
     """[(unix time, pushed sha)] of every push GitHub records on the witness repository, read read-only with
     `gh api` (GET /repos/{repo}/activity, activity_type=push). Raises ValueError when it cannot be read."""
     repo = order_beacon.WITNESS_REPO if repo is None else repo
-    got = subprocess.run(["gh", "api", "--paginate", f"repos/{repo}/activity?activity_type=push&per_page=100",
+    host = os.environ.get("GH_HOST")
+    if host not in (None, "", WITNESS_HOST):
+        raise ValueError(f"GH_HOST is {host!r}: the push witness is read from {WITNESS_HOST} only")
+    got = subprocess.run(["gh", "api", "--hostname", WITNESS_HOST, "--paginate",
+                          f"repos/{repo}/activity?activity_type=push&per_page=100",
                           "--jq", '.[] | "\\(.timestamp)\\t\\(.after)"'], capture_output=True, text=True)
     if got.returncode != 0:
         raise ValueError(f"GitHub's push records for {repo} cannot be read with gh api: {got.stderr.strip()[:200]}")
@@ -193,15 +242,13 @@ def history_contains(commit: str, sha: str) -> bool:
     return code == 0
 
 
-def take_order_beacon_reading(draft, review_commit, *, rehearsal=False, reading_file=None, opener=None, now=None,
-                              pushes=None, contains=None):
+def take_order_beacon_reading(draft, *, rehearsal=False, reading_file=None, opener=None, now=None):
     """MAJOR 9: the reading of the draft's registered drand round that seeds the order.
 
-    The real freeze refuses unless GitHub's own push records on order_beacon.WITNESS_REPO hold the commit that
-    registered the round, stamped at least WITNESS_LEAD_S before the round's publication (ruling 1), and then reads
-    both relays itself (the network, on the Mac). A disposable rehearsal reads a --beacon-reading file (checked offline:
-    chain, round, time, randomness the sha256 of the signature) or, given none, a synthetic reading, and says so
-    (BEACON_NOT_REHEARSED). `pushes` and `contains` stand in for push_records() and history_contains in tests."""
+    The real freeze reads both relays itself (the network, on the Mac), after take_order_witness has held the round's
+    registration and the draft to GitHub's push records. A disposable rehearsal reads a --beacon-reading file (checked
+    offline: chain, round, time, randomness the sha256 of the signature) or, given none, a synthetic reading, and says
+    so (BEACON_NOT_REHEARSED)."""
     try:
         round_no = order_beacon.registered_round(draft.get(BEACON_KEY))
         if rehearsal:
@@ -215,11 +262,6 @@ def take_order_beacon_reading(draft, review_commit, *, rehearsal=False, reading_
             return reading
         if reading_file is not None:
             raise ValueError("--beacon-reading is for a disposable rehearsal only; the real freeze reads both relays")
-        problem = order_beacon.push_witness_problem(
-            registering_commit(round_no), round_no, push_records() if pushes is None else pushes,
-            history_contains if contains is None else contains)
-        if problem:
-            raise ValueError(problem)
         reading = order_beacon.read_relays(round_no, opener=opener, now=now)
         if reading["signature"] == SYNTHETIC_SIGNATURE:
             raise ValueError("the relays answered the rehearsal's synthetic signature")
@@ -302,9 +344,17 @@ def pinned_paths(paths=None) -> list[str]:
 
 
 def pin_problems(pins) -> list[str]:
-    """Each pin the freeze cannot write: a missing file or one not committed at HEAD."""
-    return [f"{p['path']}: " + ("missing" if p.get("missing") else "not committed at HEAD")
-            for p in pins if p.get("missing") or p.get("uncommitted")]
+    """Each pin the freeze cannot write: a missing file, one not committed at HEAD, or (the review of 53d0e9af, NIT 6)
+    one whose working bytes differ from its HEAD blob, so --check never reads a dirty pinned file as ok."""
+    out = []
+    for p in pins:
+        if p.get("missing") or p.get("uncommitted"):
+            out.append(f"{p['path']}: " + ("missing" if p.get("missing") else "not committed at HEAD"))
+            continue
+        data = (REPO / p["path"]).read_bytes()
+        if hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest() != p.get("git_blob_sha"):
+            out.append(f"{p['path']}: uncommitted edits (its bytes are not its HEAD blob)")
+    return out
 
 
 def git(*args: str) -> tuple[int, str]:
@@ -319,6 +369,7 @@ FREEZE_WRITTEN_KEYS = (
     "status", "frozen_at", "frozen_at_commit_parent", "draft_sha256_at_freeze", "pre_freeze_review_commit",
     "pre_freeze_review_file", "pre_freeze_review_sha256", "take_order_seed", "take_order", "pinned_files",
     "take_order_beacon_reading",          # pre-freeze review 1, MAJOR 9: the drand round the order is seeded by
+    "take_order_witness",                 # the review of 53d0e9af, finding 2: GitHub's pushes of the round and draft
     "nulls_at_freeze", "rehearsal_record", "rehearsed_study_tree_sha256",
     "holdout_salted_digests", "holdout_wordings_per_task_version",
 )
@@ -789,15 +840,15 @@ def main(argv=None) -> int:
         problem = coverage_problem(draft)
         if problem:
             raise ValueError(problem)
-        beacon = take_order_beacon_reading(draft, args.review_commit, rehearsal=args.rehearsal,
-                                           reading_file=args.beacon_reading)
+        witness = WITNESS_NOT_REHEARSED if args.rehearsal else take_order_witness(draft)
+        beacon = take_order_beacon_reading(draft, rehearsal=args.rehearsal, reading_file=args.beacon_reading)
         _, parent = git("rev-parse", "HEAD")
         frozen = prepare(draft, review=args.review_commit, parent=parent, pins=pins,
                          frozen_at=datetime.now(timezone.utc).replace(microsecond=0).isoformat(), beacon=beacon)
         frozen.update(draft_sha256_at_freeze=digest, pre_freeze_review_file=review_file,
                       pre_freeze_review_sha256=hashlib.sha256((REPO / review_file).read_bytes()).hexdigest(),
                       rehearsal_record=record if record else "rehearsal or preview",
-                      rehearsed_study_tree_sha256=tree)
+                      rehearsed_study_tree_sha256=tree, take_order_witness=witness)
         frozen.update(holdout)
         if not holdout:
             print(HOLDOUT_NOT_REHEARSED)

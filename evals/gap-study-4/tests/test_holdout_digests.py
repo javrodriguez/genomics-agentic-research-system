@@ -195,6 +195,7 @@ class FreezeHarness:
                    # read stood in for, as the other gates here are; tests/test_pf1_freeze_gates.py binds both
                    (f, "coverage_problem", lambda *a, **k: None),
                    (f, "take_order_beacon_reading", lambda *a, **k: {"synthetic": "beacon reading"}),
+                   (f, "take_order_witness", lambda *a, **k: {"synthetic": "push witness"}),
                    (f.copy_manifest, "problems", lambda *a, **k: []))
         with contextlib.ExitStack() as stack:
             for module, name, value in patches:
