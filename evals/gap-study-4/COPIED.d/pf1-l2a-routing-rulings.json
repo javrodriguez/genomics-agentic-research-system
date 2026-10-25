@@ -25,6 +25,11 @@
       "path": "lanes/REVIEW-pf1-l2a-898e598.md",
       "status": "new",
       "reason": "The closure review of lane pf1-l2a at 898e598c and 77e4aa69 (VERDICT CHANGES, one MINOR and two NITs, Sat 24 Oct 2026), committed as written, unedited; its MINOR folds under the Lane-orchestrator's ruling on it, and its two NITs are recorded with no change, on the same ruling."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l2a-2f8f930.md",
+      "status": "new",
+      "reason": "The closure check of lane pf1-l2a at 2f8f930e (VERDICT PASS, three NITs, Sat 24 Oct 2026), committed as written, unedited; NITs 1 and 2 go to the L6 merge list and NIT 3 is recorded, on the Lane-orchestrator's ruling."
     }
   ]
 }
