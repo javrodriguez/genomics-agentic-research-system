@@ -30,6 +30,11 @@
       "path": "lanes/REVIEW-pf1-l3-8cf492b.md",
       "status": "new",
       "reason": "The reviewer's closure check of this lane at 8cf492b2 (VERDICT: CHANGES), committed as written on the lane orchestrator's word, Sat 24 Oct 2026."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l3-f0c0eb1.md",
+      "status": "new",
+      "reason": "The reviewer's second closure check of this lane at f0c0eb1d (VERDICT: CHANGES), committed as written on the lane orchestrator's word, Sat 24 Oct 2026. Its one banned-word line (ratio-slash) is excused in language-allowlist.json as a bound record."
     }
   ]
 }
