@@ -1,0 +1,20 @@
+{
+  "lane": "pf1-checker-digest",
+  "files": [
+    {
+      "path": "COPIED.d/pf1-checker-digest.json",
+      "status": "new",
+      "reason": "Lane pf1-checker-digest (fold plan prefreeze-1, MAJOR 4 and section 3; the lane orchestrator's assignment of Sun 25 Oct 2026 under Javier's standing delegation) binds the checker's code into the digest a walk is checked under: a read-only analysis of 25 Oct 2026 found w135-w168's check.json carrying the constants digest in force although session_store_problems and transcript_content_problems were added after they were checked, so a code-only checker change marked nothing stale. Edits without transfer, recorded here only so the owner's fragment stays untouched: check_take.py (w10-walk-runner), checker_constants_sha256 now returns the sha256 of its constants half (constants_only_sha256, B5's rule unchanged) bound with its code half (checker_code_sha256 over CHECKER_CODE_FILES, each file's git blob id under CHECKER_CODE_ROOT), in the appended B5 region, and the new B7 section holds CHECKER_CODE_FILES, CHECKER_CODE_ROOT, git_blob_id, checker_code_manifest, checker_code_sha256 and _bound_digest, inserted after design_constants_sha256; tests/test_vendor_constants.py (vendor-admission), its independent digest() helper recomputes the bound digest, the code half from the listed files. No record, transcript, check.json, review, rulings or gitleaksignore file is edited; every committed check.json now reads stale until rechecked, as intended."
+    },
+    {
+      "path": "checks.d/pf1-checker-digest.txt",
+      "status": "new",
+      "reason": "This lane's local checks for run_checks.py: the new test module (test_pf1_checker_digest) and the existing modules that read the digest (test_checker_constants, test_vendor_constants, test_vendor_walk_road, test_recheck_coverage, test_walk_recheck, test_pending_walk, test_walk_runner)."
+    },
+    {
+      "path": "tests/test_pf1_checker_digest.py",
+      "status": "new",
+      "reason": "Lane pf1-checker-digest: D1 the file list is the rule derived from the source by ast (plus drive.py, vendor_provenance.py, routing.json and the recorded fixtures' README labels), with the lazy imports left outside named; D2 checking committed walks of each harness runs and opens listed files only; D3 each entry is git's blob id; D4 a code-only change makes a walk stale (claude-code and codex); D5 a comment-only change does too; D6 an unlisted file does not; D7 the digest's shape and a missing or linked file refusing; D8 the vendor regrade of two committed pending walks byte-identical with the code edited and the digests raising; D10 the sides record the digest coverage reads; D9 eight witnesses."
+    }
+  ]
+}
