@@ -2567,11 +2567,34 @@ CHECKER_CODE_FILES = (
     "evals/transcript.py",
 )
 CHECKER_CODE_ROOT = REPO              # read at each call: the repository whose files are the checker's code
+# The blob ids already read, by absolute path: {path: (stat signature, blob id)}. Coverage asks for the digest once per
+# walk, so the ~2 MB of listed files are hashed again only when a file's signature (device, inode, size, mtime_ns and
+# ctime_ns: the kernel sets ctime on every write, and no utime call can set it back) differs. As git does for its
+# index, a file whose mtime or ctime is within CODE_CACHE_SETTLE_NS of now is never remembered (a second write in the
+# same clock tick could keep its signature), so it is re-read on every call.
+_CODE_CACHE: dict = {}
+CODE_CACHE_SETTLE_NS = 2_000_000_000
+import time as _code_time  # noqa: E402
+_now_ns = _code_time.time_ns          # the cache's clock; tests inject another
 
 
 def git_blob_id(raw: bytes) -> str:
     """git's own object id of a blob holding `raw` (`git hash-object --no-filters`)."""
     return hashlib.sha1(b"blob %d\0" % len(raw) + raw).hexdigest()
+
+
+def _code_blob_id(p: Path) -> str:
+    st = p.stat()
+    sig = (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns)
+    hit = _CODE_CACHE.get(str(p))
+    if hit is not None and hit[0] == sig:
+        return hit[1]
+    blob = git_blob_id(p.read_bytes())
+    if _now_ns() - max(st.st_mtime_ns, st.st_ctime_ns) > CODE_CACHE_SETTLE_NS:
+        _CODE_CACHE[str(p)] = (sig, blob)
+    else:
+        _CODE_CACHE.pop(str(p), None)
+    return blob
 
 
 def checker_code_manifest(root=None) -> dict:
@@ -2584,7 +2607,7 @@ def checker_code_manifest(root=None) -> dict:
         if p.is_symlink() or not p.is_file():
             raise CheckRefused(f"the checker's code file {rel} is missing or a link under {root}; the checker's code "
                                f"has no digest")
-        out[rel] = git_blob_id(p.read_bytes())
+        out[rel] = _code_blob_id(p.absolute())
     return out
 
 

@@ -35,8 +35,11 @@ from committed bytes, no model and no money: fail closed is cheap); a file outsi
   D7-shape     checker_constants_sha256 is the canonical-JSON sha256 of exactly its two halves, recomputed here from
                the files; constants_only_sha256 keeps B5's constants-only rule; a listed file missing, or a link,
                refuses (CheckRefused), never a digest over fewer files.
-  D8-regrade   the vendor regrade reads no checker digest: regrade_doc of committed pending walks w-o46 and w-g21 is
-               byte-identical with the code tree edited and with checker_constants_sha256 raising.
+  D8-regrade   the vendor regrade reads no checker digest: regrade_doc of committed pending walks w-o46 and w-g21,
+               made with checker_constants_sha256, constants_only_sha256, checker_code_sha256 and
+               checker_code_manifest all raising, completes, grades the walk and records no digest.
+  D11-cache    the blob-id cache: with an injected clock that lets every file settle, an edit to a cached listed file
+               still moves the digest; with the real clock, a file written just now is never remembered.
   D9-witness   each mutant below turns its case red.
   D10-writers  what a checked walk records (the claude-code side's and the vendor side's digest, which walk_regrade's
                recheck also writes) is what coverage reads as in force, and both move with the code.
@@ -326,42 +329,58 @@ def writer_problems(mod=None) -> list:
     return out
 
 
-def regrade_bytes_under(wmod, walk: str, *, root=None, broken=False) -> bytes:
-    patches = [mock.patch.object(ct, "CHECKER_CODE_ROOT", root or REPO)]
-    if broken:
-        def boom(*a, **k):
-            raise AssertionError("the regrade read a checker digest")
-        patches += [mock.patch.object(ct, "checker_constants_sha256", boom),
-                    mock.patch.object(ct, "checker_code_sha256", boom)]
-    for p in patches:
-        p.start()
+def cache_problems(mod=None) -> list:
+    """D11: the blob-id cache. With an injected clock that lets every file settle, an edit to a listed file still
+    moves the digest (the signature is read); with the real clock, a file written within CODE_CACHE_SETTLE_NS is
+    never remembered."""
+    mod = mod or ct
+    out = []
+    tree = CodeTree(mod)
     try:
-        return wmod.regrade_bytes(wmod.regrade_doc(walk, HERE))
+        with mock.patch.object(mod, "CHECKER_CODE_ROOT", tree.root):
+            with mock.patch.object(mod, "_now_ns", lambda: 1 << 62):
+                first = mod.checker_constants_sha256()
+                tree.edit(STUDY + "routing.py", "\n", "\n# an edit after the cache filled\n")
+                if mod.checker_constants_sha256() == first:
+                    out.append("D11-cache: a cached file's edit did not move the digest")
+                tree.restore(STUDY + "routing.py")
+                if mod.checker_constants_sha256() != first:
+                    out.append("D11-cache: undoing the edit did not restore the digest")
+            mod._CODE_CACHE.clear()
+            tree.edit(STUDY + "routing.py", "\n", "\n# a fresh edit\n")
+            mod.checker_constants_sha256()
+            if str((tree.root / STUDY / "routing.py").absolute()) in mod._CODE_CACHE:
+                out.append("D11-cache: a file written just now was remembered")
     finally:
-        for p in reversed(patches):
-            p.stop()
+        tree.close()
+        mod._CODE_CACHE.clear()
+    return out
 
 
-def regrade_problems(wmod=None) -> list:
-    """D8: each pending walk's regrade, the same bytes with the code tree edited and with the digests raising."""
+def regrade_problems(wmod=None, *, first=False) -> list:
+    """D8: each committed pending walk's regrade, made with every checker digest function raising, completes and
+    grades the walk; `first` stops at the first problem (the witness)."""
     import walk_regrade
     wmod = wmod or walk_regrade
     out = []
-    tree = CodeTree(ct)
-    try:
-        tree.edit(STUDY + "check_take.py", *CODE_EDIT, after=SESSION_STORE)
-        for walk in PENDING_WALKS:
+
+    def boom(*a, **k):
+        raise AssertionError("the regrade read a checker digest")
+    for walk in PENDING_WALKS:
+        with mock.patch.object(ct, "checker_constants_sha256", boom), \
+                mock.patch.object(ct, "checker_code_sha256", boom), \
+                mock.patch.object(ct, "checker_code_manifest", boom), \
+                mock.patch.object(ct, "constants_only_sha256", boom):
             try:
-                plain = regrade_bytes_under(wmod, walk)
-                edited = regrade_bytes_under(wmod, walk, root=tree.root)
-                if plain != edited:
-                    out.append(f"D8-regrade {walk}: the regrade moved with the checker's code")
-                if regrade_bytes_under(wmod, walk, broken=True) != plain:
-                    out.append(f"D8-regrade {walk}: the regrade differs with the digests raising")
-            except AssertionError as e:
-                out.append(f"D8-regrade {walk}: {e}")
-    finally:
-        tree.close()
+                doc = wmod.regrade_doc(walk, HERE)
+                if doc.get("graded") is not True:
+                    out.append(f"D8-regrade {walk}: the regrade did not grade it: {str(doc.get('why'))[:200]}")
+                if b"checker_constants_sha256" in wmod.regrade_bytes(doc):
+                    out.append(f"D8-regrade {walk}: the regrade records a checker digest")
+            except Exception as e:  # noqa: BLE001 - a regrade that reaches a digest raises
+                out.append(f"D8-regrade {walk}: {type(e).__name__}: {e}")
+        if out and first:
+            break
     return out
 
 
@@ -379,8 +398,11 @@ def mutant(mod, old: str, new: str):
 CT_MUTANTS = (
     ("binding-dropped", "    return _bound_digest(constants_only_sha256(constants), checker_code_sha256())",
      "    return constants_only_sha256(constants)", "standing"),
-    ("bytes-not-hashed", "        out[rel] = git_blob_id(p.read_bytes())", "        out[rel] = git_blob_id(rel.encode())",
+    ("bytes-not-hashed", "    blob = git_blob_id(p.read_bytes())", "    blob = git_blob_id(str(p).encode())",
      "standing"),
+    ("cache-ignores-signature", "    if hit is not None and hit[0] == sig:", "    if hit is not None:", "cache"),
+    ("fresh-file-cached", "    if _now_ns() - max(st.st_mtime_ns, st.st_ctime_ns) > CODE_CACHE_SETTLE_NS:",
+     "    if True:", "cache"),
     ("file-dropped", '    "evals/gap-study-4/drive.py",\n', "", "pin"),
     ("missing-file-skipped", "            raise CheckRefused(f\"the checker's code file {rel} is missing or a link",
      "            continue\n            raise CheckRefused(f\"the checker's code file {rel} is missing or a link",
@@ -480,6 +502,9 @@ class TheCheckerCodeDigest(unittest.TestCase):
     def test_d10_writers_record_the_digest_in_force(self):
         self.assertEqual(writer_problems(), [])
 
+    def test_d11_the_cache_reads_each_files_signature(self):
+        self.assertEqual(cache_problems(), [])
+
     def test_d8_the_regrade_reads_no_digest(self):
         self.assertEqual(regrade_problems(), [])
 
@@ -489,7 +514,8 @@ class TheCheckerCodeDigest(unittest.TestCase):
                 m = mutant(ct, old, new)
                 try:
                     got = {"standing": lambda: standing_cases(m), "pin": lambda: pin_problems(m),
-                           "shape": lambda: shape_problems(m), "writers": lambda: writer_problems(m)}[case]()
+                           "shape": lambda: shape_problems(m), "writers": lambda: writer_problems(m),
+                           "cache": lambda: cache_problems(m)}[case]()
                 except Exception as e:  # noqa: BLE001 - a mutant that crashes its case is red too
                     got = [f"raised {type(e).__name__}: {e}"]
                 print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} {got[:1]}", end=" ", file=sys.stderr)
@@ -498,7 +524,7 @@ class TheCheckerCodeDigest(unittest.TestCase):
         for name, old, new in WR_MUTANTS:
             with self.subTest(witness=name):
                 try:
-                    got = regrade_problems(mutant(walk_regrade, old, new))
+                    got = regrade_problems(mutant(walk_regrade, old, new), first=True)
                 except Exception as e:  # noqa: BLE001
                     got = [f"raised {type(e).__name__}: {e}"]
                 print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} {got[:1]}", end=" ", file=sys.stderr)
