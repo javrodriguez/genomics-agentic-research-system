@@ -25,6 +25,11 @@
       "path": "lanes/REVIEW-pf1-l3-fb35432.md",
       "status": "new",
       "reason": "The fresh independent review of this lane at fb354328 (VERDICT: CHANGES), committed as written on the lane orchestrator's word, Sat 24 Oct 2026. Its four banned-word lines (two ratio-slash, two out-of) are excused in language-allowlist.json (w1a-cp1-scaffold, edited by this lane, four entries appended) as a bound record."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l3-8cf492b.md",
+      "status": "new",
+      "reason": "The reviewer's closure check of this lane at 8cf492b2 (VERDICT: CHANGES), committed as written on the lane orchestrator's word, Sat 24 Oct 2026."
     }
   ]
 }
