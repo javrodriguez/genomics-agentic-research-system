@@ -1226,6 +1226,50 @@ class PrefreezeFills(unittest.TestCase):
         for pointer in (f"/served_model_rule/{CLAUDE}", f"/served_model_rule/{GEMINI}"):
             self.assertNotIn(pointer, d["pending"], "F2.served")
 
+    def test_hook_control_evidence_is_the_committed_records(self):
+        """PENDING #18-19: the vendor arms' hook-control evidence cites the committed probe records, which say it."""
+        index = json.loads((HERE / "hook-control/records.json").read_text())
+        probes = {p["probe"]: p for p in index["probes"]}
+        self.assertEqual(sorted(probes), ["hookctl1", "hookctl2"], "F5.records")
+        for p in probes.values():
+            for rel, want in p["committed"].items():
+                self.assertEqual(digest(HERE / "hook-control" / rel), want, f"F5.records: {rel}")
+            manifest = json.loads((HERE / "hook-control" / p["probe"] / "manifest.json").read_text())
+            self.assertEqual(len(manifest["files"]) + 1, p["fetched_files"], "F5.records")
+            self.assertEqual(manifest["record_kind"], "stub-model-probe", "F5.records")
+        one = json.loads((HERE / "hook-control/hookctl1/summary.json").read_text())
+        o = one["verdict"]["arms"]["O"]
+        self.assertEqual((o["verdict"], o["roads"]), ("PASS", {"HO-C0": True, "HO-C1": True}), "F5.codex")
+        for name, run in o["runs"].items():
+            if run["role"] == "on":
+                self.assertEqual(run["events"][0], ["SessionStart"], f"F5.codex: {name}")
+            if run["role"] == "off":
+                self.assertEqual((run["events"], run["late"]), ([[], []], [[]]), f"F5.codex: {name}")
+        self.assertEqual({tuple(u["returncodes"]) for u in one["units"] if u["scenario"] != "HG"}, {(None, 1)},
+                         "F5.codex")                    # process 2, the resume, ended rc 1 in all eight runs
+        self.assertEqual(one["verdict"]["arms"]["G"]["verdict"], "INCONCLUSIVE", "F5.gemini")
+        two = json.loads((HERE / "hook-control/hookctl2/summary.json").read_text())
+        g = two["verdict"]["arms"]["G"]
+        self.assertEqual((two["verdict"]["verdict"], g["verdict"], g["roads"]), ("PASS", "PASS", {"HG": True}),
+                         "F5.gemini")
+        on, off = g["runs"]["HG/G-on"], g["runs"]["HG/G-off"]
+        for events in on["events"]:
+            self.assertEqual((events[0], events[-1]), ("SessionStart", "SessionEnd"), "F5.gemini")
+        self.assertTrue(set(two["predicted_g_on_events"]) <= set(on["events"][0]), "F5.gemini")   # process 1
+        self.assertFalse(set(two["predicted_g_on_events"]) <= set(on["events"][1]), "F5.gemini")  # not process 2
+        self.assertEqual((off["events"], off["late"]), ([[], []], [[]]), "F5.gemini")
+        self.assertEqual({tuple(u["returncodes"]) for u in two["units"]}, {(0, 0)}, "F5.gemini")
+        d = b.build()
+        note = d["deterministic_layer_note"]["round_4"]
+        for h, files in ((CODEX, ("hook-control/hookctl1/summary.json", "hook-control/hookctl1/manifest.json")),
+                         (GEMINI, ("hook-control/hookctl2/summary.json", "hook-control/hookctl2/manifest.json",
+                                   "hook-control/hookctl1/summary.json"))):
+            self.assertEqual(note[h]["evidence"], b.HOOK_CONTROL_EVIDENCE[h], "F5.evidence")
+            for rel in files + ("hook-control/records.json",):
+                self.assertIn(rel, note[h]["evidence"], f"F5.evidence: {h}")
+            self.assertNotIn(f"/deterministic_layer_note/round_4/{h}/evidence", d["pending"], "F5.evidence")
+        self.assertIn("named residual", note[CODEX]["evidence"], "F5.evidence")
+
     def test_limitation_readings_rest_on_the_code(self):
         """PENDING #9 and #12 and m4: what each reading says of the code is true of it."""
         import subprocess

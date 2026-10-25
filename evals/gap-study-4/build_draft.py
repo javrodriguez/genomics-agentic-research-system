@@ -1261,6 +1261,30 @@ def run_tree_residual():
             "round_4": copy.deepcopy(RUN_TREE_ROUND_4)}
 
 
+# Pre-freeze review 1, PENDING #18-19 (lane pf1-l4a, 25 Oct 2026): the hook positive control's closed records (D8 lines
+# 339-345), committed under hook-control/ (records.json indexes them; tests/test_build_draft.py PrefreezeFills reads
+# each claim below from the committed summaries). Closed by glitch-f1, night log of 22 Oct 2026, 04:40, 04:42, 06:03.
+HOOK_CONTROL_EVIDENCE = {
+    CODEX: "PASS on both Codex roads in process 1 (probe hookctl1, lane/hook-control 2d4fec8f, athena, Thu 22 Oct "
+           "2026): on roads HO-C0 (no model, no login) and HO-C1 (a dead local provider) the on twin, the per-take "
+           "config with hooks switched on, logged SessionStart in process 1, and every off twin, the per-take config "
+           "as the study writes it, logged no event in either process or in the host's read after teardown. A named "
+           "residual: the resume path is not exercised by the control; process 2 ended with exit 1 in all eight "
+           "Codex runs (a thread-store conflict: process 1 timed out on the no-network stub and held the thread), and "
+           "the resume reads the same config home whose hooks setting the control proved off (glitch-f1's ruling, "
+           "22 Oct 2026 04:42 EDT). Records: hook-control/hookctl1/summary.json and hook-control/hookctl1/"
+           "manifest.json, indexed with their sha256 and the fetched folder's in hook-control/records.json.",
+    GEMINI: "PASS in both processes (probe hookctl2, recorded as HG2, lane/hook-control 41796301, athena, Thu 22 Oct "
+            "2026): the on twin fired SessionStart and SessionEnd in both processes, and every predicted event in "
+            "process 1 (process 2, the resume, logs no tool event), and the off twin, the per-take settings as the study writes them, logged no event in either process or in "
+            "the host's read after teardown; both runs exited 0 in both processes. The first run (hookctl1) read "
+            "INCONCLUSIVE for arm G, its on twin logging no SessionStart; the hook entries' matcher was fixed in "
+            "41796301 before HG2. Records: hook-control/hookctl2/summary.json and hook-control/hookctl2/"
+            "manifest.json (the first run's in hook-control/hookctl1/summary.json), indexed with their sha256 and the "
+            "fetched folders' in hook-control/records.json.",
+}
+
+
 def layer_note():
     (codex_hooks,) = [v for k, v in take_config.CODEX_FEATURES if k == "hooks"]
     (gemini_hooks,) = [v for k, v in take_config.GEMINI_SETTINGS if k == "hooksConfig.enabled"]
@@ -1268,10 +1292,10 @@ def layer_note():
                         "origin": "round 1's review finding F4", "text": prior_layer_note()},
             "round_4": {CLAUDE: ARM_A_HOOKS,
                         CODEX: {"switch": f"the per-take config.toml: [features] hooks = {json.dumps(codex_hooks)}",
-                                "evidence": PENDING},
+                                "evidence": HOOK_CONTROL_EVIDENCE[CODEX]},
                         GEMINI: {"switch": f"the per-take settings.json: hooksConfig.enabled = "
                                            f"{json.dumps(gemini_hooks)}",
-                                 "evidence": PENDING}}}
+                                 "evidence": HOOK_CONTROL_EVIDENCE[GEMINI]}}}
 
 
 def config_templates():

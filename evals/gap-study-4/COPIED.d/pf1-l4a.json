@@ -1,0 +1,35 @@
+{
+  "lane": "pf1-l4a",
+  "files": [
+    {
+      "path": "hook-control/records.json",
+      "status": "new",
+      "reason": "Lane pf1-l4a (pre-freeze review 1's fold plan, section 2 rows 18-19, under the lane orchestrator's brief of 25 Oct 2026): the index of D8's hook positive-control records the draft's deterministic_layer_note cites: each probe's head, run, fetched-folder tar sha256 and file count, and the sha256 of each committed copy."
+    },
+    {
+      "path": "hook-control/hookctl1/manifest.json",
+      "status": "new",
+      "reason": "Lane pf1-l4a: a byte copy of probe hookctl1's manifest.json as fetched from athena on 22 Oct 2026 (the sha256 of each of its 122 other fetched files); the Codex arm's hook-control evidence."
+    },
+    {
+      "path": "hook-control/hookctl1/summary.json",
+      "status": "new",
+      "reason": "Lane pf1-l4a: a byte copy of probe hookctl1's summary.json as fetched from athena on 22 Oct 2026 (units and verdict: Codex PASS on both roads, Gemini INCONCLUSIVE)."
+    },
+    {
+      "path": "hook-control/hookctl2/manifest.json",
+      "status": "new",
+      "reason": "Lane pf1-l4a: a byte copy of probe hookctl2's (HG2) manifest.json as fetched from athena on 22 Oct 2026 (the sha256 of each of its 34 other fetched files); the Gemini arm's hook-control evidence."
+    },
+    {
+      "path": "hook-control/hookctl2/summary.json",
+      "status": "new",
+      "reason": "Lane pf1-l4a: a byte copy of probe hookctl2's (HG2) summary.json as fetched from athena on 22 Oct 2026 (units and verdict: Gemini PASS in both processes)."
+    },
+    {
+      "path": "COPIED.d/pf1-l4a.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Lane pf1-l4a (pre-freeze review 1's evidence-only fills, 25 Oct 2026). Its edits to files other lanes claim, without a change of status: build_draft.py, prereg-draft.json and tests/test_build_draft.py (the fills and their tests), and the NIT corrections named in this lane's commits."
+    }
+  ]
+}

@@ -1,0 +1,396 @@
+{
+ "images": {
+  "codex": "sha256:21b214159e4eb02d5e73f78ccdf5ee047da2fc6944808f9a454a6b0f427dd381",
+  "gemini": "sha256:d10aa00b5958b00d1c719be1f0572967c04f30bfe381a427107c9e9a3f16b013"
+ },
+ "not_a_study_record": "a hook positive-control observation of the pinned Codex and Gemini CLIs (lane hook-control); never a study take, walk, rehearsal, cell or registered attempt",
+ "predicted_g_on_events": [
+  "SessionStart",
+  "BeforeAgent",
+  "BeforeModel",
+  "AfterModel",
+  "BeforeTool",
+  "AfterTool",
+  "AfterAgent",
+  "SessionEnd"
+ ],
+ "problems": {},
+ "reason": "D8 hook positive control, arms O and G",
+ "record_kind": "stub-model-probe",
+ "resources": {
+  "cpus": "8",
+  "memory": 6442450944,
+  "memory_reservation": 2147483648,
+  "pids_limit": 4096
+ },
+ "units": [
+  {
+   "events": [
+    [
+     "BeforeAgent",
+     "BeforeModel",
+     "BeforeToolSelection",
+     "AfterModel",
+     "BeforeTool",
+     "AfterTool",
+     "BeforeModel",
+     "BeforeToolSelection",
+     "AfterModel",
+     "AfterAgent"
+    ],
+    [
+     "BeforeAgent",
+     "BeforeModel",
+     "BeforeToolSelection",
+     "AfterModel",
+     "AfterAgent"
+    ]
+   ],
+   "failure": null,
+   "precheck": [],
+   "returncodes": [
+    0,
+    0
+   ],
+   "role": "on",
+   "run": "G-on",
+   "scenario": "HG",
+   "selftest_ok": true,
+   "study_sha256": "c0f0ed6d37cdc2024acaacd3608bd771777f83fed22a337f8dea064bba6227f7",
+   "twin_sha256": "deb48b5440939e55c277dfc4e4bced16c601fb0ea4480c60ae0d5d1649028536"
+  },
+  {
+   "events": [
+    [],
+    []
+   ],
+   "failure": null,
+   "precheck": [],
+   "returncodes": [
+    0,
+    0
+   ],
+   "role": "off",
+   "run": "G-off",
+   "scenario": "HG",
+   "selftest_ok": true,
+   "study_sha256": "c0f0ed6d37cdc2024acaacd3608bd771777f83fed22a337f8dea064bba6227f7",
+   "twin_sha256": "c6f9e4aa32ce043fd006a8286b8e63837deb97163b78b667bb45be9a8a11534a"
+  },
+  {
+   "events": [
+    [
+     "SessionStart"
+    ],
+    []
+   ],
+   "failure": null,
+   "precheck": [],
+   "returncodes": [
+    null,
+    1
+   ],
+   "role": "on",
+   "run": "O-on-bypass",
+   "scenario": "HO-C0",
+   "selftest_ok": true,
+   "study_sha256": "7d60293b1f61d304f3cc9bad3d1df30e5f7074123c83c4ef15999e2db4160973",
+   "twin_sha256": "3da8490ca63c12b627054d6c32b2745f7db4b79de6d86b6f96b1bbeb0f03c15c"
+  },
+  {
+   "events": [
+    [],
+    []
+   ],
+   "failure": null,
+   "precheck": [],
+   "returncodes": [
+    null,
+    1
+   ],
+   "role": "off",
+   "run": "O-off-bypass",
+   "scenario": "HO-C0",
+   "selftest_ok": true,
+   "study_sha256": "bb22cfd6595bec218f3ed78dd673074c954cf1815101f7917bc7a9bc4616a689",
+   "twin_sha256": "3821a3532e6653419a866a41df6d1f634a1e8bad5405fcc2b406d0d27f61288e"
+  },
+  {
+   "events": [
+    [],
+    []
+   ],
+   "failure": null,
+   "precheck": [],
+   "returncodes": [
+    null,
+    1
+   ],
+   "role": "off",
+   "run": "O-off-study",
+   "scenario": "HO-C0",
+   "selftest_ok": true,
+   "study_sha256": "a46c2dcad7a75adcbe367c5957612f7a151f5db879e0fdaffa39888079e92af1",
+   "twin_sha256": "a263da12b7a8b345cee06b8ca0fbb1dc4c2a9b28e0379b9fc6bef84ad157f18e"
+  },
+  {
+   "events": [
+    [],
+    []
+   ],
+   "failure": null,
+   "precheck": [],
+   "returncodes": [
+    null,
+    1
+   ],
+   "role": "info",
+   "run": "O-on-study",
+   "scenario": "HO-C0",
+   "selftest_ok": true,
+   "study_sha256": "9a5a36e650c31b738a71d60ad9bf27a1badd0aeb14702649c05071f05e99f9d5",
+   "twin_sha256": "e07c6f68980d916de3972b159e205ed8633e7715c99c3d99e49310ace6e3882c"
+  },
+  {
+   "events": [
+    [
+     "SessionStart"
+    ],
+    []
+   ],
+   "failure": null,
+   "precheck": [],
+   "returncodes": [
+    null,
+    1
+   ],
+   "role": "on",
+   "run": "O-on-bypass",
+   "scenario": "HO-C1",
+   "selftest_ok": true,
+   "study_sha256": "950ec8731818f111ded3be00d6de6ca6c920159130b4ee876c878e73505d544f",
+   "twin_sha256": "2ee92c31a9a19c1f3007b0d0feafd96684e2c9688483d5d0bb24010b2a9f4022"
+  },
+  {
+   "events": [
+    [],
+    []
+   ],
+   "failure": null,
+   "precheck": [],
+   "returncodes": [
+    null,
+    1
+   ],
+   "role": "off",
+   "run": "O-off-bypass",
+   "scenario": "HO-C1",
+   "selftest_ok": true,
+   "study_sha256": "129c8022b72ccc2265aa74ca9c8440e3ef9dd145f93b4e00fbb61d45f9396533",
+   "twin_sha256": "45256c0e5fc280583e2d32aa05e56a7332cb7a995e0afd8446c7ae78f5c606cf"
+  },
+  {
+   "events": [
+    [],
+    []
+   ],
+   "failure": null,
+   "precheck": [],
+   "returncodes": [
+    null,
+    1
+   ],
+   "role": "off",
+   "run": "O-off-study",
+   "scenario": "HO-C1",
+   "selftest_ok": true,
+   "study_sha256": "97b66a4297d19a9484a4f32bb407be212fc292ca132d99efe0b0eebdb90dc298",
+   "twin_sha256": "53654c1ed6506c34f5ea06905a91602f2360b1df4bbf27e86711db94fe6fac56"
+  },
+  {
+   "events": [
+    [],
+    []
+   ],
+   "failure": null,
+   "precheck": [],
+   "returncodes": [
+    null,
+    1
+   ],
+   "role": "info",
+   "run": "O-on-study",
+   "scenario": "HO-C1",
+   "selftest_ok": true,
+   "study_sha256": "97ae05fe67dbfa9e638988427b3c59f33846584f50bdf4c2ae100fce50189939",
+   "twin_sha256": "414102a483ae9b5c0b98a4b287d4669c84c3b997f1311d632657c49b99f8e496"
+  }
+ ],
+ "verdict": {
+  "arms": {
+   "G": {
+    "reasons": [
+     "HG: G-on: the on twin did not log SessionStart in process 1"
+    ],
+    "roads": {
+     "HG": false
+    },
+    "runs": {
+     "HG/G-off": {
+      "anomalies": [],
+      "events": [
+       [],
+       []
+      ],
+      "late": [
+       []
+      ],
+      "role": "off",
+      "selftest_ok": true
+     },
+     "HG/G-on": {
+      "anomalies": [],
+      "events": [
+       [
+        "BeforeAgent",
+        "BeforeModel",
+        "BeforeToolSelection",
+        "AfterModel",
+        "BeforeTool",
+        "AfterTool",
+        "BeforeModel",
+        "BeforeToolSelection",
+        "AfterModel",
+        "AfterAgent"
+       ],
+       [
+        "BeforeAgent",
+        "BeforeModel",
+        "BeforeToolSelection",
+        "AfterModel",
+        "AfterAgent"
+       ]
+      ],
+      "late": [
+       []
+      ],
+      "role": "on",
+      "selftest_ok": true
+     }
+    },
+    "verdict": "INCONCLUSIVE"
+   },
+   "O": {
+    "reasons": [],
+    "roads": {
+     "HO-C0": true,
+     "HO-C1": true
+    },
+    "runs": {
+     "HO-C0/O-off-bypass": {
+      "anomalies": [],
+      "events": [
+       [],
+       []
+      ],
+      "late": [
+       []
+      ],
+      "role": "off",
+      "selftest_ok": true
+     },
+     "HO-C0/O-off-study": {
+      "anomalies": [],
+      "events": [
+       [],
+       []
+      ],
+      "late": [
+       []
+      ],
+      "role": "off",
+      "selftest_ok": true
+     },
+     "HO-C0/O-on-bypass": {
+      "anomalies": [],
+      "events": [
+       [
+        "SessionStart"
+       ],
+       []
+      ],
+      "late": [
+       []
+      ],
+      "role": "on",
+      "selftest_ok": true
+     },
+     "HO-C0/O-on-study": {
+      "anomalies": [],
+      "events": [
+       [],
+       []
+      ],
+      "late": [
+       []
+      ],
+      "role": "info",
+      "selftest_ok": true
+     },
+     "HO-C1/O-off-bypass": {
+      "anomalies": [],
+      "events": [
+       [],
+       []
+      ],
+      "late": [
+       []
+      ],
+      "role": "off",
+      "selftest_ok": true
+     },
+     "HO-C1/O-off-study": {
+      "anomalies": [],
+      "events": [
+       [],
+       []
+      ],
+      "late": [
+       []
+      ],
+      "role": "off",
+      "selftest_ok": true
+     },
+     "HO-C1/O-on-bypass": {
+      "anomalies": [],
+      "events": [
+       [
+        "SessionStart"
+       ],
+       []
+      ],
+      "late": [
+       []
+      ],
+      "role": "on",
+      "selftest_ok": true
+     },
+     "HO-C1/O-on-study": {
+      "anomalies": [],
+      "events": [
+       [],
+       []
+      ],
+      "late": [
+       []
+      ],
+      "role": "info",
+      "selftest_ok": true
+     }
+    },
+    "verdict": "PASS"
+   }
+  },
+  "verdict": "INCONCLUSIVE"
+ }
+}

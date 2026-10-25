@@ -1,0 +1,150 @@
+{
+ "images": {
+  "codex": null,
+  "gemini": "sha256:d10aa00b5958b00d1c719be1f0572967c04f30bfe381a427107c9e9a3f16b013"
+ },
+ "not_a_study_record": "a hook positive-control observation of the pinned Codex and Gemini CLIs (lane hook-control); never a study take, walk, rehearsal, cell or registered attempt",
+ "predicted_g_on_events": [
+  "SessionStart",
+  "BeforeAgent",
+  "BeforeModel",
+  "AfterModel",
+  "BeforeTool",
+  "AfterTool",
+  "AfterAgent",
+  "SessionEnd"
+ ],
+ "problems": {},
+ "reason": "D8 hook positive control, Gemini re-run after the matcher fix (41796301)",
+ "record_kind": "stub-model-probe",
+ "resources": {
+  "cpus": "8",
+  "memory": 6442450944,
+  "memory_reservation": 2147483648,
+  "pids_limit": 4096
+ },
+ "units": [
+  {
+   "events": [
+    [
+     "SessionStart",
+     "BeforeAgent",
+     "PreCompress",
+     "BeforeModel",
+     "BeforeToolSelection",
+     "AfterModel",
+     "BeforeTool",
+     "AfterTool",
+     "PreCompress",
+     "BeforeModel",
+     "BeforeToolSelection",
+     "AfterModel",
+     "AfterAgent",
+     "SessionEnd"
+    ],
+    [
+     "SessionStart",
+     "BeforeAgent",
+     "PreCompress",
+     "BeforeModel",
+     "BeforeToolSelection",
+     "AfterModel",
+     "AfterAgent",
+     "SessionEnd"
+    ]
+   ],
+   "failure": null,
+   "precheck": [],
+   "returncodes": [
+    0,
+    0
+   ],
+   "role": "on",
+   "run": "G-on",
+   "scenario": "HG",
+   "selftest_ok": true,
+   "study_sha256": "c0f0ed6d37cdc2024acaacd3608bd771777f83fed22a337f8dea064bba6227f7",
+   "twin_sha256": "b09b2fed3c60c20c8b6753aa5aa99cd580bc32d46b8657259aabf688a18e3e86"
+  },
+  {
+   "events": [
+    [],
+    []
+   ],
+   "failure": null,
+   "precheck": [],
+   "returncodes": [
+    0,
+    0
+   ],
+   "role": "off",
+   "run": "G-off",
+   "scenario": "HG",
+   "selftest_ok": true,
+   "study_sha256": "c0f0ed6d37cdc2024acaacd3608bd771777f83fed22a337f8dea064bba6227f7",
+   "twin_sha256": "cb9c9ea3a4bfe36decb12f60935d51e845bd14df122475e3803652982afc5cf1"
+  }
+ ],
+ "verdict": {
+  "arms": {
+   "G": {
+    "reasons": [],
+    "roads": {
+     "HG": true
+    },
+    "runs": {
+     "HG/G-off": {
+      "anomalies": [],
+      "events": [
+       [],
+       []
+      ],
+      "late": [
+       []
+      ],
+      "role": "off",
+      "selftest_ok": true
+     },
+     "HG/G-on": {
+      "anomalies": [],
+      "events": [
+       [
+        "SessionStart",
+        "BeforeAgent",
+        "PreCompress",
+        "BeforeModel",
+        "BeforeToolSelection",
+        "AfterModel",
+        "BeforeTool",
+        "AfterTool",
+        "PreCompress",
+        "BeforeModel",
+        "BeforeToolSelection",
+        "AfterModel",
+        "AfterAgent",
+        "SessionEnd"
+       ],
+       [
+        "SessionStart",
+        "BeforeAgent",
+        "PreCompress",
+        "BeforeModel",
+        "BeforeToolSelection",
+        "AfterModel",
+        "AfterAgent",
+        "SessionEnd"
+       ]
+      ],
+      "late": [
+       []
+      ],
+      "role": "on",
+      "selftest_ok": true
+     }
+    },
+    "verdict": "PASS"
+   }
+  },
+  "verdict": "PASS"
+ }
+}
