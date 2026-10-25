@@ -949,9 +949,18 @@ def _check_metadata(raw, *_):
 
 
 def _inspect_gateways(obj) -> list:
+    """The take inspect's gateways, one per network it is on. PF1-L3 (the lane orchestrator's ruling on review fb354328
+    finding 5, 24 Oct 2026): an empty Gateway on any of its networks (as an --internal network may report) refuses,
+    fail closed: the probe's candidates then come from the take's own route table alone, with nothing host-side to
+    bind them to, so the check never passes on the route table's word. The freeze rehearsal's real box records which
+    it is."""
     nets = (obj.get("NetworkSettings") or {}).get("Networks") if isinstance(obj, dict) else None
     _need(isinstance(nets, dict) and nets, "the take inspect names no network, so its gateway cannot be shown")
-    return sorted({n.get("Gateway") for n in nets.values() if isinstance(n, dict) and n.get("Gateway")})
+    empty = sorted(str(k) for k, n in nets.items() if not (isinstance(n, dict) and isinstance(n.get("Gateway"), str)
+                                                          and n["Gateway"]))
+    _need(not empty, f"the take inspect names no gateway for network(s) {empty}: the addresses tried cannot be bound "
+                     f"to the take's own gateway (fail closed)")
+    return sorted({n["Gateway"] for n in nets.values()})
 
 
 def _check_gateway(raw, *_):

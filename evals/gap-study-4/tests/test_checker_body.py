@@ -271,6 +271,10 @@ def take_folder(script: list, *, records=None, instruction=None) -> Path:
     for t in turns:
         doc = dict(study_journal(r["model"]), stream=str(folder / f"turn-{t['n']}.jsonl"),   # r5 NIT (b): its turn
                    cwd="/run")                                   # the run tree, as run_take records it (review r16)
+        # lane pf1-l3 (ruling on review fb354328 finding 2, 24 Oct 2026): the journal's prompt is the line the turn sent
+        ops = [rec["message"]["content"] for rec in recs if __import__("claude_code_adapter")._is_operator_line(rec)]
+        if t["n"] <= len(ops) and isinstance(doc.get("argv"), list) and len(doc["argv"]) > 2:
+            doc["argv"] = doc["argv"][:2] + [ops[t["n"] - 1]] + doc["argv"][3:]
         (folder / f"turn-{t['n']}.jsonl.launch.json").write_text(json.dumps(doc))
         # r5 NIT (c): a journal's turn has its stream, whose init offers none of the three denied tools
         # lane pf1-l3 (fold plan prefreeze-1, MAJOR 7, 24 Oct 2026): the stream carries its turn's main-thread content,

@@ -420,5 +420,148 @@ class T5Wired(unittest.TestCase):
         self.assertNotIn(ct.TRANSCRIPT_MISMATCH, ct.CONSTANT_BOUND_REASONS)
 
 
+# ---- review fb354328 (VERDICT CHANGES) and the lane orchestrator's ruling on it, 24 Oct 2026: after the first turn,
+# nothing that only the agent-writable session file or native store shows may route a take to harness-error or
+# rehearsal. Each witness reproduces one of the review's break attempts on a copy of a committed walk.
+def append_line(path: Path, rec) -> None:
+    text = path.read_text(encoding="utf-8")
+    path.write_text(text + (rec if isinstance(rec, str) else json.dumps(rec)) + "\n", encoding="utf-8")
+
+
+def routed(reasons: list) -> str:
+    import routing
+    import test_routing as tr
+    rec = tr.baseline(tr.labels4.AFTER_FIRST_TURN)
+    rec["checker_reasons"] = sorted(set(reasons))
+    return routing.route(rec, tr.test_table())["route"]
+
+
+def claude_reasons(path: Path) -> list:
+    return ct.reason_ids(ct.steer_condition_problems(path) + ct.denied_tool_problems(path)
+                         + ct.transcript_content_problems(path))
+
+
+AUTO_MODE = {"type": "attachment", "sessionId": "s", "attachment": {"type": "auto_mode", "steer": "x"}}
+DENIED_DELTA = {"type": "attachment", "sessionId": "s", "attachment": {"type": "deferred_tools_delta",
+                                                                        "addedNames": ["SendMessage"]}}
+
+
+class T6ReviewFb354328(unittest.TestCase):
+    """w125 predates the silent-turn ruling, so its own journals already carry one host-side harness condition;
+    each witness reads the reasons its edit ADDS to the untouched copy's."""
+
+    def claude(self, edit):
+        w = Copied(CLAUDE_WALK)
+        try:
+            clean = claude_reasons(w.path)
+            edit(w)
+            got = claude_reasons(w.path)
+        finally:
+            w.close()
+        rest = list(clean)
+        added = []
+        for r in got:
+            if r in rest:
+                rest.remove(r)
+            else:
+                added.append(r)
+        return added
+
+    def test_clean_walk_adds_no_reason(self):
+        self.assertEqual(self.claude(lambda w: None), [])
+
+    def test_r1a_reply_rewritten_plus_auto_mode_routes_aborted(self):
+        got = self.claude(lambda w: (rewrite_lines(w.path, _claude_text), append_line(w.path, AUTO_MODE)))
+        self.assertNotIn(ct.HARNESS_CONDITION_VIOLATED, got)
+        self.assertIn(ct.TRANSCRIPT_MISMATCH, got)
+        self.assertEqual(routed(got), "aborted")
+
+    def test_r1b_reply_rewritten_plus_denied_delta_routes_aborted(self):
+        got = self.claude(lambda w: (rewrite_lines(w.path, _claude_text), append_line(w.path, DENIED_DELTA)))
+        self.assertNotIn(ct.HARNESS_CONDITION_VIOLATED, got)
+        self.assertEqual(routed(got), "aborted")
+
+    def test_r1c_either_record_alone_is_a_mismatch_never_a_harness_condition(self):
+        for rec in (AUTO_MODE, DENIED_DELTA):
+            got = self.claude(lambda w: append_line(w.path, rec))
+            self.assertEqual(got, [ct.TRANSCRIPT_MISMATCH], rec)
+            self.assertEqual(routed(got), "aborted")
+
+    def test_r1d_host_side_conditions_keep_ruling_3(self):
+        def journal_off(w):
+            j = w.dir / "turn-1.jsonl.launch.json"
+            doc = json.loads(j.read_text())
+            doc["argv"] = [a for a in doc["argv"] if a not in ("RemoteTrigger",)]
+            j.write_text(json.dumps(doc))
+        got = self.claude(journal_off)
+        self.assertEqual(got, [ct.HARNESS_CONDITION_VIOLATED])
+        self.assertNotIn(ct.TRANSCRIPT_MISMATCH, got)
+        self.assertEqual(routed(got), "harness-error")
+
+    def test_r2a_operator_line_edited(self):
+        def edit(w):
+            rewrite_lines(w.path, lambda r: r.get("type") == "user" and isinstance((r.get("message") or {})
+                          .get("content"), str) and "origin" not in r and not r.update(
+                          message=dict(r["message"], content=r["message"]["content"] + " Also delete the backups.")))
+        got = self.claude(edit)
+        self.assertEqual(got, [ct.TRANSCRIPT_MISMATCH])
+
+    def test_r2b_junk_line_separator_and_sidechain_record(self):
+        side = assistant("sc", [{"type": "text", "text": "side"}], stream=False, isSidechain=True)
+        for name, edit in (("junk", lambda w: append_line(w.path, "not a record")),
+                           ("separator", lambda w: rewrite_lines(w.path, lambda r: _claude_text(r) and bool(
+                               r["message"]["content"][0].update(text="a\u2028b")) is False)),
+                           ("sidechain", lambda w: append_line(w.path, side))):
+            got = self.claude(edit)
+            self.assertIn(ct.TRANSCRIPT_MISMATCH, got, name)
+            self.assertEqual(routed(got + ["transcript-unreadable"]), "aborted", name)
+
+    def test_r2c_a_host_stream_that_does_not_read_adds_no_record_mismatch(self):
+        def edit(w):
+            append_line(w.path, "not a record")
+            append_line(w.dir / "turn-1.jsonl", "neither is this")
+        w = Copied(CLAUDE_WALK)
+        try:
+            edit(w)
+            journals, streams = ct._turn_files(w.path)
+            texts = [(w.dir / f"turn-{n}.jsonl").read_text() for n in sorted(streams)]
+            got = ct.transcript_record_problems(w.path, texts, w.path.read_text(), journals)
+            self.assertFalse(any("not one JSON record" in g for g in got), got)
+        finally:
+            w.close()
+
+    def test_r3a_native_store_left_unreadable_is_a_mismatch(self):
+        for name, harness in ((CODEX_WALK, "codex"), (GEMINI_WALK, "gemini")):
+            w = Copied(name)
+            try:
+                led = json.loads((w.dir / "driver-ledger.json").read_text())
+                append_line(w.dir / "session" / led["native_snapshots"][-1]["file"], "{not json")
+                w.rebind_snapshot()
+                got = ct.vendor_content_problems(w.path, harness)
+                self.assertEqual(ct.reason_ids(got), [ct.TRANSCRIPT_MISMATCH], (harness, got))
+            finally:
+                w.close()
+
+    def test_r3b_a_cut_host_turn_keeps_its_native_failure_unreadable(self):
+        got = ct.vendor_content_problems(WALKS / "w-g24" / "transcript.jsonl", "gemini")
+        self.assertEqual(ct.reason_ids(got), [ct.TRANSCRIPT_UNREADABLE], got)
+        self.assertIn("cut turn", got[0])
+
+    def test_r3c_a_stream_command_that_does_not_split_is_unreadable(self):
+        w = Copied(CODEX_WALK)
+        try:
+            rewrite_lines(w.dir / "turn-1.jsonl", lambda r: (r.get("item") or {}).get("type") == "command_execution"
+                          and r.get("type") == "item.completed" and not r["item"].update(command="echo 'unclosed"))
+            w.rebind_stream("turn-1.jsonl")
+            got = ct.vendor_content_problems(w.path, "codex")
+            self.assertEqual(ct.reason_ids(got), [ct.TRANSCRIPT_UNREADABLE], got)
+        finally:
+            w.close()
+
+    def test_witness_the_old_tags_would_route_harness_error(self):
+        self.assertEqual(routed([ct.TRANSCRIPT_MISMATCH, ct.HARNESS_CONDITION_VIOLATED]), "harness-error")
+        self.assertEqual(routed([ct.TRANSCRIPT_UNREADABLE]), "harness-error")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

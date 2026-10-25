@@ -119,9 +119,15 @@ class E2Checks(unittest.TestCase):
         got = judged(raw_for(out, "172.30.0.1"))
         self.assertEqual({k: v[0] for k, v in got.items()}, dict.fromkeys(got, True), got)
 
-    def test_internal_network_inspect_with_no_gateway(self):
+    def test_an_empty_inspect_gateway_refuses(self):
+        """The lane orchestrator's ruling on review fb354328 finding 5: an empty Gateway (as an --internal network may
+        report) fails closed, whatever the route table's first host is; the candidates are never bound on their own."""
         out, _, _ = run_program(INTERNAL_ONLY)
-        self.assertTrue(judged(raw_for(out, None))["egress-gateway-refused"][0])
+        ok, detail = judged(raw_for(out, None))["egress-gateway-refused"]
+        self.assertFalse(ok)
+        self.assertIn("names no gateway", detail)
+        ok, _ = judged(raw_for(out, "172.31.0.1"))["egress-gateway-refused"]
+        self.assertTrue(ok)
 
     def test_each_connection_is_red(self):
         for target, cid in ((("172.30.0.1", 2375), "egress-gateway-refused"), (("1.1.1.1", 443), "egress-raw-ip-refused"),

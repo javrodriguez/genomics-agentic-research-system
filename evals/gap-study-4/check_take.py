@@ -2738,8 +2738,10 @@ def steer_condition_problems(path: Path) -> list[str]:
                             f"condition did not hold on every turn")
     count = _auto_mode_records(path)
     if count:
-        problems.append(f"[{HARNESS_CONDITION_VIOLATED}] the transcript carries {count} auto_mode attachment(s): the "
-                        f"bash-first steer reached the agent")
+        # PF1-L3 (the lane orchestrator's ruling on review fb354328 finding 1, 24 Oct 2026): the session file is the
+        # agent's to write, so what only it shows is a disagreement between the records, never a harness condition
+        problems.append(f"[{TRANSCRIPT_MISMATCH}] the transcript carries {count} auto_mode attachment(s), which no "
+                        f"host record shows (the journals set the steer off): the records disagree")
     return problems
 
 
@@ -2799,12 +2801,18 @@ def denied_tool_problems(path: Path) -> list[str]:
         if not (isinstance(att, dict) and att.get("type") == "deferred_tools_delta"):
             continue
         added = att.get("addedNames", [])
+        # PF1-L3 (the lane orchestrator's ruling on review fb354328 finding 1, 24 Oct 2026): the session file is the
+        # agent's to write; the denials are shown by the host records above (journals and stream inits), and a
+        # session-file record that says otherwise is a disagreement between the records
         if not isinstance(added, list):
-            raise CheckRefused("a deferred_tools_delta whose addedNames is not a list")
+            problems.append(f"[{TRANSCRIPT_MISMATCH}] a deferred_tools_delta in the transcript whose addedNames is not "
+                            f"a list: off the record shape the harness writes")
+            continue
         offered = sorted(set(map(str, added)) & want)
         if offered:
-            problems.append(f"[{HARNESS_CONDITION_VIOLATED}] a deferred_tools_delta adds {offered}: the isolation "
-                            f"denials did not hold")
+            problems.append(f"[{TRANSCRIPT_MISMATCH}] a deferred_tools_delta in the transcript adds {offered}, which "
+                            f"no host record offers (the journals deny them, the stream inits omit them): the records "
+                            f"disagree")
     return problems
 
 
@@ -7020,7 +7028,14 @@ def vendor_gemini_tools_partial(path) -> list:
 #   [transcript-mismatch]: an operator reason with its round-4 ruling, routed by its own row (routing.json
 #   transcript-mismatch): aborted after the agent's first turn, published and counted against holding, never re-run
 #   (the agent can cause it, MAJOR 5's principle), but beside harness-condition-violated, which keeps glitch-b5's
-#   ruling 3 (harness-error, as cgroup-kill's none_of does); a rehearsal before it. It is read from the committed records alone,
+#   ruling 3 (harness-error, as cgroup-kill's none_of does); a rehearsal before it.
+#   Review fb354328 and the lane orchestrator's ruling on it (24 Oct 2026): after the first turn nothing only the
+#   agent-writable records show may route a take to harness-error or rehearsal, so harness-condition-violated reads
+#   host records alone (steer_condition_problems' and denied_tool_problems' session-file legs now say
+#   transcript-mismatch), transcript_record_problems adds the operator lines against the journals' prompts and the
+#   session file's junk lines, separators and sidechain records, and a native store that does not read beside host
+#   streams that read whole is transcript-mismatch; transcript-unreadable is kept for a host record that does not
+#   read, and for a native failure beside a cut host turn. It is read from the committed records alone,
 #   so a walk's recheck applies it too.
 #     claude-code  every turn's main-thread text, thinking, tool_use and tool_result units, in order, between turn-N.jsonl
 #                  and transcript.jsonl (claude_code_adapter.content_problems, the same comparison the driver's C6
@@ -7056,8 +7071,72 @@ def transcript_content_problems(path: Path) -> list[str]:
         session = path.read_bytes().decode("utf-8", errors="replace")
     except OSError as e:
         raise CheckRefused(f"the transcript or a turn stream cannot be read ({type(e).__name__})") from None
-    return [f"[{TRANSCRIPT_MISMATCH}] {p}" for p in
-            _cca.content_problems([_cca.stream_content_units(t) for t in texts], session)]
+    out = [f"[{TRANSCRIPT_MISMATCH}] {p}" for p in
+           _cca.content_problems([_cca.stream_content_units(t) for t in texts], session)]
+    return out + transcript_record_problems(path, texts, session, _journals)
+
+
+def _host_readable(texts: list) -> bool:
+    """Every turn stream reads as the host captured it: no line separator but newline, every non-blank line one JSON
+    object (the host's own record, which the agent does not write)."""
+    for text in texts:
+        if any(sep in text for sep in _cca.LINE_SEPARATORS):
+            return False
+        for line in text.split("\n"):
+            if not line.strip():
+                continue
+            try:
+                if not isinstance(json.loads(line), dict):
+                    return False
+            except ValueError:
+                return False
+    return True
+
+
+def transcript_record_problems(path: Path, texts: list, session: str, journals: dict) -> list[str]:
+    """PF1-L3 (the lane orchestrator's ruling on review fb354328 findings 1-2, 24 Oct 2026: after the first turn,
+    nothing only the agent-writable session file shows may route a take to harness-error or rehearsal):
+    [transcript-mismatch] when, the host streams being readable, the session file carries a line that is not one JSON
+    object, a line separator but newline, or a sidechain record (the main session file holds none: 0 of 151 committed
+    walks), or when a turn's operator line is not the prompt that turn's launch journal records (argv[2], host-written;
+    151 of 151 committed walks equal). transcript_line_problems and the view still name the line; this reading only
+    says the records disagree, so the take routes aborted, never re-run."""
+    out = []
+    if _host_readable(texts):
+        seps = sorted({f"U+{ord(c):04X}" for c in TRANSCRIPT_LINE_SEPARATORS if c in session})
+        if seps:
+            out.append(f"[{TRANSCRIPT_MISMATCH}] the session file carries line separator(s) {', '.join(seps)} that "
+                       f"no turn stream carries: the records disagree")
+        junk, side = 0, 0
+        for line in session.split("\n"):
+            if not line.strip():
+                continue
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                junk += 1
+                continue
+            if not isinstance(rec, dict):
+                junk += 1
+            elif rec.get("isSidechain") is True:
+                side += 1
+        if junk:
+            out.append(f"[{TRANSCRIPT_MISMATCH}] the session file holds {junk} line(s) that are not one JSON record, "
+                       f"while every turn stream reads: the records disagree")
+        if side:
+            out.append(f"[{TRANSCRIPT_MISMATCH}] the session file holds {side} sidechain record(s), which the main "
+                       f"session file never holds: the records disagree")
+    ops = [rec["message"]["content"] for rec in _cca._content_records(session) if rec.get("isSidechain") is not True
+           and _cca._is_operator_line(rec)]
+    for n, journal in sorted(journals.items()):
+        doc = _journal_doc(journal)
+        argv = doc.get("argv") if isinstance(doc, dict) else None
+        if not (isinstance(argv, list) and len(argv) > 2 and isinstance(argv[2], str)):
+            continue                       # the journal itself is off its shape: _journal_gaps names it
+        if n > len(ops) or ops[n - 1] != argv[2]:
+            out.append(f"[{TRANSCRIPT_MISMATCH}] turn {n}: the session file's operator line is not the prompt the "
+                       f"turn's launch journal records: the records disagree")
+    return out
 
 
 def _vendor_bound_texts(path: Path) -> tuple:
@@ -7083,72 +7162,119 @@ def _vendor_bound_texts(path: Path) -> tuple:
     return texts, raw
 
 
-def _codex_command_problems(texts: list, raw: bytes) -> list[str]:
-    shown = []
+class _NativeUnread(Exception):
+    """PF1-L3: the native store (agent-writable) cannot be read while the host streams read."""
+
+
+def _host_stream_records(texts: list, harness: str) -> list:
+    """[(where, record)] of every line of the envelope-bound turn streams, each through the CLI's own stream parser
+    (codex: one JSON object per line; gemini: transcript_gemini.decode). The streams are the host's capture, so a line
+    that does not parse raises VendorUnreadable (transcript-unreadable, harness-error)."""
+    out = []
     for k, text in enumerate(texts, 1):
         for n, line in enumerate(transcript_view.jsonl_lines(text), 1):
-            rec = json.loads(line)
-            item = rec.get("item") if isinstance(rec, dict) else None
-            if rec.get("type") == "item.completed" and isinstance(item, dict) and item.get("type") == "command_execution":
-                shown.append((f"turn-{k}.jsonl line {n}", item.get("command")))
-    native = []
-    for rec in _codex_native._json_lines(raw, VendorUnreadable):
-        pay = rec.get("payload") if isinstance(rec.get("payload"), dict) else {}
-        item = pay.get("item")
-        if rec.get("type") == "event_msg" and pay.get("type") == "item_completed" and isinstance(item, dict) \
-                and item.get("type") == "CommandExecution":
-            native.append(item.get("command"))
+            try:
+                rec = json.loads(line) if harness == "codex" else _tx_gemini.decode(line)
+            except Exception as e:  # noqa: BLE001 - any parse failure of a host record is that record unread
+                raise VendorUnreadable(f"turn-{k}.jsonl line {n}: the host stream does not parse ({type(e).__name__})") \
+                    from None
+            if not isinstance(rec, dict):
+                raise VendorUnreadable(f"turn-{k}.jsonl line {n}: the host stream line is not one JSON object")
+            out.append((f"turn-{k}.jsonl line {n}", rec))
+    return out
+
+
+HOST_TERMINAL_TYPES = {"codex": ("turn.completed", "turn.failed"), "gemini": ("result",)}
+
+
+def _host_streams_complete(records: list, texts: list, harness: str) -> bool:
+    """Every turn stream holds its CLI's terminal record (codex turn.completed or turn.failed; gemini result)."""
+    ends = {where.split(" line ")[0] for where, rec in records if rec.get("type") in HOST_TERMINAL_TYPES[harness]}
+    return all(f"turn-{k}.jsonl" in ends for k in range(1, len(texts) + 1))
+
+
+def _codex_command_problems(records: list, raw: bytes) -> list[str]:
+    shown = []
+    for where, rec in records:
+        item = rec.get("item")
+        if rec.get("type") == "item.completed" and isinstance(item, dict) and item.get("type") == "command_execution":
+            cmd = item.get("command")
+            try:
+                split = _shlex.split(cmd) if isinstance(cmd, str) else None
+            except ValueError:
+                split = None
+            if split is None:          # review fb354328 finding 4: the stream is host text, so this is unread, not a
+                raise VendorUnreadable(f"{where}: the exec stream's command does not split as a shell line")   # forgery
+            shown.append((where, split))
+    try:
+        native = []
+        for rec in _codex_native._json_lines(raw, VendorUnreadable):
+            pay = rec.get("payload") if isinstance(rec.get("payload"), dict) else {}
+            item = pay.get("item")
+            if rec.get("type") == "event_msg" and pay.get("type") == "item_completed" and isinstance(item, dict) \
+                    and item.get("type") == "CommandExecution":
+                native.append(item.get("command"))
+    except Exception as e:  # noqa: BLE001 - the rollout is the agent's to write
+        raise _NativeUnread(f"the rollout does not read ({type(e).__name__})") from None
     if len(shown) != len(native):
         return [f"[{TRANSCRIPT_MISMATCH}] the exec streams show {len(shown)} completed command(s) and the rollout "
                 f"records {len(native)}"]
-    for (where, cmd), argv in zip(shown, native):
-        try:
-            split = _shlex.split(cmd) if isinstance(cmd, str) else None
-        except ValueError:
-            split = None
+    for (where, split), argv in zip(shown, native):
         if split != argv:
             return [f"[{TRANSCRIPT_MISMATCH}] {where}: the command the exec stream shows is not, split as a shell line, "
                     f"the argv the rollout records for it"]
     return []
 
 
-def _gemini_result_problems(texts: list, raw: bytes) -> list[str]:
-    _gemini_projection.project(raw)
-    replayed = _gemini_replay.replay(raw)
-    native = {}
-    for message in replayed["timeline"]:
-        for tool in message.get("toolCalls") or [] if message.get("type") == "gemini" else []:
-            if tool.get("id") in native:
-                return [f"[{TRANSCRIPT_MISMATCH}] the native session holds two tool calls with id {tool.get('id')!r}"]
-            native[tool.get("id")] = tool
-    for k, text in enumerate(texts, 1):
-        for n, line in enumerate(transcript_view.jsonl_lines(text), 1):
-            rec = _tx_gemini.decode(line)
-            if rec.get("type") != _tx_gemini.TOOL_RESULT:
-                continue
-            tool = native.get(rec.get("tool_id"))
-            if tool is None:
-                return [f"[{TRANSCRIPT_MISMATCH}] turn-{k}.jsonl line {n}: the stream's tool result names a call the "
-                        f"native session does not hold"]
-            display = tool.get("resultDisplay")
-            want = display if isinstance(display, str) else None
-            if rec.get("output") != want:
-                return [f"[{TRANSCRIPT_MISMATCH}] turn-{k}.jsonl line {n}: the stream's tool result output is not the "
-                        f"native session's display of call {str(rec.get('tool_id'))[:60]!r}"]
+def _gemini_result_problems(records: list, raw: bytes) -> list[str]:
+    try:
+        _gemini_projection.project(raw)
+        replayed = _gemini_replay.replay(raw)
+        native = {}
+        for message in replayed["timeline"]:
+            for tool in message.get("toolCalls") or [] if message.get("type") == "gemini" else []:
+                if tool.get("id") in native:
+                    return [f"[{TRANSCRIPT_MISMATCH}] the native session holds two tool calls with id "
+                            f"{tool.get('id')!r}"]
+                native[tool.get("id")] = tool
+    except Exception as e:  # noqa: BLE001 - the native session is the agent's to write
+        raise _NativeUnread(f"the native session does not read ({type(e).__name__}: {str(e)[:120]})") from None
+    for where, rec in records:
+        if rec.get("type") != _tx_gemini.TOOL_RESULT:
+            continue
+        tool = native.get(rec.get("tool_id"))
+        if tool is None:
+            return [f"[{TRANSCRIPT_MISMATCH}] {where}: the stream's tool result names a call the native session does "
+                    f"not hold"]
+        display = tool.get("resultDisplay")
+        want = display if isinstance(display, str) else None
+        if rec.get("output") != want:
+            return [f"[{TRANSCRIPT_MISMATCH}] {where}: the stream's tool result output is not the native session's "
+                    f"display of call {str(rec.get('tool_id'))[:60]!r}"]
     return []
 
 
 def vendor_content_problems(path, harness) -> list[str]:
     """codex: the exec streams' commands against the rollout's argv; gemini: the streams' tool-result outputs against
-    the native displays. [transcript-mismatch] on a difference; [transcript-unreadable] when either side cannot be
-    read, never a pass."""
+    the native displays. [transcript-mismatch] on a difference, and (the lane orchestrator's ruling on review fb354328
+    finding 3, 24 Oct 2026) when the agent-writable native store does not read while the host streams do;
+    [transcript-unreadable] only when a host record (the envelopes, the ledger, a stream, the digests that bind them)
+    cannot be read. Never a pass."""
     harness = _vendor_harness(harness)
     path = Path(path)
     try:
         texts, raw = _vendor_bound_texts(path)
-        return (_codex_command_problems if harness == "codex" else _gemini_result_problems)(texts, raw)
+        records = _host_stream_records(texts, harness)
+        return (_codex_command_problems if harness == "codex" else _gemini_result_problems)(records, raw)
+    except _NativeUnread as e:
+        if not _host_streams_complete(records, texts, harness):
+            # a host stream with no terminal record is a cut turn (a time-out or a kill, as w-g24's exit 124): the
+            # host shows why the native store is incomplete, so the two records agree; it stays unread, as before
+            return [f"[{TRANSCRIPT_UNREADABLE}] {e}, and a host stream ends with no terminal record (a cut turn), so "
+                    f"a difference cannot be ruled out"]
+        return [f"[{TRANSCRIPT_MISMATCH}] {e}, while every host stream reads whole: the records disagree"]
     except _VENDOR_READ_ERRORS + (_gemini_replay.ReplayRefused, ValueError, OSError) as e:
-        return [f"[{TRANSCRIPT_UNREADABLE}] the content cross-check cannot read the take's streams and native session "
+        return [f"[{TRANSCRIPT_UNREADABLE}] the content cross-check cannot read the take's host records "
                 f"({type(e).__name__}), so a difference cannot be ruled out"]
 
 
