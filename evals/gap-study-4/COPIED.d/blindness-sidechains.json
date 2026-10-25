@@ -20,6 +20,11 @@
       "path": "lanes/REVIEW-blindness-sidechains-fff7e0d.md",
       "status": "new",
       "reason": "The closure review of this lane at fff7e0d3 (VERDICT PASS, three MINORs and a NIT), committed as written on the Lane-orchestrator's word, 24 Oct 2026; its two banned-shape lines are excused in language-allowlist.json (edited by this lane, two entries appended) as a bound record."
+    },
+    {
+      "path": "lanes/REVIEW-blindness-sidechains-b715949.md",
+      "status": "new",
+      "reason": "The final closure check of this lane at b7159493 (VERDICT PASS, one MINOR and four NITs; MINOR 1 and NIT 4 go to the round 2 kit follow-up list on the Lane-orchestrator's word), committed as written, 24 Oct 2026; its two banned-shape lines are excused in language-allowlist.json (edited by this lane, two entries appended) as a bound record."
     }
   ]
 }

@@ -280,6 +280,20 @@
       "line_text": "  - M1: a listed file changed after launch, and a new unlisted file, are both out of the corpus.",
       "ruled": "2026-10-24",
       "why": "Bound record, never edited: lanes/REVIEW-blindness-sidechains-fff7e0d.md is the closure review of lane blindness-sidechains at fff7e0d3 (VERDICT PASS), committed as written on the Lane-orchestrator's word, 24 Oct 2026. The line is a witness tally or a file moving out of the corpus, never a rate."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-blindness-sidechains-b715949.md",
+      "pattern": "hundred",
+      "line_text": "All runs were behind `mac_slot.py light-ok --tests --work gap-study-r4` (light ok, CPU speed limit 89 and 100).",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-blindness-sidechains-b715949.md is the final closure check of lane blindness-sidechains at b7159493 (VERDICT PASS), committed as written on the Lane-orchestrator's word, 24 Oct 2026. The line is a gate reading or a witness tally, never a rate."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-blindness-sidechains-b715949.md",
+      "pattern": "ratio-slash",
+      "line_text": "- Suite in the clone: `Ran 55 tests ... OK`; `--witnesses`: `107/107 red; registry 107`; `copy_manifest.py --check`: `ok: 729 files from 73 fragment(s)`; working tree clean after the runs.",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-blindness-sidechains-b715949.md is the final closure check of lane blindness-sidechains at b7159493 (VERDICT PASS), committed as written on the Lane-orchestrator's word, 24 Oct 2026. The line is a gate reading or a witness tally, never a rate."
     }
   ]
 }
