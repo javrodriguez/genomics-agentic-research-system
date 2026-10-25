@@ -1088,6 +1088,7 @@ def describe(root=None):
                          "mode 700, none for arm A)"}]
     d["box_residuals"].append(copy.deepcopy(ARM_G_TIER_RESIDUAL))       # lane d8-furniture fold 2 (22 Oct 2026)
     d["box_residuals"].append(copy.deepcopy(VENDOR_ACCOUNT_RESIDUAL))   # pre-freeze review 1, m10 (25 Oct 2026)
+    d["round_4_limitations"] = copy.deepcopy(ROUND_4_LIMITATIONS)        # pre-freeze review 1, L1 (25 Oct 2026)
     d["run_tree_residual"] = run_tree_residual()                          # lane d8-furniture fold 2 (22 Oct 2026)
     # Q-w7a-1 (ruling W7A-close-1): S7-D4 ruled (A), the watcher's final stop, pre-registered with its check.
     d["final_stop"] = {
@@ -1233,6 +1234,16 @@ ARM_G_TIER_RESIDUAL = {
             "preflight records as given (box/preflight.py GOOGLE_PROJECT_TIER). It is not measured (that needs an API "
             "call with the key), and that the key placed in the box comes from that project is the owner's hands.",
     "ruling": "glitch-f1, Thu 22 Oct 2026, under Javier's standing delegation"}
+# Pre-freeze review 1 (lane pf1-l4a, 25 Oct 2026): round 4's own limitations, beside the eleven carried from round 3
+# (whose list shape owner_list_problems fixes at eleven), each with the source it reads. LIMITATION L1 first.
+ROUND_4_LIMITATIONS = [
+    {"name": "fake walk",
+     "text": "A whole walk committed by hand under the walk subject, the way the walk runner commits one, passes "
+             "walk_register --check (pre-freeze review 1 made one in a copy: 226 walks, ok), and so does a rewritten "
+             "history: the register reads the history it is handed. No walk is counted in any result, so no reading "
+             "moves.",
+     "source": "walk_register.py lines 43-45 (WHAT THIS CANNOT SEE, W8D-R1-4); pre-freeze review 1, LIMITATION L1"},
+]
 # Pre-freeze review 1, m10 (lane pf1-l4a, 25 Oct 2026): vendor-account state that outlives a take, named.
 VENDOR_ACCOUNT_RESIDUAL = {
     "name": "vendor-account state",

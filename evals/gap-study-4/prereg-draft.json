@@ -22639,6 +22639,13 @@
       "ruling": "pre-freeze review 1, m10, folded by lane pf1-l4a under the lane orchestrator's brief of 25 Oct 2026"
     }
   ],
+  "round_4_limitations": [
+    {
+      "name": "fake walk",
+      "text": "A whole walk committed by hand under the walk subject, the way the walk runner commits one, passes walk_register --check (pre-freeze review 1 made one in a copy: 226 walks, ok), and so does a rewritten history: the register reads the history it is handed. No walk is counted in any result, so no reading moves.",
+      "source": "walk_register.py lines 43-45 (WHAT THIS CANNOT SEE, W8D-R1-4); pre-freeze review 1, LIMITATION L1"
+    }
+  ],
   "run_tree_residual": {
     "carried": {
       "residual": "Two tracked files outside the excluded paths still say that this repository's agent has been evaluated: README.md, in the lines linking docs/EVALS.md, one of which names the Gap Study by title and links its section (added after round 1's checkout), and docs/RESULTS.md, in the paragraph separating results from that evaluation. Neither describes a probe. They stay because the checkout is the repository a stranger clones minus its evaluations, not an edited copy of it. Decision 0042 and docs/decisions/CONTEXT.md name, by path, documents excluded above, and those paths do not exist in the checkout.",

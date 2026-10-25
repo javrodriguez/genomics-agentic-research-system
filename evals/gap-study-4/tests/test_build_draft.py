@@ -1301,6 +1301,21 @@ class PrefreezeFills(unittest.TestCase):
         self.assertIn("arm O egress host", [r.get("name") for r in b.build()["box_residuals"]], "F7.account")
         self.assertIn("not measured", text, "F7.account")
 
+    def test_round_4_limitations(self):
+        """LIMITATION L1 (pre-freeze review 1): a whole fake walk passes the register, named beside the carried eleven,
+        with the source it cites saying so; the carried list keeps its eleven entries."""
+        d = b.build()
+        self.assertEqual(len(d["limitations"]), 11, "F8.limitations")
+        self.assertEqual(d["round_4_limitations"], b.ROUND_4_LIMITATIONS, "F8.limitations")
+        (fake,) = [e for e in d["round_4_limitations"] if e["name"] == "fake walk"]
+        self.assertEqual(set(fake), {"name", "text", "source"}, "F8.limitations")
+        doc = "\n".join((HERE / "walk_register.py").read_text().split("\n")[42:45])
+        self.assertIn("WHAT THIS CANNOT SEE (W8D-R1-4): history itself can be rewritten", doc, "F8.limitations")
+        self.assertIn("a hand-made commit under the walk subject that adds a\nwalk the way WalkRepo would, both pass",
+                      doc, "F8.limitations")
+        self.assertIn("walk_register.py lines 43-45", fake["source"], "F8.limitations")
+        self.assertIn("No walk is counted in any result", fake["text"], "F8.limitations")
+
     def test_limitation_readings_rest_on_the_code(self):
         """PENDING #9 and #12 and m4: what each reading says of the code is true of it."""
         import subprocess
