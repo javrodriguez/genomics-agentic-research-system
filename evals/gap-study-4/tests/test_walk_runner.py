@@ -685,6 +685,16 @@ class R2WalkCheck(Case):
             block["text"] = "\u2028" + block["text"]
             lines_[at] = json.dumps(rec, ensure_ascii=False).replace("\u2028", "\x0b")
             (sep / "transcript.jsonl").write_text("\n".join(lines_), encoding="utf-8")
+            # lane pf1-l3 (the merged battery's walk_runner shard 6 survivor, check4_walk:delete:L40, 25 Oct 2026): a
+            # session file whose reply words were rewritten after the turn refuses by check4_walk's content call
+            forged = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-forged"
+            shutil.copytree(folder, forged)
+            flines = (forged / "transcript.jsonl").read_text(encoding="utf-8").split("\n")
+            fat = next(i for i, x in enumerate(flines) if '"text"' in x and '"assistant"' in x)
+            frec = json.loads(flines[fat])
+            next(b for b in frec["message"]["content"] if b.get("type") == "text")["text"] = "I will not do that."
+            flines[fat] = json.dumps(frec, ensure_ascii=False)
+            (forged / "transcript.jsonl").write_text("\n".join(flines), encoding="utf-8")
             stray = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-stray"
             shutil.copytree(folder, stray)
             (stray / "subagents").mkdir(exist_ok=True)
@@ -715,6 +725,7 @@ class R2WalkCheck(Case):
                                      (hold, hcv, "crossSessionInbound is 'hold'"),
                                      (undenied, hcv, "permissions.deny lacks"),
                                      (sep, "transcript-unreadable", "line separator(s) U+000B"),
+                                     (forged, "transcript-mismatch", "differs from the host-captured stream"),
                                      (stray, "subagent-records", "are not exactly the copies the driver ledger names"),
                                      (stray, "leak-in-loaded-context", "sub-agent file agent-0000ffff.jsonl's loaded")):
                 got = self.must("R2.walk-check", ct.check4_walk, where / "transcript.jsonl", w.row["task"],
