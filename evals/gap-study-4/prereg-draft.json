@@ -25586,9 +25586,9 @@
   },
   "effort": {
     "claude-code": {
-      "claude-opus-5-5": "PENDING",
-      "claude-sonnet-5-5": "PENDING",
-      "claude-haiku-4-5-20251001": "PENDING"
+      "claude-opus-5-5": "medium",
+      "claude-sonnet-5-5": "medium",
+      "claude-haiku-4-5-20251001": "none: Claude Code 2.1.296 sends no effort setting for this model"
     },
     "codex": {
       "gpt-6.1-sol": "low",
@@ -25624,6 +25624,28 @@
             }
           }
         }
+      }
+    }
+  },
+  "effort_evidence": {
+    "claude-code": {
+      "claude-opus-5-5": {
+        "walks": 18,
+        "record": "every session file record carrying the fields reads \"effort\":\"medium\",\"perTurnEffort\":\"medium\", and every turn stream's init record per_turn_effort_active true",
+        "example": "rehearsals/w125/transcript.jsonl line 18; rehearsals/w125/turn-1.jsonl line 1",
+        "read": "No turn launch journal of the 151 committed Claude walks carries --effort (348 journals). Not confirmed by a static read of the Claude Code 2.1.296 package: no copy of 2.1.296 was on the Mac (only 2.1.267 and 2.1.280), so that read is owed, not done."
+      },
+      "claude-sonnet-5-5": {
+        "walks": 18,
+        "record": "every session file record carrying the fields reads \"effort\":\"medium\",\"perTurnEffort\":\"medium\", and every turn stream's init record per_turn_effort_active true",
+        "example": "rehearsals/w147/transcript.jsonl line 18; rehearsals/w147/turn-1.jsonl line 1",
+        "read": "No turn launch journal of the 151 committed Claude walks carries --effort (348 journals). Not confirmed by a static read of the Claude Code 2.1.296 package: no copy of 2.1.296 was on the Mac (only 2.1.267 and 2.1.280), so that read is owed, not done."
+      },
+      "claude-haiku-4-5-20251001": {
+        "walks": 115,
+        "record": "no session file record carries an effort field; every record carrying perTurnEffort reads \"perTurnEffort\":null, and every turn stream's init record per_turn_effort_active false",
+        "example": "rehearsals/w001/transcript.jsonl line 18; rehearsals/w001/turn-1.jsonl line 1",
+        "read": "No turn launch journal of the 151 committed Claude walks carries --effort (348 journals). Not confirmed by a static read of the Claude Code 2.1.296 package: no copy of 2.1.296 was on the Mac (only 2.1.267 and 2.1.280), so that read is owed, not done."
       }
     }
   },
@@ -25992,9 +26014,6 @@
   "pending": {
     "/deterministic_layer_note/round_4/codex/evidence": "D8 lines 339-345: the hook positive control's record supplies the vendor arms' evidence.",
     "/deterministic_layer_note/round_4/gemini/evidence": "D8 lines 339-345: the hook positive control's record supplies the vendor arms' evidence.",
-    "/effort/claude-code/claude-haiku-4-5-20251001": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
-    "/effort/claude-code/claude-opus-5-5": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
-    "/effort/claude-code/claude-sonnet-5-5": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
     "/floor_evidence": "V5, R17: the published probes table exposes no floor field; the table owner must supply one.",
     "/limitations/10/round_4_reading": "V8, R8 plan 830: CP2 evidence is required for the accepted conditional reading.",
     "/limitations/2/round_4_reading": "V8, R8 plan 830: CP2 evidence is required for the accepted conditional reading.",
@@ -26014,9 +26033,6 @@
     "PENDING": [
       "/deterministic_layer_note/round_4/codex/evidence",
       "/deterministic_layer_note/round_4/gemini/evidence",
-      "/effort/claude-code/claude-haiku-4-5-20251001",
-      "/effort/claude-code/claude-opus-5-5",
-      "/effort/claude-code/claude-sonnet-5-5",
       "/floor_evidence",
       "/limitations/10/round_4_reading",
       "/limitations/2/round_4_reading",

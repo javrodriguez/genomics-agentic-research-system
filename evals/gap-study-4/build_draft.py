@@ -1233,15 +1233,49 @@ def config_templates():
     return result
 
 
+# Pre-freeze review 1, PENDING #1-3 (lane pf1-l4a, Sun 25 Oct 2026; FOLD-PLAN-prefreeze-1.md section 2, under CP5-req
+# 51, plans/gap-study-round-4/CP5-requirements.md line 51: "the effort settings, written explicitly at each harness's
+# default for that model"): claude-code's effort per model, the harness default its walks record (PENDING_REASONS
+# "effort"). No claude-code turn passes --effort (0 of the 348 turn launch journals of the 151 committed Claude walks),
+# so the session file records the default. Haiku's literal is the orchestrator's representation ruling of 25 Oct 2026:
+# its 115 walks record no effort field, perTurnEffort null, and per_turn_effort_active false.
+# tests/test_build_draft.py PrefreezeFills recounts every value from the walks.
+CLAUDE_EFFORT_NONE = "none: Claude Code 2.1.296 sends no effort setting for this model"
+CLAUDE_EFFORT = {"claude-opus-5-5": "medium", "claude-sonnet-5-5": "medium",
+                 "claude-haiku-4-5-20251001": CLAUDE_EFFORT_NONE}
+_EFFORT_READ = ("No turn launch journal of the 151 committed Claude walks carries --effort (348 journals). Not "
+                "confirmed by a static read of the Claude Code 2.1.296 package: no copy of 2.1.296 was on the Mac "
+                "(only 2.1.267 and 2.1.280), so that read is owed, not done.")
+EFFORT_EVIDENCE = {CLAUDE: {
+    "claude-opus-5-5": {
+        "walks": 18,
+        "record": "every session file record carrying the fields reads \"effort\":\"medium\",\"perTurnEffort\":"
+                  "\"medium\", and every turn stream's init record per_turn_effort_active true",
+        "example": "rehearsals/w125/transcript.jsonl line 18; rehearsals/w125/turn-1.jsonl line 1",
+        "read": _EFFORT_READ},
+    "claude-sonnet-5-5": {
+        "walks": 18,
+        "record": "every session file record carrying the fields reads \"effort\":\"medium\",\"perTurnEffort\":"
+                  "\"medium\", and every turn stream's init record per_turn_effort_active true",
+        "example": "rehearsals/w147/transcript.jsonl line 18; rehearsals/w147/turn-1.jsonl line 1",
+        "read": _EFFORT_READ},
+    "claude-haiku-4-5-20251001": {
+        "walks": 115,
+        "record": "no session file record carries an effort field; every record carrying perTurnEffort reads "
+                  "\"perTurnEffort\":null, and every turn stream's init record per_turn_effort_active false",
+        "example": "rehearsals/w001/transcript.jsonl line 18; rehearsals/w001/turn-1.jsonl line 1",
+        "read": _EFFORT_READ}}}
+
+
 def effort_for(harness, model):
     """R15 CP5-req 51, one model's effort setting as take_config writes it: codex's per model, gemini's one thinking
-    setting (both sourced by R3, round 17 B6), claude-code's PENDING (the walk records the harness default)."""
+    setting (both sourced by R3, round 17 B6), claude-code's the harness default its walks record (CLAUDE_EFFORT)."""
     if harness == CODEX:
         effort = take_config.CODEX_REASONING_EFFORT
         return copy.deepcopy(effort.get(model, PENDING) if isinstance(effort, dict) else effort)
     if harness == GEMINI:
         return copy.deepcopy(take_config.GEMINI_THINKING)
-    return PENDING
+    return CLAUDE_EFFORT.get(model, PENDING)
 
 
 def design_inputs(rows, tasks):
@@ -1760,6 +1794,7 @@ def build(root=None):
     d["floor_evidence"] = PENDING
     d["config_templates"] = config_templates()
     d["effort"] = {h: {m: effort_for(h, m) for m in MODELS[a]} for a, h in HARNESSES.items()}
+    d["effort_evidence"] = copy.deepcopy(EFFORT_EVIDENCE)                       # pre-freeze review 1, PENDING #1-3
     # R-6 (glitch-b5, 17 Oct 2026; lane vendor-admission T4 P2): each vendor CLI's native file, configured nowhere
     d["instruction_files"] = {CODEX: [take_config.INSTRUCTION_FILES[CODEX]],
                                GEMINI: [take_config.INSTRUCTION_FILES[GEMINI]]}

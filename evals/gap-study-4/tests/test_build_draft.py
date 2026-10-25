@@ -913,10 +913,11 @@ def ready_problems(d):
     # 14 Oct 2026; box lane). Round 17 B6 (glitch-b5's ruling R3, Sun 18 Oct 2026; this assertion moved by it from
     # "codex's and gemini's stay PENDING"): codex's effort and gemini's thinking and auth settings are sourced from the
     # pinned packages, so every template is the rendered one and the effort is take_config's for each model;
-    # claude-code's effort stays PENDING (the walk records the harness default).
+    # claude-code's effort was PENDING (the walk records the harness default) until pre-freeze review 1's fill
+    # (lane pf1-l4a, 25 Oct 2026): b.CLAUDE_EFFORT, read from the walks (PrefreezeFills.test_claude_effort_is_the_walks).
     need(all(isinstance(v, dict) for models in d["config_templates"].values() for v in models.values()) and
          d["config_templates"] == b.config_templates() and
-         d["effort"] == {CLAUDE: {m: "PENDING" for m in MODELS["A"]},
+         d["effort"] == {CLAUDE: {m: b.CLAUDE_EFFORT[m] for m in MODELS["A"]},
                          CODEX: {m: take_config.CODEX_REASONING_EFFORT[m] for m in MODELS["O"]},
                          GEMINI: {m: take_config.GEMINI_THINKING for m in MODELS["G"]}}, "R15.config")
     table = json.loads((HERE / "routing.json").read_text())
@@ -1149,6 +1150,55 @@ class LayerNote(unittest.TestCase):
         got = arm_a_hook_counts()
         self.assertEqual(got, {"walks": 151, "launches": 348, "root": 348, "hooks": 0, "sources": {"project,local"},
                                "baselines": {("gars/.claude/settings.json",)}})
+
+
+def claude_effort_recount() -> dict:
+    """Pre-freeze review 1, PENDING #1-3 (lane pf1-l4a): over every committed Claude walk (rehearsals/w<digits>), per
+    model (the first turn stream's init record): the walks, the (effort, perTurnEffort) pairs the session file's records
+    carry (a missing key read as "absent"), the per_turn_effort_active values of every turn stream's init record, and
+    the turn launch journals that carry --effort. Data, never the draft's own words."""
+    out = {}
+    for walk in sorted(p for p in (HERE / "rehearsals").iterdir() if re.fullmatch(r"w[0-9]+", p.name)):
+        turns = sorted(walk.glob("turn-*.jsonl"))
+        model = json.loads(turns[0].read_text().split("\n", 1)[0])["model"]
+        row = out.setdefault(model, {"walks": 0, "pairs": set(), "active": set(), "launches": 0, "effort_flag": 0})
+        row["walks"] += 1
+        for line in (walk / "transcript.jsonl").read_text().split("\n"):
+            if not line.strip():
+                continue
+            rec = json.loads(line)
+            if isinstance(rec, dict) and ("effort" in rec or "perTurnEffort" in rec):
+                row["pairs"].add((rec.get("effort", "absent"), rec.get("perTurnEffort", "absent")))
+        for t in turns:
+            for line in t.read_text().split("\n"):
+                if line.strip():
+                    rec = json.loads(line)
+                    if rec.get("type") == "system" and rec.get("subtype") == "init":
+                        row["active"].add(rec.get("per_turn_effort_active", "absent"))
+        for j in walk.glob("turn-*.jsonl.launch.json"):
+            row["launches"] += 1
+            row["effort_flag"] += "--effort" in j.read_text()
+    return out
+
+
+class PrefreezeFills(unittest.TestCase):
+    """Pre-freeze review 1's evidence-only fills (lane pf1-l4a, 25 Oct 2026; FOLD-PLAN-prefreeze-1.md section 2)."""
+
+    def test_claude_effort_is_the_walks(self):
+        got = claude_effort_recount()
+        self.assertEqual({m: (r["walks"], r["pairs"], r["active"], r["effort_flag"]) for m, r in got.items()},
+                         {"claude-opus-5-5": (18, {("medium", "medium")}, {True}, 0),
+                          "claude-sonnet-5-5": (18, {("medium", "medium")}, {True}, 0),
+                          "claude-haiku-4-5-20251001": (115, {("absent", None)}, {False}, 0)}, "F1.effort-walks")
+        self.assertEqual(sum(r["launches"] for r in got.values()), 348, "F1.effort-walks")
+        d = b.build()
+        self.assertEqual(d["effort"][CLAUDE], {"claude-opus-5-5": "medium", "claude-sonnet-5-5": "medium",
+                                               "claude-haiku-4-5-20251001": "none: Claude Code 2.1.296 sends no "
+                                               "effort setting for this model"}, "F1.effort")
+        for m in MODELS["A"]:
+            self.assertNotIn(f"/effort/{CLAUDE}/{m}", d["pending"], "F1.effort")
+        self.assertEqual(d["effort_evidence"], b.EFFORT_EVIDENCE, "F1.effort-evidence")
+        self.assertEqual(set(d["effort_evidence"][CLAUDE]), set(MODELS["A"]), "F1.effort-evidence")
 
 
 READY_MUTANTS = {
