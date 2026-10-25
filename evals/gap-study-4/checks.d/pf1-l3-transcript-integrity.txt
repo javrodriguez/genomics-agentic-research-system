@@ -9,3 +9,12 @@ python3 -B -W ignore evals/gap-study-4/tests/test_routing.py
 python3 -B -W ignore evals/gap-study-4/tests/test_preflight.py
 python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py
 python3 -B -W ignore evals/gap-study-4/routing.py --check
+python3 -B -W ignore evals/gap-study-4/tests/test_steer_condition.py
+python3 -B -W ignore evals/gap-study-4/tests/test_line_separators.py
+python3 -B -W ignore evals/gap-study-4/tests/test_auto_mode.py
+python3 -B -W ignore evals/gap-study-4/tests/test_pre_ruling_walks.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_body.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_entries.py
+python3 -B -W ignore evals/gap-study-4/tests/test_checker_body.py
+python3 -B -W ignore evals/gap-study-4/tests/test_isolation_denials_checker.py
