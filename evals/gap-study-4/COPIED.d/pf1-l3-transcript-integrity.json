@@ -20,6 +20,11 @@
       "path": "tests/test_pf1_egress_probe.py",
       "status": "new",
       "reason": "Lane pf1-l3-transcript-integrity (fold plan prefreeze-1, m9): E1 the direct-egress program on fake route tables and a fake connect, E2 the three checks on its output, E3 the argv and the draft residual bound to the constants; with witnesses."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l3-fb35432.md",
+      "status": "new",
+      "reason": "The fresh independent review of this lane at fb354328 (VERDICT: CHANGES), committed as written on the lane orchestrator's word, Sat 24 Oct 2026. Its four banned-word lines (two ratio-slash, two out-of) are excused in language-allowlist.json (w1a-cp1-scaffold, edited by this lane, four entries appended) as a bound record."
     }
   ]
 }

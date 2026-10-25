@@ -238,6 +238,34 @@
       "line_text": "  Mutant A (restore moved out of `finally`) is caught by `test_the_suites_door_is_restored_after_each_scan`.",
       "ruled": "2026-10-23",
       "why": "Bound record, never edited: lanes/REVIEW-ship-evidence-blobs-2ced80f.md is the fresh independent review of lane ship-evidence-blobs at 2ced80f2 (VERDICT CHANGES), committed as its reviewer wrote it on the Lane-orchestrator's word (23 Oct 2026). The word is the reviewer's own prose about the code under review, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l3-fb35432.md",
+      "pattern": "ratio-slash",
+      "line_text": "- The athena run pf1-l3-checks-fb35432-20261025T012547Z ran four other modules (test_vendor_entries, test_vendor_body, test_pipeline, test_box_integration), 4/4 PASS-SUBSET (run.log, summary.txt).",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l3-fb35432.md is the fresh independent review of lane pf1-l3-transcript-integrity at fb354328 (VERDICT: CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (24 Oct 2026). The words are the reviewer's own prose about the code under review and its own test runs, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l3-fb35432.md",
+      "pattern": "out-of",
+      "line_text": "| The same edit in both the session file and the turn stream | passes; this is residual (a), out of the stated threat model |",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l3-fb35432.md is the fresh independent review of lane pf1-l3-transcript-integrity at fb354328 (VERDICT: CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (24 Oct 2026). The words are the reviewer's own prose about the code under review and its own test runs, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l3-fb35432.md",
+      "pattern": "ratio-slash",
+      "line_text": "- The evidence statement \"athena passed 4/4\" is true, but it is not evidence for m9 or for the content check.",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l3-fb35432.md is the fresh independent review of lane pf1-l3-transcript-integrity at fb354328 (VERDICT: CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (24 Oct 2026). The words are the reviewer's own prose about the code under review and its own test runs, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l3-fb35432.md",
+      "pattern": "out-of",
+      "line_text": "  That falls under residual (a), the one-uid road, which the threat model puts out of scope.",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l3-fb35432.md is the fresh independent review of lane pf1-l3-transcript-integrity at fb354328 (VERDICT: CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (24 Oct 2026). The words are the reviewer's own prose about the code under review and its own test runs, not a claim by this study about any model or take."
     }
   ]
 }
