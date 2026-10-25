@@ -273,6 +273,13 @@
       "line_text": "- athena run pf1-l3-close-f0c0eb1-20261025T025259Z: PASS-SUBSET, 16/16 at commit f0c0eb1d80e8, from summary.txt and run.log.",
       "ruled": "2026-10-24",
       "why": "Bound record, never edited: lanes/REVIEW-pf1-l3-f0c0eb1.md is the reviewer's second closure check of lane pf1-l3-transcript-integrity at f0c0eb1d (VERDICT: CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (24 Oct 2026). The words are the reviewer's own prose about its test runs, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l3-461dc16.md",
+      "pattern": "out-of",
+      "line_text": "- Either leave the extra unit out of what the cut turn is graded on, or name in residual (c) that it is graded unconfirmed.",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l3-461dc16.md is the reviewer's third closure check of lane pf1-l3-transcript-integrity at 461dc169 (VERDICT: CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (24 Oct 2026). The words are the reviewer's own prose about the code under review, not a claim by this study about any model or take."
     }
   ]
 }
