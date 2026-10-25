@@ -305,13 +305,12 @@ def _field(doc: dict, dotted: str):
     return doc
 
 
-def regrade_problems(study: Path = HERE, *, readers=None, grade=None) -> list:
-    """Every committed regrade.json must re-derive to its exact bytes."""
-    return regrade_report(study, readers=readers, grade=grade)[0]
-
-
 NOT_A_REPOSITORY = ("{study} is not inside a git repository: a regrade, a recheck and a count are re-derived from "
                     "committed bytes, so nothing here can be checked, and that is not a pass")
+
+
+def new_counts() -> dict:
+    return {"walks": 0, "regrades": 0, "recheck_walks": 0, "counts": 0, "pending": 0, "pending_unregraded": []}
 
 
 def regrade_report(study: Path = HERE, *, readers=None, grade=None) -> tuple[list, dict]:
@@ -320,11 +319,18 @@ def regrade_report(study: Path = HERE, *, readers=None, grade=None) -> tuple[lis
     {"walks": walks listed at HEAD, "regrades": regrade.json files re-derived, "recheck_walks": walks whose recheck
     chain was read, "counts": check.json counts re-derived from their transcripts, "pending": walks whose committed
     grade.json is the pending document, "pending_unregraded": the pending walks with no regrade.json}."""
+    counts = new_counts()
+    return regrade_problems(study, readers=readers, grade=grade, counts=counts), counts
+
+
+def regrade_problems(study: Path = HERE, *, readers=None, grade=None, counts=None) -> list:
+    """Every committed regrade.json must re-derive to its exact bytes; `counts` (new_counts()), when given, is filled
+    with how much was re-derived (regrade_report)."""
     study = Path(study)
-    counts = {"walks": 0, "regrades": 0, "recheck_walks": 0, "counts": 0, "pending": 0, "pending_unregraded": []}
+    counts = new_counts() if counts is None else counts
     root, prefix = nrr._repo(study)
     if root is None:
-        return [NOT_A_REPOSITORY.format(study=study)], counts
+        return [NOT_A_REPOSITORY.format(study=study)]
     walks = nrr._rel(prefix, mode_binding.WALKS_DIR)
     listed = nrr._git(root, "ls-tree", "-r", "--name-only", "HEAD", "--", walks + "/").splitlines()
     out = []
@@ -386,7 +392,7 @@ def regrade_report(study: Path = HERE, *, readers=None, grade=None) -> tuple[lis
             counts["counts"] += 1
             out += [f"walk {parts[0]!r}: {p}" for p in nudge_count_problems(check, path, harness)]
             out += [f"walk {parts[0]!r}: {p}" for p in agent_summary_problems(check, path, harness)]
-    return out, counts
+    return out
 
 
 def gate_problems(problems: list, counts: dict) -> list:

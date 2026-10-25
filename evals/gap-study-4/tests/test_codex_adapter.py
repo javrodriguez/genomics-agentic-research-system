@@ -727,6 +727,15 @@ def a7_source(mod, p):
         out.append(f"{p}: SHAPES_SOURCE {mod.SHAPES_SOURCE!r} is off the two words")
     if mod.SHAPES_SOURCE == "recorded" and not recorded:
         out.append(f"{p}: SHAPES_SOURCE reads 'recorded' while no fixture is labelled RECORDED with its provenance")
+    # lane pf1-l1-freeze-gates (pre-freeze review 1, m3): "recorded" rests on SHAPES_RECORDED_ON, a fixture the
+    # freeze's leg i holds to its committed walk record on the pinned CLI (check_take.recorded_binding_problem)
+    if mod.SHAPES_SOURCE == "recorded":
+        import check_take
+        pins = json.loads((HERE / "prereg-draft.json").read_text())["version_pins"]["codex"]
+        cli = check_take.VENDOR_FIXTURE_CLI["codex"] + " " + next(iter(pins.values()))["agent_version"]
+        why = check_take.recorded_binding_problem("codex", getattr(mod, "SHAPES_RECORDED_ON", None), cli)
+        if why or getattr(mod, "SHAPES_RECORDED_ON", None) != "recorded-codex-w-o46/transcript.jsonl":
+            out.append(f"{p}: SHAPES_RECORDED_ON {getattr(mod, 'SHAPES_RECORDED_ON', None)!r} does not bind: {why}")
     box = FakeRuntime([fixture("turn1-tools.jsonl")])
     a = adapter(mod, box, rollouts=[fixture("rollout-two-turns.jsonl")])
     if a.harness_record() != {"harness": "codex", "shapes_source": mod.SHAPES_SOURCE}:

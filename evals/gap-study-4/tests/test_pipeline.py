@@ -1930,18 +1930,24 @@ class PublishedArtifacts(unittest.TestCase):
 class FreezeDesign(unittest.TestCase):
     def test_freeze_preserves_design_and_orders_full_identity_without_vendor_cli(self):
         self.assertTrue(callable(getattr(freeze, "prepare", None)), "freeze must consume round 4 rows")
-        pre = pre_registration()
+        # lane pf1-l1-freeze-gates (pre-freeze review 1, m2 and MAJOR 9): the synthetic design registers a drand
+        # round and is handed a reading of it; it is no registered design, so its PENDING map is not read here
+        # (tests/test_pf1_freeze_gates.py binds both)
+        pre = dict(pre_registration(), take_order_beacon=dict(order_beacon.registration(), round=33356692))
+        beacon = freeze.synthetic_beacon_reading(33356692)
         before = copy.deepcopy(pre)
-        got = freeze.prepare(pre, review="a" * 40, parent="b" * 40, pins=[],
-                             frozen_at="2026-10-01T00:00:00+00:00")
-        self.assertEqual(pre, before)
-        self.assertEqual(got["rows"], before["rows"])
-        self.assertEqual(got["take_order"], before["rows"])
-        self.assertEqual(got["take_order"][0]["agent"], row()["agent"])
-        self.assertEqual(freeze.keys_outside_the_freeze(pre, got), [])
-        with mock.patch.object(freeze, "planned_order", lambda draft, seed: []):
-            self.assertNotEqual(freeze.prepare(pre, review="a" * 40, parent="b" * 40, pins=[],
-                                             frozen_at="2026-10-01T00:00:00+00:00")["take_order"], pre["rows"])
+        with mock.patch.object(freeze, "draft_pending", lambda d: {}):
+            got = freeze.prepare(pre, review="a" * 40, parent="b" * 40, pins=[],
+                                 frozen_at="2026-10-01T00:00:00+00:00", beacon=beacon)
+            self.assertEqual(pre, before)
+            self.assertEqual(got["rows"], before["rows"])
+            self.assertEqual(got["take_order"], before["rows"])
+            self.assertEqual(got["take_order"][0]["agent"], row()["agent"])
+            self.assertEqual(freeze.keys_outside_the_freeze(pre, got), [])
+            with mock.patch.object(freeze, "planned_order", lambda draft, seed: []):
+                self.assertNotEqual(freeze.prepare(pre, review="a" * 40, parent="b" * 40, pins=[],
+                                                 frozen_at="2026-10-01T00:00:00+00:00", beacon=beacon)["take_order"],
+                                    pre["rows"])
 
     def test_generated_outputs_are_pinned_in_the_frozen_file(self):
         self.assertTrue(callable(getattr(freeze, "generated_pins", None)), "generated outputs need byte pins")

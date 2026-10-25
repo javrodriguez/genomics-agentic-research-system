@@ -677,8 +677,8 @@ WITNESSES = {
                                                              'ledger.get("claude_version") != want:\n',
                                                              "    if False:\n"),)),
     "walk-image-unchecked": ("G6.walkpins", "walk_pins", (("        if ids != [lock]:\n", "        if False:\n"),)),
-    "outside-git-empty": ("G7.regrade", "walk_regrade", (("        return [NOT_A_REPOSITORY.format(study=study)], "
-                                                          "counts\n", "        return [], counts\n"),)),
+    "outside-git-empty": ("G7.regrade", "walk_regrade", (("        return [NOT_A_REPOSITORY.format(study=study)]\n",
+                                                          "        return []\n"),)),
     "vacuous-admitted": ("G7.regrade", "walk_regrade", (('    if counts["walks"] and not derived:\n',
                                                          "    if False:\n"),)),
     "minimum-dropped": ("G3m.legs", "freeze", (("    out = check_take.vendor_minimum_problems(harness)\n",
