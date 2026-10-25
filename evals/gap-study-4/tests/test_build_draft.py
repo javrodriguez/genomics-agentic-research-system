@@ -1316,6 +1316,21 @@ class PrefreezeFills(unittest.TestCase):
         self.assertIn("walk_register.py lines 43-45", fake["source"], "F8.limitations")
         self.assertIn("No walk is counted in any result", fake["text"], "F8.limitations")
 
+    def test_leak_grep_prints_the_unread_session(self):
+        """NIT (pre-freeze review 1): w-g24 is never leak-grepped; the output names it with its reason, and the ok
+        line says how many sessions it did not grep, so the gap is printed, not silent."""
+        import contextlib, io
+        import leak_grep
+        out = io.StringIO()
+        with mock.patch.object(sys, "argv", ["leak_grep.py", "--check"]), contextlib.redirect_stdout(out):
+            code = leak_grep.main()
+        text = out.getvalue()
+        self.assertEqual(code, 0, text[-400:])
+        self.assertIn("not grepped: rehearsals/w-g24 (" + leak_grep.KNOWN_UNREADABLE["rehearsals/w-g24"], text,
+                      "F9.leak-grep")
+        self.assertRegex(text.strip().splitlines()[-1], r"^ok: .*; 1 session\(s\) not grepped \(unreadable, named "
+                         r"above\)$", "F9.leak-grep")
+
     def test_limitation_readings_rest_on_the_code(self):
         """PENDING #9 and #12 and m4: what each reading says of the code is true of it."""
         import subprocess
