@@ -1,0 +1,12 @@
+{
+  "about": "The source note of V6-V8-proposals-e1cfe860-lines-45-51.md: V7's documented-reply proposal, the passage the draft's wave3.documented_reply hashes (source_sentence_sha256). The commit holding it is in no ref of the study's line (a stray object in the Mac clones), so its bytes are committed here as a record; never edited.",
+  "record": "source-records/V6-V8-proposals-e1cfe860-lines-45-51.md",
+  "commit": "e1cfe860ce127358cad8cab83246c895f6507e15",
+  "path": "cloud-briefs/w5c/V6-V8-proposals.md",
+  "path_blob": "a97ef778661c4a4728bfc3b2d3b836ca4644126d",
+  "path_sha256": "7e7117940b65aa0d1bc0df1cc2cffb247a7bdabf84dd487132b3bcbf51cda2aa",
+  "lines": [45, 51],
+  "joined": "lines 45-51 joined by newline, with no trailing newline",
+  "sha256": "3df43989b6c52fb7185d3f6ac7672e14d375697c85c934b6929b8b93f7d489b1",
+  "by": "lane pf1-l4a, 25 Oct 2026, on the lead's ruling after the merged battery pf1-l6b-battery-7955554"
+}
