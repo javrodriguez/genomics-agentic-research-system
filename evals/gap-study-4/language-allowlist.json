@@ -238,6 +238,13 @@
       "line_text": "  Mutant A (restore moved out of `finally`) is caught by `test_the_suites_door_is_restored_after_each_scan`.",
       "ruled": "2026-10-23",
       "why": "Bound record, never edited: lanes/REVIEW-ship-evidence-blobs-2ced80f.md is the fresh independent review of lane ship-evidence-blobs at 2ced80f2 (VERDICT CHANGES), committed as its reviewer wrote it on the Lane-orchestrator's word (23 Oct 2026). The word is the reviewer's own prose about the code under review, not a claim by this study about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l1-53d0e9a.md",
+      "pattern": "percentage",
+      "line_text": "- Every file is above 50% changed (lowest study.py 0.52, highest costs.py 0.91).",
+      "ruled": "2026-10-25",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l1-53d0e9a.md is the fresh independent review of lane pf1-l1-freeze-gates at 53d0e9af (VERDICT CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (25 Oct 2026). The share is the reviewer's measure of a file's changed lines against copy_manifest's registered NEAR_REWRITE_SHARE, not a rate about any model or take."
     }
   ]
 }

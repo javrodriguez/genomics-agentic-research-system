@@ -25,6 +25,11 @@
       "path": "checks.d/pf1-l1-freeze-gates.txt",
       "status": "new",
       "reason": "Lane pf1-l1-freeze-gates (the lane orchestrator's fold plan of pre-freeze review 1, FOLD-PLAN-prefreeze-1.md lane L1, approved Sat 24 Oct 2026 under Javier's standing delegation): this lane's listed checks."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l1-53d0e9a.md",
+      "status": "new",
+      "reason": "The fresh independent review of this lane at 53d0e9af (VERDICT CHANGES), committed unedited on the lane orchestrator's word, 25 Oct 2026 (sha256 d37fa79126d2791d4ef6b9e7c1d097bfb994f4a7839ab65c057cf4139ff3ee66); its one banned-word line (a percentage) is excused in language-allowlist.json (edited by this lane, one entry appended) as a bound record."
     }
   ]
 }
