@@ -1151,7 +1151,9 @@ PENDING_REASONS = {
     "effort": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
     "instruction_files": "R15 CP5-req 52: CP2's instruction mapping.",
     "served_model_rule": "R15 CP5-req 53: the harness owners supply the served-model rule.",
-    "price_table": "R15 CP5-req 54: Javier's walk gate reads dated vendor prices.",
+    # pre-freeze review 1, NIT (lane pf1-l4a, 25 Oct 2026): what reads the table, and what the money gate reads
+    "price_table": "R15 CP5-req 54: published per-call costs read a dated vendor price table (costs.py:81-139, 214); "
+                   "the money gate reads the ledger's cost per try.",
     "routing_markers": "R15 CP5-req 55: the routing owner rules the marker status.",
     "routing_marker_inputs": "R15 CP5-req 55: CP2 adds each vendor's markers with its adapter.",
     "furniture": "R15 CP5-req 56: CP6 walks supply each harness's list.",
@@ -1243,6 +1245,12 @@ ROUND_4_LIMITATIONS = [
              "history: the register reads the history it is handed. No walk is counted in any result, so no reading "
              "moves.",
      "source": "walk_register.py lines 43-45 (WHAT THIS CANNOT SEE, W8D-R1-4); pre-freeze review 1, LIMITATION L1"},
+    {"name": "seed review line 1",
+     "text": "The freeze binds the seed review to the draft only through the report's line 1 (`prereg.json sha256: "
+             "<draft>`); the kit's prereg.json is not committed and 'committed unedited' is not enforced, so a report "
+             "whose line 1 is right but whose body reviewed other bytes is not detected.",
+     "source": "lane L1's proposed words for pre-freeze review 1's MAJOR 3 (freeze.py review_file_problems), added by "
+               "the lead's ruling 5 to lane pf1-l4a, 25 Oct 2026"},
 ]
 # Pre-freeze review 1, m10 (lane pf1-l4a, 25 Oct 2026): vendor-account state that outlives a take, named.
 VENDOR_ACCOUNT_RESIDUAL = {

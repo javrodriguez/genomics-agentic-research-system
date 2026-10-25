@@ -1193,6 +1193,11 @@ def claude_effort_recount() -> dict:
     return out
 
 
+LINE1_WORDS = ("The freeze binds the seed review to the draft only through the report's line 1 (`prereg.json sha256: "
+               "<draft>`); the kit's prereg.json is not committed and 'committed unedited' is not enforced, so a report "
+               "whose line 1 is right but whose body reviewed other bytes is not detected.")
+
+
 class PrefreezeFills(unittest.TestCase):
     """Pre-freeze review 1's evidence-only fills (lane pf1-l4a, 25 Oct 2026; FOLD-PLAN-prefreeze-1.md section 2)."""
 
@@ -1315,6 +1320,20 @@ class PrefreezeFills(unittest.TestCase):
                       doc, "F8.limitations")
         self.assertIn("walk_register.py lines 43-45", fake["source"], "F8.limitations")
         self.assertIn("No walk is counted in any result", fake["text"], "F8.limitations")
+        # the lead's ruling 5 (25 Oct 2026): the seed review's line-1 binding, in lane L1's proposed words
+        (line1,) = [e for e in d["round_4_limitations"] if e["name"] == "seed review line 1"]
+        self.assertEqual(set(line1), {"name", "text", "source"}, "F8.limitations")
+        self.assertEqual(line1["text"], LINE1_WORDS, "F8.limitations")
+
+    def test_price_table_reason(self):
+        """NIT (pre-freeze review 1): the price table's pending reason names what reads it, and the lines it cites."""
+        reason = b.PENDING_REASONS["price_table"]
+        self.assertEqual(reason, "R15 CP5-req 54: published per-call costs read a dated vendor price table "
+                                 "(costs.py:81-139, 214); the money gate reads the ledger's cost per try.", "F10.price")
+        lines = (HERE / "costs.py").read_text().split("\n")
+        self.assertTrue(lines[80].startswith("def account(calls, price_table):"), "F10.price")
+        self.assertIn('["price_table"]', lines[213], "F10.price")
+        self.assertEqual(b.pending(b.build())["/price_table"], reason, "F10.price")
 
     def test_leak_grep_prints_the_unread_session(self):
         """NIT (pre-freeze review 1): w-g24 is never leak-grepped; the output names it with its reason, and the ok

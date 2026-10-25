@@ -401,7 +401,7 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
             continue
         differs = orig != copy
         if status == "identical" and differs:
-            out.append(f"{path} ({lane}) differs from {src} at {SOURCE_COMMIT} and has no `edited` entry")
+            out.append(f"{path} ({lane}) differs from {src} at {source_commit(src)} and has no `edited` entry")
         if status == "identical" and why:
             out.append(f"{path} ({lane}) is identical and carries a reason; a reason is for an edit or a new file")
         if status == "edited" and not differs:

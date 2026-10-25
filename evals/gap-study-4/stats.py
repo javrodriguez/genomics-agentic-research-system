@@ -4,7 +4,7 @@
     python3 evals/gap-study-4/stats.py --check    validate every results record, derive every table twice, and
                                                   compare the stats block of RESULT.md byte for byte
 
-WHAT IT READS. Graded take records (interface 11, below) from `results/*.json`, each file a JSON list of
+WHAT IT READS. Graded take records (interface 11, below) from `records/*.json`, each file a JSON list of
 records, and a design (a closed dict). The design is passed in by the caller; the CLI reads it from the frozen
 pre-registration, `prereg.json`, under the key `stats_design`, and never from the draft (a number derived from a
 file that can still change was not pre-registered). It never reads `study.ARMS`. It writes nothing:
