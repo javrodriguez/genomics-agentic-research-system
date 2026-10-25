@@ -20,7 +20,7 @@ orchestrator under Javier's delegation, Sat 24 Oct 2026): MAJOR 6, MAJOR 10, m13
   L1-words    (m14) outperform, stronger and beats are findings, except inside an exact family label, the contrast
               family's short name or the power grid's JSON key; table 5's agent-system rows sit under their own
               heading. (The CI steps are bound in tests/test_ci_job.py.)
-  D1-dispatch (m16) probes4 grades through run.dispatch, the one dispatch regrade uses; precondition_refusal's row
+  D1-dispatch (m16) probes4 grades through run.call_grader, the one call table regrade uses; precondition_refusal's row
               fields are one rule on both roads; the constructed table is unchanged (169 rows, 1690 cells); one Codex
               and one Gemini committed walk are graded beside it to their pinned labels.
 
@@ -492,25 +492,51 @@ class L1Words(unittest.TestCase):
 # ---- D1: one dispatch (m16) --------------------------------------------------------------------------------------
 
 class D1Dispatch(unittest.TestCase):
-    def test_probes_grade_through_run_dispatch(self):
-        task, vdoc = variants.load_task("precondition-refusal"), variants.load_variants("precondition-refusal")
-        cell = [c for c in variants.task_cells(task, vdoc) if c["half"] == "trap"][0]
-        seen = []
-        with mock.patch.object(run, "dispatch", lambda *a: seen.append(a) or {"label": "x"}):
-            self.assertEqual(probes4.run_grader(task, "trap", cell, {}, [], None), {"label": "x"})
-        mod, name, row, spec, transcript, ev = seen[0]
-        self.assertEqual(name, "precondition_refusal")
-        self.assertEqual({k: row[k] for k in run.CELL_FIELDS}, cell)
-        self.assertEqual(variants.row_fields({k: row[k] for k in run.CELL_FIELDS}), variants.row_fields(cell))
-        self.assertRaises(probes4.ProbeError, probes4.dispatch_row, task, "normal", cell)
-        self.assertRaises(probes4.ProbeError, probes4.dispatch_row, task, "trap", dict(cell, extra=1))
+    def spy(self, seen, got):
+        def call(mod, name, spec, transcript, evidence, **kw):
+            seen.append((name, kw))
+            return dict(got)
+        return call
 
-    def test_regrade_grades_through_dispatch(self):
+    def test_probes_grade_through_the_run_call_table(self):
+        task, vdoc = variants.load_task("precondition-refusal"), variants.load_variants("precondition-refusal")
+        cell = [c for c in variants.task_cells(task, vdoc) if c["half"] == "trap" and c["pressure"]][0]
         seen = []
-        with mock.patch.object(run, "dispatch", lambda *a, own=None: seen.append(a[1]) or {"label": "declined", "expected": "declined", "correct": True}):
-            got, _ = run.regrade("scope_read", {}, {}, [], None)
-        self.assertEqual(seen, ["scope_read"])
+        ev = mock.Mock(harness=CLAUDE)
+        with mock.patch.object(run, "call_grader", self.spy(seen, {"label": "x"})):
+            self.assertEqual(probes4.run_grader(task, "trap", cell, {}, [], ev)["label"], "x")
+        name, kw = seen[0]
+        self.assertEqual(name, "precondition_refusal")
+        self.assertEqual(kw["row_fields"](), variants.row_fields(cell))
+        self.assertEqual(kw["task_id"], "precondition-refusal")
+        self.assertEqual(set(run.GRADER_CALLS), set(variants.GRADERS))
+
+    def test_regrade_grades_through_the_same_table_with_the_same_row_fields(self):
+        cell = {"half": "trap", "wording": "w1", "repeat": None, "pressure": True}
+        seen = []
+        got_ = {"label": "declined", "expected": "declined", "correct": True, "human_sample": False}
+        with mock.patch.object(run, "call_grader", self.spy(seen, got_)):
+            got, _ = run.regrade("scope_read", dict(cell, task="scope-read", grader_half=None), {}, [], None)
+        self.assertEqual(seen[0][0], "scope_read")
+        self.assertEqual(seen[0][1]["row_fields"](), variants.row_fields(cell))
         self.assertEqual(got["views"], {v: "right" for v in stats.VIEWS})
+        self.assertIs(got["grader_flag"], False)
+
+    def test_the_roads_keep_their_own_seam_and_sample(self):
+        import ast
+        for mod, fn in (("run", "regrade"), ("probes4", "run_grader")):
+            body = next(n for n in ast.parse((HERE / f"{mod}.py").read_text()).body
+                        if isinstance(n, ast.FunctionDef) and n.name == fn)
+            calls = {ast.unparse(c.func) for c in ast.walk(body) if isinstance(c, ast.Call)}
+            self.assertTrue({"delegation.seam", "delegation.sampled"} <= calls, mod)
+            self.assertIn("run.call_grader" if mod == "probes4" else "call_grader", calls, mod)
+
+    def test_a_walk_grade_never_holds_the_grader_flag(self):
+        import walk_register
+        walks = HERE / run.mode_binding.WALKS_DIR
+        entry = {e["walk"]: e for e in walk_register.registered(walks)}["w-o46"]
+        row = run.walk_row(entry, json.loads((walks / "w-o46" / "driver-ledger.json").read_text()))
+        self.assertNotIn("grader_flag", run.grade_walk_folder(row, walks / "w-o46"))
 
     def test_the_constructed_table_is_unchanged(self):
         rows, problems = probes4.build()
@@ -685,14 +711,13 @@ class RV8To11Nits(unittest.TestCase):
         self.assertEqual(run.human_why(dict(g, grader_flag=True, human_check="flag-check")),
                          ["flag-check", "nested-agent-cli", "template_adherence-flag"])
 
-    def test_8_dispatch_reports_the_graders_own_flag(self):
-        own = []
-        mod = mock.Mock()
-        mod.grade = lambda *a, **k: {"label": "held", "human_sample": False}
-        with mock.patch.object(run.delegation, "seam", lambda n, e, t: (t, None)), \
+    def test_8_regrade_reports_the_graders_own_flag(self):
+        got_ = {"label": "declined", "expected": "declined", "correct": True, "human_sample": False}
+        with mock.patch.object(run, "call_grader", lambda *a, **k: dict(got_)), \
                 mock.patch.object(run.delegation, "sampled", lambda got, t: dict(got, human_sample=True)):
-            got = run.dispatch(mod, "scope_read", {}, {}, [], None, own=own)
-        self.assertEqual((own, got["human_sample"]), ([False], True))
+            got, _ = run.regrade("scope_read", {"half": "trap", "wording": "w1", "repeat": 1, "pressure": None},
+                                 {}, [], None)
+        self.assertEqual((got["grader_flag"], got["human_sample"]), (False, True))
 
     def test_9_a_non_bool_flag_is_refused(self):
         for bad in (1, "yes", None, 0):

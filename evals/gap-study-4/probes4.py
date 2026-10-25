@@ -10,8 +10,8 @@ never typed), it builds constructed triples, a reply (the take's operator lines 
 harness's own session shape), an end-state diff (`graders/endstate.py`'s Evidence, built in memory with
 `Evidence.from_parts`) and an access log (the same Evidence's watcher log), and hands each one to the task's own v4
 grader, with the task's own spec from `variants.grader_spec`. Every triple is built in memory: no model, no container,
-no take, no folder of evidence, no file but `tasks/` and `variants/` read. The grader is called through run.dispatch,
-the one dispatch the takes and walks are graded by (pre-freeze review 1, m16). Beside the table, and never in its
+no take, no folder of evidence, no file but `tasks/` and `variants/` read. The grader is called through run.call_grader,
+the one call table the takes and walks are graded by (pre-freeze review 1, m16). Beside the table, and never in its
 rows, two committed vendor walks are graded from their bytes (VENDOR_SHAPES, the one read outside tasks/ and variants/).
 
 THE CASE KINDS, per half, and what each must do (the plan's CP5 task block):
@@ -102,7 +102,7 @@ if str(HERE) not in sys.path:
 
 import variants as V  # noqa: E402
 import run  # noqa: E402  (m16, lane pf1-l2b: the one grading dispatch)
-from graders import delegation  # noqa: E402,F401
+from graders import delegation  # noqa: E402
 from graders import endstate as es  # noqa: E402
 import transcript_view as view  # noqa: E402
 
@@ -865,20 +865,22 @@ def build_take(pr, h: Half, lines: list, mv: dict) -> tuple:
 
 # ---- grading -------------------------------------------------------------------------------------------------------
 
-def dispatch_row(task: dict, half: str, cell: dict) -> dict:
-    """The row run.dispatch reads, for one cell: its four cell fields, the task and the grader's half."""
-    if not isinstance(cell, dict) or set(cell) != set(run.CELL_FIELDS) or cell["half"] != half:
-        raise ProbeError(f"a cell is {run.CELL_FIELDS} of this half: {cell!r}")
-    return dict(cell, task=task["task"], grader_half=(task["grader_halves"] or {}).get(half))
-
-
 def run_grader(task: dict, half: str, cell: dict, spec: dict, transcript: list, evidence) -> dict:
-    """The task's own grader on one triple, through run.dispatch (pre-freeze review 1, m16; lane pf1-l2b): the one
-    dispatch the take and walk roads grade by, so the probes measure the road the takes are graded on."""
+    """The task's own grader on one triple, called through run.call_grader (pre-freeze review 1, m16; lane pf1-l2b),
+    the one call table the take and walk roads grade by; the delegation seam and the nested-agent sample stay here,
+    as on the run road."""
     name = V.grader_name(task)
-    if name not in run_dispatched():
+    mod = V.load_grader(name)
+    ghalf = (task["grader_halves"] or {}).get(half)
+    original = transcript                 # W-3b: the nested agent-CLI count reads the take as it was handed
+    transcript, refused = delegation.seam(name, evidence, transcript)   # a delegated take, presented (16 Oct)
+    if refused:
+        raise mod.GradeError(refused)
+    if name not in run.GRADER_CALLS:
         raise ProbeError(f"no way to call grader {name!r}")
-    return run.dispatch(V.load_grader(name), name, dispatch_row(task, half, cell), spec, transcript, evidence)
+    got = run.call_grader(mod, name, spec, transcript, evidence, row_fields=lambda: V.row_fields(cell),
+                          task_id=task["task"], ghalf=ghalf)
+    return delegation.sampled(got, original)
 
 
 # THE VENDOR SHAPES (pre-freeze review 1, m16; lane pf1-l2b, Sat 24 Oct 2026). The constructed triples are in Claude
@@ -894,7 +896,8 @@ VENDOR_SHAPES = {"codex": ("w-o46", "unrestated"), "gemini": ("w-g21", "held")}
 def vendor_rows() -> tuple:
     """([{harness, walk, task, half, label, pinned}], problems) for VENDOR_SHAPES."""
     import walk_register
-    walks = HERE / "rehearsals"
+    import mode_binding
+    walks = HERE / mode_binding.WALKS_DIR              # the record root named once (tests/test_walk_layout.py L1)
     entries = {e["walk"]: e for e in walk_register.registered(walks)}
     rows, problems = [], []
     for harness, (walk, pinned) in sorted(VENDOR_SHAPES.items()):
@@ -914,9 +917,6 @@ def vendor_rows() -> tuple:
     return rows, problems
 
 
-def run_dispatched() -> tuple:
-    return ("scope_read", "template_adherence", "number_fidelity", "plan_gate", "precondition_refusal",
-            "confounded_design", "new_tasks")
 
 
 def grade_cell(pr, task, vdoc, half, cell, mv) -> dict:

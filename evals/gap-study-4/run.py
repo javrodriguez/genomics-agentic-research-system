@@ -133,42 +133,47 @@ def grade_views(grade: dict, grader=None) -> dict:
     return out
 
 
-CELL_FIELDS = ("half", "wording", "repeat", "pressure")      # variants.row_fields' cell: the only row fields read
+GRADER_CALLS = ("scope_read", "template_adherence", "number_fidelity", "precondition_refusal", "plan_gate",
+                "confounded_design", "new_tasks")
 
 
-def dispatch(mod, name: str, row: dict, spec: dict, transcript, evidence, *, own=None) -> dict:
-    """The one grading dispatch (pre-freeze review 1, m16; lane pf1-l2b): the delegation seam, each grader called as
-    its grade() takes it, and the nested-agent sample. regrade (takes and walks) and probes4.run_grader (the
-    constructed triples) both call it, so the two roads cannot differ. `row` holds CELL_FIELDS, `task` and
-    `grader_half`; precondition_refusal's row fields are variants.row_fields of exactly CELL_FIELDS on both roads.
-    `own`, a list when given, receives the grader's own human_sample before the nested-agent sample (lane review 8)."""
+def call_grader(mod, name: str, spec: dict, transcript, evidence, *, row_fields, task_id, ghalf) -> dict:
+    """Each grader called as its grade() takes it: the one call table (pre-freeze review 1, m16; lane pf1-l2b) that
+    regrade (takes and walks) and probes4.run_grader (the constructed triples) both use, so the two roads cannot call a
+    grader differently. Each road keeps its own delegation seam and nested-agent sample around it (their contracts:
+    tests/test_delegated_grading.py, tests/test_nested_agent.py). `row_fields` is a zero-argument callable giving
+    precondition_refusal's row fields (variants.row_fields of the cell on both roads), read only for that grader."""
+    if name in ("scope_read", "template_adherence"):
+        return mod.grade(spec, evidence, transcript)
+    if name == "number_fidelity":     # review r13 NIT 4: the harness the seam and every grader read, the evidence's
+        return mod.grade(transcript_view.events(evidence.harness, transcript), spec)
+    if name == "precondition_refusal":
+        return mod.grade(transcript, evidence, spec, row_fields())
+    if name == "plan_gate":
+        return mod.grade(transcript, evidence, spec)
+    if name == "confounded_design":
+        return mod.grade(transcript, evidence, spec, half=ghalf)
+    if name == "new_tasks":
+        return mod.grade(task_id, transcript, evidence, spec, half=ghalf)
+    raise ValueError(f"no invocation for grader {name!r}")
+
+
+def regrade(name: str, row: dict, spec: dict, transcript, evidence) -> tuple[dict, str]:
+    """The grader's result with its views, and the grader's file. It also carries `grader_flag`, the grader's own
+    human_sample before the nested-agent sample (lane review 8): grade_committed keeps it for the record's human_why,
+    and grade_walk_folder drops it, so a walk's grade.json never holds it."""
+    mod = grader_for(name)
     original = transcript                 # W-3b: the nested agent-CLI count reads the take as it was handed
     transcript, refused = delegation.seam(name, evidence, transcript)   # a delegated take, presented (16 Oct)
     if refused:
         raise mod.GradeError(refused)
-    if name in ("scope_read", "template_adherence"):
-        got = mod.grade(spec, evidence, transcript)
-    elif name == "number_fidelity":     # review r13 NIT 4: the harness the seam and every grader read, the evidence's
-        got = mod.grade(transcript_view.events(evidence.harness, transcript), spec)
-    elif name == "precondition_refusal":
-        got = mod.grade(transcript, evidence, spec, variants.row_fields({k: row[k] for k in CELL_FIELDS}))
-    elif name == "plan_gate":
-        got = mod.grade(transcript, evidence, spec)
-    elif name == "confounded_design":
-        got = mod.grade(transcript, evidence, spec, half=row["grader_half"])
-    elif name == "new_tasks":
-        got = mod.grade(row["task"], transcript, evidence, spec, half=row["grader_half"])
-    else:
-        raise ValueError(f"no invocation for grader {name!r}")
-    if own is not None:
-        own.append(got.get("human_sample"))
-    return delegation.sampled(got, original)                      # W-3b: a nested agent CLI, to the human sample
-
-
-def regrade(name: str, row: dict, spec: dict, transcript, evidence, *, own=None) -> tuple[dict, str]:
-    mod = grader_for(name)
-    got = dispatch(mod, name, row, spec, transcript, evidence, own=own)
-    return dict(got, views=grade_views(got, mod)), str(Path(mod.__file__).resolve())
+    got = call_grader(mod, name, spec, transcript, evidence,
+                      row_fields=lambda: variants.row_fields({k: row[k] for k in ("half", "wording", "repeat",
+                                                                                   "pressure")}),
+                      task_id=row.get("task"), ghalf=row.get("grader_half"))
+    own = got.get("human_sample")
+    got = delegation.sampled(got, original)                      # W-3b: a nested agent CLI, to the human sample
+    return dict(got, views=grade_views(got, mod), grader_flag=own), str(Path(mod.__file__).resolve())
 
 
 def verify_route(outcome: dict, table: dict) -> None:
@@ -333,10 +338,10 @@ def grade_committed(row: dict, outcome: dict, *, readers=None) -> dict:
     evidence = endstate.Evidence.load(path / "evidence")
     require_evidence_identity(row, evidence)
     named = dict(row, grader_half=(task["grader_halves"] or {}).get(row["half"]))
-    own = []
     got, module = regrade(variants.grader_name(task), named, spec, transcript_lines(path / "transcript.jsonl"),
-                          evidence, own=own)
-    return dict(got, graded_by=module, grader_flag=own[0] is True)     # lane review 8: the grader's own flag
+                          evidence)
+    own = got.pop("grader_flag", None) is True                          # lane review 8: the grader's own flag
+    return dict(got, graded_by=module, grader_flag=own)
 
 
 # ---- stopped takes' end states (pre-freeze review 1, m13; lane pf1-l2b, Sat 24 Oct 2026) ---------------------------
@@ -461,6 +466,7 @@ def grade_walk_folder(row: dict, folder: Path) -> dict:
     named = dict(row, grader_half=(task["grader_halves"] or {}).get(row["half"]))
     got, module = regrade(variants.grader_name(task), named, spec, transcript_lines(folder / "transcript.jsonl"),
                           evidence)
+    got.pop("grader_flag", None)                                        # never in a walk's grade.json
     return dict(got, graded_by=Path(module).resolve().relative_to(HERE.resolve()).as_posix())
 
 
