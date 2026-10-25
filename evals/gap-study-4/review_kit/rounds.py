@@ -91,23 +91,54 @@ def sha256_bytes(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
 
 
-def folder_sha256(folder: Path) -> str:
-    """One digest over everything the reviewer was handed, path and bytes, excluding its clone's history.
+MANIFEST = "folder-manifest.txt"
+
+
+def manifest_text(folder: Path) -> str:
+    """Everything the reviewer is handed, one `<sha256>  <path>` line per file, in the order folder_sha256 reads.
 
     `study/.git` is left out: a clone's object files are not reproducible byte for byte, and what the
-    reviewer reads out of the clone is bound by `launch_commit` instead.
+    reviewer reads from the clone is bound by `launch_commit` instead.
     """
-    h = hashlib.sha256()
+    lines = []
     for p in sorted(folder.rglob("*")):
         rel = p.relative_to(folder).as_posix()
         if rel == "study/.git" or rel.startswith("study/.git/"):
             continue
         if not p.is_file():
             continue
+        lines.append(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {rel}\n")
+    return "".join(lines)
+
+
+def manifest_digest(text: str) -> str:
+    """The row's input_sha256, from the manifest's own lines: each path, a NUL, then its file's sha256.
+
+    Lane blindness-sidechains (the closure review of fff7e0d3, finding 4): the manifest is written beside the
+    folder before the row is hashed, and the row's input_sha256 is this digest of it, so the committed row binds
+    the per-file manifest with no new field. blindness.py reads the same digest back.
+    """
+    h = hashlib.sha256()
+    for line in text.splitlines():
+        sha, rel = line.split("  ", 1)
         h.update(rel.encode())
         h.update(b"\0")
-        h.update(hashlib.sha256(p.read_bytes()).digest())
+        h.update(bytes.fromhex(sha))
     return h.hexdigest()
+
+
+def folder_sha256(folder: Path) -> str:
+    """One digest over everything the reviewer was handed, path and bytes, excluding its clone's history."""
+    return manifest_digest(manifest_text(folder))
+
+
+def write_manifest(folder: Path) -> str:
+    """Write the folder's manifest beside it, `<folder>-launch/folder-manifest.txt`, and return its text."""
+    text = manifest_text(folder)
+    side = folder.parent / (folder.name + "-launch")
+    side.mkdir(exist_ok=True)
+    (side / MANIFEST).write_text(text)
+    return text
 
 
 def load() -> list[dict]:
@@ -186,9 +217,10 @@ def add(kind: str, folder: Path, voids: int | None) -> int:
               f"committed or a void is recorded before the next round opens; no report is discarded.")
         return 1
     n = max([r["n"] for r in rows if r["kind"] == kind], default=0) + 1
+    manifest = write_manifest(folder)
     row = {"n": n, "kind": kind,
            "prompt_sha256": sha256_bytes(BRIEF.read_bytes()),
-           "input_sha256": folder_sha256(folder),
+           "input_sha256": manifest_digest(manifest),
            "launch_commit": git("rev-parse", "HEAD"),
            "added": datetime.now(timezone.utc).isoformat(timespec="seconds"),
            "voids": voids}

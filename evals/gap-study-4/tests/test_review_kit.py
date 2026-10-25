@@ -90,7 +90,7 @@ KIT = HERE / "review_kit"
 REPO = HERE.parent.parent
 FILES = {"brief": KIT / "BRIEF.md", "why": KIT / "why.md", "blindness": KIT / "blindness.py",
          "launch": KIT / "launch.py", "rehearsal": HERE / "freeze_rehearsal.py",
-         "commit_review": KIT / "commit_review.py", "build_kit": KIT / "build_kit.py", "readme": KIT / "README.md",
+         "rounds": KIT / "rounds.py", "commit_review": KIT / "commit_review.py", "build_kit": KIT / "build_kit.py", "readme": KIT / "README.md",
          "producer": KIT / "athena_outputs.py"}
 MUTATED: dict[str, str] = {}
 
@@ -131,6 +131,13 @@ def markers_of(src: str) -> list[str]:
     block = re.search(r"^MARKERS = \[\n(.*?)^\]", src, re.M | re.S)
     assert block, "K2.markers: no MARKERS list"
     return re.findall(r'\(\s*"[^"]*",\s*"([^"]*)"\s*\)', block.group(1))
+
+
+def text_of_def(src: str, name: str) -> str:
+    """The text of one top-level function of a kit file."""
+    m = re.search(rf"^def {name}\(.*?(?=^\S)", src + "\nEND", re.M | re.S)
+    assert m, f"K15.sidechains: no def {name}"
+    return m.group(0)
 
 
 def usage_lines(src: str) -> list[str]:
@@ -816,7 +823,7 @@ class SidechainFolds(unittest.TestCase):
 
     SID = "11111111-2222-5333-8444-666666666666"
 
-    def run_case(self, files, reviewer, sides, newer=(), manifest=None):
+    def run_case(self, files, reviewer, sides, newer=(), manifest=None, register=None):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t).resolve()
             folder = root / "pfr" / "round9"
@@ -847,6 +854,9 @@ class SidechainFolds(unittest.TestCase):
             for aid, recs in sides.items():
                 (sub / f"agent-{aid}.jsonl").write_text(fix(recs))
             b = load_blindness()
+            if register is not None:
+                (root / "rounds.json").write_text(json.dumps({"rows": register}))
+                b.REGISTER = root / "rounds.json"
             a = b.analyse(folder, self.SID, root / "projects")
             a["rendered"] = b.render(a, folder)
             return a
@@ -892,6 +902,12 @@ class SidechainFolds(unittest.TestCase):
         self.assertEqual(self.hb_row(a, "round 2's goal id"), (1, 0, 1), "K15.sidechains: changed since launch")
         self.assertEqual(self.hb_row(a, "round 2's name"), (1, 0, 1), "K15.sidechains: not listed at launch")
         self.assertIn("manifest", a["corpus_rule"], "K15.sidechains: the rule that ran is named")
+        self.assertIn("NO round row", a["corpus_rule"], "K15.sidechains: a manifest no row hashed binds nothing")
+        text = "".join(f"{hashlib.sha256(body.encode()).hexdigest()}  {rel}\n" for rel, body in manifest.items())
+        b = load_blindness()
+        a = self.run_case(files, _launch("tA", "aaa"), {"aaa": _side("aaa", [])}, manifest=manifest,
+                          register=[{"n": 7, "input_sha256": b.manifest_digest(text)}])
+        self.assertIn("input_sha256 of round row 7", a["corpus_rule"], "K15.sidechains: the row it binds")
 
     def test_a_report_read_through_another_tool_is_a_handback_once(self):
         rev = (_launch("tA", "aaa") + _launch("tB", "bbb")
@@ -978,14 +994,16 @@ class SidechainFolds(unittest.TestCase):
                _result("tA", "Async agent launched successfully.\nagentId: aaa", {"agentId": "aaa", "status": "async_launched"}),
                _call("tR", "Bash", {"command": "cat notes"}), _result("tR", "the haiku-prestudy notes; round 2 floor"),
                _hb("aaa", "see evals/gap-study-3 and the haiku-prestudy; gars-eval-v3 is the floor; the "
-                          "lane-orchestrator; round 2 too.")]
-        a = self.run_case({"study/evals/gap-study-3/x.py": "x\n"}, rev, {"aaa": _side("aaa", [])})
+                          "lane-orchestrator; round 2 too; gap4.")]
+        a = self.run_case({"study/evals/gap-study-3/x.py": "gap4\n"}, rev, {"aaa": _side("aaa", [])})
         rows = {r["label"]: (r["total"], r["brief"], r["un"]) for r in a["handback_table"]}
         self.assertEqual(rows["round 3's folder name"], (1, 1, 0), "K15.sidechains: in the brief and the folder")
-        self.assertEqual(rows["the pre-study's folder name"], (1, 1, 0), "K15.sidechains: in the brief, read by its author")
+        self.assertEqual(rows["the pre-study's folder name"], (1, 0, 1),
+                         "K15.sidechains: in the brief, read by its author outside the folder: no cover")
         self.assertEqual(rows["round 2's goal id"], (1, 0, 1), "K15.sidechains: in the brief, explained for no one")
         self.assertEqual(rows["the operator's coordinating session"], (1, 0, 1), "K15.sidechains: operator")
         self.assertEqual(rows["round 2's name"], (1, 0, 1), "K15.sidechains: read by the author, not in the brief")
+        self.assertEqual(rows["the round's shorthand"], (1, 0, 1), "K15.sidechains: in the folder, not in the brief")
         self.assertRegex(a["rendered"], r"traced, direct +traced via brief +UNEXPLAINED", "K15.sidechains: printed apart")
 
     def test_the_sources_of_a_copy_are_not_written(self):
@@ -1009,29 +1027,82 @@ class SidechainFolds(unittest.TestCase):
         a = self.run_case({"study/r.md": "x\n"}, _launch("tA", "aaa"),
                           {"aaa": _side("aaa", [_call("t1", "Bash", {"command": "cd /tmp/scr && cat > d.py <<'EOF'\nx\nEOF"}),
                                                 _result("t1", "")])})
-        self.assertEqual(a["writes"].get("aaa"), ["/tmp/scr"], "K15.sidechains: a write where a cd left it")
+        self.assertEqual(a["writes"].get("aaa"), ["/tmp/scr/d.py"], "K15.sidechains: a write where a cd left it")
 
     def test_the_docstring_states_the_shared_study_word_limit(self):
         doc = " ".join(text("blindness").split('"""')[1].split())
         self.assertIn("A study word is traced by its word alone", doc, "K15.sidechains")
 
-    def test_launch_writes_the_per_file_manifest(self):
+    def test_a_relative_write_into_the_folder_takes_its_target_out(self):
+        files = {f"study/{n}": "the floor is gars-eval-v3's\n" for n in
+                 ("x1.md", "x2.md", "x3.md", "brain.md", "y.md", "sub/a.md", "t/b.md", "keep.md")}
+        steps = ["cd @F/study && cat > x1.md <<'EOF'\nthe floor\nEOF",
+                 "cd @F/study && echo hi | tee x2.md",
+                 "cat > x3.md",
+                 "cd @F/study && cp -p /tmp/brain.md .",
+                 "cd @F && cp -p /tmp/y.md study/y.md",
+                 "cd @F/study && rsync -a /tmp/src/ sub/",
+                 "cd @F/study/t && tar -xf /tmp/a.tar",
+                 'grep -n "x> . y" keep.md 2>/dev/null | head -3']
+        recs = []
+        for i, cmd in enumerate(steps):
+            rec = _call(f"t{i}", "Bash", {"command": cmd})
+            rec["cwd"] = "@F/study"
+            recs += [rec, _result(f"t{i}", "")]
+        a = self.run_case(files, _launch("tA", "aaa"), {"aaa": _side("aaa", recs)})
+        kept = {p.split("/round9/study/", 1)[1] for p in a["corpus_files"]}
+        for gone in ("x1.md", "x2.md", "x3.md", "brain.md", "y.md", "sub/a.md", "t/b.md"):
+            self.assertNotIn(gone, kept, f"K15.sidechains: a relative write into the folder ({gone})")
+        self.assertIn("keep.md", kept, "K15.sidechains: a file nothing wrote stays")
+
+    def test_section_6_reads_out_arguments_extractions_and_every_redirect(self):
+        files = {"study/a.tar": "x\n"}
+        steps = ["python3 /tmp/w.py --out /tmp/res.json > /tmp/log.txt", "cd /tmp/w && tar -xf @F/study/a.tar",
+                 "cat /tmp/a &> /tmp/b", "echo x >> /tmp/c", "grep -o foo /tmp/d",
+                 "cat > /tmp/h.txt <<'EOF'\nif a > b: pass\nEOF", "cd /tmp/m;\ntouch n.txt"]
+        recs = []
+        for i, cmd in enumerate(steps):
+            rec = _call(f"t{i}", "Bash", {"command": cmd})
+            rec["cwd"] = "/tmp/g"
+            recs += [rec, _result(f"t{i}", "")]
+        a = self.run_case(files, _launch("tA", "aaa"), {"aaa": _side("aaa", recs)})
+        self.assertEqual(a["writes"].get("aaa"), ["/tmp/b", "/tmp/c", "/tmp/h.txt", "/tmp/log.txt", "/tmp/m/n.txt",
+                                                  "/tmp/res.json", "/tmp/w"],
+                         "K15.sidechains: section 6's writes")
+        self.assertTrue(any(p.endswith("/study/a.tar") for p in a["corpus_files"]), "K15.sidechains: an archive is read")
+
+    def test_the_manifest_is_written_before_the_row_is_hashed(self):
+        rounds = load_isolated(FILES["rounds"], "review_kit_rounds_for_test", MUTATED.get("rounds"))
         lk = load_launch()
         with tempfile.TemporaryDirectory() as t:
             root = Path(t).resolve()
-            folder, side = root / "f", root / "f-launch"
+            folder = root / "f"
             (folder / "study" / ".git").mkdir(parents=True)
-            side.mkdir()
             (folder / "BRIEF.md").write_text("b\n")
             (folder / "study" / "x.py").write_text("x\n")
             (folder / "study" / ".git" / "HEAD").write_text("ref\n")
-            os.symlink(folder / "BRIEF.md", folder / "study" / "link.md")
-            lk.write_manifest(folder, side)
-            got = (side / "folder-manifest.txt").read_text()
-        want = "".join(f"{hashlib.sha256(b).hexdigest()}  {rel}\n" for rel, b in (("BRIEF.md", b"b\n"),
-                                                                                    ("study/x.py", b"x\n")))
-        self.assertEqual(got, want, "K15.sidechains: one line per regular file, no .git, no link")
-        self.assertIn("    write_manifest(folder, side)\n", text("launch"), "K15.sidechains: the launch writes it")
+            listing = rounds.write_manifest(folder)
+            side = root / "f-launch"
+            self.assertEqual((side / "folder-manifest.txt").read_text(), listing, "K15.sidechains: written beside it")
+            # The row's digest, as round 3's folder_sha256 computed it, must not move.
+            h = hashlib.sha256()
+            for rel, body in (("BRIEF.md", b"b\n"), ("study/x.py", b"x\n")):
+                h.update(rel.encode() + b"\0" + hashlib.sha256(body).digest())
+            self.assertEqual(rounds.folder_sha256(folder), h.hexdigest(), "K15.sidechains: the row digest is unchanged")
+            self.assertEqual(rounds.manifest_digest(listing), h.hexdigest(), "K15.sidechains: the manifest reproduces it")
+            self.assertEqual(load_blindness().manifest_digest(listing), h.hexdigest(), "K15.sidechains: blindness reads it")
+            self.assertEqual(lk.manifest_problems(folder, side, rounds), [], "K15.sidechains: an unchanged folder")
+            (folder / "study" / "x.py").write_text("changed\n")
+            self.assertEqual(len(lk.manifest_problems(folder, side, rounds)), 1, "K15.sidechains: a changed folder")
+            (side / "folder-manifest.txt").unlink()
+            self.assertEqual(len(lk.manifest_problems(folder, side, rounds)), 1, "K15.sidechains: no manifest")
+        add = text_of_def(text("rounds"), "add")
+        self.assertIn("    manifest = write_manifest(folder)\n", add, "K15.sidechains: --add writes it")
+        self.assertIn('"input_sha256": manifest_digest(manifest),', add, "K15.sidechains: the row hashes it")
+        main = text_of_def(text("launch"), "main")
+        self.assertIn("    stale = manifest_problems(folder, side, load_rounds())\n", main, "K15.sidechains: launch checks it")
+        self.assertLess(main.index("manifest_problems(folder, side, load_rounds())"), main.index('(side / "SESSION")'),
+                        "K15.sidechains: the launch checks it before the session")
 
 
 def mutants():
@@ -1160,9 +1231,6 @@ def mutants():
         "quotes-uncapped": ("Sidechains.test_a_handback_hit_not_traced_is_unexplained", "K15.sidechains", "blindness",
                 'mask(h["quote"], str(folder))[:120])',
                 'mask(h["quote"], str(folder)))'),
-        "written-in-corpus": ("Sidechains.test_the_reviewers_own_writes_are_never_the_folder_it_was_given", "K15.sidechains", "blindness",
-                '    by_write = [p for p in files if p not in newer and str(p.resolve()) in written]',
-                '    by_write = []'),
         "launch-listing-ignored": ("Sidechains.test_the_reviewers_own_writes_are_never_the_folder_it_was_given", "K15.sidechains", "blindness",
                 'tops = ([folder / n for n in listing.read_text().split("\\n") if n.strip()] if listing.is_file()\n            else sorted(folder.iterdir()))',
                 'tops = sorted(folder.iterdir())'),
@@ -1187,9 +1255,6 @@ def mutants():
         "side-paths-unscanned": ("Sidechains.test_paths_outside_and_writes_outside_are_listed_per_session", "K15.sidechains", "blindness",
                 '"side_outside": {aid: outside_paths(s, folder) for aid, s in side.items()},',
                 '"side_outside": {aid: set() for aid in side},'),
-        "shell-writes-unread": ("Sidechains.test_paths_outside_and_writes_outside_are_listed_per_session", "K15.sidechains", "blindness",
-                '        if not WRITE_CMD.search(seg):\n            return\n',
-                '        return\n'),
         "writes-section-dropped": ("Sidechains.test_paths_outside_and_writes_outside_are_listed_per_session", "K15.sidechains", "blindness",
                 'f"6. Writes outside the folder: {n_w}',
                 'f"6. Outside: {n_w}'),
@@ -1201,9 +1266,6 @@ def mutants():
         "tail-keeps-dropped-marker": ("SidechainFolds.test_a_path_tail_that_drops_the_marker_explains_nothing", "K15.sidechains", "blindness",
                 '    return [c for c in [ext] + tails if marker in c]',
                 '    return [ext] + tails'),
-        "shell-write-inside-kept": ("SidechainFolds.test_a_file_a_shell_command_wrote_inside_the_folder_is_not_the_folder", "K15.sidechains", "blindness",
-                '            if p and inside(p, folder):\n                self.written_inside.add(str(Path(p).resolve()))\n            elif p and not p.startswith("/dev/"):',
-                '            if False:\n                pass\n            elif p and not inside(p, folder) and not p.startswith("/dev/"):'),
         "mtime-ignored": ("SidechainFolds.test_a_file_newer_than_the_launch_stamp_is_not_the_folder", "K15.sidechains", "blindness",
                 '    newer = [p for p in files if stamp is not None and p.stat().st_mtime_ns > stamp]',
                 '    newer = []'),
@@ -1216,12 +1278,6 @@ def mutants():
         "manifest-hash-unchecked": ("SidechainFolds.test_with_a_manifest_only_its_unchanged_files_are_the_folder", "K15.sidechains", "blindness",
                 '            if hashlib.sha256(p.read_bytes()).hexdigest() == sha:',
                 '            if True:'),
-        "manifest-not-written": ("SidechainFolds.test_launch_writes_the_per_file_manifest", "K15.sidechains", "launch",
-                '    write_manifest(folder, side)\n',
-                ''),
-        "manifest-keeps-git": ("SidechainFolds.test_launch_writes_the_per_file_manifest", "K15.sidechains", "launch",
-                'dirs[:] = sorted(x for x in dirs if x != ".git" and not (Path(d) / x).is_symlink())',
-                'dirs[:] = sorted(dirs)'),
         "taskoutput-unread": ("SidechainFolds.test_a_report_read_through_another_tool_is_a_handback_once", "K15.sidechains", "blindness",
                 'aid = (out or named or [None])[0]',
                 'aid = (out or [None])[0]'),
@@ -1264,27 +1320,93 @@ def mutants():
         "brief-route-off": ("SidechainFolds.test_a_hit_only_in_the_brief_traces_through_what_its_author_read", "K15.sidechains", "blindness",
                 '        elif h["aid"] in briefs and any(',
                 '        elif False and any('),
-        "brief-author-read-ignored": ("SidechainFolds.test_a_hit_only_in_the_brief_traces_through_what_its_author_read", "K15.sidechains", "blindness",
-                '(c in briefs[h["aid"]][0].traffic\n                                                                      or c in in_folder)',
-                '(c in in_folder)'),
-        "brief-corpus-ignored": ("SidechainFolds.test_a_hit_only_in_the_brief_traces_through_what_its_author_read", "K15.sidechains", "blindness",
-                '(c in briefs[h["aid"]][0].traffic\n                                                                      or c in in_folder)',
-                '(c in briefs[h["aid"]][0].traffic)'),
-        "brief-not-required": ("SidechainFolds.test_a_hit_only_in_the_brief_traces_through_what_its_author_read", "K15.sidechains", "blindness",
-                'any(c in briefs[h["aid"]][1] and (c in',
-                'any((c in'),
         "brief-unprinted": ("SidechainFolds.test_a_hit_only_in_the_brief_traces_through_what_its_author_read", "K15.sidechains", "blindness",
                 "{'traced via brief':>17}",
                 "{'via':>17}"),
-        "copy-sources-written": ("SidechainFolds.test_the_sources_of_a_copy_are_not_written", "K15.sidechains", "blindness",
-                '            target = words[-1]\n',
-                '            target = seg\n'),
-        "cd-write-unseen": ("SidechainFolds.test_the_sources_of_a_copy_are_not_written", "K15.sidechains", "blindness",
-                '        if cwd and not ABS_PATH.search(target) and not inside(cwd, folder):\n            self.writes.add(cwd)\n',
+        "written-in-corpus": ("Sidechains.test_the_reviewers_own_writes_are_never_the_folder_it_was_given", "K15.sidechains", "blindness",
+                '    by_write = [p for p in files if p not in newer_set and written_over(p, written)]',
+                '    by_write = []'),
+        "shell-writes-unread": ("Sidechains.test_paths_outside_and_writes_outside_are_listed_per_session", "K15.sidechains", "blindness",
+                '                for t, is_dir in shell_targets(words, redirected):',
+                '                for t, is_dir in []:'),
+        "shell-write-inside-kept": ("SidechainFolds.test_a_file_a_shell_command_wrote_inside_the_folder_is_not_the_folder", "K15.sidechains", "blindness",
+                '            if is_dir is not None:\n                self.written_inside.add(',
+                '            if False:\n                self.written_inside.add('),
+        "manifest-after-row": ("SidechainFolds.test_the_manifest_is_written_before_the_row_is_hashed", "K15.sidechains", "rounds",
+                '"input_sha256": manifest_digest(manifest),',
+                '"input_sha256": folder_sha256(folder),'),
+        "manifest-keeps-git": ("SidechainFolds.test_the_manifest_is_written_before_the_row_is_hashed", "K15.sidechains", "rounds",
+                '        if rel == "study/.git" or rel.startswith("study/.git/"):\n            continue\n',
                 ''),
+        "manifest-digest-differs": ("SidechainFolds.test_the_manifest_is_written_before_the_row_is_hashed", "K15.sidechains", "rounds",
+                '        h.update(b"\\0")\n',
+                ''),
+        "launch-manifest-unchecked": ("SidechainFolds.test_the_manifest_is_written_before_the_row_is_hashed", "K15.sidechains", "launch",
+                '    stale = manifest_problems(folder, side, load_rounds())\n',
+                '    stale = []\n'),
+        "launch-stale-taken": ("SidechainFolds.test_the_manifest_is_written_before_the_row_is_hashed", "K15.sidechains", "launch",
+                '    if rounds.manifest_text(folder) != m.read_text():',
+                '    if False:'),
+        "row-binding-unread": ("SidechainFolds.test_with_a_manifest_only_its_unchanged_files_are_the_folder", "K15.sidechains", "blindness",
+                'rows = [r["n"] for r in register_rows() if r.get("input_sha256") == digest]',
+                'rows = [r["n"] for r in register_rows()]'),
+        "brief-author-read-counts": ("SidechainFolds.test_a_hit_only_in_the_brief_traces_through_what_its_author_read", "K15.sidechains", "blindness",
+                'any(c in briefs[h["aid"]][1] and c in in_folder for c in cs)',
+                'any(c in briefs[h["aid"]][1] and (c in in_folder or c in briefs[h["aid"]][0].traffic) for c in cs)'),
+        "brief-corpus-ignored": ("SidechainFolds.test_a_hit_only_in_the_brief_traces_through_what_its_author_read", "K15.sidechains", "blindness",
+                'any(c in briefs[h["aid"]][1] and c in in_folder for c in cs)',
+                'any(c in briefs[h["aid"]][1] and False for c in cs)'),
+        "brief-not-required": ("SidechainFolds.test_a_hit_only_in_the_brief_traces_through_what_its_author_read", "K15.sidechains", "blindness",
+                'any(c in briefs[h["aid"]][1] and c in in_folder for c in cs)',
+                'any(c in in_folder for c in cs)'),
+        "copy-sources-written": ("SidechainFolds.test_the_sources_of_a_copy_are_not_written", "K15.sidechains", "blindness",
+                '            out += [(dest.rstrip("/") + "/" + os.path.basename(src.rstrip("/")), True) for src in plain[:-1]]',
+                '            out += [(a, True) for a in plain]'),
+        "cd-write-unseen": ("SidechainFolds.test_the_sources_of_a_copy_are_not_written", "K15.sidechains", "blindness",
+                '                if words[:1] in (["cd"], ["pushd"]):',
+                '                if False:'),
         "redirect-runs-written": ("SidechainFolds.test_the_sources_of_a_copy_are_not_written", "K15.sidechains", "blindness",
-                '        elif redirects and not WRITE_VERB.search(seg):\n',
-                '        elif False:\n'),
+                '    if verb not in READERS:\n',
+                '    out += [(w, False) for w in words if w.startswith("/")]\n    if verb not in READERS:\n'),
+        "record-cwd-ignored": ("SidechainFolds.test_a_relative_write_into_the_folder_takes_its_target_out", "K15.sidechains", "blindness",
+                'self.note_writes(name, inp, folder, rec.get("cwd"))',
+                'self.note_writes(name, inp, folder)'),
+        "relative-inside-dropped": ("SidechainFolds.test_a_relative_write_into_the_folder_takes_its_target_out", "K15.sidechains", "blindness",
+                '        p = t if t.startswith("/") else (os.path.normpath(os.path.join(cwd, t)) if cwd else None)',
+                '        p = t if t.startswith("/") else None'),
+        "folder-target-keeps-files": ("SidechainFolds.test_a_relative_write_into_the_folder_takes_its_target_out", "K15.sidechains", "blindness",
+                '    return str(r) in written or any(str(q) in written for q in r.parents)',
+                '    return str(r) in written'),
+        "tee-missed": ("SidechainFolds.test_a_relative_write_into_the_folder_takes_its_target_out", "K15.sidechains", "blindness",
+                '    elif verb in ("tee", "touch"):\n        out += [(a, False) for a in plain]\n',
+                '    elif verb in ("tee", "touch"):\n        pass\n'),
+        "rsync-missed": ("SidechainFolds.test_a_relative_write_into_the_folder_takes_its_target_out", "K15.sidechains", "blindness",
+                '    elif verb == "rsync" and len(plain) >= 2:\n        out.append((plain[-1], True))\n',
+                '    elif verb == "rsync" and len(plain) >= 2:\n        pass\n'),
+        "tar-missed": ("SidechainFolds.test_section_6_reads_out_arguments_extractions_and_every_redirect", "K15.sidechains", "blindness",
+                '        out.append((args[args.index("-C") + 1] if "-C" in args[:-1] else ".", True))',
+                '        pass'),
+        "out-arg-missed": ("SidechainFolds.test_section_6_reads_out_arguments_extractions_and_every_redirect", "K15.sidechains", "blindness",
+                '            if a in ("-o", "--out", "--output") and i + 1 < len(args):',
+                '            if False:'),
+        "reader-o-taken": ("SidechainFolds.test_section_6_reads_out_arguments_extractions_and_every_redirect", "K15.sidechains", "blindness",
+                '    if verb not in READERS:\n',
+                '    if True:\n'),
+        "amp-redirect-missed": ("SidechainFolds.test_section_6_reads_out_arguments_extractions_and_every_redirect", "K15.sidechains", "blindness",
+                'REDIRECTS = {">", ">>", "&>", "&>>", ">|"}',
+                'REDIRECTS = {">", ">>", ">|"}'),
+        "append-redirect-missed": ("SidechainFolds.test_section_6_reads_out_arguments_extractions_and_every_redirect", "K15.sidechains", "blindness",
+                'REDIRECTS = {">", ">>", "&>", "&>>", ">|"}',
+                'REDIRECTS = {">", "&>", "&>>", ">|"}'),
+        "heredoc-body-read": ("SidechainFolds.test_section_6_reads_out_arguments_extractions_and_every_redirect", "K15.sidechains", "blindness",
+                '    lex = shlex.shlex(HEREDOC.sub(r"\\1", cmd), posix=True',
+                '    lex = shlex.shlex(cmd, posix=True'),
+        "quote-blind-steps": ("SidechainFolds.test_a_relative_write_into_the_folder_takes_its_target_out", "K15.sidechains", "blindness",
+                '        tokens = list(lex)\n',
+                '        tokens = HEREDOC.sub(r"\\1", cmd).replace("|", " | ").replace(">", " > ").split()\n'),
+        "merged-breaks-missed": ("SidechainFolds.test_section_6_reads_out_arguments_extractions_and_every_redirect", "K15.sidechains", "blindness",
+                '        if t in STEP_BREAKS or (t and set(t) <= set("();|&\\n")):',
+                '        if t in STEP_BREAKS:'),
         "isolation-memory-ignored": ("Sidechains.test_the_isolation_the_records_show", "K15.sidechains", "blindness",
                 '                    self.memory_outside += 1',
                 '                    pass'),

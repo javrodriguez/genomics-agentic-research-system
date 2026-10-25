@@ -266,6 +266,20 @@
       "line_text": "10. INFO (not a defect). Round 1's remaining UNEXPLAINED hit is the extent `round 2/3` in agent aa07ac8b's hand-back; `round 2` is in the folder and in its traffic, `round 2/3` is not in the folder. The rule as ruled reads it UNEXPLAINED; whether that voids round 1 is the orchestrator's call.",
       "ruled": "2026-10-24",
       "why": "Bound record, never edited: lanes/REVIEW-blindness-sidechains-5a6dc21.md is the fresh independent review of lane blindness-sidechains at 5a6dc215 (VERDICT CHANGES), committed as written on the Lane-orchestrator's word, 24 Oct 2026. The slash shapes are a witness tally and the study's own round names (round 2/3 text, 2/3 shorthand), never a rate."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-blindness-sidechains-fff7e0d.md",
+      "pattern": "ratio-slash",
+      "line_text": "- Suite in the clone: `Ran 53 tests ... OK`; `--witnesses`: `90/90 red; registry 90`; `copy_manifest.py --check`: `ok: 728 files from 73 fragment(s)`; working tree clean after the runs.",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-blindness-sidechains-fff7e0d.md is the closure review of lane blindness-sidechains at fff7e0d3 (VERDICT PASS), committed as written on the Lane-orchestrator's word, 24 Oct 2026. The line is a witness tally or a file moving out of the corpus, never a rate."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-blindness-sidechains-fff7e0d.md",
+      "pattern": "out-of",
+      "line_text": "  - M1: a listed file changed after launch, and a new unlisted file, are both out of the corpus.",
+      "ruled": "2026-10-24",
+      "why": "Bound record, never edited: lanes/REVIEW-blindness-sidechains-fff7e0d.md is the closure review of lane blindness-sidechains at fff7e0d3 (VERDICT PASS), committed as written on the Lane-orchestrator's word, 24 Oct 2026. The line is a witness tally or a file moving out of the corpus, never a rate."
     }
   ]
 }

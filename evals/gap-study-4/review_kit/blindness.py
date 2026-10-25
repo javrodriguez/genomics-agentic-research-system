@@ -40,9 +40,9 @@ hold the marker it explains. "Read it there" means a tool result the sub-agent r
 report a nested agent of its own handed it and read the same way; a nested session that is missing explains
 nothing. A report read through another tool (TaskOutput, or its tasks/<id>.output file) is a hand-back, read once;
 an Agent result that names no agent is listed and stays UNEXPLAINED. A hit the sub-agent did not read but its brief
-holds is traced via brief only when the brief's author read it in a tool result or it is in the folder at launch,
-and section 4 prints it apart. A cp, mv or rsync writes only its destination. A record kept twice, and a rendered
-form that reflows its prompt, are read once. Task notifications are listed apart from the
+holds is traced via brief only when it is in the folder at launch, and section 4 prints it apart. A shell step
+writes only its targets, read against the cwd it runs in: never a copy's sources or the program it runs. A record
+kept twice, and a rendered form that reflows its prompt, are read once. Task notifications are listed apart from the
 reports. A study word is traced by
 its word alone, so a word the study's own files also hold passes even when the sub-agent met it elsewhere: the
 ruling's own limit, and why the operator rows are refused outright.
@@ -56,6 +56,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import sys
 import time
 from pathlib import Path
@@ -102,14 +103,19 @@ LAUNCHED_ID = re.compile(r"agentId: (\w+)")
 TASK_OUTPUT = re.compile(r"tasks/(\w+)\.output")
 # launch.py's per-file record of the folder at launch (round 2 on): `<sha256>  <path under the folder>` per line.
 MANIFEST = "folder-manifest.txt"
+# The round register, whose input_sha256 a manifest must reproduce to bind anything.
+REGISTER = HERE / "rounds.json"
 # A shell command that writes, by its own text: a redirect (never 2>&1 or a here-document), or a verb that writes.
-REDIRECT = re.compile(r"(?<![\d&<>])>(?!&)")
-WRITE_VERB = re.compile(r"\b(?:mkdir|cp|mv|tee|touch|rsync|ln|install|unzip|tar)\b|\bsed\s+-i"
-                        r"|\bgit\s+(?:clone|worktree|init)\b")
-WRITE_CMD = re.compile(REDIRECT.pattern + "|" + WRITE_VERB.pattern)
-# The steps of a shell command, and the verbs that copy or move (their sources are reads).
-SEGMENT = re.compile(r"&&|\|\||[;|\n]")
-COPY_VERBS = ("cp", "mv", "rsync")
+# The shell's own operators, read outside quotes only (shlex): the ones that write their next word, the ones that
+# read it or duplicate a descriptor (that word is skipped), and the ones that end a step.
+REDIRECTS = {">", ">>", "&>", "&>>", ">|"}
+READS_NEXT = {"<", "<<", "<<<", "<&", ">&", "<>", "<<-"}
+STEP_BREAKS = {";", "&&", "||", "|", "&", "\n", ";;", "(", ")", "|&"}
+# A here-document's body, from its opening line to its terminator: data, not steps.
+HEREDOC = re.compile(r"(<<-?\s*['\"]?(\w+)['\"]?[^\n]*)\n.*?\n\s*\2\s*(?=\n|$)", re.S)
+# Programs whose -o is never an output path.
+READERS = {"grep", "egrep", "fgrep", "rg", "ls", "find", "head", "tail", "cut", "wc", "diff", "cat", "awk", "du",
+           "df", "ps", "file", "stat"}
 # The characters a quoted word or path is made of, for the extent of a hit inside a hand-back.
 EXTENT = re.compile(r"[a-z0-9_.\-/~']")
 
@@ -280,7 +286,7 @@ class Session:
                     self.mcp += name.startswith("mcp__")
                     if name in AGENT_TOOLS:
                         agent_calls.add(str(b.get("id")))
-                    self.note_writes(name, inp, folder)
+                    self.note_writes(name, inp, folder, rec.get("cwd"))
             elif kind == "user":
                 content = (rec.get("message") or {}).get("content")
                 blocks = [{"type": "text", "text": content}] if isinstance(content, str) else content or []
@@ -327,7 +333,7 @@ class Session:
                 self.results.append(body)
         self.traffic = "\n".join(self.results).lower()
 
-    def note_writes(self, name: str, inp: dict, folder: Path) -> None:
+    def note_writes(self, name: str, inp: dict, folder: Path, cwd: str | None = None) -> None:
         if name in WRITE_TOOLS:
             p = str(inp.get("file_path") or inp.get("notebook_path") or "")
             if p and inside(p, folder):
@@ -335,36 +341,116 @@ class Session:
             elif p:
                 self.writes.add(p)
         elif name == "Bash":
-            cwd = None
-            for seg in SEGMENT.split(str(inp.get("command") or "")):
-                words = seg.split()
-                if words[:1] == ["cd"] and len(words) > 1:
-                    cwd = words[1] if words[1].startswith("/") else (cwd + "/" + words[1] if cwd else None)
+            # The closure review of fff7e0d3, findings 1 and 2: the step's cwd starts at the record's own cwd and
+            # follows every cd, and a relative target is read against it, inside the folder as well as outside.
+            for words, redirected in shell_steps(str(inp.get("command") or "")):
+                if words[:1] in (["cd"], ["pushd"]):
+                    to = words[1] if len(words) > 1 else ""
+                    cwd = (to if to.startswith("/") else os.path.normpath(os.path.join(cwd, to)) if cwd and to
+                           and not to.startswith(("~", "-", "$")) else None)
                     continue
-                self.note_shell_write(seg, folder, cwd)
+                for t, is_dir in shell_targets(words, redirected):
+                    self.note_shell_write(t, is_dir, cwd, folder)
 
-    def note_shell_write(self, seg: str, folder: Path, cwd: str | None = None) -> None:
-        """One step of a shell command that writes, by its own text. A cp, mv or rsync writes only its last argument,
-        its destination; its sources are reads, not writes (the lead's ruling on the fold of 5a6dc21), and a step
-        that writes only by a redirect writes only the redirect's target, never the program it runs. A step that
-        names no absolute path to write writes where an earlier `cd` of the same command left it."""
-        if not WRITE_CMD.search(seg):
+    def note_shell_write(self, t: str, is_dir: bool, cwd: str | None, folder: Path) -> None:
+        """One target a shell step writes. Inside the folder it leaves the corpus (a target that is a folder, named
+        so or already one, with all it holds); outside it is listed in section 6. A folder made by mkdir is listed
+        but never takes a launch file with it."""
+        if t.startswith("~") or not t:
             return
-        words = seg.split()
-        redirects = list(REDIRECT.finditer(seg))
-        target = seg
-        if words and words[0] in COPY_VERBS:
-            target = words[-1]
-        elif redirects and not WRITE_VERB.search(seg):
-            target = seg[redirects[-1].end():]
-        if cwd and not ABS_PATH.search(target) and not inside(cwd, folder):
-            self.writes.add(cwd)
-        for m in ABS_PATH.finditer(target):
-            p = m.group(1).rstrip(").,:;\\")
-            if p and inside(p, folder):
-                self.written_inside.add(str(Path(p).resolve()))
-            elif p and not p.startswith("/dev/"):
-                self.writes.add(p)
+        if "$" in t or "*" in t:
+            # A name the shell expands: where it lands is not in the text, so the folder it is written in stands for it.
+            t, is_dir = (os.path.dirname(t.split("$")[0].split("*")[0]) or ".", True) if not t.startswith(("$", "*")) \
+                else (".", True)
+        p = t if t.startswith("/") else (os.path.normpath(os.path.join(cwd, t)) if cwd else None)
+        if not p or p.startswith("/dev/"):
+            return
+        p = p.rstrip(").,:;\\") or p
+        if inside(p, folder):
+            if is_dir is not None:
+                self.written_inside.add(str(Path(p).resolve()) if Path(p).exists() else os.path.normpath(p))
+        else:
+            self.writes.add(p)
+
+
+def shell_steps(cmd: str) -> list[tuple[list[str], list[str]]]:
+    """A shell command's steps, each (its words, the words its redirects write), split by the shell's own rules:
+    quotes are honoured, so a `|` or `>` inside a quoted pattern is text, and a here-document's body is data. A
+    command the shell itself could not split (an open quote) yields no steps (the closure review of fff7e0d3)."""
+    lex = shlex.shlex(HEREDOC.sub(r"\1", cmd), posix=True, punctuation_chars="();<>|&\n")
+    lex.whitespace = " \t\r"
+    lex.whitespace_split = True
+    try:
+        tokens = list(lex)
+    except ValueError:
+        return []
+    steps, words, written, i = [], [], [], 0
+    while i < len(tokens):
+        t = tokens[i]
+        if t in STEP_BREAKS or (t and set(t) <= set("();|&\n")):
+            steps.append((words, written))
+            words, written = [], []
+        elif t in REDIRECTS or t in READS_NEXT:
+            if words and words[-1].isdigit():
+                words.pop()
+            if t in REDIRECTS and i + 1 < len(tokens) and tokens[i + 1] not in STEP_BREAKS:
+                written.append(tokens[i + 1])
+            i += 1
+        else:
+            words.append(t)
+        i += 1
+    steps.append((words, written))
+    return [(w, r) for w, r in steps if w or r]
+
+
+def shell_targets(words: list[str], redirected: list[str]) -> list[tuple[str, bool | None]]:
+    """What one shell step writes, by its own text: (target, is it a folder; None for a folder mkdir makes).
+
+    Redirects (`>`, `>>`, `&>`, `2>`) write their target; a cp or mv writes its destination (into a folder, each
+    source's name there), rsync, tar -x and unzip their destination folder (-C, -d, or the cwd), tee and touch their
+    files, sed -i its file, ln and install their last argument, git clone, worktree and init theirs, and any program
+    that is not a reader its --out, --output or -o argument. Never a copy's sources, never the program a step runs.
+    """
+    out: list[tuple[str, bool | None]] = [(t, False) for t in redirected]
+    while words and (words[0] in ("sudo", "env", "nohup", "time", "command")
+                     or ("=" in words[0] and not words[0].startswith("-"))):
+        words = words[1:]
+    if words[:1] == ["timeout"]:
+        words = words[2:]
+    if not words:
+        return out
+    verb, args = os.path.basename(words[0]), words[1:]
+    plain = [a for a in args if not a.startswith("-")]
+    if verb in ("cp", "mv") and len(plain) >= 2:
+        dest = plain[-1]
+        if len(plain) > 2 or dest.endswith("/") or dest in (".", ".."):
+            out += [(dest.rstrip("/") + "/" + os.path.basename(src.rstrip("/")), True) for src in plain[:-1]]
+        else:
+            out.append((dest, False))
+    elif verb == "rsync" and len(plain) >= 2:
+        out.append((plain[-1], True))
+    elif verb in ("ln", "install") and plain:
+        out.append((plain[-1], False))
+    elif verb in ("tee", "touch"):
+        out += [(a, False) for a in plain]
+    elif verb == "mkdir":
+        out += [(a, None) for a in plain]
+    elif verb == "sed" and any(a.startswith("-i") for a in args) and plain:
+        out.append((plain[-1], False))
+    elif verb == "tar" and ("--extract" in args or any(a.startswith("-") and not a.startswith("--") and "x" in a
+                                                       for a in args) or (args and "x" in args[0])):
+        out.append((args[args.index("-C") + 1] if "-C" in args[:-1] else ".", True))
+    elif verb == "unzip":
+        out.append((args[args.index("-d") + 1] if "-d" in args[:-1] else ".", True))
+    elif verb == "git" and args[:1] and args[0] in ("clone", "worktree", "init") and plain:
+        out.append((plain[-1], True))
+    if verb not in READERS:
+        for i, a in enumerate(args):
+            if a in ("-o", "--out", "--output") and i + 1 < len(args):
+                out.append((args[i + 1], False))
+            elif a.startswith(("--out=", "--output=")):
+                out.append((a.split("=", 1)[1], False))
+    return out
 
 
 def outside_paths(s: Session, folder: Path) -> set[str]:
@@ -432,13 +518,38 @@ def regular_files(top: Path) -> list[Path]:
     return out
 
 
+def written_over(p: Path, written: set[str]) -> bool:
+    """A session wrote this file, or a folder that holds it."""
+    r = p.resolve()
+    return str(r) in written or any(str(q) in written for q in r.parents)
+
+
+def manifest_digest(text: str) -> str:
+    """rounds.py's input_sha256, computed from the manifest's own lines: path, a NUL, then the file's sha256."""
+    h = hashlib.sha256()
+    for line in text.splitlines():
+        sha, rel = line.split("  ", 1)
+        h.update(rel.encode())
+        h.update(b"\0")
+        h.update(bytes.fromhex(sha))
+    return h.hexdigest()
+
+
+def register_rows() -> list[dict]:
+    try:
+        return json.loads(REGISTER.read_text())["rows"]
+    except (OSError, ValueError, KeyError):
+        return []
+
+
 def corpus(folder: Path, written: set[str]) -> tuple[list[Path], str]:
     """The files the reviewer was given, as the folder stood at launch, and the rule that chose them.
 
-    With launch.py's per-file manifest (round 2 on), exactly the files it lists whose bytes still hash as they did
-    at launch. Without one (round 1), every file under the folder's entries at launch that is no newer than the
-    launch stamp (folder-at-launch.txt) and that no session wrote by any tool, the shell included (review of
-    5a6dc21, finding 2). Never a .git folder or a link.
+    With the per-file manifest rounds.py --add writes before it hashes the row (round 2 on), exactly the files it
+    lists whose bytes still hash as they did; the record says which row's input_sha256 the manifest reproduces.
+    Without one (round 1), every file under the folder's entries at launch that is no newer than the launch stamp
+    (folder-at-launch.txt) and that no session wrote by any tool, the shell included, a folder target with all it
+    holds (reviews of 5a6dc21 and fff7e0d3). Never a .git folder or a link.
     """
     side = folder.parent / (folder.name + "-launch")
     manifest = side / MANIFEST
@@ -451,16 +562,22 @@ def corpus(folder: Path, written: set[str]) -> tuple[list[Path], str]:
                 continue
             if hashlib.sha256(p.read_bytes()).hexdigest() == sha:
                 out.append(p)
-        return out, (f"the per-file manifest taken at launch: {len(out)} of its {len(listed)} files, those whose "
-                     f"bytes are unchanged since launch")
+        digest = manifest_digest(manifest.read_text())
+        rows = [r["n"] for r in register_rows() if r.get("input_sha256") == digest]
+        bound = (f"its digest {digest[:12]} is the input_sha256 of round row {rows[0]}" if rows else
+                 f"its digest {digest[:12]} is the input_sha256 of NO round row, so it binds nothing")
+        return out, (f"the per-file manifest written before the round row was hashed: {len(out)} of its "
+                     f"{len(listed)} files, those whose bytes are unchanged since; {bound}")
     listing = side / "folder-at-launch.txt"
     tops = ([folder / n for n in listing.read_text().split("\n") if n.strip()] if listing.is_file()
             else sorted(folder.iterdir()))
     files = [p for top in tops for p in regular_files(top)]
     stamp = listing.stat().st_mtime_ns if listing.is_file() else None
     newer = [p for p in files if stamp is not None and p.stat().st_mtime_ns > stamp]
-    by_write = [p for p in files if p not in newer and str(p.resolve()) in written]
-    out = [p for p in files if p not in newer and p not in by_write]
+    newer_set = set(newer)
+    by_write = [p for p in files if p not in newer_set and written_over(p, written)]
+    gone = newer_set | set(by_write)
+    out = [p for p in files if p not in gone]
     when = (time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(stamp / 1e9)) if stamp is not None
             else "none recorded")
     return out, (f"no per-file manifest at launch, so the launch stamp (folder-at-launch.txt, {when}): {len(out)} "
@@ -556,9 +673,10 @@ def analyse(folder: Path, sid: str, projects: Path = PROJECTS) -> dict:
     # Operator hits are searched too, so the one rule that refuses them is the line below, and it alone.
     wanted = {c for h in hits for c in candidates(h["ext"], h["word"], folder)}
     in_folder = found_in(files, folder, wanted)
-    # The brief each agent was launched with, and the session that wrote it (the lead's ruling, 24 Oct 2026): a hit
-    # that traces only through the brief is explained when its extent is explained for the brief's author, in a
-    # tool result that session received or in the launch corpus. It never widens past what section 1 admits.
+    # The brief each agent was launched with, and the session that wrote it (the lead's ruling, 24 Oct 2026,
+    # tightened after the closure review of fff7e0d3): a hit that traces only through the brief is explained only
+    # when its extent is in the launch corpus. What the author read outside the folder lends no sub-agent cover; it
+    # stays in sections 1 and 5.
     briefs: dict[str, tuple[Session, str]] = {}
     for s in sessions:
         for tid, aid in s.launches.items():
@@ -569,8 +687,7 @@ def analyse(folder: Path, sid: str, projects: Path = PROJECTS) -> dict:
             h["via"] = None
         elif any(c in in_folder and read_there(h["aid"], c, side) for c in cs):
             h["via"] = "direct"
-        elif h["aid"] in briefs and any(c in briefs[h["aid"]][1] and (c in briefs[h["aid"]][0].traffic
-                                                                      or c in in_folder) for c in cs):
+        elif h["aid"] in briefs and any(c in briefs[h["aid"]][1] and c in in_folder for c in cs):
             h["via"] = "brief"
         else:
             h["via"] = None
@@ -651,9 +768,8 @@ def render(a: dict, folder: Path) -> str:
             "   operator row is never explained. A study word is traced by its word alone, so a word the study's",
             "   own files also hold passes even when the sub-agent met it elsewhere; that is why the operator",
             "   rows are refused outright. The count that binds is UNEXPLAINED, and it must be 0.",
-            "   A hit is traced via brief when the sub-agent did not read it but its brief holds it, and the",
-            "   brief's author read it in a tool result or it is in the folder at launch; it never admits more",
-            "   than section 1 does for the author.",
+            "   A hit is traced via brief when the sub-agent did not read it but its brief holds it and it is in",
+            "   the folder at launch. What the brief's author read outside the folder lends no cover.",
             f"   The folder as it stood at launch: {a['corpus_rule']}.", "",
             f"   {'marker':34} {'total':>6} {'traced, direct':>15} {'traced via brief':>17} {'UNEXPLAINED':>12}"]
     out += [f"   {r['label']:34} {r['total']:>6} {r['traced'] - r['brief']:>15} {r['brief']:>17} {r['un']:>12}"
