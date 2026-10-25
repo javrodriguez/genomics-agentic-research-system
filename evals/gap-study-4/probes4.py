@@ -101,7 +101,7 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 import variants as V  # noqa: E402
-import run  # noqa: E402  (m16, lane pf1-l2b: the one grading dispatch)
+import run  # noqa: E402  (m16, lane pf1-l2b: the one grader call table, run.call_grader)
 from graders import delegation  # noqa: E402
 from graders import endstate as es  # noqa: E402
 import transcript_view as view  # noqa: E402
@@ -886,7 +886,7 @@ def run_grader(task: dict, half: str, cell: dict, spec: dict, transcript: list, 
 # THE VENDOR SHAPES (pre-freeze review 1, m16; lane pf1-l2b, Sat 24 Oct 2026). The constructed triples are in Claude
 # Code's session shape only, so beside them one committed Codex walk and one committed Gemini walk (the two walks the
 # recorded reader fixtures copy, tests/fixtures/recorded-codex-w-o46 and recorded-gemini-w-g21) are graded through
-# run.grade_walk_folder, the walk road through the same dispatch, from their committed bytes (no model, no re-run). Each
+# run.grade_walk_folder, the walk road through the same call table, from their committed bytes (no model, no re-run). Each
 # must grade without a refusal, under its own harness, to the label pinned here (read from the walk's bytes on the
 # lane's head; a change of reading shows here as a problem). Shown beside the table, never counted in its rows; the
 # native cross-check that admits a vendor take is walk_regrade's and the readers', not this table's.

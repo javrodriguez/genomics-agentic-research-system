@@ -522,6 +522,33 @@ class D1Dispatch(unittest.TestCase):
         self.assertEqual(got["views"], {v: "right" for v in stats.VIEWS})
         self.assertIs(got["grader_flag"], False)
 
+    def test_the_two_wrappers_are_the_same_in_order_and_arguments(self):
+        """Closure NIT 1 (b1dcf92): the seam and sample around run.call_grader are the same on both roads: the take
+        kept as handed, the seam's call, its refusal raised, then the sample's call, in that order, with the same
+        arguments."""
+        import ast
+
+        def wrapper(mod, fn):
+            body = next(n for n in ast.parse((HERE / f"{mod}.py").read_text()).body
+                        if isinstance(n, ast.FunctionDef) and n.name == fn)
+            out = []
+            for node in ast.walk(body):
+                if isinstance(node, ast.Assign) and ast.unparse(node) == "original = transcript":
+                    out.append((node.lineno, "keep: " + ast.unparse(node)))
+                elif isinstance(node, ast.Call) and ast.unparse(node.func).startswith("delegation."):
+                    out.append((node.lineno, "call: " + ast.unparse(node)))
+                elif isinstance(node, ast.If) and ast.unparse(node.test) == "refused":
+                    out.append((node.lineno, "refuse: " + ast.unparse(node.body[0])))
+                elif isinstance(node, ast.Call) and ast.unparse(node.func) in ("call_grader", "run.call_grader"):
+                    out.append((node.lineno, "grade"))
+            return [s for _, s in sorted(out)]
+        run_road, probe_road = wrapper("run", "regrade"), wrapper("probes4", "run_grader")
+        self.assertEqual(run_road, probe_road)
+        self.assertEqual(run_road, ["keep: original = transcript",
+                                    "call: delegation.seam(name, evidence, transcript)",
+                                    "refuse: raise mod.GradeError(refused)", "grade",
+                                    "call: delegation.sampled(got, original)"])
+
     def test_the_roads_keep_their_own_seam_and_sample(self):
         import ast
         for mod, fn in (("run", "regrade"), ("probes4", "run_grader")):
