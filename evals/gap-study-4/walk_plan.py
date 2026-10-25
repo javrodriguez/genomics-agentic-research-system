@@ -51,6 +51,12 @@ never counted: "pending", "regrade refused", "pending: regraded, no checker read
 "not graded" (a walk refused or failed before its first agent turn) and "grade unreadable" (missing or not JSON: fail
 closed). pending_walk.uncounted_walks decides.
 
+WALK-COVER STRICT (OD131, Javier, 25 Oct 2026: "walk-cover strict"; lane pf1-walk-cover-strict). A Claude walk counts
+as covered only if it rechecks clean under the harness as it will be frozen. strict_walks names the register's walks
+on the arms the rule covers (WALK_COVER_STRICT: arm A, by OD131's wording), and pending_walk.uncounted_walks reports
+each one whose effective checker reading carries a reason the routing table at HEAD routes to harness-error, or
+every one of them when that table cannot be read; arms O and G count as before.
+
 THE FREEZE'S GATE (pre-freeze review 1, MAJOR 4 part 3, lane L1). --require-run-arms exits 1 on any missing walk of
 an arm the freeze runs and prints each deferred arm's coverage (the draft's deferred_arms) as recorded, not required;
 freeze.py runs the same reading in process (coverage_report) before it prepares the frozen file, and
@@ -314,6 +320,16 @@ def deferred_arms(study_dir: Path = HERE) -> dict:
             if isinstance(e, dict) and e.get("status") == DEFERRED_STATUS}
 
 
+# OD131 (Javier, 25 Oct 2026: "walk-cover strict"): the arms whose walks are judged by pending_walk's strict rule. Its
+# words name a Claude walk, so arm A; arms O and G are not named, and count as before.
+WALK_COVER_STRICT = {"arms": ("A",), "source": "OD131 (Javier, 25 Oct 2026: \"walk-cover strict\")"}
+
+
+def strict_walks(entries: list) -> list:
+    """The walk ids of the register entries on an arm WALK_COVER_STRICT names, in register order."""
+    return [e["walk"] for e in entries if e["arm"] in WALK_COVER_STRICT["arms"]]
+
+
 def run_arm_gaps(got: dict, deferred) -> list[dict]:
     """The missing specs of every arm the freeze runs (the deferred arms' left out, never counted as covered)."""
     return [s for s in got["missing"] if s["arm"] not in deferred]
@@ -340,7 +356,8 @@ def coverage_report(base=None, study_dir: Path = HERE) -> dict:
     base = Path(base) if base else walk_register.REHEARSALS
     entries = read_register(base, design)
     import pending_walk
-    got = coverage(entries, specs, design, pending_walk.uncounted_walks(base, [e["walk"] for e in entries]))
+    got = coverage(entries, specs, design,
+                   pending_walk.uncounted_walks(base, [e["walk"] for e in entries], strict_walks(entries)))
     return {"design": design, "specs": specs, "entries": entries, "got": got, "deferred": deferred_arms(study_dir)}
 
 
@@ -375,7 +392,8 @@ def main(argv=None) -> int:
         print(f"FAIL {exc}")
         return 2
     import pending_walk
-    got = coverage(entries, specs, design, pending_walk.uncounted_walks(base, [e["walk"] for e in entries]))
+    got = coverage(entries, specs, design,
+                   pending_walk.uncounted_walks(base, [e["walk"] for e in entries], strict_walks(entries)))
     print("\n".join(coverage_lines(got, specs, design, len(entries))))
     missing = got["missing"]
     if args.require_complete and missing:

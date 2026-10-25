@@ -14,8 +14,8 @@ typed; arms O and G count as before.
   S1.derived     pending_walk.harness_error_reasons equals an independent derivation from the table (rows whose route
                  is harness-error; their any_of and all_of conditions on checker_reasons); on the live table it holds
                  harness-condition-violated, nested-agent and transcript-mismatch; a synthetic table without the
-                 generic operator-reason row, with that row routed graded, or with one added has-row moves the set to
-                 what the derivation says
+                 generic operator-reason row, with that row routed graded, or with one added has-row (in any_of, or
+                 in all_of) moves the set to what the derivation says
   S2.head        pending_walk.head_routing_table reads the table as HEAD's commit holds it, never the working tree:
                  an uncommitted edit moves nothing, a new commit moves the set; a table routing.check_table refuses,
                  bytes that are not JSON and a folder that is no repository raise StrictUnreadable; a GIT_DIR in the
@@ -108,11 +108,15 @@ def generic_graded(table: dict) -> dict:
     return t
 
 
-def with_has_row(table: dict, reason: str) -> dict:
+def with_has_row(table: dict, reason: str, *, all_of=False) -> dict:
     t = without_generic(table)
-    t["rows"].append({"id": "synthetic-has-row", "when": "after-first-turn", "route": "harness-error",
-                      "any_of": [{"path": "checker_reasons", "op": "has", "value": reason}],
-                      "source": "a synthetic row of test_walk_cover_strict"})
+    has = [{"path": "checker_reasons", "op": "has", "value": reason}]
+    row = {"id": "synthetic-has-row", "when": "after-first-turn", "route": "harness-error",
+           "any_of": [{"path": "api_errors", "op": "nonempty"}] if all_of else has,
+           "source": "a synthetic row of test_walk_cover_strict"}
+    if all_of:
+        row["all_of"] = has
+    t["rows"].append(row)
     return t
 
 
@@ -200,7 +204,10 @@ def derived_cases(mod) -> list:
     if not {HCV, NESTED, MISMATCH} <= set(got):
         out.append(f"S1.derived: the live set lacks one of {HCV}, {NESTED}, {MISMATCH}: {sorted(got)}")
     for name, t in (("no generic row", without_generic(table)), ("generic row graded", generic_graded(table)),
-                    ("one has-row", with_has_row(table, NESTED))):
+                    ("one has-row", with_has_row(table, NESTED)),
+                    ("one all_of has-row", with_has_row(table, HCV, all_of=True))):
+        if routing.check_table(t):
+            out.append(f"S1.derived: {name}: the synthetic table is refused: {routing.check_table(t)[:2]}")
         try:
             got = set(mod.harness_error_reasons(t))
         except Exception as exc:                 # noqa: BLE001
@@ -250,8 +257,7 @@ def head_cases(mod) -> list:
         plain = tmp / "plain"
         plain.mkdir()
         (plain / "routing.json").write_text(json.dumps(table))
-        with mock.patch.object(routing, "TABLE_PATH", str(plain / "routing.json")), \
-                mock.patch.dict(os.environ, {"GIT_CEILING_DIRECTORIES": str(tmp)}):
+        with mock.patch.object(routing, "TABLE_PATH", str(plain / "routing.json")):
             try:
                 mod.head_routing_table()
                 out.append("S2.head: a folder that is no repository was read")

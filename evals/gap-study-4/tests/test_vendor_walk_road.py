@@ -394,7 +394,8 @@ P5_WALK_WITNESSES = {
 # R-9's three mutants (plan v4 section 6) and two of the pending road's rules
 R9_WITNESSES = {
     "the pending branch counting on graded alone": ("pending_walk", (
-        "        return checker_standing(base, walk, pending=True) if state == \"graded\" else \"regrade refused\" \\\n",
+        "        return checker_standing(base, walk, pending=True, strict=strict) if state == \"graded\" "
+        "else \"regrade refused\" \\\n",   # strict: lane pf1-walk-cover-strict (OD131)
         "        return None if state == \"graded\" else \"regrade refused\" \\\n")),
     "RECHECK_HARNESSES left Claude-only": ("walk_regrade", (
         "RECHECK_HARNESSES = (\"claude-code\", \"codex\", \"gemini\")", "RECHECK_HARNESSES = (\"claude-code\",)")),
