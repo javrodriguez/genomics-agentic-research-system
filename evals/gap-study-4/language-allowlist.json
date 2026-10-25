@@ -308,13 +308,6 @@
       "line_text": "   \"bytes\": 100,",
       "ruled": "2026-10-25",
       "why": "Bound record, never edited: hook-control/hookctl1/manifest.json is a byte copy of probe hookctl1's manifest as fetched from athena on 22 Oct 2026, committed by lane pf1-l4a as the Codex arm's hook-control evidence (records.json binds its sha256). The line is one fetched file's size in bytes, never a count of takes or a rate."
-    },
-    {
-      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l4a-cc83aac.md",
-      "pattern": "hundred",
-      "line_text": "- **V13, the byte-allowlist.** The two entries are appended only, nothing is removed, and each binds the exact line `   \"bytes\": 100,` (lines 44 and 108 of each manifest). `lint_language` over the draft, the manifests, the summaries and `records.json` gives no finding there.",
-      "ruled": "2026-10-25",
-      "why": "Bound record, never edited: lanes/REVIEW-pf1-l4a-cc83aac.md is the fresh independent review of lane pf1-l4a at cc83aac6, committed as written on the lead's word, 25 Oct 2026. The line quotes a manifest's byte-count line (\"bytes\": 100), never a count of takes or a rate."
     }
   ]
 }
