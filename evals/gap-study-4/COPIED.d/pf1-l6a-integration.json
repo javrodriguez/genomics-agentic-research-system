@@ -1,0 +1,20 @@
+{
+  "lane": "pf1-l6a-integration",
+  "files": [
+    {
+      "path": "COPIED.d/pf1-l6a-integration.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment, written by the L6a integration lane (fold plan prefreeze-1, section 5 step 3, under the Lane-orchestrator's approval of that plan, itself under Javier's standing delegation), Sun 25 Oct 2026. It claims the two files of pre-freeze review 1 that 0c1976df committed with no fragment claiming them, so copy_manifest --check read them unclaimed on the freeze line and on every merge after it. Neither file's bytes change; this lane changes no other file but language-allowlist.json."
+    },
+    {
+      "path": "review_kit/prefreeze-1.md",
+      "status": "new",
+      "reason": "Pre-freeze review 1's report (Ruling: DO NOT FREEZE), committed unedited by 0c1976df as its reviewer wrote it from the kit; a bound record, never edited. Claimed here by the L6a integration lane (fold plan prefreeze-1, section 5 step 3, under the Lane-orchestrator's approval of that plan, itself under Javier's standing delegation), Sun 25 Oct 2026; its bytes are not changed by this claim."
+    },
+    {
+      "path": "review_kit/prefreeze-1-blindness.txt",
+      "status": "new",
+      "reason": "Pre-freeze review 1's blindness record (review_kit/blindness.py's output over the reviewer's own session file and its sub-agent session files), committed unedited by 0c1976df; a bound record, never edited. Claimed here by the L6a integration lane (fold plan prefreeze-1, section 5 step 3, under the Lane-orchestrator's approval of that plan, itself under Javier's standing delegation), Sun 25 Oct 2026; its bytes are not changed by this claim."
+    }
+  ]
+}
