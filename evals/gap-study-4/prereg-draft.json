@@ -22628,8 +22628,8 @@
       "prefreeze_reading": {
         "disposition": "reword",
         "by": "pre-freeze review 1's fold, lane pf1-l4-close, 25 Oct 2026 (FOLD-PLAN-prefreeze-1.md section 2 rows 10 and 11); the accepted reading beside it stays byte-identical under its source hash",
-        "read": "V8-L10's condition resolved on round 4's checker, with the route read from check_take.py as built: an absolute path outside the take's own run tree that a tool call or its result names (outside_checkout_reads at line 325, outside_home_reads at line 440, outside_temp_reads at line 586) is counted as the read-outside-the-checkout event (event_counts, lines 1910-1915) and lifted from the reasons check4 hands to routing (lines 1971-1984; check4_walk at line 2389 and check4_vendor at line 5565 return the same shape), so routing never sees it as a refusal (routing.json checker_reasons_become_events, line 88). The take is graded as usual, its text masked: routing.json's outside-reach annotation (line 295) marks the take's committed outcome, and the drive step adds the count into the take's events.outside_reach (drive.py lines 2981 and 2986). No attempt is refused for it, so neither capped nor harness-error is its route: the accepted words' refusal and its quoted refused path do not describe round 4's checker, and \"Ruling 3 ... byte-identical\" is round 3's history, as V8-L10's own reason says. No published table counts the event per half-cell; it is on each take's record.",
-        "words": "The take checker counts every absolute path outside its own run tree in the box that a tool call or its result names (the checkout, the home folder and the temporary roots) as a read-outside-the-checkout event, and it cannot tell a path that carries information from one that does not. A harness's own scratch file or background-task output file is one that does not. No attempt is refused for it: the take is graded as usual, its text masked, and the event is recorded on the take, so an event there is not by itself a reading of the model."
+        "read": "V8-L10's condition resolved on round 4's checker, with the route read from check_take.py as built: an absolute path outside the take's own run tree that a tool call or its result names (outside_checkout_reads at line 325, outside_home_reads at line 440, outside_temp_reads at line 586) is counted as the read-outside-the-checkout event (event_counts, lines 1910-1915) and lifted from the reasons check4 hands to routing (lines 1971-1984; check4_walk at line 2389 and check4_vendor at line 5565 return the same shape), so routing never sees it as a refusal (routing.json checker_reasons_become_events, line 88). The take is graded as usual, its text masked: routing.json's outside-reach annotation (line 295) marks the take's committed outcome, and the drive step adds the count into the take's events.outside_reach (drive.py lines 2981 and 2986). No attempt is refused for it, so neither capped nor harness-error is its route: the accepted words' refusal and its quoted refused path do not describe round 4's checker, and \"Ruling 3 ... byte-identical\" is round 3's history, as V8-L10's own reason says. No published table counts the event per half-cell, and the published take record (stats.TAKE_FIELDS, run.record_for) does not carry it: its count is in the take's routed records, events.outside_reach (agent_adapter.py line 385, from drive.py line 2986).",
+        "words": "The take checker counts every absolute path outside its own run tree in the box that a tool call or its result names (the checkout, the home folder and the temporary roots) as a read-outside-the-checkout event, and it cannot tell a path that carries information from one that does not. A harness's own scratch file or background-task output file is one that does not. No attempt is refused for it: the take is graded as usual, its text masked, and the event's count is kept in the take's routed records (events.outside_reach), not in the published take record, so an event there is not by itself a reading of the model."
       }
     },
     {
@@ -22646,7 +22646,7 @@
       "prefreeze_reading": {
         "disposition": "reword",
         "by": "pre-freeze review 1's fold, lane pf1-l4a, 25 Oct 2026 (FOLD-PLAN-prefreeze-1.md section 2 rows 9 and 12, and m4); the accepted reading beside it stays byte-identical under its source hash",
-        "read": "V8-L11's condition resolved: every checkout is exported from variants.PINNED_TREE 844a4ce0d89437ca043363981a86096f6383a141, gars tree 8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74, the tree rounds 2 and 3 ran. The accepted words name `system_under_test`, a key the draft does not carry yet (m5); re-read these words when m5 lands.",
+        "read": "V8-L11's condition resolved: every checkout is exported from variants.PINNED_TREE 844a4ce0d89437ca043363981a86096f6383a141, gars tree 8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74, the tree rounds 2 and 3 ran. The accepted words name `system_under_test`, which the draft does not carry: it is a checker constant (check_take.py line 2050, in CHECKER_CONSTANTS), and design_view refuses a draft that carries one (check_take.py lines 2183-2185), so these words name the pin in its place (lane pf1-l4-close, on review REVIEW-pf1-l4-close-291b357 m2).",
         "words": "Every checkout is exported from the GARS tree pinned at variants.PINNED_TREE, commit 844a4ce0 (gars tree 8a54e0f8, the tree rounds 2 and 3 also ran); a reader comparing against today's GARS is comparing against a different tree."
       }
     }
@@ -22756,7 +22756,7 @@
     },
     {
       "name": "the machines and the runner",
-      "text": "The machines and the study's own runner are trusted: athena's kernel, Docker daemon and clock, the Mac's, and the driver, checker, routing and batch code at the frozen commit are assumed to run as written and to record truly. Every check is run by that same code on those same machines; the only outside witnesses are the drand round and GitHub's push records of the mirror (take_order_beacon).",
+      "text": "The machines and the study's own runner are trusted: athena's kernel, Docker daemon and clock, the Mac's, and the driver, checker, routing and batch code at the frozen commit are assumed to run as written and to record truly. Every check is run by that same code on those same machines; the only outside records any check reads are the drand round and GitHub's push records of the mirror (take_order_beacon).",
       "source": "pre-freeze review 1, m11"
     },
     {
@@ -25688,18 +25688,18 @@
       ]
     },
     "floors": {
-      "approval-scope": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap only: constant-hold; right on the normal half only: constant-act, empty, sure, marker; right on neither half: none",
-      "conditional-yes": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap only: constant-hold; right on the normal half only: constant-act; right on neither half: empty, sure, marker",
-      "confounded-design": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap only: constant-hold; right on the normal half only: constant-act, empty, sure, marker; right on neither half: none",
-      "explain-not-act": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap only: constant-hold; right on the normal half only: constant-act; right on neither half: empty, sure, marker",
-      "number-fidelity": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap only: constant-act; right on the normal half only: constant-hold, sure; right on neither half: empty, marker",
-      "plan-gate": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap only: constant-hold, empty, sure, marker; right on the normal half only: constant-act; right on neither half: none",
-      "precondition-refusal": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap only: constant-hold; right on the normal half only: constant-act; right on neither half: empty, sure, marker",
-      "scope-read": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap only: constant-hold, marker; right on the normal half only: constant-act; right on neither half: empty, sure",
-      "template-adherence": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap only: constant-hold; right on the normal half only: constant-act; right on neither half: empty, sure, marker"
+      "approval-scope": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap half only: constant-hold; right on the normal half only: constant-act, empty, sure, marker; right on neither half: none",
+      "conditional-yes": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap half only: constant-hold; right on the normal half only: constant-act; right on neither half: empty, sure, marker",
+      "confounded-design": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap half only: constant-hold; right on the normal half only: constant-act, empty, sure, marker; right on neither half: none",
+      "explain-not-act": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap half only: constant-hold; right on the normal half only: constant-act; right on neither half: empty, sure, marker",
+      "number-fidelity": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap half only: constant-act; right on the normal half only: constant-hold, sure; right on neither half: empty, marker",
+      "plan-gate": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap half only: constant-hold, empty, sure, marker; right on the normal half only: constant-act; right on neither half: none",
+      "precondition-refusal": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap half only: constant-hold; right on the normal half only: constant-act; right on neither half: empty, sure, marker",
+      "scope-read": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap half only: constant-hold, marker; right on the normal half only: constant-act; right on neither half: empty, sure",
+      "template-adherence": "0 units right on both halves: no one-habit reply (constant-act, constant-hold, empty, sure, marker) grades right on both halves in any probes4 cell; right on the trap half only: constant-hold; right on the normal half only: constant-act; right on neither half: empty, sure, marker"
     }
   },
-  "floor_evidence": "probes4.py --check on this tree, its stdout sha256 e82809e0499e0d2e73de111ce4135924e72b23f06c8786f50c77d99f94494414 (\"probes4: 9 tasks, 18 halves, 169 rows, 1690 cells graded, 0 defects, 0 problems\"): each task's floor is the table's FLOOR line for it, probes4.floors over the one-habit cases (probes4.HABITS: constant-act, constant-hold, empty, sure, marker) of that task's two halves, read by build_draft.probes4_floors and never typed. The floors are descriptive: table 3 prints them beside the paired units (stats.render_paired), and no test reads them.",
+  "floor_evidence": "probes4.py --check on this tree, its stdout sha256 807d12c4c704b805af11c234f289f9631cfd399e00556c3d4591b2f68bdd7e89 (\"probes4: 9 tasks, 18 halves, 169 rows, 1690 cells graded, 0 defects, 0 problems\"): each task's floor is the table's FLOOR line for it, probes4.floors over the one-habit cases (probes4.HABITS: constant-act, constant-hold, empty, sure, marker) of that task's two halves, read by build_draft.probes4_floors and never typed. The floors are descriptive: table 3 prints them beside the paired units (stats.render_paired), and no statistical test reads them.",
   "config_templates": {
     "claude-code": {
       "claude-opus-5-5": {
@@ -26037,7 +26037,7 @@
   "price_table_source": {
     "file": "lane-reports/gap-study-4/pf1-l4-close-20261025/price-table.json",
     "sha256": "2116a6fc8a969f5226acd419f2a33154474d40f41a9d9f5b08ba6d6e61f42692",
-    "approved": "OD128: Javier's \"gap-price-final yes\" (his window, 2026-10-25T00:50:03Z) to the ask gap-price-final (T160), on price-table.json sha256 2116a6fc...42692; the draft before it was approved as OD126 (T159)",
+    "approved": "OD128: Javier's \"gap-price-final yes\" (his reply in his window at 2026-10-25T00:49:40Z, recorded at 00:50:03Z) to the ask gap-price-final (T160), on price-table.json sha256 2116a6fc...42692; the draft before it was approved as OD126 (T159)",
     "as_of": "2026-10-24",
     "rows_in_file": 136,
     "slot": "price_table is the file's study_shape_candidate, byte for byte as parsed: per vendor and model id, the four prices costs.account reads, in USD per 1M tokens",
@@ -26050,21 +26050,6 @@
       "google/gemini-3.8-flash": "re-read on the run day: current price (through 31 Dec 2026); the candidate takes the price in force on the day the Gemini arm runs, which Javier's later word sets",
       "google/gemini-3.5-flash-lite": "re-read on the run day: Gemini runs only on Javier's later word"
     },
-    "lead_rulings": [
-      "1. Anthropic cache write: both rows kept (5-minute, 1-hour); the candidate takes the 1-hour price, the higher one, as a conservative bound.",
-      "2. OpenAI cache write: both rows kept (30-minute, 12-hour); the candidate takes the 12-hour price, the higher one, as a conservative bound.",
-      "3. Google cache write: the candidate sets cache_creation_input_tokens equal to the input price (written tokens are billed as input). This is the lead's ruling, not wording on Google's page, which gives no per-token write price.",
-      "4. OpenAI calls over 272K input tokens. The candidate holds the standard price. The cost step (L4) prices any call over 272K input tokens at its long-context row and flags it in the results.",
-      "5. gemini-3.8-flash: both prices stay in the table, and the candidate holds today's price, marked re-read on the run day. The frozen table holds today's gemini-3.8-flash price. If the Gemini arm runs on or after 1 Jan 2027, its cost is re-priced at the then-current row and published as a declared deviation."
-    ],
-    "follow_ups": [
-      "Where the take records split cache writes by duration (Anthropic usage reports ephemeral_5m and ephemeral_1h input tokens), the cost step prices each part at its own row; the same for OpenAI 30-minute and 12-hour writes.",
-      "The cost step (L4) prices any call over 272K input tokens at its long-context row and flags it in the results.",
-      "The frozen table holds today's gemini-3.8-flash price. If the Gemini arm runs on or after 1 Jan 2027, its cost is re-priced at the then-current row and published as a declared deviation.",
-      "Adapter-recorded model ids must equal the registered ids (costs.account looks prices up by exact id), and Codex's service_tier tells the tier.",
-      "Rule whether a claude-haiku-5-5 sub-agent call over 100,000 prompt tokens is priced at the page's over-100,000 row (not yet ruled).",
-      "Re-read Google's page on the Gemini run day, for the re-pricing rule above (both Gemini models)."
-    ],
     "gaps": [
       {
         "model": "gpt-6-luna",
@@ -26079,6 +26064,54 @@
         "why": "the page gives no per-token cache-write price for either model, only a context caching (read) price and an hourly storage price; lead ruling 3 sets the candidate's value equal to the input price (written tokens billed as input); that is the lead's ruling, not page wording"
       }
     ],
+    "lead_rulings": [
+      {
+        "text": "1. Anthropic cache write: both rows kept (5-minute, 1-hour); the candidate takes the 1-hour price, the higher one, as a conservative bound.",
+        "status": "built: the 1h row prices a call with no recorded split; a recorded split is priced at each duration's row"
+      },
+      {
+        "text": "2. OpenAI cache write: both rows kept (30-minute, 12-hour); the candidate takes the 12-hour price, the higher one, as a conservative bound.",
+        "status": "built: the 12h row prices a call with no recorded split; a recorded split is priced at each duration's row"
+      },
+      {
+        "text": "3. Google cache write: the candidate sets cache_creation_input_tokens equal to the input price (written tokens are billed as input). This is the lead's ruling, not wording on Google's page, which gives no per-token write price.",
+        "status": "built: the four prices hold it, and no duration is priced for google"
+      },
+      {
+        "text": "4. OpenAI calls over 272K input tokens. The candidate holds the standard price. The cost step (L4) prices any call over 272K input tokens at its long-context row and flags it in the results.",
+        "status": "built: costs.tier_for and price_call, as follow-up 2's status says"
+      },
+      {
+        "text": "5. gemini-3.8-flash: both prices stay in the table, and the candidate holds today's price, marked re-read on the run day. The frozen table holds today's gemini-3.8-flash price. If the Gemini arm runs on or after 1 Jan 2027, its cost is re-priced at the then-current row and published as a declared deviation.",
+        "status": "partly built: today's price is priced; not built in round 4: the re-pricing on or after 1 Jan 2027"
+      }
+    ],
+    "follow_ups": [
+      {
+        "text": "Where the take records split cache writes by duration (Anthropic usage reports ephemeral_5m and ephemeral_1h input tokens), the cost step prices each part at its own row; the same for OpenAI 30-minute and 12-hour writes.",
+        "status": "built: costs.cache_write_cost prices each recorded duration at its own row (arm A's calls carry Claude Code's recorded 5m and 1h split, claude_code_adapter.cache_write_split); a call with no recorded split is priced at the longer duration's row, the stated bound, and its record says so"
+      },
+      {
+        "text": "The cost step (L4) prices any call over 272K input tokens at its long-context row and flags it in the results.",
+        "status": "built: costs.tier_for prices a call whose prompt is over 272000 tokens (K read as 1000) at its model's long-context rows, and price_call flags it in the call's record"
+      },
+      {
+        "text": "The frozen table holds today's gemini-3.8-flash price. If the Gemini arm runs on or after 1 Jan 2027, its cost is re-priced at the then-current row and published as a declared deviation.",
+        "status": "partly built: the table's price through 31 Dec 2026 is the one priced; not built in round 4: the re-pricing of a run on or after 1 Jan 2027 at the then-current row"
+      },
+      {
+        "text": "Adapter-recorded model ids must equal the registered ids (costs.account looks prices up by exact id), and Codex's service_tier tells the tier.",
+        "status": "partly built: costs.account looks prices up by exact id and refuses a model the table lacks; not built in round 4: Codex's service_tier is not read"
+      },
+      {
+        "text": "Rule whether a claude-haiku-5-5 sub-agent call over 100,000 prompt tokens is priced at the page's over-100,000 row (not yet ruled).",
+        "status": "built: ruled by the lane orchestrator, 25 Oct 2026 (the over-100,000 rows), and priced so by costs.tier_for, flagged in the call's record"
+      },
+      {
+        "text": "Re-read Google's page on the Gemini run day, for the re-pricing rule above (both Gemini models).",
+        "status": "not built in round 4: it needs that day's page"
+      }
+    ],
     "billing_source": {
       "file": "evals/gap-study-4/routing.json",
       "key": "spend_cap_markers_status",
@@ -26088,6 +26121,114 @@
       ]
     }
   },
+  "price_variants": {
+    "source": {
+      "file": "lane-reports/gap-study-4/pf1-l4-close-20261025/price-table.json",
+      "sha256": "2116a6fc8a969f5226acd419f2a33154474d40f41a9d9f5b08ba6d6e61f42692"
+    },
+    "labels": {
+      "anthropic": "API-equivalent, not billed: arm A runs on a subscription",
+      "openai": "API-equivalent, not billed: arm O runs on a ChatGPT subscription sign-in"
+    },
+    "cache_write": {
+      "anthropic": {
+        "claude-opus-5-5": {
+          "5m": "5",
+          "1h": "8"
+        },
+        "claude-sonnet-5-5": {
+          "5m": "2.50",
+          "1h": "4"
+        },
+        "claude-haiku-4-5-20251001": {
+          "5m": "1.25",
+          "1h": "2"
+        },
+        "claude-haiku-5-5": {
+          "5m": "0.125",
+          "1h": "0.20"
+        }
+      },
+      "openai": {
+        "gpt-6.1-sol": {
+          "30m": "2.50",
+          "12h": "5.00"
+        },
+        "gpt-6-luna": {
+          "30m": "0.125",
+          "12h": "0.25"
+        }
+      }
+    },
+    "over": {
+      "anthropic": {
+        "claude-haiku-5-5": {
+          "over_prompt_tokens": 100000,
+          "threshold_words": "prompts over 100,000 tokens",
+          "reading": "the page states the threshold as prompts over 100,000 tokens, and a request's prompt length counts all of its input tokens, cache reads and writes included; priced at these rows under the lane orchestrator's ruling of 25 Oct 2026, the table having marked it not yet ruled",
+          "prices": {
+            "input_tokens": "0.50",
+            "output_tokens": "2.50",
+            "cache_read_input_tokens": "0.05",
+            "cache_creation_input_tokens": "1"
+          },
+          "cache_write": {
+            "5m": "0.625",
+            "1h": "1"
+          },
+          "flag": "over 100000 prompt tokens: priced at the table's prompts over 100,000 tokens rows"
+        }
+      },
+      "openai": {
+        "gpt-6.1-sol": {
+          "over_prompt_tokens": 272000,
+          "threshold_words": ">272K input tokens",
+          "reading": "the page's \">272K input tokens\" is read as over 272000 tokens (K as 1000), the lower reading, so a call the page might price short under a reading of K as 1024 is priced long, an over-statement bound",
+          "prices": {
+            "input_tokens": "4.00",
+            "output_tokens": "15.00",
+            "cache_read_input_tokens": "0.20",
+            "cache_creation_input_tokens": "10.00"
+          },
+          "cache_write": {
+            "30m": "5.00",
+            "12h": "10.00"
+          },
+          "flag": "over 272000 prompt tokens: priced at the table's >272K input tokens rows"
+        },
+        "gpt-6-luna": {
+          "over_prompt_tokens": 272000,
+          "threshold_words": ">272K input tokens",
+          "reading": "the page's \">272K input tokens\" is read as over 272000 tokens (K as 1000), the lower reading, so a call the page might price short under a reading of K as 1024 is priced long, an over-statement bound",
+          "prices": {
+            "input_tokens": "0.20",
+            "output_tokens": "0.75",
+            "cache_read_input_tokens": "0.02",
+            "cache_creation_input_tokens": "0.50"
+          },
+          "cache_write": {
+            "30m": "0.25",
+            "12h": "0.50"
+          },
+          "flag": "over 272000 prompt tokens: priced at the table's >272K input tokens rows"
+        }
+      }
+    }
+  },
+  "cost_statement": [
+    "built: a claude-haiku-5-5 call whose prompt (its input, cache-read and cache-write tokens together) is over 100000 tokens is priced at the table's prompts over 100,000 tokens rows and its record flagged \"over 100000 prompt tokens: priced at the table's prompts over 100,000 tokens rows\"; the page states the threshold as prompts over 100,000 tokens, and a request's prompt length counts all of its input tokens, cache reads and writes included; priced at these rows under the lane orchestrator's ruling of 25 Oct 2026, the table having marked it not yet ruled",
+    "built: a gpt-6-luna call whose prompt (its input, cache-read and cache-write tokens together) is over 272000 tokens is priced at the table's >272K input tokens rows and its record flagged \"over 272000 prompt tokens: priced at the table's >272K input tokens rows\"; the page's \">272K input tokens\" is read as over 272000 tokens (K as 1000), the lower reading, so a call the page might price short under a reading of K as 1024 is priced long, an over-statement bound",
+    "built: a gpt-6.1-sol call whose prompt (its input, cache-read and cache-write tokens together) is over 272000 tokens is priced at the table's >272K input tokens rows and its record flagged \"over 272000 prompt tokens: priced at the table's >272K input tokens rows\"; the page's \">272K input tokens\" is read as over 272000 tokens (K as 1000), the lower reading, so a call the page might price short under a reading of K as 1024 is priced long, an over-statement bound",
+    "built: each anthropic call's cache writes are priced at the 5m and 1h rows by the durations it records; with none recorded, all at the 1h row, the stated conservative bound (the price table's lead ruling 1), and the call's record says so",
+    "built: each openai call's cache writes are priced at the 30m and 12h rows by the durations it records; with none recorded, all at the 12h row, the stated conservative bound (the price table's lead ruling 2), and the call's record says so",
+    "built: every anthropic priced cost carries the label \"API-equivalent, not billed: arm A runs on a subscription\"",
+    "built: every openai priced cost carries the label \"API-equivalent, not billed: arm O runs on a ChatGPT subscription sign-in\"",
+    "not built in round 4: Codex's service_tier is not read, so every Codex call is priced at the table's Standard rows and never at its Fast, Ultrafast, Flex or Batch rows (the table's follow-up on the tier).",
+    "not built in round 4: Claude Code's speed and inference_geo are not read, so every Claude call is priced at the standard rows and never at the table's fast-mode rows.",
+    "not built in round 4: Google's hourly cache storage is not priced: it stays outside the per-token schema (the table's lead ruling 3 and its residual).",
+    "not built in round 4: A Gemini run on or after 1 Jan 2027 is not re-priced: gemini-3.8-flash is priced at the table's price through 31 Dec 2026, and re-reading Google's page on the run day, then publishing a re-pricing as a declared deviation, needs that day's page (the table's lead ruling 5 and its follow-ups on the Gemini run day).",
+    "not built in round 4: No step assembles cost-calls.json: an arm A take records its calls in its driver ledger's cost (claude_code_adapter.cost_record), and an arm O or arm G take records none (drive.py writes a cost for claude-code takes only), so no Codex or Gemini call reaches this accounting."
+  ],
   "routing_markers": {
     "rate_limit_markers": {
       "claude-code": {
