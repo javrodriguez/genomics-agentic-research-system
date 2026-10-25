@@ -20,7 +20,7 @@
       "path": "study.py",
       "status": "edited",
       "source": "evals/gap-study-3/study.py",
-      "reason": "The binding for round 4: the study's name, folder and title (gap-study-4), its published-section markers, the prior round it reads as data (ROUND1 now points at evals/gap-study-3, with PRIOR_STUDY and PRIOR_REL naming it honestly) and the arms it runs (ARMS = A and C). Every copied file builds its paths and markers from this file, so no other copied file needs to name this study. PL-1 w5c-1 and R13: ARMS adds O and G; C remains optional."
+      "reason": "The binding for round 4: the study's name, folder and title (gap-study-4), its published-section markers, the prior round it reads as data (ROUND1 now points at evals/gap-study-3, with PRIOR_STUDY and PRIOR_REL naming it honestly) and the arms it runs (ARMS = A and C). Every copied file builds its paths and markers from this file, so no other copied file needs to name this study. PL-1 w5c-1 and R13: ARMS adds O and G; C remains optional. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates; the copy-record rule of its review folds of 25 Oct 2026): this copy is a near-rewrite of its source. The edits beyond this reason are recorded in COPIED.d/w1a-cp1-scaffold.json, COPIED.d/w7d-rehearsals.json. The commits that changed it after its copy commit and before this lane's review folds, oldest first: e337fe4449b3."
     }
   ]
 }

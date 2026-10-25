@@ -45,9 +45,13 @@ def digest(path):
 # "prereg.py --order" substring R3.order reads. The stale per-axis sentence it replaces is a witness value.
 # W7A-R1-4: what --order prints (the function's name, the row count, the seed's head and the first rows), not the
 # whole permutation.
-ORDER_CARRY = ("prereg.py --order <review sha> names freeze.planned_order and shows the head of its permutation of the "
-               "design's whole planned rows, seeded by the full 40-character sha of the pre-freeze review commit; it "
-               "refuses until every agent version is pinned.")
+# Lane pf1-l1-freeze-gates (pre-freeze review 1, MAJOR 9): --order takes the seed itself, and the frozen seed is
+# order_beacon.seed of the registered drand round alone (ruling 1); the --order-from-beacon claim is held by
+# tests/test_pf1_freeze_gates.py G9.beacon.
+ORDER_CARRY = ("prereg.py --order <seed> names freeze.planned_order and shows the head of its permutation of the "
+               "design's whole planned rows, seeded by a full 40-character lowercase hex seed; it refuses until every "
+               "agent version is pinned. The frozen seed is order_beacon.seed of the registered drand round alone, "
+               "and prereg.py --order-from-beacon refuses until that round is published.")
 PRINTED_ORDER_CARRY = ("prereg.py --order <review sha> prints freeze.planned_order: one permutation of the design's "
                        "whole planned rows, seeded by the full 40-character sha of the pre-freeze review commit; it "
                        "refuses until every agent version is pinned.")
@@ -1502,10 +1506,14 @@ class Readiness(unittest.TestCase):
 
     def test_freeze_closed(self):
         d = json.loads((HERE / 'prereg-draft.json').read_text())
-        kwargs = dict(review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time")
+        # lane pf1-l1-freeze-gates (MAJOR 9): prepare seeds the order from a beacon reading of the draft's registered
+        # round; the fake document registers one round and hands in the rehearsal's synthetic reading of it
+        kwargs = dict(review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time",
+                      beacon=freeze.synthetic_beacon_reading(33356692))
         with self.assertRaises((ValueError, stats.StatsError), msg="R32.freeze"):
             freeze.prepare(d, **kwargs)
         fake = b.finalize(fill_fake(d))
+        fake["take_order_beacon"]["round"] = 33356692
         self.assertEqual(b.pending(fake), {})
         self.assertEqual(stats.validate_design(fake[stats.DESIGN_KEY]), fake["stats_design_inputs"])
         self.assertEqual(len(freeze.prepare(fake, **kwargs)["take_order"]), 1260)
@@ -1536,7 +1544,8 @@ class Readiness(unittest.TestCase):
                 closed = b.finalize(draft)
                 self.assertIn("/stats_design_inputs/floors", closed["pending"], "R2.floors")
                 with self.assertRaises((ValueError, stats.StatsError)):
-                    freeze.prepare(closed, review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time")
+                    freeze.prepare(closed, review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time",
+                                   beacon=freeze.synthetic_beacon_reading(33356692))
         absent = copy.deepcopy(fake); del absent["stats_design_inputs"]["floors"]
         self.assertIn("/stats_design_inputs/floors", b.pending(absent), "R2.floors")
         moved = copy.deepcopy(fake)
@@ -1571,7 +1580,8 @@ class Readiness(unittest.TestCase):
                 closed = b.finalize(draft)
                 self.assertIn(pointer, closed["pending"], "R3.floors:fallback")
                 with self.assertRaises((ValueError, stats.StatsError), msg="R3.floors:fallback"):
-                    freeze.prepare(closed, review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time")
+                    freeze.prepare(closed, review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time",
+                                   beacon=freeze.synthetic_beacon_reading(33356692))
         self.assertEqual(b.finalize(fake)["pending"], {}, "R3.floors:fallback")
 
     def test_floor_spellings_keep_closed(self):
@@ -2254,7 +2264,8 @@ class OwnerSlots(unittest.TestCase):
                 closed = b.finalize(draft)
                 self.assertIn(pointer, closed["pending"], clause)
                 with self.assertRaises((ValueError, stats.StatsError), msg=clause):
-                    freeze.prepare(closed, review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time")
+                    freeze.prepare(closed, review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time",
+                                   beacon=freeze.synthetic_beacon_reading(33356692))
 
     def test_missing_forms_keep_closed(self):
         fake = fill_fake(b.build())
@@ -2281,7 +2292,8 @@ class OwnerSlots(unittest.TestCase):
             with self.subTest(form=form):
                 d = b.finalize(changed(fake, OWNER_PATHS[0], value))
                 with self.assertRaises((ValueError, stats.StatsError)):
-                    freeze.prepare(d, review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time")
+                    freeze.prepare(d, review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time",
+                                   beacon=freeze.synthetic_beacon_reading(33356692))
 
     def test_list_shapes_are_fixed(self):
         fake = fill_fake(b.build())

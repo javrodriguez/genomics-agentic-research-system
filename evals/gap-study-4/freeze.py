@@ -24,6 +24,7 @@ import argparse
 import copy
 import hashlib
 import json
+import os
 import re
 import subprocess
 import tempfile
@@ -38,6 +39,7 @@ sys.path.insert(0, str(HERE))
 import prereg  # noqa: E402
 import study  # noqa: E402
 import copy_manifest  # noqa: E402
+import order_beacon  # noqa: E402
 
 DRAFT = HERE / "prereg-draft.json"
 FROZEN = HERE / "prereg.json"
@@ -102,16 +104,228 @@ def planned_order(draft, seed):
     return sorted(copy.deepcopy(rows), key=lambda row: hashlib.sha256(seed.encode() + json_bytes(row)).hexdigest())
 
 
-def prepare(draft, *, review, parent, pins, frozen_at):
+def draft_pending(draft) -> dict:
+    """build_draft.pending over the draft itself: every PENDING input by its pointer (pre-freeze review 1, m2)."""
+    import build_draft
+    return build_draft.pending(draft)
+
+
+def prepare(draft, *, review, parent, pins, frozen_at, beacon):
+    """The frozen file from the reviewed draft. Pre-freeze review 1, m2: the stats_design sentinel was the only PENDING
+    guard, so a copy with that one key replaced froze with 15 PENDING strings left; the draft's own pending() map must
+    be empty. MAJOR 9: the order is seeded by order_beacon.seed over the registered drand round's reading alone
+    (`beacon`, read by take_order_beacon_reading; the lane orchestrator's ruling 1 on lane L1's hand-back). The
+    `review` commit is recorded as pre_freeze_review_commit and enters no seed."""
     import stats
     import completeness
+    left = draft_pending(draft)
+    if left:
+        raise ValueError(f"the draft holds {len(left)} PENDING input(s) ({', '.join(list(left)[:6])}"
+                         + (", ..." if len(left) > 6 else "") + "); a design with any PENDING input is never frozen")
     stats.validate_design(draft[stats.DESIGN_KEY])
     completeness.pair_count(draft)
+    round_no = order_beacon.registered_round(draft.get(BEACON_KEY))
+    bad = order_beacon.reading_problems(beacon, round_no)
+    if bad:
+        raise ValueError("the take-order beacon reading is refused: " + "; ".join(bad))
+    seed = order_beacon.seed(beacon)
     frozen = copy.deepcopy(draft)
     frozen.update(status="FROZEN", frozen_at=frozen_at, frozen_at_commit_parent=parent,
-                  pre_freeze_review_commit=review, take_order_seed=review,
-                  take_order=planned_order(draft, review), pinned_files=copy.deepcopy(pins))
+                  pre_freeze_review_commit=review, take_order_seed=seed, take_order_beacon_reading=copy.deepcopy(beacon),
+                  take_order=planned_order(draft, seed), pinned_files=copy.deepcopy(pins))
     return frozen
+
+
+BEACON_KEY = "take_order_beacon"
+WITNESS_NOT_REHEARSED = "not witnessed: a disposable rehearsal reads no push record"
+BEACON_READING_KEY = "take_order_beacon_reading"
+BEACON_NOT_REHEARSED = ("NOT REHEARSED: the take-order beacon (a disposable rehearsal given no --beacon-reading seeds "
+                        "its order from a synthetic reading, marked synthetic in the frozen file)")
+SYNTHETIC_SIGNATURE = hashlib.sha256(b"synthetic-rehearsal-not-a-drand-signature").hexdigest()
+
+
+def synthetic_beacon_reading(round_no: int) -> dict:
+    """A rehearsal's stand-in reading of the registered round, shaped like a real one and named synthetic by its
+    signature (SYNTHETIC_SIGNATURE), which a real freeze refuses."""
+    return {"chain_hash": order_beacon.CHAIN["chain_hash"], "round": round_no,
+            "round_time": order_beacon.round_time(round_no), "signature": SYNTHETIC_SIGNATURE,
+            "randomness": hashlib.sha256(bytes.fromhex(SYNTHETIC_SIGNATURE)).hexdigest(),
+            "relays": list(order_beacon.RELAYS)}
+
+
+REGISTERED_LINE = "REGISTERED_ROUND: int | None = {round}"
+
+
+def registering_commit(round_no: int) -> str:
+    """The one commit in HEAD's history that set REGISTERED_ROUND to `round_no`, read by parsing order_beacon.py at
+    every commit that changed it, oldest first (the review of 53d0e9af, finding 1a and 1b). ValueError unless the
+    value changed exactly once, from None to `round_no`, and never again."""
+    rel = study.rel("order_beacon.py")
+    code, out = git("log", "--reverse", "--topo-order", "--full-history", "--format=%H", "--", rel)
+    if code != 0 or not out.split():
+        raise ValueError(f"the history of {rel} cannot be read at HEAD")
+    history = []
+    for sha in out.split():
+        code, text = git("show", f"{sha}:{rel}")
+        if code != 0:
+            raise ValueError(f"{rel} cannot be read at {sha[:12]}")
+        try:
+            history.append((sha, order_beacon.registered_value(text)))
+        except order_beacon.BeaconRefused as e:
+            raise ValueError(f"{rel} at {sha[:12]}: {e}") from None
+    problem = order_beacon.history_problem([v for _, v in history], round_no)
+    if problem:
+        raise ValueError(problem)
+    return next(sha for sha, v in history if v == round_no)
+
+
+def draft_commit() -> str:
+    """The last commit in HEAD's history that changed prereg-draft.json: the draft whose rows the order permutes, fixed
+    by its own push before the round (finding 1c; the review's line 1 binds the review to the same bytes). Read with
+    --full-history, so a merge that took a side branch's draft is not followed to that branch silently (the closure
+    check of 84ab6393, finding 1): a merge that took a side branch's draft is itself the draft commit (and must be
+    pushed before the round), and every commit that changed the draft must be an ancestor of the newest one in
+    topological order, or two candidate draft lines exist and the freeze refuses."""
+    code, out = git("log", "--full-history", "--topo-order", "--format=%H", "--", study.rel("prereg-draft.json"))
+    shas = out.split() if code == 0 else []
+    if not shas or not all(re.fullmatch(r"[0-9a-f]{40}", x) for x in shas):
+        raise ValueError("the commits that changed prereg-draft.json cannot be read at HEAD")
+    last = shas[0]
+    apart = [x for x in shas[1:] if not history_contains(x, last)]
+    if apart:
+        raise ValueError(f"prereg-draft.json has two candidate lines in HEAD's history: {apart[0][:12]} changed it and "
+                         f"is no ancestor of {last[:12]}, the newest commit that did; one draft line is frozen, never "
+                         f"one chosen among")
+    return last
+
+
+def rev_list(*args: str) -> list[str]:
+    code, out = git("rev-list", *args)
+    if code != 0:
+        raise ValueError(f"git rev-list {' '.join(args[:3])} ... cannot be read")
+    return out.split()
+
+
+def mirror_problem(pushes, registering: str):
+    """Why the mirror's pushes hold a candidate this freeze did not take, or None (the closure check of 84ab6393,
+    finding 1: parallel pushed branches, each with a clean history, let one be chosen after the round). Every pushed
+    sha must be in this clone; and no commit those pushes hold that is not an ancestor of HEAD may set REGISTERED_ROUND
+    to an integer, or change prereg-draft.json while descending from the registering commit. All the mirror's round and
+    draft history sits on HEAD's one line."""
+    shas = sorted({s for _, s in pushes if s and set(s) != {"0"}})
+    missing = [s for s in shas if git("cat-file", "-e", f"{s}^{{commit}}")[0] != 0]
+    if missing:
+        return (f"{len(missing)} sha(s) the mirror records are not in this clone ({missing[0][:12]} first): fetch the "
+                f"mirror's history before the freeze, which reads every pushed commit")
+    if not shas:
+        return None
+    rel_beacon, rel_draft = study.rel("order_beacon.py"), study.rel("prereg-draft.json")
+    for c in rev_list("--full-history", *shas, "--not", "HEAD", "--", rel_beacon):
+        code, text = git("show", f"{c}:{rel_beacon}")
+        if code != 0:
+            continue
+        try:
+            value = order_beacon.registered_value(text)
+        except order_beacon.BeaconRefused as e:
+            return f"the mirror holds {c[:12]}, off HEAD's line, whose order_beacon.py cannot be read ({e})"
+        if value is not None:
+            return (f"the mirror holds {c[:12]}, off HEAD's line, which sets REGISTERED_ROUND to {value}: a round "
+                    f"registered on another pushed branch could be the one chosen")
+    for c in rev_list("--full-history", *shas, "--not", "HEAD", "--", rel_draft):
+        if history_contains(registering, c):
+            return (f"the mirror holds {c[:12]}, off HEAD's line, which changes prereg-draft.json after the "
+                    f"registering commit {registering[:12]}: a candidate draft on another pushed branch")
+    return None
+
+
+WITNESS_HOST = "github.com"
+
+
+def take_order_witness(draft, *, pushes=None, contains=None) -> dict:
+    """Ruling 1 and the review of 53d0e9af (findings 1 and 2): GitHub's own push records on order_beacon.WITNESS_REPO
+    must hold both the commit that registered the draft's round and the last commit that changed the draft, each
+    stamped at least WITNESS_LEAD_S before the round is published; ValueError otherwise. The witness, written into the
+    frozen file as take_order_witness, is each commit with the push that holds it and GitHub's stamp. `pushes` and
+    `contains` stand in for push_records() and history_contains in tests."""
+    try:
+        round_no = order_beacon.registered_round(draft.get(BEACON_KEY))
+    except order_beacon.BeaconRefused as e:
+        raise ValueError(f"the take-order beacon: {e}") from None
+    pushes = push_records() if pushes is None else pushes
+    contains = history_contains if contains is None else contains
+    witness = {"repo": order_beacon.WITNESS_REPO, "host": WITNESS_HOST}
+    registering = registering_commit(round_no)
+    problem = mirror_problem(pushes, registering)
+    if problem:
+        raise ValueError(problem)
+    for name, commit in (("registering", registering), ("draft", draft_commit())):
+        problem = order_beacon.push_witness_problem(commit, round_no, pushes, contains)
+        if problem:
+            raise ValueError(f"the {name} commit: {problem}")
+        stamp, sha = min((t, s) for t, s in pushes if contains(commit, s))
+        witness.update({f"{name}_commit": commit, f"{name}_push": {"sha": sha, "stamp": stamp}})
+    return witness
+
+
+def push_records(repo=None) -> list[tuple[int, str]]:
+    """[(unix time, pushed sha)] of every record GitHub keeps on the witness repository that puts a commit there (its
+    `after` sha: pushes, force pushes, branch creations, merges; a deletion's all-zero sha is dropped), read read-only
+    with `gh api` (GET /repos/{repo}/activity, every activity type: a new branch is recorded as branch_creation, not
+    push). Raises ValueError when it cannot be read."""
+    repo = order_beacon.WITNESS_REPO if repo is None else repo
+    host = os.environ.get("GH_HOST")
+    if host not in (None, "", WITNESS_HOST):
+        raise ValueError(f"GH_HOST is {host!r}: the push witness is read from {WITNESS_HOST} only")
+    got = subprocess.run(["gh", "api", "--hostname", WITNESS_HOST, "--paginate",
+                          f"repos/{repo}/activity?per_page=100",
+                          "--jq", '.[] | "\\(.timestamp)\\t\\(.after)"'], capture_output=True, text=True)
+    if got.returncode != 0:
+        raise ValueError(f"GitHub's push records for {repo} cannot be read with gh api: {got.stderr.strip()[:200]}")
+    out = []
+    for ln in got.stdout.splitlines():
+        stamp, _, sha = ln.partition("\t")
+        if not sha.strip() or set(sha.strip()) == {"0"}:
+            continue
+        try:
+            out.append((int(datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()), sha.strip()))
+        except ValueError:
+            raise ValueError(f"an unreadable push record for {repo}: {ln[:120]!r}") from None
+    return out
+
+
+def history_contains(commit: str, sha: str) -> bool:
+    """Whether `sha` (a pushed commit) holds `commit` in its history, read from this repository; a sha this clone does
+    not have holds nothing it can show."""
+    code, _ = git("merge-base", "--is-ancestor", commit, sha)
+    return code == 0
+
+
+def take_order_beacon_reading(draft, *, rehearsal=False, reading_file=None, opener=None, now=None):
+    """MAJOR 9: the reading of the draft's registered drand round that seeds the order.
+
+    The real freeze reads both relays itself (the network, on the Mac), after take_order_witness has held the round's
+    registration and the draft to GitHub's push records. A disposable rehearsal reads a --beacon-reading file (checked
+    offline: chain, round, time, randomness the sha256 of the signature) or, given none, a synthetic reading, and says
+    so (BEACON_NOT_REHEARSED)."""
+    try:
+        round_no = order_beacon.registered_round(draft.get(BEACON_KEY))
+        if rehearsal:
+            if reading_file is None:
+                print(BEACON_NOT_REHEARSED)
+                return synthetic_beacon_reading(round_no)
+            reading = json.loads(Path(reading_file).read_text(encoding="utf-8"))
+            bad = order_beacon.reading_problems(reading, round_no)
+            if bad:
+                raise ValueError("the --beacon-reading file is refused: " + "; ".join(bad))
+            return reading
+        if reading_file is not None:
+            raise ValueError("--beacon-reading is for a disposable rehearsal only; the real freeze reads both relays")
+        reading = order_beacon.read_relays(round_no, opener=opener, now=now)
+        if reading["signature"] == SYNTHETIC_SIGNATURE:
+            raise ValueError("the relays answered the rehearsal's synthetic signature")
+        return reading
+    except order_beacon.BeaconRefused as e:
+        raise ValueError(f"the take-order beacon: {e}") from None
 
 # All files present in the ownership record are pinned, including prose,
 # checks files, the builder itself and COPIED.d. Runtime records are not part of
@@ -130,6 +344,75 @@ def _study_files() -> list[str]:
 
 NOT_PINNED_AND_WHY = {study.rel("prereg.json"): "the frozen file binds itself through its introducing commit"}
 PINNED = [p for p in _study_files() if p not in NOT_PINNED_AND_WHY] + ["CLAUDE.md"]
+GLOB_CHARS = ("*", "?", "[")
+
+
+def is_pattern(path: str) -> bool:
+    return any(c in path for c in GLOB_CHARS)
+
+
+def pattern_regex(pattern: str) -> re.Pattern:
+    """An ownership pattern as a whole-path regex: `**` crosses folders, `*` and `?` stay inside one, `[` is literal
+    (no fragment uses a class, so one is refused rather than read)."""
+    if "[" in pattern:
+        raise ValueError(f"the ownership pattern {pattern!r} uses a character class, which the freeze does not read")
+    out, i = [], 0
+    while i < len(pattern):
+        if pattern.startswith("**", i):
+            out.append(".*")
+            i += 2
+        elif pattern[i] == "*":
+            out.append("[^/]*")
+            i += 1
+        elif pattern[i] == "?":
+            out.append("[^/]")
+            i += 1
+        else:
+            out.append(re.escape(pattern[i]))
+            i += 1
+    return re.compile("".join(out))
+
+
+def committed_files(prefix: str) -> list[str]:
+    """Every file committed at HEAD under `prefix` (a folder), repository-relative."""
+    code, out = git("ls-tree", "-r", "--name-only", "HEAD", "--", prefix)
+    if code != 0:
+        raise ValueError(f"the committed files under {prefix} cannot be listed at HEAD")
+    return [ln for ln in out.splitlines() if ln]
+
+
+def pinned_paths(paths=None) -> list[str]:
+    """Pre-freeze review 1, MAJOR 2: PINNED with every ownership pattern (native-readers/**, the one today) expanded into
+    the files committed at HEAD that it matches, in order, so each acceptance record and review the freeze's leg (iii)
+    reads gets a pin of its own. A pattern that matches no committed file is refused: it would pin nothing."""
+    paths = PINNED if paths is None else paths
+    out = []
+    for p in paths:
+        if not is_pattern(p):
+            out.append(p)
+            continue
+        rx = pattern_regex(p)
+        literal = p[:min(p.index(c) for c in GLOB_CHARS if c in p)]
+        prefix = literal.rsplit("/", 1)[0] if "/" in literal else "."
+        matched = sorted(f for f in committed_files(prefix) if rx.fullmatch(f))
+        if not matched:
+            raise ValueError(f"the ownership pattern {p} matches no committed file, so it would pin nothing")
+        out.extend(m for m in matched if m not in out)
+    return out
+
+
+def pin_problems(pins) -> list[str]:
+    """Each pin the freeze cannot write: a missing file, one not committed at HEAD, or (the review of 53d0e9af, NIT 6)
+    one whose working bytes differ from its HEAD blob, so --check never reads a dirty pinned file as ok."""
+    out = []
+    for p in pins:
+        if p.get("missing") or p.get("uncommitted"):
+            out.append(f"{p['path']}: " + ("missing" if p.get("missing") else "not committed at HEAD"))
+            continue
+        data = (REPO / p["path"]).read_bytes()
+        if hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest() != p.get("git_blob_sha"):
+            out.append(f"{p['path']}: uncommitted edits (its bytes are not its HEAD blob)")
+    return out
 
 
 def git(*args: str) -> tuple[int, str]:
@@ -143,6 +426,8 @@ def git(*args: str) -> tuple[int, str]:
 FREEZE_WRITTEN_KEYS = (
     "status", "frozen_at", "frozen_at_commit_parent", "draft_sha256_at_freeze", "pre_freeze_review_commit",
     "pre_freeze_review_file", "pre_freeze_review_sha256", "take_order_seed", "take_order", "pinned_files",
+    "take_order_beacon_reading",          # pre-freeze review 1, MAJOR 9: the drand round the order is seeded by
+    "take_order_witness",                 # the review of 53d0e9af, finding 2: GitHub's pushes of the round and draft
     "nulls_at_freeze", "rehearsal_record", "rehearsed_study_tree_sha256",
     "holdout_salted_digests", "holdout_wordings_per_task_version",
 )
@@ -168,6 +453,7 @@ TREE_BINDING_EXCLUDED = (re.compile(rf"/{study.VERIFY_DIR}/freeze-rehearsal-\d+(
                          re.compile(r"/PROGRESS\.md$"),
                          re.compile(r"/verification/round1-regrade/environment\.json$"))
 RULING_LINE = "**Ruling: DO FREEZE.**"
+REVIEW_DIGEST_PREFIX = "prereg.json sha256: "     # line 1 of every report (review_kit/commit_review.report_problems)
 REHEARSAL_LAST_LINE = "all green"
 
 
@@ -323,10 +609,14 @@ def unrecorded_shapes_problem(draft):
     for harness in sorted({(r.get("agent") or {}).get("harness") for r in rows} & set(SHAPES_ADAPTERS)):
         module = SHAPES_ADAPTERS[harness]
         legs = []
-        source = importlib.import_module(module).SHAPES_SOURCE
+        adapter = importlib.import_module(module)
+        source = adapter.SHAPES_SOURCE
         if source != RECORDED_SHAPES:
             legs.append(f"leg i: {module}.py's SHAPES_SOURCE is {source!r}")
+        else:
+            legs += [f"leg i: {p}" for p in shapes_binding_problems(harness, adapter, draft)]
         legs += [f"leg ii: {p}" for p in vendor_reader_problems(harness)]
+        legs += [f"leg ii: {p}" for p in fixture_binding_problems(harness, draft)]
         legs += [f"leg iii: {p}" for p in registration_problems(harness)]
         arms = sorted({r.get("arm") for r in rows if (r.get("agent") or {}).get("harness") == harness}, key=str)
         bad += [f"arm {arm} ({harness}): {leg}" for arm in arms for leg in legs]
@@ -349,6 +639,44 @@ def vendor_reader_problems(harness):
     return out + check_take.vendor_rows_problems(harness)
 
 
+def pinned_cli(harness, draft):
+    """The harness's CLI as its RECORDED fixtures must name it: "<cli> <version>", the version the draft's rows of the
+    harness all carry (pre-freeze review 1, m3); None when the rows carry other than exactly one version."""
+    import check_take
+    versions = {(r.get("agent") or {}).get("version") for r in draft.get("rows") or []
+                if (r.get("agent") or {}).get("harness") == harness}
+    if len(versions) != 1 or not isinstance(next(iter(versions)), str):
+        return None
+    return f"{check_take.VENDOR_FIXTURE_CLI[harness]} {versions.pop()}"
+
+
+def shapes_binding_problems(harness, adapter, draft):
+    """Leg (i), pre-freeze review 1 m3: an adapter's SHAPES_SOURCE "recorded" holds only with its SHAPES_RECORDED_ON
+    fixture a byte copy of a committed walk record on the pinned CLI (check_take.recorded_binding_problem)."""
+    import check_take
+    cli = pinned_cli(harness, draft)
+    if cli is None:
+        return [f"the draft's {harness} rows do not carry exactly one agent version"]
+    fixture = getattr(adapter, "SHAPES_RECORDED_ON", None)
+    problem = check_take.recorded_binding_problem(harness, fixture, cli)
+    return [f"{adapter.__name__}.py's SHAPES_RECORDED_ON: {problem}"] if problem else []
+
+
+def fixture_binding_problems(harness, draft):
+    """Leg (ii), pre-freeze review 1 m3: both tables hold their registered items, and every RECORDED fixture their
+    rows and items name is a byte copy of a committed walk record on the pinned CLI."""
+    import check_take
+    out = check_take.vendor_minimum_problems(harness)
+    cli = pinned_cli(harness, draft)
+    if cli is None:
+        return out + [f"the draft's {harness} rows do not carry exactly one agent version"]
+    for fixture in check_take.vendor_fixtures_named(harness):
+        problem = check_take.recorded_binding_problem(harness, fixture, cli)
+        if problem:
+            out.append(problem)
+    return out
+
+
 def registration_problems(harness):
     """Leg (iii): Javier's committed acceptance registers the harness's native reader; a refusing registry is named,
     never a traceback, and so is one that cannot run (no git binary, or any other OSError; round 8 ruling 1)."""
@@ -360,6 +688,30 @@ def registration_problems(harness):
     except OSError as e:
         return [f"the native-reader registry could not run ({type(e).__name__}: {e})"]
     return [] if harness in readers else [f"no native reader is registered for {harness} (no committed acceptance)"]
+
+
+def coverage_problem(draft=None):
+    """Pre-freeze review 1, MAJOR 4 part 3: why the walks the freeze rests on do not cover the design, or None.
+
+    walk_plan's --coverage reading, in process (walk_plan.coverage_report): every required walk of an arm the freeze
+    runs must be covered by a graded walk; a deferred arm's coverage is printed as recorded, not required (OD105:
+    arm G runs exactly as registered, only after a later go, whose precondition is its complete coverage)."""
+    import walk_plan
+    try:
+        rep = walk_plan.coverage_report()
+    except (walk_plan.PlanRefused, walk_plan.RegisterUnreadable, OSError, ValueError, KeyError) as e:
+        return f"the walk coverage cannot be read: {e}"
+    for line in walk_plan.deferred_lines(rep["got"], rep["specs"], rep["deferred"]):
+        print("freeze: " + line)
+    gaps = walk_plan.run_arm_gaps(rep["got"], rep["deferred"])
+    if not gaps:
+        return None
+    per: dict = {}
+    for s in gaps:
+        per[(s["arm"], s["model"])] = per.get((s["arm"], s["model"]), 0) + 1
+    named = "; ".join(f"arm {a}, {m}: {n} missing" for (a, m), n in per.items())
+    return (f"{len(gaps)} required walk(s) of the arms the freeze runs are not covered by a graded walk ({named}); "
+            f"walk_plan.py --coverage --require-run-arms names each")
 
 
 def draft_holdout_problem(draft):
@@ -421,6 +773,14 @@ def review_file_problems(review_commit: str) -> tuple[list[str], str | None]:
     if RULING_LINE not in body:
         return [f"{reports[0]} at {review_commit[:12]} carries no `{RULING_LINE}` line: the freeze runs only on a "
                 f"review that ruled for it"], None
+    # Pre-freeze review 1, MAJOR 3: the seed review must have read the bytes being frozen. Its line 1 names the sha256
+    # of the prereg.json the reviewer was handed (review_kit/commit_review.py binds it to the kit's copy); a DO FREEZE
+    # review of earlier bytes never seeds a freeze of later ones, so a criterion edited after review is not frozen.
+    want = REVIEW_DIGEST_PREFIX + hashlib.sha256(DRAFT.read_bytes()).hexdigest()
+    first = body.split("\n", 1)[0]
+    if first != want:
+        return [f"{reports[0]} at {review_commit[:12]} reviewed other bytes: its line 1 is {first[:90]!r}, and the draft "
+                f"being frozen needs {want!r}; a review of other bytes cannot seed this freeze"], None
     code, names = git("ls-tree", "-r", "--name-only", "HEAD", "--", study.rel(study.REVIEW_DIR))
     numbers = [int(m.group(1)) for ln in names.splitlines() for m in [re.search(r"prefreeze-(\d+)\.md$", ln)] if m]
     n = int(re.search(r"prefreeze-(\d+)\.md$", reports[0]).group(1))
@@ -428,6 +788,58 @@ def review_file_problems(review_commit: str) -> tuple[list[str], str | None]:
         return [f"{reports[0]} is not the latest review committed (prefreeze-{max(numbers)}.md is): the freeze seeds "
                 f"from the last ruling, not a chosen one"], None
     return [], reports[0]
+
+
+DUMMY_REVIEW = "0" * 40
+DUMMY_PARENT = "0" * 40
+
+
+def check_legs(draft) -> list[tuple[str, list[str]]]:
+    """Pre-freeze review 1, m1: what --check reads, leg by leg, each with its problems ([] when it holds). It runs what a
+    freeze runs short of the review and the write: the draft's PENDING map, the holdout fields, every pin (patterns
+    expanded), the three vendor legs, the walk coverage of the arms the freeze runs, and prepare on a copy of the draft
+    with a dummy review and a synthetic beacon reading (no network, nothing written)."""
+    legs = [("copy manifest", copy_manifest.problems())]
+    left = draft_pending(draft)
+    legs.append(("pending", [f"{len(left)} PENDING input(s): " + ", ".join(left)] if left else []))
+    problem = draft_holdout_problem(draft)
+    legs.append(("holdout fields", [problem] if problem else []))
+    try:
+        paths = pinned_paths(PINNED)
+        legs.append((f"pins ({len(paths)} paths, patterns expanded)", pin_problems([pin(p) for p in paths])))
+    except ValueError as e:
+        legs.append(("pins", [str(e)]))
+    problem = unrecorded_shapes_problem(draft)
+    legs.append(("vendor legs i-iii", [problem] if problem else []))
+    problem = coverage_problem(draft)
+    legs.append(("walk coverage of the arms the freeze runs", [problem] if problem else []))
+    try:
+        reading = synthetic_beacon_reading(order_beacon.registered_round(draft.get(BEACON_KEY)))
+        prepare(copy.deepcopy(draft), review=DUMMY_REVIEW, parent=DUMMY_PARENT, pins=[], frozen_at="check",
+                beacon=reading)
+        legs.append(("prepare (dummy review, synthetic beacon reading)", []))
+    except Exception as e:      # noqa: BLE001 (every refusal of prepare is this leg's finding, by name)
+        legs.append(("prepare (dummy review, synthetic beacon reading)", [f"{type(e).__name__}: {e}"]))
+    return legs
+
+
+def check() -> int:
+    """freeze.py --check: every leg of check_legs printed, exit 1 when any has a problem."""
+    draft = json.loads(DRAFT.read_text())
+    legs = check_legs(draft)
+    for name, problems in legs:
+        print(f"freeze --check: {name}: " + ("ok" if not problems else "FAIL " + "; ".join(problems)[:1500]))
+    entries, _ = copy_manifest.load_fragments()
+    claimed = sum(1 for _, e in entries if e["status"] in copy_manifest.STATUSES)
+    try:
+        paths = pinned_paths(PINNED)
+    except ValueError:
+        paths = []
+    readers = sum(1 for p in paths if copy_manifest.READER_RECORD.fullmatch(p[len(study.STUDY_REL) + 1:]))
+    bad = sum(1 for _, problems in legs if problems)
+    print(f"freeze: {claimed} fragment-claimed files and {readers} native-reader record(s) owned; "
+          f"{len(legs) - bad} of {len(legs)} legs hold; no takes or freeze performed")
+    return 1 if bad else 0
 
 
 def main(argv=None) -> int:
@@ -438,17 +850,15 @@ def main(argv=None) -> int:
     parser.add_argument("--rehearsal-record", type=Path)
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--holdout-digests", type=Path)
+    parser.add_argument("--beacon-reading", type=Path,
+                        help="a disposable rehearsal only: a reading of the registered drand round, checked offline")
     args = parser.parse_args(argv)
     try:
+        if args.check:
+            return check()
         problems = copy_manifest.problems()
         if problems:
             raise ValueError("; ".join(problems))
-        if args.check:
-            problem = draft_holdout_problem(json.loads(DRAFT.read_text()))
-            if problem:
-                raise ValueError(problem)
-            print(f"freeze: {len(owned_paths())} owned paths checked; no takes or freeze performed")
-            return 0
         problem = holdout_source_problem(args.holdout_digests, args.rehearsal)
         if problem:
             raise ValueError(problem)
@@ -481,16 +891,22 @@ def main(argv=None) -> int:
         record = None
         if args.write and not args.rehearsal:
             record = rehearsal_evidence(args.rehearsal_record, digest, tree)
-        pins = [pin(p) for p in PINNED]
-        if any(p.get("missing") or p.get("uncommitted") for p in pins):
-            raise ValueError("every owned build file must have a committed pin")
+        pins = [pin(p) for p in pinned_paths(PINNED)]
+        bad = pin_problems(pins)
+        if bad:
+            raise ValueError("every owned build file must have a committed pin: " + "; ".join(bad[:6]))
+        problem = coverage_problem(draft)
+        if problem:
+            raise ValueError(problem)
+        witness = WITNESS_NOT_REHEARSED if args.rehearsal else take_order_witness(draft)
+        beacon = take_order_beacon_reading(draft, rehearsal=args.rehearsal, reading_file=args.beacon_reading)
         _, parent = git("rev-parse", "HEAD")
         frozen = prepare(draft, review=args.review_commit, parent=parent, pins=pins,
-                         frozen_at=datetime.now(timezone.utc).replace(microsecond=0).isoformat())
+                         frozen_at=datetime.now(timezone.utc).replace(microsecond=0).isoformat(), beacon=beacon)
         frozen.update(draft_sha256_at_freeze=digest, pre_freeze_review_file=review_file,
                       pre_freeze_review_sha256=hashlib.sha256((REPO / review_file).read_bytes()).hexdigest(),
                       rehearsal_record=record if record else "rehearsal or preview",
-                      rehearsed_study_tree_sha256=tree)
+                      rehearsed_study_tree_sha256=tree, take_order_witness=witness)
         frozen.update(holdout)
         if not holdout:
             print(HOLDOUT_NOT_REHEARSED)

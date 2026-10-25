@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import hashlib
 import io
 import json
 import sys
@@ -72,7 +73,7 @@ def fake_git(*args):
             ("rev-parse", "HEAD"): (0, "b" * 40)}.get(args, (1, "no such fake git call"))
 
 
-def fake_prepare(d, *, review, parent, pins, frozen_at):
+def fake_prepare(d, *, review, parent, pins, frozen_at, beacon=None):
     return dict(copy.deepcopy(d), status="FROZEN", frozen_at=frozen_at, frozen_at_commit_parent=parent,
                 pre_freeze_review_commit=review, take_order_seed=review, take_order=[], pinned_files=pins)
 
@@ -89,6 +90,10 @@ def run_main(mod, d: dict) -> tuple[int, str, list]:
                    (mod, "study_tree_sha", lambda *a, **k: "c" * 64),
                    (mod, "write_outputs", lambda frozen: written.append(frozen) or ()),
                    (mod, "owned_paths", lambda *a, **k: []),
+                   # lane pf1-l1-freeze-gates (pre-freeze review 1, MAJORs 4 and 9): the coverage gate and the
+                   # beacon read stood in for, as the other gates here are; tests/test_pf1_freeze_gates.py binds both
+                   (mod, "coverage_problem", lambda *a, **k: None),
+                   (mod, "take_order_beacon_reading", lambda *a, **k: {"synthetic": "beacon reading"}),
                    (mod.copy_manifest, "problems", lambda *a, **k: []))
         (tmp / "review").mkdir()
         (tmp / "review" / "prefreeze-1.md").write_text("synthetic review\n")
@@ -120,24 +125,38 @@ synthetic_reader.__module__ = check_take.__name__  # TEST DATA: stands for a rea
 
 
 @contextlib.contextmanager
-def settled(*, legs=("i", "ii", "rows", "items", "iii"), registry=None, **arms):
+def settled(*, legs=("i", "ii", "rows", "items", "iii"), registry=None, cli=None, **arms):
     """TEST DATA: each named arm (O, G) with the named legs of the freeze gate settled: "i" its adapter recorded, "ii"
     check_take's VENDOR_CHECK_SHAPES_SOURCE recorded, "rows" every VENDOR_PENDING_ROWS row of its harness SAME with a
     RECORDED fixture in a scratch fixtures folder and a reader defined in check_take, "items" every
     VENDOR_READER_ITEMS item of its harness on that fixture (round 8 ruling 3, P2), "iii" a registry holding it
-    (or `registry`, a callable standing in for production_readers)."""
+    (or `registry`, a callable standing in for production_readers). `cli` ({harness: "<cli> <version>"}, default CLI)
+    is what the synthetic fixtures' provenance and labels name: the version the draft under test pins."""
     harnesses = [HARNESS[a] for a in arms]
     with contextlib.ExitStack() as stack:
         tmp = Path(stack.enter_context(tempfile.TemporaryDirectory()))
-        folder = tmp / "tests" / "fixtures" / "vendor-check"
-        folder.mkdir(parents=True)
-        readme = []
+        # lane pf1-l1-freeze-gates (pre-freeze review 1, m3): leg ii holds each RECORDED fixture to the committed walk
+        # record it copies (PROVENANCE.json, the source's bytes, the pinned CLI), so each harness's synthetic fixture
+        # has its own folder with a provenance record and a stand-in walk record of the same bytes
         for h in harnesses:
-            (folder / f"recorded-{h}.jsonl").write_text("{}\n")
-            readme.append(f"- `recorded-{h}.jsonl`: RECORDED at walk w-0001, {CLI[h]}.")
-        (folder / "README.md").write_text("\n".join(readme) + "\n")
+            folder = tmp / "tests" / "fixtures" / f"synthetic-{h}"
+            folder.mkdir(parents=True)
+            data = b"{}\n"
+            (folder / "recorded.jsonl").write_bytes(data)
+            named = (cli or CLI)[h]
+            (folder / "README.md").write_text(f"- `recorded.jsonl`: RECORDED at walk w-{h}, {named}.\n")
+            (folder / "PROVENANCE.json").write_text(json.dumps({"walk": f"w-{h}", "harness": h, "cli": named,
+                "files": {"recorded.jsonl": {"source": f"rehearsals/w-{h}/recorded.jsonl",
+                                             "sha256": hashlib.sha256(data).hexdigest()}}}))
+            (tmp / "rehearsals" / f"w-{h}").mkdir(parents=True)
+            (tmp / "rehearsals" / f"w-{h}" / "recorded.jsonl").write_bytes(data)
         stack.enter_context(mock.patch.object(check_take, "HERE", tmp))
         stack.enter_context(mock.patch.object(check_take, "synthetic_reader", synthetic_reader, create=True))
+        # the adapters' bound fixture is the synthetic one whether or not leg i is settled, so leg i's refusal at
+        # "documented" stays its SHAPES_SOURCE alone (the T3 witnesses keep their meaning)
+        for a in arms:
+            stack.enter_context(mock.patch.object(ADAPTERS[a], "SHAPES_RECORDED_ON",
+                                                  f"synthetic-{HARNESS[a]}/recorded.jsonl"))
         if "i" in legs:
             stack.enter_context(shapes(**arms))
         if "ii" in legs:
@@ -149,14 +168,14 @@ def settled(*, legs=("i", "ii", "rows", "items", "iii"), registry=None, **arms):
         rows = copy.deepcopy(check_take.VENDOR_PENDING_ROWS)
         for h in harnesses:
             if "rows" in legs:
-                rows[h] = {k: {"reason": r["reason"], "state": "SAME", "fixture": f"vendor-check/recorded-{h}.jsonl",
+                rows[h] = {k: {"reason": r["reason"], "state": "SAME", "fixture": f"synthetic-{h}/recorded.jsonl",
                                "reader": "synthetic_reader"} for k, r in rows[h].items()}
             else:
                 rows[h] = {k: {"reason": r["reason"], "state": "PENDING"} for k, r in rows[h].items()}
         stack.enter_context(mock.patch.object(check_take, "VENDOR_PENDING_ROWS", rows))
         items = copy.deepcopy(getattr(check_take, "VENDOR_READER_ITEMS", {}))
         for h in harnesses:
-            items[h] = dict.fromkeys(items.get(h, {}), f"vendor-check/recorded-{h}.jsonl" if "items" in legs else None)
+            items[h] = dict.fromkeys(items.get(h, {}), f"synthetic-{h}/recorded.jsonl" if "items" in legs else None)
         stack.enter_context(mock.patch.object(check_take, "VENDOR_READER_ITEMS", items, create=True))
         if registry is not None:
             stack.enter_context(mock.patch.object(native_reader_registration, "production_readers", registry))
@@ -238,7 +257,8 @@ class TheFreezeRefusesDocumentedShapes(unittest.TestCase):
         self.assertIsNotNone(got)
         for words in ("arm O (codex)", "arm G (gemini)", "'documented'", "recorded"):
             self.assertIn(words, got)
-        with at_documented(), settled(O=True, G=True):
+        pinned = {h: freeze.pinned_cli(h, committed) for h in ("codex", "gemini")}
+        with at_documented(), settled(O=True, G=True, cli=pinned):
             self.assertIsNone(freeze.unrecorded_shapes_problem(committed))
         self.assertIsNone(freeze.unrecorded_shapes_problem(draft(("A",))))
         self.assertIsNone(freeze.unrecorded_shapes_problem({"tasks": []}))
@@ -258,10 +278,17 @@ class TheFreezeRefusesDocumentedShapes(unittest.TestCase):
                     self.assertIn(words, doc)
 
     def test_fs_check_mode_is_unchanged(self):
-        # freeze.py --check (a checks.d gate) checks the copy record and the draft's holdout fields only
+        # lane pf1-l1-freeze-gates (pre-freeze review 1, m1): freeze.py --check no longer reads the copy record and
+        # the holdout fields only; it reads every leg a freeze reads (check_legs) and is red on a draft the freeze
+        # refuses. What stays unchanged here: the vendor legs it reads are unrecorded_shapes_problem's, and --check is
+        # green when every leg holds (tests/test_pf1_freeze_gates.py G1.check binds the legs themselves).
         out = io.StringIO()
-        with contextlib.redirect_stdout(out):
+        held = [("vendor legs i-iii", []), ("pending", [])]
+        with mock.patch.object(freeze, "check_legs", lambda d: held), contextlib.redirect_stdout(out):
             self.assertEqual(freeze.main(["--check"]), 0, out.getvalue())
+        self.assertIn("freeze --check: vendor legs i-iii: ok", out.getvalue())
+        self.assertIn("unrecorded_shapes_problem(draft)", Path(freeze.__file__).read_text().split(
+            "def check_legs(", 1)[1].split("\ndef ", 1)[0])
 
 
 def refused_registry(*a, **k):

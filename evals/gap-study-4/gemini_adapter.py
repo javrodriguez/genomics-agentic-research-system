@@ -426,3 +426,9 @@ class GeminiAdapter(aa.AgentAdapter):
 # drive still reads them here (drive.scan_read_shapes reads module.READ_SHAPES).
 from box import od57_shapes as _od57_shapes  # noqa: E402
 READ_SHAPES = _od57_shapes.GEMINI
+
+
+# Pre-freeze review 1, m3 (lane L1; placed last so no mutated line moves): the RECORDED fixture SHAPES_SOURCE
+# "recorded" rests on. freeze.py's leg i holds it to the committed walk record it was copied from
+# (check_take.recorded_binding_problem), so the word alone never opens the leg.
+SHAPES_RECORDED_ON = "recorded-gemini-w-g21/transcript.jsonl"

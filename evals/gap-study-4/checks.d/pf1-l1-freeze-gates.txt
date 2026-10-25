@@ -1,0 +1,7 @@
+# Lane pf1-l1-freeze-gates: Gap Study round 4, the fold of pre-freeze review 1's lane L1 (MAJORs 2, 3, 9, MAJOR 4's
+# coverage gate, m1, m2, m3, m6, m7, m8). One command per line, from the repository root. freeze.py --check,
+# walk_plan.py --coverage --require-run-arms and walk_regrade.py --check are red until lanes L4 and L5 close the
+# draft's PENDING inputs and the walks' coverage; they are the freeze's gates, run by freeze_rehearsal and the outputs.
+python3 -B -W ignore evals/gap-study-4/tests/test_pf1_freeze_gates.py
+python3 -B -W ignore evals/gap-study-4/walk_pins.py --check
+python3 -B -W ignore evals/gap-study-4/copy_manifest.py --check

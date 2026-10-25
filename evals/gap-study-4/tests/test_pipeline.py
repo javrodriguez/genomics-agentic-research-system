@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import base64
+import hashlib
 import importlib.util
 import io
 import inspect
@@ -31,6 +32,7 @@ sys.path.insert(0, str(HERE))
 import copy_manifest as cm
 import freeze
 import freeze_rehearsal
+import order_beacon
 import study
 import takes
 import batch
@@ -1498,7 +1500,8 @@ class FreezeCoverage(unittest.TestCase):
                  "pending_walk.py",                           # live harness (15429361): run.py imports it
                  "graders/delegation.py",                     # the d7107255 battery ruling: run.py imports it
                  "delegated_take.py",                         # the pre-freeze ruling: graders/delegation.py imports it
-                 "run_builders.py")                           # lane run-launcher: check_publication's order check
+                 "run_builders.py",                           # lane run-launcher: check_publication's order check
+                 "order_beacon.py")                           # lane pf1-l1-freeze-gates: freeze.py imports it
         with manifest_repository() as (repo, root, folder), tempfile.TemporaryDirectory() as tmp:
             fragment = json.loads((folder / "synthetic.json").read_text())
             entries = {e["path"]: e for e in fragment["files"]}
@@ -1507,16 +1510,20 @@ class FreezeCoverage(unittest.TestCase):
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_bytes((HERE / name).read_bytes())
                 entries[name] = claims[name]
+            # lane pf1-l1-freeze-gates (pre-freeze review 1): the synthetic draft registers a drand round (MAJOR 9),
+            # and the review's line 1 names the draft's bytes, which the freeze now requires (MAJOR 3)
+            draft = dict(pre_registration(), session_namespace={"derived_from": "synthetic",
+                "uuid": str(uuid.uuid5(uuid.NAMESPACE_URL, "synthetic"))},
+                take_order_beacon=dict(order_beacon.registration(), round=33356692))
+            (root / "prereg-draft.json").write_text(json.dumps(draft))
             review_name = study.REVIEW_DIR + "/prefreeze-1.md"
             review = root / review_name
             review.parent.mkdir(parents=True, exist_ok=True)
-            review.write_text(freeze.RULING_LINE + "\n")
+            digest = hashlib.sha256((root / "prereg-draft.json").read_bytes()).hexdigest()
+            review.write_text(f"{freeze.REVIEW_DIGEST_PREFIX}{digest}\n\n" + freeze.RULING_LINE + "\n")
             entries[review_name] = {"path": review_name, "status": "new", "reason": "synthetic ruling"}
             fragment["files"] = list(entries.values())
             (folder / "synthetic.json").write_text(json.dumps(fragment))
-            draft = dict(pre_registration(), session_namespace={"derived_from": "synthetic",
-                "uuid": str(uuid.uuid5(uuid.NAMESPACE_URL, "synthetic"))})
-            (root / "prereg-draft.json").write_text(json.dumps(draft))
             review_commit = commit(repo, [study.STUDY_REL], "Record synthetic reviewed design")
             problems, writer = cm.problems, freeze.write_outputs
             with ExitStack() as stack:
@@ -1526,6 +1533,11 @@ class FreezeCoverage(unittest.TestCase):
                     stack.enter_context(mock.patch.object(module, name, value))
                 stack.enter_context(mock.patch.object(cm, "problems", lambda *a, **k: problems(folder, **k)))
                 stack.enter_context(mock.patch.object(freeze, "write_outputs", lambda pre: writer(pre, root=root)))
+                # lane pf1-l1-freeze-gates (pre-freeze review 1, m2 and MAJOR 4 part 3): the synthetic design is no
+                # registered design, so the draft's PENDING map and the real walks' coverage are not read for it here
+                # (tests/test_pf1_freeze_gates.py binds both gates)
+                stack.enter_context(mock.patch.object(freeze, "draft_pending", lambda d: {}))
+                stack.enter_context(mock.patch.object(freeze, "coverage_problem", lambda *a, **k: None))
                 output = stack.enter_context(redirect_stdout(io.StringIO()))
                 self.assertEqual(freeze.main(["--review-commit", review_commit, "--rehearsal", "--write"]),
                                  0, output.getvalue())
@@ -1726,7 +1738,10 @@ class FreezeCoverage(unittest.TestCase):
                     ("walk_register.py", "--check"), ("mode_binding.py", "--walks", "--check"),
                     ("fixture_walk.py", "--check"), ("run.py", "--walks", "--check"),
                     # glitch-6b's recheck-coverage ruling (15 Oct 2026): a counted recheck is re-derived at freeze
-                    ("walk_regrade.py", "--check"))
+                    ("walk_regrade.py", "--check"),
+                    # lane pf1-l1-freeze-gates (pre-freeze review 1, MAJOR 4 part 3 and m6): the walk coverage of the
+                    # arms the freeze runs, and every walk held to its pins
+                    ("walk_plan.py", "--coverage", "--require-run-arms"), ("walk_pins.py", "--check"))
         self.assertEqual(freeze_rehearsal.COMMANDS, expected)
         with mock.patch.object(freeze_rehearsal, "COMMANDS", ()):
             self.assertNotEqual(freeze_rehearsal.COMMANDS, expected)
@@ -1918,18 +1933,24 @@ class PublishedArtifacts(unittest.TestCase):
 class FreezeDesign(unittest.TestCase):
     def test_freeze_preserves_design_and_orders_full_identity_without_vendor_cli(self):
         self.assertTrue(callable(getattr(freeze, "prepare", None)), "freeze must consume round 4 rows")
-        pre = pre_registration()
+        # lane pf1-l1-freeze-gates (pre-freeze review 1, m2 and MAJOR 9): the synthetic design registers a drand
+        # round and is handed a reading of it; it is no registered design, so its PENDING map is not read here
+        # (tests/test_pf1_freeze_gates.py binds both)
+        pre = dict(pre_registration(), take_order_beacon=dict(order_beacon.registration(), round=33356692))
+        beacon = freeze.synthetic_beacon_reading(33356692)
         before = copy.deepcopy(pre)
-        got = freeze.prepare(pre, review="a" * 40, parent="b" * 40, pins=[],
-                             frozen_at="2026-10-01T00:00:00+00:00")
-        self.assertEqual(pre, before)
-        self.assertEqual(got["rows"], before["rows"])
-        self.assertEqual(got["take_order"], before["rows"])
-        self.assertEqual(got["take_order"][0]["agent"], row()["agent"])
-        self.assertEqual(freeze.keys_outside_the_freeze(pre, got), [])
-        with mock.patch.object(freeze, "planned_order", lambda draft, seed: []):
-            self.assertNotEqual(freeze.prepare(pre, review="a" * 40, parent="b" * 40, pins=[],
-                                             frozen_at="2026-10-01T00:00:00+00:00")["take_order"], pre["rows"])
+        with mock.patch.object(freeze, "draft_pending", lambda d: {}):
+            got = freeze.prepare(pre, review="a" * 40, parent="b" * 40, pins=[],
+                                 frozen_at="2026-10-01T00:00:00+00:00", beacon=beacon)
+            self.assertEqual(pre, before)
+            self.assertEqual(got["rows"], before["rows"])
+            self.assertEqual(got["take_order"], before["rows"])
+            self.assertEqual(got["take_order"][0]["agent"], row()["agent"])
+            self.assertEqual(freeze.keys_outside_the_freeze(pre, got), [])
+            with mock.patch.object(freeze, "planned_order", lambda draft, seed: []):
+                self.assertNotEqual(freeze.prepare(pre, review="a" * 40, parent="b" * 40, pins=[],
+                                                 frozen_at="2026-10-01T00:00:00+00:00", beacon=beacon)["take_order"],
+                                    pre["rows"])
 
     def test_generated_outputs_are_pinned_in_the_frozen_file(self):
         self.assertTrue(callable(getattr(freeze, "generated_pins", None)), "generated outputs need byte pins")

@@ -59,6 +59,10 @@ from a typed number, and bind:
                     int, a bool, a list, an object, missing) or no walk id is skipped, never a crash, and bytes that
                     are no register give []; coverage() labels an entry whose walk is no string "entry <i>";
                     witnesses stand-in-type-unchecked, stand-in-entry-unchecked, stand-in-walks-unchecked
+  P19.run-arms      (lane pf1-l1-freeze-gates, pre-freeze review 1 MAJOR 4 part 3) deferred_arms reads the draft's
+                    deferred arms only; run_arm_gaps and --require-run-arms require every arm the freeze runs and
+                    print each deferred arm and model as recorded; coverage_report is the --coverage reading; bound
+                    by the generated sweep, no named witness
 
 Red first: before walk_plan.py exists every test fails by its own assertion (P0.module), with no error. The helpers
 that call walk_plan (plan, cover, cli) turn any exception other than the documented refusal into a failure carrying
@@ -1133,6 +1137,80 @@ class P18Pending(Base):
                          "P18.pending: the graded walk covers the spec alone")
 
 
+class P19RunArms(Base):
+    """Lane pf1-l1-freeze-gates (pre-freeze review 1, MAJOR 4 part 3): --require-run-arms requires every arm the
+    freeze runs and records each deferred arm (the draft's deferred_arms), per arm and model; coverage_report is the
+    --coverage reading freeze.py runs in process. Written so the generated sweep binds the new lines."""
+    CLAUSE = "P19.run-arms"
+
+    def test_the_freeze_requires_the_arms_it_runs(self):
+        wp = self.wp(self.CLAUSE)
+        draft = json.loads((HERE / "prereg-draft.json").read_text())
+        got = self.call(self.CLAUSE, wp.deferred_arms)
+        self.assertEqual(got, {"G": draft["deferred_arms"]["G"]}, "P19.run-arms: the draft defers arm G")
+        for name, edit, want in (("running", lambda d: d["deferred_arms"]["G"].update(status="running"), {}),
+                                 ("not a dict", lambda d: d["deferred_arms"].update(G="deferred"), {}),
+                                 ("absent", lambda d: d.pop("deferred_arms"), {}),
+                                 ("null", lambda d: d.update(deferred_arms=None), {})):
+            study = self.study_copy()
+            self.edit_draft(study, edit)
+            self.assertEqual(self.call(self.CLAUSE, wp.deferred_arms, study), want, f"P19.run-arms: {name}")
+        design, specs = self.plan(self.CLAUSE)
+        missing = [{"arm": "A", "model": "m"}, {"arm": "G", "model": "n"}]
+        self.assertEqual(self.call(self.CLAUSE, wp.run_arm_gaps, {"missing": missing}, {"G": {}}), missing[:1],
+                         "P19.run-arms: a deferred arm's gap is not required")
+        self.assertEqual(self.call(self.CLAUSE, wp.run_arm_gaps, {"missing": missing}, {}), missing,
+                         "P19.run-arms: with no arm deferred every gap is required")
+        g = [s for s in specs if s["arm"] == "G"]
+        g_models = list(dict.fromkeys(s["model"] for s in g))
+        lines = self.call(self.CLAUSE, wp.deferred_lines, {"missing": g[:1]}, specs, {"G": {}})
+        want = []
+        for model in g_models:
+            n = sum(1 for s in g if s["model"] == model)
+            gap = 1 if model == g[0]["model"] else 0
+            want.append(f"deferred arm G, {model}: {n - gap} of {n} required walks covered, {gap} missing; recorded, "
+                        f"not required at this freeze (the draft's deferred_arms); complete coverage is a "
+                        f"precondition of its later go (--require-complete)")
+        self.assertEqual(lines, want, "P19.run-arms: one line per deferred arm and model")
+        self.assertEqual(self.call(self.CLAUSE, wp.deferred_lines, {"missing": []}, specs, {}), [],
+                         "P19.run-arms: no line for an arm that runs")
+        full = self.rehearsals([entry(s, f"walk-{i}") for i, s in enumerate(specs)])
+        rep = self.call(self.CLAUSE, wp.coverage_report, full)
+        self.assertIsInstance(rep, dict, "P19.run-arms: coverage_report returns the reading")
+        self.assertEqual((rep["got"]["missing"], rep["specs"], len(rep["entries"]), sorted(rep["deferred"])),
+                         ([], specs, len(specs), ["G"]), "P19.run-arms: coverage_report on a full register")
+        study = self.study_copy()
+        self.edit_draft(study, lambda d: d["deferred_arms"]["G"].update(status="running"))
+        rep = self.call(self.CLAUSE, wp.coverage_report, full, study)
+        self.assertEqual(rep.get("deferred") if isinstance(rep, dict) else rep, {},
+                         "P19.run-arms: coverage_report reads the study it is given")
+        live = self.call(self.CLAUSE, wp.coverage_report)
+        self.assertIsInstance(live, dict, "P19.run-arms: coverage_report returns the reading")
+        import walk_register as wr
+        self.assertEqual(len(live["entries"]), len(wr.registered(wr.REHEARSALS)),
+                         "P19.run-arms: with no base, the study's own register")
+        no_g = self.rehearsals([entry(s, f"walk-{i}") for i, s in enumerate(specs) if s is not g[0]])
+        code, out = self.cli(self.CLAUSE, ["--coverage", "--require-run-arms", "--base", str(no_g)])
+        self.assertEqual(code, 0, f"P19.run-arms: a deferred arm's gap alone exits 0: {out[-300:]}")
+        self.assertEqual(out.splitlines()[-1], "ok: every required walk of the arms the freeze runs is covered",
+                         "P19.run-arms")
+        for line in want:
+            self.assertIn(line, out, "P19.run-arms: the deferred arm is printed")
+        a_spec = next(s for s in specs if s["arm"] == "A")
+        no_a = self.rehearsals([entry(s, f"walk-{i}") for i, s in enumerate(specs) if s is not a_spec])
+        code, out = self.cli(self.CLAUSE, ["--coverage", "--require-run-arms", "--base", str(no_a)])
+        self.assertEqual(code, 1, f"P19.run-arms: a gap in arm A exits 1: {out[-300:]}")
+        self.assertEqual(out.splitlines()[-1], "FAIL --require-run-arms: 1 required walk(s) of the arms the freeze "
+                         "runs are missing (the lines above name each)", "P19.run-arms")
+        for argv in (["--list", "--require-run-arms"], ["--coverage", "--require-run-arms", "--require-complete"]):
+            code, out = self.cli(self.CLAUSE, argv + ["--base", str(full)])
+            self.assertEqual(code, 2, f"P19.run-arms: {argv} is refused")
+            self.assertIn("--require-run-arms goes with --coverage, without --require-complete", out, "P19.run-arms")
+        code, out = self.cli(self.CLAUSE, ["--coverage", "--base", str(no_a)])
+        self.assertEqual(code, 0, "P19.run-arms: plain --coverage is unchanged")
+        self.assertNotIn("--require-run-arms", out, "P19.run-arms: plain --coverage is unchanged")
+
+
 BOUND = {"P2.dropped": "P2Dropped.test_a_dropped_task_or_wording_changes_the_figures",
          "P3.halves": "P3Halves.test_every_task_and_half_on_every_planned_model",
          "P4.off-design": "P4OffDesign.test_an_entry_outside_the_plan_is_reported_never_counted",
@@ -1148,7 +1226,8 @@ BOUND = {"P2.dropped": "P2Dropped.test_a_dropped_task_or_wording_changes_the_fig
          "P14.cli": "P14Cli.test_the_command_line_exits",
          "P16.scratch-only": "P16ScratchOnly.test_a_path_shaped_walk_id_writes_nothing_outside_the_scratch",
          "P17.wrong-type": "P17WrongType.test_a_field_of_the_wrong_type_is_skipped_never_a_crash",
-         "P18.pending": "P18Pending.test_a_pending_walk_covers_nothing"}
+         "P18.pending": "P18Pending.test_a_pending_walk_covers_nothing",
+         "P19.run-arms": "P19RunArms.test_the_freeze_requires_the_arms_it_runs"}
 WITNESSES = {name: (BOUND[clause], clause) for name, (clause, _, _) in mutants().items()}
 
 

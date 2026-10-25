@@ -57,13 +57,19 @@ WALK_COMMANDS = (
     # glitch-6b's recheck-coverage ruling (15 Oct 2026): a counted recheck has been re-derived at freeze
     ("walk_regrade.py", "--check"),
 )
+# Pre-freeze review 1 (lane L1), two freeze gates over the walks, kept apart from WALK_COMMANDS because the review
+# brief names WALK_COMMANDS one by one and is pinned byte-identical across rounds (review_kit/rounds.py); the brief's
+# "each command of COMMANDS" covers these. MAJOR 4 part 3: every required walk of an arm the freeze runs is covered by
+# a graded walk (a deferred arm's coverage recorded); m6: every walk held to the draft's version pins, the image locks'
+# ids and the pinned gars tree.
+WALK_PIN_COMMANDS = (("walk_plan.py", "--coverage", "--require-run-arms"), ("walk_pins.py", "--check"))
 COMMANDS = (
     ("test_round4.py",), ("copy_manifest.py", "--check"),
     ("tests/test_box_integration.py",), ("tests/test_pipeline.py",),
     ("probes4.py", "--check"), ("build_draft.py", "--check"),
     ("leak_grep.py", "--check"), ("holdout.py", "--check"),
     ("review_kit/rounds.py", "--check"),
-) + WALK_COMMANDS
+) + WALK_COMMANDS + WALK_PIN_COMMANDS
 
 
 # W8B fold (lane w8b-holdout-digests; glitch-1b's rulings Q7 and Q8 at the w8b hand-back, Mon 12 Oct 2026 09:08 EDT,
@@ -98,9 +104,23 @@ def holdout_written_problems(frozen: dict, source: dict) -> list[str]:
     return problems
 
 
-def freeze_command(review, holdout_file):
+def freeze_command(review, holdout_file, beacon_reading=None):
     return ("freeze.py", "--review-commit", review, "--rehearsal", "--write") + (
-        () if holdout_file is None else ("--holdout-digests", str(holdout_file)))
+        () if holdout_file is None else ("--holdout-digests", str(holdout_file))) + (
+        () if beacon_reading is None else ("--beacon-reading", str(Path(beacon_reading).resolve())))
+
+
+# Pre-freeze review 1, MAJOR 9 (lane L1): the rehearsal's freeze seeds its order from a reading of the draft's drand
+# round, handed in as --beacon-reading (read once on the Mac with order_beacon.py --read <round>); without one the
+# freeze uses a synthetic reading, and the step "take-order beacon" fails, so the rehearsal is never all green.
+def beacon_written_problems(frozen: dict) -> list[str]:
+    """What the rehearsal's frozen file says about its beacon reading: [] for a real-shaped reading, else why not."""
+    reading = frozen.get(freeze.BEACON_READING_KEY)
+    if not isinstance(reading, dict):
+        return ["the frozen file carries no take_order_beacon_reading"]
+    if reading.get("signature") == freeze.SYNTHETIC_SIGNATURE:
+        return [freeze.BEACON_NOT_REHEARSED]
+    return []
 
 
 def owed_step(command):
@@ -195,6 +215,8 @@ def main(argv=None):
     ap.add_argument("--no-holdout-digests", action="store_true")
     ap.add_argument("--holdout-tool", help="aegis holdout/tools/holdout.py (W9): its --check runs on the synthetic "
                                            "fixture; without it the holdout step is OWED and fails")
+    ap.add_argument("--beacon-reading", help="order_beacon.py --read's output for the draft's round (MAJOR 9); "
+                                             "without it the take-order beacon step fails")
     args = ap.parse_args(argv)
     if args.holdout_tool is not None:
         why = holdout_tool_problem(args.holdout_tool)
@@ -247,7 +269,7 @@ def main(argv=None):
         holdout_file = None if args.no_holdout_digests else scratch / HOLDOUT_FILE
         source = (None if holdout_file is None else
                   synthetic_holdout_source(clone / study.rel("prereg-draft.json"), holdout_file))
-        fz = step("freeze", python_command(freeze_command(review, holdout_file)))
+        fz = step("freeze", python_command(freeze_command(review, holdout_file, args.beacon_reading)))
         if fz == 0:
             code, output = git(clone, "add", "--", *(study.rel(p) for p in
                                    ("prereg.json", "COPIED.json", "COPIED.d/freeze.json")))
@@ -265,6 +287,9 @@ def main(argv=None):
                 wrong = holdout_written_problems(json.loads((clone / study.rel("prereg.json")).read_text()), source)
                 steps.append(("holdout digests", 1 if wrong else 0,
                               "; ".join(wrong) or "both fields written from the synthetic digest file"))
+            wrong = beacon_written_problems(json.loads((clone / study.rel("prereg.json")).read_text()))
+            steps.append(("take-order beacon", 1 if wrong else 0,
+                          "; ".join(wrong) or "the order seeded from the --beacon-reading file's round"))
         for command in COMMANDS:
             if command == HOLDOUT_GATE and args.holdout_tool is not None:      # W9: the aegis tool, synthetic fixture
                 code, head = git(clone, "rev-parse", "HEAD")

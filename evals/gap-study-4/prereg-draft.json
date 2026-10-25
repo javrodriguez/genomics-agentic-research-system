@@ -20253,8 +20253,30 @@
   "take_order": null,
   "take_order_seed": null,
   "take_order_function": "freeze.planned_order",
-  "take_order_rule": "in one randomised order interleaved across arm, model, task and half, seeded from the review commit as round 3 seeded its order.",
-  "order_carry": "prereg.py --order <review sha> names freeze.planned_order and shows the head of its permutation of the design's whole planned rows, seeded by the full 40-character sha of the pre-freeze review commit; it refuses until every agent version is pinned.",
+  "take_order_rule": "in one randomised order interleaved across arm, model, task and half, seeded from the registered drand round (take_order_beacon) alone, read at the freeze; round 3 seeded its order from the review commit.",
+  "take_order_beacon": {
+    "network": "drand",
+    "beacon_id": "quicknet",
+    "chain_hash": "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971",
+    "genesis_time": 1692803367,
+    "period_s": 3,
+    "scheme": "bls-unchained-g1-rfc9380",
+    "relays": [
+      "https://api.drand.sh",
+      "https://drand.cloudflare.com"
+    ],
+    "round": "PENDING",
+    "seed_rule": "take_order_seed is the first 40 hex characters of the sha256 of the UTF-8 text 'gap-study-4 take order\\n<the round>\\n<the round's randomness>': nothing the operator commits enters it. The round is the one registered here, read from both relays, which must agree, with its randomness the sha256 of its signature (order_beacon.seed); the freeze refuses unless the commit that registered the round was pushed to javrodriguez/gars-cloud-mirror at least 3600 s before the round is published, by GitHub's own push record, and so must the last commit that changed the draft (order_beacon.push_witness_problem); that push is the mirror of a verified wave, under Javier's standing word \"mirror every verified gap study wave\" (12 Oct 2026, plans/gap-study-round-4/next-slices-2026-10-11.md).",
+    "registration_order": [
+      "1. Fetch every mirror ref into the freezing clone, read-only, before the freeze: freeze.mirror_problem refuses while any commit GitHub records on javrodriguez/gars-cloud-mirror is missing from it, so a force push whose old commits the mirror no longer serves blocks the freeze.",
+      "2. Commit the round: set REGISTERED_ROUND in order_beacon.py to a quicknet round (order_beacon.py --round-at) and re-derive the draft, in one commit on the freeze line.",
+      "3. athena PASS: the whole gars-gap4 battery passes at that commit.",
+      "4. Mirror: push that verified wave to javrodriguez/gars-cloud-mirror with _local/bin/gars-mirror.sh, under Javier's standing word \"mirror every verified gap study wave\" (12 Oct 2026, plans/gap-study-round-4/next-slices-2026-10-11.md); GitHub stamps the push.",
+      "5. Wait: the round must publish at least an hour (3600 s) after GitHub's push stamp; the freeze refuses otherwise, and reads the round only once it is published."
+    ],
+    "residual": "The take order is seeded by the registered drand round and its randomness alone. The freeze enforces that REGISTERED_ROUND, read by parsing order_beacon.py at every commit, changed exactly once in the history it freezes, from None to the round, and that GitHub's own records hold a push of the commit that made that change and a push of the last commit that changed the draft, each at least an hour before the round is published, and that no commit the mirror's records hold registers another round, or changes the draft after the registration, off that one line. The remaining road is only a mirror whose history someone rewrites, or GitHub itself (or the clock its records are stamped by), and among GitHub's own roads its dropping a deleted branch's records: a record GitHub stops returning refuses the freeze only when it is one of the two witnessing pushes, and a dropped record of a candidate branch goes unseen (a mirror rule blocking deletion and force push would close it, a repository setting and Javier's call). The round's BLS signature is not verified (two relays run by different operators must agree instead). The witnessing pushes are mirrors of verified waves, made under Javier's standing word \"mirror every verified gap study wave\" (12 Oct 2026, plans/gap-study-round-4/next-slices-2026-10-11.md); GitHub's activity API documents no retention period (docs.github.com/en/rest/repos/repos#list-repository-activities), so a push record GitHub no longer returns for a witnessing push refuses the freeze, never passes it."
+  },
+  "order_carry": "prereg.py --order <seed> names freeze.planned_order and shows the head of its permutation of the design's whole planned rows, seeded by a full 40-character lowercase hex seed; it refuses until every agent version is pinned. The frozen seed is order_beacon.seed of the registered drand round alone, and prereg.py --order-from-beacon refuses until that round is published.",
   "image_locks": [
     {
       "path": "box/codex/image.lock",
@@ -26186,6 +26208,7 @@
     "/owed/0": "Pre-freeze review 1's fold plan row 1 (review cc83aac6 MINOR 3): the static read of the pinned Claude Code 2.1.296 package is owed; the take-a image on athena holds it, read in L4's close.",
     "/price_table": "R15 CP5-req 54: published per-call costs read a dated vendor price table (costs.py:81-139, 214); the money gate reads the ledger's cost per try.",
     "/stats_design_inputs/floors": "V5, R17: the published probes table exposes no floor field; the table owner must supply one.",
+    "/take_order_beacon/round": "Pre-freeze review 1, MAJOR 9: a drand quicknet round whose time falls after the review of this draft can be committed, chosen when the draft is regenerated for that review (order_beacon.py --round-at).",
     "/walk_counts/inherited_shapes/0": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
     "/walk_counts/inherited_shapes/1": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
     "/walk_counts/off_path_offers": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
@@ -26199,6 +26222,7 @@
       "/owed/0",
       "/price_table",
       "/stats_design_inputs/floors",
+      "/take_order_beacon/round",
       "/walk_counts/inherited_shapes/0",
       "/walk_counts/inherited_shapes/1",
       "/walk_counts/off_path_offers",

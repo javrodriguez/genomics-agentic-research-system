@@ -24,6 +24,7 @@ REPO = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 import study
 import variants
+import order_beacon
 import harness_bookkeeping
 from box import image_lock, run_take, scan_record, take_config
 
@@ -206,12 +207,20 @@ def assemble(root=None):
             "rows": rows, "counts": {"pairs": len(tasks), "by_arm": dict(collections.Counter(r["arm"] for r in rows)),
                                       "tries": len(rows), "half_cells": len({r["half_cell"] for r in rows})},
             "take_order": None, "take_order_seed": None, "take_order_function": "freeze.planned_order",
-            "take_order_rule": "in one randomised order interleaved across arm, model, task and half, seeded from the review commit as round 3 seeded its order.",
+            # Pre-freeze review 1, MAJOR 9 (lane L1; the lane orchestrator's ruling 1): the review commit could be re-made
+            # to choose the order, so the seed is a public drand round registered here alone, whose value no one knows
+            # until it is published (order_beacon.py); the rule, the chain, the relays and the residual are its words.
+            "take_order_rule": ("in one randomised order interleaved across arm, model, task and half, seeded from the "
+                                "registered drand round (take_order_beacon) alone, read at the freeze; round 3 seeded "
+                                "its order from the review commit."),
+            "take_order_beacon": order_beacon.registration(),
             # W6D-R1-2 and W7A-R1-4 (lane w7a): the --order that exists (prereg.order -> freeze.planned_order,
             # seed_problem) and what it prints (the name, the row count, the seed's head and the first rows).
-            "order_carry": ("prereg.py --order <review sha> names freeze.planned_order and shows the head of its "
-                            "permutation of the design's whole planned rows, seeded by the full 40-character sha of "
-                            "the pre-freeze review commit; it refuses until every agent version is pinned."),
+            "order_carry": ("prereg.py --order <seed> names freeze.planned_order and shows the head of its "
+                            "permutation of the design's whole planned rows, seeded by a full 40-character "
+                            "lowercase hex seed; it refuses until every agent version is pinned. The frozen seed is "
+                            "order_beacon.seed of the registered drand round alone, and prereg.py --order-from-beacon "
+                            "refuses until that round is published."),
             "image_locks": locks, "version_pins": pins}
 
 
@@ -1198,6 +1207,9 @@ PENDING_REASONS = {
     "deterministic_layer_note": "D8 lines 339-345: the hook positive control's record supplies the vendor arms' evidence.",
     "owed": "Pre-freeze review 1's fold plan row 1 (review cc83aac6 MINOR 3): the static read of the pinned Claude Code "
             "2.1.296 package is owed; the take-a image on athena holds it, read in L4's close.",
+    "take_order_beacon": ("Pre-freeze review 1, MAJOR 9: a drand quicknet round whose time falls after the review of "
+                          "this draft can be committed, chosen when the draft is regenerated for that review "
+                          "(order_beacon.py --round-at)."),
 }
 
 
@@ -1666,6 +1678,9 @@ OWNER_SLOTS = {
                                 ("base", "harness/version", "image_id", "python"),
                                 ("base", "harness/version", "image_id", "python"),
                                 ("base", "image_id", "python"))) for key in keys},
+    # lane pf1-l1-freeze-gates (pre-freeze review 1, MAJOR 9): the drand round the take order is seeded by, a positive
+    # integer chosen when the draft is regenerated for its review (order_beacon.REGISTERED_ROUND)
+    "/take_order_beacon/round": "round",
 }
 
 
@@ -1706,6 +1721,8 @@ def owner_value_missing(value, kind):
             and isinstance(value["source_sentence_sha256"], str)
             and re.fullmatch(r"[0-9a-f]{64}", value["source_sentence_sha256"])
             and isinstance(value["commitment"], dict) and commitment_value(value["commitment"]))
+    if kind == "round":
+        return not (type(value) is int and value > 0)
     if kind == "list" and isinstance(value, list):
         # lane d8-furniture fold (glitch-f1, 22 Oct 2026): an empty list is missing (all() of nothing was a pass)
         return not value or not all(supplied_text(v) for v in value)

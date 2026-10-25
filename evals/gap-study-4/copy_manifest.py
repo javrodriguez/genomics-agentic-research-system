@@ -36,7 +36,13 @@ exist, and the freeze writes it once from derive(). What --check refuses:
   - (N2) a reason that is not a non-empty string;
   - (review round 2) any file whose bytes are a round 3 record at the source or base commit, whatever its
     status; an `edited` copy whose bytes are already a file under evals/ (it is an `identical` copy of that file);
-    and any copy of the first study's three named fixture builders that is not `identical`.
+    and any copy of the first study's three named fixture builders that is not `identical`;
+  - (pre-freeze review 1, m8, lane pf1-l1-freeze-gates) an `edited` copy that is a near-rewrite, more than
+    NEAR_REWRITE_SHARE of its lines changed from its source (difflib's matching lines over the longer side), whose
+    reason cites no commit, or any hex token that is not a commit in HEAD's history that changed the file after its
+    copy commit (citation_problem; the review of 53d0e9af, finding 3, and its closure check, finding 2): a short
+    reason over a rewritten file no longer passes, nor a bare date, a made-up hash or a commit that edited something
+    else. What it cannot see: whether the cited commits explain every line; that stays the reviews' job.
 
 RECORDS ARE CLAIMED BY THEIR OWN LEDGERS, NOT BY FRAGMENTS (lane w8a, ruling W8-layout-1, README Q4; this file moved
 from lane w1a to lane w8a under ruling W8A-gap4-1). A file inside a walk folder, rehearsals/<walk>/**, is claimed
@@ -126,6 +132,9 @@ ROUND3_RECORDS = tuple(f"{SOURCE_DIR}/{r}" for r in (
     "prereg.json", "prereg-draft.json", "takes.json", "COPIED.json", "RESULT.md", "COSTS.md", "PROGRESS.md",
     "test_round3.py", "results/", "transcripts/", "rehearsals/", "pauses/", "walks/", "verification/", "cases/",
     "graders/", "review_kit/rounds.json", "review_kit/prefreeze-"))
+# Pre-freeze review 1, m8: the registered changed-line share above which an edited copy is a near-rewrite, whose reason
+# must cite a commit that edited it (citation_problem).
+NEAR_REWRITE_SHARE = 0.5
 # The empty blob is every empty file; an empty new file copies nothing.
 EMPTY_BLOB = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
 
@@ -222,6 +231,51 @@ def record_blobs() -> set[str]:
             blobs |= found
         _RECORD_BLOBS = blobs - {EMPTY_BLOB}
     return _RECORD_BLOBS
+
+
+def changed_share(orig: bytes, copy: bytes) -> float:
+    """The share of lines an edit changed: 1 less difflib's matching lines over the longer side's line count."""
+    import difflib
+    a = orig.decode("utf-8", errors="replace").splitlines()
+    b = copy.decode("utf-8", errors="replace").splitlines()
+    kept = sum(m.size for m in difflib.SequenceMatcher(None, a, b, autojunk=False).get_matching_blocks())
+    return 1 - kept / max(len(a), len(b), 1)
+
+
+COMMIT_TOKEN = re.compile(r"(?<![0-9a-f])[0-9a-f]{8,40}(?![0-9a-f])")
+
+
+# The citation sentence lane pf1-l1-freeze-gates appends to each near-rewrite's reason (m8): the strict rule reads
+# the tokens inside it; every other hex token in a reason is its owner's prose (the second closure check of 2971d1d7,
+# minor 2) and needs only to be a commit in HEAD's history.
+CITATION_MARK = " Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates"
+
+
+def citation_problem(path: str, why: str) -> str | None:
+    """Why a near-rewrite's reason does not cite the commits that edited it, or None (the review of 53d0e9af, finding
+    3, its closure check, finding 2, and the second closure check, minor 2). The reason must carry this lane's
+    citation sentence (CITATION_MARK), and every 8-to-40 hex token inside it must be a commit in HEAD's history that
+    changed this file after its copy commit (the first commit in its history): a bare date, a hash that names nothing,
+    a commit on another branch, the copy commit or a commit that never touched the file each refuse, and one good
+    citation never covers a bad one. Every hex token elsewhere in the reason must be a commit in HEAD's history."""
+    why = why or ""
+    head, mark, sentence = why.partition(CITATION_MARK)
+    strict = COMMIT_TOKEN.findall(sentence) if mark else []
+    if not strict:
+        return "its reason carries no citation sentence naming a commit that edited it"
+    listed = git("log", "--full-history", "--format=%H", "--", study.rel(path))
+    history = listed.stdout.decode().split() if listed.returncode == 0 else []
+    edits = set(history[:-1])            # newest first; the last is the copy commit
+    for t, must_edit in [(t, False) for t in COMMIT_TOKEN.findall(head)] + [(t, True) for t in strict]:
+        got = git("rev-parse", "--verify", "--quiet", f"{t}^{{commit}}")
+        if got.returncode != 0:
+            return f"its reason cites {t}, which resolves to no commit"
+        full = got.stdout.decode().strip()
+        if git("merge-base", "--is-ancestor", full, "HEAD").returncode != 0:
+            return f"its reason cites {t}, a commit outside HEAD's history"
+        if must_edit and full not in edits:
+            return f"its reason cites {t}, which did not change it after its copy commit"
+    return None
 
 
 def is_record(src: str) -> bool:
@@ -413,6 +467,13 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
             out.append(f"{path} ({lane}) copies the shared builder {src}, which is uneditable: identical only")
         if status == "edited" and not why:
             out.append(f"{path} ({lane}) differs from {src} and no reason is recorded")
+        elif status == "edited" and differs:
+            share = changed_share(orig, copy)
+            if share > NEAR_REWRITE_SHARE:
+                problem = citation_problem(path, why)
+                if problem:
+                    out.append(f"{path} ({lane}) is a near-rewrite of {src} ({share:.0%} of its lines changed, above "
+                               f"{NEAR_REWRITE_SHARE:.0%}) and {problem}")
         if path in UNEDITABLE and (differs or status != "identical"):
             out.append(f"{path} ({lane}) is a copied fixture builder and differs from {src}, or is recorded as "
                        f"edited; that is a FAIL, not a manifest entry")
