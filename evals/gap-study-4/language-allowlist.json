@@ -245,6 +245,13 @@
       "line_text": "- Every file is above 50% changed (lowest study.py 0.52, highest costs.py 0.91).",
       "ruled": "2026-10-25",
       "why": "Bound record, never edited: lanes/REVIEW-pf1-l1-53d0e9a.md is the fresh independent review of lane pf1-l1-freeze-gates at 53d0e9af (VERDICT CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (25 Oct 2026). The share is the reviewer's measure of a file's changed lines against copy_manifest's registered NEAR_REWRITE_SHARE, not a rate about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-l1-84ab639.md",
+      "pattern": "percentage",
+      "line_text": "- language-allowlist.json: the w3c line text was updated to the re-cited reason, and an entry was added for my committed review's \"50%\" line. Both are quotations of records, with the ruling date given.",
+      "ruled": "2026-10-25",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-l1-84ab639.md is the closure check of lane pf1-l1-freeze-gates at 84ab6393 (VERDICT CHANGES), committed as its reviewer wrote it on the lane orchestrator's word (25 Oct 2026). The share is quoted from the reviewer's earlier review line it describes, not a rate about any model or take."
     }
   ]
 }
