@@ -794,6 +794,28 @@ def cut_tail_problem(stream: list, sess: list):
             f"it never changes one")
 
 
+def _turn_line_units(session_text: str) -> list:
+    """(turn, units) for each content-bearing main-thread line of the session file, in order (turn 0 before the first
+    operator line)."""
+    turn, out = 0, []
+    for raw in (session_text or "").split("\n"):
+        if not raw.strip():
+            continue
+        try:
+            rec = json.loads(raw)
+        except ValueError:
+            continue
+        if not isinstance(rec, dict) or rec.get("isSidechain") is True:
+            continue
+        if _is_operator_line(rec):
+            turn += 1
+            continue
+        got = _units(rec)
+        if got:
+            out.append((turn, got))
+    return out
+
+
 def unconfirmed_session_lines(stream_texts: list, session_text: str, cut=()) -> set:
     """The session file's line indices (0-based, newline-split) that hold only the one extra unit a cut turn's tail
     may carry when the stream lags: it has no host copy, so nothing the take is graded or classified on reads it (the
@@ -878,6 +900,13 @@ def content_problems(stream_units: list, session_text: str, cut=()) -> list:
     for n, (stream, sess) in enumerate(zip(stream_units, turns[1:]), 1):
         if n in set(cut):
             why = cut_tail_problem([tuple(u) for u in stream], [tuple(u) for u in sess])
+            if why is None and len(sess) == len(stream) + 1:
+                # the fourth closure check of 2ab2c8f5: the one extra unit must sit alone on its line, or it could not
+                # be left out of grading without cutting a line in two; the CLI writes one block per record
+                lines = [us for t, us in _turn_line_units(session_text) if t == n]
+                if not lines or len(lines[-1]) != 1:
+                    why = ("the session file's one unit past the stream shares its line with another unit, a shape the "
+                           "CLI never writes, so it cannot be left out of grading")
             if why:
                 out.append(f"turn {n} (cut, as the host records): {why}")
             continue

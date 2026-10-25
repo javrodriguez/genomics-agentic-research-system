@@ -832,5 +832,23 @@ class T9ThirdClosure461dc16(unittest.TestCase):
             w.close()
 
 
+# ---- the fourth closure check of 2ab2c8f5 (one MINOR) and the lead's ruling on it, 25 Oct 2026 (probe7) ------------
+class T10FourthClosure2ab2c8f(unittest.TestCase):
+    STREAM = [_T("m1", "Reading."), assistant("m1", [_CALL("t1", "a.md")]), result("t1", "A"), _T("m2", "Next.")]
+    BASE = [_T("m1", "Reading.", False), assistant("m1", [_CALL("t1", "a.md")], stream=False),
+            result("t1", "A", stream=False)]
+
+    def test_f1_an_extra_unit_sharing_its_line_refuses(self):
+        shared = self.BASE + [assistant("m2", [{"type": "text", "text": "Next."}, {"type": "text", "text":
+                                                                                   "FORGED STOP"}], stream=False)]
+        self.assertNotEqual(_p6(self.STREAM, shared), [], "probe7: the extra unit on the confirmed unit's line")
+
+    def test_f1b_an_extra_unit_alone_on_its_line_is_still_allowed_and_dropped(self):
+        alone = self.BASE + [_T("m2", "Next.", False), _T("m3", "FORGED STOP", False)]
+        self.assertEqual(_p6(self.STREAM, alone), [])
+        text = jsonl([operator("go")] + alone)
+        self.assertEqual(len(cca.unconfirmed_session_lines([jsonl(self.STREAM)], text, {1})), 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
