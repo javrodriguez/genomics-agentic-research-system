@@ -972,7 +972,7 @@ def prefreeze_readings():
             "absolute path outside the take's own run tree that a tool call or its result names (outside_checkout_reads "
             "at line 325, outside_home_reads at line 440, outside_temp_reads at line 586) is counted as the "
             "read-outside-the-checkout event (event_counts, lines 1910-1915) and lifted from the reasons check4 hands "
-            "to routing (lines 1971-1984; check4_walk at line 2389 and check4_vendor at line 5565 return the same "
+            "to routing (lines 1971-1984; check4_walk at line 2389 and check4_vendor at line 5819 return the same "
             "shape), so routing never sees it as a refusal (routing.json checker_reasons_become_events, line 88). The "
             "take is graded as usual, its text masked: routing.json's outside-reach annotation (line 295) marks the "
             "take's committed outcome, and the drive step adds the count into the take's events.outside_reach "
@@ -1473,7 +1473,7 @@ ROUND_4_LIMITATIONS = [
              "passes every check: the checks bind the records to each other, to the pinned images and to the host's own "
              "captures, not to what happened. The narrower road a take itself could use, a child of the agent writing "
              "into the harness's own stdout pipe, is named in box_residuals (transcript content and the one uid).",
-     "source": "pre-freeze review 1, m11; check_take.py transcript_content_problems (line 7167); box_residuals "
+     "source": "pre-freeze review 1, m11; check_take.py transcript_content_problems (line 7421); box_residuals "
                "\"transcript content and the one uid\", lane pf1-l3"},
     {"name": "the machines and the runner",
      "text": "The machines and the study's own runner are trusted: athena's kernel, Docker daemon and clock, the Mac's, "

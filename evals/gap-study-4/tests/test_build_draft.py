@@ -1628,7 +1628,7 @@ class PrefreezeClose(unittest.TestCase):
                          (586, "def outside_temp_reads("), (1910, "def event_counts("),
                          (1971, "    reasons, kept, lifted = [], [], set()"),
                          (1984, '    return {"reasons": reasons, "problems": kept, "events": counts'),
-                         (2389, "def check4_walk("), (5565, "def check4_vendor(")):
+                         (2389, "def check4_walk("), (5819, "def check4_vendor(")):
             self.assertTrue(ck[n - 1].startswith(start), f"C11.lines: check_take.py {n}")
         self.assertIn("EVENT_OUTSIDE: len(outside_checkout_reads(path)) + len(outside_home_reads(path))",
                       "\n".join(ck[1909:1915]), "C11.lines")
@@ -1743,7 +1743,7 @@ class PrefreezeClose(unittest.TestCase):
         self.assertIn("nothing the operator commits enters it", d["take_order_beacon"]["seed_rule"], "C5.seed")
         # the fabricated record set and the vendor (m11, L2)
         ck = lines_of("check_take.py")
-        self.assertTrue(ck[7166].startswith("def transcript_content_problems("), "C5.m11")
+        self.assertTrue(ck[7420].startswith("def transcript_content_problems("), "C5.m11")
         (one_uid,) = [r for r in d["box_residuals"] if r.get("name") == "transcript content and the one uid"]
         self.assertIn("/proc/<the CLI's pid>/fd/1", one_uid["text"], "C5.m11")
         self.assertIn("as a complete fabricated record set does", one_uid["text"], "C5.m11")
@@ -3015,7 +3015,7 @@ def expected_prefreeze_reading(i):
             "absolute path outside the take's own run tree that a tool call or its result names (outside_checkout_reads "
             "at line 325, outside_home_reads at line 440, outside_temp_reads at line 586) is counted as the "
             "read-outside-the-checkout event (event_counts, lines 1910-1915) and lifted from the reasons check4 hands "
-            "to routing (lines 1971-1984; check4_walk at line 2389 and check4_vendor at line 5565 return the same "
+            "to routing (lines 1971-1984; check4_walk at line 2389 and check4_vendor at line 5819 return the same "
             "shape), so routing never sees it as a refusal (routing.json checker_reasons_become_events, line 88). The "
             "take is graded as usual, its text masked: routing.json's outside-reach annotation (line 295) marks the "
             "take's committed outcome, and the drive step adds the count into the take's events.outside_reach "
