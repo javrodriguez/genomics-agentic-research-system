@@ -15,7 +15,9 @@ typed; arms O and G count as before.
                  is harness-error; their any_of and all_of conditions on checker_reasons); on the live table it holds
                  harness-condition-violated, nested-agent and transcript-mismatch; a synthetic table without the
                  generic operator-reason row, with that row routed graded, or with one added has-row (in any_of, or
-                 in all_of) moves the set to what the derivation says
+                 in all_of; a none_of reason stops the route and never joins the set) moves the set to what the
+                 derivation says; on HEAD's table the set holds every reason a non-graded after-first-turn row names
+                 (review MINOR 4), and without the generic row it would not, so the instrument is armed
   S2.head        pending_walk.head_routing_table reads the table as HEAD's commit holds it, never the working tree:
                  an uncommitted edit moves nothing, a new commit moves the set; a table routing.check_table refuses,
                  bytes that are not JSON and a folder that is no repository raise StrictUnreadable; a GIT_DIR in the
@@ -24,10 +26,14 @@ typed; arms O and G count as before.
                  strict reason reads STRICT_WHY; a reason outside the set counts; without strict nothing changes; a
                  constant-bound reason still reads constant-bound; on the recheck road the latest recheck decides (a
                  stale clean check.json with a recheck carrying harness-condition-violated reads STRICT_WHY: the
-                 plan's named mutant, w165's case); on the pending road the same
+                 plan's named mutant, w165's case); on the pending road the same; a set derived from a table whose
+                 vocabulary lacks a reason counts that reason as a hit, a known unrouted reason still counts
+                 (review MINOR 2)
   S4.uncounted   uncounted_walks(base, walks, strict_walks): only the strict walks are judged strictly; a HEAD table
                  that cannot be read leaves every strict walk uncounted, fail closed, and no other; with no strict walk
-                 the table is never read
+                 the table is never read; a pending walk with a graded regrade and a nested-agent recheck reads
+                 STRICT_WHY through coverage_status and uncounted_walks (review MINOR 1); with operator-lines added to
+                 the working tree's table and absent at HEAD, a strict walk carrying it is not counted (MINOR 2)
   S5.records     the real register at this head: every arm A walk walk_plan's coverage counts has an effective
                  reading with no reason HEAD's routing routes to harness-error, and every walk of another arm reads
                  exactly as it does without the strict rule
@@ -108,7 +114,7 @@ def generic_graded(table: dict) -> dict:
     return t
 
 
-def with_has_row(table: dict, reason: str, *, all_of=False) -> dict:
+def with_has_row(table: dict, reason: str, *, all_of=False, none_of=None) -> dict:
     t = without_generic(table)
     has = [{"path": "checker_reasons", "op": "has", "value": reason}]
     row = {"id": "synthetic-has-row", "when": "after-first-turn", "route": "harness-error",
@@ -116,8 +122,29 @@ def with_has_row(table: dict, reason: str, *, all_of=False) -> dict:
            "source": "a synthetic row of test_walk_cover_strict"}
     if all_of:
         row["all_of"] = has
+    if none_of is not None:                      # review NIT 1: a none_of reason stops the route, never joins the set
+        row["none_of"] = [{"path": "checker_reasons", "op": "has", "value": none_of}]
     t["rows"].append(row)
     return t
+
+
+def without_reason(table: dict, reason: str) -> dict:
+    t = copy.deepcopy(table)
+    t["operator_reasons"] = [r for r in t["operator_reasons"] if r != reason]
+    return t
+
+
+def non_graded_names(table: dict) -> set:
+    """Review MINOR 4: every reason a non-graded row of the after-first-turn phase (or any phase) names through an
+    any_of or all_of condition on checker_reasons; the tests' own reading."""
+    out = set()
+    for row in table["rows"]:
+        if row["route"] == "graded" or row["when"] not in ("after-first-turn", "any"):
+            continue
+        for cond in list(row.get("any_of", [])) + list(row.get("all_of", [])):
+            if cond.get("path") == "checker_reasons":
+                out |= set(table["operator_reasons"]) if cond["op"] == "in_operator_reasons" else {cond["value"]}
+    return out
 
 
 # ---- walk folders ----
@@ -152,6 +179,7 @@ class Folder:
         folder.mkdir()
         if pending:
             (folder / "check.json").write_text(json.dumps({"walk": walk, "status": pw.PENDING, "why": "a stand-in"}))
+            (folder / "grade.json").write_text(json.dumps({"graded": False, "status": pw.PENDING, "why": "a stand-in"}))
         else:
             (folder / "grade.json").write_text('{"graded": true, "row": {}, "grade": {"label": "stand-in"}}\n')
             (folder / "check.json").write_text(json.dumps(check_doc(walk, reasons, digest or ct.checker_constants_sha256())))
@@ -205,7 +233,8 @@ def derived_cases(mod) -> list:
         out.append(f"S1.derived: the live set lacks one of {HCV}, {NESTED}, {MISMATCH}: {sorted(got)}")
     for name, t in (("no generic row", without_generic(table)), ("generic row graded", generic_graded(table)),
                     ("one has-row", with_has_row(table, NESTED)),
-                    ("one all_of has-row", with_has_row(table, HCV, all_of=True))):
+                    ("one all_of has-row", with_has_row(table, HCV, all_of=True)),
+                    ("one has-row with a none_of", with_has_row(table, HCV, none_of=NESTED))):
         if routing.check_table(t):
             out.append(f"S1.derived: {name}: the synthetic table is refused: {routing.check_table(t)[:2]}")
         try:
@@ -215,6 +244,17 @@ def derived_cases(mod) -> list:
             continue
         if got != derive(t):
             out.append(f"S1.derived: {name}: {sorted(got)} != the derivation {sorted(derive(t))}")
+    try:                                         # review MINOR 4: on HEAD's table no non-graded reason is left out
+        head = mod.head_routing_table()
+        got = set(mod.harness_error_reasons(head))
+    except Exception as exc:                     # noqa: BLE001
+        return out + [f"S1.derived: HEAD's table raised {exc!r}"]
+    if not non_graded_names(head) <= got:
+        out.append(f"S1.derived: HEAD's set leaves out the non-graded reasons "
+                   f"{sorted(non_graded_names(head) - got)}")
+    if non_graded_names(without_generic(head)) <= derive(without_generic(head)):
+        out.append("S1.derived: the MINOR 4 instrument is not armed: without the generic row an aborted-only reason "
+                   "should fall outside the set")
     return out
 
 
@@ -301,6 +341,19 @@ def standing_cases(mod) -> list:
         want("w-stale-hcv", lambda got: got is not None, strict=strict)
         for w in ("w-clean", "w-hcv", "w-nested", "w-other"):
             want(w, None)                        # without strict, nothing changes
+        # review MINOR 2: a set derived from a table whose vocabulary lacks a reason makes that reason a strict hit;
+        # a reason the table knows and does not route to harness-error still counts
+        try:
+            narrow = mod.harness_error_reasons(without_reason(live_table(), "operator-lines"))
+            unrouted = mod.harness_error_reasons(generic_graded(live_table()))
+        except Exception as exc:                 # noqa: BLE001
+            narrow = unrouted = None
+            out.append(f"S3.standing: harness_error_reasons raised {exc!r}")
+        if narrow is not None:
+            want("w-other", strict_why("operator-lines"), strict=narrow)
+            want("w-hcv", strict_why(HCV), strict=narrow)
+            want("w-hcv", None, strict=unrouted)
+            want("w-clean", None, strict=narrow)
         f.close()
         f = Folder()                             # the recheck road: the latest recheck is the reading
         f.walk("w165", [], OLD, recheck=(ct.checker_constants_sha256(), [HCV]))
@@ -363,8 +416,50 @@ def uncounted_cases(mod) -> list:
                 return out + [f"S4.uncounted: with no strict walk the HEAD table was read: {exc!r}"]
         if got != {}:
             out.append(f"S4.uncounted: with no strict walk every graded clean-or-not walk counts as before: {got!r}")
+        # review MINOR 1: a pending walk whose verified regrade grades it and whose recheck carries nested-agent reads
+        # STRICT_WHY through coverage_status and uncounted_walks (the regrade's re-derivation is stood in: graded)
+        p = f.walk("w-p", None, pending=True, recheck=(ct.checker_constants_sha256(), [NESTED]))
+        with mock.patch.object(mod, "_regrade_state", lambda base, walk: "graded"), \
+                mock.patch.object(mod, "head_routing_table", live_table):
+            try:
+                one = mod.coverage_status(f.base, p, strict=frozenset({NESTED}))
+                loose = mod.coverage_status(f.base, p)
+                many = mod.uncounted_walks(f.base, [p], [p])
+            except Exception as exc:             # noqa: BLE001
+                return out + [f"S4.uncounted: the pending road raised {exc!r}"]
+        if not (str(one).startswith(mod.STRICT_WHY) and str(many.get(p)).startswith(mod.STRICT_WHY) and loose is None):
+            out.append(f"S4.uncounted: the pending road: coverage_status {one!r}, without strict {loose!r}, "
+                       f"uncounted_walks {many!r}")
     finally:
         f.close()
+    out += dirty_vocabulary_cases(mod)
+    return out
+
+
+def dirty_vocabulary_cases(mod) -> list:
+    """Review MINOR 2, end to end: HEAD's table lacks operator-lines, the working tree's has it (an uncommitted
+    addition). The vocabulary check reads the working tree, so the walk is readable; the strict road counts the reason
+    as a hit, because HEAD's table does not know it."""
+    out = []
+    tmp = Path(tempfile.mkdtemp(prefix="cover-strict-vocab-"))
+    f = Folder()
+    try:
+        table = live_table()
+        repo = repo_with(without_reason(table, "operator-lines"), tmp)
+        (repo / "routing.json").write_text(json.dumps(table, indent=1))
+        w = f.walk("w-ol", ["operator-lines"])
+        with mock.patch.object(routing, "TABLE_PATH", str(repo / "routing.json")):
+            try:
+                got = mod.uncounted_walks(f.base, [w], [w])
+                loose = mod.uncounted_walks(f.base, [w])
+            except Exception as exc:             # noqa: BLE001
+                return [f"S4.uncounted: the dirty vocabulary raised {exc!r}"]
+        if not str(got.get(w)).startswith(mod.STRICT_WHY) or loose != {}:
+            out.append(f"S4.uncounted: a reason outside HEAD's vocabulary counts on the strict road: {got!r}; "
+                       f"loose {loose!r}")
+    finally:
+        f.close()
+        shutil.rmtree(tmp, ignore_errors=True)
     return out
 
 
@@ -403,10 +498,22 @@ def records_cases() -> list:
 # ---- the witnesses: each one anchored edit of pending_walk.py, and the cases it must turn red ----
 
 WITNESSES = {
-    "strict check dropped": ("    if strict is not None:\n        hit = [r for r in check[\"checker_reasons\"] if r in strict]\n",
-                             "    if False:\n        hit = [r for r in check[\"checker_reasons\"] if r in strict]\n"),
-    "pending road strict check dropped": ("    if strict is not None:\n        hit = [r for r in reasons if r in strict]\n",
-                                          "    if False:\n        hit = [r for r in reasons if r in strict]\n"),
+    "strict check dropped": ("    if strict is not None:\n        hit = strict_hits(check[\"checker_reasons\"], strict)\n",
+                             "    if False:\n        hit = strict_hits(check[\"checker_reasons\"], strict)\n"),
+    "pending road strict check dropped": ("    if strict is not None:\n        hit = strict_hits(reasons, strict)\n",
+                                          "    if False:\n        hit = strict_hits(reasons, strict)\n"),
+    # the review of ff58e02f: MINOR 1 (the pending road through coverage_status), MINOR 2 (HEAD's vocabulary), NIT 1
+    "coverage_status drops strict on the pending road": (
+        "        return checker_standing(base, walk, pending=True, strict=strict) if state",
+        "        return checker_standing(base, walk, pending=True) if state"),
+    "a reason outside HEAD's vocabulary counts": (
+        "    return [r for r in reasons if r in strict or (vocabulary is not None and r not in vocabulary)]\n",
+        "    return [r for r in reasons if r in strict]\n"),
+    "the set carries no vocabulary": ("    return StrictReasons(out, table[\"operator_reasons\"])\n",
+                                      "    return StrictReasons(out)\n"),
+    "none_of conditions read too": (
+        "    conds = [c for r in rows for c in (*r.get(\"any_of\", []), *r.get(\"all_of\", []))\n",
+        "    conds = [c for r in rows for c in (*r.get(\"any_of\", []), *r.get(\"all_of\", []), *r.get(\"none_of\", []))\n"),
     "coverage_status drops strict on the graded road": ("        return checker_standing(base, walk, strict=strict)\n",
                                                         "        return checker_standing(base, walk)\n"),
     "every row read, not only harness-error rows": (
@@ -414,7 +521,7 @@ WITNESSES = {
         "    rows = list(table[\"rows\"])\n"),
     "any_of only": ("    conds = [c for r in rows for c in (*r.get(\"any_of\", []), *r.get(\"all_of\", []))\n",
                     "    conds = [c for r in rows for c in (*r.get(\"any_of\", []),)\n"),
-    "a constant list": ("    return frozenset(out)\n",
+    "a constant list": ("    return StrictReasons(out, table[\"operator_reasons\"])\n",
                         "    return frozenset({\"harness-condition-violated\", \"nested-agent\", \"transcript-mismatch\"})\n"),
     "the working tree read, not HEAD": ("    raw = _git_show_head(routing.TABLE_PATH)\n",
                                         "    raw = open(routing.TABLE_PATH, \"rb\").read()\n"),

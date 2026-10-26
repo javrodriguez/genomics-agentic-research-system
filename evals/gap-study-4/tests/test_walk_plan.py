@@ -68,6 +68,8 @@ from a typed number, and bind:
                     routes to harness-error covers nothing and is reported with why, an arm O walk with the same
                     reason covers as before, and a clean arm A walk covers; witnesses strict-unread-cli,
                     strict-unread-report, strict-every-arm (pending_walk's own rule: tests/test_walk_cover_strict.py)
+  P21.witness-rule  (the review of ff58e02f, NIT 3) --witnesses reads a bound test that failed by P0.module (a mutant
+                    whose anchor does not occur once, or that does not load) as FAIL, never red
 
 Red first: before walk_plan.py exists every test fails by its own assertion (P0.module), with no error. The helpers
 that call walk_plan (plan, cover, cli) turn any exception other than the documented refusal into a failure carrying
@@ -1240,6 +1242,29 @@ class P19RunArms(Base):
         self.assertNotIn("--require-run-arms", out, "P19.run-arms: plain --coverage is unchanged")
 
 
+class P21WitnessRule(unittest.TestCase):
+    """The review of lane pf1-walk-cover-strict at ff58e02f, NIT 3: run_witnesses reads a P0.module failure as FAIL,
+    never red, and a behavioural assertion carrying the clause as red."""
+    CLAUSE = "P21.witness-rule"
+    METHOD = "P18Pending.test_a_pending_walk_covers_nothing"
+
+    def stderr(self, body: str) -> str:
+        return (f"FAIL: test_a_pending_walk_covers_nothing (__main__.P18Pending.test_a_pending_walk_covers_nothing)\n"
+                f"----\nTraceback (most recent call last):\n{body}\n\n"
+                f"======================================================================\n")
+
+    def test_a_load_refusal_is_never_red(self):
+        rule = globals().get("attributed_red")
+        self.assertTrue(callable(rule), "P21.witness-rule: run_witnesses has no attribution rule of its own")
+        hollow = self.stderr("AssertionError: unexpectedly None : P0.module P18.pending: walk_plan.py does not exist "
+                             "yet or does not load (AssertionError('mutant pending-unread: its anchor occurs 2 times'))")
+        real = self.stderr("AssertionError: Regex didn't match: 'missing  G' : P18.pending")
+        self.assertFalse(rule(hollow, self.METHOD, "P18.pending"), "P21.witness-rule: P0.module is not red")
+        self.assertTrue(rule(real, self.METHOD, "P18.pending"), "P21.witness-rule: a behavioural failure is red")
+        self.assertFalse(rule(real, self.METHOD, "P19.run-arms"), "P21.witness-rule: another clause is not red")
+        self.assertFalse(rule(real, "P18Pending.other", "P18.pending"), "P21.witness-rule: another test is not red")
+
+
 class P20Strict(Base):
     """Lane pf1-walk-cover-strict, OD131 (Javier, 25 Oct 2026: "walk-cover strict"): a Claude walk counts as covered
     only if it rechecks clean under the harness as it will be frozen. walk_plan names arm A's walks strict
@@ -1314,17 +1339,24 @@ def child(argv: list, timeout: int = 110):
     return got.returncode, (json.loads(record[-1]) if record else None), got.stdout, got.stderr
 
 
+def attributed_red(stderr: str, method: str, clause: str) -> bool:
+    """The bound test failed by an AssertionError carrying its clause token. A failure by P0.module is never red (the
+    review of lane pf1-walk-cover-strict at ff58e02f, NIT 3): it means the mutant did not load (an anchor occurring
+    other than once, or a module that refuses), so the guard the witness names was never exercised; four witnesses
+    went hollow that way after lane pf1-l1-freeze-gates repeated their anchored lines."""
+    blocks = re.findall(r"^FAIL: (\w+) \(__main__\.(\w+)\.\w+\)[^\n]*\n(.*?)(?=^=|^Ran |\Z)", stderr, re.M | re.S)
+    return any(f"{cls}.{test}" == method and "AssertionError" in body and "P0.module" not in body and
+               re.search(r"(?<![\w:.-])" + re.escape(clause) + r"(?![\w.-])", body)
+               for test, cls, body in blocks)
+
+
 def run_witnesses(names) -> int:
     red = 0
     chosen = names or sorted(WITNESSES)
     for name in chosen:
         method, clause = WITNESSES[name]
         code, outcome, stdout, stderr = child(["--mutant", name, method])
-        blocks = re.findall(r"^FAIL: (\w+) \(__main__\.(\w+)\.\w+\)[^\n]*\n(.*?)(?=^=|^Ran |\Z)", stderr,
-                            re.M | re.S)
-        attributed = any(f"{cls}.{test}" == method and "AssertionError" in body and
-                         re.search(r"(?<![\w:.-])" + re.escape(clause) + r"(?![\w.-])", body)
-                         for test, cls, body in blocks)
+        attributed = attributed_red(stderr, method, clause)
         clean = bool(outcome) and outcome["failures"] == [method] and outcome["errors"] == [] \
             and outcome["skipped"] == []
         passed = attributed and clean and code != 0

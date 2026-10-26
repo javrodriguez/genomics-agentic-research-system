@@ -204,7 +204,7 @@ def checker_standing(base, walk: str, *, pending: bool = False, strict=None):
     if bound:
         return f"constant-bound checker reason: {', '.join(bound)}"
     if strict is not None:
-        hit = [r for r in check["checker_reasons"] if r in strict]
+        hit = strict_hits(check["checker_reasons"], strict)
         if hit:
             return f"{STRICT_WHY}: {', '.join(hit)}"
     try:
@@ -251,7 +251,7 @@ def pending_standing(base, walk: str, check, strict=None):
     if bound:
         return f"constant-bound checker reason: {', '.join(bound)}"
     if strict is not None:
-        hit = [r for r in reasons if r in strict]
+        hit = strict_hits(reasons, strict)
         if hit:
             return f"{STRICT_WHY}: {', '.join(hit)}"
     try:
@@ -353,6 +353,24 @@ class StrictUnreadable(ValueError):
     pass
 
 
+class StrictReasons(frozenset):
+    """harness_error_reasons' set, carrying the operator_reasons of the table it was derived from (`vocabulary`;
+    None when a plain set is handed in)."""
+
+    def __new__(cls, reasons=(), vocabulary=None):
+        self = super().__new__(cls, reasons)
+        self.vocabulary = None if vocabulary is None else frozenset(vocabulary)
+        return self
+
+
+def strict_hits(reasons, strict) -> list:
+    """The reasons of `reasons` that are strict hits: in `strict`, or outside the vocabulary of the table `strict` was
+    derived from, when it carries one (the review of ff58e02f, MINOR 2: the vocabulary check reads the working tree's
+    table and the strict set HEAD's, so a reason HEAD's table does not know is never counted)."""
+    vocabulary = getattr(strict, "vocabulary", None)
+    return [r for r in reasons if r in strict or (vocabulary is not None and r not in vocabulary)]
+
+
 def _git_show_head(path: str) -> bytes:
     """The bytes HEAD's commit holds at `path` (git show HEAD:./<name>, run beside the file, with no GIT_ variable of
     the environment, so another repository's GIT_DIR is never read); StrictUnreadable when git cannot say."""
@@ -402,7 +420,9 @@ def harness_error_reasons(table: dict) -> frozenset:
     checker_reasons of a row whose route is harness-error (any phase; the row's any_of and all_of) holds when the
     take's checker_reasons is that reason alone, by routing.holds, the table's own evaluator. A row's other conditions
     are not read, so a reason any harness-error row can route there is enough: fail closed, such a walk is not
-    counted. StrictUnreadable when a condition cannot be evaluated."""
+    counted; a none_of condition stops a route and never adds a reason. The set is a StrictReasons carrying the
+    table's operator_reasons, so strict_hits also counts a reason the table does not know as a hit. StrictUnreadable
+    when a condition cannot be evaluated."""
     import routing
     rows = [r for r in table["rows"] if r.get("route") == routing.labels4.HARNESS_ERROR]
     conds = [c for r in rows for c in (*r.get("any_of", []), *r.get("all_of", []))
@@ -414,7 +434,7 @@ def harness_error_reasons(table: dict) -> frozenset:
                 out.add(reason)
         except Exception as exc:  # noqa: BLE001 - an unreadable condition reads nothing, fail closed
             raise StrictUnreadable(f"a harness-error condition cannot be read for {reason!r}: {exc!r}") from exc
-    return frozenset(out)
+    return StrictReasons(out, table["operator_reasons"])
 
 
 def strict_reasons() -> frozenset:
