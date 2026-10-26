@@ -1,0 +1,20 @@
+{
+  "lane": "pf1-l6c",
+  "files": [
+    {
+      "path": "COPIED.d/pf1-l6c.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment. Merge lane L6c (the lane orchestrator's assignment of Mon 26 Oct 2026, under Javier's standing delegation) merges lane/pf1-checker-digest (3a06c7b0), lane/pf1-walk-cover-strict (904b36a3) and lane/pf1-cost-vendors (99308499, holding lane/pf1-l4-close to 7f1bce78) onto freeze/r4-20261021 (e28955f7), each with its own fragment, and adds the records test the pf1-walk-cover-strict review's MINOR 3 asked for on the merged line. No record, transcript, check.json, regrade.json, review, rulings or gitleaksignore file is edited."
+    },
+    {
+      "path": "checks.d/pf1-l6c.txt",
+      "status": "new",
+      "reason": "Merge lane L6c: this lane's listed checks."
+    },
+    {
+      "path": "tests/test_pf1_l6c_cover_records.py",
+      "status": "new",
+      "reason": "Merge lane L6c, the pf1-walk-cover-strict review's MINOR 3 (ruled to the merge lane): on the real merged line, w165, w166 and w168 (arm A, plan-gate) are each named not counted by walk_plan's coverage road, held as stale because their check.json carries the constants-only digest and the bound digest is in force (R1.named, R2.cause), and with the reader put back on the constants-only digest all three count (R3.witness). Red first against lane/pf1-walk-cover-strict alone (904b36a3), where R1 fails with the three covering their specs."
+    }
+  ]
+}
