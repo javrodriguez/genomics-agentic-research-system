@@ -8,6 +8,7 @@ wall_seconds is the first-start to last-end span, including overlap and gaps.
 The normalized call list is cost-calls.json; build_draft supplies price_table in
 the pre-registration. Drivers must supply call IDs, usage and timestamps from
 their vendor records. Missing measurements remain unmeasured, never zero.
+cost_calls.py assembles cost-calls.json from the committed takes, every arm (lane pf1-cost-vendors).
 
 THE PRICE VARIANTS (lane pf1-l4-close, Sun 25 Oct 2026; the lane orchestrator's rulings on review
 REVIEW-pf1-l4-close-291b357, M1 and m5: build what the approved price table's page promised). The pre-registration's
@@ -113,9 +114,28 @@ NOT_BUILT_ITEMS = (
     "A Gemini run on or after 1 Jan 2027 is not re-priced: gemini-3.8-flash is priced at the table's price through 31 "
     "Dec 2026, and re-reading Google's page on the run day, then publishing a re-pricing as a declared deviation, needs "
     "that day's page (the table's lead ruling 5 and its follow-ups on the Gemini run day).",
-    "No step assembles cost-calls.json: an arm A take records its calls in its driver ledger's cost "
-    "(claude_code_adapter.cost_record), and an arm O or arm G take records none (drive.py writes a cost for claude-code "
-    "takes only), so no Codex or Gemini call reaches this accounting.",
+    "drive.py writes a driver ledger cost for claude-code takes only: an arm O or arm G take's ledger cost stays None, "
+    "and its calls are read from the take's retained records when cost-calls.json is assembled (cost_calls.py), not "
+    "by the driver (drive.py is a reader source both acceptance records bind).",
+    "Gemini's tool-use prompt tokens are not priced: the approved table names no row for them, so a Gemini call that "
+    "records any is unmeasured (cost_calls.gemini_usage).",
+)
+# Lane pf1-cost-vendors (26 Oct 2026): what cost_calls.py builds, said as what it does; cost_statement carries each.
+ASSEMBLY_BUILT = (
+    "cost-calls.json is assembled by cost_calls.py from every committed outcome's take folder: an arm A take's calls "
+    "are its driver ledger's cost calls; an arm O take's calls are its last retained rollout's token_usage_record "
+    "lines, one per response id; an arm G take's calls are its replayed session file's gemini messages that record "
+    "tokens",
+    "an arm O call's usage is mapped from the Responses API's counts, whose cached and written input are parts of its "
+    "input and whose reasoning is a part of its output: input is input less cached and written, cache read is cached, "
+    "cache write is written, output is output; Codex records no write duration, so its writes are priced at the 12h "
+    "row, the stated bound",
+    "an arm G call's usage is mapped from the session file's tokens: input is input less cached, cache read is cached, "
+    "output is output plus thoughts (priced at the output row, which Google's page says includes thinking tokens); "
+    "Gemini records no cache write",
+    "a take whose calls cannot all be read, or checked against the totals its turn streams print (Codex's thread "
+    "totals, Gemini's result stats), is assembled as one unmeasured call, so its vendor's priced total reads "
+    "unmeasured, never a partial sum; Gemini's thoughts are not in its result stats and are not checked",
 )
 
 
@@ -242,6 +262,7 @@ def cost_statement(variants):
                      f"bound ({BOUND_RULING[vendor]}), and the call's record says so")
     for vendor, label in sorted(variants["labels"].items()):
         lines.append(f"built: every {vendor} priced cost carries the label \"{label}\"")
+    lines += [f"built: {line}" for line in ASSEMBLY_BUILT]
     return lines + [f"{NOT_BUILT}: {item}" for item in NOT_BUILT_ITEMS]
 
 
