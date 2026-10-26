@@ -1,0 +1,12 @@
+{
+  "cross_check": {
+    "status": "refused",
+    "why": "interaction 1: native: the Gemini projection refused the snapshot: native interaction is incomplete: its last model message ends on tool calls"
+  },
+  "graded": false,
+  "schema": 1,
+  "supersedes": "grade.json",
+  "walk": "w-g24",
+  "walk_commit": "27eef359adf0b874080ef2d2889e377985dea5d0",
+  "why": "not graded, because the native cross-check refused: interaction 1: native: the Gemini projection refused the snapshot: native interaction is incomplete: its last model message ends on tool calls"
+}
