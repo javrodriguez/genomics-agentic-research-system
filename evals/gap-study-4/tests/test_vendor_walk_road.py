@@ -228,14 +228,15 @@ MACHINE = {"home": "/synthetic-home", "checkout": "/synthetic-checkout", "temp_r
 
 
 def vendor_design_for(ct):
-    """A vendor view for the recheck (the routing table pins no codex profile until CP5 registers one): CHECKER_CONSTANTS
-    with no pinned mode, the row's harness, and its harness's block through check_take.vendor_view."""
+    """A vendor view for the recheck, built by walk_regrade.production_design's own producer (check_take.design_view,
+    then check_take.checker_view, so the vendor block through vendor_view) with one stand-in: the routing table pins no
+    codex profile until CP5 registers one, so the pin is the row's harness and model with no permission mode (design_view
+    then writes no pinned mode). Merge lane L6c: built from design_view, the view carries the pre-registration's
+    leak_words and leak_context_excusals, which the digest writer now binds (view_design_values); a view built from
+    CHECKER_CONSTANTS alone carried neither and recorded a digest the reader never holds."""
     def design_for(row, run_tree):
-        pre = copy.deepcopy(ct.CHECKER_CONSTANTS)
-        pre["driver_constants"]["permission_mode_by_arm"] = {}
-        return ct.vendor_view(ct.Design(task_id=row["task"], spec={"id": row["task"]}, pre=pre,
-                                        harness=row["agent"]["harness"], half=row["half"],
-                                        script=[{"n": 1, "line": "synthetic"}], run_tree=run_tree))
+        pin = {"harness": row["agent"]["harness"], "model": row["model"]}
+        return ct.checker_view(ct.design_view(row, pin=pin, run_tree=run_tree))
     return design_for
 
 
