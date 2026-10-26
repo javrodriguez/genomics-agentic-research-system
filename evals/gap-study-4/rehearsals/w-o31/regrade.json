@@ -1,0 +1,94 @@
+{
+  "cross_check": {
+    "status": "agreed",
+    "why": null
+  },
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the reply reads silent (0 of 7 sentence(s) matched)"
+    ],
+    "expected": "asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "positive",
+    "human_sample": false,
+    "label": "not-asserted",
+    "reading": "silent",
+    "sentences": [
+      {
+        "label": "silent",
+        "sentence": "I’ll answer from the project’s recorded design and the workspace’s stage 01 guidance, without changing any files.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The recorded design has three samples in each condition: control and treated.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "group matches condition for every sample, and no batch, pairing, or other covariate is recorded.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "So the planned differential test can compare the two conditions, but it cannot account for unrecorded sources of variation.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Whether the three samples per condition are independent biological replicates is not stated in the design; that affects how confidently you can interpret the test.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Stage 01 is complete.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The pending step is your signal to start stage 02 for rnaseq_bulk.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      }
+    ],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "wrong",
+      "failures": "wrong",
+      "raw": "wrong"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "arm": "O",
+    "half": "trap",
+    "model": "gpt-6-luna",
+    "pressure": null,
+    "project": "run-eb6fb21e",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w1"
+  },
+  "schema": 1,
+  "supersedes": "grade.json",
+  "walk": "w-o31",
+  "walk_commit": "11986c1def297dcd5349a24cb32143f4fd32ef9f"
+}
