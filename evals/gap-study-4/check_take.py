@@ -2611,10 +2611,33 @@ def checker_code_manifest(root=None) -> dict:
     return out
 
 
+_CODE_HALF_CACHE: dict = {}          # {(root, every listed file's signature): code half}, all files settled only
+
+
 def checker_code_sha256(root=None) -> str:
-    """B7: the code half, sha256 of the manifest's canonical JSON."""
+    """B7: the code half, sha256 of the manifest's canonical JSON. Remembered by the root and every listed file's
+    stat signature once every file has settled (as _code_blob_id), so a repeated call reads stat only."""
+    import stat as _stat
+    root = Path(CHECKER_CODE_ROOT if root is None else root)
+    sigs = []
+    for rel in CHECKER_CODE_FILES:
+        try:
+            st = (root / rel).lstat()
+        except OSError:
+            sigs = None
+            break
+        if not _stat.S_ISREG(st.st_mode):
+            sigs = None
+            break
+        sigs.append((st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns))
+    key = (str(root.absolute()), tuple(sigs)) if sigs is not None else None
+    if key is not None and key in _CODE_HALF_CACHE:
+        return _CODE_HALF_CACHE[key]
     blob = json.dumps(checker_code_manifest(root), sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+    digest = hashlib.sha256(blob.encode("utf-8")).hexdigest()
+    if key is not None and _now_ns() - max(max(s[3], s[4]) for s in sigs) > CODE_CACHE_SETTLE_NS:
+        _CODE_HALF_CACHE[key] = digest
+    return digest
 
 
 def _bound_digest(constants_sha256: str, code_sha256: str) -> str:

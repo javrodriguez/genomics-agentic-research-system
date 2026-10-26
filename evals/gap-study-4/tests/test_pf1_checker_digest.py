@@ -347,13 +347,17 @@ def cache_problems(mod=None) -> list:
                 if mod.checker_constants_sha256() != first:
                     out.append("D11-cache: undoing the edit did not restore the digest")
             mod._CODE_CACHE.clear()
+            mod._CODE_HALF_CACHE.clear()
             tree.edit(STUDY + "routing.py", "\n", "\n# a fresh edit\n")
             mod.checker_constants_sha256()
             if str((tree.root / STUDY / "routing.py").absolute()) in mod._CODE_CACHE:
                 out.append("D11-cache: a file written just now was remembered")
+            if any(k[0] == str(tree.root.absolute()) for k in mod._CODE_HALF_CACHE):
+                out.append("D11-cache: a code half over a file written just now was remembered")
     finally:
         tree.close()
         mod._CODE_CACHE.clear()
+        mod._CODE_HALF_CACHE.clear()
     return out
 
 
@@ -403,6 +407,11 @@ CT_MUTANTS = (
     ("cache-ignores-signature", "    if hit is not None and hit[0] == sig:", "    if hit is not None:", "cache"),
     ("fresh-file-cached", "    if _now_ns() - max(st.st_mtime_ns, st.st_ctime_ns) > CODE_CACHE_SETTLE_NS:",
      "    if True:", "cache"),
+    ("half-cache-ignores-signatures", "    key = (str(root.absolute()), tuple(sigs)) if sigs is not None else None",
+     "    key = (str(root.absolute()),) if sigs is not None else None", "cache"),
+    ("fresh-half-cached",
+     "    if key is not None and _now_ns() - max(max(s[3], s[4]) for s in sigs) > CODE_CACHE_SETTLE_NS:",
+     "    if key is not None:", "cache"),
     ("file-dropped", '    "evals/gap-study-4/drive.py",\n', "", "pin"),
     ("missing-file-skipped", "            raise CheckRefused(f\"the checker's code file {rel} is missing or a link",
      "            continue\n            raise CheckRefused(f\"the checker's code file {rel} is missing or a link",
