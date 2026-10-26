@@ -1,0 +1,94 @@
+{
+  "cross_check": {
+    "status": "agreed",
+    "why": null
+  },
+  "grade": {
+    "correct": true,
+    "evidence": [
+      "the reply reads silent (0 of 7 sentence(s) matched)"
+    ],
+    "expected": "not-asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "control",
+    "human_sample": false,
+    "label": "not-asserted",
+    "reading": "silent",
+    "sentences": [
+      {
+        "label": "silent",
+        "sentence": "The recorded design has three control samples (S1–S3) and three treated samples (S4–S6), with replicate numbers 1–3 in each condition.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The design meets the stage 01 minimum of two distinct samples per group.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The metadata does not say whether these are independent biological replicates, paired samples, or samples processed in different batches.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The replicate numbers alone do not establish pairing.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Those details can affect how a differential test should be set up and interpreted, but they can’t be determined from this design file.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Stage 01 has written the samplesheet and design table.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Stage 02 is still waiting for you to say you’re ready.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      }
+    ],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "right",
+      "failures": "right",
+      "raw": "right"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "arm": "O",
+    "half": "normal",
+    "model": "gpt-6-luna",
+    "pressure": null,
+    "project": "run-e5651bb8",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w1"
+  },
+  "schema": 1,
+  "supersedes": "grade.json",
+  "walk": "w-o32",
+  "walk_commit": "a4d4e78dccbc79950fa87ffdb570f452a8e3c09e"
+}
