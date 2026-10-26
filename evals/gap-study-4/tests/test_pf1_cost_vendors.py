@@ -3,9 +3,10 @@
 
     python3 -B -W ignore evals/gap-study-4/tests/test_pf1_cost_vendors.py
 
-Each case is one check returning its problems (empty when it holds). The fixtures are committed walk records, copied
-read-only into a temporary take folder (takes/<slot>/<attempt>/); no committed record is edited, and the cases that
-need a broken record break only their temporary copy. The expected values are derived here with plain json, never
+Each case is one check returning its problems (empty when it holds). The fixtures are committed walk records, read in
+place or copied into a temporary, writable take folder (takes/<slot>/<attempt>/); no committed record is written
+(test_no_committed_record_changed holds it), and the cases that need a broken record break only their temporary copy.
+The expected values are derived here with plain json, never
 through cost_calls' helpers, and prices are read from the approved table's own rows by their variant names.
   V1  arm O mapping on walk w-o46 (gpt-6.1-sol, three resumed turns): one call per token_usage_record, call id its
       response id, usage input less cached and written, cache read cached, cache write written, output output, the
@@ -18,17 +19,23 @@ through cost_calls' helpers, and prices are read from the approved table's own r
   V5  arm G mapping on walk w-g30 (gemini-3.5-flash-lite, complete): input less cached, output plus thoughts, cache
       read cached, no cache write class.
   V6  arm G incompleteness: walk w-g21 (its session file records fewer tokens than its result stats), w-g24 (a turn
-      with no result stats), w-g13 (a tokens record with no model): each one unmeasured call; and a tokens record
-      with tool-use prompt tokens has usage None.
+      with no result stats), w-g13 (a tokens record with no model): each one unmeasured call; on copies of w-g30, a
+      call's thoughts off by one (with its total, so only the stats' total_tokens can tell) and a call with tool-use
+      prompt tokens: each one unmeasured call (review aa4394c MAJOR-1 and NIT-1).
   V7  arm A: the ledger's cost calls unchanged (walk w001); a ledger cost of None is one unmeasured call.
-  V8  assemble: every committed outcome once, in commit order, rulings skipped; no turn ran is no call; streams with no
-      ledger are one unmeasured call; the assembly is accounted by costs.account across the three vendors.
+  V8  assemble: every committed outcome once, in commit order, rulings skipped; a take whose outcome says its drive
+      never started (drive_started False) and that holds nothing is no call; one whose outcome does not say so, with
+      no folder or no streams, is one unmeasured call (review MINOR-2); streams with no ledger are one unmeasured
+      call; the assembly is accounted by costs.account across the three vendors.
   V9  the statement: the old "no step assembles" line is gone, each ASSEMBLY_BUILT line is a built line, the remaining
-      not-built items are named, and the draft carries costs.cost_statement of its variants.
+      not-built items are named, the round-wide and arm G consequences are said, and its arm G walk count is what
+      the walks give; the draft carries costs.cost_statement of its variants.
   V10 cost_calls.main: --write then --check holds; a changed cost-calls.json is refused.
   V11 the closure review's observation 1 on the records: Codex's cached tokens are a part of its input_tokens
       (total_tokens is input + output on every recorded call), so each call's mapped prompt is its input_tokens once.
   V12 the closure review's observation 2: test_pf1_cost_step's C1 and C2/C3 rules on recorded Codex usage.
+  V13 review MAJOR-2: synthetic Codex usages with cache writes (no recorded call writes), in the pinned source's own
+      test shape (cached 40, written 60, the input their sum) and with fresh input too: mapped and priced by hand.
 MUTANTS: each weakens one rule in memory, and the case it names must then report a problem. Stdlib only.
 """
 from __future__ import annotations
@@ -84,7 +91,7 @@ def row_of(walk, slot=1, attempt=1):
 
 @contextlib.contextmanager
 def take_copy(walk, slot=1, attempt=1):
-    """A read-only copy of a committed walk laid out as takes/<slot>/<attempt>/ under a temporary root."""
+    """A writable copy of a committed walk laid out as takes/<slot>/<attempt>/ under a temporary root."""
     with tempfile.TemporaryDirectory() as tmp:
         dst = Path(tmp) / "takes" / str(slot) / str(attempt)
         shutil.copytree(WALKS / walk, dst)
@@ -285,6 +292,20 @@ def v5_gemini_mapping():
     return out
 
 
+def _bump_gemini_tokens(folder, bump):
+    """On a take copy: add `bump` to every record of the first gemini message with tokens in the last snapshot (the
+    session file is an append log, so a message can be written more than once), then rebind the ledger's sha256."""
+    snap = folder / "session" / json.loads((folder / "driver-ledger.json").read_text())["native_snapshots"][-1]["file"]
+    recs = [json.loads(x) for x in snap.read_text(encoding="utf-8").split("\n") if x.strip()]
+    (target,) = [r["id"] for r in recs if r.get("type") == "gemini" and r.get("tokens")][:1]
+    for r in recs:
+        if r.get("id") == target and r.get("tokens"):
+            for k, v in bump.items():
+                r["tokens"][k] += v
+    snap.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in recs), encoding="utf-8")
+    _rebind(folder)
+
+
 def v6_gemini_incomplete():
     out = []
     for walk, why in (("w-g21", "are not the result stats'"), ("w-g24", "holds no result stats"),
@@ -296,6 +317,15 @@ def v6_gemini_incomplete():
         got = costs.account(calls, PRICES, VARIANTS)
         if got["vendors"]["google"]["priced_cost_usd"] is not None:
             out.append(f"V6: {walk}: a priced Gemini total was read")
+    for name, bump in (("a call's thoughts off by one", {"thoughts": 1, "total": 1}),
+                       # five thought tokens recorded as tool-use tokens instead: every total still agrees with the
+                       # stats, so only the unpriced tool-use tokens can make the take unmeasured
+                       ("a call with tool-use prompt tokens", {"thoughts": -5, "tool": 5})):
+        with take_copy("w-g30") as (_, folder):
+            _bump_gemini_tokens(folder, bump)
+            calls = cc.take_calls(folder, row_of("w-g30"))
+            if not unmeasured_only(calls, "google"):
+                out.append(f"V6: w-g30 with {name} is not one unmeasured call ({len(calls)} calls)")
     t = {"input": 120, "output": 5, "cached": 40, "thoughts": 3, "tool": 7, "total": 135}
     if cc.gemini_usage(t) is not None:
         out.append("V6: tool-use prompt tokens were priced")
@@ -330,24 +360,36 @@ def v8_assemble():
         (root / "takes" / "3" / "1").mkdir(parents=True)                 # a take refused before any turn ran
         shutil.copytree(WALKS / "w-o46", root / "takes" / "4" / "2")
         (root / "takes" / "4" / "2" / "driver-ledger.json").unlink()      # streams, no ledger
+        (root / "takes" / "6" / "1").mkdir(parents=True)                 # a started take whose folder holds nothing
         rows = [row_of("w-o47", 1), row_of("w001", 2), dict(row_of("w001", 3)), row_of("w-o46", 4),
-                row_of("w-o46", 4, 2)]
+                row_of("w-o46", 4, 2), row_of("w-o47", 5), row_of("w001", 6)]
         from graders import labels4
-        # slot 4's attempt 1 has a ruling and no outcome: a ruling is never an outcome, so its calls are not assembled
-        history = [{"slot": 2, "attempt": 1}, {"slot": 1, "attempt": 1}, {"slot": 3, "attempt": 1},
+        # slot 4's attempt 1 has a ruling and no outcome: a ruling is never an outcome, so its calls are not assembled;
+        # slot 3 never reached its drive (drive_started False); slot 5 has no folder and slot 6 an empty one, and
+        # neither outcome says its drive never started
+        history = [{"slot": 2, "attempt": 1, "drive_started": True}, {"slot": 1, "attempt": 1},
+                   {"slot": 3, "attempt": 1, "drive_started": False},
                    {"slot": 2, "attempt": 1}, {"kind": labels4.RULING, "slot": 4, "attempt": 1},
-                   {"slot": 4, "attempt": 2}]
+                   {"slot": 4, "attempt": 2}, {"slot": 5, "attempt": 1, "drive_started": True},
+                   {"slot": 6, "attempt": 1}]
         got = cc.assemble(rows, history, root=root)
         a = [c["call_id"] for c in ledger_of("w001")["cost"]["calls"]]
         o = [p["response_id"] for p in records_of("w-o47")]
-        slot, attempt = 4, 2
-        want_ids = a + o + [f"takes/{slot}/{attempt}/unmeasured/gpt-6.1-sol"]
+        un = [f"takes/{s}/{k}/unmeasured/{m}" for s, k, m in ((4, 2, "gpt-6.1-sol"), (5, 1, "gpt-6-luna"),
+                                                             (6, 1, ledger_of("w001")["model_requested"]))]
+        want_ids = a + o + un
         if [c["call_id"] for c in got] != want_ids:
             out.append(f"V8: assembled {len(got)} calls, not the {len(want_ids)} of the outcomes once each in order")
         acct = costs.account(got, PRICES, VARIANTS)
         if set(acct["vendors"]) != {"anthropic", "openai"} or acct["vendors"]["openai"]["priced_cost_usd"] is not None:
             out.append(f"V8: the account's vendors {acct['vendors']}")
-        if acct["vendors"]["anthropic"]["priced_cost_usd"] is None:
+        if acct["priced_cost_usd"] is not None or acct["usage"] is not None:
+            out.append("V8: one unmeasured call left the round-wide total measured")
+        for c in got:
+            if cc.UNMEASURED in c and (c.get("recorded", 0) is not None or "usage" not in c.get("unrecorded", ())):
+                out.append(f"V8: unmeasured call {c['call_id']} does not carry recorded None and its unrecorded")
+        clean = cc.assemble(rows[:3], history[:4], root=root)
+        if costs.account(clean, PRICES, VARIANTS)["vendors"]["anthropic"]["priced_cost_usd"] is None:
             out.append("V8: arm A's priced total was lost")
     return out
 
@@ -361,9 +403,21 @@ def v9_statement():
         if f"built: {line}" not in lines:
             out.append(f"V9: the statement lacks the built line {line[:40]!r}")
     for needle in ("drive.py writes a driver ledger cost for claude-code takes only",
-                   "tool-use prompt tokens are not priced", "service_tier is not read"):
+                   "tool-use prompt tokens are not priced", "service_tier is not read",
+                   "not priced per take from its result stats"):
         if not any(ln.startswith(costs.NOT_BUILT + ": ") and needle in ln for ln in lines):
             out.append(f"V9: no not-built line names {needle!r}")
+    walks = sorted(p.name for p in WALKS.glob("w-g*"))
+    unread = [w for w in walks if any(cc.UNMEASURED in c for c in cc.take_calls(WALKS / w, row_of(w)))]
+    for needle in ("checked together through the total", "round-wide usage and priced total",
+                   f"{len(unread)} of {len(walks)} committed arm G walks", "codex-api/src/sse/responses.rs:128-143",
+                   "no recorded call writes to the cache"):
+        if not any(ln.startswith("built: ") and needle in ln for ln in lines):
+            out.append(f"V9: no built line says {needle!r}")
+    if (len(unread), len(walks)) != (32, 36):
+        out.append(f"V9: {len(unread)} of {len(walks)} arm G walks unmeasured, not the 32 of 36 this case expects")
+    if any("are not checked" in ln for ln in lines):
+        out.append("V9: the statement still says Gemini's thoughts are not checked")
     if DRAFT.get("cost_statement") != costs.cost_statement(DRAFT.get("price_variants")):
         out.append("V9: the draft's cost_statement is not costs.cost_statement of its price_variants")
     return out
@@ -473,9 +527,49 @@ def v12_codex_rules_on_records():
 SHORT_ROW = "Standard, short context (<=272K input tokens)"
 
 
+def v13_codex_cache_writes():
+    """Review MAJOR-2: no recorded Codex call writes to the cache, so the written class is pinned on synthetic usages.
+    The first is the pinned source's own test shape (codex-api/src/sse/responses.rs:846-870): cached 40, written 60,
+    an input that is exactly their sum, output 10 with reasoning 5, total input + output. The second adds 25 fresh
+    input tokens. Each is mapped and priced here by hand at gpt-6.1-sol's standard short-context rows, the writes at
+    the 12h row (no duration recorded: the stated bound), and its record says so."""
+    out, m = [], "gpt-6.1-sol"
+    cached, written, fresh_extra = 40, 60, 25
+    for fresh in (0, fresh_extra):
+        inp = fresh + cached + written
+        u = {"input_tokens": inp, "cached_input_tokens": cached, "cache_write_input_tokens": written,
+             "output_tokens": 10, "reasoning_output_tokens": 5, "total_tokens": inp + 10}
+        got = cc.codex_usage(u)
+        want = {"input_tokens": fresh, "output_tokens": 10, "cache_read_input_tokens": cached,
+                "cache_creation_input_tokens": written}
+        if got != want:
+            out.append(f"V13: fresh {fresh}: mapped {got}, not {want}")
+            continue
+        if costs.prompt_tokens(got) != inp:
+            out.append(f"V13: fresh {fresh}: the prompt is {costs.prompt_tokens(got)}, not the recorded {inp}")
+        one = {"vendor": "openai", "call_id": f"synthetic-{fresh}", "model": m, "usage": got,
+               "cache_write_durations": None}
+        priced = costs.price_call(one, PRICES["vendors"]["openai"][m], VARIANTS)
+        hand = (Decimal(fresh) * row_price("openai", m, "input_tokens", SHORT_ROW)
+                + Decimal(cached) * row_price("openai", m, "cache_read_input_tokens", SHORT_ROW)
+                + Decimal(written) * row_price("openai", m, "cache_creation_input_tokens", SHORT_ROW + " 12h write")
+                + Decimal(10) * row_price("openai", m, "output_tokens", SHORT_ROW)) / MTOK
+        if priced["priced_cost_usd"] != hand or "12h row" not in (priced["cache_write"] or ""):
+            out.append(f"V13: fresh {fresh}: priced {priced['priced_cost_usd']} {priced['cache_write']!r}, "
+                       f"the rows give {hand}")
+    try:
+        cc.codex_usage({"input_tokens": 50, "cached_input_tokens": 40, "cache_write_input_tokens": 60,
+                        "output_tokens": 1, "reasoning_output_tokens": 0, "total_tokens": 51})
+        out.append("V13: cached plus written over the input was mapped")
+    except cc.CostUnread:
+        pass
+    return out
+
+
 CASES = {"V1": v1_codex_mapping, "V2": v2_codex_all_walks, "V3": v3_codex_priced, "V4": v4_codex_incomplete,
          "V5": v5_gemini_mapping, "V6": v6_gemini_incomplete, "V7": v7_claude, "V8": v8_assemble,
-         "V9": v9_statement, "V10": v10_main, "V11": v11_codex_prompt_once, "V12": v12_codex_rules_on_records}
+         "V9": v9_statement, "V10": v10_main, "V11": v11_codex_prompt_once, "V12": v12_codex_rules_on_records,
+         "V13": v13_codex_cache_writes}
 
 
 # ---- the mutants ----------------------------------------------------------------------------------------------------
@@ -522,6 +616,16 @@ MUTANTS = {
     "codex-cached-twice-priced": ("V12", lambda: mock.patch.object(cc, "codex_usage", _whole_input)),
     "long-context-ignored": ("V12", lambda: mock.patch.object(costs, "tier_for", lambda v, m, u, p, var: (
         p, var["cache_write"].get(v, {}).get(m), None))),
+    # review aa4394c's folds
+    "codex-written-counted-twice": ("V13", lambda: mock.patch.object(cc, "codex_usage", lambda u: dict(
+        _REAL_CODEX_USAGE(u), input_tokens=u["input_tokens"] - u["cached_input_tokens"]))),
+    "codex-written-as-cache-read": ("V13", lambda: mock.patch.object(cc, "codex_usage", lambda u: dict(
+        _REAL_CODEX_USAGE(u), cache_read_input_tokens=u["cached_input_tokens"] + u["cache_write_input_tokens"],
+        cache_creation_input_tokens=0))),
+    "gemini-total-unchecked": ("V6", lambda: mock.patch.object(cc, "GEMINI_CHECKED", tuple(
+        p for p in cc.GEMINI_CHECKED if p[0] != "total"))),
+    "gemini-tool-call-kept": ("V6", lambda: mock.patch.object(cc, "unpriced_problem", lambda calls: None)),
+    "drive-started-ignored": ("V8", lambda: mock.patch.object(cc, "drive_may_have_started", lambda outcome: False)),
 }
 
 

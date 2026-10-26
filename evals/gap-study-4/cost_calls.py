@@ -16,11 +16,15 @@ started_at, ended_at, cache_write_durations}, usage in costs.CLASSES, which are 
   codex        one per token_usage_record of the take's last retained rollout (session/<native snapshot>, bound by the
                ledger's sha256): at the pinned CLI (openai/codex 092d3acd, protocol/src/protocol.rs:2291-2302) it is
                "Best-effort Responses API usage observed for one completed response", one per response_id. Its usage
-               is the Responses API's (codex-api/src/sse/responses.rs:128-143): input_tokens is the whole prompt, and
-               cached_input_tokens and cache_write_input_tokens are parts of it (that file's own test at :846-870
-               reads an input that is exactly its cached plus its written tokens, 40 and 60); reasoning_output_tokens
-               is a part of output_tokens (total_tokens =
-               input_tokens + output_tokens, checked on every call). So: input_tokens = input - cached - written,
+               is the Responses API's, and input_tokens is the whole prompt: every recorded call's total_tokens is its
+               input_tokens plus its output_tokens while most record cached tokens, so cached_input_tokens and
+               reasoning_output_tokens are parts of input and output (checked on every call). That
+               cache_write_input_tokens is a part of input too is read from the pinned source alone, since no recorded
+               call writes to the cache: codex-api/src/sse/responses.rs:128-143 reads both cached and written tokens
+               from input_tokens_details, and its test at :846-870 gives an input that is exactly its cached plus its
+               written tokens, 40 and 60 (a blob-verified copy of the file at the pin, with its provenance, is kept at
+               /Users/javrodher/aegis-builds/codex-responses-pin-20261026/).
+               So: input_tokens = input - cached - written,
                cache_read_input_tokens = cached, cache_creation_input_tokens = written, output_tokens = output. The
                model is the call's turn's turn_context model (the rollout's requested model): exec records no served
                model per call, so a take whose stream recorded a reroute (the ledger's served_model) is not assembled
@@ -33,23 +37,27 @@ started_at, ended_at, cache_write_durations}, usage in costs.CLASSES, which are 
                "Output price (including thinking tokens)"). So: input_tokens = input - cached,
                cache_read_input_tokens = cached, output_tokens = output + thoughts; Gemini records no cache write, so
                that class is absent. A call with tool-use prompt tokens (tool > 0) has no row the approved table
-               names for them, so its usage is None (unmeasured), never priced on a guess.
+               names for them, so it is never priced on a guess: its take is assembled as one unmeasured call.
   Each vendor call also carries `recorded`, the counts as the vendor wrote them, and `unrecorded`, the fields of the
   call shape the vendor does not record (UNRECORDED), which stay None, never 0.
 
 COMPLETE OR UNMEASURED. A take's calls are summed by costs.account only when every call was read: otherwise the take
-carries one call, of its requested model, with usage None (an UNMEASURED call), so its vendor's priced total reads
-unmeasured, never a partial sum (costs.py: "Missing measurements remain unmeasured, never zero"). That happens when
+carries one call, of its requested model, with usage None (an UNMEASURED call), so its vendor's priced total, and the
+round-wide usage and priced total costs.account reads, are unmeasured, never a partial sum (costs.py: "Missing
+measurements remain unmeasured, never zero"). That happens when
   claude-code  the ledger's cost is None (no session file, or its cost reader refused it);
   codex        a record off its shape, a running total (thread_token_usage, turn_token_usage) that is not the sum of
                the records before it, a turn whose exec stream printed no turn.completed, or one whose total (the
                thread's running total at that turn, as exec prints it) is not the records' sum to the end of that
                turn; the rollout or a stream that the readers refuse; a recorded reroute;
-  gemini       a turn whose stream holds no result stats, per-model sums of input, output and cached that are not
-               the stats' (stats.models: the CLI's telemetry counts every response, the session file only those it
-               recorded on a message), a tokens record with no model, or a snapshot the replay refuses. Thoughts are
-               not in the stats, so they cannot be checked;
-  any harness  a take folder with turn streams and no driver ledger.
+  gemini       a turn whose stream holds no result stats, per-model sums of input, output, cached and total that are
+               not the stats' (stats.models: the CLI's telemetry counts every response, the session file only those
+               it recorded on a message; the stats carry no thoughts or tool count, but their total_tokens sums the
+               messages' totals, chunk-NR7L3FXV.js:287470 and :383045, so thoughts and tool-use tokens are checked
+               together through the total, never apart), a tokens record with no model or with tool-use prompt
+               tokens, or a snapshot the replay refuses;
+  any harness  a take folder with turn streams and no driver ledger; and, when the outcome does not say its drive
+               never started (drive_started not False), a take with no folder, or no ledger and no turn streams.
 Standard library only. No model, vendor, network or credential is touched.
 """
 from __future__ import annotations
@@ -87,7 +95,8 @@ CODEX_USAGE = ("input_tokens", "cached_input_tokens", "cache_write_input_tokens"
 CODEX_RECORD_KEYS = ("thread_id", "turn_id", "session_id", "root_turn_id", "response_id", "usage", "turn_token_usage",
                      "thread_token_usage")
 GEMINI_TOKENS = ("input", "output", "cached", "thoughts", "tool", "total")
-GEMINI_CHECKED = (("input", "input_tokens"), ("output", "output_tokens"), ("cached", "cached"))
+GEMINI_CHECKED = (("input", "input_tokens"), ("output", "output_tokens"), ("cached", "cached"),
+                  ("total", "total_tokens"))
 UNMEASURED = "unmeasured"
 
 
@@ -110,7 +119,10 @@ def unmeasured(vendor, take_key, model, agent, why) -> dict:
     vendor's priced total as unmeasured; `why` says what could not be read."""
     return {"vendor": vendor, "call_id": f"{take_key}/{UNMEASURED}/{model}", "model": model, "agent": dict(agent),
             "usage": None, "total_cost_usd": None, "started_at": None, "ended_at": None,
-            "cache_write_durations": None, UNMEASURED: why}
+            "cache_write_durations": None, "recorded": None, "unrecorded": list(UNMEASURED_FIELDS), UNMEASURED: why}
+
+
+UNMEASURED_FIELDS = ("usage", "total_cost_usd", "started_at", "ended_at", "cache_write_durations")
 
 
 def _snapshot(folder: Path, ledger: dict) -> bytes:
@@ -281,30 +293,56 @@ def gemini_calls(folder: Path, ledger: dict) -> list:
                 s[key] = s.get(key, 0) + entry[key]
     for name in sorted(set(stats_sums) | set(sums)):
         if not stats_agree(sums.get(name, {}), stats_sums.get(name, {})):
-            raise CostUnread(f"{name}: the session file's input, output and cached sums are not the result stats' "
-                             f"(the session file records {len([c for c in calls if c['model'] == name])} calls)")
+            raise CostUnread(f"{name}: the session file's input, output, cached and total sums are not the result "
+                             f"stats' (the session file records {len([c for c in calls if c['model'] == name])} "
+                             f"calls)")
+    why = unpriced_problem(calls)
+    if why is not None:
+        raise CostUnread(why)
     return calls
 
 
 def stats_agree(mine: dict, theirs: dict) -> bool:
-    """One model's session-file sums of input, output and cached equal its result stats' sums over the turns."""
+    """One model's session-file sums of input, output, cached and total equal its result stats' sums over the turns
+    (the total holds the thoughts and tool-use tokens, which the stats do not count apart)."""
     return all(mine.get(a, 0) == theirs.get(b, 0) for a, b in GEMINI_CHECKED)
+
+
+def unpriced_problem(calls: list):
+    """Why a take holds a call no approved row prices (usage None: tool-use prompt tokens), or None. Such a take is one
+    unmeasured call, never a take of measured calls beside an unpriced one (review aa4394c NIT-1)."""
+    bad = [c["call_id"] for c in calls if c["usage"] is None]
+    if bad:
+        return f"{len(bad)} call(s) record tool-use prompt tokens, which no approved row prices (first {bad[0]!r})"
+    return None
 
 
 # ---- the take and the assembly --------------------------------------------------------------------------------------
 READERS = {"codex": codex_calls, "gemini": gemini_calls}
 
 
-def take_calls(folder, row: dict) -> list:
-    """One take's calls (module docstring): its readable calls, or UNMEASURED calls naming why."""
+def drive_may_have_started(outcome) -> bool:
+    """Review aa4394c MINOR-2: only an outcome that says its drive never started (drive_started False, batch.py:103)
+    can stand for a take that made no call; a missing outcome or any other value may have made calls."""
+    return outcome is None or outcome.get("drive_started") is not False
+
+
+def take_calls(folder, row: dict, outcome=None) -> list:
+    """One take's calls (module docstring): its readable calls, or UNMEASURED calls naming why. `outcome` is the take's
+    committed outcome (None: not known, read as a drive that may have started)."""
     folder = Path(folder)
     key = f"{mode_binding.TAKES_DIR}/{row['slot']}/{row['attempt']}"
     path = folder / LEDGER
     if not path.is_file():
         ran = sorted(p.name for p in folder.glob("turn-*.jsonl")) if folder.is_dir() else []
-        if not ran:
-            return []                                      # no turn ran: the take made no call
         harness = row["agent"]["harness"]
+        if not ran:
+            if not drive_may_have_started(outcome):
+                return []                                  # the drive never started: the take made no call
+            where = f"holds no {LEDGER} and no turn streams" if folder.is_dir() else "is missing"
+            return [unmeasured(VENDOR[harness], key, row["model"], row["agent"],
+                               f"the outcome's drive_started is {(outcome or {}).get('drive_started')!r} and the take "
+                               f"folder {where}")]
         return [unmeasured(VENDOR[harness], key, row["model"], row["agent"],
                            f"turn streams {ran} and no {LEDGER}")]
     ledger = json.loads(path.read_text(encoding="utf-8"))
@@ -337,9 +375,15 @@ def outcome_keys(history: list) -> list:
 def assemble(rows: list, history: list, *, root=HERE) -> list:
     """Every committed outcome's take, once, in commit order, its calls concatenated."""
     registered = {(r["slot"], r["attempt"]): r for r in rows}
+    import batch
+    first = {}
+    for o in history:
+        if batch.is_outcome(o):
+            first.setdefault((o["slot"], o["attempt"]), o)
     out = []
     for slot, attempt in outcome_keys(history):
-        out += take_calls(Path(root) / mode_binding.TAKES_DIR / str(slot) / str(attempt), registered[(slot, attempt)])
+        out += take_calls(Path(root) / mode_binding.TAKES_DIR / str(slot) / str(attempt), registered[(slot, attempt)],
+                          first.get((slot, attempt)))
     return out
 
 
