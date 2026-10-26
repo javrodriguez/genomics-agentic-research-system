@@ -26,6 +26,9 @@ through cost_calls' helpers, and prices are read from the approved table's own r
   V9  the statement: the old "no step assembles" line is gone, each ASSEMBLY_BUILT line is a built line, the remaining
       not-built items are named, and the draft carries costs.cost_statement of its variants.
   V10 cost_calls.main: --write then --check holds; a changed cost-calls.json is refused.
+  V11 the closure review's observation 1 on the records: Codex's cached tokens are a part of its input_tokens
+      (total_tokens is input + output on every recorded call), so each call's mapped prompt is its input_tokens once.
+  V12 the closure review's observation 2: test_pf1_cost_step's C1 and C2/C3 rules on recorded Codex usage.
 MUTANTS: each weakens one rule in memory, and the case it names must then report a problem. Stdlib only.
 """
 from __future__ import annotations
@@ -389,9 +392,90 @@ def v10_main():
     return out
 
 
+def all_codex_records():
+    """(walk, token_usage_record payload) of every committed arm O walk, read with plain json."""
+    return [(walk, p) for walk in sorted(x.name for x in WALKS.glob("w-o*")) for p in records_of(walk)]
+
+
+def v11_codex_prompt_once():
+    """The closure review's observation 1, settled on the records: every recorded Codex call's total_tokens is its
+    input_tokens plus its output_tokens, while most calls record cached tokens too, so cached_input_tokens is a part of
+    input_tokens, never an addend. Each call's mapped prompt (costs.prompt_tokens) is its recorded input_tokens, once.
+    Walk w-o46's first call: input 13197, cached 9600, output 97, total 13294 = 13197 + 97; summed as is, the prompt
+    would read 22797."""
+    out, cached = [], 0
+    recs = all_codex_records()
+    for walk, p in recs:
+        u = p["usage"]
+        cached += u["cached_input_tokens"] > 0
+        if u["total_tokens"] != u["input_tokens"] + u["output_tokens"]:
+            out.append(f"V11: {walk} {p['response_id']}: total_tokens is not input + output")
+    if len(recs) != 305 or cached < 1:
+        out.append(f"V11: {len(recs)} records, {cached} with cached tokens (the walks hold 305, most cached)")
+    by_id = {c["call_id"]: c for walk in sorted({w for w, _ in recs})
+             for c in cc.take_calls(WALKS / walk, row_of(walk))}
+    for walk, p in recs:
+        if costs.prompt_tokens(by_id[p["response_id"]]["usage"]) != p["usage"]["input_tokens"]:
+            out.append(f"V11: {walk} {p['response_id']}: the mapped prompt is not the recorded input_tokens")
+    first = records_of("w-o46")[0]
+    u, c = first["usage"], by_id[first["response_id"]]
+    seen = (u["input_tokens"], u["cached_input_tokens"], u["output_tokens"], u["total_tokens"])
+    if seen != (13197, 9600, 97, 13294) or costs.prompt_tokens(c["usage"]) != 13197 \
+            or c["usage"]["input_tokens"] != 3597:
+        out.append(f"V11: w-o46's first call reads {u} and maps to {c['usage']}")
+    return out
+
+
+def v12_codex_rules_on_records():
+    """test_pf1_cost_step's C1 and C2/C3 rules on recorded Codex usage (the closure review's observation 2).
+    C1: every recorded call is priced at its model's standard short-context rows, unflagged, by hand from the table's
+    rows (no recorded call reaches 272000: the largest prompt is w-o22's 56170). The long-context branch is reached on a
+    recorded usage object that is over the threshold: w-o46's last token_usage_record's thread_token_usage (the
+    thread's running total, a real Codex usage, not one call), prompt 308120, which must be priced at the long rows and
+    flagged; read double, its prompt would be 587288. C2/C3: Codex records no write duration, so no recorded call can
+    reach a split; no recorded call writes to the cache (0 of 305), so the 12h bound is priced on none and every
+    recorded call's cache_write note is None."""
+    out, largest = [], (0, None)
+    recs = all_codex_records()
+    by_id = {c["call_id"]: (w, c) for w in sorted({w for w, _ in recs}) for c in cc.take_calls(WALKS / w, row_of(w))}
+    for walk, p in recs:
+        w, c = by_id[p["response_id"]]
+        got = costs.price_call(c, PRICES["vendors"]["openai"][c["model"]], VARIANTS)
+        u = p["usage"]
+        want = (Decimal(u["input_tokens"] - u["cached_input_tokens"]) * row_price("openai", c["model"], "input_tokens",
+                                                                                    SHORT_ROW)
+                + Decimal(u["cached_input_tokens"]) * row_price("openai", c["model"], "cache_read_input_tokens",
+                                                                SHORT_ROW)
+                + Decimal(u["output_tokens"]) * row_price("openai", c["model"], "output_tokens", SHORT_ROW)) / MTOK
+        if got["priced_cost_usd"] != want or got["flags"] or got["cache_write"] is not None:
+            out.append(f"V12: {walk} {p['response_id']}: {got['priced_cost_usd']} {got['flags']}, rows give {want}")
+        if u["cache_write_input_tokens"]:
+            out.append(f"V12: {walk} records a cache write; this case says none does")
+        largest = max(largest, (u["input_tokens"], walk))
+    if largest != (56170, "w-o22"):
+        out.append(f"V12: the largest recorded prompt is {largest}")
+    t = records_of("w-o46")[-1]["thread_token_usage"]
+    usage = cc.codex_usage(t)
+    big = {"vendor": "openai", "call_id": "w-o46-thread-total", "model": "gpt-6.1-sol", "usage": usage,
+           "cache_write_durations": None}
+    got = costs.price_call(big, PRICES["vendors"]["openai"]["gpt-6.1-sol"], VARIANTS)
+    long_row = "Standard, long context (>272K input tokens)"
+    want = (Decimal(usage["input_tokens"]) * row_price("openai", "gpt-6.1-sol", "input_tokens", long_row)
+            + Decimal(usage["cache_read_input_tokens"]) * row_price("openai", "gpt-6.1-sol", "cache_read_input_tokens",
+                                                                    long_row)
+            + Decimal(usage["output_tokens"]) * row_price("openai", "gpt-6.1-sol", "output_tokens", long_row)) / MTOK
+    if t["input_tokens"] != 308120 or got["prompt_tokens"] != 308120 or got["priced_cost_usd"] != want \
+            or len(got["flags"]) != 1:
+        out.append(f"V12: w-o46's thread total {t} priced {got}, long rows give {want}")
+    return out
+
+
+SHORT_ROW = "Standard, short context (<=272K input tokens)"
+
+
 CASES = {"V1": v1_codex_mapping, "V2": v2_codex_all_walks, "V3": v3_codex_priced, "V4": v4_codex_incomplete,
          "V5": v5_gemini_mapping, "V6": v6_gemini_incomplete, "V7": v7_claude, "V8": v8_assemble,
-         "V9": v9_statement, "V10": v10_main}
+         "V9": v9_statement, "V10": v10_main, "V11": v11_codex_prompt_once, "V12": v12_codex_rules_on_records}
 
 
 # ---- the mutants ----------------------------------------------------------------------------------------------------
@@ -434,6 +518,10 @@ MUTANTS = {
     "statement-old-line": ("V9", lambda: mock.patch.object(costs, "NOT_BUILT_ITEMS", _OLD_ITEMS)),
     "statement-no-assembly": ("V9", lambda: mock.patch.object(costs, "ASSEMBLY_BUILT", ())),
     "main-unchecked": ("V10", lambda: mock.patch.object(cc, "render", lambda calls: "[]\n")),
+    "codex-cached-counted-twice": ("V11", lambda: mock.patch.object(cc, "codex_usage", _whole_input)),
+    "codex-cached-twice-priced": ("V12", lambda: mock.patch.object(cc, "codex_usage", _whole_input)),
+    "long-context-ignored": ("V12", lambda: mock.patch.object(costs, "tier_for", lambda v, m, u, p, var: (
+        p, var["cache_write"].get(v, {}).get(m), None))),
 }
 
 
