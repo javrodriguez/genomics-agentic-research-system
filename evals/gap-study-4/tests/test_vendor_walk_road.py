@@ -38,7 +38,6 @@ in scratch folders and one scratch git repository: no take, model, vendor, netwo
 from __future__ import annotations
 
 import contextlib
-import copy
 import hashlib
 import json
 import subprocess
