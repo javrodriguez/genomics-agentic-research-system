@@ -341,11 +341,12 @@ def latest_recheck(base, walk: str):
 
 # OD131 (Javier, 25 Oct 2026, decision.jsonl: "walk-cover strict"; lane pf1-walk-cover-strict, the lane orchestrator's
 # ruled design under Javier's standing delegation): a Claude walk counts as covered only if it rechecks clean under the
-# harness as it will be frozen. A walk walk_plan names strict (strict_walks: arm A, by OD131's wording) is not counted
+# harness as it will be frozen; OD132 (Javier, 26 Oct 2026: "walk-cover-o strict") a Codex walk too. A walk walk_plan
+# names strict (strict_walks: arm A by OD131's wording, arm O by OD132's; arm G as coded) is not counted
 # when its effective checker reading carries any reason the routing table, as HEAD's commit holds it, routes to
 # harness-error: the set is derived from that table by its own evaluator (harness_error_reasons), never typed here.
 # The constant-bound and stale rules above are unchanged, and a walk named nowhere strict counts as before.
-STRICT_WHY = "harness-error checker reason under OD131 (walk-cover strict)"
+STRICT_WHY = "harness-error checker reason under OD131 and OD132 (walk-cover strict)"
 STRICT_UNREAD = "OD131 (walk-cover strict): the routing table at HEAD cannot be read"
 
 

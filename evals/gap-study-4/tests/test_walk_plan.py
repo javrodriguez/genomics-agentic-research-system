@@ -1285,7 +1285,7 @@ class P20Strict(Base):
         doc["checker_reasons"] = list(reasons)
         path.write_text(json.dumps(doc))
 
-    def test_an_arm_a_walk_counts_only_clean(self):
+    def test_arm_a_and_o_walks_count_only_clean_and_arm_g_as_coded(self):
         import pending_walk
         wp = self.wp(self.CLAUSE)
         design, specs = self.plan(self.CLAUSE)
@@ -1341,7 +1341,7 @@ BOUND = {"P2.dropped": "P2Dropped.test_a_dropped_task_or_wording_changes_the_fig
          "P17.wrong-type": "P17WrongType.test_a_field_of_the_wrong_type_is_skipped_never_a_crash",
          "P18.pending": "P18Pending.test_a_pending_walk_covers_nothing",
          "P19.run-arms": "P19RunArms.test_the_freeze_requires_the_arms_it_runs",
-         "P20.strict": "P20Strict.test_an_arm_a_walk_counts_only_clean"}
+         "P20.strict": "P20Strict.test_arm_a_and_o_walks_count_only_clean_and_arm_g_as_coded"}
 WITNESSES = {name: (BOUND[clause], clause) for name, (clause, _, _) in mutants().items()}
 
 

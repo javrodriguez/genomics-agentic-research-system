@@ -9,7 +9,8 @@ written in the study. A committed regrade.json must be the bytes its in-memory r
 regrade is not committed yet is rechecked through the regrade just derived (the only stand-in, counted in the output).
 
   R1.strict     on the scratch copy, walk_plan's coverage (strict_walks, pending_walk.uncounted_walks) counts an arm O
-                walk only when its recheck carries no checker reason; each arm O walk whose recheck carries one is
+                walk only when its recheck carries no strict hit (pending_walk.strict_hits against
+                pending_walk.strict_reasons(), the rule's own set); each arm O walk whose recheck carries one is
                 reported with STRICT_WHY; each model's covered figure is the tests' own count of the specs the clean
                 walks cover; the instrument is armed (a clean and a non-clean arm O walk both exist)
   R2.arm-g      every arm G walk reads on the scratch copy exactly as it does without the strict rule. Every real arm
@@ -19,6 +20,9 @@ regrade is not committed yet is rechecked through the regrade just derived (the 
   R3.committed  every committed arm O or G regrade.json is the bytes its re-derivation gives
   R4.witnesses  the same scratch copy judged with walk_plan's strict arms set to ("A",) turns R1 red, and with
                 ("A", "O", "G") turns R2 red
+  R5.reason-set light, no record read (the review of c6a0a4e1, MINOR): on synthetic readings with a stood-in strict
+                set, R1 accepts an arm O walk counted whose only reason is outside the strict set and refuses it left
+                uncounted; a reason outside the table's vocabulary is a strict hit, the other way round
 
 The output prints each arm O model's covered figure, the walks that count and the specs still missing.
 
@@ -159,7 +163,9 @@ def r1_problems(r, j) -> list:
     out = []
     design, got = r["design"], j["strict"]
     o_docs = {w: d for w, d in r["docs"].items() if r["arm"][w] == "O"}
-    clean = {w for w, d in o_docs.items() if d["checker_reasons"] == []}
+    # the rule's own set (review of c6a0a4e1, MINOR): a walk is dirty only on a strict hit, never on any reason
+    strict = pw.strict_reasons()
+    clean = {w for w, d in o_docs.items() if not pw.strict_hits(d["checker_reasons"] or [], strict)}
     dirty = set(o_docs) - clean
     if not (clean and dirty):
         out.append(f"R1.strict: the instrument is not armed (clean {sorted(clean)}, not clean {len(dirty)})")
@@ -238,6 +244,43 @@ class Records(unittest.TestCase):
         for arms, check in ((("A",), r1_problems), (("A", "O", "G"), r2_problems)):
             with self.subTest(arms=arms), mock.patch.dict(walk_plan.WALK_COVER_STRICT, arms=arms):
                 self.assertTrue(check(r, judge(r)), f"R4.witnesses: strict arms {arms} survive {check.__name__}")
+
+
+class ReasonSet(unittest.TestCase):
+    """R5.reason-set, light (no record is read): R1 judges a walk by the rule's own set, never by any reason."""
+
+    def case(self, reasons, counted: bool):
+        import pending_walk as pw
+        spec = lambda half: {"arm": "O", "model": "m", "task": "t", "half": half}  # noqa: E731
+        r = {"design": {"planned": {"O": ["m"]}}, "specs": [spec("normal"), spec("trap")],
+             "docs": {"w-c": {"checker_reasons": []}, "w-d": {"checker_reasons": ["harness-condition-violated"]},
+                      "w-x": {"checker_reasons": list(reasons)}},
+             "arm": {"w-c": "O", "w-d": "O", "w-x": "O"},
+             "entries": [{"walk": "w-c", "model": "m", "task": "t", "half": "normal"},
+                         {"walk": "w-d", "model": "m", "task": "t", "half": "normal"},
+                         {"walk": "w-x", "model": "m", "task": "t", "half": "trap"}]}
+        why = {"w-d": f"{pw.STRICT_WHY}: harness-condition-violated"}
+        if counted:
+            covered, missing = {"normal": ["w-c"], "trap": ["w-x"]}, []
+        else:
+            covered, missing = {"normal": ["w-c"]}, [spec("trap")]
+            why["w-x"] = f"{pw.STRICT_WHY}: {', '.join(reasons)}"
+        return r, {"strict": {"covered": covered, "missing": missing}, "strict_why": why}
+
+    def test_r5_a_reason_outside_the_strict_set_counts(self):
+        import pending_walk as pw
+        outside = "a-graded-reason"
+        strict = pw.StrictReasons({"harness-condition-violated"}, {"harness-condition-violated", outside})
+        self.assertNotIn(outside, strict, "R5.reason-set: the case is armed")
+        with mock.patch.object(pw, "strict_reasons", lambda: strict):
+            self.assertEqual(r1_problems(*self.case([outside], counted=True)), [],
+                             "R5.reason-set: a walk whose only reason is outside the strict set counts, and R1 agrees")
+            self.assertTrue(r1_problems(*self.case([outside], counted=False)),
+                            "R5.reason-set: R1 refuses such a walk left uncounted")
+            self.assertTrue(r1_problems(*self.case(["a-reason-the-table-does-not-know"], counted=True)),
+                            "R5.reason-set: a reason outside the table's vocabulary is a strict hit (strict_hits)")
+            self.assertEqual(r1_problems(*self.case(["a-reason-the-table-does-not-know"], counted=False)), [],
+                             "R5.reason-set: R1 accepts such a walk left uncounted")
 
 
 if __name__ == "__main__":

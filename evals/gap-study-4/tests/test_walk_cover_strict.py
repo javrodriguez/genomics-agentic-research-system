@@ -6,10 +6,11 @@ lane, coverage left a graded walk out only when a checker reason was constant-bo
 or its reading was stale, so harness-condition-violated and nested-agent still covered, and a recheck round of the
 old walks under the constants in force would have read arm A complete on walks that ran a harness OD131 rejects.
 
-The rule (the lane orchestrator's ruled design): a walk walk_plan names strict (arm A, OD131's wording) is not counted
+The rule (the lane orchestrator's ruled design): a walk walk_plan names strict (arm A, OD131's wording; arm O, OD132's,
+Javier, 26 Oct 2026: "walk-cover-o strict") is not counted
 when its effective checker reading (the latest recheck, else check.json) carries any reason that the routing table as
 HEAD's commit holds it routes to harness-error. The set is derived from that table by the table's own evaluator, never
-typed; arms O and G count as before.
+typed; arm G, deferred, counts as before.
 
   S1.derived     pending_walk.harness_error_reasons equals an independent derivation from the table (rows whose route
                  is harness-error; their any_of and all_of conditions on checker_reasons); on the live table it holds
