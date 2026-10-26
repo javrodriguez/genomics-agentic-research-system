@@ -69,7 +69,7 @@ def _regrade_state(base, walk: str):
     return "graded" if doc.get("graded") is True else "refused"
 
 
-def coverage_status(base, walk: str):
+def coverage_status(base, walk: str, *, strict=None):
     """Batch-8 fix ruling (glitch-06, 14 Oct 2026; CP6: "Every walk is graded but never counted"): None when the walk
     counts as coverage, else why not. A walk covers its spec only when its grade.json is graded true and its check.json
     passes checker_standing (BOOTSTRAP B5: no constant-bound checker reason, checked under the constants in force), or
@@ -77,7 +77,7 @@ def coverage_status(base, walk: str):
     checker_standing's pending road (T4 P5, R-9: the checker never ran on it, so the regrade alone never counts it).
     Fail closed: a missing or unreadable grade.json, an ungraded walk, a pending walk, a pending walk whose verified
     regrade refused and one regraded with no checker reading under the constants in force are each reported, never
-    counted."""
+    counted. `strict` (OD131) is handed to checker_standing on both roads."""
     import json
     from pathlib import Path
     try:
@@ -87,12 +87,12 @@ def coverage_status(base, walk: str):
     if not isinstance(grade, dict):
         return "grade unreadable"
     if grade.get("graded") is True:
-        return checker_standing(base, walk)
+        return checker_standing(base, walk, strict=strict)
     if grade.get("status") == PENDING:
         state = _regrade_state(base, walk)
         # lane vendor-admission T4 P5, R-9 (c): a verified graded-true regrade counts the walk only through a checker
         # reading under the constants in force (checker_standing's pending road), never on the regrade alone
-        return checker_standing(base, walk, pending=True) if state == "graded" else "regrade refused" \
+        return checker_standing(base, walk, pending=True, strict=strict) if state == "graded" else "regrade refused" \
             if state == "refused" else "pending"
     return "not graded"
 
@@ -155,7 +155,7 @@ def check_keys_ok(check) -> bool:
             and ((a is None and s is None and c is None) or valid_agent_summary(a, s, c)))
 
 
-def checker_standing(base, walk: str, *, pending: bool = False):
+def checker_standing(base, walk: str, *, pending: bool = False, strict=None):
     """BOOTSTRAP B5 (glitch-6b's first-walk bootstrap ruling, 15 Oct 2026; required, or the falsifier argument fails):
     None when a graded walk's check.json lets it count, else why not. A walk is graded whenever its first agent turn
     ran, whatever its checker reasons; a walk whose checker named a reason a CHECKER_CONSTANTS value decides
@@ -163,7 +163,9 @@ def checker_standing(base, walk: str, *, pending: bool = False):
     in force (its check.json's checker_constants_sha256): it reads stale until it is regraded. Fail closed: a missing
     or unreadable check.json, one not exactly walk_runner.check_record's keys, one the checker did not run on, one whose
     routing refused, and one with a reason that is not a string of routing.json's operator_reasons (the pre-registered
-    rehearsal_reasons) are "check unreadable"; constants still PENDING are reported too."""
+    rehearsal_reasons) are "check unreadable"; constants still PENDING are reported too. OD131 (walk-cover strict):
+    given `strict`, a set of reasons (strict_reasons), a walk whose effective reading carries one is never counted
+    either (STRICT_WHY); without it, nothing here changes."""
     import json
     from pathlib import Path
     import check_take
@@ -172,7 +174,7 @@ def checker_standing(base, walk: str, *, pending: bool = False):
     except (OSError, ValueError):
         return "check unreadable"
     if pending:
-        return pending_standing(base, walk, check)
+        return pending_standing(base, walk, check, strict)
     if not check_keys_ok(check) or check.get("checked") is not True \
             or check.get("route_refused") is not None or not isinstance(check.get("route"), str) \
             or not isinstance(check.get("checker_reasons"), list):
@@ -201,6 +203,10 @@ def checker_standing(base, walk: str, *, pending: bool = False):
     bound = [r for r in check["checker_reasons"] if r in check_take.CONSTANT_BOUND_REASONS]
     if bound:
         return f"constant-bound checker reason: {', '.join(bound)}"
+    if strict is not None:
+        hit = strict_hits(check["checker_reasons"], strict)
+        if hit:
+            return f"{STRICT_WHY}: {', '.join(hit)}"
     try:
         now = constants_in_force(base, walk)
     except check_take.CheckRefused:
@@ -221,7 +227,7 @@ def checker_standing(base, walk: str, *, pending: bool = False):
 PENDING_UNCHECKED = "pending: regraded, no checker reading under the constants in force"
 
 
-def pending_standing(base, walk: str, check):
+def pending_standing(base, walk: str, check, strict=None):
     """Lane vendor-admission T4 P5, R-9 (c) (plan v4 section 6): the standing of a pending walk whose verified regrade
     grades it true. Its check.json is the pending document (the checker never ran); the effective reading is its
     latest recheck (latest_recheck), judged by the rules a checked walk's is: every reason a string of routing.json's
@@ -244,6 +250,10 @@ def pending_standing(base, walk: str, check):
     bound = [r for r in reasons if r in check_take.CONSTANT_BOUND_REASONS]
     if bound:
         return f"constant-bound checker reason: {', '.join(bound)}"
+    if strict is not None:
+        hit = strict_hits(reasons, strict)
+        if hit:
+            return f"{STRICT_WHY}: {', '.join(hit)}"
     try:
         now = constants_in_force(base, walk)
     except check_take.CheckRefused:
@@ -329,7 +339,130 @@ def latest_recheck(base, walk: str):
             "nested_cli_calls": doc.get("nested_cli_calls")}                                # W-3b
 
 
-def uncounted_walks(base, walks) -> dict:
+# OD131 (Javier, 25 Oct 2026, decision.jsonl: "walk-cover strict"; lane pf1-walk-cover-strict, the lane orchestrator's
+# ruled design under Javier's standing delegation): a Claude walk counts as covered only if it rechecks clean under the
+# harness as it will be frozen. A walk walk_plan names strict (strict_walks: arm A, by OD131's wording) is not counted
+# when its effective checker reading carries any reason the routing table, as HEAD's commit holds it, routes to
+# harness-error: the set is derived from that table by its own evaluator (harness_error_reasons), never typed here.
+# The constant-bound and stale rules above are unchanged, and a walk named nowhere strict counts as before.
+STRICT_WHY = "harness-error checker reason under OD131 (walk-cover strict)"
+STRICT_UNREAD = "OD131 (walk-cover strict): the routing table at HEAD cannot be read"
+
+
+class StrictUnreadable(ValueError):
+    pass
+
+
+class StrictReasons(frozenset):
+    """harness_error_reasons' set, carrying the operator_reasons of the table it was derived from (`vocabulary`;
+    None when a plain set is handed in)."""
+
+    def __new__(cls, reasons=(), vocabulary=None):
+        self = super().__new__(cls, reasons)
+        self.vocabulary = None if vocabulary is None else frozenset(vocabulary)
+        return self
+
+
+def strict_hits(reasons, strict) -> list:
+    """The reasons of `reasons` that are strict hits: in `strict`, or outside the vocabulary of the table `strict` was
+    derived from, when it carries one (the review of ff58e02f, MINOR 2: the vocabulary check reads the working tree's
+    table and the strict set HEAD's, so a reason HEAD's table does not know is never counted)."""
+    vocabulary = getattr(strict, "vocabulary", None)
+    return [r for r in reasons if r in strict or (vocabulary is not None and r not in vocabulary)]
+
+
+def _git_show_head(path: str) -> bytes:
+    """The bytes HEAD's commit holds at `path` (git show HEAD:./<name>, run beside the file, with no GIT_ variable of
+    the environment, so another repository's GIT_DIR is never read); StrictUnreadable when git cannot say."""
+    import os
+    import subprocess
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    try:
+        got = subprocess.run(["git", "-C", os.path.dirname(path), "show", "HEAD:./" + os.path.basename(path)],
+                             capture_output=True, env=env, timeout=60)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise StrictUnreadable(f"git could not run: {exc}") from exc
+    if got.returncode != 0:
+        raise StrictUnreadable(f"git show exited {got.returncode}: "
+                               f"{got.stderr.decode('utf-8', 'replace').strip()[:200]}")
+    return got.stdout
+
+
+def _table_problems(table) -> list:
+    import routing
+    if not isinstance(table, dict):
+        return ["the table is not an object"]
+    try:
+        return routing.check_table(table)
+    except Exception as exc:  # noqa: BLE001 - a table check_table cannot read is refused, fail closed
+        return [f"routing.check_table raised {exc!r}"]
+
+
+def head_routing_table() -> dict:
+    """routing.json as the repository's HEAD commit holds it (beside routing.TABLE_PATH, read at call time), accepted
+    only when routing.check_table accepts it; StrictUnreadable otherwise. HEAD's, never the working tree's: an
+    uncommitted edit of the table moves no walk's standing."""
+    import json
+    import routing
+    raw = _git_show_head(routing.TABLE_PATH)
+    try:
+        table = json.loads(raw)
+    except ValueError as exc:
+        raise StrictUnreadable(f"HEAD's routing.json is not JSON: {exc}") from exc
+    problems = _table_problems(table)
+    if problems:
+        raise StrictUnreadable("HEAD's routing.json is refused by routing.check_table: " + "; ".join(problems[:3]))
+    return table
+
+
+def harness_error_reasons(table: dict) -> frozenset:
+    """The checker reasons `table` routes to harness-error: each of its operator_reasons for which a condition on
+    checker_reasons of a row whose route is harness-error (any phase; the row's any_of and all_of) holds when the
+    take's checker_reasons is that reason alone, by routing.holds, the table's own evaluator. A row's other conditions
+    are not read, so a reason any harness-error row can route there is enough: fail closed, such a walk is not
+    counted; a none_of condition stops a route and never adds a reason. The set is a StrictReasons carrying the
+    table's operator_reasons, so strict_hits also counts a reason the table does not know as a hit. StrictUnreadable
+    when a condition cannot be evaluated."""
+    import routing
+    rows = [r for r in table["rows"] if r.get("route") == routing.labels4.HARNESS_ERROR]
+    conds = [c for r in rows for c in (*r.get("any_of", []), *r.get("all_of", []))
+             if isinstance(c, dict) and c.get("path") == routing.HAS_PATH]
+    out = set()
+    for reason in table["operator_reasons"]:
+        try:
+            if any(routing.holds(c, {routing.HAS_PATH: [reason]}, table) for c in conds):
+                out.add(reason)
+        except Exception as exc:  # noqa: BLE001 - an unreadable condition reads nothing, fail closed
+            raise StrictUnreadable(f"a harness-error condition cannot be read for {reason!r}: {exc!r}") from exc
+    return StrictReasons(out, table["operator_reasons"])
+
+
+def strict_reasons() -> frozenset:
+    """OD131's set: the reasons the routing table at HEAD routes to harness-error."""
+    return harness_error_reasons(head_routing_table())
+
+
+def uncounted_walks(base, walks, strict_walks=()) -> dict:
     """{walk id: why it is not counted} for the walk ids of `walks` under the rehearsals folder `base`; walk_plan's and
-    fixture_walk's coverage never count them."""
-    return {w: why for w in walks if isinstance(w, str) for why in (coverage_status(base, w),) if why is not None}
+    fixture_walk's coverage never count them. The walks `strict_walks` names are judged by OD131's strict rule too
+    (strict_reasons, read once per call, and only when one is named); when the table at HEAD cannot be read, each of
+    them is reported (STRICT_UNREAD), never counted, and every other walk is judged as before."""
+    strict_ids = {w for w in strict_walks if isinstance(w, str)}
+    reasons, unread = None, None
+    if strict_ids:
+        try:
+            reasons = strict_reasons()
+        except StrictUnreadable as exc:
+            unread = f"{STRICT_UNREAD}: {exc}"
+    out = {}
+    for w in walks:
+        if not isinstance(w, str):
+            continue
+        if w in strict_ids and unread is not None:
+            out[w] = unread
+            continue
+        strict = reasons if w in strict_ids else None
+        why = coverage_status(base, w, strict=strict)
+        if why is not None:
+            out[w] = why
+    return out
