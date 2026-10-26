@@ -1364,14 +1364,15 @@ class PrefreezeFills(unittest.TestCase):
         """NIT (pre-freeze review 1): the price table's pending reason names what reads it, and the lines it cites."""
         reason = b.PENDING_REASONS["price_table"]
         # lane pf1-l4-close (25 Oct 2026): the cost step's price variants moved the cited lines
+        # lane pf1-cost-vendors (26 Oct 2026): the statement's assembly lines moved them again
         self.assertEqual(reason, "R15 CP5-req 54: published per-call costs read a dated vendor price table "
-                                 "(costs.py:248-318, and 383-390 with its price_variants); the money gate reads the "
+                                 "(costs.py:269-339, and 404-411 with its price_variants); the money gate reads the "
                                  "ledger's cost per try.", "F10.price")
         lines = (HERE / "costs.py").read_text().split("\n")
-        self.assertTrue(lines[247].startswith("def account(calls, price_table, variants=None):"), "F10.price")
-        self.assertEqual(lines[317], "    return out", "F10.price")
-        self.assertTrue(lines[382].startswith("def frozen_inputs(pre):"), "F10.price")
-        self.assertIn('pre["price_table"]', lines[389], "F10.price")
+        self.assertTrue(lines[268].startswith("def account(calls, price_table, variants=None):"), "F10.price")
+        self.assertEqual(lines[338], "    return out", "F10.price")
+        self.assertTrue(lines[403].startswith("def frozen_inputs(pre):"), "F10.price")
+        self.assertIn('pre["price_table"]', lines[410], "F10.price")
         # lane pf1-l4-close (25 Oct 2026): the table is filled, so the reason shows only on a draft whose table is not
         self.assertEqual(b.pending(changed(b.build(), ("price_table",), "PENDING"))["/price_table"], reason,
                          "F10.price")

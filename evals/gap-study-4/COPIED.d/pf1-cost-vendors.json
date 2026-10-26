@@ -19,7 +19,7 @@
     {
       "path": "COPIED.d/pf1-cost-vendors.json",
       "status": "new",
-      "reason": "This lane's copy-record fragment (interface 1). Lane pf1-cost-vendors (26 Oct 2026). Its edits to files other lanes claim, without a change of status: costs.py (ASSEMBLY_BUILT, the not-built items, the docstring's pointer to cost_calls.py) and prereg-draft.json (its cost_statement, regenerated once by build_draft.py). drive.py is not edited: it is a reader source both committed acceptance records bind (native_reader_registration READER_SOURCES and CODEX_SOURCES)."
+      "reason": "This lane's copy-record fragment (interface 1). Lane pf1-cost-vendors (26 Oct 2026). Its edits to files other lanes claim, without a change of status: costs.py (ASSEMBLY_BUILT, the not-built items, the docstring's pointer to cost_calls.py), build_draft.py and tests/test_build_draft.py (the price table's pending reason cites costs.py's lines, which moved) and prereg-draft.json (its cost_statement, regenerated once by build_draft.py). drive.py is not edited: it is a reader source both committed acceptance records bind (native_reader_registration READER_SOURCES and CODEX_SOURCES)."
     }
   ]
 }

@@ -1242,8 +1242,9 @@ PENDING_REASONS = {
     "served_model_rule": "R15 CP5-req 53: the harness owners supply the served-model rule.",
     # pre-freeze review 1, NIT (lane pf1-l4a, 25 Oct 2026): what reads the table, and what the money gate reads
     # lane pf1-l4-close (25 Oct 2026): the lines moved with the cost step's price variants
-    "price_table": "R15 CP5-req 54: published per-call costs read a dated vendor price table (costs.py:248-318, and "
-                   "383-390 with its price_variants); the money gate reads the ledger's cost per try.",
+    # lane pf1-cost-vendors (26 Oct 2026): and again with the statement's assembly lines
+    "price_table": "R15 CP5-req 54: published per-call costs read a dated vendor price table (costs.py:269-339, and "
+                   "404-411 with its price_variants); the money gate reads the ledger's cost per try.",
     "routing_markers": "R15 CP5-req 55: the routing owner rules the marker status.",
     "routing_marker_inputs": "R15 CP5-req 55: CP2 adds each vendor's markers with its adapter.",
     "furniture": "R15 CP5-req 56: CP6 walks supply each harness's list.",
