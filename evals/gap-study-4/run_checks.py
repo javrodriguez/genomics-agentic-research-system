@@ -43,6 +43,15 @@ REPO = HERE.parent.parent
 CHECKS = HERE / "checks.d"
 BATTERY = "python3 -W ignore evals/gap-study-4/test_round4.py"
 TIMEOUT_S = 3600
+# Lane pf1-checker-digest (the lane orchestrator's ruling of Mon 26 Oct 2026 on review c99f114's note): the battery
+# ran in 3547.5-3595.8 s against TIMEOUT_S, so the battery command alone gets BATTERY_TIMEOUT_S. Operational headroom
+# only: what is checked does not change, and every other command keeps TIMEOUT_S.
+BATTERY_TIMEOUT_S = 7200
+
+
+def timeout_for(where: str) -> int:
+    """The time limit of the command listed at `where`: BATTERY_TIMEOUT_S for the battery, TIMEOUT_S for the rest."""
+    return BATTERY_TIMEOUT_S if where == "test_round4" else TIMEOUT_S
 # Lines a PASSING command's output keeps in the log, matched at the line start: the battery's run and skip count
 # (review round 2) and every witness group's summary and collateral lines (S4).
 ECHO_ON_PASS = ("test_round4: ", "test_build_draft witnesses", "test_ci_job witnesses", "red without collateral",
@@ -100,14 +109,14 @@ def run_all(cmds: list[tuple[str, str]], cwd: Path = REPO, tally: dict | None = 
         t0 = time.monotonic()
         try:
             p = subprocess.run(["bash", "-o", "pipefail", "-c", cmd], cwd=str(cwd), env=env, capture_output=True,
-                               text=True, errors="replace", timeout=TIMEOUT_S)
+                               text=True, errors="replace", timeout=timeout_for(where))
             code, output = p.returncode, (p.stdout or "") + (p.stderr or "")
             if code == 0 and where == "test_round4":
                 last = [l for l in (p.stdout or "").splitlines() if l.strip()][-1:]
                 if not last or not BATTERY_CLOSING.match(last[0]):
                     code, output = "no-closing-count", output + "\nthe battery's last line is not its closing count"
         except subprocess.TimeoutExpired:
-            code, output = "timeout", f"no result within {TIMEOUT_S} s"
+            code, output = "timeout", f"no result within {timeout_for(where)} s"
         except Exception as e:  # anything the command raises is a failure, never a lost closing line
             code, output = "error", f"{type(e).__name__}: {e}"
         except BaseException:

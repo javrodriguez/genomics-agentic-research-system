@@ -43,6 +43,20 @@ from committed bytes, no model and no money: fail closed is cheap); a file outsi
   D9-witness   each mutant below turns its case red.
   D10-writers  what a checked walk records (the claude-code side's and the vendor side's digest, which walk_regrade's
                recheck also writes) is what coverage reads as in force, and both move with the code.
+
+The fold of review c99f114 (the lane orchestrator's rulings of Mon 26 Oct 2026):
+  MAJOR 1      option (a), narrowly: the design road's inputs the checker's reasons read are bound too. The list
+               gains every tasks/*.json and variants/*.json (design_view reads its task's pair) and the graders
+               design_view loads by name (DESIGN_GRADERS, their module-level imports followed); a third part,
+               design_values_sha256, binds only the pre-registration in force's leak_words and leak_context_excusals
+               values, so a regenerated draft moves nothing (D6-draft). D4 adds a task edit, a variants edit and
+               each leak value's edit; D2 now builds every task's and harness's view inside its window
+               (production_design, the call walk_builders' design_for makes) and the checker's own view too.
+  MINOR 1      check_results.py is bound (takes.load_rows' validate_ledger on the take road).
+  MINOR 2      D13: the stale message says "checker constants or code"; walk_regrade's no-digest refusal names a
+               missing code file.
+  NIT 1        the vendor writer's mutant is pinned.
+  D12          run_checks: the battery command, and only it, runs under BATTERY_TIMEOUT_S (7200 s).
 """
 
 from __future__ import annotations
@@ -66,16 +80,26 @@ sys.path.insert(0, str(HERE))
 
 ct = pw = None
 STUDY = "evals/gap-study-4/"
-EXTRAS = (STUDY + "drive.py", STUDY + "vendor_provenance.py", STUDY + "routing.json")
+EXTRAS = (STUDY + "drive.py", STUDY + "vendor_provenance.py", STUDY + "routing.json",
+          STUDY + "check_results.py")      # review c99f114 MINOR 1: takes.load_rows' validate_ledger, the take road
+# Review c99f114 MAJOR 1: the graders design_view loads by name (variants.load_grader) while it builds a walk's or a
+# take's view; each one's module-level imports are followed as check_take's are. D2 profiles the design road over a
+# row of every task and harness, so a grader loaded there and missing here goes red.
+DESIGN_GRADERS = tuple(STUDY + f"graders/{g}.py" for g in ("confounded_design", "new_tasks", "precondition_refusal",
+                                                          "scope_read", "template_adherence"))
 # Function-level imports in bound modules (other than check_take.py) that leave the set: none of them runs while a
-# walk is checked (D2 profiles it), so none is bound. A new one fails D1 until it is classified here or bound.
+# walk or a take is checked or its design view built (D2 profiles walks of each harness and the design road), so none
+# is bound. A new one fails D1 until it is classified here or bound. check_results.py is bound as one file: its own
+# imports (freeze, result and the rest) are not followed, because validate_ledger only refuses a malformed ledger.
 LAZY_OUTSIDE = {
     (STUDY + "batch.py", "costs"), (STUDY + "batch.py", "run_builders"),
     (STUDY + "box/run_take.py", "box.preflight"),
     (STUDY + "drive.py", "walk_register"), (STUDY + "drive.py", "box.ownership"),
     (STUDY + "drive.py", "box.settings_guard"), (STUDY + "drive.py", "fixtures.gen_explain_not_act"),
     (STUDY + "prereg.py", "freeze"), (STUDY + "prereg.py", "order_beacon"),
-    (STUDY + "takes.py", "run"), (STUDY + "takes.py", "check_results"),
+    (STUDY + "takes.py", "run"),
+    (STUDY + "check_results.py", "freeze"), (STUDY + "check_results.py", "labelling.sample"),
+    (STUDY + "check_results.py", "result"), (STUDY + "check_results.py", "run_builders"),
 }
 WALKS = ("w165", "w-o46", "w-g21")
 PENDING_WALKS = ("w-o46", "w-g21")
@@ -120,16 +144,21 @@ def fixture_readmes(mod) -> set:
     return {f"{STUDY}tests/fixtures/{f.split('/')[0]}/README.md" for f in named}
 
 
+def design_files() -> set:
+    """Review c99f114 MAJOR 1: every task file and variants file design_view reads (variants.load_task and
+    variants.operator_steps read tasks/<task>.json and variants/<task>.json)."""
+    return {p.relative_to(REPO).as_posix() for d in ("tasks", "variants") for p in (REPO / STUDY / d).glob("*.json")}
+
+
 def rule_set(mod=None) -> set:
-    start = REPO / STUDY / "check_take.py"
-    seen, todo = set(), [(start, False)]
+    seen, todo = set(), [(REPO / STUDY / "check_take.py", False)] + [(REPO / g, True) for g in DESIGN_GRADERS]
     while todo:
         path, top = todo.pop()
         if path in seen:
             continue
         seen.add(path)
         todo += [(p, True) for n in _imports(path, module_level_only=top) for p in (_resolve(n),) if p]
-    return {p.relative_to(REPO).as_posix() for p in seen} | set(EXTRAS) | fixture_readmes(mod or ct)
+    return {p.relative_to(REPO).as_posix() for p in seen} | set(EXTRAS) | fixture_readmes(mod or ct) | design_files()
 
 
 def lazy_outside(files) -> set:
@@ -179,6 +208,19 @@ class CodeTree:
         for rel in tuple(mod.CHECKER_CODE_FILES) + self.UNBOUND:
             (self.root / rel).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(REPO / rel, self.root / rel)
+        # review c99f114 MAJOR 1: a copy of the pre-registration in force, as DESIGN_VALUES_PATH
+        import prereg
+        self.prereg = self.root / "prereg-in-force.json"
+        shutil.copyfile(prereg.in_force(), self.prereg)
+
+    def edit_prereg(self, change):
+        doc = json.loads(self.prereg.read_text(encoding="utf-8"))
+        change(doc)
+        self.prereg.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf-8")   # another layout as well
+
+    def restore_prereg(self):
+        import prereg
+        shutil.copyfile(prereg.in_force(), self.prereg)
 
     def edit(self, rel: str, old: str, new: str, *, after: str = ""):
         p = self.root / rel
@@ -225,8 +267,9 @@ def standing_cases(mod=None, pmod=None) -> list:
     tree = CodeTree(mod)
     bases = []
     try:
-        with mock.patch.object(mod, "CHECKER_CODE_ROOT", tree.root), mock.patch.dict(sys.modules,
-                                                                                    {"check_take": mod}):
+        with mock.patch.object(mod, "CHECKER_CODE_ROOT", tree.root), \
+                mock.patch.object(mod, "DESIGN_VALUES_PATH", tree.prereg), \
+                mock.patch.dict(sys.modules, {"check_take": mod}):
             for harness in (None, "codex"):
                 digest = mod.vendor_checker_constants_sha256(harness) if harness else mod.checker_constants_sha256()
                 base = world(digest, harness)
@@ -250,6 +293,28 @@ def standing_cases(mod=None, pmod=None) -> list:
                     if standing() is not None:
                         out.append(f"D6-other {tag}: an edit to {rel} moved the digest: {standing()!r}")
                     tree.restore(rel)
+                # review c99f114 MAJOR 1: a task file, a variants file and each bound pre-registration value
+                for name, edit in (("D4-task", lambda: tree.edit(STUDY + "tasks/plan-gate.json", "{", "{ ")),
+                                   ("D4-variants", lambda: tree.edit(STUDY + "variants/plan-gate.json", "{", "{ ")),
+                                   ("D4-leak-words", lambda: tree.edit_prereg(
+                                       lambda d: d["leak_words"].append("zz-a-new-leak-word"))),
+                                   ("D4-leak-excusals", lambda: tree.edit_prereg(
+                                       lambda d: d["leak_context_excusals"].pop()))):
+                    edit()
+                    got = standing()
+                    if not (isinstance(got, str) and got.startswith("stale")):
+                        out.append(f"{name} {tag}: standing {got!r} after the edit")
+                    tree.restore(STUDY + "tasks/plan-gate.json")
+                    tree.restore(STUDY + "variants/plan-gate.json")
+                    tree.restore_prereg()
+                    if standing() is not None:
+                        out.append(f"{name} {tag}: undoing the edit does not restore the walk: {standing()!r}")
+                # the draft regenerated (another layout, another key, another value of an unbound key) moves nothing
+                tree.edit_prereg(lambda d: d.update(pf1_digest_probe="regenerated", walk_counts={"probe": 1}))
+                if standing() is not None:
+                    out.append(f"D6-draft {tag}: a regenerated draft with the same leak values moved the digest: "
+                               f"{standing()!r}")
+                tree.restore_prereg()
     finally:
         tree.close()
         for b in bases:
@@ -268,17 +333,25 @@ def shape_problems(mod=None) -> list:
     code = hashlib.sha256(json.dumps(lines, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     consts = hashlib.sha256(json.dumps(mod.CHECKER_CONSTANTS, sort_keys=True, separators=(",", ":"),
                                        ensure_ascii=False).encode("utf-8")).hexdigest()
-    want = hashlib.sha256(json.dumps({"checker_code_sha256": code, "constants_sha256": consts}, sort_keys=True,
+    import prereg
+    doc = json.loads(prereg.in_force().read_text(encoding="utf-8"))
+    values = {"leak_context_excusals": doc.get("leak_context_excusals"), "leak_words": doc.get("leak_words")}
+    design = hashlib.sha256(json.dumps(values, sort_keys=True, separators=(",", ":"),
+                                       ensure_ascii=False).encode("utf-8")).hexdigest()
+    want = hashlib.sha256(json.dumps({"checker_code_sha256": code, "constants_sha256": consts,
+                                      "design_values_sha256": design}, sort_keys=True,
                                      separators=(",", ":")).encode()).hexdigest()
-    with mock.patch.object(mod, "CHECKER_CODE_ROOT", REPO):
+    with mock.patch.object(mod, "CHECKER_CODE_ROOT", REPO), mock.patch.object(mod, "DESIGN_VALUES_PATH", None):
         if mod.checker_code_manifest() != lines:
             out.append("D7-shape: the manifest is not each file's git blob id")
         if mod.checker_code_sha256() != code:
             out.append("D7-shape: checker_code_sha256 is not the sha256 of the manifest")
         if mod.constants_only_sha256() != consts:
             out.append("D7-shape: constants_only_sha256 is not B5's constants-only digest")
+        if mod.design_values() != values or mod.design_values_sha256() != design:
+            out.append("D7-shape: the design values are not exactly the in-force leak_words and leak_context_excusals")
         if mod.checker_constants_sha256() != want:
-            out.append("D7-shape: checker_constants_sha256 is not the sha256 of its two halves")
+            out.append("D7-shape: checker_constants_sha256 is not the sha256 of its three parts")
     tree = CodeTree(mod)
     try:
         with mock.patch.object(mod, "CHECKER_CODE_ROOT", tree.root):
@@ -295,6 +368,12 @@ def shape_problems(mod=None) -> list:
                 if p.is_symlink() or p.exists():
                     p.unlink()
                 tree.restore(STUDY + "routing.py")
+            with mock.patch.object(mod, "DESIGN_VALUES_PATH", tree.root / "no-prereg.json"):
+                try:
+                    got = mod.checker_constants_sha256()
+                    out.append(f"D7-shape: a missing pre-registration gave a digest {got[:12]}")
+                except mod.CheckRefused:
+                    pass
     finally:
         tree.close()
     return out
@@ -346,6 +425,12 @@ def cache_problems(mod=None) -> list:
                 tree.restore(STUDY + "routing.py")
                 if mod.checker_constants_sha256() != first:
                     out.append("D11-cache: undoing the edit did not restore the digest")
+                with mock.patch.object(mod, "DESIGN_VALUES_PATH", tree.prereg):
+                    held = mod.checker_constants_sha256()
+                    tree.edit_prereg(lambda d: d["leak_words"].append("zz-cache-probe"))
+                    if mod.checker_constants_sha256() == held:
+                        out.append("D11-cache: a cached pre-registration's leak-word edit did not move the digest")
+                    tree.restore_prereg()
             mod._CODE_CACHE.clear()
             mod._CODE_HALF_CACHE.clear()
             tree.edit(STUDY + "routing.py", "\n", "\n# a fresh edit\n")
@@ -399,9 +484,48 @@ def mutant(mod, old: str, new: str):
     return m
 
 
+def run_checks_problems(mod=None) -> list:
+    """D12 (the lane orchestrator's ruling on review c99f114's test_round4 note): the battery command, and only it,
+    runs under BATTERY_TIMEOUT_S (7200 s); every other command keeps TIMEOUT_S (3600 s). Shown on run_all itself with
+    both limits shrunk: a 2 s battery passes under a 6 s battery limit while a 2 s lane command times out at 1 s."""
+    import io
+    from contextlib import redirect_stdout
+    import run_checks
+    mod = mod or run_checks
+    out = []
+    if (mod.TIMEOUT_S, mod.BATTERY_TIMEOUT_S) != (3600, 7200):
+        out.append(f"D12-timeout: the limits are {(mod.TIMEOUT_S, mod.BATTERY_TIMEOUT_S)}, not (3600, 7200)")
+    if mod.timeout_for("test_round4") != mod.BATTERY_TIMEOUT_S:
+        out.append("D12-timeout: the battery is not run under BATTERY_TIMEOUT_S")
+    if any(mod.timeout_for(w) != mod.TIMEOUT_S for w in ("pf1-checker-digest.txt:5", "test_round4.py", "x")):
+        out.append("D12-timeout: a command other than the battery is not run under TIMEOUT_S")
+    battery = "sleep 2; echo 'test_round4: 1 run, 0 skipped, 0 expected failures'"
+    with mock.patch.object(mod, "TIMEOUT_S", 1), mock.patch.object(mod, "BATTERY_TIMEOUT_S", 6), \
+            redirect_stdout(io.StringIO()) as log:
+        got = mod.run_all([("test_round4", battery), ("lane.txt:1", "sleep 2")])
+    text = log.getvalue()
+    if got != (1, 2) or "PASS [test_round4]" not in text or "FAIL [lane.txt:1] exit timeout" not in text \
+            or "no result within 1 s" not in text:
+        out.append(f"D12-timeout: run_all gave {got}: {text.strip()[-300:]!r}")
+    return out
+
+
 CT_MUTANTS = (
-    ("binding-dropped", "    return _bound_digest(constants_only_sha256(constants), checker_code_sha256())",
+    ("binding-dropped",
+     "    return _bound_digest(constants_only_sha256(constants), checker_code_sha256(), design_values_sha256())",
      "    return constants_only_sha256(constants)", "standing"),
+    ("design-values-dropped",
+     "    return _bound_digest(constants_only_sha256(constants), checker_code_sha256(), design_values_sha256())",
+     "    return _bound_digest(constants_only_sha256(constants), checker_code_sha256(), '')", "standing"),
+    ("one-design-value-dropped", 'DESIGN_VALUE_KEYS = ("leak_context_excusals", "leak_words")',
+     'DESIGN_VALUE_KEYS = ("leak_words",)', "standing"),
+    ("whole-draft-bound", "    return {k: doc.get(k) for k in DESIGN_VALUE_KEYS}", "    return doc", "standing"),
+    ("vendor-writer-constants-only",
+     '        got["driver_constants"].pop("permission_mode_by_arm", None)\n        return checker_constants_sha256(got)\n'
+     '    except (KeyError, TypeError, AttributeError, CheckRefused):\n        return None\n\n\ndef checker_view(',
+     '        got["driver_constants"].pop("permission_mode_by_arm", None)\n        return constants_only_sha256(got)\n'
+     '    except (KeyError, TypeError, AttributeError, CheckRefused):\n        return None\n\n\ndef checker_view(',
+     "writers"),
     ("bytes-not-hashed", "    blob = git_blob_id(p.read_bytes())", "    blob = git_blob_id(str(p).encode())",
      "standing"),
     ("cache-ignores-signature", "    if hit is not None and hit[0] == sig:", "    if hit is not None:", "cache"),
@@ -412,6 +536,8 @@ CT_MUTANTS = (
     ("fresh-half-cached",
      "    if key is not None and _now_ns() - max(max(s[3], s[4]) for s in sigs) > CODE_CACHE_SETTLE_NS:",
      "    if key is not None:", "cache"),
+    ("design-cache-ignores-signature", "    if sig is not None and hit is not None and hit[0] == sig:",
+     "    if hit is not None:", "cache"),
     ("file-dropped", '    "evals/gap-study-4/drive.py",\n', "", "pin"),
     ("missing-file-skipped", "            raise CheckRefused(f\"the checker's code file {rel} is missing or a link",
      "            continue\n            raise CheckRefused(f\"the checker's code file {rel} is missing or a link",
@@ -431,6 +557,14 @@ WR_MUTANTS = (
      '        doc = {"schema": 1, "checker_constants_sha256": __import__("check_take").checker_constants_sha256(), '
      '"walk": walk, "walk_commit"'),
 )
+RC_MUTANTS = (
+    ("battery-on-the-common-timeout", '    return BATTERY_TIMEOUT_S if where == "test_round4" else TIMEOUT_S',
+     "    return TIMEOUT_S"),
+    ("every-command-on-the-battery-timeout", '    return BATTERY_TIMEOUT_S if where == "test_round4" else TIMEOUT_S',
+     "    return BATTERY_TIMEOUT_S"),
+    ("run-all-on-the-common-timeout", "text=True, errors=\"replace\", timeout=timeout_for(where))",
+     "text=True, errors=\"replace\", timeout=TIMEOUT_S)"),
+)
 
 
 class TheCheckerCodeDigest(unittest.TestCase):
@@ -438,52 +572,74 @@ class TheCheckerCodeDigest(unittest.TestCase):
         self.assertEqual(pin_problems(ct), [])
 
     def test_d2_checking_runs_and_opens_listed_files_only(self):
-        import batch
+        """The design road (walk_regrade.production_design, the same call walk_builders' design_for makes: checker_view
+        of design_view with batch.expected_pin) over the first registered walk of every task and harness, then the
+        checker on w165, w-o46 and w-g21 with its design built inside the window too: only listed code runs, and only
+        listed files and the pre-registration in force (bound by its two values) are opened. prereg.load()'s cache is
+        dropped first so its read is seen."""
         import drive
-        import routing
+        import prereg
         import run as run_mod
         import walk_regrade as wr
         root, prefix = wr._repo(HERE)
         reg = json.loads((HERE / "rehearsals" / "register.json").read_text())
         bound = {str(REPO / rel) for rel in ct.CHECKER_CODE_FILES}
+        draft = str(prereg.in_force().resolve())
         me = str(Path(__file__).resolve())
+        builder = (str(Path(wr.__file__).resolve()), "production_design")      # the call itself, three lines
         ran, opened = set(), set()
-        state = {"on": False}
+        state = {"on": False, "tmp": "/nonexistent-pf1"}
 
         def prof(frame, event, arg):
             if event == "call" and state["on"]:
-                ran.add(frame.f_code.co_filename)
+                ran.add((frame.f_code.co_filename, frame.f_code.co_name))
 
         def audit(event, args):
-            if event == "open" and state["on"] and isinstance(args[0], (str, Path)):
-                opened.add(str(Path(args[0]).resolve()) if not str(args[0]).startswith(tmp_root) else "")
+            if event == "open" and state["on"] and isinstance(args[0], (str, Path)) \
+                    and not str(args[0]).startswith(state["tmp"]):
+                opened.add(str(Path(args[0]).resolve()))
         sys.addaudithook(audit)
+
+        def window(fn):
+            saved, prereg._cache = prereg._cache, None
+            state["on"] = True
+            sys.setprofile(prof)
+            try:
+                return fn()
+            finally:
+                sys.setprofile(None)
+                state["on"] = False
+                prereg._cache = saved
+        firsts = {}
+        for e in reg["walks"]:
+            ledger = json.loads((HERE / "rehearsals" / e["walk"] / drive.LEDGER_FILE).read_bytes())
+            row = dict(run_mod.walk_row(e, ledger), walk=e["walk"], slot=e["walk"])
+            firsts.setdefault((row["task"], row["agent"]["harness"]), row)
+        self.assertEqual(len({t for t, _ in firsts}), len(list((HERE / "tasks").glob("*.json"))),
+                         "D2-design: a task has no registered walk to build its view from")
+        for row in firsts.values():
+            window(lambda: wr.production_design(row, "/tmp/pf1/" + drive.neutral_name(
+                ct.walk_session_id(row["walk"]))))
         for walk in WALKS:
             entry = [e for e in reg["walks"] if e["walk"] == walk][0]
             with tempfile.TemporaryDirectory() as tmp:
-                tmp_root = str(Path(tmp).resolve())
+                state["tmp"] = str(Path(tmp).resolve())
                 base = Path(tmp) / walk
                 wr.materialize_walk(root, wr._walk_rel(prefix, walk), base)
                 ledger = json.loads((base / drive.LEDGER_FILE).read_bytes())
                 row = dict(run_mod.walk_row(entry, ledger), walk=walk, slot=walk)
-                design = ct.checker_view(ct.design_view(row, pin=batch.expected_pin(row, routing.load_table()),
-                                                        run_tree="/tmp/pf1/" + drive.neutral_name(
-                                                            ct.walk_session_id(walk))))
                 take = types.SimpleNamespace(folder=str(base), cross_check=[])
-                checker = drive.take_checker(design_for=lambda r, t: design, records="walks")
-                state["on"] = True
-                sys.setprofile(prof)
-                try:
-                    got = checker(row, take, [])
-                finally:
-                    sys.setprofile(None)
-                    state["on"] = False
+                checker = drive.take_checker(design_for=lambda r, t: wr.production_design(r, "/tmp/pf1/" + (
+                    drive.neutral_name(ct.walk_session_id(walk)))), records="walks")
+                got = window(lambda: checker(row, take, []))
                 self.assertTrue(got["checker_reasons"], f"{walk}: the checker read nothing")
-        in_repo = {f for f in ran if f.startswith(str(REPO) + "/") and f != me}
+        in_repo = {(f, n) for f, n in ran if f.startswith(str(REPO) + "/") and f != me and (f, n) != builder}
         self.assertTrue(in_repo, "D2-run: no study code ran")
-        self.assertEqual(sorted(in_repo - bound), [], "D2-run: code outside CHECKER_CODE_FILES ran")
+        self.assertEqual(sorted({f for f, _ in in_repo} - bound), [], "D2-run: code outside CHECKER_CODE_FILES ran")
         files = {f for f in opened if f.startswith(str(REPO) + "/") and not f.endswith(".pyc")}
-        self.assertEqual(sorted(files - bound), [], "D2-run: a study file outside CHECKER_CODE_FILES was opened")
+        self.assertIn(draft, files, "D2-design: the pre-registration was not read inside the window")
+        self.assertEqual(sorted(files - bound - {draft}), [],
+                         "D2-run: a study file outside CHECKER_CODE_FILES was opened")
 
     def test_d3_each_entry_is_gits_blob_id(self):
         manifest = ct.checker_code_manifest(REPO)
@@ -538,6 +694,33 @@ class TheCheckerCodeDigest(unittest.TestCase):
                     got = [f"raised {type(e).__name__}: {e}"]
                 print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} {got[:1]}", end=" ", file=sys.stderr)
                 self.assertTrue(got, name)
+        import run_checks
+        for name, old, new in RC_MUTANTS:
+            with self.subTest(witness=name):
+                try:
+                    got = run_checks_problems(mutant(run_checks, old, new))
+                except Exception as e:  # noqa: BLE001
+                    got = [f"raised {type(e).__name__}: {e}"]
+                print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} {got[:1]}", end=" ", file=sys.stderr)
+                self.assertTrue(got, name)
+
+    def test_d12_only_the_battery_gets_the_long_timeout(self):
+        self.assertEqual(run_checks_problems(), [])
+
+    def test_d13_the_messages_name_constants_or_code(self):
+        """Review c99f114 MINOR 2: a stale walk reads "checker constants or code", and a recheck whose design view has
+        no digest names a missing checker code file as a cause."""
+        base = world("0" * 64)
+        try:
+            self.assertEqual(pw.checker_standing(base, "w-digest"),
+                             "stale: checked under other checker constants or code; regrade it")
+        finally:
+            shutil.rmtree(base.parent, ignore_errors=True)
+        for src in ((HERE / "pending_walk.py").read_text(), (HERE / "walk_regrade.py").read_text()):
+            self.assertNotIn("checked under other checker constants;", src)
+        self.assertIn('RegradeRefused("the design view\'s constants or code have no digest (PENDING, incomplete, or a "\n'
+                      '                                     "checker code file missing)")',
+                      (HERE / "walk_regrade.py").read_text())
 
 
 if __name__ == "__main__":

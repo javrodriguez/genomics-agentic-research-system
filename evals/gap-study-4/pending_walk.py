@@ -214,7 +214,7 @@ def checker_standing(base, walk: str, *, pending: bool = False):
     if check.get("checker_constants_sha256") == now and not valid_agent_summary(*eff_agent):    # Agent parity, part 6
         return "check unreadable: no Agent call count under the checker constants in force"
     if check.get("checker_constants_sha256") != now:
-        return "stale: checked under other checker constants; regrade it"
+        return "stale: checked under other checker constants or code; regrade it"
     return None
 
 
@@ -249,7 +249,7 @@ def pending_standing(base, walk: str, check):
     except check_take.CheckRefused:
         return "the checker constants in force are PENDING"
     if latest.get("checker_constants_sha256") != now:
-        return "stale: checked under other checker constants; regrade it"
+        return "stale: checked under other checker constants or code; regrade it"
     if not valid_nudge_count(latest.get(CHECK_NUDGE_KEY)):
         return "check unreadable: no no-visible-output nudge count under the checker constants in force"
     if not valid_agent_summary(latest.get("agent_calls"), latest.get("subagents"), latest.get("nested_cli_calls")):

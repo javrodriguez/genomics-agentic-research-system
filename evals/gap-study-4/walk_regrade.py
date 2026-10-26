@@ -676,7 +676,8 @@ def recheck_doc(walk: str, n: int, study: Path = HERE, *, machine, design_for=No
             design = design_for(row, run_tree)
             digest = ct.vendor_design_constants_sha256(design) if vendor else ct.design_constants_sha256(design)
             if digest is None:
-                raise RegradeRefused("the design view's constants have no digest (PENDING or incomplete)")
+                raise RegradeRefused("the design view's constants or code have no digest (PENDING, incomplete, or a "
+                                     "checker code file missing)")
             got = (production_checker if checker is None else checker)(row, design, base, check_ledger)
         except (ct.CheckRefused, KeyError) as e:
             raise RegradeRefused(f"the checker refused the walk: {type(e).__name__}: {e}") from None

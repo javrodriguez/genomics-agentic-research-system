@@ -87,7 +87,14 @@ def digest(constants) -> str:
     ids = {rel: hashlib.sha1(b"blob %d\0" % len(raw) + raw).hexdigest()
            for rel in check_take.CHECKER_CODE_FILES for raw in ((root / rel).read_bytes(),)}
     code = hashlib.sha256(json.dumps(ids, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-    return hashlib.sha256(json.dumps({"checker_code_sha256": code, "constants_sha256": consts}, sort_keys=True,
+    # the fold of review c99f114 (MAJOR 1): the pre-registration in force's two leak values, recomputed here
+    import prereg
+    doc = json.loads(prereg.in_force().read_text(encoding="utf-8"))
+    values = {"leak_context_excusals": doc.get("leak_context_excusals"), "leak_words": doc.get("leak_words")}
+    design = hashlib.sha256(json.dumps(values, sort_keys=True, separators=(",", ":"),
+                                       ensure_ascii=False).encode("utf-8")).hexdigest()
+    return hashlib.sha256(json.dumps({"checker_code_sha256": code, "constants_sha256": consts,
+                                      "design_values_sha256": design}, sort_keys=True,
                                      separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
