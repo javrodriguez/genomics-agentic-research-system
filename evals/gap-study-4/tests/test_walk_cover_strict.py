@@ -34,9 +34,10 @@ typed; arms O and G count as before.
                  the table is never read; a pending walk with a graded regrade and a nested-agent recheck reads
                  STRICT_WHY through coverage_status and uncounted_walks (review MINOR 1); with operator-lines added to
                  the working tree's table and absent at HEAD, a strict walk carrying it is not counted (MINOR 2)
-  S5.records     the real register at this head: every arm A walk walk_plan's coverage counts has an effective
-                 reading with no reason HEAD's routing routes to harness-error, and every walk of another arm reads
-                 exactly as it does without the strict rule
+  S5.records     the real register at this head: walk_plan's strict arms are A and O (OD131, OD132); every arm A or O
+                 walk its coverage counts has an effective reading with no reason HEAD's routing routes to
+                 harness-error, and every arm G walk (deferred, as coded) reads exactly as it does without the rule.
+                 The heavy reading of arm O after its regrades and rechecks is tests/test_walk_cover_o_records.py
   S6.witnesses   each anchored mutant of pending_walk.py (below) turns a case red
 
 Red first: before the lane every clause fails by its own assertion. Fixtures: temporary folders and temporary git
@@ -481,18 +482,28 @@ def records_cases() -> list:
     rep = walk_plan.coverage_report()
     entries = {e["walk"]: e for e in rep["entries"]}
     strict = set(pw.harness_error_reasons(pw.head_routing_table()))
+    if walk_plan.WALK_COVER_STRICT.get("arms") != STRICT_ARMS:
+        out.append(f"S5.records: the strict arms are {walk_plan.WALK_COVER_STRICT.get('arms')!r}, not OD131's and "
+                   f"OD132's {STRICT_ARMS!r}")
     covering = {w for walks in rep["got"]["covered"].values() for w in walks}
     for w in sorted(covering):
-        if entries[w]["arm"] == "A":
+        if entries[w]["arm"] in STRICT_ARMS:
             reasons = effective_reasons(base, w)
             if not isinstance(reasons, list) or set(reasons) & strict:
-                out.append(f"S5.records: arm A walk {w} is counted on the reading {reasons!r}")
+                out.append(f"S5.records: arm {entries[w]['arm']} walk {w} is counted on the reading {reasons!r}")
     loose = pw.uncounted_walks(base, list(entries))
     held = dict(rep["got"]["uncounted"])
     for w, e in entries.items():
-        if e["arm"] != "A" and held.get(w) != loose.get(w):
+        if e["arm"] not in STRICT_ARMS and held.get(w) != loose.get(w):
             out.append(f"S5.records: walk {w} of arm {e['arm']} reads {held.get(w)!r}, not {loose.get(w)!r} as before")
+    if not any(e["arm"] == "G" for e in entries.values()):
+        out.append("S5.records: the register holds no arm G walk, so arm G's standing is not exercised")
     return out
+
+
+# OD131 (Javier, 25 Oct 2026, "walk-cover strict": a Claude walk) and OD132 (26 Oct 2026, "walk-cover-o strict": a Codex
+# walk); arm G is deferred and stays as coded. The tests' own reading of the two rulings.
+STRICT_ARMS = ("A", "O")
 
 
 # ---- the witnesses: each one anchored edit of pending_walk.py, and the cases it must turn red ----

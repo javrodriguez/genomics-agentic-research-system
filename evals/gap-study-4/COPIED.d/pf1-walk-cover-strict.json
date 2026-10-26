@@ -12,6 +12,11 @@
       "reason": "Lane pf1-walk-cover-strict (OD131, Javier's \"walk-cover strict\", 25 Oct 2026; the lane orchestrator's ruled design under Javier's standing delegation): the clauses S1.derived, S2.head, S3.standing, S4.uncounted, S5.records and S6.witnesses, written red first against 166f8fa8, with twelve anchored witnesses of pending_walk.py, each red by a case. The fold of the review of ff58e02f (VERDICT PASS; the lane orchestrator's rulings of 25 Oct 2026): MINOR 1's pending walk read through coverage_status and uncounted_walks, MINOR 2's reason outside HEAD's vocabulary (synthetic and with an uncommitted addition), MINOR 4's non-graded reasons on HEAD's table and NIT 1's none_of row, red first against ff58e02f, with four more witnesses."
     },
     {
+      "path": "tests/test_walk_cover_o_records.py",
+      "status": "new",
+      "reason": "Lane pf1-walk-cover-strict, OD132 (Javier, 26 Oct 2026: \"walk-cover-o strict\"; the lane orchestrator's ruling under Javier's standing delegation): the real records, read-only; every arm O walk regraded and rechecked in memory into a scratch copy, R1.strict (an arm O walk counts only on a clean recheck, each figure the tests' own count), R2.arm-g (arm G, deferred, reads as without the rule) and R3.committed (a committed regrade.json is its re-derivation). Heavy: athena only."
+    },
+    {
       "path": "checks.d/pf1-walk-cover-strict.txt",
       "status": "new",
       "reason": "Lane pf1-walk-cover-strict (OD131, Javier's \"walk-cover strict\", 25 Oct 2026): this lane's listed checks."

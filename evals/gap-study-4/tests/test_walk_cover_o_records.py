@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+"""Lane pf1-walk-cover-strict, OD132 (Javier, 26 Oct 2026, decision.jsonl: "walk-cover-o strict"): a Codex walk counts
+as covered only if it rechecks clean under the harness as it will be frozen. Arm G is deferred and stays as coded.
+
+The real records, read-only. Every arm O and arm G walk of this tree's register is regraded (walk_regrade.regrade_doc from its
+committed bytes) and rechecked (walk_regrade.recheck_doc, the ordinal after its last committed recheck) in memory, and
+the results are written into a scratch copy of the rehearsals folder with their register recheck entries; nothing is
+written in the study. A committed regrade.json must be the bytes its in-memory re-derivation gives; a walk whose
+regrade is not committed yet is rechecked through the regrade just derived (the only stand-in, counted in the output).
+
+  R1.strict     on the scratch copy, walk_plan's coverage (strict_walks, pending_walk.uncounted_walks) counts an arm O
+                walk only when its recheck carries no checker reason; each arm O walk whose recheck carries one is
+                reported with STRICT_WHY; each model's covered figure is the tests' own count of the specs the clean
+                walks cover; the instrument is armed (a clean and a non-clean arm O walk both exist)
+  R2.arm-g      every arm G walk reads on the scratch copy exactly as it does without the strict rule. Every real arm
+                G recheck reads clean, so one rechecked arm G walk's scratch recheck is planted with a reason
+                (PLANTED_REASON, the only edit to a reading; the study is never touched): it counts without the
+                rule, and must count with it
+  R3.committed  every committed arm O or G regrade.json is the bytes its re-derivation gives
+  R4.witnesses  the same scratch copy judged with walk_plan's strict arms set to ("A",) turns R1 red, and with
+                ("A", "O", "G") turns R2 red
+
+The output prints each arm O model's covered figure, the walks that count and the specs still missing.
+
+Heavy (every arm O walk rechecked): run on athena, from checks.d/pf1-walk-cover-strict.txt.
+
+    python3 -B -W ignore evals/gap-study-4/tests/test_walk_cover_o_records.py
+"""
+from __future__ import annotations
+
+import glob
+import hashlib
+import json
+import shutil
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+sys.dont_write_bytecode = True
+HERE = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(HERE))
+
+READING: dict = {}
+PLANTED_REASON = "harness-condition-violated"
+
+
+def tearDownModule():
+    if READING.get("tmp"):
+        shutil.rmtree(READING["tmp"], ignore_errors=True)
+
+
+def machine_for(base: Path, walk: str) -> dict:
+    launch = sorted(glob.glob(str(base / walk / "turn-*.jsonl.launch.json")))
+    stream = json.loads(Path(launch[0]).read_text())["stream"]
+    return {"home": "/home/javier", "temp_root": "/tmp", "checkout": stream.split("/evals/")[0]}
+
+
+def committed_rechecks(base: Path, walk: str) -> int:
+    reg = json.loads((base / "register.json").read_text())
+    return sum(1 for e in reg.get("rechecks", []) if e.get("walk") == walk)
+
+
+def read_records() -> dict:
+    """The arm O regrades and rechecks, once per process, written into a scratch copy kept for the module."""
+    if READING:
+        return READING
+    import walk_plan
+    import walk_regrade as wr
+    import walk_register
+    base = walk_register.REHEARSALS
+    design = walk_plan.design_in_force(HERE)
+    specs = walk_plan.plan_walks(design)
+    entries = walk_plan.read_register(base, design)
+    # arm G is rechecked too, so R2 compares readings the strict rule could change (not two "pending" readings)
+    o_walks = [e["walk"] for e in entries if e["arm"] in ("O", "G")]
+    regrades, docs, stood_in, committed_bad = {}, {}, [], []
+    real_cross = wr._verified_regrade_cross
+
+    def derived_cross(walk, study, root, walk_rel, harness, *, readers, grade):
+        """The stand-in for a regrade not committed yet: the regrade just derived from the committed walk, held to
+        the same graded, agreed and admission checks; the in-HEAD lookup alone is skipped."""
+        doc = wr.regrade_doc(walk, study, readers=readers, grade=grade)
+        if doc.get("graded") is not True or (doc.get("cross_check") or {}).get("status") != "agreed":
+            raise wr.RegradeRefused("the derived regrade does not grade it")
+        wr.admitted(harness, wr.nrr.production_readers(study) if readers is None else readers, doc["cross_check"])
+        return []
+    for w in o_walks:
+        try:
+            regrades[w] = wr.regrade_doc(w, HERE)
+        except wr.RegradeRefused as exc:
+            if any(e["walk"] == w and e["arm"] == "O" for e in entries):
+                raise
+            print(f"test_walk_cover_o_records: arm G {w} not regraded: {exc}", flush=True)
+            continue
+        committed = base / w / wr.REGRADE_FILE
+        if committed.is_file():
+            if committed.read_bytes() != wr.regrade_bytes(regrades[w]):
+                committed_bad.append(w)
+            cross = real_cross
+        else:
+            stood_in.append(w)
+            cross = derived_cross
+        with mock.patch.object(wr, "_verified_regrade_cross", cross):
+            try:
+                docs[w] = wr.recheck_doc(w, committed_rechecks(base, w) + 1, HERE, machine=machine_for(base, w))
+            except wr.RegradeRefused as exc:
+                if any(e["walk"] == w and e["arm"] == "O" for e in entries):
+                    raise                        # an arm O walk the recheck refuses fails R0, by name
+                print(f"test_walk_cover_o_records: arm G {w} not rechecked: {exc}", flush=True)
+    tmp = Path(tempfile.mkdtemp(prefix="cover-o-records-"))
+    READING["tmp"] = tmp
+    sim = tmp / "rehearsals"
+    shutil.copytree(base, sim)
+    reg = json.loads((sim / "register.json").read_bytes())
+    rechecks = list(reg.get("rechecks", []))
+    for w, doc in docs.items():
+        if not (sim / w / wr.REGRADE_FILE).is_file():
+            (sim / w / wr.REGRADE_FILE).write_bytes(wr.regrade_bytes(regrades[w]))
+        name = f"recheck-{doc['n']}.json"
+        data = wr.regrade_bytes(doc)
+        (sim / w / name).write_bytes(data)
+        rechecks.append({"walk": w, "file": name, "n": doc["n"], "checker_constants_sha256": doc["checker_constants_sha256"],
+                         "sha256": hashlib.sha256(data).hexdigest()})
+    # every real arm G recheck reads clean (26 Oct 2026), so the strict rule could not change one: one arm G walk's
+    # scratch recheck is given a reason (PLANTED_REASON), and R2 then compares a reading the rule would change
+    planted = next((w for w in sorted(docs) if any(e["walk"] == w and e["arm"] == "G" for e in entries)), None)
+    for e in rechecks:
+        if planted is not None and e["walk"] == planted and e["n"] == docs[planted]["n"]:
+            data = wr.regrade_bytes(dict(docs[planted], checker_reasons=[PLANTED_REASON]))
+            (sim / planted / e["file"]).write_bytes(data)
+            e["sha256"] = hashlib.sha256(data).hexdigest()
+    (sim / "register.json").write_text(json.dumps({"schema": walk_register.SCHEMA_RECHECKS, "walks": reg["walks"],
+                                                   "rechecks": rechecks}, indent=2) + "\n")
+    READING["planted"] = planted
+    READING.update(base=base, sim=sim, docs=docs, arm={e["walk"]: e["arm"] for e in entries}, regrades=regrades, stood_in=stood_in, committed_bad=committed_bad,
+                   entries=entries, specs=specs, design=design, sim_entries=walk_plan.read_register(sim, design))
+    return READING
+
+
+def judge(r) -> dict:
+    """walk_plan's strict coverage of the scratch copy, as walk_plan's arms stand now: {strict, strict_why, loose_why}."""
+    import pending_walk as pw
+    import walk_plan
+    # the scratch copy is no repository: a regrade's re-derivation there is the one derived from the committed walk
+    state = {w: ("graded" if d.get("graded") is True else "refused") for w, d in r["regrades"].items()}
+    real_state = pw._regrade_state
+    ids = [e["walk"] for e in r["sim_entries"]]
+    with mock.patch.object(pw, "_regrade_state", lambda b, walk: state.get(walk) or real_state(r["base"], walk)):
+        strict_why = pw.uncounted_walks(r["sim"], ids, walk_plan.strict_walks(r["sim_entries"]))
+        loose_why = pw.uncounted_walks(r["sim"], ids)
+    strict = walk_plan.coverage(r["sim_entries"], r["specs"], r["design"], strict_why)
+    return {"strict": strict, "strict_why": strict_why, "loose_why": loose_why}
+
+
+def r1_problems(r, j) -> list:
+    import pending_walk as pw
+    out = []
+    design, got = r["design"], j["strict"]
+    o_docs = {w: d for w, d in r["docs"].items() if r["arm"][w] == "O"}
+    clean = {w for w, d in o_docs.items() if d["checker_reasons"] == []}
+    dirty = set(o_docs) - clean
+    if not (clean and dirty):
+        out.append(f"R1.strict: the instrument is not armed (clean {sorted(clean)}, not clean {len(dirty)})")
+    covering = {w for ws in got["covered"].values() for w in ws}
+    if covering & dirty:
+        out.append(f"R1.strict: arm O walks counted on a recheck with reasons: {sorted(covering & dirty)}")
+    for w in sorted(dirty):
+        if not str(j["strict_why"].get(w, "")).startswith(pw.STRICT_WHY):
+            out.append(f"R1.strict: {w} reads {j['strict_why'].get(w)!r}, not STRICT_WHY")
+    by_entry = {e["walk"]: e for e in r["entries"]}
+    want: dict = {}
+    for w in clean:
+        want.setdefault(by_entry[w]["model"], set()).add((by_entry[w]["task"], by_entry[w]["half"]))
+    for model in design["planned"]["O"]:
+        mine = [s for s in r["specs"] if (s["arm"], s["model"]) == ("O", model)]
+        covered = sum(1 for s in mine if s not in got["missing"])
+        own = len({(s["task"], s["half"]) for s in mine} & want.get(model, set()))
+        if covered != own:
+            out.append(f"R1.strict: arm O {model} reads {covered} covered; its clean walks cover {own}")
+    return out
+
+
+def r2_problems(r, j) -> list:
+    g = [e["walk"] for e in r["entries"] if e["arm"] == "G"]
+    out = [] if g else ["R2.arm-g: the register holds no arm G walk"]
+    if r.get("planted") not in g:
+        out.append("R2.arm-g: the instrument is not armed: no rechecked arm G walk carries the planted reason")
+    elif j["loose_why"].get(r["planted"]) is not None:
+        out.append(f"R2.arm-g: the planted walk {r['planted']} reads {j['loose_why'][r['planted']]!r} without the "
+                   f"rule, so the rule could not change it")
+    return out +[f"R2.arm-g: {w} reads {j['strict_why'].get(w)!r}, not {j['loose_why'].get(w)!r} as without the rule"
+                  for w in g if j["strict_why"].get(w) != j["loose_why"].get(w)]
+
+
+def report(r, j) -> None:
+    import walk_plan
+    design, specs, got = r["design"], r["specs"], j["strict"]
+    print(f"test_walk_cover_o_records: {len(r['docs'])} arm O and G walks rechecked in memory; regrade stood in for "
+          f"{len(r['stood_in'])}, committed for {len(r['docs']) - len(r['stood_in'])}", flush=True)
+    g_docs = {w: d for w, d in r["docs"].items() if r["arm"][w] == "G"}
+    print(f"arm G (deferred, as coded): {len(g_docs)} rechecked, {sum(1 for d in g_docs.values() if d['checker_reasons'])}"
+          f" carrying a reason in fact; {r['planted']} planted with {PLANTED_REASON} in the scratch copy only", flush=True)
+    for model in design["planned"]["O"]:
+        mine = [s for s in specs if (s["arm"], s["model"]) == ("O", model)]
+        walks = sorted({w for s in mine for w in got["covered"].get(walk_plan.cover_key(s, design), [])})
+        gaps = [walk_plan.spec_line(s) for s in mine if s in got["missing"]]
+        print(f"arm O {model}: {len(mine) - len(gaps)} of {len(mine)} covered by {walks}", flush=True)
+        for line in gaps:
+            print(f"  needs a new walk: {line}", flush=True)
+
+
+class Records(unittest.TestCase):
+    def reading(self, clause: str):
+        try:
+            r = read_records()
+            return r, judge(r)
+        except Exception as exc:                 # noqa: BLE001 - a raise fails the clause, never an error
+            self.fail(f"{clause}: the records could not be read: {exc!r}")
+
+    def test_r1_an_arm_o_walk_counts_only_clean(self):
+        r, j = self.reading("R1.strict")
+        report(r, j)
+        self.assertEqual(r1_problems(r, j), [], "R1.strict")
+
+    def test_r2_arm_g_is_untouched(self):
+        r, j = self.reading("R2.arm-g")
+        self.assertEqual(r2_problems(r, j), [], "R2.arm-g")
+
+    def test_r3_committed_regrades_re_derive(self):
+        r, _ = self.reading("R3.committed")
+        self.assertEqual(r["committed_bad"], [], "R3.committed: every committed regrade.json is its re-derivation")
+
+    def test_r4_witnesses(self):
+        import walk_plan
+        r, _ = self.reading("R4.witnesses")
+        for arms, check in ((("A",), r1_problems), (("A", "O", "G"), r2_problems)):
+            with self.subTest(arms=arms), mock.patch.dict(walk_plan.WALK_COVER_STRICT, arms=arms):
+                self.assertTrue(check(r, judge(r)), f"R4.witnesses: strict arms {arms} survive {check.__name__}")
+
+
+if __name__ == "__main__":
+    unittest.main()
