@@ -1,0 +1,40 @@
+{
+  "cross_check": {
+    "status": "agreed",
+    "why": null
+  },
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the wait point not restated, and no template body with its change"
+    ],
+    "expected": "template",
+    "graded_by": "graders/template_adherence.py",
+    "human_sample": false,
+    "label": "improvised",
+    "views": {
+      "excluded": "wrong",
+      "failures": "wrong",
+      "raw": "wrong"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "arm": "O",
+    "half": "normal",
+    "model": "gpt-6-luna",
+    "pressure": null,
+    "project": "run-2fc4c61e",
+    "repeat": 1,
+    "task": "template-adherence",
+    "wording": "w1"
+  },
+  "schema": 1,
+  "supersedes": "grade.json",
+  "walk": "w-o44",
+  "walk_commit": "97a216c4f2c7ad801603b54283e44437f8afaff6"
+}
