@@ -77,9 +77,25 @@ world = tve.world
 
 
 def digest(constants) -> str:
-    """An independent sha256 of canonical JSON (check_take.checker_constants_sha256's stated rule)."""
+    """An independent sha256 of canonical JSON (check_take.checker_constants_sha256's stated rule), bound, since lane
+    pf1-checker-digest (B7), with the checker's code half: the sha256 of {path: git blob id} over the files it lists,
+    recomputed here from the files."""
+    import check_take
     blob = json.dumps(constants, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+    consts = hashlib.sha256(blob.encode("utf-8")).hexdigest()
+    root = Path(check_take.CHECKER_CODE_ROOT)
+    ids = {rel: hashlib.sha1(b"blob %d\0" % len(raw) + raw).hexdigest()
+           for rel in check_take.CHECKER_CODE_FILES for raw in ((root / rel).read_bytes(),)}
+    code = hashlib.sha256(json.dumps(ids, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    # the fold of review c99f114 (MAJOR 1): the pre-registration in force's two leak values, recomputed here
+    import prereg
+    doc = json.loads(prereg.in_force().read_text(encoding="utf-8"))
+    values = {"leak_context_excusals": doc.get("leak_context_excusals"), "leak_words": doc.get("leak_words")}
+    design = hashlib.sha256(json.dumps(values, sort_keys=True, separators=(",", ":"),
+                                       ensure_ascii=False).encode("utf-8")).hexdigest()
+    return hashlib.sha256(json.dumps({"checker_code_sha256": code, "constants_sha256": consts,
+                                      "design_values_sha256": design}, sort_keys=True,
+                                     separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
 def merged(mod, harness) -> dict:

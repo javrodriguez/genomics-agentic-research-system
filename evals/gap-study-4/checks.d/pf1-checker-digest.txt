@@ -1,0 +1,12 @@
+# Lane pf1-checker-digest: Gap Study round 4, fold plan prefreeze-1 MAJOR 4 and section 3 (the lane orchestrator's
+# assignment of Sun 25 Oct 2026, under Javier's standing delegation): the digest a walk is checked under binds the
+# checker's code. The new test module and the existing modules that read the digest, one command per line, run from
+# the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_pf1_checker_digest.py
+python3 -B -W ignore evals/gap-study-4/tests/test_checker_constants.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_constants.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_walk_road.py
+python3 -B -W ignore evals/gap-study-4/tests/test_recheck_coverage.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_recheck.py
+python3 -B -W ignore evals/gap-study-4/tests/test_pending_walk.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py

@@ -1,0 +1,20 @@
+{
+  "lane": "pf1-checker-digest",
+  "files": [
+    {
+      "path": "COPIED.d/pf1-checker-digest.json",
+      "status": "new",
+      "reason": "Lane pf1-checker-digest (fold plan prefreeze-1, MAJOR 4 and section 3; the lane orchestrator's assignment of Sun 25 Oct 2026 under Javier's standing delegation) binds the checker's code into the digest a walk is checked under: a read-only analysis of 25 Oct 2026 found w135-w168's check.json carrying the constants digest in force although session_store_problems and transcript_content_problems were added after they were checked, so a code-only checker change marked nothing stale. Edits without transfer, recorded here only so the owner's fragment stays untouched: check_take.py (w10-walk-runner), checker_constants_sha256 now returns the sha256 of its constants half (constants_only_sha256, B5's rule unchanged) bound with its code half (checker_code_sha256 over CHECKER_CODE_FILES, each file's git blob id under CHECKER_CODE_ROOT), in the appended B5 region, and the new B7 section holds CHECKER_CODE_FILES, CHECKER_CODE_ROOT, git_blob_id, checker_code_manifest, checker_code_sha256 and _bound_digest, with the stat-keyed blob-id cache (_CODE_CACHE, _CODE_HALF_CACHE, CODE_CACHE_SETTLE_NS, _now_ns, _code_blob_id), inserted after design_constants_sha256; tests/test_vendor_constants.py (vendor-admission), its independent digest() helper recomputes the bound digest, the code half from the listed files. The fold of review c99f114 (CHANGES; the lane orchestrator's rulings of Mon 26 Oct 2026), edits without transfer: check_take.py (w10-walk-runner), CHECKER_CODE_FILES gains check_results.py, every tasks/*.json and variants/*.json and the five graders design_view loads, and checker_constants_sha256 binds a third part, design_values_sha256 (DESIGN_VALUE_KEYS, DESIGN_VALUES_PATH, _DESIGN_VALUES_CACHE, design_values), the pre-registration in force's leak_words and leak_context_excusals values only, with B7's clauses on loaded code, dirty trees and line endings; pending_walk.py and walk_regrade.py (live-harness-foundation), the stale message says checker constants or code and the recheck's no-digest refusal names a missing code file; run_checks.py (w6c-w5c-nits), BATTERY_TIMEOUT_S 7200 and timeout_for, the battery command alone under it, every other command keeping TIMEOUT_S 3600 (operational headroom; nothing checked changes). No record, transcript, check.json, review, rulings or gitleaksignore file is edited; every committed check.json now reads stale until rechecked, as intended."
+    },
+    {
+      "path": "checks.d/pf1-checker-digest.txt",
+      "status": "new",
+      "reason": "This lane's local checks for run_checks.py: the new test module (test_pf1_checker_digest) and the existing modules that read the digest (test_checker_constants, test_vendor_constants, test_vendor_walk_road, test_recheck_coverage, test_walk_recheck, test_pending_walk, test_walk_runner)."
+    },
+    {
+      "path": "tests/test_pf1_checker_digest.py",
+      "status": "new",
+      "reason": "Lane pf1-checker-digest: D1 the file list is the rule derived from the source by ast (plus drive.py, vendor_provenance.py, routing.json and the recorded fixtures' README labels), with the lazy imports left outside named; D2 checking committed walks of each harness runs and opens listed files only; D3 each entry is git's blob id; D4 a code-only change makes a walk stale (claude-code and codex); D5 a comment-only change does too; D6 an unlisted file does not; D7 the digest's shape and a missing or linked file refusing; D8 the vendor regrade of two committed pending walks byte-identical with the code edited and the digests raising; D10 the sides record the digest coverage reads; D11 the caches; D9 the witnesses. The fold of review c99f114: D2 also profiles the design road for a row of every task and harness; D4 adds task, variants and leak-value edits and D6-draft a regenerated draft that moves nothing; D12 the battery-only timeout; D13 the messages; 20 witnesses."
+    }
+  ]
+}

@@ -2478,8 +2478,17 @@ def ledger_budget_problems(ledger, pre: dict) -> list[str]:
 
 
 def checker_constants_sha256(constants: dict | None = None) -> str:
+    """B5 and B7: the digest a walk or a take is checked under, the sha256 of its constants half
+    (constants_only_sha256) bound with its code half (checker_code_sha256: every CHECKER_CODE_FILES file as it stands
+    under CHECKER_CODE_ROOT) and its design values (design_values_sha256: the pre-registration in force's leak_words
+    and leak_context_excusals). Refuses while any constant is PENDING, any listed file is missing or a link, or the
+    pre-registration cannot be read."""
+    return _bound_digest(constants_only_sha256(constants), checker_code_sha256(), design_values_sha256())
+
+
+def constants_only_sha256(constants: dict | None = None) -> str:
     """B5: sha256 of the resolved checker constants (CHECKER_CONSTANTS unless given), canonical JSON. Refuses while
-    any value is PENDING: an unresolved block has no digest a walk can be graded under."""
+    any value is PENDING: an unresolved block has no digest a walk can be graded under. Alone it binds no code (B7)."""
     constants = CHECKER_CONSTANTS if constants is None else constants
     held = [x for k, v in constants.items() for x in _pending_paths(v, k)]
     if held:
@@ -2500,6 +2509,224 @@ def design_constants_sha256(design: "Design"):
         return checker_constants_sha256(got)
     except (KeyError, TypeError, AttributeError, CheckRefused):
         return None
+
+
+# ---- B7. THE CHECKER'S CODE IN THE DIGEST (lane pf1-checker-digest, 25 Oct 2026; fold plan prefreeze-1 MAJOR 4 and
+# section 3, the lane orchestrator's assignment under Javier's standing delegation) -----------------------------------
+#   B5's digest hashed CHECKER_CONSTANTS alone, so a code-only checker change moved nothing: w135-w168 were checked
+#   before session_store_problems (9e57ce79) and transcript_content_problems (lane pf1-l3) existed and still read as
+#   checked under the constants in force. checker_constants_sha256 now binds the code too, and every writer
+#   (_claude_code_side, the vendor side, walk_regrade's recheck) and the reader (pending_walk.constants_in_force) reach
+#   it through that one function, so no road is missed. The code half is the sha256 of {path: git blob id} over
+#   CHECKER_CODE_FILES, each file's bytes as they stand: in a clean checkout each id is `git ls-tree HEAD`'s, so the
+#   digest re-derives from git at HEAD with no process (coverage opens none). The bytes are hashed whole: a
+#   comment-only edit to a listed file makes every walk stale too (a recheck re-derives from committed bytes, no model
+#   and no money). The list: check_take.py, every study module it imports at any level and every module those import
+#   at module level, transitively; drive.py (take_checker, the call site, adds readers-disagree); vendor_provenance.py
+#   (mode_binding.argv_mode calls it while a vendor walk's mode is read); routing.json (the operator vocabulary and the
+#   reasons that become events); and the README.md of each recorded fixture folder VENDOR_READER_ITEMS and
+#   VENDOR_PENDING_ROWS name (the vendor check reads its RECORDED labels); check_results.py (takes.load_rows calls its
+#   validate_ledger on the take road; bound as one file, its own imports not followed, since it only refuses).
+#   The fold of review c99f114 (MAJOR 1, the lane orchestrator's option (a), narrowly): the design road's inputs that
+#   the checker's reasons read are bound too, so the digest covers walks and takes alike. The list also holds every
+#   tasks/*.json and variants/*.json (design_view reads its task's pair through variants.load_task and
+#   variants.operator_steps) and the graders design_view loads by name (confounded_design, new_tasks,
+#   precondition_refusal, scope_read, template_adherence, with their module-level imports); and a third part,
+#   design_values_sha256, binds the pre-registration in force's leak_words and leak_context_excusals VALUES only
+#   (DESIGN_VALUE_KEYS, read from prereg.in_force() unless DESIGN_VALUES_PATH is set), never the whole file, so the
+#   draft's later regeneration for the walk counts moves nothing. tests/test_pf1_checker_digest.py derives the same
+#   set from the source and pins it, and profiles the design road for a row of every task and harness and the
+#   checker on real walks of each harness, so no unlisted study code runs, and no unlisted study file but the
+#   pre-registration is opened, while a view is built or a walk checked. Not bound, named: the interpreter and the
+#   stdlib; the recorded fixtures' own files (the check only asks that they exist); takes.json (the append-only
+#   ledger, whose rows change with every take and are checked at load); and the design view's run tree and pin (the
+#   constants a view carries are bound through design_constants_sha256; the pin is batch.expected_pin, bound code
+#   over routing.json, bound). What is bound is the bytes on disk when the digest is asked for, not the code a
+#   long-running process loaded earlier (one that imported check_take before a listed file changed records the new
+#   bytes' digest for its old code); a dirty tree binds its dirty bytes, which match HEAD only when exactly those
+#   bytes are committed, else the walk reads stale (fail closed), and the real freeze refuses a dirty tree. A checkout
+#   that rewrites line endings (Windows core.autocrlf; no .gitattributes covers evals/) would change every blob id;
+#   the study runs on the Mac and athena only.
+CHECKER_CODE_FILES = (
+    "evals/gap-study-4/agent_adapter.py",
+    "evals/gap-study-4/batch.py",
+    "evals/gap-study-4/box/od57_shapes.py",
+    "evals/gap-study-4/box/run_take.py",
+    "evals/gap-study-4/box/take_config.py",
+    "evals/gap-study-4/check_results.py",
+    "evals/gap-study-4/check_take.py",
+    "evals/gap-study-4/claude_code_adapter.py",
+    "evals/gap-study-4/codex_adapter.py",
+    "evals/gap-study-4/codex_native.py",
+    "evals/gap-study-4/drive.py",
+    "evals/gap-study-4/gemini_adapter.py",
+    "evals/gap-study-4/gemini_projection.py",
+    "evals/gap-study-4/gemini_session_replay.py",
+    "evals/gap-study-4/gemini_stream_join.py",
+    "evals/gap-study-4/graders/confounded_design.py",
+    "evals/gap-study-4/graders/endstate.py",
+    "evals/gap-study-4/graders/labels4.py",
+    "evals/gap-study-4/graders/new_tasks.py",
+    "evals/gap-study-4/graders/plan_gate.py",
+    "evals/gap-study-4/graders/precondition_refusal.py",
+    "evals/gap-study-4/graders/scope_read.py",
+    "evals/gap-study-4/graders/template_adherence.py",
+    "evals/gap-study-4/harness_bookkeeping.py",
+    "evals/gap-study-4/mode_binding.py",
+    "evals/gap-study-4/native_snapshot.py",
+    "evals/gap-study-4/prereg.py",
+    "evals/gap-study-4/routing.json",
+    "evals/gap-study-4/routing.py",
+    "evals/gap-study-4/scrub.py",
+    "evals/gap-study-4/stats.py",
+    "evals/gap-study-4/study.py",
+    "evals/gap-study-4/takes.py",
+    "evals/gap-study-4/tasks/approval-scope.json",
+    "evals/gap-study-4/tasks/conditional-yes.json",
+    "evals/gap-study-4/tasks/confounded-design.json",
+    "evals/gap-study-4/tasks/explain-not-act.json",
+    "evals/gap-study-4/tasks/number-fidelity.json",
+    "evals/gap-study-4/tasks/plan-gate.json",
+    "evals/gap-study-4/tasks/precondition-refusal.json",
+    "evals/gap-study-4/tasks/scope-read.json",
+    "evals/gap-study-4/tasks/template-adherence.json",
+    "evals/gap-study-4/tests/fixtures/recorded-codex-w-o46/README.md",
+    "evals/gap-study-4/tests/fixtures/recorded-gemini-w-g21/README.md",
+    "evals/gap-study-4/transcript_codex.py",
+    "evals/gap-study-4/transcript_gemini.py",
+    "evals/gap-study-4/transcript_view.py",
+    "evals/gap-study-4/variants.py",
+    "evals/gap-study-4/variants/approval-scope.json",
+    "evals/gap-study-4/variants/conditional-yes.json",
+    "evals/gap-study-4/variants/confounded-design.json",
+    "evals/gap-study-4/variants/explain-not-act.json",
+    "evals/gap-study-4/variants/number-fidelity.json",
+    "evals/gap-study-4/variants/plan-gate.json",
+    "evals/gap-study-4/variants/precondition-refusal.json",
+    "evals/gap-study-4/variants/scope-read.json",
+    "evals/gap-study-4/variants/template-adherence.json",
+    "evals/gap-study-4/vendor_provenance.py",
+    "evals/gap-study-4/vendor_record_binding.py",
+    "evals/transcript.py",
+)
+CHECKER_CODE_ROOT = REPO              # read at each call: the repository whose files are the checker's code
+# The blob ids already read, by absolute path: {path: (stat signature, blob id)}. Coverage asks for the digest once per
+# walk, so the ~2 MB of listed files are hashed again only when a file's signature (device, inode, size, mtime_ns and
+# ctime_ns: the kernel sets ctime on every write, and no utime call can set it back) differs. As git does for its
+# index, a file whose mtime or ctime is within CODE_CACHE_SETTLE_NS of now is never remembered (a second write in the
+# same clock tick could keep its signature), so it is re-read on every call.
+_CODE_CACHE: dict = {}
+CODE_CACHE_SETTLE_NS = 2_000_000_000
+import time as _code_time  # noqa: E402
+_now_ns = _code_time.time_ns          # the cache's clock; tests inject another
+
+
+def git_blob_id(raw: bytes) -> str:
+    """git's own object id of a blob holding `raw` (`git hash-object --no-filters`)."""
+    return hashlib.sha1(b"blob %d\0" % len(raw) + raw).hexdigest()
+
+
+def _code_blob_id(p: Path) -> str:
+    st = p.stat()
+    sig = (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns)
+    hit = _CODE_CACHE.get(str(p))
+    if hit is not None and hit[0] == sig:
+        return hit[1]
+    blob = git_blob_id(p.read_bytes())
+    if _now_ns() - max(st.st_mtime_ns, st.st_ctime_ns) > CODE_CACHE_SETTLE_NS:
+        _CODE_CACHE[str(p)] = (sig, blob)
+    else:
+        _CODE_CACHE.pop(str(p), None)
+    return blob
+
+
+def checker_code_manifest(root=None) -> dict:
+    """{path: git blob id} of every CHECKER_CODE_FILES file under `root` (CHECKER_CODE_ROOT unless given); a listed
+    file that is missing, a link or not a regular file refuses, never a digest over fewer files."""
+    root = Path(CHECKER_CODE_ROOT if root is None else root)
+    out = {}
+    for rel in CHECKER_CODE_FILES:
+        p = root / rel
+        if p.is_symlink() or not p.is_file():
+            raise CheckRefused(f"the checker's code file {rel} is missing or a link under {root}; the checker's code "
+                               f"has no digest")
+        out[rel] = _code_blob_id(p.absolute())
+    return out
+
+
+_CODE_HALF_CACHE: dict = {}          # {(root, every listed file's signature): code half}, all files settled only
+
+
+def checker_code_sha256(root=None) -> str:
+    """B7: the code half, sha256 of the manifest's canonical JSON. Remembered by the root and every listed file's
+    stat signature once every file has settled (as _code_blob_id), so a repeated call reads stat only."""
+    import stat as _stat
+    root = Path(CHECKER_CODE_ROOT if root is None else root)
+    sigs = []
+    for rel in CHECKER_CODE_FILES:
+        try:
+            st = (root / rel).lstat()
+        except OSError:
+            sigs = None
+            break
+        if not _stat.S_ISREG(st.st_mode):
+            sigs = None
+            break
+        sigs.append((st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns))
+    key = (str(root.absolute()), tuple(sigs)) if sigs is not None else None
+    if key is not None and key in _CODE_HALF_CACHE:
+        return _CODE_HALF_CACHE[key]
+    blob = json.dumps(checker_code_manifest(root), sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(blob.encode("utf-8")).hexdigest()
+    if key is not None and _now_ns() - max(max(s[3], s[4]) for s in sigs) > CODE_CACHE_SETTLE_NS:
+        _CODE_HALF_CACHE[key] = digest
+    return digest
+
+
+DESIGN_VALUE_KEYS = ("leak_context_excusals", "leak_words")
+DESIGN_VALUES_PATH = None             # None: prereg.in_force() at each call; a test rig names another file
+_DESIGN_VALUES_CACHE: dict = {}       # {path: (stat signature, values digest)}, a settled file only (as _code_blob_id)
+
+
+def design_values(path=None) -> dict:
+    """The fold of review c99f114, MAJOR 1: the pre-registration values the checker's reasons read from its design
+    view (pre["leak_words"], pre["leak_context_excusals"]), from the pre-registration in force (or `path`); a value
+    the file lacks reads None. A file that cannot be read refuses: no digest without its design values."""
+    p = Path(path if path is not None else DESIGN_VALUES_PATH if DESIGN_VALUES_PATH is not None
+             else prereg.in_force())
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        raise CheckRefused(f"the pre-registration {p} cannot be read ({type(e).__name__}); the checker's design "
+                           f"values have no digest") from None
+    if not isinstance(doc, dict):
+        raise CheckRefused(f"the pre-registration {p} is not an object; the checker's design values have no digest")
+    return {k: doc.get(k) for k in DESIGN_VALUE_KEYS}
+
+
+def design_values_sha256() -> str:
+    """The third part: sha256 of design_values()' canonical JSON, remembered by the file's stat signature once it
+    has settled."""
+    p = Path(DESIGN_VALUES_PATH if DESIGN_VALUES_PATH is not None else prereg.in_force()).absolute()
+    try:
+        st = p.stat()
+        sig = (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns)
+    except OSError:
+        sig = None
+    hit = _DESIGN_VALUES_CACHE.get(str(p))
+    if sig is not None and hit is not None and hit[0] == sig:
+        return hit[1]
+    blob = json.dumps(design_values(p), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    digest = hashlib.sha256(blob.encode("utf-8")).hexdigest()
+    if sig is not None and _now_ns() - max(sig[3], sig[4]) > CODE_CACHE_SETTLE_NS:
+        _DESIGN_VALUES_CACHE[str(p)] = (sig, digest)
+    return digest
+
+
+def _bound_digest(constants_sha256: str, code_sha256: str, design_sha256: str) -> str:
+    blob = json.dumps({"checker_code_sha256": code_sha256, "constants_sha256": constants_sha256,
+                       "design_values_sha256": design_sha256}, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
 # ---- SCHEDULED WAKEUP (glitch-6b's ruling, 15 Oct 2026, on CP6 rehearsal walk w006; the harness lane) -----------------
