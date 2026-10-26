@@ -1002,7 +1002,7 @@ def prefreeze_readings():
             f"V8-L11's condition resolved: every checkout is exported from variants.PINNED_TREE {variants.PINNED_TREE}, "
             f"gars tree {check_take.GARS_TREE_SHA}, the tree rounds 2 and 3 ran. The accepted words name "
             f"`system_under_test`, which the draft does not carry: it is a checker constant (check_take.py line 2050, "
-            f"in CHECKER_CONSTANTS), and design_view refuses a draft that carries one (check_take.py lines 2183-2185), "
+            f"in CHECKER_CONSTANTS), and design_view refuses a draft that carries one (check_take.py lines 2182-2185), "
             f"so these words name the pin in its place (lane pf1-l4-close, on review REVIEW-pf1-l4-close-291b357 m2)."), "words": (
             f"Every checkout is exported from the GARS tree pinned at variants.PINNED_TREE, commit "
             f"{variants.PINNED_TREE[:8]} (gars tree {check_take.GARS_TREE_SHA[:8]}, the tree rounds 2 and 3 also ran); a "

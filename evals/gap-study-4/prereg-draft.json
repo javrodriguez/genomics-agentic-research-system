@@ -22646,7 +22646,7 @@
       "prefreeze_reading": {
         "disposition": "reword",
         "by": "pre-freeze review 1's fold, lane pf1-l4a, 25 Oct 2026 (FOLD-PLAN-prefreeze-1.md section 2 rows 9 and 12, and m4); the accepted reading beside it stays byte-identical under its source hash",
-        "read": "V8-L11's condition resolved: every checkout is exported from variants.PINNED_TREE 844a4ce0d89437ca043363981a86096f6383a141, gars tree 8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74, the tree rounds 2 and 3 ran. The accepted words name `system_under_test`, which the draft does not carry: it is a checker constant (check_take.py line 2050, in CHECKER_CONSTANTS), and design_view refuses a draft that carries one (check_take.py lines 2183-2185), so these words name the pin in its place (lane pf1-l4-close, on review REVIEW-pf1-l4-close-291b357 m2).",
+        "read": "V8-L11's condition resolved: every checkout is exported from variants.PINNED_TREE 844a4ce0d89437ca043363981a86096f6383a141, gars tree 8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74, the tree rounds 2 and 3 ran. The accepted words name `system_under_test`, which the draft does not carry: it is a checker constant (check_take.py line 2050, in CHECKER_CONSTANTS), and design_view refuses a draft that carries one (check_take.py lines 2182-2185), so these words name the pin in its place (lane pf1-l4-close, on review REVIEW-pf1-l4-close-291b357 m2).",
         "words": "Every checkout is exported from the GARS tree pinned at variants.PINNED_TREE, commit 844a4ce0 (gars tree 8a54e0f8, the tree rounds 2 and 3 also ran); a reader comparing against today's GARS is comparing against a different tree."
       }
     }

@@ -1426,6 +1426,19 @@ class PrefreezeFills(unittest.TestCase):
         head = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD:gars"], capture_output=True, text=True,
                               check=True).stdout.strip()
         self.assertNotEqual(head, PINNED_GARS_TREE, "F3.L11")
+        # the reading's two check_take.py citations hold their code (lane pf1-l6d, on REVIEW-pf1-l6c-fixes-1dd547f
+        # MINOR 1-2): line 2050 is system_under_test inside CHECKER_CONSTANTS, and lines 2182-2185 are design_view's
+        # prereg load, shadow check and refusal
+        ck = lines_of("check_take.py")
+        self.assertTrue(ck[2049].startswith('    "system_under_test": {"gars_tree_sha": GARS_TREE_SHA}'), "F3.L11.lines")
+        opens = [n for n in range(2049, 0, -1) if not ck[n - 1].startswith((" ", "#")) and ck[n - 1]]
+        self.assertTrue(ck[opens[0] - 1].startswith("CHECKER_CONSTANTS = {"), "F3.L11.lines: 2050 in CHECKER_CONSTANTS")
+        enclosing = [n for n in range(2182, 0, -1) if ck[n - 1].startswith("def ")][0]
+        self.assertTrue(ck[enclosing - 1].startswith("def design_view("), "F3.L11.lines: 2182-2185 in design_view")
+        for n, start in ((2182, "    pre = copy.deepcopy(prereg.load())"),
+                         (2183, "    shadowed = sorted(set(constants) & set(pre))"), (2184, "    if shadowed:"),
+                         (2185, "        raise CheckRefused(")):
+            self.assertTrue(ck[n - 1].startswith(start), f"F3.L11.lines: check_take.py {n}")
         # PENDING #17: the cited module lines say what the words copy
         scope = "\n".join((HERE / "graders/scope_read.py").read_text().split("\n")[62:68])
         templ = "\n".join((HERE / "graders/template_adherence.py").read_text().split("\n")[329:334])
@@ -2992,7 +3005,7 @@ def expected_prefreeze_reading(i):
             f"V8-L11's condition resolved: every checkout is exported from variants.PINNED_TREE {PINNED_COMMIT}, gars "
             f"tree {PINNED_GARS_TREE}, the tree rounds 2 and 3 ran. The accepted words name `system_under_test`, which "
             f"the draft does not carry: it is a checker constant (check_take.py line 2050, in CHECKER_CONSTANTS), and "
-            f"design_view refuses a draft that carries one (check_take.py lines 2183-2185), so these words name the pin "
+            f"design_view refuses a draft that carries one (check_take.py lines 2182-2185), so these words name the pin "
             f"in its place (lane pf1-l4-close, on review REVIEW-pf1-l4-close-291b357 m2)."), "words": (
             "Every checkout is exported from the GARS tree pinned at variants.PINNED_TREE, commit 844a4ce0 (gars tree "
             "8a54e0f8, the tree rounds 2 and 3 also ran); a reader comparing against today's GARS is comparing against "
