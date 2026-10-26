@@ -2506,7 +2506,7 @@ def design_constants_sha256(design: "Design"):
     try:
         got = {k: copy.deepcopy(design.pre[k]) for k in CHECKER_CONSTANTS}
         got["driver_constants"].pop("permission_mode_by_arm", None)
-        return checker_constants_sha256(got)
+        return view_checker_constants_sha256(got, design)
     except (KeyError, TypeError, AttributeError, CheckRefused):
         return None
 
@@ -2716,11 +2716,38 @@ def design_values_sha256() -> str:
     hit = _DESIGN_VALUES_CACHE.get(str(p))
     if sig is not None and hit is not None and hit[0] == sig:
         return hit[1]
-    blob = json.dumps(design_values(p), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    digest = hashlib.sha256(blob.encode("utf-8")).hexdigest()
+    digest = design_values_digest(design_values(p))
     if sig is not None and _now_ns() - max(sig[3], sig[4]) > CODE_CACHE_SETTLE_NS:
         _DESIGN_VALUES_CACHE[str(p)] = (sig, digest)
     return digest
+
+
+def design_values_digest(values: dict) -> str:
+    """sha256 of design values' canonical JSON: the one form the reader (from disk) and the writer (from the view)
+    both hash."""
+    blob = json.dumps(values, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+# Merge lane L6c (the pf1-checker-digest closure check's MINOR, the lane orchestrator's assignment of 26 Oct 2026): the
+# WRITER binds the design values the view itself carries, never the disk's at the moment the digest is asked for. The
+# checker reads pre["leak_words"] and pre["leak_context_excusals"] from the view, built from prereg.load() (cached once
+# per process); had the writer read disk, a walk process that loaded the draft and then saw those values regenerated
+# would record the new values' digest for a check run under the old ones, and count. The READER
+# (checker_constants_sha256, vendor_checker_constants_sha256, so pending_walk.constants_in_force) keeps reading disk:
+# the two agree when nothing changed, and a change between load and digest reads stale (fail closed).
+# tests/test_pf1_l6c_design_values.py pins it.
+def view_design_values(design) -> dict:
+    """The design values a view carries: its pre's DESIGN_VALUE_KEYS, a missing key reading None (as design_values
+    reads a file that lacks one)."""
+    return {k: copy.deepcopy(design.pre.get(k)) for k in DESIGN_VALUE_KEYS}
+
+
+def view_checker_constants_sha256(constants: dict, design) -> str:
+    """The writer's digest of a view: the constants half of `constants` (the ones recovered from the view), the code
+    half as it stands, and the view's own design values (view_design_values). Refuses as checker_constants_sha256."""
+    values = design_values_digest(view_design_values(design))
+    return _bound_digest(constants_only_sha256(constants), checker_code_sha256(), values)
 
 
 def _bound_digest(constants_sha256: str, code_sha256: str, design_sha256: str) -> str:
@@ -6084,7 +6111,7 @@ def vendor_design_constants_sha256(design):
     try:
         got = {k: copy.deepcopy(design.pre[k]) for k in (*CHECKER_CONSTANTS, *VENDOR_CHECKER_CONSTANTS[design.harness])}
         got["driver_constants"].pop("permission_mode_by_arm", None)
-        return checker_constants_sha256(got)
+        return view_checker_constants_sha256(got, design)
     except (KeyError, TypeError, AttributeError, CheckRefused):
         return None
 

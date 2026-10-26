@@ -388,7 +388,9 @@ def writer_problems(mod=None) -> list:
     out = []
     pre = copy.deepcopy(mod.CHECKER_CONSTANTS)
     pre["driver_constants"]["permission_mode_by_arm"] = {"A": "bypassPermissions"}
-    claude = mod.Design(task_id="t", spec={}, pre=dict(pre, leak_words=[]), harness="claude-code")
+    # merge lane L6c: the writer binds the view's own design values, so the rig's view carries the in-force ones, as
+    # design_view's (from prereg.load()) does
+    claude = mod.Design(task_id="t", spec={}, pre=dict(pre, **mod.design_values()), harness="claude-code")
     codex = mod.vendor_view(claude.replace(harness="codex"))
     tree = CodeTree(mod)
     try:
@@ -520,8 +522,9 @@ CT_MUTANTS = (
     ("one-design-value-dropped", 'DESIGN_VALUE_KEYS = ("leak_context_excusals", "leak_words")',
      'DESIGN_VALUE_KEYS = ("leak_words",)', "standing"),
     ("whole-draft-bound", "    return {k: doc.get(k) for k in DESIGN_VALUE_KEYS}", "    return doc", "standing"),
-    ("vendor-writer-constants-only",
-     '        got["driver_constants"].pop("permission_mode_by_arm", None)\n        return checker_constants_sha256(got)\n'
+    ("vendor-writer-constants-only",       # merge lane L6c: the writer's line is view_checker_constants_sha256's
+     '        got["driver_constants"].pop("permission_mode_by_arm", None)\n'
+     '        return view_checker_constants_sha256(got, design)\n'
      '    except (KeyError, TypeError, AttributeError, CheckRefused):\n        return None\n\n\ndef checker_view(',
      '        got["driver_constants"].pop("permission_mode_by_arm", None)\n        return constants_only_sha256(got)\n'
      '    except (KeyError, TypeError, AttributeError, CheckRefused):\n        return None\n\n\ndef checker_view(',
@@ -544,8 +547,9 @@ CT_MUTANTS = (
      "shape"),
     ("blob-header-dropped", '    return hashlib.sha1(b"blob %d\\0" % len(raw) + raw).hexdigest()',
      "    return hashlib.sha1(raw).hexdigest()", "shape"),
-    ("claude-writer-constants-only",
-     '        got["driver_constants"].pop("permission_mode_by_arm", None)\n        return checker_constants_sha256(got)\n'
+    ("claude-writer-constants-only",       # merge lane L6c: as vendor-writer-constants-only
+     '        got["driver_constants"].pop("permission_mode_by_arm", None)\n'
+     '        return view_checker_constants_sha256(got, design)\n'
      '    except (KeyError, TypeError, AttributeError, CheckRefused):\n        return None\n\n\n# ---- B7',
      '        got["driver_constants"].pop("permission_mode_by_arm", None)\n        return constants_only_sha256(got)\n'
      '    except (KeyError, TypeError, AttributeError, CheckRefused):\n        return None\n\n\n# ---- B7', "writers"),

@@ -626,10 +626,13 @@ class TestAWalkTheConstantsDecideIsNeverCounted(unittest.TestCase):
         self.assertIsNone(ct.design_constants_sha256("not a design"))
         pre = copy.deepcopy(ct.CHECKER_CONSTANTS)
         pre["driver_constants"]["permission_mode_by_arm"] = {"A": "bypassPermissions"}
-        d = ct.Design(task_id="t", spec={}, pre=dict(pre, leak_words=[]), harness="claude-code")
+        # merge lane L6c: the writer binds the view's own design values, so the views carry the in-force ones, as
+        # design_view's (from prereg.load()) do
+        d = ct.Design(task_id="t", spec={}, pre=dict(pre, **ct.design_values()), harness="claude-code")
         self.assertEqual(ct.design_constants_sha256(d), ct.checker_constants_sha256())
         other = edited("budgets.poll_s", 4)
-        self.assertEqual(ct.design_constants_sha256(d.replace(pre=other)), ct.checker_constants_sha256(other))
+        self.assertEqual(ct.design_constants_sha256(d.replace(pre=dict(other, **ct.design_values()))),
+                         ct.checker_constants_sha256(other))
         self.assertIsNone(ct.design_constants_sha256(d.replace(pre=edited("run_location", ct.PENDING))))
         self.assertIsNone(ct.design_constants_sha256(d.replace(pre={})))
         self.assertIsNone(ct.design_constants_sha256(d.replace(pre=[1])))
