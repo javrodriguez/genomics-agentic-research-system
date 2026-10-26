@@ -52,10 +52,11 @@ never counted: "pending", "regrade refused", "pending: regraded, no checker read
 closed). pending_walk.uncounted_walks decides.
 
 WALK-COVER STRICT (OD131, Javier, 25 Oct 2026: "walk-cover strict"; lane pf1-walk-cover-strict). A Claude walk counts
-as covered only if it rechecks clean under the harness as it will be frozen. strict_walks names the register's walks
-on the arms the rule covers (WALK_COVER_STRICT: arm A, by OD131's wording), and pending_walk.uncounted_walks reports
-each one whose effective checker reading carries a reason the routing table at HEAD routes to harness-error, or
-every one of them when that table cannot be read; arms O and G count as before.
+as covered only if it rechecks clean under the harness as it will be frozen, and (OD132, 26 Oct 2026: "walk-cover-o
+strict") so does a Codex walk. strict_walks names the register's walks on the arms the rule covers
+(WALK_COVER_STRICT: arms A and O, by the two rulings' wording), and pending_walk.uncounted_walks reports each one
+whose effective checker reading carries a reason the routing table at HEAD routes to harness-error, or every one of
+them when that table cannot be read; arm G, deferred, counts as before.
 
 THE FREEZE'S GATE (pre-freeze review 1, MAJOR 4 part 3, lane L1). --require-run-arms exits 1 on any missing walk of
 an arm the freeze runs and prints each deferred arm's coverage (the draft's deferred_arms) as recorded, not required;
@@ -320,9 +321,11 @@ def deferred_arms(study_dir: Path = HERE) -> dict:
             if isinstance(e, dict) and e.get("status") == DEFERRED_STATUS}
 
 
-# OD131 (Javier, 25 Oct 2026: "walk-cover strict"): the arms whose walks are judged by pending_walk's strict rule. Its
-# words name a Claude walk, so arm A; arms O and G are not named, and count as before.
-WALK_COVER_STRICT = {"arms": ("A",), "source": "OD131 (Javier, 25 Oct 2026: \"walk-cover strict\")"}
+# The arms whose walks are judged by pending_walk's strict rule. OD131 (Javier, 25 Oct 2026: "walk-cover strict") names
+# a Claude walk, so arm A; OD132 (Javier, 26 Oct 2026: "walk-cover-o strict") a Codex walk, so arm O. Arm G is deferred
+# and named by neither: it counts as before.
+WALK_COVER_STRICT = {"arms": ("A", "O"), "source": "OD131 (Javier, 25 Oct 2026: \"walk-cover strict\"), OD132 "
+                                                   "(Javier, 26 Oct 2026: \"walk-cover-o strict\")"}
 
 
 def strict_walks(entries: list) -> list:

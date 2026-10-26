@@ -63,11 +63,12 @@ from a typed number, and bind:
                     deferred arms only; run_arm_gaps and --require-run-arms require every arm the freeze runs and
                     print each deferred arm and model as recorded; coverage_report is the --coverage reading; bound
                     by the generated sweep, no named witness
-  P20.strict        (lane pf1-walk-cover-strict, OD131 "walk-cover strict") strict_walks names arm A's walks; on
-                    --coverage and in coverage_report an arm A walk whose reading carries a reason HEAD's routing
-                    routes to harness-error covers nothing and is reported with why, an arm O walk with the same
-                    reason covers as before, and a clean arm A walk covers; witnesses strict-unread-cli,
-                    strict-unread-report, strict-every-arm (pending_walk's own rule: tests/test_walk_cover_strict.py)
+  P20.strict        (lane pf1-walk-cover-strict, OD131 "walk-cover strict", OD132 "walk-cover-o strict")
+                    strict_walks names arm A's and arm O's walks; on --coverage and in coverage_report such a walk
+                    whose reading carries a reason HEAD's routing routes to harness-error covers nothing and is
+                    reported with why, an arm G walk with the same reason covers as before, and a clean strict walk
+                    covers; witnesses strict-unread-cli, strict-unread-report, strict-every-arm, strict-arm-o-dropped,
+                    strict-arm-g-added (pending_walk's own rule: tests/test_walk_cover_strict.py)
   P21.witness-rule  (the review of ff58e02f, NIT 3) --witnesses reads a bound test that failed by P0.module (a mutant
                     whose anchor does not occur once, or that does not load) as FAIL, never red
 
@@ -229,7 +230,12 @@ def mutants():
         # OD131 (lane pf1-walk-cover-strict): arm A's walks are judged by the strict rule, on both roads, and only they
         "strict-unread-cli": ("P20.strict", "strict_walks(entries)))\n    print(", "[]))\n    print("),
         "strict-unread-report": ("P20.strict", "strict_walks(entries)))\n    return {", "[]))\n    return {"),
-        "strict-every-arm": ("P20.strict", "    return [e[\"walk\"] for e in entries if e[\"arm\"] in "
+        # OD132 (26 Oct 2026, "walk-cover-o strict"): arm O joins; arm G, deferred, stays as coded
+        "strict-arm-o-dropped": ("P20.strict", "WALK_COVER_STRICT = {\"arms\": (\"A\", \"O\"),",
+                                 "WALK_COVER_STRICT = {\"arms\": (\"A\",),"),
+        "strict-arm-g-added": ("P20.strict", "WALK_COVER_STRICT = {\"arms\": (\"A\", \"O\"),",
+                               "WALK_COVER_STRICT = {\"arms\": (\"A\", \"O\", \"G\"),"),
+        "strict-every-arm": ("P20.strict","    return [e[\"walk\"] for e in entries if e[\"arm\"] in "
                              "WALK_COVER_STRICT[\"arms\"]]\n", "    return [e[\"walk\"] for e in entries]\n"),
         "pending-unreported": ("P18.pending", "    for label, why in got[\"uncounted\"]:\n", "    for label, why in []:\n"),
     }
@@ -1267,9 +1273,10 @@ class P21WitnessRule(unittest.TestCase):
 
 class P20Strict(Base):
     """Lane pf1-walk-cover-strict, OD131 (Javier, 25 Oct 2026: "walk-cover strict"): a Claude walk counts as covered
-    only if it rechecks clean under the harness as it will be frozen. walk_plan names arm A's walks strict
-    (strict_walks), on the --coverage road and in coverage_report, and pending_walk judges them; an arm O walk carrying
-    the same reason counts as before. Written so the generated sweep binds the new lines."""
+    only if it rechecks clean under the harness as it will be frozen; OD132 (Javier, 26 Oct 2026: "walk-cover-o
+    strict"): a Codex walk too. walk_plan names arm A's and arm O's walks strict (strict_walks), on the --coverage road
+    and in coverage_report, and pending_walk judges them; an arm G walk carrying the same reason counts as before (arm
+    G is deferred and stays as coded). Written so the generated sweep binds the new lines."""
     CLAUSE = "P20.strict"
 
     def dirty(self, base: Path, walk: str, reasons) -> None:
@@ -1278,36 +1285,43 @@ class P20Strict(Base):
         doc["checker_reasons"] = list(reasons)
         path.write_text(json.dumps(doc))
 
-    def test_an_arm_a_walk_counts_only_clean(self):
+    def test_arm_a_and_o_walks_count_only_clean_and_arm_g_as_coded(self):
         import pending_walk
         wp = self.wp(self.CLAUSE)
         design, specs = self.plan(self.CLAUSE)
-        self.assertEqual(getattr(wp, "WALK_COVER_STRICT", {}).get("arms"), ("A",), "P20.strict: OD131 names arm A")
-        a, o = (next(s for s in specs if s["arm"] == arm) for arm in ("A", "O"))
-        entries = [entry(a, "walk-a"), entry(o, "walk-o"), entry(a, "walk-a2")]
-        self.assertEqual(self.call(self.CLAUSE, getattr(wp, "strict_walks", None), entries), ["walk-a", "walk-a2"],
-                         "P20.strict: the arm A walks, in register order")
+        a, o, g =(next(s for s in specs if s["arm"] == arm) for arm in ("A", "O", "G"))
+        entries = [entry(a, "walk-a"), entry(o, "walk-o"), entry(g, "walk-g"), entry(a, "walk-a2")]
+        self.assertEqual(self.call(self.CLAUSE, getattr(wp, "strict_walks", None), entries),
+                         ["walk-a", "walk-o", "walk-a2"], "P20.strict: the arm A and O walks, in register order")
         self.assertEqual(self.call(self.CLAUSE, getattr(wp, "strict_walks", None), []), [], "P20.strict")
         hcv = "harness-condition-violated"
         why = f"{getattr(pending_walk, 'STRICT_WHY', 'no strict rule')}: {hcv}"
-        base = self.rehearsals(entries[:2])
-        for walk in ("walk-a", "walk-o"):
+        base = self.rehearsals(entries[:3])
+        for walk in ("walk-a", "walk-o", "walk-g"):
             self.dirty(base, walk, [hcv])
         code, out = self.cli(self.CLAUSE, ["--coverage", "--base", str(base)])
         self.assertEqual(code, 0, f"P20.strict: {out[-300:]}")
         self.assertRegex(out, rf"(?m)^missing  {re.escape(self.sline(a))}$", "P20.strict: the arm A walk covers nothing")
-        self.assertRegex(out, rf"(?m)^covered  {re.escape(self.sline(o))} by walk-o$",
-                         "P20.strict: the arm O walk counts as before")
-        self.assertIn(f"{why}, not counted: walk 'walk-a'", out, "P20.strict: and is reported with why")
+        self.assertRegex(out, rf"(?m)^missing  {re.escape(self.sline(o))}$", "P20.strict: the arm O walk covers nothing")
+        self.assertRegex(out, rf"(?m)^covered  {re.escape(self.sline(g))} by walk-g$",
+                         "P20.strict: the arm G walk counts as before")
+        for walk in ("walk-a", "walk-o"):
+            self.assertIn(f"{why}, not counted: walk '{walk}'", out, "P20.strict: and is reported with why")
         rep = self.call(self.CLAUSE, wp.coverage_report, base)
-        self.assertEqual(rep["got"]["uncounted"], [("walk-a", why)], "P20.strict: coverage_report applies the rule")
-        self.assertEqual(list(rep["got"]["covered"]), [self.key(o, design)], "P20.strict: coverage_report")
-        self.dirty(base, "walk-a", [])
+        self.assertEqual(rep["got"]["uncounted"], [("walk-a", why), ("walk-o", why)],
+                         "P20.strict: coverage_report applies the rule")
+        self.assertEqual(list(rep["got"]["covered"]), [self.key(g, design)], "P20.strict: coverage_report")
+        for walk in ("walk-a", "walk-o"):
+            self.dirty(base, walk, [])
         code, out = self.cli(self.CLAUSE, ["--coverage", "--base", str(base)])
-        self.assertRegex(out, rf"(?m)^covered  {re.escape(self.sline(a))} by walk-a$",
-                         "P20.strict: a clean arm A walk covers its spec")
+        for spec, walk in ((a, "walk-a"), (o, "walk-o")):
+            self.assertRegex(out, rf"(?m)^covered  {re.escape(self.sline(spec))} by {walk}$",
+                             "P20.strict: a clean strict walk covers its spec")
         rep = self.call(self.CLAUSE, wp.coverage_report, base)
-        self.assertEqual(rep["got"]["uncounted"], [], "P20.strict: a clean arm A walk is counted by coverage_report")
+        self.assertEqual(rep["got"]["uncounted"], [], "P20.strict: a clean strict walk is counted by coverage_report")
+        # last, so each arm witness is red by what the rule does, not by the constant's spelling
+        self.assertEqual(getattr(wp, "WALK_COVER_STRICT", {}).get("arms"), ("A", "O"),
+                         "P20.strict: OD131 names arm A and OD132 arm O; arm G stays as coded")
 
 
 BOUND = {"P2.dropped": "P2Dropped.test_a_dropped_task_or_wording_changes_the_figures",
@@ -1327,7 +1341,7 @@ BOUND = {"P2.dropped": "P2Dropped.test_a_dropped_task_or_wording_changes_the_fig
          "P17.wrong-type": "P17WrongType.test_a_field_of_the_wrong_type_is_skipped_never_a_crash",
          "P18.pending": "P18Pending.test_a_pending_walk_covers_nothing",
          "P19.run-arms": "P19RunArms.test_the_freeze_requires_the_arms_it_runs",
-         "P20.strict": "P20Strict.test_an_arm_a_walk_counts_only_clean"}
+         "P20.strict": "P20Strict.test_arm_a_and_o_walks_count_only_clean_and_arm_g_as_coded"}
 WITNESSES = {name: (BOUND[clause], clause) for name, (clause, _, _) in mutants().items()}
 
 
