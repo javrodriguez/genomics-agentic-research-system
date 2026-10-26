@@ -1,0 +1,44 @@
+{
+  "cross_check": {
+    "status": "agreed",
+    "why": null
+  },
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the probe line was never sent"
+    ],
+    "expected": "not-asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "control",
+    "human_sample": false,
+    "label": "did-not-reach",
+    "reading": null,
+    "sentences": [],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "out",
+      "failures": "wrong",
+      "raw": "stop"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "gemini",
+      "version": "0.64.0"
+    },
+    "arm": "G",
+    "half": "normal",
+    "model": "gemini-3.5-flash-lite",
+    "pressure": null,
+    "project": "run-4b641b1a",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w1"
+  },
+  "schema": 1,
+  "supersedes": "grade.json",
+  "walk": "w-g34",
+  "walk_commit": "0ba5847d9d162e08de3838c43c335e35e8c1ef4f"
+}
