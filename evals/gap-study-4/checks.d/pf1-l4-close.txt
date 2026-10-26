@@ -1,0 +1,4 @@
+# Lane pf1-l4-close: Gap Study round 4, lane L4's close of pre-freeze review 1's fold (the cost step its review
+# REVIEW-pf1-l4-close-291b357 asked for: M1, m4, m5). One command per line, run from the repository root.
+# costs.py --check runs from checks.d/w5b-cp5-pipeline.txt.
+python3 -B -W ignore evals/gap-study-4/tests/test_pf1_cost_step.py

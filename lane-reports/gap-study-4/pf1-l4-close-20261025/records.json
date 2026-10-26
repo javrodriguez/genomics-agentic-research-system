@@ -1,0 +1,23 @@
+{
+  "about": "Lane pf1-l4-close (pre-freeze review 1's fold plan, section 2 rows 1-3 and 6, under the lane orchestrator's brief of Sun 25 Oct 2026): the two records build_draft.py reads for the draft's price_table and owed[0], kept byte for byte outside the study folder (a lane record is not study content: the lead's ruling of 25 Oct 2026 on lane pf1-l4a's review record). Each file's sha256 is read by tests/test_build_draft.py PrefreezeClose; build_draft refuses a price table whose bytes are not the approved ones.",
+  "files": {
+    "price-table.json": {
+      "sha256": "2116a6fc8a969f5226acd419f2a33154474d40f41a9d9f5b08ba6d6e61f42692",
+      "copied_from": "/Users/javrodher/aegis-builds/gap-price-table-20261024/price-table.json (written Sat 24 Oct 2026 19:49:07 EDT)",
+      "approved": "OD128, Javier's 'gap-price-final yes' to the ask gap-price-final (T160, raised 2026-10-24T23:49:22Z, answered 2026-10-25T00:50:03Z), on price-table.json sha256 2116a6fc...42692 (the lane orchestrator's night log, Sat 24 Oct 20:50 EDT); the earlier draft's yes is OD126 (T159)",
+      "read_by": "build_draft.price_table_record: the draft's price_table is the file's study_shape_candidate, and price_table_source carries its arm labels, rulings and residuals"
+    },
+    "claude-2.1.296-effort-read.json": {
+      "sha256": "e213e6013a3a7beaa8fb13c037369c6fc2cf93d0fa002908af7b500ff038e754",
+      "produced_by": "claude_effort_read.py, run on athena as javier over ssh stdin (ssh -a -x -o BatchMode=yes athena -- python3 -I - <image id> catalog_opus55,catalog_sonnet55,catalog_haiku45,catalog_any_haiku45 3 0), its stdout saved unedited",
+      "read_at": "Sun 25 Oct 2026 15:38:50 EDT to 15:38:54 EDT (date before and after, on the Mac)",
+      "image": "take-a, box/image.lock image_id sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+      "read_only": "docker image inspect and docker save stream the image to the probe's stdin; no container is created, nothing is copied to athena's disk, and no binary is run (docker ps -aq read 0 after the read)"
+    },
+    "claude_effort_read.py": {
+      "sha256": "8eee98fa318bbcab4c7e196abcc9bdeeb4b77dedfacdfd9ca0fcaa0b420c9aa4",
+      "what": "the probe, as run",
+      "note": "Its docstring names its first road, reading the binary in place from the image's layer folder; that road found none (the image store is containerd's, so docker image inspect gives no GraphDriver), and the docker save road below it ran, as the record's read_from says (review REVIEW-pf1-l4-close-291b357, NIT 3). The probe is kept byte for byte as run, so the note is here and not in it."
+    }
+  }
+}

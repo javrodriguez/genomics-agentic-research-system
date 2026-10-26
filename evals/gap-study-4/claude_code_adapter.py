@@ -555,9 +555,30 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
 
 
 # ---- C14: the calls, counted once each, from the session file ---------------------------------------------------
+# Lane pf1-l4-close (25 Oct 2026; the lane orchestrator's ruling on review REVIEW-pf1-l4-close-291b357 M1): Claude Code
+# records each call's cache writes by duration in usage.cache_creation (ephemeral_5m_input_tokens and
+# ephemeral_1h_input_tokens; every usage record of the 151 committed Claude walks carries both, summing to
+# cache_creation_input_tokens), which costs.py prices each at its own row.
+CACHE_SPLIT_KEYS = {"5m": "ephemeral_5m_input_tokens", "1h": "ephemeral_1h_input_tokens"}
+
+
+def cache_write_split(usage: dict, counts) -> dict | None:
+    """{"5m": n, "1h": n} as the usage record states it, or None (unrecorded) when the counts are unmeasured, the
+    record carries no cache_creation object, a duration is not a count, or the two do not sum to the call's cache
+    writes: costs.py then prices the whole at the stated bound, never a guessed split."""
+    detail = usage.get("cache_creation")
+    if counts is None or not isinstance(detail, dict):
+        return None
+    split = {d: detail.get(k) for d, k in CACHE_SPLIT_KEYS.items()}
+    if not all(_int(v) and v >= 0 for v in split.values()) or sum(split.values()) != counts[
+            "cache_creation_input_tokens"]:
+        return None
+    return split
+
+
 def session_calls(text: str) -> list:
     """The session file's model calls, one per (message.id, requestId), in order: {message_id, request_id, model,
-    usage}. usage holds the four USAGE_CLASSES as recorded, or is None when any of them is not a count (unmeasured,
+    usage, cache_write_durations (cache_write_split)}. usage holds the four USAGE_CLASSES as recorded, or is None when any of them is not a count (unmeasured,
     never 0: costs.py reads None as unmeasured). The harness's API-error records are not calls of the model. Two
     records of one call with different usage, or a usage record with no call key, refuse (StreamError): the reader
     never picks one."""
@@ -576,11 +597,14 @@ def session_calls(text: str) -> list:
         counts = {c: usage.get(c) for c in USAGE_CLASSES}
         if not all(_int(v) and v >= 0 for v in counts.values()):
             counts = None
+        split = cache_write_split(usage, counts)
         if key in by_key:
-            if by_key[key]["usage"] != counts or by_key[key]["model"] != msg.get("model"):
+            if (by_key[key]["usage"] != counts or by_key[key]["model"] != msg.get("model")
+                    or by_key[key]["cache_write_durations"] != split):
                 raise StreamError(f"call {key[0]} carries two different usages or models in the session file")
             continue
-        call = {"message_id": key[0], "request_id": key[1], "model": msg.get("model"), "usage": counts}
+        call = {"message_id": key[0], "request_id": key[1], "model": msg.get("model"), "usage": counts,
+                "cache_write_durations": split}
         by_key[key] = call
         out.append(call)
     return out
@@ -925,14 +949,16 @@ def cost_record(turn_records: list, session_text: str, *, model: str, version: s
     """C14: the take's cost, per call and per turn, never summed.
 
     calls   costs.py's call shape, one per session-file call: {vendor, call_id, model, agent{harness, version},
-            usage, total_cost_usd, started_at, ended_at}. total_cost_usd and the clock are None: Claude Code prints
-            no dollar figure and no time per call (unmeasured, never zero). usage is the session file's.
+            usage, total_cost_usd, started_at, ended_at, cache_write_durations}. total_cost_usd and the clock are None:
+            Claude Code prints no dollar figure and no time per call (unmeasured, never zero). usage is the session
+            file's, and cache_write_durations its recorded 5m and 1h split (lane pf1-l4-close), or None.
     turns   per turn: {n, total_cost_usd, usage, model_usage, num_turns, permission_denials} as the turn's result
             record printed them (None when the turn has no result record), plus its stream's call ids.
     """
     calls = [{"vendor": "anthropic", "call_id": f"{c['message_id']}/{c['request_id']}", "model": c["model"],
               "agent": {"harness": NAME, "version": version}, "usage": c["usage"], "total_cost_usd": None,
-              "started_at": None, "ended_at": None} for c in session_calls(session_text)]
+              "started_at": None, "ended_at": None, "cache_write_durations": c["cache_write_durations"]}
+             for c in session_calls(session_text)]
     turns = []
     for t in turn_records:
         res = t["result"] or {}

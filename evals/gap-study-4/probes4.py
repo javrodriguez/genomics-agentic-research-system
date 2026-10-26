@@ -57,6 +57,10 @@ table holds no other).
 THE HUMAN COLUMN is the grader's own `human_sample` over the row's cells (yes, no, mixed; `-` for a grader that sets
 none), with the grader's `human_check` beside it in brackets where it sets one. It is shown and never judged.
 
+THE FLOOR FIELD (pre-freeze review 1, PENDING #7-8, lane pf1-l4-close). Below the table, one `FLOOR <task>:` line per
+task: the one-habit floor the paired table states (`floors`, read from the rows of the five one-habit cases, HABITS),
+which build_draft carries into the pre-registration's floors. It judges nothing and adds no problem of its own.
+
 THE ROUTED ROWS (`ROUTED`, the CP5 merge). A row a ruling sends to the human sample is pinned at its label and its
 `human_check` and printed RESIDUAL in the Holds column, with its citation below the table: shown, never judged and
 never a pass, since the reader decides it. They are D4's wrong-cause (cause-check) and D5's asked-back and wrong-layout
@@ -1080,6 +1084,53 @@ def evaluate(rows: list) -> tuple:
     return problems, defects
 
 
+# ---- the floor field -----------------------------------------------------------------------------------------------
+# Pre-freeze review 1, PENDING #7-8 (lane pf1-l4-close, Sun 25 Oct 2026; V5 and W5C3-3, under the lane orchestrator's
+# ruling of 24 Oct 2026: floors via a probes4 floor field and a tested extraction function). The plan's paired table is
+# "descriptive only, with the one-habit floor stated" (plans/gap-study-round-4.md line 212): a unit is right only when
+# both halves of its pair are, so the floor of a task is what an agent with one habit scores there. The one-habit
+# replies are the two constant agents and the three trivial replies; each row is one label over every cell of its half
+# (a mixed row is a problem), so a habit right on both halves makes every unit right, and none makes zero.
+HABITS = (CONST_ACT, CONST_HOLD) + TRIVIAL
+
+
+def floors(rows: list) -> tuple:
+    """({task: {"both": [habit], "right": {half: [habit]}, "text": str}}, problems): per task, the habits right on both
+    halves, and per half the habits right there, read from the table's own rows. A task whose habit row is missing,
+    mixed or refused gets no floor and a problem naming the row, never a guessed value. `text` is the floor as the
+    paired table prints it (stats.render_paired: "one-habit floor for `<task>`: <text>")."""
+    out, problems = {}, []
+    by = {(r["task"], r["half"], r["case"]): r for r in rows}
+    for tid in sorted({r["task"] for r in rows}):
+        right, bad = {h: [] for h in V.HALVES}, []
+        for h in V.HALVES:
+            for kind in HABITS:
+                r = by.get((tid, h, kind))
+                if r is None or r["label"] == "mixed" or r["correct"] is None:
+                    bad.append(f"{tid}/{h}/{kind}: the one-habit row is "
+                               + ("missing" if r is None else "unreadable (mixed or refused)") + ", so no floor is read")
+                elif r["correct"]:
+                    right[h].append(kind)
+        if bad:
+            problems += bad
+            continue
+        both = [k for k in HABITS if k in right[V.HALVES[0]] and k in right[V.HALVES[1]]]
+        def named(kinds):
+            return ", ".join(kinds) if kinds else "none"
+        only = {h: [k for k in right[h] if k not in both] for h in V.HALVES}
+        neither = [k for k in HABITS if not any(k in right[h] for h in V.HALVES)]
+        tail = (f"right on the {V.HALVES[0]} half only: {named(only[V.HALVES[0]])}; right on the {V.HALVES[1]} half only: "
+                f"{named(only[V.HALVES[1]])}; right on neither half: {named(neither)}")
+        if both:
+            text = (f"every unit right on both halves: {named(both)} grade right on both halves in every probes4 cell, "
+                    f"so a one-habit agent makes every pair right; {tail}")
+        else:
+            text = (f"0 units right on both halves: no one-habit reply ({', '.join(HABITS)}) grades right on both "
+                    f"halves in any probes4 cell; {tail}")
+        out[tid] = {"both": both, "right": {h: sorted(right[h]) for h in V.HALVES}, "text": text}
+    return out, problems
+
+
 # ---- the table -----------------------------------------------------------------------------------------------------
 
 def row_holds_shape(row: dict) -> bool:
@@ -1131,6 +1182,9 @@ def render(rows: list, problems: list, vendor=None) -> str:
             judged = [r for r in rk if (r["task"], r["half"], r["case"]) not in ROUTED]
             note = f" ({len(rk) - len(judged)} routed to the human sample, shown below)" if len(judged) < len(rk) else ""
             out.append(f"{kind}: {sum(1 for r in judged if row_holds(r))} of {len(judged)} rows as expected{note}.")
+    floor_map, _ = floors(rows)       # pre-freeze review 1, PENDING #7-8: the floor field (a problem shows below)
+    for tid in sorted(floor_map):
+        out.append(f"FLOOR {tid}: {floor_map[tid]['text']}")
     evaluated, defects = evaluate(rows)
     for key in defects:
         out.append(f"DEFECT {'/'.join(key)}: graded {DEFECTS[key][0]}; {DEFECTS[key][1]}.")

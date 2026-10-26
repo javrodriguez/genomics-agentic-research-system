@@ -343,7 +343,11 @@ def _study_files() -> list[str]:
 
 
 NOT_PINNED_AND_WHY = {study.rel("prereg.json"): "the frozen file binds itself through its introducing commit"}
-PINNED = [p for p in _study_files() if p not in NOT_PINNED_AND_WHY] + ["CLAUDE.md"]
+# Lane pf1-l4-close (review REVIEW-pf1-l4-close-291b357 m4, the lane orchestrator's ruling of 25 Oct 2026): the approved
+# price table build_draft reads its price_table and price_variants from, outside the study folder (build_draft
+# PRICE_TABLE_FILE; tests/test_pf1_cost_step.py binds the two).
+PINNED = [p for p in _study_files() if p not in NOT_PINNED_AND_WHY] + [
+    "CLAUDE.md", "lane-reports/gap-study-4/pf1-l4-close-20261025/price-table.json"]
 GLOB_CHARS = ("*", "?", "[")
 
 
