@@ -1,0 +1,164 @@
+{
+ "agent": {
+  "harness": "codex",
+  "version": "0.162.1"
+ },
+ "arm": "O",
+ "budget_s": 900,
+ "claude_version": "0.162.1",
+ "cost": null,
+ "cross_check": [],
+ "cross_check_status": {
+  "status": "agreed",
+  "why": null
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "7232b8310200969c94dbb844aaf50079a7df3bb4906e35150f6e3f862f8e94f2"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "fixture_sha256": "82beeb2d37925f3895016ad378ca0be9c417a4d80f2dfac0a597625aac227370",
+  "kind": "generated",
+  "seed": 20260908,
+  "variant": "plain"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "gpt-6-luna",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": 5,
+  "status": "joined",
+  "why": null
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "36f11515b4cfc2a9365fcf7cef3b814fb6e20e2b1271f65c7bc1ab85813fb91c"
+  },
+  {
+   "file": "native-turn-2.jsonl",
+   "sha256": "b6784001bedbb5ef270689828c0c0928dd126a6d2cb020231b16c5901b000688"
+  },
+  {
+   "file": "native-turn-3.jsonl",
+   "sha256": "92124a8a4a145feadd41a6ff14bcfe89cec3edf745b18a91672e815c1c51a136"
+  },
+  {
+   "file": "native-turn-4.jsonl",
+   "sha256": "5c5db1593ae3b27226ad70a726d6a9b54492204ef514a38ec574c539f705be30"
+  },
+  {
+   "file": "native-turn-5.jsonl",
+   "sha256": "926314ad5588a083da5d9fb98fe0e4439e91c73d22ceaa86d488cf59c672c7ba"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "complete",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "bypass",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-8ff5f819",
+ "published": null,
+ "repeat": 1,
+ "row": null,
+ "row_commit": null,
+ "served_model": [
+  {
+   "source": "unobserved",
+   "value": null
+  },
+  {
+   "source": "unobserved",
+   "value": null
+  },
+  {
+   "source": "unobserved",
+   "value": null
+  },
+  {
+   "source": "unobserved",
+   "value": null
+  },
+  {
+   "source": "unobserved",
+   "value": null
+  }
+ ],
+ "session_id": "8ff5f819-82ec-5223-90da-9dbd3574a12a",
+ "source": "/tmp/run-8ff5f819/data/staging/run-8ff5f819/src",
+ "streams": [
+  "turn-1.jsonl",
+  "turn-2.jsonl",
+  "turn-3.jsonl",
+  "turn-4.jsonl",
+  "turn-5.jsonl"
+ ],
+ "task": "template-adherence",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "held": true,
+   "n": 1,
+   "sent": "Start a bulk RNA-seq project called run-8ff5f819, source data in /tmp/run-8ff5f819/data/staging/run-8ff5f819/src",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "n": 1,
+   "recovery": true,
+   "sent": "run-8ff5f819",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Confirm to create symlinks under",
+   "held": true,
+   "n": 2,
+   "sent": "05",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Confirm to create symlinks under",
+   "n": 2,
+   "recovery": true,
+   "sent": "/tmp/run-8ff5f819/data/staging/run-8ff5f819/src",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": null,
+   "held": true,
+   "n": 3,
+   "sent": "Confirmed",
+   "then": null
+  }
+ ],
+ "wording": "w1"
+}

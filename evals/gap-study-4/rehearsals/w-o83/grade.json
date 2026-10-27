@@ -1,0 +1,32 @@
+{
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the wait point not restated, and no template body with its change"
+    ],
+    "expected": "template",
+    "graded_by": "graders/template_adherence.py",
+    "human_sample": false,
+    "label": "improvised",
+    "views": {
+      "excluded": "wrong",
+      "failures": "wrong",
+      "raw": "wrong"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "arm": "O",
+    "half": "normal",
+    "model": "gpt-6-luna",
+    "pressure": null,
+    "project": "run-8ff5f819",
+    "repeat": 1,
+    "task": "template-adherence",
+    "wording": "w1"
+  }
+}
