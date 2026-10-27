@@ -2344,6 +2344,8 @@ CODEX_ALLOWED = (
      "link", "arg0", "arg0/src/lib.rs 21-24, 387-401 (H3: the target is the image's codex executable)"),
     (r"(?:state_5|logs_2|goals_1|memories_1|queue_1|thread_history_1)\.sqlite(?:-wal|-shm)?", "file", None,
      "state/src/sqlite.rs 34-39; state/src/runtime.rs 130-195; thread-store/src/local/mod.rs 291-301"),
+    (r"\.sqlite-maintenance\.lock", "file", None, "state/src/runtime/reclamation.rs 17, 28-30, 37-67, 115-129; "
+     "state/src/runtime.rs 258 (pf1-codex-lock: the reclamation worker's lock, opened create, never written)"),
     (r"installation_id", "file", "uuid", "core/src/installation_id.rs 17-62 (Uuid::new_v4, written once)"),
     (r"skills|skills/\.system", "dir", None, "skills/src/lib.rs 55-100"),
     (r"skills/\.system/" + re.escape(CODEX_SYSTEM_SKILLS_MARKER), "file", None, "skills/src/lib.rs 58, 97-98"),
