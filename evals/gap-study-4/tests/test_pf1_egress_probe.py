@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import builtins
 import contextlib
+import copy
 import io
 import json
 import socket
@@ -71,11 +72,22 @@ def run_program(table: str, *, connects=(), program=None) -> tuple:
     return json.loads(buf.getvalue()), tried, opened
 
 
-def raw_for(out: dict, gateway: str | None) -> dict:
+# Lane pf1-gateway: the take's spec (its network id binds the host-side network record) and that record. By default
+# the record names no gateway (IPAM.Config empty), so every case above it judges on the take inspect's Gateway alone.
+SPEC = pf.run_take.TakeSpec(image="sha256:" + "a" * 64, run_tree="/srv/w0/t1/tree", config_dir="/srv/w0/t1/cfg",
+                            network="b" * 64, memory_reservation=512, memory=1536, cpus="1", pids_limit=64)
+NO_HOST_GATEWAY = [{"Name": "n", "Id": "b" * 64, "Internal": True, "IPAM": {"Driver": "default", "Options": {},
+                                                                            "Config": []}}]
+
+
+def raw_for(out: dict, gateway: str | None, *, host=NO_HOST_GATEWAY) -> dict:
     nets = {"n": {"Gateway": gateway or ""}}
-    return {"direct-egress": {"returncode": 0, "stdout": json.dumps(out), "stderr": ""},
-            "take-inspect": {"returncode": 0, "stdout": json.dumps([{"NetworkSettings": {"Networks": nets}}]),
-                             "stderr": ""}}
+    raw = {"direct-egress": {"returncode": 0, "stdout": json.dumps(out), "stderr": ""},
+           "take-inspect": {"returncode": 0, "stdout": json.dumps([{"NetworkSettings": {"Networks": nets}}]),
+                            "stderr": ""}}
+    if host is not None:
+        raw["take-network-inspect"] = {"returncode": 0, "stdout": json.dumps(host), "stderr": ""}
+    return raw
 
 
 def judged(raw: dict) -> dict:
@@ -83,7 +95,7 @@ def judged(raw: dict) -> dict:
     for cid, fn in (("egress-raw-ip-refused", pf._check_raw_ip), ("egress-metadata-refused", pf._check_metadata),
                     ("egress-gateway-refused", pf._check_gateway)):
         try:
-            out[cid] = (True, fn(raw))
+            out[cid] = (True, fn(raw, SPEC))
         except pf._Fail as e:
             out[cid] = (False, str(e))
     return out
@@ -157,9 +169,138 @@ class E2Checks(unittest.TestCase):
 
     def test_witness_a_check_blind_to_the_inspect_is_caught(self):
         out, _, _ = run_program(INTERNAL_ONLY)
-        with mock.patch.object(pf, "_inspect_gateways", lambda obj: []):
+        with mock.patch.object(pf, "_inspect_gateways", lambda obj, host=None: []):
             self.assertTrue(judged(raw_for(out, "172.30.0.1"))["egress-gateway-refused"][0], "witness not performed")
         self.assertFalse(judged(raw_for(out, "172.30.0.1"))["egress-gateway-refused"][0])
+
+
+# Lane pf1-gateway (glitch-45's ruling, Mon 26 Oct 2026, under Javier's standing delegation): the first arm O re-walk
+# at the freeze line, w-o48, failed its preflight before turn 1 on egress-gateway-refused. Its records are committed on
+# branch walk/w-kptgozIX (commit e81b6f2f) in the walk-records repo: rehearsals/w-o48/launch.json (blob f76b847c) and
+# preflight.json (blob 13674507). Copied from them, never edited:
+W_O48_NETWORK_ID = "1eba86a76442fcfae3cbfcf00d2842c9dbbfb0b674544a04cf49a96f38832dc1"   # launch.json network_id
+W_O48_NETWORKS = {"nc381ca9735e8e95c6361eedd": {   # launch.json, step take-inspect: inspect.NetworkSettings.Networks
+    "Aliases": None, "DNSNames": None, "DriverOpts": None, "EndpointID": "", "Gateway": "", "GlobalIPv6Address": "",
+    "GlobalIPv6PrefixLen": 0, "GwPriority": 0, "IPAMConfig": None, "IPAddress": "", "IPPrefixLen": 0,
+    "IPv6Gateway": "", "Links": None, "MacAddress": "", "NetworkID": ""}}
+W_O48_DETAIL = ("the take inspect names no gateway for network(s) ['nc381ca9735e8e95c6361eedd']: the addresses tried "
+                "cannot be bound to the take's own gateway (fail closed)")   # preflight.json, egress-gateway-refused
+# Not in w-o48's records (preflight.json keeps no probe output, and the network was removed at teardown), so taken from
+# athena's Docker 29.8.1 live on 26 Oct 2026 for a fresh `docker network create --internal` network: `docker network
+# inspect` named IPAM.Config [{"Gateway": "172.18.0.1", "Subnet": "172.18.0.0/16"}], a container on it showed
+# NetworkSettings.Networks.<n>.Gateway "" and this one-line /proc/net/route (an on-link /16, no default route).
+ATHENA_INTERNAL_ROUTE = HEADER + "eth0\t000012AC\t00000000\t0001\t0\t0\t0\t0000FFFF\t0\t0\t0\n"   # 172.18.0.0/16
+W_O48_SPEC = pf.run_take.TakeSpec(image="sha256:" + "a" * 64, run_tree="/srv/w0/t1/tree", config_dir="/srv/w0/t1/cfg",
+                                  network=W_O48_NETWORK_ID, memory_reservation=512, memory=1536, cpus="1",
+                                  pids_limit=64)
+
+
+def network_record(gateways=(), *, name="n", net_id=None) -> list:
+    """`docker network inspect <id>`'s output for the take's network: the host-side record, outside the take's reach."""
+    return [{"Name": name, "Id": SPEC.network if net_id is None else net_id, "Internal": True,
+             "IPAM": {"Driver": "default", "Options": {},
+                      "Config": [{"Subnet": g.rsplit(".", 1)[0] + ".0/16", "Gateway": g} for g in gateways]}}]
+
+
+def raw_w_o48(out: dict, host: list | None) -> dict:
+    raw = {"direct-egress": {"returncode": 0, "stdout": json.dumps(out), "stderr": ""},
+           "take-inspect": {"returncode": 0, "stderr": "",
+                            "stdout": json.dumps([{"NetworkSettings": {"Networks": copy.deepcopy(W_O48_NETWORKS)}}])}}
+    if host is not None:
+        raw["take-network-inspect"] = {"returncode": 0, "stdout": json.dumps(host), "stderr": ""}
+    return raw
+
+
+def gateway_judged(raw: dict, spec=None) -> tuple:
+    try:
+        return True, pf._check_gateway(raw, SPEC if spec is None else spec)
+    except pf._Fail as e:
+        return False, str(e)
+
+
+class E4HostRecord(unittest.TestCase):
+    """The expected gateway bound to a host-side record of the take's network (`docker network inspect`'s IPAM
+    gateway) when the take inspect names none, as Docker reports for an --internal network; never the route table's
+    word alone, and fail closed when neither names one."""
+
+    def test_w_o48_recorded_input_passes_with_the_host_record(self):
+        """Red at the freeze line (7a866455): the recorded detail, word for word. Green once the host record binds."""
+        out, _, _ = run_program(ATHENA_INTERNAL_ROUTE)
+        self.assertEqual(out["gateway_candidates"], ["172.18.0.1"])
+        host = network_record(["172.18.0.1"], name="nc381ca9735e8e95c6361eedd", net_id=W_O48_NETWORK_ID)
+        ok, detail = gateway_judged(raw_w_o48(out, host), W_O48_SPEC)
+        self.assertNotEqual(detail, W_O48_DETAIL, "the w-o48 refusal reproduced")
+        self.assertTrue(ok, detail)
+        self.assertIn("172.18.0.1", detail)
+
+    def test_w_o48_without_a_gateway_in_the_host_record_still_refuses(self):
+        out, _, _ = run_program(ATHENA_INTERNAL_ROUTE)
+        host = network_record([], name="nc381ca9735e8e95c6361eedd", net_id=W_O48_NETWORK_ID)
+        ok, detail = gateway_judged(raw_w_o48(out, host), W_O48_SPEC)
+        self.assertFalse(ok)
+        self.assertTrue(detail.startswith(W_O48_DETAIL[:-len(" (fail closed)")]), detail)
+        self.assertIn("fail closed", detail)
+
+    def test_internal_network_passes_with_the_host_record(self):
+        out, _, _ = run_program(INTERNAL_ONLY)
+        ok, detail = gateway_judged(raw_for(out, None, host=network_record(["172.31.0.1"])))
+        self.assertTrue(ok, detail)
+
+    def test_the_host_gateway_must_be_among_the_addresses_tried(self):
+        out, _, _ = run_program(INTERNAL_ONLY)              # tries 172.31.0.1 only
+        ok, detail = gateway_judged(raw_for(out, None, host=network_record(["172.30.0.1"])))
+        self.assertFalse(ok)
+        self.assertIn("172.30.0.1", detail)
+        self.assertIn("was not among the addresses tried", detail)
+
+    def test_a_connection_to_the_host_gateway_is_red(self):
+        for port in pf.GATEWAY_PORTS:
+            out, _, _ = run_program(INTERNAL_ONLY, connects={("172.31.0.1", port)})
+            ok, detail = gateway_judged(raw_for(out, None, host=network_record(["172.31.0.1"])))
+            self.assertFalse(ok, port)
+            self.assertIn("a direct connection to gateway 172.31.0.1", detail)
+
+    def test_no_host_record_and_no_container_gateway_refuses(self):
+        out, _, _ = run_program(INTERNAL_ONLY)
+        for why, host in (("names nothing", network_record([])), ("missing", None)):
+            ok, detail = gateway_judged(raw_for(out, None, host=host))
+            self.assertFalse(ok, why)
+        ok, detail = gateway_judged(raw_for(out, None, host=network_record([])))
+        self.assertIn("names no gateway", detail)
+        self.assertIn("fail closed", detail)
+
+    def test_a_record_of_another_network_binds_nothing(self):
+        out, _, _ = run_program(INTERNAL_ONLY)
+        for why, host in (("another id", network_record(["172.31.0.1"], net_id="9" * 64)),
+                          ("another name", network_record(["172.31.0.1"], name="other")),
+                          ("two networks", network_record(["172.31.0.1"]) * 2),
+                          ("not a list", {"IPAM": {"Config": [{"Gateway": "172.31.0.1"}]}}),
+                          ("off shape", [{"Name": "n", "Id": SPEC.network, "IPAM": {"Config": "172.31.0.1"}}])):
+            ok, detail = gateway_judged(raw_for(out, None, host=host))
+            self.assertFalse(ok, (why, detail))
+
+    def test_a_container_network_id_that_differs_binds_nothing(self):
+        out, _, _ = run_program(INTERNAL_ONLY)
+        raw = raw_for(out, None, host=network_record(["172.31.0.1"]))
+        doc = json.loads(raw["take-inspect"]["stdout"])
+        doc[0]["NetworkSettings"]["Networks"]["n"]["NetworkID"] = "9" * 64
+        raw["take-inspect"]["stdout"] = json.dumps(doc)
+        self.assertFalse(gateway_judged(raw)[0])
+
+    def test_a_non_internal_network_keeps_passing_as_before(self):
+        """The container inspect names its Gateway: passes whether the host record repeats it or names nothing."""
+        out, _, _ = run_program(DEFAULT_ROUTE)
+        for host in (network_record(["172.30.0.1"]), network_record([])):
+            ok, detail = gateway_judged(raw_for(out, "172.30.0.1", host=host))
+            self.assertTrue(ok, detail)
+            self.assertEqual(detail, gateway_judged(raw_for(out, "172.30.0.1"))[1])
+
+    def test_witness_a_check_that_ignores_the_host_record_is_caught(self):
+        out, _, _ = run_program(INTERNAL_ONLY)
+        raw = raw_for(out, None, host=network_record(["172.31.0.1"]))
+        self.assertTrue(gateway_judged(raw)[0])
+        with mock.patch.object(pf, "_host_network_gateways", lambda raw, spec: {}):
+            self.assertFalse(gateway_judged(raw)[0], "witness not performed")
 
 
 class E3Bound(unittest.TestCase):

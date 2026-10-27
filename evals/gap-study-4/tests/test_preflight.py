@@ -247,6 +247,11 @@ class World:
             "egress": {"via_proxy": {HOSTS[harness]: {"status": 200}, "github.com": {"status": 403}},
                        "direct": {"connected": False, "error": "gaierror"},
                        "resolves": {n: False for n in REFUSED_NAMES[harness]}},
+            # Lane pf1-gateway: the host-side record of the take's network, `docker network inspect` of spec.network;
+            # its IPAM gateway is the world's gateway (an --internal network's take inspect may name none)
+            "take-network-inspect": [{"Name": "n", "Id": ID["net"], "Internal": True,
+                                      "IPAM": {"Driver": "default", "Options": {},
+                                               "Config": [{"Subnet": "172.30.0.0/16", "Gateway": GATEWAY}]}}],
             # PF1-L3 (m9): the direct-egress probe's record, nothing connected
             "direct-egress": {
                 "routes": [{"iface": "eth0", "destination": "172.30.0.0", "gateway": "0.0.0.0",
@@ -538,6 +543,18 @@ BREAKS = {
         ("inspect-gateway-untried", edit_json("take-inspect", lambda d: d[0]["NetworkSettings"]["Networks"]["n"].update(
             Gateway="172.30.0.254"))),
         ("inspect-names-no-network", edit_json("take-inspect", lambda d: d[0].pop("NetworkSettings"))),
+        # Lane pf1-gateway: the host-side network record binds the gateway when the take inspect names none
+        ("internal-host-gateway-untried", lambda raw, w: (
+            edit_json("take-inspect", lambda d: d[0]["NetworkSettings"]["Networks"]["n"].update(Gateway=""))(raw, w),
+            edit_json("take-network-inspect", lambda d: d[0]["IPAM"]["Config"][0].update(Gateway="172.30.0.254"))(
+                raw, w))),
+        ("internal-neither-names-one", lambda raw, w: (
+            edit_json("take-inspect", lambda d: d[0]["NetworkSettings"]["Networks"]["n"].update(Gateway=""))(raw, w),
+            edit_json("take-network-inspect", lambda d: d[0]["IPAM"].update(Config=[]))(raw, w))),
+        ("host-gateway-untried", edit_json("take-network-inspect", lambda d: d[0]["IPAM"]["Config"].append(
+            {"Subnet": "10.9.0.0/16", "Gateway": "10.9.0.1"}))),
+        ("host-record-other-network", edit_json("take-network-inspect", lambda d: d[0].update(Id="9" * 64))),
+        ("host-record-two-networks", edit_json("take-network-inspect", lambda d: d.append(dict(d[0])))),
     ],
 }
 
@@ -626,6 +643,17 @@ class TestEvaluate(MutantCase):
             self.assertEqual(failing(rec), [], h)
             self.assertTrue(rec["ok"])
             self.assertEqual([c["id"] for c in rec["checks"]], list(pf.PREFLIGHT_CHECKS))
+
+    def test_an_internal_network_world_is_green_on_the_host_record(self):
+        """Lane pf1-gateway: the take inspect names no Gateway (Docker on an --internal network, w-o48's live reading);
+        the host-side network record names the gateway the probe tried, so every arm passes whole."""
+        for h in ARMS:
+            w = World(h)
+            w.answers["take-inspect"][0]["NetworkSettings"]["Networks"]["n"]["Gateway"] = ""
+            with filled():
+                rec = w.evaluate()
+            self.assertEqual(failing(rec), [], h)
+            self.assertTrue(rec["ok"])
 
     def undetected(self, harness):
         """Every break that leaves its own check green (the guard's problems)."""
@@ -1185,8 +1213,11 @@ class TestPrograms(MutantCase):
             if p.id != "watcher-caps":
                 image_read = p.id in ("take-image-manifest", "sidecar-image-manifest", "egress-image-manifest") and list(p.argv[1:5]) == [
                     "image", "inspect", "--platform", pf.IMAGE_PLATFORM]
+                # Lane pf1-gateway: the host reads the take's own network, by its id and nothing else
+                network_read = p.id == "take-network-inspect" and list(p.argv) == ["docker", "network", "inspect",
+                                                                                    w.spec.network]
                 if list(p.argv[:4]) != ["docker", "exec", "--user", rt.AGENT_USER] and p.argv[1] != "container" \
-                        and not image_read:
+                        and not image_read and not network_read:
                     out.append(f"probe {p.id} does not run as the agent")
                 if "exec" in p.argv[:2] and list(p.argv[4:6]) != ["--workdir", "/"]:
                     out.append(f"probe {p.id} does not run with workdir /")

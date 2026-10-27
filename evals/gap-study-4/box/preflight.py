@@ -120,9 +120,13 @@ PREFLIGHT_CHECKS = (
 # own route table names, plus the first host of each on-link network (where Docker's default IPAM puts an internal
 # network's gateway), on GATEWAY_PORTS. Each check passes only when no connection was made; the gateway check also
 # needs the take inspect's own gateway (NetworkSettings.Networks.*.Gateway, when it names one) among the addresses
-# tried, so the probe cannot have tried somewhere else. An answered refusal (the host's stack is reachable, the port
-# closed) is listed in the detail, never read as a connection. A host service on a port outside GATEWAY_PORTS is
-# not tried (box_residuals names it).
+# tried, so the probe cannot have tried somewhere else. Lane pf1-gateway (glitch-45's ruling, Mon 26 Oct 2026, under
+# Javier's standing delegation; w-o48's live preflight): Docker names no per-container Gateway on an --internal
+# network, so the expected gateway is also read host-side, outside the take's reach, from `docker network inspect` of
+# the take's own network (spec.network; the take-network-inspect probe): its IPAM.Config gateways must be tried too,
+# and a network neither record names a gateway for still refuses, fail closed. An answered refusal (the host's stack
+# is reachable, the port closed) is listed in the detail, never read as a connection. A host service on a port
+# outside GATEWAY_PORTS is not tried (box_residuals names it).
 DIRECT_TARGETS = {"raw-ip-a": ("1.1.1.1", 443), "raw-ip-b": ("8.8.8.8", 443), "metadata": ("169.254.169.254", 80)}
 RAW_IP_TARGETS = ("raw-ip-a", "raw-ip-b")
 METADATA_TARGET = "metadata"
@@ -503,7 +507,7 @@ class Probe:
 
 PROBE_IDS = ("identity", "take-inspect", "take-image-manifest", "harness-version", "cgroup", "listing", "processes", "sidecar-inspect",
              "sidecar-image-manifest", "proxy-inspect", "egress-image-manifest", "egress-launch", "health",
-             "watcher-caps", "sockets", "egress", "study-folders", "direct-egress")
+             "watcher-caps", "sockets", "egress", "study-folders", "take-network-inspect", "direct-egress")
 PROBE_TIMEOUT_S = 60
 
 
@@ -583,6 +587,7 @@ def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, ev
         Probe("egress", agent(_py(EGRESS_PROGRAM, run_take.PROXY_ALIAS, _proxy_port(), hosts[harness],
                                   OTHER_HOST_VIA_PROXY, *refused_names(harness, hosts)))),
         Probe("study-folders", read=lambda: _study_folders(run_tree)),
+        Probe("take-network-inspect", (run_take.RUNTIME_CLIENT, "network", "inspect", spec.network)),  # pf1-gateway
         Probe("direct-egress", agent(_py(DIRECT_PROGRAM, str(DIRECT_TIMEOUT_S), ",".join(map(str, GATEWAY_PORTS)),
                                          *direct_target_args()))),       # PF1-L3 (m9)
     )
@@ -948,28 +953,67 @@ def _check_metadata(raw, *_):
     return _target_refused(raw, METADATA_TARGET)
 
 
-def _inspect_gateways(obj) -> list:
-    """The take inspect's gateways, one per network it is on. PF1-L3 (the lane orchestrator's ruling on review fb354328
-    finding 5, 24 Oct 2026): an empty Gateway on any of its networks (as an --internal network may report) refuses,
-    fail closed: the probe's candidates then come from the take's own route table alone, with nothing host-side to
-    bind them to, so the check never passes on the route table's word. The freeze rehearsal's real box records which
-    it is."""
+def _host_network_gateways(raw, spec) -> dict:
+    """Lane pf1-gateway (glitch-45's ruling, Mon 26 Oct 2026): the host-side record of the take's network, read by
+    `docker network inspect <spec.network>` (the take-network-inspect probe, run by the host like every inspect, never
+    inside the take). It must be exactly one network object whose Id is the take spec's network; it gives
+    {its Name: (its Id, every non-empty IPAM.Config Gateway)}. An unreadable or unbound record fails the check."""
+    doc = _json_out(raw, "take-network-inspect")
+    _need(isinstance(doc, list) and len(doc) == 1 and isinstance(doc[0], dict),
+          "the take network's inspect is not exactly one network object")
+    obj = doc[0]
+    net_id = spec.network
+    _need(isinstance(net_id, str) and bool(net_id) and obj.get("Id") == net_id,
+          f"the network inspected host-side is not the take's network {net_id!r}")
+    name = obj.get("Name")
+    _need(isinstance(name, str) and bool(name), "the take network's inspect names no network name")
+    ipam = obj.get("IPAM")
+    _need(ipam is None or isinstance(ipam, dict), "the take network's IPAM record is not its shape")
+    config = (ipam or {}).get("Config")
+    _need(config is None or (isinstance(config, list) and all(isinstance(c, dict) for c in config)),
+          "the take network's IPAM config is not its shape")
+    gws = [c.get("Gateway") for c in config or []]
+    _need(all(g is None or isinstance(g, str) for g in gws), "the take network's IPAM gateway is not its shape")
+    return {name: (net_id, sorted({g for g in gws if g}))}
+
+
+def _inspect_gateways(obj, host=None) -> list:
+    """The gateways the probe must have tried, one or more per network the take is on. PF1-L3 (the lane orchestrator's
+    ruling on review fb354328 finding 5, 24 Oct 2026): an empty Gateway on any of its networks (as an --internal
+    network reports) refuses, fail closed, unless something host-side names it: the probe's candidates come from the
+    take's own route table, so the check never passes on the route table's word alone. Lane pf1-gateway (glitch-45's
+    ruling, 26 Oct 2026, w-o48's live reading: Docker reports an empty Gateway for an --internal network): `host` is
+    _host_network_gateways' record; for the network it names (same name, and the same NetworkID where the take inspect
+    gives one) its IPAM gateways are wanted beside any Gateway the take inspect names. A network with neither
+    refuses."""
     nets = (obj.get("NetworkSettings") or {}).get("Networks") if isinstance(obj, dict) else None
     _need(isinstance(nets, dict) and nets, "the take inspect names no network, so its gateway cannot be shown")
-    empty = sorted(str(k) for k, n in nets.items() if not (isinstance(n, dict) and isinstance(n.get("Gateway"), str)
-                                                          and n["Gateway"]))
+    host = host or {}
+    want, empty = set(), []
+    for k, n in nets.items():
+        own = n.get("Gateway") if isinstance(n, dict) else None
+        if isinstance(own, str) and own:
+            want.add(own)
+        rec = host.get(k)
+        bound = rec is not None and isinstance(n, dict) and n.get("NetworkID") in ("", None, rec[0])
+        if bound and rec[1]:
+            want.update(rec[1])
+        elif not (isinstance(own, str) and own):
+            empty.append(str(k))
+    empty.sort()
     _need(not empty, f"the take inspect names no gateway for network(s) {empty}: the addresses tried cannot be bound "
-                     f"to the take's own gateway (fail closed)")
-    return sorted({n["Gateway"] for n in nets.values()})
+                     f"to the take's own gateway, and no host-side record of the network names one (fail closed)")
+    return sorted(want)
 
 
-def _check_gateway(raw, *_):
+def _check_gateway(raw, spec, *_):
     got = _direct(raw)
     cands = got["gateway_candidates"]
     _need(bool(cands), "the take's route table names no gateway and no on-link network: nothing was tried")
-    want = _inspect_gateways(_inspect_obj(raw, "take-inspect"))
+    want = _inspect_gateways(_inspect_obj(raw, "take-inspect"), _host_network_gateways(raw, spec))
     missing = [g for g in want if g not in cands]
-    _need(not missing, f"the take inspect's gateway {missing} was not among the addresses tried {cands}")
+    _need(not missing, f"the take's gateway {missing} (its inspect or the host-side network record) was not among the "
+                       f"addresses tried {cands}")
     answered = []
     for address in cands:
         ports = got["gateway"].get(address)
