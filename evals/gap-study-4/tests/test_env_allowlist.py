@@ -1077,6 +1077,9 @@ def _outcome(stdout):
 
 def run_witnesses(names) -> int:
     chosen = names or sorted(WITNESSES)
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    mutation_baseline.require_green("test_env_allowlist witnesses", [sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()),
+                                    *sorted({WITNESSES[x][0] for x in chosen})], timeout=1800, tag="test_env_allowlist")
     red = 0
     for name in chosen:
         method, clause = WITNESSES[name]
@@ -1110,6 +1113,9 @@ def run_generated(shard=None, sample=None, timeout=600, only=None) -> int:
         chosen = chosen[::sample]
     if only is not None:
         chosen = [(k, m) for k, m in chosen if m.id in only]
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    mutation_baseline.require_green("test_env_allowlist generated mutants", [sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), *GENERATED_ORDER],
+                                    timeout=timeout, tag="test_env_allowlist")
     killed, survived, equivalent, listed_killed, inconclusive = [], [], [], [], []
 
     def one(mid, fast):

@@ -437,6 +437,9 @@ def witness_verdict(out: str, bound: str) -> tuple:
 
 def run_witnesses() -> int:
     red = 0
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    mutation_baseline.require_green("test_stub_agents witnesses", [sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve())],
+                                    timeout=1800, env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin"})
     for name, (*_x, bound) in MUTANTS.items():
         p = subprocess.run([sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--mutant", name],
                            capture_output=True, text=True,

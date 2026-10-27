@@ -55,8 +55,11 @@ SKIP_ALLOWED: tuple[str, ...] = (
 #   vendor_check_fixtures.py: lane vendor-admission T4's writer of F1 and F2 (plan v4 section 8), imported by
 #   tests/test_vendor_check.py and tests/test_vendor_body.py and run as --check by checks.d/vendor-admission.txt.
 # lane vendor-settle stage K: the plant helper and the two per-harness settlement tables test_vendor_check.py runs
+#   mutation_baseline.py: lane t104-mutation-baseline's shared unmutated-baseline gate, imported by every mutation
+#   runner (--witnesses, --generated-mutants) and bound by tests/test_mutation_baseline.py.
 HELPERS: tuple[str, ...] = ("walk_mutation.py", "check_vendor_sources.py", "vendor_check_fixtures.py",
-                            "vendor_plant.py", "vendor_settle_codex.py", "vendor_settle_gemini.py")
+                            "vendor_plant.py", "vendor_settle_codex.py", "vendor_settle_gemini.py",
+                            "mutation_baseline.py")
 
 
 def suite(folder: Path | None = None) -> unittest.TestSuite:

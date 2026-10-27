@@ -2605,6 +2605,9 @@ def leak_lines(key: str, before: dict) -> list:
 
 
 def mutation_sweep(shard: int = 0, of: int = 1) -> dict:
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    mutation_baseline.require_no_lines("test_labelling generated mutants",
+                                       all_checks(*triple("sm", TARGET_FILES["sm"].read_text(encoding="utf-8"))))
     mutants, skipped = generated_mutants()
     keys = [m[0] for m in mutants]
     mine = [m for n, m in enumerate(mutants) if n % of == shard]

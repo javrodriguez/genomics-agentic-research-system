@@ -1416,6 +1416,15 @@ def mutants():
 def run_witnesses() -> int:
     red = 0
     table = mutants()
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    MUTATED.clear()
+    base = unittest.TestResult()
+    for test_id in sorted({entry[0] for entry in table.values()}):
+        cls, meth = test_id.split(".")
+        globals()[cls](meth).run(base)
+    mutation_baseline.require_no_lines("test_review_kit witnesses",
+                                       [f"{kind} {t.id()}" for kind, pairs in (("FAIL", base.failures),
+                                        ("ERROR", base.errors)) for t, _ in pairs])
     for name, (test_id, clause, key, old, new) in table.items():
         src = FILES[key].read_text()
         if src.count(old) != 1:

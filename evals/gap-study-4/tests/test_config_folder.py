@@ -1310,6 +1310,9 @@ def _outcome(stdout):
 
 def run_witnesses(names) -> int:
     chosen = names or sorted(WITNESSES)
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    mutation_baseline.require_green("test_config_folder witnesses", [sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()),
+                                    *sorted({WITNESSES[x][0] for x in chosen})], timeout=1800, tag="test_config_folder")
     red = 0
     for name in chosen:
         method, clause = WITNESSES[name]
