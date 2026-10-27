@@ -26,8 +26,8 @@ Rollout (native JSONL), the initial supported subset:
     and auto_approved None (core/src/tools/events.rs:599-619; protocol/src/items.rs:411-426, None fields skipped),
     persisted unchanged by paginated history (rollout/src/policy.rs:249, 280; its started item is never persisted,
     :201, 211). Its keys are exactly FILE_CHANGE_KEYS, status one of FILE_CHANGE_STATUSES (protocol.rs:3764-3770), and
-    changes a non-empty map from the source path to {type add, content} or {type update, unified_diff, move_path}
-    (protocol.rs:4228-4240; core/src/apply_patch.rs:64-90); a delete change refuses (Q-w11a-3, as in the exec stream).
+    changes a non-empty map from the source path to {type add or delete, content} or {type update, unified_diff,
+    move_path} (protocol.rs:4228-4240; core/src/apply_patch.rs:64-90; delete since lane pf1-codex-fcdelete, w-o76).
     It is projected as {kind "file_change", status, changes [{path, kind, move_path}] sorted by path}, the order exec
     prints them in (app-server-protocol/src/protocol/item_builders.rs:342-353). move_path is a rename's target, which
     the exec stream never prints (event_processor_with_jsonl_output.rs:194): check_take's T-8 reader holds such a take.
@@ -136,7 +136,8 @@ TURN_ITEMS = ("UserMessage", "FunctionCallOutput", "HookPrompt", "AgentMessage",
 PROJECTED_ITEMS = ("UserMessage", "AgentMessage", "Reasoning", "CommandExecution", "FileChange")
 FILE_CHANGE_KEYS = ("type", "id", "changes", "status", "stdout", "stderr")
 FILE_CHANGE_STATUSES = ("completed", "failed", "declined")
-FILE_CHANGE_KINDS = {"add": ("type", "content"), "update": ("type", "unified_diff", "move_path")}
+FILE_CHANGE_KINDS = {"add": ("type", "content"), "delete": ("type", "content"),
+                     "update": ("type", "unified_diff", "move_path")}
 EXEC_FILE_CHANGE_STATUS = {"completed": "completed", "failed": "failed", "declined": "failed"}
 EXEC_EVENTS = ("thread.started", "turn.started", "turn.completed", "turn.failed", "item.started", "item.updated",
                "item.completed", "error")
@@ -271,12 +272,10 @@ def _file_change(item: dict) -> dict:
         kind = change.get("type") if isinstance(change, dict) else None
         if not (isinstance(path, str) and path):
             raise ReaderRefused("a FileChange change names no path")
-        if kind == "delete":
-            raise ReaderRefused("a FileChange delete is refused (Q-w11a-3), as in the exec stream")
         if kind not in FILE_CHANGE_KINDS or set(change) != set(FILE_CHANGE_KINDS[kind]):
             raise ReaderRefused(f"a FileChange change is off its pinned shape ({kind!r})")
-        if kind == "add" and not isinstance(change["content"], str):
-            raise ReaderRefused("a FileChange add's content is a string")
+        if kind in ("add", "delete") and not isinstance(change["content"], str):
+            raise ReaderRefused(f"a FileChange {kind}'s content is a string")
         if kind == "update" and not (isinstance(change["unified_diff"], str) and (
                 change["move_path"] is None or (isinstance(change["move_path"], str) and change["move_path"]))):
             raise ReaderRefused("a FileChange update carries a diff string and a move_path that is a path or null")

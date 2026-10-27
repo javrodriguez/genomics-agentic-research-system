@@ -22,7 +22,7 @@ the pinned version re-tests it (ruling Q-3, glitch-2f, 12 Oct 2026). Two grades 
   docs read of plan item 2 or the first recorded stream confirms or replaces each, Q-w11a-1):
     thread.started.thread_id; turn.failed.error.message; error.message; every item's `id` and `type`;
     agent_message.text and reasoning.text; command_execution command, aggregated_output, exit_code, status;
-    file_change changes[] of {path, kind} and status, with kind add or update (delete is refused, Q-w11a-3);
+    file_change changes[] of {path, kind} and status (its kinds: the pinned-source block below);
     mcp_tool_call server, tool, arguments, result, error, status.
   READ FROM THE PINNED SOURCE (lane vendor-b22, glitch-26's ruling B22-6, Tue 20 Oct 2026; GPT walk w-o38, held on a
   file_change item.started; lane-reports/vendor-b22-DESIGN.md):
@@ -32,6 +32,13 @@ the pinned version re-tests it (ruling Q-3, glitch-2f, 12 Oct 2026). Two grades 
                       Begin stage with no status (core/src/tools/events.rs:241-263), printed as "in_progress"
                       (app-server-protocol/src/protocol/v2/item.rs:1028-1035), so a started file_change is admitted
                       only with that status. w-o38's turn 1 holds two, each followed by its item.completed.
+  READ FROM THE PINNED SOURCE (lane pf1-codex-fcdelete, glitch-45's brief of Tue 27 Oct 2026; GPT walk w-o76, held
+  on a file_change change of kind delete):
+    change kinds      add, delete and update, exactly exec's PatchChangeKind (exec/src/exec_events.rs:192-198),
+                      onto which exec maps every patch change (exec/src/event_processor_with_jsonl_output.rs:187-196).
+                      Q-w11a-3 refused delete until a recorded stream showed one (glitch-26's ruling Q4, 20 Oct:
+                      "a follow-up lane rules what a deleted file is in the view, after a recorded rollout"); w-o76's
+                      turn 1 deletes a PLAN.md through the patch tool and adds it again (lines 17-20).
 
 THE CLOSED RULE. A record type, item type or key that is not in these tables is refused (`ShapeError`), never read
 on a guess: the first recorded stream that carries one stops at the reader, and the tables grow only by a lane that
@@ -43,7 +50,9 @@ THE VIEW MAPPING (the brief's, item 2):
     reasoning          item.completed -> agent-reasoning
     command_execution  item.started -> tool-call shell {command}; item.completed -> its tool-result (aggregated_output)
     mcp_tool_call      item.started -> tool-call other {}; item.completed -> its tool-result
-    file_change        item.started -> one tool-call per change (add -> write, update -> edit, {path}, ref <id>#<i>);
+    file_change        item.started -> one tool-call per change (add -> write, update -> edit, delete -> write,
+                       {path}, ref <id>#<i>; a delete changes that path, so every grader that reads a write or an
+                       edit of a path reads a delete of it, Q-w11a-3's proposed mapping);
                        item.completed -> each change's result (its status). Lane vendor-b23 (glitch-26's ruling Q1,
                        option C, Tue 20 Oct 2026; replaces B22-6's "started -> nothing"): the pinned handler emits
                        Begin before it runs the patch and Finish after it, both with the same changes
@@ -127,7 +136,8 @@ USAGE_KEYS = ("input_tokens", "cached_input_tokens", "cache_write_input_tokens",
 
 # ---- file_change's changes -----------------------------------------------------------------------------------------
 CHANGE_KEYS = ("path", "kind")
-CHANGE_KINDS = {"add": tv.WRITE, "update": tv.EDIT}
+# Lane pf1-codex-fcdelete: delete maps to write {path} (the docstring's pinned-source block); any other kind refuses.
+CHANGE_KINDS = {"add": tv.WRITE, "update": tv.EDIT, "delete": tv.WRITE}
 
 # ---- each key's value type (W11A-R1-8); a key not listed here (mcp_tool_call's arguments, result, error) is untyped,
 # its shape not documented. No entry lists bool, and a bool is never read as an int. A record's `type` is checked

@@ -23,7 +23,8 @@ transcript_codex.py compiled in memory (the registry pattern of lane w6j):
   P1-view      through transcript_view.events (the parser put in a COPY of PARSERS for the test only, never
                registered): the closed vocabulary: reasoning -> agent-reasoning, agent_message -> agent-text,
                command_execution -> shell call and result, file_change add -> write and update -> edit,
-               mcp_tool_call -> other; a delete change is refused. Witnesses: reasoning-as-text, delete-as-write.
+               mcp_tool_call -> other; a delete change -> write (lane pf1-codex-fcdelete, w-o76), any other kind
+               refused. Witnesses: reasoning-as-text, delete-hidden, unknown-kind-admitted.
   A1-stream    read_stream: the agent's text, agent output (reasoning alone is not output), usage, tool ids, the
                thread id; a record off the tables refuses the turn on the adapter's road too.
   A2-error     the harness's error event and turn.failed are api_errors with the harness's own words; an agent
@@ -397,9 +398,18 @@ def p1_view(mod, p):
     got = [(e.kind, e.tool, e.text) for e in view_events(mod, "mcp-call.jsonl")]
     if got[2:4] != [(tv.TOOL_CALL, tv.OTHER, None), (tv.TOOL_RESULT, tv.OTHER, "text\nsynthetic result")]:
         out.append(f"{p}: the mcp call reads as {got[2:4]}")
-    got = refusal(lambda: view_events(mod, "file-delete.jsonl"), tv.ViewError)
+    # Lane pf1-codex-fcdelete (glitch-45's brief, Tue 27 Oct 2026; w-o76): a delete reads as a write of its path.
+    try:
+        got = [(e.kind, e.tool, e.args, e.text) for e in view_events(mod, "file-delete.jsonl")][2:4]
+    except tv.ViewError as e:
+        got = f"refused ({e})"
+    if got != [(tv.TOOL_CALL, tv.WRITE, {"path": "old.txt"}, None), (tv.TOOL_RESULT, tv.WRITE, None, "completed")]:
+        out.append(f"{p}: a file_change delete reads as {got}")
+    renamed = [ln.replace('"kind": "delete"', '"kind": "rename"') for ln in lines("file-delete.jsonl")]
+    with mock.patch.dict(tv.PARSERS, {"codex": mod.CodexParser()}):
+        got = refusal(lambda: tv.events("codex", renamed), tv.ViewError)
     if got:
-        out.append(f"{p}: a file_change delete {got}")
+        out.append(f"{p}: a file_change of kind rename {got}")
     raws = [it.raw_type for ln in lines("turn1-tools.jsonl") for it in mod.CodexParser().items(ln)]
     if raws != ["thread.started", "turn.started", "item.completed:reasoning", "item.started:command_execution",
                 "item.completed:command_execution", "item.completed:file_change", "item.completed:file_change",
@@ -1587,9 +1597,14 @@ WITNESSES = {
                              s3_key, "S3-key"),
     "reasoning-as-text": ("tc", (("return [tv.RawItem(raw, tv.AGENT_REASONING,", "return [tv.RawItem(raw, tv.AGENT_TEXT,"),),
                           p1_view, "P1-view"),
-    "delete-as-write": ("tc", (("CHANGE_KINDS = {\"add\": tv.WRITE, \"update\": tv.EDIT}",
-                                "CHANGE_KINDS = {\"add\": tv.WRITE, \"update\": tv.EDIT, \"delete\": tv.WRITE}"),),
-                        p1_view, "P1-view"),
+    # Lane pf1-codex-fcdelete: delete is a write of its path; any other kind still refuses.
+    "delete-hidden": ("tc", (("CHANGE_KINDS = {\"add\": tv.WRITE, \"update\": tv.EDIT, \"delete\": tv.WRITE}",
+                              "CHANGE_KINDS = {\"add\": tv.WRITE, \"update\": tv.EDIT, \"delete\": tv.READ}"),),
+                      p1_view, "P1-view"),
+    "unknown-kind-admitted": ("tc", (("CHANGE_KINDS = {\"add\": tv.WRITE, \"update\": tv.EDIT, \"delete\": tv.WRITE}",
+                                      "CHANGE_KINDS = {\"add\": tv.WRITE, \"update\": tv.EDIT, \"delete\": tv.WRITE, "
+                                      "\"rename\": tv.WRITE}"),),
+                              p1_view, "P1-view"),
     # Lane vendor-b23 round 4 (ruling B23-8): the started file_change and its pairing, one witness per check.
     "started-file-change-unpaired": ("tc", (("                return self._file_change_started(item, raw)\n",
                                              "                return []\n"),), b15_fc_pair, "B15-fc-pair"),
@@ -1668,8 +1683,11 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_reasoning_as_text(self):
         self.kill("reasoning-as-text")
 
-    def test_witness_delete_as_write(self):
-        self.kill("delete-as-write")
+    def test_witness_delete_hidden(self):
+        self.kill("delete-hidden")
+
+    def test_witness_unknown_kind_admitted(self):
+        self.kill("unknown-kind-admitted")
 
     def test_witness_started_file_change_unpaired(self):
         self.kill("started-file-change-unpaired")
@@ -1717,8 +1735,9 @@ class TestWitnesses(unittest.TestCase):
         self.kill("shapes-off-word")
 
     def test_the_witnesses_are_named_and_each_anchor_occurs_once(self):
-        # 16: + subcommand-word-admitted (the box Codex-exec review's MAJOR); 20: + B23-8's four file_change witnesses
-        self.assertEqual(len(WITNESSES), 20)
+        # 16: + subcommand-word-admitted (the box Codex-exec review's MAJOR); 20: + B23-8's four file_change witnesses;
+        # 21: pf1-codex-fcdelete replaces delete-as-write with delete-hidden and unknown-kind-admitted
+        self.assertEqual(len(WITNESSES), 21)
         for name, (target, edits, _, _) in WITNESSES.items():
             path = Path(TARGETS[target]().__file__)
             self.assertTrue(path.is_file(), f"{name}: {path.name} does not exist")
