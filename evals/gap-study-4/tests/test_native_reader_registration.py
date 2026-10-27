@@ -182,7 +182,11 @@ class ManifestClaim(unittest.TestCase):
 # this lane was merged onto (freeze merge 1), so the last commit touching gemini-acceptance.json is that one. Read from
 # git at 6cf546bf: `git log -- native-readers/<harness>-acceptance.json` lists 5457e75e for codex, 5292df49 then
 # 5457e75e for gemini.
-ACCEPTED_AT = {"codex": "5457e75ec115151b6bdcb463242fc63c74033fdb",
+# Javier accepted the Codex reader again at 46132ace (Tue 27 Oct 2026 12:22, the pf1-codex-turnitem and
+# pf1-codex-fcdelete reader at dc95f44b), merged here by lane L6f, so the last commit touching codex-acceptance.json
+# is that one. Read from git at the L6f merge 61a63419: `git log -- native-readers/codex-acceptance.json` lists
+# 46132ace then 5457e75e.
+ACCEPTED_AT = {"codex": "46132aceab447274cd6fc6e2b27473e514f89771",
                "gemini": "5292df495a09c93bd589475e08e8170c98e78abd"}
 
 
