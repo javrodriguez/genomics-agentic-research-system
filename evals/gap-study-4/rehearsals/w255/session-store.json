@@ -1,0 +1,167 @@
+{
+ "harness": "claude-code",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "projects/-tmp-run-40cc7e72",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d/subagents",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d/subagents/agent-a88acf31935b5eeaa.jsonl",
+     "file"
+    ],
+    [
+     "projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d/subagents/agent-a88acf31935b5eeaa.meta.json",
+     "file"
+    ],
+    [
+     "projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-2",
+   "entries": [
+    [
+     "projects/-tmp-run-40cc7e72",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d/subagents",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d/subagents/agent-a88acf31935b5eeaa.jsonl",
+     "file"
+    ],
+    [
+     "projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d/subagents/agent-a88acf31935b5eeaa.meta.json",
+     "file"
+    ],
+    [
+     "projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "projects/-tmp-run-40cc7e72",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d/subagents",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d/subagents/agent-a88acf31935b5eeaa.jsonl",
+     "file"
+    ],
+    [
+     "projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d/subagents/agent-a88acf31935b5eeaa.meta.json",
+     "file"
+    ],
+    [
+     "projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "root": "projects",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-40cc7e72",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d/subagents/agent-a88acf31935b5eeaa.jsonl",
+     "claude",
+     "40cc7e72-35d5-55fb-ad08-7fbf7cd0010d"
+    ],
+    [
+     "/opt/cfg/projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d.jsonl",
+     "claude",
+     "40cc7e72-35d5-55fb-ad08-7fbf7cd0010d"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-40cc7e72",
+    "/var/tmp"
+   ],
+   "scanned": 434,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-2",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-40cc7e72",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d/subagents/agent-a88acf31935b5eeaa.jsonl",
+     "claude",
+     "40cc7e72-35d5-55fb-ad08-7fbf7cd0010d"
+    ],
+    [
+     "/opt/cfg/projects/-tmp-run-40cc7e72/40cc7e72-35d5-55fb-ad08-7fbf7cd0010d.jsonl",
+     "claude",
+     "40cc7e72-35d5-55fb-ad08-7fbf7cd0010d"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-40cc7e72",
+    "/var/tmp"
+   ],
+   "scanned": 434,
+   "truncated": false,
+   "unreadable": []
+  }
+ ]
+}
