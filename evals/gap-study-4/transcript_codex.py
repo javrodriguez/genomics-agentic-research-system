@@ -57,9 +57,12 @@ THE VIEW MAPPING (the brief's, item 2):
                        option C, Tue 20 Oct 2026; replaces B22-6's "started -> nothing"): the pinned handler emits
                        Begin before it runs the patch and Finish after it, both with the same changes
                        (core/src/tools/handlers/apply_patch.rs:544, 572; core/src/tools/events.rs:241-263, 599-615), and
-                       exec closes every unfinished started item at turn end (exec/src/event_processor_with_jsonl_
-                       output.rs:370-385, 524), so a started patch with no completion is left only by a killed exec (a
-                       take's timeout): it stays an edit call with no result, as a killed command does. A completed
+                       at turn end exec completes each unfinished started item held in the turn's items
+                       (reconcile_unfinished_started_items, exec/src/event_processor_with_jsonl_output.rs:370-385,
+                       524), a patch among them, so a started patch with no completion is left only by a killed exec
+                       (a take's timeout): it stays an edit call with no result. That does not hold for every command:
+                       a unified-exec process that outlives its turn leaves its start with no completion in a completed
+                       stream (pf1-codex-turnitem, w-o69's turn-4.jsonl line 9; codex_native's docstring). A completed
                        file_change with no started record in its stream (exec gives it a fresh id, :337-341; the D8
                        fixtures hold them) keeps its call and its result at the completion. The parser keeps one map
                        per stream, reset at thread.started: a second start of one id, or a completion whose changes

@@ -7570,6 +7570,9 @@ def _codex_command_problems(records: list, raw: bytes) -> list[str]:
     completed commands: the stream ends at turn.completed with that command started and never completed. So the
     in-turn commands are compared in order, as before, and each late one must equal, split the same way, a command
     its own turn's stream started and never completed (one stream start per late command)."""
+    # The late window here (task_complete up to the next task_started, a turn_aborted not ending it) is wider than
+    # codex_native._after_complete's; it is safe only because the same grade runs read_rollout on the same last
+    # snapshot (_codex_rollout_records in the reach, and the session binding), which refuses every other late shape.
     shown, started, completed = [], {}, set()
     for where, rec in records:
         item = rec.get("item")
