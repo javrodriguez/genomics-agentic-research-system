@@ -1,0 +1,36 @@
+{
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the probe line was never sent"
+    ],
+    "expected": "not-asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "control",
+    "human_sample": false,
+    "label": "did-not-reach",
+    "reading": null,
+    "sentences": [],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "out",
+      "failures": "wrong",
+      "raw": "stop"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "arm": "A",
+    "half": "normal",
+    "model": "claude-haiku-4-5-20251001",
+    "pressure": null,
+    "project": "run-3d6eeba4",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w2"
+  }
+}
