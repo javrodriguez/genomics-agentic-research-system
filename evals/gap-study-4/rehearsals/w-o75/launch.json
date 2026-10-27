@@ -1,0 +1,711 @@
+{
+ "config_dir": "/home/javier/gap4-walk-config/cfg-c1a29e128127ff8d",
+ "failure": null,
+ "network_id": "936f6cc3165cf4990082be60a461c8987e3339b01040432afabdedc99cf3b75d",
+ "ok": true,
+ "proxy_id": "d499dd61ae2d7edf2ab48f1948b5bb3e9a445110cec8cfa8cb95b0795e602c73",
+ "sidecar_id": "6b39105d4beb9bcc78fe46787d10e5711e5ad24a74ebed43e4a39a54287b8c27",
+ "steps": [
+  {
+   "argv": [
+    "docker",
+    "network",
+    "create",
+    "--internal",
+    "nd1fbb4014a0a3e8e21886a08"
+   ],
+   "returncode": 0,
+   "step": "network-create"
+  },
+  {
+   "argv": [
+    "docker",
+    "create",
+    "--pull=never",
+    "--network",
+    "936f6cc3165cf4990082be60a461c8987e3339b01040432afabdedc99cf3b75d",
+    "--network-alias",
+    "proxy",
+    "--user",
+    "13:13",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--memory",
+    "536870912",
+    "--mount",
+    "type=bind,source=/home/javier/gap4-walk-config/proxy-codex-kbqwnvz_/proxy.conf,target=/etc/squid/squid.conf,readonly",
+    "sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674",
+    "squid",
+    "-N",
+    "-f",
+    "/etc/squid/squid.conf"
+   ],
+   "returncode": 0,
+   "step": "proxy-create"
+  },
+  {
+   "argv": [
+    "docker",
+    "network",
+    "connect",
+    "bridge",
+    "d499dd61ae2d7edf2ab48f1948b5bb3e9a445110cec8cfa8cb95b0795e602c73"
+   ],
+   "returncode": 0,
+   "step": "proxy-connect"
+  },
+  {
+   "argv": [
+    "docker",
+    "start",
+    "d499dd61ae2d7edf2ab48f1948b5bb3e9a445110cec8cfa8cb95b0795e602c73"
+   ],
+   "returncode": 0,
+   "step": "proxy-start"
+  },
+  {
+   "argv": [
+    "docker",
+    "create",
+    "--memory",
+    "536870912",
+    "--pull=never",
+    "--network",
+    "none",
+    "--user",
+    "0:0",
+    "--cap-drop",
+    "ALL",
+    "--cap-add",
+    "DAC_READ_SEARCH",
+    "--cap-add",
+    "SETUID",
+    "--cap-add",
+    "SETGID",
+    "--cap-add",
+    "SETPCAP",
+    "--security-opt",
+    "no-new-privileges",
+    "--mount",
+    "type=bind,source=/tmp/run-b0130d21,target=/tmp/run-b0130d21,readonly",
+    "--mount",
+    "type=bind,source=/home/javier/w-talV9UCX/repo/evals/gap-study-4/rehearsals/w-o75/evidence,target=/srv/ev",
+    "sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d",
+    "/usr/bin/setpriv",
+    "--reuid=10002",
+    "--regid=10002",
+    "--clear-groups",
+    "--inh-caps=-all,+dac_read_search",
+    "--ambient-caps=-all,+dac_read_search",
+    "--bounding-set=-all,+dac_read_search",
+    "--no-new-privs",
+    "--",
+    "python3",
+    "-I",
+    "-B",
+    "/opt/w/sidecar.py",
+    "serve",
+    "--run-tree",
+    "/tmp/run-b0130d21",
+    "--evidence",
+    "/srv/ev",
+    "--watch",
+    "data/staging/run-b0130d21/src"
+   ],
+   "returncode": 0,
+   "step": "sidecar-create"
+  },
+  {
+   "argv": [
+    "docker",
+    "container",
+    "inspect",
+    "6b39105d4beb9bcc78fe46787d10e5711e5ad24a74ebed43e4a39a54287b8c27"
+   ],
+   "inspect": {
+    "AppArmorProfile": "",
+    "Args": [
+     "--reuid=10002",
+     "--regid=10002",
+     "--clear-groups",
+     "--inh-caps=-all,+dac_read_search",
+     "--ambient-caps=-all,+dac_read_search",
+     "--bounding-set=-all,+dac_read_search",
+     "--no-new-privs",
+     "--",
+     "python3",
+     "-I",
+     "-B",
+     "/opt/w/sidecar.py",
+     "serve",
+     "--run-tree",
+     "/tmp/run-b0130d21",
+     "--evidence",
+     "/srv/ev",
+     "--watch",
+     "data/staging/run-b0130d21/src"
+    ],
+    "Config": {
+     "AttachStderr": true,
+     "AttachStdin": false,
+     "AttachStdout": true,
+     "Cmd": [
+      "/usr/bin/setpriv",
+      "--reuid=10002",
+      "--regid=10002",
+      "--clear-groups",
+      "--inh-caps=-all,+dac_read_search",
+      "--ambient-caps=-all,+dac_read_search",
+      "--bounding-set=-all,+dac_read_search",
+      "--no-new-privs",
+      "--",
+      "python3",
+      "-I",
+      "-B",
+      "/opt/w/sidecar.py",
+      "serve",
+      "--run-tree",
+      "/tmp/run-b0130d21",
+      "--evidence",
+      "/srv/ev",
+      "--watch",
+      "data/staging/run-b0130d21/src"
+     ],
+     "Domainname": "",
+     "Entrypoint": null,
+     "Env": [
+      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "NODE_VERSION=22.23.3",
+      "YARN_VERSION=1.22.22",
+      "PYTHONDONTWRITEBYTECODE=1"
+     ],
+     "Hostname": "6b39105d4beb",
+     "Image": "sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d",
+     "Labels": {
+      "app.python.version": "3.11.2",
+      "org.opencontainers.image.base.digest": "sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+      "org.opencontainers.image.base.name": "docker.io/library/node"
+     },
+     "OpenStdin": false,
+     "StdinOnce": false,
+     "Tty": false,
+     "User": "0:0",
+     "Volumes": null,
+     "WorkingDir": ""
+    },
+    "Created": "2026-10-27T09:12:25.484580052Z",
+    "Driver": "overlayfs",
+    "ExecIDs": null,
+    "HostConfig": {
+     "AutoRemove": false,
+     "Binds": null,
+     "BlkioDeviceReadBps": [],
+     "BlkioDeviceReadIOps": [],
+     "BlkioDeviceWriteBps": [],
+     "BlkioDeviceWriteIOps": [],
+     "BlkioWeight": 0,
+     "BlkioWeightDevice": [],
+     "CapAdd": [
+      "CAP_DAC_READ_SEARCH",
+      "CAP_SETGID",
+      "CAP_SETPCAP",
+      "CAP_SETUID"
+     ],
+     "CapDrop": [
+      "ALL"
+     ],
+     "Cgroup": "",
+     "CgroupParent": "",
+     "CgroupnsMode": "private",
+     "ConsoleSize": [
+      0,
+      0
+     ],
+     "ContainerIDFile": "",
+     "CpuCount": 0,
+     "CpuPercent": 0,
+     "CpuPeriod": 0,
+     "CpuQuota": 0,
+     "CpuRealtimePeriod": 0,
+     "CpuRealtimeRuntime": 0,
+     "CpuShares": 0,
+     "CpusetCpus": "",
+     "CpusetMems": "",
+     "DeviceCgroupRules": null,
+     "DeviceRequests": null,
+     "Devices": [],
+     "Dns": null,
+     "DnsOptions": [],
+     "DnsSearch": [],
+     "ExtraHosts": null,
+     "GroupAdd": null,
+     "IOMaximumBandwidth": 0,
+     "IOMaximumIOps": 0,
+     "IpcMode": "private",
+     "Isolation": "",
+     "Links": null,
+     "LogConfig": {
+      "Config": {},
+      "Type": "json-file"
+     },
+     "MaskedPaths": [
+      "/proc/acpi",
+      "/proc/asound",
+      "/proc/interrupts",
+      "/proc/kcore",
+      "/proc/keys",
+      "/proc/latency_stats",
+      "/proc/sched_debug",
+      "/proc/scsi",
+      "/proc/timer_list",
+      "/proc/timer_stats",
+      "/sys/devices/virtual/powercap",
+      "/sys/firmware"
+     ],
+     "Memory": 536870912,
+     "MemoryReservation": 0,
+     "MemorySwap": 1073741824,
+     "MemorySwappiness": null,
+     "Mounts": [
+      {
+       "ReadOnly": true,
+       "Source": "/tmp/run-b0130d21",
+       "Target": "/tmp/run-b0130d21",
+       "Type": "bind"
+      },
+      {
+       "Source": "/home/javier/w-talV9UCX/repo/evals/gap-study-4/rehearsals/w-o75/evidence",
+       "Target": "/srv/ev",
+       "Type": "bind"
+      }
+     ],
+     "NanoCpus": 0,
+     "NetworkMode": "none",
+     "OomKillDisable": false,
+     "OomScoreAdj": 0,
+     "PidMode": "",
+     "PidsLimit": null,
+     "PortBindings": {},
+     "Privileged": false,
+     "PublishAllPorts": false,
+     "ReadonlyPaths": [
+      "/proc/bus",
+      "/proc/fs",
+      "/proc/irq",
+      "/proc/sys",
+      "/proc/sysrq-trigger"
+     ],
+     "ReadonlyRootfs": false,
+     "RestartPolicy": {
+      "MaximumRetryCount": 0,
+      "Name": "no"
+     },
+     "Runtime": "runc",
+     "SecurityOpt": [
+      "no-new-privileges"
+     ],
+     "ShmSize": 67108864,
+     "UTSMode": "",
+     "Ulimits": null,
+     "UsernsMode": "",
+     "VolumeDriver": "",
+     "VolumesFrom": null
+    },
+    "HostnamePath": "",
+    "HostsPath": "",
+    "Id": "6b39105d4beb9bcc78fe46787d10e5711e5ad24a74ebed43e4a39a54287b8c27",
+    "Image": "sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d",
+    "ImageManifestDescriptor": {
+     "digest": "sha256:c1409b3323bc991d9c86ed99411455ffba3aabbe6159384d0786216aba092a82",
+     "mediaType": "application/vnd.oci.image.manifest.v1+json",
+     "platform": {
+      "architecture": "amd64",
+      "os": "linux"
+     },
+     "size": 2192
+    },
+    "LogPath": "",
+    "MountLabel": "",
+    "Mounts": [
+     {
+      "Destination": "/srv/ev",
+      "Mode": "",
+      "Propagation": "rprivate",
+      "RW": true,
+      "Source": "/home/javier/w-talV9UCX/repo/evals/gap-study-4/rehearsals/w-o75/evidence",
+      "Type": "bind"
+     },
+     {
+      "Destination": "/tmp/run-b0130d21",
+      "Mode": "",
+      "Propagation": "rprivate",
+      "RW": false,
+      "Source": "/tmp/run-b0130d21",
+      "Type": "bind"
+     }
+    ],
+    "Name": "/nifty_jemison",
+    "NetworkSettings": {
+     "Networks": {
+      "none": {
+       "Aliases": null,
+       "DNSNames": null,
+       "DriverOpts": null,
+       "EndpointID": "",
+       "Gateway": "",
+       "GlobalIPv6Address": "",
+       "GlobalIPv6PrefixLen": 0,
+       "GwPriority": 0,
+       "IPAMConfig": null,
+       "IPAddress": "",
+       "IPPrefixLen": 0,
+       "IPv6Gateway": "",
+       "Links": null,
+       "MacAddress": "",
+       "NetworkID": ""
+      }
+     },
+     "Ports": {},
+     "SandboxID": "",
+     "SandboxKey": ""
+    },
+    "Path": "/usr/bin/setpriv",
+    "Platform": "linux",
+    "ProcessLabel": "",
+    "ResolvConfPath": "",
+    "RestartCount": 0,
+    "State": {
+     "Dead": false,
+     "Error": "",
+     "ExitCode": 0,
+     "FinishedAt": "0001-01-01T00:00:00Z",
+     "OOMKilled": false,
+     "Paused": false,
+     "Pid": 0,
+     "Restarting": false,
+     "Running": false,
+     "StartedAt": "0001-01-01T00:00:00Z",
+     "Status": "created"
+    },
+    "Storage": {
+     "RootFS": {
+      "Snapshot": {
+       "Name": "overlayfs"
+      }
+     }
+    }
+   },
+   "returncode": 0,
+   "step": "sidecar-inspect"
+  },
+  {
+   "argv": [
+    "docker",
+    "start",
+    "6b39105d4beb9bcc78fe46787d10e5711e5ad24a74ebed43e4a39a54287b8c27"
+   ],
+   "returncode": 0,
+   "step": "sidecar-start"
+  },
+  {
+   "argv": [
+    "docker",
+    "create",
+    "--pull=never",
+    "--network",
+    "936f6cc3165cf4990082be60a461c8987e3339b01040432afabdedc99cf3b75d",
+    "--user",
+    "10003:10003",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--pids-limit",
+    "4096",
+    "--memory-reservation",
+    "2147483648",
+    "--memory",
+    "6442450944",
+    "--cpus",
+    "8",
+    "--read-only",
+    "--tmpfs",
+    "/tmp:rw,exec,nosuid,nodev,mode=1777",
+    "--tmpfs",
+    "/var/tmp:rw,exec,nosuid,nodev,mode=1777",
+    "--mount",
+    "type=bind,source=/tmp/run-b0130d21,target=/tmp/run-b0130d21",
+    "--mount",
+    "type=bind,source=/home/javier/gap4-walk-config/cfg-c1a29e128127ff8d,target=/opt/cfg",
+    "--workdir",
+    "/tmp/run-b0130d21",
+    "--entrypoint",
+    "sleep",
+    "sha256:21b214159e4eb02d5e73f78ccdf5ee047da2fc6944808f9a454a6b0f427dd381",
+    "infinity"
+   ],
+   "returncode": 0,
+   "step": "take-create"
+  },
+  {
+   "argv": [
+    "docker",
+    "container",
+    "inspect",
+    "e7435b6ca8b8dbbfa54f480536588ae4a43f1efe99c35ffe6f428e7730e3921c"
+   ],
+   "inspect": {
+    "AppArmorProfile": "",
+    "Args": [
+     "infinity"
+    ],
+    "Config": {
+     "AttachStderr": true,
+     "AttachStdin": false,
+     "AttachStdout": true,
+     "Cmd": [
+      "infinity"
+     ],
+     "Domainname": "",
+     "Entrypoint": [
+      "sleep"
+     ],
+     "Env": [
+      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "NODE_VERSION=22.23.3",
+      "YARN_VERSION=1.22.22",
+      "PYTHONDONTWRITEBYTECODE=1"
+     ],
+     "Hostname": "e7435b6ca8b8",
+     "Image": "sha256:21b214159e4eb02d5e73f78ccdf5ee047da2fc6944808f9a454a6b0f427dd381",
+     "Labels": {
+      "app.cli.version": "0.162.1",
+      "app.python.version": "3.11.2",
+      "org.opencontainers.image.base.digest": "sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+      "org.opencontainers.image.base.name": "docker.io/library/node"
+     },
+     "OpenStdin": false,
+     "StdinOnce": false,
+     "Tty": false,
+     "User": "10003:10003",
+     "Volumes": null,
+     "WorkingDir": "/tmp/run-b0130d21"
+    },
+    "Created": "2026-10-27T09:12:25.655125236Z",
+    "Driver": "overlayfs",
+    "ExecIDs": null,
+    "HostConfig": {
+     "AutoRemove": false,
+     "Binds": null,
+     "BlkioDeviceReadBps": [],
+     "BlkioDeviceReadIOps": [],
+     "BlkioDeviceWriteBps": [],
+     "BlkioDeviceWriteIOps": [],
+     "BlkioWeight": 0,
+     "BlkioWeightDevice": [],
+     "CapAdd": null,
+     "CapDrop": [
+      "ALL"
+     ],
+     "Cgroup": "",
+     "CgroupParent": "",
+     "CgroupnsMode": "private",
+     "ConsoleSize": [
+      0,
+      0
+     ],
+     "ContainerIDFile": "",
+     "CpuCount": 0,
+     "CpuPercent": 0,
+     "CpuPeriod": 0,
+     "CpuQuota": 0,
+     "CpuRealtimePeriod": 0,
+     "CpuRealtimeRuntime": 0,
+     "CpuShares": 0,
+     "CpusetCpus": "",
+     "CpusetMems": "",
+     "DeviceCgroupRules": null,
+     "DeviceRequests": null,
+     "Devices": [],
+     "Dns": null,
+     "DnsOptions": [],
+     "DnsSearch": [],
+     "ExtraHosts": null,
+     "GroupAdd": null,
+     "IOMaximumBandwidth": 0,
+     "IOMaximumIOps": 0,
+     "IpcMode": "private",
+     "Isolation": "",
+     "Links": null,
+     "LogConfig": {
+      "Config": {},
+      "Type": "json-file"
+     },
+     "MaskedPaths": [
+      "/proc/acpi",
+      "/proc/asound",
+      "/proc/interrupts",
+      "/proc/kcore",
+      "/proc/keys",
+      "/proc/latency_stats",
+      "/proc/sched_debug",
+      "/proc/scsi",
+      "/proc/timer_list",
+      "/proc/timer_stats",
+      "/sys/devices/virtual/powercap",
+      "/sys/firmware"
+     ],
+     "Memory": 6442450944,
+     "MemoryReservation": 2147483648,
+     "MemorySwap": 12884901888,
+     "MemorySwappiness": null,
+     "Mounts": [
+      {
+       "Source": "/tmp/run-b0130d21",
+       "Target": "/tmp/run-b0130d21",
+       "Type": "bind"
+      },
+      {
+       "Source": "/home/javier/gap4-walk-config/cfg-c1a29e128127ff8d",
+       "Target": "/opt/cfg",
+       "Type": "bind"
+      }
+     ],
+     "NanoCpus": 8000000000,
+     "NetworkMode": "936f6cc3165cf4990082be60a461c8987e3339b01040432afabdedc99cf3b75d",
+     "OomKillDisable": false,
+     "OomScoreAdj": 0,
+     "PidMode": "",
+     "PidsLimit": 4096,
+     "PortBindings": {},
+     "Privileged": false,
+     "PublishAllPorts": false,
+     "ReadonlyPaths": [
+      "/proc/bus",
+      "/proc/fs",
+      "/proc/irq",
+      "/proc/sys",
+      "/proc/sysrq-trigger"
+     ],
+     "ReadonlyRootfs": true,
+     "RestartPolicy": {
+      "MaximumRetryCount": 0,
+      "Name": "no"
+     },
+     "Runtime": "runc",
+     "SecurityOpt": [
+      "no-new-privileges"
+     ],
+     "ShmSize": 67108864,
+     "Tmpfs": {
+      "/tmp": "rw,exec,nosuid,nodev,mode=1777",
+      "/var/tmp": "rw,exec,nosuid,nodev,mode=1777"
+     },
+     "UTSMode": "",
+     "Ulimits": null,
+     "UsernsMode": "",
+     "VolumeDriver": "",
+     "VolumesFrom": null
+    },
+    "HostnamePath": "",
+    "HostsPath": "",
+    "Id": "e7435b6ca8b8dbbfa54f480536588ae4a43f1efe99c35ffe6f428e7730e3921c",
+    "Image": "sha256:21b214159e4eb02d5e73f78ccdf5ee047da2fc6944808f9a454a6b0f427dd381",
+    "ImageManifestDescriptor": {
+     "digest": "sha256:46deefc20439372cbdfabbaa023fe71aed4d4dbee518c729d3b23b52c8d03aa3",
+     "mediaType": "application/vnd.oci.image.manifest.v1+json",
+     "platform": {
+      "architecture": "amd64",
+      "os": "linux"
+     },
+     "size": 2385
+    },
+    "LogPath": "",
+    "MountLabel": "",
+    "Mounts": [
+     {
+      "Destination": "/opt/cfg",
+      "Mode": "",
+      "Propagation": "rprivate",
+      "RW": true,
+      "Source": "/home/javier/gap4-walk-config/cfg-c1a29e128127ff8d",
+      "Type": "bind"
+     },
+     {
+      "Destination": "/tmp/run-b0130d21",
+      "Mode": "",
+      "Propagation": "rprivate",
+      "RW": true,
+      "Source": "/tmp/run-b0130d21",
+      "Type": "bind"
+     }
+    ],
+    "Name": "/angry_kepler",
+    "NetworkSettings": {
+     "Networks": {
+      "nd1fbb4014a0a3e8e21886a08": {
+       "Aliases": null,
+       "DNSNames": null,
+       "DriverOpts": null,
+       "EndpointID": "",
+       "Gateway": "",
+       "GlobalIPv6Address": "",
+       "GlobalIPv6PrefixLen": 0,
+       "GwPriority": 0,
+       "IPAMConfig": null,
+       "IPAddress": "",
+       "IPPrefixLen": 0,
+       "IPv6Gateway": "",
+       "Links": null,
+       "MacAddress": "",
+       "NetworkID": ""
+      }
+     },
+     "Ports": {},
+     "SandboxID": "",
+     "SandboxKey": ""
+    },
+    "Path": "sleep",
+    "Platform": "linux",
+    "ProcessLabel": "",
+    "ResolvConfPath": "",
+    "RestartCount": 0,
+    "State": {
+     "Dead": false,
+     "Error": "",
+     "ExitCode": 0,
+     "FinishedAt": "0001-01-01T00:00:00Z",
+     "OOMKilled": false,
+     "Paused": false,
+     "Pid": 0,
+     "Restarting": false,
+     "Running": false,
+     "StartedAt": "0001-01-01T00:00:00Z",
+     "Status": "created"
+    },
+    "Storage": {
+     "RootFS": {
+      "Snapshot": {
+       "Name": "overlayfs"
+      }
+     }
+    }
+   },
+   "returncode": 0,
+   "step": "take-inspect"
+  },
+  {
+   "argv": [
+    "docker",
+    "start",
+    "e7435b6ca8b8dbbfa54f480536588ae4a43f1efe99c35ffe6f428e7730e3921c"
+   ],
+   "returncode": 0,
+   "step": "take-start"
+  }
+ ],
+ "take_id": "e7435b6ca8b8dbbfa54f480536588ae4a43f1efe99c35ffe6f428e7730e3921c",
+ "torn_down": []
+}
