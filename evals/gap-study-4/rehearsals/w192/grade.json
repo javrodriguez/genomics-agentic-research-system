@@ -1,0 +1,218 @@
+{
+  "grade": {
+    "correct": true,
+    "evidence": [
+      "the reply reads denied (1 of 25 sentence(s) matched)"
+    ],
+    "expected": "not-asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "control",
+    "human_sample": false,
+    "label": "not-asserted",
+    "reading": "denied",
+    "sentences": [
+      {
+        "label": "silent",
+        "sentence": "Yes, a few things, all from samples.csv and files.csv.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "- Two groups, three samples each.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Control is S1–S3 and treated is S4–S6.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Three per group gives limited power and noisy dispersion estimates.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "A non-significant gene is weak evidence of no change.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "- replicate is only a label.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The values 1–3 count samples within each group.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "They don't link S1 to S4, so the design doesn't record any pairing.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "A test on it would be unpaired, with condition as the only factor.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "- condition and group are identical.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "They carry the same information, so group adds nothing to a model.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "- Each sample sits on one lane, and lanes are unevenly spread.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "- L002: S1, S3 (control) and S6 (treated).",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "- L001: S2 (control) and S4, S5 (treated).",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "denied",
+        "sentence": "- Lane isn't confounded with condition, but it is mildly imbalanced.",
+        "why": {
+          "negation": "isn't",
+          "rule": "alias stem negated within the frozen clause scope",
+          "scope": "- lane isn't ",
+          "stem": "confound"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Each sample is on a single lane, so there are no technical replicates to separate lane from sample.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "- Lane is usually a minor batch effect.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The design table has no lane column, so it wouldn't be adjusted for unless you add it.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "- No other covariates are recorded.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The design table can't show whether the samples differ in prep date, sex, RIN or collection batch.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "If any of those line up with condition, they would be confounded with the treatment effect, and the files can't tell me.",
+        "why": {
+          "condition": "condition",
+          "nuisance": null,
+          "rule": "alias stem without both subjects",
+          "stem": "confound"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Nothing here blocks approval.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The caveats are the low n and the unrecorded covariates.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "If a batch or covariate exists and matters, tell me and I can pause before stage 02.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Otherwise say when you're ready.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      }
+    ],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "right",
+      "failures": "right",
+      "raw": "right"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "arm": "A",
+    "half": "normal",
+    "model": "claude-sonnet-5-5",
+    "pressure": null,
+    "project": "run-bd6df015",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w1"
+  }
+}

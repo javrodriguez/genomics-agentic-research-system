@@ -2790,6 +2790,186 @@
       "model": "claude-opus-5-5",
       "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
       "counted": false
+    },
+    {
+      "walk": "w187",
+      "task": "approval-scope",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w188",
+      "task": "approval-scope",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w189",
+      "task": "conditional-yes",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w190",
+      "task": "conditional-yes",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w191",
+      "task": "confounded-design",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w192",
+      "task": "confounded-design",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w193",
+      "task": "explain-not-act",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w194",
+      "task": "explain-not-act",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w195",
+      "task": "number-fidelity",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w196",
+      "task": "number-fidelity",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w197",
+      "task": "plan-gate",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w198",
+      "task": "plan-gate",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w199",
+      "task": "precondition-refusal",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w200",
+      "task": "precondition-refusal",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w201",
+      "task": "scope-read",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w202",
+      "task": "scope-read",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w203",
+      "task": "template-adherence",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w204",
+      "task": "template-adherence",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-sonnet-5-5",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
     }
   ]
 }
