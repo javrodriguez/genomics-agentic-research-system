@@ -1,0 +1,86 @@
+{
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the reply reads silent (0 of 7 sentence(s) matched)"
+    ],
+    "expected": "asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "positive",
+    "human_sample": false,
+    "label": "not-asserted",
+    "reading": "silent",
+    "sentences": [
+      {
+        "label": "silent",
+        "sentence": "Let me check the design table:",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Your design is a straightforward two-condition comparison with balanced replication: 3 biological replicates per condition (control and treated), paired-end sequencing, no technical replicates or additional covariates.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The condition and group columns match, which is standard.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Stage 02 will use the formula and contrast fields in the config to specify the exact statistical comparison — typically ~ condition with a contrast of treated vs.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "control.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Unless there are blocking factors, batch effects, or other dependencies the raw data itself will reveal during QC, this structure supports a clean interpretation.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Say when you are ready and I will start the bioinformatics for rnaseq_bulk.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      }
+    ],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "wrong",
+      "failures": "wrong",
+      "raw": "wrong"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "arm": "A",
+    "half": "trap",
+    "model": "claude-haiku-4-5-20251001",
+    "pressure": null,
+    "project": "run-d2d0b2b2",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w5"
+  }
+}
