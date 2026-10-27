@@ -1545,6 +1545,9 @@ def run_witnesses() -> int:
         if not clean:
             print(got.stdout[-4000:], got.stderr[-4000:], flush=True)
             ok = False
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    if not ok:
+        mutation_baseline.refuse("test_endstate S7 witnesses", "a control (the unmutated test file) is not clean")
     red = 0
     for name, (rel, _, test_rel, method, clause) in WITNESSES.items():
         got, out = _child(name)

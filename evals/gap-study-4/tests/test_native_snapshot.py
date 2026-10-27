@@ -392,6 +392,15 @@ def witnesses() -> int:
     import types
     src = Path(ns().__file__).read_text(encoding="utf-8")
     red = 0
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    def unmutated():                                 # both locators pass on the real module, each on its own
+        out = []
+        for locator in ("codex", "gemini"):
+            rel, asked = getattr(BoxRootNaming(), locator)()
+            if not rel or not asked or asked[0] != ".":
+                out.append(f"{locator}: located {rel!r}, first asked {asked[:1]}")
+        return out
+    mutation_baseline.require_clean("test_native_snapshot witnesses", unmutated)
     for name, (old, new, locator) in WITNESSES.items():
         if src.count(old) != 1:
             print(f"NOT PERFORMED {name}: the anchor occurs {src.count(old)} times in native_snapshot.py")

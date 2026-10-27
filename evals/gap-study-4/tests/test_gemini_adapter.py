@@ -2047,7 +2047,21 @@ def run_mutant(target: str, w: int, kind: str, i) -> list:
     return all_checks(tgm, gam)
 
 
+def baseline_lines() -> list:
+    """Lane t104-mutation-baseline: all_checks over the UNMUTATED files, built both ways run_mutant builds a mutant
+    (transcript_gemini with gemini_adapter over it, and gemini_adapter over the real transcript_gemini)."""
+    src = {f: (HERE / f).read_text(encoding="utf-8") for f in ("transcript_gemini.py", "gemini_adapter.py")}
+    tgm = _build(ast.parse(src["transcript_gemini.py"]), "transcript_gemini", HERE / "transcript_gemini.py")
+    gam = _build(ast.parse(src["gemini_adapter.py"]), "gemini_adapter", HERE / "gemini_adapter.py",
+                 {"transcript_gemini": tgm})
+    alone = _build(ast.parse(src["gemini_adapter.py"]), "gemini_adapter", HERE / "gemini_adapter.py",
+                   {"transcript_gemini": tg})
+    return all_checks(tgm, gam) + all_checks(tg, alone)
+
+
 def mutation_sweep(shard: int = 0, of: int = 1) -> dict:
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    mutation_baseline.require_clean("test_gemini_adapter generated mutants", baseline_lines)
     mutants, skipped = generated_mutants()
     keys = [m[0] for m in mutants]
     mine = [m for n, m in enumerate(mutants) if n % of == shard]

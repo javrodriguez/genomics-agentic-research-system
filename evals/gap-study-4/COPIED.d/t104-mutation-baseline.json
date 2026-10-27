@@ -1,0 +1,35 @@
+{
+ "lane": "t104-mutation-baseline",
+ "files": [
+  {
+   "path": "tests/mutation_baseline.py",
+   "status": "new",
+   "reason": "Lane t104-mutation-baseline (OrgOS T104, briefed by glitch-45, the Lane-orchestrator, under Javier's standing delegation, Mon 26 Oct 2026): the shared unmutated-baseline gate. Each runner that uses it (its docstring lists them: 16 subprocess --witnesses runners, 4 subprocess --generated-mutants sweeps, the in-process sweeps of codex_adapter, gemini_adapter and labelling, the in-process --witnesses of codex_agents_off, codex_patch_reads, codex_started_file_change, codex_usage_source, native_snapshot, review_kit and vendor_bookkeeping, and test_endstate's control) runs its selection with no mutant first and refuses with exit 3 (BaselineRed, a SystemExit, and one BASELINE RED line) before running or counting any mutant when that run is red or a check raises. Exempt, each already controlled by its own code and exiting 1 before any mutant: test_walk_plan --generated-mutants, test_gemini_tool_registry and test_gemini_undeclared_args --witnesses, and the TestWitnesses classes of codex_adapter, gemini_adapter and labelling; test_pf1_freeze_gates' TestWitnesses runs in-suite only, beside each clause's own green test. Residual (round-1 review finding 6): a witness baseline runs its bound methods' union in one process while each mutant runs one method alone, so an order- or state-dependent red is not caught, and one baseline run cannot catch a flaky test."
+  },
+  {
+   "path": "tests/test_mutation_baseline.py",
+   "status": "new",
+   "reason": "Lane t104-mutation-baseline: binds mutation_baseline.py and each runner its docstring lists as a user, each driven with every run red as a kill, or a check red or raising with no mutant applied; round 1 red at 3d278db9 (42 failures), round 2 (the fold of the round-1 review of fcf3401, CHANGES) red at fcf3401d, green after. Edits without transfer, named here (each a few lines calling mutation_baseline before the first mutant, nothing else changed): tests/test_walk_runner.py, tests/test_walk_layout.py, tests/test_env_allowlist.py, tests/test_walk_builders.py, tests/test_holdout_digests.py, tests/test_cp6_wiring.py, tests/test_walk_plan.py, tests/test_cp8_prep.py, tests/test_run_builders.py, tests/test_config_folder.py, tests/test_prereg_order.py, tests/test_prereg_status.py, tests/test_rehearsals.py, tests/test_ci_job.py, tests/test_build_draft.py, tests/test_stub_agents.py, tests/test_codex_adapter.py, tests/test_gemini_adapter.py, tests/test_labelling.py, tests/test_review_kit.py, tests/test_codex_agents_off.py, tests/test_codex_patch_reads.py, tests/test_codex_started_file_change.py, tests/test_codex_usage_source.py, tests/test_native_snapshot.py, tests/test_vendor_bookkeeping.py, tests/test_endstate.py; test_round4.py (HELPERS gains mutation_baseline.py); test_ci_job.py and test_build_draft.py WitnessEvidence.outcome now answer the runner's unmutated run green and each mutant run with the case's fake, every case's expected verdict unchanged; test_endstate.py's control, when not clean, now refuses before any witness instead of running them and exiting 1."
+  },
+  {
+   "path": "lanes/REVIEW-pf1-gateway-838cfde.md",
+   "status": "new",
+   "reason": "The fresh round-1 review of lane pf1-gateway at 7a866455..838cfdef (VERDICT PASS, Mon 26 Oct 2026), committed at 3d278db9 as written, unedited, and left unclaimed by any fragment (lane pf1-gateway has none); claimed here, the record itself untouched, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation, Mon 26 Oct 2026)."
+  },
+  {
+   "path": "lanes/REVIEW-t104-mutation-baseline-fcf3401.md",
+   "status": "new",
+   "reason": "The fresh round-1 review of this lane at 3d278db9..fcf3401d (VERDICT CHANGES, Mon 26 Oct 2026), committed at e205a256 by the Lane-orchestrator as written, unedited; findings 1 to 5 and 7 fold in round 2 on glitch-45's ruling, finding 6 is a named residual (mutation_baseline.py's docstring and its entry here)."
+  },
+  {
+   "path": "lanes/REVIEW-t104-mutation-baseline-5c54978.md",
+   "status": "new",
+   "reason": "The fresh round-2 review of this lane at 3d278db9..5c54978c, judging the fold e205a256..5c54978c (VERDICT PASS, Tue 27 Oct 2026), committed at 9f4570c0 by the Lane-orchestrator as written, unedited; claimed here on glitch-45's word."
+  },
+  {
+   "path": "COPIED.d/t104-mutation-baseline.json",
+   "status": "new",
+   "reason": "This lane's copy-record fragment (interface 1)."
+  }
+ ]
+}

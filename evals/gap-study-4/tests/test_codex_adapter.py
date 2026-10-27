@@ -1980,7 +1980,27 @@ def all_mutants() -> list:
     return out
 
 
+def baseline_lines() -> list:
+    """Lane t104-mutation-baseline: every line mutant_killed's checks print over the UNMUTATED files, built the
+    same two ways (transcript_codex with codex_adapter over it, and codex_adapter alone). A mutant counts as
+    killed on any line, ERROR lines included, so any line here means the sweep would count nothing real."""
+    src_tc, src_ca = (Path(m.__file__).read_text(encoding="utf-8") for m in (tc, ca))
+    try:
+        tcm = _build(ast.parse(src_tc), "transcript_codex", tc.__file__)
+        cam = _build(ast.parse(src_ca), "codex_adapter", ca.__file__, {"transcript_codex": tcm})
+        alone = _build(ast.parse(src_ca), "codex_adapter", ca.__file__)
+    except Exception as e:  # noqa: BLE001 - the unmutated files do not build: red
+        return [f"BUILD the unmutated files do not build: {type(e).__name__}: {e}"]
+    out, sink = [], io.StringIO()
+    with contextlib.redirect_stdout(sink), contextlib.redirect_stderr(sink):
+        for f, m in [(f, tcm) for f in TC_CHECKS] + [(f, cam) for f in CA_CHECKS] + [(f, alone) for f in CA_CHECKS]:
+            out += [f"{f.__name__}: {x}" for x in f(m)]
+    return out
+
+
 def run_generated(shard: int, of: int) -> int:
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    mutation_baseline.require_clean("test_codex_adapter generated mutants", baseline_lines)
     muts = all_mutants()
     keys = {m[0] for m in muts}
     stale = sorted(k for k in EQUIVALENT if k not in keys)

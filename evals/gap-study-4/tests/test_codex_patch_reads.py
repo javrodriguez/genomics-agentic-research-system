@@ -558,6 +558,11 @@ CHECKS = {"unpaired": (TC, unpaired_problems), "paired": (TC, paired_problems), 
 
 def witnesses() -> list:
     """Each mutant applied alone: (name, its check, red?, every check of its module it turns red)."""
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    def unmutated():
+        mods = {rel: mutant(rel, ()) for rel in sorted({crel for crel, _ in CHECKS.values()})}
+        return [f"{c}: {x}" for c, (crel, fn) in CHECKS.items() for x in fn(mods[crel])]
+    mutation_baseline.require_clean("test_codex_patch_reads witnesses", unmutated)
     out = []
     for name, rel, edits, check in MUTANTS:
         mod = mutant(rel, edits)

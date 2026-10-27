@@ -1367,6 +1367,9 @@ def attributed_red(stderr: str, method: str, clause: str) -> bool:
 def run_witnesses(names) -> int:
     red = 0
     chosen = names or sorted(WITNESSES)
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    mutation_baseline.require_green("test_walk_plan witnesses", [sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()),
+                                    *sorted({WITNESSES[x][0] for x in chosen})], timeout=1800, tag="test_walk_plan")
     for name in chosen:
         method, clause = WITNESSES[name]
         code, outcome, stdout, stderr = child(["--mutant", name, method])

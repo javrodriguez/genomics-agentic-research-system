@@ -3400,6 +3400,9 @@ def run_witnesses(group):
     import re
     import subprocess
     names = witness_groups()[group - 1]
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    mutation_baseline.require_green(f"test_build_draft witnesses group {group}", [sys.executable, "-B", "-W", "ignore",
+                                    str(Path(__file__).resolve())], timeout=1800, tag="test_build_draft")
     red = 0
     collateral = {}
     for name in names:
@@ -3459,12 +3462,19 @@ class WitnessEvidence(unittest.TestCase):
                                                         "skipped": list(skips)}) + "\n"
         return mock.Mock(stdout=body, stderr="", returncode=1)
 
+    @staticmethod
+    def children(fake):
+        """Lane t104-mutation-baseline: the runner's unmutated run (no --mutant) is green; each mutant run is `fake`."""
+        green = mock.Mock(stdout="test_build_draft: 2 run, 0 failures, 0 errors, 0 skipped\n",
+                          stderr="Ran 2 tests in 0.1s\n\nOK\n", returncode=0)
+        return lambda argv, *a, **k: fake if "--mutant" in argv else green
+
     def outcome(self, name, fake):
         import contextlib, io
         out = io.StringIO()
         with mock.patch.object(sys.modules[__name__], "witness_groups", return_value=[[name], [], []]), \
              mock.patch.object(sys.modules[__name__], "witness_names", return_value=[name]), \
-             mock.patch("subprocess.run", return_value=fake), contextlib.redirect_stdout(out):
+             mock.patch("subprocess.run", side_effect=self.children(fake)), contextlib.redirect_stdout(out):
             code = run_witnesses(1)
         return code, out.getvalue()
 

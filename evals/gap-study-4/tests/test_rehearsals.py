@@ -453,6 +453,9 @@ WITNESSES = {name: (BOUND[clause], clause) for name, (clause, _, _, _) in mutant
 def run_witnesses():
     import subprocess
     red = 0
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    mutation_baseline.require_green("test_rehearsals witnesses", [sys.executable, "-B", "-W", "ignore",
+                                    str(Path(__file__).resolve())], timeout=300, tag="test_rehearsals")
     for name, (method, clause) in sorted(WITNESSES.items()):
         got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--mutant", name],
                              capture_output=True, text=True, timeout=300)

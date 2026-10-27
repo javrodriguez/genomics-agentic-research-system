@@ -154,6 +154,9 @@ CHECKS = {"table": table_problems, "others": others_problems, "source": source_p
 
 def witnesses() -> list:
     """Each mutant alone: (name, its check, red?, every check it turns red)."""
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    mutation_baseline.require_clean("test_codex_agents_off witnesses",
+                                    lambda: [f"{c}: {x}" for c in CHECKS for x in CHECKS[c]()])
     out = []
     for name, mutant, check in MUTANTS:
         with mutant():

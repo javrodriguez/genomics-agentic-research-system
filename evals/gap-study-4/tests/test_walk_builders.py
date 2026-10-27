@@ -1585,6 +1585,9 @@ GENERATED_ORDER = ("B17Account", "B20LeaseSource", "B18Native", "B1Identity", "B
 def run_witnesses(names) -> int:
     red = 0
     chosen = names or sorted(WITNESSES)
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    mutation_baseline.require_green("test_walk_builders witnesses", [sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()),
+                                    *sorted({WITNESSES[x][0] for x in chosen})], timeout=1800, tag="test_walk_builders")
     for name in chosen:
         method, clause = WITNESSES[name]
         got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--mutant", name,
@@ -1621,6 +1624,9 @@ def run_generated(shard=None, sample=None, timeout=600, only=None) -> int:
         chosen = chosen[::sample]
     if only is not None:
         chosen = [(k, m) for k, m in chosen if m.id in only]
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    mutation_baseline.require_green("test_walk_builders generated mutants", [sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), *GENERATED_ORDER],
+                                    timeout=timeout, tag="test_walk_builders")
     killed, survived, equivalent, listed_killed, inconclusive = [], [], [], [], []
 
     def one(mid, fast):
