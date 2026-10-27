@@ -6246,7 +6246,7 @@ CODEX_CHECKOUT_BRANCH = "main"
 # T-16 (review MAJOR 2): beyond mode_binding.CODEX_MODE_RECORD's turn_context pair (approval_policy,
 # sandbox_policy.type;
 # exec/src/lib.rs:343-347 and 589-591, protocol.rs:1088-1091 at the pin), each thread_settings snapshot's
-# permission_profile.type for the pin: ThreadSettingsSnapshot carries no sandbox_policy (codex_native.py:96-99,
+# permission_profile.type for the pin: ThreadSettingsSnapshot carries no sandbox_policy (codex_native.py:114-117,
 # TSA_REQUIRED), and the bypass flag runs PermissionProfile::Disabled, a unit variant written {"type": "disabled"}
 # (models.rs:418-435 as codex_native._thread_settings cites it).
 CODEX_THREAD_PERMISSION_PROFILE = {"bypass": "disabled"}
@@ -7565,10 +7565,21 @@ def _host_recorded_cuts(path: Path) -> set:
 
 
 def _codex_command_problems(records: list, raw: bytes) -> list[str]:
-    shown = []
+    """Lane pf1-codex-turnitem: a CommandExecution the rollout records after its own turn's task_complete (the one
+    late shape codex_native.read_rollout admits, a background process's exit watcher) is never in the exec stream's
+    completed commands: the stream ends at turn.completed with that command started and never completed. So the
+    in-turn commands are compared in order, as before, and each late one must equal, split the same way, a command
+    its own turn's stream started and never completed (one stream start per late command)."""
+    shown, started, completed = [], {}, set()
     for where, rec in records:
         item = rec.get("item")
-        if rec.get("type") == "item.completed" and isinstance(item, dict) and item.get("type") == "command_execution":
+        if not (isinstance(item, dict) and item.get("type") == "command_execution"):
+            continue
+        turn = where.split(" line ")[0]
+        if rec.get("type") == "item.started":
+            started.setdefault((turn, item.get("id")), (where, item.get("command")))
+        if rec.get("type") == "item.completed":
+            completed.add((turn, item.get("id")))
             cmd = item.get("command")
             try:
                 split = _shlex.split(cmd) if isinstance(cmd, str) else None
@@ -7578,22 +7589,44 @@ def _codex_command_problems(records: list, raw: bytes) -> list[str]:
                 raise VendorUnreadable(f"{where}: the exec stream's command does not split as a shell line")   # forgery
             shown.append((where, split))
     try:
-        native = []
+        native, late, turn_no, closed = [], [], 0, False
         for rec in _codex_native._json_lines(raw, VendorUnreadable):
             pay = rec.get("payload") if isinstance(rec.get("payload"), dict) else {}
             item = pay.get("item")
+            if rec.get("type") == "event_msg" and pay.get("type") == "task_started":
+                turn_no, closed = turn_no + 1, False
+            if rec.get("type") == "event_msg" and pay.get("type") == "task_complete":
+                closed = True
             if rec.get("type") == "event_msg" and pay.get("type") == "item_completed" and isinstance(item, dict) \
                     and item.get("type") == "CommandExecution":
-                native.append(item.get("command"))
+                (late if closed else native).append((turn_no, item.get("command")))
     except Exception as e:  # noqa: BLE001 - the rollout is the agent's to write
         raise _NativeUnread(f"the rollout does not read ({type(e).__name__})") from None
     if len(shown) != len(native):
         return [f"[{TRANSCRIPT_MISMATCH}] the exec streams show {len(shown)} completed command(s) and the rollout "
                 f"records {len(native)}"]
-    for (where, split), argv in zip(shown, native):
+    for (where, split), (_turn, argv) in zip(shown, native):
         if split != argv:
             return [f"[{TRANSCRIPT_MISMATCH}] {where}: the command the exec stream shows is not, split as a shell line, "
                     f"the argv the rollout records for it"]
+    unfinished = [(key[0], where, cmd) for key, (where, cmd) in started.items() if key not in completed]
+    for turn_no, argv in late:
+        for k, (turn, where, cmd) in enumerate(unfinished):
+            if turn != f"turn-{turn_no}.jsonl":
+                continue
+            try:
+                split = _shlex.split(cmd) if isinstance(cmd, str) else None
+            except ValueError:
+                split = None
+            if split is None:
+                raise VendorUnreadable(f"{where}: the exec stream's command does not split as a shell line")
+            if split == argv:
+                del unfinished[k]
+                break
+        else:
+            return [f"[{TRANSCRIPT_MISMATCH}] turn {turn_no}: a command the rollout records completing after the turn's "
+                    "task_complete is not, split as a shell line, one the turn's exec stream started and never "
+                    "completed"]
     return []
 
 

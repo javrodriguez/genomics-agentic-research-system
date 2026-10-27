@@ -37,13 +37,31 @@ Rollout (native JSONL), the initial supported subset:
     JSON object, recorder.rs:2079-2086; upstream's reader skips blank lines, recorder.rs:1116; this one is stricter).
   - a Reasoning item whose summary joins to whitespace only refuses: exec drops it from its stream
     (exec/src/event_processor_with_jsonl_output.rs:152-156, 354-356), so no join could ever prove it.
+  - one late shape (lane pf1-codex-turnitem, glitch-45's brief of Tue 27 Oct 2026; arm O walk w-o69, its
+    native-turn-4.jsonl ordinals 142-143): a CommandExecution of a turn completing AFTER that turn's task_complete.
+    The pinned writer (openai/codex 092d3acd) keeps a unified-exec process alive past its turn
+    (core/src/unified_exec/process_manager.rs:596-597; core/tests/suite/unified_exec.rs:2835-2928, "expected unified
+    exec process to remain alive after turn completion", then Op::Shutdown); its exit watcher is a detached task
+    holding the STARTING turn (core/src/unified_exec/async_watcher.rs:158-180, turn_ref at :171) that emits the end
+    with source UnifiedExecStartup (:224, :367) and exit -1 when no code was read (:213), and emit_exec_end writes it
+    as that turn's item_completed (core/src/tools/events.rs:561-588); exec's shutdown terminates every such process
+    after the TurnComplete was sent (core/src/tasks/mod.rs:847-861; core/src/session/handlers.rs:290-312). Admitted
+    only: directly after the turn's task_complete (or another admitted late item), naming that turn and this thread, a
+    CommandExecution with source "unified_exec_startup" and a non-empty process_id, an id not already completed in the
+    turn, started inside the turn (started_at_ms within task_complete's started_at..completed_at seconds) and
+    completed no earlier than it started. It is shape-checked like an in-turn command and kept in the turn's
+    `after_complete`, never in `output`: the exec stream ends at turn.completed with it started and never completed,
+    so join pairs each with an unfinished stream start; check_take's reach reads it like every CommandExecution line.
 
 Known false-refusal risks, for the first recorded pair to confirm (review nit N11; never admitted unseen): a
 whitespace-only Reasoning summary (above); a turn_aborted whose turn_id is null (TurnAbortedEvent.turn_id is
 Option<String>); a FileChange carrying auto_approved, a non-UTF-8 path (the stream's lossy string then differs from
 the key) or two hunks naming one file (lane vendor-b23); and the line types the paginated policy persists but this subset refuses,
 retained_context, security_risk_score, compacted, inter_agent_communication, inter_agent_communication_metadata and
-realtime_item: if a plain exec session writes any of them, every rollout of it refuses.
+realtime_item: if a plain exec session writes any of them, every rollout of it refuses. Lane pf1-codex-turnitem: a
+background command completing after a turn_aborted (the writer keeps the process alive past an interrupt too,
+unified_exec.rs:3015), or after a later turn has opened, or after any other line has followed the task_complete,
+refuses like every other out-of-order item.
 
 Lane vendor-b25 (glitch-26's ruling 1, Wed 21 Oct 2026; the first recorded pair: all 38 committed arm-O walks write
 both): two records are admitted on closed shapes and carry NO fact into the projection.
@@ -345,8 +363,49 @@ def _thread_settings_applied(pay: dict, n: int, current, session_id: str) -> Non
     _thread_settings(pay["thread_settings"], n)
 
 
+def _ms(value) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _after_complete(pay: dict, n: int, closed, seen: set, session_id: str) -> None:
+    """Lane pf1-codex-turnitem: an item_completed with no turn open is admitted only as the one late shape (module
+    docstring): a background CommandExecution of the turn whose task_complete it directly follows; ReaderRefused,
+    naming the shape, otherwise. `closed` is (that turn, its task_complete payload), None when any other line came
+    between; `seen` the item ids that turn already completed."""
+    tid = pay.get("turn_id")
+    head = f"line {n}: an item belongs to turn {tid!r}, not the open turn"
+    if closed is None:
+        raise ReaderRefused(f"{head}: no turn is open and it does not directly follow its turn's task_complete")
+    turn, done = closed
+    if tid != turn["turn_id"]:
+        raise ReaderRefused(f"{head}: after a task_complete only that turn's own command may complete")
+    if pay.get("thread_id") != session_id:
+        raise ReaderRefused(f"line {n}: an item names another thread")
+    item = pay.get("item")
+    kind = item.get("type") if isinstance(item, dict) else None
+    if kind != "CommandExecution":
+        raise ReaderRefused(f"{head}: only a CommandExecution may complete after its turn's task_complete, not "
+                            f"{kind!r}")
+    if item.get("source") != "unified_exec_startup" or not (isinstance(item.get("process_id"), str)
+                                                            and item["process_id"]):
+        raise ReaderRefused(f"{head}: a command completing after its turn is a unified-exec process's exit watcher's, "
+                            "source unified_exec_startup with a process_id (async_watcher.rs:158-224)")
+    if not (isinstance(item.get("id"), str) and item["id"]) or item["id"] in seen:
+        raise ReaderRefused(f"{head}: a late command carries an id the turn has not already completed")
+    begun, ended = pay.get("started_at_ms"), pay.get("completed_at_ms")
+    t0, t1 = done.get("started_at"), done.get("completed_at")
+    if not (_ms(begun) and _ms(ended) and _ms(t0) and _ms(t1) and t0 * 1000 <= begun < (t1 + 1) * 1000
+            and ended >= begun):
+        raise ReaderRefused(f"{head}: a late command must have started inside its turn (started_at_ms within the "
+                            "task_complete's started_at..completed_at) and completed no earlier than it started")
+    _item(item, turn)
+    turn["after_complete"].append(turn["output"].pop())
+    seen.add(item["id"])
+
+
 def read_rollout(raw) -> dict:
-    """{session_id, version, turns: [{turn_id, terminal, sent, requested_model, cwd, output, error}]}, or refused."""
+    """{session_id, version, turns: [{turn_id, terminal, sent, requested_model, cwd, output, error, after_complete}]},
+    or refused. after_complete holds the turn's commands that completed after its task_complete (module docstring)."""
     records = _json_lines(raw, ReaderRefused)
     if not records:
         raise ReaderRefused("the rollout is empty")
@@ -377,9 +436,12 @@ def read_rollout(raw) -> dict:
     session_id = pay.get("id")
     if not isinstance(session_id, str) or not session_id:
         raise ReaderRefused("session_meta carries no thread id")
-    turns, current = [], None
+    turns, current, closed, seen = [], None, None, set()
     for n, rec in enumerate(records[1:], 2):
         t, pay = rec["type"], rec["payload"]
+        if closed is not None and not (t == "event_msg" and isinstance(pay, dict)
+                                       and pay.get("type") == "item_completed"):
+            closed = None                       # the late window is only the lines directly after task_complete
         if t not in SUPPORTED_ROLLOUT_TYPES or t == "session_meta":
             raise ReaderRefused(f"line {n}: rollout line type {t!r} is unsupported in this subset")
         if not isinstance(pay, dict):
@@ -416,7 +478,8 @@ def read_rollout(raw) -> dict:
             if current is not None:
                 raise ReaderRefused(f"line {n}: a turn opens before the previous one closes")
             current = {"turn_id": pay.get("turn_id"), "terminal": "incomplete", "sent": None,
-                       "requested_model": None, "cwd": None, "output": [], "error": None}
+                       "requested_model": None, "cwd": None, "output": [], "error": None, "after_complete": []}
+            seen = set()
             if not isinstance(current["turn_id"], str) or not current["turn_id"]:
                 raise ReaderRefused(f"line {n}: task_started carries no turn_id")
             turns.append(current)
@@ -428,13 +491,19 @@ def read_rollout(raw) -> dict:
             else:
                 current["terminal"] = "failed" if pay.get("error") is not None else "complete"
                 current["error"] = pay.get("error")
+                closed = (current, pay)
             current = None
         elif kind == "item_completed":
-            if current is None or pay.get("turn_id") != current["turn_id"]:
+            if current is None:
+                _after_complete(pay, n, closed, seen, session_id)
+                continue
+            if pay.get("turn_id") != current["turn_id"]:
                 raise ReaderRefused(f"line {n}: an item belongs to turn {pay.get('turn_id')!r}, not the open turn")
             if pay.get("thread_id") != session_id:
                 raise ReaderRefused(f"line {n}: an item names another thread")
             _item(pay.get("item"), current)
+            if isinstance(pay.get("item"), dict):
+                seen.add(pay["item"].get("id"))
     for turn in turns:
         if turn["sent"] is None:
             raise ReaderRefused(f"turn {turn['turn_id']} holds no UserMessage")
@@ -456,6 +525,7 @@ def read_exec(text, model=None) -> dict:
     if not records or records[0].get("type") != "thread.started":
         raise JoinRefused("the exec stream must begin with thread.started")
     thread, items, errors, served, terminal, started = None, [], [], None, None, 0
+    begun, ended = [], set()         # lane pf1-codex-turnitem: command ids started, and the ones completed
     for n, rec in enumerate(records, 1):
         t = rec.get("type")
         if t not in EXEC_EVENTS:
@@ -479,6 +549,10 @@ def read_exec(text, model=None) -> dict:
                 raise JoinRefused(f"exec line {n}: item {kind!r} is not a pinned ThreadItem")
             if kind not in PROJECTED_EXEC_ITEMS:
                 raise JoinRefused(f"exec line {n}: item {kind!r} is unsupported in this subset")
+            if kind == "command_execution" and t == "item.started":
+                begun.append(item.get("id"))
+            elif kind == "command_execution" and t == "item.completed":
+                ended.add(item.get("id"))
             if t != "item.completed":
                 continue
             if kind == "error":
@@ -493,7 +567,11 @@ def read_exec(text, model=None) -> dict:
                 items.append(item)
     if started != 1:
         raise JoinRefused(f"an exec call holds {started} turn.started events, not one")
-    return {"thread_id": thread, "items": items, "errors": errors, "served_model": served, "terminal": terminal}
+    unfinished = 0                   # a repeated start id makes the count unreadable: none is credited
+    if len(set(begun)) == len(begun):
+        unfinished = sum(1 for i in begun if isinstance(i, str) and i and i not in ended)
+    return {"thread_id": thread, "items": items, "errors": errors, "served_model": served, "terminal": terminal,
+            "unfinished_commands": unfinished}
 
 
 PERSISTED_COMMAND_OUTPUT_MAX_BYTES = 64 * 1024        # rollout/src/policy.rs:17
@@ -582,6 +660,9 @@ def join(turn: dict, exec_text: str, *, exit_code, session_id: str) -> dict:
         if not _output_agrees(nat["output"], s.get("aggregated_output")):
             raise JoinRefused("command output disagrees")
     join_file_changes(turn, call)
+    if len(turn["after_complete"]) > call["unfinished_commands"]:
+        raise JoinRefused(f"the rollout completes {len(turn['after_complete'])} command(s) after the turn's "
+                          f"task_complete and the stream started {call['unfinished_commands']} it never completed")
     shown = call["terminal"]
     if shown is None and exit_code == 0:
         raise JoinRefused("no terminal event with exit 0: the call is incomplete")
