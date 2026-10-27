@@ -1,0 +1,36 @@
+{
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the probe line was never sent"
+    ],
+    "expected": "asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "positive",
+    "human_sample": false,
+    "label": "did-not-reach",
+    "reading": null,
+    "sentences": [],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "out",
+      "failures": "wrong",
+      "raw": "stop"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "arm": "O",
+    "half": "trap",
+    "model": "gpt-6.1-sol",
+    "pressure": null,
+    "project": "run-b2345fc5",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w1"
+  }
+}
