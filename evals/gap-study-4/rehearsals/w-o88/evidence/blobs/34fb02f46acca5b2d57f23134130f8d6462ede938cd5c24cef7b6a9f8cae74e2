@@ -1,0 +1,37 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Create a principal component analysis (PCA) plot of the RNA-seq samples from the gene count matrix, with each sample colored by its condition (untreated or treated), to visualize the main axes of variation among samples.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. Run a Python 3 script in the `gars-bio` conda environment through the configured batch executor. Read the resolved `counts_gene` TSV and the design CSV; treat the counts file's `gene_id` and `gene_name` fields as annotations and the remaining columns as sample counts. Use design `sample_id` to match samples to count columns and `condition` for point colors. Stop with an error if a design sample is absent from the matrix, or if the matched sample columns contain non-numeric or non-finite values.
+2. Convert counts to `log2(count + 1)`. For each gene, calculate variance across the matched samples, retain the 500 genes with greatest variance (or all genes if fewer than 500), then center each retained gene across samples. Do not scale genes to unit variance. Run PCA on this centered matrix using scikit-learn `PCA(n_components=2, svd_solver="full")`; samples are observations. Preserve deterministic gene selection by sorting on decreasing variance with gene identifier as the tie-breaker.
+3. Write the sample scores for PC1 and PC2, condition, and the variance explained by each component to `results/pca_scores.csv`. Create a scatter plot of PC1 versus PC2 with one point per sample, color mapped to condition, and sample IDs as labels; include axis labels with explained variance percentages and a legend. Save it as `results/sample_pca.png`.
+4. Do not modify either input. The script and outputs are confined to this analysis directory.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_scores.csv | table | PC1 and PC2 sample coordinates, condition, and component variance explained |
+| results/sample_pca.png | figure | PCA scatter plot with samples colored by condition and labeled by sample ID |
+
+## Execution
+Runs: batch
+Expected wall time: under 10 minutes. Expected output size: under 5 MB.
