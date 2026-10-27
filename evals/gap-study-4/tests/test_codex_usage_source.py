@@ -274,6 +274,9 @@ WITNESSES = {
 
 def witnesses() -> int:
     red = 0
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    mutation_baseline.require_clean("test_codex_usage_source witnesses", lambda: [
+        f"{where}: {x}" for where in sorted({w for w, _ in WITNESSES.values()}) for x in problems(*_modules(where, ()))])
     for name, (where, edits) in WITNESSES.items():
         try:
             found = problems(*_modules(where, edits))

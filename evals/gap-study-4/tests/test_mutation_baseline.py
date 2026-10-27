@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Every Gap4 mutation runner refuses a red baseline before it counts a kill (lane t104-mutation-baseline, OrgOS T104).
+"""Each Gap4 mutation runner that mutation_baseline.py lists as a user refuses a red baseline before it counts a kill
+(lane t104-mutation-baseline, OrgOS T104). The exempt runners and why are listed there too.
 
     python3 -B -W ignore evals/gap-study-4/tests/test_mutation_baseline.py
 
@@ -9,6 +10,9 @@ exercised. Each runner below is driven with its children faked so that EVERY run
 exactly the way a real kill looks (the bound method failing by an AssertionError carrying its clause). Before this lane
 each runner counted those as kills; now each runs the unmutated selection first and raises mutation_baseline.BaselineRed
 (exit 3) before it starts or counts a single mutant. The controls show a green baseline still lets the mutants run.
+
+T104Round2 holds the round-1 review of fcf3401's findings: the runners it found unguarded (test_rehearsals is in
+WITNESS_RUNNERS), each driven red with no mutant applied, and a check that raises on the unmutated code.
 
 No model, no network, no real child process (subprocess.run is faked), stdlib only.
 """
@@ -149,7 +153,7 @@ def _generated(modname, owner):
 WITNESS_RUNNERS = (_named("test_walk_runner"), _named("test_walk_layout"), _named("test_env_allowlist"),
                    _named("test_walk_builders"), _named("test_holdout_digests"), _named("test_cp6_wiring"),
                    _named("test_walk_plan"), _named("test_cp8_prep"), _named("test_run_builders"),
-                   _named("test_config_folder"), _all("test_prereg_order"), _all("test_prereg_status"),
+                   _named("test_config_folder"), _all("test_prereg_order"), _all("test_prereg_status"), _all("test_rehearsals"),
                    _grouped("test_ci_job"), _grouped("test_build_draft"), _stub("test_stub_agents"))
 GENERATED_RUNNERS = (_generated("test_walk_runner", lambda m: importlib.import_module("walk_mutation")),
                      _generated("test_walk_builders", lambda m: m),
@@ -314,6 +318,118 @@ class T104InProcessSweeps(unittest.TestCase):
         self.assertIsInstance(code, mb.BaselineRed, f"T104.in-process: test_review_kit returned {code!r}: "
                                                     f"{out.getvalue()[-400:]}")
         self.assertNotIn(": RED", out.getvalue(), "T104.in-process: test_review_kit credited a witness")
+
+
+def refused(call):
+    """(the BaselineRed raised, or what the call returned, printed text)."""
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        try:
+            got = call()
+        except mb.BaselineRed as e:
+            got = e
+    return got, out.getvalue()
+
+
+def boom(*a, **k):
+    raise RuntimeError("t104: a check that raises on the unmutated code")
+
+
+class T104Round2(unittest.TestCase):
+    """Round-1 review of fcf3401 (CHANGES): the runners it found unguarded, each driven red with no mutant applied."""
+
+    def assertRefused(self, got, printed, who, why=None):
+        self.assertIsInstance(got, mb.BaselineRed, f"T104.r2: {who} returned {got!r}: {printed[-500:]}")
+        self.assertEqual(got.code, mb.BASELINE_RED_EXIT, f"T104.r2: {who}")
+        self.assertIn(f"{who} BASELINE RED", printed, f"T104.r2: {who}")
+        self.assertNotRegex(printed, r"(?m)^red |: RED\b|\bKILLED\b", f"T104.r2: {who} credited a kill")
+        if why:
+            self.assertIn(why, got.why, f"T104.r2: {who}")
+
+    # finding 2, and 7 for the three in-process sweeps
+    def test_gemini_adapter_sweep_refuses_a_red_baseline(self):
+        mod = importlib.import_module("test_gemini_adapter")
+        for case, fake in (("red", mock.Mock(return_value=["S9: red on any module"])), ("raises", boom)):
+            with self.subTest(case=case), mock.patch.object(mod, "all_checks", fake), \
+                    mock.patch.object(mod, "run_mutant", wraps=mod.run_mutant) as ran:
+                got, printed = refused(lambda: mod.mutation_sweep(0, 10 ** 6))
+                self.assertRefused(got, printed, "test_gemini_adapter generated mutants",
+                                   "raised" if case == "raises" else None)
+                self.assertEqual(ran.call_count, 0, "T104.r2: test_gemini_adapter ran a mutant first")
+
+    def test_a_raising_check_is_a_red_baseline_in_every_in_process_sweep(self):
+        ca = importlib.import_module("test_codex_adapter")
+        with mock.patch.object(ca, "TC_CHECKS", ()), mock.patch.object(ca, "CA_CHECKS", (boom,)):
+            got, printed = refused(lambda: ca.run_generated(1, 10 ** 6))
+        self.assertRefused(got, printed, "test_codex_adapter generated mutants", "raised")
+        lb = importlib.import_module("test_labelling")
+        with mock.patch.object(lb, "all_checks", boom):
+            got, printed = refused(lambda: lb.mutation_sweep(0, 10 ** 6))
+        self.assertRefused(got, printed, "test_labelling generated mutants", "raised")
+
+    # finding 3: the five in-process witness runners and native_snapshot
+    def test_codex_agents_off(self):
+        mod = importlib.import_module("test_codex_agents_off")
+        fakes = {c: (lambda: []) for c in mod.CHECKS}
+        fakes[mod.MUTANTS[0][2]] = lambda: ["red with no mutant"]
+        with mock.patch.dict(mod.CHECKS, fakes):
+            got, printed = refused(mod.witnesses)
+        self.assertRefused(got, printed, "test_codex_agents_off witnesses")
+
+    def test_vendor_bookkeeping(self):
+        mod = importlib.import_module("test_vendor_bookkeeping")
+        fakes = {c: (lambda: []) for c in mod.CHECKS}
+        fakes[mod.MUTANTS[0][2]] = lambda: ["red with no mutant"]
+        with mock.patch.dict(mod.CHECKS, fakes):
+            got, printed = refused(mod.witnesses)
+        self.assertRefused(got, printed, "test_vendor_bookkeeping witnesses")
+
+    def test_codex_patch_reads(self):
+        mod = importlib.import_module("test_codex_patch_reads")
+        fakes = {c: (rel, lambda m: []) for c, (rel, _) in mod.CHECKS.items()}
+        rel0 = mod.CHECKS[mod.MUTANTS[0][3]][0]
+        fakes[mod.MUTANTS[0][3]] = (rel0, lambda m: ["red with no mutant"])
+        with mock.patch.dict(mod.CHECKS, fakes):
+            got, printed = refused(mod.witnesses)
+        self.assertRefused(got, printed, "test_codex_patch_reads witnesses")
+
+    def test_codex_started_file_change(self):
+        mod = importlib.import_module("test_codex_started_file_change")
+        fakes = {c: (lambda m: []) for c in mod.CHECKS}
+        fakes[mod.MUTANTS[0][2]] = lambda m: ["red with no mutant"]
+        with mock.patch.dict(mod.CHECKS, fakes):
+            got, printed = refused(mod.witnesses)
+        self.assertRefused(got, printed, "test_codex_started_file_change witnesses")
+
+    def test_codex_usage_source(self):
+        mod = importlib.import_module("test_codex_usage_source")
+        with mock.patch.object(mod, "problems", return_value=["U1: red with no mutant"]):
+            got, printed = refused(mod.witnesses)
+        self.assertRefused(got, printed, "test_codex_usage_source witnesses")
+
+    def test_native_snapshot_one_locator_red_alone(self):
+        mod = importlib.import_module("test_native_snapshot")
+
+        def refuses(self_, m=None):
+            raise mod.ns().SnapshotRefused("red with no mutant (codex alone)")
+        with mock.patch.object(mod.BoxRootNaming, "codex", refuses):
+            got, printed = refused(mod.witnesses)
+        self.assertRefused(got, printed, "test_native_snapshot witnesses", "SnapshotRefused")
+
+    # finding 5: the endstate control refuses before any witness child
+    def test_endstate_control_refuses_before_any_witness(self):
+        mod = importlib.import_module("test_endstate")
+        asked = []
+
+        def child(arg):
+            asked.append(arg)
+            return (subprocess.CompletedProcess(["fake"], 1, "", ""),
+                    {"run": 1, "failures": {"A.test_a": ["AssertionError: S7-D1.x"]}, "errors": [], "skipped": []})
+        with mock.patch.object(mod, "_child", child):
+            got, printed = refused(mod.run_witnesses)
+        self.assertRefused(got, printed, "test_endstate S7 witnesses")
+        self.assertTrue(asked and all(a.startswith("control:") for a in asked),
+                        f"T104.r2: test_endstate ran a witness child over a red control: {asked}")
 
 
 if __name__ == "__main__":

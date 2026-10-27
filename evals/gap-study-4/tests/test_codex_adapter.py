@@ -2000,7 +2000,7 @@ def baseline_lines() -> list:
 
 def run_generated(shard: int, of: int) -> int:
     import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
-    mutation_baseline.require_no_lines("test_codex_adapter generated mutants", baseline_lines())
+    mutation_baseline.require_clean("test_codex_adapter generated mutants", baseline_lines)
     muts = all_mutants()
     keys = {m[0] for m in muts}
     stale = sorted(k for k in EQUIVALENT if k not in keys)

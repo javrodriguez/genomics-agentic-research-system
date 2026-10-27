@@ -254,6 +254,11 @@ CHECKS = {"admit": admit_problems, "status": status_problems, "view": view_probl
 
 def witnesses() -> list:
     """Each mutant alone, applied to this tree's module: (name, its check, red?, every check it turns red)."""
+    import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    def unmutated():
+        mod = mutant(())
+        return [f"{c}: {x}" for c in CHECKS for x in CHECKS[c](mod)]
+    mutation_baseline.require_clean("test_codex_started_file_change witnesses", unmutated)
     out = []
     for name, edits, check in MUTANTS:
         mod = mutant(edits)

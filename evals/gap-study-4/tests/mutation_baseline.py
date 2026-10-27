@@ -13,8 +13,36 @@ Green means all of: exit 0; unittest's own `Ran N tests` line with N >= 1; no `F
 the runner prints a `<tag> outcomes: {...}` line, its failures and errors both empty. A skip is not red here (a skipped
 test kills nothing); each runner's own rules on skips stay as they were.
 
-In-process sweeps (the ones that run checks on modules built in memory) hand require_no_lines the lines their checks
-print over the unmutated files; any line refuses the same way.
+In-process runners (the ones that run checks on modules built in memory) hand require_clean a function computing the
+lines their checks print over the unmutated code; any line refuses the same way, and so does a check that raises.
+
+WHO USES IT (round 2 of the lane, after the round-1 review of fcf3401; tests/test_mutation_baseline.py drives each):
+  subprocess --witnesses, the bound methods' union or the whole file first (require_green): build_draft, ci_job,
+    config_folder, cp6_wiring, cp8_prep, env_allowlist, holdout_digests, prereg_order, prereg_status, rehearsals,
+    run_builders, stub_agents, walk_builders, walk_layout, walk_plan, walk_runner;
+  subprocess --generated-mutants, GENERATED_ORDER first (require_green): env_allowlist, run_builders, walk_builders,
+    walk_runner;
+  in-process --generated-mutants (require_clean): codex_adapter, gemini_adapter, labelling;
+  in-process --witnesses (require_clean): codex_agents_off, codex_patch_reads, codex_started_file_change,
+    codex_usage_source, native_snapshot (both locators on the real module), review_kit (each bound test, unmutated),
+    vendor_bookkeeping;
+  test_endstate --witnesses: its own unmutated control runs first, and a control that is not clean now refuses (refuse)
+    before any witness child.
+EXEMPT, each already controlled by its own code:
+  test_walk_plan --generated-mutants: re-emits the unmutated module and returns 1, before any mutant, when it fails;
+  test_gemini_tool_registry and test_gemini_undeclared_args --witnesses: return 1, before any witness, when the
+    unmutated table or reader is not green;
+  the TestWitnesses classes of codex_adapter, gemini_adapter and labelling (--witnesses): each witness asserts its
+    bound check green on the real module before mutating it;
+  test_pf1_freeze_gates TestWitnesses: in-suite only (no --witnesses command, though its docstring names one); each
+    clause's own test runs green on the unmutated code in the same battery, so a red clause fails the battery;
+  walk_mutation.py generates mutants and runs none; test_pipeline.py's --mutant has no runner of its own.
+These exempt runners exit 1, not BASELINE_RED_EXIT, on a red baseline; fail-closed, recorded, not changed here.
+
+RESIDUAL (review finding 6, recorded, not fixed): a witness baseline runs the union of its bound methods in one
+process, while each mutant child runs one method alone (or the whole file); a test green in the union but red alone
+(order or shared-state dependent) would still be credited, and one baseline run cannot catch a flaky test. A red in
+the union only ever refuses, so nothing is over-counted the other way.
 """
 from __future__ import annotations
 
@@ -80,6 +108,17 @@ def require_green(runner: str, argv: list, *, timeout: float, tag: str | None = 
         refuse(runner, why, ((got.stdout or "")[-2000:] + (got.stderr or "")[-2000:]).strip())
     ran = re.findall(r"^Ran (\d+) tests? in ", (got.stdout or "") + "\n" + (got.stderr or ""), re.M)
     print(f"{runner} baseline: green, unmutated ({ran[-1]} tests ran)", flush=True)
+
+
+def require_clean(runner: str, compute) -> None:
+    """In-process runners: `compute()` returns the lines their checks print over the unmutated code. Any line refuses,
+    and so does an exception raised while computing them (a crash on the unmutated code is a red baseline, named as
+    one with exit 3, never a traceback)."""
+    try:
+        lines = list(compute())
+    except Exception as e:  # noqa: BLE001 - any failure on the unmutated code is red
+        refuse(runner, f"a check raised on the unmutated code: {type(e).__name__}: {str(e)[:300]}")
+    require_no_lines(runner, lines)
 
 
 def require_no_lines(runner: str, lines: list) -> None:
