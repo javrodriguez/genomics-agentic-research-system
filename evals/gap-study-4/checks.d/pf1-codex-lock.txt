@@ -1,0 +1,8 @@
+# Lane pf1-codex-lock: Gap Study round 4, glitch-45's ruling of Tue 27 Oct 2026 (arm O walk w-o58 held at pre-2 on
+# ".sqlite-maintenance.lock: neither placed nor on codex's allow-list"): Codex's state-database reclamation lock is
+# admitted in the config folder by its exact name, as an unread file; every other unknown name still refuses. The
+# witnesses are test_config_folder's registry (the lock-* names), each red alone. One command per line, run from the
+# repository root. No walk, model, container or network.
+python3 -B -W ignore evals/gap-study-4/tests/test_config_folder.py C15MaintenanceLock C14SandboxMarker
+python3 -B -W ignore evals/gap-study-4/tests/test_config_folder.py --witnesses lock-row-absent lock-row-absent-e2e lock-row-read lock-name-suffix lock-name-nested lock-name-any-case lock-name-any-lock lock-name-any lock-row-a-dir lock-gemini-admitted lock-sibling-codex-moved lock-sibling-named-moved sibling-codex-moved sibling-gemini-moved
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/run_take.py check_take.py tests/test_config_folder.py checks.d/pf1-codex-lock.txt

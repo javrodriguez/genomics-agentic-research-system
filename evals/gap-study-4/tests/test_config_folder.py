@@ -1084,7 +1084,8 @@ class C14SandboxMarker(Case):
 
     def test_the_other_admissions_are_unchanged(self):
         """B20-4: the Gemini allow-list, both refused-by-name lists, the placed sets and the checked harnesses (arm A
-        is not among them) are byte-identical to the base; codex's allow-list is the base plus the one marker row."""
+        is not among them) are byte-identical to the base; codex's allow-list is the base plus the one marker row
+        (and, since lane pf1-codex-lock, its one lock row, which C15 binds against that lane's base)."""
         m = self.api()
         digest = lambda o: hashlib.sha256(repr(o).encode()).hexdigest()  # noqa: E731
         for name in ("GEMINI_ALLOWED", "CONFIG_FOLDER_NAMED", "CONFIG_FOLDER_PLACED", "CONFIG_FOLDER_HARNESSES"):
@@ -1092,7 +1093,7 @@ class C14SandboxMarker(Case):
         self.assertNotIn("claude-code", m.CONFIG_FOLDER_HARNESSES, "B20-4.siblings: arm A is config-folder checked")
         rows = [r for r in m.CODEX_ALLOWED if r[0] == r"\.sandbox_migration"]
         self.assertEqual(len(rows), 1, "B20-4.codex: codex's allow-list does not hold exactly one marker row")
-        base = tuple(r for r in m.CODEX_ALLOWED if r is not rows[0])
+        base = tuple(r for r in m.CODEX_ALLOWED if r is not rows[0] and r[0] != r"\.sqlite-maintenance\.lock")
         self.assertEqual(digest(base), B20_BASE_TABLES["CODEX_ALLOWED"],
                          "B20-4.codex: codex's allow-list moved beyond the one marker row")
 
@@ -1138,6 +1139,194 @@ class C14SandboxMarker(Case):
         self.assertEqual(len(t.box.censuses()), 3, "B20-3.e2e: the check is not one census per turn")
         reads = [c[c.index(ow.READ_PROGRAM) + 1] for c in t.box.reads()]
         self.assertEqual(reads.count(MARKER), 2, f"B20-3.e2e: the marker was not read before turns 2 and 3: {reads}")
+
+
+# ---------------------------------------------------------------------------------- C15 (lane pf1-codex-lock)
+# glitch-45's ruling (Tue 27 Oct 2026, under Javier's standing delegation; arm O walk w-o58, gpt-6.1-sol, held at pre-2
+# on ".sqlite-maintenance.lock: neither placed nor on codex's allow-list"). The pinned Codex (rust-v0.162.1,
+# state/src/runtime/reclamation.rs 17, 28-30, 37-67, 115-129) spawns one reclamation worker per state runtime
+# (state/src/runtime.rs 258); after its first 60 s sleep it opens <sqlite home>/.sqlite-maintenance.lock (create,
+# truncate false, never written) and try_locks it, so a turn that outlives the sleep leaves the empty file in
+# CODEX_HOME. Admitted by exact name as a file, read rule None, beside the state databases' row it serves.
+LOCK = ".sqlite-maintenance.lock"
+# The config folder w-o58's postflight recorded (rehearsals/w-o58/postflight.json, recorded.listing on athena, read
+# Tue 27 Oct 2026, 107 paths): every path but the 70 under skills/.system/, which the C2 demo skill stands in for (the
+# manifest is patched to it, as in C2). The held check refused this folder with exactly one problem, the lock's.
+HELD_W_O58 = (
+    ".sandbox_migration", LOCK, "auth.json", "cache", "cache/codex_apps_server_info",
+    "cache/codex_apps_server_info/2c1e1b23469415c39f41717ac15c00922377b7bd.json", "cache/codex_apps_tools",
+    "cache/codex_apps_tools/2c1e1b23469415c39f41717ac15c00922377b7bd.json", "config.toml", "goals_1.sqlite",
+    "goals_1.sqlite-shm", "goals_1.sqlite-wal", "installation_id", "logs_2.sqlite", "memories_1.sqlite",
+    "memories_1.sqlite-shm", "memories_1.sqlite-wal", "models_cache.json", "queue_1.sqlite", "queue_1.sqlite-shm",
+    "queue_1.sqlite-wal", "sessions", "sessions/2026", "sessions/2026/10", "sessions/2026/10/27",
+    "sessions/2026/10/27/rollout-2026-10-27T04-06-52-01a17b8a-1f80-7a90-89b9-e372913ec8f6.jsonl", "shell_snapshots",
+    "skills", "skills/.system", "state_5.sqlite", "state_5.sqlite-shm", "state_5.sqlite-wal", "thread-writer-locks",
+    "thread-writer-locks/.coordination.lock", "thread_history_1.sqlite", "tmp", "tmp/arg0",
+)
+HELD_DIRS = {"cache", "cache/codex_apps_server_info", "cache/codex_apps_tools", "sessions", "sessions/2026",
+             "sessions/2026/10", "sessions/2026/10/27", "shell_snapshots", "skills", "skills/.system",
+             "thread-writer-locks", "tmp", "tmp/arg0"}
+# CODEX_ALLOWED at 3d278db9 (this lane's base), sha256(repr(table)): the lane adds the one lock row and nothing else.
+PF1_LOCK_BASE_CODEX_ALLOWED = "5ecababae3f4a2017b01c2af4b3a0c1159cce221b37fd0fc958f286feb7fb0c9"
+
+
+def put_lock(cfg: Path, *, rel=LOCK, mode=0o644):
+    """The lock as the pinned CLI leaves it: created empty (OpenOptions create, truncate false), never written."""
+    p = cfg / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    os.close(os.open(p, os.O_RDWR | os.O_CREAT, mode))
+    os.chmod(p, mode)
+    return p
+
+
+def held_folder(t) -> None:
+    """Fill a fresh codex Take's folder with w-o58's recorded postflight listing (the placed config.toml and auth.json
+    are take_config.write's and place_lease's), each file in the shape its writer leaves."""
+    for rel in HELD_W_O58:
+        if rel in ("config.toml", "auth.json"):
+            continue
+        if rel in HELD_DIRS:
+            (t.cfg / rel).mkdir(parents=True, exist_ok=True)
+        elif rel == MARKER:
+            put_marker(t.cfg)
+        elif rel == LOCK:
+            put_lock(t.cfg)
+        elif rel == "installation_id":
+            t.put(rel, str(uuid.UUID(int=0x1234, version=4)).encode())
+        elif ".sqlite" in rel:
+            t.put(rel, b"SQLite format 3\0")
+        elif rel.endswith(".jsonl"):
+            t.put(rel, b'{"type":"session_meta"}\n')
+        elif rel.endswith(".lock"):
+            t.put(rel)
+        else:
+            t.put(rel, b"{}")
+    t.put("skills/.system/demo/SKILL.md", DEMO_SKILL)
+    t.put("skills/.system/demo/scripts/run.py", b"print(1)\n")
+    t.put("skills/.system/.codex-system-skills.marker", b"8a1b2c3d4e5f6071\n")
+
+
+class C15MaintenanceLock(Case):
+    def held(self, *, lock=True):
+        t = Take(self, "codex")
+        held_folder(t)
+        if not lock:
+            os.unlink(t.cfg / LOCK)
+        return t
+
+    def problems(self, t, turn=2):
+        m = rt()
+        with mock.patch.object(m, "CODEX_SYSTEM_SKILLS", DEMO_MANIFEST):
+            return t.problems(turn)
+
+    def test_the_held_w_o58_folder_passes_pre_two(self):
+        """pf1-codex-lock: w-o58's held folder (its recorded listing, the lock included) passes before turns 2 and 5;
+        without the lock it passed at the base too, so the lock was the one refusal. The row is a file, never read,
+        and cites the pinned source."""
+        m = self.api()
+        t = self.held()
+        listed = sorted(p.relative_to(t.cfg).as_posix() for p in t.cfg.rglob("*")
+                        if not p.relative_to(t.cfg).as_posix().startswith("skills/.system/"))
+        self.assertEqual(listed, sorted(HELD_W_O58), "PF1-LOCK.held: the rebuilt folder is not w-o58's listing")
+        self.none(self.problems(t, 2), "PF1-LOCK.held", "w-o58's held codex folder before turn 2")
+        self.none(self.problems(t, 5), "PF1-LOCK.held", "w-o58's held codex folder before turn 5")
+        self.none(self.problems(self.held(lock=False)), "PF1-LOCK.held", "w-o58's folder without the lock")
+        got = m._allowed("codex", LOCK, str(t.tree))
+        self.assertIsNotNone(got, "PF1-LOCK.held: the lock is not on codex's allow-list")
+        self.assertEqual(got[:2], ("file", None), "PF1-LOCK.row: the lock is not admitted as an unread file")
+        self.assertIn("state/src/runtime/reclamation.rs", got[2], "PF1-LOCK.row: the row cites no pinned source")
+        reads = [c[c.index(ow.READ_PROGRAM) + 1] for c in t.box.reads()]
+        self.assertNotIn(LOCK, reads, "PF1-LOCK.row: the lock's bytes were read")
+        f = Take(self, "codex")
+        put_lock(f.cfg)
+        self.refused(f.problems(1), "PF1-LOCK.turn-one", "the lock before turn 1", LOCK, "placed set")
+
+    def test_another_unknown_name_still_refuses(self):
+        """pf1-codex-lock, default deny: any other name beside the lock (a near miss of it, or a name nothing admits)
+        still refuses, named, in w-o58's held folder."""
+        self.api()
+        for rel in (f"{LOCK}.bak", ".Sqlite-Maintenance.lock", ".sqlite-maintenance.lck", "sqlite-maintenance.lock",
+                    "state_5.sqlite-maintenance.lock", f"tmp/{LOCK}", f"sessions/{LOCK}", f"cache/{LOCK}",
+                    ".other-maintenance.lock", "unknown.txt"):
+            t = self.held(lock=rel.lower() != LOCK)        # a case-folding disk (the Mac's) holds one of the two
+            put_lock(t.cfg, rel=rel)
+            with self.subTest(rel=rel):
+                self.refused(self.problems(t), "PF1-LOCK.deny", f"{rel} beside the lock", rel,
+                             "neither placed nor on codex's allow-list")
+
+    def test_the_lock_shapes_refuse(self):
+        """pf1-codex-lock: a folder, a link, a second hard link, a fifo at the lock's name refuse."""
+        self.api()
+        cases = (
+            ("a folder", lambda t: (t.cfg / LOCK).mkdir(mode=0o700), "admits only a file"),
+            ("a link to the lease", lambda t: os.symlink("auth.json", t.cfg / LOCK), "admits only a file"),
+            ("a hard link", lambda t: os.link(put_lock(t.cfg), t.cfg / ".tmpAbC123"), "2 links"),
+            ("a fifo", lambda t: os.mkfifo(t.cfg / LOCK, 0o600), "special file"),
+        )
+        for why, make, needle in cases:
+            t = self.held(lock=False)
+            make(t)
+            with self.subTest(why=why):
+                self.refused(self.problems(t), "PF1-LOCK.shape", f"{why} at the lock's name", LOCK, needle)
+
+    def test_the_lock_is_codex_only(self):
+        """pf1-codex-lock: the lock in a gemini folder refuses, as before."""
+        self.api()
+        g = Take(self, "gemini")
+        g.gemini_turn_one()
+        put_lock(g.cfg)
+        self.refused(g.problems(2), "PF1-LOCK.gemini", "the lock in a gemini folder", LOCK,
+                     "neither placed nor on gemini's allow-list")
+
+    def test_codex_allow_list_is_the_base_plus_one_row(self):
+        """pf1-codex-lock: codex's allow-list is the base's plus exactly one row, the lock's by its exact name; every
+        other admission table is B20's base, byte-identical."""
+        m = self.api()
+        digest = lambda o: hashlib.sha256(repr(o).encode()).hexdigest()  # noqa: E731
+        rows = [r for r in m.CODEX_ALLOWED if re.fullmatch(r[0], LOCK)]
+        self.assertEqual([r[0] for r in rows], [r"\.sqlite-maintenance\.lock"],
+                         "PF1-LOCK.table: the lock is not admitted by exactly its one exact-name row")
+        base = tuple(r for r in m.CODEX_ALLOWED if r is not rows[0])
+        self.assertEqual(digest(base), PF1_LOCK_BASE_CODEX_ALLOWED,
+                         "PF1-LOCK.table: codex's allow-list moved beyond the one lock row")
+        for name in ("GEMINI_ALLOWED", "CONFIG_FOLDER_NAMED", "CONFIG_FOLDER_PLACED", "CONFIG_FOLDER_HARNESSES"):
+            self.assertEqual(digest(getattr(m, name)), B20_BASE_TABLES[name], f"PF1-LOCK.table: {name} moved")
+
+    def test_a_turn_that_leaves_the_lock_reaches_turns_two_and_three(self):
+        """pf1-codex-lock, end to end: three turns through run_take.run_turn on the real check; the fake CLI writes
+        w-o58's folder on its first exec (the lock included), and turns 2 and 3 reach their exec."""
+        m = self.api()
+        t = Take(self, "codex")
+        execs = []
+
+        class CliBox(Box):
+            def run(self, argv, *, env=None, timeout=None):
+                if list(argv)[1:2] != ["exec"]:
+                    return super().run(argv, env=env, timeout=timeout)
+                self.calls.append(list(argv))
+                execs.append(list(argv))
+                if len(execs) == 1:
+                    held_folder(t)
+                return REAL_RT.Completed(0, "", "")
+        t.box = CliBox()
+        folder = t.folder()
+        streams = Path(os.path.realpath(tempfile.mkdtemp(prefix="pf1lock-")))
+        self.addCleanup(__import__("shutil").rmtree, streams, True)
+
+        def exec_argv(take_id, inner, **kw):
+            return ["docker", "exec", "--user", m.AGENT_USER, take_id, *inner], {}
+        inner = ["codex", "exec", "--json", "-m", MODELS["codex"], "--dangerously-bypass-approvals-and-sandbox", "go"]
+        with mock.patch.object(m, "exec_argv", exec_argv), mock.patch.object(m, "CODEX_SYSTEM_SKILLS", DEMO_MANIFEST):
+            for n in (1, 2, 3):
+                try:
+                    m.run_turn(t.box, "d" * 64, inner, harness="codex", run_tree=str(t.tree), login_file="/unused",
+                               stream_path=str(streams / f"turn-{n}.jsonl"), budget_s=5, clock=lambda: 1.0,
+                               config_folder=folder, turn=n)
+                except m.ConfigFolderRefused as e:
+                    self.fail(f"PF1-LOCK.e2e: turn {n} was refused before its exec: pre-{n}: the config folder: "
+                              f"{'; '.join(e.problems)}")
+        self.assertEqual(len(execs), 3, "PF1-LOCK.e2e: not every turn reached its exec")
+        self.assertTrue((t.cfg / LOCK).is_file(), "PF1-LOCK.e2e: the fake CLI left no lock")
 
 
 # ------------------------------------------------------------------------------------------------- witnesses
@@ -1248,6 +1437,31 @@ def mutants() -> dict:
                                  "\"[C] 252893-252912, 252960-252981\"),"),
         "sibling-codex-moved": ("B20-4.codex", "models-manager/src/cache.rs 241-247\"),",
                                 "models-manager/src/cache.rs 241-248\"),"),
+        # Lane pf1-codex-lock (glitch-45's ruling, 27 Oct 2026): the lock row's guards and its near misses.
+        "lock-row-absent": ("PF1-LOCK.held", "    (r\"\\.sqlite-maintenance\\.lock\", \"file\", None,",
+                            "    (r\"\\.sqlite-maintenance\\.lockX\", \"file\", None,"),
+        "lock-row-absent-e2e": ("PF1-LOCK.e2e", "    (r\"\\.sqlite-maintenance\\.lock\", \"file\", None,",
+                                "    (r\"\\.sqlite-maintenance\\.lockX\", \"file\", None,"),
+        "lock-row-read": ("PF1-LOCK.held", "    (r\"\\.sqlite-maintenance\\.lock\", \"file\", None,",
+                          "    (r\"\\.sqlite-maintenance\\.lock\", \"file\", \"uuid\","),
+        "lock-name-suffix": ("PF1-LOCK.deny", "    (r\"\\.sqlite-maintenance\\.lock\", \"file\",",
+                             "    (r\"\\.sqlite-maintenance\\.l.*\", \"file\","),
+        "lock-name-nested": ("PF1-LOCK.deny", "    (r\"\\.sqlite-maintenance\\.lock\", \"file\",",
+                             "    (r\"(?:.*/)?\\.sqlite-maintenance\\.lock\", \"file\","),
+        "lock-name-any-case": ("PF1-LOCK.deny", "    (r\"\\.sqlite-maintenance\\.lock\", \"file\",",
+                               "    (r\"(?i)\\.sqlite-maintenance\\.lock\", \"file\","),
+        "lock-name-any-lock": ("PF1-LOCK.deny", "    (r\"\\.sqlite-maintenance\\.lock\", \"file\",",
+                               "    (r\".*maintenance\\.lock\", \"file\","),
+        "lock-name-any": ("PF1-LOCK.deny", "    (r\"\\.sqlite-maintenance\\.lock\", \"file\",",
+                          "    (r\"\\.sqlite-maintenance\\.lock|unknown\\.txt\", \"file\","),
+        "lock-row-a-dir": ("PF1-LOCK.shape", "    (r\"\\.sqlite-maintenance\\.lock\", \"file\",",
+                           "    (r\"\\.sqlite-maintenance\\.lock\", \"dir\","),
+        "lock-gemini-admitted": ("PF1-LOCK.gemini", "GEMINI_ALLOWED = (\n",
+                                 "GEMINI_ALLOWED = (\n    (r\"\\.sqlite-maintenance\\.lock\", \"file\", None, \"x\"),\n"),
+        "lock-sibling-codex-moved": ("PF1-LOCK.table", "models-manager/src/cache.rs 241-247\"),",
+                                     "models-manager/src/cache.rs 241-248\"),"),
+        "lock-sibling-named-moved": ("PF1-LOCK.table", "        (r\"hooks\\.json\", \"hook config",
+                                     "        (r\"hooksX\\.json\", \"hook config"),
     }
 
 
@@ -1299,6 +1513,16 @@ METHOD = {
     "marker-gemini-admitted": "C14SandboxMarker.test_the_marker_is_codex_only",
     **{n: "C14SandboxMarker.test_the_other_admissions_are_unchanged" for n in ("sibling-gemini-moved",
                                                                               "sibling-codex-moved")},
+    **{n: "C15MaintenanceLock.test_the_held_w_o58_folder_passes_pre_two" for n in ("lock-row-absent",
+                                                                                  "lock-row-read")},
+    "lock-row-absent-e2e": "C15MaintenanceLock.test_a_turn_that_leaves_the_lock_reaches_turns_two_and_three",
+    **{n: "C15MaintenanceLock.test_another_unknown_name_still_refuses" for n in ("lock-name-suffix", "lock-name-nested",
+                                                                                "lock-name-any-case",
+                                                                                "lock-name-any-lock", "lock-name-any")},
+    "lock-row-a-dir": "C15MaintenanceLock.test_the_lock_shapes_refuse",
+    "lock-gemini-admitted": "C15MaintenanceLock.test_the_lock_is_codex_only",
+    **{n: "C15MaintenanceLock.test_codex_allow_list_is_the_base_plus_one_row" for n in ("lock-sibling-codex-moved",
+                                                                                       "lock-sibling-named-moved")},
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 
