@@ -16,7 +16,8 @@ stream holds two, each followed by its item.completed (types, keys and counts on
              between two commands) passes check_record and decode line by line, and read_stream reads it: one
              turn.completed, the file_change's id among the tool ids (on 19c7a88f: refused for the stated reason).
   F2-status  a started file_change is admitted only with the table's keys and status exactly "in_progress": a status
-             of "completed", "failed" or 5, no status, an extra key, or a `delete` change (B22-7) is refused; the
+             of "completed", "failed" or 5, no status, an extra key, or a change kind off the tables (B22-7; a
+             `delete` is in them since lane pf1-codex-fcdelete, so `rename` stands for it) is refused; the
              completed record's status stays unpinned.
   F3-view    through a COPY of PARSERS: the view holds shell 1, edit 2, shell 3, each with its one result, exactly as
              the completed-only stream reads (no phantom call). Lane vendor-b23 (glitch-26's ruling Q1, option C): the
@@ -128,7 +129,7 @@ REFUSED_STARTED = {
     "no status": {"type": "item.started", "item": {"id": "item_1", "type": "file_change",
                                                    "changes": [{"path": f"{RUN}/a", "kind": "update"}]}},
     "an extra key": fc("item.started", 1, "in_progress", diff="+x"),
-    "a delete change (B22-7)": fc("item.started", 1, "in_progress", kind="delete"),
+    "a change kind off the tables (B22-7; pf1-codex-fcdelete)": fc("item.started", 1, "in_progress", kind="rename"),
     "an empty change list": {"type": "item.started", "item": {"id": "item_1", "type": "file_change", "changes": [],
                                                               "status": "in_progress"}},
 }
@@ -142,9 +143,14 @@ def status_problems(mod=tc) -> list:
             mod.check_record(fc("item.completed", 1, status))
         except mod.ShapeError as e:
             out.append(f"a completed file_change with status {status} was refused: {e}")
-    got = refusal(lambda: mod.check_record(fc("item.completed", 1, "completed", kind="delete")), mod.ShapeError)
+    got = refusal(lambda: mod.check_record(fc("item.completed", 1, "completed", kind="rename")), mod.ShapeError)
     if got:
-        out.append(f"a completed file_change with a delete change {got}")
+        out.append(f"a completed file_change with a change kind off the tables {got}")
+    for event, status in (("item.started", "in_progress"), ("item.completed", "completed")):
+        try:                     # lane pf1-codex-fcdelete (w-o76): a delete is in the tables, in both events
+            mod.check_record(fc(event, 1, status, kind="delete"))
+        except mod.ShapeError as e:
+            out.append(f"a {event} file_change with a delete change was refused: {e}")
     return out
 
 

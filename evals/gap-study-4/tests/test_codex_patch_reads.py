@@ -24,7 +24,8 @@ T-8:file-change leg had no reader.
                same id, are refused.
   N1-project   codex_native.read_rollout projects a FileChange item on its pinned shape: one file_change output with
                its status and its changes sorted by path (on a76b4dd2: refused, "unsupported in this subset").
-  N2-shape     a FileChange off its pinned shape is refused: a delete change (Q4, Q-w11a-3), an auto_approved key, a
+  N2-shape     a FileChange off its pinned shape is refused: a change kind off the tables (Q4; a delete is in them
+               since lane pf1-codex-fcdelete), a delete with an extra key, an auto_approved key, a
                status of in_progress or 5, no stdout, empty changes, a change without move_path or with a move_path of
                5, an add with an extra key.
   N3-join      read_exec reads a completed file_change and join matches it to the rollout's by order: equal counts,
@@ -288,7 +289,10 @@ def project_problems(cn=None) -> list:
 
 
 SHAPE_REFUSALS = {
-    "a delete change (Q4, Q-w11a-3)": file_change_item(kind="delete"),
+    "a change kind off the tables (Q4; pf1-codex-fcdelete)": dict(file_change_item(), changes={
+        PATH_A: {"type": "rename", "content": "x\n"}}),
+    "a delete with an extra key": dict(file_change_item(), changes={
+        PATH_A: {"type": "delete", "content": "x\n", "move_path": None}}),
     "an auto_approved key": file_change_item(auto_approved=True),
     "status in_progress": file_change_item(status="in_progress"),
     "status 5": file_change_item(status=5),
@@ -523,11 +527,10 @@ MUTANTS = [
                                     ("    if set(item) != set(FILE_CHANGE_KEYS):\n",
                                      "    if not set(FILE_CHANGE_KEYS) - {\"auto_approved\"} <= set(item) "
                                      "<= set(FILE_CHANGE_KEYS):\n")), "shape"),
-    ("delete-admitted", CN, (('FILE_CHANGE_KINDS = {"add": ("type", "content"), "update": ("type", "unified_diff", '
-                              '"move_path")}',
-                              'FILE_CHANGE_KINDS = {"add": ("type", "content"), "delete": ("type", "content"), '
-                              '"update": ("type", "unified_diff", "move_path")}'),
-                             ('        if kind == "delete":\n', "        if False:\n")), "shape"),
+    ("unknown-kind-admitted", CN, (('        if kind not in FILE_CHANGE_KINDS or set(change) != '
+                                    'set(FILE_CHANGE_KINDS[kind]):\n',
+                                    '        if kind in FILE_CHANGE_KINDS and set(change) != '
+                                    'set(FILE_CHANGE_KINDS[kind]):\n'),), "shape"),
     ("join-paths-unread", CN, (("        if [(c.get(\"path\"), c.get(\"kind\")) for c in got] != "
                                 "[(c[\"path\"], c[\"kind\"]) for c in nat[\"changes\"]]:\n",
                                 "        if [c.get(\"kind\") for c in got] != [c[\"kind\"] for c in nat[\"changes\"]]:\n"),),
