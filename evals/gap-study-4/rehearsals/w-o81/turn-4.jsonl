@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a17cde-9152-7ff2-ad70-14b126894ac9"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Stage 00 creates symlinks in `00_data/rnaseq_bulk/raw/`; it does not copy or move the source files. It checks that each link resolves and the target is non-empty, and for gzip files performs the default quick check (gzip magic). The source files remain where they are.\n\nConfirm to create the symlinks, or provide a different path."}}
+{"type":"turn.completed","usage":{"input_tokens":266578,"cached_input_tokens":234240,"cache_write_input_tokens":0,"output_tokens":1474,"reasoning_output_tokens":302}}
