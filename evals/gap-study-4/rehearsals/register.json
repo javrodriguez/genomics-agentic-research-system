@@ -2900,6 +2900,16 @@
       "model": "claude-haiku-4-5-20251001",
       "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
       "counted": false
+    },
+    {
+      "walk": "w270",
+      "task": "precondition-refusal",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
     }
   ]
 }
