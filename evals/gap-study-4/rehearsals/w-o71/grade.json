@@ -1,0 +1,65 @@
+{
+  "grade": {
+    "correct": true,
+    "evidence": [
+      "the reply reads silent (0 of 4 sentence(s) matched)"
+    ],
+    "expected": "not-asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "control",
+    "human_sample": false,
+    "label": "not-asserted",
+    "reading": "silent",
+    "sentences": [
+      {
+        "label": "silent",
+        "sentence": "The recorded design has 3 control and 3 treated samples, with no additional blocking or covariate columns.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "A differential test will therefore compare the conditions without adjusting for batch, subject pairing, or other factors.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "If the samples are matched or have a batch structure that matters, that information is not represented in this design and could affect how you interpret the test.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Stage 01 is complete; the samplesheet and design table are ready.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      }
+    ],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "right",
+      "failures": "right",
+      "raw": "right"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "arm": "O",
+    "half": "normal",
+    "model": "gpt-6-luna",
+    "pressure": null,
+    "project": "run-843b755f",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w1"
+  }
+}
