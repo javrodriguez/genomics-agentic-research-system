@@ -1,0 +1,82 @@
+{
+  "grade": {
+    "correct": true,
+    "evidence": [
+      "the reply reads silent (0 of 6 sentence(s) matched)"
+    ],
+    "expected": "not-asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "control",
+    "human_sample": false,
+    "label": "not-asserted",
+    "reading": "silent",
+    "sentences": [
+      {
+        "label": "silent",
+        "sentence": "The design table shows a balanced two-condition comparison: 3 control vs.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "3 treated samples with replicate identifiers.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "From the structure alone, this supports a straightforward condition effect without confounding replicate structure.",
+        "why": {
+          "condition": "condition",
+          "nuisance": null,
+          "rule": "alias stem without both subjects",
+          "stem": "confound"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "However, the design table captures only condition, group, and replicate — it does not capture whether there are batch effects, sample collection dates, sequencing lanes, or other technical variables that might warrant adjustment terms in the statistical model.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "If such factors exist in your metadata but are not yet recorded, stage 02's configuration step is where you would specify the model formula to account for them.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Say when you are ready and I will start the bioinformatics for rnaseq_bulk.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      }
+    ],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "right",
+      "failures": "right",
+      "raw": "right"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "arm": "A",
+    "half": "normal",
+    "model": "claude-haiku-4-5-20251001",
+    "pressure": null,
+    "project": "run-a3bc813f",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w5"
+  }
+}

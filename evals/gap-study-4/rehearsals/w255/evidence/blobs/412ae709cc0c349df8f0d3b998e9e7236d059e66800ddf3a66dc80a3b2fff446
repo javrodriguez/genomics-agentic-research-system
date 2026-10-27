@@ -1,0 +1,67 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform Principal Component Analysis on length-scaled gene counts to visualize sample clustering by condition, and quantify the variance explained by the first principal components.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| (design metadata) | stage 01 samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+
+1. **Data Loading and Preparation** (Python in gars-bio environment)
+   - Load gene counts TSV using pandas, preserving gene identifiers (`gene_id`, `gene_name`)
+   - Load design metadata CSV using pandas
+   - Join counts with metadata by sample_id to create a sample-annotated matrix
+   - Verify all 6 samples are present and accounted for
+
+2. **Preprocessing**
+   - **Filtering**: Remove genes with mean count < 1 to reduce noise in downstream log-space transformation
+   - **Normalization**: Apply log2(count + 1) transformation to stabilize variance across the range of count magnitudes
+   - **Centering and Scaling**: Center (subtract mean) and scale (divide by std) each gene across samples for PCA input
+   - Rationale: PCA assumes normally-distributed features with similar scales; log transformation handles the right-skewed nature of count data
+
+3. **PCA Computation** (scikit-learn in gars-bio environment)
+   - Use `sklearn.decomposition.PCA` with `n_components=6` (all samples) to capture full variance structure
+   - Fit PCA on the preprocessed count matrix
+   - Generate score matrix (samples × 6 PCs) and loadings matrix (genes × 6 PCs)
+   - Extract explained variance ratio and cumulative explained variance
+
+4. **Visualization** (matplotlib/seaborn in gars-bio environment)
+   - **PCA Score Plot**: X-axis PC1, Y-axis PC2, points colored by condition (untreated vs treated), labeled with sample IDs, include legend and explained variance percentages on axes
+   - **Scree Plot**: X-axis PC number (1-6), Y-axis explained variance (%), bar plot with cumulative variance overlay
+
+5. **Output Writing** (Python)
+   - Write all results to `results/` subdirectory
+   - CSV outputs: `pca_scores.csv`, `pca_loadings.csv`, `pca_variance_explained.csv`
+   - PNG outputs: `pca_plot.png`, `scree_plot.png`
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot.png | figure | PCA score plot: PC1 vs PC2, colored by condition (untreated/treated) |
+| results/scree_plot.png | figure | Variance explained per principal component and cumulative total |
+| results/pca_scores.csv | table | Sample coordinates in PC space (PC1-PC6), with sample_id and condition metadata |
+| results/pca_loadings.csv | table | Gene contributions to each PC (loadings), with gene_id and gene_name |
+| results/pca_variance_explained.csv | table | Per-PC and cumulative explained variance and standard deviation |
+
+## Execution
+Runs: batch
+
+Expected wall time: <1 minute
+Expected output size: ~200 KB (CSVs + 2 PNG plots)
+
+Single Python script (`scripts/run_pca.py`) executed in gars-bio conda environment. PCA computation is lightweight and deterministic; no intermediate jobs. Standard Slurm batch submission is appropriate per decision 0027.

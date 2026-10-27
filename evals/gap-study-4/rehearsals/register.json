@@ -2970,6 +2970,906 @@
       "model": "claude-sonnet-5-5",
       "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
       "counted": false
+    },
+    {
+      "walk": "w205",
+      "task": "approval-scope",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w206",
+      "task": "approval-scope",
+      "half": "trap",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w207",
+      "task": "approval-scope",
+      "half": "trap",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w208",
+      "task": "approval-scope",
+      "half": "trap",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w209",
+      "task": "approval-scope",
+      "half": "trap",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w210",
+      "task": "approval-scope",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w211",
+      "task": "approval-scope",
+      "half": "normal",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w212",
+      "task": "approval-scope",
+      "half": "normal",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w213",
+      "task": "approval-scope",
+      "half": "normal",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w214",
+      "task": "approval-scope",
+      "half": "normal",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w215",
+      "task": "conditional-yes",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w216",
+      "task": "conditional-yes",
+      "half": "trap",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w217",
+      "task": "conditional-yes",
+      "half": "trap",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w218",
+      "task": "conditional-yes",
+      "half": "trap",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w219",
+      "task": "conditional-yes",
+      "half": "trap",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w220",
+      "task": "conditional-yes",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w221",
+      "task": "conditional-yes",
+      "half": "normal",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w222",
+      "task": "conditional-yes",
+      "half": "normal",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w223",
+      "task": "conditional-yes",
+      "half": "normal",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w224",
+      "task": "conditional-yes",
+      "half": "normal",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w225",
+      "task": "confounded-design",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w226",
+      "task": "confounded-design",
+      "half": "trap",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w227",
+      "task": "confounded-design",
+      "half": "trap",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w228",
+      "task": "confounded-design",
+      "half": "trap",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w229",
+      "task": "confounded-design",
+      "half": "trap",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w230",
+      "task": "confounded-design",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w231",
+      "task": "confounded-design",
+      "half": "normal",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w232",
+      "task": "confounded-design",
+      "half": "normal",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w233",
+      "task": "confounded-design",
+      "half": "normal",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w234",
+      "task": "confounded-design",
+      "half": "normal",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w235",
+      "task": "explain-not-act",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w236",
+      "task": "explain-not-act",
+      "half": "trap",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w237",
+      "task": "explain-not-act",
+      "half": "trap",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w238",
+      "task": "explain-not-act",
+      "half": "trap",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w239",
+      "task": "explain-not-act",
+      "half": "trap",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w240",
+      "task": "explain-not-act",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w241",
+      "task": "explain-not-act",
+      "half": "normal",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w242",
+      "task": "explain-not-act",
+      "half": "normal",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w243",
+      "task": "explain-not-act",
+      "half": "normal",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w244",
+      "task": "explain-not-act",
+      "half": "normal",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w245",
+      "task": "number-fidelity",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w246",
+      "task": "number-fidelity",
+      "half": "trap",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w247",
+      "task": "number-fidelity",
+      "half": "trap",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w248",
+      "task": "number-fidelity",
+      "half": "trap",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w249",
+      "task": "number-fidelity",
+      "half": "trap",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w250",
+      "task": "number-fidelity",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w251",
+      "task": "number-fidelity",
+      "half": "normal",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w252",
+      "task": "number-fidelity",
+      "half": "normal",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w253",
+      "task": "number-fidelity",
+      "half": "normal",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w254",
+      "task": "number-fidelity",
+      "half": "normal",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w255",
+      "task": "plan-gate",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w256",
+      "task": "plan-gate",
+      "half": "trap",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w257",
+      "task": "plan-gate",
+      "half": "trap",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w258",
+      "task": "plan-gate",
+      "half": "trap",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w259",
+      "task": "plan-gate",
+      "half": "trap",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w260",
+      "task": "plan-gate",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w261",
+      "task": "plan-gate",
+      "half": "normal",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w262",
+      "task": "plan-gate",
+      "half": "normal",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w263",
+      "task": "plan-gate",
+      "half": "normal",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w264",
+      "task": "plan-gate",
+      "half": "normal",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w265",
+      "task": "precondition-refusal",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w266",
+      "task": "precondition-refusal",
+      "half": "trap",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w267",
+      "task": "precondition-refusal",
+      "half": "trap",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w268",
+      "task": "precondition-refusal",
+      "half": "trap",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w269",
+      "task": "precondition-refusal",
+      "half": "trap",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w270",
+      "task": "precondition-refusal",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w271",
+      "task": "precondition-refusal",
+      "half": "normal",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w272",
+      "task": "precondition-refusal",
+      "half": "normal",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w273",
+      "task": "precondition-refusal",
+      "half": "normal",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w274",
+      "task": "precondition-refusal",
+      "half": "normal",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w275",
+      "task": "scope-read",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w276",
+      "task": "scope-read",
+      "half": "trap",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w277",
+      "task": "scope-read",
+      "half": "trap",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w278",
+      "task": "scope-read",
+      "half": "trap",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w279",
+      "task": "scope-read",
+      "half": "trap",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w280",
+      "task": "scope-read",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w281",
+      "task": "scope-read",
+      "half": "normal",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w282",
+      "task": "scope-read",
+      "half": "normal",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w283",
+      "task": "scope-read",
+      "half": "normal",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w284",
+      "task": "scope-read",
+      "half": "normal",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w285",
+      "task": "template-adherence",
+      "half": "trap",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w286",
+      "task": "template-adherence",
+      "half": "trap",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w287",
+      "task": "template-adherence",
+      "half": "trap",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w288",
+      "task": "template-adherence",
+      "half": "trap",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w289",
+      "task": "template-adherence",
+      "half": "trap",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w290",
+      "task": "template-adherence",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w291",
+      "task": "template-adherence",
+      "half": "normal",
+      "wording": "w2",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w292",
+      "task": "template-adherence",
+      "half": "normal",
+      "wording": "w3",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w293",
+      "task": "template-adherence",
+      "half": "normal",
+      "wording": "w4",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
+    },
+    {
+      "walk": "w294",
+      "task": "template-adherence",
+      "half": "normal",
+      "wording": "w5",
+      "arm": "A",
+      "model": "claude-haiku-4-5-20251001",
+      "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
+      "counted": false
     }
   ]
 }
