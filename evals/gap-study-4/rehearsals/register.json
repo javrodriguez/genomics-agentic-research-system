@@ -2250,6 +2250,16 @@
       "model": "claude-opus-5-5",
       "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted",
       "counted": false
+    },
+    {
+      "walk": "w-o65",
+      "task": "template-adherence",
+      "half": "normal",
+      "wording": "w1",
+      "arm": "O",
+      "model": "gpt-6.1-sol",
+      "reason": "CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one wording; graded, never counted; re-walk under OD132 (walk-cover-o strict) at the frozen harness H (3d278db97c57060f9d1914969c2dd357db3f19eb)",
+      "counted": false
     }
   ]
 }
