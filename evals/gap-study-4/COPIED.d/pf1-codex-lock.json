@@ -10,6 +10,11 @@
       "path": "checks.d/pf1-codex-lock.txt",
       "status": "new",
       "reason": "Lane pf1-codex-lock (glitch-45's ruling of Tue 27 Oct 2026): this lane's listed checks."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-codex-lock-9349cf6.md",
+      "status": "new",
+      "reason": "The fresh round-1 review of this lane at 3d278db9..9349cf60 (VERDICT PASS, Tue 27 Oct 2026), committed at 50cd4f15 as written, unedited; claimed here at the L6e merge on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation, Tue 27 Oct 2026)."
     }
   ]
 }
