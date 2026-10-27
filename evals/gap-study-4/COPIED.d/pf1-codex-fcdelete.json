@@ -15,6 +15,11 @@
       "path": "tests/test_codex_fcdelete.py",
       "status": "new",
       "reason": "Lane pf1-codex-fcdelete: w-o76's delete read (red at 8bad0baa with the recorded reason) in the stream, the view, the rollout reader, the join, reach and the T-8 reader; five other change kinds and three off-shape deletes still refused; a delete of a guarded path caught by scope_read.planted_calls, precondition_refusal._names_path and new_tasks' write-or-edit filter in the same number as an update and an add; six mutants (transcript_codex and codex_native compiled in memory) each failing its bound witness. The four stream lines are w-o76's turn-1 lines 17 to 20 byte for byte (ids, kinds, statuses and the run tree's PLAN.md path; no model reply, prompt or tool output in them); every other record is synthetic."
+    },
+    {
+      "path": "lanes/REVIEW-codex-reader-pf1-fcdelete-508c329.md",
+      "status": "new",
+      "reason": "The fresh round-1 and Codex reader review of lanes pf1-codex-turnitem and pf1-codex-fcdelete at 5f5aa9fb..508c3295 (VERDICT PASS, Tue 27 Oct 2026), committed at 6c66d741 as written, unedited; the review Javier's new Codex acceptance binds by sha256 (8aed3a847ba6540cec8078ae4abee01ce52a77f2dabb250b73b6a69c1e871609): his acceptance commit copies these exact bytes to native-readers/codex-review.md. Claimed here on the acceptance-kit branch on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation)."
     }
   ]
 }
