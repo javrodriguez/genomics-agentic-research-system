@@ -497,6 +497,69 @@
       "line_text": "  Re-run alone with the file moved out of the tree, `-k test_g8` reads OK. With the file in place, it reproduces the failure.",
       "ruled": "2026-10-25",
       "why": "Bound record, never edited: lanes/REVIEW-pf1-l1-2971d1d.md is the second closure check of lane pf1-l1-freeze-gates at 2971d1d7 (VERDICT PASS), committed as its reviewer wrote it on the lane orchestrator's word (25 Oct 2026). 'Out of' is the reviewer's prose about moving a file, not a rate about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-codex-lock-9349cf6.md",
+      "pattern": "out-of",
+      "line_text": "3. Content channel: an agent can write bytes into the lock between turns, but that is no worse than what is already admitted (no finding). The row reads nothing and checks no size. An agent with write access to CODEX_HOME could therefore hide content in the lock from one turn to the next. The same holds today for the six already-admitted state databases and their `-wal`/`-shm` files, which are unread and unbounded. Those already carry far more data and are expected to change every turn. The two lock rows and the `.tmpXXXXXX` row are also unread. The lock adds no reader: the operator never reads it (C15 checks that its bytes are not in `t.box.reads()`), and postflight records only the name. So it creates no path out of the take that the databases do not already give. A link that escapes is refused by kind. Optional hardening, not required: the census already records `size`, and Codex never writes this file (finding 4). A size-0 rule, like the exact bytes the marker row checks, would close this one file cheaply. It would not change the overall channel while the databases stay unread. It is the owner's call, not this lane's.",
+      "ruled": "2026-10-27",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-codex-lock-9349cf6.md is the fresh round-1 review of lane pf1-codex-lock at 9349cf60 (VERDICT PASS), committed at 50cd4f15 as its reviewer wrote it, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation), who ruled these entries on Tue 27 Oct 2026 at the L6e merge. 'Out of' is the reviewer's prose about a path out of the take, not a rate about any model or take."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-codex-lock-9349cf6.md",
+      "pattern": "ratio-slash",
+      "line_text": "   - `--witnesses` with the 14 listed names: \"14/14 red; registry 65\".",
+      "ruled": "2026-10-27",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-codex-lock-9349cf6.md is the fresh round-1 review of lane pf1-codex-lock at 9349cf60 (VERDICT PASS), committed at 50cd4f15 as its reviewer wrote it, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation), who ruled these entries on Tue 27 Oct 2026 at the L6e merge. The slash shape is a quoted witness tally from the runner's output, never a rate."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-pf1-gateway-838cfde.md",
+      "pattern": "consisten",
+      "line_text": "2. MINOR (class C, wording and a small strictness gap). The residual says every gateway the host record names \"must be among the addresses tried\". In code that holds only when the record binds to a network in the take inspect; a host record of `spec.network` whose name matches none of the take's networks is ignored when those networks name their own Gateway. That is a host-side inconsistency (the take not on its own spec network), not something the take can cause, and take-inspect-matches-spec pins HostConfig.NetworkMode separately, so it is not a containment hole. Either refuse an unbound host record, or narrow the sentence to \"for the take's network\".",
+      "ruled": "2026-10-27",
+      "why": "Bound record, never edited: lanes/REVIEW-pf1-gateway-838cfde.md is the fresh round-1 review of lane pf1-gateway at 838cfdef (VERDICT PASS), committed at 3d278db9 as its reviewer wrote it, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation), who ruled these entries on Tue 27 Oct 2026 at the L6e merge. 'Inconsistency' names a host-side configuration mismatch, not a claim about a rate."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-t104-mutation-baseline-5c54978.md",
+      "pattern": "ratio-slash",
+      "line_text": "  A real one-mutant shard, `--generated-mutants --shard 2/2000`, printed the baseline line, then `ran 1, killed 1, ... survived 0, stale 0`, exit 0.",
+      "ruled": "2026-10-27",
+      "why": "Bound record, never edited: lanes/REVIEW-t104-mutation-baseline-5c54978.md is the fresh round-2 review of lane t104-mutation-baseline at 5c54978c (VERDICT PASS), committed at 9f4570c0 as its reviewer wrote it, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation), who ruled these entries on Tue 27 Oct 2026 at the L6e merge. The slash shapes are quoted witness tallies and the runner's `--shard k/n` argument, never a rate."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-t104-mutation-baseline-5c54978.md",
+      "pattern": "ratio-slash",
+      "line_text": "  On the real code each runner's `--witnesses` prints `baseline: green, unmutated (no check line)` and its count is what it was: codex_usage_source 9/9, native_snapshot 2/2, codex_agents_off 3/3, vendor_bookkeeping 13/13, codex_patch_reads 15/15, codex_started_file_change 3/3, all exit 0.",
+      "ruled": "2026-10-27",
+      "why": "Bound record, never edited: lanes/REVIEW-t104-mutation-baseline-5c54978.md is the fresh round-2 review of lane t104-mutation-baseline at 5c54978c (VERDICT PASS), committed at 9f4570c0 as its reviewer wrote it, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation), who ruled these entries on Tue 27 Oct 2026 at the L6e merge. The slash shapes are quoted witness tallies and the runner's `--shard k/n` argument, never a rate."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-t104-mutation-baseline-5c54978.md",
+      "pattern": "ratio-slash",
+      "line_text": "  Real one-mutant shards: codex_adapter `--shard 2/2000` baseline green, `1 killed ... 0 survivors, 0 stale`, exit 0; labelling `--shard 2/2000` baseline green, `ran 2, killed 2 ... leaked 0`, exit 0.",
+      "ruled": "2026-10-27",
+      "why": "Bound record, never edited: lanes/REVIEW-t104-mutation-baseline-5c54978.md is the fresh round-2 review of lane t104-mutation-baseline at 5c54978c (VERDICT PASS), committed at 9f4570c0 as its reviewer wrote it, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation), who ruled these entries on Tue 27 Oct 2026 at the L6e merge. The slash shapes are quoted witness tallies and the runner's `--shard k/n` argument, never a rate."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-t104-mutation-baseline-fcf3401.md",
+      "pattern": "ratio-slash",
+      "line_text": "   Reviewer probe (`subprocess.run` faked so that every child, unmutated or not, fails `TheRegisterFold.test_folders_match_by_exact_name` with `R5.case`): exit 0, `witness case-collision-admitted -> ... R5.case: RED`, `test_rehearsals witnesses: 1/1 red`, one child and that child a mutant.",
+      "ruled": "2026-10-27",
+      "why": "Bound record, never edited: lanes/REVIEW-t104-mutation-baseline-fcf3401.md is the fresh round-1 review of lane t104-mutation-baseline at fcf3401d (VERDICT CHANGES), committed at e205a256 as its reviewer wrote it, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation), who ruled these entries on Tue 27 Oct 2026 at the L6e merge. The slash shapes are quoted witness tallies from the runner's output, never a rate."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-t104-mutation-baseline-fcf3401.md",
+      "pattern": "consisten",
+      "line_text": "   test_labelling has the same in-suite test and was wired anyway, so this is an inconsistency, not a choice.",
+      "ruled": "2026-10-27",
+      "why": "Bound record, never edited: lanes/REVIEW-t104-mutation-baseline-fcf3401.md is the fresh round-1 review of lane t104-mutation-baseline at fcf3401d (VERDICT CHANGES), committed at e205a256 as its reviewer wrote it, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation), who ruled these entries on Tue 27 Oct 2026 at the L6e merge. 'Inconsistency' is the reviewer's word about how two test files were wired, not a claim about a rate."
+    },
+    {
+      "file": "evals/gap-study-4/lanes/REVIEW-t104-mutation-baseline-fcf3401.md",
+      "pattern": "ratio-slash",
+      "line_text": "   Reviewer probe: with `test_codex_agents_off.CHECKS['table']` red and no mutant applied, `witnesses()` returns `key-dropped table True` and `key-set-true table True`, and the CLI would print `witnesses: 3/3 red` and exit 0.",
+      "ruled": "2026-10-27",
+      "why": "Bound record, never edited: lanes/REVIEW-t104-mutation-baseline-fcf3401.md is the fresh round-1 review of lane t104-mutation-baseline at fcf3401d (VERDICT CHANGES), committed at e205a256 as its reviewer wrote it, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation), who ruled these entries on Tue 27 Oct 2026 at the L6e merge. The slash shapes are quoted witness tallies from the runner's output, never a rate."
     }
   ]
 }

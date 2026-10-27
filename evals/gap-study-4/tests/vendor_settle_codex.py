@@ -827,7 +827,10 @@ RULING_SHA256 = {
     "T-12:offered-context": "8493792afbe9e5307991e57bc057ee07106048fd45eb92f9b38a02904e2c0ca8",
     "T-12:memory": "da5a7b9d12e8792129fa31f013260b7b86b53c6cc4f8d936511f503c791387fa",
     "T-13": "1f64ec3c648c0ef3358e8052569bf49ef63388128a5504685286d56cc43cd6e6",
-    "T-17:billing-route": "c10a5062685940ccbc4fdf020a812747646ef7bafcb30c966062818018e498d9",
+    # Citation move: run_take.py:2413 -> run_take.py:2415 (lane pf1-codex-lock added two CODEX_ALLOWED lines above the
+    # .env refusal; the cited line is the same). Was c10a5062685940ccbc4fdf020a812747646ef7bafcb30c966062818018e498d9;
+    # re-pinned by glitch-45's ruling, Tue 27 Oct 2026: citation-only change from lane pf1-codex-lock.
+    "T-17:billing-route": "57c3cf77d7f0639315c6f99952a9d7b903d82601d9ee600b05be5e077444ccee",
     "T-18": "1372fe564a387a651d001ec73214a7dd8623b10d50e73e7c30db936026d365bb",
 }
 

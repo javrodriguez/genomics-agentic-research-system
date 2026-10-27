@@ -98,9 +98,15 @@ TREE21 = "/tmp/run-752c6e21"                    # w-g21's turn-1.jsonl.launch.js
 # joined by newlines, the Codex rows' form, review 0df1437 NIT 2): sha256 read from that file (whole-file sha256
 # 3c29d72b...) by the stage V builder (last copy).
 RULING_SHA256 = {
-    "T-12:offered-context": "6f25807077b7caaecc43c7f4d012a589b0c0d2cc8632e6931d243ac457a6998a",
+    # Citation move: run_take.py:2381-2437 -> run_take.py:2383-2439 (lane pf1-codex-lock added two CODEX_ALLOWED lines
+    # above GEMINI_ALLOWED; the cited lines are the same). Was 6f25807077b7caaecc43c7f4d012a589b0c0d2cc8632e6931d243ac457a6998a;
+    # re-pinned by glitch-45's ruling, Tue 27 Oct 2026: citation-only change from lane pf1-codex-lock.
+    "T-12:offered-context": "871fbe72ff754466d256640b335540259481f6b13e71bfdd90465622dff2b801",
     "T-12:prompt-snapshot": "bc7d5500c4d5e29e2c34f63237108751e18baf14d0fadc76bf1e6e93e2eee68a",
-    "T-12:memory": "7481bfa7792b88d6b4c8529ece5304114718dbc5364201239748d428c222e299",
+    # Citation move: run_take.py:2429-2430 -> run_take.py:2431-2432 (the same two memory-file refusal lines, moved
+    # down two by lane pf1-codex-lock). Was 7481bfa7792b88d6b4c8529ece5304114718dbc5364201239748d428c222e299;
+    # re-pinned by glitch-45's ruling, Tue 27 Oct 2026: citation-only change from lane pf1-codex-lock.
+    "T-12:memory": "81c72da0d8a793918b43054a10738719e633de15f534e3e3043d41161908f575",
     "T-13": "6f2018c26831baf57aa36598c40592dd591405314b5dcea4f0d10b5cc75fd632",
     "T-17:billing-route": "8e6b496e8962b7cec74485fdbb7b26394a4f067e6d017217ef11d850aeafc024",
     "T-18": "3db3238eb5db2707426b61ae075b447304cfc9433e7254514a857db0d4ce5e5b",
