@@ -499,20 +499,6 @@
       "why": "Bound record, never edited: lanes/REVIEW-pf1-l1-2971d1d.md is the second closure check of lane pf1-l1-freeze-gates at 2971d1d7 (VERDICT PASS), committed as its reviewer wrote it on the lane orchestrator's word (25 Oct 2026). 'Out of' is the reviewer's prose about moving a file, not a rate about any model or take."
     },
     {
-      "file": "evals/gap-study-4/lanes/REVIEW-pf1-codex-lock-9349cf6.md",
-      "pattern": "out-of",
-      "line_text": "3. Content channel: an agent can write bytes into the lock between turns, but that is no worse than what is already admitted (no finding). The row reads nothing and checks no size. An agent with write access to CODEX_HOME could therefore hide content in the lock from one turn to the next. The same holds today for the six already-admitted state databases and their `-wal`/`-shm` files, which are unread and unbounded. Those already carry far more data and are expected to change every turn. The two lock rows and the `.tmpXXXXXX` row are also unread. The lock adds no reader: the operator never reads it (C15 checks that its bytes are not in `t.box.reads()`), and postflight records only the name. So it creates no path out of the take that the databases do not already give. A link that escapes is refused by kind. Optional hardening, not required: the census already records `size`, and Codex never writes this file (finding 4). A size-0 rule, like the exact bytes the marker row checks, would close this one file cheaply. It would not change the overall channel while the databases stay unread. It is the owner's call, not this lane's.",
-      "ruled": "2026-10-27",
-      "why": "Bound record, never edited: lanes/REVIEW-pf1-codex-lock-9349cf6.md is the fresh round-1 review of lane pf1-codex-lock at 9349cf60 (VERDICT PASS), committed at 50cd4f15 as its reviewer wrote it, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation), who ruled these entries on Tue 27 Oct 2026 at the L6e merge. 'Out of' is the reviewer's prose about a path out of the take, not a rate about any model or take."
-    },
-    {
-      "file": "evals/gap-study-4/lanes/REVIEW-pf1-codex-lock-9349cf6.md",
-      "pattern": "ratio-slash",
-      "line_text": "   - `--witnesses` with the 14 listed names: \"14/14 red; registry 65\".",
-      "ruled": "2026-10-27",
-      "why": "Bound record, never edited: lanes/REVIEW-pf1-codex-lock-9349cf6.md is the fresh round-1 review of lane pf1-codex-lock at 9349cf60 (VERDICT PASS), committed at 50cd4f15 as its reviewer wrote it, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation), who ruled these entries on Tue 27 Oct 2026 at the L6e merge. The slash shape is a quoted witness tally from the runner's output, never a rate."
-    },
-    {
       "file": "evals/gap-study-4/lanes/REVIEW-pf1-gateway-838cfde.md",
       "pattern": "consisten",
       "line_text": "2. MINOR (class C, wording and a small strictness gap). The residual says every gateway the host record names \"must be among the addresses tried\". In code that holds only when the record binds to a network in the take inspect; a host record of `spec.network` whose name matches none of the take's networks is ignored when those networks name their own Gateway. That is a host-side inconsistency (the take not on its own spec network), not something the take can cause, and take-inspect-matches-spec pins HostConfig.NetworkMode separately, so it is not a containment hole. Either refuse an unbound host record, or narrow the sentence to \"for the take's network\".",

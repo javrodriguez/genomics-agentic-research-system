@@ -12,9 +12,9 @@
       "reason": "Lane pf1-codex-lock (glitch-45's ruling of Tue 27 Oct 2026): this lane's listed checks."
     },
     {
-      "path": "lanes/REVIEW-pf1-codex-lock-9349cf6.md",
+      "path": "lanes/REVIEW-pf1-codex-lock-9349cf6-r2.md",
       "status": "new",
-      "reason": "The fresh round-1 review of this lane at 3d278db9..9349cf60 (VERDICT PASS, Tue 27 Oct 2026), committed at 50cd4f15 as written, unedited; claimed here at the L6e merge on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation, Tue 27 Oct 2026)."
+      "reason": "The fresh round-1 review of this lane at 3d278db9..9349cf60, re-run (VERDICT PASS, Tue 27 Oct 2026), committed at 5b781995 as written, unedited; claimed here at the L6e merge on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation, Tue 27 Oct 2026). The earlier file, lanes/REVIEW-pf1-codex-lock-9349cf6.md (committed at 50cd4f15), was discarded whole under the language protocol (lint_language.py:171-173: lint_pooling found two banned comparison words in its line 21, and that guard has no excusal path) and the review re-run; it stays in history."
     }
   ]
 }
