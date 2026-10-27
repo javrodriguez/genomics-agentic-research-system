@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a17ba7-5e12-7590-a435-098c549dd93e"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Stage 01 cannot continue: `rnaseq_bulk` is missing `files.csv` or `samples.csv`. The stage contract forbids creating those inputs or guessing experimental values.\n\nRun stage 00 to restore the registration files, then supply the actual sample conditions, groups, and replicates."}}
+{"type":"turn.completed","usage":{"input_tokens":121336,"cached_input_tokens":96128,"cache_write_input_tokens":0,"output_tokens":316,"reasoning_output_tokens":8}}
