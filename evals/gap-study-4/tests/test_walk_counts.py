@@ -663,6 +663,13 @@ class WC7Store(unittest.TestCase):
                 self.assertNotEqual(got.returncode, 0, got.stdout)
                 self.assertIn("refused", got.stdout)
         self.assertFalse((self.tmp / "store").exists(), "a child that is not isolated wrote a reading")
+        # the true child passes the gate: run with GIT_DIR set, it gets past the refusal and stands down before any read
+        import os
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        got = subprocess.run([sys.executable, "-I", "-B", script, "--store-coverage"], capture_output=True, text=True,
+                             timeout=120, env=dict(env, GIT_DIR=str(self.tmp / "no-repo")))
+        self.assertEqual((got.returncode, got.stdout.strip()),
+                         (0, "walk_counts: store stood down: a GIT_ variable is set: GIT_DIR"), got.stderr[-1500:])
         # prime_store hands the read to exactly that child, from the module's own file, and adds nothing of its own
         calls = []
         def fake_run(argv, **kw):
@@ -710,6 +717,69 @@ class WC7Store(unittest.TestCase):
             self.assertIsNotNone(wc.store_state(study))
             (top / "study" / "a.json").unlink()
             (top / "study" / "a.json").symlink_to(outside)                      # a tracked file replaced by a link
+            self.assertIsNone(wc.store_state(study))
+
+
+    def child_env(self) -> dict:
+        import os
+        return {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+
+    def test_wc7_a_hand_patched_process_cannot_be_the_child(self):
+        # closure review 9bc0822 NIT 1, the reviewer's reproduction: an `-I -B` process that patches the register folder
+        # (WALKS_DIR and REHEARSALS, here to a folder outside the tree, so the state is the real one) and then calls
+        # store_child, or runs the module as __main__ through runpy after patching, is refused and writes nothing
+        import subprocess
+        fx = self.tmp / "fx"
+        fx.mkdir()
+        (fx / "register.json").write_text(json.dumps({"schema": 1, "walks": []}))
+        script = str(HERE / "walk_counts.py")
+        patch = (f"import sys; sys.path.insert(0, {str(HERE)!r}); import mode_binding, walk_register; "
+                 f"from pathlib import Path; mode_binding.WALKS_DIR = {str(fx)!r}; walk_register.REHEARSALS = Path({str(fx)!r}); ")
+        for case, code in (("called", patch + "import walk_counts as wc; print('genuine', wc._road_is_genuine()); "
+                                             "raise SystemExit(wc.store_child())"),
+                           ("runpy", patch + f"import runpy; sys.argv = [{script!r}, '--store-coverage']; "
+                                             f"runpy.run_path({script!r}, run_name='__main__')")):
+            with self.subTest(case=case):
+                shutil.rmtree(self.tmp / "store", True)
+                got = subprocess.run([sys.executable, "-I", "-B", "-c", code], capture_output=True, text=True,
+                                     timeout=600, env=self.child_env())
+                self.assertIn("store refused", got.stdout, got.stdout + got.stderr[-1500:])
+                self.assertNotEqual(got.returncode, 0)
+                store = self.tmp / "store"
+                self.assertFalse(store.exists() and any(store.iterdir()), "a hand-patched process stored a reading")
+
+    def test_wc7_a_patched_register_folder_never_takes_a_stored_reading(self):
+        # closure review 9bc0822 NIT 4: with this tree's reading stored, a process whose register folder is patched
+        # reads its own register (empty), never the stored reading
+        import walk_register
+        state = wc.store_state(HERE)
+        self.assertIsNotNone(state, "the witness needs the store in use on this tree")
+        wc.store_write(state, {"w1"}, set())
+        self.assertEqual(wc.coverage(HERE), (frozenset({"w1"}), frozenset()), "the seeded reading is taken unpatched")
+        wc._COVERAGE.clear()
+        empty = self.tmp / "rehearsals"
+        empty.mkdir()
+        (empty / "register.json").write_text(json.dumps({"schema": 1, "walks": []}))
+        with mock.patch.object(walk_register, "REHEARSALS", empty):
+            covered, _ = wc.coverage(HERE)
+        self.assertEqual(covered, frozenset(), "a patched register folder took the stored reading")
+
+    def test_wc7_replaced_objects_stand_the_store_down(self):
+        # closure review 9bc0822 NIT 2: git show honours refs/replace and info/grafts, which the state does not hold
+        top = self.scratch_repo()
+        study = (top / "study").resolve()
+        with mock.patch.object(wc, "HERE", study), mock.patch.object(wc, "_road_is_genuine", lambda: True):
+            self.assertIsNotNone(wc.store_state(study))
+            (self.tmp / "other.json").write_text('{"tampered": true}\n')
+            blob = self.git("hash-object", "-w", str(self.tmp / "other.json")).stdout.decode().strip()
+            old = self.git("rev-parse", "HEAD:study/a.json").stdout.decode().strip()
+            self.git("replace", old, blob)
+            self.assertIsNone(wc.store_state(study))
+            self.git("replace", "-d", old)
+            self.assertIsNotNone(wc.store_state(study))
+            grafts = top / ".git" / "info" / "grafts"
+            grafts.parent.mkdir(exist_ok=True)
+            grafts.write_text("")
             self.assertIsNone(wc.store_state(study))
 
 

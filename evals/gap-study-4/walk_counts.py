@@ -97,6 +97,12 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+# Closure review 9bc0822 NIT 1: the study modules already loaded when this file began as __main__. store_child writes
+# only when there were none, so a process that loads and patches them first (runpy.run_path included) cannot be it.
+_PRELOADED_AT_MAIN = None
+if __name__ == "__main__":
+    _PRELOADED_AT_MAIN = sorted(n for n, m in list(sys.modules.items()) if n != "__main__"
+                                and getattr(m, "__file__", None) and Path(m.__file__).resolve().is_relative_to(HERE))
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
@@ -227,8 +233,10 @@ def coverage(study: Path = HERE) -> tuple:
 #   anywhere in the work tree (bytecode caches aside), the Python version and this module's folder relative to the top.
 #   WHO WRITES (glitch-45's ruling on review 200ceab MAJOR 1, option (a)): only the isolated child, `python -I -B
 #   walk_counts.py --store-coverage` (store_child, started by prime_store), which no patch of another process can
-#   reach; it stores only when the state read after the report equals the state read before it. Every other process
-#   only reads: on a miss it reads the report itself, as before the store, and writes nothing.
+#   reach; it refuses unless this file is __main__, named by sys.argv[0], with no study module loaded before it began
+#   (closure review 9bc0822 NIT 1: a process that imports and patches, or runs it through runpy, is never the child);
+#   it stores only when the state read after the report equals the state read before it. Every other process only
+#   reads: on a miss it reads the report itself, as before the store, and writes nothing.
 #   WHO READS: a process takes a reading only under the same state, text for text, parsed to two lists of strings,
 #   for this module's own folder, while every function of the road below is the module's own and the register folder
 #   is the study's own (a test that patches one reads the report itself).
@@ -236,7 +244,9 @@ def coverage(study: Path = HERE) -> tuple:
 #   skip-worktree entry, which would hide a change from git status); any GIT_ variable is set but the three of
 #   STORE_GIT_ALLOWED (review 200ceab finding 3: the road's own git reads, native_reader_registration._git, honour
 #   GIT_DIR and its kin, which the key cannot see); or any tracked path, or any changed, untracked or ignored path, is or holds a symbolic link (finding 2: the
-#   road reads through a link, the key would hold only its target text). A refusal is never stored.
+#   road reads through a link, the key would hold only its target text); or a refs/replace ref or an info/grafts
+#   file exists (closure review 9bc0822 NIT 2: the road's git show reads replaced objects, the state does not). A
+#   refusal is never stored.
 #   WHERE: $GAP4_COVERAGE_STORE, else <XDG_CACHE_HOME or ~/.cache>/gap4-walk-coverage, outside the work tree; one store
 #   serves every clone on the machine, which the location-free state makes sound.
 #   KNOWN LIMITS (review 200ceab NITs 4 and 5, kept): an input changed and changed back while the child reads (about 9
@@ -244,6 +254,11 @@ def coverage(study: Path = HERE) -> tuple:
 #   and the state trusts git status that a tracked file is HEAD's bytes, which a clean or smudge filter, core.autocrlf
 #   or LFS could break (none is configured on the Mac or athena), and leaves a bytecode file aside even where no source
 #   stands beside it.
+#   Closure review 9bc0822 NITs 3 and 4, kept: the store folder is trusted as single-user, since a file there is taken
+#   by its embedded state alone and anyone who can write the folder can plant one; and a process that patches an
+#   input the road guard does not list (check_take.CHECKER_CONSTANTS, routing.load_table, pending_walk.latest_recheck,
+#   walk_plan.cover_key and the like) takes the true stored reading rather than its patched one, which poisons nothing
+#   but would test the stored reading instead of the patch.
 STORE_ENV = "GAP4_COVERAGE_STORE"
 # glitch-45's ruling (Wed 28 Oct 2026): the GIT_ variables that leave the store on, exactly these three; they choose an
 # editor, a pager and whether git may prompt, and steer no read. Any other GIT_ variable keeps the store off.
@@ -334,6 +349,10 @@ def store_state_why(study: Path = HERE) -> tuple:
         flags = _git(top, "ls-files", "-v", "-z").split(b"\0")
         if any(f[:1].islower() or f[:1] == b"S" for f in flags if f):
             return None, "an assume-unchanged or skip-worktree entry"
+        if _git(top, "for-each-ref", "refs/replace").strip():
+            return None, "a refs/replace ref (git show would read replaced objects the state does not hold)"
+        if (top / _git(top, "rev-parse", "--git-path", "info/grafts").decode().strip()).exists():
+            return None, "an info/grafts file"
         if any(e.startswith(b"120000 ") for e in _git(top, "ls-files", "-s", "-z").split(b"\0")):
             return None, "a tracked symbolic link"
         raw = _git(top, "--no-optional-locks", "status", "--porcelain=v1", "-z", "--no-renames",
@@ -545,7 +564,9 @@ STORE_CHILD_FLAG = "--store-coverage"
 def store_child() -> int:
     """The one writer of the store (`python -I -B walk_counts.py --store-coverage`): the state, the report read in this
     fresh, isolated process, the state again; stored only when the two states agree. Refuses unless isolated."""
-    if not (sys.flags.isolated and sys.flags.dont_write_bytecode) or "unittest.mock" in sys.modules:
+    as_main = __name__ == "__main__" and bool(sys.argv) and Path(sys.argv[0]).resolve() == Path(__file__).resolve() \
+        and _PRELOADED_AT_MAIN == []
+    if not (sys.flags.isolated and sys.flags.dont_write_bytecode) or "unittest.mock" in sys.modules or not as_main:
         print("walk_counts: store refused: the reading is stored only by `python -I -B walk_counts.py "
               f"{STORE_CHILD_FLAG}`, a fresh process no patch reaches")
         return 2
