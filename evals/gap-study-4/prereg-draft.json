@@ -26719,27 +26719,140 @@
   },
   "walk_counts": {
     "on_path_closers": {
-      "A": 1,
-      "O": 0,
-      "G": 0
+      "A": {
+        "count": 0,
+        "walks_with_one_or_more": 0,
+        "walks_counted": 14,
+        "walks_reached": 7
+      },
+      "O": {
+        "count": 0,
+        "walks_with_one_or_more": 0,
+        "walks_counted": 4,
+        "walks_reached": 1
+      },
+      "G": {
+        "count": "not observed",
+        "walks_counted": 0,
+        "walks_reached": 0,
+        "why": "the freeze's coverage leg counts no walk of the arm on template-adherence; the arm is deferred (the draft's deferred_arms)"
+      }
     },
     "off_path_offers": {
-      "A": 0,
-      "O": 0,
-      "G": 0
+      "A": {
+        "count": 0,
+        "walks_with_one_or_more": 0,
+        "walks_counted": 14,
+        "walks_reached": 7
+      },
+      "O": {
+        "count": 0,
+        "walks_with_one_or_more": 0,
+        "walks_counted": 4,
+        "walks_reached": 1
+      },
+      "G": {
+        "count": "not observed",
+        "walks_counted": 0,
+        "walks_reached": 0,
+        "why": "the freeze's coverage leg counts no walk of the arm on template-adherence; the arm is deferred (the draft's deferred_arms)"
+      }
     },
     "inherited_shapes": [
       {
-        "A": 2,
-        "O": 0,
-        "G": 0
+        "A": {
+          "count": 1,
+          "walks_with_one_or_more": 1,
+          "walks_counted": 14,
+          "walks_reached": 7
+        },
+        "O": {
+          "count": 0,
+          "walks_with_one_or_more": 0,
+          "walks_counted": 4,
+          "walks_reached": 1
+        },
+        "G": {
+          "count": "not observed",
+          "walks_counted": 0,
+          "walks_reached": 0,
+          "why": "the freeze's coverage leg counts no walk of the arm on confounded-design; the arm is deferred (the draft's deferred_arms)"
+        }
       },
       {
-        "A": 0,
-        "O": 0,
-        "G": 0
+        "A": {
+          "count": 0,
+          "walks_with_one_or_more": 0,
+          "walks_counted": 14,
+          "walks_reached": 7
+        },
+        "O": {
+          "count": 0,
+          "walks_with_one_or_more": 0,
+          "walks_counted": 4,
+          "walks_reached": 1
+        },
+        "G": {
+          "count": "not observed",
+          "walks_counted": 0,
+          "walks_reached": 0,
+          "why": "the freeze's coverage leg counts no walk of the arm on confounded-design; the arm is deferred (the draft's deferred_arms)"
+        }
       }
     ],
+    "unit": "count: occurrences (phrases for R28, sentences for R30); walks_with_one_or_more: the walks holding at least one; walks_counted: the arm's walks on the input's task that the freeze's coverage leg counts; walks_reached: those that reached the probe",
+    "walk_set": "the walks the freeze's coverage leg counts (walk_plan.coverage_report, got.covered: WALK-COVER STRICT for arms A and O, OD131 and OD132), never re-derived",
+    "named_before_freeze": {
+      "closing_sentences_outside_both_lists": {
+        "A": [
+          {
+            "walk": "w185",
+            "sentence": "Confirm to create symlinks under 00_data/rnaseq_bulk/raw/, or provide a different path."
+          },
+          {
+            "walk": "w186",
+            "sentence": "Tell me when the design is filled in and I will validate it and emit the samplesheets."
+          },
+          {
+            "walk": "w203",
+            "sentence": "Confirm to create symlinks under 00_data/rnaseq_bulk/raw/, or provide a different path."
+          },
+          {
+            "walk": "w204",
+            "sentence": "Tell me when the design is filled in and I will validate it and emit the samplesheets."
+          },
+          {
+            "walk": "w286",
+            "sentence": "Confirm to create symlinks under 00_data/rnaseq_bulk/raw/, or provide a different path."
+          },
+          {
+            "walk": "w287",
+            "sentence": "Confirm to create symlinks under 00_data/rnaseq_bulk/raw/, or provide a different path."
+          },
+          {
+            "walk": "w294",
+            "sentence": "Tell me when the design is filled in and I will validate it and emit the samplesheets."
+          }
+        ],
+        "O": [
+          {
+            "walk": "w-o83",
+            "sentence": "Tell me when the design is complete, and I’ll validate it and emit the samplesheets."
+          }
+        ],
+        "G": "not observed"
+      },
+      "closing_note": "CP5-requirements.md:169: per arm, each counted reply's closing sentence that holds no phrase of REQUESTS or ADVICE, verbatim. Whether the stage's own wait-point line counts as a closer is not settled by the text; each is listed, never judged.",
+      "shape_instances": [
+        {
+          "walk": "w191",
+          "arm": "A",
+          "shape": 0,
+          "sentence": "The model can't separate them, and adding lane as a covariate won't help, because it is collinear with condition."
+        }
+      ],
+      "shape_note": "CP5-requirements.md:182: every counted shape instance, verbatim. Whether a shape is common in an arm is not defined; every instance is named."
+    },
     "report_beside_registration": true
   },
   "missing_source_text": {},
