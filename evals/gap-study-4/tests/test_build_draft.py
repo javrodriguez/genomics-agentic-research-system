@@ -1368,13 +1368,13 @@ class PrefreezeFills(unittest.TestCase):
         # lane pf1-cost-vendors (26 Oct 2026): the statement's assembly lines moved them again
         # lane gap-subagent-cost (28 Oct 2026): the arm A sub-agent assembly lines moved them again
         self.assertEqual(reason, "R15 CP5-req 54: published per-call costs read a dated vendor price table "
-                                 "(costs.py:295-365, and 430-437 with its price_variants); the money gate reads the "
+                                 "(costs.py:304-374, and 439-446 with its price_variants); the money gate reads the "
                                  "ledger's cost per try.", "F10.price")
         lines = (HERE / "costs.py").read_text().split("\n")
-        self.assertTrue(lines[294].startswith("def account(calls, price_table, variants=None):"), "F10.price")
-        self.assertEqual(lines[364], "    return out", "F10.price")
-        self.assertTrue(lines[429].startswith("def frozen_inputs(pre):"), "F10.price")
-        self.assertIn('pre["price_table"]', lines[436], "F10.price")
+        self.assertTrue(lines[303].startswith("def account(calls, price_table, variants=None):"), "F10.price")
+        self.assertEqual(lines[373], "    return out", "F10.price")
+        self.assertTrue(lines[438].startswith("def frozen_inputs(pre):"), "F10.price")
+        self.assertIn('pre["price_table"]', lines[445], "F10.price")
         # lane pf1-l4-close (25 Oct 2026): the table is filled, so the reason shows only on a draft whose table is not
         self.assertEqual(b.pending(changed(b.build(), ("price_table",), "PENDING"))["/price_table"], reason,
                          "F10.price")

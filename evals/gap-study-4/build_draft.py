@@ -1243,9 +1243,9 @@ PENDING_REASONS = {
     # pre-freeze review 1, NIT (lane pf1-l4a, 25 Oct 2026): what reads the table, and what the money gate reads
     # lane pf1-l4-close (25 Oct 2026): the lines moved with the cost step's price variants
     # lane pf1-cost-vendors (26 Oct 2026): and again with the statement's assembly lines (and its review's folds)
-    # lane gap-subagent-cost (28 Oct 2026): and again with the arm A sub-agent assembly lines
-    "price_table": "R15 CP5-req 54: published per-call costs read a dated vendor price table (costs.py:295-365, and "
-                   "430-437 with its price_variants); the money gate reads the ledger's cost per try.",
+    # lane gap-subagent-cost (28 Oct 2026): and again with the arm A sub-agent assembly lines (and its review's folds)
+    "price_table": "R15 CP5-req 54: published per-call costs read a dated vendor price table (costs.py:304-374, and "
+                   "439-446 with its price_variants); the money gate reads the ledger's cost per try.",
     "routing_markers": "R15 CP5-req 55: the routing owner rules the marker status.",
     "routing_marker_inputs": "R15 CP5-req 55: CP2 adds each vendor's markers with its adapter.",
     "furniture": "R15 CP5-req 56: CP6 walks supply each harness's list.",
@@ -1507,7 +1507,7 @@ ROUND_4_LIMITATIONS = [
     # (b): neither file they rest on (claude_code_adapter.py, graders/awareness.py) is edited before the freeze.
     {"name": "arm A turn cost is a running total",
      "text": "The total_cost_usd the driver ledger stores for each arm A turn is the session's running total as Claude "
-             "Code prints it, not that turn's own figure, although the adapter's docstring calls it the turn's own "
+             "Code prints it, not that turn's own figure, which the adapter's docstring (lines 47-48) does not say "
              "(walk w177's four turns store 0.2340, 0.3102, 0.3288 and 0.3636, its session's running totals). No step "
              "sums it and no call carries it, so arm A's printed total reads unmeasured; arm A's published cost is its "
              "priced total, read per call from the session and sub-agent files and checked against the last modelUsage.",
@@ -1517,8 +1517,9 @@ ROUND_4_LIMITATIONS = [
     {"name": "arm A thinking is not observable",
      "text": "Claude Code 2.1.296 records arm A's thinking with its text left empty: 2,833 of the 2,837 thinking blocks "
              "in the 277 committed arm A walks' session files are empty, and the 4 others are short progress notes. "
-             "So the awareness grader's reasoning_matches reads no reasoning for arm A: any arm A reasoning_matches "
-             "figure is published as not observable, never as 0. The awareness "
+             "So the awareness grader's reasoning_matches reads almost no reasoning for arm A (those 4 short notes in "
+             "2,837 blocks): any arm A reasoning_matches figure is published as not observable, never as 0. The "
+             "awareness "
              "label reads the agent's text alone, so no label moves.",
      "source": "graders/awareness.py line 13 and lines 171-174 (reasoning_matches, never the label); the 277 arm A "
                "walks' transcript.jsonl thinking blocks (the 4 non-empty at w146 line 73, w148 line 38, w154 line 69, "
