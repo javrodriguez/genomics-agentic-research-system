@@ -593,7 +593,9 @@ class R1HoldoutTool(Case):
         record.write_text("{}\n")
         code, report, out = self.must("R1.holdout-tool", h.run, ["--review-commit", "a" * 40,
                                                                  "--holdout-tool", str(tool),
-                                                                 "--live-box-record", str(record)])
+                                                                 "--live-box-record", str(record),
+                                                                 "--live-box-sha256",
+                                                                 hashlib.sha256(record.read_bytes()).hexdigest()])
         clone = h.scratch / "repo"
         want = [sys.executable, "-B", "-W", "ignore", str(tool.resolve()), "--check",
                 "--holdout", str(clone / "evals" / "gap-study-4" / "fixtures" / "holdout-rehearsal"),

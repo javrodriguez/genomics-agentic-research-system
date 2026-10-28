@@ -464,14 +464,16 @@ def probe(args, *, builders_factory=None, walk_runner=None, clock=utc_now, repo=
         print(f"live-box: the record could not be made ({type(e).__name__})", flush=True)
         return 1
     print(summary_line(record, sha256_bytes(data)), flush=True)
-    if not record["cut_turns"]:
-        print("live-box: not cut: the turn ended inside the probe budget (R2: the next walk id with B halved)",
-              flush=True)
-        return 3
+    # review F1: a finding is read first, so a torn line or a content problem on a walk no turn of which was cut
+    # exits 4, never "not cut"
     why = finding(record)
     if why:
         print("live-box: FINDING for glitch-45 (R5, fail closed): " + "; ".join(why), flush=True)
         return 4
+    if not record["cut_turns"]:
+        print("live-box: not cut: the turn ended inside the probe budget (R2: the next walk id with B halved)",
+              flush=True)
+        return 3
     return 0
 
 
@@ -559,7 +561,9 @@ def verify_problems(record_path: Path, *, repo=None) -> tuple:
     if budget_problem(rec["budget_s"], registered):
         out.append("budget is not below the registered one")
     pins = _draft_version()
-    if rec["cli_version"] != pins:
+    if pins is None:
+        out.append("the draft's version pin cannot be read")
+    elif rec["cli_version"] != pins:
         out.append("cli version is not the draft's pin")
     cut = rec["cut_turns"]
     if not (isinstance(cut, list) and cut and all(type(n) is int and n >= 1 for n in cut)):
@@ -627,6 +631,8 @@ def verify_problems(record_path: Path, *, repo=None) -> tuple:
 
 
 def _draft_version():
+    """The draft's claude-code version pin for MODEL, or None when it cannot be read (verify then refuses: review F4,
+    never None == None)."""
     try:
         pins = json.loads((HERE / "prereg-draft.json").read_text())["version_pins"][HARNESS][MODEL]
         return pins["version"]

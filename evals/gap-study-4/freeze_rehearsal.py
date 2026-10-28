@@ -60,6 +60,10 @@ LIVE_BOX_STEP = "live-box: forced-timeout claude-code take"
 LIVE_BOX_NOT_REHEARSED = ("NOT REHEARSED: LIVE_BOX_REQUIRED (one forced-timeout claude-code take on a real box); "
                           "this rehearsal was given no --live-box-record, so it is not all green")
 LIVE_BOX_TOOL = "live_box_cut.py"
+# glitch-45's multi-cut ruling (review CHANGES of 9fb0deda, F2): the rehearsal takes the record Part T's live-box-close
+# named, by its sha256 (--live-box-sha256); a record with another sha256 fails the step before it is verified.
+LIVE_BOX_NOT_CLOSED = "live-box record {sha}: REFUSED: it is not the record live-box-close named"
+LIVE_BOX_SHA = re.compile(r"[0-9a-f]{64}")
 LIVE_BOX_OK = re.compile(r"live-box record ([0-9a-f]{64}): walk lb[0-9]+, budget [0-9]+ s of [0-9]+ s, turn [0-9]+ "
                          r"cut \(end timed-out, exit 124\), stream [0-9]+ unit\(s\), session [0-9]+ unit\(s\), shape "
                          r"(equal|session-lags-[0-9]+|stream-lags-1), content problems 0, session torn no; files "
@@ -283,6 +287,8 @@ def main(argv=None):
                                              "without it the take-order beacon step fails")
     ap.add_argument("--live-box-record", help="the live-box probe's record (live_box_cut.py); without it the live-box "
                                               "step fails NOT REHEARSED")
+    ap.add_argument("--live-box-sha256", help="the record's sha256 as Part T's live-box-close named it; required "
+                                              "with --live-box-record")
     args = ap.parse_args(argv)
     if args.holdout_tool is not None:
         why = holdout_tool_problem(args.holdout_tool)
@@ -295,7 +301,13 @@ def main(argv=None):
         if why:
             print("refusing: " + why)
             return 2
+        if not (isinstance(args.live_box_sha256, str) and LIVE_BOX_SHA.fullmatch(args.live_box_sha256)):
+            print("refusing: --live-box-record needs --live-box-sha256, the sha256 live-box-close named")
+            return 2
         live_box_sha = hashlib.sha256(Path(args.live_box_record).read_bytes()).hexdigest()
+    elif args.live_box_sha256 is not None:
+        print("refusing: --live-box-sha256 names a record, and no --live-box-record was given")
+        return 2
     if freeze.outputs_exist(HERE):
         print("refusing: a freeze output already exists here")
         return 2
@@ -341,8 +353,11 @@ def main(argv=None):
         if code:
             raise ValueError("cannot remove clone remote: " + output)
         if args.live_box_record is not None:      # read with the clone's code before the clone is frozen
-            code, output = run_step(python_command(live_box_command(args.live_box_record)), clone)
-            live_box = live_box_outcome(code, output, live_box_sha)
+            if live_box_sha != args.live_box_sha256:
+                live_box = (1, LIVE_BOX_NOT_CLOSED.format(sha=live_box_sha))
+            else:
+                code, output = run_step(python_command(live_box_command(args.live_box_record)), clone)
+                live_box = live_box_outcome(code, output, live_box_sha)
         holdout_file = None if args.no_holdout_digests else scratch / HOLDOUT_FILE
         source = (None if holdout_file is None else
                   synthetic_holdout_source(clone / study.rel("prereg-draft.json"), holdout_file))

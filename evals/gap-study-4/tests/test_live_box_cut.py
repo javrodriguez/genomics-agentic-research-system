@@ -125,6 +125,22 @@ def mutants():
         "remote-admitted": ("T6.probe", lb, '    if git(where, "remote"):', "    if False:"),
         "gap-outside-unread": ("T6.probe", lb, "    if cca.cut_tail_problem(stream, sess) is not None:\n        return OUTSIDE",
                                "    if False:\n        return OUTSIDE"),
+        "cli-version-unchecked": ("T2.record", lb, '    elif rec["cli_version"] != pins:', "    elif False:"),
+        "pin-unread-admitted": ("T2.record", lb, "    if pins is None:\n", "    if False:\n"),
+        "ledger-binding-unchecked": ("T2.record", lb,
+                                     "        out.append(\"the ledger's budget, arm, model or harness is not the record's\")",
+                                     "        pass"),
+        "dirty-admitted": ("T6.probe", lb, '    if git(where, "status", "--porcelain", "--untracked-files=all"):',
+                           "    if False:"),
+        "child-repo-admitted": ("T6.probe", lb,
+                                '    if where.name == "repo" and re.fullmatch(r"w-[A-Za-z0-9]{8}", where.parent.name):',
+                                "    if False:"),
+        "finding-after-cut": ("T6.probe", lb, "    why = finding(record)\n",
+                              '    why = finding(record) if record["cut_turns"] else []\n'),
+        "close-sha-unchecked": ("T2.record", fr, "            if live_box_sha != args.live_box_sha256:",
+                                "            if False:"),
+        "close-sha-optional": ("T2.record", fr, "        if not (isinstance(args.live_box_sha256, str)",
+                               "        if False and not (isinstance(args.live_box_sha256, str)"),
         "step-timeout-flat": ("T7.timeout", fr,
                               '    return run_checks.timeout_for("test_round4") if script == "test_round4.py" else '
                               'STEP_TIMEOUT_S', "    return STEP_TIMEOUT_S"),
@@ -210,12 +226,12 @@ def cut_folder(files: Path, shape: str, budget: int = BUDGET, cut=True, walk=WAL
     path.write_text("\n".join(lines) + "\n")
 
 
-def honest_record(tmp: Path, shape: str, *, cut=True, walk=WALK, **override) -> Path:
+def honest_record(tmp: Path, shape: str, *, cut=True, walk=WALK, ledger_budget=BUDGET, **override) -> Path:
     """A record built by live_box_cut over a cut folder in `tmp`, written to tmp/record.json; `override` replaces
     record fields after the build (a forged record)."""
     lb = MODS["live_box_cut"]
     files = tmp / lb.FILES_DIR
-    cut_folder(files, shape, cut=cut, walk=walk)
+    cut_folder(files, shape, cut=cut, walk=walk, budget=ledger_budget)
     data = {p.name: p.read_bytes() for p in files.iterdir()}
     rec = lb.build_record(folder=files, walk="lb1", budget=BUDGET, registered=lb.registered_budget_s(),
                           line_head="a" * 40, probe_commit="b" * 40, files=data, route="graded", reasons=[],
@@ -305,6 +321,12 @@ class Rehearsal:
         return code, (report.read_text() if report.is_file() else ""), out.getvalue()
 
 
+def lb_args(path, sha=None) -> list:
+    """--live-box-record and the sha256 live-box-close names (the record's own unless `sha` is given)."""
+    sha = sha if sha is not None else hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    return ["--live-box-record", str(path), "--live-box-sha256", sha]
+
+
 def step_lines(report: str) -> list:
     return [line for line in report.splitlines() if re.match(r"\[[0-9]+\] ", line)]
 
@@ -360,6 +382,15 @@ class T2Record(Case):
         self.assertReason(honest_record(self.tmpdir(), "rewrite"), "content problems re-read are not empty")
         self.assertReason(honest_record(self.tmpdir(), "torn"), "the session file's last line is torn")
         self.assertReason(honest_record(self.tmpdir(), "outside"), "the cut turn's shape is not inside the bound")
+        # review F4: the cli version against the draft's pin, a pin that cannot be read (never None == None), and the
+        # ledger's own budget, arm, model and harness against the record's
+        self.assertReason(honest_record(self.tmpdir(), "equal", cli_version="9.9.9"),
+                          "cli version is not the draft's pin")
+        with mock.patch.object(lb, "_draft_version", lambda: None):
+            self.assertReason(honest_record(self.tmpdir(), "equal", cli_version=None),
+                              "the draft's version pin cannot be read")
+        self.assertReason(honest_record(self.tmpdir(), "equal", ledger_budget=BUDGET + 10),
+                          "the ledger's budget, arm, model or harness is not the record's")
         # an extra key
         path = honest_record(self.tmpdir(), "equal")
         rec = json.loads(path.read_text())
@@ -371,13 +402,30 @@ class T2Record(Case):
         inside = honest_record(self.tmpdir(), "equal")
         self.assertReason(inside, "the record is inside the repository", repo=inside.parent)
         r = MODS["freeze_rehearsal"]
-        for argv, patch in ((["--live-box-record", "record.json"], None),
-                            (["--live-box-record", str(inside)], inside.parent)):
+        for argv, patch in ((["--live-box-record", "record.json", "--live-box-sha256", "0" * 64], None),
+                            (lb_args(inside), inside.parent)):
             h = Rehearsal(self.tmpdir())
             with mock.patch.object(r, "REPO", patch) if patch else contextlib.nullcontext():
                 code, _, out = h.run(argv)
             self.assertEqual((code, h.commands), (2, []), f"T2.record: {argv}: {out}")
             self.assertIn("refusing: --live-box-record", out, "T2.record")
+
+    def test_the_record_must_be_the_one_close_named(self):
+        """glitch-45's multi-cut ruling: the rehearsal takes the record live-box-close named, by its sha256."""
+        r = MODS["freeze_rehearsal"]
+        path = honest_record(self.tmpdir(), "equal")
+        h = Rehearsal(self.tmpdir())
+        code, report, _ = h.run(lb_args(path, sha="f" * 64))
+        self.assertIn(f"[1] {r.LIVE_BOX_STEP}\n    live-box record {hashlib.sha256(path.read_bytes()).hexdigest()}: "
+                      f"REFUSED: it is not the record live-box-close named", report, f"T2.record: {report}")
+        self.assertFalse(any(c[4].endswith("live_box_cut.py") for c in h.commands), "T2.record: verified anyway")
+        self.assertEqual(code, 1, "T2.record")
+        for argv in (["--live-box-record", str(path)], ["--live-box-record", str(path), "--live-box-sha256", "x"],
+                     ["--live-box-sha256", "0" * 64]):
+            h = Rehearsal(self.tmpdir())
+            code, _, out = h.run(argv)
+            self.assertEqual((code, h.commands), (2, []), f"T2.record: {argv}: {out}")
+            self.assertIn("refusing: --live-box-", out, "T2.record")
 
     def test_a_pass_line_for_another_record_fails_the_step(self):
         r = MODS["freeze_rehearsal"]
@@ -385,8 +433,7 @@ class T2Record(Case):
         _, good = self.verify(path)
         other = good.strip().replace(hashlib.sha256(path.read_bytes()).hexdigest(), "f" * 64)
         self.assertNotEqual(other, good.strip(), "T2.record: the pass line names the record's sha256")
-        code, report, _ = Rehearsal(self.tmpdir(), verifier=lambda argv: (0, other + "\n")).run(
-            ["--live-box-record", str(path)])
+        code, report, _ = Rehearsal(self.tmpdir(), verifier=lambda argv: (0, other + "\n")).run(lb_args(path))
         self.assertIn(f"[1] {r.LIVE_BOX_STEP}", report, f"T2.record: another record's pass line passed: {report}")
         self.assertEqual(code, 1, "T2.record")
 
@@ -410,7 +457,7 @@ class T3Good(Case):
                 self.assertEqual(code, 0, f"T3.good {shape}: {out}")
                 self.assertTrue(r.LIVE_BOX_OK.fullmatch(out.strip()), f"T3.good {shape}: off the closed line: {out}")
         path = honest_record(self.tmpdir(), "stream-lags")
-        code, report, out = Rehearsal(self.tmpdir()).run(["--live-box-record", str(path)])
+        code, report, out = Rehearsal(self.tmpdir()).run(lb_args(path))
         sha = hashlib.sha256(path.read_bytes()).hexdigest()
         self.assertIn(f"[0] {r.LIVE_BOX_STEP}\n    live-box record {sha}: walk lb1", report, f"T3.good: {report}")
         self.assertEqual((code, report.rstrip().splitlines()[-1]), (0, "all green"), f"T3.good: {report}")
@@ -422,7 +469,7 @@ class T4NoPath(Case):
         path = honest_record(self.tmpdir(), "equal")
         for verifier in (None, lambda argv: (1, f"Traceback: {path} {path.parent}\n"),
                          lambda argv: (1, f"live-box record {'-' * 64}: REFUSED: {path}\n")):
-            code, report, out = Rehearsal(self.tmpdir(), verifier=verifier).run(["--live-box-record", str(path)])
+            code, report, out = Rehearsal(self.tmpdir(), verifier=verifier).run(lb_args(path))
             for text, where in ((report, "report"), (out.replace(f"report: ", ""), "stdout")):
                 for p in (str(path), str(path.parent), str(path.parent.resolve())):
                     self.assertNotIn(p, text, f"T4.no-path: the {where} holds the record's path")
@@ -527,7 +574,23 @@ class T6Probe(Case):
         git(frozen, "add", "-A")
         git(frozen, "commit", "-q", "-m", "synthetic freeze")
         self.refused("prereg.json is present", tmp, frozen)
+        dirty = scratch_repo(tmp, "dirty")
+        (dirty / "loose.txt").write_text("x\n")
+        self.refused("this clone's status is not clean", tmp, dirty)
+        (tmp / "w-AbCd1234").mkdir()
+        child = scratch_repo(tmp / "w-AbCd1234", "repo")
+        self.refused("this is the shipped child's repository", tmp, child)
         self.assertEqual(lb.registered_budget_s(), 900, "T6.probe: the registered budget is check_take's")
+
+    def test_a_finding_exits_4_cut_or_not(self):
+        """Review F1: a content problem, a torn line or a transcript-* reason exits 4 whether or not a turn was cut; a
+        clean uncut walk exits 3."""
+        for shape, cut, want in (("torn", False, 4), ("rewrite", False, 4), ("equal", False, 3), ("torn", True, 4)):
+            with self.subTest(shape=shape, cut=cut):
+                tmp = self.tmpdir()
+                repo = scratch_repo(tmp)
+                code, out, _ = self.probe(self.args(tmp), repo, walk=FakeWalk(repo, shape, cut))
+                self.assertEqual(code, want, f"T6.probe uncut {shape}: {out}")
 
     def test_gap_shape(self):
         lb = MODS["live_box_cut"]
@@ -595,7 +658,10 @@ BOUND = {"T1.not-rehearsed": "T1NotRehearsed.test_no_record_fails_the_live_box_s
          "T6.probe": "T6Probe.test_refusals_before_anything_is_built",
          "T7.timeout": "T7Timeout.test_the_battery_step_takes_run_checks_limit"}
 SPECIAL = {"live-box-sha-unbound": "T2Record.test_a_pass_line_for_another_record_fails_the_step",
-           "gap-outside-unread": "T6Probe.test_gap_shape"}
+           "gap-outside-unread": "T6Probe.test_gap_shape",
+           "finding-after-cut": "T6Probe.test_a_finding_exits_4_cut_or_not",
+           "close-sha-unchecked": "T2Record.test_the_record_must_be_the_one_close_named",
+           "close-sha-optional": "T2Record.test_the_record_must_be_the_one_close_named"}
 WITNESSES = {name: (SPECIAL.get(name, BOUND[clause]), clause) for name, (clause, _, _, _) in mutants().items()}
 
 
