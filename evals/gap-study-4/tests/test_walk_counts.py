@@ -707,6 +707,31 @@ class WC7Store(unittest.TestCase):
             with mock.patch.dict(os.environ, dict(allowed, GIT_DIR=str(top / ".git"))):
                 self.assertIsNone(wc.store_state(study))
             self.assertEqual(wc.STORE_GIT_ALLOWED, ("GIT_EDITOR", "GIT_PAGER", "GIT_TERMINAL_PROMPT"))
+            # lane gap-prebeacon-fix3: GIT_CEILING_DIRECTORIES (the athena suite sets it on every battery line) leaves
+            # the store on, keying nothing, exactly when no entry is the top folder or inside it, where git's own
+            # search from the study folder still finds this repository; an entry at or inside the top, a relative one,
+            # or a link resolving inside the top keeps it off, as does any other GIT_ variable beside a good ceiling
+            import subprocess
+            def found(ceiling):
+                got = subprocess.run(["git", "-C", str(study), "rev-parse", "--show-toplevel"], capture_output=True,
+                                     text=True, env={"PATH": os.environ["PATH"], "GIT_CEILING_DIRECTORIES": ceiling})
+                return got.returncode == 0 and Path(got.stdout.strip()).resolve() == top.resolve()
+            (self.tmp / "alias").symlink_to(top / "study")
+            outside_ok = (str(top.parent), str(self.tmp / "elsewhere"), f"{top.parent}{os.pathsep}/nonexistent",
+                          f"{os.pathsep}{top.parent}")
+            inside = (str(top), str(top / "study"), str(top) + "/", str(self.tmp / "alias"), "relative/path",
+                      f"{top.parent}{os.pathsep}{top}")
+            for value in outside_ok:
+                with self.subTest(ceiling=value), mock.patch.dict(os.environ, {"GIT_CEILING_DIRECTORIES": value}):
+                    self.assertTrue(found(value), "git finds the repository under this ceiling")
+                    self.assertEqual(wc.store_state(study), base)
+            for value in inside:
+                with self.subTest(ceiling=value), mock.patch.dict(os.environ, {"GIT_CEILING_DIRECTORIES": value}):
+                    self.assertIsNone(wc.store_state(study))
+            self.assertFalse(found(str(top)), "a ceiling at the top folder hides the repository from git")
+            with mock.patch.dict(os.environ, {"GIT_CEILING_DIRECTORIES": str(top.parent), "GIT_DIR": str(top / ".git")}):
+                self.assertIsNone(wc.store_state(study))
+            (self.tmp / "alias").unlink()
             (top / "study" / "link.json").symlink_to(outside)                   # an untracked link
             self.assertIsNone(wc.store_state(study))
             self.git("add", "-A")

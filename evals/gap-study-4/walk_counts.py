@@ -243,7 +243,8 @@ def coverage(study: Path = HERE) -> tuple:
 #   NO STORE AT ALL (store_state is None): git cannot say the state (no repository or HEAD, an assume-unchanged or
 #   skip-worktree entry, which would hide a change from git status); any GIT_ variable is set but the three of
 #   STORE_GIT_ALLOWED (review 200ceab finding 3: the road's own git reads, native_reader_registration._git, honour
-#   GIT_DIR and its kin, which the key cannot see); or any tracked path, or any changed, untracked or ignored path, is or holds a symbolic link (finding 2: the
+#   GIT_DIR and its kin, which the key cannot see), GIT_CEILING_DIRECTORIES aside unless an entry of it could hide
+#   the repository (STORE_GIT_CEILING, lane gap-prebeacon-fix3); or any tracked path, or any changed, untracked or ignored path, is or holds a symbolic link (finding 2: the
 #   road reads through a link, the key would hold only its target text); or a refs/replace ref or an info/grafts
 #   file exists (closure review 9bc0822 NIT 2: the road's git show reads replaced objects, the state does not). A
 #   refusal is never stored.
@@ -263,6 +264,15 @@ STORE_ENV = "GAP4_COVERAGE_STORE"
 # glitch-45's ruling (Wed 28 Oct 2026): the GIT_ variables that leave the store on, exactly these three; they choose an
 # editor, a pager and whether git may prompt, and steer no read. Any other GIT_ variable keeps the store off.
 STORE_GIT_ALLOWED = ("GIT_EDITOR", "GIT_PAGER", "GIT_TERMINAL_PROMPT")
+# Lane gap-prebeacon-fix3 (athena gap4-prebeacon-326c8c1, w5c-draft-ci lines 9-14): the athena suite sets
+# GIT_CEILING_DIRECTORIES on every battery line (athena_suite_remote.suite_env), so under the rule above the store was
+# off for the whole battery and every test_build_draft --mutant child paid the coverage read past its 180 s limit. A
+# ceiling only stops git's upward search for a repository: from any folder of the work tree that search finds this
+# work tree's repository unless a ceiling entry is the top folder or lies inside it, and then it finds none (git
+# never searches up into a ceiling). So the variable leaves the store on exactly when every entry, as written and
+# resolved, is absolute and neither the top folder nor inside it; the road's own git reads then find the repository
+# the state was read from, as with no ceiling. Any other entry keeps the store off.
+STORE_GIT_CEILING = "GIT_CEILING_DIRECTORIES"
 STORE_VERSION = 1
 STORE_ROAD = (("walk_plan", ("coverage_report", "design_in_force", "plan_walks", "read_register", "coverage",
                              "strict_walks", "deferred_arms")),
@@ -333,18 +343,39 @@ def _holds_a_link(path: Path) -> bool:
     return path.is_dir() and any(p.is_symlink() for p in path.rglob("*"))
 
 
+def _ceiling_reaches(value: str, top: Path) -> str:
+    """Why GIT_CEILING_DIRECTORIES could change which repository git finds from inside `top` (STORE_GIT_CEILING), or
+    "" when it cannot: every entry, as written and resolved, is absolute and neither `top` nor inside it. An empty
+    entry (git's mark that later entries are not resolved) is allowed; both readings of every entry are checked."""
+    import os
+    for entry in value.split(os.pathsep):
+        if not entry:
+            continue
+        if not os.path.isabs(entry):
+            return f"{STORE_GIT_CEILING} holds an entry that is not absolute: {entry}"
+        for form in (Path(os.path.normpath(entry)), Path(entry).resolve()):
+            if form == top or top in form.parents:
+                return f"{STORE_GIT_CEILING} holds {entry}, the work tree's top folder or inside it"
+    return ""
+
+
 def store_state_why(study: Path = HERE) -> tuple:
     """(the state or None, why None)."""
     import os
     try:
         if Path(study).resolve() != HERE:
             return None, "not this module's own folder"
-        steering = sorted(k for k in os.environ if k.startswith("GIT_") and k not in STORE_GIT_ALLOWED)
+        steering = sorted(k for k in os.environ if k.startswith("GIT_") and k not in STORE_GIT_ALLOWED
+                          and k != STORE_GIT_CEILING)
         if steering:
             return None, "a GIT_ variable is set: " + ", ".join(steering)
         if not _road_is_genuine():
             return None, "a function of the road, or the register folder, is not the module's own"
         top = Path(_git(HERE, "rev-parse", "--show-toplevel").decode().strip()).resolve()
+        if STORE_GIT_CEILING in os.environ:
+            why = _ceiling_reaches(os.environ[STORE_GIT_CEILING], top)
+            if why:
+                return None, why
         head = _git(top, "rev-parse", "--verify", "HEAD^{commit}").decode().strip()
         flags = _git(top, "ls-files", "-v", "-z").split(b"\0")
         if any(f[:1].islower() or f[:1] == b"S" for f in flags if f):

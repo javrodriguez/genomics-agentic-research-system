@@ -127,6 +127,9 @@ RUN_ENV_ABSENT = {
     "GAP4_ATHENA_SUITE": "the first machine gate's (harness 9425bf62); no module reads it since the box lane's fa0838ec",
     "GAP4_MACHINE_BOOKING": "the first machine gate's; no module reads it since fa0838ec",
     "GAP4_ATHENA_SUITE_PY": "read only by test_walk_launch's real-scanner proof on the Mac, never at walk time",
+    "GAP4_COVERAGE_STORE": "walk_counts.store_dir reads it to place the covered-set store that draft builds and "
+                           "their tests read (lane gap-prebeacon-fix); nothing on the walk path reads it, and the store "
+                           "keeps the walk's checkout out of it, so a walk passed it would only point at a cache",
 }
 HEX40 = re.compile(r"[0-9a-f]{40}")
 # machine_gate's own refusal phrases, the only words of a pre-check refusal ship passes on (r7 MINOR)

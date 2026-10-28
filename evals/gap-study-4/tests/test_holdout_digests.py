@@ -405,6 +405,11 @@ class RehearsalHarness:
                               holdout_wordings_per_task_version=counts.pop())
             (Path(clone) / "evals" / "gap-study-4" / "prereg.json").write_text(json.dumps(frozen))
             return 0, "freeze: wrote prereg.json"
+        if str(command[4]).endswith("live_box_cut.py"):   # lane gap-prebeacon-fix3: the clone's verifier, its closed pass line
+            sha = hashlib.sha256(Path(command[-1]).read_bytes()).hexdigest()
+            return 0, (f"live-box record {sha}: walk lb1, budget 20 s of 900 s, turn 1 cut (end timed-out, exit 124), "
+                       f"stream 3 unit(s), session 3 unit(s), shape equal, content problems 0, session torn no; files 4 "
+                       f"re-read equal; adapter, check_take and checker digests this tree's; within the bound")
         return 0, "ok"
 
     def run(self, argv):
@@ -432,8 +437,15 @@ class RehearsalHarness:
 class H9Rehearsal(Case):
     def test_the_rehearsal_freeze_exercises_the_digest_path(self):
         self.assertTrue(hasattr(MODS["freeze_rehearsal"], "synthetic_holdout_source"), "H9.rehearsal: the fold")
+        # lane gap-prebeacon-fix3: since the live-box merge a rehearsal without --live-box-record fails its live-box
+        # step NOT REHEARSED (glitch-45's ruling); a stand-in record, verified by the fake clone verifier as
+        # test_cp6_wiring does, keeps that step green, so no step but the digest step can say NOT REHEARSED here
+        record = self.tmpdir() / "record.json"
+        record.write_text("{}\n")
+        live_box = ["--live-box-record", str(record), "--live-box-sha256", hashlib.sha256(record.read_bytes()).hexdigest()]
         h = RehearsalHarness(self.tmpdir())
-        code, report = h.run(["--review-commit", "a" * 40])
+        code, report = h.run(["--review-commit", "a" * 40, *live_box])
+        self.assertIn("[0] live-box: forced-timeout claude-code take\n", report, "H9.rehearsal: the stand-in record")
         [command] = h.freeze_commands()
         self.assertIn("--holdout-digests", command, "H9.rehearsal: the freeze got no digest file")
         [source] = h.sources
@@ -445,7 +457,7 @@ class H9Rehearsal(Case):
                       "H9.rehearsal: the step checks both fields")
         self.assertNotIn("NOT REHEARSED", report, "H9.rehearsal")
         h = RehearsalHarness(self.tmpdir())
-        code, report = h.run(["--review-commit", "a" * 40, "--no-holdout-digests"])
+        code, report = h.run(["--review-commit", "a" * 40, "--no-holdout-digests", *live_box])
         [command] = h.freeze_commands()
         self.assertNotIn("--holdout-digests", command, "H9.rehearsal: --no-holdout-digests passed a file")
         self.assertIn("[1] holdout digests\n    NOT REHEARSED: the holdout digests", report,
