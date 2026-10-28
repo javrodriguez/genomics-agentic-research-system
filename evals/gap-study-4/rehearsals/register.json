@@ -4292,6 +4292,13 @@
       "n": 1,
       "checker_constants_sha256": "e3bc32b2077f98ce95e4debcd1eade371676ce7b6493a10facf7b77cec5d9c61",
       "sha256": "1cfeb1374a1d893dcd5d9fb411c2b57de68bd4a5aa15f39e36d9e9f8b2ed36fe"
+    },
+    {
+      "walk": "w193",
+      "file": "recheck-1.json",
+      "n": 1,
+      "checker_constants_sha256": "e3bc32b2077f98ce95e4debcd1eade371676ce7b6493a10facf7b77cec5d9c61",
+      "sha256": "d4f79e68447169b0839c5293804a985211b7bc2196b08b6e2292a195cc3e8d17"
     }
   ]
 }
