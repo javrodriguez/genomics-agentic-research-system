@@ -139,6 +139,8 @@ def mutants():
                               '    why = finding(record) if record["cut_turns"] else []\n'),
         "close-sha-unchecked": ("T2.record", fr, "            if live_box_sha != args.live_box_sha256:",
                                 "            if False:"),
+        "sha-prefix-only": ("T2.record", fr, "            if live_box_sha != args.live_box_sha256:",
+                            "            if live_box_sha[:1] != args.live_box_sha256[:1]:"),
         "close-sha-optional": ("T2.record", fr, "        if not (isinstance(args.live_box_sha256, str)",
                                "        if False and not (isinstance(args.live_box_sha256, str)"),
         "step-timeout-flat": ("T7.timeout", fr,
@@ -420,6 +422,12 @@ class T2Record(Case):
                       f"REFUSED: it is not the record live-box-close named", report, f"T2.record: {report}")
         self.assertFalse(any(c[4].endswith("live_box_cut.py") for c in h.commands), "T2.record: verified anyway")
         self.assertEqual(code, 1, "T2.record")
+        # closure review N1: a sha256 that differs only in its last character is another record
+        real = hashlib.sha256(path.read_bytes()).hexdigest()
+        near = real[:-1] + ("0" if real[-1] != "0" else "1")
+        code, report, _ = Rehearsal(self.tmpdir()).run(lb_args(path, sha=near))
+        self.assertIn("REFUSED: it is not the record live-box-close named", report, f"T2.record: {report}")
+        self.assertEqual(code, 1, "T2.record: a sha256 equal but for its last character passed")
         for argv in (["--live-box-record", str(path)], ["--live-box-record", str(path), "--live-box-sha256", "x"],
                      ["--live-box-sha256", "0" * 64]):
             h = Rehearsal(self.tmpdir())
@@ -661,7 +669,8 @@ SPECIAL = {"live-box-sha-unbound": "T2Record.test_a_pass_line_for_another_record
            "gap-outside-unread": "T6Probe.test_gap_shape",
            "finding-after-cut": "T6Probe.test_a_finding_exits_4_cut_or_not",
            "close-sha-unchecked": "T2Record.test_the_record_must_be_the_one_close_named",
-           "close-sha-optional": "T2Record.test_the_record_must_be_the_one_close_named"}
+           "close-sha-optional": "T2Record.test_the_record_must_be_the_one_close_named",
+           "sha-prefix-only": "T2Record.test_the_record_must_be_the_one_close_named"}
 WITNESSES = {name: (SPECIAL.get(name, BOUND[clause]), clause) for name, (clause, _, _, _) in mutants().items()}
 
 

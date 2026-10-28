@@ -207,7 +207,8 @@ def measure(folder: Path) -> dict:
 
 
 def finding(record: dict) -> list:
-    """Why a cut record is a finding for glitch-45 (R5), [] when it is not."""
+    """Why a record, cut or not, is a finding for glitch-45 (R5): a shape outside the bound, a content problem, a torn
+    session line, or a transcript-unreadable or transcript-mismatch check reason; [] when it is none of them."""
     out = []
     if record["gap"]["shape"] == OUTSIDE:
         out.append("the cut turn's tail is outside the cut-tail bound")
