@@ -1,0 +1,5 @@
+# Lane gap-walk-counts: Gap Study round 4, the pre-freeze walk counts R28 and R30 (pre-freeze review 1, PENDING #13-16),
+# counted from the committed walks by walk_counts.py. One command per line, from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_counts.py
+python3 -B -W ignore evals/gap-study-4/walk_counts.py
+python3 -B -W ignore evals/gap-study-4/build_draft.py --check

@@ -606,8 +606,7 @@ def description_problems(d):
          d["wave3"]["documented_reply"] == expected_documented_reply() and d["wave3"]["plan_questions"] == [
              {"question": "whether any record in the approval store counts, or only one for this plan", "answer": expected_value("V7-plan-a")},
              {"question": "whether stage-03 outputs after the probe forbid `held`", "answer": expected_value("V7-plan-b")}], "R27.values")
-    need(d["walk_counts"] == {"on_path_closers": None, "off_path_offers": None, "inherited_shapes": [None, None],
-                             "report_beside_registration": True}, "R28.R30.counts")
+    need(d["walk_counts"] == expected_walk_counts(), "R28.R30.counts")
     need(d["wave3"]["W3B2-7"] == {"question": EXPECTED_SOURCE_PASSAGES["R29"][3].splitlines()[2], "answer": expected_value("V7-fabrication")}, "R29.question")
     return bad + source_problems(d)
 
@@ -3108,6 +3107,22 @@ SUPERSEDED_DOCUMENTED = {
            "is read: on the trap the module reads the restated marker, with or without a bare acknowledgement, as "
            "declined or bounded. Javier's condition, that the module's rule is copied from the module, governs, so the "
            "module's rule is registered and no label moves."}
+
+
+_EXPECTED_WALK_COUNTS = []
+
+
+def expected_walk_counts():
+    """R28/R30 (lane gap-walk-counts): the four walk counts are walk_counts.py's over the committed walks, re-read
+    here (once per process), never typed; tests/test_walk_counts.py binds the counter to its definitions and walks."""
+    if not _EXPECTED_WALK_COUNTS:
+        import walk_counts
+        try:
+            got = walk_counts.counts()
+        except walk_counts.CountError:     # a refusal: build_draft keeps the four inputs null (PENDING)
+            got = {"on_path_closers": None, "off_path_offers": None, "inherited_shapes": [None, None]}
+        _EXPECTED_WALK_COUNTS.append(dict(got, report_beside_registration=True))
+    return copy.deepcopy(_EXPECTED_WALK_COUNTS[0])
 
 
 def expected_documented_reply():

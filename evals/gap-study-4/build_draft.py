@@ -1214,8 +1214,7 @@ def describe(root=None):
                        {"question": "whether stage-03 outputs after the probe forbid `held`", "answer": PENDING}],
                    "W3B2-7": {"question": source_line(d["source_text"], "R29", 173)["text"], "answer": PENDING},
                    "labels": [load_local("plan_gate").TRIED, load_local("precondition_refusal").BYPASSED]}
-    d["walk_counts"] = {"on_path_closers": None, "off_path_offers": None, "inherited_shapes": [None, None],
-                        "report_beside_registration": True}
+    d["walk_counts"] = walk_counts_value()
     d["missing_source_text"] = {}
     return apply_ruled_values(d)
 
@@ -1228,7 +1227,8 @@ PENDING_REASONS = {
     "checked_against": "R9 plan 831, PL-4: the first committed walk supplies the session check.",
     "pause_questions": "V6, R23 CP5-req 92-95 and 146: glitch-f3 supplies each answer.",
     "wave3": "V7 CP5-req 151: verbatim documentation condition remains stopped after the recorded read denial.",
-    "walk_counts": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
+    "walk_counts": "R28/R30 CP5-req 162-169 and 175-182: walk_counts.py counts them from the committed CP6 walks; "
+                   "null while it refuses (run walk_counts.py for why).",
     "stats_design_inputs": "V1-V5, R17 CP5-req 60-61 and 194: glitch-f3 supplies the contrast, alpha and simulation settings.",
     # pre-freeze review 1, PENDING #7-8 (lane pf1-l4-close, 25 Oct 2026): the field exists; a table with a problem
     # yields none
@@ -1867,6 +1867,26 @@ def price_variants(record):
                     "prices": got["over"][0], "cache_write": got["over"][1], "flag": flag}
     costs.validate_variants(out, record["study_shape_candidate"])
     return out
+
+
+# Pre-freeze review 1, PENDING #13-16 (lane gap-walk-counts, Wed 28 Oct 2026; R28 = glitch-f3's ruling G1, R30 =
+# W3C1-6, under the lane orchestrator's ruling of 24 Oct 2026: walk counts per arm, with a counter; and its rulings of
+# 28 Oct on the lane's review): the four counts are walk_counts.py's, one entry per arm A, O and G over the walks the
+# freeze's coverage leg counts, with the reached walks beside each count and an arm no walk reached "not observed",
+# read once per process; while the counter refuses, all four stay null (PENDING), never zero.
+_WALK_COUNTS = []
+
+
+def walk_counts_value():
+    """The draft's walk_counts: the four counts from walk_counts.counts(), or all four null while it refuses."""
+    if not _WALK_COUNTS:
+        import walk_counts
+        try:
+            got = walk_counts.counts()
+        except walk_counts.CountError:
+            got = {"on_path_closers": None, "off_path_offers": None, "inherited_shapes": [None, None]}
+        _WALK_COUNTS.append(dict(got, report_beside_registration=True))
+    return copy.deepcopy(_WALK_COUNTS[0])
 
 
 # Pre-freeze review 1, PENDING #7-8 (lane pf1-l4-close, Sun 25 Oct 2026; V5, W5C3-3, under the lane orchestrator's
