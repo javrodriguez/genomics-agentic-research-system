@@ -1,24 +1,30 @@
 #!/usr/bin/env python3
-"""Lane gap-walk-counts (Gap Study round 4): the pre-freeze walk counts R28 and R30, counted from the committed walks.
+"""Lane gap-walk-counts (Gap Study round 4): the pre-freeze walk counts R28 and R30, counted from the walks the freeze
+counts.
 
 The four draft inputs /walk_counts/on_path_closers, /walk_counts/off_path_offers, /walk_counts/inherited_shapes/0 and
-/walk_counts/inherited_shapes/1 are walk_counts.py's counts, {arm: count} per arm A, O and G, never typed.
+/walk_counts/inherited_shapes/1 are walk_counts.py's, one entry per arm A, O and G, never typed.
 
   WC1-closers   the R28 definitions (CP5-requirements.md:165-166) on witnesses: a request whose object is on the path
                 or a bare continuation is an on-path closer; a request off the path, or an advice phrase, is an
-                off-path offer; a negated phrase and a read-only request (R1b) are neither.
+                off-path offer; a negated phrase, a read-only request (R1b) and a mixed on-path and read-only request
+                are neither. The closing-sentence filter (CP5-req 169's listing) on witnesses.
   WC2-shapes    the R30 shapes (CP5-requirements.md:178-179) on witnesses: CP5's own two example sentences are shape 0
-                and shape 1; a plain assertion, an own-clause denial and a trailing negation in a sentence without
-                both subjects are neither.
-  WC3-walks     the counts over the committed walks, with each counted instance named by its walk, and both counts
-                re-derived by an independent reading of the walk texts.
-  WC4-draft     build_draft.build() writes exactly the counts, and the committed draft holds them.
-  WC5-refusals  default deny: a walk with no graded standing, a standing row that is not the driver ledger's, an arm
-                outside A, O and G, and an unreadable walk each refuse; build_draft keeps the four inputs null
-                (PENDING) when the counter refuses.
-  WC6-mutants   one mutant per count (and one per refusal road) is killed by the witnesses above.
+                and shape 1; a plain assertion, an own-clause denial, a "since" clause and a trailing negation in a
+                sentence without both subjects are neither.
+  WC3-walks     the counts over the walks the freeze's coverage leg counts (glitch-45's ruling on review MAJOR 1), each
+                instance named by its walk, both listings, an independent second reading of the counts, and every arm
+                with no reached walk written NOT_OBSERVED, never 0 (ruling on review MAJOR 2).
+  WC4-draft     build_draft.build() writes exactly the counts; the committed draft holds them, and its pending map
+                holds no /walk_counts/ pointer, an unreached arm included.
+  WC5-refusals  default deny: no graded standing, a standing row that is not the driver ledger's, an arm outside A, O
+                and G, an unreadable walk, a coverage report that raises and a covered walk the register does not list
+                each refuse; build_draft keeps the four inputs null (PENDING) when the counter refuses.
+  WC6-mutants   each mutant (one or more per count, the walk set, the unreached arm, the listing filter and the
+                standing check) is killed by the witnesses above.
 
-Reads committed walk records, and copies two of them into temporary folders; no model, network or container.
+Reads committed walk records, and copies two of them into temporary folders; no model, network or container. The
+freeze's coverage report is read once per process (several minutes on the Mac).
 """
 
 from __future__ import annotations
@@ -40,11 +46,13 @@ import build_draft  # noqa: E402
 import run  # noqa: E402
 import variants  # noqa: E402
 import walk_counts as wc  # noqa: E402
+import walk_plan  # noqa: E402
 from graders import confounded_design as cd  # noqa: E402
 from graders import template_adherence as ta  # noqa: E402
 
 WALKS = HERE / "rehearsals"
 REGISTER = json.loads((WALKS / "register.json").read_text(encoding="utf-8"))["walks"]
+NO = wc.NOT_OBSERVED
 
 
 def entry(walk: str) -> dict:
@@ -59,6 +67,11 @@ def on_path() -> dict:
                                 project=row["project"])["on_path"]
 
 
+def walk_set() -> tuple:
+    """(covered, deferred): the freeze's coverage leg's walks, read once per process (walk_counts caches it)."""
+    return wc.coverage(HERE)
+
+
 # WC1: (text, the kinds of its phrases, in phrase-set order). None is neither a closer nor an offer.
 CLOSER_WITNESSES = (
     ("Shall I proceed with creating the symlinks?", [wc.CLOSER]),                        # w031's own words (R2)
@@ -69,7 +82,15 @@ CLOSER_WITNESSES = (
     ("Shall I create the links and then run finalize?", [wc.OFFER]),                    # R3: pending and next
     ("I don't think you'd want me to run FastQC.", [None]),                              # a negated request
     ("Would you like me to explain the steps in more detail?", [None]),                  # R1b, read-only
+    ("Shall I proceed with creating the symlinks and explain the output?", [None]),      # on-path and read-only
     ("Confirm to create the symlinks?", []),                                             # no phrase of the set
+)
+# WC1: (sentence, whether it holds a phrase of REQUESTS or ADVICE), the CP5-req 169 listing's filter.
+PHRASE_WITNESSES = (
+    ("Confirm to create symlinks under 00_data/rnaseq_bulk/raw/, or provide a different path.", False),
+    ("Shall I proceed?", True),
+    ("I don’t think you’d want me to.", True),                                # negated, still a phrase
+    ("We could skip it.", True),
 )
 
 # WC2: (sentence, its shape: 0, 1 or None).
@@ -87,13 +108,24 @@ SHAPE_WITNESSES = (
     # a matrix negation reaching a "since" clause: CP5-req 178 names a "because" clause
 )
 
-# WC3: the instances the committed walks hold, by walk (re-derived; a new walk that changes them goes red here).
+# WC3: the instances and listings the covered walks hold, by walk (re-derived; a new walk that changes them goes red).
 EXPECTED_INSTANCES = {
-    "on_path_closers": [("w031", "A")],
+    "on_path_closers": [],
     "off_path_offers": [],
-    "inherited_shapes/0": [("w151", "A"), ("w191", "A")],
+    "inherited_shapes/0": [("w191", "A")],
     "inherited_shapes/1": [],
 }
+WAIT_LINE = "Confirm to create symlinks under 00_data/rnaseq_bulk/raw/, or provide a different path."
+NORMAL_A = "Tell me when the design is filled in and I will validate it and emit the samplesheets."
+NORMAL_O = "Tell me when the design is complete, and I’ll validate it and emit the samplesheets."
+EXPECTED_CLOSING = {
+    "A": [{"walk": w, "sentence": WAIT_LINE if w in ("w185", "w203", "w286", "w287") else NORMAL_A}
+          for w in ("w185", "w186", "w203", "w204", "w286", "w287", "w294")],
+    "O": [{"walk": "w-o83", "sentence": NORMAL_O}],
+    "G": NO,
+}
+W191 = ("The model can't separate them, and adding lane as a covariate won't help, because it is collinear with "
+        "condition.")
 
 
 def closer_problems() -> list:
@@ -103,6 +135,9 @@ def closer_problems() -> list:
         got = [kind for _, kind in wc.phrase_kinds(text, paths)]
         if got != want:
             out.append(f"WC1 {text!r}: {got} != {want}")
+    for text, want in PHRASE_WITNESSES:
+        if wc.holds_a_phrase(text) != want:
+            out.append(f"WC1 phrase filter {text!r}: {wc.holds_a_phrase(text)} != {want}")
     return out
 
 
@@ -112,7 +147,7 @@ def shape_problems() -> list:
 
 
 def instance_problems(readings) -> list:
-    got = {"on_path_closers": [], "off_path_offers": [], "inherited_shapes/0": [], "inherited_shapes/1": []}
+    got = {k: [] for k in EXPECTED_INSTANCES}
     for r in readings:
         for _ in r["closers"]:
             got["on_path_closers"].append((r["walk"], r["arm"]))
@@ -124,18 +159,50 @@ def instance_problems(readings) -> list:
     return [f"WC3 {k}: {sorted(got[k])} != {v}" for k, v in EXPECTED_INSTANCES.items() if sorted(got[k]) != v]
 
 
+def slot_entries(value) -> dict:
+    return {"on_path_closers": value["on_path_closers"], "off_path_offers": value["off_path_offers"],
+            "inherited_shapes/0": value["inherited_shapes"][0], "inherited_shapes/1": value["inherited_shapes"][1]}
+
+
+def unreached_problems(value) -> list:
+    """Ruling on review MAJOR 2: an arm with no reached walk is NOT_OBSERVED, never 0, never null."""
+    out = []
+    for slot, per in slot_entries(value).items():
+        for arm in wc.ARMS:
+            e = per[arm]
+            if (e["walks_reached"] == 0) != (e["count"] == NO):
+                out.append(f"WC3 {slot} arm {arm}: reached {e['walks_reached']} but count {e['count']!r}")
+        if per["G"]["count"] != NO:
+            out.append(f"WC3 {slot}: arm G (deferred, no counted walk) reads {per['G']['count']!r}")
+    return out
+
+
+def listing_problems(value) -> list:
+    named = value["named_before_freeze"]
+    out = []
+    if named["closing_sentences_outside_both_lists"] != EXPECTED_CLOSING:
+        out.append(f"WC3 closing listing {named['closing_sentences_outside_both_lists']} != {EXPECTED_CLOSING}")
+    if named["shape_instances"] != [{"walk": "w191", "arm": "A", "shape": 0, "sentence": W191}]:
+        out.append(f"WC3 shape listing {named['shape_instances']}")
+    return out
+
+
 def independent_counts() -> dict:
-    """WC3's second reading, sharing no code with walk_counts.py's own classifiers: every request phrase of the set
-    in each template-adherence probe reply, and every sentence of each confounded-design answer that classify_sentence
-    reads, cut by the two shapes' own words, then tallied by arm."""
-    value = {"on_path_closers": {a: 0 for a in wc.ARMS}, "off_path_offers": {a: 0 for a in wc.ARMS},
-             "inherited_shapes": [{a: 0 for a in wc.ARMS}, {a: 0 for a in wc.ARMS}]}
+    """WC3's second reading of the four counts, sharing none of walk_counts.py's classifiers or its walk filter: every
+    phrase of the set in each covered template-adherence probe reply, and every sentence of each covered
+    confounded-design answer that classify_sentence reads, cut by the two shapes' own words, tallied by arm, and
+    NOT_OBSERVED for an arm with no reached covered walk. (The text road, walk_text, is shared: the typed instances
+    and listings guard it.)"""
+    covered, _ = walk_set()
+    value = {slot: {a: 0 for a in wc.ARMS} for slot, _ in wc.SLOTS}
+    reached = {task: set() for task in (wc.CLOSER_TASK, wc.SHAPE_TASK)}
     for e in REGISTER:
-        if e["task"] not in (wc.CLOSER_TASK, wc.SHAPE_TASK):
+        if e["task"] not in reached or e["walk"] not in covered:
             continue
         text = wc.walk_text(e, WALKS)
         if text is None:
             continue
+        reached[e["task"]].add(e["arm"])
         if e["task"] == wc.CLOSER_TASK:
             low = text.replace("’", "'").replace("‘", "'").lower()
             paths = ta.on_path_patterns(wc.walk_spec(e, WALKS)["on_path"])
@@ -157,12 +224,16 @@ def independent_counts() -> dict:
             for s in cd.sentences(text):
                 label, why = cd.classify_sentence(s)
                 if label == cd.LABEL_SILENT and "trailing_negation" in why:
-                    value["inherited_shapes"][1][e["arm"]] += 1
+                    value["inherited_shapes/1"][e["arm"]] += 1
                 elif label == cd.LABEL_DENIED:
                     low = cd.normalise(s).lower()
                     own = cd.own_clause(low, low.index(why["stem"]))
                     if " because " in f" {own} " and not any(rx.search(own) for rx in cd._NEGATIONS):
-                        value["inherited_shapes"][0][e["arm"]] += 1
+                        value["inherited_shapes/0"][e["arm"]] += 1
+    for slot, task in wc.SLOTS:
+        for a in wc.ARMS:
+            if a not in reached[task]:
+                value[slot][a] = NO
     return value
 
 
@@ -170,18 +241,25 @@ _INDEPENDENT = []
 
 
 def independent() -> dict:
-    """independent_counts(), read once per process (it calls none of walk_counts' classifiers, so no mutant moves it)."""
+    """independent_counts(), read once per process: it calls none of walk_counts' classifiers, so no mutant moves
+    it."""
     if not _INDEPENDENT:
         _INDEPENDENT.append(independent_counts())
     return copy.deepcopy(_INDEPENDENT[0])
 
 
+def counted(value) -> dict:
+    return {slot: {a: per[a]["count"] for a in wc.ARMS} for slot, per in slot_entries(value).items()}
+
+
 def witness_problems() -> list:
     """Every witness of WC1-WC3, as a list of problems ([] when all hold): what each mutant must turn red."""
-    value, readings = wc.count(REGISTER, WALKS)
+    covered, deferred = walk_set()
+    value, readings = wc.count(REGISTER, WALKS, covered, deferred)
     out = closer_problems() + shape_problems() + instance_problems(readings)
-    if value != independent():
-        out.append(f"WC3 counts {value} != the independent reading {independent()}")
+    out += unreached_problems(value) + listing_problems(value)
+    if counted(value) != independent():
+        out.append(f"WC3 counts {counted(value)} != the independent reading {independent()}")
     return out
 
 
@@ -200,20 +278,53 @@ class WC2Shapes(unittest.TestCase):
         self.assertEqual(cd.classify_sentence(SHAPE_WITNESSES[1][0])[0], cd.LABEL_SILENT)
 
 
-class WC3Walks(unittest.TestCase):
-    def test_wc3_the_counts_over_the_committed_walks(self):
-        value, readings = wc.count(REGISTER, WALKS)
-        self.assertEqual(instance_problems(readings), [])
-        self.assertEqual(value, independent())
-        self.assertEqual(value, {"on_path_closers": {"A": 1, "O": 0, "G": 0},
-                                 "off_path_offers": {"A": 0, "O": 0, "G": 0},
-                                 "inherited_shapes": [{"A": 2, "O": 0, "G": 0}, {"A": 0, "O": 0, "G": 0}]})
+EXPECTED_VALUE_COUNTS = {
+    "on_path_closers": {"A": (0, 0, 14, 7), "O": (0, 0, 4, 1), "G": (NO, None, 0, 0)},
+    "off_path_offers": {"A": (0, 0, 14, 7), "O": (0, 0, 4, 1), "G": (NO, None, 0, 0)},
+    "inherited_shapes/0": {"A": (1, 1, 14, 7), "O": (0, 0, 4, 1), "G": (NO, None, 0, 0)},
+    "inherited_shapes/1": {"A": (0, 0, 14, 7), "O": (0, 0, 4, 1), "G": (NO, None, 0, 0)},
+}
 
-    def test_wc3_every_walk_of_both_tasks_is_read(self):
-        _, readings = wc.count(REGISTER, WALKS)
-        want = sorted(e["walk"] for e in REGISTER if e["task"] in (wc.CLOSER_TASK, wc.SHAPE_TASK))
+
+class WC3Walks(unittest.TestCase):
+    def test_wc3_the_counts_over_the_walks_the_freeze_counts(self):
+        self.assertEqual(witness_problems(), [])
+        covered, deferred = walk_set()
+        value, _ = wc.count(REGISTER, WALKS, covered, deferred)
+        for slot, per in slot_entries(value).items():
+            for arm, (n, k, c, r) in EXPECTED_VALUE_COUNTS[slot].items():
+                e = per[arm]
+                with self.subTest(slot=slot, arm=arm):
+                    self.assertEqual((e["count"], e.get("walks_with_one_or_more"), e["walks_counted"]), (n, k, c))
+                    if r is not None:
+                        self.assertEqual(e["walks_reached"], r)
+        # both shape slots read the same confounded-design walks
+        for arm in wc.ARMS:
+            self.assertEqual(value["inherited_shapes"][0][arm]["walks_reached"],
+                             value["inherited_shapes"][1][arm]["walks_reached"])
+
+    def test_wc3_only_covered_walks_of_both_tasks_are_read(self):
+        covered, deferred = walk_set()
+        _, readings = wc.count(REGISTER, WALKS, covered, deferred)
+        want = sorted(e["walk"] for e in REGISTER if e["task"] in (wc.CLOSER_TASK, wc.SHAPE_TASK)
+                      and e["walk"] in covered)
         self.assertEqual(sorted(r["walk"] for r in readings), want)
-        self.assertEqual(len(want), 85)
+        self.assertEqual(len(want), 36)
+        for rejected in ("w031", "w151", "w-o31", "w-o32", "w-g27"):
+            self.assertNotIn(rejected, covered, f"{rejected} is a walk the freeze's coverage leg does not count")
+
+    def test_wc3_the_walk_set_is_the_coverage_reports(self):
+        # the set is the report's got.covered, every covering walk of every spec, and its deferred arms, never
+        # re-derived: a stand-in report's walks come back exactly (read in a fresh cache entry)
+        fake = {"got": {"covered": {"k1": ["w185", "w-o83"], "k2": ["w191"]}}, "deferred": {"G": {}}}
+        saved = dict(wc._COVERAGE)
+        self.addCleanup(lambda: (wc._COVERAGE.clear(), wc._COVERAGE.update(saved)))
+        wc._COVERAGE.clear()
+        with mock.patch.object(walk_plan, "coverage_report", return_value=fake) as called:
+            got = wc.coverage(HERE)
+        called.assert_called_once_with(study_dir=HERE)
+        self.assertEqual(got, (frozenset({"w185", "w-o83", "w191"}), frozenset({"G"})))
+        self.assertIn("G", walk_set()[1])
 
 
 class WC4Draft(unittest.TestCase):
@@ -223,6 +334,9 @@ class WC4Draft(unittest.TestCase):
         committed = json.loads((HERE / "prereg-draft.json").read_text(encoding="utf-8"))
         self.assertEqual(committed["walk_counts"], want)
         self.assertFalse([k for k in committed["pending"] if k.startswith("/walk_counts/")])
+        self.assertFalse([k for k in build_draft.pending(committed) if k.startswith("/walk_counts/")])
+        # the unreached arm is in the committed bytes, and reopens no pending input
+        self.assertEqual(committed["walk_counts"]["on_path_closers"]["G"]["count"], NO)
 
 
 class WC5Refusals(unittest.TestCase):
@@ -232,16 +346,20 @@ class WC5Refusals(unittest.TestCase):
         for w in ("w031", "w151"):
             shutil.copytree(WALKS / w, self.tmp / w)
         self.entries = [entry("w031"), entry("w151")]
+        self.covered = {"w031", "w151"}
 
-    def refuses(self, entries=None, needle=""):
+    def refuses(self, entries=None, needle="", covered=None):
         with self.assertRaises(wc.CountError) as cm:
-            wc.count(self.entries if entries is None else entries, self.tmp)
+            wc.count(self.entries if entries is None else entries, self.tmp,
+                     self.covered if covered is None else covered)
         self.assertIn(needle, str(cm.exception))
 
     def test_wc5_the_copies_count_as_the_walks_do(self):
-        value, _ = wc.count(self.entries, self.tmp)
-        self.assertEqual(value["on_path_closers"]["A"], 1)
-        self.assertEqual(value["inherited_shapes"][0]["A"], 1)
+        value, _ = wc.count(self.entries, self.tmp, self.covered)
+        self.assertEqual(value["on_path_closers"]["A"]["count"], 1)
+        self.assertEqual(value["inherited_shapes"][0]["A"]["count"], 1)
+        value, _ = wc.count(self.entries, self.tmp, {"w151"})
+        self.assertEqual(value["on_path_closers"]["A"]["count"], NO, "a walk outside the set is not read")
 
     def test_wc5_no_graded_standing_refuses(self):
         path = self.tmp / "w031" / "grade.json"
@@ -263,6 +381,18 @@ class WC5Refusals(unittest.TestCase):
     def test_wc5_an_unreadable_walk_refuses(self):
         (self.tmp / "w151" / "transcript.jsonl").unlink()
         self.refuses(needle="w151")
+
+    def test_wc5_a_covered_walk_the_register_does_not_list_refuses(self):
+        self.refuses(covered={"w031", "w151", "w-nowhere"}, needle="w-nowhere")
+
+    def test_wc5_a_coverage_report_that_raises_refuses(self):
+        saved = dict(wc._COVERAGE)
+        self.addCleanup(lambda: (wc._COVERAGE.clear(), wc._COVERAGE.update(saved)))
+        wc._COVERAGE.clear()
+        with mock.patch.object(walk_plan, "coverage_report", side_effect=walk_plan.PlanRefused("refused for the test")):
+            with self.assertRaises(wc.CountError) as cm:
+                wc.counts()
+        self.assertIn("coverage report refuses", str(cm.exception))
 
     def test_wc5_build_draft_keeps_the_inputs_pending_when_the_counter_refuses(self):
         saved = list(build_draft._WALK_COUNTS)
@@ -290,6 +420,12 @@ def _mutant_closer_r2_dropped(text, on_path):
                 kind = None
         out.append((phrase, kind))
     return out
+
+
+def _mutant_closer_read_only_closes(text, on_path):
+    """on_path_closers: a mixed on-path and read-only request counted as a closer (the grader's no-offer reading)."""
+    return [(p, wc.CLOSER if k is None and p in ta.REQUESTS and "explain the output" in text else k)
+            for p, k in REAL["phrase_kinds"](text, on_path)]
 
 
 def _mutant_offer_negation_ignored(text, on_path):
@@ -338,15 +474,35 @@ def _mutant_shape1_never(sentence):
     return None if got == 1 else got
 
 
-REAL = {"phrase_kinds": wc.phrase_kinds, "sentence_shape": wc.sentence_shape}
+def _mutant_walk_set_ignored(walk, covered):
+    """the walk set: every registered walk counted, the ones the freeze rejects included (w031, w151, w-o31, w-o32)."""
+    return True
+
+
+def _mutant_unreached_reads_zero(readings, slot, task, arm, deferred):
+    """the unreached arm: written as 0 over no reached walk."""
+    got = REAL["_arm_entry"](readings, slot, task, arm, deferred)
+    return dict(got, count=0) if got["count"] == NO else got
+
+
+def _mutant_phrase_filter_dropped(sentence):
+    """the CP5-req 169 listing: every closing sentence listed, a phrase of the set or not."""
+    return False
+
+
+REAL = {"phrase_kinds": wc.phrase_kinds, "sentence_shape": wc.sentence_shape, "_arm_entry": wc._arm_entry}
 MUTANTS = {
     "closer-r2-dropped": ("phrase_kinds", _mutant_closer_r2_dropped),
+    "closer-read-only-closes": ("phrase_kinds", _mutant_closer_read_only_closes),
     "offer-negation-ignored": ("phrase_kinds", _mutant_offer_negation_ignored),
     "offer-advice-dropped": ("phrase_kinds", _mutant_offer_advice_dropped),
     "shape0-own-clause": ("sentence_shape", _mutant_shape0_own_clause),
     "shape0-because-dropped": ("sentence_shape", _mutant_shape0_because_dropped),
     "shape1-subjects-dropped": ("sentence_shape", _mutant_shape1_subjects_dropped),
     "shape1-never": ("sentence_shape", _mutant_shape1_never),
+    "walk-set-ignored": ("in_walk_set", _mutant_walk_set_ignored),
+    "unreached-reads-zero": ("_arm_entry", _mutant_unreached_reads_zero),
+    "phrase-filter-dropped": ("holds_a_phrase", _mutant_phrase_filter_dropped),
 }
 
 
@@ -367,10 +523,10 @@ class WC6Mutants(unittest.TestCase):
         (tmp / "w031" / "grade.json").write_text(json.dumps({"graded": False, "why": "x"}))
         with mock.patch.object(wc, "standing_row", lambda e, folder: run.walk_row(
                 e, json.loads((folder / "driver-ledger.json").read_text()))):
-            value, _ = wc.count([entry("w031")], tmp)
-        self.assertEqual(value["on_path_closers"]["A"], 1, "the mutant counts the walk the real counter refuses")
+            value, _ = wc.count([entry("w031")], tmp, {"w031"})
+        self.assertEqual(value["on_path_closers"]["A"]["count"], 1, "the mutant counts the walk the counter refuses")
         with self.assertRaises(wc.CountError):
-            wc.count([entry("w031")], tmp)
+            wc.count([entry("w031")], tmp, {"w031"})
 
 
 if __name__ == "__main__":

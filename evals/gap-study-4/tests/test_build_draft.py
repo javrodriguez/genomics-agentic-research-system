@@ -3117,7 +3117,11 @@ def expected_walk_counts():
     here (once per process), never typed; tests/test_walk_counts.py binds the counter to its definitions and walks."""
     if not _EXPECTED_WALK_COUNTS:
         import walk_counts
-        _EXPECTED_WALK_COUNTS.append(dict(walk_counts.counts(), report_beside_registration=True))
+        try:
+            got = walk_counts.counts()
+        except walk_counts.CountError:     # a refusal: build_draft keeps the four inputs null (PENDING)
+            got = {"on_path_closers": None, "off_path_offers": None, "inherited_shapes": [None, None]}
+        _EXPECTED_WALK_COUNTS.append(dict(got, report_beside_registration=True))
     return copy.deepcopy(_EXPECTED_WALK_COUNTS[0])
 
 

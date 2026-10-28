@@ -1870,9 +1870,10 @@ def price_variants(record):
 
 
 # Pre-freeze review 1, PENDING #13-16 (lane gap-walk-counts, Wed 28 Oct 2026; R28 = glitch-f3's ruling G1, R30 =
-# W3C1-6, under the lane orchestrator's ruling of 24 Oct 2026: walk counts per arm, with a counter): the four counts
-# are walk_counts.py's, {arm: count} for A, O and G, read once per process from the committed walks; while the counter
-# refuses, all four stay null (PENDING), never zero.
+# W3C1-6, under the lane orchestrator's ruling of 24 Oct 2026: walk counts per arm, with a counter; and its rulings of
+# 28 Oct on the lane's review): the four counts are walk_counts.py's, one entry per arm A, O and G over the walks the
+# freeze's coverage leg counts, with the reached walks beside each count and an arm no walk reached "not observed",
+# read once per process; while the counter refuses, all four stay null (PENDING), never zero.
 _WALK_COUNTS = []
 
 
