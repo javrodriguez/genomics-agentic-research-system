@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "walks": [
     {
       "walk": "w-o46",
@@ -3870,6 +3870,15 @@
       "model": "claude-haiku-4-5-20251001",
       "reason": "CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, never counted; re-walk under OD131 (walk-cover strict) at the frozen harness H (21300568696a83cd0367640db928a9a3748ae819)",
       "counted": false
+    }
+  ],
+  "rechecks": [
+    {
+      "walk": "w-o49",
+      "file": "recheck-1.json",
+      "n": 1,
+      "checker_constants_sha256": "e079cd31884fd7ae027e56612160282edc9e8a04ff0111b771ad7babe3e7fffb",
+      "sha256": "5421e85b90f9178787f2b62aacd80b2dd7607f956c57e66356b20f2355cd346e"
     }
   ]
 }
