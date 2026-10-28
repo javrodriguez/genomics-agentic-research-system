@@ -40,6 +40,7 @@ HERE = Path(__file__).resolve().parent.parent
 _PATH = list(sys.path)
 sys.path.insert(0, str(HERE))
 
+import build_draft  # noqa: E402
 import check_take  # noqa: E402
 import fixture_walk as fw  # noqa: E402
 from box import scan_record as sr  # noqa: E402
@@ -160,7 +161,6 @@ def codex_rule_count() -> tuple:
 
 
 def PF1_TRANSCRIPT_TEXT() -> str:
-    import build_draft
     return json.dumps(build_draft.PF1_TRANSCRIPT_RESIDUAL, ensure_ascii=False)
 
 
