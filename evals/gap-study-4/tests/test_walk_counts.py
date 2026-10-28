@@ -537,7 +537,9 @@ class WC7Store(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="wc7-"))
         self.addCleanup(shutil.rmtree, self.tmp, True)
-        env = mock.patch.dict("os.environ", {wc.STORE_ENV: str(self.tmp / "store")})
+        import os
+        clean = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}   # a GIT_ variable stands the store down
+        env = mock.patch.dict("os.environ", dict(clean, **{wc.STORE_ENV: str(self.tmp / "store")}), clear=True)
         env.start()
         self.addCleanup(env.stop)
         saved = dict(wc._COVERAGE)
@@ -610,7 +612,9 @@ class WC7Store(unittest.TestCase):
                 self.assertFalse(wc._road_is_genuine())
                 self.assertIsNone(wc.store_state(HERE))
 
-    def test_wc7_coverage_takes_a_stored_reading_and_stores_only_a_steady_one(self):
+    def test_wc7_coverage_takes_a_stored_reading_and_never_writes_its_own(self):
+        # glitch-45's ruling on review 200ceab MAJOR 1, option (a): a process that misses runs the report in process
+        # and writes nothing; a stored reading comes only from the isolated child (store_child)
         fake = {"got": {"covered": {"k": ["w9"]}}, "deferred": {"G": {}}}
         wc.store_write("S", {"w1"}, {"G"})
         with mock.patch.object(wc, "store_state", return_value="S"), \
@@ -618,24 +622,82 @@ class WC7Store(unittest.TestCase):
             self.assertEqual(wc.coverage(HERE), (frozenset({"w1"}), frozenset({"G"})))
         called.assert_not_called()
         wc._COVERAGE.clear()
-        states = iter(["T", "T"])
-        with mock.patch.object(wc, "store_state", lambda study=HERE: next(states)), \
+        with mock.patch.object(wc, "store_state", return_value="T"), \
                 mock.patch.object(walk_plan, "coverage_report", return_value=fake):
             self.assertEqual(wc.coverage(HERE), (frozenset({"w9"}), frozenset({"G"})))
-        self.assertEqual(wc.store_read("T"), (frozenset({"w9"}), frozenset({"G"})))
-        wc._COVERAGE.clear()
-        states = iter(["U", "U2"])                                               # the inputs moved during the read
-        with mock.patch.object(wc, "store_state", lambda study=HERE: next(states)), \
-                mock.patch.object(walk_plan, "coverage_report", return_value=fake):
-            wc.coverage(HERE)
-        self.assertIsNone(wc.store_read("U"))
         wc._COVERAGE.clear()
         with mock.patch.object(wc, "store_state", return_value="V"), \
                 mock.patch.object(walk_plan, "coverage_report", side_effect=walk_plan.PlanRefused("refused")):
             with self.assertRaises(wc.CountError):
                 wc.coverage(HERE)
-        self.assertEqual(sorted(p.name for p in (self.tmp / "store").iterdir()),
-                         sorted(wc._store_path(s).name for s in ("S", "T")), "a refusal or unsteady read is stored")
+        self.assertIsNone(wc.store_read("T"))
+        self.assertEqual(sorted(p.name for p in (self.tmp / "store").iterdir()), [wc._store_path("S").name],
+                         "a process wrote a reading it computed itself")
+
+    def test_wc7_a_patched_process_writes_nothing_and_no_later_process_reads_it(self):
+        # review 200ceab MAJOR 1, the reviewer's reproduction: a patch the road guard cannot see (the register folder)
+        # gives this process its own reading; it is never stored, so a later, unpatched process cannot take it
+        import subprocess
+        import walk_register
+        empty = self.tmp / "rehearsals"
+        empty.mkdir()
+        (empty / "register.json").write_text(json.dumps({"schema": 1, "walks": []}))
+        with mock.patch.object(walk_register, "REHEARSALS", empty):
+            covered, _ = wc.coverage(HERE)
+        self.assertEqual(covered, frozenset(), "the patched process reads its own register")
+        store = self.tmp / "store"
+        self.assertFalse(store.exists() and any(store.iterdir()), "the patched process wrote a reading")
+        later = subprocess.run([sys.executable, "-I", "-B", "-c",
+                                "import sys; sys.path.insert(0, sys.argv[1]); import walk_counts as wc; "
+                                "s = wc.store_state(wc.HERE); print(None if s is None else wc.store_read(s))", str(HERE)],
+                               capture_output=True, text=True, timeout=300, env=dict(__import__("os").environ))
+        self.assertEqual((later.returncode, later.stdout.strip()), (0, "None"), later.stderr[-2000:])
+
+    def test_wc7_only_an_isolated_child_produces_a_reading(self):
+        # the child entry refuses unless it is `python -I -B` with no unittest.mock loaded, before reading anything
+        import subprocess
+        script = str(HERE / "walk_counts.py")
+        for argv in ([sys.executable, "-B", script, "--store-coverage"], [sys.executable, "-I", script, "--store-coverage"]):
+            with self.subTest(argv=argv[1:-2]):
+                got = subprocess.run(argv, capture_output=True, text=True, timeout=120)
+                self.assertNotEqual(got.returncode, 0, got.stdout)
+                self.assertIn("refused", got.stdout)
+        self.assertFalse((self.tmp / "store").exists(), "a child that is not isolated wrote a reading")
+        # prime_store hands the read to exactly that child, from the module's own file, and adds nothing of its own
+        calls = []
+        def fake_run(argv, **kw):
+            calls.append((argv, kw))
+            return mock.Mock(returncode=0, stdout="walk_counts: stored\n", stderr="")
+        with mock.patch.object(wc, "store_state_why", return_value=("P", "")), mock.patch("subprocess.run", fake_run):
+            self.assertEqual(wc.prime_store(), "walk_counts: stored")
+        self.assertEqual([a[:4] for a, _ in calls], [[sys.executable, "-I", "-B", script]])
+        self.assertEqual(calls[0][0][4:], ["--store-coverage"])
+        self.assertFalse((self.tmp / "store").exists())
+
+    def test_wc7_a_symlink_or_a_git_variable_stands_the_store_down(self):
+        # review 200ceab findings 2 and 3: a link is read through by the road but keyed by its target text, and a GIT_
+        # variable can point the road's own git reads at another repository; either way, no store
+        import os
+        top = self.scratch_repo()
+        study = (top / "study").resolve()
+        outside = self.tmp / "outside.json"
+        outside.write_text("{}\n")
+        with mock.patch.object(wc, "HERE", study), mock.patch.object(wc, "_road_is_genuine", lambda: True):
+            self.assertIsNotNone(wc.store_state(study))
+            for var in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_CEILING_DIRECTORIES", "GIT_EDITOR"):
+                with self.subTest(var=var), mock.patch.dict(os.environ, {var: str(top)}):
+                    self.assertIsNone(wc.store_state(study))
+            (top / "study" / "link.json").symlink_to(outside)                   # an untracked link
+            self.assertIsNone(wc.store_state(study))
+            self.git("add", "-A")
+            self.git("commit", "-qm", "tracked link")                           # a tracked link, the tree clean
+            self.assertIsNone(wc.store_state(study))
+            self.git("rm", "-q", "study/link.json")
+            self.git("commit", "-qm", "no link")
+            self.assertIsNotNone(wc.store_state(study))
+            (top / "study" / "a.json").unlink()
+            (top / "study" / "a.json").symlink_to(outside)                      # a tracked file replaced by a link
+            self.assertIsNone(wc.store_state(study))
 
 
 if __name__ == "__main__":

@@ -3,6 +3,9 @@
 
     python3 evals/gap-study-4/walk_counts.py      print each counted instance (walk, arm, phrase or sentence), the two
                                                   listings and the draft's walk_counts value, as build_draft writes it
+    python3 -I -B evals/gap-study-4/walk_counts.py --store-coverage
+                                                  store the coverage reading under this tree's exact input state, the
+                                                  covered-set store's one writer (see "the covered-set store" below)
 
 THE INPUTS. prereg-draft.json's walk_counts holds four counts, each per arm A (Claude), O and G, as both rulings say
 "per arm (Claude, O and G)" (plans/gap-study-round-4/CP5-requirements.md:164 and :180):
@@ -193,8 +196,9 @@ _COVERAGE: dict = {}
 
 def coverage(study: Path = HERE) -> tuple:
     """(the walk ids the freeze's coverage leg counts, the draft's deferred arms), from walk_plan.coverage_report, read
-    once per process per study folder; any error it raises refuses. For this module's own folder, a reading the same
-    report made over byte-identical inputs is taken from the covered-set store (below) instead of read again."""
+    once per process per study folder; any error it raises refuses. For this module's own folder, a reading the
+    isolated child (store_child) made over byte-identical inputs is taken from the covered-set store (below) instead
+    of read again; on a miss the report is read here, and nothing read here is ever stored."""
     key = str(Path(study).resolve())
     if key not in _COVERAGE:
         import walk_plan
@@ -210,8 +214,6 @@ def coverage(study: Path = HERE) -> tuple:
         except Exception as exc:  # noqa: BLE001 (every refusal of the coverage leg refuses the count, by name)
             raise CountError(f"the freeze's coverage report refuses: {type(exc).__name__}: {exc}") from None
         _COVERAGE[key] = (covered, deferred)
-        if state is not None and store_state(study) == state:
-            store_write(state, covered, deferred)
     return _COVERAGE[key]
 
 
@@ -219,15 +221,29 @@ def coverage(study: Path = HERE) -> tuple:
 # The walk-counts closure review (d2384da, MINOR 1): coverage_report costs about 9 minutes a process on the Mac (about
 # 90 s on athena), and every process that builds the draft pays it, so each test_build_draft --mutant child ran past
 # run_witnesses' 180 s limit (athena gap4-prebeacon-e3aa853, w5c-draft-ci lines 9-14). The store keeps one reading per
-# exact input state, never a weaker road: the state is the repository's HEAD commit (every tracked byte, HEAD's
-# routing.json that strict_reasons reads included) plus the path and content digest of every file git reports as
-# changed, staged, untracked or ignored anywhere in the work tree (bytecode caches aside), the Python version and this
-# module's folder relative to the top. A reading is stored only when the state read after the report equals the state
-# read before it; it is taken only when its stored state equals the state now, text for text, and it parses to two
-# lists of strings; anything else reads the report afresh. The store is used only for this module's own folder and
-# only while every function of the road below is the module's own (a test that patches one reads the report itself),
-# and never while git cannot say the state (no repository, no HEAD, an assume-unchanged or skip-worktree entry, which
-# would hide a change from git status). A refusal is never stored.
+# exact input state, never a weaker road.
+#   THE STATE: the repository's HEAD commit (every tracked byte, HEAD's routing.json that strict_reasons reads
+#   included) plus the path and content digest of every file git reports as changed, staged, untracked or ignored
+#   anywhere in the work tree (bytecode caches aside), the Python version and this module's folder relative to the top.
+#   WHO WRITES (glitch-45's ruling on review 200ceab MAJOR 1, option (a)): only the isolated child, `python -I -B
+#   walk_counts.py --store-coverage` (store_child, started by prime_store), which no patch of another process can
+#   reach; it stores only when the state read after the report equals the state read before it. Every other process
+#   only reads: on a miss it reads the report itself, as before the store, and writes nothing.
+#   WHO READS: a process takes a reading only under the same state, text for text, parsed to two lists of strings,
+#   for this module's own folder, while every function of the road below is the module's own and the register folder
+#   is the study's own (a test that patches one reads the report itself).
+#   NO STORE AT ALL (store_state is None): git cannot say the state (no repository or HEAD, an assume-unchanged or
+#   skip-worktree entry, which would hide a change from git status); any GIT_ variable is set (review 200ceab finding
+#   3: the road's own git reads, native_reader_registration._git, honour GIT_DIR and its kin, which the key cannot
+#   see); or any tracked path, or any changed, untracked or ignored path, is or holds a symbolic link (finding 2: the
+#   road reads through a link, the key would hold only its target text). A refusal is never stored.
+#   WHERE: $GAP4_COVERAGE_STORE, else <XDG_CACHE_HOME or ~/.cache>/gap4-walk-coverage, outside the work tree; one store
+#   serves every clone on the machine, which the location-free state makes sound.
+#   KNOWN LIMITS (review 200ceab NITs 4 and 5, kept): an input changed and changed back while the child reads (about 9
+#   minutes on the Mac) is stored as a reading of the bytes in between, since steadiness compares only the two ends;
+#   and the state trusts git status that a tracked file is HEAD's bytes, which a clean or smudge filter, core.autocrlf
+#   or LFS could break (none is configured on the Mac or athena), and leaves a bytecode file aside even where no source
+#   stands beside it.
 STORE_ENV = "GAP4_COVERAGE_STORE"
 STORE_VERSION = 1
 STORE_ROAD = (("walk_plan", ("coverage_report", "design_in_force", "plan_walks", "read_register", "coverage",
@@ -259,7 +275,8 @@ def _road_is_genuine() -> bool:
             if type(fn) is not types.FunctionType or fn.__module__ != name or fn.__name__ != fn_name or \
                     Path(fn.__code__.co_filename).resolve() != source:
                 return False
-    return True
+    walks = HERE / mode_binding.WALKS_DIR
+    return not walks.is_symlink() and Path(sys.modules["walk_register"].REHEARSALS) == walks
 
 
 def _git(top: Path, *args) -> bytes:
@@ -289,14 +306,32 @@ def _content_digest(path: Path) -> str:
 def store_state(study: Path = HERE):
     """The exact input state a covered-set reading is keyed by (the block comment above), as text; None when the store
     is not used for this call."""
+    return store_state_why(study)[0]
+
+
+def _holds_a_link(path: Path) -> bool:
+    if path.is_symlink():
+        return True
+    return path.is_dir() and any(p.is_symlink() for p in path.rglob("*"))
+
+
+def store_state_why(study: Path = HERE) -> tuple:
+    """(the state or None, why None)."""
+    import os
     try:
-        if Path(study).resolve() != HERE or not _road_is_genuine():
-            return None
+        if Path(study).resolve() != HERE:
+            return None, "not this module's own folder"
+        if any(k.startswith("GIT_") for k in os.environ):
+            return None, "a GIT_ variable is set: " + ", ".join(sorted(k for k in os.environ if k.startswith("GIT_")))
+        if not _road_is_genuine():
+            return None, "a function of the road, or the register folder, is not the module's own"
         top = Path(_git(HERE, "rev-parse", "--show-toplevel").decode().strip()).resolve()
         head = _git(top, "rev-parse", "--verify", "HEAD^{commit}").decode().strip()
         flags = _git(top, "ls-files", "-v", "-z").split(b"\0")
         if any(f[:1].islower() or f[:1] == b"S" for f in flags if f):
-            return None
+            return None, "an assume-unchanged or skip-worktree entry"
+        if any(e.startswith(b"120000 ") for e in _git(top, "ls-files", "-s", "-z").split(b"\0")):
+            return None, "a tracked symbolic link"
         raw = _git(top, "--no-optional-locks", "status", "--porcelain=v1", "-z", "--no-renames",
                    "--untracked-files=all", "--ignored=matching").split(b"\0")
         changed = []
@@ -307,11 +342,13 @@ def store_state(study: Path = HERE):
             parts = rel.split("/")
             if "__pycache__" in parts or rel.endswith((".pyc", ".pyo")):
                 continue
+            if _holds_a_link(top / rel):
+                return None, f"{rel} is or holds a symbolic link"
             changed.append([item[:2].decode(), rel, _content_digest(top / rel)])
         return json.dumps({"version": STORE_VERSION, "python": sys.version, "head": head,
-                           "study": str(HERE.relative_to(top)), "changed": sorted(changed)}, sort_keys=True)
-    except (OSError, ValueError, UnicodeError, ImportError, AttributeError):
-        return None
+                           "study": str(HERE.relative_to(top)), "changed": sorted(changed)}, sort_keys=True), ""
+    except (OSError, ValueError, UnicodeError, ImportError, AttributeError) as exc:
+        return None, f"the state cannot be read: {type(exc).__name__}: {exc}"
 
 
 def _store_path(state: str) -> Path:
@@ -498,7 +535,60 @@ def counts(study: Path = HERE) -> dict:
     return count(entries, walks_root, covered, deferred)[0]
 
 
+STORE_CHILD_FLAG = "--store-coverage"
+
+
+def store_child() -> int:
+    """The one writer of the store (`python -I -B walk_counts.py --store-coverage`): the state, the report read in this
+    fresh, isolated process, the state again; stored only when the two states agree. Refuses unless isolated."""
+    if not (sys.flags.isolated and sys.flags.dont_write_bytecode) or "unittest.mock" in sys.modules:
+        print("walk_counts: store refused: the reading is stored only by `python -I -B walk_counts.py "
+              f"{STORE_CHILD_FLAG}`, a fresh process no patch reaches")
+        return 2
+    state, why = store_state_why(HERE)
+    if state is None:
+        print(f"walk_counts: store stood down: {why}")
+        return 0
+    if store_read(state) is not None:
+        print("walk_counts: store already holds this state's reading")
+        return 0
+    import walk_plan
+    try:
+        report = walk_plan.coverage_report(study_dir=HERE)
+        covered = frozenset(w for ws in report["got"]["covered"].values() for w in ws)
+        deferred = frozenset(report["deferred"])
+    except Exception as exc:  # noqa: BLE001 (a refusal is never stored)
+        print(f"walk_counts: store not written: the coverage report refuses: {type(exc).__name__}: {exc}")
+        return 1
+    if store_state(HERE) != state:
+        print("walk_counts: store not written: the inputs moved during the read")
+        return 1
+    store_write(state, covered, deferred)
+    print(f"walk_counts: stored a reading of {len(covered)} covered walk(s), deferred {sorted(deferred)}")
+    return 0
+
+
+def prime_store() -> str:
+    """Have the isolated child store this state's reading when the store lacks it; this process writes nothing. Returns
+    the line to print."""
+    import subprocess
+    state, why = store_state_why(HERE)
+    if state is None:
+        return f"walk_counts: store stood down: {why}"
+    if store_read(state) is not None:
+        return "walk_counts: store already holds this state's reading"
+    try:
+        got = subprocess.run([sys.executable, "-I", "-B", str(Path(__file__).resolve()), STORE_CHILD_FLAG],
+                             capture_output=True, text=True, timeout=3600, cwd=str(HERE))
+    except (OSError, subprocess.SubprocessError) as exc:
+        return f"walk_counts: store child did not run: {exc}"
+    lines = [x for x in got.stdout.splitlines() if x.startswith("walk_counts: ")]
+    return (lines[-1] if lines else f"walk_counts: store child exited {got.returncode}: {got.stderr.strip()[-300:]}")
+
+
 def main(argv=None) -> int:
+    if STORE_CHILD_FLAG in (sys.argv[1:] if argv is None else argv):
+        return store_child()
     walks_root = HERE / mode_binding.WALKS_DIR
     try:
         entries = json.loads((walks_root / "register.json").read_text(encoding="utf-8"))["walks"]

@@ -3421,6 +3421,12 @@ def run_witnesses(group):
     import re
     import subprocess
     names = witness_groups()[group - 1]
+    # Lane gap-prebeacon-fix (glitch-45's ruling on review 200ceab MAJOR 1): every mutant child builds the draft, and so
+    # reads walk_plan.coverage_report through walk_counts; the isolated store child reads it once for this exact tree
+    # first, so the baseline and each mutant child take that reading instead of paying the read under the 180 s limit.
+    # Its line says whether it stored, found or stood down; a child that misses still reads the report itself.
+    import walk_counts
+    print(walk_counts.prime_store(), flush=True)
     import mutation_baseline  # lane t104-mutation-baseline: the unmutated selection runs first; a red one refuses (exit 3), nothing counted
     mutation_baseline.require_green(f"test_build_draft witnesses group {group}", [sys.executable, "-B", "-W", "ignore",
                                     str(Path(__file__).resolve())], timeout=1800, tag="test_build_draft")

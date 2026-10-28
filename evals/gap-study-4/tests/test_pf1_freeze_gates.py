@@ -404,8 +404,8 @@ def g2b_pending(fz, p="G2b.pending") -> list:
         d[stats.DESIGN_KEY] = {"synthetic": "the sentinel replaced"}
         left = fz.draft_pending(d)
         if not left or [k for k in left if k.startswith("/take_order_beacon/")]:
-            return [f"{p}: the fixture holds no PENDING input but the beacon's, so the clause would prove nothing: "
-                    f"{sorted(left)}"]
+            return [f"{p}: the fixture must hold a PENDING input and must not hold the beacon's (the clause registers "
+                    f"it), or the refusal would not be the fixture's: {sorted(left)}"]
         with mock.patch.object(stats, "validate_design", lambda x: x), \
                 mock.patch.object(completeness, "pair_count", lambda x: 0):
             try:
