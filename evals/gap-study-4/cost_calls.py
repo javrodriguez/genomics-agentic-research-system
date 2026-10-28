@@ -12,7 +12,24 @@ is takes/<slot>/<attempt>/ (run.committed_evidence's road). A walk (rehearsals/)
 
 THE CALLS, in costs.py's call shape {vendor, call_id, model, agent{harness, version}, usage, total_cost_usd,
 started_at, ended_at, cache_write_durations}, usage in costs.CLASSES, which are disjoint (costs.prompt_tokens):
-  claude-code  the driver ledger's cost.calls, as drive.py wrote them (claude_code_adapter.cost_record), unchanged.
+  claude-code  the driver ledger's cost.calls, as drive.py wrote them (claude_code_adapter.cost_record), unchanged,
+               then the calls of each sub-agent file the take copied (lane gap-subagent-cost, 28 Oct 2026, the lane
+               orchestrator glitch-45's ruling (b) on the D8 claude-code read's finding 1). cost_record reads the main
+               session file alone, so a take whose agent called the Agent tool held only its main thread's calls (on
+               walk w255, 20 of 40 calls; w260, 5 of 34). subagent_calls reads every `.jsonl` entry of the ledger's
+               `subagents`, its bytes bound by the entry's sha256, one call per (message.id, requestId) of its
+               assistant records with a usage. Unlike the session file, a sub-agent file writes one call as several
+               fragments whose output_tokens grow while the other classes stay put (at 2.1.296, 20 of 20 calls in
+               w255's, 29 of 29 in w260's), so THE FRAGMENT RULE: across one call's fragments the model, the input,
+               cache-read and cache-write counts and the 5m/1h split are equal and output never decreases, and the
+               last fragment is kept; anything else refuses. The split is claude_code_adapter.cache_write_split's,
+               imported, never edited (the adapter is checker code). Then RECONCILE: the four classes summed over all
+               the calls, per model, must equal the last turn's modelUsage that is not None (a running total of the
+               whole session, sub-agents included); a take whose turns carry none reconciles nothing when it has no
+               sub-agent file (as before this lane) and is unmeasured when it has one.
+               A per-turn total_cost_usd in the ledger's cost.turns is the session's running total as the CLI prints
+               it, not the turn's own (claude_code_adapter.py:47-48 says otherwise, and editing it would move the
+               checker digest): nothing here sums it, and no call carries a printed figure.
   codex        one per token_usage_record of the take's last retained rollout (session/<native snapshot>, bound by the
                ledger's sha256): at the pinned CLI (openai/codex 092d3acd, protocol/src/protocol.rs:2291-2302) it is
                "Best-effort Responses API usage observed for one completed response", one per response_id. Its usage
@@ -45,7 +62,10 @@ COMPLETE OR UNMEASURED. A take's calls are summed by costs.account only when eve
 carries one call, of its requested model, with usage None (an UNMEASURED call), so its vendor's priced total, and the
 round-wide usage and priced total costs.account reads, are unmeasured, never a partial sum (costs.py: "Missing
 measurements remain unmeasured, never zero"). That happens when
-  claude-code  the ledger's cost is None (no session file, or its cost reader refused it);
+  claude-code  the ledger's cost is None (no session file, or its cost reader refused it); a sub-agent file that is
+               missing, unnamed by the ledger, off its sha256 or off the fragment rule; a call id in two files; a
+               call whose usage is not four counts; calls that do not sum, per model and class, to the last modelUsage;
+               a take with a sub-agent file and no modelUsage;
   codex        a record off its shape, a running total (thread_token_usage, turn_token_usage) that is not the sum of
                the records before it, a turn whose exec stream printed no turn.completed, or one whose total (the
                thread's running total at that turn, as exec prints it) is not the records' sum to the end of that
@@ -63,6 +83,7 @@ Standard library only. No model, vendor, network or credential is touched.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -72,6 +93,7 @@ REPO = HERE.parent.parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
+import claude_code_adapter  # noqa: E402  (read only: cache_write_split, never edited here)
 import codex_adapter  # noqa: E402
 import codex_native  # noqa: E402
 import gemini_adapter  # noqa: E402
@@ -148,6 +170,174 @@ def _streams(folder: Path, ledger: dict) -> list:
         except OSError as e:
             raise CostUnread(f"{name}: {e}") from None
     return out
+
+
+# ---- claude-code (lane gap-subagent-cost; module docstring) ---------------------------------------------------------
+SUBAGENT_DIR = "subagents"
+# The classes a later fragment of one sub-agent call must repeat exactly; output_tokens may only grow.
+FRAGMENT_FIXED = ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens")
+# modelUsage's names for costs.CLASSES (the CLI's result record, per model, a running total of the session).
+MODEL_USAGE_KEYS = {"input_tokens": "inputTokens", "output_tokens": "outputTokens",
+                    "cache_read_input_tokens": "cacheReadInputTokens",
+                    "cache_creation_input_tokens": "cacheCreationInputTokens"}
+CLAUDE_CLASSES = tuple(MODEL_USAGE_KEYS)
+
+
+def fragment_holds(kept: dict, new: dict) -> bool:
+    """THE FRAGMENT RULE: a later fragment of one call has the kept fragment's model, input, cache-read and cache-write
+    counts and 5m/1h split, and an output count no lower than the kept one's."""
+    return (new["model"] == kept["model"] and new["cache_write_durations"] == kept["cache_write_durations"]
+            and all(new["usage"][k] == kept["usage"][k] for k in FRAGMENT_FIXED)
+            and new["usage"]["output_tokens"] >= kept["usage"]["output_tokens"])
+
+
+def subagent_file_calls(text: str, agent: dict, agent_id, name: str) -> list:
+    """One sub-agent file's calls, one per (message.id, requestId), the last fragment of each kept (THE FRAGMENT RULE),
+    in costs.py's call shape plus `subagent` (the ledger's agent_id); CostUnread on any departure. The text is split on
+    newline only; API-error records are skipped as claude_code_adapter.session_calls skips them."""
+    by, order = {}, []
+    for n, line in enumerate(text.split("\n"), 1):
+        if not line.strip():
+            continue
+        try:
+            rec = json.loads(line)
+        except ValueError:
+            raise CostUnread(f"{name} line {n} is not JSON") from None
+        if not isinstance(rec, dict) or rec.get("type") != "assistant":
+            continue
+        if rec.get("isApiErrorMessage") is True or claude_code_adapter._is_api_error(rec):
+            continue
+        msg = rec.get("message")
+        if not isinstance(msg, dict) or not isinstance(msg.get("usage"), dict):
+            continue
+        key = (msg.get("id"), rec.get("requestId"))
+        if not all(isinstance(k, str) and k for k in key):
+            raise CostUnread(f"{name} line {n}: a usage with no (message.id, requestId) key")
+        counts = {c: msg["usage"].get(c) for c in CLAUDE_CLASSES}
+        if not all(_count(v) for v in counts.values()):
+            raise CostUnread(f"{name} line {n}: call {key[0]}'s usage is not four counts {CLAUDE_CLASSES}")
+        if not isinstance(msg.get("model"), str) or not msg["model"]:
+            raise CostUnread(f"{name} line {n}: call {key[0]} names no model")
+        frag = {"model": msg["model"], "usage": counts,
+                "cache_write_durations": claude_code_adapter.cache_write_split(msg["usage"], counts)}
+        if key in by:
+            if not fragment_holds(by[key], frag):
+                raise CostUnread(f"{name} line {n}: call {key[0]}'s fragments break the fragment rule (model, input, "
+                                 f"cache counts or split differ, or output decreases)")
+        else:
+            order.append(key)
+        by[key] = frag
+    return [{"vendor": "anthropic", "call_id": f"{m}/{r}", "model": by[(m, r)]["model"], "agent": dict(agent),
+             "usage": by[(m, r)]["usage"], "total_cost_usd": None, "started_at": None, "ended_at": None,
+             "cache_write_durations": by[(m, r)]["cache_write_durations"], "subagent": agent_id}
+            for m, r in order]
+
+
+def subagent_calls(folder: Path, ledger: dict) -> tuple:
+    """(the calls of every sub-agent file the ledger names, the files read). Each `.jsonl` entry of the ledger's
+    `subagents` is read from the take folder and its bytes must hash to the entry's sha256; the `.jsonl` files under
+    subagents/ must be exactly the ones named. CostUnread otherwise."""
+    entries = ledger.get("subagents") or []
+    if not isinstance(entries, list):
+        raise CostUnread("the ledger's subagents is not a list")
+    calls, named = [], []
+    for e in entries:
+        if not isinstance(e, dict) or not isinstance(e.get("file"), str):
+            raise CostUnread("a ledger subagents entry names no file")
+        if not e["file"].endswith(".jsonl"):
+            continue
+        parts = Path(e["file"]).parts
+        if len(parts) != 2 or parts[0] != SUBAGENT_DIR or parts[1] in (".", ".."):
+            raise CostUnread(f"sub-agent file {e['file']!r} is not a file under {SUBAGENT_DIR}/")
+        try:
+            raw = (folder / e["file"]).read_bytes()
+        except OSError as err:
+            raise CostUnread(f"sub-agent file {e['file']}: {err}") from None
+        if not bytes_bound(raw, e):
+            raise CostUnread(f"sub-agent file {e['file']}'s bytes are not the ledger's sha256")
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            raise CostUnread(f"sub-agent file {e['file']} is not UTF-8") from None
+        calls += subagent_file_calls(text, ledger["agent"], e.get("agent_id"), e["file"])
+        named.append(e["file"])
+    if not files_match(folder, named):
+        raise CostUnread(f"the sub-agent files under {SUBAGENT_DIR}/ {subagent_files(folder)} are not the ledger's "
+                         f"{sorted(named)}")
+    return calls, named
+
+
+def bytes_bound(raw: bytes, entry: dict) -> bool:
+    """A sub-agent file's bytes hash to its ledger entry's sha256."""
+    return hashlib.sha256(raw).hexdigest() == entry.get("sha256")
+
+
+def files_match(folder: Path, named: list) -> bool:
+    """The `.jsonl` files under subagents/ are exactly the ledger's (none unnamed, none named twice)."""
+    return subagent_files(folder) == sorted(named)
+
+
+def subagent_files(folder: Path) -> list:
+    """The `.jsonl` files under the take folder's subagents/, as ledger paths, sorted."""
+    sub = folder / SUBAGENT_DIR
+    return sorted(f"{SUBAGENT_DIR}/{p.name}" for p in sub.glob("*.jsonl")) if sub.is_dir() else []
+
+
+def model_key(model):
+    """The key RECONCILE sums under: the model id itself, so the calls of one model are checked against that model's
+    modelUsage, never pooled with another's."""
+    return model
+
+
+def reconcile(calls: list, turns: list, *, has_sub: bool) -> None:
+    """RECONCILE: the calls' four classes, summed per model, equal the last turn's modelUsage that is not None (the
+    session's running total). With no modelUsage at all, a take with a sub-agent file is CostUnread and one without
+    is left as it was. CostUnread on any departure: a take is never priced from a partial sum."""
+    usages = [t.get("model_usage") for t in turns if isinstance(t, dict) and t.get("model_usage") is not None]
+    if not usages:
+        if has_sub:
+            raise CostUnread("a take with a sub-agent file whose turns print no modelUsage: its calls cannot be "
+                             "checked complete")
+        return
+    theirs = {}
+    if not isinstance(usages[-1], dict) or not usages[-1]:
+        raise CostUnread("the last modelUsage is not a non-empty object")
+    for model, entry in usages[-1].items():
+        if not isinstance(entry, dict) or not all(_count(entry.get(v)) for v in MODEL_USAGE_KEYS.values()):
+            raise CostUnread(f"the last modelUsage of {model!r} does not hold four counts")
+        s = theirs.setdefault(model_key(model), dict.fromkeys(CLAUDE_CLASSES, 0))
+        for k, v in MODEL_USAGE_KEYS.items():
+            s[k] += entry[v]
+    mine = {}
+    for c in calls:
+        u = c.get("usage")
+        if not isinstance(u, dict) or not all(_count(u.get(k)) for k in CLAUDE_CLASSES):
+            raise CostUnread(f"call {c.get('call_id')!r}'s usage is not four counts: the calls cannot be reconciled")
+        s = mine.setdefault(model_key(c.get("model")), dict.fromkeys(CLAUDE_CLASSES, 0))
+        for k in CLAUDE_CLASSES:
+            s[k] += u[k]
+    if mine != theirs:
+        raise CostUnread(f"the calls' sums per model {mine} are not the last modelUsage's {theirs}")
+
+
+def ids_once(calls: list) -> bool:
+    """No call id is recorded twice across the session file and the sub-agent files."""
+    ids = [c.get("call_id") for c in calls]
+    return len(set(ids)) == len(ids)
+
+
+def claude_calls(folder: Path, ledger: dict) -> list:
+    """The take's Claude calls (module docstring): the ledger's cost calls unchanged, then its sub-agent files' calls,
+    reconciled; or CostUnread."""
+    cost = ledger["cost"]
+    if not isinstance(cost, dict) or not isinstance(cost.get("calls"), list) or not isinstance(cost.get("turns"), list):
+        raise CostUnread("the driver ledger's cost holds no calls and turns lists")
+    sub, files = subagent_calls(folder, ledger)
+    calls = [dict(c) for c in cost["calls"]] + sub
+    if not ids_once(calls):
+        raise CostUnread("a call id is recorded twice (the session file and a sub-agent file, or two sub-agent files)")
+    reconcile(calls, cost["turns"], has_sub=bool(files))
+    return calls
 
 
 # ---- codex ----------------------------------------------------------------------------------------------------------
@@ -318,7 +508,7 @@ def unpriced_problem(calls: list):
 
 
 # ---- the take and the assembly --------------------------------------------------------------------------------------
-READERS = {"codex": codex_calls, "gemini": gemini_calls}
+READERS = {"claude-code": claude_calls, "codex": codex_calls, "gemini": gemini_calls}
 
 
 def drive_may_have_started(outcome) -> bool:
@@ -348,12 +538,9 @@ def take_calls(folder, row: dict, outcome=None) -> list:
     ledger = json.loads(path.read_text(encoding="utf-8"))
     harness = ledger["agent"]["harness"]
     vendor = VENDOR[harness]
-    if harness == "claude-code":
-        cost = ledger.get("cost")
-        if cost is None:
-            return [unmeasured(vendor, key, ledger["model_requested"], ledger["agent"],
-                               "the driver ledger's cost is None (no session file, or its cost reader refused it)")]
-        return [dict(c) for c in cost["calls"]]
+    if harness == "claude-code" and ledger.get("cost") is None:
+        return [unmeasured(vendor, key, ledger["model_requested"], ledger["agent"],
+                           "the driver ledger's cost is None (no session file, or its cost reader refused it)")]
     try:
         return READERS[harness](folder, ledger)
     except CostUnread as e:

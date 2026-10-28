@@ -1366,14 +1366,15 @@ class PrefreezeFills(unittest.TestCase):
         reason = b.PENDING_REASONS["price_table"]
         # lane pf1-l4-close (25 Oct 2026): the cost step's price variants moved the cited lines
         # lane pf1-cost-vendors (26 Oct 2026): the statement's assembly lines moved them again
+        # lane gap-subagent-cost (28 Oct 2026): the arm A sub-agent assembly lines moved them again
         self.assertEqual(reason, "R15 CP5-req 54: published per-call costs read a dated vendor price table "
-                                 "(costs.py:277-347, and 412-419 with its price_variants); the money gate reads the "
+                                 "(costs.py:295-365, and 430-437 with its price_variants); the money gate reads the "
                                  "ledger's cost per try.", "F10.price")
         lines = (HERE / "costs.py").read_text().split("\n")
-        self.assertTrue(lines[276].startswith("def account(calls, price_table, variants=None):"), "F10.price")
-        self.assertEqual(lines[346], "    return out", "F10.price")
-        self.assertTrue(lines[411].startswith("def frozen_inputs(pre):"), "F10.price")
-        self.assertIn('pre["price_table"]', lines[418], "F10.price")
+        self.assertTrue(lines[294].startswith("def account(calls, price_table, variants=None):"), "F10.price")
+        self.assertEqual(lines[364], "    return out", "F10.price")
+        self.assertTrue(lines[429].startswith("def frozen_inputs(pre):"), "F10.price")
+        self.assertIn('pre["price_table"]', lines[436], "F10.price")
         # lane pf1-l4-close (25 Oct 2026): the table is filled, so the reason shows only on a draft whose table is not
         self.assertEqual(b.pending(changed(b.build(), ("price_table",), "PENDING"))["/price_table"], reason,
                          "F10.price")
@@ -1713,7 +1714,11 @@ class PrefreezeClose(unittest.TestCase):
         names = [e["name"] for e in d["round_4_limitations"]]
         self.assertEqual(names, ["fake walk", "seed review line 1", "agent-caused routes", "stopped takes in the views",
                                  "take order seed", "a coherent fabricated record set", "the machines and the runner",
-                                 "what a vendor serves"], "C5.limitations")
+                                 "what a vendor serves",
+                                 # lane gap-subagent-cost (28 Oct 2026): the D8 claude-code read's findings 2 and 4;
+                                 # tests/test_pf1_cost_vendors.py V19 reads their figures from the records
+                                 "arm A turn cost is a running total", "arm A thinking is not observable"],
+                         "C5.limitations")
         for e in d["round_4_limitations"]:
             self.assertEqual(set(e), {"name", "text", "source"}, f"C5.limitations: {e['name']}")
             self.assertEqual(ll.scan_text(e["text"], study.rel("prereg-draft.json"), ll.load_allowlist()), [],
