@@ -45,8 +45,10 @@ guards and must turn that clause red alone.
                Witness: pending-unchecked.
   G4.coverage  MAJOR 4 part 3: the freeze's coverage reading names the missing walks of arms A and O and none of the
                deferred arm G's, which it prints as recorded; freeze.main refuses on a coverage gap before prepare;
-               freeze_rehearsal runs walk_plan.py --coverage --require-run-arms. Witnesses: deferred-required,
-               coverage-skipped.
+               freeze_rehearsal runs walk_plan.py --coverage --require-run-arms. Lane gap-freeze-gates-cover (28 Oct
+               2026): the live line covers arms A and O since e4a0829f, so the refusal is proved on a coverage-gap
+               fixture (one missing walk of each of arms A, O and G) and the live reading need only agree with
+               walk_plan's. Witnesses: deferred-required, coverage-skipped, run-gap-admitted.
   G1.check     m1: freeze.py --check reads every leg (copy manifest, pending, holdout fields, expanded pins, the three
                vendor legs, coverage, prepare with a dummy review) and exits 1 on the committed draft, which the freeze
                refuses; 0 only when every leg holds. Witness: check-legs-ignored.
@@ -395,20 +397,46 @@ def g2b_pending(fz, p="G2b.pending") -> list:
     return out
 
 
+def coverage_gap_fixture(rep: dict) -> dict:
+    """The coverage-gap witness: the live reading with one required walk of each arm (A, O and the deferred G) set
+    missing and nothing else missing. Lane gap-freeze-gates-cover (28 Oct 2026): since e4a0829f the live line covers
+    every walk of arms A and O, so a clause that reads the live line alone could no longer see the gate refuse; the
+    gate is proved on this fixture, whatever the live line holds."""
+    first = {}
+    for s in rep["specs"]:
+        first.setdefault(s["arm"], s)
+    missing = [first[a] for a in ("A", "O", "G") if a in first]
+    if len(missing) != 3:
+        raise AssertionError(f"the plan holds no spec of arm(s) {sorted({'A', 'O', 'G'} - set(first))}")
+    return dict(rep, got=dict(rep["got"], missing=missing))
+
+
 def g4_coverage(fz, wp, fr, p="G4.coverage") -> list:
     out = []
     try:
-        with contextlib.redirect_stdout(io.StringIO()) as said:
-            problem = fz.coverage_problem(committed_draft())
         rep = wp.coverage_report()
-        gaps = wp.run_arm_gaps(rep["got"], rep["deferred"])
-        if sorted(rep["deferred"]) != ["G"] or any(s["arm"] == "G" for s in gaps):
+        if sorted(rep["deferred"]) != ["G"]:
             out.append(f"{p}: the deferred arm's walks are required: deferred {sorted(rep['deferred'])}")
-        if not gaps or not problem or f"{len(gaps)} required walk(s)" not in problem or "arm G" in problem:
-            out.append(f"{p}: the coverage gap of arms A and O is not named: {problem!r:.200}")
+        # The live line: the freeze's reading agrees with walk_plan's, gap or none, and prints arm G as recorded.
+        live_gaps = wp.run_arm_gaps(rep["got"], rep["deferred"])
+        with mock.patch.object(wp, "coverage_report", lambda: rep), \
+                contextlib.redirect_stdout(io.StringIO()) as said:
+            live = fz.coverage_problem(committed_draft())
+        if bool(live) != bool(live_gaps) or (live_gaps and f"{len(live_gaps)} required walk(s)" not in live):
+            out.append(f"{p}: the live line's reading disagrees with walk_plan's {len(live_gaps)} gap(s): {live!r:.200}")
         if "deferred arm G, gemini-3.8-flash" not in said.getvalue():
             out.append(f"{p}: arm G's coverage is not printed as recorded")
-        if wp.run_arm_gaps(rep["got"], {}) == gaps:
+        # The coverage-gap fixture: one missing walk of each of arms A, O and G, which the gate must refuse.
+        gap = coverage_gap_fixture(rep)
+        gaps = wp.run_arm_gaps(gap["got"], gap["deferred"])
+        if sorted(s["arm"] for s in gaps) != ["A", "O"]:
+            out.append(f"{p}: the deferred arm's walks are required: gaps of arms {sorted(s['arm'] for s in gaps)}")
+        with mock.patch.object(wp, "coverage_report", lambda: gap), contextlib.redirect_stdout(io.StringIO()):
+            problem = fz.coverage_problem(committed_draft())
+        if (not problem or f"{len(gaps)} required walk(s)" not in problem or "arm A, " not in problem
+                or "arm O, " not in problem or "arm G" in problem):
+            out.append(f"{p}: the coverage gap of arms A and O is not named: {problem!r:.200}")
+        if wp.run_arm_gaps(gap["got"], {}) == gaps:
             out.append(f"{p}: run_arm_gaps reads no deferred arm")
         complete = dict(rep, got=dict(rep["got"], missing=[]))
         with mock.patch.object(wp, "coverage_report", lambda: complete), contextlib.redirect_stdout(io.StringIO()):
@@ -1067,6 +1095,7 @@ WITNESSES = {
                                                         'deferred]\n', '    return list(got["missing"])\n'),)),
     "coverage-skipped": ("G4.coverage", "freeze", (("        problem = coverage_problem(draft)\n        if problem:\n"
                                                     "            raise ValueError(problem)\n", ""),)),
+    "run-gap-admitted": ("G4.coverage", "freeze", (("    if not gaps:\n        return None\n", "    return None\n"),)),
     "check-legs-ignored": ("G1.check", "freeze", (("    return 1 if bad else 0\n", "    return 0\n"),)),
     "walk-version-unchecked": ("G6.walkpins", "walk_pins", (('    if agent.get("version") != want or '
                                                              'ledger.get("claude_version") != want:\n',
