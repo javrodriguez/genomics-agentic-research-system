@@ -22,7 +22,8 @@ through cost_calls' helpers, and prices are read from the approved table's own r
       with no result stats), w-g13 (a tokens record with no model): each one unmeasured call; on copies of w-g30, a
       call's thoughts off by one (with its total, so only the stats' total_tokens can tell) and a call with tool-use
       prompt tokens: each one unmeasured call (review aa4394c MAJOR-1 and NIT-1).
-  V7  arm A: the ledger's cost calls unchanged (walk w001); a ledger cost of None is one unmeasured call.
+  V7  arm A: the ledger's cost calls unchanged (walk w001, no sub-agent); a ledger cost of None is one unmeasured
+      call.
   V8  assemble: every committed outcome once, in commit order, rulings skipped; a take whose outcome says its drive
       never started (drive_started False) and that holds nothing is no call; one whose outcome does not say so, with
       no folder or no streams, is one unmeasured call (review MINOR-2); streams with no ledger are one unmeasured
@@ -36,6 +37,17 @@ through cost_calls' helpers, and prices are read from the approved table's own r
   V12 the closure review's observation 2: test_pf1_cost_step's C1 and C2/C3 rules on recorded Codex usage.
   V13 review MAJOR-2: synthetic Codex usages with cache writes (no recorded call writes), in the pinned source's own
       test shape (cached 40, written 60, the input their sum) and with fresh input too: mapped and priced by hand.
+  Lane gap-subagent-cost (28 Oct 2026, glitch-45's ruling (b) on the D8 claude-code read's findings 1, 2 and 4):
+  V14 arm A with a sub-agent (w255, w260): the ledger's calls unchanged, then one call per sub-agent call id with its
+      last fragment's counts and split, derived here by plain json; priced, the CLI's own printed session total.
+  V15 the committed arm A walks: 277 of 277 measured and reconciled per model to their last modelUsage, the ones with
+      no sub-agent file unchanged, and the statement's counts are these.
+  V16 the fragment rule on rewritten copies of w255 (sha256 rebound; modelUsage moved where a mutant would keep the
+      change): an unchanged rewrite stays measured; each break of the rule is one unmeasured call.
+  V17 the sub-agent file's binding: sha256, an unnamed file, a missing file, a path outside subagents/, a call id twice.
+  V18 the reconciliation: off by one token, the sub-agent file gone (the finding's undercount), no modelUsage with a
+      sub-agent file, another model's modelUsage; with neither modelUsage nor sub-agent file, as before this lane.
+  V19 the statement's arm A figures and the two limitation lines (findings 2 and 4), each figure derived from records.
 MUTANTS: each weakens one rule in memory, and the case it names must then report a problem. Stdlib only.
 """
 from __future__ import annotations
@@ -45,6 +57,7 @@ import copy
 import hashlib
 import io
 import json
+import re
 import shutil
 import sys
 import tempfile
@@ -566,10 +579,459 @@ def v13_codex_cache_writes():
     return out
 
 
+# ---- lane gap-subagent-cost (28 Oct 2026): arm A sub-agent calls, the fragment rule, the reconciliation ------------
+def sub_entry(led):
+    (e,) = [e for e in led["subagents"] if e["file"].endswith(".jsonl")]
+    return e
+
+
+def derived_sub_calls(walk):
+    """By plain json: a sub-agent file's calls, one per (message.id, requestId), the last fragment's counts and split."""
+    by, order, records = {}, [], 0
+    for r in jsonl(WALKS / walk / sub_entry(ledger_of(walk))["file"]):
+        if r.get("type") != "assistant" or not isinstance((r.get("message") or {}).get("usage"), dict):
+            continue
+        records += 1
+        k = (r["message"]["id"], r["requestId"])
+        if k not in by:
+            order.append(k)
+        by[k] = r["message"]
+    out = []
+    for k in order:
+        u = by[k]["usage"]
+        out.append((f"{k[0]}/{k[1]}", by[k]["model"], {c: u[c] for c in costs.CLASSES},
+                    {"5m": u["cache_creation"]["ephemeral_5m_input_tokens"],
+                     "1h": u["cache_creation"]["ephemeral_1h_input_tokens"]}))
+    return out, records
+
+
+def model_usage_sums(led):
+    """By plain json: the last non-None modelUsage of a ledger, per model, in costs.CLASSES."""
+    mu = [t["model_usage"] for t in led["cost"]["turns"] if t.get("model_usage") is not None][-1]
+    names = {"input_tokens": "inputTokens", "output_tokens": "outputTokens",
+             "cache_read_input_tokens": "cacheReadInputTokens", "cache_creation_input_tokens": "cacheCreationInputTokens"}
+    return {m: {c: e[n] for c, n in names.items()} for m, e in mu.items()}
+
+
+def sums_of(calls):
+    out = {}
+    for c in calls:
+        s = out.setdefault(c["model"], dict.fromkeys(costs.CLASSES, 0))
+        for k in costs.CLASSES:
+            s[k] += c["usage"][k]
+    return out
+
+
+EIGHT = Decimal("0.00000001")
+
+
+def v14_claude_subagents():
+    """w255 and w260: the ledger's calls unchanged, then the sub-agent file's calls (last fragment, its own split),
+    and the priced total is the CLI's own printed session total."""
+    out = []
+    for walk, n_main, n_all, cli in (("w255", 20, 40, "0.24809395"), ("w260", 5, 34, "0.19266300")):
+        led = ledger_of(walk)
+        calls = cc.take_calls(WALKS / walk, row_of(walk))
+        if any(cc.UNMEASURED in c for c in calls):
+            out.append(f"V14: {walk} is unmeasured: {calls[0].get(cc.UNMEASURED)}")
+            continue
+        want, records = derived_sub_calls(walk)
+        main, sub = calls[:len(led["cost"]["calls"])], calls[len(led["cost"]["calls"]):]
+        if main != led["cost"]["calls"]:
+            out.append(f"V14: {walk}: the ledger's calls are not first and unchanged")
+        if [(c["call_id"], c["model"], c["usage"], c["cache_write_durations"]) for c in sub] != want:
+            out.append(f"V14: {walk}: the sub-agent calls are not one per call id with the last fragment's counts and "
+                       f"split")
+        if (len(main), len(calls)) != (n_main, n_all) or records <= len(want):
+            out.append(f"V14: {walk}: {len(main)} and {len(calls)} calls from {records} records")
+        for c in sub:
+            if (c["vendor"], c["agent"], c["total_cost_usd"], c["subagent"]) != (
+                    "anthropic", led["agent"], None, sub_entry(led)["agent_id"]):
+                out.append(f"V14: {walk}: sub-agent call {c['call_id']} vendor, agent, printed cost or subagent wrong")
+                break
+        printed = Decimal(str(led["cost"]["turns"][-1]["total_cost_usd"])).quantize(EIGHT)
+        priced = costs.account(calls, PRICES, VARIANTS)["priced_cost_usd"]
+        if priced is None or priced.quantize(EIGHT) != printed or str(printed) != cli:
+            out.append(f"V14: {walk}: priced {priced} is not the CLI's printed {printed} ({cli})")
+    return out
+
+
+def v15_claude_all_walks():
+    """Every committed arm A walk assembles measured and its calls sum, per model and class, to its last modelUsage; a
+    walk without a sub-agent file assembles its ledger's calls unchanged; the statement's counts are these."""
+    out, n, recon, with_sub = [], 0, 0, []
+    for path in sorted(WALKS.glob("*/driver-ledger.json")):
+        led = json.loads(path.read_text())
+        if led["agent"]["harness"] != "claude-code":
+            continue
+        n += 1
+        walk = path.parent.name
+        calls = cc.take_calls(path.parent, row_of(walk))
+        if any(cc.UNMEASURED in c for c in calls):
+            out.append(f"V15: {walk} is unmeasured: {calls[0].get(cc.UNMEASURED)}")
+            continue
+        if sums_of(calls) == model_usage_sums(led):
+            recon += 1
+        else:
+            out.append(f"V15: {walk}: its calls do not sum to its last modelUsage")
+        if led.get("subagents"):
+            with_sub.append(walk)
+        elif calls != led["cost"]["calls"]:
+            out.append(f"V15: {walk}: a walk with no sub-agent file did not assemble its ledger's calls unchanged")
+    if (n, recon, with_sub) != (277, 277, ["w255", "w260"]):
+        out.append(f"V15: {recon} of {n} arm A walks reconcile, sub-agent walks {with_sub}")
+    lines = costs.cost_statement(VARIANTS)
+    for needle in (f"{len(with_sub)} of {n} committed arm A walks hold a sub-agent file",
+                   f"{recon} of {n} committed arm A walks reconcile"):
+        if not any(ln.startswith("built: ") and needle in ln for ln in lines):
+            out.append(f"V15: no built line says {needle!r}")
+    return out
+
+
+def _rewrite_sub(folder, change):
+    """Rewrite a take copy's sub-agent file record by record (`change` edits the list in place), then rebind its
+    sha256 in the ledger, so only the rule under test can refuse it."""
+    led = json.loads((folder / "driver-ledger.json").read_text())
+    e = sub_entry(led)
+    recs = jsonl(folder / e["file"])
+    change(recs, led)
+    raw = ("\n".join(json.dumps(r) for r in recs) + "\n").encode("utf-8")
+    (folder / e["file"]).write_bytes(raw)
+    e["sha256"] = hashlib.sha256(raw).hexdigest()
+    (folder / "driver-ledger.json").write_text(json.dumps(led))
+
+
+def _fragments(recs):
+    """{(id, requestId): [indexes of its assistant records with usage]} of a sub-agent file's records."""
+    out = {}
+    for i, r in enumerate(recs):
+        if r.get("type") == "assistant" and isinstance((r.get("message") or {}).get("usage"), dict):
+            out.setdefault((r["message"]["id"], r["requestId"]), []).append(i)
+    return out
+
+
+def _last_mu(led):
+    return [t for t in led["cost"]["turns"] if t.get("model_usage") is not None][-1]["model_usage"]
+
+
+def _with_copy(walk, change):
+    with take_copy(walk) as (_, folder):
+        change(folder)
+        return cc.take_calls(folder, row_of(walk))
+
+
+def v16_fragment_rule():
+    """The fragment rule on copies of w255, each break isolated (the sha256 rebound, and where a mutant would keep a
+    changed last fragment, the modelUsage moved with it): an unchanged rewrite stays measured; output decreasing, an
+    earlier fragment's input, cache-read or cache-write count, model or 5m and 1h split differing, each make one
+    unmeasured call. (A cache-write count that differs also breaks its split, so it is refused twice over and has no
+    mutant of its own.)"""
+    out = []
+    in_place = cc.take_calls(WALKS / "w255", row_of("w255"))
+    same = _with_copy("w255", lambda f: _rewrite_sub(f, lambda recs, led: None))
+    if same != in_place or any(cc.UNMEASURED in c for c in same):
+        out.append("V16: an unchanged rewrite of the sub-agent file did not assemble as the walk does")
+
+    def multi(recs):
+        return [ix for ix in _fragments(recs).values() if len(ix) >= 2 and
+                recs[ix[-1]]["message"]["usage"]["output_tokens"] > recs[ix[0]]["message"]["usage"]["output_tokens"]][0]
+
+    def output_decreases(recs, led):
+        ix = multi(recs)
+        last = recs[ix[-1]]["message"]["usage"]
+        drop = last["output_tokens"] - recs[ix[-2]]["message"]["usage"]["output_tokens"] + 1
+        last["output_tokens"] -= drop
+        _last_mu(led)[recs[ix[-1]]["message"]["model"]]["outputTokens"] -= drop
+
+    def earlier_differs(key):
+        def change(recs, led):
+            recs[multi(recs)[0]]["message"]["usage"][key] += 1
+        return change
+
+    def earlier_model(recs, led):
+        recs[multi(recs)[0]]["message"]["model"] = "claude-sonnet-5-5"
+
+    def earlier_split(recs, led):                      # the count kept, one token moved from one duration to the other
+        (ix,) = [ix for ix in _fragments(recs).values() if len(ix) >= 2 and
+                 recs[ix[0]]["message"]["usage"]["cache_creation"]["ephemeral_5m_input_tokens"] > 0][:1]
+        cw = recs[ix[0]]["message"]["usage"]["cache_creation"]
+        cw["ephemeral_5m_input_tokens"] -= 1
+        cw["ephemeral_1h_input_tokens"] += 1
+
+    for name, change in (("output decreasing", output_decreases),
+                         ("an earlier input count differing", earlier_differs("input_tokens")),
+                         ("an earlier cache-read count differing", earlier_differs("cache_read_input_tokens")),
+                         ("an earlier cache-write count differing", earlier_differs("cache_creation_input_tokens")),
+                         ("an earlier model differing", earlier_model),
+                         ("an earlier 5m and 1h split differing", earlier_split)):
+        calls = _with_copy("w255", lambda f, c=change: _rewrite_sub(f, c))
+        if not unmeasured_only(calls, "anthropic"):
+            out.append(f"V16: {name} was not one unmeasured call")
+    return out
+
+
+def _nest(folder):
+    """Move a take copy's sub-agent files one folder down (subagents/nested/), the ledger's paths with them."""
+    led = json.loads((folder / "driver-ledger.json").read_text())
+    (folder / "subagents" / "nested").mkdir()
+    for e in led["subagents"]:
+        name = e["file"].split("/")[-1]
+        (folder / e["file"]).rename(folder / "subagents" / "nested" / name)
+        e["file"] = f"subagents/nested/{name}"
+    (folder / "driver-ledger.json").write_text(json.dumps(led))
+
+
+def v17_sub_binding():
+    """The sub-agent file's binding, on copies of w255: the files nested one folder down (drive.py's
+    subagents/**/agent-<id>.jsonl, review edb48b6 MINOR 3) assemble as the walk does; a byte changed with the sha256
+    left, an unnamed second file (beside it or nested), a file not named agent-<id>.jsonl, a named file missing, a
+    file named outside subagents/, and a main-session call repeated in the sub-agent file (its modelUsage moved with
+    it, so only the repeat can refuse it): each one unmeasured call."""
+    out = []
+
+    def touched(folder):
+        e = sub_entry(json.loads((folder / "driver-ledger.json").read_text()))
+        with open(folder / e["file"], "ab") as fh:
+            fh.write(b"\n")
+
+    def extra(folder):
+        e = sub_entry(json.loads((folder / "driver-ledger.json").read_text()))
+        shutil.copy(folder / e["file"], folder / "subagents" / "agent-unnamed.jsonl")
+
+    def missing(folder):
+        e = sub_entry(json.loads((folder / "driver-ledger.json").read_text()))
+        (folder / e["file"]).unlink()
+
+    def outside(folder):
+        led = json.loads((folder / "driver-ledger.json").read_text())
+        e = sub_entry(led)
+        shutil.copy(folder / e["file"], folder / "agent-outside.jsonl")
+        (folder / e["file"]).unlink()
+        e["file"] = "subagents/../agent-outside.jsonl"
+        (folder / "driver-ledger.json").write_text(json.dumps(led))
+
+    def repeated(recs, led):
+        c = led["cost"]["calls"][0]
+        mid, rid = c["call_id"].split("/")
+        u = dict(c["usage"], cache_creation={"ephemeral_5m_input_tokens": c["cache_write_durations"]["5m"],
+                                             "ephemeral_1h_input_tokens": c["cache_write_durations"]["1h"]})
+        recs.append({"type": "assistant", "requestId": rid, "message": {"id": mid, "model": c["model"], "usage": u}})
+        mu = _last_mu(led)[c["model"]]
+        for k, n in (("input_tokens", "inputTokens"), ("output_tokens", "outputTokens"),
+                     ("cache_read_input_tokens", "cacheReadInputTokens"),
+                     ("cache_creation_input_tokens", "cacheCreationInputTokens")):
+            mu[n] += c["usage"][k]
+
+    def nested_extra(folder):
+        e = sub_entry(json.loads((folder / "driver-ledger.json").read_text()))
+        (folder / "subagents" / "deep").mkdir()
+        shutil.copy(folder / e["file"], folder / "subagents" / "deep" / "agent-unnamed.jsonl")
+
+    def bad_name(folder):
+        led = json.loads((folder / "driver-ledger.json").read_text())
+        e = sub_entry(led)
+        (folder / e["file"]).rename(folder / "subagents" / "other.jsonl")
+        e["file"] = "subagents/other.jsonl"
+        (folder / "driver-ledger.json").write_text(json.dumps(led))
+
+    in_place = cc.take_calls(WALKS / "w255", row_of("w255"))
+    nested = _with_copy("w255", _nest)
+    if nested != in_place:
+        out.append("V17: a sub-agent file nested below subagents/, as drive.py copies it, did not assemble as the walk")
+    for name, change in (("a byte changed, the sha256 left", touched), ("an unnamed second file", extra),
+                         ("an unnamed file nested below subagents/", nested_extra),
+                         ("a file not named agent-<id>.jsonl", bad_name),
+                         ("a named file missing", missing), ("a file named outside subagents/", outside),
+                         ("a main call repeated in the sub-agent file", lambda f: _rewrite_sub(f, repeated))):
+        calls = _with_copy("w255", change)
+        if not unmeasured_only(calls, "anthropic"):
+            out.append(f"V17: {name} was not one unmeasured call")
+    return out
+
+
+def _inject_agent_call(folder):
+    """Add an Agent tool_use to a take copy's main session file (no sub-agent file copied)."""
+    path = folder / "transcript.jsonl"
+    lines = path.read_text(encoding="utf-8").split("\n")
+    for i, line in enumerate(lines):
+        r = json.loads(line) if line.strip() else None
+        if isinstance(r, dict) and r.get("type") == "assistant" and isinstance(r["message"].get("content"), list):
+            r["message"]["content"].append({"type": "tool_use", "id": "toolu_injected", "name": "Agent",
+                                            "input": {"description": "x", "prompt": "x"}})
+            lines[i] = json.dumps(r)
+            break
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def v18_reconcile():
+    """DELEGATION and RECONCILE on copies (review edb48b6 MAJOR 1, glitch-45's option (c)). A delegating take goes
+    unmeasured when its last modelUsage is off by one input token, when it has no modelUsage, when its calls are under
+    another model's modelUsage, when its last turn is cut (no modelUsage; an earlier turn's remains), when its sub-agent
+    file is gone while its session still calls Agent (the finding's undercount), and when w001's session is given an
+    Agent tool_use with no file copied. A take that did not delegate prices its ledger's calls as before: w177 with its
+    last turn cut (probe P5), w001 off by one, w001 with no modelUsage."""
+    out = []
+
+    def ledger_edit(edit):
+        def change(folder):
+            led = json.loads((folder / "driver-ledger.json").read_text())
+            edit(led, folder)
+            (folder / "driver-ledger.json").write_text(json.dumps(led))
+        return change
+
+    def off_by_one(led, folder):
+        mu = _last_mu(led)
+        mu[sorted(mu)[0]]["inputTokens"] += 1
+
+    def sub_gone(led, folder):
+        shutil.rmtree(folder / "subagents")
+        led["subagents"] = []
+
+    def no_model_usage(led, folder):
+        for t in led["cost"]["turns"]:
+            t["model_usage"] = None
+
+    def other_model(led, folder):
+        mu = _last_mu(led)
+        (m,) = list(mu)
+        mu["claude-sonnet-5-5" if m != "claude-sonnet-5-5" else "claude-opus-5-5"] = mu.pop(m)
+
+    def cut_last(led, folder):
+        led["cost"]["turns"][-1]["model_usage"] = None
+
+    for name, walk, change in (("w255 off by one input token", "w255", ledger_edit(off_by_one)),
+                               ("w255 with no modelUsage", "w255", ledger_edit(no_model_usage)),
+                               ("w255 under another model's modelUsage", "w255", ledger_edit(other_model)),
+                               ("w255 with its last turn cut", "w255", ledger_edit(cut_last)),
+                               ("w255 with its sub-agent file gone", "w255", ledger_edit(sub_gone)),
+                               ("w001 calling Agent with no sub-agent file", "w001", _inject_agent_call)):
+        calls = _with_copy(walk, change)
+        if not unmeasured_only(calls, "anthropic"):
+            out.append(f"V18: {name} was not one unmeasured call")
+    if [t.get("model_usage") is not None for t in ledger_of("w255")["cost"]["turns"]][:-1] != [True]:
+        out.append("V18: w255's cut witness needs its earlier turn's modelUsage")
+    for name, walk, change in (("w177 with its last turn cut", "w177", ledger_edit(cut_last)),
+                               ("w001 off by one input token", "w001", ledger_edit(off_by_one)),
+                               ("w001 with no modelUsage", "w001", ledger_edit(no_model_usage))):
+        calls = _with_copy(walk, change)
+        if calls != ledger_of(walk)["cost"]["calls"] or not calls:
+            out.append(f"V18: {name} (no delegation) did not assemble its ledger's calls unchanged")
+        elif costs.account(calls, PRICES, VARIANTS)["priced_cost_usd"] is None:
+            out.append(f"V18: {name} (no delegation) is not priced")
+    return out
+
+
+def v20_api_errors_and_bindings():
+    """API-error records in a sub-agent file are the harness's, skipped as session_calls skips them (review edb48b6
+    NIT 6): a w255 copy given one record of each kind (the camel-case flag, the adapter's is_api_error_message flag, the
+    synthetic model), each with a usage, assembles as the walk does. And the names cost_calls spells are the checker's:
+    SUBAGENT_FILE is drive.SUBAGENT_FILE, AGENT_TOOL is check_take.AGENT_TOOL and transcript_view's one DELEGATE tool."""
+    out = []
+    in_place = cc.take_calls(WALKS / "w255", row_of("w255"))
+    usage = {"input_tokens": 7, "output_tokens": 7, "cache_read_input_tokens": 7, "cache_creation_input_tokens": 0}
+    haiku = "claude-haiku-4-5-20251001"
+    for name, rec in (("isApiErrorMessage", {"isApiErrorMessage": True, "message": {"model": haiku}}),
+                      ("is_api_error_message", {"is_api_error_message": True,
+                                                "message": {"model": haiku}}),
+                      ("the synthetic model", {"message": {"model": "<synthetic>"}})):
+        def change(recs, led, rec=rec):
+            r = {"type": "assistant", "requestId": f"req_api_{len(recs)}", **rec}
+            r["message"] = dict(rec["message"], id=f"msg_api_{len(recs)}", usage=dict(usage), content=[])
+            recs.append(r)
+        calls = _with_copy("w255", lambda f, c=change: _rewrite_sub(f, c))
+        if calls != in_place:
+            out.append(f"V20: an API-error record ({name}) changed the assembly")
+    import check_take
+    import drive
+    import transcript_view
+    if cc.SUBAGENT_FILE.pattern != drive.SUBAGENT_FILE.pattern:
+        out.append("V20: cost_calls.SUBAGENT_FILE is not drive.SUBAGENT_FILE")
+    delegate = [k for k, v in transcript_view.CC_TOOLS.items() if v[0] == transcript_view.DELEGATE]
+    if cc.AGENT_TOOL != check_take.AGENT_TOOL or delegate != [cc.AGENT_TOOL]:
+        out.append(f"V20: cost_calls.AGENT_TOOL is not check_take.AGENT_TOOL and the one DELEGATE tool {delegate}")
+    return out
+
+
+def v19_statement_and_limitations():
+    """The statement's arm A figures and the two limitation lines (findings 2 and 4) are what the records give."""
+    out = []
+    lines = costs.cost_statement(VARIANTS)
+    five = Decimal("0.00001")
+    got = {}
+    for walk in ("w255", "w260"):
+        led = ledger_of(walk)
+        got[walk] = (costs.account(cc.take_calls(WALKS / walk, row_of(walk)), PRICES, VARIANTS)["priced_cost_usd"],
+                     costs.account(led["cost"]["calls"], PRICES, VARIANTS)["priced_cost_usd"])
+    for needle in (f"${got['w255'][0].quantize(five)} and ${got['w260'][0].quantize(five)}",
+                   f"${got['w255'][1].quantize(five)} and ${got['w260'][1].quantize(five)}",
+                   "sub-agent file the take copied", "the last fragment is kept", "never priced from a partial sum",
+                   "the session's running total", "a cut or timed-out turn included",
+                   "makes arm A's priced total, and with it the round-wide usage and priced total, read unmeasured",
+                   "subagents/**/agent-<id>.jsonl", "is priced as recorded and is not reconciled",
+                   "which claude_code_adapter.py lines 47-48 do not say"):
+        if not any(ln.startswith("built: ") and needle in ln for ln in lines):
+            out.append(f"V19: no built line says {needle!r}")
+    d = b.build()
+    by = {e["name"]: e for e in d["round_4_limitations"]}
+    run = by.get("arm A turn cost is a running total", {})
+    think = by.get("arm A thinking is not observable", {})
+    led = ledger_of("w177")
+    four = [Decimal(str(t["total_cost_usd"])).quantize(Decimal("0.0001")) for t in led["cost"]["turns"]]
+    states = [(i, r["totalCostUSD"]) for i, r in enumerate(jsonl(WALKS / "w177" / "transcript.jsonl"), 1)
+              if r.get("type") == "cost-state"]
+    if [s for _, s in states] != [t["total_cost_usd"] for t in led["cost"]["turns"]]:
+        out.append("V19: w177's per-turn totals are not its session's cost-state running totals")
+    if f"store {four[0]}, {four[1]}, {four[2]} and {four[3]}" not in run.get("text", ""):
+        out.append("V19: the running-total limitation does not carry w177's four figures")
+    if "cost-state lines " + ", ".join(str(i) for i, _ in states[:-1]) + f" and {states[-1][0]}" not in run.get(
+            "source", ""):
+        out.append("V19: the running-total limitation does not cite w177's cost-state lines")
+    ad = (HERE / "claude_code_adapter.py").read_text().split("\n")
+    if "`total_cost_usd` is the turn's own result record's" not in ad[46] or "printed figure" not in ad[47]:
+        out.append("V19: claude_code_adapter.py lines 47-48 do not hold the docstring the limitation cites")
+    if '"total_cost_usd": res.get("total_cost_usd")' not in ad[964]:
+        out.append("V19: claude_code_adapter.py line 965 is not cost_record's per-turn total")
+    walks = blocks = empty = 0
+    nonempty = []
+    for path in sorted(WALKS.glob("*/driver-ledger.json")):
+        if json.loads(path.read_text())["agent"]["harness"] != "claude-code":
+            continue
+        walks += 1
+        for i, r in enumerate(jsonl(path.parent / "transcript.jsonl"), 1):
+            content = (r.get("message") or {}).get("content") if r.get("type") == "assistant" else None
+            for blk in content if isinstance(content, list) else ():
+                if isinstance(blk, dict) and blk.get("type") == "thinking":
+                    blocks += 1
+                    if (blk.get("thinking") or "").strip():
+                        nonempty.append(f"{path.parent.name} line {i}")
+                    else:
+                        empty += 1
+    if f"{empty:,} of the {blocks:,} thinking blocks in the {walks} committed arm A walks" not in think.get("text", ""):
+        out.append(f"V19: the thinking limitation does not say {empty:,} of the {blocks:,} in the {walks} walks")
+    if f"the {len(nonempty)} others" not in think.get("text", "") or ", ".join(nonempty[:-1]) not in think.get(
+            "source", "") or nonempty[-1] not in think.get("source", ""):
+        out.append(f"V19: the thinking limitation does not name the non-empty blocks {nonempty}")
+    if f"reads almost no reasoning for arm A (those {len(nonempty)} short notes in {blocks:,} blocks)" not in think.get(
+            "text", ""):
+        out.append("V19: the thinking limitation does not say it reads almost no reasoning")
+    if "which the adapter's docstring (lines 47-48) does not say" not in run.get("text", ""):
+        out.append("V19: the running-total limitation overreads the docstring")
+    if "published as not observable, never as 0" not in think.get("text", ""):
+        out.append("V19: the thinking limitation does not say not observable, never 0")
+    aw = (HERE / "graders" / "awareness.py").read_text().split("\n")
+    if "reasoning_matches" not in aw[12] or "AGENT_REASONING" not in aw[170] or "reasoning_matches" not in aw[173]:
+        out.append("V19: graders/awareness.py lines 13, 171 and 174 do not hold what the limitation cites")
+    if "for arm A it is not observable" not in d["run_tree_residual"]["round_4"]["awareness_caveat"]:
+        out.append("V19: the awareness caveat does not say arm A's reasoning is not observable")
+    return out
+
+
 CASES = {"V1": v1_codex_mapping, "V2": v2_codex_all_walks, "V3": v3_codex_priced, "V4": v4_codex_incomplete,
          "V5": v5_gemini_mapping, "V6": v6_gemini_incomplete, "V7": v7_claude, "V8": v8_assemble,
          "V9": v9_statement, "V10": v10_main, "V11": v11_codex_prompt_once, "V12": v12_codex_rules_on_records,
-         "V13": v13_codex_cache_writes}
+         "V13": v13_codex_cache_writes, "V14": v14_claude_subagents, "V15": v15_claude_all_walks,
+         "V16": v16_fragment_rule, "V17": v17_sub_binding, "V18": v18_reconcile, "V19": v19_statement_and_limitations,
+         "V20": v20_api_errors_and_bindings}
 
 
 # ---- the mutants ----------------------------------------------------------------------------------------------------
@@ -584,6 +1046,36 @@ def _no_thoughts(t):
 
 
 _REAL_CODEX_USAGE, _REAL_GEMINI_USAGE = cc.codex_usage, cc.gemini_usage
+_REAL_SUB_FILE_CALLS, _REAL_RECONCILE, _REAL_FRAGMENT_HOLDS = cc.subagent_file_calls, cc.reconcile, cc.fragment_holds
+_REAL_ADMITTED = cc.admitted_path
+
+
+def _keep_first(text, agent, agent_id, name):
+    """Mutant: the first fragment of each sub-agent call kept, not the last."""
+    seen, keep = set(), []
+    for line in text.split("\n"):
+        r = json.loads(line) if line.strip() else None
+        if isinstance(r, dict) and r.get("type") == "assistant" and isinstance((r.get("message") or {}).get("usage"),
+                                                                             dict):
+            k = (r["message"].get("id"), r.get("requestId"))
+            if k in seen:
+                continue
+            seen.add(k)
+        keep.append(line)
+    return _REAL_SUB_FILE_CALLS("\n".join(keep), agent, agent_id, name)
+
+
+def _holds_without(part):
+    """Mutant: the fragment rule with one of its parts (output, model, split) left out."""
+    def holds(kept, new):
+        if part == "output":
+            new = dict(new, usage=dict(new["usage"], output_tokens=kept["usage"]["output_tokens"]))
+        elif part == "model":
+            new = dict(new, model=kept["model"])
+        elif part == "split":
+            new = dict(new, cache_write_durations=kept["cache_write_durations"])
+        return _REAL_FRAGMENT_HOLDS(kept, new)
+    return holds
 _OLD_ITEMS = costs.NOT_BUILT_ITEMS[:4] + (
     "No step assembles cost-calls.json: an arm A take records its calls in its driver ledger's cost "
     "(claude_code_adapter.cost_record), and an arm O or arm G take records none (drive.py writes a cost for "
@@ -626,6 +1118,42 @@ MUTANTS = {
         p for p in cc.GEMINI_CHECKED if p[0] != "total"))),
     "gemini-tool-call-kept": ("V6", lambda: mock.patch.object(cc, "unpriced_problem", lambda calls: None)),
     "drive-started-ignored": ("V8", lambda: mock.patch.object(cc, "drive_may_have_started", lambda outcome: False)),
+    # lane gap-subagent-cost (28 Oct 2026): one per rule of the arm A sub-agent assembly
+    "sub-agent-calls-dropped": ("V14", lambda: mock.patch.object(cc, "subagent_calls", lambda f, led: ([], []))),
+    "sub-agent-dropped-every-walk": ("V15", lambda: mock.patch.object(cc, "subagent_calls", lambda f, led: ([], []))),
+    "fragment-first-kept": ("V14", lambda: mock.patch.object(cc, "subagent_file_calls", _keep_first)),
+    "split-not-read": ("V14", lambda: mock.patch.object(cc.claude_code_adapter, "cache_write_split",
+                                                         lambda usage, counts: None)),
+    "fragment-output-may-decrease": ("V16", lambda: mock.patch.object(cc, "fragment_holds", _holds_without("output"))),
+    "fragment-input-unchecked": ("V16", lambda: mock.patch.object(cc, "FRAGMENT_FIXED", tuple(
+        k for k in cc.FRAGMENT_FIXED if k != "input_tokens"))),
+    "fragment-cache-read-unchecked": ("V16", lambda: mock.patch.object(cc, "FRAGMENT_FIXED", tuple(
+        k for k in cc.FRAGMENT_FIXED if k != "cache_read_input_tokens"))),
+    "fragment-model-unchecked": ("V16", lambda: mock.patch.object(cc, "fragment_holds", _holds_without("model"))),
+    "fragment-split-unchecked": ("V16", lambda: mock.patch.object(cc, "fragment_holds", _holds_without("split"))),
+    "sub-sha-unchecked": ("V17", lambda: mock.patch.object(cc, "bytes_bound", lambda raw, entry: True)),
+    "sub-unnamed-file-ignored": ("V17", lambda: mock.patch.object(cc, "files_match", lambda folder, named: True)),
+    "call-id-twice": ("V17", lambda: mock.patch.object(cc, "ids_once", lambda calls: True)),
+    "reconcile-skipped": ("V18", lambda: mock.patch.object(cc, "reconcile", lambda calls, turns, has_sub: None)),
+    "reconcile-sub-without-model-usage": ("V18", lambda: mock.patch.object(
+        cc, "reconcile", lambda calls, turns, has_sub: _REAL_RECONCILE(calls, turns, has_sub=False))),
+    "reconcile-models-pooled": ("V18", lambda: mock.patch.object(cc, "model_key", lambda model: "*")),
+    "statement-no-sub-agent-lines": ("V19", lambda: mock.patch.object(costs, "ASSEMBLY_BUILT",
+                                                                     costs.ASSEMBLY_BUILT[:5])),
+    # review edb48b6's folds
+    "every-take-reconciled": ("V18", lambda: mock.patch.object(cc, "delegates", lambda named, on_disk, tool: True)),
+    "agent-tool-ignored": ("V18", lambda: mock.patch.object(cc, "agent_called", lambda folder, ledger: False)),
+    "agent-without-file-passes": ("V18", lambda: mock.patch.object(cc, "file_missing", lambda tool, files: False)),
+    "nested-refused": ("V17", lambda: mock.patch.object(cc, "admitted_path", lambda rel: len(rel.split("/")) == 2 and (
+        _REAL_ADMITTED(rel)))),
+    "nested-unnamed-ignored": ("V17", lambda: mock.patch.object(cc, "subagent_files", lambda folder: sorted(
+        f"subagents/{q.name}" for q in (folder / "subagents").glob("*.jsonl")) if (folder / "subagents").is_dir()
+        else [])),
+    "name-unchecked": ("V17", lambda: mock.patch.object(cc, "SUBAGENT_FILE", re.compile(r".*\.jsonl"))),
+    "api-errors-counted": ("V20", lambda: mock.patch.object(cc, "api_error", lambda rec: False)),
+    "adapter-api-error-half-dropped": ("V20", lambda: mock.patch.object(cc.claude_code_adapter, "_is_api_error",
+                                                                         lambda rec: False)),
+    "limitations-dropped": ("V19", lambda: mock.patch.object(b, "ROUND_4_LIMITATIONS", b.ROUND_4_LIMITATIONS[:8])),
 }
 
 

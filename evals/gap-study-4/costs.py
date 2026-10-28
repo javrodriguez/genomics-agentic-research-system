@@ -125,9 +125,9 @@ NOT_BUILT_ITEMS = (
 # Lane pf1-cost-vendors (26 Oct 2026): what cost_calls.py builds, said as what it does; cost_statement carries each.
 ASSEMBLY_BUILT = (
     "cost-calls.json is assembled by cost_calls.py from every committed outcome's take folder: an arm A take's calls "
-    "are its driver ledger's cost calls; an arm O take's calls are its last retained rollout's token_usage_record "
-    "lines, one per response id; an arm G take's calls are its replayed session file's gemini messages that record "
-    "tokens",
+    "are its driver ledger's cost calls and the calls of each sub-agent file the take copied; an arm O take's calls "
+    "are its last retained rollout's token_usage_record lines, one per response id; an arm G take's calls are its "
+    "replayed session file's gemini messages that record tokens",
     "an arm O call's usage is mapped from the Responses API's counts: input is input less cached and written, cache "
     "read is cached, cache write is written, output is output; that cached input and reasoning are parts of input "
     "and output is what every recorded call shows (its total is its input plus its output); that written input is a "
@@ -144,6 +144,33 @@ ASSEMBLY_BUILT = (
     "on 26 Oct 2026, 32 of 36 committed arm G walks assemble as unmeasured (their session files record fewer calls "
     "than their result stats count), so arm G's priced total, and with it the round-wide total, will most likely "
     "publish as unmeasured if arm G runs",
+    # Lane gap-subagent-cost (28 Oct 2026, glitch-45's ruling (b) on the D8 claude-code read's finding 1, and its
+    # rulings on review edb48b6: MAJOR 1 option (c), MINOR 2 and MINOR 3).
+    "an arm A take delegated when a sub-agent file was copied or its main session file holds an Agent tool call; a "
+    "take that did not delegate is priced from its driver ledger's calls alone, as before, a cut or timed-out turn "
+    "included",
+    "a delegating arm A take's sub-agent calls are read from each sub-agent file the take copied "
+    "(subagents/**/agent-<id>.jsonl, at any depth as drive.py copies it), its bytes bound by the driver ledger's "
+    "sha256, because Claude Code's driver ledger records the main session file's calls alone; that file writes one "
+    "call as several fragments whose output count grows, so a call is read once per message id and request id, its "
+    "fragments must agree on the model, the input, cache-read and cache-write counts and the 5m and 1h write split, "
+    "output may never decrease, and the last fragment is kept; any other shape makes the take one unmeasured call",
+    "a delegating arm A take's calls, the main session's and its sub-agents' together, must sum per model and token "
+    "class to the modelUsage the CLI prints in the last turn that prints one (the session's running total, its "
+    "sub-agents included); a delegating take whose calls do not (a cut or timed-out last turn included), that has no "
+    "modelUsage, or whose session calls Agent with no sub-agent file copied, is assembled as one unmeasured call, never "
+    "priced from a partial sum, and that one call makes arm A's priced total, and with it the round-wide usage and "
+    "priced total, read unmeasured",
+    "the 5m and 1h cache-write split each arm A call records is priced as recorded and is not reconciled: modelUsage "
+    "prints no split, and its own costUSD is not used as a check, because the CLI's built-in prices may differ from the "
+    "frozen price table",
+    "on 28 Oct 2026, 2 of 277 committed arm A walks hold a sub-agent file (w255 and w260, both Haiku 4.5 on "
+    "plan-gate); with their sub-agent calls they price to $0.24809 and $0.19266, the CLI's own printed session totals, "
+    "against $0.14670 and $0.05474 from their main sessions alone; 277 of 277 committed arm A walks reconcile",
+    "an arm A turn's total_cost_usd in the driver ledger is the session's running total as the CLI prints it, not "
+    "that turn's own, which claude_code_adapter.py lines 47-48 do not say (that file is checker code and is not "
+    "edited before the freeze); no step adds it up and no call carries it, so arm A's printed total reads unmeasured "
+    "and only the priced total is published",
 )
 
 
