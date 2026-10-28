@@ -51,7 +51,9 @@ guards and must turn that clause red alone.
                walk_plan's. Witnesses: deferred-required, coverage-skipped, run-gap-admitted.
   G1.check     m1: freeze.py --check reads every leg (copy manifest, pending, holdout fields, expanded pins, the three
                vendor legs, coverage, prepare with a dummy review) and exits 1 on the committed draft, which the freeze
-               refuses; 0 only when every leg holds. Witness: check-legs-ignored.
+               refuses; 0 only when every leg holds. The coverage leg agrees with walk_plan's live reading and fails
+               on the coverage-gap fixture (lane gap-freeze-gates-cover). Witnesses: check-legs-ignored,
+               coverage-leg-dropped.
   G6.walkpins  m6: walk_pins.py holds every registered walk to the draft's version pins, image ids and pinned gars tree;
                a copy with one walk's version, image or tree changed is refused by name; freeze_rehearsal runs it.
                Witnesses: walk-version-unchecked, walk-image-unchecked.
@@ -487,7 +489,11 @@ class MainHarness:
 def g1_check(fz, p="G1.check") -> list:
     out = []
     try:
-        with contextlib.redirect_stdout(io.StringIO()):
+        import walk_plan as wp
+        cover = "walk coverage of the arms the freeze runs"
+        rep = wp.coverage_report()
+        live_gaps = wp.run_arm_gaps(rep["got"], rep["deferred"])
+        with mock.patch.object(wp, "coverage_report", lambda: rep), contextlib.redirect_stdout(io.StringIO()):
             legs = fz.check_legs(committed_draft())
         names = [n for n, _ in legs]
         for want in ("copy manifest", "pending", "holdout fields", "pins", "vendor legs i-iii", "walk coverage",
@@ -495,9 +501,18 @@ def g1_check(fz, p="G1.check") -> list:
             if not any(n.startswith(want) for n in names):
                 out.append(f"{p}: --check reads no {want} leg: {names}")
         failing = {n.split(" (")[0] for n, problems in legs if problems}
-        for want in ("pending", "walk coverage of the arms the freeze runs", "prepare"):
+        for want in ("pending", "prepare"):
             if want not in failing:
                 out.append(f"{p}: the {want} leg holds on a draft the freeze refuses")
+        # Lane gap-freeze-gates-cover (28 Oct 2026): the live line covers arms A and O since e4a0829f, so the
+        # coverage leg holds there; it must agree with walk_plan's reading, and fail on the coverage-gap fixture.
+        if (cover in failing) != bool(live_gaps):
+            out.append(f"{p}: the {cover} leg disagrees with walk_plan's {len(live_gaps)} gap(s) on the live line")
+        with mock.patch.object(wp, "coverage_report", lambda: coverage_gap_fixture(rep)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            gap_legs = fz.check_legs(committed_draft())
+        if cover not in {n.split(" (")[0] for n, problems in gap_legs if problems}:
+            out.append(f"{p}: the {cover} leg holds on a coverage gap of arms A and O")
         with mock.patch.object(fz, "check_legs", lambda d: legs), contextlib.redirect_stdout(io.StringIO()):
             code = fz.main(["--check"])
         if code != 1:
@@ -1097,6 +1112,10 @@ WITNESSES = {
                                                     "            raise ValueError(problem)\n", ""),)),
     "run-gap-admitted": ("G4.coverage", "freeze", (("    if not gaps:\n        return None\n", "    return None\n"),)),
     "check-legs-ignored": ("G1.check", "freeze", (("    return 1 if bad else 0\n", "    return 0\n"),)),
+    "coverage-leg-dropped": ("G1.check", "freeze", (('    legs.append(("walk coverage of the arms the freeze runs", '
+                                                     '[problem] if problem else []))\n',
+                                                     '    legs.append(("walk coverage of the arms the freeze runs", '
+                                                     '[]))\n'),)),
     "walk-version-unchecked": ("G6.walkpins", "walk_pins", (('    if agent.get("version") != want or '
                                                              'ledger.get("claude_version") != want:\n',
                                                              "    if False:\n"),)),
