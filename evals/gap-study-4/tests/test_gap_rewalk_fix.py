@@ -18,6 +18,10 @@ its precedent, never a general class:
                   and listing task_progress's description (the sub-agent's command) goes red; no checker, view,
                   grader, leak or regrade module loads the table, and the table is no CHECKER_CODE_FILES file.
 
+  RW4-codex-rule  the draft's sentence that the Codex content rule holds for N of N commands on the M committed arm-O
+                  walks is the walks' own count (check_take's own host-stream reader and comparison, every walk), and
+                  the sentence names it; a count off by one goes red.
+
 Reads committed walk records and copies them into temporary folders only; no model, network or container.
 """
 
@@ -142,12 +146,44 @@ def rw2_furniture(p="RW2-furniture"):
     return out
 
 
+def codex_rule_count() -> tuple:
+    """(arm O walks, completed exec-stream commands, walks the comparison names) over every committed arm O walk."""
+    walks = commands = bad = 0
+    for w in sorted(p for p in (HERE / "rehearsals").glob("w-o*") if p.is_dir()):
+        texts, raw = check_take._vendor_bound_texts(w / "transcript.jsonl")
+        recs = check_take._host_stream_records(texts, "codex")
+        walks += 1
+        commands += sum(1 for _, r in recs if r.get("type") == "item.completed" and isinstance(r.get("item"), dict)
+                        and r["item"].get("type") == "command_execution")
+        bad += bool(check_take._codex_command_problems(recs, raw))
+    return walks, commands, bad
+
+
+def PF1_TRANSCRIPT_TEXT() -> str:
+    import build_draft
+    return json.dumps(build_draft.PF1_TRANSCRIPT_RESIDUAL, ensure_ascii=False)
+
+
+def rw4_phrase(walks, commands) -> str:
+    return (f"equals the rollout's argv) holds for {commands} of {commands} commands on the {walks} committed "
+            f"arm-O walks")
+
+
 class TestGapRewalkFix(unittest.TestCase):
     def test_rw1_the_five_rewalk_exceptions_are_bound_to_their_lines(self):
         self.assertEqual(rw1_exceptions(fw), [])
 
     def test_rw2_the_agent_progress_kinds_are_furniture_by_the_clis_keys_only(self):
         self.assertEqual(rw2_furniture(), [])
+
+    def test_rw4_the_codex_rule_count_is_the_walks(self):
+        walks, commands, bad = codex_rule_count()
+        self.assertEqual(bad, 0, "RW4-codex-rule: a committed arm O walk breaks the rule the draft says holds")
+        draft = json.loads((HERE / "prereg-draft.json").read_text(encoding="utf-8"))
+        # the committed draft (build_draft.py --check binds it to what build() writes) and the constant it is built from
+        for text in (json.dumps(draft["box_residuals"], ensure_ascii=False), PF1_TRANSCRIPT_TEXT()):
+            self.assertIn(rw4_phrase(walks, commands), text, "RW4-codex-rule")
+            self.assertNotIn(rw4_phrase(walks, commands - 1), text, "RW4-codex-rule: the witness is armed")
 
 
 if __name__ == "__main__":

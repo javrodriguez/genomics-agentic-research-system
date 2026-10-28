@@ -499,7 +499,7 @@ SOURCES = {"plan": "plans/gap-study-round-4.md", "req": "plans/gap-study-round-4
 INFORMED = "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
 # Pre-freeze review 1, m12 (lane pf1-l4a, 25 Oct 2026): the basis also discloses the registered walks, read before the
 # freeze; the count is bound to rehearsals/register.json by PrefreezeFills.test_informed_by_names_the_walks.
-INFORMED += ("; 225 registered walks of the registered stimuli exist and were read before the freeze "
+INFORMED += ("; 387 registered walks of the registered stimuli exist and were read before the freeze "
              "(rehearsals/register.json), and no prediction is filled from them")
 
 
@@ -1000,7 +1000,7 @@ def layer_note_problems(d) -> list:
     r4 = note["round_4"]
     if set(r4) != {CLAUDE, CODEX, GEMINI}:
         return out + ["round_4 does not name the three arms"]
-    if not all(w in r4[CLAUDE] for w in ("151 committed Claude walks", "348 turn launches", "project,local",
+    if not all(w in r4[CLAUDE] for w in ("277 committed Claude walks", "640 turn launches", "project,local",
                                          "gars/.claude/settings.json", "no stream or transcript record carries a hook")):
         out.append("arm A's line does not carry its evidence")
     if r4[CODEX].get("switch") != "the per-take config.toml: [features] hooks = false" or \
@@ -1016,7 +1016,8 @@ def layer_note_problems(d) -> list:
 
 
 def arm_a_hook_counts() -> dict:
-    """Recount arm A's line over the 151 committed Claude walks (w001-w168): data, never the note's own words."""
+    """Recount arm A's line over every committed Claude walk (lane gap-rewalk-fix: 277 since the rewalk merge; it read
+    w001-w168 alone before it): data, never the note's own words."""
     walks = launches = root = hooks = 0
     sources, baselines = set(), set()
 
@@ -1029,7 +1030,7 @@ def arm_a_hook_counts() -> dict:
             for v in o:
                 yield from keys(v)
     for w in sorted((HERE / "rehearsals").glob("w[0-9]*")):
-        if not re.fullmatch(r"w[0-9]+", w.name) or int(w.name[1:]) > 168:
+        if not re.fullmatch(r"w[0-9]+", w.name):
             continue
         walks += 1
         for launch in w.glob("turn-*.jsonl.launch.json"):
@@ -1064,7 +1065,7 @@ def fold2_problems(d) -> list:
     if [f["path"] for f in res["carried"].get("permitted_sweep_files", [])] != ["README.md", "docs/RESULTS.md"]:
         out.append("the permitted sweep files are not README.md and docs/RESULTS.md")
     if not ("w-g17" in r4.get("observed", "") and "native-turn-1.jsonl lines 123-153" in r4["observed"]
-            and "1 of the 225" in r4["observed"]):
+            and "1 of the 387" in r4["observed"]):
         out.append("w-g17 is not named as the one observed case, with its lines")
     if not all(w in r4.get("awareness_caveat", "") for w in ("gap study", "agent-text", "tool-call", "README.md")):
         out.append("the awareness caveat is missing")
@@ -1073,7 +1074,7 @@ def fold2_problems(d) -> list:
     finding = d["box_residuals"][0].get("finding")
     if not isinstance(finding, str) or finding.startswith("PENDING") or not all(
             w in finding for w in ("claude-code: visible", "gemini: visible", "10 of the 36", "codex:",
-                                   "inferred", "0 of the 38 GPT walks")):   # closure c1: Stage8Recount binds the counts
+                                   "inferred", "0 of the 74 GPT walks")):   # closure c1: Stage8Recount binds the counts
         out.append("box_residuals[0].finding is not the per-harness finding")
     if "/box_residuals/0/finding" in d["pending"]:
         out.append("the token finding is still pending")
@@ -1152,7 +1153,7 @@ class Stage8Recount(unittest.TestCase):
     def test_witnesses(self):
         c = stage8_recount()
         text = b.TOKEN_VISIBILITY_FINDING + " " + b.RUN_TREE_ROUND_4["observed"]
-        for old, new in (("hold 45 occurrences", "hold 46 occurrences"), ("0 of the 38 Codex", "0 of the 37 Codex"),
+        for old, new in (("hold 45 occurrences", "hold 46 occurrences"), ("0 of the 74 Codex", "0 of the 73 Codex"),
                          ("(w-g12, w-g14", "(w-g14")):
             with self.subTest(mutant=old):
                 self.assertIn(old, text)
@@ -1176,7 +1177,7 @@ class Fold2(unittest.TestCase):
 class LayerNote(unittest.TestCase):
     def test_arm_a_counts_are_the_walks(self):
         got = arm_a_hook_counts()
-        self.assertEqual(got, {"walks": 151, "launches": 348, "root": 348, "hooks": 0, "sources": {"project,local"},
+        self.assertEqual(got, {"walks": 277, "launches": 640, "root": 640, "hooks": 0, "sources": {"project,local"},
                                "baselines": {("gars/.claude/settings.json",)}})
 
 
@@ -1223,10 +1224,10 @@ class PrefreezeFills(unittest.TestCase):
     def test_claude_effort_is_the_walks(self):
         got = claude_effort_recount()
         self.assertEqual({m: (r["walks"], r["pairs"], r["active"], r["effort_flag"]) for m, r in got.items()},
-                         {"claude-opus-5-5": (18, {("medium", "medium")}, {True}, 0),
-                          "claude-sonnet-5-5": (18, {("medium", "medium")}, {True}, 0),
-                          "claude-haiku-4-5-20251001": (115, {("absent", None)}, {False}, 0)}, "F1.effort-walks")
-        self.assertEqual(sum(r["launches"] for r in got.values()), 348, "F1.effort-walks")
+                         {"claude-opus-5-5": (36, {("medium", "medium")}, {True}, 0),
+                          "claude-sonnet-5-5": (36, {("medium", "medium")}, {True}, 0),
+                          "claude-haiku-4-5-20251001": (205, {("absent", None)}, {False}, 0)}, "F1.effort-walks")
+        self.assertEqual(sum(r["launches"] for r in got.values()), 640, "F1.effort-walks")
         d = b.build()
         self.assertEqual(d["effort"][CLAUDE], {"claude-opus-5-5": "medium", "claude-sonnet-5-5": "medium",
                                                "claude-haiku-4-5-20251001": "none: Claude Code 2.1.296 sends no "
@@ -1411,7 +1412,7 @@ class PrefreezeFills(unittest.TestCase):
         self.assertIn("--disallowedTools", argv, "F3.L3")
         self.assertIn(("tools.exclude", ["google_web_search", "web_fetch"]), take_config.GEMINI_SETTINGS, "F3.L3")
         journals = list((HERE / "rehearsals").glob("w[0-9]*/turn-*.jsonl.launch.json"))
-        self.assertEqual(len(journals), 348, "F3.L3")
+        self.assertEqual(len(journals), 640, "F3.L3")
         self.assertFalse([j for j in journals if "--allowedTools" in j.read_text()], "F3.L3")
         # m4: arm G alone is read from the argv
         self.assertEqual(mode_binding.ARGV_ONLY_HARNESSES, ("gemini",), "F3.L9")
@@ -2988,7 +2989,7 @@ def expected_prefreeze_reading(i):
             "V8-L3's condition holds. No Codex or Gemini launch or config passes a list of admitted tools "
             "(codex_adapter.py, gemini_adapter.py, box/take_config.py; routing.json pin_profiles hold a permission mode "
             "and a version only), and no claude-code turn passes --allowedTools (claude_code_adapter.argv; none of the "
-            "348 turn launch journals of the 151 committed Claude walks carries it). The study's tool lists are deny "
+            "640 turn launch journals of the 277 committed Claude walks carries it). The study's tool lists are deny "
             "lists, named where they are set: Claude Code's --disallowedTools (claude_code_adapter.DISALLOWED_TOOLS) "
             "and Gemini CLI's tools.exclude (take_config.GEMINI_SETTINGS).")}
     if i == 9:
@@ -3541,7 +3542,7 @@ class WitnessEvidence(unittest.TestCase):
 
 
 # Lane freeze-gates-fix S13 (glitch-f1's ruling 2 on the S12 hand-back, Thu 22 Oct 2026): the draft's session read,
-# pinned per process. Since the walks were merged, every build() runs leak_grep.derive over the 225 committed sessions
+# pinned per process. Since the walks were merged, every build() runs leak_grep.derive over the committed sessions (225 then)
 # (build_draft.checked_sessions), about 23 s a build on the Mac, nearly all of it the leak-word regexes; this file builds
 # the draft about 19 times, so a whole-file run took 887 s on athena (about 25 s before the merge) and every witness ran
 # past run_witnesses' 180 s timeout. Here derive's result is memoised on exactly what it reads: the draft's leak_words

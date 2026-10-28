@@ -158,8 +158,8 @@ def v2_codex_all_walks():
         want = last_turn_completed(walk)
         if {k: total.get(k) for k in want} != want or len(calls) != len(records_of(walk)):
             out.append(f"V2: {walk}: the calls do not sum to the last turn.completed")
-    if n != 38:
-        out.append(f"V2: {n} committed arm O walks, not 38")
+    if n != 74:                                  # lane gap-rewalk-fix: 38 + the rewalk merge's 36 arm O walks
+        out.append(f"V2: {n} committed arm O walks, not 74")
     return out
 
 
@@ -464,8 +464,8 @@ def v11_codex_prompt_once():
         cached += u["cached_input_tokens"] > 0
         if u["total_tokens"] != u["input_tokens"] + u["output_tokens"]:
             out.append(f"V11: {walk} {p['response_id']}: total_tokens is not input + output")
-    if len(recs) != 305 or cached < 1:
-        out.append(f"V11: {len(recs)} records, {cached} with cached tokens (the walks hold 305, most cached)")
+    if len(recs) != 589 or cached < 1:           # lane gap-rewalk-fix: 305 + the rewalk's 284; 549 of 589 cached
+        out.append(f"V11: {len(recs)} records, {cached} with cached tokens (the walks hold 589, most cached)")
     by_id = {c["call_id"]: c for walk in sorted({w for w, _ in recs})
              for c in cc.take_calls(WALKS / walk, row_of(walk))}
     for walk, p in recs:
@@ -487,7 +487,7 @@ def v12_codex_rules_on_records():
     recorded usage object that is over the threshold: w-o46's last token_usage_record's thread_token_usage (the
     thread's running total, a real Codex usage, not one call), prompt 308120, which must be priced at the long rows and
     flagged; read double, its prompt would be 587288. C2/C3: Codex records no write duration, so no recorded call can
-    reach a split; no recorded call writes to the cache (0 of 305), so the 12h bound is priced on none and every
+    reach a split; no recorded call writes to the cache (0 of 589), so the 12h bound is priced on none and every
     recorded call's cache_write note is None."""
     out, largest = [], (0, None)
     recs = all_codex_records()

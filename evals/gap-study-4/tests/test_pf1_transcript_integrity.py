@@ -232,13 +232,13 @@ def committed(harness):
 class T3Walks(unittest.TestCase):
     def test_every_claude_walk_agrees(self):
         walks = committed("claude-code")
-        self.assertEqual(len(walks), 151)
+        self.assertEqual(len(walks), 277)        # lane gap-rewalk-fix: 151 + the rewalk merge's 126 arm A walks
         bad = {d.name: ct.transcript_content_problems(d / "transcript.jsonl") for d in walks}
         self.assertEqual({k: v for k, v in bad.items() if v}, {})
 
     def test_every_codex_walk_agrees(self):
         walks = committed("codex")
-        self.assertEqual(len(walks), 38)
+        self.assertEqual(len(walks), 74)         # lane gap-rewalk-fix: 38 + the rewalk merge's 36 arm O walks
         bad = {d.name: ct.vendor_content_problems(d / "transcript.jsonl", "codex") for d in walks}
         self.assertEqual({k: v for k, v in bad.items() if v}, {})
 
