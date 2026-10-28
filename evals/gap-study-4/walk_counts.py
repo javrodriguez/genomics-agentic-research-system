@@ -193,10 +193,16 @@ _COVERAGE: dict = {}
 
 def coverage(study: Path = HERE) -> tuple:
     """(the walk ids the freeze's coverage leg counts, the draft's deferred arms), from walk_plan.coverage_report, read
-    once per process per study folder; any error it raises refuses."""
+    once per process per study folder; any error it raises refuses. For this module's own folder, a reading the same
+    report made over byte-identical inputs is taken from the covered-set store (below) instead of read again."""
     key = str(Path(study).resolve())
     if key not in _COVERAGE:
         import walk_plan
+        state = store_state(study)
+        stored = store_read(state) if state is not None else None
+        if stored is not None:
+            _COVERAGE[key] = stored
+            return stored
         try:
             report = walk_plan.coverage_report(study_dir=Path(study))
             covered = frozenset(w for ws in report["got"]["covered"].values() for w in ws)
@@ -204,7 +210,142 @@ def coverage(study: Path = HERE) -> tuple:
         except Exception as exc:  # noqa: BLE001 (every refusal of the coverage leg refuses the count, by name)
             raise CountError(f"the freeze's coverage report refuses: {type(exc).__name__}: {exc}") from None
         _COVERAGE[key] = (covered, deferred)
+        if state is not None and store_state(study) == state:
+            store_write(state, covered, deferred)
     return _COVERAGE[key]
+
+
+# ---- the covered-set store (lane gap-prebeacon-fix, Wed 28 Oct 2026) -------------------------------------------------
+# The walk-counts closure review (d2384da, MINOR 1): coverage_report costs about 9 minutes a process on the Mac (about
+# 90 s on athena), and every process that builds the draft pays it, so each test_build_draft --mutant child ran past
+# run_witnesses' 180 s limit (athena gap4-prebeacon-e3aa853, w5c-draft-ci lines 9-14). The store keeps one reading per
+# exact input state, never a weaker road: the state is the repository's HEAD commit (every tracked byte, HEAD's
+# routing.json that strict_reasons reads included) plus the path and content digest of every file git reports as
+# changed, staged, untracked or ignored anywhere in the work tree (bytecode caches aside), the Python version and this
+# module's folder relative to the top. A reading is stored only when the state read after the report equals the state
+# read before it; it is taken only when its stored state equals the state now, text for text, and it parses to two
+# lists of strings; anything else reads the report afresh. The store is used only for this module's own folder and
+# only while every function of the road below is the module's own (a test that patches one reads the report itself),
+# and never while git cannot say the state (no repository, no HEAD, an assume-unchanged or skip-worktree entry, which
+# would hide a change from git status). A refusal is never stored.
+STORE_ENV = "GAP4_COVERAGE_STORE"
+STORE_VERSION = 1
+STORE_ROAD = (("walk_plan", ("coverage_report", "design_in_force", "plan_walks", "read_register", "coverage",
+                             "strict_walks", "deferred_arms")),
+              ("pending_walk", ("uncounted_walks", "coverage_status", "checker_standing", "strict_reasons",
+                                "head_routing_table", "_git_show_head")),
+              ("walk_register", ("design_in_force", "check", "registered")))
+
+
+def store_dir() -> Path:
+    """Where readings are kept: $GAP4_COVERAGE_STORE, else <XDG_CACHE_HOME or ~/.cache>/gap4-walk-coverage; outside
+    the work tree, so the store never enters the state it is keyed by."""
+    import os
+    if os.environ.get(STORE_ENV):
+        return Path(os.environ[STORE_ENV])
+    return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "gap4-walk-coverage"
+
+
+def _road_is_genuine() -> bool:
+    import types
+    for name, functions in STORE_ROAD:
+        module = sys.modules.get(name)
+        if module is None:
+            __import__(name)
+            module = sys.modules[name]
+        source = Path(module.__file__).resolve()
+        for fn_name in functions:
+            fn = getattr(module, fn_name, None)
+            if type(fn) is not types.FunctionType or fn.__module__ != name or fn.__name__ != fn_name or \
+                    Path(fn.__code__.co_filename).resolve() != source:
+                return False
+    return True
+
+
+def _git(top: Path, *args) -> bytes:
+    import os
+    import subprocess
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    got = subprocess.run(["git", "-C", str(top), "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false",
+                          *args], capture_output=True, env=env, timeout=120)
+    if got.returncode != 0:
+        raise OSError(f"git {args[0]} exited {got.returncode}")
+    return got.stdout
+
+
+def _content_digest(path: Path) -> str:
+    import hashlib
+    if path.is_symlink():
+        return "link:" + str(path.readlink())
+    if path.is_file():
+        return "file:" + hashlib.sha256(path.read_bytes()).hexdigest()
+    if path.is_dir():
+        inner = sorted((str(p.relative_to(path)), _content_digest(p)) for p in path.rglob("*")
+                       if not p.is_dir() or p.is_symlink())
+        return "dir:" + hashlib.sha256(json.dumps(inner).encode()).hexdigest()
+    return "absent"
+
+
+def store_state(study: Path = HERE):
+    """The exact input state a covered-set reading is keyed by (the block comment above), as text; None when the store
+    is not used for this call."""
+    try:
+        if Path(study).resolve() != HERE or not _road_is_genuine():
+            return None
+        top = Path(_git(HERE, "rev-parse", "--show-toplevel").decode().strip()).resolve()
+        head = _git(top, "rev-parse", "--verify", "HEAD^{commit}").decode().strip()
+        flags = _git(top, "ls-files", "-v", "-z").split(b"\0")
+        if any(f[:1].islower() or f[:1] == b"S" for f in flags if f):
+            return None
+        raw = _git(top, "--no-optional-locks", "status", "--porcelain=v1", "-z", "--no-renames",
+                   "--untracked-files=all", "--ignored=matching").split(b"\0")
+        changed = []
+        for item in raw:
+            if not item:
+                continue
+            rel = item[3:].decode("utf-8", "surrogateescape").rstrip("/")
+            parts = rel.split("/")
+            if "__pycache__" in parts or rel.endswith((".pyc", ".pyo")):
+                continue
+            changed.append([item[:2].decode(), rel, _content_digest(top / rel)])
+        return json.dumps({"version": STORE_VERSION, "python": sys.version, "head": head,
+                           "study": str(HERE.relative_to(top)), "changed": sorted(changed)}, sort_keys=True)
+    except (OSError, ValueError, UnicodeError, ImportError, AttributeError):
+        return None
+
+
+def _store_path(state: str) -> Path:
+    import hashlib
+    return store_dir() / (hashlib.sha256(state.encode()).hexdigest() + ".json")
+
+
+def store_read(state: str):
+    """(covered, deferred) stored under exactly `state`, or None."""
+    try:
+        doc = json.loads(_store_path(state).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(doc, dict) or doc.get("state") != state or set(doc) != {"state", "covered", "deferred"}:
+        return None
+    covered, deferred = doc["covered"], doc["deferred"]
+    if not all(isinstance(v, list) and all(isinstance(w, str) for w in v) for v in (covered, deferred)):
+        return None
+    return frozenset(covered), frozenset(deferred)
+
+
+def store_write(state: str, covered, deferred) -> None:
+    """Keep one reading under its state, atomically; a store that cannot be written is left alone."""
+    import os
+    import tempfile
+    path = _store_path(state)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(prefix=".covered-", dir=path.parent)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump({"state": state, "covered": sorted(covered), "deferred": sorted(deferred)}, fh)
+        os.replace(tmp, path)
+    except OSError:
+        pass
 
 
 def in_walk_set(walk: str, covered) -> bool:

@@ -42,7 +42,9 @@ guards and must turn that clause red alone.
                uncommitted edits fails --check's pins leg; an unparseable grade.json counts as pending.
                Witnesses: dirty-pin-admitted, unreadable-grade-skipped.
   G2b.pending  m2: prepare refuses a draft holding any PENDING input even with its stats_design sentinel replaced.
-               Witness: pending-unchecked.
+               Lane gap-prebeacon-fix (28 Oct 2026): the live draft's only PENDING input is now the beacon's round,
+               which the clause registers, so the refusal is proved on a PENDING-input fixture (the walk counts null,
+               one input string PENDING), and the clause fails if its fixture holds none. Witness: pending-unchecked.
   G4.coverage  MAJOR 4 part 3: the freeze's coverage reading names the missing walks of arms A and O and none of the
                deferred arm G's, which it prints as recorded; freeze.main refuses on a coverage gap before prepare;
                freeze_rehearsal runs walk_plan.py --coverage --require-run-arms. Lane gap-freeze-gates-cover (28 Oct
@@ -379,13 +381,31 @@ def g9_beacon(fz, ob, pr, p="G9.beacon") -> list:
     return out
 
 
+def pending_fixture(draft: dict) -> dict:
+    """The PENDING-input witness: the draft with two inputs PENDING by their producers' own shapes, whatever the live
+    draft holds. Lane gap-prebeacon-fix (28 Oct 2026): since the walk counts were filled (lane gap-walk-counts), the
+    committed draft's only PENDING input is the beacon's round, which `registered` fills, so the clause read on the
+    live draft alone handed prepare a draft with nothing PENDING and could no longer see the guard refuse. Here the four
+    walk counts are null, as build_draft.walk_counts_value writes them while walk_counts refuses, and one input string
+    is PENDING, as build_draft writes an unsupplied value."""
+    import build_draft
+    d = copy.deepcopy(draft)
+    d["walk_counts"] = dict(d["walk_counts"], on_path_closers=None, off_path_offers=None, inherited_shapes=[None, None])
+    d["stats_design_inputs"] = dict(d["stats_design_inputs"], power=build_draft.PENDING + ": a fixture input")
+    return d
+
+
 def g2b_pending(fz, p="G2b.pending") -> list:
     out = []
     try:
         import completeness
         import stats
-        d = registered(committed_draft())
+        d = pending_fixture(registered(committed_draft()))
         d[stats.DESIGN_KEY] = {"synthetic": "the sentinel replaced"}
+        left = fz.draft_pending(d)
+        if not left or [k for k in left if k.startswith("/take_order_beacon/")]:
+            return [f"{p}: the fixture holds no PENDING input but the beacon's, so the clause would prove nothing: "
+                    f"{sorted(left)}"]
         with mock.patch.object(stats, "validate_design", lambda x: x), \
                 mock.patch.object(completeness, "pair_count", lambda x: 0):
             try:

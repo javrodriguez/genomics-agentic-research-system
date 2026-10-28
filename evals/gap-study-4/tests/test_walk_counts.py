@@ -529,5 +529,114 @@ class WC6Mutants(unittest.TestCase):
             wc.count([entry("w031")], tmp, {"w031"})
 
 
+class WC7Store(unittest.TestCase):
+    """Lane gap-prebeacon-fix: the covered-set store keeps a reading only under its exact input state and fails closed:
+    a state that differs by any byte, a store file that does not parse to the two lists, another study folder, a road
+    function a test patched, and a state git cannot say each read the report afresh; a refusal is never stored."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="wc7-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        env = mock.patch.dict("os.environ", {wc.STORE_ENV: str(self.tmp / "store")})
+        env.start()
+        self.addCleanup(env.stop)
+        saved = dict(wc._COVERAGE)
+        self.addCleanup(lambda: (wc._COVERAGE.clear(), wc._COVERAGE.update(saved)))
+        wc._COVERAGE.clear()
+
+    def test_wc7_a_reading_is_taken_only_under_its_exact_state(self):
+        wc.store_write("S", {"w1", "w2"}, {"G"})
+        self.assertEqual(wc.store_read("S"), (frozenset({"w1", "w2"}), frozenset({"G"})))
+        for other in ("S ", "s", "", "S2"):
+            self.assertIsNone(wc.store_read(other), other)
+        path = wc._store_path("S")
+        for bad in ("not json", json.dumps({"state": "T", "covered": [], "deferred": []}),
+                    json.dumps({"state": "S", "covered": "w1", "deferred": []}),
+                    json.dumps({"state": "S", "covered": [1], "deferred": []}),
+                    json.dumps({"state": "S", "covered": [], "deferred": [], "extra": 1}),
+                    json.dumps(["S", [], []])):
+            path.write_text(bad)
+            self.assertIsNone(wc.store_read("S"), bad)
+
+    def scratch_repo(self) -> Path:
+        import subprocess
+        top = self.tmp / "repo"
+        (top / "study").mkdir(parents=True)
+        (top / ".gitignore").write_text("*.out\n")
+        (top / "study" / "a.json").write_text("{}\n")
+        env = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
+               "GIT_COMMITTER_EMAIL": "t@t", "PATH": __import__("os").environ["PATH"], "HOME": str(self.tmp)}
+        self.git = lambda *a: subprocess.run(["git", "-C", str(top), *a], check=True, capture_output=True, env=env)
+        self.git("init", "-q")
+        self.git("add", "-A")
+        self.git("commit", "-qm", "c1")
+        return top
+
+    def test_wc7_the_state_moves_with_every_input_byte(self):
+        top = self.scratch_repo()
+        study = (top / "study").resolve()
+        with mock.patch.object(wc, "HERE", study), mock.patch.object(wc, "_road_is_genuine", lambda: True):
+            base = wc.store_state(study)
+            self.assertIsNotNone(base)
+            seen = {base}
+            (top / "study" / "a.json").write_text('{"x": 1}\n')                 # a tracked file changed
+            seen.add(wc.store_state(study))
+            (top / "study" / "a.json").write_text('{"x": 2}\n')                 # changed again, same status letters
+            seen.add(wc.store_state(study))
+            (top / "study" / "new.json").write_text("{}\n")                      # untracked
+            seen.add(wc.store_state(study))
+            (top / "study" / "w.out").write_text("x\n")                         # ignored
+            seen.add(wc.store_state(study))
+            self.git("add", "-A")
+            self.git("commit", "-qm", "c2")                                      # HEAD moved, tree clean
+            seen.add(wc.store_state(study))
+            self.assertEqual(len(seen), 6, "every input change moves the state")
+            clean = wc.store_state(study)
+            (top / "study" / "__pycache__").mkdir()
+            (top / "study" / "__pycache__" / "m.cpython.pyc").write_bytes(b"x")  # bytecode cache aside
+            self.assertEqual(wc.store_state(study), clean)
+            self.assertIsNone(wc.store_state(top))                               # another folder: no store
+            self.git("update-index", "--assume-unchanged", "study/a.json")       # git status would hide a change
+            self.assertIsNone(wc.store_state(study))
+        self.assertIsNone(wc.store_state(self.tmp))                              # not this module's folder
+
+    def test_wc7_a_patched_road_reads_the_report(self):
+        import pending_walk
+        import walk_register
+        self.assertTrue(wc._road_is_genuine())
+        for module, name in ((walk_plan, "coverage_report"), (pending_walk, "uncounted_walks"),
+                             (pending_walk, "checker_standing"), (walk_register, "check")):
+            with self.subTest(name=name), mock.patch.object(module, name, lambda *a, **k: None):
+                self.assertFalse(wc._road_is_genuine())
+                self.assertIsNone(wc.store_state(HERE))
+
+    def test_wc7_coverage_takes_a_stored_reading_and_stores_only_a_steady_one(self):
+        fake = {"got": {"covered": {"k": ["w9"]}}, "deferred": {"G": {}}}
+        wc.store_write("S", {"w1"}, {"G"})
+        with mock.patch.object(wc, "store_state", return_value="S"), \
+                mock.patch.object(walk_plan, "coverage_report", return_value=fake) as called:
+            self.assertEqual(wc.coverage(HERE), (frozenset({"w1"}), frozenset({"G"})))
+        called.assert_not_called()
+        wc._COVERAGE.clear()
+        states = iter(["T", "T"])
+        with mock.patch.object(wc, "store_state", lambda study=HERE: next(states)), \
+                mock.patch.object(walk_plan, "coverage_report", return_value=fake):
+            self.assertEqual(wc.coverage(HERE), (frozenset({"w9"}), frozenset({"G"})))
+        self.assertEqual(wc.store_read("T"), (frozenset({"w9"}), frozenset({"G"})))
+        wc._COVERAGE.clear()
+        states = iter(["U", "U2"])                                               # the inputs moved during the read
+        with mock.patch.object(wc, "store_state", lambda study=HERE: next(states)), \
+                mock.patch.object(walk_plan, "coverage_report", return_value=fake):
+            wc.coverage(HERE)
+        self.assertIsNone(wc.store_read("U"))
+        wc._COVERAGE.clear()
+        with mock.patch.object(wc, "store_state", return_value="V"), \
+                mock.patch.object(walk_plan, "coverage_report", side_effect=walk_plan.PlanRefused("refused")):
+            with self.assertRaises(wc.CountError):
+                wc.coverage(HERE)
+        self.assertEqual(sorted(p.name for p in (self.tmp / "store").iterdir()),
+                         sorted(wc._store_path(s).name for s in ("S", "T")), "a refusal or unsteady read is stored")
+
+
 if __name__ == "__main__":
     unittest.main()
