@@ -7,6 +7,10 @@ committed bytes) and rechecked (walk_regrade.recheck_doc, the ordinal after its 
 the results are written into a scratch copy of the rehearsals folder with their register recheck entries; nothing is
 written in the study. A committed regrade.json must be the bytes its in-memory re-derivation gives; a walk whose
 regrade is not committed yet is rechecked through the regrade just derived (the only stand-in, counted in the output).
+Lane gap-rewalk-fix (glitch-45, 27 Oct 2026): an arm O walk graded at walk time (grade.json graded true, no regrade.json,
+the rewalk's w-o49..w-o90) has no regrade to derive: regrade_doc refuses it as not pending. It is read by the recheck
+road alone (walk_road), as coverage reads it (pending_walk.coverage_status: graded true goes to checker_standing);
+any other arm O walk shape refuses, by name.
 
   R1.strict     on the scratch copy, walk_plan's coverage (strict_walks, pending_walk.uncounted_walks) counts an arm O
                 walk only when its recheck carries no strict hit (pending_walk.strict_hits against
@@ -20,6 +24,10 @@ regrade is not committed yet is rechecked through the regrade just derived (the 
   R3.committed  every committed arm O or G regrade.json is the bytes its re-derivation gives
   R4.witnesses  the same scratch copy judged with walk_plan's strict arms set to ("A",) turns R1 red, and with
                 ("A", "O", "G") turns R2 red
+  R6.walk-time  two walks only (WALK_TIME, PENDING_O): the walk-time arm O walk reads by the recheck road with no
+                regrade, and the regrade road refuses it as not pending (the old road's R0, the instrument armed); the
+                pending arm O walk still reads through its regrade; a walk-time shape carrying a regrade.json, and a
+                graded-false grade, refuse by name
   R5.reason-set light, no record read (the review of c6a0a4e1, MINOR): on synthetic readings with a stood-in strict
                 set, R1 accepts an arm O walk counted whose only reason is outside the strict set and refuses it left
                 uncounted; a reason outside the table's vocabulary is a strict hit, the other way round
@@ -66,6 +74,43 @@ def committed_rechecks(base: Path, walk: str) -> int:
     return sum(1 for e in reg.get("rechecks", []) if e.get("walk") == walk)
 
 
+WALK_TIME, PENDING_O = "w-o49", "w-o7"     # R6's two walks: graded at walk time; pending, its regrade committed
+
+
+def walk_road(base: Path, walk: str) -> str:
+    """How an arm O walk is read: "regrade" when its committed grade.json is the pending document (pending_walk.status
+    of its ledger), "walk-time" when it was graded at walk time (graded true) and carries no regrade.json; anything
+    else refuses, by name (fail closed)."""
+    import drive
+    import pending_walk as pw
+    import walk_regrade as wr
+    try:
+        grade = json.loads((base / walk / drive.WALK_GRADE).read_bytes())
+        ledger = json.loads((base / walk / drive.LEDGER_FILE).read_bytes())
+    except (OSError, ValueError) as exc:
+        raise wr.RegradeRefused(f"{walk}: its grade or ledger cannot be read: {exc}") from None
+    if grade == pw.status(ledger):
+        return "regrade"
+    if isinstance(grade, dict) and grade.get("graded") is True:
+        if (base / walk / wr.REGRADE_FILE).exists():
+            raise wr.RegradeRefused(f"{walk}: graded at walk time, yet it carries a {wr.REGRADE_FILE}")
+        return "walk-time"
+    raise wr.RegradeRefused(f"{walk}: its grade.json is neither the pending document nor graded true")
+
+
+def read_one(base: Path, walk: str, arm: str, cross_for) -> tuple:
+    """(road, regrade or None, recheck doc) of one arm O or G walk, in memory. `cross_for(committed)` is the
+    _verified_regrade_cross to recheck a regraded walk with."""
+    import walk_regrade as wr
+    road = walk_road(base, walk) if arm == "O" else "regrade"
+    if road == "walk-time":                       # the recheck road alone: no regrade exists or is derived
+        return road, None, wr.recheck_doc(walk, committed_rechecks(base, walk) + 1, HERE, machine=machine_for(base, walk))
+    regrade = wr.regrade_doc(walk, HERE)
+    with mock.patch.object(wr, "_verified_regrade_cross", cross_for((base / walk / wr.REGRADE_FILE).is_file())):
+        doc = wr.recheck_doc(walk, committed_rechecks(base, walk) + 1, HERE, machine=machine_for(base, walk))
+    return road, regrade, doc
+
+
 def read_records() -> dict:
     """The arm O regrades and rechecks, once per process, written into a scratch copy kept for the module."""
     if READING:
@@ -79,7 +124,7 @@ def read_records() -> dict:
     entries = walk_plan.read_register(base, design)
     # arm G is rechecked too, so R2 compares readings the strict rule could change (not two "pending" readings)
     o_walks = [e["walk"] for e in entries if e["arm"] in ("O", "G")]
-    regrades, docs, stood_in, committed_bad = {}, {}, [], []
+    regrades, docs, stood_in, committed_bad, walk_time = {}, {}, [], [], []
     real_cross = wr._verified_regrade_cross
 
     def derived_cross(walk, study, root, walk_rel, harness, *, readers, grade):
@@ -90,29 +135,26 @@ def read_records() -> dict:
             raise wr.RegradeRefused("the derived regrade does not grade it")
         wr.admitted(harness, wr.nrr.production_readers(study) if readers is None else readers, doc["cross_check"])
         return []
+    arm_of = {e["walk"]: e["arm"] for e in entries}
     for w in o_walks:
         try:
-            regrades[w] = wr.regrade_doc(w, HERE)
+            road, regrade, doc = read_one(base, w, arm_of[w], lambda committed: real_cross if committed else derived_cross)
         except wr.RegradeRefused as exc:
-            if any(e["walk"] == w and e["arm"] == "O" for e in entries):
-                raise
-            print(f"test_walk_cover_o_records: arm G {w} not regraded: {exc}", flush=True)
+            if arm_of[w] == "O":
+                raise                            # an arm O walk the regrade or recheck refuses fails R0, by name
+            print(f"test_walk_cover_o_records: arm G {w} not regraded or rechecked: {exc}", flush=True)
             continue
+        docs[w] = doc
+        if road == "walk-time":
+            walk_time.append(w)
+            continue
+        regrades[w] = regrade
         committed = base / w / wr.REGRADE_FILE
         if committed.is_file():
-            if committed.read_bytes() != wr.regrade_bytes(regrades[w]):
+            if committed.read_bytes() != wr.regrade_bytes(regrade):
                 committed_bad.append(w)
-            cross = real_cross
         else:
             stood_in.append(w)
-            cross = derived_cross
-        with mock.patch.object(wr, "_verified_regrade_cross", cross):
-            try:
-                docs[w] = wr.recheck_doc(w, committed_rechecks(base, w) + 1, HERE, machine=machine_for(base, w))
-            except wr.RegradeRefused as exc:
-                if any(e["walk"] == w and e["arm"] == "O" for e in entries):
-                    raise                        # an arm O walk the recheck refuses fails R0, by name
-                print(f"test_walk_cover_o_records: arm G {w} not rechecked: {exc}", flush=True)
     tmp = Path(tempfile.mkdtemp(prefix="cover-o-records-"))
     READING["tmp"] = tmp
     sim = tmp / "rehearsals"
@@ -120,7 +162,7 @@ def read_records() -> dict:
     reg = json.loads((sim / "register.json").read_bytes())
     rechecks = list(reg.get("rechecks", []))
     for w, doc in docs.items():
-        if not (sim / w / wr.REGRADE_FILE).is_file():
+        if w in regrades and not (sim / w / wr.REGRADE_FILE).is_file():
             (sim / w / wr.REGRADE_FILE).write_bytes(wr.regrade_bytes(regrades[w]))
         name = f"recheck-{doc['n']}.json"
         data = wr.regrade_bytes(doc)
@@ -138,7 +180,7 @@ def read_records() -> dict:
     (sim / "register.json").write_text(json.dumps({"schema": walk_register.SCHEMA_RECHECKS, "walks": reg["walks"],
                                                    "rechecks": rechecks}, indent=2) + "\n")
     READING["planted"] = planted
-    READING.update(base=base, sim=sim, docs=docs, arm={e["walk"]: e["arm"] for e in entries}, regrades=regrades, stood_in=stood_in, committed_bad=committed_bad,
+    READING.update(base=base, sim=sim, docs=docs, arm={e["walk"]: e["arm"] for e in entries}, regrades=regrades, stood_in=stood_in, committed_bad=committed_bad, walk_time=walk_time,
                    entries=entries, specs=specs, design=design, sim_entries=walk_plan.read_register(sim, design))
     return READING
 
@@ -204,7 +246,8 @@ def report(r, j) -> None:
     import walk_plan
     design, specs, got = r["design"], r["specs"], j["strict"]
     print(f"test_walk_cover_o_records: {len(r['docs'])} arm O and G walks rechecked in memory; regrade stood in for "
-          f"{len(r['stood_in'])}, committed for {len(r['docs']) - len(r['stood_in'])}", flush=True)
+          f"{len(r['stood_in'])}, committed for {len(r['regrades']) - len(r['stood_in'])}; graded at walk time, read by "
+          f"the recheck road alone, {len(r['walk_time'])}", flush=True)
     g_docs = {w: d for w, d in r["docs"].items() if r["arm"][w] == "G"}
     print(f"arm G (deferred, as coded): {len(g_docs)} rechecked, {sum(1 for d in g_docs.values() if d['checker_reasons'])}"
           f" carrying a reason in fact; {r['planted']} planted with {PLANTED_REASON} in the scratch copy only", flush=True)
@@ -244,6 +287,40 @@ class Records(unittest.TestCase):
         for arms, check in ((("A",), r1_problems), (("A", "O", "G"), r2_problems)):
             with self.subTest(arms=arms), mock.patch.dict(walk_plan.WALK_COVER_STRICT, arms=arms):
                 self.assertTrue(check(r, judge(r)), f"R4.witnesses: strict arms {arms} survive {check.__name__}")
+
+
+class WalkTimeRoad(unittest.TestCase):
+    """R6.walk-time, two walks only: a walk graded at walk time reads by the recheck road; a pending one by its regrade."""
+
+    def test_r6_a_walk_time_graded_walk_reads_by_recheck_alone(self):
+        import walk_regrade as wr
+        import walk_register
+        base = walk_register.REHEARSALS
+        with self.assertRaises(wr.RegradeRefused, msg="R6.walk-time: the instrument is armed: the old road (regrade "
+                                                      "first) refuses the walk-time walk"):
+            wr.regrade_doc(WALK_TIME, HERE)
+        road, regrade, doc = read_one(base, WALK_TIME, "O", lambda committed: wr._verified_regrade_cross)
+        self.assertEqual((road, regrade), ("walk-time", None), "R6.walk-time: read by the recheck road, no regrade")
+        self.assertEqual((doc["walk"], doc["n"]), (WALK_TIME, committed_rechecks(base, WALK_TIME) + 1), "R6.walk-time")
+        self.assertIsInstance(doc["checker_reasons"], list, "R6.walk-time: the recheck is a checker reading")
+        road, regrade, doc = read_one(base, PENDING_O, "O", lambda committed: wr._verified_regrade_cross)
+        self.assertEqual(road, "regrade", "R6.walk-time: a pending arm O walk still reads through its regrade")
+        self.assertEqual(wr.regrade_bytes(regrade), (base / PENDING_O / wr.REGRADE_FILE).read_bytes(), "R6.walk-time")
+
+    def test_r6_any_other_shape_refuses(self):
+        import drive
+        import walk_regrade as wr
+        import walk_register
+        with tempfile.TemporaryDirectory() as d:
+            for name, edit in (("regrade-beside", lambda f: (f / wr.REGRADE_FILE).write_text("{}")),
+                               ("graded-false", lambda f: (f / drive.WALK_GRADE).write_text('{"graded": false}'))):
+                f = Path(d) / name / WALK_TIME
+                f.mkdir(parents=True)
+                for n in (drive.WALK_GRADE, drive.LEDGER_FILE):
+                    shutil.copy(walk_register.REHEARSALS / WALK_TIME / n, f / n)
+                edit(f)
+                with self.subTest(name), self.assertRaises(wr.RegradeRefused, msg=f"R6.walk-time: {name} refuses"):
+                    walk_road(Path(d) / name, WALK_TIME)
 
 
 class ReasonSet(unittest.TestCase):
