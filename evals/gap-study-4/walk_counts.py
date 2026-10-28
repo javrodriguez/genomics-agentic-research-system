@@ -233,9 +233,9 @@ def coverage(study: Path = HERE) -> tuple:
 #   for this module's own folder, while every function of the road below is the module's own and the register folder
 #   is the study's own (a test that patches one reads the report itself).
 #   NO STORE AT ALL (store_state is None): git cannot say the state (no repository or HEAD, an assume-unchanged or
-#   skip-worktree entry, which would hide a change from git status); any GIT_ variable is set (review 200ceab finding
-#   3: the road's own git reads, native_reader_registration._git, honour GIT_DIR and its kin, which the key cannot
-#   see); or any tracked path, or any changed, untracked or ignored path, is or holds a symbolic link (finding 2: the
+#   skip-worktree entry, which would hide a change from git status); any GIT_ variable is set but the three of
+#   STORE_GIT_ALLOWED (review 200ceab finding 3: the road's own git reads, native_reader_registration._git, honour
+#   GIT_DIR and its kin, which the key cannot see); or any tracked path, or any changed, untracked or ignored path, is or holds a symbolic link (finding 2: the
 #   road reads through a link, the key would hold only its target text). A refusal is never stored.
 #   WHERE: $GAP4_COVERAGE_STORE, else <XDG_CACHE_HOME or ~/.cache>/gap4-walk-coverage, outside the work tree; one store
 #   serves every clone on the machine, which the location-free state makes sound.
@@ -245,6 +245,9 @@ def coverage(study: Path = HERE) -> tuple:
 #   or LFS could break (none is configured on the Mac or athena), and leaves a bytecode file aside even where no source
 #   stands beside it.
 STORE_ENV = "GAP4_COVERAGE_STORE"
+# glitch-45's ruling (Wed 28 Oct 2026): the GIT_ variables that leave the store on, exactly these three; they choose an
+# editor, a pager and whether git may prompt, and steer no read. Any other GIT_ variable keeps the store off.
+STORE_GIT_ALLOWED = ("GIT_EDITOR", "GIT_PAGER", "GIT_TERMINAL_PROMPT")
 STORE_VERSION = 1
 STORE_ROAD = (("walk_plan", ("coverage_report", "design_in_force", "plan_walks", "read_register", "coverage",
                              "strict_walks", "deferred_arms")),
@@ -321,8 +324,9 @@ def store_state_why(study: Path = HERE) -> tuple:
     try:
         if Path(study).resolve() != HERE:
             return None, "not this module's own folder"
-        if any(k.startswith("GIT_") for k in os.environ):
-            return None, "a GIT_ variable is set: " + ", ".join(sorted(k for k in os.environ if k.startswith("GIT_")))
+        steering = sorted(k for k in os.environ if k.startswith("GIT_") and k not in STORE_GIT_ALLOWED)
+        if steering:
+            return None, "a GIT_ variable is set: " + ", ".join(steering)
         if not _road_is_genuine():
             return None, "a function of the road, or the register folder, is not the module's own"
         top = Path(_git(HERE, "rev-parse", "--show-toplevel").decode().strip()).resolve()

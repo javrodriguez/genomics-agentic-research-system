@@ -683,10 +683,23 @@ class WC7Store(unittest.TestCase):
         outside = self.tmp / "outside.json"
         outside.write_text("{}\n")
         with mock.patch.object(wc, "HERE", study), mock.patch.object(wc, "_road_is_genuine", lambda: True):
-            self.assertIsNotNone(wc.store_state(study))
-            for var in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_CEILING_DIRECTORIES", "GIT_EDITOR"):
+            base = wc.store_state(study)
+            self.assertIsNotNone(base)
+            for var in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_CEILING_DIRECTORIES", "GIT_CONFIG_GLOBAL",
+                        "GIT_CONFIG_NOSYSTEM"):
                 with self.subTest(var=var), mock.patch.dict(os.environ, {var: str(top)}):
                     self.assertIsNone(wc.store_state(study))
+            # glitch-45's ruling (28 Oct 2026): exactly GIT_EDITOR, GIT_PAGER and GIT_TERMINAL_PROMPT, which steer no
+            # read, leave the store on, alone or together, and enter no key; beside any other GIT_ variable it stays off
+            allowed = {"GIT_EDITOR": "vi", "GIT_PAGER": "cat", "GIT_TERMINAL_PROMPT": "0"}
+            for var, value in allowed.items():
+                with self.subTest(allowed=var), mock.patch.dict(os.environ, {var: value}):
+                    self.assertEqual(wc.store_state(study), base)
+            with mock.patch.dict(os.environ, allowed):
+                self.assertEqual(wc.store_state(study), base)
+            with mock.patch.dict(os.environ, dict(allowed, GIT_DIR=str(top / ".git"))):
+                self.assertIsNone(wc.store_state(study))
+            self.assertEqual(wc.STORE_GIT_ALLOWED, ("GIT_EDITOR", "GIT_PAGER", "GIT_TERMINAL_PROMPT"))
             (top / "study" / "link.json").symlink_to(outside)                   # an untracked link
             self.assertIsNone(wc.store_state(study))
             self.git("add", "-A")
