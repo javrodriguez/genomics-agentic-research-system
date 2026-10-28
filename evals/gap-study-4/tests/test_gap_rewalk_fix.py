@@ -12,6 +12,12 @@ its precedent, never a general class:
                   of a copy is not excused; the walk's lines under another walk's name are not excused; and no
                   committed exception is stale.
 
+  RW2-furniture   box/harness_furniture.py lists claude-code's stream kinds system/task_progress and tool_progress
+                  (w255 and w260, the Haiku walks that called the Agent tool) by the CLI's keys only. The lists are
+                  complete on both walks, and red with the two rows cut; no listed position holds the model's words,
+                  and listing task_progress's description (the sub-agent's command) goes red; no checker, view,
+                  grader, leak or regrade module loads the table, and the table is no CHECKER_CODE_FILES file.
+
 Reads committed walk records and copies them into temporary folders only; no model, network or container.
 """
 
@@ -19,6 +25,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -29,9 +36,20 @@ HERE = Path(__file__).resolve().parent.parent
 _PATH = list(sys.path)
 sys.path.insert(0, str(HERE))
 
+import check_take  # noqa: E402
 import fixture_walk as fw  # noqa: E402
+from box import scan_record as sr  # noqa: E402
+
+sys.path.insert(0, str(HERE / "tests"))
+import test_awareness_furniture as taf  # noqa: E402
 
 sys.path[:] = _PATH
+
+PROGRESS = ("system/task_progress", "tool_progress")
+AGENT_WALKS = ("w255", "w260")
+# the modules that read a walk's text to judge it; none may load the furniture table
+SCANNERS = ("check_take", "transcript_view", "graders.awareness", "leak_grep", "check_results", "walk_regrade",
+            "pending_walk", "fixture_walk")
 
 # walk -> (the one path, the transcript lines naming it), as glitch-45 ruled them
 NEW = {"w172": ("/tmp/run-e680031a-finalize.json", [86, 93, 94]),
@@ -77,9 +95,59 @@ def rw1_exceptions(mod, p="RW1-exceptions"):
     return out
 
 
+def table_loaders(modules, p="RW2-furniture") -> list:
+    """Each module imported alone in a fresh process (an import order can shadow a name: evals/drive.py), from this
+    study's own file; a module that loads box.harness_furniture is named."""
+    probe = ("import importlib, sys; sys.path.insert(0, sys.argv[1]); m = importlib.import_module(sys.argv[2]);"
+             " print(m.__file__); print('box.harness_furniture' in sys.modules)")
+    out = []
+    for name in modules:
+        r = subprocess.run([sys.executable, "-c", probe, str(HERE), name], capture_output=True, text=True)
+        lines = r.stdout.strip().splitlines()
+        want = str(HERE / (name.replace(".", "/") + ".py"))
+        if r.returncode != 0 or len(lines) != 2 or lines[0] != want:
+            out.append(f"{p}: {name} did not import from {want} (exit {r.returncode}: {r.stdout.strip()} "
+                       f"{r.stderr.strip()[-200:]})")
+        elif lines[1] != "False":
+            out.append(f"{p}: {name} loads the furniture table")
+    return out
+
+
+def rw2_furniture(p="RW2-furniture"):
+    out = []
+    walks = [("claude-code", taf.REH / w) for w in AGENT_WALKS]
+    got = [x for w in AGENT_WALKS for x in taf.completeness_problems("claude-code", w)]
+    if got:
+        out.append(f"{p}: incomplete on the Agent walks: {got[:4]}")
+    cut = tuple(e for e in sr.FURNITURE["claude-code"] if e["record"] not in PROGRESS)
+    with mock.patch.dict(sr.FURNITURE, {"claude-code": cut}):
+        red = {x.split(" ", 1)[1] for w in AGENT_WALKS for x in taf.completeness_problems("claude-code", w)}
+    if red != set(PROGRESS):
+        out.append(f"{p}: with the two rows cut the check names {sorted(red)}, not {list(PROGRESS)}")
+    for e in sr.FURNITURE["claude-code"]:
+        if e["record"] in PROGRESS and ({"description", "subagent_type", "*"} & set(e["fields"]) or e["account"]):
+            out.append(f"{p}: {e['record']} lists a field that is not the CLI's: {e['fields']}")
+    hits = taf.model_word_hits(walks)
+    if hits:
+        out.append(f"{p}: a listed position holds the model's words: {hits}")
+    wide = tuple(dict(e, fields=e["fields"] + ("description",)) if e["record"] == "system/task_progress" else e
+                 for e in sr.FURNITURE["claude-code"])
+    with mock.patch.dict(sr.FURNITURE, {"claude-code": wide}):
+        if ("claude-code", "stream", "system/task_progress", "description") not in taf.model_word_hits(walks):
+            out.append(f"{p}: listing task_progress's description is not caught as the model's words")
+    if any("harness_furniture" in f or "scan_record" in f or "awareness_furniture" in f
+           for f in check_take.CHECKER_CODE_FILES):
+        out.append(f"{p}: the furniture table is a checker code file")
+    out += table_loaders(SCANNERS, p)
+    return out
+
+
 class TestGapRewalkFix(unittest.TestCase):
     def test_rw1_the_five_rewalk_exceptions_are_bound_to_their_lines(self):
         self.assertEqual(rw1_exceptions(fw), [])
+
+    def test_rw2_the_agent_progress_kinds_are_furniture_by_the_clis_keys_only(self):
+        self.assertEqual(rw2_furniture(), [])
 
 
 if __name__ == "__main__":

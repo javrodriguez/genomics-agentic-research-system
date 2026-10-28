@@ -221,6 +221,19 @@ FURNITURE = {
          "account": None, "evidence": ("w003/turn-1.jsonl:37",)},
         {"file": "stream", "record": "command_lifecycle", "fields": ("*",), "account": None,
          "evidence": ("w033/turn-1.jsonl:86",)},
+        # lane gap-rewalk-fix (glitch-45's ruling, 27 Oct 2026, under Javier's standing delegation): two kinds the CLI
+        # writes while an Agent sub-agent runs, first seen in the rewalk's w255 and w260 (Haiku walks that called the
+        # Agent tool) and in no other of the 387 walks. As for system/task_started, only the CLI's keys are listed:
+        # task_progress's description renders the sub-agent's own command ("Running find /tmp/run-...") and its
+        # subagent_type is the model's Agent argument, so neither is furniture. Listing a kind here only makes the
+        # completeness check know it; no scan of the walks' text reads this table (awareness_furniture scans listed
+        # positions in codex and gemini native sessions only, and never skips text because it is listed).
+        {"file": "stream", "record": "system/task_progress",
+         "fields": ("type", "subtype", "uuid", "session_id", "task_id", "tool_use_id", "run_id", "last_tool_name",
+                    "usage"), "account": None, "evidence": ("w255/turn-1.jsonl:55", "w260/turn-1.jsonl:20")},
+        {"file": "stream", "record": "tool_progress",
+         "fields": ("type", "uuid", "session_id", "tool_use_id", "parent_tool_use_id", "tool_name",
+                    "elapsed_time_seconds", "heartbeat"), "account": None, "evidence": ("w260/turn-1.jsonl:68",)},
         {"file": "stream", "record": "result/success",
          "fields": ("type", "subtype", "uuid", "session_id", "stop_reason", "terminal_reason", "fast_mode_state",
                     "fast_mode_disabled_reason", "usage", "origin", "permission_denials"), "account": None,
