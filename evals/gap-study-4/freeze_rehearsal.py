@@ -22,6 +22,7 @@ import copy
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -32,6 +33,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 import freeze  # noqa: E402
+import run_checks  # noqa: E402
 import scratch_git  # noqa: E402
 import study  # noqa: E402
 
@@ -46,6 +48,55 @@ LIVE_BOX_REQUIRED = (
     "timed-out, exit 124), its turn stream and session file committed, check_take.transcript_content_problems read on "
     "it, so a real cut's gap between the two records is measured against the cut-tail bound",
 )
+# Lane gap-live-box (glitch-45's rulings R1-R5 on LIVE-BOX-TAKE-DESIGN-20261028, Wed 28 Oct 2026, under Javier's standing
+# delegation; NIGHT:2085, the lead's ruling of Sat 24 Oct 2026: LIVE_BOX_REQUIRED becomes a failing rehearsal step). The
+# step "live-box" follows the take-order beacon step and is never one of COMMANDS (the review brief and
+# review_kit/athena_outputs.py pin COMMANDS). Without --live-box-record it fails NOT REHEARSED, so the rehearsal is
+# never all green; with it, the clone's own live_box_cut.py verify re-reads the record and its files with the clone's
+# code (before the clone is frozen) and the step passes only on its closed line carrying the record's sha256. The
+# step's tail is that closed line or a closed refusal: never the record's path, since the report is frozen into
+# prereg.json and masks only the repository's and the scratch folder's paths.
+LIVE_BOX_STEP = "live-box: forced-timeout claude-code take"
+LIVE_BOX_NOT_REHEARSED = ("NOT REHEARSED: LIVE_BOX_REQUIRED (one forced-timeout claude-code take on a real box); "
+                          "this rehearsal was given no --live-box-record, so it is not all green")
+LIVE_BOX_TOOL = "live_box_cut.py"
+LIVE_BOX_OK = re.compile(r"live-box record ([0-9a-f]{64}): walk lb[0-9]+, budget [0-9]+ s of [0-9]+ s, turn [0-9]+ "
+                         r"cut \(end timed-out, exit 124\), stream [0-9]+ unit\(s\), session [0-9]+ unit\(s\), shape "
+                         r"(equal|session-lags-[0-9]+|stream-lags-1), content problems 0, session torn no; files "
+                         r"[0-9]+ re-read equal; adapter, check_take and checker digests this tree's; within the bound")
+LIVE_BOX_REFUSED = re.compile(r"live-box record ([0-9a-f]{64}|-{64}): REFUSED: [A-Za-z0-9 ,;:()'._-]{1,600}")
+
+
+def live_box_record_problem(record):
+    """Why `record` may not be read as the live-box record (a closed reason, never the path), or None: an absolute
+    path to an existing regular file outside this repository (R3: the record stays where the probe wrote it)."""
+    path = Path(record)
+    if not path.is_absolute():
+        return "--live-box-record is not an absolute path"
+    if path.is_symlink() or not path.is_file():
+        return "--live-box-record is not an existing regular file"
+    if Path(REPO).resolve() in (path.resolve(), *path.resolve().parents):
+        return "--live-box-record is inside this repository; the probe's record stays outside it (R3)"
+    return None
+
+
+def live_box_command(record):
+    """The clone's own verifier on the record (run through python_command, in the clone)."""
+    return (LIVE_BOX_TOOL, "verify", "--record", str(record))
+
+
+def live_box_outcome(code, output, record_sha):
+    """(step code, tail) from the verifier's last line: 0 only on exit 0 and the closed pass line naming the sha256 of
+    the record this rehearsal read; a closed refusal line is kept as the tail, anything else is never echoed."""
+    lines = output.strip().splitlines()
+    last = lines[-1] if lines else ""
+    ok = LIVE_BOX_OK.fullmatch(last)
+    if code == 0 and ok and ok.group(1) == record_sha:
+        return 0, last
+    if LIVE_BOX_REFUSED.fullmatch(last):
+        return 1, last
+    return 1, (f"live-box record {record_sha}: the verifier's output is off its closed form or names another record "
+               f"(exit {code if isinstance(code, int) else 'none'}); its words are not echoed")
 
 # Frozen-state gates only. Missing files are interpreter failures, never dropped.
 # W8A (ruling W8-layout-1; this file moved from lane w5b to lane w8a under ruling W8A-gap4-1): the four walk checks,
@@ -181,12 +232,25 @@ def rehearsal_plan(pre, row_file):
     )
 
 
-def sh(argv, cwd, env=None, timeout=3600):
+# Lane gap-live-box (design section 7): the battery step's limit is run_checks' own for the battery, one source for
+# both (test_round4 ran 3644.2 s in battery4 on 26 Oct, past 3600 s); every other step keeps STEP_TIMEOUT_S.
+STEP_TIMEOUT_S = 3600
+
+
+def step_timeout(command):
+    """run_checks.timeout_for("test_round4") for the test_round4.py step, STEP_TIMEOUT_S for every other step."""
+    script = next((Path(part).name for part in command if str(part).endswith(".py")), None)
+    return run_checks.timeout_for("test_round4") if script == "test_round4.py" else STEP_TIMEOUT_S
+
+
+def sh(argv, cwd, env=None, timeout=STEP_TIMEOUT_S):
     try:
         got = subprocess.run(argv, cwd=str(cwd), capture_output=True, text=True,
                              env=env, timeout=timeout)
         return got.returncode, got.stdout + got.stderr
-    except (OSError, subprocess.TimeoutExpired) as exc:
+    except subprocess.TimeoutExpired as exc:
+        return 1, f"{exc} (the step's limit is {timeout} s)"
+    except OSError as exc:
         return 1, str(exc)
 
 
@@ -205,7 +269,7 @@ def step_environment():
 
 
 def run_step(command, clone):
-    return sh(command, clone, env=step_environment())
+    return sh(command, clone, env=step_environment(), timeout=step_timeout(command))
 
 
 def main(argv=None):
@@ -217,12 +281,21 @@ def main(argv=None):
                                            "fixture; without it the holdout step is OWED and fails")
     ap.add_argument("--beacon-reading", help="order_beacon.py --read's output for the draft's round (MAJOR 9); "
                                              "without it the take-order beacon step fails")
+    ap.add_argument("--live-box-record", help="the live-box probe's record (live_box_cut.py); without it the live-box "
+                                              "step fails NOT REHEARSED")
     args = ap.parse_args(argv)
     if args.holdout_tool is not None:
         why = holdout_tool_problem(args.holdout_tool)
         if why:
             print("refusing: " + why)
             return 2
+    live_box_sha = None
+    if args.live_box_record is not None:
+        why = live_box_record_problem(args.live_box_record)
+        if why:
+            print("refusing: " + why)
+            return 2
+        live_box_sha = hashlib.sha256(Path(args.live_box_record).read_bytes()).hexdigest()
     if freeze.outputs_exist(HERE):
         print("refusing: a freeze output already exists here")
         return 2
@@ -247,6 +320,7 @@ def main(argv=None):
     env = step_environment()
     steps = []
     holdout_file = None
+    live_box = (1, LIVE_BOX_NOT_REHEARSED)
 
     def step(name, command):
         owed = owed_step(command)
@@ -266,6 +340,9 @@ def main(argv=None):
         code, output = git(clone, "remote", "remove", "origin")
         if code:
             raise ValueError("cannot remove clone remote: " + output)
+        if args.live_box_record is not None:      # read with the clone's code before the clone is frozen
+            code, output = run_step(python_command(live_box_command(args.live_box_record)), clone)
+            live_box = live_box_outcome(code, output, live_box_sha)
         holdout_file = None if args.no_holdout_digests else scratch / HOLDOUT_FILE
         source = (None if holdout_file is None else
                   synthetic_holdout_source(clone / study.rel("prereg-draft.json"), holdout_file))
@@ -290,6 +367,8 @@ def main(argv=None):
             wrong = beacon_written_problems(json.loads((clone / study.rel("prereg.json")).read_text()))
             steps.append(("take-order beacon", 1 if wrong else 0,
                           "; ".join(wrong) or "the order seeded from the --beacon-reading file's round"))
+        steps.append((LIVE_BOX_STEP, *live_box))
+        print(f"[{live_box[0]}] {LIVE_BOX_STEP}: {live_box[1]}", flush=True)
         for command in COMMANDS:
             if command == HOLDOUT_GATE and args.holdout_tool is not None:      # W9: the aegis tool, synthetic fixture
                 code, head = git(clone, "rev-parse", "HEAD")
