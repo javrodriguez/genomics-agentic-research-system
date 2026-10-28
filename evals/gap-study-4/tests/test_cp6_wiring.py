@@ -546,6 +546,11 @@ class Rehearsal:
             (Path(clone) / "evals" / "gap-study-4" / "prereg.json").write_text(json.dumps(frozen))
             assert r is not None
             return 0, "freeze: wrote prereg.json"
+        if str(command[4]).endswith("live_box_cut.py"):   # lane gap-live-box: the clone's verifier, its closed pass line
+            sha = hashlib.sha256(Path(command[-1]).read_bytes()).hexdigest()
+            return 0, (f"live-box record {sha}: walk lb1, budget 20 s of 900 s, turn 1 cut (end timed-out, exit 124), "
+                       f"stream 3 unit(s), session 3 unit(s), shape equal, content problems 0, session torn no; files 4 "
+                       f"re-read equal; adapter, check_take and checker digests this tree's; within the bound")
         return 0, "ok"
 
     def run(self, argv):
@@ -584,8 +589,13 @@ class R1HoldoutTool(Case):
         r = MODS["freeze_rehearsal"]
         tool = self.a_tool()
         h = Rehearsal(self.tmpdir())
+        record = self.tmpdir() / "record.json"          # lane gap-live-box: a stand-in record, so the run can be all green
+        record.write_text("{}\n")
         code, report, out = self.must("R1.holdout-tool", h.run, ["--review-commit", "a" * 40,
-                                                                 "--holdout-tool", str(tool)])
+                                                                 "--holdout-tool", str(tool),
+                                                                 "--live-box-record", str(record),
+                                                                 "--live-box-sha256",
+                                                                 hashlib.sha256(record.read_bytes()).hexdigest()])
         clone = h.scratch / "repo"
         want = [sys.executable, "-B", "-W", "ignore", str(tool.resolve()), "--check",
                 "--holdout", str(clone / "evals" / "gap-study-4" / "fixtures" / "holdout-rehearsal"),

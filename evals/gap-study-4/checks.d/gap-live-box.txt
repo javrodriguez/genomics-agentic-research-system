@@ -1,0 +1,6 @@
+# Lane gap-live-box: Gap Study round 4, the live-box forced-timeout claude-code take (glitch-45's rulings R1-R5 on
+# LIVE-BOX-TAKE-DESIGN-20261028, 28 Oct 2026): live_box_cut.py, freeze_rehearsal's live-box step and the battery step's
+# time limit. One command per line, run from the repository root. No walk, model, container or network.
+python3 -B -W ignore evals/gap-study-4/tests/test_live_box_cut.py
+python3 -B -W ignore evals/gap-study-4/tests/test_live_box_cut.py --witnesses
+python3 -B -W ignore evals/gap-study-4/tests/test_cp6_wiring.py

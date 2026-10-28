@@ -1,0 +1,25 @@
+{
+  "lane": "gap-live-box",
+  "files": [
+    {
+      "path": "live_box_cut.py",
+      "status": "new",
+      "reason": "Lane gap-live-box (glitch-45, the Lane-orchestrator, Wed 28 Oct 2026, under Javier's standing delegation; design LIVE-BOX-TAKE-DESIGN-20261028 section 6 B1, rulings R1-R5 on it; NIGHT:2082 and 2085, the lead's rulings of Sat 24 Oct 2026: a forced-timeout claude-code take on a real box joins the freeze rehearsal's required list, and LIVE_BOX_REQUIRED becomes a failing rehearsal step): the live-box probe. `run` (Part T's live-box verb on athena) makes a throwaway --no-local clone of the shipped head at <home>/clone, its remote removed, and runs that clone's `probe`: one arm A Haiku walk through walk_builders.cli with the production builders, the turn budget swapped for a probe budget B in that process only (R1: about 20 s, refused at or above the registered 900 s), so the drive, check.json, grade.json and the commit are the walk road's own; then the walk folder's driver ledger, session file and turn streams and launch journals are copied from the commit beside the record, and the record is written with closed fields only (the cut turns, the cut row's end and exit, each file's sha256, the content problems as closed sentences and a count, a torn-line flag, the cut turn's stream and session unit counts and shape, the walk check's route and reason ids, the adapter, check_take and checker digests, the time), never transcript text. gap_shape calls claude_code_adapter.cut_tail_problem and never restates the bound. A shape outside the bound, a content problem, a torn session line or a transcript-unreadable or transcript-mismatch check reading exits 4 and fails closed for glitch-45 (R5); a turn that ended inside B exits 3 (R2: the next walk id with B halved, at most twice). `verify` is freeze_rehearsal's live-box step, run in the rehearsal's clone. Outside check_take.CHECKER_CODE_FILES and the native-reader source lists, imported by nothing the checker imports. No walk is counted and nothing is spent."
+    },
+    {
+      "path": "tests/test_live_box_cut.py",
+      "status": "new",
+      "reason": "Lane gap-live-box: T1 (no --live-box-record gives the live-box step NOT REHEARSED and the rehearsal NOT all green), T2 (one named refusal per clause of the record), T3 (records over cut copies of the committed Haiku walks w001 and w285 in the pf1-l3 shapes verify, and the rehearsal given one is all green), T4 (no record path in the report or stdout), T5 (COMMANDS byte-equal to e3aa853c), T6 (the probe's refusals, gap_shape, and the probe end to end on a scratch repository with a fake walk runner), T7 (the battery step's limit is run_checks'); 27 in-memory mutants, each killed by its bound test. Named test_live_box_cut.py because tests/test_live_box.py is lane live-box-2026-10-14's."
+    },
+    {
+      "path": "checks.d/gap-live-box.txt",
+      "status": "new",
+      "reason": "Lane gap-live-box's listed checks."
+    },
+    {
+      "path": "COPIED.d/gap-live-box.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Edits without transfer, in files other lanes' fragments claim: freeze_rehearsal.py (lane w8b-holdout-digests' entry) gains --live-box-record and the step \"live-box: forced-timeout claude-code take\", recorded after the take-order beacon step and never one of COMMANDS (COMMANDS byte-unchanged, so the review brief, review_kit/athena_outputs.py and tests/test_cp8_prep.py stay valid); without the option the step fails NOT REHEARSED: LIVE_BOX_REQUIRED, so the rehearsal is never all green without a live-box record; with it the clone's own live_box_cut.py verify reads the record before the clone is frozen, and the step's tail is its closed line or a closed refusal, never the record's path; and the design's section 7 fix: the test_round4.py step's limit is run_checks.timeout_for(\"test_round4\") (7200 s), every other step STEP_TIMEOUT_S (3600 s), and a timed-out step names its limit. tests/test_cp6_wiring.py (lane w9-cp6's entry): R1's all-green run is handed a stand-in live-box record and its fake verifier answers the closed pass line; its 20 witnesses stay red. No file in check_take.CHECKER_CODE_FILES, READER_SOURCES or CODEX_SOURCES, nothing under native-readers/ or rehearsals/, and no draft-source file is edited; prereg-draft.json is not regenerated. Fold of the review CHANGES of 9fb0deda (glitch-45's rulings): the probe reads a finding first, so a content problem or a torn line exits 4 whether or not a turn was cut; verify refuses when the draft's version pin cannot be read; freeze_rehearsal takes --live-box-sha256 beside --live-box-record (both or neither), the sha256 Part T's live-box-close named, and a record with another sha256 fails the live-box step before it is verified."
+    }
+  ]
+}
