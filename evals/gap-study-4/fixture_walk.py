@@ -168,6 +168,43 @@ RECORDED_EXCEPTIONS = (
      "command": "the session's CLAUDE.md instructions attachment (line 11), and the output of the command whose last part is `sed -n 1,40p _system/gars-env.sh` (line 49)",
      "reason": "the GARS fixture's own text quotes the cluster paths /gpfs/home/<user> and /gpfs/data/abl/home/<user>, in which the path pattern reads /home/<user: a placeholder in the fixture's words, no path of any machine and nothing of the study",
      "ruling": "the Lane-orchestrator, ruling 1 on lane prefreeze-road's hand-back, Sat 24 Oct 2026, under Javier's standing delegation"},
+    # lane gap-rewalk-fix: the rewalk merge's five unplaced paths, each in the class of its precedent above (w023: the
+    # agent's own temp file; w142/w158: the fixture's quoted placeholder), each line bound by its bytes
+    {"walk": "w172", "path": "/tmp/run-e680031a-finalize.json",
+     "lines": {86: "927f51f259170698c3997f45c63d45a038c46c61f3a1f90ee60fd824124866fe",
+               93: "55125b0c8441a0d326eb1f0b13da58ee3e60ef3e0baa1f01c2dd0406f5049426",
+               94: "0ecbc4bb1cc84e2011565fcb6f464791b77619393bf608cb2b9a351be36e0503"},
+     "command": ("python3 _system/stage00_register.py finalize --project projects/run-e680031a --model \"claude-opus-5-5\""
+                 " > /tmp/run-e680031a-finalize.json 2>&1; echo \"exit=$?\" >> /tmp/run-e680031a-finalize.json"
+                 " (line 86), then the agent's Read of that file (line 93) and its result (line 94)"),
+     "reason": "a file the session itself created (the agent's own redirect of its finalize output, then read back), "
+               "not a fixture read: it names nothing of the study",
+     "ruling": "glitch-45 (the Lane-orchestrator), on lane gap-rewalk-fix, Tue 27 Oct 2026, under Javier's standing "
+               "delegation: the w023 class"},
+    {"walk": "w194", "path": "/tmp/s01.json",
+     "lines": {69: "94f6b5f9a9fab8aa71915117667c53c61f348a4c0ccb54114d3116c8db62e204"},
+     "command": ("python3 _system/stage01_samplesheet.py --project projects/run-90825d40 --model \"claude-sonnet-5-5\""
+                 " --force > /tmp/s01.json; echo \"exit=$?\"; python3 -c \"import json;d=json.load(open('/tmp/s01.json'));"
+                 "print(d['ok'],d['wrote']);print(d['history_entry'])\""),
+     "reason": "a file the session itself created (the agent's own redirect of its stage-01 output, then read back), "
+               "not a fixture read: it names nothing of the study",
+     "ruling": "glitch-45 (the Lane-orchestrator), on lane gap-rewalk-fix, Tue 27 Oct 2026, under Javier's standing "
+               "delegation: the w023 class"},
+    {"walk": "w179", "path": "/home/<user",
+     "lines": {11: "aba650e407e75e0197c32e7446f613bfb3e805821937e2f3259374e267e5e96a", 57: "717051a79ce2bb8e1f1b61d7a8bd40337ab49c3fe84946c0f439c867d70d44cb"},
+     "command": "the session's CLAUDE.md instructions attachment (line 11), and the output of the command whose last part is `cat _system/gars-env.sh | head -30` (line 57)",
+     "reason": "the GARS fixture's own text quotes the cluster paths /gpfs/home/<user> and /gpfs/data/abl/home/<user>, in which the path pattern reads /home/<user: a placeholder in the fixture's words, no path of any machine and nothing of the study",
+     "ruling": "glitch-45 (the Lane-orchestrator), on lane gap-rewalk-fix, Tue 27 Oct 2026, under Javier's standing delegation: the w142/w158 class"},
+    {"walk": "w180", "path": "/home/<user",
+     "lines": {11: "af4a7a96e85a62a136d765347c7e74e68e3c2c342869ac765a9279fd13986648", 86: "e524629a8c1cd0b78b3615e0d63ac2470fd5cb823cd2948bebed49f18f529b9c"},
+     "command": "the session's CLAUDE.md instructions attachment (line 11), and the output of the command whose third part is `sed -n 1,60p _system/gars-env.sh` (line 86)",
+     "reason": "the GARS fixture's own text quotes the cluster paths /gpfs/home/<user> and /gpfs/data/abl/home/<user>, in which the path pattern reads /home/<user: a placeholder in the fixture's words, no path of any machine and nothing of the study",
+     "ruling": "glitch-45 (the Lane-orchestrator), on lane gap-rewalk-fix, Tue 27 Oct 2026, under Javier's standing delegation: the w142/w158 class"},
+    {"walk": "w198", "path": "/home/<user",
+     "lines": {11: "6264fcd4fd69a800d32be7d3cadf8a7968ada444aba5a887d24be0156efe5186", 41: "83c77e6ac510b9df506968e9563a2dd356c75e2bbf8c48b1475c0bef07d9ee51"},
+     "command": "the session's CLAUDE.md instructions attachment (line 11), and the output of the command whose last part is `cat _system/gars-env.sh | head -30` (line 41)",
+     "reason": "the GARS fixture's own text quotes the cluster paths /gpfs/home/<user> and /gpfs/data/abl/home/<user>, in which the path pattern reads /home/<user: a placeholder in the fixture's words, no path of any machine and nothing of the study",
+     "ruling": "glitch-45 (the Lane-orchestrator), on lane gap-rewalk-fix, Tue 27 Oct 2026, under Javier's standing delegation: the w142/w158 class"},
 )
 
 

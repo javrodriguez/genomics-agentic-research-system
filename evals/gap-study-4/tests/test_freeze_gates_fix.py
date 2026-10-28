@@ -221,10 +221,15 @@ class TestFreezeGatesFix(unittest.TestCase):
         self.assertEqual(f4_exception(fw), [])
 
     def test_f4_the_committed_exceptions_are_w023s_w142s_and_w158s(self):
-        # lane prefreeze-road (the Lane-orchestrator's ruling 1, 24 Oct 2026): the two placeholder exceptions join w023's
+        # lane prefreeze-road (the Lane-orchestrator's ruling 1, 24 Oct 2026): the two placeholder exceptions join w023's;
+        # lane gap-rewalk-fix (glitch-45, 27 Oct 2026): the rewalk merge's five, two in w023's class, three in w142's
         self.assertEqual([(e["walk"], e["path"], sorted(e["lines"])) for e in fw.RECORDED_EXCEPTIONS],
                          [("w023", "/tmp/finalize.log", [74]), ("w142", "/home/<user", [11, 86]),
-                          ("w158", "/home/<user", [11, 49])], "F4-exception")
+                          ("w158", "/home/<user", [11, 49]),
+                          ("w172", "/tmp/run-e680031a-finalize.json", [86, 93, 94]),
+                          ("w194", "/tmp/s01.json", [69]),
+                          ("w179", "/home/<user", [11, 57]), ("w180", "/home/<user", [11, 86]),
+                          ("w198", "/home/<user", [11, 41])], "F4-exception")
 
 
 class WitnessNotPerformed(AssertionError):
