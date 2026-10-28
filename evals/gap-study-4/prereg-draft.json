@@ -26718,11 +26718,27 @@
     }
   },
   "walk_counts": {
-    "on_path_closers": null,
-    "off_path_offers": null,
+    "on_path_closers": {
+      "A": 1,
+      "O": 0,
+      "G": 0
+    },
+    "off_path_offers": {
+      "A": 0,
+      "O": 0,
+      "G": 0
+    },
     "inherited_shapes": [
-      null,
-      null
+      {
+        "A": 2,
+        "O": 0,
+        "G": 0
+      },
+      {
+        "A": 0,
+        "O": 0,
+        "G": 0
+      }
     ],
     "report_beside_registration": true
   },
@@ -27870,19 +27886,11 @@
     "note": "uuid5(NAMESPACE_URL, derived_from); distinct from earlier sessions."
   },
   "pending": {
-    "/take_order_beacon/round": "Pre-freeze review 1, MAJOR 9: a drand quicknet round whose time falls after the review of this draft can be committed, chosen when the draft is regenerated for that review (order_beacon.py --round-at).",
-    "/walk_counts/inherited_shapes/0": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
-    "/walk_counts/inherited_shapes/1": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
-    "/walk_counts/off_path_offers": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
-    "/walk_counts/on_path_closers": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts."
+    "/take_order_beacon/round": "Pre-freeze review 1, MAJOR 9: a drand quicknet round whose time falls after the review of this draft can be committed, chosen when the draft is regenerated for that review (order_beacon.py --round-at)."
   },
   "stats_design": {
     "PENDING": [
-      "/take_order_beacon/round",
-      "/walk_counts/inherited_shapes/0",
-      "/walk_counts/inherited_shapes/1",
-      "/walk_counts/off_path_offers",
-      "/walk_counts/on_path_closers"
+      "/take_order_beacon/round"
     ]
   }
 }
