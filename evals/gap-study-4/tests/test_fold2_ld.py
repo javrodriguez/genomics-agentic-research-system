@@ -5,6 +5,10 @@ MINORs table, approved by glitch-45 under Javier's delegation, Thu 29 Oct 2026):
   M10-reach   (m10) result.py prints the outside-reach events per half-cell from every committed outcome: the takes,
               how many carry an outside-reach event, the events.outside_reach total, and the takes whose records give
               no count (named, never counted as none).
+  M8-verdicts (m8) the flagged check list yields a committed verdict record (labelling/flagged-verdicts.json, one row
+              per listed F item with the person's finding), validated against the drawn list, committed once and only
+              after the blind labels; result.py publishes its counts per (arm, harness, model, task) beside the views,
+              and no longer says every flagged take goes to the list when a cap of 40 stands.
 
 Synthetic outcomes in memory. No model, network, container or credential.
 """
@@ -104,6 +108,115 @@ class M10Reach(unittest.TestCase):
                 mock.patch.object(result.check_results, "pin_block_events", lambda *a: []):
             got = result.from_records([], PRE, self.rows, self.history, go=[])
         self.assertEqual(got["outside_reach"], result.outside_reach_counts(self.rows, self.history))
+
+
+# ---- M8: the flagged list's verdict record (m8) --------------------------------------------------------------------
+
+def flagged_doc(n_flagged=3, cap=2):
+    def item(i, task, model):
+        return {"sheet_id": f"F{i:03d}", "take": f"s{i}/1", "why": ["flag-check"],
+                "stratum": {"arm": "A", "harness": CLAUDE, "model": model, "task": task, "verdict": "right",
+                            "readers": "agree"}}
+    items = [item(1, "t1", "a1"), item(2, "t1", "a1"), item(3, "t2", "a2")][:cap]
+    return {"items": [], "flagged": {"cap": cap, "flagged": n_flagged, "listed": len(items),
+                                      "beyond_cap": n_flagged - len(items), "items": items}}
+
+
+def verdicts(*rows):
+    return {"verdicts": [{"sheet_id": sid, "finding": f, "note": ""} for sid, f in rows]}
+
+
+class M8Verdicts(unittest.TestCase):
+    def fv(self):
+        from labelling import flagged_verdicts
+        return flagged_verdicts
+
+    def test_the_claim_follows_the_cap(self):
+        on = {"labelling_design": {"flagged_list": {"cap": 2}}}
+        text = result.render_flagged_counts(result.flagged_counts(on, reader=lambda: flagged_doc()))
+        self.assertNotIn("Every take a grader flagged for the human sample goes to a separate check list", text)
+        self.assertIn("up to the cap of 2", text)
+        self.assertIn("beyond the cap", text)
+
+    def test_the_record_validates_against_the_drawn_list(self):
+        fv = self.fv()
+        doc = flagged_doc()
+        got = fv.validate_verdicts(verdicts(("F001", "grader-right"), ("F002", "grader-wrong")), doc)
+        self.assertEqual(got, {"F001": "grader-right", "F002": "grader-wrong"})
+        bad = {"a missing item": verdicts(("F001", "grader-right")),
+               "an item twice": verdicts(("F001", "grader-right"), ("F001", "grader-wrong"), ("F002", "cannot-tell")),
+               "an id off the list": verdicts(("F001", "grader-right"), ("F002", "grader-right"),
+                                              ("F003", "grader-right")),
+               "a finding off the vocabulary": verdicts(("F001", "fine"), ("F002", "grader-right")),
+               "a blind id": verdicts(("L001", "grader-right"), ("F002", "grader-right")),
+               "an extra key": {"verdicts": [{"sheet_id": "F001", "finding": "grader-right", "note": "", "by": "x"},
+                                             {"sheet_id": "F002", "finding": "grader-right", "note": ""}]},
+               "a note that is not text": {"verdicts": [{"sheet_id": "F001", "finding": "grader-right", "note": 3},
+                                                        {"sheet_id": "F002", "finding": "grader-right", "note": ""}]},
+               "not the record's shape": {"rows": []}}
+        for why, rec in bad.items():
+            with self.assertRaises(fv.VerdictError, msg=why):
+                fv.validate_verdicts(rec, doc)
+        with self.assertRaises(fv.VerdictError, msg="a sample with no flagged list"):
+            fv.validate_verdicts(verdicts(), {"items": []})
+
+    def test_counts_per_row_never_pooled(self):
+        fv = self.fv()
+        doc = flagged_doc(n_flagged=3, cap=3)
+        rows = fv.verdict_rows(doc, fv.validate_verdicts(
+            verdicts(("F001", "grader-right"), ("F002", "grader-wrong"), ("F003", "cannot-tell")), doc))
+        self.assertEqual(rows, [
+            {"arm": "A", "harness": CLAUDE, "model": "a1", "task": "t1", "listed": 2, "grader-right": 1,
+             "grader-wrong": 1, "cannot-tell": 0},
+            {"arm": "A", "harness": CLAUDE, "model": "a2", "task": "t2", "listed": 1, "grader-right": 0,
+             "grader-wrong": 0, "cannot-tell": 1}])
+        unread = fv.verdict_rows(doc, None)
+        self.assertEqual([r["listed"] for r in unread], [2, 1])
+        self.assertTrue(all(r[f] is None for r in unread for f in fv.FINDINGS))
+
+    def test_published_beside_the_views(self):
+        fv = self.fv()
+        on = {"labelling_design": {"flagged_list": {"cap": 2}}}
+        doc = flagged_doc()
+        rec = verdicts(("F001", "grader-right"), ("F002", "grader-wrong"))
+        got = result.flagged_counts(on, reader=lambda: doc, verdict_reader=lambda d: fv.validate_verdicts(rec, d))
+        self.assertEqual(got["verdicts"], fv.verdict_rows(doc, fv.validate_verdicts(rec, doc)))
+        text = result.render_flagged_counts(got)
+        self.assertIn("| A | `claude-code` | `a1` | `t1` | 2 | 1 | 1 | 0 |", text)
+        self.assertEqual(ll.scan_text(text, "flagged.md", []), [])
+        none = result.render_flagged_counts(result.flagged_counts(on, reader=lambda: doc,
+                                                                  verdict_reader=lambda d: None))
+        self.assertIn("No verdict record is committed", none)
+        self.assertEqual(ll.scan_text(none, "flagged.md", []), [])
+        self.assertIsNone(result.flagged_counts({"labelling_design": {"flagged_list": None}},
+                                                verdict_reader=lambda d: self.fail("read with the switch off")))
+
+    def test_committed_once_and_after_the_blind_labels(self):
+        fv = self.fv()
+        rel = "evals/gap-study-4/labelling/" + fv.VERDICTS_NAME
+
+        def git(log_shas, blob="x", shallow="false"):
+            def run(*args):
+                if args[:1] == ("rev-parse",):
+                    return 0, shallow + "\n"
+                if args[:1] == ("log",):
+                    return 0, "".join(f"{s}\n" for s in log_shas)
+                if args[:1] == ("show",):
+                    return 0, blob
+                raise AssertionError(args)
+            return run
+        import tempfile
+        with tempfile.TemporaryDirectory() as t:
+            path = Path(t) / fv.VERDICTS_NAME
+            path.write_text("x")
+            self.assertEqual(fv.history_problems(path, git(["a" * 40]), labels_problems=[]), [])
+            self.assertTrue(fv.history_problems(path, git(["a" * 40, "b" * 40]), labels_problems=[]))
+            self.assertTrue(fv.history_problems(path, git(["a" * 40], blob="y"), labels_problems=[]))
+            self.assertTrue(fv.history_problems(path, git(["a" * 40], shallow="true"), labels_problems=[]))
+            self.assertTrue(fv.history_problems(path, git(["a" * 40]), labels_problems=["HISTORY: no labels"]))
+        self.assertTrue(rel.endswith("flagged-verdicts.json"))
+        import check_results as cr
+        self.assertIn("labelling/" + fv.VERDICTS_NAME, cr.RUNTIME_PATHS)
 
 
 if __name__ == "__main__":
