@@ -1997,7 +1997,9 @@ class Readiness(unittest.TestCase):
             with tempfile.TemporaryDirectory() as tmp:
                 path=Path(tmp)/'d.json'; path.write_text('fake original')
                 d=self.get(); d['stats_design_inputs']['alpha']=bad
-                with self.assertRaises(ValueError): b.write_draft(d,path)
+                # lane gap-beacon-commit (wg2 fix): once the round is registered nothing is PENDING, so finalize also
+                # runs stats.validate_design, whose own alpha refusal is a StatsError; either refusal keeps the file
+                with self.assertRaises((ValueError, stats.StatsError)): b.write_draft(d,path)
                 self.assertEqual(path.read_text(),'fake original')
 
     def test_secondary_alpha_before_write(self):
