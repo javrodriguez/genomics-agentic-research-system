@@ -4,11 +4,17 @@
     python3 evals/gap-study-4/review_kit/commit_review.py <review folder> <N>
 
 Asserts before anything is copied: line 1 of the report is `prereg.json sha256: <the sha256 of the kit's prereg.json, the bytes the reviewer read>`; the
-report carries no absolute path and names no person; a ruling line is present. Copies the report to
+report carries no absolute path and names no person. Copies the report to
 review_kit/prefreeze-<N>.md and the blindness record beside it, lints the commit message, and commits with
 `git commit -F`. The commit lands exactly the two files, which is what freeze.py's review-commit rule reads.
 
 Never pushes: the push goes through the scanned door, on the owner's grant.
+
+THE RULING (pre-freeze review 2, MAJOR 3; lane fold2-lb): read_ruling is the one reader of a report's ruling, here and
+in freeze.review_file_problems (so in run_builders.py rehearse too). Exactly one line matching RULING gives that
+ruling; zero or several give AMBIGUOUS, which is never DO FREEZE. A report is never refused for its ruling: it is
+committed unedited and the commit records the ruling read, "ambiguous" included, because a refused report is in
+practice a voided round and a second draw of the review.
 
 ROUND 4 (lane review-kit-port, glitch-f1's fold 1): the co-author line names the reviewer launch.py now opens,
 Claude Opus 5.5, in place of the model round 3 named.
@@ -32,6 +38,16 @@ import study  # noqa: E402
 ABS_PATH = re.compile(r"/(Users|private|var/folders|home)/")
 PERSON = re.compile(r"javrodher|rodrij92|javier|@gmail", re.I)
 RULING = re.compile(r"^\*\*Ruling: DO (NOT )?FREEZE\.\*\*$", re.M)
+AMBIGUOUS = "ambiguous"
+
+
+def read_ruling(text: str) -> str:
+    """'DO FREEZE' or 'DO NOT FREEZE' when exactly one line of `text` is a ruling line (RULING), else AMBIGUOUS: a
+    quoted literal inside a sentence is no line, and two ruling lines are no ruling."""
+    found = list(RULING.finditer(text))
+    if len(found) != 1:
+        return AMBIGUOUS
+    return "DO NOT FREEZE" if found[0].group(1) else "DO FREEZE"
 
 
 def report_problems(text: str, draft_sha: str) -> list[str]:
@@ -43,8 +59,6 @@ def report_problems(text: str, draft_sha: str) -> list[str]:
         problems.append("the report carries an absolute path")
     if PERSON.search(text):
         problems.append("the report names a person")
-    if not RULING.search(text):
-        problems.append("no ruling line (**Ruling: DO FREEZE.** or **Ruling: DO NOT FREEZE.**)")
     return problems
 
 
@@ -78,10 +92,12 @@ def main() -> int:
         return 1
     shutil.copy2(report, dest)
     shutil.copy2(blind, dest_blind)
-    ruling = RULING.search(text).group(0).strip("*")
+    ruling = read_ruling(text)
     msg = folder.parent / f"prefreeze-{n}-commit-message.txt"
     msg.write_text(f"review: pre-freeze review {n}, committed as it stands\n\nOne fresh reviewer, launched headless "
-                   f"outside the Brain with only the kit, read the draft at sha256 {read_sha[:12]} and ruled: {ruling} "
+                   f"outside the Brain with only the kit, read the draft at sha256 {read_sha[:12]} and ruled: {ruling}"
+                   + (" (zero or several ruling lines; the freeze reads it as no DO FREEZE)" if ruling == AMBIGUOUS
+                      else "") + ". "
                    + ("" if read_sha == draft_sha else f"The draft in force at this commit is {draft_sha[:12]}: it moved after the review, so this review cannot seed a freeze. ")
                    + "The report and its blindness record are committed unedited.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n")
     lint = subprocess.run([sys.executable, str(STUDY_DIR / "commit_msg.py"), str(msg)], capture_output=True, text=True)

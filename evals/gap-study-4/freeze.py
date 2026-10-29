@@ -457,6 +457,25 @@ TREE_BINDING_EXCLUDED = (re.compile(rf"/{study.VERIFY_DIR}/freeze-rehearsal-\d+(
                          re.compile(r"/PROGRESS\.md$"),
                          re.compile(r"/verification/round1-regrade/environment\.json$"))
 RULING_LINE = "**Ruling: DO FREEZE.**"
+DO_FREEZE = "DO FREEZE"
+
+
+def _commit_review():
+    """review_kit/commit_review.py, loaded by path under its own name (no other study's review_kit can shadow it)."""
+    import importlib.util
+    name = "gap4_review_kit_commit_review"
+    if name not in sys.modules:
+        spec = importlib.util.spec_from_file_location(name, HERE / "review_kit" / "commit_review.py")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[name] = mod
+        spec.loader.exec_module(mod)
+    return sys.modules[name]
+
+
+def read_ruling(text: str) -> str:
+    """Pre-freeze review 2, MAJOR 3 (lane fold2-lb): the report's ruling as commit_review.read_ruling reads it, the one
+    reader: exactly one anchored ruling line, else "ambiguous"."""
+    return _commit_review().read_ruling(text)
 REVIEW_DIGEST_PREFIX = "prereg.json sha256: "     # line 1 of every report (review_kit/commit_review.report_problems)
 REHEARSAL_LAST_LINE = "all green"
 
@@ -773,10 +792,14 @@ def review_file_problems(review_commit: str) -> tuple[list[str], str | None]:
         return [f"{reports[0]} was committed {len(hist.split())} times; the seed would be one of several candidates"], None
     # ROUND 2, CP8, review 1 follow-up: the seed's report must have ruled for the freeze, and must be the latest
     # review committed, so a freeze cannot seed from an earlier or a refusing review
+    # Pre-freeze review 2, MAJOR 3 (lane fold2-lb): the ruling is read from exactly one anchored ruling line, never as
+    # a substring, so a DO NOT FREEZE report that quotes the other ruling in a sentence no longer seeds a freeze
     code, body = git("show", f"{review_commit}:{reports[0]}")
-    if RULING_LINE not in body:
-        return [f"{reports[0]} at {review_commit[:12]} carries no `{RULING_LINE}` line: the freeze runs only on a "
-                f"review that ruled for it"], None
+    ruling = read_ruling(body)
+    if ruling != DO_FREEZE:
+        return [f"{reports[0]} at {review_commit[:12]} ruled {ruling} (exactly one ruling line is read, here as "
+                f"review_kit/commit_review.read_ruling reads it): the freeze runs only on a review that ruled "
+                f"{DO_FREEZE}"], None
     # Pre-freeze review 1, MAJOR 3: the seed review must have read the bytes being frozen. Its line 1 names the sha256
     # of the prereg.json the reviewer was handed (review_kit/commit_review.py binds it to the kit's copy); a DO FREEZE
     # review of earlier bytes never seeds a freeze of later ones, so a criterion edited after review is not frozen.
