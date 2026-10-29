@@ -21,11 +21,20 @@ sys.path.insert(0, str(HERE))
 
 import lint_language as ll  # noqa: E402
 import result  # noqa: E402
+import stats  # noqa: E402
 from graders import labels4  # noqa: E402
 
 sys.path[:] = _PATH
 
 CLAUDE, CODEX = "claude-code", "codex"
+DESIGN = {"tasks_that_run": ["t1"], "harness_models": {CLAUDE: ["a1", "a2"], CODEX: ["o1", "o2"]},
+          "stronger_weaker": {CLAUDE: ["a1", "a2"], CODEX: ["o1", "o2"]}, "cross_vendor": ["a1", "o1"], "alpha": "0.05",
+          "bootstrap": {"seed": 1, "reps": 20},
+          "power": {"seed": 2, "sims": 1, "bootstrap_reps": 1, "wordings": 1, "repeats": 1,
+                    "grid": [{"stronger": "0.900", "weaker": "0.500", "task_spread": "0.000",
+                              "wording_spread": "0.000"}]}, "floors": None}
+PRE = {stats.DESIGN_KEY: DESIGN, "deferred_arms": {}, "models": {"A": ["a1", "a2"], "O": ["o1", "o2"]}, "tasks": [{"id": "t1"}],
+       "rows": []}
 
 
 def row(slot, attempt, *, arm="A", task="t1", half="trap", model="a1", harness=CLAUDE):
@@ -80,8 +89,7 @@ class M10Reach(unittest.TestCase):
         self.assertIn("No take is committed", result.render_outside_reach([]))
         self.assertEqual(ll.scan_text(text, "reach.md", []), [])
         self.assertEqual(ll.scan_text(result.render_outside_reach([]), "reach.md", []), [])
-        import stats
-        base = {"stats": stats.derive([], {"tasks_that_run": ["t1"], "harness_models": {CLAUDE: ["a1"]}}),
+        base = {"stats": stats.derive([], DESIGN),
                 "completeness": {}, "pause_notes": [], "stopped": [], "outside_reach": got}
         from unittest import mock
         with mock.patch.object(result.completeness, "render", lambda c: "completeness"):
@@ -89,14 +97,12 @@ class M10Reach(unittest.TestCase):
 
     def test_from_records_carries_it(self):
         from unittest import mock
-        import stats
-        design = {"tasks_that_run": ["t1"], "harness_models": {CLAUDE: ["a1"]}}
         with mock.patch.object(result.completeness, "summarize", lambda *a: {}), \
                 mock.patch.object(result.check_results, "publication", lambda h, t: {"cells": {}, "attempts": []}), \
                 mock.patch.object(result.completeness, "mechanical_states", lambda *a: {}), \
                 mock.patch.object(result, "stopped_counts", lambda *a: []), \
                 mock.patch.object(result.check_results, "pin_block_events", lambda *a: []):
-            got = result.from_records([], {stats.DESIGN_KEY: design}, self.rows, self.history, go=[])
+            got = result.from_records([], PRE, self.rows, self.history, go=[])
         self.assertEqual(got["outside_reach"], result.outside_reach_counts(self.rows, self.history))
 
 
