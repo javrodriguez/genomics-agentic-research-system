@@ -328,6 +328,19 @@ def manifest_repository():
             yield repo, root, folder
 
 
+
+def full_rehearsal_steps() -> list:
+    """Pre-freeze review 2, m2 (lane fold2-lb): every step line a green rehearsal record names
+    (freeze.rehearsal_required_steps), the live-box step ending on a closed pass line."""
+    import freeze_rehearsal as fr
+    live = ("live-box record " + "e" * 64 + ": walk lb1, budget 10 s of 20 s, turn 2 cut (end timed-out, exit 124), "
+            "stream 3 unit(s), session 3 unit(s), shape equal, content problems 0, session torn no; files 4 re-read "
+            "equal; adapter, check_take and checker digests this tree's; within the bound")
+    out = []
+    for name in freeze.rehearsal_required_steps():
+        out += [f"[0] {name}", "    " + (live if name == fr.LIVE_BOX_STEP else "ok")]
+    return out
+
 class FreezeOutputs(unittest.TestCase):
     def writer(self):
         self.assertTrue(callable(getattr(freeze, "write_outputs", None)),
@@ -1672,14 +1685,17 @@ class FreezeCoverage(unittest.TestCase):
                 return cr.check_frozen_content()
 
     def test_frozen_rehearsal_three_lines_and_placeholder(self):
-        lines = ["a" * 64, freeze.REHEARSAL_TREE_PREFIX + "b" * 64, freeze.REHEARSAL_LAST_LINE]
+        # pre-freeze review 2, m2 (lane fold2-lb): the record names every step; the three bound lines stay first,
+        # second-to-first and last, and a three-line record alone is refused
+        lines = ["a" * 64, freeze.REHEARSAL_TREE_PREFIX + "b" * 64, *full_rehearsal_steps(), freeze.REHEARSAL_LAST_LINE]
         def record(content):
             text = "\n".join(content) + "\n"
             return {"name": "synthetic.txt", "text": text,
                     "sha256": __import__("hashlib").sha256(text.encode()).hexdigest()}
         self.assertEqual(self.frozen_rehearsal_check(record(lines)), [])
+        self.assertTrue(self.frozen_rehearsal_check(record([lines[0], lines[1], lines[-1]])))
         for index, replacement in ((0, "c" * 64), (1, freeze.REHEARSAL_TREE_PREFIX + "d" * 64),
-                                   (2, "failed")):
+                                   (len(lines) - 1, "failed")):
             changed = list(lines); changed[index] = replacement
             with self.subTest(index=index):
                 self.assertTrue(self.frozen_rehearsal_check(record(changed)))
@@ -1691,15 +1707,17 @@ class FreezeCoverage(unittest.TestCase):
         self.assertTrue(callable(getattr(freeze, "rehearsal_evidence", None)))
         with tempfile.TemporaryDirectory() as tmp:
             record = Path(tmp) / "freeze-rehearsal-1.txt"
-            body = "a" * 64 + "\nDisposable rehearsal\n" + freeze.REHEARSAL_TREE_PREFIX + "b" * 64 + "\nall green\n"
+            body = ("a" * 64 + "\nDisposable rehearsal\n" + freeze.REHEARSAL_TREE_PREFIX + "b" * 64 + "\n"
+                    + "\n".join(full_rehearsal_steps()) + "\nall green\n")     # pre-freeze review 2, m2
             record.write_text(body)
             got = freeze.rehearsal_evidence(record, "a" * 64, "b" * 64)
             self.assertEqual(set(got), {"name", "sha256", "text"})
             self.assertEqual(got["text"], body)
             self.assertEqual(got["sha256"], __import__("hashlib").sha256(body.encode()).hexdigest())
             self.assertNotIn(str(Path(tmp)), json.dumps(got))
-            for bad in (body.replace("all green", "NOT all green"), body.replace("a" * 64, "c" * 64),
-                        body.replace("b" * 64, "c" * 64)):
+            for bad in (body.replace("\nall green", "\nNOT all green"), body.replace("a" * 64, "c" * 64),
+                        body.replace("b" * 64, "c" * 64),
+                        "a" * 64 + "\n" + freeze.REHEARSAL_TREE_PREFIX + "b" * 64 + "\nall green\n"):
                 record.write_text(bad)
                 with self.assertRaisesRegex(ValueError, "rehearsal"):
                     freeze.rehearsal_evidence(record, "a" * 64, "b" * 64)

@@ -561,6 +561,8 @@ def rehearsal_record_problems(frozen: dict) -> list[str]:
         problems.append("the frozen rehearsal record names a different committed tree")
     if lines[-1] != freeze.REHEARSAL_LAST_LINE:
         problems.append("the frozen rehearsal record did not end all green")
+    # pre-freeze review 2, m2 (lane fold2-lb): every step by name, as the freeze reads it
+    problems += [f"the frozen rehearsal record: {p}" for p in freeze.rehearsal_step_problems(lines)]
     return problems
 
 
