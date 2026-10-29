@@ -1,0 +1,15 @@
+{
+  "lane": "fold2-lb",
+  "files": [
+    {
+      "path": "COPIED.d/fold2-lb.json",
+      "status": "new",
+      "reason": "Lane fold2-lb (glitch-45's fold of pre-freeze review 2, FOLD-PLAN-prefreeze-2.md sections 1 and 3, lane L-B, under Javier's standing delegation): the freeze and witness gates, MAJOR 3 (the ruling read from exactly one anchored line, shared by commit_review and freeze). Edits without transfer, recorded here only so the owners' fragments stay untouched: review_kit/commit_review.py (review-kit-port) and freeze.py (pf1-l1-freeze-gates)."
+    },
+    {
+      "path": "tests/test_fold2_lb.py",
+      "status": "new",
+      "reason": "Lane fold2-lb's red-first tests: MAJOR 3 (TestMajor3Ruling: the reviewer's quoted-literal report and a two-line report refused by the freeze, commit_review committing them unedited and recording the ruling it read, run_builders.py rehearse's latest_review on the same gate)."
+    }
+  ]
+}
