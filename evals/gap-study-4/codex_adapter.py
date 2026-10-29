@@ -35,7 +35,10 @@ THE RECORDS READ (the tables are transcript_codex's; see its docstring for which
              api_errors  one per `error` event and per `turn.failed`, in order: {status None, type the event type,
                          text the harness's own message}. The agent's words (agent_message) are never an API error.
              agent_output True when an item.completed of an OUTPUT_ITEM_TYPES type exists (text or a tool call;
-                         reasoning alone is not output), read from event and item types, never from content.
+                         reasoning alone is not output), or an item.started of a STARTED_ITEM_TYPES tool item (the
+                         agent issued the call; pre-freeze review 2, m7: a turn cut by a timeout while its command
+                         ran is past the first turn, as a Claude Code tool_use block is), read from event and item
+                         types, never from content.
              usage       turn.completed.usage's five USAGE_KEYS as recorded; a key that is missing or not a count
                          refuses (StreamError), never 0; a turn with no turn.completed has no usage (None, unmeasured).
   rollout    `$CODEX_HOME/sessions/.../rollout-*.jsonl`, copied out host-side by the driver and handed over by
@@ -129,7 +132,8 @@ def read_stream(text: str, model=None) -> dict:
 
     thread_ids    the distinct thread.started thread ids, in order
     agent_text    the agent_message texts, joined by newlines (graders read it; routing never does)
-    agent_output  True when an item.completed of an OUTPUT_ITEM_TYPES type exists
+    agent_output  True when an item.completed of an OUTPUT_ITEM_TYPES type exists, or an item.started of a
+                  STARTED_ITEM_TYPES tool item (pre-freeze review 2, m7)
     api_errors    [{status, type, text}] per error event and turn.failed, in order
     usage         turn.completed.usage's USAGE_KEYS, or None when the turn has no turn.completed
     completed     how many turn.completed records; failed: how many turn.failed records
@@ -190,6 +194,8 @@ def read_stream(text: str, model=None) -> dict:
                 output = True
             if it in tc.TOOL_ITEM_TYPES:
                 tools.append(item["id"])
+        elif t == tc.ITEM_STARTED and it in tc.STARTED_ITEM_TYPES:
+            output = True                     # pre-freeze review 2, m7: a tool call the agent issued is its output
     if len(set(served)) > 1:
         raise StreamError("one exec's stream reroutes to two different models: the served model is not one")
     return {"thread_ids": thread_ids, "agent_text": "\n".join(said), "agent_output": output, "api_errors": api,
