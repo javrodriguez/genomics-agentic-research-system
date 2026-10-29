@@ -1466,6 +1466,44 @@ class S2Tree(Case):
         self.assertFalse((Path(cc) / rt.RUN_TREE_HOMEDIR).exists(), "S2.tree: an agent home for Claude Code")
 
 class S2Prepare(Case):
+    def test_the_identity_records_the_tree_exported_m13(self):
+        """Pre-freeze review 2, m13 (lane fold2-ld): the take's gars_tree_sha is read at export from the commit its run
+        tree is exported from (git rev-parse <commit>:gars), never handed in as the checker's constant, so the take
+        checker compares a measurement with the draft's pin, not the constant with itself."""
+        import check_take
+        import walk_builders as wb
+        with tempfile.TemporaryDirectory() as t:
+            repo = Path(t) / "origin"
+            (repo / "gars").mkdir(parents=True)
+            (repo / "gars" / "x.txt").write_text("not the pinned tree\n")
+            git = ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.invalid"]
+            subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            subprocess.run(git + ["add", "-A"], check=True)
+            subprocess.run(git + ["commit", "-q", "-m", "c"], check=True)
+            commit = subprocess.run(git + ["rev-parse", "HEAD"], capture_output=True, text=True,
+                                    check=True).stdout.strip()
+            want = subprocess.run(git + ["rev-parse", f"{commit}:gars"], capture_output=True, text=True,
+                                  check=True).stdout.strip()
+            self.assertNotEqual(want, check_take.GARS_TREE_SHA, "M13: the synthetic tree must differ from the pin")
+            self.assertEqual(self.must("M13", rb().exported_gars_tree, repo, commit), want, "M13: the exported tree")
+            ident = {"index": 0, "attempt": 1, "row_commit": "c" * 40, "session_id": "sid-m13"}
+            row = {"slot": "s-1", "agent": {"harness": "claude-code", "version": "v"}}
+            with mock.patch.object(rb(), "take_identity", lambda root, repo, slot: dict(ident)):
+                got = self.must("M13", rb().prepare_take, row, root="/r", repo="/repo", origin=(str(repo), commit),
+                                exclude=["evals"], tree_builder=lambda sid, **kw: Path("/synthetic/tree"),
+                                fixture_builder=lambda r, tree, project: ({"sha256": "f" * 64}, "/s"))
+            self.assertEqual(got["identity"]["gars_tree_sha"], want, "M13: the identity carries the constant")
+            for bad in ("0" * 40, "--output=x", "HEAD"):
+                with self.assertRaises(wb.BuilderRefused, msg=f"M13: {bad!r} read"):
+                    rb().exported_gars_tree(repo, bad)
+            built = []
+            with mock.patch.object(rb(), "take_identity", lambda root, repo, slot: dict(ident)), \
+                    self.assertRaises(wb.BuilderRefused, msg="M13: an unreadable tree prepared a take"):
+                rb().prepare_take(row, root="/r", repo="/repo", origin=(str(repo), "0" * 40), exclude=["evals"],
+                                  tree_builder=lambda sid, **kw: built.append(sid) or Path("/synthetic/tree"),
+                                  fixture_builder=lambda r, tree, project: ({"sha256": "f" * 64}, "/s"))
+            self.assertEqual(built, [], "M13: a run tree was built for a commit whose gars tree cannot be read")
+
     def test_identity_tree_and_a_refused_fixture(self):
         import drive
         ident = {"index": 4, "attempt": 2, "row_commit": "c" * 40, "session_id": "sid-x"}
