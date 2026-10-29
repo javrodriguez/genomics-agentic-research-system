@@ -1171,7 +1171,8 @@ WITNESSES = {
     "docstring-registers": ("G9b.witness", "order_beacon", (("    found = []\n",
                                                             "    found = [ast.Constant(int(m)) for m in re.findall("
                                                             "r\"REGISTERED_ROUND: int \\| None = (\\d+)\", source)]\n"),)),
-    "history-unchecked": ("G9b.witness", "order_beacon", (("    if changes != [None, round_no]:\n",
+    # pre-freeze review 2, option A+ (lane fold2-lb): the history rule now reads [None, *superseded rounds, round_no]
+    "history-unchecked": ("G9b.witness", "order_beacon", (("    if changes != [None, *rounds, round_no]:\n",
                                                           "    if round_no not in changes:\n"),)),
     "draft-unwitnessed": ("G9b.witness", "freeze", (('(("registering", registering), ("draft", draft_commit())):',
                                                      '(("registering", registering),):'),)),

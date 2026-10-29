@@ -233,10 +233,9 @@ def synthetic_beacon_reading(round_no: int) -> dict:
 REGISTERED_LINE = "REGISTERED_ROUND: int | None = {round}"
 
 
-def registering_commit(round_no: int) -> str:
-    """The one commit in HEAD's history that set REGISTERED_ROUND to `round_no`, read by parsing order_beacon.py at
-    every commit that changed it, oldest first (the review of 53d0e9af, finding 1a and 1b). ValueError unless the
-    value changed exactly once, from None to `round_no`, and never again."""
+def beacon_history() -> list[tuple[str, object, tuple]]:
+    """(commit, REGISTERED_ROUND, SUPERSEDED_ROUNDS) for every commit in HEAD's history that changed order_beacon.py,
+    oldest first, each read by parsing that version (the review of 53d0e9af, finding 1a; option A+)."""
     rel = study.rel("order_beacon.py")
     code, out = git("log", "--reverse", "--topo-order", "--full-history", "--format=%H", "--", rel)
     if code != 0 or not out.split():
@@ -247,13 +246,70 @@ def registering_commit(round_no: int) -> str:
         if code != 0:
             raise ValueError(f"{rel} cannot be read at {sha[:12]}")
         try:
-            history.append((sha, order_beacon.registered_value(text)))
+            history.append((sha, order_beacon.registered_value(text), order_beacon.superseded_value(text)))
         except order_beacon.BeaconRefused as e:
             raise ValueError(f"{rel} at {sha[:12]}: {e}") from None
-    problem = order_beacon.history_problem([v for _, v in history], round_no)
+    return history
+
+
+def registering_commit(round_no: int) -> str:
+    """The one commit in HEAD's history that set REGISTERED_ROUND to `round_no`, read by parsing order_beacon.py at
+    every commit that changed it, oldest first (the review of 53d0e9af, finding 1a and 1b). ValueError unless the
+    value went None, then each superseded round of HEAD's SUPERSEDED_ROUNDS in order (option A+), then `round_no`,
+    and never changed again."""
+    history = beacon_history()
+    problem = order_beacon.history_problem([v for _, v, _ in history], round_no, history[-1][2])
     if problem:
         raise ValueError(problem)
-    return next(sha for sha, v in history if v == round_no)
+    return next(sha for sha, v, _ in history if v == round_no)
+
+
+def supersession_swaps(history) -> list[tuple[dict, str]]:
+    """Option A+, steps 1-2: each SUPERSEDED_ROUNDS entry of HEAD's version with its swap commit, the first commit in
+    which REGISTERED_ROUND leaves the entry's round, which must add exactly that entry; ValueError when the tuple is not
+    append-only across history (each version a prefix of the next), the entry's registering_commit is not the commit
+    that set its round, or another commit added the entry."""
+    for (a_sha, _, a), (b_sha, _, b) in zip(history, history[1:]):
+        if tuple(b[:len(a)]) != tuple(a):
+            raise ValueError(f"SUPERSEDED_ROUNDS at {b_sha[:12]} does not extend its version at {a_sha[:12]}: an entry "
+                             f"was removed or rewritten, and the list is append-only")
+    out = []
+    for entry in history[-1][2] if history else ():
+        r = entry["round"]
+        regs = [sha for sha, v, _ in history if v == r]
+        if not regs or entry["registering_commit"] != regs[0]:
+            raise ValueError(f"the superseded entry of round {r} names registering commit "
+                             f"{str(entry['registering_commit'])[:12]}, not the commit that set the round "
+                             f"({regs[0][:12] if regs else 'none'})")
+        at = next((i for i in range(1, len(history)) if history[i - 1][1] == r and history[i][1] != r), None)
+        if at is None:
+            raise ValueError(f"REGISTERED_ROUND never leaves round {r}, which SUPERSEDED_ROUNDS lists")
+        before = [e.get("round") for e in history[at - 1][2]]
+        if entry not in history[at][2] or r in before:
+            raise ValueError(f"the swap commit {history[at][0][:12]}, which moves REGISTERED_ROUND off round {r}, "
+                             f"does not add that round's entry: an entry is added by its own swap commit only")
+        out.append((entry, history[at][0]))
+    return out
+
+
+def owner_decisions(path=None) -> list[dict]:
+    """The study's committed copy of the decision rows a superseded entry cites (order_beacon.OWNER_DECISIONS, one JSON
+    object per line, copied byte for byte from OrgOS's decision.jsonl); [] when the file is absent."""
+    path = HERE / order_beacon.OWNER_DECISIONS if path is None else Path(path)
+    if not path.is_file():
+        return []
+    rows = []
+    for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            raise ValueError(f"{path.name} line {n} is not JSON") from None
+        if not isinstance(row, dict):
+            raise ValueError(f"{path.name} line {n} is not one decision row")
+        rows.append(row)
+    return rows
 
 
 def draft_commit() -> str:
@@ -318,12 +374,17 @@ def mirror_problem(pushes, registering: str):
 WITNESS_HOST = "github.com"
 
 
-def take_order_witness(draft, *, pushes=None, contains=None) -> dict:
+def take_order_witness(draft, *, pushes=None, contains=None, decisions=None) -> dict:
     """Ruling 1 and the review of 53d0e9af (findings 1 and 2): GitHub's own push records on order_beacon.WITNESS_REPO
     must hold both the commit that registered the draft's round and the last commit that changed the draft, each
     stamped at least WITNESS_LEAD_S before the round is published; ValueError otherwise. The witness, written into the
     frozen file as take_order_witness, is each commit with the push that holds it and GitHub's stamp. `pushes` and
-    `contains` stand in for push_records() and history_contains in tests."""
+    `contains` stand in for push_records() and history_contains in tests.
+
+    Option A+ (pre-freeze review 2, section 1; lane fold2-lb): each superseded round's entry is bound to its swap commit
+    (supersession_swaps) and passes only by a push of that commit stamped at least order_beacon.SWAP_LEAD_S before the
+    round publishes (before_publication), or by its decision row in the committed decision list (`decisions`, else
+    owner_decisions(); order_beacon.decision_problem). The witness then also lists each, as `superseded`."""
     try:
         round_no = order_beacon.registered_round(draft.get(BEACON_KEY))
     except order_beacon.BeaconRefused as e:
@@ -341,6 +402,25 @@ def take_order_witness(draft, *, pushes=None, contains=None) -> dict:
             raise ValueError(f"the {name} commit: {problem}")
         stamp, sha = min((t, s) for t, s in pushes if contains(commit, s))
         witness.update({f"{name}_commit": commit, f"{name}_push": {"sha": sha, "stamp": stamp}})
+    swaps = supersession_swaps(beacon_history())
+    if swaps:
+        entries = [entry for entry, _ in swaps]
+        rows = owner_decisions() if decisions is None else decisions
+        seen = []
+        for entry, swap in swaps:
+            r = entry["round"]
+            if entry.get("before_publication") is True:
+                problem = order_beacon.push_witness_problem(swap, r, pushes, contains, lead=order_beacon.SWAP_LEAD_S)
+                if problem:
+                    raise ValueError(f"the swap commit of superseded round {r} (before_publication): {problem}")
+                stamp, sha = min((t, s) for t, s in pushes if contains(swap, s))
+                seen.append({"round": r, "swap_commit": swap, "swap_push": {"sha": sha, "stamp": stamp}})
+            else:
+                problem = order_beacon.decision_problem(entry, rows, entries)
+                if problem:
+                    raise ValueError(f"the swap of superseded round {r}: {problem}")
+                seen.append({"round": r, "swap_commit": swap, "decision": entry["decision"], "ask": entry["ask"]})
+        witness["superseded"] = seen
     return witness
 
 

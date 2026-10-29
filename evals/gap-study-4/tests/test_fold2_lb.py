@@ -578,7 +578,7 @@ class TestBeaconSupersession(unittest.TestCase):
                 with self.subTest(superseded=bad):
                     with self.assertRaises(ob.BeaconRefused):
                         ob.registered_round(dict(reg, superseded=bad))
-        with registered_as(R0, (e0,)):
+        with mock.patch.object(ob, "REGISTERED_ROUND", R0), mock.patch.object(ob, "SUPERSEDED_ROUNDS", (e0,)):
             with self.assertRaises(ob.BeaconRefused):
                 ob.registration()
 
