@@ -142,11 +142,14 @@ def compile_module(name: str, source: str) -> types.ModuleType:
     return mod
 
 
+PRIOR = {}
+
+
 def setUpModule():
     tbi.setUpModule()
     MODS["drive"] = tbi.drive
     for name in NAMES:
-        MODS[name] = __import__(name)
+        MODS[name] = PRIOR[name] = __import__(name)     # the real module, put back by tearDownModule
     if SELECTED is not None:
         _, target, old, new = mutants()[SELECTED]
         path = HERE / f"{target}.py"
@@ -160,8 +163,11 @@ def setUpModule():
 
 
 def tearDownModule():
-    for name in NAMES:                      # a compiled witness never outlives this module
-        sys.modules.pop(name, None)
+    for name, prior in PRIOR.items():       # a compiled witness never outlives this module; lane gap-prebeacon-fix3
+        if prior is None:                    # (review 90c1fd9 NIT 4): the objects found are put back, never dropped,
+            sys.modules.pop(name, None)      # so later modules keep one copy of each (test_cp8_prep's pattern)
+        else:
+            sys.modules[name] = prior
     tbi.tearDownModule()
 
 

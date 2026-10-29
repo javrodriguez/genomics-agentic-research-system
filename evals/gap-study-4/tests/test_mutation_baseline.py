@@ -118,14 +118,27 @@ def module_set_up(mod):
             mod.tearDownModule()
 
 
-def _grouped(modname):
+PRIMES = []
+
+
+def prime_stand_in():
+    """walk_counts.prime_store in test_build_draft's runner (lane gap-prebeacon-fix3): it readies the covered-set store
+    before the baseline, by git reads in this process and, on a miss, the isolated store child; neither is a test run,
+    so it stands in here and records how many children had run when it was called. Unstubbed, its git reads were the
+    first argv the fake recorded (athena gap4-prebeacon4-90c1fd9, T104.selection and T104.refused)."""
+    PRIMES.append(len(getattr(subprocess.run, "argvs", [])))
+    return "walk_counts: store stand-in (T104)"
+
+
+def _grouped(modname, primes=False):
     def make(mod):
         held = module_set_up(mod)
         with module_set_up(mod):
             name = sorted(mod.witness_names())[0]
             method, clause = mod.witness_binding(name)
+        extra = [mock.patch.object(importlib.import_module("walk_counts"), "prime_store", prime_stand_in)] if primes else []
         return ([held, mock.patch.object(mod, "witness_groups", return_value=[[name]] + [[]] * 5),
-                 mock.patch.object(mod, "witness_names", return_value=[name])],
+                 mock.patch.object(mod, "witness_names", return_value=[name]), *extra],
                 (lambda: mod.run_witnesses(1)), method, clause)
     return modname, make
 
@@ -154,7 +167,7 @@ WITNESS_RUNNERS = (_named("test_walk_runner"), _named("test_walk_layout"), _name
                    _named("test_walk_builders"), _named("test_holdout_digests"), _named("test_cp6_wiring"),
                    _named("test_walk_plan"), _named("test_cp8_prep"), _named("test_run_builders"),
                    _named("test_config_folder"), _all("test_prereg_order"), _all("test_prereg_status"), _all("test_rehearsals"),
-                   _grouped("test_ci_job"), _grouped("test_build_draft"), _stub("test_stub_agents"))
+                   _grouped("test_ci_job"), _grouped("test_build_draft", primes=True), _stub("test_stub_agents"))
 GENERATED_RUNNERS = (_generated("test_walk_runner", lambda m: importlib.import_module("walk_mutation")),
                      _generated("test_walk_builders", lambda m: m),
                      _generated("test_run_builders", lambda m: m),
@@ -270,6 +283,21 @@ class T104SubprocessRunners(unittest.TestCase):
                         del kept[i:i + 2]
                 for test in kept:
                     self.assertIn(test, base, f"T104.selection: {modname}: the mutant runs {test}, the baseline not")
+
+
+class T104StorePrime(unittest.TestCase):
+    """test_build_draft's runner readies the covered-set store once, before its baseline child, and the store's own
+    work is never one of the children T104 counts (lane gap-prebeacon-fix3)."""
+
+    def test_the_prime_runs_once_before_the_baseline(self):
+        make = dict(WITNESS_RUNNERS)["test_build_draft"]
+        for red in (False, True):
+            with self.subTest(baseline_red=red):
+                PRIMES.clear()
+                _, kids, printed = drive("test_build_draft", make, baseline_red=red)
+                self.assertEqual(PRIMES, [0], f"T104.prime: the prime ran {PRIMES}, wanted once before any child")
+                self.assertIn("walk_counts: store stand-in (T104)", printed, "T104.prime: its line is printed")
+                self.assertFalse(Children.is_mutant(kids.argvs[0]), "T104.prime")
 
 
 class T104InProcessSweeps(unittest.TestCase):

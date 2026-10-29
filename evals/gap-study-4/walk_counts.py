@@ -297,7 +297,7 @@ def _road_is_genuine() -> bool:
         if module is None:
             __import__(name)
             module = sys.modules[name]
-        if not _references_are_current(module):
+        if not _references_are_current(vars(module)):
             return False
         source = Path(module.__file__).resolve()
         for fn_name in functions:
@@ -305,8 +305,12 @@ def _road_is_genuine() -> bool:
             if type(fn) is not types.FunctionType or fn.__module__ != name or fn.__name__ != fn_name or \
                     Path(fn.__code__.co_filename).resolve() != source:
                 return False
-    if not _references_are_current(sys.modules[__name__]) or mode_binding is not sys.modules.get("mode_binding"):
+    if not _references_are_current(globals()):           # review 90c1fd9 NIT 3: this executing copy's own names
         return False
+    for holder, attr in STORE_REFERENCE_PAIRS:            # review 90c1fd9 NIT 2: by identity, whatever the value is
+        held = globals() if holder == "walk_counts" else vars(sys.modules[holder])
+        if held.get(attr) is not sys.modules.get(attr):
+            return False
     walks = HERE / mode_binding.WALKS_DIR
     return not walks.is_symlink() and Path(sys.modules["walk_register"].REHEARSALS) == walks
 
@@ -318,11 +322,16 @@ def _road_is_genuine() -> bool:
 # the road, and a patch of the road's copy no longer reaches the guard. So the store is used only while every such
 # reference is the object sys.modules holds under its name.
 STORE_REFERENCED = ("walk_plan", "pending_walk", "walk_register", "mode_binding", "walk_counts")
+# Review 90c1fd9 NIT 2: the references the road calls through, compared by identity whatever they hold (a MagicMock, a
+# namespace or another module put in their place is not sys.modules' object either); the type-based sweep below adds
+# any other module reference a later edit introduces.
+STORE_REFERENCE_PAIRS = (("walk_plan", "walk_register"), ("walk_register", "mode_binding"),
+                         ("walk_counts", "mode_binding"))
 
 
-def _references_are_current(module) -> bool:
+def _references_are_current(names: dict) -> bool:
     import types
-    for value in vars(module).values():
+    for value in names.values():
         if isinstance(value, types.ModuleType) and value.__name__ in STORE_REFERENCED \
                 and value is not sys.modules.get(value.__name__):
             return False
@@ -398,7 +407,8 @@ def store_state_why(study: Path = HERE) -> tuple:
         if steering:
             return None, "a GIT_ variable is set: " + ", ".join(steering)
         if not _road_is_genuine():
-            return None, "a function of the road, or the register folder, is not the module's own"
+            return None, ("a function of the road, the register folder, or a module reference of the road is not "
+                          "the module's own")
         top = Path(_git(HERE, "rev-parse", "--show-toplevel").decode().strip()).resolve()
         if STORE_GIT_CEILING in os.environ:
             why = _ceiling_reaches(os.environ[STORE_GIT_CEILING], top)

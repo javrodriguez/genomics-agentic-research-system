@@ -733,8 +733,9 @@ class WC7Store(unittest.TestCase):
             with mock.patch.dict(os.environ, {"GIT_CEILING_DIRECTORIES": str(top.parent), "GIT_DIR": str(top / ".git")}):
                 self.assertIsNone(wc.store_state(study))
             (self.tmp / "alias").unlink()
-            # closure review 49c93d2 NIT 1: a ceiling entry that is a link loop cannot be resolved (Python 3.12 raises
-            # RuntimeError, 3.13 returns the path); either way the store stands down, and nothing raises
+            # closure review 49c93d2 NIT 1: a ceiling entry that is a link loop cannot be resolved on Python 3.12 and
+            # older (RuntimeError), and there the store stands down; 3.13 returns the path, which here lies outside the
+            # tree, so the store rightly stays on. Either way nothing raises
             (self.tmp / "loop-a").symlink_to(self.tmp / "loop-b")
             (self.tmp / "loop-b").symlink_to(self.tmp / "loop-a")
             loop = str(self.tmp / "loop-a")
@@ -817,6 +818,11 @@ class WC7Store(unittest.TestCase):
                 self.assertTrue(wc._road_is_genuine())
                 with mock.patch.object(holder, name, other):
                     self.assertFalse(wc._road_is_genuine())
+                self.assertTrue(wc._road_is_genuine())
+                # review 90c1fd9 NIT 2: whatever stands in, not only a module of the same name
+                for stand_in in (mock.MagicMock(), types.SimpleNamespace(), types.ModuleType("elsewhere")):
+                    with mock.patch.object(holder, name, stand_in):
+                        self.assertFalse(wc._road_is_genuine(), type(stand_in).__name__)
                 self.assertTrue(wc._road_is_genuine())
 
     def test_wc7_replaced_objects_stand_the_store_down(self):
