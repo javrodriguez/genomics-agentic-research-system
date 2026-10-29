@@ -68,7 +68,7 @@ RELAYS = ("https://api.drand.sh", "https://drand.cloudflare.com")
 # The round the next draft registers: None until the draft is regenerated for its review, when the orchestrator sets the
 # first round published at or after the latest time the review can be committed (--round-at <that time>), in the same
 # commit as the regenerated draft. While None, the draft's round reads PENDING and the freeze is closed.
-REGISTERED_ROUND: int | None = None
+REGISTERED_ROUND: int | None = 33496978
 # The outside witness of when the round was registered (ruling 1, and its second hand-back of 24 Oct 2026): GitHub's
 # push activity on the private GARS mirror, which holds the study's own history (the aegis remote is another
 # repository and can never hold a study commit). Pushes there run under Javier's standing word "mirror every verified
