@@ -1,0 +1,286 @@
+blindness check, read from the reviewer's own session file (349 records, 74 attachment records, 47 tool calls) and its 7 sub-agent session files
+session id: c0b94315-29c8-52f3-b42a-a29678303546
+
+1. Operator material in the loaded context (attachment records).
+   Every hit is classified. Two causes carry nothing about the study and recur in EVERY round:
+   the review folder's own path, which the harness echoes through its own furniture, and the
+   reviewer's own report, which it wrote and the harness attached back into its context. The
+   count that binds is UNEXPLAINED, and it must be 0 (Ruling 6, 20 September 2026). A rule read
+   on the totals could never pass, because both causes are present before the reviewer starts.
+   A sub-agent's hand-back is not counted here: section 4 reads it. An operator row is never
+   explained (lane blindness-sidechains, 24 October 2026).
+
+   marker                              total  own report  folder path  UNEXPLAINED
+   the study's folder name                61           5           56            0
+   the round's name                        0           0            0            0
+   the round's shorthand                   2           2            0            0
+   round 3's goal id                       0           0            0            0
+   round 3's folder name                   0           0            0            0
+   round 3's name                          0           0            0            0
+   round 2's goal id                       0           0            0            0
+   round 2's folder name                   0           0            0            0
+   round 2's name                          2           2            0            0
+   the pre-study's goal id                 0           0            0            0
+   the pre-study's folder name             0           0            0            0
+   the operator's coordinating session      0           0            0            0
+   the operator's lane board               0           0            0            0
+   the operator's list system              0           0            0            0
+   the operator's open-items list          0           0            0            0
+   the assistant's memory folder           0           0            0            0
+   the assistant's identity file           0           0            0            0
+   the operator's objective line           0           0            0            0
+   the operator's memory file              0           0            0            0
+   this repository, by path                0           0            0            0
+   the operator's Brain, by path           0           0            0            0
+   the account email                      32                             tolerated
+
+2. The reviewer's sub-agents: 7 sidechain session files read
+   launched agents with no session file: 0
+   session files no launch names: 0
+   Agent results that name no agent: 0
+   - agent a1ace86598e62d6a7: 272 records, 76 attachment records, 70 tool calls
+   - agent a8bfac1dd5476eddc: 177 records, 54 attachment records, 44 tool calls
+   - agent a8ee17c039715e351: 270 records, 79 attachment records, 69 tool calls
+   - agent aaba4e8ba06edb342: 269 records, 79 attachment records, 68 tool calls
+   - agent aad1b5356a8619f8c: 320 records, 91 attachment records, 82 tool calls
+   - agent ab5128fa9e65757e1: 275 records, 78 attachment records, 70 tool calls
+   - agent afa5e06817c881c80: 199 records, 62 attachment records, 47 tool calls
+
+3. Operator material in the sub-agents' own loaded context, all sessions together, by the rules of 1.
+
+   marker                              total  own report  folder path  UNEXPLAINED
+   the study's folder name               537           2          535            0
+   the round's name                        0           0            0            0
+   the round's shorthand                   0           0            0            0
+   round 3's goal id                       0           0            0            0
+   round 3's folder name                   2           2            0            0
+   round 3's name                          0           0            0            0
+   round 2's goal id                       0           0            0            0
+   round 2's folder name                   0           0            0            0
+   round 2's name                          0           0            0            0
+   the pre-study's goal id                 0           0            0            0
+   the pre-study's folder name             0           0            0            0
+   the operator's coordinating session      0           0            0            0
+   the operator's lane board               0           0            0            0
+   the operator's list system              0           0            0            0
+   the operator's open-items list          0           0            0            0
+   the assistant's memory folder           0           0            0            0
+   the assistant's identity file           0           0            0            0
+   the operator's objective line           0           0            0            0
+   the operator's memory file              0           0            0            0
+   this repository, by path                0           0            0            0
+   the operator's Brain, by path           0           0            0            0
+
+4. Sub-agent hand-backs carrying a report: 47, from 13 agents.
+   Task notifications, listed apart: 18, from 17 agents; their
+   text is read by the same rule, so any hit in one is in the table below.
+   A hit is explained only when its text (the word or path it sits in) is in a file of the folder as
+   it stood at launch, and in a tool result that sub-agent received (or a report a nested agent of
+   its own handed it and read the same way): it read it there. Any other hit is UNEXPLAINED, and an
+   operator row is never explained. A study word is traced by its word alone, so a word the study's
+   own files also hold passes even when the sub-agent met it elsewhere; that is why the operator
+   rows are refused outright. The count that binds is UNEXPLAINED, and it must be 0.
+   A hit is traced via brief when the sub-agent did not read it but its brief holds it and it is in
+   the folder at launch. What the brief's author read outside the folder lends no cover.
+   The folder as it stood at launch: the per-file manifest written before the round row was hashed: 17517 of its 17517 files, those whose bytes are unchanged since; its digest d5e95bafdb69 is the input_sha256 of round row 2.
+
+   marker                              total  traced, direct  traced via brief  UNEXPLAINED
+   the study's folder name                45               9                 0           36
+   the round's name                        6               5                 0            1
+   the round's shorthand                   4               0                 0            4
+   round 3's goal id                       0               0                 0            0
+   round 3's folder name                  10               3                 0            7
+   round 3's name                          5               4                 0            1
+   round 2's goal id                       0               0                 0            0
+   round 2's folder name                   3               1                 0            2
+   round 2's name                          1               0                 0            1
+   the pre-study's goal id                 0               0                 0            0
+   the pre-study's folder name             1               1                 0            0
+   the operator's coordinating session      0               0                 0            0
+   the operator's lane board               0               0                 0            0
+   the operator's list system              0               0                 0            0
+   the operator's open-items list          0               0                 0            0
+   the assistant's memory folder           0               0                 0            0
+   the assistant's identity file           0               0                 0            0
+   the operator's objective line           0               0                 0            0
+   the operator's memory file              0               0                 0            0
+   this repository, by path                0               0                 0            0
+   the operator's Brain, by path           0               0                 0            0
+   UNEXPLAINED hits, each quoted to its first 120 characters:
+   - agent a8ee17c039715e351, the study's folder name: gv` and `_codex_exec_argv` (study/evals/gap-study-4/box/run_take.py:1282, :1447); - preflight reads: `agent_exec_argv` (
+   - agent aad1b5356a8619f8c, the study's folder name: c-exit` now route `graded` (study/evals/gap-study-4/routing.json:119, 234, 264), and the records carry agent_events. - *
+   - agent afa5e06817c881c80, the study's folder name: .** `freeze.pinned_paths` (`study/evals/gap-study-4/freeze.py:388-407`) expands patterns into the files committed at HEA
+   - agent afa5e06817c881c80, the study's folder name: 5 leftover) - **Where:** `study/evals/gap-study-4/run_builders.py:980` and `:686`; `check_take.py:911-913` and `:2050`. 
+   - agent bnsuj8qy2, the study's folder name: tch.py --check" "lint_language.py evals/gap-study-4/" "lint_pooling.py evals/gap-study-4/" "prereg.py --status" "review_
+   - agent bnsuj8qy2, the study's folder name: ls/gap-study-4/" "lint_pooling.py evals/gap-study-4/" "prereg.py --status" "review_kit/rounds.py --check"; do n=$(echo $
+   - agent bnsuj8qy2, the study's folder name: r ' /' '__'); timeout 900 python3 evals/gap-study-4/$c &gt; /tmp/pfr2/$n.out 2&gt;&amp;1; echo "=== $c -&gt; exit $?"; t
+   - agent bnsuj8qy2, the study's folder name: 2/$n.out | cut -c1-400; done; (cd evals/gap-study-4 &amp;&amp; python3 -c "import json, freeze; p = freeze.unrecorded_sh
+   - agent a1ace86598e62d6a7, the study's folder name: anding`/`pending_standing` (study/evals/gap-study-4/pending_walk.py) require one of two things: - grade.json graded true
+   - agent a1ace86598e62d6a7, the study's folder name: no committed record.** - study/evals/gap-study-4/walk_runner.py:36, 215, 238 hold the walk "for a human, never committed
+   - agent ab5128fa9e65757e1, the round's shorthand: erwise: - 1533750a says "Athena run gap4-beacon1-6190a00 failed test_build_draft --witnesses 2". - ef31e4a9 says the run
+   - agent ab5128fa9e65757e1, round 3's name: not be re-registered. Lean MAJOR.** - Round 33496978 publishes at 2026-10-29T17:18:18Z, so the push deadline is 16:18:18
+   - agent bnsuj8qy2, the round's shorthand: ix, gap-subagent-cost, gap-walk-counts, gap4-ship-rulings, hook-control, live-box-2026-10-14, live-harness-foundation, p
+   - agent bnsuj8qy2, the study's folder name: 2PM 0:00.00 timeout 900 python3 evals/gap-study-4/build_draft.py --check
+   - agent bnsuj8qy2, the round's shorthand: ix, gap-subagent-cost, gap-walk-counts, gap4-ship-rulings, hook-control, live-box-2026-10-14, live-harness === freeze.py
+   - agent bnsuj8qy2, the study's folder name: g.json ready === lint_language.py evals/gap-study-4/ -> exit 0 clean — 208 input(s) scanned, 78 excused line(s) on recor
+   - agent bnsuj8qy2, the study's folder name: (s) on record === lint_pooling.py evals/gap-study-4/ -> exit 0 clean — 208 file(s) and 0 commit(s) scanned, no excusal p
+   - agent bnsuj8qy2, the round's shorthand: ix, gap-subagent-cost, gap-walk-counts, gap4-ship-rulings, hook-control, live-box-2026-10-14, live-harness-foundation, p
+   - agent bnsuj8qy2, round 2's name: eck; glitch-f3's ruling on w4t's review round 2 (lane w4t fold 2): every normal-half verdict whose reply holds a number 
+   - agent b8eavodf5, the study's folder name: walks/study &amp;&amp; python3 -B evals/gap-study-4/leak_grep.py --check &gt; /tmp/pfr2-walks/leak.txt 2&gt;&amp;1; echo
+   - agent bbcu8r1f5, the study's folder name: /study &amp;&amp; time python3 -B evals/gap-study-4/walk_register.py --check 2&gt;&amp;1 | tail -3" completed (exit code
+   - agent b8j2autm3, the study's folder name: /study &amp;&amp; time python3 -B evals/gap-study-4/walk_plan.py --coverage --require-run-arms &gt; /tmp/pfr2-walks/cov.
+   - agent bm95t35mt, the study's folder name: endor/study &amp;&amp; python3 -B evals/gap-study-4/build_draft.py --check 2&gt;&amp;1 | tail -5; python3 -B evals/gap-s
+   - agent bm95t35mt, the study's folder name: 2&gt;&amp;1 | tail -5; python3 -B evals/gap-study-4/freeze.py --check 2&gt;&amp;1 | tail -5; cd evals/gap-study-4; pytho
+   - agent bm95t35mt, the study's folder name: --check 2&gt;&amp;1 | tail -5; cd evals/gap-study-4; python3 -B -c "import json, freeze; p=freeze.unrecorded_shapes_prob
+   - agent bm95t35mt, the study's folder name: thon.app/Contents/MacOS/Python -B evals/gap-study-4/freeze.py --check <account> 28689 14.8 0.4 34268284 72160 ?? S 4:14P
+   - agent bm95t35mt, the study's folder name: thon.app/Contents/MacOS/Python -B evals/gap-study-4/build_draft.py --check <account> 22374 14.0 0.4 34264916 67736 ?? S 
+   - agent bm95t35mt, the study's folder name: /Python.app/Contents/MacOS/Python evals/gap-study-4/build_draft.py --check <account> 33914 0.0 0.0 34133228 588 ?? Ss 4:
+   - agent bm95t35mt, the study's folder name: fr2-freeze/study; time python3 -B evals/gap-study-4/freeze.py --check 2>&1 | tail -15; cat <review folder>/athena/18-fre
+   - agent bm95t35mt, the study's folder name: p/pfr2-vendor/study && python3 -B evals/gap-study-4/build_draft.py --check 2>&1 | tail -5; python3 -B evals/gap-study-4/
+   - agent bm95t35mt, the study's folder name: -check 2>&1 | tail -5; python3 -B evals/gap-study-4/freeze.py --check 2>&1 | tail -5; cd evals/gap-study-4; python3 -B -
+   - agent bm95t35mt, the study's folder name: eze.py --check 2>&1 | tail -5; cd evals/gap-study-4; python3 -B -c "import json, freeze; p=freeze.unrecorded_shapes_prob
+   - agent bm95t35mt, the study's folder name: 2PM 0:00.00 timeout 900 python3 evals/gap-study-4/build_draft.py --check
+   - agent bzhjijnrf, the study's folder name: fr2-freeze/study; time python3 -B evals/gap-study-4/freeze.py --check 2&gt;&amp;1 | tail -15; cat <review folder>/athena
+   - agent bzhjijnrf, the round's name: e review 3 (pf1-l2b): the public page's round 4 section, read as lint_pooling --section-of reads it (only this lint_lang
+   - agent bzhjijnrf, round 2's folder name: lint_language.py:5: python3 evals/gap-study-2/lint_language.py --commits-since <sha> # commit BODIES lint_language.py:6:
+   - agent bzhjijnrf, round 2's folder name: ES lint_language.py:6: python3 evals/gap-study-2/lint_language.py --commits-since <sha> --at <sha> # up to that commit l
+   - agent bmjlgnvq7, the study's folder name: --format=%H &amp;&amp; python3 -B evals/gap-study-4/copy_manifest.py --check | cut -c1-80; echo "# x" &gt;&gt; evals/gap
+   - agent bmjlgnvq7, the study's folder name: | cut -c1-80; echo "# x" &gt;&gt; evals/gap-study-4/scrub.py; python3 -B evals/gap-study-4/copy_manifest.py --check | cu
+   - agent bmjlgnvq7, the study's folder name: /gap-study-4/scrub.py; python3 -B evals/gap-study-4/copy_manifest.py --check | cut -c1-200; git checkout -q evals/gap-st
+   - agent bmjlgnvq7, the study's folder name: ck | cut -c1-200; git checkout -q evals/gap-study-4/scrub.py; python3 -B - &lt;&lt;'EOF' import json p='evals/gap-study-
+   - agent bmjlgnvq7, the study's folder name: -B - &lt;&lt;'EOF' import json p='evals/gap-study-4/COPIED.d/w1a-cp1-scaffold.json'; d=json.load(open(p)) for e in d['fi
+   - agent bmjlgnvq7, the study's folder name: n(p,'w'),indent=1) EOF python3 -B evals/gap-study-4/copy_manifest.py --check | cut -c1-200; git checkout -q . # the edit
+   - agent bmjlgnvq7, the study's folder name: -B - &lt;&lt;'EOF' import json p='evals/gap-study-4/COPIED.d/w5b-cp5-pipeline.json'; d=json.load(open(p)) for e in d['fi
+   - agent bmjlgnvq7, the study's folder name: n(p,'w'),indent=1) EOF python3 -B evals/gap-study-4/copy_manifest.py --check | cut -c1-120; git checkout -q ." completed
+   - agent bmjlgnvq7, round 3's folder name: path']=='round2.py': e['source']='evals/gap-study-3/scrub.py' json.dump(d,open(p,'w'),indent=1) EOF python3 -B evals/gap
+   - agent bmjlgnvq7, round 3's folder name: y (w1a-cp1-scaffold) differs from evals/gap-study-3/scrub.py at e2979b3143081824aadea73523ec41af30c1ddb1 and has no `edi
+   - agent bmjlgnvq7, round 3's folder name: y (w1a-cp1-scaffold) differs from evals/gap-study-3/scrub.py at e2979b3143081824aadea73523ec41af30c1ddb1 and has no `edi
+   - agent bmjlgnvq7, round 3's folder name: y (w1a-cp1-scaffold) differs from evals/gap-study-3/scrub.py at e2979b3143081824aadea73523ec41af30c1ddb1 and has no `edi
+   - agent bmjlgnvq7, round 3's folder name: y (w1a-cp1-scaffold) differs from evals/gap-study-3/scrub.py at e2979b3143081824aadea73523ec41af30c1ddb1 and has no `edi
+   - agent bmjlgnvq7, round 3's folder name: /bmjlgnvq7.output d) differs from evals/gap-study-3/scrub.py at e2979b3143081824aadea73523ec41af30c1ddb1 and has no `edi
+   - agent bmjlgnvq7, round 3's folder name: y (w1a-cp1-scaffold) differs from evals/gap-study-3/scrub.py at e2979b3143081824aadea73523ec41af30c1ddb1 and has no `edi
+
+5. Absolute paths in the reviewer's tool inputs that are not inside its folder: 11
+   - (a search pattern the reviewer used on its own report, not a path it read)
+   - /opt/cfg
+   - /tmp
+   - /tmp/pfr2-<yourname>/
+   - /tmp/pfr2/
+   - /tmp/pfr2/$n.out
+   - /tmp/pfr2/preamble.txt
+   - /tmp/pfr2/prereg.diff;
+   - /tmp/pfr2;
+   - /var/tmp
+   - <harness task folder>
+   agent a1ace86598e62d6a7, in its tool inputs: 18
+   - (a search pattern the reviewer used on its own report, not a path it read)
+   - /home/<account>/w-[A-Za-z0-9]*
+   - /tmp
+   - /tmp/pfr2-walks
+   - /tmp/pfr2-walks/cc.py
+   - /tmp/pfr2-walks/cov.txt
+   - /tmp/pfr2-walks/cov.txt;
+   - /tmp/pfr2-walks/hp.py
+   - /tmp/pfr2-walks/hp.py,
+   - /tmp/pfr2-walks/leak.txt
+   - /tmp/pfr2-walks/study
+   - /tmp/pfr2-walks/study/evals/gap-study-4
+   - /tmp/pfr2-walks/study/evals/gap-study-4/rehearsals
+   - /tmp/pfr2-walks/study/evals/gap-study-4/rehearsals;
+   - /tmp/pfr2-walks/study/evals/gap-study-4;
+   - /tmp/pfr2-walks;
+   - /tmp/pfr2/preamble.txt
+   - <harness task folder>
+   agent a8bfac1dd5476eddc, in its tool inputs: 4
+   - /tmp/pfr2
+   - /tmp/pfr2/preamble.txt;
+   - /tmp/pfr2/prereg.diff;
+   - <home>/.claude/projects/-Users-<account>-aegis-builds-pfr-20261029-round2/c0b94315-29c8-52f3-b42a-a29678303546/tool-resu
+   agent a8ee17c039715e351, in its tool inputs: 14
+   - (a search pattern the reviewer used on its own report, not a path it read)
+   - /opt/cfg
+   - /opt/cfg,
+   - /tmp
+   - /tmp/pfr2-box
+   - /tmp/pfr2-box/study
+   - /tmp/pfr2-box/study/evals/gap-study-4/box;
+   - /tmp/pfr2-box/study/evals/gap-study-4/rehearsals;
+   - /tmp/pfr2-box/study/evals/gap-study-4;
+   - /tmp/pfr2-box/w001x
+   - /tmp/pfr2-box/w001x/turn-1.jsonl
+   - /tmp/pfr2-box/w001x;
+   - /tmp/pfr2/preamble.txt
+   - /var/tmp,
+   agent aaba4e8ba06edb342, in its tool inputs: 7
+   - /tmp
+   - /tmp/pfr2-vendor
+   - /tmp/pfr2-vendor/exp1.py
+   - /tmp/pfr2-vendor/study
+   - /tmp/pfr2-vendor/study/evals/gap-study-4;
+   - /tmp/pfr2/preamble.txt
+   - <harness task folder>
+   agent aad1b5356a8619f8c, in its tool inputs: 5
+   - /tmp
+   - /tmp/h
+   - /tmp/pfr2-routing
+   - /tmp/pfr2-routing/study/evals/gap-study-4
+   - /tmp/pfr2/preamble.txt
+   agent ab5128fa9e65757e1, in its tool inputs: 9
+   - /tmp/pfr2-freeze/fake-rehearsal.txt
+   - /tmp/pfr2-freeze/study
+   - /tmp/pfr2-freeze/study/evals/gap-study-4/prereg-draft.json
+   - /tmp/pfr2-freeze/study/evals/gap-study-4;
+   - /tmp/pfr2-freeze/study/evals;
+   - /tmp/pfr2-freeze/study;
+   - /tmp/pfr2-freeze;
+   - /tmp/pfr2/preamble.txt
+   - <harness task folder>
+   agent afa5e06817c881c80, in its tool inputs: 4
+   - /tmp/pfr2-copy
+   - /tmp/pfr2/preamble.txt
+   - <harness task folder>
+   - <home>/.claude/projects/-Users-<account>-aegis-builds-pfr-20261029-round2/c0b94315-29c8-52f3-b42a-a29678303546/tool-resu
+
+6. Writes outside the folder: 24 paths, by the Write and Edit tools' own paths and by the paths
+   a shell command that writes names. Listed, not ruled: a write outside does not void a round by itself.
+   the reviewer: 3
+   - /tmp/pfr2
+   - /tmp/pfr2/preamble.txt
+   - /tmp/pfr2/prereg.diff
+   agent a1ace86598e62d6a7: 9
+   - /tmp/pfr2-walks
+   - /tmp/pfr2-walks/cc.py
+   - /tmp/pfr2-walks/cov.txt
+   - /tmp/pfr2-walks/hp.py
+   - /tmp/pfr2-walks/leak.txt
+   - /tmp/pfr2-walks/study
+   - /tmp/pfr2-walks/study/evals/gap-study-4/rehearsals/w-o10/regrade.json
+   - /tmp/pfr2-walks/study/evals/gap-study-4/rehearsals/w-o49/grade.json
+   - /tmp/pfr2-walks/study/evals/gap-study-4/rehearsals/w-o49/regrade.json
+   agent a8ee17c039715e351: 3
+   - /tmp/pfr2-box
+   - /tmp/pfr2-box/study
+   - /tmp/pfr2-box/w001x
+   agent aaba4e8ba06edb342: 3
+   - /tmp/pfr2-vendor
+   - /tmp/pfr2-vendor/exp1.py
+   - /tmp/pfr2-vendor/study
+   agent aad1b5356a8619f8c: 2
+   - /tmp/pfr2-routing
+   - /tmp/pfr2-routing/study
+   agent ab5128fa9e65757e1: 2
+   - /tmp/pfr2-freeze
+   - /tmp/pfr2-freeze/study
+   agent afa5e06817c881c80: 2
+   - /tmp/pfr2-copy
+   - /tmp/pfr2-copy/evals/gap-study-4/scrub.py
+
+7. The reviewer's isolation, as the sub-agents' own records show it. The launch flags are process
+   flags and no sidechain record carries them, nor the environment it ran with.
+   - agent a1ace86598e62d6a7: skills offered the reviewer's; Workflow tool named 0; MCP tools named 0; instruction files from outside the folder 0
+   - agent a8bfac1dd5476eddc: skills offered the reviewer's; Workflow tool named 0; MCP tools named 0; instruction files from outside the folder 0
+   - agent a8ee17c039715e351: skills offered the reviewer's; Workflow tool named 0; MCP tools named 0; instruction files from outside the folder 0
+   - agent aaba4e8ba06edb342: skills offered the reviewer's; Workflow tool named 0; MCP tools named 0; instruction files from outside the folder 0
+   - agent aad1b5356a8619f8c: skills offered the reviewer's; Workflow tool named 0; MCP tools named 0; instruction files from outside the folder 0
+   - agent ab5128fa9e65757e1: skills offered the reviewer's; Workflow tool named 0; MCP tools named 0; instruction files from outside the folder 0
+   - agent afa5e06817c881c80: skills offered the reviewer's; Workflow tool named 0; MCP tools named 0; instruction files from outside the folder 0
