@@ -11,6 +11,17 @@ Under w5b-4, runtime outputs have no copy fragment. Their commit history must
 start strictly after the freeze, including outputs later removed from the tree.
 Only the disposable rehearsal plan passes --rehearsal-plan: its exact placeholder
 is reported NOT CHECKED. Ordinary checks still require the real rehearsal record.
+
+--witness (pre-freeze review 2, MAJOR 2; lane fold2-lb) reads GitHub's push records
+of the mirror (freeze.push_records, the network, on the Mac at publication and at
+each batch fetch from athena). A pushed commit off HEAD's line that changes the take
+ledger (takes.json, outcomes.json, rulings.json) is refused: a take registered, run,
+reset away and re-run once its first history reached the mirror. Every take-ledger
+commit on HEAD's line that no push record holds is printed by sha and counted as
+unwitnessed; that count is published. Registrations are committed inside the drive
+loop on athena (drive.Driver.register), which holds no push credentials, so the
+window the witness cannot close is from a take's registration to the first push
+that holds it: a history reset inside that window leaves no outside record.
 """
 
 from __future__ import annotations
@@ -544,6 +555,53 @@ def frozen_commit_problems(frozen: dict, commit: str) -> list[str]:
     return out
 
 
+TAKE_LEDGER_FILES = ("takes.json", "outcomes.json", "rulings.json")
+
+
+def take_ledger_witness(pushes) -> tuple[list[str], list[str], list[str]]:
+    """MAJOR 2 of pre-freeze review 2: (problems, the take-ledger commits on HEAD's line, those no push holds).
+
+    `pushes` is [(unix time, pushed sha)] as freeze.push_records returns them. Every pushed sha must be in this clone;
+    no pushed commit off HEAD's line may change a take-ledger file (freeze.mirror_problem's shape, for the takes)."""
+    rels = [(HERE / f).relative_to(REPO).as_posix() for f in TAKE_LEDGER_FILES]
+    shas = sorted({s for _, s in pushes if s and set(s) != {"0"}})
+    missing = [s for s in shas if git("cat-file", "-e", f"{s}^{{commit}}")[0] != 0]
+    if missing:
+        return ([f"{len(missing)} sha(s) the mirror records are not in this clone ({missing[0][:12]} first): fetch "
+                 f"the mirror's history before the witness, which reads every pushed commit"], [], [])
+
+    def rev_list(*args):
+        code, out = git("rev-list", "--full-history", *args, "--", *rels)
+        if code != 0:
+            raise ValueError("the take ledger's history cannot be listed")
+        return out.split()
+
+    problems = []
+    if shas:
+        apart = rev_list(*shas, "--not", "HEAD")
+        if apart:
+            problems.append(f"the mirror holds {len(apart)} commit(s) off HEAD's line that change the take ledger "
+                            f"({apart[-1][:12]} first): an abandoned take history (a take registered or run, then "
+                            f"reset away and re-run) is refused")
+    ledger = rev_list("HEAD")
+    unwitnessed = [c for c in ledger
+                   if not any(git("merge-base", "--is-ancestor", c, s)[0] == 0 for s in shas)]
+    return problems, ledger, unwitnessed
+
+
+def witness_main() -> int:
+    """check_results.py --witness: the take ledger against GitHub's push records (MAJOR 2)."""
+    import freeze
+    problems, ledger, unwitnessed = take_ledger_witness(freeze.push_records())
+    print(f"check_results --witness: {len(ledger)} take-ledger commit(s) on HEAD's line, {len(unwitnessed)} "
+          f"unwitnessed (no push record holds them)" + (": " + ", ".join(c[:12] for c in unwitnessed)
+                                                        if unwitnessed else ""))
+    if problems:
+        print("check_results --witness: REFUSE: " + "; ".join(problems))
+        return 1
+    return 0
+
+
 def rehearsal_record_problems(frozen: dict) -> list[str]:
     """Re-check the stored rehearsal evidence, including in disposable clones."""
     import freeze
@@ -712,7 +770,15 @@ def main(argv=None):
     parser.add_argument("--ledger", action="store_true")
     parser.add_argument("--rehearsal-plan", action="store_true",
                         help="disposable rehearsal only; rehearsal evidence is NOT CHECKED")
+    parser.add_argument("--witness", action="store_true",
+                        help="the take ledger against GitHub's push records of the mirror (network; MAJOR 2)")
     args = parser.parse_args(argv)
+    if args.witness:
+        try:
+            return witness_main()
+        except ValueError as exc:
+            print(f"check_results --witness: REFUSE: {exc}")
+            return 1
     try:
         if is_shallow():
             raise ValueError("the committed ledger cannot be checked in a shallow clone")
