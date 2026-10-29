@@ -915,7 +915,14 @@ def ready_problems(d):
          and design["power"] == expected_power() and design["floors"] == b.probes4_floors()[0]
          and isinstance(design["floors"], dict)                    # pre-freeze review 1, PENDING #7-8 (pf1-l4-close)
          and d["floor_evidence"] == b.probes4_floors()[1], "R17.values")
-    need(d[stats.DESIGN_KEY] == {"PENDING": sorted(b.pending(d))} and d["pending"] == b.pending(d) and bool(d["pending"]), "R32.closed")
+    # lane gap-beacon-commit: the design is withheld while anything is PENDING and is stats.validate_design's once
+    # nothing is; the beacon's round is PENDING exactly while order_beacon.REGISTERED_ROUND is None
+    try:
+        closed = {"PENDING": sorted(b.pending(d))} if b.pending(d) else stats.validate_design(copy.deepcopy(design))
+    except Exception:  # noqa: BLE001 (a design the validator refuses is no closed design)
+        closed = None
+    need(d[stats.DESIGN_KEY] == closed and d["pending"] == b.pending(d) and
+         ("/take_order_beacon/round" in d["pending"]) == (b.order_beacon.REGISTERED_ROUND is None), "R32.closed")
     ns = d["session_namespace"]
     need(ns["derived_from"].endswith('/' + study.STUDY_REL) and ns["uuid"] == str(uuid.uuid5(uuid.NAMESPACE_URL, ns["derived_from"])) and
          ns["uuid"] != "9607c78d-18c9-5965-9202-5f09043bdf0c", "R33.namespace")
@@ -2537,8 +2544,10 @@ class SuppliedText(unittest.TestCase):
         for d in (b.build(),json.loads((HERE/'prereg-draft.json').read_text())):
             self.assertEqual(source_problems(d), [])
             self.assertFalse(any(k.startswith(('/missing_source_text/','/limits/','/source_text/')) for k in d['pending']))
-            self.assertTrue(d['pending'])
-            self.assertEqual(d[stats.DESIGN_KEY], {'PENDING':sorted(d['pending'])})
+            # lane gap-beacon-commit: PENDING while the round is unregistered, the validated design once nothing is
+            self.assertEqual('/take_order_beacon/round' in d['pending'], b.order_beacon.REGISTERED_ROUND is None)
+            self.assertEqual(d[stats.DESIGN_KEY], {'PENDING':sorted(d['pending'])} if d['pending'] else
+                             stats.validate_design(copy.deepcopy(d['stats_design_inputs'])))
 
 DESCRIPTION_MUTANTS.update(SOURCE_MUTANTS)
 

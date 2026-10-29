@@ -150,6 +150,18 @@ def registered(draft: dict, round_no=ROUND) -> dict:
     return d
 
 
+def unregistered(draft: dict) -> dict:
+    """The draft with its round PENDING again, named in pending and the design withheld (lane gap-beacon-commit): a
+    draft the freeze refuses, whatever round the committed draft registers."""
+    import build_draft
+    import stats
+    d = copy.deepcopy(draft)
+    d["take_order_beacon"] = dict(order_beacon.registration(), round="PENDING")
+    d["pending"] = build_draft.pending(d)
+    d[stats.DESIGN_KEY] = {"PENDING": sorted(d["pending"])}
+    return d
+
+
 @contextlib.contextmanager
 def open_design(fz):
     """prepare's design checks stood down on the committed draft (its PENDING inputs are another lane's fills): only
@@ -341,14 +353,18 @@ def g9_beacon(fz, ob, pr, p="G9.beacon") -> list:
             if synthetic["signature"] != fz.SYNTHETIC_SIGNATURE or fz.BEACON_NOT_REHEARSED not in said.getvalue():
                 out.append(f"{p}: a rehearsal without a reading is not marked synthetic")
         live = committed_draft()
-        if live.get("take_order_beacon") != order_beacon.registration() or live["take_order_beacon"]["round"] != \
-                "PENDING" or "/take_order_beacon/round" not in live.get("pending", {}):
-            out.append(f"{p}: the committed draft does not register the beacon with its round PENDING")
+        # lane gap-beacon-commit: the committed draft holds order_beacon.REGISTERED_ROUND, with the round PENDING and
+        # named in pending exactly while that is None
+        unset = order_beacon.REGISTERED_ROUND is None
+        if live.get("take_order_beacon") != order_beacon.registration() or \
+                (live["take_order_beacon"]["round"] == "PENDING") != unset or \
+                ("/take_order_beacon/round" in live.get("pending", {})) != unset:
+            out.append(f"{p}: the committed draft does not register the beacon as order_beacon.REGISTERED_ROUND reads")
         if "cannot have been chosen to suit a result" in pr.__doc__:
             out.append(f"{p}: prereg.py still claims the order cannot have been chosen")
         future = registered(live, round_no=ob.round_at(__import__("datetime").datetime.now(
             __import__("datetime").timezone.utc)) + 100000)
-        for design, why in ((dict(live, _frozen=False, _source="prereg-draft.json"), "PENDING"),
+        for design, why in ((dict(unregistered(live), _frozen=False, _source="prereg-draft.json"), "PENDING"),
                             (dict(future, _frozen=False, _source="prereg-draft.json"), "not yet published")):
             seen = []
             with mock.patch.object(pr, "load", lambda design=design: design):
@@ -514,7 +530,7 @@ def g1_check(fz, p="G1.check") -> list:
         rep = wp.coverage_report()
         live_gaps = wp.run_arm_gaps(rep["got"], rep["deferred"])
         with mock.patch.object(wp, "coverage_report", lambda: rep), contextlib.redirect_stdout(io.StringIO()):
-            legs = fz.check_legs(committed_draft())
+            legs = fz.check_legs(unregistered(committed_draft()))     # lane gap-beacon-commit: a refused draft
         names = [n for n, _ in legs]
         for want in ("copy manifest", "pending", "holdout fields", "pins", "vendor legs i-iii", "walk coverage",
                      "prepare"):
