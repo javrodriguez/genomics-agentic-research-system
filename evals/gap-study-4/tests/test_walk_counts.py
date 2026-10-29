@@ -658,11 +658,17 @@ class WC7Store(unittest.TestCase):
         # the child entry refuses unless it is `python -I -B` with no unittest.mock loaded, before reading anything
         import subprocess
         script = str(HERE / "walk_counts.py")
-        for argv in ([sys.executable, "-B", script, "--store-coverage"], [sys.executable, "-I", script, "--store-coverage"]):
+        # The -I child without -B writes bytecode, and -I ignores PYTHONDONTWRITEBYTECODE, so its caches go to a
+        # pycache_prefix under self.tmp, never beside the study's sources (athena gap4-beacon2-1533750: the 22 .pyc
+        # files it left made the battery tree read changed, and the --outputs step refused).
+        caches = self.tmp / "pycache"
+        for argv in ([sys.executable, "-B", script, "--store-coverage"],
+                     [sys.executable, "-X", f"pycache_prefix={caches}", "-I", script, "--store-coverage"]):
             with self.subTest(argv=argv[1:-2]):
                 got = subprocess.run(argv, capture_output=True, text=True, timeout=120)
                 self.assertNotEqual(got.returncode, 0, got.stdout)
                 self.assertIn("refused", got.stdout)
+        self.assertTrue(any(caches.rglob("*.pyc")), "the child without -B wrote no bytecode, so it was not that child")
         self.assertFalse((self.tmp / "store").exists(), "a child that is not isolated wrote a reading")
         # the true child passes the gate: run with GIT_DIR set, it gets past the refusal and stands down before any read
         import os
