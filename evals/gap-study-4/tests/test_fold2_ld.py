@@ -283,7 +283,11 @@ class M16Cross(unittest.TestCase):
                 break
         else:
             self.skipTest("no committed agreed Codex walk in this tree")
-        got = wnc.walk_problem(base.name, base, readers=None)
+        sys.path.insert(0, str(HERE))          # the driver's join imports its study modules as it reads
+        try:
+            got = wnc.walk_problem(base.name, base, readers=None)
+        finally:
+            sys.path[:] = _PATH
         self.assertEqual(got, (None, "rederived"), base.name)
 
 
