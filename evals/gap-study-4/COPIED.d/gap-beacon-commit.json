@@ -1,0 +1,10 @@
+{
+  "lane": "gap-beacon-commit",
+  "files": [
+    {
+      "path": "COPIED.d/gap-beacon-commit.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Lane gap-beacon-commit (glitch-45, the Lane-orchestrator, Thu 29 Oct 2026, under Javier's standing delegation), on the freeze line 2f998169. Edits without transfer, in files other lanes' fragments claim. First commit (glitch-45's rulings on review 2f99816): tests/test_walk_layout.py, tests/test_holdout_digests.py and tests/test_cp8_prep.py: tearDownModule's branch for a module absent before setUpModule could not run, since setUpModule records the module __import__ returns; it is dropped for sys.modules.update, and the comment says what happens: each name gets back the real module, and a module absent before setUpModule stays loaded, the real one (NIT 1; behaviour unchanged). tests/test_walk_counts.py: WC7 binds the guard's read of the executing copy's own names (globals()) with a compiled copy of walk_counts that sys.modules does not hold, given a stray road module reference outside STORE_REFERENCE_PAIRS (NIT 2); read through sys.modules' walk_counts instead, the case is red. No file in check_take.CHECKER_CODE_FILES, READER_SOURCES or CODEX_SOURCES is edited, no test is loosened, and the draft is not regenerated in this commit."
+    }
+  ]
+}

@@ -825,6 +825,18 @@ class WC7Store(unittest.TestCase):
                         self.assertFalse(wc._road_is_genuine(), type(stand_in).__name__)
                 self.assertTrue(wc._road_is_genuine())
 
+    def test_wc7_an_unregistered_copy_reads_its_own_references(self):
+        # review 2f99816 NIT 2: the guard reads the executing copy's own names (globals()), not sys.modules' walk_counts,
+        # so a copy that sys.modules does not hold, whose road reference is not sys.modules' object, stands down
+        import types
+        twin = types.ModuleType("walk_counts")
+        twin.__file__ = wc.__file__
+        exec(compile(Path(wc.__file__).read_text(), wc.__file__, "exec"), twin.__dict__)
+        self.assertIsNot(twin, sys.modules["walk_counts"])
+        self.assertTrue(twin._road_is_genuine())
+        twin.pending_walk = types.ModuleType("pending_walk")     # not a STORE_REFERENCE_PAIRS name: the sweep's alone
+        self.assertFalse(twin._road_is_genuine())
+
     def test_wc7_replaced_objects_stand_the_store_down(self):
         # closure review 9bc0822 NIT 2: git show honours refs/replace and info/grafts, which the state does not hold
         top = self.scratch_repo()

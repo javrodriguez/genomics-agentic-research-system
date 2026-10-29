@@ -153,11 +153,10 @@ def setUpModule():
 
 
 def tearDownModule():
-    for name, prior in PRIOR.items():       # a compiled witness never outlives this module; lane gap-prebeacon-fix3
-        if prior is None:                    # (review 90c1fd9 NIT 4): the objects found are put back, never dropped,
-            sys.modules.pop(name, None)      # so later modules keep one copy of each (test_cp8_prep's pattern)
-        else:
-            sys.modules[name] = prior
+    # A compiled witness never outlives this module (lane gap-prebeacon-fix3, review 90c1fd9 NIT 4): each name gets back
+    # the real module setUpModule imported, never dropped, so later modules keep one copy of each (test_cp8_prep's
+    # pattern). A module absent before setUpModule stays loaded afterwards, the real one (review 2f99816 NIT 1).
+    sys.modules.update(PRIOR)
 
 
 def b():

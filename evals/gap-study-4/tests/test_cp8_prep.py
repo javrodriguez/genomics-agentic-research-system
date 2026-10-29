@@ -161,11 +161,9 @@ def setUpModule():
 
 
 def tearDownModule():
-    for name, prior in PRIOR.items():             # a compiled witness never outlives this module
-        if prior is None:
-            sys.modules.pop(name, None)
-        else:
-            sys.modules[name] = prior
+    # A compiled witness never outlives this module: each name gets back the real module setUpModule imported. A
+    # module absent before setUpModule stays loaded afterwards, the real one (review 2f99816 NIT 1).
+    sys.modules.update(PRIOR)
     tbi.tearDownModule()
 
 
