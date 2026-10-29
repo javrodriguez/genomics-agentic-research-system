@@ -63,8 +63,11 @@ WALK_STEP = (
 # Pre-freeze review 1, m14 (lane pf1-l2b, Sat 24 Oct 2026): round 3's two publication-language steps, ported. The
 # published page's section is a single-command step like BEFORE's; the commit bodies' step reads the freeze commit
 # and scans the bodies since it, or says it is not frozen, and its body is bound here exactly.
-SECTION = "python3 evals/gap-study-4/lint_pooling.py --section-of docs/EVALS.md"
-SECTION_LANGUAGE = "python3 evals/gap-study-4/lint_language.py --section-of docs/EVALS.md"   # lane review 3
+# Pre-freeze review 2, m5 (lane fold2-lb): an absent section exits 3 (not run); CI allows it only while no RESULT.md.
+ABSENT_OK = " $(test -f evals/gap-study-4/RESULT.md || echo --allow-absent)"
+SECTION = "python3 evals/gap-study-4/lint_pooling.py --section-of docs/EVALS.md" + ABSENT_OK
+SECTION_LANGUAGE = ("python3 evals/gap-study-4/lint_language.py --section-of docs/EVALS.md"   # lane review 3
+                    + ABSENT_OK)
 BODIES = ('python3 evals/gap-study-4/lint_language.py --commits-since "$freeze"',
           'python3 evals/gap-study-4/lint_pooling.py --commits-since "$freeze"')
 BODIES_RUN = (f"if [ -f {FROZEN} ]; then\n"
