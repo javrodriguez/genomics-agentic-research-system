@@ -229,7 +229,14 @@ def sample_errors() -> tuple:
     return (sample.SampleError,)
 
 
-def flagged_counts(pre: dict, reader=None):
+def _flagged_verdicts():
+    from labelling import flagged_verdicts
+    return flagged_verdicts
+
+
+def flagged_counts(pre: dict, reader=None, verdict_reader=None):
+    """The flagged list's counts and, pre-freeze review 2 m8 (lane fold2-ld), its verdict record's per-row counts
+    (labelling/flagged_verdicts.py; `verdict_reader(sample doc)` gives the validated findings or None, tests)."""
     design = pre.get("labelling_design")
     fl = design.get("flagged_list") if isinstance(design, dict) else None
     if fl is None:
@@ -238,22 +245,42 @@ def flagged_counts(pre: dict, reader=None):
     if doc is None:
         return {"cap": fl["cap"], "drawn": False}
     f = doc["flagged"]
+    fv = _flagged_verdicts()
+    found = fv.read(doc) if verdict_reader is None else verdict_reader(doc)
     return {"cap": f["cap"], "drawn": True, "flagged": f["flagged"], "listed": f["listed"],
-            "beyond_cap": f["beyond_cap"]}
+            "beyond_cap": f["beyond_cap"], "verdicts": fv.verdict_rows(doc, found)}
 
 
 def render_flagged_counts(c) -> str:
     if c is None:
         return ""
-    cap = "no cap" if c["cap"] is None else f"a cap of {stats._say(c['cap'])}"
+    # m8: the list holds every flagged take only up to its cap; the count beyond it is published and not read
+    reach = ("every take a grader flagged for the human sample goes to it" if c["cap"] is None else
+             f"the takes a grader flagged for the human sample go to it up to the cap of {stats._say(c['cap'])}, a "
+             f"seeded draw of that many when more are flagged, with the count beyond the cap published and not read")
     out = ["## Flagged takes, the separate check list", "",
-           f"Every take a grader flagged for the human sample goes to a separate check list, read after the blind "
-           f"labels, with {cap}.", ""]
+           f"A separate check list, read after the blind labels: {reach}.", ""]
     if not c["drawn"]:
         return "\n".join(out + ["No flagged list is drawn yet: there is no frame.", ""])
-    return "\n".join(out + [f"Flagged takes: {stats._say(c['flagged'])}; on the check list: "
-                            f"{stats._say(c['listed'])}; beyond the cap, published and not read: "
-                            f"{stats._say(c['beyond_cap'])}.", ""])
+    out += [f"Flagged takes: {stats._say(c['flagged'])}; on the check list: "
+            f"{stats._say(c['listed'])}; beyond the cap, published and not read: "
+            f"{stats._say(c['beyond_cap'])}.", ""]
+    rows = c.get("verdicts")
+    if rows is None:
+        return "\n".join(out)
+    out += ["What the person reading the list found on each listed take, per task inside one arm, harness and model "
+            "(labelling/flagged-verdicts.json): the grader's reading stands, is wrong, or the take does not settle it.",
+            ""]
+    if rows and rows[0]["grader-right"] is None:
+        out += ["No verdict record is committed: the list's findings are not read yet.", ""]
+    out += ["| Arm | Harness | Model | Task | On the list | Grader's reading stands | Grader's reading wrong | "
+            "Cannot tell |", "|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        counts = ["not read"] * 3 if r["grader-right"] is None else [
+            stats._say(r[k]) for k in ("grader-right", "grader-wrong", "cannot-tell")]
+        out.append(f"| {r['arm']} | `{r['harness']}` | `{r['model']}` | `{r['task']}` | {stats._say(r['listed'])} | "
+                   + " | ".join(counts) + " |")
+    return "\n".join(out + [""])
 
 
 def from_records(records: list, pre: dict, rows: list, history: list, table=None, *, go=None,

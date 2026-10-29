@@ -27,6 +27,7 @@ import lint_language as ll  # noqa: E402
 import result  # noqa: E402
 import stats  # noqa: E402
 from graders import labels4  # noqa: E402
+from labelling import flagged_verdicts  # noqa: E402
 
 sys.path[:] = _PATH
 
@@ -128,7 +129,6 @@ def verdicts(*rows):
 
 class M8Verdicts(unittest.TestCase):
     def fv(self):
-        from labelling import flagged_verdicts
         return flagged_verdicts
 
     def test_the_claim_follows_the_cap(self):
