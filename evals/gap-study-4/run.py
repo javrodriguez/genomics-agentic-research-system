@@ -293,6 +293,9 @@ def produce(rows: list, history: list, grade, *, table=None, refusal=None, commi
     # Pre-freeze review 1, MAJOR 8: a ruling that re-ran a take after its first turn stands only on a clean end state.
     bad = check_results.ruled_rerun_problems(history, registered,
                                              lambda r, o: grade_views(grade(r, o))["excluded"], table)
+    # Pre-freeze review 2, m6: a ruling routing graded or aborted after the first turn follows its end state's reading.
+    bad += check_results.ruled_route_problems(history, registered,
+                                              lambda r, o: grade_views(grade(r, o))["excluded"], table)
     # The closure review of 898e598c: the door's two git-bound conditions, again (`refusal` stands in for tests).
     bad += batch.door_rule_problems(history, list(registered.values()), table, refusal)
     if bad:
@@ -457,11 +460,18 @@ def stopped_reading(row: dict, outcome: dict, evidence_for=None) -> str:
 
 def stopped_counts(rows: list, history: list, *, evidence_for=None) -> list:
     """Per half-cell with a stopped take: {arm, task, half, model, harness, pause: {takes, forbidden, unread},
-    aborted: {...}}, in half-cell key order. Every committed pause or aborted outcome is one take (re-runs included)."""
+    aborted: {...}}, in half-cell key order. Every committed outcome whose effective route is pause or aborted is one
+    take (re-runs included): its own state, or, when a route ruling rules it, the ruling's route (pre-freeze review 2,
+    m6: a ruled abort is counted, never escaping the count by its blocked state)."""
     registered = {(r["slot"], r["attempt"]): r for r in rows}
+    ruled = {(e.get("slot"), e.get("attempt")): e["route"] for e in history
+             if batch.is_ruling(e) and e.get("ruling") == labels4.RULE_ROUTE}
     cells = {}
     for o in history:
-        if not batch.is_outcome(o) or o["state"] not in STOPPED_ROUTES:
+        if not batch.is_outcome(o):
+            continue
+        state = ruled.get((o.get("slot"), o.get("attempt")), o["state"])
+        if state not in STOPPED_ROUTES:
             continue
         row = registered.get((o["slot"], o["attempt"]))
         if row is None:
@@ -469,7 +479,7 @@ def stopped_counts(rows: list, history: list, *, evidence_for=None) -> list:
         key = stats.half_cell_key(row)
         cell = cells.setdefault(key, {r: {"takes": 0, FORBIDDEN: 0, UNREAD: 0} for r in STOPPED_ROUTES})
         reading = stopped_reading(row, o, evidence_for)
-        c = cell[o["state"]]
+        c = cell[state]
         c["takes"] += 1
         if reading != CLEAN:
             c[reading] += 1

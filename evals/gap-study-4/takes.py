@@ -201,6 +201,12 @@ def ruling_door_problems(record: dict, history: list, rows: list, *, table=None,
             p.append(f"slot {key[0]} attempt {key[1]}: no registered row, so its end state cannot be read")
         else:
             p += check_results.ruled_rerun_problems([taken, record], {key: row}, standing, table)
+    final = record.get("ruling") == labels4.RULE_ROUTE and record.get("route") in check_results.FINAL_RULED_ROUTES
+    if final and phase == labels4.AFTER_FIRST_TURN:    # pre-freeze review 2, m6: graded or aborted, by the end state
+        if row is None:
+            p.append(f"slot {key[0]} attempt {key[1]}: no registered row, so its end state cannot be read")
+        else:
+            p += check_results.ruled_route_problems([taken, record], {key: row}, standing, table)
     return p
 
 
@@ -219,7 +225,9 @@ def commit_ruling(*, slot: str, attempt: int, word: str, route, by: str, why: st
     record.update(why=why, cite=cite)
     history = read_history(root=root, repo=repo)
     validate_ruling(record, history)
-    rows = load_rows(root=root, repo=repo) if batch.reruns(record) else []    # a re-running ruling reads its row
+    # a re-running ruling reads its row, and so does a graded or aborted one (pre-freeze review 2, m6)
+    rows = (load_rows(root=root, repo=repo) if batch.reruns(record) or route in (labels4.GRADED, labels4.ABORTED)
+            else [])
     bad = ruling_door_problems(record, history, rows, standing=standing,
                                driver_refusal=lambda r, o: driver_refusal_record(r, o, root=root, repo=repo))
     if bad:

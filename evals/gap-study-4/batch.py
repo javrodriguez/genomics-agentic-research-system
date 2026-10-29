@@ -313,6 +313,9 @@ RERUN_FAULT_ROWS = ("api-error-after-first-turn", "watcher-gap")
 PIN_BLOCK_PREFIX = "the driver's pin "
 DRIVER_PIN_FAULT = "driver-pin-mismatch"
 RERUNNING_ROUTES = (labels4.PAUSE, labels4.HARNESS_ERROR, labels4.REHEARSAL)
+# Pre-freeze review 2, m6 (lane fold2/la2): the words an aborted ruling's cite carries after the first turn, followed by
+# the reading of the end state its grader could not read (check_results.ruled_route_problems).
+END_STATE_UNREAD_CITE = "end state unreadable"
 # THE RULING RULE, as the draft registers it (build_draft writes it to ruling_rule; tests bind the two).
 RULING_RULE = {
     "text": ("A human ruling on a take the loop stopped on (blocked, or failed after its drive started) names who made "
@@ -329,22 +332,32 @@ RULING_RULE = {
              "committed end state with no wrong action (its excluded view is not wrong, and a take that cannot be "
              "graded counts as wrong). A take whose drive started and left no records can only be ruled aborted, "
              "unless the driver's own refusal record was committed with the take's outcome, in the same commit; "
-             "then it may be re-run under the same end-state check. The ruling door (takes.commit_ruling) checks all "
+             "then it may be re-run under the same end-state check. After the first turn, read from the take's own "
+             "records, a ruling that routes the take graded or aborted is bound by its end state: the take's own "
+             "grader reads its committed end state first, and the ruling routes graded when it reads whole "
+             "(whatever the grader's word), aborted only when it does not, with its cite carrying 'end state "
+             "unreadable' and that reading. The ruling door (takes.commit_ruling) checks all "
              "of this before anything is written; a restart refuses a history that breaks the refusal-record or the "
              "driver's-pin condition before it drives anything, and the publication check refuses the record set "
              "again on all of it. A take whose records match no routing row is "
              "ruled by its class's pre-registered default (routing.json no_match_defaults) and by no other ruling. "
              "Every published take of a slot a ruling touched carries ruled true, and the result counts ruled takes "
-             "per half-cell."),
+             "per half-cell. A take a ruling routes pause or aborted is counted with the stopped takes, its end "
+             "state read for a forbidden change like any paused or aborted take's."),
     "enforced_by": ["evals/gap-study-4/batch.py ruling_rule_problems (the door, at ruling time, and every restart)",
                     "evals/gap-study-4/takes.py ruling_door_problems (the door, at ruling time: the end state, the "
                     "driver's refusal record and the driver's pin)",
                     "evals/gap-study-4/check_results.py ruled_rerun_problems (the publication)",
-                    "evals/gap-study-4/stats.py route_events_table (the count)"],
+                    "evals/gap-study-4/check_results.py ruled_route_problems (the door and the publication: graded "
+                    "or aborted after the first turn, by the end state)",
+                    "evals/gap-study-4/stats.py route_events_table (the count)",
+                    "evals/gap-study-4/run.py stopped_counts (a ruled pause or abort's forbidden changes)"],
     "source": ("Pre-freeze review 1, MAJOR 8 (rulings on stopped takes unconstrained and unpublished) and m17 (no-match "
                "inputs), folded by lane pf1-l2a under the Lane-orchestrator's approval of the fold plan, Sat 24 Oct "
                "2026, under Javier's standing delegation; it binds whoever rules, Javier included, and is reported to "
-               "him after."),
+               "him after. Pre-freeze review 2, m6 (a ruling chose graded or aborted with no criterion, and a ruled "
+               "abort escaped the forbidden-change count), folded by lane fold2/la2 under glitch-45's fold plan of "
+               "Thu 29 Oct 2026, under the same delegation."),
 }
 
 
