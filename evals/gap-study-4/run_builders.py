@@ -664,18 +664,39 @@ def build_take_run_tree(session_id: str, *, repo, commit: str, exclude, harness=
     return tree
 
 
-def prepare_take(row: dict, *, root, repo, origin, exclude, gars_tree_sha, tree_builder=None,
+def exported_gars_tree(repo, commit: str) -> str:
+    """Pre-freeze review 2, m13 (lane fold2-ld, 29 Oct 2026): the gars tree of the commit a take's run tree is exported
+    from, read at export (`git rev-parse <commit>:gars`), never the checker's constant handed back to it; refused
+    (walk_builders.BuilderRefused) unless `commit` is a 40-hex commit id whose gars tree reads as a 40-hex tree id."""
+    import walk_builders as wb
+    if not isinstance(commit, str) or not wb.HEX40.fullmatch(commit):
+        raise wb.BuilderRefused(f"the run tree's commit {commit!r} is not a 40-hex commit id")
+    got = subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "--quiet", f"{commit}:gars"],
+                         capture_output=True, text=True)
+    tree = got.stdout.strip()
+    kind = subprocess.run(["git", "-C", str(repo), "cat-file", "-t", tree], capture_output=True, text=True) if (
+        got.returncode == 0 and wb.HEX40.fullmatch(tree)) else None
+    if kind is None or kind.returncode != 0 or kind.stdout.strip() != "tree":
+        raise wb.BuilderRefused(f"the gars tree of {commit[:12]} cannot be read in {repo}: a take records the tree "
+                                f"it was exported from")
+    return tree
+
+
+def prepare_take(row: dict, *, root, repo, origin, exclude, tree_reader=None, tree_builder=None,
                  fixture_builder=None) -> dict:
     """The take's state: its identity (exactly drive.IDENTITY_KEYS), run tree and project. A fixture refused removes
-    the tree it was built in."""
+    the tree it was built in. The identity's gars_tree_sha is the gars tree of the commit the run tree is exported
+    from, read by `tree_reader(origin repo, commit)` (exported_gars_tree) before the tree is built (m13)."""
     import drive
     import walk_builders as wb
+    tree_reader = exported_gars_tree if tree_reader is None else tree_reader
     tree_builder = build_take_run_tree if tree_builder is None else tree_builder
     fixture_builder = wb.build_walk_fixture if fixture_builder is None else fixture_builder
     ident = take_identity(root, repo, row["slot"])
     sid = ident["session_id"]
     project = drive.neutral_name(sid)
     origin_repo, commit = origin
+    gars_tree_sha = tree_reader(origin_repo, commit)
     tree = tree_builder(sid, repo=origin_repo, commit=commit, exclude=exclude, harness=row["agent"]["harness"])
     try:
         record, source = fixture_builder(row, tree, project)
@@ -953,7 +974,6 @@ def build_run(*, pre, go, arms=None, limit=None, account=RUN_ACCOUNT, builders=N
     """{driver, repo, window, ledger, rows, arms, harnesses, road, table} for batch.Batch, or RunRefused naming every
     value that is missing before anything is built. `account` is the Claude Code login's (ruling 4; the rehearsal's
     walk account under ruling 8)."""
-    import check_take
     import drive
     import routing
     import takes
@@ -976,9 +996,8 @@ def build_run(*, pre, go, arms=None, limit=None, account=RUN_ACCOUNT, builders=N
     harnesses = sorted({r["agent"]["harness"] for r in pre["rows"] if r["arm"] in chosen})
     rules = wb.walk_rules_scanner(builders["rules_scanner"], builders["runtime"], builders["config_parent"], real=real)
     origin, exclude = builders["run_tree_origin"], builders["run_tree_exclude"]
-    road = TakeRoad(prepare=lambda r: prepare_take(r, root=root, repo=repo, origin=origin, exclude=exclude,
-                                                   gars_tree_sha=check_take.GARS_TREE_SHA),
-                    remove=wb.remove_run_tree)
+    road = TakeRoad(prepare=lambda r: prepare_take(r, root=root, repo=repo, origin=origin, exclude=exclude),
+                    remove=wb.remove_run_tree)            # m13: the tree exported is read per take, never the constant
     subs, sources = {}, []
     for harness in harnesses:
         subs[harness], secrets = harness_driver(builders, harness, road, rules, root)

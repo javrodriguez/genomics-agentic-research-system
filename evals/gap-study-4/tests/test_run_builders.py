@@ -1515,7 +1515,7 @@ class S2Prepare(Case):
             return Path("/synthetic/tree-" + sid)
         with mock.patch.object(rb(), "take_identity", lambda root, repo, slot: dict(ident)):
             got = self.must("S2.prepare", rb().prepare_take, row, root="/r", repo="/repo", origin=("/o", "d" * 40),
-                            exclude=["evals"], gars_tree_sha="e" * 40, tree_builder=tree_builder,
+                            exclude=["evals"], tree_reader=lambda repo, commit: "e" * 40, tree_builder=tree_builder,
                             fixture_builder=lambda r, tree, project: ({"sha256": "f" * 64}, "/synthetic/source"))
             self.assertEqual(built, [("sid-x", "/o", "d" * 40, ("evals",), "codex")], "S2.prepare: the tree")
             self.assertEqual(got["identity"], {"session_id": "sid-x", "row": 4, "row_commit": "c" * 40,
@@ -1531,7 +1531,7 @@ class S2Prepare(Case):
             with mock.patch.object(wb, "remove_run_tree", lambda tree: removed.append(str(tree))):
                 with self.assertRaises(RuntimeError, msg="S2.prepare"):
                     rb().prepare_take(row, root="/r", repo="/repo", origin=("/o", "d" * 40), exclude=["evals"],
-                                      gars_tree_sha="e" * 40, tree_builder=tree_builder, fixture_builder=refused)
+                                      tree_reader=lambda repo, commit: "e" * 40, tree_builder=tree_builder, fixture_builder=refused)
         self.assertEqual(removed, ["/synthetic/tree-sid-x"], "S2.prepare: a refused fixture left its tree")
 
     def test_the_default_builders_and_a_refused_fixtures_own_error_g1(self):
@@ -1555,7 +1555,7 @@ class S2Prepare(Case):
 
         def refused(r, tree, project):
             raise Synthetic("synthetic fixture refusal")
-        kw = dict(root="/r", repo="/repo", origin=("/o", "d" * 40), exclude=["evals"], gars_tree_sha="e" * 40)
+        kw = dict(root="/r", repo="/repo", origin=("/o", "d" * 40), exclude=["evals"], tree_reader=lambda repo, commit: "e" * 40)
         with mock.patch.object(rb(), "take_identity", lambda root, repo, slot: dict(ident)), \
                 mock.patch.object(rb(), "build_take_run_tree", tree_builder), \
                 mock.patch.object(wb, "build_walk_fixture", fixture), \
@@ -1581,7 +1581,7 @@ class S2Prepare(Case):
         row = {"slot": "s-1", "agent": {"harness": "codex", "version": "v"}}
         with mock.patch.object(rb(), "take_identity", lambda root, repo, slot: dict(ident)):
             got = self.must("S2.prepare", rb().prepare_take, row, root="/r", repo="/repo", origin=("/o", "d" * 40),
-                            exclude=["evals"], gars_tree_sha="e" * 40,
+                            exclude=["evals"], tree_reader=lambda repo, commit: "e" * 40,
                             tree_builder=lambda sid, **kw: Path("/synthetic/tree-" + sid),
                             fixture_builder=lambda r, tree, project: ({"sha256": "f" * 64}, "/synthetic/source"))
         self.assertIsInstance(got, dict, "S2.prepare: no state returned")
@@ -1602,7 +1602,7 @@ class S2Prepare(Case):
                 mock.patch.object(wb, "build_walk_fixture", lambda r, tree, project: used.append(str(tree)) or (
                     {"sha256": "f" * 64}, "/synthetic/default-source")):
             got = self.must("S2.prepare", rb().prepare_take, row, root="/r", repo="/repo", origin=("/o", "d" * 40),
-                            exclude=["evals"], gars_tree_sha="e" * 40, tree_builder=tree_builder)
+                            exclude=["evals"], tree_reader=lambda repo, commit: "e" * 40, tree_builder=tree_builder)
         self.assertEqual((used, got["identity"]["source"]), (["/synthetic/tree-sid-x"], "/synthetic/default-source"),
                          "S2.prepare: not walk_builders' fixture")
 
@@ -1612,7 +1612,7 @@ class S2Prepare(Case):
                 mock.patch.object(wb, "remove_run_tree", lambda tree: removed.append(str(tree))):
             try:
                 rb().prepare_take(row, root="/r", repo="/repo", origin=("/o", "d" * 40), exclude=["evals"],
-                                  gars_tree_sha="e" * 40, tree_builder=tree_builder, fixture_builder=refused)
+                                  tree_reader=lambda repo, commit: "e" * 40, tree_builder=tree_builder, fixture_builder=refused)
             except RuntimeError as e:
                 self.assertEqual(str(e), "synthetic fixture refusal", "S2.prepare: another error")
             except Exception as e:  # noqa: BLE001
@@ -2170,8 +2170,8 @@ class S2Harness(Case):
         with mock.patch.object(rb(), "prepare_take",
                                lambda r, **kw: prepared.append(kw) or {"tree": Path("/t"), "project": "p"}):
             self.must("S2.build", lambda: road.prepare({"slot": "s1"}))
-        self.assertEqual(prepared, [{"root": root, "repo": repo, "origin": ("/o", "t"), "exclude": (),
-                                     "gars_tree_sha": check_take.GARS_TREE_SHA}], "S2.build: the road's prepare")
+        self.assertEqual(prepared, [{"root": root, "repo": repo, "origin": ("/o", "t"), "exclude": ()}],
+                         "S2.build: the road's prepare (m13: no constant tree handed in)")
 
     def test_a_closed_codex_gate_refuses_g3(self):
         """Triage G3: the codex sub-driver is refused by name while the box's Codex gate is closed."""
@@ -2241,7 +2241,7 @@ class S2Harness(Case):
         self.assertEqual(self.must("S2.harness", secrets), [("token", "checked:/login")], "S2.harness")
 
     def test_build_run_hands_out_its_rows_and_prepares_takes_g3(self):
-        """Triage G3: build_run's rows are run_rows' and its road prepares each take with the checker's tree sha, the
+        """Triage G3: build_run's rows are run_rows' and its road prepares each take (m13: no tree sha handed in; prepare_take reads the tree exported), the
         resolved root and repo, the origin and the exclusions."""
         import check_take
         with self.stand_ins() as (b, seen):
@@ -2252,9 +2252,10 @@ class S2Harness(Case):
             with mock.patch.object(rb(), "prepare_take", lambda row, **kw: got.update(kw, row=row) or {
                     "tree": Path("/t"), "slot": row["slot"]}):
                 self.must("S2.build", built["road"].prepare, {"slot": "s1"})
+        self.assertNotIn("gars_tree_sha", got, "S2.build: m13, the checker's constant handed in as the tree exported")
         self.assertEqual((got.get("gars_tree_sha"), got.get("root"), got.get("repo"), got.get("origin"),
                           got.get("exclude")),
-                         (check_take.GARS_TREE_SHA, Path("/r").resolve(), Path("/repo").resolve(), ("/o", "t"), ()),
+                         (None, Path("/r").resolve(), Path("/repo").resolve(), ("/o", "t"), ()),
                          "S2.build: the take's preparation")
 
     def test_a_run_with_no_money_harness_has_no_ledger_g3(self):
