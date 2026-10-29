@@ -21,6 +21,7 @@ hash are retained in prereg.json, without adding that output to the build tree.
 from __future__ import annotations
 
 import argparse
+import ast
 import copy
 import hashlib
 import json
@@ -102,6 +103,82 @@ def planned_order(draft, seed):
         raise ValueError("the design has no planned rows")
     # Stable permutation of whole rows; the harness remains part of each cell.
     return sorted(copy.deepcopy(rows), key=lambda row: hashlib.sha256(seed.encode() + json_bytes(row)).hexdigest())
+
+
+# Pre-freeze review 2, m3 (lane fold2-lb): the order function is witnessed with the draft. The draft carries the sha256
+# of the source of planned_order and of every study function it reaches (take_order_function_sha256), so the push
+# that witnesses the draft before the round also fixes the function that permutes its rows; the freeze refuses a draft
+# whose value is not HEAD's. What the walk cannot see, named: a function reached only through a value it does not
+# resolve (a dict of functions, getattr), and anything outside this study's own .py files (the standard library).
+ORDER_FUNCTION_HASH_KEY = "take_order_function_sha256"
+ORDER_FUNCTION_START = ("freeze", "planned_order")
+
+
+def _top_functions(tree) -> dict:
+    return {n.name: n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+
+
+def _study_imports(nodes, root: Path) -> dict:
+    """{local name: study module} for `import x` / `import x as y` in `nodes`, x a .py file in `root`."""
+    out = {}
+    for node in nodes:
+        for imp in ast.walk(node):
+            if isinstance(imp, ast.Import):
+                for alias in imp.names:
+                    if "." not in alias.name and (root / f"{alias.name}.py").is_file():
+                        out[alias.asname or alias.name] = alias.name
+    return out
+
+
+def order_function_sources(root=None) -> list[tuple[str, str]]:
+    """[("module.function", its source)] for planned_order and every study function it reaches, found by an ast walk
+    (a name or a study module's attribute that is a top-level function of that module, called or passed), each once,
+    sorted by name. `root` is the study folder whose .py files are read (HERE by default)."""
+    root = HERE if root is None else Path(root)
+    parsed: dict = {}
+
+    def module(name):
+        if name not in parsed:
+            text = (root / f"{name}.py").read_text(encoding="utf-8")
+            tree = ast.parse(text)
+            parsed[name] = (text, tree, _top_functions(tree),
+                            _study_imports([n for n in tree.body if isinstance(n, ast.Import)], root))
+        return parsed[name]
+
+    found, work = {}, [ORDER_FUNCTION_START]
+    while work:
+        mod, fn = work.pop()
+        if (mod, fn) in found:
+            continue
+        text, _, funcs, imports = module(mod)
+        node = funcs[fn]
+        found[(mod, fn)] = ast.get_source_segment(text, node)
+        aliases = dict(imports, **_study_imports([node], root))
+        for sub in ast.walk(node):
+            if isinstance(sub, ast.Name) and sub.id in funcs and sub.id != fn:
+                work.append((mod, sub.id))
+            elif isinstance(sub, ast.Attribute) and isinstance(sub.value, ast.Name) and sub.value.id in aliases:
+                target = aliases[sub.value.id]
+                if sub.attr in module(target)[2]:
+                    work.append((target, sub.attr))
+    return sorted((f"{m}.{f}", src) for (m, f), src in found.items())
+
+
+def take_order_function_sha256(root=None) -> str:
+    """The sha256 over order_function_sources(root): each name, its source, in order."""
+    h = hashlib.sha256()
+    for name, source in order_function_sources(root):
+        h.update(name.encode("utf-8") + b"\n" + source.encode("utf-8") + b"\n\0")
+    return h.hexdigest()
+
+
+def order_function_problem(draft):
+    """Why the draft's take_order_function_sha256 is not the order function's at this tree, or None (m3)."""
+    want, got = take_order_function_sha256(), draft.get(ORDER_FUNCTION_HASH_KEY)
+    if got != want:
+        return (f"the draft's {ORDER_FUNCTION_HASH_KEY} is {str(got)[:16]!r}, not the order function's at this tree "
+                f"({want[:16]}): the function that permutes the rows is not the one the draft was witnessed with")
+    return None
 
 
 def draft_pending(draft) -> dict:
@@ -874,6 +951,8 @@ def check_legs(draft) -> list[tuple[str, list[str]]]:
     legs.append(("vendor legs i-iii", [problem] if problem else []))
     problem = coverage_problem(draft)
     legs.append(("walk coverage of the arms the freeze runs", [problem] if problem else []))
+    problem = order_function_problem(draft)          # pre-freeze review 2, m3
+    legs.append(("take-order function", [problem] if problem else []))
     try:
         reading = synthetic_beacon_reading(order_beacon.registered_round(draft.get(BEACON_KEY)))
         prepare(copy.deepcopy(draft), review=DUMMY_REVIEW, parent=DUMMY_PARENT, pins=[], frozen_at="check",
@@ -942,6 +1021,9 @@ def main(argv=None) -> int:
         if problem:
             raise ValueError(problem)
         problem = unrecorded_shapes_problem(draft)
+        if problem:
+            raise ValueError(problem)
+        problem = order_function_problem(draft)      # pre-freeze review 2, m3
         if problem:
             raise ValueError(problem)
         holdout = ({} if args.holdout_digests is None else
