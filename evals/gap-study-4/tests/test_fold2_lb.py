@@ -4,8 +4,8 @@ freeze and witness gates, red first.
 
     python3 -B -W ignore evals/gap-study-4/tests/test_fold2_lb.py
 
-MAJOR 3   the seed review's ruling is read from exactly one anchored ruling line (commit_review.read_ruling, shared
-          with freeze.review_file_problems and so with run_builders.py rehearse); zero or several read "ambiguous",
+MAJOR 3   the seed review's ruling is read from exactly one anchored ruling line (freeze.read_ruling, imported by
+          commit_review, read by freeze.review_file_problems and so by run_builders.py rehearse); zero or several read "ambiguous",
           which commit_review commits unedited and records, and which the freeze refuses.
 m5        the round-4 section lints (lint_language and lint_pooling --section-of) exit NOT_RUN (3) when the page has no
           round-4 section, and 0 only under an explicit --allow-absent, which CI passes only while no RESULT.md exists.
@@ -131,8 +131,9 @@ class TestMajor3Ruling(unittest.TestCase):
                 self.assertEqual(cr.read_ruling(report("0" * 64, *body)), want)
 
     def test_freeze_reads_the_ruling_through_commit_review(self):
-        # one reader: freeze's gate is commit_review.read_ruling, so the two can never disagree again
+        # one reader: commit_review's read_ruling is freeze's, and the gate reads through it
         cr = load_commit_review()
+        self.assertIs(cr.read_ruling.__code__, freeze.read_ruling.__code__)
         with review_repo((DO,)) as (repo, draft, shas), \
                 mock.patch.object(freeze, "REPO", repo), mock.patch.object(freeze, "DRAFT", draft), \
                 mock.patch.object(freeze, "read_ruling", lambda text: cr.AMBIGUOUS):

@@ -10,14 +10,11 @@ review_kit/prefreeze-<N>.md and the blindness record beside it, lints the commit
 
 Never pushes: the push goes through the scanned door, on the owner's grant.
 
-THE RULING (pre-freeze review 2, MAJOR 3; lane fold2-lb): read_ruling is the one reader of a report's ruling, here and
-in freeze.review_file_problems (so in run_builders.py rehearse too). Exactly one line matching RULING gives that
-ruling; zero or several give AMBIGUOUS, which is never DO FREEZE. A report is never refused for its ruling: it is
-committed unedited and the commit records the ruling read, "ambiguous" included, because a refused report is in
-practice a voided round and a second draw of the review.
-
-ROUND 4 (lane review-kit-port, glitch-f1's fold 1): the co-author line names the reviewer launch.py now opens,
-Claude Opus 5.5, in place of the model round 3 named.
+THE RULING (pre-freeze review 2, MAJOR 3; lane fold2-lb): read_ruling, imported from freeze.py, is the one reader of a
+report's ruling, here and in freeze.review_file_problems (so in run_builders.py rehearse too). Exactly one line
+matching RULING gives that ruling; zero or several give AMBIGUOUS, which is never DO FREEZE. A report is never refused
+for its ruling: it is committed unedited and the commit records the ruling read, "ambiguous" included, because a
+refused report is in practice a voided round and a second draw of the review.
 """
 
 from __future__ import annotations
@@ -34,20 +31,10 @@ STUDY_DIR = HERE.parent
 REPO = STUDY_DIR.parent.parent
 sys.path.insert(0, str(STUDY_DIR))
 import study  # noqa: E402
+from freeze import AMBIGUOUS, RULING, read_ruling  # noqa: E402,F401  (MAJOR 3: the one reader)
 
 ABS_PATH = re.compile(r"/(Users|private|var/folders|home)/")
 PERSON = re.compile(r"javrodher|rodrij92|javier|@gmail", re.I)
-RULING = re.compile(r"^\*\*Ruling: DO (NOT )?FREEZE\.\*\*$", re.M)
-AMBIGUOUS = "ambiguous"
-
-
-def read_ruling(text: str) -> str:
-    """'DO FREEZE' or 'DO NOT FREEZE' when exactly one line of `text` is a ruling line (RULING), else AMBIGUOUS: a
-    quoted literal inside a sentence is no line, and two ruling lines are no ruling."""
-    found = list(RULING.finditer(text))
-    if len(found) != 1:
-        return AMBIGUOUS
-    return "DO NOT FREEZE" if found[0].group(1) else "DO FREEZE"
 
 
 def report_problems(text: str, draft_sha: str) -> list[str]:

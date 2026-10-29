@@ -458,24 +458,20 @@ TREE_BINDING_EXCLUDED = (re.compile(rf"/{study.VERIFY_DIR}/freeze-rehearsal-\d+(
                          re.compile(r"/verification/round1-regrade/environment\.json$"))
 RULING_LINE = "**Ruling: DO FREEZE.**"
 DO_FREEZE = "DO FREEZE"
-
-
-def _commit_review():
-    """review_kit/commit_review.py, loaded by path under its own name (no other study's review_kit can shadow it)."""
-    import importlib.util
-    name = "gap4_review_kit_commit_review"
-    if name not in sys.modules:
-        spec = importlib.util.spec_from_file_location(name, HERE / "review_kit" / "commit_review.py")
-        mod = importlib.util.module_from_spec(spec)
-        sys.modules[name] = mod
-        spec.loader.exec_module(mod)
-    return sys.modules[name]
+# Pre-freeze review 2, MAJOR 3 (lane fold2-lb): the one reader of a review's ruling, here and in
+# review_kit/commit_review.py (which imports these three names), so the commit and the freeze can never read one report
+# two ways. The pattern is the one commit_review used since round 3, anchored to a whole line.
+RULING = re.compile(r"^\*\*Ruling: DO (NOT )?FREEZE\.\*\*$", re.M)
+AMBIGUOUS = "ambiguous"
 
 
 def read_ruling(text: str) -> str:
-    """Pre-freeze review 2, MAJOR 3 (lane fold2-lb): the report's ruling as commit_review.read_ruling reads it, the one
-    reader: exactly one anchored ruling line, else "ambiguous"."""
-    return _commit_review().read_ruling(text)
+    """'DO FREEZE' or 'DO NOT FREEZE' when exactly one line of `text` is a ruling line (RULING), else AMBIGUOUS: a
+    quoted literal inside a sentence is no line, and two ruling lines are no ruling."""
+    found = list(RULING.finditer(text))
+    if len(found) != 1:
+        return AMBIGUOUS
+    return "DO NOT FREEZE" if found[0].group(1) else DO_FREEZE
 REVIEW_DIGEST_PREFIX = "prereg.json sha256: "     # line 1 of every report (review_kit/commit_review.report_problems)
 REHEARSAL_LAST_LINE = "all green"
 
@@ -745,8 +741,43 @@ def draft_holdout_problem(draft):
             "(ruling W8B-gap4-1)") if bad else None
 
 
+REHEARSAL_STEP = re.compile(r"\[(-?\d+)\] (.+)")
+REHEARSAL_ROW_FILE = "<scratch>/row.json"      # freeze_rehearsal.main's row file, as its report masks the scratch path
+
+
+def rehearsal_required_steps() -> list[str]:
+    """Pre-freeze review 2, m2 (lane fold2-lb): every step a green rehearsal record must name, in freeze_rehearsal.main's
+    order: the freeze, the holdout digests, the take-order beacon, the live-box step, each COMMANDS step (the holdout
+    gate as the --holdout-tool run, HOLDOUT_STEP_LABEL, never the OWED line), and each runtime step."""
+    import freeze_rehearsal as fr
+    names = ["freeze", "holdout digests", "take-order beacon", fr.LIVE_BOX_STEP]
+    names += [fr.HOLDOUT_STEP_LABEL if c == fr.HOLDOUT_GATE else " ".join(c) for c in fr.COMMANDS]
+    return names + [" ".join(c) for c in fr.runtime_commands(REHEARSAL_ROW_FILE)]
+
+
+def rehearsal_step_problems(lines: list[str]) -> list[str]:
+    """Pre-freeze review 2, m2 (lane fold2-lb): why a rehearsal record's steps are not every required step, each named
+    once with code 0, the live-box step's tail its closed pass line (freeze_rehearsal.LIVE_BOX_OK), and no step with
+    another code; [] when they are. A hand-written record with only the digest, tree and last lines is refused. The
+    live-box step may become a cited residual only by a ruling not yet made (FREEZE-PATH step 5): no such road exists
+    here, so the step must pass."""
+    import freeze_rehearsal as fr
+    steps = [(i, m.group(1), m.group(2)) for i, ln in enumerate(lines) for m in [REHEARSAL_STEP.fullmatch(ln)] if m]
+    out = [f"step {name!r} exited {code}" for _, code, name in steps if code != "0"]
+    for name in rehearsal_required_steps():
+        at = [i for i, code, n in steps if n == name and code == "0"]
+        if len(at) != 1:
+            out.append(f"step {name!r} is named {len(at)} times with code 0, not once")
+        elif name == fr.LIVE_BOX_STEP:
+            tail = lines[at[0] + 1].strip() if at[0] + 1 < len(lines) else ""
+            if not fr.LIVE_BOX_OK.fullmatch(tail):
+                out.append(f"step {name!r} does not end on the live-box verifier's closed pass line")
+    return out
+
+
 def rehearsal_evidence(record, digest: str, tree: str) -> dict:
-    """Bind an external rehearsal output without changing the rehearsed tree."""
+    """Bind an external rehearsal output without changing the rehearsed tree. Pre-freeze review 2, m2: every step by
+    name (rehearsal_step_problems), not the first, tree and last lines alone."""
     if record is None:
         raise ValueError("a green rehearsal record is required (--rehearsal-record)")
     record = Path(record)
@@ -757,6 +788,9 @@ def rehearsal_evidence(record, digest: str, tree: str) -> dict:
             [line for line in lines if line.startswith(REHEARSAL_TREE_PREFIX)] !=
             [REHEARSAL_TREE_PREFIX + tree]):
         raise ValueError("the rehearsal must be green for this draft and committed tree")
+    steps = rehearsal_step_problems(lines)
+    if steps:
+        raise ValueError("the rehearsal record does not name every step green: " + "; ".join(steps[:6]))
     return {"name": record.name, "sha256": hashlib.sha256(data).hexdigest(), "text": text}
 
 
@@ -797,8 +831,8 @@ def review_file_problems(review_commit: str) -> tuple[list[str], str | None]:
     code, body = git("show", f"{review_commit}:{reports[0]}")
     ruling = read_ruling(body)
     if ruling != DO_FREEZE:
-        return [f"{reports[0]} at {review_commit[:12]} ruled {ruling} (exactly one ruling line is read, here as "
-                f"review_kit/commit_review.read_ruling reads it): the freeze runs only on a review that ruled "
+        return [f"{reports[0]} at {review_commit[:12]} ruled {ruling} (exactly one ruling line is read, by "
+                f"freeze.read_ruling, which review_kit/commit_review.py records too): the freeze runs only on a review that ruled "
                 f"{DO_FREEZE}"], None
     # Pre-freeze review 1, MAJOR 3: the seed review must have read the bytes being frozen. Its line 1 names the sha256
     # of the prereg.json the reviewer was handed (review_kit/commit_review.py binds it to the kit's copy); a DO FREEZE
