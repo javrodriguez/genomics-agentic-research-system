@@ -445,7 +445,8 @@ class H9Rehearsal(Case):
         live_box = ["--live-box-record", str(record), "--live-box-sha256", hashlib.sha256(record.read_bytes()).hexdigest()]
         h = RehearsalHarness(self.tmpdir())
         code, report = h.run(["--review-commit", "a" * 40, *live_box])
-        self.assertIn("[0] live-box: forced-timeout claude-code take\n", report, "H9.rehearsal: the stand-in record")
+        self.assertIn(f"[0] live-box: forced-timeout claude-code take\n    live-box record {live_box[3]}: walk lb1, ",
+                      report, "H9.rehearsal: the stand-in record")
         [command] = h.freeze_commands()
         self.assertIn("--holdout-digests", command, "H9.rehearsal: the freeze got no digest file")
         [source] = h.sources

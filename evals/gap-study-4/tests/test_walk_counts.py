@@ -642,6 +642,7 @@ class WC7Store(unittest.TestCase):
         empty = self.tmp / "rehearsals"
         empty.mkdir()
         (empty / "register.json").write_text(json.dumps({"schema": 1, "walks": []}))
+        self.assertIs(walk_plan.walk_register, walk_register, "the road reads the register module patched here")
         with mock.patch.object(walk_register, "REHEARSALS", empty):
             covered, _ = wc.coverage(HERE)
         self.assertEqual(covered, frozenset(), "the patched process reads its own register")
@@ -732,6 +733,17 @@ class WC7Store(unittest.TestCase):
             with mock.patch.dict(os.environ, {"GIT_CEILING_DIRECTORIES": str(top.parent), "GIT_DIR": str(top / ".git")}):
                 self.assertIsNone(wc.store_state(study))
             (self.tmp / "alias").unlink()
+            # closure review 49c93d2 NIT 1: a ceiling entry that is a link loop cannot be resolved (Python 3.12 raises
+            # RuntimeError, 3.13 returns the path); either way the store stands down, and nothing raises
+            (self.tmp / "loop-a").symlink_to(self.tmp / "loop-b")
+            (self.tmp / "loop-b").symlink_to(self.tmp / "loop-a")
+            loop = str(self.tmp / "loop-a")
+            with mock.patch.dict(os.environ, {"GIT_CEILING_DIRECTORIES": loop}):
+                wc.store_state(study)                                          # never raises, whatever this Python does
+            real_top = top.resolve()
+            with mock.patch.object(Path, "resolve", side_effect=RuntimeError("Symlink loop")):
+                self.assertEqual(wc._ceiling_reaches(loop, real_top),
+                                 f"GIT_CEILING_DIRECTORIES holds {loop}, which cannot be resolved")
             (top / "study" / "link.json").symlink_to(outside)                   # an untracked link
             self.assertIsNone(wc.store_state(study))
             self.git("add", "-A")
@@ -785,9 +797,27 @@ class WC7Store(unittest.TestCase):
         empty = self.tmp / "rehearsals"
         empty.mkdir()
         (empty / "register.json").write_text(json.dumps({"schema": 1, "walks": []}))
+        self.assertIs(walk_plan.walk_register, walk_register, "the road reads the register module patched here")
         with mock.patch.object(walk_register, "REHEARSALS", empty):
             covered, _ = wc.coverage(HERE)
         self.assertEqual(covered, frozenset(), "a patched register folder took the stored reading")
+
+    def test_wc7_a_replaced_road_module_stands_the_store_down(self):
+        # lane gap-prebeacon-fix3 (athena gap4-prebeacon3-49c93d2): once sys.modules holds another walk_register than
+        # the one walk_plan imported, a patch of either copy misses the other side, so the store is not used at all
+        import types
+        import walk_register
+        self.assertTrue(wc._road_is_genuine())
+        for holder, name in ((walk_plan, "walk_register"), (walk_register, "mode_binding"), (wc, "mode_binding")):
+            with self.subTest(holder=holder.__name__, name=name):
+                other = types.ModuleType(name)
+                with mock.patch.dict(sys.modules, {name: other}):
+                    self.assertFalse(wc._road_is_genuine())
+                    self.assertIsNone(wc.store_state(HERE))
+                self.assertTrue(wc._road_is_genuine())
+                with mock.patch.object(holder, name, other):
+                    self.assertFalse(wc._road_is_genuine())
+                self.assertTrue(wc._road_is_genuine())
 
     def test_wc7_replaced_objects_stand_the_store_down(self):
         # closure review 9bc0822 NIT 2: git show honours refs/replace and info/grafts, which the state does not hold

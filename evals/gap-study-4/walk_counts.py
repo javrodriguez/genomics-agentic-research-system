@@ -269,8 +269,8 @@ STORE_GIT_ALLOWED = ("GIT_EDITOR", "GIT_PAGER", "GIT_TERMINAL_PROMPT")
 # off for the whole battery and every test_build_draft --mutant child paid the coverage read past its 180 s limit. A
 # ceiling only stops git's upward search for a repository: from any folder of the work tree that search finds this
 # work tree's repository unless a ceiling entry is the top folder or lies inside it, and then it finds none (git
-# never searches up into a ceiling). So the variable leaves the store on exactly when every entry, as written and
-# resolved, is absolute and neither the top folder nor inside it; the road's own git reads then find the repository
+# never searches up into a ceiling). So the variable leaves the store on exactly when every entry is absolute and,
+# resolved, neither the top folder nor inside it; the road's own git reads then find the repository
 # the state was read from, as with no ceiling. Any other entry keeps the store off.
 STORE_GIT_CEILING = "GIT_CEILING_DIRECTORIES"
 STORE_VERSION = 1
@@ -297,14 +297,36 @@ def _road_is_genuine() -> bool:
         if module is None:
             __import__(name)
             module = sys.modules[name]
+        if not _references_are_current(module):
+            return False
         source = Path(module.__file__).resolve()
         for fn_name in functions:
             fn = getattr(module, fn_name, None)
             if type(fn) is not types.FunctionType or fn.__module__ != name or fn.__name__ != fn_name or \
                     Path(fn.__code__.co_filename).resolve() != source:
                 return False
+    if not _references_are_current(sys.modules[__name__]) or mode_binding is not sys.modules.get("mode_binding"):
+        return False
     walks = HERE / mode_binding.WALKS_DIR
     return not walks.is_symlink() and Path(sys.modules["walk_register"].REHEARSALS) == walks
+
+
+# Lane gap-prebeacon-fix3 (athena gap4-prebeacon3-49c93d2, test_round4): the guard above reads each road module from
+# sys.modules, but the road calls through the module objects its modules imported (walk_plan.walk_register,
+# walk_register.mode_binding, this module's mode_binding). Once a module is replaced in sys.modules (test_cp8_prep's
+# tearDownModule popped walk_register in the single-process round), a patch of the sys.modules copy no longer reaches
+# the road, and a patch of the road's copy no longer reaches the guard. So the store is used only while every such
+# reference is the object sys.modules holds under its name.
+STORE_REFERENCED = ("walk_plan", "pending_walk", "walk_register", "mode_binding", "walk_counts")
+
+
+def _references_are_current(module) -> bool:
+    import types
+    for value in vars(module).values():
+        if isinstance(value, types.ModuleType) and value.__name__ in STORE_REFERENCED \
+                and value is not sys.modules.get(value.__name__):
+            return False
+    return True
 
 
 def _git(top: Path, *args) -> bytes:
@@ -345,17 +367,23 @@ def _holds_a_link(path: Path) -> bool:
 
 def _ceiling_reaches(value: str, top: Path) -> str:
     """Why GIT_CEILING_DIRECTORIES could change which repository git finds from inside `top` (STORE_GIT_CEILING), or
-    "" when it cannot: every entry, as written and resolved, is absolute and neither `top` nor inside it. An empty
-    entry (git's mark that later entries are not resolved) is allowed; both readings of every entry are checked."""
+    "" when it cannot: every entry is absolute and, resolved, neither `top` (itself resolved) nor inside it. An empty
+    entry is allowed: git takes the entries after it as written, unresolved, and git compares them with the real path
+    of the folder it searches from, so a written form that differs from its resolved one never stops git's search
+    inside `top` (closure review 49c93d2 NIT 2: the written-form reading was redundant, and is dropped). An entry that
+    cannot be resolved (a link loop) stands the store down."""
     import os
     for entry in value.split(os.pathsep):
         if not entry:
             continue
         if not os.path.isabs(entry):
             return f"{STORE_GIT_CEILING} holds an entry that is not absolute: {entry}"
-        for form in (Path(os.path.normpath(entry)), Path(entry).resolve()):
-            if form == top or top in form.parents:
-                return f"{STORE_GIT_CEILING} holds {entry}, the work tree's top folder or inside it"
+        try:
+            form = Path(entry).resolve()
+        except (OSError, RuntimeError):      # RuntimeError: a symbolic-link loop, before Python 3.13
+            return f"{STORE_GIT_CEILING} holds {entry}, which cannot be resolved"
+        if form == top or top in form.parents:
+            return f"{STORE_GIT_CEILING} holds {entry}, the work tree's top folder or inside it"
     return ""
 
 
@@ -401,7 +429,7 @@ def store_state_why(study: Path = HERE) -> tuple:
             changed.append([item[:2].decode(), rel, _content_digest(top / rel)])
         return json.dumps({"version": STORE_VERSION, "python": sys.version, "head": head,
                            "study": str(HERE.relative_to(top)), "changed": sorted(changed)}, sort_keys=True), ""
-    except (OSError, ValueError, UnicodeError, ImportError, AttributeError) as exc:
+    except (OSError, ValueError, UnicodeError, ImportError, AttributeError, RuntimeError) as exc:
         return None, f"the state cannot be read: {type(exc).__name__}: {exc}"
 
 

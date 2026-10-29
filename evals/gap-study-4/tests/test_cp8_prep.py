@@ -131,9 +131,17 @@ def compile_module(name: str, source: str) -> types.ModuleType:
     return mod
 
 
+PRIOR = {}
+
+
 def setUpModule():
     tbi.setUpModule()
     MODS["drive"] = tbi.drive
+    # lane gap-prebeacon-fix3: the modules a compiled witness may replace, as found, so tearDownModule puts back the
+    # same objects; popping walk_register left walk_plan's copy and sys.modules' copy apart for every later module of
+    # the single-process round (athena gap4-prebeacon3-49c93d2, test_walk_counts WC7)
+    for name in ("walk_register", "mode_binding", "claude_code_adapter", "freeze_rehearsal"):
+        PRIOR[name] = sys.modules.get(name)
     for name in ("walk_register", "mode_binding", "claude_code_adapter", "freeze_rehearsal"):
         MODS[name] = __import__(name)
     if SELECTED is None:
@@ -155,7 +163,11 @@ def setUpModule():
 
 
 def tearDownModule():
-    sys.modules.pop("walk_register", None)        # a compiled witness never outlives this module
+    for name, prior in PRIOR.items():             # a compiled witness never outlives this module
+        if prior is None:
+            sys.modules.pop(name, None)
+        else:
+            sys.modules[name] = prior
     tbi.tearDownModule()
 
 
