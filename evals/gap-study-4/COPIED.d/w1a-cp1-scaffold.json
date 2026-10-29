@@ -88,11 +88,6 @@
       "source": "evals/gap-study-3/lexicons/scope-read-answer.json"
     },
     {
-      "path": "lint_pooling.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/lint_pooling.py"
-    },
-    {
       "path": "round2.py",
       "status": "identical",
       "source": "evals/gap-study-3/round2.py"
