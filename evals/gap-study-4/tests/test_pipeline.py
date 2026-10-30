@@ -1867,6 +1867,10 @@ class PublishedArtifacts(unittest.TestCase):
                 stack.enter_context(mock.patch.object(runner, "write_records", lambda records: native_writer(records, root=root)))
                 native_table = table()
                 stack.enter_context(mock.patch.object(routing, "load_table", return_value=native_table))
+                # fold2/lb (glitch-45's review, MJ-2): the push-witness gate stood in on this synthetic state, as the
+                # frozen file is; tests/test_fold2_lb.py binds the gate
+                stack.enter_context(mock.patch.object(result_page.check_results, "witness_publication_problems",
+                                                      lambda *a, **k: ([], None)))
                 stack.enter_context(redirect_stdout(io.StringIO()))
                 self.assertEqual(runner.main(["--all"]), 0)
                 self.assertEqual(runner.main(["--check"]), 0)

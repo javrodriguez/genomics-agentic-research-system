@@ -890,7 +890,7 @@ def check_publication(rows, history, records, pre, page, grade, table=None, witn
     stats.check_records(records)
     wanted = pipeline().produce(rows, history, grade, table=table)["records"]
     rec = result.from_records(wanted, pre, rows, history, table)
-    rendered = result.render(rec, witness=witness)
+    rendered = result.render(rec) if witness is None else result.render(rec, witness=witness)
     import run_builders   # lane run-launcher, ruling 2: first registrations follow take_order within each launch part
     problems = run_builders.order_problems(rows, pre)
     if not records_equal(records, wanted):
