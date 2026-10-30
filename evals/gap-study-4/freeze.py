@@ -108,14 +108,61 @@ def planned_order(draft, seed):
 # Pre-freeze review 2, m3 (lane fold2-lb): the order function is witnessed with the draft. The draft carries the sha256
 # of the source of planned_order and of every study function it reaches (take_order_function_sha256), so the push
 # that witnesses the draft before the round also fixes the function that permutes its rows; the freeze refuses a draft
-# whose value is not HEAD's. What the walk cannot see, named: a function reached only through a value it does not
-# resolve (a dict of functions, getattr), and anything outside this study's own .py files (the standard library).
+# whose value is not HEAD's. The walk starts at planned_order and at order_beacon.seed (the seed's derivation), and
+# hashes, for every function it reaches, its source with its decorators and every module-level statement of a parsed
+# module that binds a name the function reads or the function's own name (a rebinding such as `json_bytes = ...`, at
+# top level or inside a module-level if, try, with or loop), and every module-level assignment to an attribute named
+# like a reached function (`check_results.validate_ledger = ...`); the fold's review, m-1. What it cannot see, named:
+# a function reached only through a value it does not resolve (a dict of functions, getattr, a parameter); prepare's
+# glue that hands the seed to planned_order (freeze.prepare, read by every review); and anything outside this study's
+# own .py files (the standard library).
 ORDER_FUNCTION_HASH_KEY = "take_order_function_sha256"
 ORDER_FUNCTION_START = ("freeze", "planned_order")
+ORDER_FUNCTION_STARTS = (ORDER_FUNCTION_START, ("order_beacon", "seed"))
 
 
 def _top_functions(tree) -> dict:
     return {n.name: n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+
+
+def _module_bindings(tree, text) -> tuple[dict, dict]:
+    """({name: [statement source]}, {attribute name: [statement source]}) over the module-level statements of `tree`
+    (descending into if, try, with and loop bodies, never into a def or class body) that bind a name or assign to an
+    attribute; a def binds its name too, so a second def of the same name is caught."""
+    names: dict = {}
+    attrs: dict = {}
+
+    def add(table, key, node):
+        table.setdefault(key, []).append(_segment(text, node))
+
+    def visit(body):
+        for node in body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                add(names, node.name, node)
+                continue
+            for sub in ast.walk(node):
+                if isinstance(sub, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+                    continue
+                if isinstance(sub, ast.Name) and isinstance(sub.ctx, ast.Store):
+                    add(names, sub.id, node)
+                elif isinstance(sub, ast.Attribute) and isinstance(sub.ctx, ast.Store):
+                    add(attrs, sub.attr, node)
+                elif isinstance(sub, ast.alias):
+                    add(names, (sub.asname or sub.name).split(".")[0], node)
+            for field in ("body", "orelse", "finalbody", "handlers"):
+                inner = getattr(node, field, None)
+                if isinstance(inner, list):
+                    visit([n for n in inner if isinstance(n, ast.stmt)] +
+                          [s for h in inner if isinstance(h, ast.ExceptHandler) for s in h.body])
+    visit(tree.body)
+    return names, attrs
+
+
+def _segment(text, node) -> str:
+    """A statement's source with its decorators (ast.get_source_segment starts at the def line)."""
+    lines = text.splitlines(keepends=True)
+    start = min([node.lineno] + [d.lineno for d in getattr(node, "decorator_list", [])])
+    return "".join(lines[start - 1:node.end_lineno])
 
 
 def _study_imports(nodes, root: Path) -> dict:
@@ -131,9 +178,12 @@ def _study_imports(nodes, root: Path) -> dict:
 
 
 def order_function_sources(root=None) -> list[tuple[str, str]]:
-    """[("module.function", its source)] for planned_order and every study function it reaches, found by an ast walk
-    (a name or a study module's attribute that is a top-level function of that module, called or passed), each once,
-    sorted by name. `root` is the study folder whose .py files are read (HERE by default)."""
+    """[(label, source)] for planned_order, order_beacon.seed and every study function they reach, found by an ast walk
+    (a name or a study module's attribute that is a top-level function of that module, called or passed), each with
+    its decorators; plus, labelled "module.name=", every module-level statement binding a name such a function reads
+    or its own name, and every module-level attribute assignment named like a reached function (ORDER_FUNCTION_HASH_KEY's
+    comment). Sorted, each once, with no line numbers, so an edit elsewhere in a file moves nothing. `root` is the
+    study folder whose .py files are read (HERE by default)."""
     root = HERE if root is None else Path(root)
     parsed: dict = {}
 
@@ -142,18 +192,24 @@ def order_function_sources(root=None) -> list[tuple[str, str]]:
             text = (root / f"{name}.py").read_text(encoding="utf-8")
             tree = ast.parse(text)
             parsed[name] = (text, tree, _top_functions(tree),
-                            _study_imports([n for n in tree.body if isinstance(n, ast.Import)], root))
+                            _study_imports([n for n in tree.body if isinstance(n, ast.Import)], root),
+                            *_module_bindings(tree, text))
         return parsed[name]
 
-    found, work = {}, [ORDER_FUNCTION_START]
+    found, work, extra = {}, list(ORDER_FUNCTION_STARTS), set()
     while work:
         mod, fn = work.pop()
         if (mod, fn) in found:
             continue
-        text, _, funcs, imports = module(mod)
+        text, _, funcs, imports, names, _ = module(mod)
         node = funcs[fn]
-        found[(mod, fn)] = ast.get_source_segment(text, node)
+        found[(mod, fn)] = _segment(text, node)
         aliases = dict(imports, **_study_imports([node], root))
+        read = {fn} | {sub.id for sub in ast.walk(node) if isinstance(sub, ast.Name)}
+        for name in read:
+            for src in names.get(name, []):
+                if src != found[(mod, fn)]:
+                    extra.add((f"{mod}.{name}=", src))
         for sub in ast.walk(node):
             if isinstance(sub, ast.Name) and sub.id in funcs and sub.id != fn:
                 work.append((mod, sub.id))
@@ -161,7 +217,12 @@ def order_function_sources(root=None) -> list[tuple[str, str]]:
                 target = aliases[sub.value.id]
                 if sub.attr in module(target)[2]:
                     work.append((target, sub.attr))
-    return sorted((f"{m}.{f}", src) for (m, f), src in found.items())
+    reached = {f for _, f in found}
+    for mod, (_, _, _, _, _, attrs) in parsed.items():
+        for name in reached & set(attrs):
+            extra.update((f"{mod}.<attr>.{name}=", src) for src in attrs[name])
+    own = set(found.values())
+    return sorted({(f"{m}.{f}", src) for (m, f), src in found.items()} | {e for e in extra if e[1] not in own})
 
 
 def take_order_function_sha256(root=None) -> str:
@@ -273,6 +334,9 @@ def supersession_swaps(history) -> list[tuple[dict, str]]:
         if tuple(b[:len(a)]) != tuple(a):
             raise ValueError(f"SUPERSEDED_ROUNDS at {b_sha[:12]} does not extend its version at {a_sha[:12]}: an entry "
                              f"was removed or rewritten, and the list is append-only")
+    bad = order_beacon.superseded_problems(history[-1][2]) if history else []
+    if bad:
+        raise ValueError("SUPERSEDED_ROUNDS at HEAD: " + "; ".join(bad))
     out = []
     for entry in history[-1][2] if history else ():
         r = entry["round"]

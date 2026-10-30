@@ -249,6 +249,11 @@ def superseded_value(source: str) -> tuple:
             else []
         if any(isinstance(t, ast.Name) and t.id == "SUPERSEDED_ROUNDS" for t in targets):
             found.append(node.value)
+    # the fold's review (NIT): a second binding anywhere (inside an if, a def, a loop) could hide an entry at run time
+    stores = sum(1 for n in ast.walk(tree) if isinstance(n, ast.Name) and n.id == "SUPERSEDED_ROUNDS"
+                 and isinstance(n.ctx, (ast.Store, ast.Del)))
+    if stores != len(found):
+        raise BeaconRefused("SUPERSEDED_ROUNDS is bound somewhere other than one module-level assignment")
     if not found:
         return ()
     if len(found) != 1:

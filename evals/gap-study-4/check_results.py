@@ -584,8 +584,18 @@ def take_ledger_witness(pushes) -> tuple[list[str], list[str], list[str]]:
                             f"({apart[-1][:12]} first): an abandoned take history (a take registered or run, then "
                             f"reset away and re-run) is refused")
     ledger = rev_list("HEAD")
-    unwitnessed = [c for c in ledger
-                   if not any(git("merge-base", "--is-ancestor", c, s)[0] == 0 for s in shas)]
+    # the fold's review (M-1): an abandoned history merged back (`git merge -s ours`) is an ancestor of HEAD, so the
+    # check above passes it and takes.read_history's simplified log never reads it; the run line is one first-parent
+    # chain, so a ledger commit reached only through a merge's other parent is refused
+    code, out = git("rev-list", "--first-parent", "HEAD")
+    if code != 0:
+        raise ValueError("HEAD's first-parent line cannot be listed")
+    line = set(out.split())
+    side = [c for c in ledger if c not in line]
+    if side:
+        problems.append(f"{len(side)} commit(s) that change the take ledger reach HEAD only through a merge "
+                        f"({side[-1][:12]} first): a take history merged back from a side line is refused")
+    unwitnessed = rev_list("HEAD", "--not", *shas) if shas else list(ledger)
     return problems, ledger, unwitnessed
 
 
