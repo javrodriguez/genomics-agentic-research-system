@@ -7,3 +7,4 @@ python3 -B -W ignore evals/gap-study-4/tests/test_ci_job.py
 python3 -B -W ignore evals/gap-study-4/tests/test_pf1_freeze_gates.py
 python3 -B -W ignore evals/gap-study-4/tests/test_pf1_l2b.py
 python3 -B -W ignore evals/gap-study-4/tests/test_pipeline.py
+python3 -B -W ignore evals/gap-study-4/tests/test_cp6_wiring.py

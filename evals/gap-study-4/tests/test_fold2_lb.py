@@ -910,7 +910,8 @@ class TestTakeOrderRecompute(unittest.TestCase):
 
 
 DECISION_LOG = Path("/Users/javrodher/glitch/workspaces/aegis/orgos/records/decision.jsonl")
-OD160_SHA256 = "295e85ece9cd78f727cda5b79263cc41dd3e838b62e4bdfb04855b299a050bc0"   # line 160, read 29 Oct 2026
+# sha256 of decision.jsonl line 160 with its newline (`sed -n 160p decision.jsonl | shasum -a 256`, 29 Oct 2026)
+OD160_SHA256 = "295e85ece9cd78f727cda5b79263cc41dd3e838b62e4bdfb04855b299a050bc0"
 ENTRY_33496978 = {
     "round": 33496978, "published": "2026-10-29T17:18:18Z",
     "registering_commit": "6190a00cf322432bc4ec8b12e03adb3fbbd315b2",
@@ -934,7 +935,7 @@ class TestOD160(unittest.TestCase):
     def test_the_committed_row_is_decision_log_line_160_byte_for_byte(self):
         data = (HERE / ob.OWNER_DECISIONS).read_bytes()
         self.assertEqual(data.count(b"\n"), 1, "one row, newline-terminated")
-        self.assertEqual(hashlib.sha256(data.rstrip(b"\n")).hexdigest(), OD160_SHA256)
+        self.assertEqual(hashlib.sha256(data).hexdigest(), OD160_SHA256)
         if DECISION_LOG.is_file():      # the private log, on the Mac only
             line = DECISION_LOG.read_bytes().split(b"\n")[159]
             self.assertEqual(line + b"\n", data)
