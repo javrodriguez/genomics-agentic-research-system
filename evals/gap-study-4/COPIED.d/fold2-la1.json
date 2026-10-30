@@ -1,0 +1,30 @@
+{
+  "lane": "fold2-la1",
+  "files": [
+    {
+      "path": "COPIED.d/fold2-la1.json",
+      "status": "new",
+      "reason": "Lane fold2/la1's copy-record fragment. Lane fold2/la1 folds MAJOR 1 of pre-freeze review 2 (review pfr-20261029/round2/prefreeze-2.md, the fold plan FOLD-PLAN-prefreeze-2.md section 3, approved by glitch-45 on Thu 29 Oct 2026 under Javier's standing delegation), on its branch from freeze/r4-20261021. The lane wrote no fragment; the merge lane (fold2/merge) writes this one at the merge so its new files are claimed. Edits without transfer, in files other fragments claim: routing.json and routing.py (the agent_reach class table, the split nested-agent and subagent-records ids, store-variable-assigned as an agent event, the agent-reachable-reason row, driver-record-fault, the rate-limit row's none_of transcript-mismatch), check_take.py (the split raise sites and api_error_record_problems), run.py (STOPPED_ROUTES adds harness-error), stats.py and result.py (the store-variable-assigned column and the third stopped column), and the tests that bind them (test_agent_tool, test_nested_agent, test_pf1_l2b, test_pf1_routing_rulings, test_routing, test_vendor_body, test_vendor_session, test_walk_runner). prereg-draft.json is not regenerated: test_pf1_routing_rulings P8 stays red until the plan's single regeneration."
+    },
+    {
+      "path": "tests/test_pf2_agent_routes.py",
+      "status": "new",
+      "reason": "Lane fold2/la1: red-first tests of MAJOR 1's split of nested-agent and subagent-records by who produces the record, and of harness-error in the stopped-take count. Synthetic records only."
+    },
+    {
+      "path": "tests/test_pf2_class_table.py",
+      "status": "new",
+      "reason": "Lane fold2/la1: red-first tests of the class table (routing.json agent_reach): one entry per non-graded after-first-turn row, rule and reason, each stated route the table's own, each reachable re-run or refusal with a stated call."
+    },
+    {
+      "path": "tests/test_pf2_api_error.py",
+      "status": "new",
+      "reason": "Lane fold2/la1: red-first tests of glitch-45's ruling 1 (a stream API-error record or error result with no session-file twin reads transcript-mismatch) and of the vendor drive split."
+    },
+    {
+      "path": "tests/test_pf2_producer_rule.py",
+      "status": "new",
+      "reason": "Lane fold2/la1: red-first tests of the producer rule: an ast walk over the raise sites of each candidate reason, each emission classified agent or driver, so a new or vanished site turns the test red."
+    }
+  ]
+}

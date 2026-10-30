@@ -1,0 +1,30 @@
+{
+  "lane": "fold2-ld",
+  "files": [
+    {
+      "path": "COPIED.d/fold2-ld.json",
+      "status": "new",
+      "reason": "Lane fold2/ld's copy-record fragment. Lane fold2/ld folds m8, m10, m13 and m16 of pre-freeze review 2 (review pfr-20261029/round2/prefreeze-2.md, the fold plan FOLD-PLAN-prefreeze-2.md section 3, approved by glitch-45 on Thu 29 Oct 2026 under Javier's standing delegation), on its branch from freeze/r4-20261021. The lane wrote no fragment; the merge lane (fold2/merge) writes this one at the merge so its new files are claimed. Edits without transfer, in files other fragments claim: result.py (the outside-reach section per half-cell, the flagged list's verdict counts and its corrected cap sentence), check_results.py (RUNTIME_PATHS names labelling/flagged-verdicts.json), run_builders.py (exported_gars_tree, the gars tree each take records at export), and the tests that bind them (test_pf1_l2b, test_run_builders)."
+    },
+    {
+      "path": "labelling/flagged_verdicts.py",
+      "status": "new",
+      "reason": "Lane fold2/ld, m8: the flagged list's verdict record (labelling/flagged-verdicts.json), its shape, its committed-once, never-gone and after-labels rules, and --check."
+    },
+    {
+      "path": "walk_native_cross.py",
+      "status": "new",
+      "reason": "Lane fold2/ld, m16: re-derives every joined Codex and Gemini native cross-check of the registered walks through the accepted readers (called, never edited) and requires it to equal the ledger's record."
+    },
+    {
+      "path": "tests/test_fold2_ld.py",
+      "status": "new",
+      "reason": "Lane fold2/ld: red-first tests of m8, m10, m13 and m16 and of the lane review's fold. Synthetic records, plus one read of the committed walks."
+    },
+    {
+      "path": "checks.d/fold2-ld.txt",
+      "status": "new",
+      "reason": "Lane fold2/ld's listed checks: tests/test_fold2_ld.py, labelling/flagged_verdicts.py --check, walk_native_cross.py --check."
+    }
+  ]
+}
