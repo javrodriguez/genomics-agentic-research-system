@@ -528,7 +528,9 @@ RUNTIME_PATHS = ("takes.json", "outcomes.json", "rulings.json", "records",
                  "RESULT.md", "cost-calls.json", "COSTS.md", "deferred-arm-go.json",
                  # pre-freeze review 1 (lane pf1-l2b): the original report's published values (MAJOR 10) and the
                  # labelling frame built from the takes (MAJOR 6) are run output too
-                 "original-values.json", "labelling/frame.json")
+                 "original-values.json", "labelling/frame.json",
+                 # pre-freeze review 2, m8 (lane fold2-ld): the flagged list's verdict record is run output too
+                 "labelling/flagged-verdicts.json")
 
 
 def runtime_timing_problems() -> list[str]:

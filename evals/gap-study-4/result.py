@@ -141,6 +141,65 @@ def render_stopped(rows: list) -> str:
     return "\n".join(out + [""])
 
 
+# Pre-freeze review 2, m10 (lane fold2-ld, Thu 29 Oct 2026): an outside-reach event (routing.json's outside-reach and
+# checker-event-reason annotations; the drive step's count in the routed records' events.outside_reach) never routes a
+# take and is not in the published take record, so the page prints it per half-cell, from every committed outcome
+# (re-runs included), as rounds 2 and 3 published their refused attempts. A take whose records give no count is
+# named as unread, never counted as none.
+REACH_EVENTS = ("outside-reach", "checker-event-reason")
+
+
+def _reach_count(o: dict):
+    """The outcome's events.outside_reach, or None when its records hold no readable count."""
+    records = o.get("records")
+    ev = records.get("events") if isinstance(records, dict) else None
+    n = ev.get("outside_reach") if isinstance(ev, dict) else None
+    return n if type(n) is int and n >= 0 else None
+
+
+def outside_reach_counts(rows: list, history: list) -> list:
+    """Per half-cell with a committed outcome: {arm, task, half, model, harness, takes, with_event (outcomes whose
+    committed events hold an outside-reach annotation), events (the events.outside_reach total), unread (outcomes whose
+    records give no count)}, in half-cell key order."""
+    import batch
+    registered = {(r["slot"], r["attempt"]): r for r in rows}
+    cells = {}
+    for o in history:
+        if not batch.is_outcome(o):
+            continue
+        r = registered.get((o.get("slot"), o.get("attempt")))
+        if r is None:
+            raise ValueError(f"a committed outcome ({o.get('slot')}, {o.get('attempt')}) has no registered row")
+        c = cells.setdefault(stats.half_cell_key(r), {"takes": 0, "with_event": 0, "events": 0, "unread": 0})
+        c["takes"] += 1
+        c["with_event"] += any(e in REACH_EVENTS for e in (o.get("events") or []))
+        n = _reach_count(o)
+        if n is None:
+            c["unread"] += 1
+        else:
+            c["events"] += n
+    return [dict(zip(("arm", "task", "half", "model", "harness"), k), **cells[k]) for k in sorted(cells)]
+
+
+def render_outside_reach(rows: list) -> str:
+    out = ["## Outside-reach events", "",
+           "An outside-reach event is an absolute path outside the take's own run tree that a tool call or its "
+           "result names, a study material reached, or the account email reached: the take is graded as usual with "
+           "its text masked, and the event never routes it. Per half-cell, over every committed attempt: the takes, "
+           "how many carry any of these events, the paths outside the run tree counted (events.outside_reach, which "
+           "does not count the account email), and the takes whose records give no count, which are named and never "
+           "counted as none.", ""]
+    if not rows:
+        return "\n".join(out + ["No take is committed.", ""])
+    out += ["| Arm | Task | Half | Model | Harness | Takes | Takes with an event | Events | Takes with no count |",
+            "|---|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        out.append(f"| {r['arm']} | `{r['task']}` | {r['half']} | `{r['model']}` | `{r['harness']}` "
+                   f"| {stats._say(r['takes'])} | {stats._say(r['with_event'])} | {stats._say(r['events'])} "
+                   f"| {stats._say(r['unread'])} |")
+    return "\n".join(out + [""])
+
+
 # Lane review 1 (pf1-l2b): with labelling_design.flagged_list on, the page prints how many takes were flagged, how
 # many the check list holds and how many fell beyond its cap; with it off (null) nothing is added, byte for byte.
 def _sample_doc(pre: dict):
@@ -173,7 +232,14 @@ def sample_errors() -> tuple:
     return (sample.SampleError,)
 
 
-def flagged_counts(pre: dict, reader=None):
+def _flagged_verdicts():
+    from labelling import flagged_verdicts
+    return flagged_verdicts
+
+
+def flagged_counts(pre: dict, reader=None, verdict_reader=None):
+    """The flagged list's counts and, pre-freeze review 2 m8 (lane fold2-ld), its verdict record's per-row counts
+    (labelling/flagged_verdicts.py; `verdict_reader(sample doc)` gives the validated findings or None, tests)."""
     design = pre.get("labelling_design")
     fl = design.get("flagged_list") if isinstance(design, dict) else None
     if fl is None:
@@ -182,22 +248,42 @@ def flagged_counts(pre: dict, reader=None):
     if doc is None:
         return {"cap": fl["cap"], "drawn": False}
     f = doc["flagged"]
+    fv = _flagged_verdicts()
+    found = fv.published(doc) if verdict_reader is None else verdict_reader(doc)     # review NIT 3: history first
     return {"cap": f["cap"], "drawn": True, "flagged": f["flagged"], "listed": f["listed"],
-            "beyond_cap": f["beyond_cap"]}
+            "beyond_cap": f["beyond_cap"], "verdicts": fv.verdict_rows(doc, found)}
 
 
 def render_flagged_counts(c) -> str:
     if c is None:
         return ""
-    cap = "no cap" if c["cap"] is None else f"a cap of {stats._say(c['cap'])}"
+    # m8: the list holds every flagged take only up to its cap; the count beyond it is published and not read
+    reach = ("every take a grader flagged for the human sample goes to it" if c["cap"] is None else
+             f"the takes a grader flagged for the human sample go to it up to the cap of {stats._say(c['cap'])}, a "
+             f"seeded draw of that many when more are flagged, with the count beyond the cap published and not read")
     out = ["## Flagged takes, the separate check list", "",
-           f"Every take a grader flagged for the human sample goes to a separate check list, read after the blind "
-           f"labels, with {cap}.", ""]
+           f"A separate check list, read after the blind labels: {reach}.", ""]
     if not c["drawn"]:
         return "\n".join(out + ["No flagged list is drawn yet: there is no frame.", ""])
-    return "\n".join(out + [f"Flagged takes: {stats._say(c['flagged'])}; on the check list: "
-                            f"{stats._say(c['listed'])}; beyond the cap, published and not read: "
-                            f"{stats._say(c['beyond_cap'])}.", ""])
+    out += [f"Flagged takes: {stats._say(c['flagged'])}; on the check list: "
+            f"{stats._say(c['listed'])}; beyond the cap, published and not read: "
+            f"{stats._say(c['beyond_cap'])}.", ""]
+    rows = c.get("verdicts")
+    if rows is None:
+        return "\n".join(out)
+    out += ["What the person reading the list found on each listed take, per task inside one arm, harness and model "
+            "(labelling/flagged-verdicts.json): the grader's reading stands, is wrong, or the take does not settle it.",
+            ""]
+    if rows and rows[0]["grader-right"] is None:
+        out += ["No verdict record is committed: the list's findings are not read yet.", ""]
+    out += ["| Arm | Harness | Model | Task | On the list | Grader's reading stands | Grader's reading wrong | "
+            "Cannot tell |", "|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        counts = ["not read"] * 3 if r["grader-right"] is None else [
+            stats._say(r[k]) for k in ("grader-right", "grader-wrong", "cannot-tell")]
+        out.append(f"| {r['arm']} | `{r['harness']}` | `{r['model']}` | `{r['task']}` | {stats._say(r['listed'])} | "
+                   + " | ".join(counts) + " |")
+    return "\n".join(out + [""])
 
 
 def from_records(records: list, pre: dict, rows: list, history: list, table=None, *, go=None,
@@ -225,6 +311,7 @@ def from_records(records: list, pre: dict, rows: list, history: list, table=None
             "followup": followup, "followup_arms": held,
             "completeness": completeness.summarize(pre, records, states, rows),
             "stopped": stopped_counts(rows, history, evidence_for),
+            "outside_reach": outside_reach_counts(rows, history),
             "flagged": flagged_counts(pre, flagged_reader),
             "pause_notes": pause_notes(rows, published["attempts"]),
             # the orchestrator's pin-block ruling (lane pf1-l2a): listed, never counted
@@ -268,6 +355,7 @@ def render(rec: dict) -> str:
         lines += [empty_line(), ""]
     lines += [completeness.render(rec["completeness"]), render_pause_notes(rec["pause_notes"]),
               render_stopped(rec["stopped"]) if "stopped" in rec else "",
+              render_outside_reach(rec["outside_reach"]) if "outside_reach" in rec else "",
               *([render_flagged_counts(rec["flagged"])] if rec.get("flagged") is not None else []),   # off: no byte
               check_results.render_harness_events(rec.get("harness_events") or []),
               stats_block(rec["stats"]), render_followup(rec.get("followup") or [], rec.get("followup_arms") or []),

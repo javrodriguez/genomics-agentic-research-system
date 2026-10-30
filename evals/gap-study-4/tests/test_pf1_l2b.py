@@ -649,8 +649,9 @@ class RV1FlaggedRoad(unittest.TestCase):
         self.assertIsNone(result.flagged_counts({"labelling_design": {"flagged_list": None}}))
         self.assertIsNone(result.flagged_counts({}))
         on = {"labelling_design": {"flagged_list": {"cap": 1}}}
-        got = result.flagged_counts(on, reader=lambda: flagged_doc())
-        self.assertEqual(got, {"cap": 1, "drawn": True, "flagged": 3, "listed": 1, "beyond_cap": 2})
+        got = result.flagged_counts(on, reader=lambda: flagged_doc(), verdict_reader=lambda d: None)  # m8 review:
+        self.assertEqual({k: v for k, v in got.items() if k != "verdicts"},     # m8 (lane fold2-ld): + the verdicts
+                         {"cap": 1, "drawn": True, "flagged": 3, "listed": 1, "beyond_cap": 2})
         text = result.render_flagged_counts(got)
         self.assertIn("beyond the cap, published and not read: 2", text)
         self.assertIn("No flagged list is drawn yet", result.render_flagged_counts(
@@ -884,7 +885,8 @@ class C4FlaggedCountsReadPre(unittest.TestCase):
             (t / "frame.json").write_text(json.dumps(frame))
             with mock.patch.object(sm, "FRAME", str(t / "frame.json")), \
                     mock.patch.object(sm, "RESULTS", str(t / "records")), \
-                    mock.patch.object(sm, "PREREG", str(t / "absent-prereg.json")):
+                    mock.patch.object(sm, "PREREG", str(t / "absent-prereg.json")), \
+                    mock.patch.object(result._flagged_verdicts(), "published", lambda doc: None):  # m8 review
                 one = result.flagged_counts({"labelling_design": dict(lab, flagged_list={"cap": 1})})
                 every = result.flagged_counts({"labelling_design": dict(lab, flagged_list={"cap": None})})
                 (t / "frame.json").unlink()
