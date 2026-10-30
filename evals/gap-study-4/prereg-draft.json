@@ -20266,7 +20266,7 @@
       "https://api.drand.sh",
       "https://drand.cloudflare.com"
     ],
-    "round": 33496978,
+    "round": 33536472,
     "seed_rule": "take_order_seed is the first 40 hex characters of the sha256 of the UTF-8 text 'gap-study-4 take order\\n<the round>\\n<the round's randomness>': nothing the operator commits enters it. The round is the one registered here, read from both relays, which must agree, with its randomness the sha256 of its signature (order_beacon.seed); the freeze refuses unless the commit that registered the round was pushed to javrodriguez/gars-cloud-mirror at least 3600 s before the round is published, by GitHub's own push record, and so must the last commit that changed the draft (order_beacon.push_witness_problem); the push is a mirror of a wave that passed the whole athena battery, under Javier's standing word \"mirror every verified gap study wave\" (12 Oct 2026, plans/gap-study-round-4/next-slices-2026-10-11.md), or a push Javier named by a recorded word (its id cited). A registered round is replaced only as take_order_beacon.superseded records it: by a swap commit GitHub's records hold at least 60 s before that round publishes, or under Javier's recorded answer to the ask naming that swap (order_beacon.SUPERSEDED_ROUNDS).",
     "registration_order": [
       "1. Fetch every mirror ref into the freezing clone, read-only, before the freeze: freeze.mirror_problem refuses while any commit GitHub records on javrodriguez/gars-cloud-mirror is missing from it, so a force push whose old commits the mirror no longer serves blocks the freeze.",
@@ -20276,7 +20276,18 @@
       "5. Wait: the round must publish at least an hour (3600 s) after GitHub's push stamp; the freeze refuses otherwise, and reads the round only once it is published."
     ],
     "residual": "The take order is seeded by the registered drand round and its randomness alone. The freeze enforces that REGISTERED_ROUND, read by parsing order_beacon.py at every commit, changed in the history it freezes only from None to the round, through each superseded round take_order_beacon.superseded records, in that order (history_problem: [None, *superseded, round]), and that GitHub's own records hold a push of the commit that set the round and a push of the last commit that changed the draft, each at least an hour before the round is published, and that no commit the mirror's records hold registers another round, or changes the draft after the registration, off that one line. The remaining road is only a mirror whose history someone rewrites, or GitHub itself (or the clock its records are stamped by), and among GitHub's own roads its dropping a deleted branch's records: a record GitHub stops returning refuses the freeze only when it is one of the two witnessing pushes, and a dropped record of a candidate branch goes unseen (a mirror rule blocking deletion and force push would close it, a repository setting and Javier's call). The round's BLS signature is not verified (two relays run by different operators must agree instead). For the witnessing pushes, the push is a mirror of a wave that passed the whole athena battery, under Javier's standing word \"mirror every verified gap study wave\" (12 Oct 2026, plans/gap-study-round-4/next-slices-2026-10-11.md), or a push Javier named by a recorded word (its id cited); GitHub's activity API documents no retention period (docs.github.com/en/rest/repos/repos#list-repository-activities), so a push record GitHub no longer returns for a witnessing push refuses the freeze, never passes it. A registered round may be superseded, and each such round is listed in take_order_beacon.superseded with why: the freeze passes a superseded round only when GitHub's records hold the commit that replaced it at least 60 s before it published, so its value was unknown, or under Javier's recorded answer to the ask naming that swap, a row the freeze reads from the study's committed copy of its decision log (owner_decisions.jsonl), which an outside reader takes on the same trust as the machines and the runner. A superseded round's order can be computed by anyone, against the draft its entry names; it is a published deviation, never a silent one.",
-    "superseded": []
+    "superseded": [
+      {
+        "round": 33496978,
+        "published": "2026-10-29T17:18:18Z",
+        "registering_commit": "6190a00cf322432bc4ec8b12e03adb3fbbd315b2",
+        "push": "gars-cloud-mirror freeze/r4-20261021, branch_creation 2026-10-29T14:12:25Z, under OD147",
+        "why": "0f634fc3 (pre-freeze review 2): DO NOT FREEZE; MAJORs 1-2 change the draft after the round's push deadline (2026-10-29T16:18:18Z)",
+        "record": "6190a00c, the last commit to change the draft and the one that set the round, was pushed under Javier's recorded word OD147 before its athena battery, which then failed one test-only check (fixed in 1533750a and ef31e4a9, neither of which changed the draft or order_beacon.py); ef31e4a9 passed the whole battery. The round's order can be computed by anyone with prereg.py --order <seed of round 33496978> against prereg-draft.json at 6190a00c (byte-identical at ef31e4a9); no record shows anyone in the study computed it.",
+        "decision": "OD160",
+        "ask": "T199"
+      }
+    ]
   },
   "order_carry": "prereg.py --order <seed> names freeze.planned_order and shows the head of its permutation of the design's whole planned rows, seeded by a full 40-character lowercase hex seed; it refuses until every agent version is pinned. The frozen seed is order_beacon.seed of the registered drand round alone, and prereg.py --order-from-beacon refuses until that round is published.",
   "image_locks": [

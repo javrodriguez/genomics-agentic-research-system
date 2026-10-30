@@ -82,11 +82,24 @@ RELAYS = ("https://api.drand.sh", "https://drand.cloudflare.com")
 # The round the next draft registers: None until the draft is regenerated for its review, when the orchestrator sets the
 # first round published at or after the latest time the review can be committed (--round-at <that time>), in the same
 # commit as the regenerated draft. While None, the draft's round reads PENDING and the freeze is closed.
-REGISTERED_ROUND: int | None = 33496978
+REGISTERED_ROUND: int | None = 33536472
 # The rounds registered and then replaced, oldest first (option A+, lane fold2-lb). Append-only across history; each
 # entry is a dict literal with ENTRY_COMMON and either before_publication or decision and ask (superseded_problems).
 # The swap commit that moves REGISTERED_ROUND off a round adds its entry in the same commit, with the draft re-derived.
-SUPERSEDED_ROUNDS: tuple = ()
+# The swap commit (lane fold2/lc, Javier's OD160 on T199, option A+): round 33496978 superseded, r2 registered.
+SUPERSEDED_ROUNDS: tuple = ({
+        "round": 33496978, "published": "2026-10-29T17:18:18Z",
+        "registering_commit": "6190a00cf322432bc4ec8b12e03adb3fbbd315b2",
+        "push": "gars-cloud-mirror freeze/r4-20261021, branch_creation 2026-10-29T14:12:25Z, under OD147",
+        "why": "0f634fc3 (pre-freeze review 2): DO NOT FREEZE; MAJORs 1-2 change the draft after the round's push "
+               "deadline (2026-10-29T16:18:18Z)",
+        "record": "6190a00c, the last commit to change the draft and the one that set the round, was pushed under "
+                  "Javier's recorded word OD147 before its athena battery, which then failed one test-only check (fixed "
+                  "in 1533750a and ef31e4a9, neither of which changed the draft or order_beacon.py); ef31e4a9 passed the "
+                  "whole battery. The round's order can be computed by anyone with prereg.py --order <seed of round "
+                  "33496978> against prereg-draft.json at 6190a00c (byte-identical at ef31e4a9); no record shows anyone "
+                  "in the study computed it.",
+        "decision": "OD160", "ask": "T199"},)
 # The outside witness of when the round was registered (ruling 1, and its second hand-back of 24 Oct 2026): GitHub's
 # push activity on the private GARS mirror, which holds the study's own history (the aegis remote is another
 # repository and can never hold a study commit). Pushes there run under Javier's standing word "mirror every verified

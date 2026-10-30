@@ -849,9 +849,10 @@ class TestBeaconSupersession(unittest.TestCase):
         self.assertIn("SUPERSEDED_ROUNDS", " ".join(ob.REGISTRATION_ORDER))
 
     def test_the_branch_registers_nothing(self):
-        # the lane builds the code only: REGISTERED_ROUND stays 6190a00c's and no entry is added (L-C and glitch-45's)
-        self.assertEqual(ob.REGISTERED_ROUND, R0)
-        self.assertEqual(ob.SUPERSEDED_ROUNDS, ())
+        # lane fold2/lc's swap commit (option A+, OD160): R0 is superseded by ENTRY_33496978, in this commit, and the
+        # registered round is r2; the entry is the literal above, byte for byte
+        self.assertEqual(ob.REGISTERED_ROUND, 33536472)
+        self.assertEqual(ob.SUPERSEDED_ROUNDS, (ENTRY_33496978,))
         self.assertEqual(ob.published_text(R0), "2026-10-29T17:18:18Z")
 
 
