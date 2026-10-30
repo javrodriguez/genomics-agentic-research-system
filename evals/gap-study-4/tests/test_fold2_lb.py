@@ -27,6 +27,12 @@ A+ / m1   (section 1's option A+, the beacon code only: no round is registered h
           committed owner decision row (owner_decisions.jsonl) that answers the entry's ask with the round's swap
           phrase after the round published, cited by no other entry. SEED_RULE, residual and REGISTRATION_ORDER say
           the true push rule (m1).
+ORDER     (glitch-45's item 1, the m3 residual's closing check) check_results.take_order_problems recomputes the seed
+          from the frozen beacon reading and take_order from the frozen rows in an isolated interpreter (-I -S, stdlib
+          only, no study module), so a study-file monkey-patch that leaves take_order_function_sha256 unchanged cannot
+          reach the recompute; any mismatch with the recorded seed or order is refused.
+OD160     (glitch-45's item 2) Javier's recorded T199 answer, owner_decisions.jsonl's only row, byte-identical to
+          decision.jsonl line 160, binds round 33496978's prepared entry through a simulated swap commit.
 """
 
 from __future__ import annotations
@@ -838,6 +844,117 @@ class TestBeaconSupersession(unittest.TestCase):
         self.assertEqual(ob.REGISTERED_ROUND, R0)
         self.assertEqual(ob.SUPERSEDED_ROUNDS, ())
         self.assertEqual(ob.published_text(R0), "2026-10-29T17:18:18Z")
+
+
+READING_ROUND = 33356692   # drand quicknet round 33356692 as the relays answered it (test_pf1_freeze_gates' ROUND)
+READING = {"chain_hash": ob.CHAIN["chain_hash"], "round": READING_ROUND, "round_time": 1792873440,
+           "randomness": "ba6557025dd415aa63a9247283a8d471e877b8f9ab51d18acaf84abdbdcd53db",
+           "signature": "923de5ea6ff8d8702585b65f992a8a991da6a8d37f6b8d9e6817b5be0b27b75c"
+                        "93d944a935689e1eec7985c5fb782ffc", "relays": list(ob.RELAYS)}
+
+
+def frozen_with(order_fn=None):
+    """A frozen-file fragment over the committed draft's first 40 rows, its order made by freeze.planned_order (or
+    `order_fn`) from the reading's seed."""
+    import copy
+    import json
+    rows = json.loads((HERE / "prereg-draft.json").read_text())["rows"][:40]
+    seed = ob.seed(READING)
+    order = (order_fn or freeze.planned_order)({"rows": copy.deepcopy(rows)}, seed)
+    return {"rows": rows, "take_order_seed": seed, "take_order_beacon_reading": dict(READING), "take_order": order}
+
+
+class TestTakeOrderRecompute(unittest.TestCase):
+    def test_an_honest_order_passes(self):
+        import check_results as cr
+        self.assertEqual(cr.take_order_problems(frozen_with()), [])
+
+    def test_a_monkey_patched_helper_is_caught_while_the_hash_stands(self):
+        import json
+        import check_results as cr
+        before = freeze.take_order_function_sha256()
+        real = json.dumps
+        # the reviewer's re-check road 1: a module-level patch of json.dumps in a study file, in force in every process
+        # that imports it (the freeze's and, here, the checker's own)
+        with mock.patch.object(json, "dumps", lambda v, **k: real(v, **dict(k, sort_keys=True, indent=1))):
+            frozen = frozen_with()
+            self.assertEqual(freeze.take_order_function_sha256(), before, "the hash does not see the patch")
+            got = cr.take_order_problems(frozen)
+        self.assertNotEqual(frozen["take_order"], frozen_with()["take_order"], "the patch changed the order")
+        self.assertTrue(got and "take_order" in got[0], f"ORDER: a patched order passes: {got}")
+
+    def test_the_seed_and_reading_are_recomputed_too(self):
+        import check_results as cr
+        bad = dict(frozen_with(), take_order_seed="0" * 40)
+        self.assertTrue(cr.take_order_problems(bad))
+        bad = frozen_with()
+        bad["take_order_beacon_reading"] = dict(READING, randomness="0" * 64)
+        self.assertTrue(cr.take_order_problems(bad))
+        bad = frozen_with()
+        bad["take_order"] = list(reversed(bad["take_order"]))
+        self.assertTrue(cr.take_order_problems(bad))
+        self.assertTrue(cr.take_order_problems({"rows": []}), "a frozen file with no order is refused")
+
+    def test_the_recompute_reads_no_study_module(self):
+        import check_results as cr
+        src = cr.ORDER_REFERENCE
+        self.assertNotIn("import freeze", src)
+        self.assertNotIn("sys.path", src)
+        for flag in ("-I", "-S"):
+            self.assertIn(flag, cr.ORDER_REFERENCE_ARGV)
+
+    def test_publication_reads_it(self):
+        import inspect
+        import check_results as cr
+        self.assertIn("take_order_problems(frozen)", inspect.getsource(cr.check_frozen_content))
+
+
+DECISION_LOG = Path("/Users/javrodher/glitch/workspaces/aegis/orgos/records/decision.jsonl")
+OD160_SHA256 = "295e85ece9cd78f727cda5b79263cc41dd3e838b62e4bdfb04855b299a050bc0"   # line 160, read 29 Oct 2026
+ENTRY_33496978 = {
+    "round": 33496978, "published": "2026-10-29T17:18:18Z",
+    "registering_commit": "6190a00cf322432bc4ec8b12e03adb3fbbd315b2",
+    "push": "gars-cloud-mirror freeze/r4-20261021, branch_creation 2026-10-29T14:12:25Z, under OD147",
+    "why": "0f634fc3 (pre-freeze review 2): DO NOT FREEZE; MAJORs 1-2 change the draft after the round's push "
+           "deadline (2026-10-29T16:18:18Z)",
+    "record": "6190a00c, the last commit to change the draft and the one that set the round, was pushed under "
+              "Javier's recorded word OD147 before its athena battery, which then failed one test-only check (fixed "
+              "in 1533750a and ef31e4a9, neither of which changed the draft or order_beacon.py); ef31e4a9 passed the "
+              "whole battery. The round's order can be computed by anyone with prereg.py --order <seed of round "
+              "33496978> against prereg-draft.json at 6190a00c (byte-identical at ef31e4a9); no record shows anyone "
+              "in the study computed it.",
+    "decision": "OD160", "ask": "T199"}
+
+
+class TestOD160(unittest.TestCase):
+    def rows(self):
+        import json
+        return [json.loads(ln) for ln in (HERE / ob.OWNER_DECISIONS).read_text().splitlines() if ln.strip()]
+
+    def test_the_committed_row_is_decision_log_line_160_byte_for_byte(self):
+        data = (HERE / ob.OWNER_DECISIONS).read_bytes()
+        self.assertEqual(data.count(b"\n"), 1, "one row, newline-terminated")
+        self.assertEqual(hashlib.sha256(data.rstrip(b"\n")).hexdigest(), OD160_SHA256)
+        if DECISION_LOG.is_file():      # the private log, on the Mac only
+            line = DECISION_LOG.read_bytes().split(b"\n")[159]
+            self.assertEqual(line + b"\n", data)
+
+    def test_the_prepared_entry_is_well_formed_and_od160_binds_it(self):
+        self.assertEqual(ob.superseded_problems((ENTRY_33496978,)), [])
+        self.assertIsNone(ob.decision_problem(ENTRY_33496978, self.rows(), (ENTRY_33496978,)))
+        self.assertEqual(freeze.owner_decisions(), self.rows())
+
+    def test_a_swap_commit_with_the_entry_passes_the_witness(self):
+        # the swap commit's shape (L-C's): REGISTERED_ROUND leaves 33496978 for a later round and adds the entry
+        sc = BeaconScratch()
+        sc.commit(round_no=None, draft="v0")
+        reg0 = sc.commit(round_no=R0, draft="v1")
+        entry = dict(ENTRY_33496978, registering_commit=reg0)
+        swap = sc.commit(round_no=R2, superseded=(entry,), draft="v2")
+        with registered_as(R2, (entry,)) as reg:
+            got = witness(sc, reg, [(T0 - 7200, reg0), (T0 + 1000, swap)], self.rows())
+        self.assertIsInstance(got, dict, got)
+        self.assertEqual(got["superseded"][0]["decision"], "OD160")
 
 
 if __name__ == "__main__":
