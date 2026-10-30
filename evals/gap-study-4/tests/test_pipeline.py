@@ -1521,7 +1521,8 @@ class FreezeCoverage(unittest.TestCase):
                  "graders/delegation.py",                     # the d7107255 battery ruling: run.py imports it
                  "delegated_take.py",                         # the pre-freeze ruling: graders/delegation.py imports it
                  "run_builders.py",                           # lane run-launcher: check_publication's order check
-                 "order_beacon.py")                           # lane pf1-l1-freeze-gates: freeze.py imports it
+                 "order_beacon.py",                           # lane pf1-l1-freeze-gates: freeze.py imports it
+                 "order_reference.py")                        # lane fold2/lb (m3): check_results runs it by path
         with manifest_repository() as (repo, root, folder), tempfile.TemporaryDirectory() as tmp:
             fragment = json.loads((folder / "synthetic.json").read_text())
             entries = {e["path"]: e for e in fragment["files"]}
@@ -1535,6 +1536,9 @@ class FreezeCoverage(unittest.TestCase):
             draft = dict(pre_registration(), session_namespace={"derived_from": "synthetic",
                 "uuid": str(uuid.uuid5(uuid.NAMESPACE_URL, "synthetic"))},
                 take_order_beacon=dict(order_beacon.registration(), round=33356692))
+            # pre-freeze review 2, m3 (lane fold2/lb's leg; this rig's draft by lane fold2/lc): a draft carries the
+            # order function's hash, at the value this tree computes, as a built draft does
+            draft[freeze.ORDER_FUNCTION_HASH_KEY] = freeze.take_order_function_sha256()
             (root / "prereg-draft.json").write_text(json.dumps(draft))
             review_name = study.REVIEW_DIR + "/prefreeze-1.md"
             review = root / review_name
