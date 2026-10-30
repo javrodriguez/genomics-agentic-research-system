@@ -331,10 +331,14 @@ def _utc(text) -> float | None:
         return None
 
 
-def decision_problem(entry: dict, rows: list, entries) -> str | None:
+def decision_problem(entry: dict, rows: list, entries, now: float | None = None) -> str | None:
     """Option A+, step 3b: why `entry`'s decision does not bind its swap, or None. The decision list `rows` must hold
     exactly one row with the entry's id, an `ask.answer` by the principal with its turn's sha256, answering the entry's
-    ask with the round's swap phrase, created after the round published; no other entry of `entries` cites the id."""
+    ask with the round's swap phrase, created after the round published; no other entry of `entries` cites the id.
+    glitch-45's review of fold2/lb, mn-3 (ruled): no row of the list supersedes it (`supersedes_id`), no later row
+    answers or withdraws the same ask, and its `expires_at`, when set, is still ahead of `now` (the check's own clock
+    by default). The list is the study's committed copy; a later row OrgOS holds and the copy lacks is not seen (the
+    copy's trust limit, named in residual())."""
     did, r = entry["decision"], entry["round"]
     if sum(1 for e in entries if isinstance(e, dict) and e.get("decision") == did) != 1:
         return f"decision {did} is cited by more than one superseded entry"
@@ -356,6 +360,17 @@ def decision_problem(entry: dict, rows: list, entries) -> str | None:
     if made is None or made <= round_time(r):
         return (f"{did} is dated {row.get('created_at')!r}, not after round {r} published ({published_text(r)}): "
                 f"no word on a swap before the value it replaces was out")
+    later = [x.get("id") for x in rows if isinstance(x, dict) and x is not row and
+             (x.get("supersedes_id") == did or
+              (x.get("target_id") == entry["ask"] and (_utc(x.get("created_at")) or 0) > made))]
+    if later:
+        return (f"{did} is superseded, or its ask {entry['ask']} answered or withdrawn again, by {later[0]}: a word "
+                f"taken back binds no swap")
+    if row.get("expires_at") is not None:
+        ends = _utc(row["expires_at"])
+        clock = datetime.now(timezone.utc).timestamp() if now is None else now
+        if ends is None or ends <= clock:
+            return f"{did} expired at {row['expires_at']!r}: an expired word binds no swap"
     return None
 
 
