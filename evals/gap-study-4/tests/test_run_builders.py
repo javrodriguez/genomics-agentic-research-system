@@ -1504,6 +1504,41 @@ class S2Prepare(Case):
                                   fixture_builder=lambda r, tree, project: ({"sha256": "f" * 64}, "/s"))
             self.assertEqual(built, [], "M13: a run tree was built for a commit whose gars tree cannot be read")
 
+    def test_each_read_of_the_exported_tree_is_checked_m13(self):
+        """fold2/fix (battery gap4-fold2merge-889d6dd, run_builders shards 3, 5-9): each clause of
+        exported_gars_tree's guards refuses on its own, on git answers the real repository cannot give (a non-str
+        commit; rev-parse failing yet printing an id; rev-parse succeeding with no id; cat-file failing, failing with
+        "tree" printed, or naming another object kind). Any other exception is a FAIL here, never an error, so a
+        mutant that drops a clause and crashes instead of refusing is killed."""
+        import types as _types
+        import walk_builders as wb
+        tid = "a" * 40
+
+        def fake(rev, cat):
+            def run(argv, **kw):
+                rc, out = rev if "rev-parse" in argv else cat
+                return subprocess.CompletedProcess(argv, rc, out + "\n", "")
+            return _types.SimpleNamespace(run=run, CompletedProcess=subprocess.CompletedProcess)
+
+        good = "b" * 40
+        for clause, commit, rev, cat in (
+                ("commit not a str", None, (0, tid), (0, "tree")),
+                ("rev-parse failed, an id printed", good, (1, tid), (0, "tree")),
+                ("rev-parse ok, no id printed", good, (0, "HEAD"), (0, "tree")),
+                ("rev-parse failed, nothing printed", good, (128, ""), (0, "tree")),
+                ("cat-file failed", good, (0, tid), (1, "tree")),
+                ("cat-file names a blob", good, (0, tid), (0, "blob"))):
+            with self.subTest(clause=clause), mock.patch.object(rb(), "subprocess", fake(rev, cat)):
+                try:
+                    got = rb().exported_gars_tree("/repo", commit)
+                except wb.BuilderRefused:
+                    continue
+                except Exception as e:  # noqa: BLE001 - a crash is not the refusal
+                    self.fail(f"M13.{clause}: raised {type(e).__name__}, not BuilderRefused: {str(e)[:200]}")
+                self.fail(f"M13.{clause}: not refused, returned {got!r}")
+        with mock.patch.object(rb(), "subprocess", fake((0, tid), (0, "tree"))):
+            self.assertEqual(self.must("M13.fake", rb().exported_gars_tree, "/repo", good), tid, "M13.fake: the tree")
+
     def test_identity_tree_and_a_refused_fixture(self):
         import drive
         ident = {"index": 4, "attempt": 2, "row_commit": "c" * 40, "session_id": "sid-x"}
