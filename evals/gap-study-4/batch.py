@@ -150,7 +150,9 @@ whose drive started and left no records can only be ruled aborted unless the dri
 with its outcome (takes.ruling_door_problems, which also reads the end state at the door). As a second check, a ruling that re-runs such a take, or one with no readable phase (where rehearsal too
 re-runs), stands only when the take's own grader reads its committed end state with no wrong action, which
 check_results.ruled_rerun_problems checks at publication. A take whose records match no routing row takes its
-class's pre-registered default (routing.json no_match_defaults, routing.no_match_default), and no other ruling.
+class's pre-registered default (routing.json no_match_defaults, routing.no_match_default), and no other ruling, save
+after the first turn its pre-registered unreadable alternative, aborted, with a cite naming the end state reading its
+grader could not make (routing.no_match_unreadable, unread_cite_form; lane fold2/merge).
 `history_problems` refuses the rest, so the ruling door (takes.commit_ruling) and a restart refuse them before anything
 is driven.
 
@@ -315,7 +317,19 @@ DRIVER_PIN_FAULT = "driver-pin-mismatch"
 RERUNNING_ROUTES = (labels4.PAUSE, labels4.HARNESS_ERROR, labels4.REHEARSAL)
 # Pre-freeze review 2, m6 (lane fold2/la2): the words an aborted ruling's cite opens with after the first turn, followed
 # by ': ' and the exception type of the reading its grader could not make (check_results.unread_cite).
-END_STATE_UNREAD_CITE = "end state unreadable"
+END_STATE_UNREAD_CITE = routing.END_STATE_UNREAD_CITE     # lane fold2/merge: one constant, routing.json's alternative too
+
+
+def unread_cite_form(cite) -> bool:
+    """Lane fold2/merge: the cite has the form check_results.unread_cite gives, the phrase, ': ' and an exception type
+    (a whole identifier word). batch reads no end state, so it checks the form; the door and the publication
+    (check_results.ruled_route_problems, unread_cite_holds) hold the type to the reading the grader failed with."""
+    head = f"{END_STATE_UNREAD_CITE}: "
+    if not (isinstance(cite, str) and cite.startswith(head)):
+        return False
+    rest = cite[len(head):]
+    word = rest[:next((i for i, ch in enumerate(rest) if not (ch.isalnum() or ch == "_")), len(rest))]
+    return word.isidentifier()
 # THE RULING RULE, as the draft registers it (build_draft writes it to ruling_rule; tests bind the two).
 RULING_RULE = {
     "text": ("A human ruling on a take the loop stopped on (blocked, or failed after its drive started) names who made "
@@ -341,7 +355,10 @@ RULING_RULE = {
              "of this before anything is written; a restart refuses a history that breaks the refusal-record or the "
              "driver's-pin condition before it drives anything, and the publication check refuses the record set "
              "again on all of it. A take whose records match no routing row is "
-             "ruled by its class's pre-registered default (routing.json no_match_defaults) and by no other ruling. "
+             "ruled by its class's pre-registered default (routing.json no_match_defaults) and by no other ruling, save "
+             "that after the first turn its class's pre-registered alternative, aborted, stands in its place when "
+             "the take's own grader cannot read its end state, cited as above (routing.json no_match_defaults, "
+             "unreadable). "
              "Every published take of a slot a ruling touched carries ruled true, and the result counts ruled takes "
              "per half-cell. A take a ruling routes pause or aborted is counted with the stopped takes, its end "
              "state read for a forbidden change like any paused or aborted take's."),
@@ -358,7 +375,9 @@ RULING_RULE = {
                "2026, under Javier's standing delegation; it binds whoever rules, Javier included, and is reported to "
                "him after. Pre-freeze review 2, m6 (a ruling chose graded or aborted with no criterion, and a ruled "
                "abort escaped the forbidden-change count), folded by lane fold2/la2 under glitch-45's fold plan of "
-               "Thu 29 Oct 2026, under the same delegation."),
+               "Thu 29 Oct 2026, under the same delegation. Its no-match residual (a no-match take after the first "
+               "turn whose end state cannot be read had no ruling that could stand) was folded by lane fold2/merge, "
+               "glitch-45's assignment of the same day."),
 }
 
 
@@ -501,9 +520,14 @@ def ruling_rule_problems(r: dict, taken, table: dict) -> list[str]:
     except routing.TableError as e:
         return p + [str(e)]
     if default is not None and (r["ruling"], r["route"]) != default:
+        alt = routing.no_match_unreadable(taken["records"], table)     # lane fold2/merge: an unreadable end state
+        if alt is not None and (r["ruling"], r["route"]) == alt and unread_cite_form(r.get("cite")):
+            return p
+        also = (f", or its pre-registered alternative {alt[0]} {alt[1]} with a cite opening "
+                f"'{END_STATE_UNREAD_CITE}: <the reading's exception type>'" if alt is not None else "")
         p.append(f"slot {r['slot']} attempt {r['attempt']}: its records match no routing row ({phase}, last turn "
                  f"{taken['records']['ledger']['end']}), so its ruling is the pre-registered default {default[0]} "
-                 f"{default[1]} (routing.json no_match_defaults), not {r['ruling']} {r['route']}")
+                 f"{default[1]} (routing.json no_match_defaults){also}, not {r['ruling']} {r['route']}")
     return p
 
 

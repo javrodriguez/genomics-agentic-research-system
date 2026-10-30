@@ -146,7 +146,11 @@ classes for every pin harness (`no_match_classes`: each condition's truth read t
 through PROOF_DOMAINS, a branch closed once a row surely matches) and lists every class no row matches by its phase and
 the last turn's end; `no_match_problems` refuses a class with no entry in routing.json's no_match_defaults, an entry no
 class reaches, and a condition outside PROOF_CONDITIONS. Such a take is still refused by `route()` (batch commits it
-blocked, for a look), and `no_match_default` gives the one ruling batch.py accepts for it.
+blocked, for a look), and `no_match_default` gives the one ruling batch.py accepts for it. After the first turn its
+entry may carry an `unreadable` alternative (lane fold2/merge, the no-match residual of pre-freeze review 2's m6): a
+route ruling to aborted, cited "end state unreadable", which batch.py accepts in place of the default only with a cite
+naming the reading the grader could not make (`no_match_unreadable`); --check refuses it before the first turn, beside
+any default but graded, and in any other shape.
 
 No model is called anywhere in this module. Standard library only.
 """
@@ -263,6 +267,13 @@ HAS_PATH = "checker_reasons"
 AGENT_EVENTS_KEY = "agent_event_rows"
 NO_MATCH_KEY = "no_match_defaults"
 NO_MATCH_ENTRY_KEYS = ("when", "end", "ruling", "route", "why")
+# Lane fold2/merge (glitch-45's assignment, Thu 29 Oct 2026, under Javier's standing delegation): the no-match take
+# after the first turn whose end state its grader cannot read. Pre-freeze review 2's m6 refuses its graded default, so
+# its entry may carry this one alternative, exactly these keys: a route ruling to aborted, cited with the phrase below
+# (batch.END_STATE_UNREAD_CITE is this constant; check_results.unread_cite adds the reading's exception type).
+NO_MATCH_UNREADABLE_KEY = "unreadable"
+NO_MATCH_UNREADABLE_KEYS = ("ruling", "route", "cite", "why")
+END_STATE_UNREAD_CITE = "end state unreadable"
 # The review of 5afd80a7, finding 5, and the Lane-orchestrator's ruling on it: agent_event_rows is exactly these two.
 AGENT_EVENT_IDS = ("nonzero-exec-exit", "quiescence-cap-reached", "store-variable-assigned")
 # Pre-freeze review 2, MAJOR 1 (F1-2): the checker reasons that route graded with an agent event, apart from
@@ -819,9 +830,11 @@ def _no_match_default_problems(table: dict) -> list[str]:
     p, keys = [], set()
     for i, e in enumerate(sub["entries"]):
         where = f"{NO_MATCH_KEY} entry {i}"
-        if not isinstance(e, dict) or set(e) != set(NO_MATCH_ENTRY_KEYS):
-            p.append(f"{where} must hold exactly {list(NO_MATCH_ENTRY_KEYS)}")
+        if not isinstance(e, dict) or set(e) - {NO_MATCH_UNREADABLE_KEY} != set(NO_MATCH_ENTRY_KEYS):
+            p.append(f"{where} must hold exactly {list(NO_MATCH_ENTRY_KEYS)}, and may hold {NO_MATCH_UNREADABLE_KEY!r}")
             continue
+        if NO_MATCH_UNREADABLE_KEY in e:
+            p += _no_match_unreadable_problems(e, where)
         if e["when"] not in (labels4.BEFORE_FIRST_TURN, labels4.AFTER_FIRST_TURN):
             p.append(f"{where}: phase {e['when']!r} is not before-first-turn or after-first-turn")
         if e["end"] is not None and e["end"] not in labels4.TURN_ENDS:
@@ -836,6 +849,24 @@ def _no_match_default_problems(table: dict) -> list[str]:
         if (e.get("when"), e.get("end")) in keys:
             p.append(f"{where}: a second default for {e.get('when')} {e.get('end')}")
         keys.add((e.get("when"), e.get("end")))
+    return p
+
+
+def _no_match_unreadable_problems(e: dict, where: str) -> list[str]:
+    """Lane fold2/merge: the `unreadable` alternative of a no-match entry, allowed after the first turn only, beside a
+    graded default, as a route ruling to aborted cited END_STATE_UNREAD_CITE with its why."""
+    alt, where = e[NO_MATCH_UNREADABLE_KEY], f"{where} {NO_MATCH_UNREADABLE_KEY}"
+    p = []
+    if e["when"] != labels4.AFTER_FIRST_TURN or e["route"] != labels4.GRADED:
+        p.append(f"{where}: an unreadable alternative stands only after the first turn beside a graded default (an "
+                 f"end state is read only then), not {e['when']!r} beside {e['route']!r}")
+    if not isinstance(alt, dict) or set(alt) != set(NO_MATCH_UNREADABLE_KEYS):
+        return p + [f"{where} must hold exactly {list(NO_MATCH_UNREADABLE_KEYS)}"]
+    if (alt["ruling"], alt["route"], alt["cite"]) != (labels4.RULE_ROUTE, labels4.ABORTED, END_STATE_UNREAD_CITE):
+        p.append(f"{where}: the alternative is a {labels4.RULE_ROUTE} ruling to {labels4.ABORTED} cited "
+                 f"{END_STATE_UNREAD_CITE!r}, got {alt['ruling']!r} {alt['route']!r} {alt['cite']!r}")
+    if not (_is_str(alt["why"]) and alt["why"].strip()):
+        p.append(f"{where}: no why")
     return p
 
 
@@ -1382,9 +1413,9 @@ def no_match_problems(table: dict) -> list[str]:
     return p
 
 
-def no_match_default(records: dict, table: dict) -> tuple | None:
-    """m17: the pre-registered (ruling, route) for records no row matches (sound records, no refusal rule holding,
-    no row matching), else None. A no-match class with no entry raises TableError (--check refuses that table)."""
+def _no_match_entry(records: dict, table: dict) -> dict | None:
+    """m17: the no_match_defaults entry for records no row matches (sound records, no refusal rule holding, no row
+    matching), else None. A no-match class with no entry raises TableError (--check refuses that table)."""
     if check_records(records, table) or spend_cap_holds(records, table) or pin_refusal_holds(records, table):
         return None
     if any(matches(row, records, table) for row in table["rows"]):
@@ -1392,8 +1423,24 @@ def no_match_default(records: dict, table: dict) -> tuple | None:
     key = (phase_of(records), records["ledger"]["end"])
     for e in table[NO_MATCH_KEY]["entries"]:
         if (e["when"], e["end"]) == key:
-            return (e["ruling"], e["route"])
+            return e
     raise TableError(f"records no row matches ({key[0]}, last turn {key[1]}) have no pre-registered ruling default")
+
+
+def no_match_default(records: dict, table: dict) -> tuple | None:
+    """m17: the pre-registered (ruling, route) for records no row matches, else None (`_no_match_entry`)."""
+    e = _no_match_entry(records, table)
+    return None if e is None else (e["ruling"], e["route"])
+
+
+def no_match_unreadable(records: dict, table: dict) -> tuple | None:
+    """Lane fold2/merge: the (ruling, route) of the no-match entry's `unreadable` alternative for these records, else
+    None (no-match records whose entry carries none, or records some row matches). batch.py accepts it in place of the
+    default only with a cite opening END_STATE_UNREAD_CITE and the reading's exception type; the door and the
+    publication (check_results.ruled_route_problems) hold it to the reading the grader actually failed with."""
+    e = _no_match_entry(records, table)
+    alt = None if e is None else e.get(NO_MATCH_UNREADABLE_KEY)
+    return None if alt is None else (alt["ruling"], alt["route"])
 
 
 def main(argv: list[str]) -> int:
@@ -1415,8 +1462,9 @@ def main(argv: list[str]) -> int:
               f"default:")
         for k in keys:
             e = defaults[k]
+            alt = e.get(NO_MATCH_UNREADABLE_KEY)
             print(f"  {k[0]}, last turn {k[1] if k[1] is not None else 'none (no turn ran)'} -> {e['ruling']} "
-                  f"{e['route']}")
+                  f"{e['route']}" + (f" (end state unreadable: {alt['ruling']} {alt['route']}, cited)" if alt else ""))
         return 0
     if len(argv) == 1:
         with open(argv[0], encoding="utf-8") as fh:
