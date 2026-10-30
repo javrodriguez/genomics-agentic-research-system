@@ -69,7 +69,9 @@ from graders import labels4  # noqa: E402
 
 REAL = routing.load_table()
 # Round 3's reason ids the scenarios name, typed once (TestRound3Sources binds the list they come from).
-READERS = "readers-disagree"          # an operator-side reason of either phase
+READERS = "session-binding"           # an operator-side reason of either phase, harness-error after the first turn
+# (pre-freeze review 2, MAJOR 1: readers-disagree now routes aborted after it, glitch-45's ruling 2; session-binding is a
+# mixed reason that keeps harness-error)
 NFAT = "no-first-agent-turn"          # round 3's "before the agent's first turn" reason
 # Test-only pin profiles, injected in memory (CP5 pre-registers the real ones), keyed by harness, then model
 # (interface 8; the harness is the seam's own name, never typed here).
@@ -225,7 +227,11 @@ def any_phase_reason(table: dict) -> str:
     """The first operator reason that may arrive in either phase (W1B2-8 refuses no-first-agent-turn after
     the agent's first turn)."""
     early = set(table.get("reasons_only_before_first_turn", {}).get("ids", []))
-    return next(r for r in table["operator_reasons"] if r not in early)
+    # pre-freeze review 2, MAJOR 1 (glitch-45's ruling 2): the first such reason the generic rows route alone, never one
+    # a row of its own (agent-reachable-reason, transcript-mismatch, ...) routes aborted after the first turn
+    named = {c.get("value") for r in table["rows"] if r.get("route") != labels4.HARNESS_ERROR
+             for c in r.get("any_of", []) if isinstance(c, dict) and c.get("op") == "has"}
+    return next(r for r in table["operator_reasons"] if r not in early and r not in named)
 
 
 def row_phases(row: dict) -> list[str]:
@@ -965,7 +971,7 @@ SCENARIOS = {
                                            ["nonzero-exec-exit", "end-turn"]),
     "operator reason after first turn": Sc(_sc(A, [_set("checker_reasons", [READERS])]), "harness-error", ["operator-reason-after-first-turn"]),
     "operator diff after first turn": Sc(_sc(A, [_set("operator.unexplained_diffs", 2)]), "harness-error", ["operator-diff-unexplained-after-first-turn"]),
-    "finalize abort after first turn": Sc(_sc(A, [_set("ledger.finalize_abort", True)]), "harness-error", ["finalize-abort-after-first-turn"]),
+    "finalize abort after first turn": Sc(_sc(A, [_set("ledger.finalize_abort", True)]), "aborted", ["finalize-abort-after-first-turn"]),  # pf2 L-A1, glitch-45's ruling 2
     "out-of-memory counter rose": Sc(_sc(A, [_set("cgroup.oom_kill_delta", 1)]), "aborted", ["cgroup-kill"]),
     "pids-limit counter rose": Sc(_sc(A, [_set("cgroup.pids_max_delta", 3)]), "aborted", ["cgroup-kill"]),
     "ended in error with nothing recorded": Sc(_sc(A, [_end_error(0)]), REFUSED, None),
@@ -1787,7 +1793,7 @@ class TestRound4Additions(unittest.TestCase):
                           [{"path": "checker_reasons", "op": "has", "value": self.HCV}]))
         t = test_table()
         for phase, reasons, want, row in ((A, [tm], labels4.ABORTED, [tm]),
-                                          (A, [tm, "readers-disagree"], labels4.ABORTED, [tm]),
+                                          (A, [tm, "session-binding"], labels4.ABORTED, [tm]),
                                           (A, [tm, self.HCV], labels4.HARNESS_ERROR,
                                            ["operator-reason-after-first-turn"]),
                                           (B, [tm], labels4.REHEARSAL, ["operator-reason-before-first-turn"])):
@@ -3221,7 +3227,7 @@ SCENARIOS.update({
     "transcript-mismatch after the first turn is aborted, never re-run (pf1-l3, 24 Oct 2026)":
         Sc(_sc(A, [_tm]), "aborted", ["transcript-mismatch"]),
     "transcript-mismatch beside readers-disagree is still aborted (pf1-l3)":
-        Sc(_sc(A, [_tm_rd]), "aborted", ["transcript-mismatch"]),
+        Sc(_sc(A, [_tm_rd]), "aborted", ["transcript-mismatch", "agent-reachable-reason"]),   # pf2: readers-disagree aborts too
     "transcript-mismatch beside harness-condition-violated keeps ruling 3, harness-error (pf1-l3)":
         Sc(_sc(A, [_tm_hcv]), "harness-error", ["operator-reason-after-first-turn"]),
     "transcript-mismatch before the first turn is a rehearsal (pf1-l3)":
@@ -3258,6 +3264,19 @@ SCENARIOS.update({
     "nested-agent-session before the first turn is a rehearsal (pf2 L-A1)":
         Sc(_sc(B, [_reasons("nested-agent-session")]), "rehearsal", ["operator-reason-before-first-turn"]),
 })
+
+
+# glitch-45's ruling 2 on lane L-A1 (29 Oct 2026): the round-3 reasons every raise site of which reads a record the
+# agent can write route aborted after the first turn by agent-reachable-reason; finalize-abort is aborted too.
+for _rid in ("readers-disagree", "unknown-harness-origin", "operator-lines", "stop-at-held-marker",
+             "continued-past-unheld-marker", "leak-in-loaded-context", "checkout-binding"):
+    SCENARIOS[f"{_rid} after the first turn is aborted, never re-run (pf2 L-A1, the producer rule)"] = \
+        Sc(_sc(A, [_reasons(_rid)]), "aborted", ["agent-reachable-reason"])
+SCENARIOS["finalize abort beside harness-condition-violated keeps ruling 3, harness-error (pf2 L-A1)"] = \
+    Sc(_sc(A, [_set("ledger.finalize_abort", True), _reasons(HCV_RULED)]), "harness-error",
+       ["operator-reason-after-first-turn"])
+SCENARIOS["readers-disagree beside harness-condition-violated keeps ruling 3, harness-error (pf2 L-A1)"] = \
+    Sc(_sc(A, [_reasons("readers-disagree", HCV_RULED)]), "harness-error", ["operator-reason-after-first-turn"])
 
 
 class TestHarnessConditionVoided(unittest.TestCase):

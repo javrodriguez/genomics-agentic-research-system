@@ -7499,7 +7499,75 @@ def transcript_content_problems(path: Path) -> list[str]:
     cut = _host_recorded_cuts(path)
     out = [f"[{TRANSCRIPT_MISMATCH}] {p}" for p in
            _cca.content_problems([_cca.stream_content_units(t) for t in texts], session, cut=cut)]
-    return out + transcript_record_problems(path, texts, session, _journals, cut=cut)
+    return (out + transcript_record_problems(path, texts, session, _journals, cut=cut)
+            + api_error_record_problems(path, texts, session))
+
+
+# ---- A STREAM-ONLY API ERROR (pre-freeze review 2, MAJOR 1, step 5; glitch-45's ruling (a), 29 Oct 2026) -----------
+# The content units leave the harness's API-error records out (claude_code_adapter._units), so one line written into
+# the CLI's stdout pipe (/proc/<cli pid>/fd/1, the agent's own uid) gave the take an API error, a rate limit or a spend
+# cap that routed pause, harness-error or a refusal: the review's demonstration on a copy of rehearsals/w001. Claude Code
+# 2.1.296 writes the same API error into the session file as an assistant record {isApiErrorMessage: true, model
+# <synthetic>, error, apiErrorStatus, the words in text blocks}: three real 2.1.296 records read on the Mac on 29 Oct
+# 2026 (the L-A1 report cites them by path and line; static read of the pinned binary not possible there, the ruling's
+# evidence instead). So every API-error record of a turn stream needs its twin: a main-thread one a session-file
+# API-error record with the same words in the same turn (the session split at its operator lines), a sub-agent's one
+# in its own sub-agent file, and an error result (the session file holds no result record) at least one session-file
+# API-error record in its turn. Otherwise [transcript-mismatch]: aborted after the first turn. The road left is two
+# records the agent's uid can write, a stream line and a session-file line, which /box_residuals/9 names; a forged
+# error result line needs a session-file API-error record beside it, the same two-record road.
+def _api_words(rec: dict) -> str:
+    return "\n".join(t for t in _cca._texts(rec) if t)
+
+
+def api_error_record_problems(path: Path, texts=None, session=None) -> list[str]:
+    """claude-code: [transcript-mismatch] for each stream API-error record (or error result) with no session-file
+    twin, above; [] when every one has it. `texts` and `session` are the turn streams and the session file, read here
+    when not given."""
+    path = Path(path)
+    if texts is None or session is None:
+        _j, streams = _turn_files(path)
+        texts = [(path.parent / f"turn-{n}.jsonl").read_bytes().decode("utf-8", errors="replace")
+                 for n in sorted(streams)]
+        session = path.read_bytes().decode("utf-8", errors="replace")
+    turns = [[]]
+    for rec in _cca._content_records(session):
+        if rec.get("isSidechain") is True:
+            continue
+        if _cca._is_operator_line(rec):
+            turns.append([])
+        elif rec.get("type") == "assistant" and (rec.get("isApiErrorMessage") is True or _cca._is_api_error(rec)):
+            turns[-1].append(_api_words(rec))
+    out, sub_stream = [], collections.Counter()
+    for k, text in enumerate(texts, 1):
+        main, error_result = collections.Counter(), False
+        for rec in _cca._content_records(text):
+            if rec.get("type") == "assistant" and _cca._is_api_error(rec):
+                if rec.get("parent_tool_use_id") is None:
+                    main[_api_words(rec)] += 1
+                else:
+                    sub_stream[(rec.get("agent_id"), _api_words(rec))] += 1
+            elif rec.get("type") == "result" and (rec.get("is_error") is True
+                                                  or str(rec.get("subtype") or "").startswith("error")):
+                error_result = True
+        had = collections.Counter(turns[k] if k < len(turns) else [])
+        if main - had:
+            out.append(f"[{TRANSCRIPT_MISMATCH}] turn {k}: {sum((main - had).values())} API-error record(s) of the "
+                       f"stream have no API-error record with the same words in the session file's turn: the records "
+                       f"disagree")
+        if error_result and not had:
+            out.append(f"[{TRANSCRIPT_MISMATCH}] turn {k}: the stream's result is an error and the session file's turn "
+                       f"holds no API-error record: the records disagree")
+    if sub_stream:
+        files = collections.Counter()
+        for aid, q in subagent_files(path).items():
+            for rec in _records_of(q):
+                if rec.get("type") == "assistant" and (rec.get("isApiErrorMessage") is True or _cca._is_api_error(rec)):
+                    files[(aid, _api_words(rec))] += 1
+        if sub_stream - files:
+            out.append(f"[{TRANSCRIPT_MISMATCH}] {sum((sub_stream - files).values())} sub-agent API-error record(s) of "
+                       f"the streams have no twin in their sub-agent file: the records disagree")
+    return out
 
 
 def _host_readable(texts: list, cut=()) -> bool:
