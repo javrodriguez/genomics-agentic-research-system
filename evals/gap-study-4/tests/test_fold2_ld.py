@@ -139,7 +139,8 @@ class M8Verdicts(unittest.TestCase):
 
     def test_the_claim_follows_the_cap(self):
         on = {"labelling_design": {"flagged_list": {"cap": 2}}}
-        text = result.render_flagged_counts(result.flagged_counts(on, reader=lambda: flagged_doc()))
+        text = result.render_flagged_counts(result.flagged_counts(on, reader=lambda: flagged_doc(),
+                                                                  verdict_reader=lambda d: None))
         self.assertNotIn("Every take a grader flagged for the human sample goes to a separate check list", text)
         self.assertIn("up to the cap of 2", text)
         self.assertIn("beyond the cap", text)
@@ -215,7 +216,9 @@ class M8Verdicts(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             path = Path(t) / fv.VERDICTS_NAME
             path.write_text("x")
-            self.assertEqual(fv.history_problems(path, git(["a" * 40]), labels_problems=[]), [])
+            self.assertEqual(fv.history_problems(path, self.paths_git({fv.VERDICTS_NAME: ["a" * 40],
+                                                                      "labels.json": ["c" * 40]}),
+                                                 labels_problems=[]), [])
             self.assertTrue(fv.history_problems(path, git(["a" * 40, "b" * 40]), labels_problems=[]))
             self.assertTrue(fv.history_problems(path, git(["a" * 40], blob="y"), labels_problems=[]))
             self.assertTrue(fv.history_problems(path, git(["a" * 40], shallow="true"), labels_problems=[]))

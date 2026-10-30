@@ -15,7 +15,10 @@ ledger's own snapshot references, exits, sent lines and requested model, as walk
 through the accepted reader registry (native_reader_registration.production_readers), and requires the result to equal
 the ledger's record exactly. No reader source is read or edited here: the readers are called.
 
-A pending walk is walk_regrade's (its regrade.json re-derives there) and is counted, not read. A claude-code walk has no
+A pending walk is walk_regrade's (its regrade.json re-derives there) and is counted, not read. A walk whose recorded
+native_history did not join never ran the join in the driver (drive.vendor_cross_check_status), so the gate does not
+run it either: its ledger status must equal vendor_cross_check_status of that recorded history (review of 4928c592,
+MINOR 2; the 36 agreed Codex walks all record a joined history, so the joins re-derived are the same). A claude-code walk has no
 native cross-check. A vendor ledger with no cross_check_status is named. The gate prints what it re-derived and refuses
 a run that re-derived nothing while vendor walks stand (a vacuous green).
 
@@ -54,7 +57,8 @@ def rederive(harness: str, base: Path, ledger: dict, readers) -> dict:
 
 
 def walk_problem(walk: str, base, *, readers, cross=None) -> tuple:
-    """(problem or None, what was done: "rederived", "pending", "not-vendor" or "unread") for one walk folder.
+    """(problem or None, what was done: "rederived", "pending", "not-joined", "not-vendor" or "unread") for one walk
+    folder.
     `readers` None is the production registry; `cross(harness, base, ledger, readers)` stands in for rederive (tests)."""
     base = Path(base)
     try:
@@ -68,6 +72,19 @@ def walk_problem(walk: str, base, *, readers, cross=None) -> tuple:
         return f"walk {walk!r}: a {harness} driver ledger records no cross_check_status", "unread"
     if pending_walk.status(ledger) is not None:
         return None, "pending"
+    history = ledger.get("native_history")
+    if not (isinstance(history, dict) and history.get("status") == "joined"):
+        # review of 4928c592, MINOR 2: the driver ran the join only on a joined native history (drive.py 2613-2620);
+        # otherwise the ledger's status is vendor_cross_check_status of that recorded history, and that is what is read
+        want, got = ledger["cross_check_status"], None
+        try:
+            got = drive.vendor_cross_check_status(harness, history, None)
+        except (TypeError, KeyError, drive.DriveRefused) as e:
+            return f"walk {walk!r}: its recorded native history cannot be read: {type(e).__name__}: {e}", "not-joined"
+        if got != want:
+            return (f"walk {walk!r}: its native history did not join ({history!r}) and its ledger records the "
+                    f"cross-check {want!r}, not {got!r}"), "not-joined"
+        return None, "not-joined"
     if readers is None:
         try:
             readers = nrr.production_readers()
@@ -84,7 +101,7 @@ def walk_problem(walk: str, base, *, readers, cross=None) -> tuple:
 def report(study: Path = HERE, *, readers=None) -> tuple:
     """(problems, counts) over every registered walk at HEAD; counts {walks, vendor, rederived, pending}."""
     study = Path(study)
-    counts = {"walks": 0, "vendor": 0, "rederived": 0, "pending": 0}
+    counts = {"walks": 0, "vendor": 0, "rederived": 0, "pending": 0, "not-joined": 0}
     root, prefix = nrr._repo(study)
     if root is None:
         return [f"{study} is not inside a git repository: the walks are read as committed"], counts
@@ -104,7 +121,7 @@ def report(study: Path = HERE, *, readers=None) -> tuple:
             problem, done = walk_problem(walk, base, readers=readers)
         if done != "not-vendor":
             counts["vendor"] += 1
-        if done in ("rederived", "pending"):
+        if done in ("rederived", "pending", "not-joined"):
             counts[done] += 1
         if problem:
             out.append(problem)
@@ -113,7 +130,7 @@ def report(study: Path = HERE, *, readers=None) -> tuple:
 
 def gate_problems(problems: list, counts: dict) -> list:
     out = list(problems)
-    if counts["vendor"] and not counts["rederived"] and not counts["pending"]:
+    if counts["vendor"] and not (counts["rederived"] or counts["pending"] or counts.get("not-joined")):
         out.append(f"{counts['vendor']} vendor walk(s) are committed and no native cross-check was re-derived: not a "
                    f"pass")
     return out
@@ -121,7 +138,8 @@ def gate_problems(problems: list, counts: dict) -> list:
 
 def counts_line(counts: dict) -> str:
     return (f"re-derived {counts['rederived']} native cross-check(s) of {counts['vendor']} vendor walk(s), over "
-            f"{counts['walks']} registered walk(s); {counts['pending']} pending (walk_regrade.py's)")
+            f"{counts['walks']} registered walk(s); {counts['pending']} pending (walk_regrade.py's); "
+            f"{counts.get('not-joined', 0)} whose native history did not join, read by its recorded status")
 
 
 def main(argv=None) -> int:

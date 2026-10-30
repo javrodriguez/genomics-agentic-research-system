@@ -182,10 +182,12 @@ def outside_reach_counts(rows: list, history: list) -> list:
 
 def render_outside_reach(rows: list) -> str:
     out = ["## Outside-reach events", "",
-           "An absolute path outside the take's own run tree that a tool call or its result names is counted as an "
-           "event: the take is graded as usual with its text masked, and the event never routes it. Per half-cell, "
-           "over every committed attempt: the takes, how many carry an outside-reach event, the events counted, and "
-           "the takes whose records give no count, which are named and never counted as none.", ""]
+           "An outside-reach event is an absolute path outside the take's own run tree that a tool call or its "
+           "result names, a study material reached, or the account email reached: the take is graded as usual with "
+           "its text masked, and the event never routes it. Per half-cell, over every committed attempt: the takes, "
+           "how many carry any of these events, the paths outside the run tree counted (events.outside_reach, which "
+           "does not count the account email), and the takes whose records give no count, which are named and never "
+           "counted as none.", ""]
     if not rows:
         return "\n".join(out + ["No take is committed.", ""])
     out += ["| Arm | Task | Half | Model | Harness | Takes | Takes with an event | Events | Takes with no count |",
@@ -246,7 +248,7 @@ def flagged_counts(pre: dict, reader=None, verdict_reader=None):
         return {"cap": fl["cap"], "drawn": False}
     f = doc["flagged"]
     fv = _flagged_verdicts()
-    found = fv.read(doc) if verdict_reader is None else verdict_reader(doc)
+    found = fv.published(doc) if verdict_reader is None else verdict_reader(doc)     # review NIT 3: history first
     return {"cap": f["cap"], "drawn": True, "flagged": f["flagged"], "listed": f["listed"],
             "beyond_cap": f["beyond_cap"], "verdicts": fv.verdict_rows(doc, found)}
 
