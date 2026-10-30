@@ -711,10 +711,25 @@ def read_ruling(text: str) -> str:
     is the only ruling-like line (RULING_LIKE over each line read loosely); else AMBIGUOUS. A quoted literal inside a
     sentence that names a ruling, a loose "do not freeze" ruling line beside a DO FREEZE line, and a second ruling-like
     line of either kind all read AMBIGUOUS, which is never DO FREEZE."""
-    found = list(RULING.finditer(text))
+    # glitch-45's re-check of fold2/lb, R-3: a canonical ruling line inside a ``` or ~~~ fence, or behind '>', is a
+    # quotation, never a ruling, and its presence makes the report ambiguous (the realistic carrier of a canonical
+    # DO FREEZE literal beside a refusal worded some other way)
+    lines, fence, outside = text.splitlines(), None, []
+    for ln in lines:
+        mark = ln.lstrip()[:3]
+        if mark in ("```", "~~~") and (fence is None or fence == mark):
+            fence = None if fence else mark
+            continue
+        quoted = re.sub(r"^\s*(>\s*)+", "", ln)
+        if fence is not None or quoted != ln:
+            if RULING.fullmatch(quoted.strip()):
+                return AMBIGUOUS
+            continue
+        outside.append(ln)
+    found = [m for ln in outside for m in [RULING.fullmatch(ln)] if m]
     if len(found) != 1:
         return AMBIGUOUS
-    like = [ln for ln in text.splitlines() if RULING_LIKE.search(_loose(ln))]
+    like = [ln for ln in lines if RULING_LIKE.search(_loose(ln))]
     if len(like) != 1:
         return AMBIGUOUS
     return "DO NOT FREEZE" if found[0].group(1) else DO_FREEZE
