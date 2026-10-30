@@ -104,6 +104,10 @@ class ClassTable(unittest.TestCase):
             self.assertEqual(got[f"row:{rid}"]["route"], labels4.ABORTED)
             self.assertEqual(got[f"reason:{rid}"]["route"], labels4.ABORTED)
         self.assertEqual(got["reason:store-variable-assigned"]["route"], labels4.GRADED)
+        # the lane re-check, R2: driver-record-fault names every source it reads, the driver ledger and its snapshot too
+        how = got["reason:driver-record-fault"]["how"]
+        for src in ("frozen script", "envelopes", "launch journals", "driver ledger", "snapshot", "_vc_driver_fault"):
+            self.assertIn(src, how, src)
 
     def test_c_forgery(self):
         t = tr.test_table()
