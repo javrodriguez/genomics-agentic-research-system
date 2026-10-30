@@ -57,6 +57,12 @@ record (review round 3 W1A3-5): the guards read the record blobs at the source a
 record's exact bytes as they stood at an earlier commit pass. Keeping records out in that sense is the reviews'
 job, not this check's.
 
+What a reason says is not bound to the edit it describes (pre-freeze review 2, m14, named by lane fold2/lc): a
+reason holding any citation token passes, so a reason can be stubbed, or say "No other line changed" of a file a
+later lane edited (COPIED.d/w7d-rehearsals.json said so of review_kit/rounds.py until lane fold2/lc corrected it).
+Every byte of every file is still pinned, by its blob and the guards above, so only the description is loose;
+reading a reason against its diff stays the reviews' job.
+
 A tree named as a source (round 3 W1A3-7, recorded, not fixed): `git show <commit>:<folder>` prints the folder's
 listing, and a record folder named without its trailing slash is not matched as a record, so a listing of
 record NAMES (never their content) can be copied as `identical`.

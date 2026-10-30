@@ -89,17 +89,26 @@ def render_followup(rows: list, arms: list) -> str:
         return ""
     out = [f"## Follow-up: arm {', '.join(arms)}, {FOLLOWUP_LABEL}", "",
            f"After Javier's committed go, the comparison values over every arm, beside the values the original report "
-           f"published (which stand as published). These are {FOLLOWUP_LABEL}.", "",
-           "| Family | Harness | Model | Harness | Model | Task | Holm-adjusted p as published | Of | "
-           "Holm-adjusted p, full family | Of |", "|---|---|---|---|---|---|---|---|---|---|"]
+           f"published (which stand as published). These are {FOLLOWUP_LABEL}."]
+    # pre-freeze review 2, NIT (lane fold2/lc): one table per family, each under its own heading, never one heading
+    # over several families; the family column stays on each row
+    families = []
     for r in rows:
-        if "p" not in r or r["p"] is None:
-            continue
-        task = "the tasks that run" if r["task"] is None else f"`{r['task']}`"
-        was = "not in the original report" if r["published_adjusted"] is None else r["published_adjusted"]
-        of = "" if r["published_family_size"] is None else stats._say(r["published_family_size"])
-        out.append(f"| {r['family']} | `{r['harness_a']}` | `{r['model_a']}` | `{r['harness_b']}` | `{r['model_b']}` "
-                   f"| {task} | {was} | {of} | {r['adjusted']} | {stats._say(r['family_size'])} |")
+        if "p" in r and r["p"] is not None and r["family"] not in families:
+            families.append(r["family"])
+    for family in families:
+        out += ["", f"### Family: {family}", "",
+                "| Family | Harness | Model | Harness | Model | Task | Holm-adjusted p as published | Of | "
+                "Holm-adjusted p, full family | Of |", "|---|---|---|---|---|---|---|---|---|---|"]
+        for r in rows:
+            if "p" not in r or r["p"] is None or r["family"] != family:
+                continue
+            task = "the tasks that run" if r["task"] is None else f"`{r['task']}`"
+            was = "not in the original report" if r["published_adjusted"] is None else r["published_adjusted"]
+            of = "" if r["published_family_size"] is None else stats._say(r["published_family_size"])
+            out.append(f"| {r['family']} | `{r['harness_a']}` | `{r['model_a']}` | `{r['harness_b']}` "
+                       f"| `{r['model_b']}` | {task} | {was} | {of} | {r['adjusted']} "
+                       f"| {stats._say(r['family_size'])} |")
     return "\n".join(out) + "\n"
 
 

@@ -620,8 +620,25 @@ def walks_main() -> int:
     if n == 0:
         print("run: ok, having regraded 0 walks: none is registered, so nothing here is evidence about any walk")
     else:
-        print(f"run: {n} walk(s) regraded, every grade.json the regrade's bytes; never counted")
+        # pre-freeze review 2, NIT (lane fold2/lc): a pending document is regraded too, but it grades nothing; say so
+        pending = pending_walk_documents()
+        print(f"run: {n} walk(s) regraded, every grade.json the regrade's bytes ({n - pending} graded, {pending} "
+              f"pending documents that grade nothing yet); never counted")
     return 0
+
+
+def pending_walk_documents(base=None) -> int:
+    """How many registered walks' grade.json is not graded true: a pending document (a vendor walk whose native
+    cross-check is pending), which run.walk_problems regrades byte for byte and which grades nothing."""
+    walks_root = Path(HERE if base is None else base) / mode_binding.WALKS_DIR
+    n = 0
+    for entry in walk_register.registered(walks_root):
+        try:
+            doc = json.loads((walks_root / entry["walk"] / mode_binding.WALK_GRADE).read_bytes())
+        except (OSError, ValueError):
+            continue
+        n += not (isinstance(doc, dict) and doc.get("graded") is True)
+    return n
 
 
 def main(argv=None) -> int:
