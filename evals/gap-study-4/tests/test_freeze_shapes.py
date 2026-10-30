@@ -65,7 +65,12 @@ def row(arm: str) -> dict:
 
 
 def draft(arms) -> dict:
-    return {"status": "DRAFT", "tasks": [], "rows": [row(a) for a in arms]}
+    # pre-freeze review 2, m3 (lane fold2/lb's leg; this rig's draft by lane fold2/lc): a draft carries the order
+    # function's hash, so freeze.main's take-order-function leg reads the draft this tree builds and the shape legs
+    # stay what these tests read
+    import freeze
+    return {"status": "DRAFT", "tasks": [], "rows": [row(a) for a in arms],
+            freeze.ORDER_FUNCTION_HASH_KEY: freeze.take_order_function_sha256()}
 
 
 def fake_git(*args):
