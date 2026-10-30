@@ -313,8 +313,8 @@ RERUN_FAULT_ROWS = ("api-error-after-first-turn", "watcher-gap")
 PIN_BLOCK_PREFIX = "the driver's pin "
 DRIVER_PIN_FAULT = "driver-pin-mismatch"
 RERUNNING_ROUTES = (labels4.PAUSE, labels4.HARNESS_ERROR, labels4.REHEARSAL)
-# Pre-freeze review 2, m6 (lane fold2/la2): the words an aborted ruling's cite carries after the first turn, followed by
-# the reading of the end state its grader could not read (check_results.ruled_route_problems).
+# Pre-freeze review 2, m6 (lane fold2/la2): the words an aborted ruling's cite opens with after the first turn, followed
+# by ': ' and the exception type of the reading its grader could not make (check_results.unread_cite).
 END_STATE_UNREAD_CITE = "end state unreadable"
 # THE RULING RULE, as the draft registers it (build_draft writes it to ruling_rule; tests bind the two).
 RULING_RULE = {
@@ -335,8 +335,9 @@ RULING_RULE = {
              "then it may be re-run under the same end-state check. After the first turn, read from the take's own "
              "records, a ruling that routes the take graded or aborted is bound by its end state: the take's own "
              "grader reads its committed end state first, and the ruling routes graded when it reads whole "
-             "(whatever the grader's word), aborted only when it does not, with its cite carrying 'end state "
-             "unreadable' and that reading. The ruling door (takes.commit_ruling) checks all "
+             "(whatever the grader's word), aborted only when it does not, with its cite opening with 'end state "
+             "unreadable: ' and then that reading's exception type (the type of the error the grader raised). The "
+             "ruling door (takes.commit_ruling) checks all "
              "of this before anything is written; a restart refuses a history that breaks the refusal-record or the "
              "driver's-pin condition before it drives anything, and the publication check refuses the record set "
              "again on all of it. A take whose records match no routing row is "

@@ -210,6 +210,20 @@ def ruling_door_problems(record: dict, history: list, rows: list, *, table=None,
     return p
 
 
+def _ruling_reads_row(record: dict, history: list) -> bool:
+    """Whether the door reads the ruled take's registered row: a re-running ruling always does; a graded or aborted
+    one only after the take's first turn, where its end state is read (pre-freeze review 2, m6; the review of
+    fold2/la2, M1: a ruling that reads no end state needs no readable takes.json)."""
+    if batch.reruns(record):
+        return True
+    if record.get("ruling") != labels4.RULE_ROUTE or record.get("route") not in (labels4.GRADED, labels4.ABORTED):
+        return False
+    key = (record.get("slot"), record.get("attempt"))
+    taken = next((o for o in reversed(history) if batch.is_outcome(o) and (o.get("slot"), o.get("attempt")) == key),
+                 None)
+    return taken is not None and batch.ruled_phase(taken, routing.load_table()) == labels4.AFTER_FIRST_TURN
+
+
 def commit_ruling(*, slot: str, attempt: int, word: str, route, by: str, why: str, cite: str, root=HERE,
                   repo=REPO, standing=None) -> dict:
     """The human door: append the caller's closed ruling to rulings.json, one commit.
@@ -225,9 +239,7 @@ def commit_ruling(*, slot: str, attempt: int, word: str, route, by: str, why: st
     record.update(why=why, cite=cite)
     history = read_history(root=root, repo=repo)
     validate_ruling(record, history)
-    # a re-running ruling reads its row, and so does a graded or aborted one (pre-freeze review 2, m6)
-    rows = (load_rows(root=root, repo=repo) if batch.reruns(record) or route in (labels4.GRADED, labels4.ABORTED)
-            else [])
+    rows = load_rows(root=root, repo=repo) if _ruling_reads_row(record, history) else []
     bad = ruling_door_problems(record, history, rows, standing=standing,
                                driver_refusal=lambda r, o: driver_refusal_record(r, o, root=root, repo=repo))
     if bad:

@@ -127,11 +127,24 @@ def ruled_rerun_problems(history: list, registered: dict, standing, table: dict 
 FINAL_RULED_ROUTES = (labels4.GRADED, labels4.ABORTED)
 
 
+def unread_cite(kind: str) -> str:
+    """The words an aborted ruling's cite opens with when its end state cannot be read: the phrase, then the reading's
+    exception type (the review of fold2/la2, m-a: the code checks what the rule text says)."""
+    return f"{batch.END_STATE_UNREAD_CITE}: {kind}"
+
+
+def unread_cite_holds(cite, kind: str) -> bool:
+    """The cite opens with unread_cite(kind), the type a whole word (never a negation, nor another type)."""
+    head = unread_cite(kind)
+    return isinstance(cite, str) and cite.startswith(head) and not cite[len(head):len(head) + 1].isidentifier()
+
+
 def ruled_route_problems(history: list, registered: dict, reading, table: dict | None = None) -> list[str]:
     """THE RULING RULE's criterion (pre-freeze review 2, m6): a ruling that routes a take graded or aborted after the
     agent's first turn (read from the take's own records) routes it graded when the take's own grader reads its
     committed end state (`reading(row, outcome)` returns, whatever its word: the end state reads whole), and aborted
-    only when it cannot (`reading` raises), the ruling's cite then carrying batch.END_STATE_UNREAD_CITE. Before the
+    only when it cannot (`reading` raises), the ruling's cite then opening with unread_cite(<the exception type>). A
+    ruling on a take with no registered row is refused, never read as unreadable. Before the
     first turn, and for a take whose records cannot show its phase (no records: the existing aborted-only rule holds),
     nothing is read here; re-running rulings are ruled_rerun_problems'."""
     table = routing.load_table() if table is None else table
@@ -147,17 +160,21 @@ def ruled_route_problems(history: list, registered: dict, reading, table: dict |
         taken = seen.get(key)
         if taken is None or batch.ruled_phase(taken, table) != labels4.AFTER_FIRST_TURN:
             continue                         # history_problems names a ruling on no committed take
-        try:
-            word, why = reading(registered[key], taken), None
-        except Exception as e:  # noqa: BLE001  any failure to read is the reading the ruling must cite
-            word, why = None, f"{type(e).__name__}: {e}"
         what = f"slot {key[0]} attempt {key[1]} was ruled {entry['route']} by {entry.get('by')}"
+        row = registered.get(key)
+        if row is None:                      # the review of fold2/la2, n-a: never read as an unreadable end state
+            out.append(f"{what}, but it has no registered row, so its end state cannot be read")
+            continue
+        try:
+            word, why, kind = reading(row, taken), None, None
+        except Exception as e:  # noqa: BLE001  any failure to read is the reading the ruling must cite
+            word, why, kind = None, f"{type(e).__name__}: {e}", type(e).__name__
         if entry["route"] == labels4.ABORTED and why is None:
             out.append(f"{what}, but its own grader reads its committed end state ({word}): an end state that "
                        f"reads whole is ruled graded, never aborted (THE RULING RULE, pre-freeze review 2 m6)")
-        elif entry["route"] == labels4.ABORTED and batch.END_STATE_UNREAD_CITE not in str(entry.get("cite")):
-            out.append(f"{what} on an end state its grader cannot read ({why}), but its cite does not carry "
-                       f"{batch.END_STATE_UNREAD_CITE!r} with that reading (THE RULING RULE, pre-freeze review 2 m6)")
+        elif entry["route"] == labels4.ABORTED and not unread_cite_holds(entry.get("cite"), kind):
+            out.append(f"{what} on an end state its grader cannot read ({why}), but its cite does not open with "
+                       f"{unread_cite(kind)!r} (THE RULING RULE, pre-freeze review 2 m6)")
         elif entry["route"] == labels4.GRADED and why is not None:
             out.append(f"{what}, but its own grader cannot read its committed end state ({why}): rule it aborted, "
                        f"citing {batch.END_STATE_UNREAD_CITE!r} (THE RULING RULE, pre-freeze review 2 m6)")
