@@ -1679,13 +1679,14 @@ def b17_finalize(mod, p):
             if got[0]["state"] != labels4.FAILED or want not in (got[0]["reason"] or ""):
                 out.append(f"{p}: a design table {why} was copied or not refused: {got[0]['state']} "
                            f"({got[0]['reason']})")
-    with scratch_repo() as root:                     # samples.csv never comes: round 3's finalize abort
+    with scratch_repo() as root:                     # samples.csv never comes: round 3's finalize abort, after the
         rig = Rig(mod, root, turns=four)
         with project_tree(rig, design=table):
             with planned(row(1, task="confounded-design")):
                 _, got = run_batch(rig, [row(1, task="confounded-design")])
+        # first turn: aborted (routing.json finalize-abort-after-first-turn, pre-freeze review 2 MAJOR 1, ruling 2)
         rec = got[0]["records"]
-        if not rec["ledger"]["finalize_abort"] or got[0]["state"] != labels4.HARNESS_ERROR:
+        if not rec["ledger"]["finalize_abort"] or got[0]["state"] != labels4.ABORTED:
             out.append(f"{p}: a finalize that never wrote samples.csv is {got[0]['state']} with finalize_abort "
                        f"{rec['ledger']['finalize_abort']}")
         if len(rig.adapters[0].lines) != 3 or sum(rig.clock.slept) < CAP_S:
