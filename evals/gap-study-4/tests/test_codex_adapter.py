@@ -1806,7 +1806,16 @@ _LABEL = "a what-label passed to _keys or _types, which use it only in their ref
 _REASON = ("why_no_init's words: a reason the turn record carries for a reader; no logic reads it, and B4 and B9 "
            "assert only that it is a non-empty string when init is None")
 _SAME_NONE = "the attribute's starting value is None already: emptying it to None changes nothing"
+# fold2/fix (battery gap4-fold2merge-889d6dd, w11a-codex-adapter.txt:9): fold2/la2's m7 branch in read_stream. Every
+# record reaching it passed tc.check_record, which returns it None for an event that is not an item event and refuses
+# an item.started whose item type is not in STARTED_ITEM_TYPES; the branch is reached only by turn.started and
+# item.started (every other event type of EVENT_KEYS has its own branch above). So each operand alone decides as both do.
+_M7_STARTED = ("check_record refuses an item.started of any other item type, and the only other event that reaches "
+               "this elif, turn.started, carries it None; so `t == tc.ITEM_STARTED` alone and `it in "
+               "tc.STARTED_ITEM_TYPES` alone are each true exactly when both are")
 EQUIVALENT = {
+    "ca drop0 read_stream: t == tc.ITEM_STARTED and it in tc.STARTED_ITEM_TYPES #1": _M7_STARTED,
+    "ca drop1 read_stream: t == tc.ITEM_STARTED and it in tc.STARTED_ITEM_TYPES #1": _M7_STARTED,
     "tc del <module>: _HERE not in sys.path #1": _PREAMBLE,
     "tc del <module>: from __future__ import annotations #1": _PREAMBLE,
     "tc del <module>: sys.path.insert(0, _HERE) #1": _PREAMBLE,
