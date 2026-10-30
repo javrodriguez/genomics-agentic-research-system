@@ -362,7 +362,9 @@ def decision_problem(entry: dict, rows: list, entries, now: float | None = None)
                 f"no word on a swap before the value it replaces was out")
     later = [x.get("id") for x in rows if isinstance(x, dict) and x is not row and
              (x.get("supersedes_id") == did or
-              (x.get("target_id") == entry["ask"] and (_utc(x.get("created_at")) or 0) > made))]
+              (x.get("target_id") == entry["ask"] and
+               # glitch-45's re-check, R-4: a same-ask row with no readable time refuses, never reads as earlier
+               (_utc(x.get("created_at")) is None or _utc(x.get("created_at")) > made)))]
     if later:
         return (f"{did} is superseded, or its ask {entry['ask']} answered or withdrawn again, by {later[0]}: a word "
                 f"taken back binds no swap")
