@@ -95,31 +95,32 @@ def linked(doc, harness):
 
 
 STORE_CASES = {
-    # name: (folder edit (path, harness), nested-agent lines it adds)
-    "no store record": (lambda path, harness: (path.parent / "session-store.json").unlink(), 1),
-    "a key off the shape": (store_edit(lambda d, h: d.update(extra=1)), 1),
-    "another harness's record": (store_edit(lambda d, h: d.update(harness="claude-code")), 1),
-    "another store root": (store_edit(lambda d, h: d.update(root="elsewhere")), 1),
-    "a turn's listing missing": (store_edit(lambda d, h: d["listings"].pop(0)), 1),
-    "a turn's sweep missing": (store_edit(lambda d, h: d["sweeps"].pop()), 1),
-    "an extra session in the store at publish": (store_edit(extra_session), 1),
-    "the store's session named for another id": (store_edit(renamed_session), 1),
-    "a link in the store": (store_edit(linked), 1),
-    "a listing refused": (store_edit(lambda d, h: d["listings"].__setitem__(1, {"at": "post-2", "refused": "x"})), 1),
-    "a turn's listing without the session": (store_edit(lambda d, h: d["listings"][0].update(entries=[])), 1),
+    # name: (folder edit (path, harness), the nested-agent lines it adds, by id: pre-freeze review 2, MAJOR 1 splits
+    # nested-agent-session, what the agent's uid produces, from nested-agent, what only the driver or runtime does)
+    "no store record": (lambda path, harness: (path.parent / "session-store.json").unlink(), {"nested-agent": 1}),
+    "a key off the shape": (store_edit(lambda d, h: d.update(extra=1)), {"nested-agent": 1}),
+    "another harness's record": (store_edit(lambda d, h: d.update(harness="claude-code")), {"nested-agent": 1}),
+    "another store root": (store_edit(lambda d, h: d.update(root="elsewhere")), {"nested-agent": 1}),
+    "a turn's listing missing": (store_edit(lambda d, h: d["listings"].pop(0)), {"nested-agent": 1}),
+    "a turn's sweep missing": (store_edit(lambda d, h: d["sweeps"].pop()), {"nested-agent": 1}),
+    "an extra session in the store at publish": (store_edit(extra_session), {"nested-agent-session": 1}),
+    "the store's session named for another id": (store_edit(renamed_session), {"nested-agent-session": 1}),
+    "a link in the store": (store_edit(linked), {"nested-agent-session": 1}),
+    "a listing refused": (store_edit(lambda d, h: d["listings"].__setitem__(1, {"at": "post-2", "refused": "x"})), {"nested-agent-session": 1}),
+    "a turn's listing without the session": (store_edit(lambda d, h: d["listings"][0].update(entries=[])), {"nested-agent-session": 1}),
     "a sweep finding another session": (store_edit(lambda d, h: d["sweeps"][0]["files"].append(
-        [f"{vcf.CONFIG_MOUNT}/{other_session(h)}", h, OTHER])), 1),
+        [f"{vcf.CONFIG_MOUNT}/{other_session(h)}", h, OTHER])), {"nested-agent-session": 1}),
     # round 13, review d-7c774ad finding 2: the own path is admitted only as [path, the harness's shape, the CLI's id]
     "the own path swept with another shape": (store_edit(lambda d, h: d["sweeps"][0]["files"][0].__setitem__(
-        1, "gemini" if h == "codex" else "codex")), 1),
+        1, "gemini" if h == "codex" else "codex")), {"nested-agent-session": 1}),
     "the own path swept as a claude session": (store_edit(lambda d, h: d["sweeps"][0]["files"][0].__setitem__(
-        1, "claude")), 1),
+        1, "claude")), {"nested-agent-session": 1}),
     "the own path swept with another session id": (store_edit(lambda d, h: d["sweeps"][1]["files"][0].__setitem__(
-        2, OTHER)), 1),
-    "a sweep's mounts widened": (store_edit(lambda d, h: d["sweeps"][0]["mounts"].append("/srv")), 1),
-    "a sweep refused": (store_edit(lambda d, h: d["sweeps"].__setitem__(0, {"at": "post-1", "refused": "x"})), 1),
-    "the record's nested CLI count": (store_edit(lambda d, h: d.update(nested_cli_calls=1)), 1),
-    "the record's unread line count": (store_edit(lambda d, h: d.update(unread_stream_lines=2)), 1),
+        2, OTHER)), {"nested-agent-session": 1}),
+    "a sweep's mounts widened": (store_edit(lambda d, h: d["sweeps"][0]["mounts"].append("/srv")), {"nested-agent": 1}),
+    "a sweep refused": (store_edit(lambda d, h: d["sweeps"].__setitem__(0, {"at": "post-1", "refused": "x"})), {"nested-agent-session": 1}),
+    "the record's nested CLI count": (store_edit(lambda d, h: d.update(nested_cli_calls=1)), {"nested-agent": 1}),
+    "the record's unread line count": (store_edit(lambda d, h: d.update(unread_stream_lines=2)), {"nested-agent": 1}),
 }
 
 
@@ -197,7 +198,7 @@ def store_problems(mod) -> list:
         for name, (edit, n) in STORE_CASES.items():
             _, path = built(mod, harness, folder_edit=edit)
             got = mod.vendor_session_store_problems(path, harness)
-            if tags(got) != collections.Counter({"nested-agent": n}):
+            if tags(got) != collections.Counter(n):
                 out.append(f"{harness} {name}: {got}")
     return out
 
@@ -220,7 +221,7 @@ def binding_problems(mod) -> list:
 def entry_problems(mod) -> list:
     out = []
     cases = (("an extra session in the store at publish", STORE_CASES["an extra session in the store at publish"][0],
-              None, "nested-agent"),
+              None, "nested-agent-session"),
              ("turn 2 resumes another session", BINDING_CASES["turn 2 resumes another session"][1], None,
               "session-binding"),
              ("an extra native interaction", None, extra_interaction, "session-binding"))
@@ -279,7 +280,7 @@ P4_WITNESSES = {
     "the snapshot's id unread": (("    if snap_ids != {vid}:\n", "    if False:\n"), binding_problems),
     "the envelopes' ids unread": (("    if ids != {vid}:\n", "    if False:\n"), binding_problems),
     "the turn-1 resume admitted": (("        if k == 1 and token in argv:\n", "        if False:\n"), binding_problems),
-    "the sweeps unread": (("        out += [f\"[{NESTED_AGENT}] the sweep at {x['at']}: {v}\" for v in seen][:5]\n", ""),
+    "the sweeps unread": (("        out += [f\"[{sweep_finding_id(v)}] the sweep at {x['at']}: {v}\" for v in seen][:5]\n", ""),
                           store_problems),
     "the counts trusted": (("    if (doc[\"nested_cli_calls\"], doc[\"unread_stream_lines\"]) != (calls, len(unread)):\n",
                             "    if False:\n"), store_problems),

@@ -734,9 +734,9 @@ CASES = {
                                            "gemini": {"transcript-unreadable": 1, "constant-binding": 1}}, None),
     # nested-agent (T-21)
     "a nested agent's session switch": (("codex",), edits(tool_command("codex exec --ephemeral hi"), None),
-                                        {"nested-agent": 1}, None),
+                                        {"nested-agent-session": 1}, None),       # pre-freeze review 2, MAJOR 1
     "a nested agent's store moved": (("codex", "gemini"), edits(tool_command("CODEX_HOME=/x codex exec hi"), None),
-                                     {"nested-agent": 1}, None),
+                                     {"store-variable-assigned": 1}, None),       # pre-freeze review 2, MAJOR 1
     # codex: the session's working directory (T-11), the run tree (T-4), and file_change (T-8, PENDING)
     "a rollout turn in another working directory": (("codex",), case_rollout_cwd,
                                                     {"inherited-context": 1, "readers-disagree": 1}, None),

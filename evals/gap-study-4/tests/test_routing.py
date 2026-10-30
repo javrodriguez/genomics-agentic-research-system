@@ -1682,7 +1682,8 @@ class TestCapKeyNames(unittest.TestCase):
 ROUND4_ADDED_REASONS = ("harness-condition-violated", "transcript-unreadable",    # + glitch-b5, 16 Oct 2026
                         "subagent-records",                                        # + the Agent parity ruling
                         "nested-agent",                                            # + W-3b (glitch-b5, 16 Oct)
-                        "transcript-mismatch")                                     # + pf1-l3 (MAJOR 7, 24 Oct)
+                        "transcript-mismatch",                                     # + pf1-l3 (MAJOR 7, 24 Oct)
+                        "nested-agent-session", "subagent-unbound")                # + pf2 L-A1 (MAJOR 1, 29 Oct)
 CHECK_TAKE4 = "evals/gap-study-4/check_take.py"
 
 
@@ -3225,6 +3226,37 @@ SCENARIOS.update({
         Sc(_sc(A, [_tm_hcv]), "harness-error", ["operator-reason-after-first-turn"]),
     "transcript-mismatch before the first turn is a rehearsal (pf1-l3)":
         Sc(_sc(B, [_tm]), "rehearsal", ["operator-reason-before-first-turn"]),
+})
+
+
+# Fold plan prefreeze-2, MAJOR 1 (lane L-A1, 29 Oct 2026): the plan's oracle for the split of nested-agent and
+# subagent-records by who can produce the record, and for the bare store-variable assignment.
+def _reasons(*ids):
+    def f(r):
+        r["checker_reasons"] = list(ids)
+    return f
+
+
+SCENARIOS.update({
+    "nested-agent-session after the first turn is aborted, never re-run (pf2 L-A1)":
+        Sc(_sc(A, [_reasons("nested-agent-session")]), "aborted", ["nested-agent-session"]),
+    "subagent-unbound after the first turn is aborted, never re-run (pf2 L-A1)":
+        Sc(_sc(A, [_reasons("subagent-unbound")]), "aborted", ["subagent-unbound"]),
+    "nested-agent (the driver's record) after the first turn keeps harness-error (pf2 L-A1)":
+        Sc(_sc(A, [_reasons("nested-agent")]), "harness-error", ["operator-reason-after-first-turn"]),
+    "subagent-records (the driver's copy ledger) after the first turn keeps harness-error (pf2 L-A1)":
+        Sc(_sc(A, [_reasons("subagent-records")]), "harness-error", ["operator-reason-after-first-turn"]),
+    "a bare store-variable assignment after the first turn is graded with its agent event (pf2 L-A1)":
+        Sc(_sc(A, [_reasons("store-variable-assigned")]), "graded", ["store-variable-assigned", "end-turn"]),
+    "a store-variable assignment beside a nested agent found is aborted (pf2 L-A1)":
+        Sc(_sc(A, [_reasons("store-variable-assigned", "nested-agent-session")]), "aborted",
+           ["nested-agent-session"]),
+    "nested-agent-session beside harness-condition-violated keeps ruling 3, harness-error (pf2 L-A1)":
+        Sc(_sc(A, [_reasons("nested-agent-session", HCV_RULED)]), "harness-error", ["operator-reason-after-first-turn"]),
+    "subagent-unbound beside harness-condition-violated keeps ruling 3, harness-error (pf2 L-A1)":
+        Sc(_sc(A, [_reasons("subagent-unbound", HCV_RULED)]), "harness-error", ["operator-reason-after-first-turn"]),
+    "nested-agent-session before the first turn is a rehearsal (pf2 L-A1)":
+        Sc(_sc(B, [_reasons("nested-agent-session")]), "rehearsal", ["operator-reason-before-first-turn"]),
 })
 
 

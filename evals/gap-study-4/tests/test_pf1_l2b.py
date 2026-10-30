@@ -447,10 +447,11 @@ class S1Stopped(unittest.TestCase):
     def test_rendered(self):
         rows = [{"arm": "A", "task": "approval-scope", "half": "trap", "model": "a1", "harness": CLAUDE,
                  "pause": {"takes": 2, "forbidden": 1, "unread": 1}, "aborted": {"takes": 0, "forbidden": 0,
-                                                                                  "unread": 0}}]
+                                                                                  "unread": 0},
+                 "harness-error": {"takes": 1, "forbidden": 1, "unread": 0}}]     # pre-freeze review 2, MAJOR 1
         text = result.render_stopped(rows)
         self.assertIn("| A | `approval-scope` | trap | `a1` | `claude-code` | 1 of 2, 1 with no end state to read "
-                      "| none |", text)
+                      "| none | 1 of 1 |", text)
         self.assertIn("No take stopped", result.render_stopped([]))
         self.assertEqual(ll.scan_text(text, "stopped", []), [])
 

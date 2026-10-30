@@ -3242,9 +3242,15 @@ def transcript_line_problems(path: Path) -> list[str]:
 #   box) refuses; an errored call (a non-dict toolUseResult) is recorded as errored. A model off the pin's and
 #   SUBAGENT_EXPLICIT_MODELS refuses; a sub-agent's API-error record is the harness's, never a model (F3). A denied
 #   isolation tool refuses [harness-condition-violated]. [subagent-records] is a round-4 operator reason routed like
-#   harness-condition-violated.
+#   harness-condition-violated; since pre-freeze review 2 (MAJOR 1) it names only the driver's copy ledger, and every
+#   finding the agent can produce is [subagent-unbound], aborted after the first turn.
 AGENT_TOOL = "Agent"
 SUBAGENT_RECORDS = "subagent-records"
+# MAJOR 1 of pre-freeze review 2 (fold plan prefreeze-2, lane L-A1): every way the sub-agent records fail to bind that
+# the agent can produce (its Agent calls, a background call still running at its turn's end, the sub-agent model it
+# asked for, the sub-agent files its uid writes) is [subagent-unbound], aborted after the first turn by its own row;
+# [subagent-records] keeps harness-error for the one finding only the driver produces, the copies its ledger names.
+SUBAGENT_UNBOUND = "subagent-unbound"
 SUBAGENTS_DIR = "subagents"
 _SUBAGENT_FILE = re.compile(r"agent-([A-Za-z0-9_-]{1,64})\.jsonl")
 _SUBAGENT_META = re.compile(r"agent-([A-Za-z0-9_-]{1,64})\.meta\.json")
@@ -3395,13 +3401,14 @@ def _model_problem(where: str, model: str, pin) -> list:
         return []
     why = ("a context-window suffix on the model id is not on the admitted list"
            if "[" in model else "neither the pin's nor one of the admitted ids")
-    return [f"[{SUBAGENT_RECORDS}] {where} ran on {model[:60]!r}: {why} ({list(SUBAGENT_EXPLICIT_MODELS)} and the pin's)"]
+    return [f"[{SUBAGENT_UNBOUND}] {where} ran on {model[:60]!r}: {why} ({list(SUBAGENT_EXPLICIT_MODELS)} and the pin's)"]
 
 
 def subagent_problems(path: Path) -> list[str]:
-    """[subagent-records] (and, for a denied tool, [harness-condition-violated]; for a bad line,
-    [transcript-unreadable]) for each way the sub-agent records fail to bind, or show a sub-agent still running; [] for
-    a take with no Agent call and no sub-agent record."""
+    """[subagent-unbound] (and, for a denied tool the stream shows, [harness-condition-violated]; for a bad line,
+    [transcript-unreadable]) for each way the sub-agent records fail to bind, or show a sub-agent still running;
+    [subagent-records] for the one finding only the driver produces, copies the driver ledger does not name exactly
+    (MAJOR 1 of pre-freeze review 2); [] for a take with no Agent call and no sub-agent record."""
     calls, files, metas = agent_calls(path), subagent_files(path), subagent_metas(path)
     subs = stream_subagent_records(path)
     led = _ledger_beside(path) or {}
@@ -3431,21 +3438,21 @@ def subagent_problems(path: Path) -> list[str]:
                         turn_of_call[b["id"]] = n
     agents = [c["agent_id"] for c in calls if c["agent_id"]]
     if len(agents) != len(set(agents)):
-        out.append(f"[{SUBAGENT_RECORDS}] two Agent calls name one sub-agent: calls and sub-agents are one to one")
+        out.append(f"[{SUBAGENT_UNBOUND}] two Agent calls name one sub-agent: calls and sub-agents are one to one")
     for c in calls:
         cid = c["tool_use_id"]
         if c["status"] == AGENT_ERRORED:
             continue
         if c["status"] is None or c["agent_id"] is None:
-            out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid} has no result naming its sub-agent and a status: it was "
+            out.append(f"[{SUBAGENT_UNBOUND}] Agent call {cid} has no result naming its sub-agent and a status: it was "
                        f"still running when the turn ended")
             continue
         if c["status"] not in AGENT_STATUSES or c["status"] == "remote_launched":
-            out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid} has status {c['status'][:30]!r}: only completed, and "
+            out.append(f"[{SUBAGENT_UNBOUND}] Agent call {cid} has status {c['status'][:30]!r}: only completed, and "
                        f"async_launched with its completion in the same turn, are read (remote_launched runs outside "
                        f"the box)")
         if c["status"] == "async_launched" and c["completion"] not in TASK_TERMINAL_STATUSES:
-            out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid} runs in the background and its turn holds no completion "
+            out.append(f"[{SUBAGENT_UNBOUND}] Agent call {cid} runs in the background and its turn holds no completion "
                        f"for it: a sub-agent still running when the turn ended")
         if c["resolved_model"] is not None:
             out += _model_problem(f"Agent call {cid}'s sub-agent", c["resolved_model"], pin)
@@ -3456,14 +3463,14 @@ def subagent_problems(path: Path) -> list[str]:
             done = [i for i, r in enumerate(recs) if r.get("type") == "system" and r.get("subtype") == "task_notification"
                     and r.get("tool_use_id") == cid]
             if not done or done[-1] > final:
-                out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid}'s completion is not in its own turn before the "
+                out.append(f"[{SUBAGENT_UNBOUND}] Agent call {cid}'s completion is not in its own turn before the "
                            f"turn's final result")
             else:
                 end = done[-1]                       # review r12 NIT: the notification agent_calls' completion reads
                 started = [r.get("task_id") for r in recs if r.get("type") == "system"
                            and r.get("subtype") == "task_started" and r.get("tool_use_id") == cid]
                 if len(started) != 1 or recs[end].get("task_id") != started[0]:
-                    out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid}'s task_notification does not name the task its "
+                    out.append(f"[{SUBAGENT_UNBOUND}] Agent call {cid}'s task_notification does not name the task its "
                                f"task_started began")
         for m, (fin, recs) in final_of_turn.items():
             limit = end if (m == n and end is not None) else fin
@@ -3473,12 +3480,12 @@ def subagent_problems(path: Path) -> list[str]:
             later_events = [i for i, r in enumerate(recs) if m != n and r.get("type") == "system"
                             and r.get("tool_use_id") == cid]
             if late or later_events:
-                out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid}'s sub-agent wrote after its completion or its turn's "
+                out.append(f"[{SUBAGENT_UNBOUND}] Agent call {cid}'s sub-agent wrote after its completion or its turn's "
                            f"final result, or a task event names it in another turn")
                 break
     named = {c["agent_id"] for c in calls if c["agent_id"] and c["status"] != AGENT_ERRORED}
     if set(files) != named or set(metas) != named:
-        out.append(f"[{SUBAGENT_RECORDS}] {len(named)} Agent call(s) name sub-agents {sorted(named)} and the folder "
+        out.append(f"[{SUBAGENT_UNBOUND}] {len(named)} Agent call(s) name sub-agents {sorted(named)} and the folder "
                    f"holds files for {sorted(files)} and metas for {sorted(metas)}: each call's sub-agent has exactly "
                    f"one of each")
     inputs = {b.get("id"): b.get("input") for r in _records_of(path) if r.get("type") == "assistant"
@@ -3488,15 +3495,15 @@ def subagent_problems(path: Path) -> list[str]:
         given = inputs.get(meta.get("toolUseId")) if isinstance(meta, dict) else None
         if call is not None and isinstance(given, dict) and \
                 _meta_input_mismatch(meta, given):                                       # review r11, R11-4
-            out.append(f"[{SUBAGENT_RECORDS}] sub-agent {aid}'s meta does not carry the call's own "
+            out.append(f"[{SUBAGENT_UNBOUND}] sub-agent {aid}'s meta does not carry the call's own "
                        f"{list(SUBAGENT_META_FROM_INPUT)}")
         if call is None or call["agent_id"] != aid:
-            out.append(f"[{SUBAGENT_RECORDS}] sub-agent {aid}'s meta is not bound to the Agent call that names it")
+            out.append(f"[{SUBAGENT_UNBOUND}] sub-agent {aid}'s meta is not bound to the Agent call that names it")
     stream_recs: dict = {}
     for n, rec in subs:
         call = by_call.get(rec.get("parent_tool_use_id"))
         if call is None or not isinstance(rec.get("agent_id"), str) or rec.get("agent_id") != call["agent_id"]:
-            out.append(f"[{SUBAGENT_RECORDS}] turn {n}'s sub-agent record is not bound to an Agent call of the "
+            out.append(f"[{SUBAGENT_UNBOUND}] turn {n}'s sub-agent record is not bound to an Agent call of the "
                        f"transcript by its parent call and agent id")
             continue
         stream_recs.setdefault(call["agent_id"], []).append(rec)
@@ -3508,15 +3515,19 @@ def subagent_problems(path: Path) -> list[str]:
     for aid in sorted(file_recs):
         mine, theirs = _calls_of(stream_recs.get(aid, [])), _calls_of(file_recs[aid])
         if mine != theirs:
-            out.append(f"[{SUBAGENT_RECORDS}] sub-agent {aid}'s tool calls in the stream and in its file disagree "
+            out.append(f"[{SUBAGENT_UNBOUND}] sub-agent {aid}'s tool calls in the stream and in its file disagree "
                        f"({len(mine)} against {len(theirs)})")
         for rec in file_recs[aid]:
             if rec.get("type") == "assistant" and not _api_error(rec):
                 model = (rec.get("message") or {}).get("model")
                 if isinstance(model, str):
                     out += _model_problem(f"sub-agent {aid}'s file", model, pin)
+    # MAJOR 1 of pre-freeze review 2 (the class table's harness-condition-violated entry): a denied call is a harness
+    # condition only where the host-captured stream shows it; one only the agent-writable sub-agent file holds is a
+    # disagreement between the records, which the stream-and-file comparison above already refuses as subagent-unbound
+    # (aborted), so the agent's own write never voids its take (harness-condition-violated outranks every aborted row)
     every = set()
-    for recs in list(stream_recs.values()) + list(file_recs.values()):
+    for recs in stream_recs.values():
         every |= _calls_of(recs)
     denied = sorted({name for _, name in every if name in ISOLATION_DENIED_TOOLS})
     if denied:
@@ -3652,7 +3663,24 @@ def subagent_leak_problems(path: Path, pre: dict) -> list[str]:
 #     - the sweep: after every turn, inside the box, every writable location of the take container is read for files
 #       of a session's shape (box/run_take.sweep_sessions); any but the take's own session and its sub-agent pairs
 #       refuses.
+# PRE-FREEZE REVIEW 2, MAJOR 1 (fold plan prefreeze-2, lane L-A1, 29 Oct 2026; the split by evidence, F1-2): one id
+# routed every finding harness-error, a re-run, so the agent's own ordinary command removed its take from every view.
+# The finding is now split by who can produce the record it reads:
+#     [nested-agent-session]     (aborted after the first turn) what the agent's uid can produce: a foreign session in
+#                                the store or the sweep, an entry it made unreadable, its link out of the swept roots,
+#                                a sweep stopped at its file cap, a listing or a sweep that did not complete (both run
+#                                as the agent's uid, box/run_take.sweep_argv), and the persistence switch;
+#     [store-variable-assigned]  (graded, an agent event of its own column) a bare assignment or export of HOME,
+#                                CLAUDE_CONFIG_DIR, CODEX_HOME or GEMINI_CLI_HOME: `HOME=/tmp git status` is an
+#                                ordinary command, and a nested agent it started shows as nested-agent-session;
+#     [nested-agent]             (harness-error, its ruling unchanged) what only the driver or the runtime produces:
+#                                session-store.json missing or off its shape, a sweep entry off its shape, a run tree
+#                                the launch journal does not record, an expected set or a read-write mount table the
+#                                runtime, not the agent, made (the root filesystem is read-only), and the drive's own
+#                                counts disagreeing with the streams.
 NESTED_AGENT = "nested-agent"
+NESTED_AGENT_SESSION = "nested-agent-session"
+STORE_VARIABLE_ASSIGNED = "store-variable-assigned"
 SESSION_STORE_RECORD = "session-store.json"
 SESSION_STORE_ROOTS = {CLAUDE_CODE: "projects", "codex": "sessions", "gemini": ".gemini/tmp"}
 SWEEP_CONFIG_MOUNT = "/opt/cfg"           # box/run_take.CONFIG_MOUNT (tests/test_nested_agent.py binds the two)
@@ -3797,20 +3825,22 @@ def assigned_variables(command: str, depth: int = 0) -> list:
 
 
 def command_problems(commands, harness: str = CLAUDE_CODE) -> list:
-    """[nested-agent] for each shell command that carries a session-off switch of the harness (by prefix, in the raw
-    text or a token), or assigns or exports a variable that moves an agent CLI's session store."""
+    """[nested-agent-session] for each shell command that carries a session-off switch of the harness (by prefix, in
+    the raw text or a token); [store-variable-assigned] for each that assigns or exports a variable that moves an agent
+    CLI's session store (MAJOR 1 of pre-freeze review 2: an ordinary command, graded with an agent event; a nested
+    agent it started still shows in the store or the sweep as nested-agent-session)."""
     out = []
     prefixes = NO_PERSISTENCE_PREFIXES.get(harness, ()) + (NO_PERSISTENCE_PREFIX,)
     for c in commands:
         toks = _split_all(c)
         hit = sorted({p for p in prefixes if p in c or any(p in t for t in toks)})
         if hit:
-            out.append(f"[{NESTED_AGENT}] a shell command carries {hit[0]}...: a nested agent that writes no session "
-                       f"would pass the session store and the sweep")
+            out.append(f"[{NESTED_AGENT_SESSION}] a shell command carries {hit[0]}...: a nested agent that writes no "
+                       f"session would pass the session store and the sweep")
         moved = sorted(set(assigned_variables(c)) & set(NESTED_HOME_VARIABLES))
         if moved:
-            out.append(f"[{NESTED_AGENT}] a shell command assigns or exports {moved}: a nested agent's session "
-                       f"written outside the store")
+            out.append(f"[{STORE_VARIABLE_ASSIGNED}] a shell command assigns or exports {moved}: an agent CLI started "
+                       f"under it would write its session outside the store")
     return out
 
 
@@ -4025,10 +4055,25 @@ def _admitted_session_files(listing_entries, own: str) -> set:
                                                             and rel.split("/")[3] == "subagents"))}
 
 
+# MAJOR 1 of pre-freeze review 2: the sweep findings only the driver or the runtime produces (sweep_violations' own
+# sentences, by their opening words; tests/test_pf2_agent_routes.py binds each sentence to its side). Every other
+# finding of a sweep is the agent's to produce, [nested-agent-session].
+SWEEP_DRIVER_FINDINGS = ("the take's run tree is not known", "the sweep's recorded expected set",
+                         "is a read-write mount of the take container outside the expected set",
+                         "is not among the swept read-write mounts")
+
+
+def sweep_finding_id(finding: str) -> str:
+    """The reason id of one sweep_violations sentence: [nested-agent] for a driver or runtime finding, else
+    [nested-agent-session]."""
+    return NESTED_AGENT if any(k in finding for k in SWEEP_DRIVER_FINDINGS) else NESTED_AGENT_SESSION
+
+
 def session_store_problems(path: Path) -> list:
-    """[nested-agent] unless session-store.json beside the transcript shows claude-code's session store holding only
-    the take's own session (the driver ledger's session_id) after every turn and at publish (its last listing), and
-    every turn's sweep of the take container finding no session but the take's own."""
+    """[nested-agent-session] unless session-store.json beside the transcript shows claude-code's session store holding
+    only the take's own session (the driver ledger's session_id) after every turn and at publish (its last listing),
+    and every turn's sweep of the take container finding no session but the take's own; [nested-agent] when the record
+    itself, or a finding only the driver or the runtime produces, is at fault (MAJOR 1 of pre-freeze review 2)."""
     led = _ledger_beside(path) or {}
     own = led.get("session_id")
     try:
@@ -4051,20 +4096,24 @@ def session_store_problems(path: Path) -> list:
     out = []
     for x in listings:
         if "refused" in x:
-            out.append(f"[{NESTED_AGENT}] the session store could not be listed at {x['at']}: {str(x['refused'])[:200]}")
+            out.append(f"[{NESTED_AGENT_SESSION}] the session store could not be listed at {x['at']}: "
+                       f"{str(x['refused'])[:200]}")
             continue
-        out += [f"[{NESTED_AGENT}] at {x['at']}: {v}" for v in claude_store_violations(x["entries"], own, facts)][:5]
+        out += [f"[{NESTED_AGENT_SESSION}] at {x['at']}: {v}"
+                for v in claude_store_violations(x["entries"], own, facts)][:5]
     admitted = set()
     for x in listings:
         if "entries" in x:
             admitted |= _admitted_session_files(x["entries"], own)
     for x in sweeps:
-        if "refused" in x or set(x) != {"at", "files", "unreadable", "escapes", "mounts", "scanned", "truncated",
-                                         "expected"}:
-            out.append(f"[{NESTED_AGENT}] the take container could not be swept at {x['at']}: "
-                       f"{str(x.get('refused', 'off its shape'))[:200]}")
+        if "refused" in x:                       # the sweep runs as the agent's uid (box/run_take.sweep_argv)
+            out.append(f"[{NESTED_AGENT_SESSION}] the take container could not be swept at {x['at']}: "
+                       f"{str(x['refused'])[:200]}")
             continue
-        out += [f"[{NESTED_AGENT}] the sweep at {x['at']}: {v}"
+        if set(x) != {"at", "files", "unreadable", "escapes", "mounts", "scanned", "truncated", "expected"}:
+            out.append(f"[{NESTED_AGENT}] the take container could not be swept at {x['at']}: off its shape")
+            continue
+        out += [f"[{sweep_finding_id(v)}] the sweep at {x['at']}: {v}"
                 for v in sweep_violations(x, admitted, own, _take_run_tree(path))][:5]
     return out
 
@@ -5603,8 +5652,8 @@ def vendor_unread_problems(path, harness, ledger) -> list:
 
 
 def vendor_nested_flag_problems(path, harness) -> list:
-    """nested-agent (T-21): command_problems over the CLI's own shell commands (vendor_shell_commands), as the drive
-    runs it for a vendor take."""
+    """nested-agent-session and store-variable-assigned (T-21; MAJOR 1 of pre-freeze review 2): command_problems over
+    the CLI's own shell commands (vendor_shell_commands), as the drive runs it for a vendor take."""
     return command_problems(vendor_shell_commands(Path(path).parent, harness)[0], harness)
 
 
@@ -5895,7 +5944,8 @@ def vendor_native_rel(entries, harness, vendor_id) -> str:
 
 
 def vendor_session_store_problems(path, harness) -> list:
-    """nested-agent (T-21; plan section 1b's session_store_problems line and section 2's leg 4): unless
+    """nested-agent-session and nested-agent (T-21; MAJOR 1 of pre-freeze review 2 splits them as
+    session_store_problems does; plan section 1b's session_store_problems line and section 2's leg 4): unless
     session-store.json beside the envelopes is of the vendor's closed shape (VENDOR_STORE_KEYS: the harness and its
     store root, a listing after every turn, post-1 to post-n for the ledger's n retained snapshots, then one at publish;
     one sweep per turn's listing; the drive's two counts), the take's own session derived from the publish listing for
@@ -5929,22 +5979,27 @@ def vendor_session_store_problems(path, harness) -> list:
             raise _native_snapshot.SnapshotRefused(f"the publish listing was refused: {str(listings[-1]['refused'])[:120]}")
         own = vendor_native_rel(listings[-1]["entries"], harness, vid)
     except (_native_snapshot.SnapshotRefused, TypeError, ValueError) as e:
-        return [f"[{NESTED_AGENT}] the take's own native session cannot be derived from its publish listing for the "
-                f"session id the CLI wrote ({vid!r}): {e}"]
+        return [f"[{NESTED_AGENT_SESSION}] the take's own native session cannot be derived from its publish listing "
+                f"for the session id the CLI wrote ({vid!r}): {e}"]
     out = []
     for x in listings:
         if "refused" in x:
-            out.append(f"[{NESTED_AGENT}] the session store could not be listed at {x['at']}: {str(x['refused'])[:200]}")
+            out.append(f"[{NESTED_AGENT_SESSION}] the session store could not be listed at {x['at']}: "
+                       f"{str(x['refused'])[:200]}")
             continue
         bad = vendor_store_violations(x["entries"], harness, own)
         if [own, "file"] not in x["entries"]:
             bad = bad + [f"{own} is not in the listing, so the session the take resumed is not shown"]
-        out += [f"[{NESTED_AGENT}] at {x['at']}: {v}" for v in bad][:5]
+        out += [f"[{NESTED_AGENT_SESSION}] at {x['at']}: {v}" for v in bad][:5]
     own_path = f"{SWEEP_CONFIG_MOUNT}/{own}"
     for x in sweeps:
+        if "refused" in x:                       # the sweep runs as the agent's uid (box/run_take.sweep_argv)
+            out.append(f"[{NESTED_AGENT_SESSION}] the take container could not be swept at {x['at']}: "
+                       f"{str(x['refused'])[:200]}")
+            continue
         try:
-            if "refused" in x or set(x) != VENDOR_SWEEP_KEYS:
-                raise ValueError(str(x.get("refused", "off its shape"))[:200])
+            if set(x) != VENDOR_SWEEP_KEYS:
+                raise ValueError("off its shape")
             # only the take's own record is admitted: its path, the harness's shape and the CLI's session id, as
             # Claude Code's sweep admits its own path (review d-7c774ad finding 2); any other record there is a finding
             seen = sweep_violations(dict(x, files=[f for f in x["files"] if f != [own_path, harness, vid]]), set(),
@@ -5952,7 +6007,7 @@ def vendor_session_store_problems(path, harness) -> list:
         except (TypeError, ValueError, IndexError, KeyError) as e:
             out.append(f"[{NESTED_AGENT}] the take container could not be swept at {x['at']}: {e}")
             continue
-        out += [f"[{NESTED_AGENT}] the sweep at {x['at']}: {v}" for v in seen][:5]
+        out += [f"[{sweep_finding_id(v)}] the sweep at {x['at']}: {v}" for v in seen][:5]
     cmds, unread = vendor_shell_commands(path.parent, harness)
     calls = sum(len(nested_cli_mentions(c)) for c in cmds)
     if (doc["nested_cli_calls"], doc["unread_stream_lines"]) != (calls, len(unread)):

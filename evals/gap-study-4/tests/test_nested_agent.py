@@ -13,8 +13,9 @@ none of the take's denials, its transcript outside the checked record. The rulin
               counted into check.json's nested_cli_calls (an int, as strict as the Agent pair), and a nonzero count
               sends the take to the human sample on both grading roads.
   N-flag      a Bash command whose shell tokens carry --no-session-pers (2.1.296's switch that turns transcript writes
-              off, by its prefix) or assign or export CLAUDE_CONFIG_DIR, CODEX_HOME, GEMINI_CLI_HOME or HOME refuses
-              [nested-agent] (review r14).
+              off, by its prefix) refuses [nested-agent-session]; one that assigns or exports CLAUDE_CONFIG_DIR,
+              CODEX_HOME, GEMINI_CLI_HOME or HOME reads [store-variable-assigned] (review r14; pre-freeze review 2,
+              MAJOR 1 split [nested-agent] by who can produce the record: tests/test_pf2_agent_routes.py).
   N-sweep     after every turn, inside the box, every writable location of the take container is swept for files
               of a session's shape; any but the take's own session and its sub-agent pairs refuses (review r14).
   N-draft     the draft's named residual W-3b states the bound and what is not bounded.
@@ -172,14 +173,14 @@ class TheFlag(unittest.TestCase):
                     "bash -c 'claude -p x --no-session-persistence'"):
             with self.subTest(cmd=cmd):
                 got = ct.nested_agent_flag_problems(take_with(main_cmds=[cmd]))
-                self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT}, got)
+                self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT_SESSION}, got)
         got = ct.nested_agent_flag_problems(take_with(sub_cmds=["claude --no-session-persistence -p y"]))
-        self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT})
+        self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT_SESSION})
         self.assertEqual(ct.NO_PERSISTENCE_PREFIX, "--no-session-pers")
         got = ct.nested_agent_flag_problems(take_with(main_cmds=[
             "python3 -c \"import subprocess; subprocess.run(['claude','-p','--no-session-persistence','x'])\""]))
-        self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT}, got)
-        self.assertEqual(ct.reason_ids(ct.command_problems(["codex exec --ephemeral x"], "codex")), [ct.NESTED_AGENT])
+        self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT_SESSION}, got)
+        self.assertEqual(ct.reason_ids(ct.command_problems(["codex exec --ephemeral x"], "codex")), [ct.NESTED_AGENT_SESSION])
         self.assertEqual(ct.command_problems(["codex exec --ephemeral x"], "claude-code"), [])
         self.assertEqual(ct.NO_PERSISTENCE_PREFIXES["gemini"], ())
 
@@ -200,7 +201,7 @@ class TheFlag(unittest.TestCase):
                     "chrt -f 10 env HOME=/x claude", "time -p env HOME=/x claude"):
             with self.subTest(cmd=cmd):
                 got = ct.nested_agent_flag_problems(take_with(main_cmds=[cmd]))
-                self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT}, got)
+                self.assertEqual(set(ct.reason_ids(got)), {ct.STORE_VARIABLE_ASSIGNED}, got)
         for cmd in ("echo $HOME", "ls ~", "cd $HOME/x", "printenv HOME", "MYHOME=/x ls", 'echo "HOME=$HOME"',
                     "grep -n HOME= setup.sh", "env -u CLAUDE_CONFIG_DIR ls", "unset HOME", "echo HOME=/x"):
             with self.subTest(cmd=cmd):
@@ -252,19 +253,22 @@ class TheStore(unittest.TestCase):
                 self.assertTrue(ct.claude_store_violations(CLEAN + extra, OWN))
                 path = with_store(take_folder(), [{"at": "post-1", "entries": CLEAN + extra},
                                                   {"at": "publish", "entries": CLEAN}])
-                self.assertEqual(set(ct.reason_ids(ct.session_store_problems(path))), {ct.NESTED_AGENT})
+                self.assertEqual(set(ct.reason_ids(ct.session_store_problems(path))), {ct.NESTED_AGENT_SESSION})
         self.assertTrue(ct.claude_store_violations([e for e in CLEAN if not e[0].endswith(".jsonl")
                                                     or "subagents" in e[0]], OWN))      # its own session missing
 
     def test_a_missing_or_refused_or_off_shape_record_refuses(self):
         path = take_folder()
         self.assertEqual(set(ct.reason_ids(ct.session_store_problems(path))), {ct.NESTED_AGENT})
-        for listings in ([{"at": "post-1", "refused": "OwnershipError: x"}, {"at": "publish", "entries": CLEAN}],
-                         [{"at": "post-1", "entries": CLEAN}],                       # no publish listing
-                         [], [{"at": "publish", "entries": CLEAN, "x": 1}]):
+        # pre-freeze review 2, MAJOR 1: a refused listing (it runs on the agent's own store) is nested-agent-session;
+        # a record off its shape is the driver's, nested-agent
+        for listings, want in (([{"at": "post-1", "refused": "OwnershipError: x"}, {"at": "publish", "entries": CLEAN}],
+                                ct.NESTED_AGENT_SESSION),
+                               ([{"at": "post-1", "entries": CLEAN}], ct.NESTED_AGENT),     # no publish listing
+                               ([], ct.NESTED_AGENT), ([{"at": "publish", "entries": CLEAN, "x": 1}], ct.NESTED_AGENT)):
             with self.subTest(listings=listings):
                 self.assertEqual(set(ct.reason_ids(ct.session_store_problems(with_store(take_folder(), listings)))),
-                                 {ct.NESTED_AGENT})
+                                 {want})
 
     def test_each_clause_admits_only_its_kind(self):
         """Review r14 NIT 1: each admitted path of the store is admitted as its own kind only."""
@@ -575,7 +579,7 @@ class TheSweep(unittest.TestCase):
                 ("a refused sweep", {"at": "post-1", "refused": "Refused: boom"})):
             with self.subTest(case=name):
                 got = ct.session_store_problems(with_store(take_folder(), clean, [sweep]))
-                self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT}, got)
+                self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT_SESSION}, got)
         for name, sweep in (
                 ("M5: a codex file at the take's own path", {**own_sweep("post-1"), "files": [
                     [f"{mount}/{P}/{OWN}.jsonl", "codex", OWN]]}),

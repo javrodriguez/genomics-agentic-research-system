@@ -57,7 +57,7 @@ HARNESS = "claude-code"
 MODEL = "claude-opus-5-5"
 PIN = dict(REAL["pin_profiles"][HARNESS][MODEL], harness=HARNESS, model=MODEL)
 INIT = {f: PIN[f] for f in ("model", "permission_mode", "version")}
-EVENT_ROWS = ["nonzero-exec-exit", "quiescence-cap-reached"]
+EVENT_ROWS = ["nonzero-exec-exit", "quiescence-cap-reached", "store-variable-assigned"]   # + pre-freeze review 2, MAJOR 1
 A, B = labels4.AFTER_FIRST_TURN, labels4.BEFORE_FIRST_TURN
 E500 = {"status": 500, "type": "api_error", "text": None}
 
@@ -185,7 +185,7 @@ def p5_record(runmod, statsmod=stats, p="P5"):
     out = []
     for name, r, want in (("survivor", survivors(records()), ["quiescence-cap-reached"]),
                           ("non-zero exit", nonzero(records()), ["nonzero-exec-exit"]),
-                          ("both", nonzero(survivors(records())), EVENT_ROWS),
+                          ("both", nonzero(survivors(records())), EVENT_ROWS[:2]),
                           ("clean", records(), [])):
         try:
             rec = runmod.record_for(ROW, graded_outcome(r), RIGHT)
