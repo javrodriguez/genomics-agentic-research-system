@@ -134,7 +134,7 @@ class TestMajor3Ruling(unittest.TestCase):
 
     def test_read_ruling_reads_exactly_one_anchored_line(self):
         cr = load_commit_review()
-        cases = {(DO,): "DO FREEZE", (DO_NOT,): "DO NOT FREEZE", QUOTED: "DO NOT FREEZE",
+        cases = {(DO,): "DO FREEZE", (DO_NOT,): "DO NOT FREEZE", QUOTED: cr.AMBIGUOUS,     # MJ-3: quoted is ambiguous
                  TWO_LINES: cr.AMBIGUOUS, (DO, DO): cr.AMBIGUOUS, ("none",): cr.AMBIGUOUS,
                  (f"> {DO}",): cr.AMBIGUOUS, (DO + " ",): cr.AMBIGUOUS}
         for body, want in cases.items():
@@ -169,7 +169,7 @@ class TestMajor3Ruling(unittest.TestCase):
                 msg, committed, text = self.run_commit_review(body)
                 self.assertIsNotNone(committed, msg)
                 self.assertEqual(committed, text, "the report is committed unedited")
-                want = "DO NOT FREEZE" if body is QUOTED else "ambiguous"
+                want = "ambiguous"     # MJ-3 (glitch-45's review): the quoted shape reads ambiguous too
                 self.assertIn(f"ruled: {want}", msg)
 
     def run_commit_review(self, body):

@@ -691,11 +691,31 @@ RULING = re.compile(r"^\*\*Ruling: DO (NOT )?FREEZE\.\*\*$", re.M)
 AMBIGUOUS = "ambiguous"
 
 
+# glitch-45's review of fold2/lb (MJ-3): a refusing line that is not byte-canonical (a trailing space, moved emphasis,
+# a heading, an NBSP or zero-width character, lower case) beside a canonical DO FREEZE line read DO FREEZE. Each line is
+# also read loosely: stripped, NFKC, zero-width characters and NBSP dropped, markdown emphasis, heading and quote marks
+# removed, case-folded; a line that then names a ruling of either kind is ruling-like.
+_INVISIBLE = dict.fromkeys(map(ord, "\u200b\u200c\u200d\u2060\ufeff\u00ad"), None)
+_MARKS = re.compile(r"[*_`~#>]+")
+RULING_LIKE = re.compile(r"\bruling\b\W{0,20}do\W*(not\W*)?freeze\b")
+
+
+def _loose(line: str) -> str:
+    import unicodedata
+    line = unicodedata.normalize("NFKC", line.replace("\u00a0", " ")).translate(_INVISIBLE)
+    return re.sub(r"\s+", " ", _MARKS.sub(" ", line)).strip().casefold()
+
+
 def read_ruling(text: str) -> str:
-    """'DO FREEZE' or 'DO NOT FREEZE' when exactly one line of `text` is a ruling line (RULING), else AMBIGUOUS: a
-    quoted literal inside a sentence is no line, and two ruling lines are no ruling."""
+    """'DO FREEZE' or 'DO NOT FREEZE' only when exactly one line of `text` is a canonical ruling line (RULING) and it
+    is the only ruling-like line (RULING_LIKE over each line read loosely); else AMBIGUOUS. A quoted literal inside a
+    sentence that names a ruling, a loose "do not freeze" ruling line beside a DO FREEZE line, and a second ruling-like
+    line of either kind all read AMBIGUOUS, which is never DO FREEZE."""
     found = list(RULING.finditer(text))
     if len(found) != 1:
+        return AMBIGUOUS
+    like = [ln for ln in text.splitlines() if RULING_LIKE.search(_loose(ln))]
+    if len(like) != 1:
         return AMBIGUOUS
     return "DO NOT FREEZE" if found[0].group(1) else DO_FREEZE
 REVIEW_DIGEST_PREFIX = "prereg.json sha256: "     # line 1 of every report (review_kit/commit_review.report_problems)
