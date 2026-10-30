@@ -683,7 +683,12 @@ def witness_publication_problems(pre: dict | None = None) -> tuple[list[str], di
     if pre is not None and pre.get("rehearsal_record") == DISPOSABLE_PLACEHOLDER:
         return [], {"disposable": True}
     # glitch-45's re-check, R-1: the record as HEAD commits it, never the working file
-    code, text = git("show", f"HEAD:{(HERE / WITNESS_RECORD).relative_to(REPO).as_posix()}")
+    try:
+        rel = (HERE / WITNESS_RECORD).relative_to(REPO).as_posix()
+        rels = [(HERE / f).relative_to(REPO).as_posix() for f in TAKE_LEDGER_FILES]
+    except ValueError:
+        return [f"{WITNESS_RECORD} is not inside this repository, so no committed run can be read"], None
+    code, text = git("show", f"HEAD:{rel}")
     try:
         runs = json.loads(text) if code == 0 else []
     except ValueError:
@@ -692,7 +697,6 @@ def witness_publication_problems(pre: dict | None = None) -> tuple[list[str], di
         return [f"no run of check_results.py --witness --record is on record ({WITNESS_RECORD}): the push records "
                 f"were never read for this publication"], None
     run = runs[-1]
-    rels = [(HERE / f).relative_to(REPO).as_posix() for f in TAKE_LEDGER_FILES]
     code, now = git("rev-list", "-1", "--full-history", "HEAD", "--", *rels)
     problems = []
     if run.get("problems"):
